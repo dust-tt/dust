@@ -83,21 +83,25 @@ describe("/api/w/[wId]/groups/[groupId]/granted_role", () => {
   });
 
   it("returns 400 for a non-manageable group kind", async () => {
+    // The global group is readable by all members but is not a manageable kind,
+    // so it reaches `setGrantedRole`'s kind check (unlike internal groups such
+    // as regular_auto, which are not readable and would 403 at fetch).
     const workspace = await WorkspaceFactory.basic();
-    const regularGroup = await GroupResource.makeNew({
-      name: "Space group",
-      workspaceId: workspace.id,
-      kind: "regular_auto",
-    });
-    await createPrivateApiMockRequest({
+    const { auth } = await createPrivateApiMockRequest({
       method: "PUT",
       role: "admin",
       workspace,
     });
+    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    if (globalGroupRes.isErr()) {
+      throw globalGroupRes.error;
+    }
 
-    const response = await putGrantedRole(workspace.sId, regularGroup.sId, {
-      grantedRole: "admin",
-    });
+    const response = await putGrantedRole(
+      workspace.sId,
+      globalGroupRes.value.sId,
+      { grantedRole: "admin" }
+    );
 
     expect(response.status).toBe(400);
     expect((await response.json()).error.type).toBe("invalid_request_error");
