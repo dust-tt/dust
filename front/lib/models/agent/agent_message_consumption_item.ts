@@ -26,6 +26,9 @@ function validateConsumptionItemShape(
   if (!isTool && this.directCreditAmountMicro !== null) {
     throw new Error("Only tool attribution items may contain direct credits");
   }
+  if (!isTool && Array.isArray(this.attributedSkillIds)) {
+    throw new Error("Only tool attribution items may contain skill IDs");
+  }
   if (!isTool && this.completedAt === null) {
     throw new Error("Only tool attribution items may be pending");
   }
@@ -91,6 +94,7 @@ export class AgentMessageConsumptionItemModel extends WorkspaceAwareModel<AgentM
   declare grossAttributedCreditAmountMicro: number;
   declare reconciledCreditAmountMicro: number | null;
   declare directCreditAmountMicro: number | null;
+  declare attributedSkillIds: string[] | null;
   declare completedAt: Date | null;
 }
 
@@ -170,6 +174,10 @@ AgentMessageConsumptionItemModel.init(
       type: DataTypes.BIGINT,
       allowNull: true,
       validate: { min: 0 },
+    },
+    attributedSkillIds: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
     },
     completedAt: {
       type: DataTypes.DATE,

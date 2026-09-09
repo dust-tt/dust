@@ -7,6 +7,8 @@ import {
   buildRunUsageAttribution,
   buildToolAttribution,
 } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
+import { getEnabledSkillIdsFromAction } from "@app/lib/api/assistant/agent_message_consumption_attribution/enabled_skill_footprint";
+import { skillIdsAttributedToAction } from "@app/lib/api/assistant/agent_message_consumption_attribution/skill_attribution";
 import { measureToolCallFootprints } from "@app/lib/api/assistant/agent_message_consumption_attribution/tool_footprint";
 import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversation/attachment_capabilities";
 import type { Authenticator } from "@app/lib/auth";
@@ -21,6 +23,7 @@ import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_me
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { RunUsageWithRunKeyType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -186,6 +189,7 @@ async function buildRunUsageConsumptionEvidence(
   auth: Authenticator,
   {
     capabilities,
+    attributedSkillIdsByActionModelId,
     enrichedActionByModelId,
     directCreditAmountMicroByActionModelId,
     includeToolResultFootprints,
@@ -193,6 +197,7 @@ async function buildRunUsageConsumptionEvidence(
     usage,
   }: {
     capabilities: AttachmentCapabilityContext;
+    attributedSkillIdsByActionModelId: ReadonlyMap<ModelId, string[]>;
     enrichedActionByModelId: ReadonlyMap<ModelId, AgentMCPActionWithOutputType>;
     directCreditAmountMicroByActionModelId: ReadonlyMap<ModelId, number>;
     includeToolResultFootprints: boolean;
@@ -297,12 +302,18 @@ async function buildRunUsageConsumptionEvidence(
 
   for (const toolCall of toolCalls) {
     const { action, footprint } = toolCall.tool;
+    const attributedSkillIds = attributedSkillIdsByActionModelId.get(action.id);
+    assert(
+      attributedSkillIds,
+      "A selected tool action must have skill attribution"
+    );
 
     // A blocked action carries no result and no charge yet, and billing does not charge it. Record
     // only the emitted call output as a pending row. The rest lands once the action is final.
     if (!isToolExecutionStatusFinal(action.status)) {
       pendingToolItems.push({
         action,
+        attributedSkillIds,
         runUsageModelId: usage.runUsageModelId,
         outputTokensCount: toolCall.outputTokensCount,
         grossAttributedCreditAmountMicro:
@@ -332,6 +343,7 @@ async function buildRunUsageConsumptionEvidence(
       itemType: "tool",
       runUsageModelId: usage.runUsageModelId,
       action,
+      attributedSkillIds,
       inputTokensCount: toolAttribution.inputTokensCount,
       outputTokensCount: toolAttribution.outputTokensCount,
       directCreditAmountMicro: toolAttribution.directCreditAmountMicro,
@@ -341,11 +353,18 @@ async function buildRunUsageConsumptionEvidence(
   }
 
   for (const action of sandboxChildRunActions) {
+    const attributedSkillIds = attributedSkillIdsByActionModelId.get(action.id);
+    assert(
+      attributedSkillIds,
+      "A selected sandbox child action must have skill attribution"
+    );
+
     // A blocked child has not reached the nested tool yet. Unlike a directly model-emitted call,
     // it contributes no output footprint while pending.
     if (!isToolExecutionStatusFinal(action.status)) {
       pendingToolItems.push({
         action,
+        attributedSkillIds,
         runUsageModelId: usage.runUsageModelId,
         outputTokensCount: 0,
         grossAttributedCreditAmountMicro: 0,
@@ -365,6 +384,7 @@ async function buildRunUsageConsumptionEvidence(
       itemType: "tool",
       runUsageModelId: usage.runUsageModelId,
       action,
+      attributedSkillIds,
       inputTokensCount: 0,
       outputTokensCount: 0,
       directCreditAmountMicro,
@@ -608,19 +628,38 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
   );
   const actionsToEnrich = actions.filter(
     (action) =>
-      !isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo) &&
       action.stepContent.dustRunId !== null &&
       dustRunIdsToProcess.has(action.stepContent.dustRunId)
   );
-  const enrichedActions =
+  const [enrichedActions, skills] =
     actionsToEnrich.length > 0
-      ? await AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
-          actions: actionsToEnrich,
-          ignoreContent: false,
-        })
-      : [];
+      ? await Promise.all([
+          AgentMCPActionResource.enrichActionsWithOutputItems(auth, {
+            actions: actionsToEnrich,
+            ignoreContent: false,
+          }),
+          SkillResource.listByAgentMessageId(auth, agentMessageModelId, {
+            withToolMetadata: true,
+          }),
+        ])
+      : [[], []];
   const enrichedActionByModelId = new Map(
     enrichedActions.map((action) => [action.id, action])
+  );
+  const attributedSkillIdsByActionModelId = new Map(
+    actionsToEnrich.map((action) => {
+      const enrichedAction = enrichedActionByModelId.get(action.id);
+      assert(enrichedAction, "A selected action must have enriched output");
+
+      return [
+        action.id,
+        skillIdsAttributedToAction({
+          action,
+          enabledSkillIds: getEnabledSkillIdsFromAction(enrichedAction),
+          skills,
+        }),
+      ] as const;
+    })
   );
 
   const records: CompletedAgentMessageConsumptionItem[] = [];
@@ -634,6 +673,7 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
     const runActions = (dustRunId && actionsByDustRunId.get(dustRunId)) || [];
     const usageEvidence = await buildRunUsageConsumptionEvidence(auth, {
       capabilities,
+      attributedSkillIdsByActionModelId,
       enrichedActionByModelId,
       directCreditAmountMicroByActionModelId,
       includeToolResultFootprints: !unconsumedToolResultRunUsageModelIds.has(
