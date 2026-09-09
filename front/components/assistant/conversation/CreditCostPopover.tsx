@@ -74,51 +74,54 @@ function CreditDetailRow({
       }}
       onPointerLeave={() => setIsLabelExpanded(false)}
     >
-      <dt className="col-start-1 row-start-1 flex min-w-0 items-center gap-2 font-medium text-foreground">
-        {icon && (
-          <Icon
-            visual={icon}
-            size="xs"
-            className="mt-0.5 shrink-0 self-start text-muted-foreground"
-          />
-        )}
-        <span
-          ref={labelRef}
-          className={classNames(
-            "truncate",
-            isLabelExpanded && "relative z-10 bg-overlay-background shadow-none"
+      <dt className="col-span-2 col-start-1 row-start-1 grid min-w-0 grid-cols-subgrid items-start font-medium text-foreground">
+        <span className="col-start-1 row-start-1 flex min-w-0 items-center gap-2">
+          {icon && (
+            <Icon
+              visual={icon}
+              size="xs"
+              className="mt-0.5 shrink-0 self-start text-muted-foreground"
+            />
           )}
-          style={{ textOverflow: isLabelExpanded ? "clip" : undefined }}
-        >
-          {label}
-        </span>
-        {description && (
           <span
-            aria-hidden={isLabelExpanded}
+            ref={labelRef}
             className={classNames(
-              "flex shrink-0",
-              isLabelExpanded && "invisible"
+              "truncate",
+              isLabelExpanded &&
+                "relative z-10 bg-overlay-background shadow-none"
+            )}
+            style={{ textOverflow: isLabelExpanded ? "clip" : undefined }}
+          >
+            {label}
+          </span>
+          {description && (
+            <span
+              aria-hidden={isLabelExpanded}
+              className={classNames(
+                "flex shrink-0",
+                isLabelExpanded && "invisible"
+              )}
+            >
+              <Chip
+                size="mini"
+                label={description}
+                className="shrink-0 font-normal"
+              />
+            </span>
+          )}
+        </span>
+        {isLabelExpanded && (
+          <span
+            aria-hidden
+            className={classNames(
+              "pointer-events-none col-span-2 col-start-1 row-start-1 min-w-0 justify-self-start break-all animate-credit-label-reveal select-none motion-reduce:animate-none",
+              icon ? "ml-6" : ""
             )}
           >
-            <Chip
-              size="mini"
-              label={description}
-              className="shrink-0 font-normal"
-            />
+            {label}
           </span>
         )}
       </dt>
-      {isLabelExpanded && (
-        <dt
-          aria-hidden
-          className={classNames(
-            "pointer-events-none col-span-2 col-start-1 row-start-1 min-w-0 justify-self-start break-all font-medium text-foreground animate-credit-label-reveal select-none motion-reduce:animate-none",
-            icon ? "ml-6" : ""
-          )}
-        >
-          {label}
-        </dt>
-      )}
       <dd
         aria-hidden={isLabelExpanded}
         className={classNames(
