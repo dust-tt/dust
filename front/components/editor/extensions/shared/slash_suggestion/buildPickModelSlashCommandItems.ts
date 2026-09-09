@@ -1,9 +1,6 @@
 import type { SelectModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import { SELECT_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
-import {
-  matchesSearchWords,
-  splitSearchWords,
-} from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
+import { matchesSearchWords } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import {
@@ -61,7 +58,8 @@ function getSearchableText(item: SelectModelSlashCommand): string {
 /**
  * @cc [owner:PopDaph,label:product] default-row-is-model-default-effort
  * Returns the id of the row for the first model in `items` at its initial effort
- * (`getInitialEffort`), or `null` when `items` does not start with a model row.
+ * (`getInitialEffort`), or `null` when `items` does not start with a model row or holds no
+ * row for that model at that effort.
  */
 export function getDefaultPickModelSlashCommandItemId(
   items: SelectModelSlashCommand[],
@@ -77,6 +75,7 @@ export function getDefaultPickModelSlashCommandItemId(
     const candidate = item.data.selection.display;
     return (
       candidate.kind === "model" &&
+      candidate.model.providerId === display.model.providerId &&
       candidate.model.modelId === display.model.modelId &&
       candidate.effort === effort
     );
@@ -137,7 +136,6 @@ export function buildPickModelSlashCommandItems({
   query: string;
   streams: ModelStreamResolutionsType | null;
 }): SelectModelSlashCommand[] {
-  const queryWords = splitSearchWords(query);
   const selectableModels = models.filter(
     (model) => !isModelStreamId(model.modelId) && model.isSelectable
   );
@@ -176,6 +174,6 @@ export function buildPickModelSlashCommandItems({
   }
 
   return items.filter((item) =>
-    matchesSearchWords(getSearchableText(item), queryWords)
+    matchesSearchWords(getSearchableText(item), query)
   );
 }

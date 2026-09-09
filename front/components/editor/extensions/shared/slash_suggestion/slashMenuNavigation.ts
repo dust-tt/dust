@@ -69,8 +69,8 @@ export interface ResolvedSlashSubMenu {
  * @cc [owner:PopDaph,label:product] space-enters-first-sub-menu-command
  * A query containing a space resolves to the sub-menu of the first item of `commandItems` whose
  * label matches (`matchesSearchWords`) the text before the first space, with the remainder as
- * the sub-menu query. It resolves to `null` when no label matches or the first match is not a
- * sub-menu command.
+ * the sub-menu query. It resolves to `null` when that text has no search word, no label matches,
+ * or the first match is not a sub-menu command.
  */
 export function resolveSlashSubMenuFromQuery({
   commandItems,
@@ -80,14 +80,18 @@ export function resolveSlashSubMenuFromQuery({
   query: string;
 }): ResolvedSlashSubMenu | null {
   const spaceIndex = query.indexOf(" ");
-  // An empty head would match every label; `isAllowedSlashQuery` already rejects "/ ".
-  if (spaceIndex <= 0) {
+  if (spaceIndex === -1) {
     return null;
   }
 
-  const headWords = splitSearchWords(query.slice(0, spaceIndex));
+  // A head without words (e.g. "-") would match every label.
+  const head = query.slice(0, spaceIndex);
+  if (splitSearchWords(head).length === 0) {
+    return null;
+  }
+
   const command = commandItems.find((item) =>
-    matchesSearchWords(item.label, headWords)
+    matchesSearchWords(item.label, head)
   );
   const subMenuId = command ? getSlashCommandSubMenuId(command) : null;
   if (!command || !subMenuId) {

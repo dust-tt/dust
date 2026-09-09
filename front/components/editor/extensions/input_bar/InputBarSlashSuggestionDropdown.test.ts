@@ -214,7 +214,7 @@ describe("resolveSlashSubMenuFromQuery", () => {
 
   it("matches the head against command labels only", () => {
     // "or" and "the" appear in command descriptions, not labels.
-    for (const query of ["or x", "the x", "s x", "odel x"]) {
+    for (const query of ["or x", "the x", "s x", "odel x", "- x", " x"]) {
       expect(resolveSlashSubMenuFromQuery({ commandItems, query })).toBeNull();
     }
   });

@@ -6,7 +6,10 @@ import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionType,
 } from "@app/types/api/assistant/models";
-import { CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
+import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
 import {
   AUTO_COMPLEX_MODEL_CONFIG,
   AUTO_COMPLEX_MODEL_ID,
@@ -132,6 +135,26 @@ describe("buildPickModelSlashCommandItems", () => {
     expect(labelsFor("laude")).toEqual([]);
   });
 
+  it("matches each query word against a distinct row word", () => {
+    const labelsFor = (query: string) =>
+      buildPickModelSlashCommandItems({
+        getModelIcon: () => Icon,
+        lockPremiumEfforts: false,
+        models: [asSelectable(CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG)],
+        query,
+        streams: null,
+      }).map((item) => item.label);
+
+    // "h" must not be satisfied by "Haiku" again.
+    expect(labelsFor("haiku h")).toEqual([
+      `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} High`,
+    ]);
+    expect(labelsFor("HAIKU L")).toEqual([
+      `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} Light`,
+    ]);
+    expect(labelsFor("haiku haiku")).toEqual([]);
+  });
+
   it("matches tier rows on their name only", () => {
     const highResolution: ModelStreamResolutionType = {
       providerId: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.providerId,
@@ -217,6 +240,14 @@ describe("getDefaultPickModelSlashCommandItemId", () => {
     ).toBe(
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.providerId}/${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId}/${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.defaultReasoningEffort}`
     );
+  });
+
+  it("returns null when the default effort row was filtered out", () => {
+    expect(
+      getDefaultPickModelSlashCommandItemId(itemsFor("claude h"), {
+        lockPremiumEfforts: false,
+      })
+    ).toBeNull();
   });
 
   it("returns null when the list starts with a tier row", () => {

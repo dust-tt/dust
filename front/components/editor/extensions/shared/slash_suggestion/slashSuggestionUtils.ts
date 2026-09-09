@@ -38,20 +38,30 @@ export function splitSearchWords(text: string): string[] {
     .filter((word) => word.length > 0);
 }
 
+// Backtracking over a handful of words per side, so the search space is tiny.
+function matchesDistinctWords(queryWords: string[], words: string[]): boolean {
+  const [queryWord, ...rest] = queryWords;
+  if (queryWord === undefined) {
+    return true;
+  }
+
+  return words.some(
+    (word, index) =>
+      word.startsWith(queryWord) &&
+      matchesDistinctWords(
+        rest,
+        words.filter((_, wordIndex) => wordIndex !== index)
+      )
+  );
+}
+
 /**
  * @cc [owner:PopDaph,label:product] query-words-prefix-match
- * Returns true only if every word of `queryWords` is a case-insensitive prefix of a word of
- * `text` (words split on whitespace and hyphens); an empty `queryWords` always matches.
+ * Returns true only if every word of `query` is a case-insensitive prefix of a distinct word of
+ * `text` (both split on whitespace and hyphens); an empty `query` always matches.
  */
-export function matchesSearchWords(
-  text: string,
-  queryWords: string[]
-): boolean {
-  const words = splitSearchWords(text);
-
-  return queryWords.every((queryWord) =>
-    words.some((word) => word.startsWith(queryWord))
-  );
+export function matchesSearchWords(text: string, query: string): boolean {
+  return matchesDistinctWords(splitSearchWords(query), splitSearchWords(text));
 }
 
 /** Keeps slash dropdown height stable so Radix placement does not jump with few items. */
