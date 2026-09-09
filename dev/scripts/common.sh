@@ -73,6 +73,28 @@ ensure_client_built() {
   fi
 }
 
+wait_for_elasticsearch() {
+  local host="${ELASTICSEARCH_HOST:-localhost}"
+  local port="${ELASTICSEARCH_PORT:-9200}"
+  local url="${ELASTICSEARCH_URL:-http://${host}:${port}}"
+  local max_attempts="${DUST_ES_WAIT_SECONDS:-240}"
+  local attempt=0
+
+  log "Waiting for Elasticsearch at ${url} (up to ${max_attempts}s)..."
+  until curl -sf "$url" >/dev/null 2>&1; do
+    attempt=$((attempt + 1))
+    if [ "$attempt" -gt "$max_attempts" ]; then
+      log "Elasticsearch did not become ready in time"
+      return 1
+    fi
+    if [ "$attempt" -eq 1 ] || [ $((attempt % 15)) -eq 0 ]; then
+      log "Waiting for Elasticsearch at ${url} (${attempt}s)..."
+    fi
+    sleep 1
+  done
+  log "Elasticsearch is ready"
+}
+
 elasticsearch_create_index_bin() {
   echo "${DUST_REPO_ROOT}/core/target/debug/elasticsearch_create_index"
 }

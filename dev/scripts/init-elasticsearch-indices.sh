@@ -18,19 +18,6 @@ ensure_node_path
 ensure_client_built
 ensure_elasticsearch_create_index_built
 
-wait_for_elasticsearch() {
-  log "Waiting for Elasticsearch at ${ELASTICSEARCH_URL}..."
-  for _ in $(seq 1 90); do
-    if curl -sf "${ELASTICSEARCH_URL}" >/dev/null 2>&1; then
-      log "Elasticsearch is ready"
-      return 0
-    fi
-    sleep 1
-  done
-  log "Elasticsearch did not become ready in time"
-  return 1
-}
-
 output_already_exists() {
   grep -qi 'already exists' <<<"$1"
 }
