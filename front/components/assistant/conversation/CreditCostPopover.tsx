@@ -22,7 +22,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { ComponentType, ReactElement } from "react";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 const MAX_VISIBLE_TOOLS = 3;
 
@@ -51,11 +51,30 @@ function CreditDetailRow({
   label,
   value,
 }: CreditDetailRowProps) {
+  const rowRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
   const [isLabelExpanded, setIsLabelExpanded] = useState(false);
 
+  useEffect(() => {
+    const rowElement = rowRef.current;
+    const labelElement = labelRef.current;
+    if (!expandLabelOnHover || !rowElement || !labelElement) {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      rowElement.style.setProperty(
+        "--credit-label-collapsed-width",
+        `${labelElement.clientWidth}px`
+      );
+    });
+    observer.observe(labelElement);
+    return () => observer.disconnect();
+  }, [expandLabelOnHover]);
+
   return (
     <div
+      ref={rowRef}
       className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 py-2 text-sm"
       onPointerEnter={(event) => {
         const labelElement = labelRef.current;
@@ -65,10 +84,6 @@ function CreditDetailRow({
           labelElement &&
           labelElement.scrollWidth > labelElement.clientWidth
         ) {
-          event.currentTarget.style.setProperty(
-            "--credit-label-collapsed-width",
-            `${labelElement.clientWidth}px`
-          );
           setIsLabelExpanded(true);
         }
       }}

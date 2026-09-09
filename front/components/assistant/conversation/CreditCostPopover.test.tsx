@@ -2,7 +2,7 @@ import { CreditCostPopover } from "@app/components/assistant/conversation/Credit
 import type { AgentMessageConsumptionToolDetails } from "@app/types/assistant/agent_message_consumption";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockOpenPanel,
@@ -53,36 +53,40 @@ vi.mock("@app/components/resources/resources_icons", () => ({
   },
 }));
 
-vi.mock("@dust-tt/sparkle", () => ({
-  ShapesPlus: () => null,
-  Button: ({ label, onClick }: { label: string; onClick: () => void }) => (
-    <button type="button" onClick={onClick}>
-      {label}
-    </button>
-  ),
-  Chip: ({ label }: { label: string }) => <span>{label}</span>,
-  Icon: () => null,
-  Plus: () => null,
-  PopoverRoot: ({
-    children,
-    onOpenChange,
-  }: {
-    children: ReactNode;
-    onOpenChange?: (open: boolean) => void;
-  }) => (
-    <div>
-      <button type="button" onClick={() => onOpenChange?.(true)}>
-        Open credit details
+vi.mock("@dust-tt/sparkle", async (importOriginal) => {
+  const { cn } = await importOriginal<typeof import("@dust-tt/sparkle")>();
+  return {
+    cn,
+    ShapesPlus: () => null,
+    Button: ({ label, onClick }: { label: string; onClick: () => void }) => (
+      <button type="button" onClick={onClick}>
+        {label}
       </button>
-      {children}
-    </div>
-  ),
-  PopoverContent: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  PopoverTrigger: ({ children }: { children: ReactNode }) => children,
-  Tooltip: ({ trigger }: { trigger: ReactNode }) => trigger,
-}));
+    ),
+    Chip: ({ label }: { label: string }) => <span>{label}</span>,
+    Icon: () => null,
+    Plus: () => null,
+    PopoverRoot: ({
+      children,
+      onOpenChange,
+    }: {
+      children: ReactNode;
+      onOpenChange?: (open: boolean) => void;
+    }) => (
+      <div>
+        <button type="button" onClick={() => onOpenChange?.(true)}>
+          Open credit details
+        </button>
+        {children}
+      </div>
+    ),
+    PopoverContent: ({ children }: { children: ReactNode }) => (
+      <div>{children}</div>
+    ),
+    PopoverTrigger: ({ children }: { children: ReactNode }) => children,
+    Tooltip: ({ trigger }: { trigger: ReactNode }) => trigger,
+  };
+});
 
 const makeTool = (
   toolName: string,
@@ -111,10 +115,21 @@ const defaultProps: ComponentProps<typeof CreditCostPopover> = {
 
 describe("CreditCostPopover", () => {
   beforeEach(() => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        disconnect() {}
+      }
+    );
     mockOpenPanel.mockReset();
     mockSidePanelContext.currentPanel = undefined;
     mockTrackEvent.mockReset();
     mockUseAgentMessageConsumption.mockReset();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("shows the tool breakdown and opens credit usage", () => {
