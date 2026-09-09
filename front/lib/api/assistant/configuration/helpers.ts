@@ -116,19 +116,21 @@ async function shadowAgentPermissions(
       agentModels.map((agent) => {
         const resource = AgentResource.fromAgentConfigurationModel(agent);
         const read = auth.can("read", resource);
-        const write = isRegularApiKey
-          ? auth.isAdmin() &&
-            agent.status === "active" &&
-            canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
-          : auth.can("write", resource);
+        const write =
+          auth.can("write", resource) &&
+          (!isRegularApiKey ||
+            (agent.status === "active" &&
+              canReadRequestedSpaces(
+                auth,
+                spaceById,
+                agent.requestedSpaceIds
+              )));
         return {
           agentId: agent.sId,
           agentConfigurationModelId: agent.id,
           read,
           write,
-          admin: isRegularApiKey
-            ? write || auth.isAdmin()
-            : auth.can("admin", resource),
+          admin: auth.can("admin", resource),
         };
       }),
     context: {
