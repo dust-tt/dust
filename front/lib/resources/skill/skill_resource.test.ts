@@ -253,15 +253,18 @@ describe("SkillResource", () => {
 
       const otherUser = await UserFactory.basic();
       await MembershipFactory.associate(testContext.workspace, otherUser, {
-        role: "admin",
+        role: "user",
       });
+
+      expect(
+        (await skill.addEditors(testContext.authenticator, [otherUser])).isOk()
+      ).toBe(true);
+
+      // Create the authenticator AFTER addEditors so it picks up the new group.
       const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
         otherUser.sId,
         testContext.workspace.sId
       );
-
-      // Grant the other user editor access so they can update the skill.
-      await skill.addEditors(testContext.authenticator, [otherUser]);
 
       // First update creates version 1 with the original creator's editedBy.
       await skill.updateSkill(testContext.authenticator, {
@@ -288,6 +291,14 @@ describe("SkillResource", () => {
         manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [],
       });
+
+      // Verify the second update happened: the current row's editedBy is the
+      // other user, while the version 2 snapshot (taken before the second
+      // update) still holds the first updater's editedBy.
+      const currentRow = await SkillConfigurationModel.findOne({
+        where: { id: skill.id, workspaceId: testContext.workspace.id },
+      });
+      expect(currentRow!.editedBy).toBe(otherUser.id);
 
       const creators = await SkillResource.batchGetCreators(
         testContext.authenticator,
