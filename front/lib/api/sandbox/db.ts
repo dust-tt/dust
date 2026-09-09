@@ -1,5 +1,5 @@
 import {
-  recordPodStateHealth,
+  recordSandboxStateHealth,
   traceSandboxStartupPhase,
 } from "@app/lib/api/sandbox/instrumentation";
 import { SandboxNotFoundError } from "@app/lib/api/sandbox/provider";
@@ -24,23 +24,23 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
- * Pod state runtime plumbing: SQLite databases under /pod-state/databases,
+ * Sandbox state runtime plumbing: SQLite databases under the live database directory,
  * continuously replicated by a litestream daemon (running as dust-state) to a
  * gcsfuse-mounted GCS prefix at /sandbox-state/replica.
  *
- * The daemon runs litestream's directory watcher over /pod-state/databases
+ * The daemon runs litestream's directory watcher over that directory
  * (static /etc/litestream.yml baked at image build): databases created at any
  * point — including publish-time `dsbx db reconcile` — are discovered and
  * replicated automatically within seconds. Replica subdirectories are named
  * by database FILENAME: /sandbox-state/replica/{db}.db/ltx/...
  *
  * Lifecycle:
- *  - Cold start (`setupPodStateOnColdStart`, after the gcsfuse mounts): restore
+ *  - Cold start (`setupSandboxStateOnColdStart`, after the gcsfuse mounts): restore
  *    each replicated database (temp file + PRAGMA quick_check + atomic rename),
  *    then start the litestream systemd unit — strictly in that order, so the
  *    watcher never manages files mid-restore or writes to an unmounted
  *    replica dir.
- *  - Pre-sleep (`ensurePodStateHealthOnSleep`, before the provider pause):
+ *  - Pre-sleep (`ensureSandboxStateHealthOnSleep`, before the provider pause):
  *    verify the replica mount is a live FUSE mount and the daemon is active,
  *    then `litestream sync -wait` each database so every committed WAL frame
  *    is in GCS before the VM can be destroyed. On failure the sandbox is NOT
@@ -50,7 +50,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  */
 
 /** System user running the litestream daemon and owning the replica mount. */
-const POD_STATE_USER = "dust-state";
+const SANDBOX_STATE_USER = "dust-state";
 
 const LITESTREAM_BIN = "/opt/bin/litestream";
 const LITESTREAM_UNIT_NAME = "litestream";
@@ -79,7 +79,7 @@ const SANDBOX_STATE_ROOT_DIR = "/sandbox-state";
 // Database name shape. Doubles as an allowlist: enumeration outputs are
 // workload-influenced, so anything not matching (dotfiles, litestream sidecar
 // dirs, hostile names) is skipped.
-const POD_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
+const SANDBOX_DATABASE_NAME_REGEX = /^[a-z][a-z0-9_]{0,63}$/;
 
 // First 15 bytes of every SQLite file ("SQLite format 3" — the trailing NUL of
 // the 16-byte magic is dropped so it survives stdout transport).
@@ -103,9 +103,11 @@ const DAEMON_RESTART_EXEC_TIMEOUT_MS = 120_000;
 // Cold-start restore may pull a large snapshot + LTX chain through gcsfuse.
 const RESTORE_EXEC_TIMEOUT_MS = 120_000;
 
-export function isValidPodDatabaseName(name: string): boolean {
-  return POD_DATABASE_NAME_REGEX.test(name);
+export function isValidSandboxDatabaseName(name: string): boolean {
+  return SANDBOX_DATABASE_NAME_REGEX.test(name);
 }
+
+export const isValidPodDatabaseName = isValidSandboxDatabaseName;
 
 /**
  * Parse `find <replica-dir> -mindepth 1 -maxdepth 1 -type d` output into
@@ -117,7 +119,7 @@ export function parseReplicaDatabaseNames(findOutput: string): string[] {
   return parseFindBasenames(findOutput)
     .filter((name) => name.endsWith(".db"))
     .map((name) => name.slice(0, -".db".length))
-    .filter(isValidPodDatabaseName)
+    .filter(isValidSandboxDatabaseName)
     .sort();
 }
 
@@ -129,7 +131,7 @@ export function parseLiveDatabaseNames(findOutput: string): string[] {
   return parseFindBasenames(findOutput)
     .filter((name) => name.endsWith(".db"))
     .map((name) => name.slice(0, -".db".length))
-    .filter(isValidPodDatabaseName)
+    .filter(isValidSandboxDatabaseName)
     .sort();
 }
 
@@ -151,18 +153,18 @@ export function isFuseStatfsMagic(statOutput: string): boolean {
  * as dust-state: the mount has no allow_other, so even root is denied by the
  * FUSE layer.
  */
-function asPodStateUser(
+function asSandboxStateUser(
   executable: string,
   args: readonly RootCommandArg[]
 ): RootCommand {
   if (!executable.startsWith("/")) {
     throw new Error(
-      `pod-state command executable must be absolute: ${executable}`
+      `sandbox-state command executable must be absolute: ${executable}`
     );
   }
   return rootCommand.exec(RUNUSER_BIN, [
     "-u",
-    POD_STATE_USER,
+    SANDBOX_STATE_USER,
     "--",
     executable,
     ...args,
@@ -185,7 +187,7 @@ function execFailure(
  * `ensurePodSandboxReady`, which is what guarantees no function ever runs
  * against a half-restored database.
  */
-export async function setupPodStateOnColdStart(
+export async function setupSandboxStateOnColdStart(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<void, Error>> {
@@ -203,7 +205,7 @@ export async function setupPodStateOnColdStart(
     if (namesResult.isErr()) {
       childLogger.error(
         { err: namesResult.error },
-        "Pod state cold start: replica enumeration failed"
+        "Sandbox state cold start: replica enumeration failed"
       );
       return namesResult;
     }
@@ -218,13 +220,13 @@ export async function setupPodStateOnColdStart(
       async (name) => {
         const restoreResult = await traceSandboxStartupPhase(
           "pod_state.restore_db",
-          () => restorePodDatabase(auth, sandbox, name),
+          () => restoreSandboxDatabase(auth, sandbox, name),
           { database: name }
         );
         if (restoreResult.isErr()) {
           childLogger.error(
             { err: restoreResult.error, database: name },
-            "Pod state cold start: database restore failed"
+            "Sandbox state cold start: database restore failed"
           );
         }
         return restoreResult;
@@ -249,22 +251,21 @@ export async function setupPodStateOnColdStart(
     if (startResult.isErr()) {
       childLogger.error(
         { err: startResult.error },
-        "Pod state cold start: litestream daemon start failed"
+        "Sandbox state cold start: litestream daemon start failed"
       );
       return startResult;
     }
 
     childLogger.info(
       { databases: names },
-      "Pod state cold start: restore complete, litestream started"
+      "Sandbox state cold start: restore complete, litestream started"
     );
     return new Ok(undefined);
   });
 }
 
-// Pods and Frames use the same isolated SQLite/Litestream runtime. Keep the Pod-named export for
-// existing callers while owner-neutral lifecycle code uses this name.
-export const setupSandboxStateOnColdStart = setupPodStateOnColdStart;
+// Compatibility alias for callers predating Frame-owned sandboxes.
+export const setupPodStateOnColdStart = setupSandboxStateOnColdStart;
 
 async function listReplicaDatabases(
   auth: Authenticator,
@@ -272,7 +273,7 @@ async function listReplicaDatabases(
 ): Promise<Result<string[], Error>> {
   const result = await sandbox.execRoot(
     auth,
-    asPodStateUser(FIND_BIN, [
+    asSandboxStateUser(FIND_BIN, [
       SANDBOX_STATE_REPLICA_MOUNT_POINT,
       "-mindepth",
       "1",
@@ -287,12 +288,14 @@ async function listReplicaDatabases(
     return result;
   }
   if (result.value.exitCode !== 0) {
-    return new Err(execFailure("pod state replica enumeration", result.value));
+    return new Err(
+      execFailure("sandbox state replica enumeration", result.value)
+    );
   }
   return new Ok(parseReplicaDatabaseNames(result.value.stdout));
 }
 
-async function restorePodDatabase(
+async function restoreSandboxDatabase(
   auth: Authenticator,
   sandbox: SandboxResource,
   name: string
@@ -324,7 +327,7 @@ async function restorePodDatabase(
   // the pod.
   const restoreResult = await sandbox.execRoot(
     auth,
-    asPodStateUser(LITESTREAM_BIN, [
+    asSandboxStateUser(LITESTREAM_BIN, [
       "restore",
       "-if-replica-exists",
       "-o",
@@ -353,7 +356,7 @@ async function restorePodDatabase(
   if (restoredResult.value.exitCode !== 0) {
     logger.warn(
       { database: name },
-      "Pod state cold start: replica directory has no restorable backup — skipping database"
+      "Sandbox state cold start: replica directory has no restorable backup, skipping database"
     );
     return new Ok(undefined);
   }
@@ -362,7 +365,7 @@ async function restorePodDatabase(
   // quick_check also catches page-level corruption that slipped through.
   const checkResult = await sandbox.execRoot(
     auth,
-    asPodStateUser(SQLITE3_BIN, ["--", tmpPath, "PRAGMA quick_check;"]),
+    asSandboxStateUser(SQLITE3_BIN, ["--", tmpPath, "PRAGMA quick_check;"]),
     { timeoutMs: RESTORE_EXEC_TIMEOUT_MS }
   );
   if (checkResult.isErr()) {
@@ -425,7 +428,7 @@ async function startLitestreamDaemon(
 /**
  * Restart the litestream daemon: re-derive the managed set from what is live on disk right now.
  *
- * The directory watcher only enumerates /pod-state/databases at start, so a database whose live
+ * The directory watcher only enumerates the live database directory at start, so a database whose
  * files were just deleted stays open in the running daemon — free to keep writing to, and so
  * recreate, the replica prefix a delete is about to wipe. A restart is what makes the daemon let go
  * of it, and the static config (baked at image build) brings back every database that IS still live.
@@ -469,7 +472,7 @@ export async function restartLitestreamDaemon(
  * the sandbox is already gone, there is nothing left to sync, and exec already
  * marked the row deleted.
  */
-export async function ensurePodStateHealthOnSleep(
+export async function ensureSandboxStateHealthOnSleep(
   auth: Authenticator,
   sandbox: SandboxResource,
   opts: {
@@ -495,10 +498,10 @@ export async function ensurePodStateHealthOnSleep(
       if (refreshResult.error instanceof SandboxNotFoundError) {
         return new Ok(undefined);
       }
-      recordPodStateHealth("failure");
+      recordSandboxStateHealth("failure");
       childLogger.error(
         { err: refreshResult.error },
-        "Pod state pre-sleep: GCS credential refresh failed — not pausing"
+        "Sandbox state pre-sleep: GCS credential refresh failed, not pausing"
       );
       return refreshResult;
     }
@@ -512,10 +515,10 @@ export async function ensurePodStateHealthOnSleep(
     if (livenessResult.error instanceof SandboxNotFoundError) {
       return new Ok(undefined);
     }
-    recordPodStateHealth("failure");
+    recordSandboxStateHealth("failure");
     childLogger.error(
       { err: livenessResult.error },
-      "Pod state pre-sleep: replica mount is not a live FUSE mount — not pausing"
+      "Sandbox state pre-sleep: replica mount is not a live FUSE mount, not pausing"
     );
     return livenessResult;
   }
@@ -529,10 +532,10 @@ export async function ensurePodStateHealthOnSleep(
     if (namesResult.error instanceof SandboxNotFoundError) {
       return new Ok(undefined);
     }
-    recordPodStateHealth("failure");
+    recordSandboxStateHealth("failure");
     childLogger.error(
       { err: namesResult.error },
-      "Pod state pre-sleep: database enumeration failed — not pausing"
+      "Sandbox state pre-sleep: database enumeration failed, not pausing"
     );
     return namesResult;
   }
@@ -551,10 +554,10 @@ export async function ensurePodStateHealthOnSleep(
     if (daemonResult.error instanceof SandboxNotFoundError) {
       return new Ok(undefined);
     }
-    recordPodStateHealth("failure");
+    recordSandboxStateHealth("failure");
     childLogger.error(
       { err: daemonResult.error },
-      "Pod state pre-sleep: litestream daemon is not active — not pausing"
+      "Sandbox state pre-sleep: litestream daemon is not active, not pausing"
     );
     return daemonResult;
   }
@@ -587,10 +590,10 @@ export async function ensurePodStateHealthOnSleep(
       if (failure instanceof SandboxNotFoundError) {
         return new Ok(undefined);
       }
-      recordPodStateHealth("failure");
+      recordSandboxStateHealth("failure");
       childLogger.error(
         { err: failure, database: name },
-        "Pod state pre-sleep: litestream sync failed — restarting daemon, not pausing"
+        "Sandbox state pre-sleep: litestream sync failed, restarting daemon and not pausing"
       );
       // Best-effort recovery; the reaper retries the whole check on its next
       // cycle (status stays `running`), so this keeps the probe budget rather
@@ -602,12 +605,13 @@ export async function ensurePodStateHealthOnSleep(
     }
   }
 
-  recordPodStateHealth("success");
+  recordSandboxStateHealth("success");
 
   return new Ok(undefined);
 }
 
-export const ensureSandboxStateHealthOnSleep = ensurePodStateHealthOnSleep;
+// Compatibility alias for callers predating Frame-owned sandboxes.
+export const ensurePodStateHealthOnSleep = ensureSandboxStateHealthOnSleep;
 
 export async function checkReplicaMountLiveness(
   auth: Authenticator,
@@ -652,7 +656,7 @@ async function statReplicaMount(
 ) {
   return sandbox.execRoot(
     auth,
-    asPodStateUser(STAT_BIN, ["-f", "-c", "%t", mountPoint]),
+    asSandboxStateUser(STAT_BIN, ["-f", "-c", "%t", mountPoint]),
     { timeoutMs: PROBE_EXEC_TIMEOUT_MS }
   );
 }
@@ -664,12 +668,12 @@ function validateReplicaMountStat(
     return result;
   }
   if (result.value.exitCode !== 0) {
-    return new Err(execFailure("pod state replica statfs", result.value));
+    return new Err(execFailure("sandbox state replica statfs", result.value));
   }
   if (!isFuseStatfsMagic(result.value.stdout)) {
     return new Err(
       new Error(
-        `pod state replica mount point is not a FUSE mount (statfs magic: ${result.value.stdout.trim()})`
+        `sandbox state replica mount point is not a FUSE mount (statfs magic: ${result.value.stdout.trim()})`
       )
     );
   }
@@ -699,14 +703,16 @@ async function listLiveDatabases(
     return result;
   }
   if (result.value.exitCode !== 0) {
-    return new Err(execFailure("pod state database enumeration", result.value));
+    return new Err(
+      execFailure("sandbox state database enumeration", result.value)
+    );
   }
   return new Ok(parseLiveDatabaseNames(result.value.stdout));
 }
 
 /**
  * Live databases whose file content starts with the SQLite header magic.
- * /pod-state/databases is workload-writable by design, so enumeration output
+ * The live database directory is workload-writable by design, so enumeration output
  * must be treated as untrusted: non-SQLite files are excluded from the
  * managed set (with a warning log) instead of being handed to litestream,
  * where they would fail every sync and wedge the pod's lifecycle. A valid
@@ -810,7 +816,7 @@ export async function deletePodStatePrefix(
  * Delete ONE database's litestream replica: the GCS prefix the directory watcher keys on that
  * database's filename.
  *
- * The replica is the durable copy of a pod database, and `setupPodStateOnColdStart` restores every
+ * The replica is the durable copy of a pod database, and `setupSandboxStateOnColdStart` restores every
  * replica it finds. So a replica that survives resurrects a database whose live files were deleted —
  * which makes this the step that actually makes a database deletion stick.
  *
