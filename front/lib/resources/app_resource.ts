@@ -1,3 +1,4 @@
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -21,7 +22,12 @@ import type { EnrichedSpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import sortBy from "lodash/sortBy";
-import type { Attributes, CreationAttributes, ModelStatic } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  ModelStatic,
+  Transaction,
+} from "sequelize";
 import { Op } from "sequelize";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -57,15 +63,20 @@ export class AppResource extends ResourceWithSpace<AppModel> {
 
   private static async baseFetch(
     auth: Authenticator,
-    options: ResourceFindOptions<AppModel> = {}
+    options: ResourceFindOptions<AppModel> = {},
+    transaction?: Transaction
   ) {
-    const apps = await this.baseFetchWithAuthorization(auth, {
-      ...options,
-      where: {
-        ...options.where,
-        workspaceId: auth.getNonNullableWorkspace().id,
+    const apps = await this.baseFetchWithAuthorization(
+      auth,
+      {
+        ...options,
+        where: {
+          ...options.where,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
       },
-    });
+      transaction
+    );
 
     // This is what enforces the accessibility to an app.
     return apps.filter((app) => auth.isAdmin() || app.canRead(auth));
@@ -73,13 +84,21 @@ export class AppResource extends ResourceWithSpace<AppModel> {
 
   static async fetchByIds(
     auth: Authenticator,
-    ids: string[]
+    ids: string[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<AppResource[]> {
-    return this.baseFetch(auth, {
-      where: {
-        sId: ids,
+    if (ids.length === 0) {
+      return [];
+    }
+    return this.baseFetch(
+      auth,
+      {
+        where: {
+          sId: ids,
+        },
       },
-    });
+      transaction
+    );
   }
 
   static async fetchById(
@@ -303,6 +322,21 @@ export class AppResource extends ResourceWithSpace<AppModel> {
   }
 
   // Serialization.
+
+  toAgentActionJSON(
+    auth: Authenticator
+  ): NonNullable<ServerSideMCPServerConfigurationType["dustAppConfiguration"]> {
+    assert(this.workspaceId === auth.getNonNullableWorkspace().id);
+    return {
+      id: this.id,
+      sId: this.sId,
+      type: "dust_app_run_configuration",
+      appId: this.sId,
+      appWorkspaceId: auth.getNonNullableWorkspace().sId,
+      name: this.name,
+      description: this.description,
+    };
+  }
 
   toJSON(): AppType {
     return {

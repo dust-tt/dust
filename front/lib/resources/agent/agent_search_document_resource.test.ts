@@ -1,7 +1,3 @@
-import {
-  archiveAgentConfiguration,
-  updateAgentPermissions,
-} from "@app/lib/api/assistant/configuration/agent";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import { Authenticator } from "@app/lib/auth";
 import { AgentSearchDocumentResource } from "@app/lib/resources/agent/agent_search_document_resource";
@@ -98,7 +94,7 @@ describe("AgentSearchDocumentResource", () => {
         agent.sId
       )
     ).toBeNull();
-    await archiveAgentConfiguration(auth, agent.sId);
+    await AgentResource.archiveAgentConfiguration(auth, agent.sId);
     expect(
       await AgentSearchDocumentResource.fetchSearchDocument(auth, agent.sId)
     ).toBeNull();
@@ -124,7 +120,7 @@ describe("AgentSearchDocumentResource", () => {
       editor.sId,
       workspace.sId
     );
-    const changed = await updateAgentPermissions(admin, {
+    const changed = await AgentResource.updateAgentPermissions(admin, {
       agent: hidden,
       usersToAdd: [editor.toJSON()],
       usersToRemove: [],
@@ -175,7 +171,7 @@ describe("AgentSearchDocumentResource", () => {
       name: "Editor only",
       scope: "hidden",
     });
-    await updateAgentPermissions(admin, {
+    await AgentResource.updateAgentPermissions(admin, {
       agent: readable,
       usersToAdd: [editor.toJSON()],
       usersToRemove: [],
@@ -195,7 +191,7 @@ describe("AgentSearchDocumentResource", () => {
         ])
       ).get(readable.sId)?.canRead
     ).toBe(true);
-    await updateAgentPermissions(admin, {
+    await AgentResource.updateAgentPermissions(admin, {
       agent: readable,
       usersToAdd: [],
       usersToRemove: [editor.toJSON()],

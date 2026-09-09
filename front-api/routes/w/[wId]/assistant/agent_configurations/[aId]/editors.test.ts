@@ -5,8 +5,10 @@ import {
 import type * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { Authenticator } from "@app/lib/auth";
+import { AgentSearchDocumentResource } from "@app/lib/resources/agent/agent_search_document_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { launchIndexAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -86,6 +88,51 @@ function patchEditors(workspace: { sId: string }, aId: string, body: unknown) {
 }
 
 describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors - audit log", () => {
+  it("rolls back a valid addition when the following removal is invalid", async () => {
+    const { auth, workspace, user } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      scope: "hidden",
+    });
+    const addedUser = await UserFactory.basic();
+    const nonEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, addedUser, { role: "user" });
+    await MembershipFactory.associate(workspace, nonEditor, { role: "user" });
+    const before = await AgentSearchDocumentResource.fetchSearchDocument(
+      auth,
+      agent.sId
+    );
+    vi.mocked(emitAuditLogEvent).mockClear();
+    vi.mocked(launchIndexAgentSearchWorkflow).mockClear();
+
+    const response = await patchEditors(workspace, agent.sId, {
+      addEditorIds: [addedUser.sId],
+      removeEditorIds: [nonEditor.sId],
+    });
+    expect(response.status).toBe(409);
+    const editorsResponse = await getEditors(workspace, agent.sId);
+    expect(editorsResponse.status).toBe(200);
+    expect((await editorsResponse.json()).editors).toEqual([
+      expect.objectContaining({ sId: user.sId }),
+    ]);
+    expect(
+      await AgentSearchDocumentResource.fetchSearchDocument(auth, agent.sId)
+    ).toEqual(before);
+    const addedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      addedUser.sId,
+      workspace.sId
+    );
+    expect(addedUserAuth.getResourceIdsWithVerb("agent", "write")).toEqual({
+      kind: "ids",
+      resourceIds: [],
+    });
+    expect(launchIndexAgentSearchWorkflow).not.toHaveBeenCalled();
+    expect(emitAuditLogEvent).not.toHaveBeenCalledWith(
+      expect.objectContaining({ action: "agent.editors_updated" })
+    );
+  });
+
   it("emits an audit event flagging an admin adding themselves as editor", async () => {
     const { workspace, user: admin } = await createPrivateApiMockRequest({
       role: "admin",

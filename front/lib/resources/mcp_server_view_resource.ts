@@ -62,6 +62,7 @@ import type {
 } from "@app/lib/resources/types";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { mcpToolsRequireConfiguration } from "@app/lib/utils/json_schemas";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { tracer } from "@app/logger/tracer";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
@@ -549,7 +550,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
         await InternalMCPServerInMemoryResource.fetchByIds(
           auth,
           removeNulls(views.map((v) => v.internalMCPServerId)),
-          { includeRestricted }
+          { includeRestricted, transaction }
         );
       const internalServerMap = new Map(internalServers.map((s) => [s.id, s]));
 
@@ -671,6 +672,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     ids: string[],
     options?: ResourceFindOptions<MCPServerViewModel> & {
+      transaction?: Transaction;
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
       includeRestricted?: boolean;
@@ -681,6 +683,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       includeHeavyAttributes,
       isRestrictedToSkills,
       includeRestricted,
+      transaction,
       ...findOptions
     } = options ?? {};
 
@@ -695,7 +698,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           },
         },
       },
-      { includeHeavyAttributes, isRestrictedToSkills, includeRestricted }
+      {
+        includeHeavyAttributes,
+        isRestrictedToSkills,
+        includeRestricted,
+        transaction,
+      }
     );
 
     return views ?? [];
@@ -1222,9 +1230,25 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   static async listSpaceRequirementsByIds(
     auth: Authenticator,
-    mcpServerViewIds: string[]
+    mcpServerViewIds: string[],
+    options: { transaction?: Transaction } = {}
   ): Promise<ModelId[]> {
-    const mcpServerViews = await this.fetchByIds(auth, mcpServerViewIds);
+    const requirements = await this.listSpaceRequirementsById(
+      auth,
+      mcpServerViewIds,
+      options
+    );
+    return uniq(Array.from(requirements.values()));
+  }
+
+  static async listSpaceRequirementsById(
+    auth: Authenticator,
+    mcpServerViewIds: string[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Map<string, ModelId>> {
+    const mcpServerViews = await this.fetchByIds(auth, mcpServerViewIds, {
+      transaction,
+    });
 
     const spaceRequirements = mcpServerViews
       .filter((view) => {
@@ -1247,9 +1271,9 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
             assertNever(availability);
         }
       })
-      .map((view) => view.space.id);
+      .map((view) => [view.sId, view.space.id] as const);
 
-    return uniq(spaceRequirements);
+    return new Map(spaceRequirements);
   }
 
   static async getMCPServerViewForSystemSpace(
@@ -1375,7 +1399,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   public async updateIsRestrictedToSkills(
     auth: Authenticator,
-    isRestrictedToSkills: boolean
+    isRestrictedToSkills: boolean,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<number, DustError<"unauthorized">>> {
     const views = await MCPServerViewResource.listByMCPServer(
       auth,
@@ -1391,25 +1416,33 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       );
     }
 
-    const [affectedCount] = await this.model.update(
-      {
-        isRestrictedToSkills,
-        editedAt: new Date(),
-        editedByUserId: auth.getNonNullableUser().id,
+    const affectedCount = await withTransaction(
+      async (t) => {
+        const [count] = await this.model.update(
+          {
+            isRestrictedToSkills,
+            editedAt: new Date(),
+            editedByUserId: auth.getNonNullableUser().id,
+          },
+          {
+            where: {
+              workspaceId: auth.getNonNullableWorkspace().id,
+              id: { [Op.in]: views.map((view) => view.id) },
+            },
+            transaction: t,
+          }
+        );
+        if (isRestrictedToSkills) {
+          await destroyAgentMCPServerConfigurationsForViews(auth, {
+            mcpServerViewIds: views.map((view) => view.id),
+            transaction: t,
+          });
+        }
+        return count;
       },
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          id: { [Op.in]: views.map((view) => view.id) },
-        },
-      }
+      transaction,
+      { useSavepoint: true }
     );
-
-    if (isRestrictedToSkills) {
-      await destroyAgentMCPServerConfigurationsForViews(auth, {
-        mcpServerViewIds: views.map((view) => view.id),
-      });
-    }
 
     return new Ok(affectedCount);
   }
@@ -1442,22 +1475,24 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
-    await destroyMCPServerViewDependencies(auth, {
-      mcpServerViewIds: [this.id],
-      transaction,
-    });
-
-    const deletedCount = await this.model.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        id: this.id,
+    const deletedCount = await withTransaction(
+      async (t) => {
+        await destroyMCPServerViewDependencies(auth, {
+          mcpServerViewIds: [this.id],
+          transaction: t,
+        });
+        return this.model.destroy({
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            id: this.id,
+          },
+          transaction: t,
+          hardDelete: true,
+        });
       },
       transaction,
-      // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
-      // bypassing the soft deletion in place.
-      hardDelete: true,
-    });
-
+      { useSavepoint: true }
+    );
     return new Ok(deletedCount);
   }
 

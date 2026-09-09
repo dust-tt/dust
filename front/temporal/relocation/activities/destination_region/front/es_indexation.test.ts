@@ -1,6 +1,6 @@
 import { agentSearchIndex } from "@app/lib/agent_search";
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import {
   deleteWorkspaceSkillDocuments,
   indexSkillDocument,
@@ -92,7 +92,7 @@ describe("recreateAgentSearchIndex", () => {
     const archived = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Archived",
     });
-    await archiveAgentConfiguration(auth, archived.sId);
+    await AgentResource.archiveAgentConfiguration(auth, archived.sId);
     const other = await createResourceTest({ role: "admin" });
     await AgentConfigurationFactory.createTestAgent(other.authenticator);
     const deletion = vi

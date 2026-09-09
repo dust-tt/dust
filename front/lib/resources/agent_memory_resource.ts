@@ -427,6 +427,20 @@ export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
     });
   }
 
+  static async deleteForAgents(
+    auth: Authenticator,
+    agentIds: string[],
+    { transaction }: { transaction: Transaction }
+  ): Promise<void> {
+    await this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentConfigurationId: agentIds,
+      },
+      transaction,
+    });
+  }
+
   get sId(): string {
     return AgentMemoryResource.modelIdToSId({
       id: this.id,

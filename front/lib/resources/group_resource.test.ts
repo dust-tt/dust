@@ -7,6 +7,7 @@ const inMemoryCache = vi.hoisted(() => new Map<string, string>());
 vi.mock("@app/lib/api/redis", () => ({
   getRedisCacheClient: vi.fn().mockImplementation(() =>
     Promise.resolve({
+      hDel: vi.fn().mockResolvedValue(0),
       del: vi.fn().mockImplementation((keyOrKeys: string | string[]) => {
         const keys = Array.isArray(keyOrKeys) ? keyOrKeys : [keyOrKeys];
         keys.forEach((key) => inMemoryCache.delete(key));
@@ -72,12 +73,14 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
 
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -112,6 +115,69 @@ describe("GroupResource", () => {
     systemGroup = testSetup.systemGroup;
     // Clear cache after setup since Authenticator creation may populate it
     inMemoryCache.clear();
+  });
+
+  it("deletes groups in a batch without losing other key grants, and rolls back atomically", async () => {
+    const first = await GroupResource.makeNew({
+      name: "First removable group",
+      workspaceId: workspace.id,
+      kind: "regular_auto",
+    });
+    const second = await GroupResource.makeNew({
+      name: "Second removable group",
+      workspaceId: workspace.id,
+      kind: "regular_auto",
+    });
+    const key = await KeyFactory.regular([first, second, globalGroup]);
+    const foreign = await createResourceTest({ role: "admin" });
+    await expect(
+      GroupResource.deleteMany(authenticator, [first, foreign.globalGroup])
+    ).rejects.toThrow("Group belongs to another workspace.");
+    const rollback = new Error("Rollback batch group deletion");
+    await expect(
+      withTransaction(
+        async (transaction) => {
+          const result = await GroupResource.deleteMany(
+            authenticator,
+            [first, second],
+            { transaction }
+          );
+          expect(result.isOk()).toBe(true);
+          throw rollback;
+        },
+        undefined,
+        { useSavepoint: true }
+      )
+    ).rejects.toBe(rollback);
+    expect(
+      await KeyResource.fetchByWorkspaceAndId({ workspace, id: key.id })
+    ).toMatchObject({ groupIds: [first.id, second.id, globalGroup.id] });
+    expect(
+      await GroupResource.dangerouslyFetchByModelIds(authenticator, [
+        first.id,
+        second.id,
+      ])
+    ).toHaveLength(2);
+    const result = await GroupResource.deleteMany(authenticator, [
+      first,
+      second,
+      first,
+    ]);
+    expect(result.isOk()).toBe(true);
+    expect(
+      await KeyResource.fetchByWorkspaceAndId({ workspace, id: key.id })
+    ).toMatchObject({ groupIds: [globalGroup.id], status: "active" });
+    expect(
+      await GroupResource.dangerouslyFetchByModelIds(authenticator, [
+        first.id,
+        second.id,
+      ])
+    ).toEqual([]);
+    expect(
+      await GroupResource.dangerouslyFetchByModelIds(foreign.authenticator, [
+        foreign.globalGroup.id,
+      ])
+    ).toHaveLength(1);
   });
 
   describe("fetchByModelIds", () => {
@@ -872,7 +938,7 @@ describe("GroupResource", () => {
       expect(inMemoryCache.has(cacheKey)).toBe(false);
     });
 
-    it("defers cache invalidation until after transaction commits", async () => {
+    it("keeps invalidation deferred after a savepoint commits while its outer transaction is open", async () => {
       // Populate cache first
       await GroupResource.dangerouslyListUserGroupsForAuth({ user, workspace });
       const cacheKey = getCacheKeyForUser(user.id, workspace.id);
@@ -884,33 +950,25 @@ describe("GroupResource", () => {
       expect(parentTransaction).toBeDefined();
 
       // Create a nested transaction (savepoint) within the test's transaction
-      const transaction = await frontSequelize.transaction({
-        transaction: parentTransaction,
-      });
+      await frontSequelize.transaction(
+        { transaction: parentTransaction },
+        async (transaction) => {
+          // Create group with member inside transaction
+          await GroupResource.makeNew(
+            {
+              name: "Transaction Cache Test",
+              workspaceId: workspace.id,
+              kind: "regular_auto",
+            },
+            { memberIds: [user.id], transaction }
+          );
 
-      try {
-        // Create group with member inside transaction
-        await GroupResource.makeNew(
-          {
-            name: "Transaction Cache Test",
-            workspaceId: workspace.id,
-            kind: "regular_auto",
-          },
-          { memberIds: [user.id], transaction }
-        );
-
-        // Cache should NOT be invalidated yet (transaction not committed)
-        expect(inMemoryCache.has(cacheKey)).toBe(true);
-
-        // Commit the nested transaction (releases savepoint and triggers afterCommit)
-        await transaction.commit();
-
-        // NOW cache should be invalidated
-        expect(inMemoryCache.has(cacheKey)).toBe(false);
-      } catch (err) {
-        await transaction.rollback();
-        throw err;
-      }
+          // Cache should NOT be invalidated yet (transaction not committed)
+          expect(inMemoryCache.has(cacheKey)).toBe(true);
+        }
+      );
+      // Releasing a savepoint does not commit the test's outer transaction.
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
     });
   });
 
@@ -1162,7 +1220,7 @@ describe("GroupResource", () => {
       expect(inMemoryCache.has(cacheKey)).toBe(true);
     });
 
-    it("defers cache invalidation from makeNew until after transaction commits", async () => {
+    it("keeps workspace-group invalidation deferred until the outer transaction commits", async () => {
       const key = await KeyFactory.system(systemGroup);
       const cacheKey = getCacheKeyForWorkspaceGroupsFromSystemKey(workspace.id);
 
@@ -1173,29 +1231,22 @@ describe("GroupResource", () => {
       const parentTransaction = namespace?.get("transaction");
       expect(parentTransaction).toBeDefined();
 
-      const transaction = await frontSequelize.transaction({
-        transaction: parentTransaction,
-      });
+      await frontSequelize.transaction(
+        { transaction: parentTransaction },
+        async (transaction) => {
+          await GroupResource.makeNew(
+            {
+              name: "Deferred Invalidation Group",
+              workspaceId: workspace.id,
+              kind: "regular_auto",
+            },
+            { transaction }
+          );
 
-      try {
-        await GroupResource.makeNew(
-          {
-            name: "Deferred Invalidation Group",
-            workspaceId: workspace.id,
-            kind: "regular_auto",
-          },
-          { transaction }
-        );
-
-        expect(inMemoryCache.has(cacheKey)).toBe(true);
-
-        await transaction.commit();
-
-        expect(inMemoryCache.has(cacheKey)).toBe(false);
-      } catch (err) {
-        await transaction.rollback();
-        throw err;
-      }
+          expect(inMemoryCache.has(cacheKey)).toBe(true);
+        }
+      );
+      expect(inMemoryCache.has(cacheKey)).toBe(true);
     });
   });
 });

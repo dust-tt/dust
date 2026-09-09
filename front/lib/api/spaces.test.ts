@@ -1346,7 +1346,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
   });
 
   describe("requestedSpaceIds cleanup", () => {
-    it("reindexes skill updates committed before space cleanup fails", async () => {
+    it("rolls back skill updates and does not index them when space cleanup fails", async () => {
       const spaceResult = await createSpaceAndGroup(
         adminAuth,
         {
@@ -1381,12 +1381,9 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         softDeleteSpaceAndLaunchScrubWorkflow(adminAuth, space!, true)
       ).rejects.toThrow("space delete failed");
 
-      expect(launchIndexationSpy).toHaveBeenCalledWith({
-        workspaceId: workspace.sId,
-        skillIds: [skill.sId],
-      });
+      expect(launchIndexationSpy).not.toHaveBeenCalled();
       const skillAfter = await SkillResource.fetchById(adminAuth, skill.sId);
-      expect(skillAfter?.requestedSpaceIds).not.toContain(space!.id);
+      expect(skillAfter?.requestedSpaceIds).toContain(space!.id);
     });
 
     it("should remove deleted space from skill requestedSpaceIds", async () => {

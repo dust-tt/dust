@@ -1,6 +1,9 @@
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentIdFromName } from "@app/lib/api/assistant/configuration/helpers";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -29,6 +32,113 @@ async function listAgentIdsForAnalytics(auth: Authenticator) {
 }
 
 const REPORTING_ROLES = ["admin", "manager"] as const;
+
+describe("resource-owned agent listing compatibility", () => {
+  it("keeps name lookup scoped to active versions in the caller's workspace", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const other = await createResourceTest({ role: "admin" });
+    const name = "Lookup scoped agent";
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name,
+    });
+    const foreign = await AgentConfigurationFactory.createTestAgent(
+      other.authenticator,
+      { name }
+    );
+
+    expect(await getAgentIdFromName(auth, name)).toBe(agent.sId);
+    expect(await getAgentIdFromName(other.authenticator, name)).toBe(
+      foreign.sId
+    );
+    await archiveAgentConfiguration(auth, agent.sId);
+    expect(await getAgentIdFromName(auth, name)).toBeNull();
+    expect(await getAgentIdFromName(other.authenticator, name)).toBe(
+      foreign.sId
+    );
+  });
+
+  it("preserves favorite, extra-light and redacted details behavior across the resource boundary", async () => {
+    const { authenticator: editorAuth, workspace } = await createResourceTest({
+      role: "user",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(editorAuth, {
+      name: "Private listing agent",
+      scope: "hidden",
+    });
+    await AgentUserRelationResource.setFavorite(editorAuth, {
+      agentId: agent.sId,
+      favorite: true,
+    });
+
+    const listed = await getAgentConfigurationsForView({
+      auth: editorAuth,
+      agentsGetView: "favorites",
+      variant: "light",
+      omitHeavyAttributes: true,
+    });
+    expect(listed).toHaveLength(1);
+    expect(listed[0]).toMatchObject({
+      sId: agent.sId,
+      canRead: true,
+      canEdit: true,
+      userFavorite: true,
+    });
+    expect(listed[0].instructions).toBeUndefined();
+
+    const extraLight = await getAgentConfigurationsForView({
+      auth: editorAuth,
+      agentsGetView: "list",
+      variant: "extra_light",
+      agentPrefix: "Private listing",
+    });
+    expect(extraLight).toHaveLength(1);
+    expect(extraLight[0]).toMatchObject({
+      sId: agent.sId,
+      userFavorite: false,
+      tags: [],
+    });
+
+    const adminAuth = await authenticatorForNewMember(workspace, "admin");
+    const metadata = await getAgentConfigurationsForView({
+      auth: adminAuth,
+      agentsGetView: "manage_unrestricted",
+      variant: "light",
+      omitHeavyAttributes: true,
+      agentPrefix: "Private listing",
+    });
+    expect(metadata).toHaveLength(1);
+    expect(metadata[0]).toMatchObject({
+      sId: agent.sId,
+      canRead: false,
+      canEdit: false,
+    });
+    const details = await AgentResource.getAgentConfigurationForDetails(
+      adminAuth,
+      { agentId: agent.sId }
+    );
+    expect(details).toMatchObject({
+      canRead: false,
+      instructions: null,
+      instructionsHtml: null,
+      actions: [],
+      skills: [],
+    });
+
+    const memberAuth = await authenticatorForNewMember(workspace, "user");
+    await expect(
+      getAgentConfigurationsForView({
+        auth: memberAuth,
+        agentsGetView: "manage_unrestricted",
+        variant: "light",
+      })
+    ).rejects.toThrow("The unrestricted manage view is for admins only.");
+    expect(
+      await AgentResource.getAgentConfigurationForDetails(memberAuth, {
+        agentId: agent.sId,
+      })
+    ).toBeNull();
+  });
+});
 
 describe("getAgentConfigurationsForView, 'analytics' view", () => {
   it.each(

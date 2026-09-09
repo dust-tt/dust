@@ -66,6 +66,65 @@ export async function launchIndexUserSearchWorkflow({
   }
 }
 
+export async function launchIndexSkillSearchWorkflow({
+  workspaceId,
+  skillId,
+}: {
+  workspaceId: string;
+  skillId: string;
+}): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = makeIndexSkillSearchWorkflowId({ workspaceId, skillId });
+
+  try {
+    await client.workflow.signalWithStart(indexSkillSearchWorkflow, {
+      args: [{ workspaceId, skillId }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      signal: indexSkillSearchSignal,
+      signalArgs: undefined,
+      memo: {
+        workspaceId,
+        skillId,
+      },
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      { workflowId, workspaceId, skillId, error: e },
+      "Failed starting index skill workflow"
+    );
+
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchDeleteWorkspaceSkillSearchWorkflow({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = makeDeleteWorkspaceSkillSearchWorkflowId({ workspaceId });
+
+  try {
+    await client.workflow.start(deleteWorkspaceSkillSearchWorkflow, {
+      args: [{ workspaceId }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      memo: { workspaceId },
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      { workflowId, workspaceId, error: e },
+      "Failed starting workspace skill index deletion workflow"
+    );
+
+    return new Err(normalizeError(e));
+  }
+}
+
 export async function launchSearchUsageSchedule(): Promise<
   Result<undefined, Error>
 > {
@@ -156,63 +215,4 @@ export async function launchWorkspaceSearchUsageWorkflow(
     return new Err(normalizeError(error));
   }
   return new Ok(undefined);
-}
-
-export async function launchIndexSkillSearchWorkflow({
-  workspaceId,
-  skillId,
-}: {
-  workspaceId: string;
-  skillId: string;
-}): Promise<Result<undefined, Error>> {
-  const client = await getTemporalClientForFrontNamespace();
-  const workflowId = makeIndexSkillSearchWorkflowId({ workspaceId, skillId });
-
-  try {
-    await client.workflow.signalWithStart(indexSkillSearchWorkflow, {
-      args: [{ workspaceId, skillId }],
-      taskQueue: QUEUE_NAME,
-      workflowId,
-      signal: indexSkillSearchSignal,
-      signalArgs: undefined,
-      memo: {
-        workspaceId,
-        skillId,
-      },
-    });
-    return new Ok(undefined);
-  } catch (e) {
-    logger.error(
-      { workflowId, workspaceId, skillId, error: e },
-      "Failed starting index skill workflow"
-    );
-
-    return new Err(normalizeError(e));
-  }
-}
-
-export async function launchDeleteWorkspaceSkillSearchWorkflow({
-  workspaceId,
-}: {
-  workspaceId: string;
-}): Promise<Result<undefined, Error>> {
-  const client = await getTemporalClientForFrontNamespace();
-  const workflowId = makeDeleteWorkspaceSkillSearchWorkflowId({ workspaceId });
-
-  try {
-    await client.workflow.start(deleteWorkspaceSkillSearchWorkflow, {
-      args: [{ workspaceId }],
-      taskQueue: QUEUE_NAME,
-      workflowId,
-      memo: { workspaceId },
-    });
-    return new Ok(undefined);
-  } catch (e) {
-    logger.error(
-      { workflowId, workspaceId, error: e },
-      "Failed starting workspace skill index deletion workflow"
-    );
-
-    return new Err(normalizeError(e));
-  }
 }

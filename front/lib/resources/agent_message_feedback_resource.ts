@@ -8,13 +8,16 @@ import {
   ConversationModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
+import { AgentSearchIndexationResource } from "@app/lib/resources/agent/agent_search_indexation_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
+
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -52,7 +55,15 @@ export type AgentFeedbackDayPoint = {
 export interface AgentMessageFeedbackResource
   extends ReadonlyAttributesType<AgentMessageFeedbackModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+/**
+ * @cc [owner:aubin-tchoi,label:backend] feedback-search-count-invalidation
+ * Feedback creation and deletion, including message cleanup, refresh the owning workspace's
+ * custom agent after commit; content, direction and dismissal edits do not change the indexed count.
+ */
 export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedbackModel> {
+  static model: ModelStatic<AgentMessageFeedbackModel> =
+    AgentMessageFeedbackModel;
+
   static async countByAgentIds(
     auth: Authenticator,
     agentIds: string[],
@@ -80,9 +91,6 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       )
     );
   }
-
-  static model: ModelStatic<AgentMessageFeedbackModel> =
-    AgentMessageFeedbackModel;
 
   readonly user?: Attributes<UserModel>;
 
@@ -130,11 +138,20 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
   }
 
   static async makeNew(
-    blob: CreationAttributes<AgentMessageFeedbackModel>
+    blob: CreationAttributes<AgentMessageFeedbackModel>,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<AgentMessageFeedbackResource> {
-    const agentMessageFeedback = await this.model.create({
-      ...blob,
-    });
+    const agentMessageFeedback = await this.model.create(
+      { ...blob },
+      { transaction }
+    );
+    await AgentSearchIndexationResource.launchForWorkspaceModelId(
+      {
+        workspaceModelId: agentMessageFeedback.workspaceId,
+        agentIds: [agentMessageFeedback.agentConfigurationId],
+      },
+      { transaction }
+    );
 
     return new this(this.model, agentMessageFeedback.get());
   }
@@ -143,13 +160,22 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    await this.model.destroy({
+    const deleted = await this.model.destroy({
       where: {
         id: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
     });
+    if (deleted > 0) {
+      await AgentSearchIndexationResource.launch(
+        {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentIds: [this.agentConfigurationId],
+        },
+        { transaction }
+      );
+    }
     return new Ok(undefined);
   }
 
@@ -166,6 +192,36 @@ export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedb
       thumbDirection: blob.thumbDirection,
       isConversationShared: blob.isConversationShared,
     });
+  }
+
+  static async deleteByAgentMessageModelIds(
+    auth: Authenticator,
+    agentMessageModelIds: readonly ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (agentMessageModelIds.length === 0) {
+      return;
+    }
+    const workspace = auth.getNonNullableWorkspace();
+    const agentIds = await withTransaction(async (t) => {
+      const where = {
+        workspaceId: workspace.id,
+        agentMessageId: [...new Set(agentMessageModelIds)],
+      };
+      const feedbacks = await this.model.findAll({
+        attributes: ["agentConfigurationId"],
+        where,
+        transaction: t,
+      });
+      await this.model.destroy({ where, transaction: t });
+      return [
+        ...new Set(feedbacks.map((feedback) => feedback.agentConfigurationId)),
+      ];
+    }, transaction);
+    await AgentSearchIndexationResource.launch(
+      { workspaceId: workspace.sId, agentIds },
+      { transaction }
+    );
   }
 
   async dismiss() {

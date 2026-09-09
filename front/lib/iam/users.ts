@@ -1,12 +1,10 @@
 import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
-import {
-  AgentConfigurationModel,
-  AgentUserRelationModel,
-} from "@app/lib/models/agent/agent";
 import { UserMessageModel } from "@app/lib/models/agent/conversation";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
+import { AgentResource } from "@app/lib/resources/agent_resource";
+import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -17,8 +15,8 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { launchSkillsSearchIndexationForGroups } from "@app/lib/skill_search/indexation";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -293,18 +291,24 @@ export async function mergeUserIdentities({
     );
   }
 
-  // Migrate authorship of agent configurations from the secondary user to the primary user.
-  await AgentConfigurationModel.update(
-    {
-      authorId: primaryUser.id,
-    },
-    {
-      where: {
-        authorId: secondaryUser.id,
-        workspaceId,
-      },
-    }
-  );
+  // Authorship, editor memberships and favorite counts form one committed search projection.
+  await withTransaction(async (transaction) => {
+    await AgentResource.transferAuthorship(
+      auth,
+      { primaryUser, secondaryUser },
+      { transaction }
+    );
+    await GroupResource.migrateUserMemberships(auth, {
+      primaryUser,
+      secondaryUser,
+      transaction,
+    });
+    await AgentUserRelationResource.migrateUserRelations(
+      auth,
+      { primaryUser, secondaryUser },
+      { transaction }
+    );
+  });
 
   const userIdValues = {
     userId: primaryUser.id,
@@ -330,35 +334,6 @@ export async function mergeUserIdentities({
   await DustAppSecretModel.update(userIdValues, userIdOptions);
   // Migrate authorship of agent memories from the secondary user to the primary user.
   await AgentMemoryModel.update(userIdValues, userIdOptions);
-
-  // Migrate group memberships from secondary user to primary user.
-  const potentiallyAffectedGroupIds =
-    await GroupResource.migrateUserMemberships(auth, {
-      primaryUser,
-      secondaryUser,
-    });
-  await launchSkillsSearchIndexationForGroups({
-    workspace,
-    groupModelIds: potentiallyAffectedGroupIds,
-  });
-
-  // Delete all agent-user relations for the secondary user that already have a relation.
-  const agentConfigurations = await AgentUserRelationModel.findAll({
-    where: {
-      userId: primaryUser.id,
-      workspaceId,
-    },
-    attributes: ["agentConfiguration"],
-  });
-  await AgentUserRelationModel.destroy({
-    where: {
-      userId: secondaryUser.id,
-      agentConfiguration: agentConfigurations.map((p) => p.agentConfiguration),
-      workspaceId,
-    },
-  });
-  // Migrate agent-user relations from the secondary user to the primary user.
-  await AgentUserRelationModel.update(userIdValues, userIdOptions);
 
   // Migrate authorship of keys from the secondary user to the primary user.
   await KeyModel.update(userIdValues, userIdOptions);

@@ -2,6 +2,7 @@ import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_fu
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -359,7 +360,7 @@ describe("SandboxFunctionMCPActionResource", () => {
     expect(gcsStore.size).toBe(1);
   });
 
-  it("deletes actions and their GCS outputs when the MCP server view is hard-deleted", async () => {
+  it("deletes view-dependent rows and defers GCS cleanup to the enclosing commit", async () => {
     const { authenticator, invocation, mcpServerView } = await setup();
     const action = await SandboxFunctionMCPActionFactory.create(authenticator, {
       invocation,
@@ -381,6 +382,37 @@ describe("SandboxFunctionMCPActionResource", () => {
         action.sId
       )
     ).toBeNull();
-    expect(gcsStore.size).toBe(1);
+    // The test's isolation transaction has not committed, so files must remain recoverable.
+    expect(gcsStore.size).toBe(2);
+  });
+
+  it("preserves MCP outputs when a nested view deletion is rolled back", async () => {
+    const { authenticator, invocation, mcpServerView } = await setup();
+    const action = await SandboxFunctionMCPActionFactory.create(authenticator, {
+      invocation,
+      mcpServerView,
+    });
+    await action.createOutputItems(authenticator, [
+      { content: { type: "text", text: "Keep on rollback" } },
+    ]);
+    const rollback = new Error("Rollback MCP view deletion");
+    await expect(
+      withTransaction(
+        async (transaction) => {
+          await mcpServerView.hardDelete(authenticator, transaction);
+          expect(gcsStore.size).toBe(2);
+          throw rollback;
+        },
+        undefined,
+        { useSavepoint: true }
+      )
+    ).rejects.toBe(rollback);
+    expect(
+      await SandboxFunctionMCPActionResource.fetchById(
+        authenticator,
+        action.sId
+      )
+    ).not.toBeNull();
+    expect(gcsStore.size).toBe(2);
   });
 });

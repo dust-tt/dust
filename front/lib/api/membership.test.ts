@@ -7,6 +7,9 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -34,10 +37,6 @@ vi.mock("@app/lib/api/audit/workos_audit", async () => {
   return { ...actual, emitAuditLogEventDirect: vi.fn() };
 });
 
-vi.mock("@app/lib/skill_search/indexation", () => ({
-  launchSkillsSearchIndexationForGroups: vi.fn(),
-}));
-
 vi.mock("@app/temporal/usage_queue/client", async () => {
   const actual = await vi.importActual<
     typeof import("@app/temporal/usage_queue/client")
@@ -49,7 +48,6 @@ vi.mock("@app/temporal/usage_queue/client", async () => {
   };
 });
 
-import { launchSkillsSearchIndexationForGroups } from "@app/lib/skill_search/indexation";
 import {
   launchMetronomeSeatCountSyncWorkflow,
   launchUpdateUsageWorkflow,
@@ -91,23 +89,38 @@ beforeEach(() => {
     new Ok(undefined)
   );
   trackCreateMembershipSpy.mockResolvedValue(undefined);
-  vi.mocked(launchSkillsSearchIndexationForGroups).mockResolvedValue(undefined);
 });
 
 describe("createAndTrackMembership", () => {
   it("reindexes editor grants restored for a returning member", async () => {
-    const workspace = await WorkspaceFactory.basic();
-    const user = await UserFactory.basic();
-    const revokedAt = new Date();
-    const latestMembershipSpy = vi
-      .spyOn(MembershipResource, "getLatestMembershipOfUserInWorkspace")
-      .mockResolvedValue({
-        endAt: revokedAt,
-        isRevoked: () => true,
-      } as MembershipResource);
-    const restoreSpy = vi
-      .spyOn(GroupResource, "dangerouslyRestoreGroupMembershipsRevokedWith")
-      .mockResolvedValue([11, 12]);
+    const {
+      workspace,
+      user,
+      authenticator: auth,
+    } = await createResourceTest({ role: "admin" });
+    const skill = await SkillFactory.create(auth);
+    const groups = await GroupResource.dangerouslyListAllUserGroupsInWorkspace({
+      auth,
+      user,
+      groupKinds: ["regular_auto"],
+    });
+    for (const group of groups) {
+      expect(
+        (
+          await group.dangerouslyRemoveMember(auth, { user: user.toJSON() })
+        ).isOk()
+      ).toBe(true);
+    }
+    expect(
+      (
+        await MembershipResource.revokeMembership({
+          user,
+          workspace,
+          allowLastAdminRevocation: true,
+        })
+      ).isOk()
+    ).toBe(true);
+    vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
 
     await createAndTrackMembership({
       user,
@@ -116,17 +129,13 @@ describe("createAndTrackMembership", () => {
       origin: "invited",
     });
 
-    expect(restoreSpy).toHaveBeenCalledWith({
-      user,
-      workspace,
-      revokedAt,
+    expect((await skill.listEditors(auth))?.map((editor) => editor.id)).toEqual(
+      [user.id]
+    );
+    expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledExactlyOnceWith({
+      workspaceId: workspace.sId,
+      skillId: skill.sId,
     });
-    expect(launchSkillsSearchIndexationForGroups).toHaveBeenCalledWith({
-      workspace,
-      groupModelIds: [11, 12],
-    });
-    latestMembershipSpy.mockRestore();
-    restoreSpy.mockRestore();
   });
 
   it("assigns free instead of a committed paid seat on a free plan", async () => {

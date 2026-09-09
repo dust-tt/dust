@@ -35,6 +35,7 @@ import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_vie
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { destroyMCPServerViewDependencies } from "@app/lib/resources/mcp_server_view_helper";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
@@ -43,6 +44,7 @@ import { decrypt, encrypt } from "@app/types/shared/utils/encryption";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { redactString } from "@app/types/shared/utils/string_utils";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
+import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
 export class InternalMCPServerInMemoryResource {
@@ -254,7 +256,8 @@ export class InternalMCPServerInMemoryResource {
   }
 
   async delete(
-    auth: Authenticator
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<number, DustError<"unauthorized">>> {
     const canAdministrate =
       await SpaceResource.canAdministrateSystemSpace(auth);
@@ -268,47 +271,60 @@ export class InternalMCPServerInMemoryResource {
       );
     }
 
-    const mcpServerViews = await MCPServerViewModel.findAll({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        internalMCPServerId: this.id,
+    const deletedCount = await withTransaction(
+      async (t) => {
+        const mcpServerViews = await MCPServerViewModel.findAll({
+          transaction: t,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            internalMCPServerId: this.id,
+          },
+        });
+
+        await destroyMCPServerViewDependencies(auth, {
+          mcpServerViewIds: mcpServerViews.map((view) => view.id),
+          transaction: t,
+        });
+
+        await MCPServerViewModel.destroy({
+          transaction: t,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            internalMCPServerId: this.id,
+          },
+          hardDelete: true,
+        });
+
+        await MCPServerConnectionModel.destroy({
+          transaction: t,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            internalMCPServerId: this.id,
+          },
+        });
+
+        await RemoteMCPServerToolMetadataModel.destroy({
+          transaction: t,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            internalMCPServerId: this.id,
+          },
+        });
+
+        await InternalMCPServerCredentialModel.destroy({
+          transaction: t,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            internalMCPServerId: this.id,
+          },
+        });
+        return 1;
       },
-    });
+      transaction,
+      { useSavepoint: true }
+    );
 
-    await destroyMCPServerViewDependencies(auth, {
-      mcpServerViewIds: mcpServerViews.map((view) => view.id),
-    });
-
-    await MCPServerViewModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        internalMCPServerId: this.id,
-      },
-      hardDelete: true,
-    });
-
-    await MCPServerConnectionModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        internalMCPServerId: this.id,
-      },
-    });
-
-    await RemoteMCPServerToolMetadataModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        internalMCPServerId: this.id,
-      },
-    });
-
-    await InternalMCPServerCredentialModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        internalMCPServerId: this.id,
-      },
-    });
-
-    return new Ok(1);
+    return new Ok(deletedCount);
   }
 
   static async fetchById(
@@ -329,7 +345,10 @@ export class InternalMCPServerInMemoryResource {
   static async fetchByIds(
     auth: Authenticator,
     ids: string[],
-    { includeRestricted = false }: { includeRestricted?: boolean } = {}
+    {
+      includeRestricted = false,
+      transaction,
+    }: { includeRestricted?: boolean; transaction?: Transaction } = {}
   ): Promise<InternalMCPServerInMemoryResource[]> {
     if (ids.length === 0) {
       return [];
@@ -350,6 +369,7 @@ export class InternalMCPServerInMemoryResource {
     const servers =
       manualIds.length > 0
         ? await MCPServerViewModel.findAll({
+            transaction,
             attributes: ["internalMCPServerId"],
             include: [
               {

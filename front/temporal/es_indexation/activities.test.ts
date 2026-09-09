@@ -1,7 +1,7 @@
 import { agentSearchIndex } from "@app/lib/agent_search";
-import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { SkillSearchDocumentResource } from "@app/lib/resources/skill/skill_search_document_resource";
 import * as searchUsage from "@app/lib/search/usage";
 import * as skillIndex from "@app/lib/skill_search";
@@ -54,7 +54,7 @@ describe("agent indexation and daily search usage", () => {
         metadata: expect.objectContaining({ version: 1 }),
       })
     );
-    await archiveAgentConfiguration(auth, agent.sId);
+    await AgentResource.archiveAgentConfiguration(auth, agent.sId);
     await indexAgentSearchActivity({
       workspaceId: workspace.sId,
       agentId: agent.sId,

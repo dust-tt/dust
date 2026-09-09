@@ -3,6 +3,7 @@ import { DustError } from "@app/lib/error";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { GroupSearchIndexationResource } from "@app/lib/resources/group_search_indexation_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -20,6 +21,11 @@ import {
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
+import { invalidateGroupPermissionsCacheAfterCommit } from "@app/lib/utils/group_permissions_cache";
+import {
+  runAfterTransactionCommit,
+  withTransaction,
+} from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
@@ -56,7 +62,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { col, fn, Op, QueryTypes } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const MANAGER_GROUP_NAME = "dust-managers";
@@ -93,58 +99,6 @@ type CachedGroup = {
 export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupResource extends BaseResource<GroupModel> {
-  /**
-   * Workspace-scoped editor projection for versioned agents. Null marks a missing or malformed
-   * editor-group association. This reads membership, not the caller's permission to manage a group.
-   */
-  static async listAgentEditorUserIds(
-    auth: Authenticator,
-    agentConfigurationModelIds: ModelId[],
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Map<ModelId, ModelId[] | null>> {
-    const result = new Map<ModelId, ModelId[] | null>(
-      agentConfigurationModelIds.map((id) => [id, null])
-    );
-    if (agentConfigurationModelIds.length === 0) {
-      return result;
-    }
-    const links = await GroupAgentModel.findAll({
-      attributes: ["groupId", "agentConfigurationId"],
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        agentConfigurationId: agentConfigurationModelIds,
-      },
-      transaction,
-    });
-    const groups = await this.dangerouslyFetchByModelIds(
-      auth,
-      [...new Set(links.map((link) => link.groupId))],
-      { groupKinds: ["agent_editors"], transaction }
-    );
-    const members = await this.getActiveMembershipsForGroups(auth, groups, {
-      transaction,
-    });
-    const validGroupIds = new Set(groups.map((group) => group.id));
-    const linksByConfigurationId = new Map<ModelId, typeof links>();
-    for (const link of links) {
-      const existing =
-        linksByConfigurationId.get(link.agentConfigurationId) ?? [];
-      existing.push(link);
-      linksByConfigurationId.set(link.agentConfigurationId, existing);
-    }
-    for (const [id, configurationLinks] of linksByConfigurationId) {
-      if (
-        configurationLinks.length === 1 &&
-        validGroupIds.has(configurationLinks[0].groupId)
-      ) {
-        result.set(id, [
-          ...new Set(members[configurationLinks[0].groupId] ?? []),
-        ]);
-      }
-    }
-    return result;
-  }
-
   static model: ModelStatic<GroupModel> = GroupModel;
 
   constructor(model: ModelStatic<GroupModel>, blob: Attributes<GroupModel>) {
@@ -356,7 +310,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * Migrates all group memberships from one user to another within a workspace.
    * Handles duplicate memberships by destroying them first.
-   * Returns regular_auto groups that may carry an affected editor grant. The
+   * Returns groups that may carry an affected editor grant. The
    * result includes both users' membership history so a retry after a completed
    * migration returns the same groups and can retry a failed invalidation.
    */
@@ -365,63 +319,83 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       primaryUser,
       secondaryUser,
+      transaction: existingTransaction,
     }: {
       primaryUser: UserResource;
       secondaryUser: UserResource;
+      transaction?: Transaction;
     }
   ): Promise<ModelId[]> {
     const workspace = auth.getNonNullableWorkspace();
-    const potentiallyAffectedMemberships = await GroupMembershipModel.findAll({
-      attributes: ["groupId"],
-      where: {
-        userId: [primaryUser.id, secondaryUser.id],
-        workspaceId: workspace.id,
-      },
-      include: [
+    const groupModelIds = await withTransaction(async (transaction) => {
+      const potentiallyAffectedMemberships = await GroupMembershipModel.findAll(
         {
-          model: GroupModel,
-          as: "group",
-          attributes: [],
-          required: true,
+          attributes: ["groupId"],
           where: {
+            userId: [primaryUser.id, secondaryUser.id],
             workspaceId: workspace.id,
-            kind: "regular_auto",
           },
-        },
-      ],
-    });
-    const primaryMemberships = await GroupMembershipModel.findAll({
-      where: { userId: primaryUser.id, workspaceId: workspace.id },
-      attributes: ["groupId"],
-    });
-    const primaryGroupIds = primaryMemberships.map((m) => m.groupId);
-
-    if (primaryGroupIds.length > 0) {
-      await GroupMembershipModel.destroy({
-        where: {
-          userId: secondaryUser.id,
-          groupId: primaryGroupIds,
-          workspaceId: workspace.id,
-        },
+          include: [
+            {
+              model: GroupModel,
+              as: "group",
+              attributes: [],
+              required: true,
+              where: {
+                workspaceId: workspace.id,
+                kind: { [Op.notIn]: ["global", "system"] },
+              },
+            },
+          ],
+          transaction,
+        }
+      );
+      const primaryMemberships = await GroupMembershipModel.findAll({
+        where: { userId: primaryUser.id, workspaceId: workspace.id },
+        attributes: ["groupId"],
+        transaction,
       });
-    }
+      const primaryGroupIds = primaryMemberships.map((m) => m.groupId);
 
-    await GroupMembershipModel.update(
-      { userId: primaryUser.id },
-      { where: { userId: secondaryUser.id, workspaceId: workspace.id } }
-    );
+      if (primaryGroupIds.length > 0) {
+        await GroupMembershipModel.destroy({
+          where: {
+            userId: secondaryUser.id,
+            groupId: primaryGroupIds,
+            workspaceId: workspace.id,
+          },
+          transaction,
+        });
+      }
+
+      await GroupMembershipModel.update(
+        { userId: primaryUser.id },
+        {
+          where: { userId: secondaryUser.id, workspaceId: workspace.id },
+          transaction,
+        }
+      );
+
+      return [
+        ...new Set(
+          potentiallyAffectedMemberships.map((membership) => membership.groupId)
+        ),
+      ];
+    }, existingTransaction);
 
     // Always invalidate
-    await GroupResource.batchInvalidateGroupIdsCacheForUsers([
-      [{ user: { id: primaryUser.id }, workspace: { id: workspace.id } }],
-      [{ user: { id: secondaryUser.id }, workspace: { id: workspace.id } }],
-    ]);
+    await runAfterTransactionCommit(existingTransaction, async () => {
+      await GroupResource.batchInvalidateGroupIdsCacheForUsers([
+        [{ user: { id: primaryUser.id }, workspace: { id: workspace.id } }],
+        [{ user: { id: secondaryUser.id }, workspace: { id: workspace.id } }],
+      ]);
+    });
+    await GroupSearchIndexationResource.launchForGroups(
+      { workspace, groupModelIds },
+      { transaction: existingTransaction }
+    );
 
-    return [
-      ...new Set(
-        potentiallyAffectedMemberships.map((membership) => membership.groupId)
-      ),
-    ];
+    return groupModelIds;
   }
 
   static async makeNew(
@@ -1106,10 +1080,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth,
     agentConfiguration,
     isDeletionFlow = false,
+    transaction,
   }: {
     auth: Authenticator;
-    agentConfiguration: AgentConfigurationModel | AgentConfigurationType;
+    agentConfiguration: Pick<AgentConfigurationType, "id" | "status" | "scope">;
     isDeletionFlow?: boolean;
+    transaction?: Transaction;
   }): Promise<GroupResource | null> {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -1118,16 +1094,21 @@ export class GroupResource extends BaseResource<GroupModel> {
         agentConfigurationId: agentConfiguration.id,
         workspaceId: workspace.id,
       },
+      transaction,
     });
 
-    const groups = await this.baseFetch(auth, {
-      where: {
-        id: {
-          [Op.in]: agentGroups.map((ag) => ag.groupId),
+    const groups = await this.baseFetch(
+      auth,
+      {
+        where: {
+          id: {
+            [Op.in]: agentGroups.map((ag) => ag.groupId),
+          },
+          kind: "agent_editors",
         },
-        kind: "agent_editors",
       },
-    });
+      transaction
+    );
 
     if (
       agentConfiguration.status === "draft" ||
@@ -1590,6 +1571,58 @@ export class GroupResource extends BaseResource<GroupModel> {
     }, {});
   }
 
+  /**
+   * Workspace-scoped editor projection for versioned agents. Null marks a missing or malformed
+   * editor-group association. This reads membership, not the caller's permission to manage a group.
+   */
+  static async listAgentEditorUserIds(
+    auth: Authenticator,
+    agentConfigurationModelIds: ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Map<ModelId, ModelId[] | null>> {
+    const result = new Map<ModelId, ModelId[] | null>(
+      agentConfigurationModelIds.map((id) => [id, null])
+    );
+    if (agentConfigurationModelIds.length === 0) {
+      return result;
+    }
+    const links = await GroupAgentModel.findAll({
+      attributes: ["groupId", "agentConfigurationId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentConfigurationId: agentConfigurationModelIds,
+      },
+      transaction,
+    });
+    const groups = await this.dangerouslyFetchByModelIds(
+      auth,
+      [...new Set(links.map((link) => link.groupId))],
+      { groupKinds: ["agent_editors"], transaction }
+    );
+    const members = await this.getActiveMembershipsForGroups(auth, groups, {
+      transaction,
+    });
+    const validGroupIds = new Set(groups.map((group) => group.id));
+    const linksByConfigurationId = new Map<ModelId, typeof links>();
+    for (const link of links) {
+      const existing =
+        linksByConfigurationId.get(link.agentConfigurationId) ?? [];
+      existing.push(link);
+      linksByConfigurationId.set(link.agentConfigurationId, existing);
+    }
+    for (const [id, configurationLinks] of linksByConfigurationId) {
+      if (
+        configurationLinks.length === 1 &&
+        validGroupIds.has(configurationLinks[0].groupId)
+      ) {
+        result.set(id, [
+          ...new Set(members[configurationLinks[0].groupId] ?? []),
+        ]);
+      }
+    }
+    return result;
+  }
+
   async isMember(user: UserResource): Promise<boolean> {
     if (this.isGlobal()) {
       return true;
@@ -1832,6 +1865,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     });
 
+    await GroupSearchIndexationResource.launchForGroups(
+      { workspace: owner, groupModelIds: [this.id] },
+      { transaction }
+    );
+
     return new Ok(undefined);
   }
 
@@ -1981,6 +2019,11 @@ export class GroupResource extends BaseResource<GroupModel> {
         ])
       );
     });
+
+    await GroupSearchIndexationResource.launchForGroups(
+      { workspace: owner, groupModelIds: [this.id] },
+      { transaction }
+    );
 
     return new Ok(undefined);
   }
@@ -2136,6 +2179,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     }
 
+    if (affectedUserIds.length > 0) {
+      await GroupSearchIndexationResource.launchForGroups(
+        { workspace: auth.getNonNullableWorkspace(), groupModelIds: [this.id] },
+        { transaction }
+      );
+    }
     return affectedUserIds;
   }
 
@@ -2251,6 +2300,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     });
 
+    await GroupSearchIndexationResource.launchForGroups(
+      { workspace, groupModelIds: groupIdsToRestore },
+      { transaction }
+    );
+
     return groupIdsToRestore;
   }
 
@@ -2311,6 +2365,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     }
 
+    if (affectedUserIds.length > 0) {
+      await GroupSearchIndexationResource.launchForGroups(
+        { workspace: auth.getNonNullableWorkspace(), groupModelIds: [this.id] },
+        { transaction }
+      );
+    }
     return affectedUserIds;
   }
 
@@ -2550,91 +2610,143 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   // Deletion
 
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;security] deleted-editor-group-search-invalidation
+   * Deleting a group removes its memberships, grants and agent links atomically, retaining
+   * their search targets before deletion and scheduling reindexing only after outer commit.
+   */
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    const owner = auth.getNonNullableWorkspace();
-    try {
-      // Fetch active member user IDs before deletion for cache invalidation
-      const activeMemberships = await GroupMembershipModel.findAll({
-        where: {
-          groupId: this.id,
-          workspaceId: owner.id,
-          status: "active",
-          startAt: { [Op.lte]: new Date() },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-        },
-        attributes: ["userId"],
-        transaction,
-      });
-      const memberUserIds = activeMemberships.map((m) => m.userId);
+    return GroupResource.deleteMany(auth, [this], { transaction });
+  }
 
-      await KeyModel.update(
-        {
-          groupIds: fn("array_remove", col("groupIds"), this.id),
-        },
-        {
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;security;performance] batched-group-deletion
+   * Batch deletion preserves the single-group cleanup and invalidation rules, rejects foreign
+   * workspace inputs before writing, and never queries separately for each group or member.
+   */
+  static async deleteMany(
+    auth: Authenticator,
+    groups: readonly GroupResource[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<undefined, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+    assert(
+      groups.every((group) => group.workspaceId === owner.id),
+      "Group belongs to another workspace."
+    );
+    const groupIds = [...new Set(groups.map((group) => group.id))];
+    if (groupIds.length === 0) {
+      return new Ok(undefined);
+    }
+    const groupIdSet = new Set(groupIds);
+    const { memberUserIds, targets } = await withTransaction(
+      async (t) => {
+        const targets = await GroupSearchIndexationResource.fetchForGroups(
+          owner,
+          groupIds,
+          t
+        );
+        // Fetch active member user IDs before deletion for cache invalidation
+        const activeMemberships = await GroupMembershipModel.findAll({
           where: {
-            groupIds: { [Op.contains]: [this.id] },
+            groupId: groupIds,
+            workspaceId: owner.id,
+            status: "active",
+            startAt: { [Op.lte]: new Date() },
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          },
+          attributes: ["userId"],
+          transaction: t,
+        });
+        const memberUserIds = [
+          ...new Set(activeMemberships.map((m) => m.userId)),
+        ];
+        const keys = await KeyModel.findAll({
+          where: {
+            groupIds: { [Op.overlap]: groupIds },
             workspaceId: owner.id,
           },
-          transaction,
-        }
-      );
-
-      await GroupAgentModel.destroy({
-        where: {
-          groupId: this.id,
-          workspaceId: owner.id,
-        },
-        transaction,
-      });
-
-      await GroupMembershipModel.destroy({
-        where: {
-          groupId: this.id,
-          workspaceId: owner.id,
-        },
-        transaction,
-      });
-
-      await GroupPermissionModel.destroy({
-        where: {
-          groupId: this.id,
-          workspaceId: owner.id,
-        },
-        transaction,
-      });
-
-      await this.model.destroy({
-        where: {
-          id: this.id,
-          workspaceId: owner.id,
-        },
-        transaction,
-      });
-
-      if (memberUserIds.length > 0) {
-        const workspaceId = owner.id;
-        invalidateCacheAfterCommit(transaction, async () => {
-          await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-            memberUserIds.map((userId) => [
-              { user: { id: userId }, workspace: { id: workspaceId } },
-            ])
-          );
+          transaction: t,
+          lock: t.LOCK.UPDATE,
+          order: [["id", "ASC"]],
         });
-      }
+        if (keys.length > 0) {
+          const updatedAt = new Date();
+          await KeyModel.bulkCreate(
+            keys.map((key) => ({
+              ...key.get(),
+              groupIds: key.groupIds.filter((id) => !groupIdSet.has(id)),
+              updatedAt,
+            })),
+            {
+              conflictAttributes: ["id"],
+              updateOnDuplicate: ["groupIds", "updatedAt"],
+              transaction: t,
+            }
+          );
+        }
 
+        await GroupAgentModel.destroy({
+          where: {
+            groupId: groupIds,
+            workspaceId: owner.id,
+          },
+          transaction: t,
+        });
+
+        await GroupMembershipModel.destroy({
+          where: {
+            groupId: groupIds,
+            workspaceId: owner.id,
+          },
+          transaction: t,
+        });
+
+        await GroupPermissionModel.destroy({
+          where: { groupId: groupIds, workspaceId: owner.id },
+          transaction: t,
+        });
+
+        await this.model.destroy({
+          where: {
+            id: groupIds,
+            workspaceId: owner.id,
+          },
+          transaction: t,
+        });
+
+        return { memberUserIds, targets };
+      },
+      transaction,
+      { useSavepoint: true }
+    );
+
+    if (memberUserIds.length > 0) {
       const workspaceId = owner.id;
-      invalidateCacheAfterCommit(transaction, () =>
-        GroupResource.invalidateWorkspaceGroupsFromSystemKeyCache(workspaceId)
-      );
-
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
+      invalidateCacheAfterCommit(transaction, async () => {
+        await GroupResource.batchInvalidateGroupIdsCacheForUsers(
+          memberUserIds.map((userId) => [
+            { user: { id: userId }, workspace: { id: workspaceId } },
+          ])
+        );
+      });
     }
+
+    const workspaceId = owner.id;
+    invalidateCacheAfterCommit(transaction, () =>
+      GroupResource.invalidateWorkspaceGroupsFromSystemKeyCache(workspaceId)
+    );
+
+    await invalidateGroupPermissionsCacheAfterCommit(
+      owner.id,
+      groupIds,
+      transaction
+    );
+    await GroupSearchIndexationResource.launch(owner, targets, transaction);
+    return new Ok(undefined);
   }
 
   // Permissions

@@ -21,6 +21,7 @@ import {
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withRetry } from "@app/lib/utils/async_utils";
+import { runAfterTransactionCommit } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { SandboxFunctionMCPActionType } from "@app/types/api/sandbox_functions";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -449,20 +450,7 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       }
     };
 
-    if (transaction) {
-      // Same shape as `invalidateAfterCommit` in `lib/utils/cache.ts`: the callback never rejects
-      // today, but an unhandled rejection post-commit would be unattributable.
-      transaction.afterCommit(() =>
-        deleteFromGcs().catch((err) => {
-          logger.error(
-            { err: normalizeError(err), pathCount: gcsPaths.length },
-            "Failed to delete sandbox function MCP action outputs from GCS after commit"
-          );
-        })
-      );
-    } else {
-      await deleteFromGcs();
-    }
+    await runAfterTransactionCommit(transaction, deleteFromGcs);
 
     return destroyedCount;
   }

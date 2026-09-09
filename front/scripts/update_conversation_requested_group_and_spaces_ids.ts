@@ -1,16 +1,16 @@
-import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   AgentMessageModel,
   ConversationModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import isEqual from "lodash/isEqual";
 import sortBy from "lodash/sortBy";
@@ -145,22 +145,14 @@ async function updateConversationRequestedSpaceIds(
         continue;
       }
 
-      // Get the exact agent versions that were used in the conversation
-      // Fetch directly from DB to get specific versions (not just latest)
-      const agentConfigs = await AgentConfigurationModel.findAll({
-        where: {
-          workspaceId: workspace.id,
-          [Op.or]: Array.from(agentVersionPairs.values()).map((v) => ({
-            sId: v.sId,
-            version: v.version,
-          })),
-        },
-      });
-
-      // Enrich with actions if needed (uses auth with dangerouslyRequestAllGroups)
-      const agents = await enrichAgentConfigurations(auth, agentConfigs, {
-        variant: "light",
-      });
+      // Only persisted custom agents contribute space requirements to this repair.
+      const agents = await AgentResource.getAgentConfigurationsWithVersion(
+        auth,
+        Array.from(agentVersionPairs.values())
+          .filter(({ sId }) => !isGlobalAgentId(sId))
+          .map(({ sId, version }) => ({ agentId: sId, agentVersion: version })),
+        { variant: "light", dangerouslySkipPermissionFiltering: true }
+      );
 
       logger.info(
         {

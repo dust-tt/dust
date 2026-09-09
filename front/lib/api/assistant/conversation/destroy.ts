@@ -5,7 +5,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
-  AgentMessageFeedbackModel,
   AgentMessageModel,
   CompactionMessageModel,
   MessageModel,
@@ -18,6 +17,7 @@ import {
 } from "@app/lib/models/skill/conversation_skill";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { getContentFragmentBaseCloudStorageForWorkspace } from "@app/lib/resources/content_fragment_resource";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
@@ -179,12 +179,10 @@ export async function destroyConversationMessages(
     await AgentStepContentResource.deleteByAgentMessageIds(auth, {
       agentMessageIds,
     });
-    await AgentMessageFeedbackModel.destroy({
-      where: {
-        agentMessageId: agentMessageIds,
-        workspaceId: owner.id,
-      },
-    });
+    await AgentMessageFeedbackResource.deleteByAgentMessageModelIds(
+      auth,
+      agentMessageIds
+    );
 
     const whereAgentMessageSkill: WhereOptions<AgentMessageSkillModel> = {
       workspaceId: auth.getNonNullableWorkspace().id,

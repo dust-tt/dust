@@ -21,6 +21,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { mcpToolsRequireConfiguration } from "@app/lib/utils/json_schemas";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { MCPOAuthConnectionMetadataType } from "@app/types/api/oauth/providers/mcp";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
@@ -461,7 +462,8 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
   // Deletion.
 
   async delete(
-    auth: Authenticator
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined | number, DustError<"unauthorized">>> {
     const canAdministrate =
       await SpaceResource.canAdministrateSystemSpace(auth);
@@ -475,48 +477,61 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       );
     }
 
-    const mcpServerViews = await MCPServerViewModel.findAll({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        remoteMCPServerId: this.id,
-      },
-    });
+    const deletedCount = await withTransaction(
+      async (t) => {
+        const mcpServerViews = await MCPServerViewModel.findAll({
+          transaction: t,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            remoteMCPServerId: this.id,
+          },
+        });
 
-    await MCPServerConnectionModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        remoteMCPServerId: this.id,
-      },
-    });
+        await MCPServerConnectionModel.destroy({
+          transaction: t,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            remoteMCPServerId: this.id,
+          },
+        });
 
-    await destroyMCPServerViewDependencies(auth, {
-      mcpServerViewIds: mcpServerViews.map((view) => view.id),
-    });
+        await destroyMCPServerViewDependencies(auth, {
+          mcpServerViewIds: mcpServerViews.map((view) => view.id),
+          transaction: t,
+        });
 
-    await RemoteMCPServerToolMetadataModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        remoteMCPServerId: this.id,
-      },
-    });
+        await RemoteMCPServerToolMetadataModel.destroy({
+          transaction: t,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            remoteMCPServerId: this.id,
+          },
+        });
 
-    // Directly delete the MCPServerView here to avoid a circular dependency.
-    await MCPServerViewModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        remoteMCPServerId: this.id,
-      },
-      // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
-      // bypassing the soft deletion in place.
-      hardDelete: true,
-    });
+        // Directly delete the MCPServerView here to avoid a circular dependency.
+        await MCPServerViewModel.destroy({
+          transaction: t,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            remoteMCPServerId: this.id,
+          },
+          // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
+          // bypassing the soft deletion in place.
+          hardDelete: true,
+        });
 
-    const deletedCount = await RemoteMCPServerModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        id: this.id,
+        const deletedCount = await RemoteMCPServerModel.destroy({
+          transaction: t,
+          where: {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            id: this.id,
+          },
+        });
+        return deletedCount;
       },
-    });
+      transaction,
+      { useSavepoint: true }
+    );
 
     return new Ok(deletedCount);
   }

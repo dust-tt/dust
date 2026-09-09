@@ -63,6 +63,7 @@ const getDataSourceCategory = (
 };
 
 type FetchDataSourceViewOptions = {
+  transaction?: Transaction;
   includeDeleted?: boolean;
   includeEditedBy?: boolean;
   limit?: number;
@@ -238,19 +239,23 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     fetchDataSourceViewOptions?: FetchDataSourceViewOptions,
     options?: ResourceFindOptions<DataSourceViewModel>
   ) {
-    const { includeDeleted } = fetchDataSourceViewOptions ?? {};
+    const { includeDeleted, transaction } = fetchDataSourceViewOptions ?? {};
 
     const where: WhereOptions<DataSourceViewModel> = {
       ...options?.where,
       workspaceId: auth.getNonNullableWorkspace().id,
     };
 
-    const dataSourceViews = await this.baseFetchWithAuthorization(auth, {
-      ...this.getOptions(fetchDataSourceViewOptions),
-      ...options,
-      includeDeleted,
-      where,
-    });
+    const dataSourceViews = await this.baseFetchWithAuthorization(
+      auth,
+      {
+        ...this.getOptions(fetchDataSourceViewOptions),
+        ...options,
+        includeDeleted,
+        where,
+      },
+      transaction
+    );
 
     const dataSourceIds = removeNulls(
       dataSourceViews.map((ds) => ds.dataSourceId)
@@ -262,6 +267,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       {
         includeEditedBy: fetchDataSourceViewOptions?.includeEditedBy,
         includeDeleted,
+        transaction,
       }
     );
 

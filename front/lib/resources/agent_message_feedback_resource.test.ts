@@ -1,9 +1,12 @@
+import { AgentSearchDocumentResource } from "@app/lib/resources/agent/agent_search_document_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
+import { launchIndexAgentSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { ModelId } from "@app/types/shared/model_id";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Authenticator } from "../auth";
 
@@ -33,6 +36,88 @@ describe("AgentMessageFeedbackResource.getFeedbackCountForAssistant", () => {
     auth = setup.authenticator;
   });
 
+  it("reindexes feedback count on creation and deletion, not content or direction edits", async () => {
+    const workspace = auth.getNonNullableWorkspace();
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const { conv, agentMessageId } = await createConvWithAgentMessage(
+      auth,
+      agent.sId
+    );
+    vi.mocked(launchIndexAgentSearchWorkflow).mockClear();
+    const feedback = await AgentMessageFeedbackResource.makeNew({
+      workspaceId: workspace.id,
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+      conversationId: conv.id,
+      agentMessageId,
+      userId: auth.getNonNullableUser().id,
+      thumbDirection: "up",
+      content: null,
+      isConversationShared: false,
+      dismissed: false,
+    });
+    expect(launchIndexAgentSearchWorkflow).toHaveBeenCalledExactlyOnceWith({
+      workspaceId: workspace.sId,
+      agentId: agent.sId,
+    });
+    expect(
+      await AgentSearchDocumentResource.fetchSearchDocument(auth, agent.sId)
+    ).toMatchObject({ feedbacks: 1 });
+
+    await feedback.updateFields({
+      thumbDirection: "down",
+      content: "Updated feedback",
+    });
+    await feedback.dismiss();
+    await feedback.undismiss();
+    expect(launchIndexAgentSearchWorkflow).toHaveBeenCalledOnce();
+    expect((await feedback.delete(auth)).isOk()).toBe(true);
+    expect(launchIndexAgentSearchWorkflow).toHaveBeenCalledTimes(2);
+    expect(
+      await AgentSearchDocumentResource.fetchSearchDocument(auth, agent.sId)
+    ).toMatchObject({ feedbacks: 0 });
+  });
+
+  it("does not index feedback creation rolled back with its outer transaction", async () => {
+    const workspace = auth.getNonNullableWorkspace();
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const { conv, agentMessageId } = await createConvWithAgentMessage(
+      auth,
+      agent.sId
+    );
+    const rollback = new Error("Roll back feedback");
+    vi.mocked(launchIndexAgentSearchWorkflow).mockClear();
+    await expect(
+      withTransaction(
+        async (transaction) => {
+          await AgentMessageFeedbackResource.makeNew(
+            {
+              workspaceId: workspace.id,
+              agentConfigurationId: agent.sId,
+              agentConfigurationVersion: agent.version,
+              conversationId: conv.id,
+              agentMessageId,
+              userId: auth.getNonNullableUser().id,
+              thumbDirection: "up",
+              content: null,
+              isConversationShared: false,
+              dismissed: false,
+            },
+            { transaction }
+          );
+          expect(launchIndexAgentSearchWorkflow).not.toHaveBeenCalled();
+          throw rollback;
+        },
+        undefined,
+        { useSavepoint: true }
+      )
+    ).rejects.toBe(rollback);
+    expect(launchIndexAgentSearchWorkflow).not.toHaveBeenCalled();
+    expect(
+      await AgentSearchDocumentResource.fetchSearchDocument(auth, agent.sId)
+    ).toMatchObject({ feedbacks: 0 });
+  });
+
   it("returns zeros when no feedback exists for the assistant", async () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
@@ -43,6 +128,50 @@ describe("AgentMessageFeedbackResource.getFeedbackCountForAssistant", () => {
       );
 
     expect(result).toEqual({ positive: 0, negative: 0 });
+  });
+
+  it("reindexes each affected agent once when conversation cleanup deletes a batch of feedback", async () => {
+    const workspace = auth.getNonNullableWorkspace();
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const first = await createConvWithAgentMessage(auth, agent.sId);
+    const second = await createConvWithAgentMessage(auth, agent.sId);
+    for (const { conv, agentMessageId } of [first, second]) {
+      await AgentMessageFeedbackResource.makeNew({
+        workspaceId: workspace.id,
+        agentConfigurationId: agent.sId,
+        agentConfigurationVersion: agent.version,
+        conversationId: conv.id,
+        agentMessageId,
+        userId: auth.getNonNullableUser().id,
+        thumbDirection: "up",
+        content: null,
+        isConversationShared: false,
+        dismissed: false,
+      });
+    }
+    vi.mocked(launchIndexAgentSearchWorkflow).mockClear();
+    const otherWorkspace = await createResourceTest({ role: "admin" });
+    await AgentMessageFeedbackResource.deleteByAgentMessageModelIds(
+      otherWorkspace.authenticator,
+      [first.agentMessageId]
+    );
+    expect(launchIndexAgentSearchWorkflow).not.toHaveBeenCalled();
+    expect(
+      await AgentSearchDocumentResource.fetchSearchDocument(auth, agent.sId)
+    ).toMatchObject({ feedbacks: 2 });
+
+    await AgentMessageFeedbackResource.deleteByAgentMessageModelIds(auth, [
+      first.agentMessageId,
+      second.agentMessageId,
+      first.agentMessageId,
+    ]);
+    expect(launchIndexAgentSearchWorkflow).toHaveBeenCalledExactlyOnceWith({
+      workspaceId: workspace.sId,
+      agentId: agent.sId,
+    });
+    expect(
+      await AgentSearchDocumentResource.fetchSearchDocument(auth, agent.sId)
+    ).toMatchObject({ feedbacks: 0 });
   });
 
   it("counts positive and negative feedback correctly", async () => {

@@ -52,6 +52,7 @@ type FetchDataSourceOrigin =
   | "v1_data_sources_tokenize";
 
 type FetchDataSourceOptions = {
+  transaction?: Transaction;
   includeDeleted?: boolean;
   includeEditedBy?: boolean;
   limit?: number;
@@ -157,7 +158,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
         includeDeleted,
         where,
       },
-      transaction
+      transaction ?? fetchDataSourceOptions?.transaction
     );
   }
 

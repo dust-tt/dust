@@ -1,5 +1,4 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { launchSkillSearchIndexation } from "@app/lib/skill_search/indexation";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -59,13 +58,7 @@ app.post(
       });
     }
 
-    const { affectedCount } = await skillResource.restore(auth);
-    if (affectedCount > 0) {
-      await launchSkillSearchIndexation({
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        skillId: skillResource.sId,
-      });
-    }
+    await skillResource.restore(auth);
 
     return ctx.json({ success: true });
   }
