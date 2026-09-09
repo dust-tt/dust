@@ -21,6 +21,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useState } from "react";
 
 export type CreditPoolFetchStatus = "loading" | "error" | "ready";
 
@@ -163,23 +164,41 @@ const CYCLE_HISTORY_COLUMNS: ColumnDef<CycleHistoryRowData, string>[] = [
   },
 ];
 
+const INITIAL_CYCLE_HISTORY_ROW_COUNT = 2;
+const CYCLE_HISTORY_LOAD_MORE_COUNT = 5;
+
 export function WorkspaceCreditPoolCycleHistoryTable({
   cycleBreakdown,
 }: WorkspaceCreditPoolCycleHistoryTableProps) {
+  const [visibleRowCount, setVisibleRowCount] = useState(
+    INITIAL_CYCLE_HISTORY_ROW_COUNT
+  );
+
   if (cycleBreakdown.length === 0) {
     return null;
   }
-  const rows: CycleHistoryRowData[] = cycleBreakdown.map((cycle) => ({
-    cycle:
-      cycle.cycleStartMs && cycle.cycleEndMs
-        ? `${formatConsumptionDate(cycle.cycleStartMs)} – ${formatConsumptionDate(cycle.cycleEndMs)}`
-        : "Unknown cycle",
-    consumedCredits: formatCredits(Math.round(cycle.consumedCredits)),
-  }));
+
+  const rows: CycleHistoryRowData[] = cycleBreakdown
+    .slice(0, visibleRowCount)
+    .map((cycle) => ({
+      cycle:
+        cycle.cycleStartMs && cycle.cycleEndMs
+          ? `${formatConsumptionDate(cycle.cycleStartMs)} – ${formatConsumptionDate(cycle.cycleEndMs)}`
+          : "Unknown cycle",
+      consumedCredits: formatCredits(Math.round(cycle.consumedCredits)),
+    }));
+
   return (
     <>
       <Page.H variant="h5">Previous cycles</Page.H>
-      <DataTable data={rows} columns={CYCLE_HISTORY_COLUMNS} />
+      <DataTable
+        data={rows}
+        columns={CYCLE_HISTORY_COLUMNS}
+        totalRowCount={cycleBreakdown.length}
+        onLoadMore={() =>
+          setVisibleRowCount((count) => count + CYCLE_HISTORY_LOAD_MORE_COUNT)
+        }
+      />
     </>
   );
 }
