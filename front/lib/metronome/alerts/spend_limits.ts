@@ -50,6 +50,10 @@ function perUserWarningAlertUniquenessKeyPrefix(workspaceId: string): string {
   return `per-user-warning-${workspaceId}-`;
 }
 
+function perApiKeyCapAlertUniquenessKeyPrefix(workspaceId: string): string {
+  return `per-api-key-cap-${workspaceId}-`;
+}
+
 // Prefixes for the per-seat-type default and per-group cap/warning alert
 // uniqueness keys. Unlike the per-user keys, these carry the workspace id as
 // their final `-<workspaceId>` segment. Kept as the single source of truth for
@@ -76,13 +80,14 @@ export function isUnusedSpendCapAlertUniquenessKey(
   uniquenessKey: string,
   workspaceId: string
 ): boolean {
-  // Per-user cap / warning: workspace id is embedded in the prefix, followed by
-  // the user id.
+  // Per-user cap / warning and per-API-key cap: workspace id is embedded in the
+  // prefix, followed by the user id (resp. the api key name).
   if (
     uniquenessKey.startsWith(perUserAlertUniquenessKeyPrefix(workspaceId)) ||
     uniquenessKey.startsWith(
       perUserWarningAlertUniquenessKeyPrefix(workspaceId)
-    )
+    ) ||
+    uniquenessKey.startsWith(perApiKeyCapAlertUniquenessKeyPrefix(workspaceId))
   ) {
     return true;
   }
