@@ -94,9 +94,6 @@ export function ManagePodGroupsPanel({
   }, []);
 
   const editorColumn: ColumnDef<GroupRowData>[] = useMemo(() => {
-    if (pod.isAdminControlled) {
-      return [];
-    }
     return [
       {
         id: "editor",
@@ -125,7 +122,7 @@ export function ManagePodGroupsPanel({
         },
       },
     ];
-  }, [pod.isAdminControlled, selectedGroupIds, editorGroupIds, toggleEditor]);
+  }, [selectedGroupIds, editorGroupIds, toggleEditor]);
 
   const handleSave = async () => {
     setIsSaving(true);

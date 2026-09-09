@@ -17,5 +17,4 @@ export interface PodMetadataType {
   tabsOrder: string[];
   defaultAgentId: string | null;
   defaultSkillIds: string[];
-  isAdminControlled: boolean;
 }

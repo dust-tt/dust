@@ -75,46 +75,6 @@ app.patch(
 
     const body = ctx.req.valid("json");
 
-    if (body.isAdminControlled !== undefined) {
-      if (!(await hasFeatureFlag(auth, "admin_controlled_pods"))) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "feature_flag_not_found",
-            message:
-              "Admin-controlled Pods are not enabled for this workspace.",
-          },
-        });
-      }
-
-      // biome-ignore lint/plugin/noDirectRoleCheck: endpoint can be called by any authenticated user.
-      if (!auth.isAdmin()) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "Only workspace admins can change admin-controlled Pod mode.",
-          },
-        });
-      }
-
-      // Admin-controlled means workspace admins are the only administrators. A group attached to
-      // the Pod as an editor would keep administrating it, so the mode is refused while one is.
-      // Pods are manually managed in the product today; this covers one configured through the
-      // API.
-      if (await space.hasAttachedGroups(auth)) {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "Admin-controlled mode requires manual membership management.",
-          },
-        });
-      }
-    }
-
     if (body.pinnedFramePath !== undefined) {
       const validation = await validatePinnedFramePath(
         auth,
@@ -234,46 +194,6 @@ app.patch(
 
     let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 
-    const priorIsAdminControlled = metadata?.isAdminControlled ?? false;
-
-    if (
-      body.isAdminControlled !== undefined &&
-      body.isAdminControlled !== priorIsAdminControlled
-    ) {
-      const membershipRes = await space.applyAdminControlledMembershipChange(
-        auth,
-        body.isAdminControlled
-      );
-      if (membershipRes.isErr()) {
-        switch (membershipRes.error.code) {
-          case "unauthorized":
-            return apiError(ctx, {
-              status_code: 403,
-              api_error: {
-                type: "workspace_auth_error",
-                message: membershipRes.error.message,
-              },
-            });
-          case "group_requirements_not_met":
-            return apiError(ctx, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: membershipRes.error.message,
-              },
-            });
-          default:
-            return apiError(ctx, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: membershipRes.error.message,
-              },
-            });
-        }
-      }
-    }
-
     if (!metadata) {
       metadata = await ProjectMetadataResource.makeNew(auth, space, {
         description: body.description ?? null,
@@ -285,7 +205,6 @@ app.patch(
         frameTabs: resolvedFileTabs?.fileTabs ?? [],
         tabsOrder: resolvedFileTabs?.tabsOrder ?? [],
         defaultAgentId: body.defaultAgentId ?? null,
-        isAdminControlled: body.isAdminControlled ?? false,
       });
       if (resolvedDefaultSkills) {
         await metadata.setDefaultSkills(resolvedDefaultSkills);
@@ -315,9 +234,7 @@ app.patch(
       if (body.defaultAgentId !== undefined) {
         await metadata.updateDefaultAgentId(body.defaultAgentId);
       }
-      if (body.isAdminControlled !== undefined) {
-        await metadata.updateIsAdminControlled(body.isAdminControlled);
-      }
+
       if (resolvedDefaultSkills) {
         await metadata.setDefaultSkills(resolvedDefaultSkills);
       }

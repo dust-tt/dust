@@ -179,9 +179,6 @@ const app = workspaceApp();
  *                           description: Interleaved system tab ids and frame paths before Settings.
  *                           items:
  *                             type: string
- *                         isAdminControlled:
- *                           type: boolean
- *                           description: Whether workspace admins control membership and connected data for this Pod.
  *       401:
  *         description: Unauthorized
  *   patch:
@@ -358,7 +355,7 @@ app.get(
           meta?.tabsOrder ?? [],
           (meta?.frameTabs ?? []).map((tab) => tab.path)
         ),
-        isAdminControlled: meta?.isAdminControlled ?? false,
+        isAdminControlled: false,
       },
     });
   }

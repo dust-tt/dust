@@ -29,7 +29,6 @@ import {
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import {
   CheckCircle,
-  CloudArrowLeftRight,
   Folder,
   MessageChatSquare,
   NavTabPill,
@@ -52,10 +51,6 @@ const SYSTEM_TAB_TRIGGERS = {
   files: {
     label: "Files",
     icon: Folder,
-  },
-  connected_data: {
-    label: "Connected Data",
-    icon: CloudArrowLeftRight,
   },
 } as const;
 
@@ -92,7 +87,6 @@ export function PodPage() {
     podId,
     podUiPreferences,
     setPodUiPreferences,
-    isAdminControlled: podInfo?.isAdminControlled,
   });
 
   const fileTabs = useMemo(
@@ -111,16 +105,9 @@ export function PodPage() {
     [fileTabs, hasFileTabs, podInfo?.tabsOrder]
   );
 
-  const navVisibility = useMemo(
-    () => ({
-      includeConnectedData: !!podInfo?.isAdminControlled,
-    }),
-    [podInfo?.isAdminControlled]
-  );
-
   const navItemsBeforeSettings = useMemo(
-    () => buildPodNavItemsBeforeSettings(fileTabs, tabsOrder, navVisibility),
-    [fileTabs, tabsOrder, navVisibility]
+    () => buildPodNavItemsBeforeSettings(fileTabs, tabsOrder),
+    [fileTabs, tabsOrder]
   );
 
   // Drop file-tab selection when the flag is off or the tab was removed
@@ -252,7 +239,6 @@ export function PodPage() {
           fileTabs={fileTabs}
           tabsOrder={tabsOrder}
           isEditor={podInfo.isEditor}
-          navVisibility={navVisibility}
           tab={editingFileTab}
           isOpen
           onClose={() => setEditingFileTab(null)}

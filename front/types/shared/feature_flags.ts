@@ -375,12 +375,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "frankaloia",
   },
-  admin_controlled_pods: {
-    description:
-      "Enable admin-controlled Pods: admins manage membership and attach connected data (Space DataSourceViews) to the Pod itself.",
-    stage: "dust_only",
-    owner: "Fraggle",
-  },
   pod_frame_tabs: {
     description:
       "Allow adding previewable Pod files (frames, markdown, and other previews) as custom tabs (title, icon, order) on the pod.",
