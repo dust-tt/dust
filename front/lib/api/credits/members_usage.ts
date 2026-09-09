@@ -1780,6 +1780,64 @@ export async function resolveMatchingMemberUserIds({
 // for those columns. Every other column is not indexed, so to sort by it we
 // fetch the full matching set with Elasticsearch `search_after`, rank it by
 // the relevant signal, sort in-app, then slice the requested page.
+// Per-user rank for one in-app sort column. A `null` key means the user has no
+// comparable value. Tiebreaks are generic: one follows the requested direction,
+// the other is always descending.
+export type MembersUsageSortMeta = {
+  sortKey: number | string | null;
+  directionalTiebreak?: number;
+  descendingTiebreak?: number;
+};
+
+// Rows without a comparable key group last regardless of direction, then the
+// two tiebreaks apply, then a stable name/id order so pages don't reshuffle.
+export function makeMembersUsageComparator({
+  sortMetaByUserId,
+  displayNameByUserId,
+  orderDirection,
+}: {
+  sortMetaByUserId: ReadonlyMap<string, MembersUsageSortMeta>;
+  displayNameByUserId: ReadonlyMap<string, string>;
+  orderDirection: "asc" | "desc";
+}): (a: { sId: string }, b: { sId: string }) => number {
+  const directionFactor = orderDirection === "asc" ? 1 : -1;
+  return (a, b) => {
+    const metaA = sortMetaByUserId.get(a.sId);
+    const metaB = sortMetaByUserId.get(b.sId);
+
+    const keyA = metaA?.sortKey ?? null;
+    const keyB = metaB?.sortKey ?? null;
+    if ((keyA === null) !== (keyB === null)) {
+      return keyA === null ? 1 : -1;
+    }
+    if (keyA !== null && keyB !== null) {
+      const cmp =
+        typeof keyA === "number" && typeof keyB === "number"
+          ? keyA - keyB
+          : String(keyA).localeCompare(String(keyB));
+      if (cmp !== 0) {
+        return cmp * directionFactor;
+      }
+    }
+    const directionalA = metaA?.directionalTiebreak ?? 0;
+    const directionalB = metaB?.directionalTiebreak ?? 0;
+    if (directionalA !== directionalB) {
+      return (directionalA - directionalB) * directionFactor;
+    }
+    const descendingA = metaA?.descendingTiebreak ?? 0;
+    const descendingB = metaB?.descendingTiebreak ?? 0;
+    if (descendingA !== descendingB) {
+      return descendingB - descendingA;
+    }
+    const nameA = (displayNameByUserId.get(a.sId) ?? "").toLowerCase();
+    const nameB = (displayNameByUserId.get(b.sId) ?? "").toLowerCase();
+    if (nameA !== nameB) {
+      return nameA < nameB ? -1 : 1;
+    }
+    return a.sId < b.sId ? -1 : a.sId > b.sId ? 1 : 0;
+  };
+}
+
 /**
  * @cc [owner:avervaet,label:product] sort-keys-match-rendered-source
  * Every in-app sort key must be derived from the same data source as the response field it
@@ -1838,17 +1896,7 @@ async function resolveMembersUsagePageUsers({
     memberships.map((m) => [m.userId, m])
   );
 
-  // Per-user rank for the requested column. A `null` key means the user has no
-  // comparable value. Tiebreaks are generic: one follows the requested
-  // direction, the other is always descending.
-  const sortMetaByUserId = new Map<
-    string,
-    {
-      sortKey: number | string | null;
-      directionalTiebreak?: number;
-      descendingTiebreak?: number;
-    }
-  >();
+  const sortMetaByUserId = new Map<string, MembersUsageSortMeta>();
   switch (orderColumn) {
     case "consumedAwuCredits": {
       // Split consumed credits on seat type so free-seat users sort by their
@@ -2059,45 +2107,16 @@ async function resolveMembersUsagePageUsers({
       assertNever(orderColumn);
   }
 
-  const directionFactor = orderDirection === "asc" ? 1 : -1;
-  const sortedUsers = [...allUsers].sort((a, b) => {
-    const metaA = sortMetaByUserId.get(a.sId);
-    const metaB = sortMetaByUserId.get(b.sId);
-
-    // Incomparable rows (null key, or no key computed) group last regardless
-    // of direction (see contract on this function).
-    const keyA = metaA?.sortKey ?? null;
-    const keyB = metaB?.sortKey ?? null;
-    if ((keyA === null) !== (keyB === null)) {
-      return keyA === null ? 1 : -1;
-    }
-    if (keyA !== null && keyB !== null) {
-      const cmp =
-        typeof keyA === "number" && typeof keyB === "number"
-          ? keyA - keyB
-          : String(keyA).localeCompare(String(keyB));
-      if (cmp !== 0) {
-        return cmp * directionFactor;
-      }
-    }
-    const directionalA = metaA?.directionalTiebreak ?? 0;
-    const directionalB = metaB?.directionalTiebreak ?? 0;
-    if (directionalA !== directionalB) {
-      return (directionalA - directionalB) * directionFactor;
-    }
-    const descendingA = metaA?.descendingTiebreak ?? 0;
-    const descendingB = metaB?.descendingTiebreak ?? 0;
-    if (descendingA !== descendingB) {
-      return descendingB - descendingA;
-    }
-    // Stable, direction-independent tiebreaker so pages don't reshuffle.
-    const nameA = (a.fullName() || a.name).toLowerCase();
-    const nameB = (b.fullName() || b.name).toLowerCase();
-    if (nameA !== nameB) {
-      return nameA < nameB ? -1 : 1;
-    }
-    return a.sId < b.sId ? -1 : a.sId > b.sId ? 1 : 0;
-  });
+  const displayNameByUserId = new Map(
+    allUsers.map((u) => [u.sId, u.fullName() || u.name])
+  );
+  const sortedUsers = [...allUsers].sort(
+    makeMembersUsageComparator({
+      sortMetaByUserId,
+      displayNameByUserId,
+      orderDirection,
+    })
+  );
 
   return new Ok({
     users: sortedUsers.slice(offset, offset + limit),

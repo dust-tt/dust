@@ -1,14 +1,12 @@
 import type { MembershipSeatType } from "@app/types/memberships";
+import { isSeatBased } from "@app/types/memberships";
 
 // Pure seat-usage arithmetic. Every place that derives a seat percentage or an
 // allowance/pool split must go through here so the numbers never drift apart.
 
-/**
- * @cc [owner:avervaet,label:product] allowance-first-split
- * `consumedFromAllowanceAwuCredits` is `totalConsumedAwuCredits` capped at
- * `allowanceAwuCredits` (floored at 0), and `consumedFromPoolAwuCredits` is the remainder, so the
- * two always sum to `totalConsumedAwuCredits`.
- */
+// Credits drain seat-allowance-first, then the workspace pool: the allowance
+// share is the total capped at the allowance and the pool share is the rest,
+// so the two always sum back to the total.
 export function splitConsumedAwuCredits({
   totalConsumedAwuCredits,
   allowanceAwuCredits,
@@ -30,17 +28,13 @@ export function splitConsumedAwuCredits({
   };
 }
 
-/**
- * @cc [owner:avervaet,label:product] free-seat-balance-fallback
- * For a `free` seat, `consumed` is `memberUsageLimit - seatBalanceAwu` (floored at 0) only when
- * both are numbers; when either is `null` (balance unknown) it falls back to
- * `consumedFromAllowanceAwuCredits` and must never be treated as fully consumed.
- */
-/**
- * @cc [owner:avervaet,label:product] percent-requires-seat-and-allowance
- * `percent` is a number in `[0, 100]` iff `seatType` is a real seat (not `null`, not `"none"`) and
- * `memberUsageLimit` is positive; otherwise it is `null` and callers must not rank or render it.
- */
+// Free seats hold a lifetime grant, so their consumption is derived from the
+// live balance when it is known. An unknown balance falls back to the period
+// allowance spend rather than being treated as fully consumed.
+//
+// `percent` is only defined for seat types that carry a personal allocation
+// and only when that allocation is positive; otherwise it is `null` and there
+// is nothing to render or rank.
 export function computeSeatUsage({
   seatType,
   memberUsageLimit,
@@ -55,6 +49,7 @@ export function computeSeatUsage({
   percent: number | null;
   consumed: number;
   allowance: number;
+  isFreeWithBalance: boolean;
 } {
   const allowance = memberUsageLimit ?? 0;
   const isFreeWithBalance =
@@ -64,13 +59,13 @@ export function computeSeatUsage({
   const consumed = isFreeWithBalance
     ? Math.max(0, memberUsageLimit - seatBalanceAwu)
     : consumedFromAllowanceAwuCredits;
-  const hasSeat = seatType !== null && seatType !== "none";
   return {
     percent:
-      hasSeat && allowance > 0
+      isSeatBased(seatType) && allowance > 0
         ? Math.min(100, (consumed / allowance) * 100)
         : null,
     consumed,
     allowance,
+    isFreeWithBalance,
   };
 }

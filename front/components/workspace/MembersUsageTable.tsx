@@ -262,11 +262,7 @@ export function AwuUsageBar({
   );
   // For free seats: use lifetime consumed (derived from the live Metronome
   // balance) instead of period spend, so the bar reflects remaining credit.
-  const isFreeWithBalance =
-    seatType === "free" &&
-    typeof seatBalanceAwu === "number" &&
-    typeof memberUsageLimit === "number";
-  const { consumed: seatConsumed } = computeSeatUsage({
+  const { consumed: seatConsumed, isFreeWithBalance } = computeSeatUsage({
     seatType,
     memberUsageLimit,
     seatBalanceAwu: seatBalanceAwu ?? null,
@@ -616,13 +612,8 @@ const seatUsageColumn: ColumnDef<RowData, string> = {
   header: "Seat usage",
   enableSorting: true,
   sortDescFirst: true,
-  accessorFn: (row) =>
-    computeSeatUsage({
-      seatType: row.seatType,
-      memberUsageLimit: row.memberUsageLimit,
-      seatBalanceAwu: row.seatBalanceAwu,
-      consumedFromAllowanceAwuCredits: row.consumedFromAllowanceAwuCredits,
-    }).percent?.toString() ?? "",
+  // Sorting is server-side; the accessor only exists so the header is sortable.
+  accessorFn: (row) => row.memberUsageLimit?.toString() ?? "",
   cell: (info: Info) => {
     const { seatType, memberUsageLimit, seatBalanceAwu, isSeatChangePending } =
       info.row.original;

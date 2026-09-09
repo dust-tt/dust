@@ -39,7 +39,12 @@ describe("computeSeatUsage", () => {
         seatBalanceAwu: null,
         consumedFromAllowanceAwuCredits: 50,
       })
-    ).toEqual({ percent: 25, consumed: 50, allowance: 200 });
+    ).toEqual({
+      percent: 25,
+      consumed: 50,
+      allowance: 200,
+      isFreeWithBalance: false,
+    });
   });
 
   it("caps the percent at 100", () => {
@@ -61,7 +66,12 @@ describe("computeSeatUsage", () => {
         seatBalanceAwu: 30,
         consumedFromAllowanceAwuCredits: 5,
       })
-    ).toEqual({ percent: 70, consumed: 70, allowance: 100 });
+    ).toEqual({
+      percent: 70,
+      consumed: 70,
+      allowance: 100,
+      isFreeWithBalance: true,
+    });
   });
 
   it("floors free-seat consumption at 0 when the balance exceeds the limit", () => {
@@ -83,7 +93,12 @@ describe("computeSeatUsage", () => {
         seatBalanceAwu: null,
         consumedFromAllowanceAwuCredits: 40,
       })
-    ).toEqual({ percent: 40, consumed: 40, allowance: 100 });
+    ).toEqual({
+      percent: 40,
+      consumed: 40,
+      allowance: 100,
+      isFreeWithBalance: false,
+    });
   });
 
   it("ignores the balance for non-free seats", () => {
@@ -100,6 +115,8 @@ describe("computeSeatUsage", () => {
   it.each([
     { seatType: "workspace" as const, memberUsageLimit: null },
     { seatType: "workspace" as const, memberUsageLimit: 0 },
+    { seatType: "workspace" as const, memberUsageLimit: 100 },
+    { seatType: "workspace_yearly" as const, memberUsageLimit: 100 },
     { seatType: "pro" as const, memberUsageLimit: 0 },
     { seatType: "pro" as const, memberUsageLimit: null },
     { seatType: null, memberUsageLimit: 100 },
