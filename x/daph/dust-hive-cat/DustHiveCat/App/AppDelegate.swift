@@ -205,7 +205,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Speed submenu
         let speedItem = NSMenuItem(title: "Speed", action: nil, keyEquivalent: "")
         let speedMenu = NSMenu()
-        for speed in ["0.5x", "0.75x", "1x", "1.25x", "1.5x", "2x"] {
+        for speed in ["0.1x", "0.25x", "0.5x", "0.75x", "1x", "1.25x", "1.5x", "2x"] {
             let item = NSMenuItem(title: speed, action: #selector(selectSpeed(_:)), keyEquivalent: "")
             item.representedObject = speed
             speedMenu.addItem(item)
@@ -285,16 +285,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    /// Status bar icon for the currently selected pet, falling back to the
+    /// shared cat icons for pets that don't ship their own.
+    private func statusBarIcon(_ name: String) -> NSImage? {
+        guard let resourcePath = Bundle.main.resourcePath else { return nil }
+        let petId = CatPreferences.shared.catType
+        return NSImage(contentsOfFile: "\(resourcePath)/statusbar/\(petId)/\(name).png")
+            ?? NSImage(contentsOfFile: "\(resourcePath)/statusbar/\(name).png")
+    }
+
     @objc private func updateStatusBarIcon() {
         guard let button = statusItem?.button else { return }
 
-        // Load sleeping cat icon for idle state
-        if let resourcePath = Bundle.main.resourcePath {
-            let path = "\(resourcePath)/statusbar/icon_idle.png"
-            if let image = NSImage(contentsOfFile: path) {
-                button.image = resizeForStatusBar(image)
-                return
-            }
+        // Load sleeping icon for idle state
+        if let image = statusBarIcon("icon_idle") {
+            button.image = resizeForStatusBar(image)
+            return
         }
 
         // Fallback to system icon
@@ -436,12 +442,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Load custom status bar animation frames
         statusBarFrames = []
 
-        if let resourcePath = Bundle.main.resourcePath {
-            for i in 1...6 {
-                let path = "\(resourcePath)/statusbar/icon_\(i).png"
-                if let image = NSImage(contentsOfFile: path) {
-                    statusBarFrames.append(resizeForStatusBar(image))
-                }
+        for i in 1...6 {
+            if let image = statusBarIcon("icon_\(i)") {
+                statusBarFrames.append(resizeForStatusBar(image))
             }
         }
 
