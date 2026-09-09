@@ -199,6 +199,8 @@ describe("/api/w/[wId]/usage_settings/default_user_spend_limit", () => {
       const response = await putRequest(workspace.sId, { awuCredits: 5000 });
 
       expect(response.status).toBe(403);
+      const data = (await response.json()) as { error: { type: string } };
+      expect(data.error.type).toBe("workspace_auth_error");
       expect(businessLayer.setDefaultUserSpendLimit).not.toHaveBeenCalled();
     });
 

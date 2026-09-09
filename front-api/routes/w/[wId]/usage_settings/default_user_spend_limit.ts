@@ -78,12 +78,6 @@ function mapErrorToApiError(
 // Mounted at /api/w/:wId/usage_settings/default_user_spend_limit.
 const app = workspaceApp();
 
-/**
- * @cc [owner:avervaet,label:security] read-guard-matches-page-role-gate
- * This handler's role guard must never be weaker than the minimum workspace role that can
- * reach the page(s) reading it (currently the Usage page, gated to managers and admins). Widen
- * the guard only after widening that gate.
- */
 app.get(
   "/",
   ensureIsManager(),
