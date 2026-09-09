@@ -10,6 +10,9 @@
   ],
   "metadata": {
     "conversation_id": "string",
+    "conversation_creator_id": "string",
+    "conversation_creator_email": "string",
+    "access_relation": "string",
     "actor_type": "string"
   }
 }

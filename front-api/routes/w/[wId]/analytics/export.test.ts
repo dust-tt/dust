@@ -2,11 +2,22 @@ import {
   exportTable,
   stringifyExportTableAsCsv,
 } from "@app/lib/api/analytics/export_tables";
+import type * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => {
+  const actual = await vi.importActual<typeof workosAudit>(
+    "@app/lib/api/audit/workos_audit"
+  );
+  return {
+    ...actual,
+    emitAuditLogEvent: vi.fn(),
+  };
+});
 
 vi.mock(import("@app/lib/api/analytics/export_tables"), async (orig) => {
   const mod = await orig();
@@ -16,6 +27,8 @@ vi.mock(import("@app/lib/api/analytics/export_tables"), async (orig) => {
     stringifyExportTableAsCsv: vi.fn(),
   };
 });
+
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 
 async function setupTest({
   role = "admin",
@@ -41,6 +54,13 @@ function exportRequest(
 }
 
 describe("GET /api/w/:wId/analytics/export", () => {
+  beforeEach(() => {
+    vi.mocked(emitAuditLogEvent).mockClear();
+    vi.mocked(emitAuditLogEvent).mockResolvedValue(undefined);
+    vi.mocked(exportTable).mockClear();
+    vi.mocked(stringifyExportTableAsCsv).mockClear();
+  });
+
   it("returns 403 for users without analytics permission", async () => {
     const { workspace } = await setupTest({ role: "user" });
 
@@ -51,6 +71,7 @@ describe("GET /api/w/:wId/analytics/export", () => {
       error: { type: "workspace_auth_error" },
     });
     expect(vi.mocked(exportTable)).not.toHaveBeenCalled();
+    expect(vi.mocked(emitAuditLogEvent)).not.toHaveBeenCalled();
   });
 
   it("returns 200 with CSV for admin users", async () => {
@@ -72,6 +93,17 @@ describe("GET /api/w/:wId/analytics/export", () => {
       "dust_usage_metrics_2026-01-01_2026-01-31.csv"
     );
     expect(await response.text()).toBe("date,messages\n");
+    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "analytics.exported",
+        metadata: expect.objectContaining({
+          export_name: "analytics_table",
+          dataset: "usage_metrics",
+          format: "csv",
+          row_count: "0",
+        }),
+      })
+    );
   });
 
   it("returns 200 with JSON rows when format is json", async () => {
