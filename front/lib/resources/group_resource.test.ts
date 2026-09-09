@@ -1379,6 +1379,41 @@ describe("GroupResource", () => {
         expect(await roleOf(member)).toBe("admin");
       });
 
+      it("does not downgrade the acting admin, but downgrades other members", async () => {
+        // `user`/`authenticator` is the acting admin. Keep admin still granted by
+        // another group so the last-group protection does not apply, isolating the
+        // acting-admin protection.
+        const otherAdmin = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, otherAdmin, {
+          role: "admin",
+        });
+        const adminGroupY = await makeRoleGroup(
+          "g-admin-y",
+          "admin",
+          "regular_manual"
+        );
+        await adminGroupY.dangerouslyAddMembers(authenticator, {
+          users: [otherAdmin.toJSON()],
+        });
+
+        const memberZ = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, memberZ, { role: "user" });
+
+        const groupX = await makeRoleGroup("g-x", "admin", "regular_manual");
+        await groupX.dangerouslyAddMembers(authenticator, {
+          users: [user.toJSON(), memberZ.toJSON()],
+        });
+        expect(await roleOf(user)).toBe("admin");
+        expect(await roleOf(memberZ)).toBe("admin");
+
+        // Remap X to manager. Admin is still granted by Y, so only the acting
+        // admin (`user`) is kept; the other member is downgraded.
+        const res = await groupX.setGrantedRole(authenticator, "manager");
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(user)).toBe("admin");
+        expect(await roleOf(memberZ)).toBe("manager");
+      });
+
       it("rejects mapping a non-manageable group kind", async () => {
         const autoGroup = await GroupResource.makeNew({
           name: "g-auto",

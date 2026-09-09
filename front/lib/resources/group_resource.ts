@@ -2851,6 +2851,10 @@ export class GroupResource extends BaseResource<GroupModel> {
    * holders are recomputed normally (a member who is no longer in any granting
    * group is downgraded).
    *
+   * `protectUserModelIds` lists users who must never be downgraded by this sync.
+   * It is used when an admin sets a group's role so that configuring a mapping
+   * never strips the acting admin's own role as a side effect.
+   *
    * `updateMembershipRole` records the change via the structured audit log; the
    * triggering action (group membership change, directory sync, or mapping edit)
    * is itself audited by its own call-site (e.g. `scim.group_user_*` events).
@@ -2864,9 +2868,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       transaction,
       protectRoles,
+      protectUserModelIds,
     }: {
       transaction?: Transaction;
       protectRoles?: Set<MembershipRoleType>;
+      protectUserModelIds?: Set<ModelId>;
     } = {}
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
@@ -2898,12 +2904,13 @@ export class GroupResource extends BaseResource<GroupModel> {
         continue;
       }
 
-      // Never strip a protected role: if the member's current (highest) role is
-      // no longer granted by any group in the workspace, keep it rather than
-      // downgrading them.
+      // Never strip a protected role or a protected user: keep the current role
+      // when downgrading would remove a role that has no granting group left, or
+      // would downgrade a protected user (e.g. the admin configuring the mapping).
       if (
         isMorePrivilegedRole(currentMembership.role, newRole) &&
-        protectRoles?.has(currentMembership.role)
+        (protectRoles?.has(currentMembership.role) ||
+          protectUserModelIds?.has(user.id))
       ) {
         continue;
       }
@@ -2943,9 +2950,11 @@ export class GroupResource extends BaseResource<GroupModel> {
    * workspace role MUST be recomputed. A role that has no granting group left
    * after the change (its last group was cleared/remapped) MUST NOT be stripped
    * from its current holders; a role still granted by another group is recomputed
-   * normally (a member no longer in any granting group is downgraded). Only
-   * manageable group kinds (provisioned, regular_manual) may carry a granted
-   * role, and only workspace admins may change it.
+   * normally (a member no longer in any granting group is downgraded). The admin
+   * performing the change MUST NOT be downgraded by it (configuring a mapping
+   * must not strip the acting admin's own role). Only manageable group kinds
+   * (provisioned, regular_manual) may carry a granted role, and only workspace
+   * admins may change it.
    *
    * Sets (or clears, with null) the workspace role this group grants to its
    * members, then re-syncs their roles. A role that no longer has any granting
@@ -2998,9 +3007,17 @@ export class GroupResource extends BaseResource<GroupModel> {
       GROUP_GRANTABLE_ROLES.filter((role) => !grantedRolesLeft.has(role))
     );
 
+    // Never downgrade the admin performing the change: configuring a mapping
+    // must not strip the acting admin's own role as a side effect.
+    const actingUserModelId = auth.user()?.id;
+    const protectUserModelIds = actingUserModelId
+      ? new Set([actingUserModelId])
+      : undefined;
+
     const members = await this.getActiveMembers(auth);
     await GroupResource.recomputeAndSyncWorkspaceRolesForUsers(auth, members, {
       protectRoles,
+      protectUserModelIds,
     });
 
     return new Ok(undefined);
