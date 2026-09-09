@@ -4,6 +4,7 @@ import {
   EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
   EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER,
 } from "@app/lib/api/assistant/email/webhook_helpers";
+import { config as cellsConfig } from "@app/lib/api/cells/config";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,9 +16,15 @@ vi.mock("@app/lib/api/cells/config", async (importOriginal) => {
     ...actual,
     config: {
       ...actual.config,
-      getCurrentRegion: () => "europe-west1",
+      getCurrentCell: vi.fn(),
       getLookupApiSecret: () => "test-lookup-secret",
-      getOtherCells: () => [
+      getAllCells: () => [
+        {
+          name: "cell-00002",
+          region: "europe-west1",
+          url: "http://last-cell.test",
+        } satisfies CellInfo,
+        actual.config.getCellInfo("cell-00000"),
         {
           name: "cell-00001",
           region: "europe-west1",
@@ -106,9 +113,12 @@ const postWebhook = async (
   });
 };
 
+const getCurrentCellMock = vi.mocked(cellsConfig.getCurrentCell);
+
 describe("POST /api/email/webhook", () => {
   beforeEach(() => {
     vi.mocked(sendEmailToRecipients).mockClear();
+    getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00002"));
   });
 
   it("rejects requests without valid authorization", async () => {
@@ -119,6 +129,7 @@ describe("POST /api/email/webhook", () => {
   });
 
   it("relays with the source error type when no local workspace has email agents enabled", async () => {
+    getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00000"));
     const { user } = await createResourceTest({ role: "admin" });
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}"));
     vi.stubGlobal("fetch", fetchMock);
@@ -137,6 +148,74 @@ describe("POST /api/email/webhook", () => {
       );
       // No bounce from the source region once the relay succeeded.
       expect(sendEmailToRecipients).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("forwards lookup misses without sending an error reply", async () => {
+    getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00001"));
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const response = await postWebhook("unknown-sender@example.com", {
+        ...RELAY_AUTH_HEADERS,
+        [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: "email_agents_disabled",
+      });
+      expect(response.status).toBe(200);
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+      const [relayUrl, relayInit] = fetchMock.mock.calls[0];
+      expect(relayUrl).toBe("http://last-cell.test/api/email/webhook");
+      expect(relayInit.headers[EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]).toBe(
+        "email_agents_disabled"
+      );
+      expect(sendEmailToRecipients).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("tries the next cell after an HTTP error", async () => {
+    getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00000"));
+    const { user } = await createResourceTest({ role: "admin" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 403 }))
+      .mockResolvedValueOnce(new Response("{}"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      await postWebhook(user.email, { Authorization: SENDGRID_AUTH_HEADER });
+
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+        "http://other-region.test/api/email/webhook",
+        "http://last-cell.test/api/email/webhook",
+      ]);
+      expect(sendEmailToRecipients).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("does not try another cell when receipt is uncertain", async () => {
+    getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00000"));
+    const fetchMock = vi.fn().mockRejectedValue(new Error("Response lost"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      await postWebhook("unknown-sender@example.com", {
+        Authorization: SENDGRID_AUTH_HEADER,
+      });
+
+      await vi.waitFor(() =>
+        expect(sendEmailToRecipients).toHaveBeenCalledOnce()
+      );
+      expect(new Set(fetchMock.mock.calls.map(([url]) => url))).toEqual(
+        new Set(["http://other-region.test/api/email/webhook"])
+      );
     } finally {
       vi.unstubAllGlobals();
     }
@@ -165,6 +244,7 @@ describe("POST /api/email/webhook", () => {
   });
 
   it("retries transient relay failures", async () => {
+    getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00000"));
     const { user } = await createResourceTest({ role: "admin" });
     const fetchMock = vi
       .fn()
@@ -245,14 +325,14 @@ describe("POST /api/email/webhook", () => {
     expect(message.html).toContain("Email agents are disabled");
   });
 
-  it("does not relay again from a relayed request", async () => {
+  it("replies once in the last cell without relaying back", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
     try {
       const response = await postWebhook("unknown-sender@example.com", {
         ...RELAY_AUTH_HEADERS,
-        [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: "user_not_found",
+        [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: "email_agents_disabled",
       });
       expect(response.status).toBe(200);
 
@@ -260,6 +340,8 @@ describe("POST /api/email/webhook", () => {
         expect(sendEmailToRecipients).toHaveBeenCalledOnce()
       );
       expect(fetchMock).not.toHaveBeenCalled();
+      const [{ message }] = vi.mocked(sendEmailToRecipients).mock.calls[0];
+      expect(message.html).toContain("Email agents are disabled");
     } finally {
       vi.unstubAllGlobals();
     }
