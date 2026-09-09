@@ -1,5 +1,5 @@
 name: Review bot
-description: Request PR reviews, add PMRR labels, and notify Slack from descriptions and messages.
+description: Request human and contract reviews, add PMRR labels, and notify Slack from PR descriptions and messages.
 
 inputs:
   slack_token:
@@ -8,6 +8,11 @@ inputs:
   slack_channel:
     description: Slack channel ID for review notifications.
     required: true
+
+outputs:
+  pull-request-number:
+    description: PR number when an authorized reviewer list includes bare cc; empty otherwise.
+    value: ${{ steps.request.outputs.pull-request-number }}
 
 runs:
   using: composite
@@ -27,6 +32,9 @@ runs:
           await labelPmrr({ github, context });
           const notification = await requestReviews({ github, context, core });
           if (notification) {
+            if (notification.requests.some((request) => request.contractReview)) {
+              core.setOutput('pull-request-number', notification.pullNumber);
+            }
             const text = await formatSlackNotification({
               notification,
               authors: readFileSync('.authors', 'utf8'),

@@ -1,8 +1,13 @@
 type Repository = { owner: string; repo: string };
 type PullRequestParams = Repository & { pull_number: number };
-type ReviewRequest = { line: string; reviewers: string[] };
+type ReviewRequest = {
+  line: string;
+  reviewers: string[];
+  contractReview: boolean;
+};
 type ReviewNotification = {
   requester: string;
+  pullNumber: number;
   prUrl: string;
   requests: ReviewRequest[];
 };
@@ -52,8 +57,9 @@ type ReviewBotOptions = {
 
 /**
  * @cc [label:product] review-request-syntax
- * Parse the leading list of GitHub mentions after a column-zero `r?` followed by whitespace on each
- * line, retaining the request line for notifications. Trailing prose ends the list. Ignore fenced
+ * Parse consecutive GitHub mentions and bare `cc` tokens after a column-zero `r?` followed by
+ * whitespace, retaining the request line for notifications. Bare `cc` requests a contract review
+ * case-insensitively; `@cc` remains a GitHub mention. Trailing prose ends the list. Ignore fenced
  * code and HTML comments, and deduplicate handles case-insensitively within each request.
  */
 export function parseReviewRequests(
@@ -88,14 +94,19 @@ export function parseReviewRequests(
       continue;
     }
     const reviewers = new Set<string>();
+    let contractReview = false;
     for (const token of request[1].split(/[ \t]+/)) {
+      if (token.toLowerCase() === "cc") {
+        contractReview = true;
+        continue;
+      }
       if (!/^@[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(token)) {
         break;
       }
       reviewers.add(token.slice(1).toLowerCase());
     }
-    if (reviewers.size > 0) {
-      requests.push({ line, reviewers: [...reviewers] });
+    if (reviewers.size > 0 || contractReview) {
+      requests.push({ line, reviewers: [...reviewers], contractReview });
     }
   }
   return requests;
@@ -194,11 +205,19 @@ export async function labelPmrr({
  */
 /**
  * @cc [label:product] review-request-delivery
- * Request every parsed reviewer except the PR author for each eligible description edit or newly
- * posted request, including users who previously reviewed. Open, closed, and merged PRs are eligible.
- * GitHub validation failures do not block other reviewers or Slack notifications. Return the
- * requester, PR URL, and request lines for Slack notification only for eligible requests. Title
- * edits and pushes do not request reviews.
+ * Request every parsed GitHub reviewer except the PR author for each eligible description edit or
+ * new request, including users who previously reviewed. Open, closed, and merged PRs are eligible.
+ * GitHub validation failures do not block other reviewers, contract reviews, or Slack delivery.
+ * Return the requester, PR number, URL, and request lines only for eligible requests. Title edits
+ * and pushes do not request reviews.
+ */
+/**
+ * @cc [label:product] contract-review-delivery
+ * Each eligible event with bare `cc` in a reviewer list requests one contract review, including
+ * description edits retaining `cc`. Callers emit `pull-request-number` before Slack delivery and
+ * invoke the pinned `spolu/code-contracts` contract-review action in a separate job even if Slack
+ * delivery fails. That action reviews only open PRs with heads in this repository and publishes
+ * a COMMENT review pinned to the inspected head.
  */
 /**
  * @cc [label:security] review-automation-source
@@ -262,7 +281,12 @@ export async function requestReviews({
       core.warning(`GitHub rejected the review request for @${reviewer}.`);
     }
   }
-  return { requester: context.actor, prUrl: pr.html_url, requests };
+  return {
+    requester: context.actor,
+    pullNumber: request.number,
+    prUrl: pr.html_url,
+    requests,
+  };
 }
 
 function escapeSlackText(text: string): string {

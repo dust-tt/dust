@@ -20,6 +20,8 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    outputs:
+      pull-request-number: ${{ steps.review-bot.outputs.pull-request-number }}
     steps:
       # Execute the default branch action because review events can originate from PR revisions.
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -28,7 +30,24 @@ jobs:
           persist-credentials: false
 
       - name: Run review bot
+        id: review-bot
         uses: ./.github/actions/review-bot
         with:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           slack_channel: C09GELMTTRT
+
+  contract-review:
+    needs: request-reviews
+    if: ${{ !cancelled() && needs.request-reviews.outputs.pull-request-number != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Review contracts
+        uses: spolu/code-contracts/.github/actions/contract-review@3d3bef00ef8d77978025a28673198b53c3bd6367
+        with:
+          pull-request-number: ${{ needs.request-reviews.outputs.pull-request-number }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: gpt-6-astra
+          effort: xhigh
