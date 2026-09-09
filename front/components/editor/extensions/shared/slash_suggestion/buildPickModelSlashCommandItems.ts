@@ -1,12 +1,16 @@
 import type { SelectModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import { SELECT_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
-import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import {
+  matchesSearchWords,
+  splitSearchWords,
+} from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import {
   buildModelSelection,
   buildTierSelection,
   getEffortStops,
+  getInitialEffort,
   getModelWithReasoningEffortLabel,
   getTierLockReason,
   getTierResolvedModelLabel,
@@ -47,14 +51,38 @@ export function getSelectableEffortsForSlashMenu(
   return ["none"];
 }
 
-function matchesQuery(item: SlashCommand, normalizedQuery: string): boolean {
-  if (normalizedQuery.length === 0) {
-    return true;
+// Tier rows match on their name only.
+function getSearchableText(item: SelectModelSlashCommand): string {
+  return item.data.selection.display.kind === "tier"
+    ? item.label
+    : `${item.label} ${item.description ?? ""}`;
+}
+
+/**
+ * @cc [owner:PopDaph,label:product] default-row-is-model-default-effort
+ * Returns the id of the row for the first model in `items` at its initial effort
+ * (`getInitialEffort`), or `null` when `items` does not start with a model row.
+ */
+export function getDefaultPickModelSlashCommandItemId(
+  items: SelectModelSlashCommand[],
+  { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
+): string | null {
+  const display = items[0]?.data.selection.display;
+  if (!display || display.kind !== "model") {
+    return null;
   }
 
-  return [item.label, item.description]
-    .filter((value): value is string => value !== undefined)
-    .some((value) => value.toLowerCase().includes(normalizedQuery));
+  const effort = getInitialEffort(display.model, { lockPremiumEfforts });
+  const defaultItem = items.find((item) => {
+    const candidate = item.data.selection.display;
+    return (
+      candidate.kind === "model" &&
+      candidate.model.modelId === display.model.modelId &&
+      candidate.effort === effort
+    );
+  });
+
+  return defaultItem?.id ?? null;
 }
 
 function buildTierSlashCommandItems({
@@ -91,6 +119,11 @@ function buildTierSlashCommandItems({
   return items;
 }
 
+/**
+ * @cc [owner:PopDaph,label:product] query-filters-rows-by-word-prefix
+ * An item is kept only if `query` matches (`matchesSearchWords`) its label, extended with its
+ * provider description for model rows; tier rows never match on their description.
+ */
 export function buildPickModelSlashCommandItems({
   getModelIcon,
   lockPremiumEfforts,
@@ -104,7 +137,7 @@ export function buildPickModelSlashCommandItems({
   query: string;
   streams: ModelStreamResolutionsType | null;
 }): SelectModelSlashCommand[] {
-  const normalizedQuery = query.trim().toLowerCase();
+  const queryWords = splitSearchWords(query);
   const selectableModels = models.filter(
     (model) => !isModelStreamId(model.modelId) && model.isSelectable
   );
@@ -142,5 +175,7 @@ export function buildPickModelSlashCommandItems({
     }
   }
 
-  return items.filter((item) => matchesQuery(item, normalizedQuery));
+  return items.filter((item) =>
+    matchesSearchWords(getSearchableText(item), queryWords)
+  );
 }

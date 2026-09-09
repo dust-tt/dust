@@ -1,7 +1,18 @@
-import { buildPickModelSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
-import type { EnabledModelConfigurationType } from "@app/types/api/assistant/models";
+import {
+  buildPickModelSlashCommandItems,
+  getDefaultPickModelSlashCommandItemId,
+} from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
+import type {
+  EnabledModelConfigurationType,
+  ModelStreamResolutionType,
+} from "@app/types/api/assistant/models";
 import { CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { AUTO_COMPLEX_MODEL_CONFIG } from "@app/types/assistant/models/auto";
+import {
+  AUTO_COMPLEX_MODEL_CONFIG,
+  AUTO_COMPLEX_MODEL_ID,
+  AUTO_FAST_MODEL_ID,
+  AUTO_MODEL_ID,
+} from "@app/types/assistant/models/auto";
 import { GEMINI_3_1_FLASH_LITE_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_4_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -97,6 +108,60 @@ describe("buildPickModelSlashCommandItems", () => {
     ]);
   });
 
+  it("matches every query word as a prefix of a label or provider word", () => {
+    const models = [
+      asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
+      asSelectable(GPT_4_1_MODEL_CONFIG),
+    ];
+    const labelsFor = (query: string) =>
+      buildPickModelSlashCommandItems({
+        getModelIcon: () => Icon,
+        lockPremiumEfforts: false,
+        models,
+        query,
+        streams: null,
+      }).map((item) => item.label);
+
+    expect(labelsFor("cl h")).toEqual([
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
+    ]);
+    expect(labelsFor("anthr m")).toEqual([
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
+    ]);
+    // Mid-word substrings do not match.
+    expect(labelsFor("laude")).toEqual([]);
+  });
+
+  it("matches tier rows on their name only", () => {
+    const highResolution: ModelStreamResolutionType = {
+      providerId: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.providerId,
+      modelId: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId,
+      displayName: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName,
+      reasoningEffort: "high",
+    };
+    const itemsFor = (query: string) =>
+      buildPickModelSlashCommandItems({
+        getModelIcon: () => Icon,
+        lockPremiumEfforts: false,
+        models: [asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)],
+        query,
+        streams: {
+          [AUTO_FAST_MODEL_ID]: highResolution,
+          [AUTO_MODEL_ID]: highResolution,
+          [AUTO_COMPLEX_MODEL_ID]: highResolution,
+        },
+      });
+
+    // Every tier description now ends with "High".
+    expect(itemsFor("").map((item) => item.description)).toContain(
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`
+    );
+    expect(itemsFor("prem").map((item) => item.label)).toEqual(["Premium"]);
+    expect(itemsFor("high").map((item) => item.label)).toEqual([
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
+    ]);
+  });
+
   it("omits a tier whose stream is above the member's model-tier cap", () => {
     const items = buildPickModelSlashCommandItems({
       getModelIcon: () => Icon,
@@ -131,5 +196,34 @@ describe("buildPickModelSlashCommandItems", () => {
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
     ]);
+  });
+});
+
+describe("getDefaultPickModelSlashCommandItemId", () => {
+  const itemsFor = (query: string) =>
+    buildPickModelSlashCommandItems({
+      getModelIcon: () => Icon,
+      lockPremiumEfforts: false,
+      models: [asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)],
+      query,
+      streams: null,
+    });
+
+  it("points at the first model's default effort row", () => {
+    expect(
+      getDefaultPickModelSlashCommandItemId(itemsFor("claude"), {
+        lockPremiumEfforts: false,
+      })
+    ).toBe(
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.providerId}/${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId}/${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.defaultReasoningEffort}`
+    );
+  });
+
+  it("returns null when the list starts with a tier row", () => {
+    expect(
+      getDefaultPickModelSlashCommandItemId(itemsFor(""), {
+        lockPremiumEfforts: false,
+      })
+    ).toBeNull();
   });
 });

@@ -9,10 +9,12 @@ import type {
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import type { ResolvedSlashSubMenu } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   clearSlashSubMenuStack,
   PICK_MODEL_SUB_MENU_ID,
+  resolveSlashSubMenuFromQuery,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { SLASH_COMMAND_CAPABILITIES_LOADING_MESSAGE } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { useInputBarSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
@@ -124,15 +126,33 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       [editor, onClose, onModelSelectRef, range, storage]
     );
 
-    const commandItems = useMemo(
-      () =>
+    const getCommandItems = useCallback(
+      (commandQuery: string) =>
         buildInputBarSlashCommandItems({
           commands: slashCommandsRef.current ?? [],
           includeAttachKnowledge: includeAttachKnowledgeRef.current ?? false,
           includePickModel: includePickModelRef.current ?? false,
-          query,
+          query: commandQuery,
         }),
-      [includeAttachKnowledgeRef, includePickModelRef, query, slashCommandsRef]
+      [includeAttachKnowledgeRef, includePickModelRef, slashCommandsRef]
+    );
+
+    const commandItems = useMemo(
+      () => getCommandItems(query),
+      [getCommandItems, query]
+    );
+
+    // "/model fab" opens the model sub-menu with "fab" as its query without pushing a frame.
+    // Back then relies on `pop` deleting the text after "/", not on the (empty) stack.
+    const subMenu = useMemo<ResolvedSlashSubMenu | null>(
+      () =>
+        activeFrame
+          ? { frame: activeFrame, fromQuery: false, query }
+          : resolveSlashSubMenuFromQuery({
+              commandItems: getCommandItems(""),
+              query,
+            }),
+      [activeFrame, getCommandItems, query]
     );
 
     const { capabilityItems, isLoading } = useInputBarSlashCommandCapabilities({
@@ -159,10 +179,12 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       ref,
       () => ({
         onKeyDown: ({ event }) => {
-          if (
-            activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID ||
-            activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID
-          ) {
+          if (subMenu) {
+            // The command text is still in the editor: let Backspace edit it.
+            if (subMenu.fromQuery && event.key === "Backspace") {
+              return false;
+            }
+
             return subMenuRef.current?.onKeyDown({ event }) ?? false;
           }
 
@@ -183,14 +205,14 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           return dropdownRef.current?.onKeyDown({ event }) ?? false;
         },
       }),
-      [activeFrame?.subMenuId, flatItems.length, onClose, query]
+      [flatItems.length, onClose, query, subMenu]
     );
 
-    if (activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID) {
+    if (subMenu?.frame.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID) {
       return (
         <AttachContextSubMenuDropdown
           ref={subMenuRef}
-          activeFrame={activeFrame}
+          activeFrame={subMenu.frame}
           clientRect={clientRect}
           conversationId={conversationIdRef?.current ?? null}
           editor={editor}
@@ -199,7 +221,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           onClose={onClose}
           onSelect={handleAttachContextSelect}
           owner={owner}
-          query={query}
+          query={subMenu.query}
           range={range}
           spaceId={spaceIdRef.current ?? null}
           useCase="conversation-input"
@@ -207,18 +229,18 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       );
     }
 
-    if (activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID) {
+    if (subMenu?.frame.subMenuId === PICK_MODEL_SUB_MENU_ID) {
       return (
         <PickModelSubMenuDropdown
           ref={subMenuRef}
-          activeFrame={activeFrame}
+          activeFrame={subMenu.frame}
           clientRect={clientRect}
           editor={editor}
           onBack={() => pop(range)}
           onClose={onClose}
           onSelect={handleModelSelect}
           owner={owner}
-          query={query}
+          query={subMenu.query}
           range={range}
         />
       );

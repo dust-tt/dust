@@ -1,6 +1,10 @@
 import { isInsertKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { isPickModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import {
+  matchesSearchWords,
+  splitSearchWords,
+} from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import type { Editor, Range } from "@tiptap/core";
 
 export const ATTACH_CONTEXT_SUB_MENU_ID = "attach-context";
@@ -52,6 +56,49 @@ function getSlashCommandSubMenuId(item: SlashCommand): SlashSubMenuId | null {
   }
 
   return null;
+}
+
+export interface ResolvedSlashSubMenu {
+  frame: SlashMenuStackFrame;
+  // True when the frame is derived from the query text rather than the menu stack.
+  fromQuery: boolean;
+  query: string;
+}
+
+/**
+ * @cc [owner:PopDaph,label:product] space-enters-first-sub-menu-command
+ * A query containing a space resolves to the sub-menu of the first item of `commandItems` whose
+ * label matches (`matchesSearchWords`) the text before the first space, with the remainder as
+ * the sub-menu query. It resolves to `null` when no label matches or the first match is not a
+ * sub-menu command.
+ */
+export function resolveSlashSubMenuFromQuery({
+  commandItems,
+  query,
+}: {
+  commandItems: SlashCommand[];
+  query: string;
+}): ResolvedSlashSubMenu | null {
+  const spaceIndex = query.indexOf(" ");
+  // An empty head would match every label; `isAllowedSlashQuery` already rejects "/ ".
+  if (spaceIndex <= 0) {
+    return null;
+  }
+
+  const headWords = splitSearchWords(query.slice(0, spaceIndex));
+  const command = commandItems.find((item) =>
+    matchesSearchWords(item.label, headWords)
+  );
+  const subMenuId = command ? getSlashCommandSubMenuId(command) : null;
+  if (!command || !subMenuId) {
+    return null;
+  }
+
+  return {
+    frame: { command, subMenuId },
+    fromQuery: true,
+    query: query.slice(spaceIndex + 1),
+  };
 }
 
 export function getActiveSlashSubMenuFrame(

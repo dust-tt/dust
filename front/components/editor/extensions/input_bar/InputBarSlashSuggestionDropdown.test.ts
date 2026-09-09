@@ -4,6 +4,11 @@ import {
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { PICK_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import {
+  ATTACH_CONTEXT_SUB_MENU_ID,
+  PICK_MODEL_SUB_MENU_ID,
+  resolveSlashSubMenuFromQuery,
+} from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { describe, expect, it } from "vitest";
 
 import { buildInputBarSlashCommandItems } from "./InputBarSlashSuggestionItems";
@@ -168,5 +173,61 @@ describe("buildInputBarSlashCommandItems", () => {
         query: "zzz",
       })
     ).toEqual([]);
+  });
+});
+
+describe("resolveSlashSubMenuFromQuery", () => {
+  const commandItems = buildInputBarSlashCommandItems({
+    commands: ALL_COMMANDS,
+    includeAttachKnowledge: true,
+    includePickModel: true,
+    query: "",
+  });
+
+  it("enters the first matching sub-menu command with the remainder as query", () => {
+    const resolved = resolveSlashSubMenuFromQuery({
+      commandItems,
+      query: "model fab high",
+    });
+
+    expect(resolved?.frame.subMenuId).toBe(PICK_MODEL_SUB_MENU_ID);
+    expect(resolved?.frame.command.action).toBe(
+      PICK_MODEL_SLASH_COMMAND_ACTION
+    );
+    expect(resolved?.fromQuery).toBe(true);
+    expect(resolved?.query).toBe("fab high");
+
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "mo " })
+    ).toMatchObject({
+      frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
+      query: "",
+    });
+
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "know report" })
+    ).toMatchObject({
+      frame: { subMenuId: ATTACH_CONTEXT_SUB_MENU_ID },
+      query: "report",
+    });
+  });
+
+  it("matches the head against command labels only", () => {
+    // "or" and "the" appear in command descriptions, not labels.
+    for (const query of ["or x", "the x", "s x", "odel x"]) {
+      expect(resolveSlashSubMenuFromQuery({ commandItems, query })).toBeNull();
+    }
+  });
+
+  it("returns null without a space, without a match, or for a run command", () => {
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "model" })
+    ).toBeNull();
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "zzz fab" })
+    ).toBeNull();
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "compact fab" })
+    ).toBeNull();
   });
 });
