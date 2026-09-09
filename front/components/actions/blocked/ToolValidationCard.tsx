@@ -292,10 +292,10 @@ export function ToolValidationCard({
           )}
           {onApproveForConversation && canAlwaysAllow && (
             <Button
-              label="Allow for this conversation"
+              label="Always allow in this conversation"
               variant="outline"
               icon={Check}
-              tooltip="Allow this tool for the rest of this conversation without asking again"
+              tooltip="Stop asking for this tool for the rest of this conversation, on any page or input. Nothing is saved once the conversation ends."
               disabled={isSubmitting}
               isLoading={isApprovingForConversation}
               onClick={() => void handleApproveForConversation()}
