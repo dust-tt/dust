@@ -313,7 +313,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       primaryUser: UserResource;
       secondaryUser: UserResource;
     }
-  ): Promise<void> {
+  ): Promise<number> {
     const workspace = auth.getNonNullableWorkspace();
     const primaryMemberships = await GroupMembershipModel.findAll({
       where: { userId: primaryUser.id, workspaceId: workspace.id },
@@ -331,7 +331,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     }
 
-    await GroupMembershipModel.update(
+    // The affected-row count is the number of group memberships actually transferred (memberships
+    // the primary already had were deleted above, not transferred).
+    const [transferredCount] = await GroupMembershipModel.update(
       { userId: primaryUser.id },
       { where: { userId: secondaryUser.id, workspaceId: workspace.id } }
     );
@@ -341,6 +343,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       [{ user: { id: primaryUser.id }, workspace: { id: workspace.id } }],
       [{ user: { id: secondaryUser.id }, workspace: { id: workspace.id } }],
     ]);
+
+    return transferredCount;
   }
 
   static async makeNew(

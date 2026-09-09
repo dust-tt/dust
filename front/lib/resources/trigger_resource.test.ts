@@ -708,6 +708,8 @@ describe("TriggerResource", () => {
       });
 
       expect(result.isOk()).toBe(true);
+      // Both the enabled and disabled triggers are re-pointed to the primary user.
+      expect(result.isOk() && result.value).toBe(2);
       for (const trigger of [enabledTrigger, disabledTrigger]) {
         const reloaded = await TriggerResource.fetchById(
           authenticator,
@@ -761,6 +763,8 @@ describe("TriggerResource", () => {
       });
 
       expect(result.isOk()).toBe(true);
+      // The secondary user owns no triggers, so nothing is transferred.
+      expect(result.isOk() && result.value).toBe(0);
       const reloaded = await TriggerResource.fetchById(
         authenticator,
         adminTrigger.sId

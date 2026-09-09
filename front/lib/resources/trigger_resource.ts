@@ -783,7 +783,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       fromUser: UserResource;
       toUser: UserResource;
     }
-  ): Promise<Result<undefined, Error>> {
+  ): Promise<Result<number, Error>> {
     assert(
       auth.isAdmin(),
       "Trigger editorship can only be transferred by admins."
@@ -802,7 +802,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       }
     );
     if (updatedRows.length === 0) {
-      return new Ok(undefined);
+      return new Ok(0);
     }
 
     const transferred = updatedRows.map(
@@ -854,7 +854,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       );
     }
 
-    return new Ok(undefined);
+    return new Ok(transferred.length);
   }
 
   static async deleteAllForUser(
