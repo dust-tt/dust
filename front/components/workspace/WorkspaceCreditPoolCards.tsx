@@ -23,6 +23,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
+import type { ReactNode } from "react";
 
 export type CreditPoolFetchStatus = "loading" | "error" | "ready";
 
@@ -265,6 +266,7 @@ interface WorkspaceCreditPoolSectionProps {
   cycleBreakdown: AwuPoolCycleBreakdown[];
   programmaticConsumedCredits: number | null;
   cycleHistoryLoadMore: CycleHistoryLoadMore;
+  headerAction?: ReactNode;
 }
 
 export function WorkspaceCreditPoolSection({
@@ -279,6 +281,7 @@ export function WorkspaceCreditPoolSection({
   cycleBreakdown,
   programmaticConsumedCredits,
   cycleHistoryLoadMore,
+  headerAction,
 }: WorkspaceCreditPoolSectionProps) {
   if (cardsStatus === "ready" && !isVisible) {
     return null;
@@ -286,7 +289,10 @@ export function WorkspaceCreditPoolSection({
 
   return (
     <Page.Vertical gap="xs" align="stretch">
-      <Page.H variant="h4">Credit consumption</Page.H>
+      <div className="flex items-center justify-between">
+        <Page.H variant="h4">Credit consumption</Page.H>
+        {headerAction}
+      </div>
 
       {cardsStatus === "error" ? (
         <ContentMessage
@@ -347,6 +353,7 @@ interface CreditPoolCardsFromCycleDataProps {
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
   tableStatus: CreditPoolFetchStatus;
   cycleHistoryLoadMore: CycleHistoryLoadMore;
+  headerAction?: ReactNode;
 }
 export function CreditPoolCardsFromCycleData({
   awuPoolCurrentCycle,
@@ -355,6 +362,7 @@ export function CreditPoolCardsFromCycleData({
   excessCycleBreakdown,
   tableStatus,
   cycleHistoryLoadMore,
+  headerAction,
 }: CreditPoolCardsFromCycleDataProps) {
   const {
     totalRemainingCredits,
@@ -393,6 +401,7 @@ export function CreditPoolCardsFromCycleData({
       cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
       programmaticConsumedCredits={programmaticConsumedCredits}
       cycleHistoryLoadMore={cycleHistoryLoadMore}
+      headerAction={headerAction}
     />
   );
 }
@@ -400,8 +409,13 @@ export function CreditPoolCardsFromCycleData({
 interface CreditPoolCardsProps {
   owner: LightWorkspaceType;
   disabled: boolean;
+  headerAction?: ReactNode;
 }
-export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
+export function CreditPoolCards({
+  owner,
+  disabled,
+  headerAction,
+}: CreditPoolCardsProps) {
   const { cycleHistoryLimit, onLoadMoreCycleHistory } = useCycleHistoryLimit();
   const {
     awuPoolCurrentCycle,
@@ -440,6 +454,7 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
           isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading,
         onLoadMore: onLoadMoreCycleHistory,
       }}
+      headerAction={headerAction}
     />
   );
 }
