@@ -4,7 +4,7 @@ use crate::oauth::{
     providers::{
         confluence::ConfluenceConnectionProvider,
         confluence_tools::ConfluenceToolsConnectionProvider,
-        databricks::DatabricksConnectionProvider, discord::DiscordConnectionProvider,
+        discord::DiscordConnectionProvider,
         fathom::FathomConnectionProvider, freshservice::FreshserviceConnectionProvider,
         github::GithubConnectionProvider, gmail::GmailConnectionProvider,
         gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
@@ -120,7 +120,6 @@ impl std::error::Error for ConnectionError {}
 pub enum ConnectionProvider {
     Confluence,
     ConfluenceTools,
-    Databricks,
     Discord,
     Fathom,
     Freshservice,
@@ -273,7 +272,6 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
     match t {
         ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
         ConnectionProvider::ConfluenceTools => Box::new(ConfluenceToolsConnectionProvider::new()),
-        ConnectionProvider::Databricks => Box::new(DatabricksConnectionProvider::new()),
         ConnectionProvider::Discord => Box::new(DiscordConnectionProvider::new()),
         ConnectionProvider::Fathom => Box::new(FathomConnectionProvider::new()),
         ConnectionProvider::Freshservice => Box::new(FreshserviceConnectionProvider::new()),
