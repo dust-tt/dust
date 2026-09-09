@@ -16,7 +16,8 @@ The `r?` must start the line without indentation. Surrounding lines and trailing
 only the consecutive mentions immediately after `r?` are reviewers. Fenced code, HTML comments,
 quoted lines, team mentions, and mentions after trailing prose are ignored.
 
-Only human requesters with repository `write`, `maintain`, or `admin` permission can trigger the bot.
+GitHub review requests and Slack notifications require a human requester with repository `write`,
+`maintain`, or `admin` permission.
 Requests are accepted on open, closed, and merged PRs. The bot skips the PR author and logs a warning
 for review requests GitHub rejects with a validation error, while still sending the Slack notification.
 
@@ -35,3 +36,7 @@ Slack delivery errors fail the workflow so rejected notifications are visible in
 The workflow uses `GITHUB_TOKEN` and the existing `SLACK_BOT_TOKEN`, and loads this action from the
 default branch. The Slack bot needs `users:read.email` and permission to post in the reviews channel.
 Merge the workflow and action into that branch to activate it.
+
+The bot also adds the `PMRR` label whenever an eligible description or message contains `PMRR`
+(case-insensitively), on open, closed, or merged PRs. Labeling runs before review requests, does not
+require an `r?` command or requester write access, and never removes labels.
