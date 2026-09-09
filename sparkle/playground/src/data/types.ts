@@ -181,18 +181,33 @@ export interface DataSource {
   icon?: React.ComponentType<{ className?: string }>; // Icon component
 }
 
+/**
+ * The event families an admin works through. Cases that call for the same
+ * decision share a type — a spend limit and a seat are both credit management,
+ * so the admin gets one row and picks how to react.
+ */
 export type RequestType =
-  | "spendLimitUpgrade"
-  | "seatUpgrade"
-  | "dataSourceAdd"
-  | "toolAdd"
-  | "connectorAdd"
+  | "creditManagement"
+  | "knowledgeManagement"
+  | "toolAddition"
   | "userInvitation"
-  | "spaceAccess"
+  | "access"
   | "roleChange"
-  | "agentPublication"
-  | "skillPublication"
-  | "conversationAccess";
+  | "publication";
+
+/**
+ * The case a request is, inside its type. It carries the row icon and decides
+ * which payload the detail panel renders.
+ */
+export type RequestVariant =
+  | "dataSource"
+  | "connector"
+  | "toolCreate"
+  | "toolAddToSpace"
+  | "podAccess"
+  | "spaceAccess"
+  | "agent"
+  | "skill";
 
 export type RequestStatus = "pending" | "done";
 
@@ -200,13 +215,32 @@ export type RequestOutcome = "approved" | "denied";
 
 export type RequestTargetKind =
   | "workspace"
+  | "pod"
   | "space"
   | "user"
   | "agent"
   | "skill"
   | "tool"
-  | "connector"
-  | "conversation";
+  | "connector";
+
+/** The seat a member holds, named as the product names them. */
+export type SeatType = "free" | "pro" | "max" | "platform";
+
+/** Where a credit-management request stands when it lands on the queue. */
+export interface RequestCredit {
+  /** Share of the personal limit consumed. 100 or more reads "Over quota". */
+  usedPercent: number;
+  seatType: SeatType;
+  /** Personal limit, in credits per month. */
+  limit: number;
+}
+
+/** A document a knowledge request wants to bring in, listed like Pod files. */
+export interface RequestDocument {
+  name: string;
+  fileType: DataSourceFileType;
+  provider?: "slack" | "notion" | "drive" | "confluence" | "github";
+}
 
 export interface RequestTarget {
   kind: RequestTargetKind;
@@ -224,11 +258,20 @@ export interface RequestDetail {
 export interface AdminRequest {
   id: string;
   type: RequestType;
+  /** Set for the types that host more than one case. */
+  variant?: RequestVariant;
   title: string;
   requesterId: string; // user ID
+  /** Set when the request is made for someone else. */
+  beneficiaryId?: string; // user ID
   createdAt: Date;
   target: RequestTarget;
-  details: RequestDetail[];
+  /** Labelled payload lines. Types with a bespoke payload leave it out. */
+  details?: RequestDetail[];
+  /** Credit management only: the requester's quota, seat and limit. */
+  credit?: RequestCredit;
+  /** Knowledge management only: the documents the request brings in. */
+  documents?: RequestDocument[];
   /** A note the requester wrote. Most requests come without one. */
   message?: string;
   status: RequestStatus;
@@ -236,4 +279,6 @@ export interface AdminRequest {
   outcome?: RequestOutcome;
   resolvedByUserId?: string;
   resolvedAt?: Date;
+  /** What the decision maker did, or why they declined. */
+  resolutionMessage?: string;
 }

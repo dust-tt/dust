@@ -1,22 +1,41 @@
 import { Avatar, Button, Chip, Separator } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
+import { useState } from "react";
 
 import {
   getBeneficiary,
+  getRequestTypeIcon,
   getResolverLabel,
   REQUEST_OUTCOME_LABELS,
-  REQUEST_TYPE_ICONS,
   REQUEST_TYPE_LABELS,
+  SEAT_TYPE_LABELS,
+  SEAT_UPGRADE_TARGET,
 } from "../data/requests";
-import type { AdminRequest } from "../data/types";
+import type { AdminRequest, RequestOutcome } from "../data/types";
 import { getUserById } from "../data/users";
+import {
+  ApproveDialog,
+  DeclineDialog,
+  SetLimitDialog,
+  UpdateSeatDialog,
+} from "./RequestDecisionDialogs";
+import { formatCredits, RequestPayload } from "./RequestPayload";
 
 interface RequestDetailViewProps {
   request: AdminRequest;
   currentUserId?: string;
-  onApprove?: (requestId: string) => void;
-  onDeny?: (requestId: string) => void;
+  /**
+   * `note` says what the admin did on the types they act on, or why they
+   * declined.
+   */
+  onResolve?: (
+    requestId: string,
+    outcome: RequestOutcome,
+    note?: string
+  ) => void;
 }
+
+type OpenDialog = "approve" | "decline" | "limit" | "seat" | null;
 
 function formatFullDate(date: Date): string {
   return date.toLocaleString("en-US", {
@@ -29,22 +48,36 @@ function formatFullDate(date: Date): string {
 }
 
 /**
- * A single request: who asked, what they are asking for, and the decision. The
- * payload is rendered from the request's own `details` lines, so the same panel
- * hosts a spend-limit bump, a Pod access grant, or an agent publication.
+ * A single request: who asked, what they are asking for, and the decision.
+ * Credit management is the one type with no plain Approve — the admin picks
+ * how to react, and the action they take is what gets recorded.
  */
 export function RequestDetailView({
   request,
   currentUserId,
-  onApprove,
-  onDeny,
+  onResolve,
 }: RequestDetailViewProps) {
+  const [openDialog, setOpenDialog] = useState<OpenDialog>(null);
+
   const requester = getUserById(request.requesterId);
   const beneficiary = getBeneficiary(request);
   const resolver = request.resolvedByUserId
     ? getUserById(request.resolvedByUserId)
     : undefined;
   const isPending = request.status === "pending";
+
+  // Credit management acts on the person the credits belong to: the requester,
+  // unless a manager asked on their behalf.
+  const member = beneficiary ?? requester;
+  const credit = request.credit;
+  const nextSeat = credit ? SEAT_UPGRADE_TARGET[credit.seatType] : undefined;
+
+  const closeDialog = () => setOpenDialog(null);
+
+  const resolve = (outcome: RequestOutcome, note?: string) => {
+    closeDialog();
+    onResolve?.(request.id, outcome, note);
+  };
 
   return (
     <div className="flex h-full w-full flex-col overflow-x-clip overflow-y-auto bg-background">
@@ -53,7 +86,7 @@ export function RequestDetailView({
           <div className="flex flex-wrap items-center gap-2">
             <Chip
               size="sm"
-              icon={REQUEST_TYPE_ICONS[request.type]}
+              icon={getRequestTypeIcon(request.type)}
               label={REQUEST_TYPE_LABELS[request.type]}
             />
           </div>
@@ -89,24 +122,7 @@ export function RequestDetailView({
 
         <Separator />
 
-        <div className="flex flex-col gap-3">
-          <h2 className="heading-sm text-foreground">Request</h2>
-          <dl className="flex flex-col gap-2">
-            {request.details.map((detail) => (
-              <div
-                key={detail.label}
-                className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5"
-              >
-                <dt className="w-40 shrink-0 text-sm text-muted-foreground">
-                  {detail.label}
-                </dt>
-                <dd className="min-w-0 flex-1 text-sm text-foreground">
-                  {detail.value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+        <RequestPayload request={request} />
 
         {request.message && (
           <div className="flex flex-col gap-2">
@@ -122,19 +138,37 @@ export function RequestDetailView({
         {isPending ? (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-muted-foreground">
-              Approving applies the change in Dust and records you as the
-              decision maker.
+              {credit
+                ? "Pick how to unblock this member, or decline. Either way you are recorded as the decision maker."
+                : "Approving applies the change in Dust and records you as the decision maker."}
             </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="highlight"
-                label="Approve"
-                onClick={() => onApprove?.(request.id)}
-              />
+            <div className="flex flex-wrap items-center gap-2">
+              {credit ? (
+                <>
+                  {nextSeat && (
+                    <Button
+                      variant="highlight"
+                      label="Update seat"
+                      onClick={() => setOpenDialog("seat")}
+                    />
+                  )}
+                  <Button
+                    variant={nextSeat ? "outline" : "highlight"}
+                    label="Set new limit"
+                    onClick={() => setOpenDialog("limit")}
+                  />
+                </>
+              ) : (
+                <Button
+                  variant="highlight"
+                  label="Approve"
+                  onClick={() => setOpenDialog("approve")}
+                />
+              )}
               <Button
                 variant="outline"
-                label="Deny"
-                onClick={() => onDeny?.(request.id)}
+                label="Decline"
+                onClick={() => setOpenDialog("decline")}
               />
             </div>
           </div>
@@ -170,9 +204,58 @@ export function RequestDetailView({
                 </span>
               </div>
             )}
+            {request.resolutionMessage && (
+              <p className="rounded-2xl bg-muted-background p-3 text-sm text-foreground">
+                {request.resolutionMessage}
+              </p>
+            )}
           </div>
         )}
       </div>
+
+      <ApproveDialog
+        isOpen={openDialog === "approve"}
+        title={request.title}
+        onClose={closeDialog}
+        onConfirm={() => resolve("approved")}
+      />
+      <DeclineDialog
+        isOpen={openDialog === "decline"}
+        onClose={closeDialog}
+        onConfirm={(message) => resolve("denied", message)}
+      />
+      {credit && member && (
+        <>
+          <SetLimitDialog
+            isOpen={openDialog === "limit"}
+            memberName={member.fullName}
+            currentLimit={credit.limit}
+            onClose={closeDialog}
+            onConfirm={(limit) =>
+              resolve(
+                "approved",
+                `Limit set to ${formatCredits(limit)} credits/month`
+              )
+            }
+          />
+          {nextSeat && (
+            <UpdateSeatDialog
+              isOpen={openDialog === "seat"}
+              memberName={member.fullName}
+              currentSeatLabel={SEAT_TYPE_LABELS[credit.seatType]}
+              nextSeatLabel={SEAT_TYPE_LABELS[nextSeat]}
+              currentLimit={credit.limit}
+              onClose={closeDialog}
+              onConfirm={() =>
+                resolve(
+                  "approved",
+                  `Seat upgraded to ${SEAT_TYPE_LABELS[nextSeat]}`
+                )
+              }
+            />
+          )}
+        </>
+      )}
     </div>
   );
 }

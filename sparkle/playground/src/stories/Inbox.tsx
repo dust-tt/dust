@@ -131,6 +131,7 @@ import {
   mockConversations,
   mockUsers,
   MY_POD_SPACE,
+  type RequestOutcome,
   type Space,
   type User,
 } from "../data";
@@ -455,7 +456,7 @@ function Inbox() {
   // Handling a request records the decision and the decision maker. The row is
   // now Done, but it is pinned to Pending until the list is refreshed.
   const handleResolveRequest = useCallback(
-    (requestId: string, outcome: "approved" | "denied") => {
+    (requestId: string, outcome: RequestOutcome, note?: string) => {
       setRequests((prev) =>
         prev.map((request) =>
           request.id === requestId
@@ -465,6 +466,7 @@ function Inbox() {
                 outcome,
                 resolvedByUserId: user?.id,
                 resolvedAt: new Date(),
+                resolutionMessage: note,
               }
             : request
         )
@@ -1326,8 +1328,7 @@ function Inbox() {
         <RequestDetailView
           request={p3Request}
           currentUserId={user?.id}
-          onApprove={(requestId) => handleResolveRequest(requestId, "approved")}
-          onDeny={(requestId) => handleResolveRequest(requestId, "denied")}
+          onResolve={handleResolveRequest}
         />
       );
     }

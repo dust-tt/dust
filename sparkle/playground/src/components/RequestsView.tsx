@@ -26,9 +26,10 @@ import {
 
 import {
   getBeneficiary,
+  getRequestIcon,
+  getRequestTypeIcon,
   getResolverLabel,
   REQUEST_OUTCOME_LABELS,
-  REQUEST_TYPE_ICONS,
   REQUEST_TYPE_LABELS,
 } from "../data/requests";
 import type { AdminRequest, RequestType } from "../data/types";
@@ -282,7 +283,7 @@ export function RequestsView({
               }
             : undefined
         }
-        titleIcon={REQUEST_TYPE_ICONS[request.type]}
+        titleIcon={getRequestIcon(request)}
         unread={isPending}
         time={isHistory ? formatShortDate(date) : formatCompactAge(date)}
         className={cn(
@@ -339,7 +340,7 @@ export function RequestsView({
           options={typeOptions.map((type) => ({
             value: type,
             label: REQUEST_TYPE_LABELS[type],
-            icon: REQUEST_TYPE_ICONS[type],
+            icon: getRequestTypeIcon(type),
           }))}
         />
 
@@ -574,6 +575,10 @@ function ResolutionSection({
           {REQUEST_OUTCOME_LABELS[request.outcome]}
         </span>{" "}
         by <span className="heading-xs">{resolverLabel}</span>
+        {/* What the admin did, for the types they act on rather than wave through. */}
+        {request.outcome === "approved" && request.resolutionMessage
+          ? ` — ${request.resolutionMessage}`
+          : ""}
       </div>
     </div>
   );
