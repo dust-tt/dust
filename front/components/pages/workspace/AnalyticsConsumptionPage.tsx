@@ -229,8 +229,7 @@ export function AnalyticsConsumptionPage() {
             <Button
               variant="primary"
               icon={Robot}
-              tooltip="Ask @analyst"
-              className="w-10"
+              label="Ask @analyst"
               onClick={() => setIsOpen(true)}
             />
           )
