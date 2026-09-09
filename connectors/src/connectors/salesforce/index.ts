@@ -19,6 +19,7 @@ import {
   stopSalesforceSyncWorkflow,
 } from "@connectors/connectors/salesforce/temporal/client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SalesforceSyncedQueryResource } from "@connectors/resources/salesforce_resources";
@@ -30,6 +31,9 @@ import { Err, Ok } from "@dust-tt/client";
 const logger = mainLogger.child({
   connector: "salesforce",
 });
+
+export const SALESFORCE_AUTHORIZATION_ERROR_MESSAGE =
+  "Salesforce authorization error, please re-authorize.";
 
 export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   readonly provider: ConnectorProvider = "salesforce";
@@ -217,16 +221,36 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
   }
 
   /**
-   * For Salesforce the tree is:
-   * Project > Standard Objects & Custom Objects > Objects.
+   * Salesforce only exposes one flat level of folders: one per synced query, managed by Dust.
+   */
+  /**
+   * @cc [owner:smb2268,label:error-handling] oauth-error-as-result
+   * When credential retrieval throws `ExternalOAuthTokenError`, this method MUST return
+   * `Err(ConnectorManagerError("EXTERNAL_OAUTH_TOKEN_ERROR"))` instead of propagating the exception.
+   * Any other thrown error MUST be rethrown unchanged.
    */
   async retrievePermissions(): Promise<
     Result<ContentNode[], ConnectorManagerError<RetrievePermissionsErrorCode>>
   > {
     // Get connector and credentials.
-    const getConnectorAndCredentialsRes = await getConnectorAndCredentials(
-      this.connectorId
-    );
+    let getConnectorAndCredentialsRes: Awaited<
+      ReturnType<typeof getConnectorAndCredentials>
+    >;
+    try {
+      getConnectorAndCredentialsRes = await getConnectorAndCredentials(
+        this.connectorId
+      );
+    } catch (e) {
+      if (e instanceof ExternalOAuthTokenError) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            `${SALESFORCE_AUTHORIZATION_ERROR_MESSAGE} Error: ${e.message}`
+          )
+        );
+      }
+      throw e;
+    }
     if (getConnectorAndCredentialsRes.isErr()) {
       return new Err(getConnectorAndCredentialsRes.error);
     }
@@ -238,7 +262,7 @@ export class SalesforceConnectorManager extends BaseConnectorManager<null> {
       return new Err(
         new ConnectorManagerError(
           "EXTERNAL_OAUTH_TOKEN_ERROR",
-          "Salesforce authorization error, please re-authorize."
+          SALESFORCE_AUTHORIZATION_ERROR_MESSAGE
         )
       );
     }

@@ -10,6 +10,14 @@ export type SalesforceAPICredentials = {
   instanceUrl: string;
 };
 
+/**
+ * @cc [owner:smb2268,label:error-handling] salesforce-sign-in-error-throws
+ * Under the exception in `no-catching-own-errors`, this function MUST throw `ExternalOAuthTokenError`
+ * when the Salesforce token refresh fails with a sign-in error (`invalid_grant`,
+ * `oauth_flow_disabled`, `app_not_found`) so that Temporal activities stop instead of retrying.
+ * Callers at API boundaries MAY catch it with `instanceof ExternalOAuthTokenError`. Other failures
+ * MUST propagate unchanged.
+ */
 export async function getSalesforceCredentials(
   connectionId: string
 ): Promise<Result<SalesforceAPICredentials, Error>> {
@@ -29,7 +37,6 @@ export async function getSalesforceCredentials(
 
     return new Ok({ accessToken, instanceUrl });
   } catch (e: unknown) {
-    // So that will be catched upstream by ActivityInboundLogInterceptor and stop the workflow.
     if (isSalesforceSignInError(e)) {
       throw new ExternalOAuthTokenError(e);
     }
