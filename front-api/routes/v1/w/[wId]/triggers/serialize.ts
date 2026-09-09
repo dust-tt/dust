@@ -6,10 +6,15 @@ import type { TriggerType as PublicTriggerType } from "@dust-tt/client";
 
 /**
  * @cc [owner:adrien,label:api] public-api-trigger-serialization
- * Serializes a workspace-wide `TriggerResource` list for the read-only public API: internal
- * fields with no meaning outside the workspace (`editor`, `origin`, `spaceId`,
- * `webhookSourceViewId`) are dropped, and webhook triggers get a `webhookSource` label
- * (`name`/`provider`) resolved from their view instead of the raw internal view id.
+ * Returned triggers MUST NOT contain `editor`, `origin`, `spaceId`,
+ * or `webhookSourceViewId`.
+ */
+/**
+ * @cc [owner:adrien,label:api] public-api-webhook-source
+ * For each webhook trigger, the returned `webhookSource` MUST be:
+ * - `null` if no matching source view was returned;
+ * - otherwise, exactly `{ name, provider }`, using the view's name and
+ *   its source's provider, with `"custom"` when that provider is null or undefined.
  */
 export async function serializeTriggersForPublicApi(
   auth: Authenticator,
