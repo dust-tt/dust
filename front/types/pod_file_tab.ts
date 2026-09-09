@@ -146,6 +146,60 @@ export function moveFileTabInTabsOrder(
   return next;
 }
 
+/**
+ * Reorder file tabs among themselves while keeping system-tab slots fixed.
+ * Returns null when either path is missing or the order is unchanged.
+ *
+ * @cc [label:product] system-slots-fixed
+ * System tab entries keep their indices; only non-system (file-tab) entries are
+ * permuted among those slots.
+ */
+export function reorderFileTabsInTabsOrder(
+  tabsOrder: string[],
+  draggedPath: string,
+  targetPath: string
+): string[] | null {
+  if (draggedPath === targetPath) {
+    return null;
+  }
+
+  const fileIndices: number[] = [];
+  const filePaths: string[] = [];
+  for (let i = 0; i < tabsOrder.length; i++) {
+    const entry = tabsOrder[i];
+    if (!isPodNavSystemTabBeforeSettings(entry)) {
+      fileIndices.push(i);
+      filePaths.push(entry);
+    }
+  }
+
+  const fromIndex = filePaths.indexOf(draggedPath);
+  const toIndex = filePaths.indexOf(targetPath);
+  if (fromIndex < 0 || toIndex < 0) {
+    return null;
+  }
+
+  const nextFilePaths = [...filePaths];
+  const [moved] = nextFilePaths.splice(fromIndex, 1);
+  nextFilePaths.splice(toIndex, 0, moved);
+
+  const next = [...tabsOrder];
+  for (let i = 0; i < fileIndices.length; i++) {
+    next[fileIndices[i]] = nextFilePaths[i];
+  }
+  return next;
+}
+
+/** File tabs in nav order (system tabs omitted). */
+export function orderedPodFileTabs(
+  fileTabs: PodFileTab[],
+  tabsOrder: string[]
+): PodFileTab[] {
+  return buildPodNavItemsBeforeSettings(fileTabs, tabsOrder).flatMap((item) =>
+    item.kind === "file" ? [item.tab] : []
+  );
+}
+
 export function podFileTabBasename(path: string): string {
   const base = path.split("/").pop() ?? path;
   // Strip the last extension for any previewable file (frames, .md, etc.).

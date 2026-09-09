@@ -9,7 +9,9 @@ import {
   MAX_POD_FILE_TABS,
   moveFileTabInTabsOrder,
   normalizeTabsOrder,
+  orderedPodFileTabs,
   podFileTabBasename,
+  reorderFileTabsInTabsOrder,
   sortPodFileTabs,
 } from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -220,8 +222,34 @@ export function usePodFileTabs({
     [isEditor, navOrder, persist, sortedTabs]
   );
 
+  const reorderFileTab = useCallback(
+    async (draggedPath: string, targetPath: string) => {
+      if (!isEditor) {
+        return false;
+      }
+
+      const nextNavOrder = reorderFileTabsInTabsOrder(
+        navOrder,
+        draggedPath,
+        targetPath
+      );
+      if (!nextNavOrder) {
+        return false;
+      }
+
+      return persist(sortedTabs, nextNavOrder);
+    },
+    [isEditor, navOrder, persist, sortedTabs]
+  );
+
+  const orderedFileTabs = useMemo(
+    () => orderedPodFileTabs(sortedTabs, navOrder),
+    [navOrder, sortedTabs]
+  );
+
   return {
     fileTabs: sortedTabs,
+    orderedFileTabs,
     tabsOrder: navOrder,
     isFileTab,
     addFileTab,
@@ -229,5 +257,6 @@ export function usePodFileTabs({
     toggleFileTab,
     updateFileTab,
     moveFileTab,
+    reorderFileTab,
   };
 }
