@@ -24,7 +24,6 @@ import apiConfig from "@app/lib/api/config";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { withRetry } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { CellInfo } from "@app/types/cell";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -33,6 +32,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import { IncomingForm } from "formidable";
 import { readFile } from "fs/promises";
+import { z } from "zod";
 
 /**
  * Node-style headers shape: matches the record built from
@@ -46,9 +46,8 @@ const EMAIL_WEBHOOK_RELAY_SOURCE_CELL_HEADER =
   "x-dust-email-webhook-source-cell";
 export const EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER =
   "x-dust-email-webhook-source-error";
-export const EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER =
-  "x-dust-email-webhook-remaining-cells";
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
+export const EMAIL_WEBHOOK_RELAY_LOOKUP = "lookup";
 
 const EMAIL_RELAY_KEY_PREFIX = "email-webhook-relay";
 const EMAIL_RELAY_DEDUPE_TTL_SECONDS = 5 * 60;
@@ -56,7 +55,8 @@ const HTTP_SERVER_ERROR_STATUS_MIN = 500;
 
 function isRelayedWebhookRequest(headers: EmailWebhookHeaders): boolean {
   return (
-    headers[EMAIL_WEBHOOK_RELAY_HEADER] === EMAIL_WEBHOOK_RELAY_HEADER_VALUE
+    headers[EMAIL_WEBHOOK_RELAY_HEADER] === EMAIL_WEBHOOK_RELAY_HEADER_VALUE ||
+    headers[EMAIL_WEBHOOK_RELAY_HEADER] === EMAIL_WEBHOOK_RELAY_LOOKUP
   );
 }
 
@@ -65,6 +65,21 @@ const RELAY_ELIGIBLE_ERROR_TYPES = [
   "workspace_not_found",
   "email_agents_disabled",
 ] as const;
+
+const EmailRelayResponseSchema = z.object({
+  success: z.literal(true),
+  lookupError: z
+    .object({
+      type: z.enum(RELAY_ELIGIBLE_ERROR_TYPES),
+      message: z.string(),
+    })
+    .optional(),
+});
+
+const EMAIL_RELAY_ERROR: EmailTriggerError = {
+  type: "unexpected_error",
+  message: "Failed to relay your email. Please try again later.",
+};
 
 type RelayEligibleErrorType = (typeof RELAY_ELIGIBLE_ERROR_TYPES)[number];
 
@@ -79,24 +94,9 @@ function isRelayEligibleError(error: EmailTriggerError): boolean {
 }
 
 /**
- * @cc [owner:philipperolet,label:product] remaining-relay-cells
- * Relayed requests may only visit configured cells listed in the remaining-cells header;
- * legacy relays without that header must not relay again.
+ * @cc [owner:philipperolet,label:product] main-cell-only-relay
+ * Only the main cell may relay a SendGrid request; relayed requests must never relay again.
  */
-function getEmailRelayCells(headers: EmailWebhookHeaders): CellInfo[] {
-  const cells = cellsConfig.getOtherCells();
-  if (!isRelayedWebhookRequest(headers)) {
-    return cells;
-  }
-
-  const remainingCells = headers[EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER];
-  if (!isString(remainingCells)) {
-    return [];
-  }
-  const remaining = new Set(remainingCells.split(","));
-  return cells.filter((cell) => remaining.has(cell.name));
-}
-
 export function shouldRelayToOtherCells({
   headers,
   error,
@@ -104,7 +104,11 @@ export function shouldRelayToOtherCells({
   headers: EmailWebhookHeaders;
   error: EmailTriggerError;
 }): boolean {
-  return isRelayEligibleError(error) && getEmailRelayCells(headers).length > 0;
+  return (
+    cellsConfig.isMainCell() &&
+    isRelayEligibleError(error) &&
+    !isRelayedWebhookRequest(headers)
+  );
 }
 
 // Ordered from least to most informative: a user unknown in one cell may still
@@ -117,8 +121,8 @@ const RELAY_ERROR_INFORMATIVENESS: Record<RelayEligibleErrorType, number> = {
 };
 
 /**
- * Carry the most informative lookup error across relay hops, for the final cell's
- * error reply. The source cell's error type (forwarded via header) may
+ * Compare the local lookup error with the source cell's error for the final reply.
+ * The source cell's error type (forwarded via header) may
  * be more informative than the local one — e.g. the sender has a real account with
  * Email Agents disabled in the source cell but no account locally; replying with
  * the local `user_not_found` ("please sign up") would be wrong.
@@ -215,8 +219,8 @@ export async function recordEmailRelay(
 
 /**
  * @cc [owner:philipperolet,label:product] relay-handoff
- * Each relay passes only the cells after its target as remaining destinations, and stops
- * after a successful HTTP handoff. The receiving cell owns further lookup and error replies.
+ * Try cells sequentially on lookup misses, stop on acceptance, and return the most
+ * informative lookup error to the main cell when no cell matches.
  */
 /**
  * @cc [owner:philipperolet,label:product] uncertain-relay-stops
@@ -224,23 +228,17 @@ export async function recordEmailRelay(
  */
 export async function relayEmailToOtherCells(
   email: InboundEmail,
-  {
-    sourceError,
-    headers: requestHeaders,
-  }: {
-    sourceError: EmailTriggerError;
-    headers: EmailWebhookHeaders;
-  }
-): Promise<Result<void, Error>> {
+  { sourceError }: { sourceError: EmailTriggerError }
+): Promise<Result<void, EmailTriggerError>> {
+  let relayError = sourceError;
   try {
-    const cells = getEmailRelayCells(requestHeaders);
+    const cells = cellsConfig.getOtherCells();
 
     const headers = {
       Authorization: `Bearer ${cellsConfig.getLookupApiSecret()}`,
-      [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
+      [EMAIL_WEBHOOK_RELAY_HEADER]: EMAIL_WEBHOOK_RELAY_LOOKUP,
       [EMAIL_WEBHOOK_RELAY_SOURCE_CELL_HEADER]:
         cellsConfig.getCurrentCell().name,
-      [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: sourceError.type,
     };
 
     const body = new FormData();
@@ -264,17 +262,14 @@ export async function relayEmailToOtherCells(
       );
     }
 
-    for (const [index, cell] of cells.entries()) {
+    for (const cell of cells) {
       const responseRes = await withRetry(
         async () => {
           const response = await fetch(`${cell.url}/api/email/webhook`, {
             method: "POST",
             headers: {
               ...headers,
-              [EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER]: cells
-                .slice(index + 1)
-                .map((remainingCell) => remainingCell.name)
-                .join(","),
+              [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: relayError.type,
             },
             body,
           });
@@ -315,9 +310,14 @@ export async function relayEmailToOtherCells(
           },
           "[email] Failed to relay inbound email to cell"
         );
-        if (responseRes.isErr()) {
-          break;
-        }
+        return new Err(EMAIL_RELAY_ERROR);
+      }
+
+      const data = EmailRelayResponseSchema.parse(
+        await responseRes.value.json()
+      );
+      if (data.lookupError) {
+        relayError = data.lookupError;
         continue;
       }
 
@@ -332,11 +332,15 @@ export async function relayEmailToOtherCells(
 
       return new Ok(undefined);
     }
+    return new Err(relayError);
   } catch (error) {
-    return new Err(normalizeError(error));
+    logger.error(
+      { error: normalizeError(error) },
+      "[email] Failed to relay inbound email"
+    );
   }
 
-  return new Err(new Error("Failed to relay inbound email to other cells"));
+  return new Err(EMAIL_RELAY_ERROR);
 }
 
 function parseThreadingHeaders(rawHeaders: string | null) {

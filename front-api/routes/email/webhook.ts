@@ -1,4 +1,5 @@
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import type { EmailTriggerError } from "@app/lib/api/assistant/email/email_trigger";
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   emailAssistantMatcher,
@@ -10,6 +11,8 @@ import { evaluateInboundAuth } from "@app/lib/api/assistant/email/inbound_auth";
 import { validateSendgridParseWebhookSignature } from "@app/lib/api/assistant/email/sendgrid_parse_webhook_signature";
 import type { EmailWebhookHeaders } from "@app/lib/api/assistant/email/webhook_helpers";
 import {
+  EMAIL_WEBHOOK_RELAY_HEADER,
+  EMAIL_WEBHOOK_RELAY_LOOKUP,
   hasValidRelayAuthorization,
   hasValidSendgridAuthorization,
   parseSendgridWebhookContent,
@@ -24,7 +27,6 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { config as cellsConfig } from "@app/lib/api/cells/config";
 import apiConfig from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -35,8 +37,13 @@ import { isString } from "@app/types/shared/utils/general";
 import { createHono } from "@front-api/lib/hono";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 
+/**
+ * @cc [owner:philipperolet,label:api] relay-lookup-miss
+ * A lookupError response must not start an agent, send an error reply, or claim the Message-ID.
+ */
 export type PostResponseBody = {
   success: boolean;
+  lookupError?: EmailTriggerError;
 };
 
 // SendGrid Parse limits inbound mail to ~30MB; matches the original
@@ -142,6 +149,23 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
 
   const email = emailRes.value;
 
+  // Lookup relays return misses to US before deduplication; a retry must return the miss again.
+  const relayUserRes =
+    isRelayRequest &&
+    headers[EMAIL_WEBHOOK_RELAY_HEADER] === EMAIL_WEBHOOK_RELAY_LOOKUP
+      ? await userAndWorkspaceFromEmail({ email: email.sender.email })
+      : undefined;
+  if (relayUserRes?.isErr()) {
+    return ctx.json({
+      success: true,
+      lookupError: resolveRelayedErrorReply({
+        headers,
+        localError: relayUserRes.error,
+        senderEmail: email.sender.email,
+      }),
+    });
+  }
+
   if (
     isRelayRequest &&
     !(await recordEmailRelay(email.threadingHeaders.messageId))
@@ -190,33 +214,29 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
         "[email] Inbound sender authenticated"
       );
 
-      const userRes = await userAndWorkspaceFromEmail({
-        email: email.sender.email,
-      });
+      const userRes =
+        relayUserRes ??
+        (await userAndWorkspaceFromEmail({
+          email: email.sender.email,
+        }));
       if (userRes.isErr()) {
-        const error = resolveRelayedErrorReply({
-          headers,
-          localError: userRes.error,
-          senderEmail: email.sender.email,
-        });
         if (shouldRelayToOtherCells({ headers, error: userRes.error })) {
           const relayRes = await relayEmailToOtherCells(email, {
-            headers,
-            sourceError: error,
+            sourceError: userRes.error,
           });
-          if (relayRes.isOk()) {
-            return;
+          if (relayRes.isErr()) {
+            await replyToError(email, relayRes.error);
           }
-          logger.error(
-            {
-              senderEmail: email.sender.email,
-              error: relayRes.error,
-              sourceCell: cellsConfig.getCurrentCell().name,
-            },
-            "[email] Failed to relay inbound email to other cells"
-          );
+          return;
         }
-        await replyToError(email, error);
+        await replyToError(
+          email,
+          resolveRelayedErrorReply({
+            headers,
+            localError: userRes.error,
+            senderEmail: email.sender.email,
+          })
+        );
         return;
       }
 
