@@ -56,7 +56,7 @@ function CreditDetailRow({
 
   return (
     <div
-      className="grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 py-2 text-sm"
+      className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 py-2 text-sm"
       onPointerEnter={(event) => {
         const labelElement = labelRef.current;
         if (
@@ -74,21 +74,16 @@ function CreditDetailRow({
       }}
       onPointerLeave={() => setIsLabelExpanded(false)}
     >
-      <dt className="col-span-2 col-start-1 row-start-1 grid min-w-0 grid-cols-subgrid items-start font-medium text-foreground">
-        <span className="col-start-1 row-start-1 flex min-w-0 items-center gap-2">
+      <dt className="col-span-2 col-start-1 row-start-1 grid grid-cols-subgrid items-start font-medium text-foreground">
+        <span className="col-start-1 row-start-1 flex items-center gap-2">
           {icon && (
-            <Icon
-              visual={icon}
-              size="xs"
-              className="shrink-0 text-muted-foreground"
-            />
+            <Icon visual={icon} size="xs" className="text-muted-foreground" />
           )}
           <span
             ref={labelRef}
             className={classNames(
               "truncate",
-              isLabelExpanded &&
-                "relative z-10 text-clip bg-overlay-background shadow-none"
+              isLabelExpanded && "z-10 text-clip bg-overlay-background"
             )}
           >
             {label}
@@ -108,7 +103,7 @@ function CreditDetailRow({
           <span
             aria-hidden
             className={classNames(
-              "pointer-events-none col-span-2 col-start-1 row-start-1 min-w-0 justify-self-start break-all animate-credit-label-reveal select-none motion-reduce:animate-none",
+              "pointer-events-none col-span-2 col-start-1 row-start-1 justify-self-start break-all animate-credit-label-reveal select-none motion-reduce:animate-none",
               icon ? "ml-6" : ""
             )}
           >
@@ -118,7 +113,7 @@ function CreditDetailRow({
       </dt>
       <dd
         className={classNames(
-          "col-start-2 row-start-1 shrink-0 text-muted-foreground",
+          "col-start-2 row-start-1 text-muted-foreground",
           isLabelExpanded && "invisible"
         )}
       >
