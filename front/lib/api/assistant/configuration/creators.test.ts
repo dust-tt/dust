@@ -18,11 +18,11 @@ describe("getAgentsCreators", () => {
       testContext.authenticator
     );
 
-    const creatorIds = await getAgentsCreators(testContext.authenticator, [
+    const creators = await getAgentsCreators(testContext.authenticator, [
       agent,
     ]);
 
-    expect(creatorIds.get(agent.sId)).toBe(testContext.user.sId);
+    expect(creators.get(agent.sId)?.sId).toBe(testContext.user.sId);
   });
 
   it("returns the original creator after the agent has been updated by another user", async () => {
@@ -46,11 +46,11 @@ describe("getAgentsCreators", () => {
       { name: "Updated Agent" }
     );
 
-    const creatorIds = await getAgentsCreators(testContext.authenticator, [
+    const creators = await getAgentsCreators(testContext.authenticator, [
       updated,
     ]);
 
-    expect(creatorIds.get(updated.sId)).toBe(testContext.user.sId);
+    expect(creators.get(updated.sId)?.sId).toBe(testContext.user.sId);
   });
 
   it("returns null for global agents", async () => {
@@ -63,11 +63,11 @@ describe("getAgentsCreators", () => {
       scope: "global" as const,
     };
 
-    const creatorIds = await getAgentsCreators(testContext.authenticator, [
+    const creators = await getAgentsCreators(testContext.authenticator, [
       globalAgent,
     ]);
 
-    expect(creatorIds.get(globalAgent.sId)).toBeNull();
+    expect(creators.get(globalAgent.sId)).toBeNull();
   });
 
   it("handles a mix of global and custom agents", async () => {
@@ -82,18 +82,18 @@ describe("getAgentsCreators", () => {
       scope: "global" as const,
     };
 
-    const creatorIds = await getAgentsCreators(testContext.authenticator, [
+    const creators = await getAgentsCreators(testContext.authenticator, [
       globalAgent,
       customAgent,
     ]);
 
-    expect(creatorIds.get(globalAgent.sId)).toBeNull();
-    expect(creatorIds.get(customAgent.sId)).toBe(testContext.user.sId);
+    expect(creators.get(globalAgent.sId)).toBeNull();
+    expect(creators.get(customAgent.sId)?.sId).toBe(testContext.user.sId);
   });
 
   it("returns all nulls when the list is empty", async () => {
-    const creatorIds = await getAgentsCreators(testContext.authenticator, []);
+    const creators = await getAgentsCreators(testContext.authenticator, []);
 
-    expect(creatorIds.size).toBe(0);
+    expect(creators.size).toBe(0);
   });
 });

@@ -1089,7 +1089,7 @@ const LightAgentConfigurationSchema = z.object({
   name: z.string(),
   description: z.string(),
   pictureUrl: z.string(),
-  creatorId: z.string().nullable().optional(),
+  creatorId: z.string().nullish(),
   lastAuthors: AgentRecentAuthorsSchema.optional(),
   usage: AgentUsageTypeSchema.optional(),
   maxStepsPerRun: z.number(),

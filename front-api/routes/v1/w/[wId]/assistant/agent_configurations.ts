@@ -145,10 +145,10 @@ app.get(
       dangerouslySkipPermissionFiltering: isUnrestricted,
     });
 
-    const creatorIds = await getAgentsCreators(auth, agentConfigurations);
+    const creators = await getAgentsCreators(auth, agentConfigurations);
     agentConfigurations = agentConfigurations.map((agentConfiguration) => ({
       ...agentConfiguration,
-      creatorId: creatorIds.get(agentConfiguration.sId) ?? null,
+      creatorId: creators.get(agentConfiguration.sId)?.sId ?? null,
     }));
 
     if (withAuthors) {

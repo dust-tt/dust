@@ -3083,10 +3083,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return result;
   }
 
-  static async batchGetCreatorIds(
+  static async batchGetCreators(
     auth: Authenticator,
     skills: SkillResource[]
-  ): Promise<Map<number, string | null>> {
+  ): Promise<Map<number, UserResource | null>> {
     const customSkills = skills.filter((s) => s.globalSId === null);
     const skillIds = customSkills.map((s) => s.id);
 
@@ -3119,9 +3119,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ...new Set(removeNulls([...creatorModelIdBySkillId.values()])),
     ];
     const users = await UserResource.fetchByModelIds(uniqueModelIds);
-    const sIdByModelId = new Map(users.map((u) => [u.id, u.sId]));
+    const userByModelId = new Map(users.map((u) => [u.id, u]));
 
-    const result = new Map<number, string | null>();
+    const result = new Map<number, UserResource | null>();
     for (const skill of skills) {
       if (skill.globalSId !== null) {
         result.set(skill.id, null);
@@ -3130,7 +3130,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       const modelId = creatorModelIdBySkillId.get(skill.id);
       result.set(
         skill.id,
-        modelId != null ? (sIdByModelId.get(modelId) ?? null) : null
+        modelId != null ? (userByModelId.get(modelId) ?? null) : null
       );
     }
 

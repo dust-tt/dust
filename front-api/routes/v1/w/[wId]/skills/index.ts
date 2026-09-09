@@ -233,12 +233,12 @@ app.get(
       ? allSkills
       : allSkills.filter((skill) => skill.availability !== "editors");
 
-    const creatorIds = await SkillResource.batchGetCreatorIds(auth, skills);
+    const creators = await SkillResource.batchGetCreators(auth, skills);
 
     return ctx.json({
       skills: skills.map((skill) => ({
         ...skill.toJSON(auth),
-        creatorId: creatorIds.get(skill.id) ?? null,
+        creatorId: creators.get(skill.id)?.sId ?? null,
       })),
     });
   }
@@ -336,7 +336,7 @@ app.post("/", async (ctx): HandlerResult<ImportSkillsResponseBody> => {
     ...result.value.imported,
     ...result.value.updated,
   ];
-  const importCreatorIds = await SkillResource.batchGetCreatorIds(
+  const importCreators = await SkillResource.batchGetCreators(
     auth,
     allSkillsFromImport
   );
@@ -344,11 +344,11 @@ app.post("/", async (ctx): HandlerResult<ImportSkillsResponseBody> => {
   return ctx.json({
     imported: result.value.imported.map((skill) => ({
       ...skill.toJSON(auth),
-      creatorId: importCreatorIds.get(skill.id) ?? null,
+      creatorId: importCreators.get(skill.id)?.sId ?? null,
     })),
     updated: result.value.updated.map((skill) => ({
       ...skill.toJSON(auth),
-      creatorId: importCreatorIds.get(skill.id) ?? null,
+      creatorId: importCreators.get(skill.id)?.sId ?? null,
     })),
     skipped: result.value.skipped,
   });

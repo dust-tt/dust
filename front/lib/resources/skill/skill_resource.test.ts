@@ -206,7 +206,7 @@ describe("SkillResource", () => {
   });
 
   describe("batchGetCreatorIds", () => {
-    it("returns the sId of the user who created the skill (version 1 editedBy)", async () => {
+    it("returns the user who created the skill (version 1 editedBy)", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Creator",
       });
@@ -224,12 +224,12 @@ describe("SkillResource", () => {
         requestedSpaceIds: [],
       });
 
-      const creatorIds = await SkillResource.batchGetCreatorIds(
+      const creators = await SkillResource.batchGetCreators(
         testContext.authenticator,
         [skill]
       );
 
-      expect(creatorIds.get(skill.id)).toBe(testContext.user.sId);
+      expect(creators.get(skill.id)?.sId).toBe(testContext.user.sId);
     });
 
     it("falls back to current editedBy when the skill has never been updated (no version rows)", async () => {
@@ -238,12 +238,12 @@ describe("SkillResource", () => {
       });
 
       // No updateSkill call — no version rows exist.
-      const creatorIds = await SkillResource.batchGetCreatorIds(
+      const creators = await SkillResource.batchGetCreators(
         testContext.authenticator,
         [skill]
       );
 
-      expect(creatorIds.get(skill.id)).toBe(testContext.user.sId);
+      expect(creators.get(skill.id)?.sId).toBe(testContext.user.sId);
     });
 
     it("returns the original creator after the skill has been updated by another user", async () => {
@@ -286,12 +286,12 @@ describe("SkillResource", () => {
         requestedSpaceIds: [],
       });
 
-      const creatorIds = await SkillResource.batchGetCreatorIds(
+      const creators = await SkillResource.batchGetCreators(
         testContext.authenticator,
         [skill]
       );
 
-      expect(creatorIds.get(skill.id)).toBe(testContext.user.sId);
+      expect(creators.get(skill.id)?.sId).toBe(testContext.user.sId);
     });
 
     it("returns null for global skills", async () => {
@@ -306,22 +306,22 @@ describe("SkillResource", () => {
       );
       assert(globalSkill, "Expected a global skill to exist");
 
-      const creatorIds = await SkillResource.batchGetCreatorIds(
+      const creators = await SkillResource.batchGetCreators(
         testContext.authenticator,
         [globalSkill, customSkill]
       );
 
-      expect(creatorIds.get(globalSkill.id)).toBeNull();
-      expect(creatorIds.get(customSkill.id)).toBe(testContext.user.sId);
+      expect(creators.get(globalSkill.id)).toBeNull();
+      expect(creators.get(customSkill.id)?.sId).toBe(testContext.user.sId);
     });
 
     it("returns all nulls for an empty list", async () => {
-      const creatorIds = await SkillResource.batchGetCreatorIds(
+      const creators = await SkillResource.batchGetCreators(
         testContext.authenticator,
         []
       );
 
-      expect(creatorIds.size).toBe(0);
+      expect(creators.size).toBe(0);
     });
   });
 

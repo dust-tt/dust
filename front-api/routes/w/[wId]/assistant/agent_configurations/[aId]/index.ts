@@ -70,12 +70,12 @@ app.get(
       });
     }
 
-    const creatorIds = await getAgentsCreators(auth, [agent]);
+    const creators = await getAgentsCreators(auth, [agent]);
 
     return ctx.json({
       agentConfiguration: {
         ...agent,
-        creatorId: creatorIds.get(agent.sId) ?? null,
+        creatorId: creators.get(agent.sId)?.sId ?? null,
         lastAuthors: await getAgentRecentAuthors({ agent, auth }),
       },
     });

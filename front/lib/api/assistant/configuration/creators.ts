@@ -7,7 +7,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 export async function getAgentsCreators(
   auth: Authenticator,
   agents: LightAgentConfigurationType[]
-): Promise<Map<string, string | null>> {
+): Promise<Map<string, UserResource | null>> {
   const nonGlobalAgents = agents.filter((a) => a.scope !== "global");
   const sIds = nonGlobalAgents.map((a) => a.sId);
 
@@ -24,25 +24,25 @@ export async function getAgentsCreators(
     },
   });
 
-  const creatorModelIdBySId = new Map<string, number>();
+  const creatorModelIdById = new Map<string, number>();
   for (const row of rows) {
-    creatorModelIdBySId.set(row.sId, row.authorId);
+    creatorModelIdById.set(row.sId, row.authorId);
   }
 
-  const uniqueModelIds = [...new Set(creatorModelIdBySId.values())];
+  const uniqueModelIds = [...new Set(creatorModelIdById.values())];
   const users = await UserResource.fetchByModelIds(uniqueModelIds);
-  const userSIdByModelId = new Map(users.map((u) => [u.id, u.sId]));
+  const userByModelId = new Map(users.map((u) => [u.id, u]));
 
-  const result = new Map<string, string | null>();
+  const result = new Map<string, UserResource | null>();
   for (const agent of agents) {
     if (agent.scope === "global") {
       result.set(agent.sId, null);
       continue;
     }
-    const modelId = creatorModelIdBySId.get(agent.sId);
+    const modelId = creatorModelIdById.get(agent.sId);
     result.set(
       agent.sId,
-      modelId !== undefined ? (userSIdByModelId.get(modelId) ?? null) : null
+      modelId !== undefined ? (userByModelId.get(modelId) ?? null) : null
     );
   }
 
