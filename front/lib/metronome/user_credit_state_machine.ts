@@ -40,6 +40,20 @@ type UserCreditEvent =
    */
   | { type: "seat_balance_resolved" };
 
+// The only way a transition can fail: no rule matches the current state + event
+// (with its guards). This is an expected, guard-driven no-op for some shapes
+// (e.g. a free seat has no `seat_balance_exhausted` transition and stays
+// `user_seat`), so callers decide whether it's noteworthy rather than treating
+// every `Err` as an anomaly.
+export class UserCreditTransitionError extends Error {
+  constructor(
+    readonly type: "no_transition",
+    message: string
+  ) {
+    super(message);
+  }
+}
+
 type UserCreditGuard = (
   ctx: UserCreditContext,
   event: UserCreditEvent
@@ -91,7 +105,7 @@ export async function transitionUserCreditState(
   event: UserCreditEvent,
   ctx: UserCreditContext,
   { transaction }: { transaction?: Transaction } = {}
-): Promise<Result<UserCreditState, Error>> {
+): Promise<Result<UserCreditState, UserCreditTransitionError>> {
   const rawState = membership.creditState;
   // Legacy rows may still hold pre-narrowing values (normal / *_low_balance /
   // capped) until the backfill migration lands; normalize so transitions match
@@ -100,7 +114,10 @@ export async function transitionUserCreditState(
   const match = findTransition(currentState, event, ctx);
 
   if (!match) {
-    logger.warn(
+    // Expected for guard-driven no-ops (e.g. free seats on
+    // `seat_balance_exhausted`); logged at `debug` so the caller decides whether
+    // to surface it via the returned `no_transition` error.
+    logger.debug(
       {
         workspaceId: ctx.workspaceId,
         userId: ctx.userId,
@@ -111,8 +128,9 @@ export async function transitionUserCreditState(
       "[UserCreditStateMachine] No matching transition - skipping"
     );
     return new Err(
-      new Error(
-        `[UserCreditStateMachine] Illegal transition: ${currentState} + ${event.type}`
+      new UserCreditTransitionError(
+        "no_transition",
+        `[UserCreditStateMachine] No matching transition: ${currentState} + ${event.type}`
       )
     );
   }

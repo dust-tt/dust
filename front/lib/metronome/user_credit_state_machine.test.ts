@@ -38,7 +38,7 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
 });
 
 vi.mock("@app/logger/logger", () => ({
-  default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+  default: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
 // ---------------------------------------------------------------------------

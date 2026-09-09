@@ -14,6 +14,7 @@ import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effe
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 
 /**
@@ -145,15 +146,15 @@ export async function dispatchSeatBalanceExhausted({
     }
   );
   if (result.isErr()) {
-    logger.info(
-      {
-        workspaceId: workspace.sId,
-        userId,
-        seatType: membership.seatType,
-        poolLimitAwuCredits,
-      },
-      "[CreditStateDispatcher] dispatchSeatBalanceExhausted: no seat→pool transition (free seat stays user_seat)"
-    );
+    switch (result.error.type) {
+      case "no_transition":
+        // Expected: a free seat has no pool to fall back to, so it stays
+        // `user_seat` (blocked by the rate-limiter lifetime cap instead).
+        // Nothing to do — skip silently.
+        break;
+      default:
+        assertNever(result.error.type);
+    }
   }
 
   // The personal seat balance is exhausted: auto-upgrade one tier (free→pro,
