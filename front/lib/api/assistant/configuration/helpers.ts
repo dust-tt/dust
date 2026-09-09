@@ -96,24 +96,6 @@ export async function getAgentIdFromName(
   return agent.sId;
 }
 
-/**
- * @cc [owner:philipperolet,label:security] regular-key-agent-editability
- * For regular keys on custom agents, `canEdit` requires workspace admin access, active status,
- * and read access to every requested space.
- */
-function canEditWithApiKey(
-  auth: Authenticator,
-  {
-    status,
-    canReadSpaces,
-  }: {
-    status: AgentConfigurationType["status"];
-    canReadSpaces: boolean;
-  }
-): boolean {
-  return auth.isAdmin() && status === "active" && canReadSpaces;
-}
-
 async function shadowAgentPermissions(
   auth: Authenticator,
   agentModels: AgentConfigurationModel[],
@@ -135,14 +117,9 @@ async function shadowAgentPermissions(
         const resource = AgentResource.fromAgentConfigurationModel(agent);
         const read = auth.can("read", resource);
         const write = isRegularApiKey
-          ? canEditWithApiKey(auth, {
-              status: agent.status,
-              canReadSpaces: canReadRequestedSpaces(
-                auth,
-                spaceById,
-                agent.requestedSpaceIds
-              ),
-            })
+          ? auth.isAdmin() &&
+            agent.status === "active" &&
+            canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
           : auth.can("write", resource);
         return {
           agentId: agent.sId,
@@ -179,6 +156,11 @@ async function shadowAgentPermissions(
 
 /**
  * Enrich agent configurations with additional data (actions, tags, favorites).
+ */
+/**
+ * @cc [owner:philipperolet,label:security] regular-key-agent-editability
+ * For regular keys on custom agents, `canEdit` requires workspace admin access, active status,
+ * and read access to every requested space.
  */
 /**
  * @cc [owner:philipperolet,label:security] agent-editability
@@ -254,14 +236,9 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const canRead =
       isAuthor || isMember || canEditAsSystem || agent.scope === "visible";
     const canEdit = isRegularApiKey
-      ? canEditWithApiKey(auth, {
-          status: agent.status,
-          canReadSpaces: canReadRequestedSpaces(
-            auth,
-            spaceById,
-            agent.requestedSpaceIds
-          ),
-        })
+      ? auth.isAdmin() &&
+        agent.status === "active" &&
+        canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
       : isAuthor || isMember || canEditAsSystem;
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
