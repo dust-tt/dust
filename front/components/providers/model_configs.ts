@@ -45,10 +45,7 @@ import {
   GPT_6_ASTRA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import type { ModelConfig } from "@app/types/assistant/models/types";
-import {
-  GROK_4_5_MODEL_CONFIG,
-  GROK_4_6_MODEL_CONFIG,
-} from "@app/types/assistant/models/xai";
+import { GROK_4_6_MODEL_CONFIG } from "@app/types/assistant/models/xai";
 
 export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   GPT_6_ASTRA_MODEL_CONFIG,
@@ -83,7 +80,6 @@ export const USED_MODEL_CONFIGS: readonly ModelConfig[] = [
   FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG,
   FIREWORKS_INKLING_MODEL_CONFIG,
   GROK_4_6_MODEL_CONFIG,
-  GROK_4_5_MODEL_CONFIG,
   AUTO_FAST_MODEL_CONFIG,
   AUTO_MODEL_CONFIG,
   AUTO_COMPLEX_MODEL_CONFIG,
