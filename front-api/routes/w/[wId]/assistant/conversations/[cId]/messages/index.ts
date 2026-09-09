@@ -2,6 +2,7 @@ import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_re
 import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
 import { fetchPrecedingContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
+import { promoteAnalyticsPanelConversation } from "@app/lib/api/assistant/conversation/analytics_panel";
 import { addSelectedConversationSpaces } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
@@ -12,6 +13,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { statsDMetrics } from "@app/lib/utils/statsd";
+import logger from "@app/logger/logger";
 import { InternalPostMessagesRequestBodySchema } from "@app/types/api/assistant";
 import type { PostMessagesResponseBody } from "@app/types/api/assistant/messages";
 import type {
@@ -401,6 +403,17 @@ app.post(
     if (messageRes.isErr()) {
       return apiError(ctx, messageRes.error);
     }
+
+    // Fire and forget: this only decides whether the conversation shows up in the user's history,
+    // so it must not fail a message that was already posted.
+    void promoteAnalyticsPanelConversation(auth, {
+      conversation: conversationResource,
+    }).catch((err) =>
+      logger.error(
+        { err, conversationId: conversation.sId },
+        "Failed to promote Analytics-panel conversation"
+      )
+    );
 
     const contentFragments = await fetchPrecedingContentFragments(auth, {
       conversationResource,
