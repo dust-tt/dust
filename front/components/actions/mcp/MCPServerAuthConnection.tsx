@@ -98,6 +98,9 @@ interface MCPServerAuthConnectionProps {
   onSelectedScopesChange?: (scopes: string[]) => void;
   // Used to render provider-specific setup instructions for generic providers
   serverId?: number;
+  // When provided, these credential inputs are shown instead of the provider's
+  // default set (e.g. host-derived static-OAuth servers show custom fields).
+  credentialInputsOverride?: OAuthCredentialInputs;
 }
 
 export function MCPServerAuthConnection({
@@ -108,6 +111,7 @@ export function MCPServerAuthConnection({
   selectedScopes,
   onSelectedScopesChange,
   serverId,
+  credentialInputsOverride,
 }: MCPServerAuthConnectionProps) {
   const { setValue, control } = useFormContext<MCPServerOAuthFormValues>();
 
@@ -158,11 +162,12 @@ export function MCPServerAuthConnection({
     }
     lastInitializedRef.current = initKey;
 
-    // Get credential inputs for the selected provider/use case.
-    const credentialInputs = getProviderRequiredOAuthCredentialInputs({
-      provider: authorization.provider,
-      useCase: effectiveUseCase,
-    });
+    const credentialInputs =
+      credentialInputsOverride ??
+      getProviderRequiredOAuthCredentialInputs({
+        provider: authorization.provider,
+        useCase: effectiveUseCase,
+      });
     setInputs(credentialInputs);
 
     // Pre-populate credentials with default values from the provider.
@@ -175,7 +180,7 @@ export function MCPServerAuthConnection({
       }
       setValue("authCredentials", nextCredentials);
     }
-  }, [authorization, useCase, setValue]);
+  }, [authorization, useCase, setValue, credentialInputsOverride]);
 
   const handleCredentialChange = (key: string, value: string) => {
     if (!isSupportedOAuthCredential(key)) {

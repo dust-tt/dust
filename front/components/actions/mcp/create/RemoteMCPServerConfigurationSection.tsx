@@ -102,7 +102,7 @@ export function RemoteMCPServerConfigurationSection({
         </div>
       )}
 
-      {!defaultServerConfig?.url && (
+      {!defaultServerConfig?.url && !defaultServerConfig?.hostDerivedOAuth && (
         <div className="space-y-2">
           <Label htmlFor="url">URL</Label>
           <div className="flex space-x-2">
