@@ -1,9 +1,7 @@
-import { AgentUserRelationModel } from "@app/lib/models/agent/agent";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { Authenticator } from "@app/lib/auth";
+import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 makeScript(
   {
@@ -28,82 +26,23 @@ makeScript(
       return;
     }
 
-    // Get all active members of the workspace
-    const { memberships } = await MembershipResource.getActiveMemberships({
-      workspace: renderLightWorkspaceType({ workspace }),
-    });
-
-    // Parse agent names
-    const agents = agentConfigurationIds.split(",").map((sid) => sid.trim());
-
-    // Check if all agents exist by looking up in AgentConfiguration and GlobalAgentSettings
-    for (const agentConfigurationId of agents) {
-      // Skip check for global agents
-      if (agentConfigurationId in GLOBAL_AGENTS_SID) {
-        continue;
-      }
-
-      const agentRelation = await AgentUserRelationModel.findOne({
-        where: {
-          workspaceId: workspace.id,
-          agentConfiguration: agentConfigurationId,
-        },
-      });
-
-      if (!agentRelation) {
-        logger.error(
-          { agentConfigurationId },
-          "Agent configuration not found in workspace"
-        );
-        return;
-      }
-    }
-
-    logger.info(
-      { wId, agents, memberCount: memberships.length },
-      "Adding agent favorites"
-    );
-
-    if (!execute) {
-      return;
-    }
-
-    // For each member and agent combination
-    for (const membership of memberships) {
-      for (const agentConfigurationId of agents) {
-        // Check if relation already exists
-        const [, created] = await AgentUserRelationModel.findOrCreate({
-          where: {
-            workspaceId: workspace.id,
-            userId: membership.userId,
-            agentConfiguration: agentConfigurationId,
-          },
-          defaults: {
-            workspaceId: workspace.id,
-            userId: membership.userId,
-            agentConfiguration: agentConfigurationId,
-            favorite: true,
-          },
-        });
-
-        if (created) {
-          logger.info(
-            {
-              userId: membership.userId,
-              agentConfigurationId,
-            },
-            "Created agent favorite"
-          );
-        } else {
-          logger.info(
-            {
-              userId: membership.userId,
-              agentConfigurationId,
-            },
-            "Agent relation already exists - skipping"
-          );
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const agentIds = [
+      ...new Set(agentConfigurationIds.split(",").map((id) => id.trim())),
+    ];
+    const result =
+      await AgentUserRelationResource.addMissingFavoritesForWorkspaceMembers(
+        auth,
+        {
+          agentIds,
+          dryRun: !execute,
         }
-      }
-    }
+      );
+    logger.info(
+      { wId, agentIds, execute, ...result },
+      execute
+        ? "Added missing agent favorites"
+        : "Agent favorite backfill dry run"
+    );
   }
 );
