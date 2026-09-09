@@ -139,11 +139,13 @@ export const SANDBOX_STATE_REPLICA_MOUNT_POINT = "/sandbox-state/replica";
 /**
  * Absolute in-sandbox path of the owner's live SQLite databases (`{name}.db` files opened by
  * `@dust/pod`'s `db()`). Local disk, not a gcsfuse mount — Litestream replicates it to GCS.
+ * Lives next to `SANDBOX_STATE_REPLICA_MOUNT_POINT` under the owner-neutral `/sandbox-state`
+ * root (`/pod-state/databases` was a remnant of the pre-Frame, Pod-only implementation).
  * Front is the only layer that hardcodes this location (the paths-env.v1 contract): it is
  * passed per exec to `dsbx function run` as `DUST_POD_DATABASES_DIR`, dsbx forwards it to
  * the bun child, and `@dust/pod` reads the env var — neither carries a fallback copy.
  */
-export const SANDBOX_STATE_DATABASES_DIR = "/pod-state/databases";
+export const SANDBOX_STATE_DATABASES_DIR = "/sandbox-state/databases";
 
 /**
  * Per-database size quota in bytes (1 GiB). The other half of the paths-env.v1 contract: like

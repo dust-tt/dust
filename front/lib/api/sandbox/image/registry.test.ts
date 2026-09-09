@@ -94,7 +94,7 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base and sbx bedrock image tags", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.106",
+      tag: "0.8.107",
     });
     expect(getDustBaseImage().baseImage).toEqual({
       type: "docker",
@@ -563,14 +563,17 @@ describe("sandbox image registry", () => {
         expect.stringContaining(
           "useradd --system --no-create-home --gid dust-state --groups agent --shell /usr/sbin/nologin dust-state"
         ),
-        expect.stringContaining("install -d -o root -g root -m 755 /pod-state"),
-        expect.stringContaining(
-          "install -d -o dust-state -g agent -m 2770 /pod-state/databases"
-        ),
-        expect.stringContaining("setfacl -R -d -m g::rwx /pod-state/databases"),
-        expect.stringContaining("setfacl -R -m g::rwx /pod-state/databases"),
         expect.stringContaining(
           "install -d -o root -g root -m 755 /sandbox-state"
+        ),
+        expect.stringContaining(
+          "install -d -o dust-state -g agent -m 2770 /sandbox-state/databases"
+        ),
+        expect.stringContaining(
+          "setfacl -R -d -m g::rwx /sandbox-state/databases"
+        ),
+        expect.stringContaining(
+          "setfacl -R -m g::rwx /sandbox-state/databases"
         ),
         expect.stringContaining(
           "install -d -o dust-state -g dust-state -m 700 /sandbox-state/replica"
@@ -602,9 +605,7 @@ describe("sandbox image registry", () => {
     expect(litestreamUnit).toContain("RuntimeDirectory=litestream");
     expect(litestreamUnit).toContain("NoNewPrivileges=yes");
     expect(litestreamUnit).toContain("ProtectSystem=strict");
-    expect(litestreamUnit).toContain(
-      "ReadWritePaths=/pod-state /sandbox-state"
-    );
+    expect(litestreamUnit).toContain("ReadWritePaths=/sandbox-state");
     expect(litestreamUnit).toContain("RestrictAddressFamilies=AF_UNIX");
     expect(litestreamUnit).toContain("MemoryDenyWriteExecute=yes");
 
@@ -639,7 +640,7 @@ describe("sandbox image registry", () => {
 
     // Directory watcher: post-cold-start databases are discovered
     // automatically; the replica subdir is named by db FILENAME ({db}.db).
-    expect(litestreamConfig).toContain("dir: /pod-state/databases");
+    expect(litestreamConfig).toContain("dir: /sandbox-state/databases");
     expect(litestreamConfig).toContain('pattern: "*.db"');
     expect(litestreamConfig).toContain("watch: true");
     expect(litestreamConfig).toContain("type: file");
