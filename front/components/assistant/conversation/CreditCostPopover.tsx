@@ -83,6 +83,7 @@ function CreditDetailRow({
             ref={labelRef}
             className={classNames(
               "truncate",
+              // Keep the visible prefix above the animated copy throughout the reveal.
               isLabelExpanded && "z-10 text-clip bg-overlay-background"
             )}
           >
