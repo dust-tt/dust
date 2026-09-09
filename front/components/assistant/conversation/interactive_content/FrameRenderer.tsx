@@ -15,7 +15,11 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
-import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import {
+  useFileContent,
+  useFileMetadata,
+  useShareInteractiveContentFile,
+} from "@app/lib/swr/files";
 import { useEditFrameText, useFramePermissions } from "@app/lib/swr/frames";
 import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -29,6 +33,7 @@ import {
   CheckCircle,
   CodeBlock,
   Eye,
+  LinkExternal01,
   Maximize01,
   Minimize01,
   RefreshCw01,
@@ -141,6 +146,12 @@ export function FrameRenderer({
   const { fileMetadata, mutateFileMetadata } = useFileMetadata({
     fileId,
     owner,
+  });
+
+  const { fileShare } = useShareInteractiveContentFile({
+    fileId,
+    owner,
+    cacheKey: contentHash,
   });
 
   const sendNotification = useSendNotification();
@@ -487,6 +498,7 @@ export function FrameRenderer({
                 isFullScreen={isFullScreen}
                 exitFullScreen={exitFullScreen}
                 enterFullScreen={enterFullScreen}
+                shareUrl={fileShare?.shareUrl}
                 reloadFile={reloadFile}
               />
             )}
@@ -505,6 +517,7 @@ interface PreviewActionButtonsProps {
   isFullScreen: boolean;
   enterFullScreen: () => void;
   exitFullScreen: () => void;
+  shareUrl?: string;
   reloadFile: () => void;
 }
 
@@ -515,6 +528,7 @@ function PreviewActionButtons({
   isFullScreen,
   enterFullScreen,
   exitFullScreen,
+  shareUrl,
   reloadFile,
 }: PreviewActionButtonsProps) {
   const clientType = useClientType();
@@ -531,6 +545,25 @@ function PreviewActionButtons({
               variant="ghost"
               size="xs"
               onClick={isFullScreen ? exitFullScreen : enterFullScreen}
+            />
+          }
+        />
+      )}
+      {clientType !== "extension" && (
+        <Tooltip
+          label="Open in a new tab"
+          side="left"
+          tooltipTriggerAsChild
+          trigger={
+            <Button
+              aria-label="Open in a new tab"
+              icon={LinkExternal01}
+              variant="ghost"
+              size="xs"
+              disabled={!shareUrl}
+              onClick={() =>
+                window.open(shareUrl, "_blank", "noopener,noreferrer")
+              }
             />
           }
         />
