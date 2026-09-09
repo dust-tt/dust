@@ -1787,12 +1787,16 @@ export async function resolveMatchingMemberUserIds({
  * cache), so the order shown always agrees with the values displayed.
  */
 /**
- * @cc [owner:avervaet,label:product] seat-usage-order-excludes-non-seat-based
- * When `orderColumn` is `"seatUsage"`, users without a personal usage percentage (no positive
- * allowance: `workspace`/`workspace_yearly`/no seat) always sort after users with one
- * (`free`/`pro`/`max`), regardless of `orderDirection`. Users with a percentage order by it, then
- * by pool/overage consumption; users without one order by pool/overage consumption only. Both
- * follow `orderDirection`.
+ * @cc [owner:avervaet,label:product] incomparable-rows-sort-last
+ * Users whose sort key for `orderColumn` is not comparable (a `null` `percent` for
+ * `"seatUsage"`, or no computed key at all) always sort after every comparable user, regardless
+ * of `orderDirection`; within each group, users order by key then tiebreaks, following
+ * `orderDirection`.
+ */
+/**
+ * @cc [owner:avervaet,label:product] seat-usage-tiebreak-on-pool
+ * When `orderColumn` is `"seatUsage"`, users tied on `percent` (including all incomparable users)
+ * order by `consumedFromPoolAwuCredits`, following `orderDirection`.
  */
 async function resolveMembersUsagePageUsers({
   auth,
@@ -1846,13 +1850,15 @@ async function resolveMembersUsagePageUsers({
     memberships.map((m) => [m.userId, m])
   );
 
+  // Per-user rank for the requested column. A `null` key means the user has no
+  // comparable value. Tiebreaks are generic: one follows the requested
+  // direction, the other is always descending.
   const sortMetaByUserId = new Map<
     string,
     {
-      sortKey: number | string;
-      overageLimit?: number;
-      hasSeatUsagePercent?: boolean;
-      poolUsageTiebreak?: number;
+      sortKey: number | string | null;
+      directionalTiebreak?: number;
+      descendingTiebreak?: number;
     }
   >();
   switch (orderColumn) {
@@ -1953,7 +1959,7 @@ async function resolveMembersUsagePageUsers({
           });
         sortMetaByUserId.set(u.sId, {
           sortKey: consumedFromPoolAwuCredits,
-          overageLimit: effectiveSpendLimitAwuCredits - seatAllowance,
+          descendingTiebreak: effectiveSpendLimitAwuCredits - seatAllowance,
         });
       }
       break;
@@ -2010,14 +2016,14 @@ async function resolveMembersUsagePageUsers({
             ? (freeStartingByUserId.get(u.sId) ?? null)
             : null;
         const effectiveAllocationAwu = freeStartingBalanceAwu ?? awuAllocation;
-        // Same inputs the response builder emits for this row, so the sort
-        // ranks exactly what the column renders.
+        // Same arithmetic the response builder applies to this row; the pool
+        // share is only needed as the tiebreak.
         const { consumedFromAllowanceAwuCredits, consumedFromPoolAwuCredits } =
           splitConsumedAwuCredits({
             totalConsumedAwuCredits: consumedByUserId.get(u.sId) ?? 0,
             allowanceAwuCredits: effectiveAllocationAwu,
           });
-        const { percent, hasPercent } = computeSeatUsage({
+        const { percent } = computeSeatUsage({
           seatType,
           memberUsageLimit:
             effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
@@ -2029,8 +2035,7 @@ async function resolveMembersUsagePageUsers({
         });
         sortMetaByUserId.set(u.sId, {
           sortKey: percent,
-          hasSeatUsagePercent: hasPercent,
-          poolUsageTiebreak: consumedFromPoolAwuCredits,
+          directionalTiebreak: consumedFromPoolAwuCredits,
         });
       }
       break;
@@ -2071,35 +2076,31 @@ async function resolveMembersUsagePageUsers({
     const metaA = sortMetaByUserId.get(a.sId);
     const metaB = sortMetaByUserId.get(b.sId);
 
-    // Rows without a comparable percentage group last regardless of
-    // direction (see contract on this function).
-    const hasPercentA = metaA?.hasSeatUsagePercent ?? true;
-    const hasPercentB = metaB?.hasSeatUsagePercent ?? true;
-    if (hasPercentA !== hasPercentB) {
-      return hasPercentA ? -1 : 1;
+    // Incomparable rows (null key, or no key computed) group last regardless
+    // of direction (see contract on this function).
+    const keyA = metaA?.sortKey ?? null;
+    const keyB = metaB?.sortKey ?? null;
+    if ((keyA === null) !== (keyB === null)) {
+      return keyA === null ? 1 : -1;
     }
-
-    const keyA = metaA?.sortKey ?? 0;
-    const keyB = metaB?.sortKey ?? 0;
-    const cmp =
-      typeof keyA === "number" && typeof keyB === "number"
-        ? keyA - keyB
-        : String(keyA).localeCompare(String(keyB));
-    if (cmp !== 0) {
-      return cmp * directionFactor;
+    if (keyA !== null && keyB !== null) {
+      const cmp =
+        typeof keyA === "number" && typeof keyB === "number"
+          ? keyA - keyB
+          : String(keyA).localeCompare(String(keyB));
+      if (cmp !== 0) {
+        return cmp * directionFactor;
+      }
     }
-    // Tiebreak on pool/overage usage, in the same direction as the primary
-    // sort (only populated for orderColumn "seatUsage").
-    const poolUsageA = metaA?.poolUsageTiebreak ?? 0;
-    const poolUsageB = metaB?.poolUsageTiebreak ?? 0;
-    if (poolUsageA !== poolUsageB) {
-      return (poolUsageA - poolUsageB) * directionFactor;
+    const directionalA = metaA?.directionalTiebreak ?? 0;
+    const directionalB = metaB?.directionalTiebreak ?? 0;
+    if (directionalA !== directionalB) {
+      return (directionalA - directionalB) * directionFactor;
     }
-    // Tiebreak on the highest overage limit, always descending
-    const overageLimitA = metaA?.overageLimit ?? 0;
-    const overageLimitB = metaB?.overageLimit ?? 0;
-    if (overageLimitA !== overageLimitB) {
-      return overageLimitB - overageLimitA;
+    const descendingA = metaA?.descendingTiebreak ?? 0;
+    const descendingB = metaB?.descendingTiebreak ?? 0;
+    if (descendingA !== descendingB) {
+      return descendingB - descendingA;
     }
     // Stable, direction-independent tiebreaker so pages don't reshuffle.
     const nameA = (a.fullName() || a.name).toLowerCase();

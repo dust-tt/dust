@@ -1,7 +1,7 @@
 import type { MembershipSeatType } from "@app/types/memberships";
 
-// Pure seat-usage arithmetic shared by the members usage response builders,
-// their server-side sort, and the client table so the three never drift apart.
+// Pure seat-usage arithmetic. Every place that derives a seat percentage or an
+// allowance/pool split must go through here so the numbers never drift apart.
 
 /**
  * @cc [owner:avervaet,label:product] allowance-first-split
@@ -37,9 +37,9 @@ export function splitConsumedAwuCredits({
  * `consumedFromAllowanceAwuCredits` and must never be treated as fully consumed.
  */
 /**
- * @cc [owner:avervaet,label:product] has-percent-requires-allowance
- * `hasPercent` is true iff `seatType` is non-null and `memberUsageLimit` is a positive number;
- * when false, `percent` is not comparable to other rows and callers must not rank on it.
+ * @cc [owner:avervaet,label:product] percent-requires-seat-and-allowance
+ * `percent` is a number in `[0, 100]` iff `seatType` is a real seat (not `null`, not `"none"`) and
+ * `memberUsageLimit` is positive; otherwise it is `null` and callers must not rank or render it.
  */
 export function computeSeatUsage({
   seatType,
@@ -52,9 +52,7 @@ export function computeSeatUsage({
   seatBalanceAwu: number | null;
   consumedFromAllowanceAwuCredits: number;
 }): {
-  percent: number;
-  hasPercent: boolean;
-  isOverAllowance: boolean;
+  percent: number | null;
   consumed: number;
   allowance: number;
 } {
@@ -66,19 +64,12 @@ export function computeSeatUsage({
   const consumed = isFreeWithBalance
     ? Math.max(0, memberUsageLimit - seatBalanceAwu)
     : consumedFromAllowanceAwuCredits;
-  if (allowance <= 0) {
-    return {
-      percent: consumed > 0 ? 100 : 0,
-      hasPercent: false,
-      isOverAllowance: consumed > 0,
-      consumed,
-      allowance,
-    };
-  }
+  const hasSeat = seatType !== null && seatType !== "none";
   return {
-    percent: Math.min(100, (consumed / allowance) * 100),
-    hasPercent: seatType !== null,
-    isOverAllowance: consumed > allowance,
+    percent:
+      hasSeat && allowance > 0
+        ? Math.min(100, (consumed / allowance) * 100)
+        : null,
     consumed,
     allowance,
   };

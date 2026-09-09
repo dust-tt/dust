@@ -266,9 +266,12 @@ export function AwuUsageBar({
     seatType === "free" &&
     typeof seatBalanceAwu === "number" &&
     typeof memberUsageLimit === "number";
-  const lifetimeConsumed = isFreeWithBalance
-    ? Math.max(0, memberUsageLimit - seatBalanceAwu!)
-    : null;
+  const { consumed: seatConsumed } = computeSeatUsage({
+    seatType,
+    memberUsageLimit,
+    seatBalanceAwu: seatBalanceAwu ?? null,
+    consumedFromAllowanceAwuCredits: consumedFromAllowance,
+  });
   // Unlimited/uncapped is not a supported product state right now: a `null`
   // effective limit is treated as no pool access (capped at the seat
   // allowance), same as an explicit "none" seat.
@@ -278,9 +281,6 @@ export function AwuUsageBar({
   // A seat with no pool (poolLimit === 0) shows no pool section —
   // any spend beyond the seat allowance is overage. Zero-width sections are
   // skipped.
-  const seatConsumed = isFreeWithBalance
-    ? lifetimeConsumed!
-    : consumedFromAllowance;
   const seatRemaining = isFreeWithBalance
     ? seatBalanceAwu!
     : Math.max(0, allowance - seatConsumed);
@@ -456,7 +456,7 @@ export function AwuUsageBar({
   );
 
   const headlineConsumed = isFreeWithBalance
-    ? Math.min(lifetimeConsumed! + overage, allowance)
+    ? Math.min(seatConsumed + overage, allowance)
     : Math.min(consumed, resolvedEffectiveLimit);
   const headlineLimit = isFreeWithBalance ? allowance : resolvedEffectiveLimit;
   const headlineLimitLabel = formatCredits(headlineLimit);
@@ -622,18 +622,18 @@ const seatUsageColumn: ColumnDef<RowData, string> = {
       memberUsageLimit: row.memberUsageLimit,
       seatBalanceAwu: row.seatBalanceAwu,
       consumedFromAllowanceAwuCredits: row.consumedFromAllowanceAwuCredits,
-    }).percent.toString(),
+    }).percent?.toString() ?? "",
   cell: (info: Info) => {
     const { seatType, memberUsageLimit, seatBalanceAwu, isSeatChangePending } =
       info.row.original;
-    const { percent, hasPercent, consumed, allowance } = computeSeatUsage({
+    const { percent, consumed, allowance } = computeSeatUsage({
       seatType,
       memberUsageLimit,
       seatBalanceAwu,
       consumedFromAllowanceAwuCredits:
         info.row.original.consumedFromAllowanceAwuCredits,
     });
-    if (isSeatChangePending || !hasPercent) {
+    if (isSeatChangePending || percent === null) {
       return (
         <DataTable.CellContent className="justify-center">
           <span className="text-sm text-muted-foreground">--</span>
