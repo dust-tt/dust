@@ -77,7 +77,10 @@ import {
   useResolveUpgradeRequest,
   useUpgradeRequests,
 } from "@app/lib/swr/upgrade_requests";
-import { useUsageSettings } from "@app/lib/swr/usage_settings";
+import {
+  useDefaultUserSpendLimit,
+  useUsageSettings,
+} from "@app/lib/swr/usage_settings";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
@@ -310,6 +313,11 @@ export function UsagePage() {
     useState<MemberUsageType | null>(null);
   const [spendLimitRecapMember, setSpendLimitRecapMember] =
     useState<MemberUsageType | null>(null);
+  const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
+    useDefaultUserSpendLimit({
+      workspaceId: owner.sId,
+      disabled: spendLimitRecapMember === null,
+    });
   const [
     totalAllowedUsagePendingMemberIds,
     setTotalAllowedUsagePendingMemberIds,
@@ -1444,6 +1452,8 @@ export function UsagePage() {
           owner={owner}
           groups={groups}
           readOnly={!isManager(owner)}
+          defaultUserSpendLimitAwuCredits={defaultUserSpendLimit?.awuCredits}
+          isDefaultUserSpendLimitLoading={isDefaultUserSpendLimitLoading}
         />
 
         <BulkEditSpendLimitModal

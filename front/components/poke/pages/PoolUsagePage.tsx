@@ -19,6 +19,7 @@ import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
   usePokeAwuPoolCurrentCycle,
   usePokeAwuPoolCycleHistory,
+  usePokeDefaultUserSpendLimit,
   usePokeMembersUsage,
   usePokeSeatPlan,
 } from "@app/poke/swr/credits";
@@ -129,6 +130,13 @@ export function PoolUsagePage() {
     useState<MemberUsageType | null>(null);
   const [spendLimitRecapMember, setSpendLimitRecapMember] =
     useState<MemberUsageType | null>(null);
+  const {
+    defaultUserSpendLimit: pokeDefaultUserSpendLimit,
+    isDefaultUserSpendLimitLoading: isPokeDefaultUserSpendLimitLoading,
+  } = usePokeDefaultUserSpendLimit({
+    owner,
+    disabled: !spendLimitRecapMember,
+  });
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
@@ -453,6 +461,8 @@ export function PoolUsagePage() {
         owner={owner}
         groups={groups}
         readOnly
+        defaultUserSpendLimitAwuCredits={pokeDefaultUserSpendLimit?.awuCredits}
+        isDefaultUserSpendLimitLoading={isPokeDefaultUserSpendLimitLoading}
         onClose={() => setSpendLimitRecapMember(null)}
       />
     </main>

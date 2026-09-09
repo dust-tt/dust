@@ -3,12 +3,14 @@ import { MemberGroupLimitTable } from "@app/components/workspace/MemberGroupLimi
 import {
   groupRowsForMember,
   parseCreditsInput,
+  parseDefaultLimitInput,
   toSpendLimit,
 } from "@app/components/workspace/member_spend_limit_helpers";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits } from "@app/lib/client/credits";
 import { useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { useUpdateUserSpendLimit } from "@app/lib/swr/memberships";
+import { useUpdateDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { GroupType } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -25,8 +27,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-// TODO(spend-limit-modal-rollout): remove `EditSpendLimitModal` and
-// `BulkEditSpendLimitModal` once the usage page has fully rolled onto this
+// TODO(spend-limit-modal-rollout): remove `EditSpendLimitModal`
+// once the usage page has fully rolled onto this
 // component, so there's a single spend-limit editing implementation again.
 interface EditMemberSpendLimitModalProps {
   isOpen: boolean;
@@ -35,6 +37,11 @@ interface EditMemberSpendLimitModalProps {
   owner: LightWorkspaceType;
   groups: GroupType[];
   readOnly?: boolean;
+  // Fetched by the caller, same as `member`/`groups`: the customer-facing app
+  // and poke reach this value through different routes (workspace-role-gated
+  // vs. poke's superuser-scoped route), so the modal itself never fetches it.
+  defaultUserSpendLimitAwuCredits: number | undefined;
+  isDefaultUserSpendLimitLoading: boolean;
 }
 
 interface MemberSpendLimitFormProps {
@@ -42,6 +49,10 @@ interface MemberSpendLimitFormProps {
   owner: LightWorkspaceType;
   groups: GroupType[];
   readOnly: boolean;
+  // Undefined while the workspace default is still being fetched: the field
+  // then shows a "--" placeholder rather than a real 0, and saving is
+  // blocked until it resolves (see `isDefaultLimitPending` below).
+  defaultLimitAwuCredits: number | undefined;
   onClose: () => void;
 }
 
@@ -50,6 +61,7 @@ function MemberSpendLimitForm({
   owner,
   groups,
   readOnly,
+  defaultLimitAwuCredits,
   onClose,
 }: MemberSpendLimitFormProps) {
   const { doUpdateSpendLimit } = useUpdateUserSpendLimit({
@@ -58,6 +70,21 @@ function MemberSpendLimitForm({
   const { doUpdateGroupSpendLimit } = useUpdateGroupSpendLimit({
     workspaceId: owner.sId,
   });
+  const { doUpdateDefaultUserSpendLimit } = useUpdateDefaultUserSpendLimit({
+    workspaceId: owner.sId,
+  });
+  const isDefaultHighest = member?.spendLimitSource === "default";
+  // While the workspace default is still loading, block saving instead of
+  // treating the unresolved value as unchanged (which would let an admin
+  // silently commit whatever ends up in the input once it finally arrives).
+  const isDefaultLimitPending =
+    isDefaultHighest && defaultLimitAwuCredits === undefined;
+
+  const [defaultLimitInput, setDefaultLimitInput] = useState<string>(() =>
+    defaultLimitAwuCredits !== undefined ? String(defaultLimitAwuCredits) : ""
+  );
+  const [defaultLimitValidationMessage, setDefaultLimitValidationMessage] =
+    useState<string | null>(null);
 
   const seatAllowanceAwuCredits = member?.memberUsageLimit ?? 0;
   const effectiveLimitAwuCredits = member?.spendLimitAwuCredits ?? 0;
@@ -106,7 +133,7 @@ function MemberSpendLimitForm({
   }
 
   async function handleValidate() {
-    if (!member) {
+    if (!member || isDefaultLimitPending) {
       return;
     }
 
@@ -126,7 +153,16 @@ function MemberSpendLimitForm({
       )
     );
 
-    if (!personalResult.ok || groupResults.some(({ result }) => !result.ok)) {
+    const defaultLimitResult = parseDefaultLimitInput(defaultLimitInput);
+    setDefaultLimitValidationMessage(
+      defaultLimitResult.ok ? null : defaultLimitResult.message
+    );
+
+    if (
+      !personalResult.ok ||
+      !defaultLimitResult.ok ||
+      groupResults.some(({ result }) => !result.ok)
+    ) {
       return;
     }
 
@@ -137,8 +173,10 @@ function MemberSpendLimitForm({
         ? [{ row, awuCredits: result.awuCredits }]
         : []
     );
+    const defaultLimitChanged =
+      defaultLimitResult.awuCredits !== defaultLimitAwuCredits;
 
-    if (!personalChanged && groupChanges.length === 0) {
+    if (!personalChanged && !defaultLimitChanged && groupChanges.length === 0) {
       onClose();
       return;
     }
@@ -146,6 +184,11 @@ function MemberSpendLimitForm({
     setIsSaving(true);
     try {
       const tasks: Array<() => Promise<unknown>> = [];
+      if (defaultLimitChanged) {
+        tasks.push(() =>
+          doUpdateDefaultUserSpendLimit(defaultLimitResult.awuCredits)
+        );
+      }
       if (personalChanged) {
         const limit = toSpendLimit(personalResult.awuCredits);
         tasks.push(() =>
@@ -210,6 +253,25 @@ function MemberSpendLimitForm({
       </DialogHeader>
       <DialogContainer>
         <div className="flex flex-col gap-5">
+          {isDefaultHighest && (
+            // Only relevant when the workspace default is actually what
+            // caps this member: no personal override, and no group they're
+            // in carries its own cap. Otherwise editing it here wouldn't
+            // change this member's effective limit.
+            <CreditLimitInput
+              label="Workspace default limit"
+              value={defaultLimitInput}
+              readOnly={readOnly}
+              isHighest={false}
+              validationMessage={defaultLimitValidationMessage}
+              placeholder="--"
+              onChange={(cleaned) => {
+                setDefaultLimitInput(cleaned);
+                setDefaultLimitValidationMessage(null);
+              }}
+            />
+          )}
+
           <CreditLimitInput
             label="Personal limit"
             value={personalLimitInput}
@@ -247,7 +309,7 @@ function MemberSpendLimitForm({
         rightButtonProps={{
           label: "Validate",
           variant: "highlight",
-          disabled: isSaving || readOnly,
+          disabled: isSaving || readOnly || isDefaultLimitPending,
           isLoading: isSaving,
           onClick: handleValidate,
         }}
@@ -263,6 +325,8 @@ export function EditMemberSpendLimitModal({
   owner,
   groups,
   readOnly = false,
+  defaultUserSpendLimitAwuCredits,
+  isDefaultUserSpendLimitLoading,
 }: EditMemberSpendLimitModalProps) {
   const lastMemberRef = useRef<MemberUsageType | null>(null);
   useEffect(() => {
@@ -281,13 +345,15 @@ export function EditMemberSpendLimitModal({
       <DialogContent size="md" className="font-sans">
         <MemberSpendLimitForm
           // Remounts with fresh draft state on every open, whenever the
-          // targeted member changes, or once the member's groups resolve,
-          // instead of syncing state from props.
-          key={`${displayedMember?.sId ?? "none"}:${isOpen}:${memberGroupsResolved}`}
+          // targeted member changes, once the member's groups resolve, or
+          // once the workspace default limit finishes loading, instead of
+          // syncing state from props.
+          key={`${displayedMember?.sId ?? "none"}:${isOpen}:${memberGroupsResolved}:${isDefaultUserSpendLimitLoading}`}
           member={displayedMember}
           owner={owner}
           groups={groups}
           readOnly={readOnly}
+          defaultLimitAwuCredits={defaultUserSpendLimitAwuCredits}
           onClose={onClose}
         />
       </DialogContent>
