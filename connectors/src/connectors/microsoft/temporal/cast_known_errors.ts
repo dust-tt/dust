@@ -113,11 +113,6 @@ export function isJSONParsingError(err: unknown): err is Error {
 export class MicrosoftCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
-  /**
-   * @cc [owner:aubin-tchoi,label:error-handling] graph-authentication-failures
-   * Graph HTTP 401 errors escaping Microsoft activities are rethrown as
-   * `ExternalOAuthTokenError`, preserving the original Graph error as the cause.
-   */
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
