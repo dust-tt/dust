@@ -25,7 +25,21 @@ import {
   isUserBlockedByMetronome,
 } from "@app/lib/metronome/user_block";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
+
+export const PROGRAMMATIC_CAP_REACHED_MESSAGE =
+  "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.";
+
+/**
+ * Whether the workspace is on a credit-priced (Metronome) plan, i.e. whether
+ * the pool and programmatic-cap readers below apply to it.
+ */
+export function isCreditPricedWorkspace(auth: Authenticator): boolean {
+  const plan = auth.subscription()?.plan;
+  const owner = auth.getNonNullableWorkspace();
+  return Boolean(owner.metronomeCustomerId && plan && isCreditPricedPlan(plan));
+}
 
 /**
  * Whether the workspace credit pool is depleted (API calls with no per-user

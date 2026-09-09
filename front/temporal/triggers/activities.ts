@@ -10,6 +10,7 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { PROGRAMMATIC_CAP_REACHED_MESSAGE } from "@app/lib/api/credits/access_control";
 import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
@@ -19,6 +20,7 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
+import { isTriggerProgrammaticCapReached } from "@app/lib/triggers/rate_limits";
 import { getWebhookRequestPayloadFromGCS } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
@@ -321,6 +323,36 @@ export async function runTriggeredAgentsActivity({
     default: {
       assertNever(trigger);
     }
+  }
+
+  // Programmatic monthly cap: webhook requests are gated at ingestion, schedule
+  // runs only here.
+  if (await isTriggerProgrammaticCapReached(auth, { trigger })) {
+    logger.info(
+      {
+        triggerId: trigger.sId,
+        agentConfigurationId: trigger.agentConfigurationId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+      },
+      "Trigger run skipped: programmatic monthly cap reached."
+    );
+    PostHogServerSideTracking.trackEvent({
+      distinctId: auth.getNonNullableUser().sId,
+      event: "trigger_blocked",
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      extra: {
+        trigger_id: trigger.sId,
+        error_type: "credits_exhausted",
+      },
+    });
+    if (webhookRequest) {
+      await webhookRequest.markRelatedTrigger({
+        trigger,
+        status: "credits_exhausted",
+        errorMessage: PROGRAMMATIC_CAP_REACHED_MESSAGE,
+      });
+    }
+    return;
   }
 
   // Create a single conversation for the editor.

@@ -1,3 +1,7 @@
+import {
+  isCreditPricedWorkspace,
+  isProgrammaticApiBlocked,
+} from "@app/lib/api/credits/access_control";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import type { Authenticator } from "@app/lib/auth";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
@@ -6,7 +10,10 @@ import {
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import type { WebhookTriggerType } from "@app/types/assistant/triggers";
+import type {
+  TriggerType,
+  WebhookTriggerType,
+} from "@app/types/assistant/triggers";
 import { DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT } from "@app/types/assistant/triggers";
 
 const WORKSPACE_MESSAGE_LIMIT_MULTIPLIER = 0.5; // 50% of workspace message limit
@@ -84,4 +91,21 @@ export async function checkTriggerForExecutionPerDayLimit(
   }
 
   return { rateLimited: false };
+}
+
+// Whether a trigger charged to the workspace pool is blocked by the credit-priced
+// programmatic monthly cap. Reads the same state as `checkMessagesLimit`, so callers
+// can reject early instead of letting the run fail (and be retried) downstream.
+export async function isTriggerProgrammaticCapReached(
+  auth: Authenticator,
+  { trigger }: { trigger: Pick<TriggerType, "executionMode"> }
+): Promise<boolean> {
+  if (
+    trigger.executionMode !== "workspace_pool" ||
+    !isCreditPricedWorkspace(auth)
+  ) {
+    return false;
+  }
+
+  return isProgrammaticApiBlocked(auth);
 }
