@@ -9,6 +9,7 @@ import {
   ConsumptionExportBodySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
+import { emitAnalyticsExportedEvent } from "@app/lib/api/audit/analytics_export";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
@@ -103,6 +104,12 @@ app.get(
         },
       });
     }
+
+    void emitAnalyticsExportedEvent(auth, {
+      exportName: "consumption_lines",
+      format: "csv",
+      fileName: name,
+    });
 
     return ctx.redirect(result.value);
   }

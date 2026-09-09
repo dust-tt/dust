@@ -1,5 +1,6 @@
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import { emitConversationAccessedEvent } from "@app/lib/api/audit/conversation_access";
 import { parseIntParam } from "@app/lib/api/pagination";
 import { addBackwardCompatibleConversationFields } from "@app/lib/api/v1/backward_compatibility";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -182,6 +183,8 @@ app.get(
       lastValue: paginationLastValue,
       ...conversation
     } = conversationRes.value;
+
+    void emitConversationAccessedEvent(auth, conversation);
 
     const response: GetConversationResponseType = {
       conversation: addBackwardCompatibleConversationFields(conversation),
