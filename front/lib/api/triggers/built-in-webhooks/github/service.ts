@@ -7,6 +7,7 @@ import logger from "@app/logger/logger";
 import { OAuthAPI } from "@app/types/oauth/oauth_api";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { RemoteWebhookService } from "@app/types/triggers/remote_webhook_service";
 import { Octokit } from "@octokit/core";
@@ -151,9 +152,9 @@ export class GitHubWebhookService implements RemoteWebhookService<"github"> {
           );
 
           webhookIds[fullName] = String(webhook.id);
-        } catch (error: any) {
+        } catch (error) {
           errors.push(
-            `Failed to create webhook for ${fullName}: ${error.message}`
+            `Failed to create webhook for ${fullName}: ${normalizeError(error).message}`
           );
         }
       }
@@ -179,9 +180,9 @@ export class GitHubWebhookService implements RemoteWebhookService<"github"> {
           );
 
           webhookIds[orgName] = String(webhook.id);
-        } catch (error: any) {
+        } catch (error) {
           errors.push(
-            `Failed to create webhook for organization ${orgName}: ${error.message}`
+            `Failed to create webhook for organization ${orgName}: ${normalizeError(error).message}`
           );
         }
       }
@@ -202,10 +203,12 @@ export class GitHubWebhookService implements RemoteWebhookService<"github"> {
         },
         errors: errors.length > 0 ? errors : undefined,
       });
-    } catch (error: any) {
+    } catch (error) {
       return new Err(
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        new Error(error.message || "Failed to create GitHub webhooks")
+        new Error(
+          normalizeError(error).message || "Failed to create GitHub webhooks"
+        )
       );
     }
   }
@@ -313,8 +316,10 @@ export class GitHubWebhookService implements RemoteWebhookService<"github"> {
               hook_id: parseInt(webhookId, 10),
             });
           }
-        } catch (error: any) {
-          errors.push(`Failed to delete webhook for ${key}: ${error.message}`);
+        } catch (error) {
+          errors.push(
+            `Failed to delete webhook for ${key}: ${normalizeError(error).message}`
+          );
         }
       }
 
@@ -324,10 +329,13 @@ export class GitHubWebhookService implements RemoteWebhookService<"github"> {
       }
 
       return new Ok(undefined);
-    } catch (error: any) {
+    } catch (error) {
       return new Err(
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        new Error(error.message || "Failed to delete webhook from GitHub")
+        new Error(
+          normalizeError(error).message ||
+            "Failed to delete webhook from GitHub"
+        )
       );
     }
   }

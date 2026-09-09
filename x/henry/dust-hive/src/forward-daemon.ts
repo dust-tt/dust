@@ -210,7 +210,8 @@ function createForwarder(listenPort: number, targetPort: number, name: string) {
           },
         }).catch((error) => {
           clearTimeout(timeoutId);
-          console.error(`[${name}] Connection error: ${error.message}`);
+          const message = error instanceof Error ? error.message : String(error);
+          console.error(`[${name}] Connection error: ${message}`);
           if (!client.data.closed) {
             client.end();
           }

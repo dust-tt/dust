@@ -35,7 +35,8 @@ main()
     process.exit(0);
   })
   .catch((err) => {
-    console.error("\x1b[31m%s\x1b[0m", `Error: ${err.message}`);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("\x1b[31m%s\x1b[0m", `Error: ${message}`);
     console.log(err);
     process.exit(1);
   });

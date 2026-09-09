@@ -1,5 +1,6 @@
 import { clientFetch } from "@app/lib/egress/client";
 import type { GetProvidersCheckResponseBody } from "@app/types/api/provider_credentials";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 
 import type { useProviders } from "./swr/apps";
@@ -136,8 +137,8 @@ export async function checkProvider(
       }
     );
     return await result.json();
-  } catch (e: any) {
-    return { ok: false, error: e.message };
+  } catch (e) {
+    return { ok: false, error: normalizeError(e).message };
   }
 }
 
