@@ -136,6 +136,11 @@ function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
       // /subtle1 is rewritten to PostHog by marketing's own next.config.js.
       // Use a relative path so requests hit marketing's origin (not front).
       api_host: "/subtle1",
+      // Direct PostHog app URL (EU region). Required because api_host points
+      // at our own /subtle1 reverse proxy: the toolbar (heatmaps, inspect mode)
+      // authenticates against ui_host, and without it tries to reach the
+      // PostHog app at dust.tt and fails.
+      ui_host: "https://eu.posthog.com",
       person_profiles: "identified_only",
       defaults: "2025-05-24",
       persistence,
