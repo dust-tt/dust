@@ -5,26 +5,17 @@ import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
-import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
+import {
+  EnqueueUpsertDocument,
+  fetchUpsertQueuePayload,
+} from "@app/lib/upsert_queue";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import mainLogger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
 import { safeSubstring } from "@app/types/shared/utils/string_utils";
-import { Storage } from "@google-cloud/storage";
 import { ApplicationFailure } from "@temporalio/common";
 import { fromError } from "zod-validation-error";
-
-const { DUST_UPSERT_QUEUE_BUCKET, SERVICE_ACCOUNT } = process.env;
-
-export function isGcsNotFoundError(error: unknown): boolean {
-  if (typeof error !== "object" || error === null || !("code" in error)) {
-    return false;
-  }
-
-  const code = (error as { code?: unknown }).code;
-  return code === 404 || code === "404";
-}
 
 export function cleanUtf8Content(content: string): string {
   // Strip null bytes (invalid in PostgreSQL text columns and JSON strings per RFC4627)
@@ -57,34 +48,22 @@ export async function upsertDocumentActivity(
     });
   }
 
-  if (!DUST_UPSERT_QUEUE_BUCKET) {
-    throw new Error("DUST_UPSERT_QUEUE_BUCKET is not set");
-  }
-  const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
-  const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
-  const logger = mainLogger.child({ upsertQueueId });
-  // GCS bucket.file().download() returns a `DownloadResponse = [Buffer]` — it's defined as a tuple with exactly one element.
-  // It's a quirk of the GCS SDK's callback-style API converted to a promise
-  // There's never more than one Buffer => destructuring is fine
-  let fileBuffer: Buffer;
-  try {
-    [fileBuffer] = await bucket.file(`${upsertQueueId}.json`).download();
-  } catch (error) {
-    if (!isGcsNotFoundError(error)) {
-      throw error;
-    }
-
-    logger.error(
-      { error },
-      "[UpsertQueue] Payload missing from GCS, stopping retries"
+  const fileBuffer = await fetchUpsertQueuePayload(upsertQueueId);
+  if (!fileBuffer) {
+    mainLogger.error(
+      {
+        upsertQueueId,
+        delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+      },
+      "[UpsertQueue] Payload missing from GCS, giving up"
     );
-    statsDMetrics.increment("upsert_queue_payload_missing.count");
-
-    throw ApplicationFailure.create({
-      message: `Upsert queue payload ${upsertQueueId} is missing from GCS.`,
-      type: "upsert_queue_payload_missing",
-      nonRetryable: true,
-    });
+    statsDMetrics.increment("upsert_queue_payload_missing.count", 1, [
+      "kind:document",
+    ]);
+    throw ApplicationFailure.nonRetryable(
+      `Upsert queue payload ${upsertQueueId} is missing from GCS.`,
+      "upsert_queue_payload_missing"
+    );
   }
 
   const upsertDocument = JSON.parse(cleanUtf8Content(decodeBuffer(fileBuffer)));
@@ -100,7 +79,7 @@ export async function upsertDocumentActivity(
 
   const upsertQueueItem = documentItemValidation.data;
 
-  const documentLogger = logger.child({
+  const logger = mainLogger.child({
     upsertQueueId,
     workspaceId: upsertQueueItem.workspaceId,
     dataSourceId: upsertQueueItem.dataSourceId,
@@ -118,7 +97,7 @@ export async function upsertDocumentActivity(
   if (!dataSource) {
     // If the data source was not found, we simply give up and remove the item from the queue as it
     // means that the data source was deleted.
-    documentLogger.info(
+    logger.info(
       {
         delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
       },
@@ -134,7 +113,7 @@ export async function upsertDocumentActivity(
 
   const credentials = await getLlmCredentials(auth);
 
-  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), documentLogger);
+  const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const upsertTimestamp = Date.now();
 
@@ -161,7 +140,7 @@ export async function upsertDocumentActivity(
   });
 
   if (upsertRes.isErr()) {
-    documentLogger.error(
+    logger.error(
       {
         error: upsertRes.error,
         latencyMs: Date.now() - upsertTimestamp,
@@ -185,7 +164,7 @@ export async function upsertDocumentActivity(
     throw error;
   }
 
-  documentLogger.info(
+  logger.info(
     {
       latencyMs: Date.now() - upsertTimestamp,
       delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
