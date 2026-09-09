@@ -18,6 +18,11 @@ interface UsageSettingsCardProps {
   hasPool: boolean;
 }
 
+function validateDefaultLimit(value: string) {
+  const parseResult = parseDefaultLimitInput(value);
+  return parseResult.ok ? null : parseResult.message;
+}
+
 export function UsageSettingsCard({
   workspaceId,
   hasPool,
@@ -52,11 +57,6 @@ export function UsageSettingsCard({
   };
 
   const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? null;
-
-  const validateDefaultLimit = (value: string) => {
-    const parseResult = parseDefaultLimitInput(value);
-    return parseResult.ok ? null : parseResult.message;
-  };
 
   const handleSaveDefaultLimit = async (newValue: string) => {
     const parseResult = parseDefaultLimitInput(newValue);
