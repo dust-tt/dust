@@ -22,6 +22,29 @@ lazy_static! {
         env::var("OAUTH_NOTION_PLATFORM_ACTIONS_CLIENT_SECRET").unwrap();
 }
 
+/// Extracts the authorizing Notion account (email, falling back to display name) from the OAuth
+/// token response. Notion returns the granting identity under `owner.user`. Returns `None` for
+/// workspace-level owners that carry no user identity.
+fn extract_account_from_raw_json(raw_json: &serde_json::Value) -> Option<String> {
+    let user = raw_json.get("owner")?.get("user")?;
+
+    let email = user
+        .get("person")
+        .and_then(|person| person.get("email"))
+        .and_then(|email| email.as_str())
+        .map(str::trim)
+        .filter(|email| !email.is_empty());
+    if let Some(email) = email {
+        return Some(email.to_string());
+    }
+
+    user.get("name")
+        .and_then(|name| name.as_str())
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum NotionUseCase {
     Connection,
@@ -111,6 +134,16 @@ impl Provider for NotionConnectionProvider {
             None => Err(anyhow!("Missing `access_token` in response from Notion"))?,
         };
 
+        // Surface the authorizing Notion account so admins can verify which identity backs the
+        // connection. Workspace-level owners carry no user identity, so `connected_account` is
+        // simply absent in that case.
+        let extra_metadata = extract_account_from_raw_json(&raw_json).map(|account| {
+            serde_json::Map::from_iter([(
+                "connected_account".to_string(),
+                serde_json::Value::String(account),
+            )])
+        });
+
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
@@ -118,7 +151,7 @@ impl Provider for NotionConnectionProvider {
             access_token_expiry: None,
             refresh_token: None,
             raw_json,
-            extra_metadata: None,
+            extra_metadata,
         })
     }
 
@@ -141,5 +174,63 @@ impl Provider for NotionConnectionProvider {
             _ => Err(anyhow!("Invalid raw_json, not an object"))?,
         };
         Ok(raw_json)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::extract_account_from_raw_json;
+    use serde_json::json;
+
+    #[test]
+    fn extracts_person_email() {
+        let raw_json = json!({
+            "owner": {
+                "type": "user",
+                "user": {
+                    "object": "user",
+                    "name": "Etienne Baerd",
+                    "type": "person",
+                    "person": { "email": "etienne@manageris.com" }
+                }
+            }
+        });
+        assert_eq!(
+            extract_account_from_raw_json(&raw_json),
+            Some("etienne@manageris.com".to_string())
+        );
+    }
+
+    #[test]
+    fn falls_back_to_name_when_email_absent() {
+        let raw_json = json!({
+            "owner": {
+                "type": "user",
+                "user": { "object": "user", "name": "Manageris Bot" }
+            }
+        });
+        assert_eq!(
+            extract_account_from_raw_json(&raw_json),
+            Some("Manageris Bot".to_string())
+        );
+    }
+
+    #[test]
+    fn returns_none_for_workspace_owner_without_user() {
+        let raw_json = json!({
+            "owner": { "type": "workspace", "workspace": true },
+            "workspace_name": "Manageris"
+        });
+        assert_eq!(extract_account_from_raw_json(&raw_json), None);
+    }
+
+    #[test]
+    fn ignores_blank_values() {
+        let raw_json = json!({
+            "owner": {
+                "user": { "name": "  ", "person": { "email": "" } }
+            }
+        });
+        assert_eq!(extract_account_from_raw_json(&raw_json), None);
     }
 }

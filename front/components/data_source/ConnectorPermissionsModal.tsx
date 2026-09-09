@@ -277,13 +277,16 @@ function UpdateConnectionOAuthModal({
   const isSlack = connectorProvider === "slack";
   const isMicrosoft = connectorProvider === "microsoft";
   const isZendesk = connectorProvider === "zendesk";
+  const isNotion = connectorProvider === "notion";
 
   // Fetch existing OAuth metadata when modal is open
   const { metadata, isMetadataLoading } = useOAuthMetadata({
     dataSource,
     owner,
     disabled:
-      !isOpen || !dataSource.connectorId || (!isMicrosoft && !isZendesk),
+      !isOpen ||
+      !dataSource.connectorId ||
+      (!isMicrosoft && !isZendesk && !isNotion),
   });
 
   // Populate extraConfig from metadata on first load only
@@ -356,6 +359,11 @@ function UpdateConnectionOAuthModal({
     connectorProvider && CONNECTOR_UI_CONFIGURATIONS[connectorProvider];
 
   const isDataSourceOwner = editedByUser?.userId === user.sId;
+
+  const connectedAccountValue = metadata?.connected_account;
+  const connectedAccount = isString(connectedAccountValue)
+    ? connectedAccountValue
+    : null;
 
   const permissionsConfigurable =
     getConnectorPermissionsConfigurableBlocked(connectorProvider);
@@ -445,6 +453,12 @@ function UpdateConnectionOAuthModal({
                 : "."}
             </div>
           </div>
+          {connectedAccount && (
+            <div className="copy-sm text-muted-foreground">
+              Authorized with {connectorConfiguration.name} account{" "}
+              <span className="font-bold">{connectedAccount}</span>.
+            </div>
+          )}
           {!isDataSourceOwner && (
             <div className="flex items-center justify-center gap-2">
               <RequestDataSourceModal
