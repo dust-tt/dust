@@ -653,3 +653,11 @@ switch (event.type) {
 
 Reviewer: If you see `assertNever` used in frontend component or hook code, require the author to
 switch to `assertNeverAndIgnore`.
+
+@cc [owner:avervaet,label:coding] date-fns-over-moment
+We are deprecating `moment` in favor of `date-fns`. New code must not import `moment`; use
+`date-fns` (see `lib/utils/timestamps.ts` for existing calendar/relative-date helpers), and migrate
+a file's `moment` usage to `date-fns` when otherwise modifying that file's date-handling code.
+
+Reviewer: If you see a new `import moment from "moment"`, require the author to use `date-fns`
+instead.
