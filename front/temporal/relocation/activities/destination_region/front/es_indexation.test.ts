@@ -1,9 +1,15 @@
+import { agentSearchIndex } from "@app/lib/agent_search";
+import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
   deleteWorkspaceSkillDocuments,
   indexSkillDocument,
 } from "@app/lib/skill_search";
-import { recreateSkillSearchIndex } from "@app/temporal/relocation/activities/destination_region/front/es_indexation";
+import {
+  recreateAgentSearchIndex,
+  recreateSkillSearchIndex,
+} from "@app/temporal/relocation/activities/destination_region/front/es_indexation";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -46,9 +52,6 @@ describe("recreateSkillSearchIndex", () => {
       expect.objectContaining({
         skill_id: activeSkill.sId,
         requested_space_ids: [regularSpace.sId, pod.sId],
-        non_pod_space_ids: [regularSpace.sId],
-        non_pod_space_count: 1,
-        pod_space_id: pod.sId,
       })
     );
     expect(
@@ -70,5 +73,61 @@ describe("recreateSkillSearchIndex", () => {
     ).rejects.toThrow(
       `Failed to index 1 skills for workspace ${workspace.sId}`
     );
+  });
+});
+
+describe("recreateAgentSearchIndex", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("clears the workspace and rebuilds only latest active agent identities", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const active = await AgentConfigurationFactory.createTestAgent(auth);
+    await AgentConfigurationFactory.updateTestAgent(auth, active.sId, {
+      name: "Latest",
+    });
+    const archived = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Archived",
+    });
+    await archiveAgentConfiguration(auth, archived.sId);
+    const other = await createResourceTest({ role: "admin" });
+    await AgentConfigurationFactory.createTestAgent(other.authenticator);
+    const deletion = vi
+      .spyOn(agentSearchIndex, "deleteWorkspace")
+      .mockResolvedValue(new Ok(undefined));
+    const upsert = vi
+      .spyOn(agentSearchIndex, "upsert")
+      .mockResolvedValue(new Ok(undefined));
+    await recreateAgentSearchIndex({ workspaceId: workspace.sId });
+    expect(deletion).toHaveBeenCalledExactlyOnceWith({
+      workspaceId: workspace.sId,
+    });
+    expect(upsert).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        workspace_id: workspace.sId,
+        agent_id: active.sId,
+        name: "Latest",
+        metadata: expect.objectContaining({ version: 1 }),
+      })
+    );
+    expect(deletion.mock.invocationCallOrder[0]).toBeLessThan(
+      upsert.mock.invocationCallOrder[0]
+    );
+  });
+
+  it("fails if workspace cleanup fails instead of rebuilding over stale documents", async () => {
+    const { workspace } = await createResourceTest({ role: "admin" });
+    const error = new ElasticsearchError("query_error", "Delete failed");
+    vi.spyOn(agentSearchIndex, "deleteWorkspace").mockResolvedValue(
+      new Err(error)
+    );
+    const upsert = vi.spyOn(agentSearchIndex, "upsert");
+    await expect(
+      recreateAgentSearchIndex({ workspaceId: workspace.sId })
+    ).rejects.toBe(error);
+    expect(upsert).not.toHaveBeenCalled();
   });
 });

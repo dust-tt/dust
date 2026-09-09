@@ -123,6 +123,14 @@ vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
   const mod = (await importOriginal()) as Record<string, unknown>;
   return {
     ...mod,
+    launchDeleteWorkspaceAgentSearchWorkflow: vi.fn(async () => {
+      const { Ok } = await import("@app/types/shared/result");
+      return new Ok(undefined);
+    }),
+    launchIndexAgentSearchWorkflow: vi.fn(async () => {
+      const { Ok } = await import("@app/types/shared/result");
+      return new Ok(undefined);
+    }),
     launchDeleteWorkspaceSkillSearchWorkflow: vi.fn(async () => {
       const { Ok } = await import("@app/types/shared/result");
       return new Ok(undefined);

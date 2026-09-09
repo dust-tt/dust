@@ -13,6 +13,9 @@ import { validate } from "@front-api/middlewares/validator";
 import { stream } from "hono/streaming";
 import { fromError } from "zod-validation-error";
 
+import resources from "./resources";
+import tools from "./tools";
+
 interface UnifiedSearchStreamChunk {
   knowledgeResults?: {
     nodes: DataSourceContentNode[];
@@ -25,6 +28,8 @@ interface UnifiedSearchStreamChunk {
 
 // Mounted at /api/w/:wId/search.
 const app = workspaceApp();
+app.route("/resources", resources);
+app.route("/tools", tools);
 
 /** @ignoreswagger */
 app.get("/", async (ctx) => {

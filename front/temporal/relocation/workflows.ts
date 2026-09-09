@@ -325,6 +325,9 @@ export async function workspaceRelocateFrontEsIndexationWorkflow({
   if (patched("relocation-recreate-skill-search-index")) {
     await destinationRegionActivities.recreateSkillSearchIndex({ workspaceId });
   }
+  if (patched("relocation-recreate-agent-search-index")) {
+    await destinationRegionActivities.recreateAgentSearchIndex({ workspaceId });
+  }
 }
 
 /**

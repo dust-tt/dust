@@ -1,12 +1,17 @@
+import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
+import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import type { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentModel } from "@app/lib/models/agent/agent";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import type {
   AgentConfigurationScope,
+  AgentModelConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import { LightAgentConfigurationSchema } from "@app/types/assistant/agent";
 import type { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { GrantVerb } from "@app/types/group_permissions";
@@ -15,6 +20,7 @@ import type {
   RoleGrant,
   WithAccessControl,
 } from "@app/types/resource_permissions";
+import type { SearchFilters } from "@app/types/search";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
@@ -39,6 +45,92 @@ const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
 ];
 
 export class AgentResource implements WithAccessControl {
+  static toModelJSON(
+    agent: Omit<AgentModelConfigurationType, "reasoningEffort"> & {
+      reasoningEffort?: AgentModelConfigurationType["reasoningEffort"] | null;
+    }
+  ): AgentModelConfigurationType {
+    const model: AgentModelConfigurationType = {
+      providerId: agent.providerId,
+      modelId: agent.modelId,
+      temperature: agent.temperature,
+    };
+
+    if (agent.responseFormat) {
+      model.responseFormat = agent.responseFormat;
+    }
+
+    // Always set reasoning effort, using model default if null/undefined
+    if (agent.reasoningEffort) {
+      model.reasoningEffort = agent.reasoningEffort;
+    } else {
+      // Get the model configuration to use default reasoning effort
+      const modelConfig = getSupportedModelConfig({
+        providerId: agent.providerId,
+        modelId: agent.modelId,
+      });
+      if (modelConfig) {
+        model.reasoningEffort = modelConfig.defaultReasoningEffort;
+      }
+    }
+
+    return model;
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;security] code-defined-agent-search-metadata
+   * Search includes only active globals admitted by the canonical catalog, never creates
+   * tool views, and returns the light schema with no instructions or capabilities.
+   */
+  static async listGlobalAgentsForSearch(
+    auth: Authenticator,
+    filters: SearchFilters = {}
+  ): Promise<LightAgentConfigurationType[]> {
+    if (
+      filters.spaceIds?.length ||
+      filters.editedByMe ||
+      filters.isDefault !== undefined ||
+      (filters.availability?.length &&
+        !filters.availability.includes("workspace_users"))
+    ) {
+      return [];
+    }
+    const toolIds = new Set(filters.toolIds ?? []);
+    const skillIds = new Set(filters.skillIds ?? []);
+    const tagIds = new Set(filters.tagIds ?? []);
+    // Dynamic tool attachments depend on current company knowledge. Hydrate capabilities only
+    // when selecting by tools/skills; ordinary name/usage search keeps the light catalog path.
+    const agents = await getGlobalAgents(
+      auth,
+      undefined,
+      toolIds.size > 0 || skillIds.size > 0 ? "full" : "light",
+      { ensureAutoViews: false }
+    );
+    return agents
+      .filter(
+        (agent) =>
+          agent.status === "active" &&
+          agent.canRead &&
+          (tagIds.size === 0 ||
+            agent.tags.some((tag) => tagIds.has(tag.sId))) &&
+          (toolIds.size === 0 ||
+            agent.actions.some(
+              (action) =>
+                isServerSideMCPServerConfiguration(action) &&
+                toolIds.has(action.mcpServerViewId)
+            )) &&
+          (skillIds.size === 0 ||
+            agent.skills?.some((skillId) => skillIds.has(skillId)))
+      )
+      .map((agent) =>
+        LightAgentConfigurationSchema.parse({
+          ...agent,
+          instructions: null,
+          userFavorite: false,
+        })
+      );
+  }
+
   private constructor(
     readonly id: ModelId | null,
     readonly sId: string,

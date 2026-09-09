@@ -1,25 +1,12 @@
 import { searchSkillsForCommandMenu } from "@app/lib/api/skills/search";
+import { SearchSkillsQuerySchema } from "@app/lib/search/query_schema";
 import { SkillSearchCursorError } from "@app/lib/skill_search/cursor";
-import { MAX_SKILL_SEARCH_RESULTS } from "@app/lib/skill_search/search";
 import logger from "@app/logger/logger";
 import type { SearchSkillsResponseBody } from "@app/types/api/skills";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
-
-const SearchSkillsQuerySchema = z.object({
-  query: z.string().max(200).optional().default(""),
-  limit: z.coerce
-    .number()
-    .int()
-    .min(1)
-    .max(MAX_SKILL_SEARCH_RESULTS)
-    .optional(),
-  cursor: z.string().uuid().optional(),
-  permissionFiltering: z.enum(["strict", "redact_unreadable"]).optional(),
-});
 
 // Mounted at /api/w/:wId/skills/search.
 const app = workspaceApp();
@@ -33,14 +20,29 @@ const app = workspaceApp();
  * permissionFiltering defaults to strict. Admins may opt into redact_unreadable:
  * retains listing metadata with canRead=false for unreadable skills; no private
  * fields (instructions/tools/files) are returned. Non-admins receive 403.
+ * mode defaults to autocomplete (name only); management sorts by active users,
+ * then name; discovery combines text relevance and usage. Optional comma-separated
+ * spaceIds/toolIds/availability match any selected value within each dimension,
+ * ANDed across dimensions and with ACLs. isDefault/editedByMe accept true or false.
+ * Filters and mode are bound to the pagination cursor.
  */
 app.get(
   "/",
   validate("query", SearchSkillsQuerySchema),
   async (ctx): HandlerResult<SearchSkillsResponseBody> => {
     const auth = ctx.get("auth");
-    const { query, limit, cursor, permissionFiltering } =
-      ctx.req.valid("query");
+    const {
+      query,
+      limit,
+      cursor,
+      permissionFiltering,
+      mode,
+      spaceIds,
+      toolIds,
+      availability,
+      isDefault,
+      editedByMe,
+    } = ctx.req.valid("query");
     if (permissionFiltering === "redact_unreadable" && !auth.isAdmin()) {
       return apiError(ctx, {
         status_code: 403,
@@ -55,6 +57,8 @@ app.get(
       limit,
       cursor,
       permissionFiltering,
+      mode,
+      filters: { spaceIds, toolIds, availability, isDefault, editedByMe },
     });
 
     if (result.isErr()) {

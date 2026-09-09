@@ -1,12 +1,16 @@
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSearchDocumentResource } from "@app/lib/resources/skill/skill_search_document_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import assert from "assert";
 import { beforeEach, describe, expect, it } from "vitest";
 
 describe("SkillSearchDocumentResource", () => {
@@ -62,9 +66,10 @@ describe("SkillSearchDocumentResource", () => {
         (a, b) => a - b
       ),
       requested_space_ids: [regularSpace.sId, pod.sId],
-      non_pod_space_ids: [regularSpace.sId],
-      non_pod_space_count: 1,
-      pod_space_id: pod.sId,
+      tools: [],
+      active_users: 0,
+      favorite_count: 0,
+      is_default: false,
     });
   });
 
@@ -83,8 +88,119 @@ describe("SkillSearchDocumentResource", () => {
       )
     ).resolves.toBeNull();
   });
+
+  it("accepts legacy individual-editor documents but rejects stale indexed group grants", async () => {
+    const { authenticator: auth } = testContext;
+    const skill = await SkillFactory.create(auth, { availability: "editors" });
+    const document = await SkillSearchDocumentResource.fetchSearchDocument(
+      auth,
+      skill.sId
+    );
+    assert(document);
+    expect(document.editor_group_ids).toHaveLength(1);
+    const { editor_group_ids: _groups, ...legacyDocument } = document;
+    const legacy = await SkillSearchDocumentResource.authorizeSearchDocuments(
+      auth,
+      [legacyDocument]
+    );
+    expect(legacy.has(skill.sId)).toBe(true);
+    const stale = await SkillSearchDocumentResource.authorizeSearchDocuments(
+      auth,
+      [{ ...document, editor_group_ids: [] }]
+    );
+    expect(stale.size).toBe(0);
+  });
+
+  it.each([
+    true,
+    false,
+  ])("hydrates the canonical stripped listing when readable=%s", async (readable) => {
+    const { authenticator: auth, workspace, globalSpace } = testContext;
+    const space = readable
+      ? globalSpace
+      : await SpaceFactory.regular(workspace);
+    const skill = await SkillFactory.create(auth, {
+      requestedSpaceIds: [space.id],
+      manuallyRequestedSpaceIds: [space.id],
+      instructions: "Private instructions",
+      instructionsHtml: "<p>Private instructions</p>",
+    });
+    const [canonical] = await SkillResource.fetchByIds(auth, [skill.sId], {
+      permissionFiltering: "redact_unreadable",
+      withInstructions: false,
+      withTools: false,
+      withFileAttachments: false,
+    });
+    const document = await SkillSearchDocumentResource.fetchSearchDocument(
+      auth,
+      skill.sId
+    );
+    assert(canonical && document);
+    expect(canonical.canRead(auth)).toBe(readable);
+
+    const hydrated = SkillResource.fromSearchDocument(auth, document, {
+      canRead: canonical.canRead(auth),
+    });
+    const listing = hydrated.toSearchListingJSON(auth);
+    expect(listing).toEqual(canonical.toSearchListingJSON(auth));
+    expect(listing).toMatchObject({
+      canRead: readable,
+      canAdministrate: true,
+      fileAttachments: [],
+    });
+    expect(listing).not.toHaveProperty("instructions");
+    expect(listing).not.toHaveProperty("instructionsHtml");
+    expect(listing).not.toHaveProperty("tools");
+    expect(JSON.stringify(document)).not.toContain("Private instructions");
+  });
+
+  it("projects tools, favorites, and default availability without indexing instructions", async () => {
+    const { authenticator: auth, workspace, globalSpace } = testContext;
+    const server = await RemoteMCPServerFactory.create(workspace);
+    const tool = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      globalSpace
+    );
+    const skill = await SkillFactory.create(auth, {
+      availability: "users_and_agents",
+      instructions: "Private instructions must never reach the search index",
+      requestedSpaceIds: [globalSpace.id],
+      mcpServerViews: [tool],
+    });
+    const favorited = await skill.setFavorite(auth, true);
+    expect(favorited.isOk()).toBe(true);
+    const alreadyFavorite = await skill.setFavorite(auth, true);
+    expect(alreadyFavorite.isOk()).toBe(true);
+    const document = await SkillSearchDocumentResource.fetchSearchDocument(
+      auth,
+      skill.sId
+    );
+    expect(document).toMatchObject({
+      description: skill.userFacingDescription,
+      tools: [tool.sId],
+      favorite_count: 1,
+      active_users: 0,
+      is_default: true,
+      requested_space_ids: [globalSpace.sId],
+    });
+    expect(document).not.toHaveProperty("instructions");
+    expect(document).not.toHaveProperty("non_pod_space_ids");
+    expect(document).not.toHaveProperty("non_pod_space_count");
+    expect(document).not.toHaveProperty("pod_space_id");
+
+    const unfavorited = await skill.setFavorite(auth, false);
+    expect(unfavorited.isOk()).toBe(true);
+    const updated = await SkillSearchDocumentResource.fetchSearchDocument(
+      auth,
+      skill.sId
+    );
+    expect(updated?.favorite_count).toBe(0);
+  });
   it("fails closed when permission-bearing fields are stale", async () => {
     const regularSpace = await SpaceFactory.regular(testContext.workspace);
+    await SpaceFactory.attachGroup(regularSpace, testContext.globalGroup);
+    await testContext.authenticator.refresh();
     const skill = await SkillFactory.create(testContext.authenticator, {
       requestedSpaceIds: [regularSpace.id],
     });
@@ -100,8 +216,6 @@ describe("SkillSearchDocumentResource", () => {
     const staleDocuments = [
       { ...document, availability: "workspace_users" as const },
       { ...document, requested_space_ids: [] },
-      { ...document, non_pod_space_ids: [], non_pod_space_count: 0 },
-      { ...document, pod_space_id: regularSpace.sId },
       { ...document, editor_user_ids: [999_999_999] },
       {
         ...document,
@@ -110,10 +224,6 @@ describe("SkillSearchDocumentResource", () => {
       {
         ...document,
         requested_space_ids: regularSpace.sId as unknown as string[],
-      },
-      {
-        ...document,
-        non_pod_space_ids: undefined as unknown as string[],
       },
       { ...document, workspace_id: "workspace-invalid" },
     ];

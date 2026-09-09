@@ -38,13 +38,15 @@ export type MCPServerViewsForGlobalAgentsMap = Record<
 
 export async function getMCPServerViewsForGlobalAgents(
   auth: Authenticator,
-  variant: AgentFetchVariant
+  variant: AgentFetchVariant,
+  { ensureAutoViews = true }: { ensureAutoViews?: boolean } = {}
 ): Promise<MCPServerViewsForGlobalAgentsMap> {
   const viewsByName =
     variant === "full"
       ? await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
           auth,
-          MCP_SERVERS_FOR_GLOBAL_AGENTS
+          MCP_SERVERS_FOR_GLOBAL_AGENTS,
+          { ensureAutoViews }
         )
       : new Map<AutoInternalMCPServerNameType, MCPServerViewResource>();
 

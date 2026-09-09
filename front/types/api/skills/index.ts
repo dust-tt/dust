@@ -5,6 +5,7 @@ import type {
   SkillWithoutInstructionsAndToolsWithRelationsType,
   SkillWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
+import type { SearchFilters } from "@app/types/search";
 
 export type GetSkillsResponseBody = {
   skills: (SkillWithoutInstructionsAndToolsType & {
@@ -31,6 +32,11 @@ export type SkillSearchPermissionFiltering = Exclude<
   SkillPermissionFilteringMode,
   "dangerously_skip"
 >;
+
+export interface SkillSearchFilters extends SearchFilters {
+  availability?: SkillWithoutInstructionsAndToolsType["availability"][];
+  isDefault?: boolean;
+}
 
 export type SearchSkillsResponseBody = {
   skills: SkillSearchResult[];

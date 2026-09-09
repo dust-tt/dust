@@ -1,3 +1,4 @@
+import { launchWorkspaceAgentSearchDeletion } from "@app/lib/agent_search/indexation";
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
@@ -286,6 +287,9 @@ async function archiveAssistants(auth: Authenticator) {
   for (const agentConfiguration of agentConfigurationsToArchive) {
     await archiveAgentConfiguration(auth, agentConfiguration.sId);
   }
+  await launchWorkspaceAgentSearchDeletion({
+    workspaceId: auth.getNonNullableWorkspace().sId,
+  });
 }
 
 async function deleteAgentMemories(auth: Authenticator) {

@@ -1,4 +1,6 @@
+import { agentSearchIndex } from "@app/lib/agent_search";
 import { Authenticator } from "@app/lib/auth";
+import { AgentSearchDocumentResource } from "@app/lib/resources/agent/agent_search_document_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillSearchDocumentResource } from "@app/lib/resources/skill/skill_search_document_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -104,6 +106,51 @@ export async function recreateUserSearchIndex({
   if (errorCount > 0) {
     throw new Error(
       `Failed to index ${errorCount} users for workspace ${workspaceId}`
+    );
+  }
+}
+
+export async function recreateAgentSearchIndex({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<void> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const deleted = await agentSearchIndex.deleteWorkspace({ workspaceId });
+  if (deleted.isErr()) {
+    throw deleted.error;
+  }
+  let afterAgentModelId: ModelId | null = null;
+  while (true) {
+    const agents = await AgentSearchDocumentResource.listSearchIndexAgentIds(
+      auth,
+      {
+        afterAgentModelId,
+        limit: 500,
+      }
+    );
+    if (agents.length === 0) {
+      return;
+    }
+    const documents = await AgentSearchDocumentResource.fetchSearchDocuments(
+      auth,
+      agents.map((agent) => agent.agentId)
+    );
+    const results = await concurrentExecutor(
+      documents,
+      (document) => agentSearchIndex.upsert(document),
+      {
+        concurrency: 10,
+      }
+    );
+    const failed = results.find((result) => result.isErr());
+    if (failed?.isErr()) {
+      throw failed.error;
+    }
+    afterAgentModelId = agents[agents.length - 1].agentModelId;
+    logger.info(
+      { workspaceId, afterAgentModelId, indexed: documents.length },
+      "[Agent Search] Recreated search index batch"
     );
   }
 }

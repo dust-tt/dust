@@ -27,6 +27,7 @@ import {
   isGroupPermissionResourceType,
   WHOLE_TYPE_RESOURCE_ID,
 } from "@app/types/group_permissions";
+import type { GroupKind } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -183,6 +184,63 @@ export interface GroupPermissionResource
   extends ReadonlyAttributesType<GroupPermissionModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupPermissionResource extends BaseResource<GroupPermissionModel> {
+  /** Lists groups holding each exact grant tuple, with no caller membership filtering. */
+  static async listGroupsForGrants(
+    auth: Authenticator,
+    {
+      grants,
+      groupKinds,
+      transaction,
+    }: {
+      grants: GrantSpec[];
+      groupKinds?: GroupKind[];
+      transaction?: Transaction;
+    }
+  ): Promise<Map<GrantKey, GroupResource[]>> {
+    const result = new Map<GrantKey, GroupResource[]>();
+    if (grants.length === 0) {
+      return result;
+    }
+
+    const rows = await GroupPermissionModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        [Op.or]: grants.map(({ grantType, resourceType, resourceId }) => ({
+          grantType,
+          resourceType,
+          resourceId,
+        })),
+      },
+      transaction,
+    });
+    if (rows.length === 0) {
+      return result;
+    }
+
+    const groupIds = [...new Set(rows.map((row) => row.groupId))];
+    const groups = await GroupResource.dangerouslyFetchByModelIds(
+      auth,
+      groupIds,
+      {
+        groupKinds,
+        transaction,
+      }
+    );
+    const groupById = new Map(groups.map((group) => [group.id, group]));
+
+    for (const row of rows) {
+      const group = groupById.get(row.groupId);
+      if (group) {
+        const key = grantKey(row);
+        const heldGroups = result.get(key) ?? [];
+        heldGroups.push(group);
+        result.set(key, heldGroups);
+      }
+    }
+
+    return result;
+  }
+
   static model: ModelStatic<GroupPermissionModel> = GroupPermissionModel;
 
   static readonly cacheOperations = defineCacheOperations({

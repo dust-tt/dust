@@ -1,16 +1,21 @@
 import { Authenticator } from "@app/lib/auth";
+import { AgentSearchDocumentResource } from "@app/lib/resources/agent/agent_search_document_resource";
 import { SkillSearchDocumentResource } from "@app/lib/resources/skill/skill_search_document_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
+import {
+  launchIndexAgentSearchWorkflow,
+  launchIndexSkillSearchWorkflow,
+} from "@app/temporal/es_indexation/client";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 
 const DEFAULT_BATCH_SIZE = 500;
 const DEFAULT_CONCURRENCY = 10;
+type ResourceType = "skill" | "agent";
 
 interface BackfillCounts {
   candidates: number;
@@ -18,28 +23,36 @@ interface BackfillCounts {
   failed: number;
 }
 
-async function enqueueSkillSearchBatch({
+async function enqueueSearchBatch({
   concurrency,
   logger,
-  skills,
+  resourceIds,
+  resourceType,
   workspaceId,
 }: {
   concurrency: number;
   logger: Logger;
-  skills: readonly { skillId: string }[];
+  resourceIds: readonly string[];
+  resourceType: ResourceType;
   workspaceId: string;
 }): Promise<Pick<BackfillCounts, "enqueued" | "failed">> {
   const results = await concurrentExecutor(
-    skills,
-    async ({ skillId }) => {
-      const result = await launchIndexSkillSearchWorkflow({
-        workspaceId,
-        skillId,
-      });
+    resourceIds,
+    async (resourceId) => {
+      const result =
+        resourceType === "skill"
+          ? await launchIndexSkillSearchWorkflow({
+              workspaceId,
+              skillId: resourceId,
+            })
+          : await launchIndexAgentSearchWorkflow({
+              workspaceId,
+              agentId: resourceId,
+            });
       if (result.isErr()) {
         logger.error(
-          { error: result.error, skillId, workspaceId },
-          "[SkillSearchBackfill] Failed to enqueue workflow"
+          { error: result.error, resourceId, resourceType, workspaceId },
+          "[SearchBackfill] Failed to enqueue workflow"
         );
         return false;
       }
@@ -57,19 +70,21 @@ async function backfillWorkspace({
   batchSize,
   concurrency,
   execute,
-  initialSkillModelId,
+  initialResourceModelId,
+  resourceType,
   logger,
   workspace,
 }: {
   batchSize: number;
   concurrency: number;
   execute: boolean;
-  initialSkillModelId: ModelId | null;
+  initialResourceModelId: ModelId | null;
+  resourceType: ResourceType;
   logger: Logger;
   workspace: LightWorkspaceType;
 }): Promise<BackfillCounts> {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  let lastSkillModelId = initialSkillModelId;
+  let lastResourceModelId = initialResourceModelId;
   const counts: BackfillCounts = {
     candidates: 0,
     enqueued: 0,
@@ -77,23 +92,42 @@ async function backfillWorkspace({
   };
 
   while (true) {
-    const skills =
-      await SkillSearchDocumentResource.listActiveSearchIndexSkillIds(auth, {
-        afterSkillModelId: lastSkillModelId,
-        limit: batchSize,
-      });
-    if (skills.length === 0) {
+    const resources =
+      resourceType === "skill"
+        ? (
+            await SkillSearchDocumentResource.listActiveSearchIndexSkillIds(
+              auth,
+              {
+                afterSkillModelId: lastResourceModelId,
+                limit: batchSize,
+              }
+            )
+          ).map(({ skillId, skillModelId }) => ({
+            resourceId: skillId,
+            resourceModelId: skillModelId,
+          }))
+        : (
+            await AgentSearchDocumentResource.listSearchIndexAgentIds(auth, {
+              afterAgentModelId: lastResourceModelId,
+              limit: batchSize,
+            })
+          ).map(({ agentId, agentModelId }) => ({
+            resourceId: agentId,
+            resourceModelId: agentModelId,
+          }));
+    if (resources.length === 0) {
       break;
     }
 
-    lastSkillModelId = skills[skills.length - 1].skillModelId;
-    counts.candidates += skills.length;
+    lastResourceModelId = resources[resources.length - 1].resourceModelId;
+    counts.candidates += resources.length;
 
     if (execute) {
-      const batchCounts = await enqueueSkillSearchBatch({
+      const batchCounts = await enqueueSearchBatch({
         concurrency,
         logger,
-        skills,
+        resourceIds: resources.map((resource) => resource.resourceId),
+        resourceType,
         workspaceId: workspace.sId,
       });
       counts.enqueued += batchCounts.enqueued;
@@ -103,26 +137,28 @@ async function backfillWorkspace({
     logger.info(
       {
         execute,
-        lastSkillModelId,
+        lastResourceModelId,
+        resourceType,
         workspaceCandidates: counts.candidates,
         workspaceEnqueued: counts.enqueued,
         workspaceFailed: counts.failed,
         workspaceId: workspace.sId,
       },
-      "[SkillSearchBackfill] Batch complete"
+      "[SearchBackfill] Batch complete"
     );
   }
 
   logger.info(
     {
       execute,
-      lastSkillModelId,
+      lastResourceModelId,
+      resourceType,
       workspaceCandidates: counts.candidates,
       workspaceEnqueued: counts.enqueued,
       workspaceFailed: counts.failed,
       workspaceId: workspace.sId,
     },
-    "[SkillSearchBackfill] Workspace complete"
+    "[SearchBackfill] Workspace complete"
   );
 
   return counts;
@@ -130,6 +166,13 @@ async function backfillWorkspace({
 
 makeScript(
   {
+    resourceType: {
+      type: "string",
+      choices: ["skill", "agent"],
+      default: "skill",
+      describe:
+        "Resource index to backfill (the legacy command defaults to skills).",
+    },
     wId: {
       type: "string",
       describe: "Workspace sId to backfill (omit to run on all workspaces).",
@@ -144,10 +187,15 @@ makeScript(
       describe:
         "Skip skills through this model id in the selected or first workspace.",
     },
+    fromAgentModelId: {
+      type: "number",
+      describe:
+        "Skip stable agent identities through this model id (requires --resourceType agent).",
+    },
     batchSize: {
       type: "number",
       default: DEFAULT_BATCH_SIZE,
-      describe: "Number of skills to fetch per database query.",
+      describe: "Number of resources to fetch per database query.",
     },
     concurrency: {
       type: "number",
@@ -161,18 +209,30 @@ makeScript(
       concurrency,
       execute,
       fromSkillModelId,
+      fromAgentModelId,
       fromWorkspaceModelId,
+      resourceType,
       wId,
     },
     logger
   ) => {
     assert(batchSize > 0, "--batchSize must be positive");
     assert(concurrency > 0, "--concurrency must be positive");
+    assert(resourceType === "skill" || resourceType === "agent");
     assert(
-      fromSkillModelId === undefined ||
+      fromAgentModelId === undefined || resourceType === "agent",
+      "--fromAgentModelId requires --resourceType agent"
+    );
+    assert(
+      fromSkillModelId === undefined || resourceType === "skill",
+      "--fromSkillModelId requires --resourceType skill"
+    );
+    const fromResourceModelId = fromSkillModelId ?? fromAgentModelId;
+    assert(
+      fromResourceModelId === undefined ||
         wId !== undefined ||
         fromWorkspaceModelId !== undefined,
-      "--fromSkillModelId requires --wId or --fromWorkspaceModelId"
+      "Resuming a resource cursor requires --wId or --fromWorkspaceModelId"
     );
 
     let totalCandidates = 0;
@@ -181,15 +241,16 @@ makeScript(
 
     await runOnAllWorkspaces(
       async (workspace) => {
-        const initialSkillModelId =
+        const initialResourceModelId =
           wId !== undefined || workspace.id === fromWorkspaceModelId
-            ? (fromSkillModelId ?? null)
+            ? (fromResourceModelId ?? null)
             : null;
         const counts = await backfillWorkspace({
           batchSize,
           concurrency,
           execute,
-          initialSkillModelId,
+          initialResourceModelId,
+          resourceType,
           logger,
           workspace,
         });
@@ -202,14 +263,16 @@ makeScript(
     );
 
     logger.info(
-      { execute, totalCandidates, totalEnqueued, totalFailed },
+      { execute, resourceType, totalCandidates, totalEnqueued, totalFailed },
       execute
-        ? "[SkillSearchBackfill] Enqueue complete"
-        : "[SkillSearchBackfill] Dry run complete"
+        ? "[SearchBackfill] Enqueue complete"
+        : "[SearchBackfill] Dry run complete"
     );
 
     if (totalFailed > 0) {
-      throw new Error(`${totalFailed} skill search workflow launches failed`);
+      throw new Error(
+        `${totalFailed} ${resourceType} search workflow launches failed`
+      );
     }
   }
 );

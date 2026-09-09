@@ -1,0 +1,85 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "workspace_id": {
+      "type": "keyword"
+    },
+    "status": {
+      "type": "keyword"
+    },
+    "availability": {
+      "type": "keyword"
+    },
+    "name": {
+      "type": "text",
+      "analyzer": "agent_name_analyzer",
+      "fields": {
+        "keyword": {
+          "type": "keyword",
+          "ignore_above": 256
+        },
+        "subsequence": {
+          "type": "wildcard"
+        }
+      }
+    },
+    "icon": {
+      "type": "keyword"
+    },
+    "edited_by": {
+      "type": "long"
+    },
+    "editor_user_ids": {
+      "type": "keyword"
+    },
+    "requested_space_ids": {
+      "type": "keyword"
+    },
+    "updated_at": {
+      "type": "date"
+    },
+    "description": {
+      "type": "text",
+      "fields": {
+        "subsequence": {
+          "type": "wildcard"
+        }
+      },
+      "analyzer": "english"
+    },
+    "tools": {
+      "type": "keyword"
+    },
+    "active_users": {
+      "type": "integer"
+    },
+    "favorite_count": {
+      "type": "integer"
+    },
+    "agent_id": {
+      "type": "keyword"
+    },
+    "resource_id": {
+      "type": "alias",
+      "path": "agent_id"
+    },
+    "agent_model_id": {
+      "type": "long",
+      "index": false,
+      "doc_values": false
+    },
+    "tags": {
+      "type": "keyword"
+    },
+    "skills": {
+      "type": "keyword"
+    },
+    "feedbacks": {
+      "type": "integer"
+    },
+    "metadata": {
+      "type": "object",
+      "enabled": false
+    }
+  }
+}

@@ -93,6 +93,58 @@ type CachedGroup = {
 export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupResource extends BaseResource<GroupModel> {
+  /**
+   * Workspace-scoped editor projection for versioned agents. Null marks a missing or malformed
+   * editor-group association. This reads membership, not the caller's permission to manage a group.
+   */
+  static async listAgentEditorUserIds(
+    auth: Authenticator,
+    agentConfigurationModelIds: ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Map<ModelId, ModelId[] | null>> {
+    const result = new Map<ModelId, ModelId[] | null>(
+      agentConfigurationModelIds.map((id) => [id, null])
+    );
+    if (agentConfigurationModelIds.length === 0) {
+      return result;
+    }
+    const links = await GroupAgentModel.findAll({
+      attributes: ["groupId", "agentConfigurationId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentConfigurationId: agentConfigurationModelIds,
+      },
+      transaction,
+    });
+    const groups = await this.dangerouslyFetchByModelIds(
+      auth,
+      [...new Set(links.map((link) => link.groupId))],
+      { groupKinds: ["agent_editors"], transaction }
+    );
+    const members = await this.getActiveMembershipsForGroups(auth, groups, {
+      transaction,
+    });
+    const validGroupIds = new Set(groups.map((group) => group.id));
+    const linksByConfigurationId = new Map<ModelId, typeof links>();
+    for (const link of links) {
+      const existing =
+        linksByConfigurationId.get(link.agentConfigurationId) ?? [];
+      existing.push(link);
+      linksByConfigurationId.set(link.agentConfigurationId, existing);
+    }
+    for (const [id, configurationLinks] of linksByConfigurationId) {
+      if (
+        configurationLinks.length === 1 &&
+        validGroupIds.has(configurationLinks[0].groupId)
+      ) {
+        result.set(id, [
+          ...new Set(members[configurationLinks[0].groupId] ?? []),
+        ]);
+      }
+    }
+    return result;
+  }
+
   static model: ModelStatic<GroupModel> = GroupModel;
 
   constructor(model: ModelStatic<GroupModel>, blob: Attributes<GroupModel>) {

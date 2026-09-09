@@ -11,7 +11,6 @@ import {
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
-
 import type { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -29,6 +28,7 @@ import type {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { isString, removeNulls } from "@app/types/shared/utils/general";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import type {
   Attributes,
@@ -53,6 +53,34 @@ export interface AgentMessageFeedbackResource
   extends ReadonlyAttributesType<AgentMessageFeedbackModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMessageFeedbackResource extends BaseResource<AgentMessageFeedbackModel> {
+  static async countByAgentIds(
+    auth: Authenticator,
+    agentIds: string[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Map<string, number>> {
+    if (agentIds.length === 0) {
+      return new Map();
+    }
+    const counts = await this.model.count({
+      attributes: ["agentConfigurationId"],
+      group: ["agentConfigurationId"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentConfigurationId: agentIds,
+      },
+      transaction,
+    });
+    return new Map(
+      removeNulls(
+        counts.map((row) =>
+          isString(row.agentConfigurationId)
+            ? ([row.agentConfigurationId, row.count] as const)
+            : null
+        )
+      )
+    );
+  }
+
   static model: ModelStatic<AgentMessageFeedbackModel> =
     AgentMessageFeedbackModel;
 

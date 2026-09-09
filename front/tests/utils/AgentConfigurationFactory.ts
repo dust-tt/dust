@@ -16,6 +16,7 @@ export class AgentConfigurationFactory {
       name: string;
       description: string;
       scope: Exclude<AgentConfigurationType["scope"], "global">;
+      status: Parameters<typeof createAgentConfiguration>[1]["status"];
       model: {
         providerId: ModelProviderIdType;
         modelId: ModelIdType;
@@ -51,7 +52,7 @@ export class AgentConfigurationFactory {
       instructions: "Test Instructions",
       instructionsHtml: null,
       pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
-      status: "active",
+      status: overrides.status ?? "active",
       scope,
       model: {
         providerId,

@@ -55,7 +55,8 @@ export class TagResource extends BaseResource<TagModel> {
 
   private static async baseFetch(
     auth: Authenticator,
-    options?: ResourceFindOptions<TagModel>
+    options?: ResourceFindOptions<TagModel>,
+    transaction?: Transaction
   ) {
     const { where, ...otherOptions } = options ?? {};
 
@@ -65,6 +66,7 @@ export class TagResource extends BaseResource<TagModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       ...otherOptions,
+      transaction,
     });
 
     return tags.map((tag) => new this(TagModel, tag.get()));
@@ -197,23 +199,25 @@ export class TagResource extends BaseResource<TagModel> {
 
   static async listForAgents(
     auth: Authenticator,
-    agentConfigurationIds: number[]
+    agentConfigurationIds: number[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Record<number, TagResource[]>> {
     const tagAgents = await TagAgentModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         agentConfigurationId: agentConfigurationIds,
       },
+      transaction,
     });
     const tagIds = [...new Set(tagAgents.map((t) => t.tagId))];
     if (tagIds.length === 0) {
       return {};
     }
-    const tags = await this.baseFetch(auth, {
-      where: {
-        id: tagIds,
-      },
-    });
+    const tags = await this.baseFetch(
+      auth,
+      { where: { id: tagIds } },
+      transaction
+    );
 
     const tagsMap = keyBy(tags, "id");
     return mapValues(groupBy(tagAgents, "agentConfigurationId"), (group) =>

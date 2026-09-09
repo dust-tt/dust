@@ -1,12 +1,20 @@
+import { agentSearchIndex } from "@app/lib/agent_search";
 import { Authenticator } from "@app/lib/auth";
+import { AgentSearchDocumentResource } from "@app/lib/resources/agent/agent_search_document_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillSearchDocumentResource } from "@app/lib/resources/skill/skill_search_document_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import {
+  fetchSearchActiveUsers,
+  storeCodeDefinedActiveUsers,
+  storeCodeDefinedSkillActiveUsers,
+} from "@app/lib/search/usage";
+import {
   deleteSkillDocument,
   deleteWorkspaceSkillDocuments,
   indexSkillDocument,
+  updateSkillSearchActiveUsers,
 } from "@app/lib/skill_search";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -121,4 +129,120 @@ export async function deleteWorkspaceSkillSearchActivity({
   if (deleteResult.isErr()) {
     throw deleteResult.error;
   }
+}
+
+export async function listSearchUsageWorkspacesActivity(
+  afterWorkspaceModelId: number
+) {
+  return WorkspaceResource.unsafeListWorkspaceIdBatchAfterModelId({
+    lastWorkspaceModelId: afterWorkspaceModelId,
+    limit: 50,
+  });
+}
+
+export async function indexAgentSearchActivity({
+  workspaceId,
+  agentId,
+}: {
+  workspaceId: string;
+  agentId: string;
+}): Promise<void> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const document = await AgentSearchDocumentResource.fetchSearchDocument(
+    auth,
+    agentId
+  );
+  const result = document
+    ? await agentSearchIndex.upsert(document)
+    : await agentSearchIndex.delete({ workspaceId, resourceId: agentId });
+  if (result.isErr()) {
+    throw result.error;
+  }
+}
+
+export async function deleteWorkspaceAgentSearchActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<void> {
+  const result = await agentSearchIndex.deleteWorkspace({ workspaceId });
+  if (result.isErr()) {
+    throw result.error;
+  }
+}
+
+export async function refreshWorkspaceSearchUsageActivity({
+  workspaceId,
+  evaluatedAtMs,
+}: {
+  workspaceId: string;
+  evaluatedAtMs: number;
+}): Promise<void> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const activeUsers = await fetchSearchActiveUsers({
+    workspaceId,
+    resourceType: "skill",
+    evaluatedAtMs,
+  });
+  if (activeUsers.isErr()) {
+    throw activeUsers.error;
+  }
+  let afterSkillModelId: number | null = null;
+  // Keyset pages, not one query per skill; missing usage resets to zero on every page.
+  while (true) {
+    const skills =
+      await SkillSearchDocumentResource.listActiveSearchIndexSkillIds(auth, {
+        afterSkillModelId,
+        limit: 500,
+      });
+    if (skills.length === 0) {
+      break;
+    }
+    const updated = await updateSkillSearchActiveUsers({
+      workspaceId,
+      skillIds: skills.map((skill) => skill.skillId),
+      activeUsers: activeUsers.value,
+    });
+    if (updated.isErr()) {
+      throw updated.error;
+    }
+    afterSkillModelId = skills[skills.length - 1].skillModelId;
+  }
+  await storeCodeDefinedSkillActiveUsers(workspaceId, activeUsers.value);
+
+  const agentActiveUsers = await fetchSearchActiveUsers({
+    workspaceId,
+    resourceType: "agent",
+    evaluatedAtMs,
+  });
+  if (agentActiveUsers.isErr()) {
+    throw agentActiveUsers.error;
+  }
+  let afterAgentModelId: number | null = null;
+  while (true) {
+    const agents = await AgentSearchDocumentResource.listSearchIndexAgentIds(
+      auth,
+      {
+        afterAgentModelId,
+        limit: 500,
+      }
+    );
+    if (agents.length === 0) {
+      break;
+    }
+    const updated = await agentSearchIndex.updateActiveUsers({
+      workspaceId,
+      resourceIds: agents.map((agent) => agent.agentId),
+      activeUsers: agentActiveUsers.value,
+    });
+    if (updated.isErr()) {
+      throw updated.error;
+    }
+    afterAgentModelId = agents[agents.length - 1].agentModelId;
+  }
+  await storeCodeDefinedActiveUsers({
+    workspaceId,
+    resourceType: "agent",
+    counts: agentActiveUsers.value,
+  });
 }

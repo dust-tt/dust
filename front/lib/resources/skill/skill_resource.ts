@@ -85,6 +85,7 @@ import type {
   SkillSourceType,
   SkillStatus,
   SkillType,
+  SkillWithoutInstructionsAndToolsType,
   UsedBySkillType,
 } from "@app/types/assistant/skill_configuration";
 import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
@@ -104,6 +105,7 @@ import {
   isString,
   removeNulls,
 } from "@app/types/shared/utils/general";
+import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import groupBy from "lodash/groupBy";
@@ -289,6 +291,157 @@ const GLOBAL_SKILL_ROLE_GRANTS: RoleGrant[] = [
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SkillResource extends BaseResource<SkillConfigurationModel> {
+  /**
+   * @cc [owner:aubin-tchoi,label:security] canonical-search-hydration
+   * Callers must validate the document against committed state and supply its current readability;
+   * hydration stays workspace-scoped and never supplies instructions, tools or files.
+   */
+  static fromSearchDocument(
+    auth: Authenticator,
+    document: SkillSearchDocument,
+    { canRead }: { canRead: boolean }
+  ): SkillResource {
+    const workspace = auth.getNonNullableWorkspace();
+    const parsed = getResourceNameAndIdFromSId(document.skill_id);
+    assert(document.workspace_id === workspace.sId);
+    assert(
+      parsed?.resourceName === "skill" &&
+        parsed.workspaceModelId === workspace.id
+    );
+    const toSpaceModelId = (spaceId: string): ModelId => {
+      const space = getResourceNameAndIdFromSId(spaceId);
+      assert(
+        space?.resourceName === "space" &&
+          space.workspaceModelId === workspace.id
+      );
+      return space.resourceModelId;
+    };
+    const { metadata } = document;
+    const resource = new SkillResource(
+      this.model,
+      {
+        ...metadata,
+        id: parsed.resourceModelId,
+        workspaceId: workspace.id,
+        name: document.name,
+        userFacingDescription: document.description ?? "",
+        editedBy: document.edited_by,
+        icon: document.icon,
+        status: document.status,
+        availability: document.availability,
+        favoriteCount: document.favorite_count,
+        createdAt: new Date(metadata.createdAt),
+        updatedAt: new Date(document.updated_at),
+        lastReinforcementAnalysisAt: metadata.lastReinforcementAnalysisAt
+          ? new Date(metadata.lastReinforcementAnalysisAt)
+          : null,
+        requestedSpaceIds: document.requested_space_ids.map(toSpaceModelId),
+        manuallyRequestedSpaceIds: (
+          metadata.manuallyRequestedSpaceIds ?? []
+        ).map(toSpaceModelId),
+        instructions: "",
+        instructionsHtml: null,
+      },
+      {
+        dataSourceConfigurations: [],
+        mcpServerConfigurations: [],
+        fileAttachments: [],
+      }
+    );
+    resource.redactedForCaller = !canRead;
+    return resource;
+  }
+
+  static async fromCodeDefinedSkillForSearch(
+    auth: Authenticator,
+    definition: SkillDefinition
+  ): Promise<SkillResource> {
+    return this.fromGlobalSkill(auth, definition, {
+      effectiveSpaceIds: [],
+      mcpServerViews: [],
+      withInstructions: false,
+    });
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;security] skill-search-editor-grant-projection
+   * Search indexes every instance editor group and only expands auto-managed editor lists into
+   * user IDs; manual/provisioned/global membership is resolved by Authenticator at query time.
+   */
+  static async batchListSearchEditorGrants(
+    auth: Authenticator,
+    skillModelIds: ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Map<ModelId, { userIds: ModelId[]; groupIds: ModelId[] }>> {
+    const uniqueSkillModelIds = [...new Set(skillModelIds)];
+    const result = new Map<
+      ModelId,
+      { userIds: ModelId[]; groupIds: ModelId[] }
+    >(
+      uniqueSkillModelIds.map((skillModelId) => [
+        skillModelId,
+        { userIds: [], groupIds: [] },
+      ])
+    );
+    if (uniqueSkillModelIds.length === 0) {
+      return result;
+    }
+
+    const editorGrantSpec = (skillModelId: ModelId) => ({
+      grantType: SKILL_EDITOR_GRANT_TYPE,
+      resourceType: "skill" as const,
+      resourceId: skillModelId,
+    });
+    const groupsByGrant = await GroupPermissionResource.listGroupsForGrants(
+      auth,
+      {
+        grants: uniqueSkillModelIds.map(editorGrantSpec),
+        transaction,
+      }
+    );
+    const autoGroupsById = new Map(
+      [...groupsByGrant.values()]
+        .flat()
+        .filter((group) => group.kind === "regular_auto")
+        .map((group) => [group.id, group])
+    );
+    const membershipsByGroupId =
+      await GroupResource.getActiveMembershipsForGroups(
+        auth,
+        [...autoGroupsById.values()],
+        { transaction }
+      );
+    for (const skillModelId of uniqueSkillModelIds) {
+      const groups =
+        groupsByGrant.get(grantKey(editorGrantSpec(skillModelId))) ?? [];
+      const userIds = groups.flatMap(
+        (group) => membershipsByGroupId[group.id] ?? []
+      );
+      result.set(skillModelId, {
+        userIds: [...new Set(userIds)].sort((a, b) => a - b),
+        groupIds: [...new Set(groups.map((group) => group.id))].sort(
+          (a, b) => a - b
+        ),
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:security] stripped-search-listing
+   * Search listings preserve canonical permission flags and never serialize instructions,
+   * tools or file attachments, including for resources retained by redact_unreadable.
+   */
+  toSearchListingJSON(
+    auth: Authenticator
+  ): SkillWithoutInstructionsAndToolsType {
+    return {
+      ...omit(this.toJSON(auth), ["instructions", "instructionsHtml", "tools"]),
+      fileAttachments: [],
+    };
+  }
+
   static model: ModelStatic<SkillConfigurationModel> = SkillConfigurationModel;
 
   readonly dataSourceConfigurations: SkillDataSourceConfigurationModel[];
@@ -2323,10 +2476,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   // `canRead` against a custom skill's row: the fetch path filters before building resources, so a
   // skill the caller cannot read is never hydrated.
-  private static canReadRow(
+  static canReadRow(
     auth: Authenticator,
-    skill: SkillConfigurationModel
+    skill: { id: ModelId; workspaceId: ModelId }
   ): boolean {
+    if (skill.workspaceId !== auth.getNonNullableWorkspace().id) {
+      return false;
+    }
     // See canWrite: API keys hold no skill grant, so any key reads any skill.
     if (auth.isKey()) {
       return true;

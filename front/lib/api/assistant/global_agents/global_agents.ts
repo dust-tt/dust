@@ -1017,6 +1017,7 @@ export async function getGlobalAgents(
   variant: AgentFetchVariant = "full",
   options?: {
     globalAgentContext?: GlobalAgentContext;
+    ensureAutoViews?: boolean;
   }
 ): Promise<AgentConfigurationType[]> {
   if (agentIds !== undefined && agentIds.some((sId) => !isGlobalAgentId(sId))) {
@@ -1045,7 +1046,9 @@ export async function getGlobalAgents(
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
       : null,
     GlobalAgentSettingsResource.listForWorkspace(auth),
-    getMCPServerViewsForGlobalAgents(auth, variant),
+    getMCPServerViewsForGlobalAgents(auth, variant, {
+      ensureAutoViews: options?.ensureAutoViews,
+    }),
   ]);
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired

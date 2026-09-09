@@ -1,0 +1,21 @@
+{
+  "number_of_shards": 3,
+  "number_of_replicas": 1,
+  "refresh_interval": "30s",
+  "analysis": {
+    "filter": {
+      "agent_name_parts": {
+        "type": "word_delimiter_graph",
+        "catenate_all": true,
+        "preserve_original": true
+      }
+    },
+    "analyzer": {
+      "agent_name_analyzer": {
+        "type": "custom",
+        "tokenizer": "keyword",
+        "filter": ["agent_name_parts", "lowercase"]
+      }
+    }
+  }
+}
