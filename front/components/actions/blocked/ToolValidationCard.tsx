@@ -78,6 +78,10 @@ interface ToolValidationCardProps {
   isPulsing?: boolean;
   // Submits the user's decision; returns whether the submission succeeded.
   onValidate: (approved: MCPValidationOutputType) => Promise<boolean>;
+  // When provided, offers an ephemeral "allow for this conversation" option that
+  // suppresses further prompts for this tool for the rest of the conversation.
+  // Only wired up for low/medium stake tools on surfaces that opt in.
+  onApproveForConversation?: () => Promise<boolean>;
 }
 
 interface ToolValidationDetailsDialogProps {
@@ -149,11 +153,15 @@ export function ToolValidationCard({
   isValidating,
   isPulsing = false,
   onValidate,
+  onApproveForConversation,
 }: ToolValidationCardProps) {
   const toolOverride = getToolOverride(validationRequest.metadata);
   const [submittingDecision, setSubmittingDecision] =
     useState<MCPValidationOutputType | null>(null);
-  const isSubmitting = isValidating || submittingDecision !== null;
+  const [isApprovingForConversation, setIsApprovingForConversation] =
+    useState(false);
+  const isSubmitting =
+    isValidating || submittingDecision !== null || isApprovingForConversation;
 
   const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({
     parentUserId: validationRequest.userId,
@@ -170,6 +178,18 @@ export function ToolValidationCard({
       await onValidate(approvalState);
     } finally {
       setSubmittingDecision(null);
+    }
+  };
+
+  const handleApproveForConversation = async () => {
+    if (!onApproveForConversation) {
+      return;
+    }
+    setIsApprovingForConversation(true);
+    try {
+      await onApproveForConversation();
+    } finally {
+      setIsApprovingForConversation(false);
     }
   };
 
@@ -268,6 +288,17 @@ export function ToolValidationCard({
               disabled={isSubmitting}
               isLoading={submittingDecision === "always_approved"}
               onClick={() => void handleValidation("always_approved")}
+            />
+          )}
+          {onApproveForConversation && canAlwaysAllow && (
+            <Button
+              label="Allow for this conversation"
+              variant="outline"
+              icon={Check}
+              tooltip="Allow this tool for the rest of this conversation without asking again"
+              disabled={isSubmitting}
+              isLoading={isApprovingForConversation}
+              onClick={() => void handleApproveForConversation()}
             />
           )}
           <Button
