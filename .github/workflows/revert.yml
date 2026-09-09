@@ -1,17 +1,18 @@
 name: Revert Workflow
-run-name: Revert ${{ inputs.component }} in ${{ inputs.regions }}
+run-name: Revert ${{ inputs.component }} in ${{ inputs.cells }}
 
 on:
   workflow_dispatch:
     inputs:
-      regions:
-        description: "Regions to revert"
+      cells:
+        description: "Cells to revert (cell-00000 is us-central1, cell-00001 europe-west1)"
         required: true
         default: "all"
         type: choice
         options:
-          - "us-central1"
-          - "europe-west1"
+          - "cell-00000"
+          - "cell-00001"
+          - "cell-00002"
           - "all"
       image_tag:
         description: "The image tag/SHA to deploy"
@@ -66,7 +67,7 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ inputs.image_tag }}
-          region: ${{ inputs.regions }}
+          region: ${{ inputs.cells }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           is_revert: true
 
@@ -123,7 +124,7 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ inputs.image_tag }}
-          region: ${{ inputs.regions }}
+          region: ${{ inputs.cells }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
           is_revert: true
@@ -153,7 +154,7 @@ jobs:
               repo: 'dust-infra',
               event_type: 'trigger-component-revert',
               client_payload: {
-                regions: '${{ inputs.regions }}',
+                cells: '${{ inputs.cells }}',
                 component: '${{ inputs.component }}',
                 image_tag: '${{ inputs.image_tag }}',
                 slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
@@ -170,7 +171,7 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ inputs.image_tag }}
-          region: ${{ inputs.regions }}
+          region: ${{ inputs.cells }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
           is_revert: true
