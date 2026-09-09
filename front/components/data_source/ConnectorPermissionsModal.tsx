@@ -28,6 +28,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import {
   useConnectorConfig,
   useConnectorPermissions,
+  useFetchConnectorPermissions,
   useOAuthMetadata,
 } from "@app/lib/swr/connectors";
 import { useSlackIsLegacy } from "@app/lib/swr/oauth";
@@ -803,6 +804,12 @@ export function ConnectorPermissionsModal({
     dataSource.connectorProvider === "notion" &&
     featureFlags.includes("advanced_notion_management");
 
+  const fetchChildResources = useFetchConnectorPermissions({
+    owner,
+    dataSource,
+    viewType: "all",
+  });
+
   const getNodeParents = (node: ContentNodeWithParent) => {
     if (node.parentInternalId) {
       return [node.parentInternalId];
@@ -1095,6 +1102,7 @@ export function ConnectorPermissionsModal({
                         }
                         isRoundedBackground={true}
                         useResourcesHook={useResourcesHook}
+                        fetchChildResources={fetchChildResources}
                         selectedNodes={
                           canUpdatePermissions ? selectedNodes : undefined
                         }

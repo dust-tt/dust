@@ -1,3 +1,7 @@
+import {
+  collectSelectableNodesForSelectAll,
+  unselectVisibleNodesAndDescendants,
+} from "@app/components/ContentNodeTreeSelection";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
@@ -79,6 +83,7 @@ type ContextType = {
   emptyComponent: ReactNode;
   defaultExpandedIds?: string[];
   getLabel?: (node: ContentNode) => string;
+  fetchChildResources?: (parentId: string) => Promise<ContentNode[]>;
 };
 
 const ContentNodeTreeContext = React.createContext<ContextType | undefined>(
@@ -184,6 +189,7 @@ function ContentNodeTreeChildren({
     emptyComponent,
     defaultExpandedIds,
     getLabel,
+    fetchChildResources,
   } = useContentNodeTreeContext();
 
   const sendNotification = useSendNotification();
@@ -192,6 +198,7 @@ function ContentNodeTreeChildren({
   // If the user pressed "select all", we want to display "unselect all" and vice versa.
   // But if the user types in the search bar, we want to reset the button to "select all".
   const [selectAllClicked, setSelectAllClicked] = useState(false);
+  const [isSelectAllLoading, setIsSelectAllLoading] = useState(false);
 
   const {
     resources,
@@ -353,6 +360,48 @@ function ContentNodeTreeChildren({
     </Tree>
   );
 
+  const handleSelectAllClick = async () => {
+    if (!setSelectedNodes) {
+      return;
+    }
+    if (selectAllClicked) {
+      setSelectAllClicked(false);
+      setSelectedNodes((prev) =>
+        unselectVisibleNodesAndDescendants(prev, filteredNodes)
+      );
+      return;
+    }
+
+    setIsSelectAllLoading(true);
+    try {
+      const nodesToSelect = await collectSelectableNodesForSelectAll({
+        nodes: filteredNodes,
+        parentIds,
+        fetchChildResources,
+      });
+      setSelectAllClicked(true);
+      setSelectedNodes((prev) => {
+        const newState = { ...prev };
+        for (const { node, parents } of nodesToSelect) {
+          newState[node.internalId] = {
+            isSelected: true,
+            node,
+            parents,
+          };
+        }
+        return newState;
+      });
+    } catch {
+      sendNotification({
+        type: "error",
+        title: "Failed to select all",
+        description: "Could not load folders to select. Please try again.",
+      });
+    } finally {
+      setIsSelectAllLoading(false);
+    }
+  };
+
   return (
     <>
       {isTitleFilterEnabled && setSelectedNodes && (
@@ -372,29 +421,18 @@ function ContentNodeTreeChildren({
 
             <Button
               icon={CheckDone01}
-              label={selectAllClicked ? "Unselect All" : "Select All"}
+              label={
+                isSelectAllLoading
+                  ? "Loading..."
+                  : selectAllClicked
+                    ? "Unselect All"
+                    : "Select All"
+              }
               size="sm"
               className="m-1"
               variant="ghost"
-              disabled={filteredNodes.length === 0}
-              onClick={() => {
-                const isSelected = !selectAllClicked;
-                setSelectAllClicked(isSelected);
-                setSelectedNodes((prev) => {
-                  const newState = { ...prev };
-                  const nodesToUpdate = isSelected
-                    ? filteredNodes.filter((n) => n.preventSelection !== true)
-                    : filteredNodes;
-                  nodesToUpdate.forEach((n) => {
-                    newState[n.internalId] = {
-                      isSelected,
-                      node: n,
-                      parents: isSelected ? parentIds : [],
-                    };
-                  });
-                  return newState;
-                });
-              }}
+              disabled={filteredNodes.length === 0 || isSelectAllLoading}
+              onClick={handleSelectAllClick}
             />
           </div>
         </>
@@ -463,6 +501,11 @@ interface ContentNodeTreeProps {
    * Optional function to compute the display label for a node. Defaults to node.title.
    */
   getLabel?: (node: ContentNode) => string;
+  /**
+   * Fetches children of a node. Used by Select All to expand non-selectable
+   * containers (e.g. Microsoft SharePoint sites) and select their libraries.
+   */
+  fetchChildResources?: (parentId: string) => Promise<ContentNode[]>;
 }
 
 export function ContentNodeTree({
@@ -478,6 +521,7 @@ export function ContentNodeTree({
   defaultExpandedIds,
   additionalActionsForContentNode,
   getLabel,
+  fetchChildResources,
 }: ContentNodeTreeProps) {
   return (
     <ContentNodeTreeContextProvider
@@ -490,6 +534,7 @@ export function ContentNodeTree({
         emptyComponent,
         defaultExpandedIds,
         getLabel,
+        fetchChildResources,
       }}
     >
       <ContentNodeTreeChildren
