@@ -13,6 +13,7 @@ import { useUpdateUserSpendLimit } from "@app/lib/swr/memberships";
 import { useUpdateDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { GroupType } from "@app/types/groups";
+import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -30,6 +31,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 // TODO(spend-limit-modal-rollout): remove `EditSpendLimitModal`
 // once the usage page has fully rolled onto this
 // component, so there's a single spend-limit editing implementation again.
+// The bulk edit modal stays: it covers a different flow.
+
+// Fetched by the caller since the customer-facing app and poke reach the
+// value through different routes. "unavailable" means the workspace has no
+// default pool limit at all, so the field is not shown.
+export type DefaultUserSpendLimitState =
+  | { status: "loading" }
+  | { status: "error" }
+  | { status: "unavailable" }
+  | { status: "ready"; awuCredits: number };
+
 interface EditMemberSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -40,11 +52,7 @@ interface EditMemberSpendLimitModalProps {
   // The workspace default applies to every member, so editing it is reserved
   // to admins even where managers may edit personal and group limits.
   canEditDefaultLimit?: boolean;
-  // Fetched by the caller, same as `member`/`groups`: the customer-facing app
-  // and poke reach this value through different routes (workspace-role-gated
-  // vs. poke's superuser-scoped route), so the modal itself never fetches it.
-  defaultUserSpendLimitAwuCredits: number | undefined;
-  isDefaultUserSpendLimitLoading: boolean;
+  defaultUserSpendLimit: DefaultUserSpendLimitState;
 }
 
 interface MemberSpendLimitFormProps {
@@ -53,10 +61,7 @@ interface MemberSpendLimitFormProps {
   groups: GroupType[];
   readOnly: boolean;
   canEditDefaultLimit: boolean;
-  // Undefined while the workspace default is still being fetched: the field
-  // then shows a "--" placeholder rather than a real 0, and saving is
-  // blocked until it resolves (see `isDefaultLimitPending` below).
-  defaultLimitAwuCredits: number | undefined;
+  defaultUserSpendLimit: DefaultUserSpendLimitState;
   onClose: () => void;
 }
 
@@ -66,7 +71,7 @@ function MemberSpendLimitForm({
   groups,
   readOnly,
   canEditDefaultLimit,
-  defaultLimitAwuCredits,
+  defaultUserSpendLimit,
   onClose,
 }: MemberSpendLimitFormProps) {
   const { doUpdateSpendLimit } = useUpdateUserSpendLimit({
@@ -78,19 +83,40 @@ function MemberSpendLimitForm({
   const { doUpdateDefaultUserSpendLimit } = useUpdateDefaultUserSpendLimit({
     workspaceId: owner.sId,
   });
-  const isDefaultHighest = member?.spendLimitSource === "default";
+  // The "default" source also labels free and none seats, whose cap is the
+  // seat allowance (or 0) rather than the workspace pool default. Only
+  // pool-bearing seats are actually capped by the workspace default.
+  const isDefaultHighest =
+    member?.spendLimitSource === "default" &&
+    normalizeToPoolLimitSeatType(member.seatType) !== null;
+  const showDefaultLimit =
+    isDefaultHighest && defaultUserSpendLimit.status !== "unavailable";
   const canChangeDefaultLimit =
-    isDefaultHighest && canEditDefaultLimit && !readOnly;
+    showDefaultLimit && canEditDefaultLimit && !readOnly;
+  const isDefaultLimitLoaded = defaultUserSpendLimit.status === "ready";
+  const loadedDefaultLimitAwuCredits = isDefaultLimitLoaded
+    ? defaultUserSpendLimit.awuCredits
+    : undefined;
   // While the workspace default is still loading, block saving instead of
   // treating the unresolved value as unchanged (which would let an admin
   // silently commit whatever ends up in the input once it finally arrives).
-  // Viewers who cannot edit it are not held back by its loading state.
+  // Viewers who cannot edit it are not held back by its loading state, and a
+  // failed fetch only locks this field rather than the whole form.
   const isDefaultLimitPending =
-    canChangeDefaultLimit && defaultLimitAwuCredits === undefined;
+    canChangeDefaultLimit && defaultUserSpendLimit.status === "loading";
+  const canSubmitDefaultLimit = canChangeDefaultLimit && isDefaultLimitLoaded;
 
-  const [defaultLimitInput, setDefaultLimitInput] = useState<string>(() =>
-    defaultLimitAwuCredits !== undefined ? String(defaultLimitAwuCredits) : ""
+  // The draft stays null until the user types, so the loaded value can show
+  // up once fetched without remounting the form (which would drop whatever
+  // was typed in the other fields meanwhile).
+  const [defaultLimitDraft, setDefaultLimitDraft] = useState<string | null>(
+    null
   );
+  const defaultLimitInput =
+    defaultLimitDraft ??
+    (loadedDefaultLimitAwuCredits !== undefined
+      ? String(loadedDefaultLimitAwuCredits)
+      : "");
   const [defaultLimitValidationMessage, setDefaultLimitValidationMessage] =
     useState<string | null>(null);
 
@@ -161,9 +187,10 @@ function MemberSpendLimitForm({
       )
     );
 
-    // Only validated when this viewer may change it, so a locked field can
-    // never block saving the other limits.
-    const defaultLimitResult = canChangeDefaultLimit
+    // Only validated when this viewer may change it and the current value is
+    // known, so a locked or unloaded field can never block saving the other
+    // limits.
+    const defaultLimitResult = canSubmitDefaultLimit
       ? parseDefaultLimitInput(defaultLimitInput)
       : null;
     setDefaultLimitValidationMessage(
@@ -189,7 +216,7 @@ function MemberSpendLimitForm({
     );
     const newDefaultLimit =
       defaultLimitResult?.ok &&
-      defaultLimitResult.awuCredits !== defaultLimitAwuCredits
+      defaultLimitResult.awuCredits !== loadedDefaultLimitAwuCredits
         ? defaultLimitResult.awuCredits
         : null;
 
@@ -272,7 +299,7 @@ function MemberSpendLimitForm({
       </DialogHeader>
       <DialogContainer>
         <div className="flex flex-col gap-5">
-          {isDefaultHighest && (
+          {showDefaultLimit && (
             // Only relevant when the workspace default is actually what
             // caps this member: no personal override, and no group they're
             // in carries its own cap. Otherwise editing it here wouldn't
@@ -280,16 +307,20 @@ function MemberSpendLimitForm({
             <CreditLimitInput
               label="Workspace default limit"
               value={defaultLimitInput}
-              readOnly={!canChangeDefaultLimit}
+              readOnly={!canSubmitDefaultLimit}
               readOnlyTooltip={
                 !readOnly && !canEditDefaultLimit
                   ? "Only workspace admins can edit the workspace default limit."
                   : undefined
               }
               isHighest={false}
-              validationMessage={defaultLimitValidationMessage}
+              validationMessage={
+                defaultUserSpendLimit.status === "error"
+                  ? "The workspace default limit could not be loaded."
+                  : defaultLimitValidationMessage
+              }
               onChange={(cleaned) => {
-                setDefaultLimitInput(cleaned);
+                setDefaultLimitDraft(cleaned);
                 setDefaultLimitValidationMessage(null);
               }}
             />
@@ -349,8 +380,7 @@ export function EditMemberSpendLimitModal({
   groups,
   readOnly = false,
   canEditDefaultLimit = false,
-  defaultUserSpendLimitAwuCredits,
-  isDefaultUserSpendLimitLoading,
+  defaultUserSpendLimit,
 }: EditMemberSpendLimitModalProps) {
   const lastMemberRef = useRef<MemberUsageType | null>(null);
   useEffect(() => {
@@ -369,16 +399,15 @@ export function EditMemberSpendLimitModal({
       <DialogContent size="md" className="font-sans">
         <MemberSpendLimitForm
           // Remounts with fresh draft state on every open, whenever the
-          // targeted member changes, once the member's groups resolve, or
-          // once the workspace default limit finishes loading, instead of
-          // syncing state from props.
-          key={`${displayedMember?.sId ?? "none"}:${isOpen}:${memberGroupsResolved}:${isDefaultUserSpendLimitLoading}`}
+          // targeted member changes, or once the member's groups resolve,
+          // instead of syncing state from props.
+          key={`${displayedMember?.sId ?? "none"}:${isOpen}:${memberGroupsResolved}`}
           member={displayedMember}
           owner={owner}
           groups={groups}
           readOnly={readOnly}
           canEditDefaultLimit={canEditDefaultLimit}
-          defaultLimitAwuCredits={defaultUserSpendLimitAwuCredits}
+          defaultUserSpendLimit={defaultUserSpendLimit}
           onClose={onClose}
         />
       </DialogContent>

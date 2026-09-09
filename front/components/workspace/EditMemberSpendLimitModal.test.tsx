@@ -1,7 +1,8 @@
 import { makeMemberUsage } from "@app/tests/utils/MemberUsageFactory";
 import type { GroupType } from "@app/types/groups";
+import type { MembershipSeatType } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { EditMemberSpendLimitModal } from "./EditMemberSpendLimitModal";
@@ -24,7 +25,8 @@ const owner = { sId: "wId_1" } as LightWorkspaceType;
 const groups: GroupType[] = [];
 
 function makeMember(
-  spendLimitSource: "default" | "override" | "group" | "none"
+  spendLimitSource: "default" | "override" | "group" | "none",
+  seatType: MembershipSeatType = "max"
 ) {
   return makeMemberUsage({
     sId: "user_1",
@@ -32,6 +34,7 @@ function makeMember(
     memberUsageLimit: 1000,
     spendLimitAwuCredits: 1000,
     spendLimitSource,
+    seatType,
   });
 }
 
@@ -72,8 +75,7 @@ describe("EditMemberSpendLimitModal", () => {
         groups={groups}
         readOnly={false}
         canEditDefaultLimit
-        defaultUserSpendLimitAwuCredits={500}
-        isDefaultUserSpendLimitLoading={false}
+        defaultUserSpendLimit={{ status: "ready", awuCredits: 500 }}
       />
     );
 
@@ -91,8 +93,7 @@ describe("EditMemberSpendLimitModal", () => {
         groups={groups}
         readOnly={false}
         canEditDefaultLimit={false}
-        defaultUserSpendLimitAwuCredits={500}
-        isDefaultUserSpendLimitLoading={false}
+        defaultUserSpendLimit={{ status: "ready", awuCredits: 500 }}
       />
     );
 
@@ -111,8 +112,7 @@ describe("EditMemberSpendLimitModal", () => {
         groups={groups}
         readOnly={false}
         canEditDefaultLimit={false}
-        defaultUserSpendLimitAwuCredits={undefined}
-        isDefaultUserSpendLimitLoading
+        defaultUserSpendLimit={{ status: "loading" }}
       />
     );
 
@@ -129,8 +129,7 @@ describe("EditMemberSpendLimitModal", () => {
         groups={groups}
         readOnly={false}
         canEditDefaultLimit
-        defaultUserSpendLimitAwuCredits={undefined}
-        isDefaultUserSpendLimitLoading
+        defaultUserSpendLimit={{ status: "loading" }}
       />
     );
 
@@ -146,8 +145,7 @@ describe("EditMemberSpendLimitModal", () => {
         owner={owner}
         groups={groups}
         readOnly
-        defaultUserSpendLimitAwuCredits={750}
-        isDefaultUserSpendLimitLoading={false}
+        defaultUserSpendLimit={{ status: "ready", awuCredits: 750 }}
       />
     );
 
@@ -164,13 +162,103 @@ describe("EditMemberSpendLimitModal", () => {
         owner={owner}
         groups={groups}
         readOnly
-        defaultUserSpendLimitAwuCredits={undefined}
-        isDefaultUserSpendLimitLoading
+        defaultUserSpendLimit={{ status: "loading" }}
       />
     );
 
     expect(getDefaultLimitInput()).toHaveValue("");
     expect(getDefaultLimitInput()).toHaveAttribute("placeholder", "--");
+  });
+
+  it("keeps a value typed in another field when the workspace default finishes loading", () => {
+    const { rerender } = render(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={vi.fn()}
+        member={makeMember("default")}
+        owner={owner}
+        groups={groups}
+        readOnly={false}
+        canEditDefaultLimit={false}
+        defaultUserSpendLimit={{ status: "loading" }}
+      />
+    );
+    fireEvent.change(getPersonalLimitInput(), { target: { value: "2000" } });
+
+    rerender(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={vi.fn()}
+        member={makeMember("default")}
+        owner={owner}
+        groups={groups}
+        readOnly={false}
+        canEditDefaultLimit={false}
+        defaultUserSpendLimit={{ status: "ready", awuCredits: 500 }}
+      />
+    );
+
+    expect(getPersonalLimitInput()).toHaveValue("2,000");
+    expect(getDefaultLimitInput()).toHaveValue("500");
+  });
+
+  it("locks only the workspace default field and shows a message when its fetch failed", () => {
+    render(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={vi.fn()}
+        member={makeMember("default")}
+        owner={owner}
+        groups={groups}
+        readOnly={false}
+        canEditDefaultLimit
+        defaultUserSpendLimit={{ status: "error" }}
+      />
+    );
+
+    expect(getDefaultLimitInput()).toBeDisabled();
+    expect(
+      screen.getByText("The workspace default limit could not be loaded.")
+    ).toBeInTheDocument();
+    expect(getPersonalLimitInput()).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Validate" })).not.toBeDisabled();
+  });
+
+  it("hides the workspace default limit when the workspace has none", () => {
+    render(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={vi.fn()}
+        member={makeMember("default")}
+        owner={owner}
+        groups={groups}
+        readOnly
+        defaultUserSpendLimit={{ status: "unavailable" }}
+      />
+    );
+
+    expect(queryDefaultLimitInput()).toBeNull();
+  });
+
+  it.each([
+    "free",
+    "none",
+  ] as const)("hides the workspace default limit for %s seats even when their source is default", (seatType) => {
+    render(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={vi.fn()}
+        member={makeMember("default", seatType)}
+        owner={owner}
+        groups={groups}
+        readOnly={false}
+        canEditDefaultLimit
+        defaultUserSpendLimit={{ status: "ready", awuCredits: 500 }}
+      />
+    );
+
+    expect(queryDefaultLimitInput()).toBeNull();
+    expect(screen.getByRole("button", { name: "Validate" })).not.toBeDisabled();
   });
 
   it.each([
@@ -186,8 +274,7 @@ describe("EditMemberSpendLimitModal", () => {
         owner={owner}
         groups={groups}
         readOnly={false}
-        defaultUserSpendLimitAwuCredits={500}
-        isDefaultUserSpendLimitLoading={false}
+        defaultUserSpendLimit={{ status: "ready", awuCredits: 500 }}
       />
     );
 

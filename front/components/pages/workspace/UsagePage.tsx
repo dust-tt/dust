@@ -9,6 +9,7 @@ import {
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
+import type { DefaultUserSpendLimitState } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
@@ -313,11 +314,17 @@ export function UsagePage() {
     useState<MemberUsageType | null>(null);
   const [spendLimitRecapMember, setSpendLimitRecapMember] =
     useState<MemberUsageType | null>(null);
-  const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
+  const { defaultUserSpendLimit, isDefaultUserSpendLimitError } =
     useDefaultUserSpendLimit({
       workspaceId: owner.sId,
       disabled: spendLimitRecapMember === null,
     });
+  const defaultUserSpendLimitState: DefaultUserSpendLimitState =
+    defaultUserSpendLimit
+      ? { status: "ready", awuCredits: defaultUserSpendLimit.awuCredits }
+      : isDefaultUserSpendLimitError
+        ? { status: "error" }
+        : { status: "loading" };
   const [
     totalAllowedUsagePendingMemberIds,
     setTotalAllowedUsagePendingMemberIds,
@@ -1453,8 +1460,7 @@ export function UsagePage() {
           groups={groups}
           readOnly={!isManager(owner)}
           canEditDefaultLimit={isWorkspaceAdmin}
-          defaultUserSpendLimitAwuCredits={defaultUserSpendLimit?.awuCredits}
-          isDefaultUserSpendLimitLoading={isDefaultUserSpendLimitLoading}
+          defaultUserSpendLimit={defaultUserSpendLimitState}
         />
 
         <BulkEditSpendLimitModal
