@@ -3,8 +3,7 @@ use crate::oauth::{
     encryption::{seal_str, unseal_str},
     providers::{
         confluence::ConfluenceConnectionProvider,
-        confluence_tools::ConfluenceToolsConnectionProvider,
-        discord::DiscordConnectionProvider,
+        confluence_tools::ConfluenceToolsConnectionProvider, discord::DiscordConnectionProvider,
         fathom::FathomConnectionProvider, freshservice::FreshserviceConnectionProvider,
         github::GithubConnectionProvider, gmail::GmailConnectionProvider,
         gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
