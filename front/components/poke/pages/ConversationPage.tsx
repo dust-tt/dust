@@ -1055,7 +1055,7 @@ export function ConversationPage() {
             </>
           )}
         </h3>
-        <aside className="w-full min-w-0 max-w-5xl 2xl:sticky 2xl:top-4 2xl:col-start-1 2xl:row-start-2 2xl:self-start">
+        <aside className="w-full min-w-0 max-w-5xl 2xl:col-start-1 2xl:row-start-2 2xl:self-start">
           <PluginList
             pluginResourceTarget={{
               resourceId: conversation.sId,
