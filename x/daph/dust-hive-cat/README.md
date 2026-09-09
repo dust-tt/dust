@@ -14,7 +14,7 @@ A macOS app that displays a roaming cat on your screen. When Claude Code needs y
 - Drag and drop the cat anywhere on screen or to another monitor (sets new "home" position)
 - Cat roams within a configurable radius of its home position
 - Preferences window (via menu bar) to customize:
-  - Pet (Soupinou, Chawy, Pistache, Chalom, Sundae)
+  - Pet (Soupinou, Chawy, Pistache, Chalom, Sundae, Lou, Pompon)
   - Size (0.5x - 2x)
   - Speed (0.5x - 2x)
   - Activity (10% - 90% walk probability, default 40%)
