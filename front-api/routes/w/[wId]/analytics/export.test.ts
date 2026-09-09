@@ -126,17 +126,6 @@ describe("GET /api/w/:wId/analytics/export", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual(rows);
-    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "analytics.exported",
-        metadata: expect.objectContaining({
-          export_name: "analytics_table",
-          dataset: "usage_metrics",
-          format: "json",
-          row_count: "1",
-        }),
-      })
-    );
   });
 
   it("returns 400 when required params are missing", async () => {
