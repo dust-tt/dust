@@ -44,6 +44,7 @@ runs:
       if: steps.request.outputs.slack_payload != ''
       uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 # v3.0.1
       with:
+        errors: true
         method: chat.postMessage
         token: ${{ inputs.slack_token }}
         payload: ${{ steps.request.outputs.slack_payload }}

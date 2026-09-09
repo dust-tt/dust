@@ -236,6 +236,10 @@ function escapeSlackText(text: string): string {
  * Slack user lookup; unresolved handles remain plain text.
  */
 /**
+ * @cc [label:error-handling] review-request-slack-delivery
+ * Callers must fail the workflow when Slack rejects or cannot deliver the notification.
+ */
+/**
  * @cc [label:security] review-request-slack-mentions
  * Escape literal Slack control characters before inserting resolved user mentions. Only the
  * requester and reviewers parsed from the request may become Slack mentions.
