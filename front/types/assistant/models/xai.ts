@@ -84,10 +84,9 @@ export const GROK_4_5_MODEL_CONFIG: ModelConfigurationType = {
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
   largeModel: true,
-  description:
-    "xAI's Grok 4.5 flagship model (500k context, reasoning, vision).",
-  shortDescription: "xAI's previous flagship model.",
-  isLegacy: false,
+  description: "xAI's Grok 4.5 model (500k context, reasoning, vision).",
+  shortDescription: "xAI's legacy model.",
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 8_192,
   supportsVision: true,
