@@ -89,6 +89,7 @@
     },
     "[rust]": {
       "editor.defaultFormatter": "rust-lang.rust-analyzer"
-    }
+    },
+    "js/ts.tsdk.path": "node_modules/@typescript/native-preview"
   }
 }
