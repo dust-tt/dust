@@ -405,14 +405,13 @@ describe("GET /api/w/:wId/groups/:groupId", () => {
     expect((await response.json()).error.type).toBe("workspace_auth_error");
   });
 
-  it("returns 404 for a non-regular_manual group", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+  it("returns 404 for a non-manageable group", async () => {
+    const { workspace, globalGroup } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
     });
-    const group = await GroupFactory.regularAuto(workspace, "Automatic");
 
-    const response = await getGroup(workspace, group.sId);
+    const response = await getGroup(workspace, globalGroup.sId);
 
     expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe("group_not_found");
@@ -570,7 +569,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
       method: "PATCH",
       role: "admin",
     });
-    const group = await GroupFactory.regularAuto(workspace, "Automatic");
+    const group = await GroupFactory.provisioned(workspace, "Automatic");
 
     const response = await patchGroup(workspace, group.sId, {
       name: "New name",
@@ -685,7 +684,7 @@ describe("DELETE /api/w/:wId/groups/:groupId", () => {
       method: "DELETE",
       role: "admin",
     });
-    const group = await GroupFactory.regularAuto(workspace, "Automatic");
+    const group = await GroupFactory.provisioned(workspace, "Automatic");
 
     const response = await deleteGroup(workspace, group.sId);
 

@@ -43,7 +43,10 @@ import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
 
 describe("getAgentConfigurations", () => {
-  it("reports system-key edit access without a permission shadow mismatch", async () => {
+  it.each([
+    "system key",
+    "Poke",
+  ] as const)("reports %s edit access without a permission shadow mismatch", async (caller) => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
@@ -54,8 +57,16 @@ describe("getAgentConfigurations", () => {
       }
     );
     await FeatureFlagFactory.basic(authenticator, "group_permissions_shadow");
-    const key = await KeyFactory.system(systemGroup);
-    const auth = await Authenticator.fromKey(key, workspace.sId);
+    const auth =
+      caller === "system key"
+        ? await Authenticator.fromKey(
+            await KeyFactory.system(systemGroup),
+            workspace.sId
+          )
+        : await Authenticator.fromDustSuperUser({
+            wId: workspace.sId,
+            pokePrincipal: { email: "operator@dust.tt", name: "Operator" },
+          });
     const warn = vi.spyOn(logger, "warn");
     try {
       const configuration = await getAgentConfiguration(auth, {
@@ -132,7 +143,12 @@ describe("getAgentConfigurations", () => {
         requestedRole: "admin",
       });
     assert(impersonatedAuth);
+    const resource = await AgentResource.fetchByAgentConfiguration(
+      authenticator,
+      agent
+    );
     for (const auth of [adminAuth, impersonatedAuth]) {
+      expect(auth.can("write", resource)).toBe(false);
       const configuration = await getAgentConfiguration(auth, {
         agentId: agent.sId,
         variant: "light",

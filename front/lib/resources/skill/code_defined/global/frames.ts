@@ -5,7 +5,6 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags, hasFeatureFlag } from "@app/lib/auth";
 import { FRAMES_V2_INSTRUCTIONS } from "@app/lib/resources/skill/code_defined/global/frames_v2";
-import { POD_FUNCTIONS_SKILL_NAME } from "@app/lib/resources/skill/code_defined/global/pod_functions";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { isPodConversation } from "@app/types/assistant/conversation";
@@ -31,9 +30,9 @@ export const framesSkill = {
   // on) keep the retrieve and file-id edit flow. Without a conversation at hand, assume the
   // file system is on since every new conversation has it.
   //
-  // In a Pod, Frames are Pod apps: they live in the Pod's shared file system, and the ones holding
-  // data the user expects to keep are backed by pod functions. Both only make sense with a
-  // conversation to check, so a Pod-less agent loop keeps the conversation-scoped guidance.
+  // In a Pod, Frames are Pod apps: they live in the Pod's shared file system. This only makes
+  // sense with a conversation to check, so a Pod-less agent loop keeps the conversation-scoped
+  // guidance.
   fetchInstructions: async (
     auth: Authenticator,
     params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
@@ -51,8 +50,6 @@ export const framesSkill = {
     return buildInteractiveContentInstructions({
       hasComputer: isComputerFeatureEnabled(flags),
       isPod: conversation ? isPodConversation(conversation) : false,
-      hasPodFunctions: flags.includes("sandbox_functions"),
-      podFunctionsSkillName: POD_FUNCTIONS_SKILL_NAME,
     });
   },
   mcpServers: [

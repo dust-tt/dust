@@ -12,7 +12,6 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
-import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
@@ -182,29 +181,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return new SpaceResource(SpaceModel, space.get());
   }
 
-  /**
-   * Project-only: when true, workspace admins are the only people with
-   * editor/admin powers. Enabling demotes editors to members; disabling
-   * promotes the oldest member back to editor.
-   *
-   * Fetched on demand from project_metadata (not joined on every space load).
-   */
-  async fetchIsAdminControlled(): Promise<boolean> {
-    if (!this.isProject()) {
-      return false;
-    }
-
-    const metadata = await ProjectMetadataModel.findOne({
-      attributes: ["isAdminControlled"],
-      where: {
-        spaceId: this.id,
-        workspaceId: this.workspaceId,
-      },
-    });
-
-    return metadata?.isAdminControlled ?? false;
-  }
-
   static async makeNew(
     auth: Authenticator,
     blob: CreationAttributes<SpaceModel>,
@@ -268,19 +244,28 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         transaction
       ));
 
-    const globalSpace =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      existingSpaces.find((s) => s.isGlobal()) ||
-      (await SpaceResource.makeNew(
+    let globalSpace = existingSpaces.find((s) => s.isGlobal());
+    if (!globalSpace) {
+      // The global space is created with its own member group: that group's `member` grant is the
+      // only source of write on Company Data outside the admin/manager roles (see
+      // `spaceGroupRoles`).
+      const memberGroup = await SpaceResource.makeGlobalSpaceMemberGroup({
+        workspaceId: auth.getNonNullableWorkspace().id,
+        spaceName: GLOBAL_SPACE_NAME,
+        transaction,
+      });
+
+      globalSpace = await SpaceResource.makeNew(
         auth,
         {
           name: GLOBAL_SPACE_NAME,
           kind: "global",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        { members: [globalGroup] },
+        { members: [globalGroup, memberGroup] },
         transaction
-      ));
+      );
+    }
 
     const conversationsSpace =
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -301,6 +286,31 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       globalSpace,
       conversationsSpace,
     };
+  }
+
+  /**
+   * @cc [owner:fabiencelier,label:security] global-space-member-group
+   * A workspace's global space must be created with exactly one `regular_auto` member group,
+   * created by this method: that group's `member` grant is the global space's only source of
+   * `write` outside the `admin` and `manager` (and legacy `builder`) workspace roles.
+   */
+  static async makeGlobalSpaceMemberGroup({
+    workspaceId,
+    spaceName,
+    transaction,
+  }: {
+    workspaceId: ModelId;
+    spaceName: string;
+    transaction?: Transaction;
+  }): Promise<GroupResource> {
+    return GroupResource.makeNew(
+      {
+        name: `${SPACE_GROUP_PREFIX} ${spaceName}`,
+        kind: "regular_auto",
+        workspaceId,
+      },
+      { transaction }
+    );
   }
 
   get sId(): string {
@@ -958,12 +968,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return new Ok(undefined);
   }
 
+  /**
+   * @cc [owner:fabiencelier,label:product] global-space-name-immutable
+   * The global space cannot be renamed: it is always displayed as `GLOBAL_SPACE_NAME`, and its
+   * name is what its member group is named after.
+   */
   async updateName(
     auth: Authenticator,
     newName: string
   ): Promise<Result<undefined, Error>> {
     if (!auth.can("admin", this)) {
       return new Err(new Error("Only admins can update space names."));
+    }
+
+    if (this.isGlobal()) {
+      return new Err(new Error("The company space cannot be renamed."));
     }
 
     const trimmedName = newName.trim();
@@ -1043,20 +1062,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
-    // Admin-controlled Pods have an empty editor group; workspace admins administrate via role.
-    if (
-      this.isProject() &&
-      (params.editorIds?.length || params.editorGroupIds?.length) &&
-      (await this.fetchIsAdminControlled())
-    ) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Editors cannot be set while this Pod is admin-controlled."
-        )
-      );
-    }
-
     const memberGroupsRes = await GroupResource.fetchByIds(
       auth,
       params.groupIds ?? []
@@ -1107,10 +1112,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * `params` is the space's whole desired membership: `memberIds`, `editorIds`, `groupIds` and
    * `editorGroupIds` are each overwritten, and a dimension `params` leaves out is emptied.
    */
+  /**
+   * @cc [owner:fabiencelier,label:security] global-space-permissions-update
+   * On the global space, this must reject `isRestricted: true` with `invalid_request_error` and
+   * keep the workspace global group's `reader` grant: Company Data is always readable by the whole
+   * workspace, and only the selected members and groups gain `write`.
+   */
   async updatePermissions(
     auth: Authenticator,
     params: {
-      name: string;
       isRestricted: boolean;
     } & SpaceMembershipUpdate
   ): Promise<
@@ -1126,6 +1136,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         | "invalid_group_kind"
         | "system_or_global_group"
         | "invalid_id"
+        | "invalid_request_error"
       >
     >
   > {
@@ -1138,17 +1149,28 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
     }
 
-    if (!this.isRegular() && !this.isProject()) {
+    if (!this.isRegular() && !this.isProject() && !this.isGlobal()) {
       return new Err(
         new DustError(
           "unauthorized",
-          "Only projects and regular spaces can have members."
+          "Only projects, regular spaces and the global space can have members."
         )
       );
     }
 
     // The request is the space's whole desired membership: a dimension it leaves out is emptied.
     const { isRestricted, memberIds = [], editorIds = [] } = params;
+
+    // The global space is readable by the whole workspace by construction: its members are the
+    // people allowed to write to it, not the people allowed to see it.
+    if (this.isGlobal() && isRestricted) {
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          "The global space cannot be restricted."
+        )
+      );
+    }
 
     const groupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
     if (groupRes.isErr()) {
@@ -1173,11 +1195,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       }
       const { memberGroups, editorGroups } = requestedGroupsRes.value;
 
-      const isAdminControlled = await this.fetchIsAdminControlled();
-
       // The space is open (unrestricted) exactly when the workspace global group is one of its
-      // groups: it is simply included in `members` iff the space is (becoming) open.
-      const willBeOpen = !isRestricted;
+      // groups: it is simply included in `members` iff the space is (becoming) open. The global
+      // space is always open — that grant is what makes Company Data readable workspace-wide.
+      const willBeOpen = this.isGlobal() || !isRestricted;
 
       // The space's own groups always hold its manual members, alongside the attached groups.
       const memberGroup = await this.fetchManualMemberGroup(auth, t);
@@ -1242,7 +1263,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       // A Pod is administrated by its editors, so it must keep at least one — held by its own
       // editor group or by an attached group. Admin-controlled Pods are the exception: workspace
       // admins administrate them by role and the editor group is empty by design.
-      if (manualEditorGroup && !isAdminControlled) {
+      if (manualEditorGroup) {
         const manualEditors = await manualEditorGroup.getActiveMembers(auth, {
           transaction: t,
         });
@@ -1279,137 +1300,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await auth.refresh();
 
     return result;
-  }
-
-  /**
-   * When enabling admin-controlled mode: demote all editors to members.
-   * When disabling: promote the oldest member to editor.
-   * Caller must update project metadata separately; this only adjusts groups.
-   */
-  async applyAdminControlledMembershipChange(
-    auth: Authenticator,
-    isAdminControlled: boolean,
-    transaction?: Transaction
-  ): Promise<
-    Result<
-      undefined,
-      DustError<
-        | "unauthorized"
-        | "user_not_found"
-        | "user_not_member"
-        | "user_already_member"
-        | "group_requirements_not_met"
-        | "system_or_global_group"
-      >
-    >
-  > {
-    assert(this.isProject(), "Only projects support admin-controlled mode.");
-
-    if (!auth.isAdmin()) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only workspace admins can change admin-controlled Pod mode."
-        )
-      );
-    }
-
-    return withTransaction(async (t: Transaction) => {
-      // Serialized against `updatePermissions`, which reads and rewrites the same groups.
-      await this.getMembershipLock(t);
-
-      const editorGroup = await this.fetchManualEditorGroup(auth, t);
-      const memberGroup = await this.fetchManualMemberGroup(auth, t);
-      assert(editorGroup, "A project must have a manual editor group.");
-
-      if (isAdminControlled) {
-        const editors = await editorGroup.getActiveMembers(auth, {
-          transaction: t,
-        });
-        if (editors.length === 0) {
-          return new Ok(undefined);
-        }
-
-        const members = await memberGroup.getActiveMembers(auth, {
-          transaction: t,
-        });
-        const existingMemberSIds = new Set(members.map((m) => m.sId));
-        const editorsToAdd = editors.filter(
-          (e) => !existingMemberSIds.has(e.sId)
-        );
-
-        if (editorsToAdd.length > 0) {
-          const addRes = await memberGroup.dangerouslyAddMembers(auth, {
-            users: editorsToAdd.map((u) => u.toJSON()),
-            transaction: t,
-          });
-          if (addRes.isErr()) {
-            return addRes;
-          }
-        }
-
-        const clearEditorsRes = await editorGroup.dangerouslySetMembers(auth, {
-          users: [],
-          transaction: t,
-        });
-        if (clearEditorsRes.isErr()) {
-          return clearEditorsRes;
-        }
-
-        return new Ok(undefined);
-      }
-
-      // Disabling: promote the oldest member (by join date) to editor.
-      const now = new Date();
-      const memberMemberships = await GroupMembershipModel.findAll({
-        where: {
-          workspaceId: this.workspaceId,
-          groupId: memberGroup.id,
-          status: "active" as const,
-          startAt: { [Op.lte]: now },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
-        },
-        order: [["startAt", "ASC"]],
-        transaction: t,
-      });
-      if (memberMemberships.length === 0) {
-        return new Err(
-          new DustError(
-            "group_requirements_not_met",
-            "Cannot disable admin-controlled mode: this Pod has no members."
-          )
-        );
-      }
-
-      const oldestUsers = await UserResource.fetchByModelIds([
-        memberMemberships[0].userId,
-      ]);
-      const oldestMember = oldestUsers[0];
-      if (!oldestMember) {
-        return new Err(new DustError("user_not_found", "User not found"));
-      }
-
-      const removeFromMembersRes = await memberGroup.dangerouslyRemoveMembers(
-        auth,
-        {
-          users: [oldestMember.toJSON()],
-          transaction: t,
-        }
-      );
-      if (removeFromMembersRes.isErr()) {
-        return removeFromMembersRes;
-      }
-
-      const setEditorRes = await editorGroup.dangerouslySetMembers(auth, {
-        users: [oldestMember.toJSON()],
-        transaction: t,
-      });
-      if (setEditorRes.isErr()) {
-        return setEditorRes;
-      }
-
-      return new Ok(undefined);
-    }, transaction);
   }
 
   async fetchActiveEditorUsers(auth: Authenticator): Promise<UserResource[]> {
@@ -1454,8 +1344,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     assert(
-      this.isRegular() || this.isProject(),
-      "Only regular spaces and projects can have manual members."
+      this.isRegular() || this.isProject() || this.isGlobal(),
+      "Only regular spaces, projects and the global space can have manual members."
     );
 
     const users = await UserResource.fetchByIds(userIds);
@@ -1522,15 +1412,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         new DustError(
           "unauthorized",
           "You do not have permission to add editors to this space."
-        )
-      );
-    }
-
-    if (await this.fetchIsAdminControlled()) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Editors cannot be changed while this Pod is admin-controlled."
         )
       );
     }
@@ -1612,15 +1493,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         new DustError(
           "unauthorized",
           "You do not have permission to remove editors from this space."
-        )
-      );
-    }
-
-    if (await this.fetchIsAdminControlled()) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Editors cannot be changed while this Pod is admin-controlled."
         )
       );
     }
@@ -2007,6 +1879,49 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return memberGroups[0];
   }
 
+  // New workspaces get the group at creation (`makeDefaultsForWorkspace`); this is how the
+  // `20260908_backfill_global_space_member_group` migration gives it to the workspaces that
+  // predate it.
+  /**
+   * @cc [owner:fabiencelier,label:backend] ensure-global-space-member-group
+   * Idempotently gives the global space its `regular_auto` member group and that group's `member`
+   * grant, preserving the grants of the groups already attached to the space.
+   */
+  async ensureGlobalSpaceMemberGroup(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<void> {
+    assert(this.isGlobal(), "Only the global space has a member group to fix.");
+
+    // One transaction for the whole repair: `writeGroupPermissions` clears the space's grants
+    // before re-inserting them, so a failure halfway through an autocommitted repair would leave
+    // Company Data with no `reader` grant (unreadable workspace-wide) and a committed, unusable
+    // group whose name makes every retry collide.
+    await withTransaction(async (t: Transaction) => {
+      const autoGroups = await this.fetchRegularAutoGroups(auth, t);
+      if (autoGroups.length > 0) {
+        return;
+      }
+
+      // The groups already granted on the space (the workspace global group), re-passed so their
+      // grants survive the rewrite.
+      const existingGroups = await this.fetchGroupResources(auth, {
+        transaction: t,
+      });
+      const memberGroup = await SpaceResource.makeGlobalSpaceMemberGroup({
+        workspaceId: this.workspaceId,
+        spaceName: this.name,
+        transaction: t,
+      });
+
+      await this.writeGroupPermissions(auth, {
+        members: [...existingGroups, memberGroup],
+        editors: [],
+        transaction: t,
+      });
+    }, transaction);
+  }
+
   /**
    * Check if the auth is a member of this space.
    */
@@ -2163,7 +2078,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    *
    * 2. Global spaces:
    * - Read: All workspace members
-   * - Write: Workspace admins and builders
+   * - Write: Workspace admins and managers (legacy: builders), plus the members of the space's
+   *   member groups
    *
    * 3. Open spaces:
    * - Read: All workspace members
@@ -2238,8 +2154,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       }));
     }
 
-    // Global Workspace space and Conversations space: write comes from the role grants.
-    if (this.isGlobal() || this.isConversations()) {
+    // Conversations space: write comes from the role grants.
+    if (this.isConversations()) {
       return associatedGroups.map((group) => ({
         groupId: group.id,
         grantType: "reader",
@@ -2254,11 +2170,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // A space is open when the workspace global group is one of its groups.
     const isOpen = associatedGroups.some((group) => group.isGlobal());
 
-    // Open regular space: the workspace global group is attached as a viewer, so it must only read
-    // — conferring write would hand write on every open space to every workspace member. Every
-    // other group is a member group and reads and writes, exactly as on a restricted space; that is
-    // what makes a space's member list meaningful even when the space is open.
-    if (this.isRegular() && isOpen) {
+    // The global space (Company Data), and an open regular space: the workspace global group is
+    // attached as a viewer, so it must only read — conferring write would hand write on every such
+    // space to every workspace member. Every other group is a member group and reads and writes,
+    // exactly as on a restricted space; that is what makes the space's member list meaningful even
+    // though everyone can read it, and on Company Data it is what lets an admin grant write to
+    // people who are neither admins nor managers.
+    if (this.isGlobal() || (this.isRegular() && isOpen)) {
       return groups.map((group) => ({
         groupId: group.id,
         grantType: group.isGlobal() ? "reader" : "member",

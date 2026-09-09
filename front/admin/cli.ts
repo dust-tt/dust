@@ -38,6 +38,7 @@ import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { labsTranscriptsProviders } from "@app/types/labs";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { isAssignableRoleType } from "@app/types/user";
 import fs from "fs/promises";
@@ -1015,7 +1016,7 @@ main()
     process.exit(0);
   })
   .catch((err) => {
-    console.error("\x1b[31m%s\x1b[0m", `Error: ${err.message}`);
+    console.error("\x1b[31m%s\x1b[0m", `Error: ${normalizeError(err).message}`);
     console.log(err);
     process.exit(1);
   });

@@ -2,13 +2,13 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPickerItemsList } from "@app/components/assistant/CapabilitiesPicker";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
-import { AdminControlledPodTile } from "@app/components/pod/settings/AdminControlledPodTile";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
 import { ManagePodGroupsPanel } from "@app/components/pod/settings/ManagePodGroupsPanel";
 import { PodGroupMembersTable } from "@app/components/pod/settings/PodGroupMembersTable";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
 import { PodNetworkSection } from "@app/components/pod/settings/PodNetworkSection";
 import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
+import { PodTabsCustomizationSection } from "@app/components/pod/settings/PodTabsCustomizationSection";
 import { SandboxEnvVarsSection } from "@app/components/sandbox/SandboxEnvVarsSection";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
@@ -108,7 +108,7 @@ export function PodSettingsTab({
   const { hasFeature } = useFeatureFlags();
   const { isAdmin } = useAuth();
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
-  const hasAdminControlledPodsFeature = hasFeature("admin_controlled_pods");
+  const hasFileTabs = hasFeature("pod_frame_tabs");
   // The pod env vars section stays workspace-admin only (matching the API,
   // which keeps env-vars admin-only). Mirrors that gate — change both together.
   const isPodSandboxAdminEnabled = isAdmin && hasFeature("frames_v2");
@@ -778,14 +778,18 @@ export function PodSettingsTab({
                 )}
               </div>
             </div>
-
-            {hasAdminControlledPodsFeature && (
-              <div className="border-t border-border">
-                <AdminControlledPodTile owner={owner} pod={pod} />
-              </div>
-            )}
           </div>
         </div>
+
+        {hasFileTabs && (
+          <PodTabsCustomizationSection
+            owner={owner}
+            podId={pod.sId}
+            fileTabs={pod.frameTabs ?? []}
+            tabsOrder={pod.tabsOrder}
+            isEditor={isPodEditor}
+          />
+        )}
 
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">

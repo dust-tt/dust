@@ -55,6 +55,23 @@ function formatCycleDayLabel(
   return `Day ${elapsedDays}/${totalDays}`;
 }
 
+function formatProgrammaticUsageShare(
+  programmaticConsumedCredits: number | null,
+  consumedCredits: number | null
+): string | null {
+  if (
+    typeof programmaticConsumedCredits !== "number" ||
+    typeof consumedCredits !== "number" ||
+    consumedCredits <= 0
+  ) {
+    return null;
+  }
+  const percentage = Math.round(
+    Math.min(100, (programmaticConsumedCredits / consumedCredits) * 100)
+  );
+  return `${percentage}% of the usage`;
+}
+
 interface WorkspaceCreditUsageValueCardsProps {
   showPoolCard: boolean;
   totalRemainingCredits: number;
@@ -105,7 +122,10 @@ export function WorkspaceCreditUsageValueCards({
             ? formatCredits(programmaticConsumedCredits)
             : "—"
         }
-        hint={null}
+        hint={formatProgrammaticUsageShare(
+          programmaticConsumedCredits,
+          consumedCredits
+        )}
       />
     </div>
   );

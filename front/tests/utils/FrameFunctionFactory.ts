@@ -96,11 +96,17 @@ export async function makeTestFrameFunction({
 export async function makeTestFrameInvocation({
   enableFramesV2 = true,
   isSuperUser = false,
+  shareScope = "workspace_and_emails",
 }: {
   enableFramesV2?: boolean;
   isSuperUser?: boolean;
+  shareScope?: "emails_only" | "workspace_and_emails";
 } = {}) {
-  const setup = await makeTestFrameFunction({ enableFramesV2, isSuperUser });
+  const setup = await makeTestFrameFunction({
+    enableFramesV2,
+    isSuperUser,
+    shareScope,
+  });
   const invocation = await SandboxFunctionInvocationResource.makeNew(
     setup.auth,
     {

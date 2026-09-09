@@ -10,9 +10,8 @@ export const DEFAULT_POD_FILE_TAB_ICON =
 /** System tabs that participate in ordering (Settings is always last and excluded). */
 export const POD_NAV_SYSTEM_TABS_BEFORE_SETTINGS = [
   "conversations",
-  "tasks",
   "files",
-  "connected_data",
+  "tasks",
 ] as const;
 
 export type PodNavSystemTabBeforeSettings =
@@ -94,43 +93,15 @@ export function normalizeTabsOrder(
   return result;
 }
 
-/**
- * Which conditional system tabs this Pod currently shows. Connected Data depends on the Pod being
- * admin-controlled. This must be honoured everywhere tab order is computed, so neighbour-swapping
- * never moves a file tab past a tab the user cannot see.
- */
-export type PodNavVisibility = {
-  includeConnectedData: boolean;
-};
-
-/** Connected Data not shown — the safe default for callers that do not know yet. */
-export const DEFAULT_POD_NAV_VISIBILITY: PodNavVisibility = {
-  includeConnectedData: false,
-};
-
-export function visibleTabsOrder(
-  tabsOrder: string[],
-  { includeConnectedData }: PodNavVisibility
-): string[] {
-  return tabsOrder.filter((id) => {
-    if (id === "connected_data") {
-      return includeConnectedData;
-    }
-    return true;
-  });
-}
-
 export function buildPodNavItemsBeforeSettings(
   fileTabs: PodFileTab[],
-  tabsOrder: string[],
-  visibility: PodNavVisibility
+  tabsOrder: string[]
 ): PodNavItemBeforeSettings[] {
   const byPath = new Map(fileTabs.map((tab) => [tab.path, tab]));
-  const normalized = normalizeTabsOrder(
+  const visible = normalizeTabsOrder(
     tabsOrder,
     fileTabs.map((tab) => tab.path)
   );
-  const visible = visibleTabsOrder(normalized, visibility);
 
   const items: PodNavItemBeforeSettings[] = [];
   for (const entry of visible) {
@@ -150,22 +121,20 @@ export function buildPodNavItemsBeforeSettings(
 export function moveFileTabInTabsOrder(
   tabsOrder: string[],
   path: string,
-  direction: "left" | "right",
-  visibility: PodNavVisibility
+  direction: "left" | "right"
 ): string[] | null {
-  const visible = visibleTabsOrder(tabsOrder, visibility);
-  const index = visible.indexOf(path);
+  const index = tabsOrder.indexOf(path);
   if (index < 0) {
     return null;
   }
 
   const swapWith = direction === "left" ? index - 1 : index + 1;
-  if (swapWith < 0 || swapWith >= visible.length) {
+  if (swapWith < 0 || swapWith >= tabsOrder.length) {
     return null;
   }
 
-  const a = visible[index];
-  const b = visible[swapWith];
+  const a = tabsOrder[index];
+  const b = tabsOrder[swapWith];
   const next = [...tabsOrder];
   const ai = next.indexOf(a);
   const bi = next.indexOf(b);
@@ -175,6 +144,60 @@ export function moveFileTabInTabsOrder(
   next[ai] = b;
   next[bi] = a;
   return next;
+}
+
+/**
+ * Reorder file tabs among themselves while keeping system-tab slots fixed.
+ * Returns null when either path is missing or the order is unchanged.
+ *
+ * @cc [label:product] system-slots-fixed
+ * System tab entries keep their indices; only non-system (file-tab) entries are
+ * permuted among those slots.
+ */
+export function reorderFileTabsInTabsOrder(
+  tabsOrder: string[],
+  draggedPath: string,
+  targetPath: string
+): string[] | null {
+  if (draggedPath === targetPath) {
+    return null;
+  }
+
+  const fileIndices: number[] = [];
+  const filePaths: string[] = [];
+  for (let i = 0; i < tabsOrder.length; i++) {
+    const entry = tabsOrder[i];
+    if (!isPodNavSystemTabBeforeSettings(entry)) {
+      fileIndices.push(i);
+      filePaths.push(entry);
+    }
+  }
+
+  const fromIndex = filePaths.indexOf(draggedPath);
+  const toIndex = filePaths.indexOf(targetPath);
+  if (fromIndex < 0 || toIndex < 0) {
+    return null;
+  }
+
+  const nextFilePaths = [...filePaths];
+  const [moved] = nextFilePaths.splice(fromIndex, 1);
+  nextFilePaths.splice(toIndex, 0, moved);
+
+  const next = [...tabsOrder];
+  for (let i = 0; i < fileIndices.length; i++) {
+    next[fileIndices[i]] = nextFilePaths[i];
+  }
+  return next;
+}
+
+/** File tabs in nav order (system tabs omitted). */
+export function orderedPodFileTabs(
+  fileTabs: PodFileTab[],
+  tabsOrder: string[]
+): PodFileTab[] {
+  return buildPodNavItemsBeforeSettings(fileTabs, tabsOrder).flatMap((item) =>
+    item.kind === "file" ? [item.tab] : []
+  );
 }
 
 export function podFileTabBasename(path: string): string {

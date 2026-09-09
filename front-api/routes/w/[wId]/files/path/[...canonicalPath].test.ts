@@ -1,3 +1,5 @@
+// @vitest-environment node: ZIP inspection requires Node builtins.
+
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -10,6 +12,7 @@ import {
   frameV2ContentType,
 } from "@app/types/files";
 import { honoApp } from "@front-api/app";
+import AdmZip from "adm-zip";
 import { PassThrough } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -315,6 +318,117 @@ describe("HEAD /api/w/:wId/files/path/:canonicalPath", () => {
     );
 
     expect(response.status).toBe(404);
+  });
+});
+
+describe("GET /api/w/:wId/files/path/:canonicalPath?archive=zip", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("preflights a mount-root archive without opening file streams", async () => {
+    const { workspace, conversation } = await setup();
+    const mountPath = `conversation-${conversation.sId}`;
+    const gcsRoot = `w/${workspace.sId}/conversations/${conversation.sId}/files/`;
+    fileStorageMock.setFilesByPrefix((prefix) =>
+      prefix === gcsRoot
+        ? [
+            {
+              name: `${gcsRoot}report.txt`,
+              metadata: { contentType: "text/plain", size: "5" },
+            },
+          ]
+        : null
+    );
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/files/path/${mountPath}?archive=zip`,
+      { method: "HEAD" }
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("application/zip");
+    expect(response.headers.get("Content-Disposition")).toContain(
+      'filename="conversation-'
+    );
+    expect(fileStorageMock.readStreamCalls).toHaveLength(0);
+  });
+
+  it("streams a folder as a ZIP rooted at the folder name", async () => {
+    const { workspace, conversation } = await setup();
+    const folderPath = `conversation-${conversation.sId}/reports`;
+    const gcsRoot = `w/${workspace.sId}/conversations/${conversation.sId}/files/reports/`;
+    const readmePath = `${gcsRoot}readme.md`;
+    const summaryPath = `${gcsRoot}q1/summary.txt`;
+    fileStorageMock.setFilesByPrefix((prefix) =>
+      prefix === gcsRoot
+        ? [
+            {
+              name: `${gcsRoot}empty/`,
+              metadata: { contentType: "application/x-directory", size: "0" },
+            },
+            {
+              name: readmePath,
+              metadata: { contentType: "text/markdown", size: "6" },
+            },
+            {
+              name: summaryPath,
+              metadata: { contentType: "text/plain", size: "7" },
+            },
+          ]
+        : null
+    );
+    fileStorageMock.setFileExists(
+      (path) => path === readmePath || path === summaryPath
+    );
+    fileStorageMock.setFileContent((path) => {
+      if (path === readmePath) {
+        return "readme";
+      }
+      if (path === summaryPath) {
+        return "summary";
+      }
+      return null;
+    });
+
+    const segments = folderPath.split("/").map(encodeURIComponent).join("/");
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/files/path/${segments}?archive=zip`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("application/zip");
+    expect(response.headers.get("Content-Disposition")).toContain(
+      'filename="reports.zip"'
+    );
+    const archiveBuffer = Buffer.from(await response.arrayBuffer());
+    expect(fileStorageMock.readStreamCalls).toEqual([summaryPath, readmePath]);
+    expect(archiveBuffer.subarray(0, 2).toString("ascii")).toBe("PK");
+    const zip = new AdmZip(archiveBuffer);
+    expect(zip.getEntries().map((entry) => entry.entryName)).toEqual([
+      "reports/",
+      "reports/empty/",
+      "reports/q1/summary.txt",
+      "reports/readme.md",
+    ]);
+    expect(zip.readAsText("reports/q1/summary.txt")).toBe("summary");
+    expect(zip.readAsText("reports/readme.md")).toBe("readme");
+  });
+
+  it("rejects archive requests for files", async () => {
+    const { workspace, conversation } = await setup();
+    setExistingFiles(["/files/report.txt"]);
+
+    const segments = `conversation-${conversation.sId}/report.txt`
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/");
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/files/path/${segments}?archive=zip`
+    );
+
+    expect(response.status).toBe(400);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
   });
 });
 

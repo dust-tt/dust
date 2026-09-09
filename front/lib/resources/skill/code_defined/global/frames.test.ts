@@ -11,7 +11,6 @@ import {
 } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames";
-import { POD_FUNCTIONS_SKILL_NAME } from "@app/lib/resources/skill/code_defined/global/pod_functions";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -189,7 +188,6 @@ describe("framesSkill.fetchInstructions", () => {
 
   it("keeps Frames in the conversation outside a Pod", async () => {
     const { authenticator: auth } = await createResourceTest({});
-    await FeatureFlagFactory.basic(auth, "sandbox_functions");
 
     const instructions = await framesSkill.fetchInstructions(auth, {
       spaceIds: [],
@@ -200,9 +198,8 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).not.toContain(POD_STORAGE_MARKER);
   });
 
-  it("teaches the Pod app layout and storage decision in a Pod", async () => {
+  it("teaches the Pod app layout in a Pod", async () => {
     const { authenticator: auth } = await createResourceTest({});
-    await FeatureFlagFactory.basic(auth, "sandbox_functions");
 
     const instructions = await framesSkill.fetchInstructions(auth, {
       spaceIds: [],
@@ -211,8 +208,7 @@ describe("framesSkill.fetchInstructions", () => {
 
     expect(instructions).toContain(POD_APP_MARKER);
     expect(instructions).toContain("pod-<podId>/MyApp/MyApp.tsx");
-    expect(instructions).toContain(POD_STORAGE_MARKER);
-    expect(instructions).toContain(`\`${POD_FUNCTIONS_SKILL_NAME}\` skill`);
+    expect(instructions).not.toContain(POD_STORAGE_MARKER);
   });
 
   it("teaches how to find an existing Pod app's path and file id", async () => {
@@ -228,21 +224,8 @@ describe("framesSkill.fetchInstructions", () => {
     expect(instructions).toContain("[id: fil_...]");
   });
 
-  it("omits the storage decision when pod functions are unavailable", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-
-    const instructions = await framesSkill.fetchInstructions(auth, {
-      spaceIds: [],
-      agentLoopData: agentLoopDataInPod("vlt_abc123"),
-    });
-
-    expect(instructions).toContain(POD_APP_MARKER);
-    expect(instructions).not.toContain(POD_STORAGE_MARKER);
-  });
-
   it("keeps the legacy flow for a Pod conversation without the file system", async () => {
     const { authenticator: auth } = await createResourceTest({});
-    await FeatureFlagFactory.basic(auth, "sandbox_functions");
 
     const instructions = await framesSkill.fetchInstructions(auth, {
       spaceIds: [],

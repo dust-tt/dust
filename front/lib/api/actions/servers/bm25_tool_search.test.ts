@@ -1548,12 +1548,6 @@ const QUERIES: LabeledQuery[] = [
     expected: "exa_people_and_company.search_companies",
   },
 
-  // --- databricks ---
-  {
-    query: "list the warehouses in Databricks",
-    expected: "databricks.list_warehouses",
-  },
-
   // --- data_sources_file_system ---
   {
     query: "read a connected data source document or page",

@@ -48,10 +48,10 @@ export async function isUserBlocked(
   user: UserResource
 ): Promise<UserBlockedReason | null> {
   const workspace = auth.getNonNullableWorkspace();
-  const userCapBlockedOverride = await isUserSpendLimitRateCapReached(auth, {
+  const userCapBlocked = await isUserSpendLimitRateCapReached(auth, {
     user,
   });
-  return isUserBlockedByMetronome(workspace, user, { userCapBlockedOverride });
+  return isUserBlockedByMetronome(workspace, user, { userCapBlocked });
 }
 
 /**

@@ -7,12 +7,7 @@ import {
 } from "@app/types/pod_file_tab";
 import { useCallback, useEffect, useRef } from "react";
 
-export type SystemPodTab =
-  | "conversations"
-  | "tasks"
-  | "files"
-  | "connected_data"
-  | "settings";
+export type SystemPodTab = "conversations" | "tasks" | "files" | "settings";
 
 export type PodTab = PodUiScopedPreferences["tab"];
 
@@ -30,7 +25,6 @@ const SYSTEM_POD_TAB_HASHES = new Set<string>([
   "settings",
   "conversations",
   "tasks",
-  "connected_data",
 ]);
 
 function isSystemPodTab(tab: string): tab is SystemPodTab {
@@ -59,20 +53,6 @@ function parsePodTabFromLocationHash(fallbackTab: PodTab): PodTab {
   return fallbackTab;
 }
 
-/**
- * Connected Data is only available on admin-controlled Pods.
- * `undefined` means pod info is still loading — keep the tab as-is.
- */
-function resolvePodTab(
-  tab: PodTab,
-  isAdminControlled: boolean | undefined
-): PodTab {
-  if (tab === "connected_data" && isAdminControlled === false) {
-    return "conversations";
-  }
-  return tab;
-}
-
 function hasConnectedDataQueryParams(): boolean {
   const params = new URLSearchParams(window.location.search);
   return CONNECTED_DATA_QUERY_PARAMS.some((key) => params.has(key));
@@ -98,8 +78,6 @@ interface UsePodTabsParams {
   podId: string | null;
   podUiPreferences: PodUiScopedPreferences;
   setPodUiPreferences: (value: PodUiScopedPreferences) => void;
-  /** When false, `connected_data` is remapped to `conversations`. */
-  isAdminControlled?: boolean;
 }
 
 /**
@@ -117,7 +95,6 @@ export function usePodTabs({
   podId,
   podUiPreferences,
   setPodUiPreferences,
-  isAdminControlled,
 }: UsePodTabsParams): {
   currentTab: PodTab;
   handleTabChange: (tab: PodTab) => void;
@@ -126,7 +103,7 @@ export function usePodTabs({
 
   onHashChangeRef.current = () => {
     const tabFromHash = parsePodTabFromLocationHash(podUiPreferences.tab);
-    const resolved = resolvePodTab(tabFromHash, isAdminControlled);
+    const resolved = tabFromHash;
     const expectedHash = `#${tabToHash(podUiPreferences.tab)}`;
     if (resolved !== podUiPreferences.tab) {
       setPodUiPreferences({ ...podUiPreferences, tab: resolved });
@@ -158,32 +135,16 @@ export function usePodTabs({
     };
   }, [podId]);
 
-  // Remap a persisted/URL `connected_data` tab once we know the Pod is not
-  // admin-controlled (pod info loads after the hash sync above).
-  useEffect(() => {
-    if (
-      isAdminControlled !== false ||
-      podUiPreferences.tab !== "connected_data"
-    ) {
-      return;
-    }
-    setPodUiPreferences({ ...podUiPreferences, tab: "conversations" });
-    if (typeof window !== "undefined") {
-      replaceUrlWithTab("conversations");
-    }
-  }, [isAdminControlled, podUiPreferences, setPodUiPreferences]);
-
   const handleTabChange = useCallback(
     (newTab: PodTab) => {
-      const resolved = resolvePodTab(newTab, isAdminControlled);
-      replaceUrlWithTab(resolved);
-      setPodUiPreferences({ ...podUiPreferences, tab: resolved });
+      replaceUrlWithTab(newTab);
+      setPodUiPreferences({ ...podUiPreferences, tab: newTab });
     },
-    [podUiPreferences, setPodUiPreferences, isAdminControlled]
+    [podUiPreferences, setPodUiPreferences]
   );
 
   return {
-    currentTab: resolvePodTab(podUiPreferences.tab, isAdminControlled),
+    currentTab: podUiPreferences.tab,
     handleTabChange,
   };
 }

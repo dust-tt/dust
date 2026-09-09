@@ -5,6 +5,7 @@ import {
 import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
+import { MissingPodFileTabCallout } from "@app/components/pod/MissingPodFileTabCallout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   getFilePathContentApiPath,
@@ -199,11 +200,7 @@ export function PodFileTabPreview({
   }
 
   if (isFileMetadataNotFound || !entry) {
-    return (
-      <div className="flex h-full w-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
-        This file is no longer available in the Pod files.
-      </div>
-    );
+    return <MissingPodFileTabCallout path={filePath} />;
   }
 
   return (

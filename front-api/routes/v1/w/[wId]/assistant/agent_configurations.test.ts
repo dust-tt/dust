@@ -80,7 +80,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
     expect(response.status).toBe(200);
     expect(
       agentConfigurations.find((a) => a.name === "Published Agent")?.canEdit
-    ).toBe(role !== "user");
+    ).toBe(role === "admin");
     expect(
       agentConfigurations
         .filter((a) => a.scope === "global")

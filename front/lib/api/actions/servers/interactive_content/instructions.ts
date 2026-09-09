@@ -171,17 +171,6 @@ A Pod frame you are asked to change was usually built in an earlier conversation
 3. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`, passing the \`path\` and \`file_id\` exactly as listed in step 1.
 `;
 
-// Pod conversations where pod functions are available. Without this, a Frame asked to hold data
-// silently ends up with a `useState` array that dies on reload, and the user only finds out after
-// entering real data.
-const podStorageSection = (podFunctionsSkillName: string) => `\
-### Where The Frame's Data Lives
-
-If the Frame lets people add, edit, check off, reorder, delete, save, assign, comment, vote, or upload, its data has to survive the page: store it in a Pod database behind pod functions, and enable the \`${podFunctionsSkillName}\` skill to do it. That is the default for a task list, tracker, backlog, roster, inventory, log, queue, notes app, or any form that keeps its answers.
-
-Keep in component state only what is genuinely throwaway. e.g. the selected tab, a filter, or a sort order.
-`;
-
 interface InstructionsVariant {
   updatingSection: string;
   validationFixExample: string;
@@ -420,33 +409,19 @@ const joinPodSections = (sections: string[]): string =>
  * Instructions for a conversation that has the file system.
  *
  * `hasComputer` picks how the Frame's source is edited (in the Computer mount, or through the
- * files server). `isPod` adds the Pod app layout, and `hasPodFunctions` the storage decision that
- * depends on the Pod Functions skill actually being available in the workspace.
+ * files server). `isPod` adds the Pod app layout.
  */
 export const buildInteractiveContentInstructions = ({
   hasComputer,
   isPod,
-  hasPodFunctions,
-  podFunctionsSkillName,
 }: {
   hasComputer: boolean;
   isPod: boolean;
-  hasPodFunctions: boolean;
-  podFunctionsSkillName: string;
 }): string =>
   buildInstructions({
     updatingSection: hasComputer
       ? UPDATING_SECTION_COMPUTER_FIRST
       : UPDATING_SECTION_FILES_FIRST,
     validationFixExample: VALIDATION_FIX_EXAMPLE_SOURCE_EDIT,
-    podSections: joinPodSections(
-      isPod
-        ? [
-            POD_APP_SECTION,
-            ...(hasPodFunctions
-              ? [podStorageSection(podFunctionsSkillName)]
-              : []),
-          ]
-        : []
-    ),
+    podSections: joinPodSections(isPod ? [POD_APP_SECTION] : []),
   });

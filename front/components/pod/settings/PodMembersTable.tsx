@@ -68,7 +68,6 @@ export function PodMembersTable({
       // as an editor: a group's membership can drop to zero — in its IdP, for a provisioned one —
       // leaving the Pod with nobody able to administrate it.
       if (
-        !pod.isAdminControlled &&
         selectedMembers.some((m) => m.isEditor) &&
         !updatedMembers.some((m) => m.isEditor)
       ) {
@@ -105,9 +104,6 @@ export function PodMembersTable({
 
   const toggleEditor = useCallback(
     async (userId: string) => {
-      if (pod.isAdminControlled) {
-        return;
-      }
       const toggledMember = selectedMembers.find((m) => m.sId === userId);
       if (!toggledMember) {
         return;
@@ -251,52 +247,51 @@ export function PodMembersTable({
               },
               cell: (info: MemberRowInfo) => {
                 const menuItems: MenuItem[] = [];
-                if (!pod.isAdminControlled) {
-                  let editorSettingItem: MenuItem;
-                  if (info.row.original.isEditor) {
-                    const editorLabel = "Remove from editors";
-                    editorSettingItem = {
-                      kind: "item",
-                      label: editorLabel,
-                      disabled: rows.filter((row) => row.isEditor).length <= 1,
-                      icon: XClose,
-                      variant: "default",
-                      onClick: async () => {
-                        const confirmed = await confirm({
-                          title: editorLabel,
-                          message: `Are you sure you want to remove "${info.row.original.name}" from editors?`,
-                          validateLabel: "Remove",
-                          validateVariant: "primary",
-                        });
+                let editorSettingItem: MenuItem;
+                if (info.row.original.isEditor) {
+                  const editorLabel = "Remove from editors";
+                  editorSettingItem = {
+                    kind: "item",
+                    label: editorLabel,
+                    disabled: rows.filter((row) => row.isEditor).length <= 1,
+                    icon: XClose,
+                    variant: "default",
+                    onClick: async () => {
+                      const confirmed = await confirm({
+                        title: editorLabel,
+                        message: `Are you sure you want to remove "${info.row.original.name}" from editors?`,
+                        validateLabel: "Remove",
+                        validateVariant: "primary",
+                      });
 
-                        if (confirmed) {
-                          await toggleEditor(info.row.original.userId);
-                        }
-                      },
-                    };
-                  } else {
-                    const editorLabel = "Set as editor";
-                    editorSettingItem = {
-                      kind: "item",
-                      label: editorLabel,
-                      icon: Check,
-                      variant: "default",
-                      onClick: async () => {
-                        const confirmed = await confirm({
-                          title: editorLabel,
-                          message: `Are you sure you want to add "${info.row.original.name}" as an editor?`,
-                          validateLabel: "Add",
-                          validateVariant: "primary",
-                        });
+                      if (confirmed) {
+                        await toggleEditor(info.row.original.userId);
+                      }
+                    },
+                  };
+                } else {
+                  const editorLabel = "Set as editor";
+                  editorSettingItem = {
+                    kind: "item",
+                    label: editorLabel,
+                    icon: Check,
+                    variant: "default",
+                    onClick: async () => {
+                      const confirmed = await confirm({
+                        title: editorLabel,
+                        message: `Are you sure you want to add "${info.row.original.name}" as an editor?`,
+                        validateLabel: "Add",
+                        validateVariant: "primary",
+                      });
 
-                        if (confirmed) {
-                          await toggleEditor(info.row.original.userId);
-                        }
-                      },
-                    };
-                  }
-                  menuItems.push(editorSettingItem);
+                      if (confirmed) {
+                        await toggleEditor(info.row.original.userId);
+                      }
+                    },
+                  };
                 }
+                menuItems.push(editorSettingItem);
+
                 menuItems.push({
                   kind: "item",
                   label: "Remove from Pod",
@@ -321,7 +316,7 @@ export function PodMembersTable({
           ]
         : []),
     ],
-    [isEditor, removeMember, confirm, toggleEditor, rows, pod.isAdminControlled]
+    [isEditor, removeMember, confirm, toggleEditor, rows]
   );
 
   return (

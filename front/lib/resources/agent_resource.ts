@@ -32,7 +32,7 @@ import type { Transaction } from "sequelize";
 // editor role rather than granting write alone.
 const AGENT_EDITOR_VERBS: GrantVerb[] = ["read", "write", "admin"];
 
-// Workspace admins manage editors but must grant themselves editor access to change the agent.
+// Human workspace admins manage editors but must grant themselves editor access to change the agent.
 const HIDDEN_AGENT_ROLE_GRANTS: RoleGrant[] = [
   { role: "admin", permissions: ["read", "admin"] },
 ];
@@ -338,6 +338,11 @@ export class AgentResource implements WithAccessControl {
     }
   }
 
+  /**
+   * @cc [owner:philipperolet,label:security] admin-key-agent-write
+   * The admin role grants `write` on custom agents to regular API keys only; human and system-key
+   * callers receive no agent write access from their role. Global agents remain read-only.
+   */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
     switch (this.kind) {
       case "global":
@@ -360,13 +365,17 @@ export class AgentResource implements WithAccessControl {
         const isAuthor =
           auth.workspace()?.id === this.workspaceId &&
           auth.user()?.id === this.authorId;
+        const roles =
+          this.scope === "visible"
+            ? VISIBLE_AGENT_ROLE_GRANTS
+            : HIDDEN_AGENT_ROLE_GRANTS;
 
         return [
           {
             roles:
-              this.scope === "visible"
-                ? VISIBLE_AGENT_ROLE_GRANTS
-                : HIDDEN_AGENT_ROLE_GRANTS,
+              auth.isKey() && !auth.isSystemKey()
+                ? [...roles, { role: "admin", permissions: ["write"] }]
+                : roles,
             grantedVerbs: isAuthor
               ? [...new Set([...grants, ...AGENT_EDITOR_VERBS])]
               : grants,

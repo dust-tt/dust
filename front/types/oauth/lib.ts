@@ -32,7 +32,6 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 export const OAUTH_PROVIDERS = [
   "confluence",
   "confluence_tools",
-  "databricks",
   "discord",
   "fathom",
   "freshservice",
@@ -65,7 +64,6 @@ export const OAUTH_PROVIDERS = [
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   confluence_tools: "Confluence Tools",
-  databricks: "Databricks",
   discord: "Discord",
   fathom: "Fathom",
   freshservice: "Freshservice",
@@ -150,6 +148,89 @@ export type OAuthCredentialInputs = Partial<
 export type OAuthCredentials = Partial<
   Record<SupportedOAuthCredentials, string>
 >;
+
+// `mcp` is the only OAuth provider whose endpoints are discovered at runtime via
+// the MCP server's `.well-known` metadata (the dynamic OAuth flow).
+export function providerUsesWellKnownOAuthDiscovery(
+  provider: OAuthProvider
+): boolean {
+  return provider === "mcp";
+}
+// Customises the generic `mcp_static` OAuth flow for servers whose OAuth
+// endpoints and MCP URL are derived from a single host URL, instead of entering each endpoint URL manually.
+export type HostDerivedOAuthConfig = {
+  hostCredential: SupportedOAuthCredentials;
+  hostLabel: string;
+  hostHelpMessage: string;
+  authorizationEndpointPath: string;
+  tokenEndpointPath: string;
+  scope: string;
+  mcpUrlPathSuffix: string;
+};
+
+export function getHostDerivedOAuthCredentialInputs(
+  hostConfig: HostDerivedOAuthConfig
+): OAuthCredentialInputs {
+  return {
+    [hostConfig.hostCredential]: {
+      label: hostConfig.hostLabel,
+      value: undefined,
+      helpMessage: hostConfig.hostHelpMessage,
+      validator: isValidUrl,
+    },
+    client_id: {
+      label: "OAuth Client ID",
+      value: undefined,
+      helpMessage: "The client ID from your OAuth app.",
+      validator: isValidClientIdOrSecret,
+    },
+    client_secret: {
+      label: "OAuth Client Secret",
+      value: undefined,
+      helpMessage: "The client secret from your OAuth app.",
+      validator: isValidClientIdOrSecret,
+    },
+  };
+}
+
+export function getHostDerivedOAuthExtraConfig({
+  hostConfig,
+  authCredentials,
+}: {
+  hostConfig: HostDerivedOAuthConfig;
+  authCredentials: OAuthCredentials | null | undefined;
+}): ExtraConfigType | null {
+  const rawHost = authCredentials?.[hostConfig.hostCredential]?.trim();
+  if (!rawHost) {
+    return null;
+  }
+  const host = rawHost.replace(/\/$/, "");
+
+  const extraConfig: ExtraConfigType = {
+    client_id: authCredentials?.client_id ?? "",
+    authorization_endpoint: host + hostConfig.authorizationEndpointPath,
+    token_endpoint: host + hostConfig.tokenEndpointPath,
+    scope: hostConfig.scope,
+  };
+  if (authCredentials?.client_secret) {
+    extraConfig.client_secret = authCredentials.client_secret;
+  }
+  return extraConfig;
+}
+
+export function getHostDerivedMcpServerUrl({
+  hostConfig,
+  authCredentials,
+}: {
+  hostConfig: HostDerivedOAuthConfig;
+  authCredentials: OAuthCredentials | null | undefined;
+}): string | undefined {
+  const rawHost = authCredentials?.[hostConfig.hostCredential]?.trim();
+  if (!rawHost) {
+    return undefined;
+  }
+  return rawHost.replace(/\/$/, "") + hostConfig.mcpUrlPathSuffix;
+}
 
 export function getOverridablePersonalAuthInputs({
   provider,
@@ -272,32 +353,6 @@ export function getProviderRequiredOAuthCredentialInputs({
             validator: isValidShopifyStoreDomain,
           },
         };
-      }
-      return null;
-    case "databricks":
-      if (useCase === "personal_actions" || useCase === "platform_actions") {
-        const result: OAuthCredentialInputs = {
-          databricks_workspace_url: {
-            label: "Databricks Workspace URL",
-            value: undefined,
-            helpMessage:
-              "Your Databricks workspace URL (e.g., https://your-workspace.cloud.databricks.com).",
-            validator: isValidUrl,
-          },
-          client_id: {
-            label: "OAuth Client ID",
-            value: undefined,
-            helpMessage: "The client ID from your Databricks OAuth app.",
-            validator: isValidClientIdOrSecret,
-          },
-          client_secret: {
-            label: "OAuth Client Secret",
-            value: undefined,
-            helpMessage: "The client secret from your Databricks OAuth app.",
-            validator: isValidClientIdOrSecret,
-          },
-        };
-        return result;
       }
       return null;
     case "servicenow":
@@ -705,19 +760,25 @@ export function validateOAuthCredentials({
   provider,
   useCase,
   authCredentials,
+  credentialInputs,
 }: {
   provider: OAuthProvider;
   useCase: OAuthUseCase | null;
   authCredentials: OAuthCredentials | null;
+  // When provided, validate against these inputs instead of the provider's
+  // default set (e.g. host-derived static-OAuth servers show custom fields).
+  credentialInputs?: OAuthCredentialInputs | null;
 }): string | null {
   if (!useCase) {
     return null;
   }
 
-  const inputs = getProviderRequiredOAuthCredentialInputs({
-    provider,
-    useCase,
-  });
+  const inputs =
+    credentialInputs ??
+    getProviderRequiredOAuthCredentialInputs({
+      provider,
+      useCase,
+    });
 
   if (!inputs) {
     return null;

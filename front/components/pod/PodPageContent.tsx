@@ -1,6 +1,5 @@
 import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
-import { PodConnectedDataTab } from "@app/components/pod/connected_data/PodConnectedDataTab";
 import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
 import { PodFilesTab } from "@app/components/pod/files/PodFilesTab";
 import { GoalPodOverview } from "@app/components/pod/GoalPodOverview";
@@ -215,6 +214,9 @@ export function PodPageContent({
           />
         )}
       </NavTabPillContent>
+      <NavTabPillContent value="files">
+        <PodFilesTab owner={owner} pod={podInfo} />
+      </NavTabPillContent>
       <NavTabPillContent value="tasks">
         <PodTasksTab
           owner={owner}
@@ -223,14 +225,6 @@ export function PodPageContent({
           onTaskOwnerFilterChange={handleTaskOwnerFilterChange}
         />
       </NavTabPillContent>
-      <NavTabPillContent value="files">
-        <PodFilesTab owner={owner} pod={podInfo} />
-      </NavTabPillContent>
-      {podInfo.isAdminControlled && (
-        <NavTabPillContent value="connected_data">
-          <PodConnectedDataTab owner={owner} pod={podInfo} />
-        </NavTabPillContent>
-      )}
       {fileTabs.map((tab) => (
         <NavTabPillContent key={tab.path} value={makePodFileTabValue(tab.path)}>
           <PodFileTabContent owner={owner} podInfo={podInfo} tab={tab} />

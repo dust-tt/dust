@@ -24,7 +24,7 @@ async function _getMyDriveId(auth_credentials: OAuth2Client) {
   try {
     myDriveRes = await drive.files.get({ fileId: "root", fields: "id" });
   } catch (e) {
-    if ((e as GaxiosError).response?.status === 401) {
+    if (e instanceof GaxiosError && e.response?.status === 401) {
       throw new ExternalOAuthTokenError();
     }
     throw e;

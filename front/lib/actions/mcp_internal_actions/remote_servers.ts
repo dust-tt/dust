@@ -1,6 +1,9 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { ToolDisplayLabels } from "@app/lib/api/mcp";
-import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import type {
+  HostDerivedOAuthConfig,
+  MCPOAuthUseCase,
+} from "@app/types/oauth/lib";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 export type DefaultRemoteMCPServerConfig = {
@@ -14,6 +17,7 @@ export type DefaultRemoteMCPServerConfig = {
   authMethod: "bearer" | "oauth-dynamic" | "oauth-static" | null;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
   scope?: string;
+  hostDerivedOAuth?: HostDerivedOAuthConfig;
   toolStakes?: Record<string, "high" | "low" | "medium" | "never_ask">;
   toolDisplayLabels?: Record<string, ToolDisplayLabels>;
   featureFlag?: WhitelistableFeature;
@@ -2302,6 +2306,66 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
         running: "Listing agents on Modjo",
         done: "Listed agents on Modjo",
       },
+    },
+  },
+  {
+    id: 10030,
+    name: "Databricks SQL",
+    description:
+      "Run SQL against your Databricks workspace through the official Databricks-managed SQL MCP server.",
+    url: "",
+    icon: "DatabricksLogo",
+    documentationUrl:
+      "https://docs.databricks.com/aws/en/agents/mcp-tools/connect-clients",
+    connectionInstructions:
+      "Enter your Databricks workspace host URL and the client ID/secret of a Databricks OAuth " +
+      "app. The MCP URL and the OAuth authorization/token endpoints are derived automatically.",
+    authMethod: "oauth-static",
+    supportedOAuthUseCases: ["platform_actions", "personal_actions"],
+    hostDerivedOAuth: {
+      hostCredential: "databricks_workspace_url",
+      hostLabel: "Databricks Workspace URL",
+      hostHelpMessage:
+        "Your Databricks workspace URL (e.g., https://your-workspace.cloud.databricks.com).",
+      authorizationEndpointPath: "/oidc/v1/authorize",
+      tokenEndpointPath: "/oidc/v1/token",
+      scope: "sql offline_access",
+      mcpUrlPathSuffix: "/api/2.0/mcp/sql",
+    },
+    toolStakes: {
+      execute_sql: "high",
+      execute_sql_read_only: "never_ask",
+      poll_sql_result: "never_ask",
+    },
+  },
+  {
+    id: 10031,
+    name: "Databricks Genie",
+    description:
+      "Ask questions about your Databricks data in natural language through the official Databricks-managed Genie MCP server.",
+    url: "",
+    icon: "DatabricksLogo",
+    documentationUrl:
+      "https://docs.databricks.com/aws/en/agents/mcp-tools/connect-clients",
+    connectionInstructions:
+      "Enter your Databricks workspace host URL and the client ID/secret of a Databricks OAuth " +
+      "app. The MCP URL and the OAuth authorization/token endpoints are derived automatically.",
+    authMethod: "oauth-static",
+    supportedOAuthUseCases: ["platform_actions", "personal_actions"],
+    hostDerivedOAuth: {
+      hostCredential: "databricks_workspace_url",
+      hostLabel: "Databricks Workspace URL",
+      hostHelpMessage:
+        "Your Databricks workspace URL (e.g., https://your-workspace.cloud.databricks.com).",
+      authorizationEndpointPath: "/oidc/v1/authorize",
+      tokenEndpointPath: "/oidc/v1/token",
+      scope: "genie offline_access",
+      mcpUrlPathSuffix: "/api/2.0/mcp/genie",
+    },
+    toolStakes: {
+      genie_ask: "never_ask",
+      genie_poll_response: "never_ask",
+      genie_get_query_result: "never_ask",
     },
   },
 ];

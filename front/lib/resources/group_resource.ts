@@ -61,20 +61,6 @@ import { col, fn, Op, QueryTypes } from "sequelize";
 export const ADMIN_GROUP_NAME = "dust-admins";
 export const MANAGER_GROUP_NAME = "dust-managers";
 
-/**
- * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
- * ┃                                                                         ┃
- * ┃  IMPORTANT: GroupResource DOES NOT and SHOULD NOT have permissions      ┃
- * ┃  management of its own.                                                 ┃
- * ┃                                                                         ┃
- * ┃  Groups are designed to be used within the context of other resources   ┃
- * ┃  (e.g., SpaceResource, AgentConfigurationResource). The permissions     ┃
- * ┃  should be managed at the junction with parent resource level,          ┃
- * ┃  not at the group level.                                                ┃
- * ┃                                                                         ┃
- * ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
- */
-
 type CachedGroup = {
   id: ModelId;
   name: string;
@@ -313,7 +299,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       primaryUser: UserResource;
       secondaryUser: UserResource;
     }
-  ): Promise<void> {
+  ): Promise<number> {
     const workspace = auth.getNonNullableWorkspace();
     const primaryMemberships = await GroupMembershipModel.findAll({
       where: { userId: primaryUser.id, workspaceId: workspace.id },
@@ -331,7 +317,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     }
 
-    await GroupMembershipModel.update(
+    // The affected-row count is the number of group memberships actually transferred (memberships
+    // the primary already had were deleted above, not transferred).
+    const [transferredCount] = await GroupMembershipModel.update(
       { userId: primaryUser.id },
       { where: { userId: secondaryUser.id, workspaceId: workspace.id } }
     );
@@ -341,6 +329,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       [{ user: { id: primaryUser.id }, workspace: { id: workspace.id } }],
       [{ user: { id: secondaryUser.id }, workspace: { id: workspace.id } }],
     ]);
+
+    return transferredCount;
   }
 
   static async makeNew(
@@ -2568,18 +2558,15 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Permissions
 
   /**
-   * Returns the requested permissions for this resource.
-   *
-   * Configures two types of access:
-   * 1. Group-based: The group's members get read access
-   * 2. Role-based: Workspace admins get read and write access
-   *
-   * For agent_editors groups, the permissions are:
-   * 1. Group-based: The group's members get full access
-   * 2. Role-based: Workspace admins get read and admin access. All users can
-   *    read "agent_editors" groups.
-   *    Admin do not have write access, they can however add themselves to
-   *    groups to gain it.
+   * The ACLs a caller has to satisfy to hold a verb on this group, by kind:
+   * - regular_manual: read, write and admin for admins and managers, read for everyone else.
+   * - global, provisioned: read for every workspace member, and nothing else — their
+   *   membership is not editable in app. Global membership is implicit, and provisioned
+   *   membership comes from directory sync.
+   * - regular_auto: nothing. These groups only carry the membership of the resource
+   *   they are linked to, so the permission is checked on that resource and never on the
+   *   group itself.
+   * - system: nothing, it is internal to the workspace.
    *
    * CAUTION: if / when editing, note that for role permissions, permissions are
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"
@@ -2589,35 +2576,6 @@ export class GroupResource extends BaseResource<GroupModel> {
    * configuration
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
-    // TODO(2026-09-03 regular-auto-acl): temporary probe, remove once regular_auto stops
-    // granting permissions. These groups are only reachable through the resource that owns
-    // them, so no caller should be permission-checking one; the stack tells us where to look
-    // if any does.
-    if (this.isRegularAuto()) {
-      logger.warn(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          groupId: this.sId,
-          authRole: auth.role(),
-          isKey: auth.isKey(),
-          stack_trace: new Error().stack,
-        },
-        "[GroupResource.getAccessControlLists] Permission checked on a regular_auto group"
-      );
-
-      return [
-        {
-          roles: [
-            { role: "admin", permissions: ["read"] },
-            { role: "manager", permissions: ["read"] },
-            { role: "user", permissions: ["read"] },
-            { role: "builder", permissions: ["read"] },
-          ],
-          workspaceId: this.workspaceId,
-        },
-      ];
-    }
-
     // regular_manual: admins and managers manage the group; everyone can read.
     if (this.isRegularManual()) {
       return [
@@ -2647,8 +2605,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       ];
     }
 
-    // system: internal group — no one can read or write. The single empty grant
-    // denies every verb (an empty ACL array would instead vacuously allow).
+    // system, regular_auto: no permission for anyone. Access to a regular_auto group is
+    // decided on the resource it is linked to, and its owner fetches it without an ACL check.
     return [
       {
         roles: [],

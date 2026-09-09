@@ -1,5 +1,6 @@
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
+import { getDefaultRemoteMCPServerById } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
   CreateMCPServerResponseBody,
@@ -14,6 +15,10 @@ import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/pro
 import type { CellInfo } from "@app/types/cell";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import {
+  getHostDerivedMcpServerUrl,
+  getHostDerivedOAuthExtraConfig,
+} from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";
@@ -219,6 +224,15 @@ export async function submitCreateMCPServerDialogForm({
           .join(" ")
       : authorization?.scope;
 
+  // Host-derived static-OAuth servers collect a single host
+  // URL + client ID/secret; the OAuth endpoints, scope and MCP server URL are
+  // all derived from that host.
+  const defaultConfig =
+    defaultServerId !== undefined
+      ? getDefaultRemoteMCPServerById(defaultServerId)
+      : null;
+  const hostDerivedOAuth = defaultConfig?.hostDerivedOAuth;
+
   if (authorization && oauthUseCase) {
     if (oauthConnectionId) {
       oauthConnection = {
@@ -226,12 +240,19 @@ export async function submitCreateMCPServerDialogForm({
         connectionId: oauthConnectionId,
       };
     } else {
+      const derivedExtraConfig = hostDerivedOAuth
+        ? getHostDerivedOAuthExtraConfig({
+            hostConfig: hostDerivedOAuth,
+            authCredentials: values.authCredentials,
+          })
+        : null;
+
       const cRes = await setupOAuthConnection({
         owner,
         provider: authorization.provider,
         // During setup, the use case is always "platform_actions".
         useCase: "platform_actions",
-        extraConfig: {
+        extraConfig: derivedExtraConfig ?? {
           ...(values.authCredentials ?? {}),
           ...(effectiveScope ? { scope: effectiveScope } : {}),
         },
@@ -257,6 +278,12 @@ export async function submitCreateMCPServerDialogForm({
   }
 
   onBeforeCreateServer();
+  const effectiveRemoteServerUrl = hostDerivedOAuth
+    ? (getHostDerivedMcpServerUrl({
+        hostConfig: hostDerivedOAuth,
+        authCredentials: values.authCredentials,
+      }) ?? values.remoteServerUrl)
+    : values.remoteServerUrl;
 
   let server: MCPServerType | undefined;
 
@@ -315,10 +342,10 @@ export async function submitCreateMCPServerDialogForm({
     server = createRes.value.server;
   }
 
-  if (values.remoteServerUrl) {
+  if (effectiveRemoteServerUrl) {
     const viewName = values.viewName?.trim();
     const createRes = await createWithURL({
-      url: values.remoteServerUrl,
+      url: effectiveRemoteServerUrl,
       defaultServerId,
       includeGlobal: true,
       ...(viewName ? { viewName } : {}),

@@ -38,26 +38,26 @@ describe("toggleFeatureFlagPlugin.execute", () => {
 
     await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-    const sandboxMCPServerId = autoInternalMCPServerNameToSId({
-      name: "sandbox_functions",
+    const planModeMCPServerId = autoInternalMCPServerNameToSId({
+      name: "plan_mode",
       workspaceId: workspace.id,
     });
 
     await expect(
       MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        sandboxMCPServerId
+        planModeMCPServerId
       )
     ).resolves.toBeNull();
     await expect(
       MCPServerViewResource.getMCPServerViewForGlobalSpace(
         auth,
-        sandboxMCPServerId
+        planModeMCPServerId
       )
     ).resolves.toBeNull();
 
     const enableResult = await toggleFeatureFlagPlugin.execute(auth, null, {
-      features: ["sandbox_functions"],
+      features: ["plan_mode"],
     });
 
     expect(enableResult.isOk()).toBe(true);
@@ -68,12 +68,12 @@ describe("toggleFeatureFlagPlugin.execute", () => {
     const systemViewAfterEnable =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        sandboxMCPServerId
+        planModeMCPServerId
       );
     const globalViewAfterEnable =
       await MCPServerViewResource.getMCPServerViewForGlobalSpace(
         auth,
-        sandboxMCPServerId
+        planModeMCPServerId
       );
     expect(systemViewAfterEnable).not.toBeNull();
     expect(globalViewAfterEnable).not.toBeNull();
@@ -87,7 +87,7 @@ describe("toggleFeatureFlagPlugin.execute", () => {
     }
 
     const reenableResult = await toggleFeatureFlagPlugin.execute(auth, null, {
-      features: ["sandbox_functions"],
+      features: ["plan_mode"],
     });
     expect(reenableResult.isOk()).toBe(true);
     if (!reenableResult.isOk()) {
@@ -99,12 +99,12 @@ describe("toggleFeatureFlagPlugin.execute", () => {
     const systemViewAfterReenable =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(
         auth,
-        sandboxMCPServerId
+        planModeMCPServerId
       );
     const globalViewAfterReenable =
       await MCPServerViewResource.getMCPServerViewForGlobalSpace(
         auth,
-        sandboxMCPServerId
+        planModeMCPServerId
       );
     expect(systemViewAfterReenable?.sId).toBe(systemViewAfterEnable?.sId);
     expect(globalViewAfterReenable?.sId).toBe(globalViewAfterEnable?.sId);

@@ -99,8 +99,10 @@ export async function getAgentIdFromName(
 async function shadowAgentPermissions(
   auth: Authenticator,
   agentModels: AgentConfigurationModel[],
-  legacyAgents: AgentConfigurationType[]
+  legacyAgents: AgentConfigurationType[],
+  spaceById: Map<ModelId, SpaceResource>
 ): Promise<void> {
+  const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
   await shadowCompare({
     auth,
     legacy: legacyAgents.map((agent) => ({
@@ -113,11 +115,21 @@ async function shadowAgentPermissions(
     candidate: async () =>
       agentModels.map((agent) => {
         const resource = AgentResource.fromAgentConfigurationModel(agent);
+        const read = auth.can("read", resource);
+        const write =
+          auth.can("write", resource) &&
+          (!isRegularApiKey ||
+            (agent.status === "active" &&
+              canReadRequestedSpaces(
+                auth,
+                spaceById,
+                agent.requestedSpaceIds
+              )));
         return {
           agentId: agent.sId,
           agentConfigurationModelId: agent.id,
-          read: auth.can("read", resource),
-          write: auth.can("write", resource),
+          read,
+          write,
           admin: auth.can("admin", resource),
         };
       }),
@@ -148,8 +160,13 @@ async function shadowAgentPermissions(
  * Enrich agent configurations with additional data (actions, tags, favorites).
  */
 /**
+ * @cc [owner:philipperolet,label:security] regular-key-agent-editability
+ * For regular keys on custom agents, `canEdit` requires workspace admin access, active status,
+ * and read access to every requested space.
+ */
+/**
  * @cc [owner:philipperolet,label:security] agent-editability
- * For user and system-key callers, `canEdit` allows legacy authors/editors or user-less system-key
+ * Outside regular API keys, `canEdit` allows legacy authors/editors or user-less system-key/Poke
  * callers with agent write permission; workspace admin role alone does not grant it.
  */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
@@ -192,7 +209,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       ? await TagResource.listForAgents(auth, configurationIds)
       : [];
   const spacesForApiKey =
-    isRegularApiKey && auth.isBuilder()
+    isRegularApiKey && auth.isAdmin()
       ? await SpaceResource.fetchByModelIds(auth, [
           ...new Set(
             agentConfigurations.flatMap((agent) => agent.requestedSpaceIds)
@@ -213,19 +230,18 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
 
     const isAuthor = agent.authorId === auth.user()?.id;
     const isMember = editorIds.includes(agent.id);
-    const canEditAsSystem =
+    const canEditWithoutUser =
       !user &&
-      auth.isSystemKey() &&
+      (auth.isSystemKey() || auth.isDustSuperUser()) &&
       auth.can("write", AgentResource.fromAgentConfigurationModel(agent));
 
     const canRead =
-      isAuthor || isMember || canEditAsSystem || agent.scope === "visible";
+      isAuthor || isMember || canEditWithoutUser || agent.scope === "visible";
     const canEdit = isRegularApiKey
-      ? auth.isBuilder() &&
+      ? auth.isAdmin() &&
         agent.status === "active" &&
-        (canRead || auth.isAdmin()) &&
         canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
-      : isAuthor || isMember || canEditAsSystem;
+      : isAuthor || isMember || canEditWithoutUser;
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
@@ -269,7 +285,8 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   await shadowAgentPermissions(
     auth,
     agentConfigurations,
-    agentConfigurationTypes
+    agentConfigurationTypes,
+    spaceById
   );
 
   return agentConfigurationTypes;

@@ -11,7 +11,7 @@ import type {
   FileExplorerMenuAction,
   FolderEntry,
 } from "@app/components/file_explorer/types";
-import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
+import { useFileExplorerDownload } from "@app/components/file_explorer/useFileExplorerDownload";
 import {
   isFilePreviewableContentType,
   joinMountRelativePath,
@@ -635,7 +635,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     [owner]
   );
 
-  const onFileDownload = useFileDownload({ getFileResponse });
+  const onDownload = useFileExplorerDownload({ owner, getFileResponse });
 
   const handleCloseOverlay = useCallback(() => {
     setActiveOverlay(null);
@@ -868,7 +868,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         getFileUrl={getFileUrl}
         currentFolderPath={currentFolderPath}
         onCurrentFolderChange={setCurrentFolderPath}
-        onFileDownload={onFileDownload}
+        onDownload={onDownload}
         onDelete={!isArchived ? onDelete : undefined}
         onMoveFile={!isArchived ? onMoveFile : undefined}
         onRename={!isArchived ? onRename : undefined}

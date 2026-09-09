@@ -3,36 +3,25 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
-import { podFunctionScopeFromFramePath } from "@app/types/api/pod_function_reference";
-import type { FrameShareCapability } from "@app/types/api/sandbox_functions";
 import { isValidSandboxFunctionSlug } from "@app/types/api/sandbox_functions";
-import { isWorkspaceVisibleShareScope } from "@app/types/files";
 
 /**
- * A workspace member who may view a Pod app frame may invoke that app's published functions:
- * the frame is authored by the pod's members and is unusable without them, so sharing the frame
- * is sharing the app. Viewing means holding the share token for workspace-visible scopes, plus an
- * active email grant for invite-only frames. The capability grants function resolution only — it
- * never widens reads or writes on the pod, and per-function userIdentity policies still apply.
- */
-
-/**
- * Resolve a caller-facing function without crossing feature or ownership boundaries. Pod
- * Functions use their existing space/share capability. Frames v2 accepts `<frameId>/<slug>` for
- * new invocations and function ids for an active publication (or an explicitly allowed in-flight
+ * Resolve a caller-facing Frame function. Frames v2 accepts `<frameId>/<slug>` for new
+ * invocations and function ids for an active publication (or an explicitly allowed in-flight
  * publication), with use rights read from the Frame's sharing record.
  */
 export async function resolveSandboxFunctionWithCapability(
   auth: Authenticator,
   functionIdOrSlug: string,
-  frameShareToken: string | undefined,
   {
     allowInactiveFramePublication = false,
   }: { allowInactiveFramePublication?: boolean } = {}
 ): Promise<SandboxFunctionResource | null> {
   const featureFlags = await getFeatureFlags(auth);
-  const isSandboxFunctionsEnabled = featureFlags.includes("sandbox_functions");
   const isFramesV2Enabled = featureFlags.includes("frames_v2");
+  if (!isFramesV2Enabled) {
+    return null;
+  }
 
   if (isResourceSId("sandbox_function", functionIdOrSlug)) {
     const sandboxFunction =
@@ -41,55 +30,14 @@ export async function resolveSandboxFunctionWithCapability(
         functionIdOrSlug
       );
     if (sandboxFunction?.frame) {
-      if (isFramesV2Enabled) {
-        const frameFunction = await resolveFrameV2FunctionAccess(
-          auth,
-          sandboxFunction,
-          { allowInactivePublication: allowInactiveFramePublication }
-        );
-        if (frameFunction) {
-          return frameFunction;
-        }
-      }
-    } else if (sandboxFunction && isSandboxFunctionsEnabled) {
-      return sandboxFunction;
+      return resolveFrameV2FunctionAccess(auth, sandboxFunction, {
+        allowInactivePublication: allowInactiveFramePublication,
+      });
     }
-  } else {
-    if (isSandboxFunctionsEnabled) {
-      const sandboxFunction = await SandboxFunctionResource.fetchByIdOrSlug(
-        auth,
-        functionIdOrSlug
-      );
-      if (sandboxFunction) {
-        return sandboxFunction;
-      }
-    }
-
-    if (isFramesV2Enabled) {
-      const frameFunction = await resolveFrameV2FunctionReference(
-        auth,
-        functionIdOrSlug
-      );
-      if (frameFunction) {
-        return frameFunction;
-      }
-    }
-  }
-
-  if (!isSandboxFunctionsEnabled || !frameShareToken) {
     return null;
   }
 
-  const capability = await resolveFrameShareCapability(auth, frameShareToken);
-  if (!capability) {
-    return null;
-  }
-
-  return SandboxFunctionResource.fetchInAppFolder(auth, {
-    podId: capability.podId,
-    appPrefix: capability.appPrefix,
-    idOrSlug: functionIdOrSlug,
-  });
+  return resolveFrameV2FunctionReference(auth, functionIdOrSlug);
 }
 
 async function resolveFrameV2FunctionReference(
@@ -171,62 +119,4 @@ async function resolveFrameV2FunctionAccess(
     return null;
   }
   return sandboxFunction;
-}
-
-/**
- * Validate a frame share token presented alongside a function invocation and derive the
- * capability it carries. Returns null on any mismatch.
- */
-export async function resolveFrameShareCapability(
-  auth: Authenticator,
-  token: string
-): Promise<FrameShareCapability | null> {
-  // Invocation is workspace-member-only: external email-grant viewers hold view-only tokens.
-  if (!auth.isUser()) {
-    return null;
-  }
-
-  const shareResult = await FileResource.fetchByShareToken(token);
-  if (shareResult.isErr()) {
-    return null;
-  }
-  const { file, shareScope, shareableFileId, workspace } = shareResult.value;
-
-  if (workspace.id !== auth.getNonNullableWorkspace().id) {
-    return null;
-  }
-
-  // Workspace-visible scopes carry the capability for every member. An invite-only frame
-  // carries it for members holding an active email grant, or for the frame's owner — the same
-  // two ways the view path admits a member — so invocation access exactly follows view access,
-  // and revoking a grant revokes invocation with it.
-  if (!isWorkspaceVisibleShareScope(shareScope)) {
-    if (shareScope !== "emails_only") {
-      return null;
-    }
-    const user = auth.user();
-    const isFileOwner = user !== null && file.userId === user.id;
-    if (!isFileOwner) {
-      const grant = user?.email
-        ? await FileResource.getActiveGrantForEmail(workspace, {
-            email: user.email,
-            shareableFileId,
-          })
-        : null;
-      if (!grant) {
-        return null;
-      }
-    }
-  }
-
-  if (!file.isInteractiveContent) {
-    return null;
-  }
-
-  const scope = podFunctionScopeFromFramePath(file.toScopedPath(auth));
-  if (!scope) {
-    return null;
-  }
-
-  return { podId: scope.podId, appPrefix: scope.appPrefix };
 }

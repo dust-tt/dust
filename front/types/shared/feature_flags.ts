@@ -233,11 +233,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "frankaloia",
   },
-  databricks_tool: {
-    description: "Databricks MCP tool",
-    stage: "self_serve",
-    owner: "FlagBenett",
-  },
   servicenow_tool: {
     description: "ServiceNow MCP tool",
     stage: "self_serve",
@@ -246,11 +241,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   shopify_tool: {
     description: "Shopify MCP tool",
     stage: "self_serve",
-    owner: "spolu",
-  },
-  sandbox_functions: {
-    description: "Enable Pod Function invocation endpoints",
-    stage: "dust_only",
     owner: "spolu",
   },
   run_tools_from_prompt: {
@@ -374,12 +364,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Enable the Dust Pod Goal skill for persistent job loops in Pods",
     stage: "dust_only",
     owner: "frankaloia",
-  },
-  admin_controlled_pods: {
-    description:
-      "Enable admin-controlled Pods: admins manage membership and attach connected data (Space DataSourceViews) to the Pod itself.",
-    stage: "dust_only",
-    owner: "Fraggle",
   },
   pod_frame_tabs: {
     description:

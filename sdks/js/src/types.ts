@@ -828,7 +828,6 @@ export type RetrievalDocumentPublicType = z.infer<
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "activation_force_nudge"
-  | "admin_controlled_pods"
   | "advanced_notion_management"
   | "analytics_conversation_panel"
   | "custom_model_feature"
@@ -838,7 +837,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
   | "claude_fable_5_feature"
-  | "databricks_tool"
   | "deepseek_feature"
   | "exa_people_and_company"
   | "disable_computer_feature"
@@ -886,7 +884,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
   | "salesforce_tool"
-  | "sandbox_functions"
   | "self_created_slack_app_connector_rollout"
   | "servicenow_tool"
   | "shopify_tool"
@@ -3523,6 +3520,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ConfluenceLogo"
   | "ContentsquareLogo"
   | "CostoryLogo"
+  | "DatabricksLogo"
   | "DriveLogo"
   | "FathomLogo"
   | "FreshserviceLogo"

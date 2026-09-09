@@ -783,7 +783,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       fromUser: UserResource;
       toUser: UserResource;
     }
-  ): Promise<Result<undefined, Error>> {
+  ): Promise<Result<number, Error>> {
     assert(
       auth.isAdmin(),
       "Trigger editorship can only be transferred by admins."
@@ -802,7 +802,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       }
     );
     if (updatedRows.length === 0) {
-      return new Ok(undefined);
+      return new Ok(0);
     }
 
     const transferred = updatedRows.map(
@@ -854,7 +854,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       );
     }
 
-    return new Ok(undefined);
+    return new Ok(transferred.length);
   }
 
   static async deleteAllForUser(
@@ -907,6 +907,40 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         },
       }
     );
+  }
+
+  /**
+   * @cc [owner:aloia,label:product] archive-disables-pod-triggers
+   * Archiving a Pod disables enabled triggers that target it. Triggers stay
+   * attached to the Pod (not detached to personal conversations) and are not
+   * re-enabled on unarchive. Already-disabled or system-status triggers are
+   * left unchanged.
+   */
+  static async disableAllForSpace(
+    auth: Authenticator,
+    spaceModelId: ModelId
+  ): Promise<Result<undefined, Error>> {
+    const triggers = await this.listBySpace(auth, spaceModelId);
+    const enabled = triggers.filter((trigger) => trigger.status === "enabled");
+    if (enabled.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const result = await this.disableMany(auth, enabled, "disabled");
+    if (result.isErr()) {
+      return result;
+    }
+
+    void emitBulkTriggerAuditLogEvents(auth, enabled, (trigger) => ({
+      action: "trigger.disabled",
+      metadata: {
+        trigger_type: trigger.kind,
+        agent_id: trigger.agentConfigurationId,
+        status: "disabled",
+      },
+    }));
+
+    return new Ok(undefined);
   }
 
   static async disableAllForWorkspace(

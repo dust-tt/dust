@@ -657,10 +657,14 @@ describe("GroupResource", () => {
       });
       expect(membershipBefore).not.toBeNull();
 
-      await GroupResource.migrateUserMemberships(authenticator, {
-        primaryUser: user,
-        secondaryUser: secondaryUser,
-      });
+      const transferredCount = await GroupResource.migrateUserMemberships(
+        authenticator,
+        {
+          primaryUser: user,
+          secondaryUser: secondaryUser,
+        }
+      );
+      expect(transferredCount).toBe(1);
 
       const membershipAfter = await GroupMembershipModel.findOne({
         where: {
@@ -700,10 +704,15 @@ describe("GroupResource", () => {
         users: [secondaryUser.toJSON()],
       });
 
-      await GroupResource.migrateUserMemberships(authenticator, {
-        primaryUser: user,
-        secondaryUser: secondaryUser,
-      });
+      // The membership the primary already had is deleted, not transferred, so nothing is counted.
+      const transferredCount = await GroupResource.migrateUserMemberships(
+        authenticator,
+        {
+          primaryUser: user,
+          secondaryUser: secondaryUser,
+        }
+      );
+      expect(transferredCount).toBe(0);
 
       const primaryMembership = await GroupMembershipModel.findOne({
         where: {

@@ -940,6 +940,7 @@ export function DataSourcePage() {
     dataSourceViews,
     coreDataSource,
     connector,
+    oauthConnectedAccount,
     features,
     temporalWorkspace,
     temporalRunningWorkflows,
@@ -988,6 +989,7 @@ export function DataSourcePage() {
           temporalWorkspace={temporalWorkspace}
           coreDataSource={coreDataSource}
           connector={connector}
+          oauthConnectedAccount={oauthConnectedAccount}
           temporalRunningWorkflows={temporalRunningWorkflows}
         />
         <div className="mt-4 flex grow flex-col gap-y-4">

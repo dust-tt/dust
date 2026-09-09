@@ -32,7 +32,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import type { MutableRefObject } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -147,7 +146,6 @@ export type VirtuosoMessageListContext = {
   isProjectArchived?: boolean;
   projectId?: string;
   projectSpaceName?: string;
-  isAutoScrollEnabledRef: MutableRefObject<boolean>;
   isNoSeat?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
 };

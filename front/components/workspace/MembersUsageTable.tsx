@@ -956,11 +956,35 @@ const offPaceColumn: ColumnDef<RowData, string> = {
       overallUsageTarget,
       isSpendCapped,
       canUpgradeSeat,
+      seatType,
       onOpenChangeSeatRecap,
       onOpenSpendLimitRecap,
     } = info.row.original;
 
     if (isSpendCapped) {
+      // Free seats have no pool credits to raise (their cap is just the
+      // seat's built-in allowance), so seat upgrade is the only unblock path.
+      const isFreeSeat = seatType === "free";
+
+      if (isFreeSeat) {
+        return (
+          <DataTable.CellContent className="justify-center">
+            <div
+              onClick={(event) => event.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <Button
+                variant="highlight"
+                size="xs"
+                label="Unblock"
+                disabled={!canUpgradeSeat}
+                onClick={onOpenChangeSeatRecap}
+              />
+            </div>
+          </DataTable.CellContent>
+        );
+      }
+
       if (!canUpgradeSeat) {
         return (
           <DataTable.CellContent className="justify-center">

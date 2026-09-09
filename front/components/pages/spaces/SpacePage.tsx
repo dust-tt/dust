@@ -1,4 +1,5 @@
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
+import { GlobalSpaceSettingsModal } from "@app/components/spaces/GlobalSpaceSettingsModal";
 import { SpaceCategoriesList } from "@app/components/spaces/SpaceCategoriesList";
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -76,13 +77,26 @@ export function SpacePage() {
           isAdmin={isAdmin}
           onButtonClick={() => setShowSpaceEditionModal(true)}
         />
-        <CreateOrEditSpaceModal
-          owner={owner}
-          isOpen={showSpaceEditionModal}
-          onClose={() => setShowSpaceEditionModal(false)}
-          space={space}
-          isAdmin={isAdmin}
-        />
+        {/* The global space's settings are admin-only, and it is the admin-only "Space settings"
+            button that opens them, so the panel is not mounted for anyone else. */}
+        {space.kind === "global" ? (
+          isAdmin && (
+            <GlobalSpaceSettingsModal
+              owner={owner}
+              isOpen={showSpaceEditionModal}
+              onClose={() => setShowSpaceEditionModal(false)}
+              space={space}
+            />
+          )
+        ) : (
+          <CreateOrEditSpaceModal
+            owner={owner}
+            isOpen={showSpaceEditionModal}
+            onClose={() => setShowSpaceEditionModal(false)}
+            space={space}
+            isAdmin={isAdmin}
+          />
+        )}
       </Page.Vertical>
     </SpaceSearchInput>
   );
