@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Sign in to Dust</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Needed for `Office.context.ui.messageParent`. See platforms/excel/auth.ts. -->
+    <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <style>
+      body {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        gap: 12px;
+        justify-content: center;
+        margin: 0;
+        min-height: 100vh;
+        padding: 24px;
+      }
+      #status {
+        color: #64748b;
+        font-size: 14px;
+        margin: 0;
+        text-align: center;
+      }
+      #fallback {
+        font-size: 13px;
+        margin: 0;
+        text-align: center;
+      }
+      #log {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        color: #475569;
+        font-size: 11px;
+        margin: 0;
+        max-width: 100%;
+        overflow-x: auto;
+        padding: 8px;
+        white-space: pre-wrap;
+        word-break: break-all;
+      }
+      [hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <p id="status">Loading…</p>
+    <p id="fallback" hidden>
+      Not redirecting? <a id="fallback-link" href="#">Continue to sign-in</a>
+    </p>
+    <pre id="log" hidden></pre>
+    <!-- Emitted by RelayScriptPlugin, not a webpack entry. See webpack.config.ts. -->
+    <script src="auth.js"></script>
+  </body>
+</html>

@@ -2,7 +2,20 @@ import type { StorageService } from "@extension/shared/services/storage";
 
 type StorageListener = (changes: Record<string, any>) => void;
 
-export class FrontStorageService implements StorageService {
+/**
+ * `localStorage`-backed storage, for platforms whose add-in runs as a plain web
+ * page (Front plugin, Excel task pane) rather than as a browser extension with
+ * access to `chrome.storage`.
+ */
+/**
+ * @cc [owner:Nils-Fedrigo,label:backend] local-storage-scoped-to-origin
+ * `LocalStorageService` stores each value as JSON under its key in the hosting
+ * page's `localStorage`, so stored data is shared by every platform served from
+ * the same origin and never leaves the user's browser. `onChanged` listeners
+ * fire for writes made through this service and for `storage` events raised by
+ * other windows of that origin.
+ */
+export class LocalStorageService implements StorageService {
   private listeners: Set<StorageListener>;
 
   constructor() {

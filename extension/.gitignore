@@ -6,3 +6,4 @@ packages/*
 platforms/chrome/build/*
 platforms/front/build/*
 platforms/firefox/build/*
+platforms/excel/build/*

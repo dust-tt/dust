@@ -1,0 +1,7 @@
+@cc [owner:Nils-Fedrigo,label:architecture] no-platform-branching-in-shared-ui
+Code under `shared/` and `ui/` must never branch on `PlatformService.platform`; behavior that
+differs per host application is exposed as a `PlatformService` member and implemented under
+`platforms/<platform>/`. Adding a platform must therefore require no change to `shared/` or `ui/`.
+
+Reviewer: If you detect a comparison against a `PlatformType` value outside `platforms/` and
+`isValidPlatform`, require the author to move that behavior behind a `PlatformService` member.
