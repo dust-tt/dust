@@ -31,6 +31,7 @@ import {
   populateDeltas,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/activities";
+import { isGeneralExceptionError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftGarbageCollectionWorkflow,
@@ -329,10 +330,6 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     return launchMicrosoftFullSyncWorkflow(this.connectorId);
   }
 
-  /**
-   * @cc [owner:aubin-tchoi,label:error-handling] permission-retrieval-auth-errors
-   * Graph HTTP 401 errors return `EXTERNAL_OAUTH_TOKEN_ERROR` regardless of the Graph error code.
-   */
   async retrievePermissions({
     parentInternalId,
     filterPermission,
@@ -485,12 +482,24 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
     } catch (e) {
       if (
         e instanceof ExternalOAuthTokenError ||
-        (e instanceof GraphError && e.statusCode === 401)
+        (e instanceof GraphError &&
+          e.statusCode === 401 &&
+          e.code === "accessDenied")
       ) {
         return new Err(
           new ConnectorManagerError(
             "EXTERNAL_OAUTH_TOKEN_ERROR",
             "Microsoft authorization error, please re-authorize."
+          )
+        );
+      }
+      // 401 generalException indicates site-level permission changes or revoked access.
+      // See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when
+      if (isGeneralExceptionError(e)) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            `Microsoft authorization error (general exception), re-authorize or check access (${e.message})`
           )
         );
       }
