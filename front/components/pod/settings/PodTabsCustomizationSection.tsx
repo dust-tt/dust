@@ -1,13 +1,5 @@
-import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplorerPipeline";
-import type {
-  FileEntry,
-  FileExplorerEntry,
-  FramePackageEntry,
-} from "@app/components/file_explorer/types";
-import {
-  getScopedRelativePath,
-  isFilePreviewableContentType,
-} from "@app/components/file_explorer/utils";
+import { getScopedRelativePath } from "@app/components/file_explorer/utils";
+import { listAddablePodTabFiles } from "@app/components/pod/files/addablePodTabFiles";
 import type { AddablePodTabFile } from "@app/components/pod/settings/AddPodFileMenu";
 import { AddPodFileMenu } from "@app/components/pod/settings/AddPodFileMenu";
 import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
@@ -15,7 +7,6 @@ import { getIcon } from "@app/components/resources/resources_icons";
 import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { usePodFiles } from "@app/lib/swr/pods";
-import { frameV2ContentType } from "@app/types/files";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
   DEFAULT_POD_FILE_TAB_ICON,
@@ -56,28 +47,6 @@ interface PodTabsCustomizationSectionProps {
 
 function isTabReorderDrag(event: DragEvent) {
   return event.dataTransfer.types.includes(POD_TAB_DRAG_MIME);
-}
-
-function isAddablePodTabEntry(
-  entry: FileExplorerEntry,
-  existingTabPaths: ReadonlySet<string>
-): entry is FileEntry | FramePackageEntry {
-  if (existingTabPaths.has(entry.path)) {
-    return false;
-  }
-
-  if (entry.kind === "frame_package") {
-    return true;
-  }
-
-  if (entry.kind !== "file") {
-    return false;
-  }
-
-  return (
-    entry.contentType !== frameV2ContentType &&
-    isFilePreviewableContentType(entry.contentType)
-  );
 }
 
 export function PodTabsCustomizationSection({
@@ -122,30 +91,15 @@ export function PodTabsCustomizationSection({
     [podFiles]
   );
 
-  const addableFiles = useMemo((): AddablePodTabFile[] => {
-    const { entryByRelativePath } = getFileExplorerPipeline({
-      activeFilter: "all",
-      contentNodes: [],
-      currentFolderPath: "",
-      displayFramePackages,
-      files: podFiles,
-      searchQuery: "",
-      sortMode: "name-asc",
-    });
-
-    return [...entryByRelativePath.values()]
-      .filter((entry): entry is FileEntry | FramePackageEntry =>
-        isAddablePodTabEntry(entry, existingTabPaths)
-      )
-      .map((entry) => ({
-        path: entry.path,
-        fileName: entry.fileName,
-        contentType: entry.contentType,
-      }))
-      .sort((a, b) =>
-        a.fileName.localeCompare(b.fileName, undefined, { sensitivity: "base" })
-      );
-  }, [displayFramePackages, existingTabPaths, podFiles]);
+  const addableFiles = useMemo(
+    () =>
+      listAddablePodTabFiles({
+        podFiles,
+        existingTabPaths,
+        displayFramePackages,
+      }),
+    [displayFramePackages, existingTabPaths, podFiles]
+  );
 
   const [draggingPath, setDraggingPath] = useState<string | null>(null);
   const [dropTargetPath, setDropTargetPath] = useState<string | null>(null);
