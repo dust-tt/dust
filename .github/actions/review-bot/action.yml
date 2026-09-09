@@ -1,0 +1,15 @@
+name: Review bot
+description: Request PR reviews from r? commands in descriptions and messages.
+
+runs:
+  using: composite
+  steps:
+    - name: Request reviews
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        REVIEW_BOT_ACTION_PATH: ${{ github.action_path }}
+      with:
+        script: |
+          const path = require('node:path');
+          const { requestReviews } = require(path.join(process.env.REVIEW_BOT_ACTION_PATH, 'review-bot.ts'));
+          await requestReviews({ github, context, core });
