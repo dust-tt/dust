@@ -80,7 +80,7 @@ function CreditDetailRow({
             <Icon
               visual={icon}
               size="xs"
-              className="mt-0.5 shrink-0 self-start text-muted-foreground"
+              className="shrink-0 text-muted-foreground"
             />
           )}
           <span
@@ -88,26 +88,20 @@ function CreditDetailRow({
             className={classNames(
               "truncate",
               isLabelExpanded &&
-                "relative z-10 bg-overlay-background shadow-none"
+                "relative z-10 text-clip bg-overlay-background shadow-none"
             )}
-            style={{ textOverflow: isLabelExpanded ? "clip" : undefined }}
           >
             {label}
           </span>
           {description && (
-            <span
-              aria-hidden={isLabelExpanded}
+            <Chip
+              size="mini"
+              label={description}
               className={classNames(
-                "flex shrink-0",
+                "shrink-0 font-normal",
                 isLabelExpanded && "invisible"
               )}
-            >
-              <Chip
-                size="mini"
-                label={description}
-                className="shrink-0 font-normal"
-              />
-            </span>
+            />
           )}
         </span>
         {isLabelExpanded && (
@@ -123,7 +117,6 @@ function CreditDetailRow({
         )}
       </dt>
       <dd
-        aria-hidden={isLabelExpanded}
         className={classNames(
           "col-start-2 row-start-1 shrink-0 text-muted-foreground",
           isLabelExpanded && "invisible"
