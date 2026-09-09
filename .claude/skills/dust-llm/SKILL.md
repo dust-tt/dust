@@ -114,7 +114,35 @@ Adding the id to `STATIC_MODEL_IDS` makes these fail to compile until updated:
 | File | What to add |
 |------|-------------|
 | `sdks/js/src/types.ts` | Add the id to the `KnownModelLLMId` union. **Then rebuild the SDK types** (`cd sdks/js && npm run build:types`) — `front`'s `sdk_drift.test.ts` type-imports the built `@dust-tt/client`, so `tsgo` reads stale declarations until you do. |
-| `front/components/providers/model_configs.ts` | Add config to `USED_MODEL_CONFIGS` so it shows in the UI. |
+| `front/components/providers/model_configs.ts` | Add config to `USED_MODEL_CONFIGS` so it shows in the UI, and **evict the family's older versions down to two** (see below). |
+
+> **At most two versions of a family in `USED_MODEL_CONFIGS`.** The picker groups by maker,
+> so every version left in the list is another near-identical row a user has to read past
+> ("Gemini 3.5 Flash / 3.6 Flash / 3.7 Flash / 3.8 Flash"). When you add a model, keep only
+> it and its immediate predecessor; drop the rest of the family from `USED_MODEL_CONFIGS`.
+> Count families by product line, not by provider — Gemini Flash, Gemini Flash Lite and
+> Gemini Pro are three families, each allowed two.
+>
+> Everything a dropped model needs to stay *callable* lives elsewhere
+> (`SUPPORTED_MODEL_CONFIGS`, the endpoint classes, pricing), so the eviction only removes it
+> from the picker and the agent builder. Then finish the deprecation properly, or the model
+> rots into a stale default years later:
+>
+> - Set `isLegacy: true` + `isLatest: false` on each evicted config. `isLegacy` is also what
+>   drops it from the public credits page, so an evicted-but-not-flagged model keeps being
+>   advertised while being unpickable.
+> - **Repoint every hardcoded reference to it.** `grep -rn X_MODEL_CONFIG front front-api` and
+>   fix the ladders and defaults that name it: `ORDERED_FAST_MODEL_CONFIGS` /
+>   `ORDERED_SMALL_MODEL_CONFIGS` / `ORDERED_LARGE_MODEL_CONFIGS` in
+>   `front/lib/api/assistant/models.ts`, `getFastModelConfig` in
+>   `front/lib/api/assistant/conversation/title.ts`, `preferredModelConfiguration` on the
+>   `dust-*` global agents, and `MODEL_STREAMS` candidates in
+>   `front/types/assistant/models/auto.ts`. These are hand-maintained lists that no type
+>   checks — nothing goes red when they point at a legacy model.
+>
+> A legacy model still referenced by one of those lists is the failure mode this rule exists
+> for: conversation titles ran on Gemini 3.5 Flash for three releases after 3.6/3.7/3.8
+> shipped, purely because `getFastModelConfig` was never revisited.
 
 > **No marketing mirror.** The public credits page fetches `/api/marketing/model-credits`,
 > which `front/lib/api/marketing/model_credits.ts` derives at request time from
@@ -310,6 +338,8 @@ added / K2.5 deprecated (`f2824da5c5e`, #28834).
 | `front/types/assistant/models/{provider}.ts` | Set `isLegacy: true` + `isLatest: false` on the old config, and strip "flagship"/"latest" from its `description`. |
 | `front/components/providers/model_configs.ts` | Remove it from `USED_MODEL_CONFIGS` — that is what drops it from the model picker, the workspace model-providers page, and `workspace_capabilities`. |
 | `front/types/assistant/models/auto.ts` | Replace it in any `MODEL_STREAMS` candidate list with the new model. |
+| `front/lib/api/assistant/models.ts` | Replace it in `ORDERED_FAST_MODEL_CONFIGS` / `ORDERED_SMALL_MODEL_CONFIGS` / `ORDERED_LARGE_MODEL_CONFIGS` — the whitelisted-model ladders behind `getFastestWhitelistedModel` & co. |
+| `front/lib/api/assistant/conversation/title.ts` | Replace it in `getFastModelConfig`, the per-provider ladder picking the model that names conversations. |
 | `front/lib/api/assistant/global_agents/configurations/dust/dust.ts` | Repoint every `preferredModelConfiguration` naming it (e.g. the `dust-kimi*` family). |
 | `front/lib/api/assistant/global_agents/global_agent_metadata.ts` | Update the agent `description` strings that name the old model version. |
 | `front/lib/api/assistant/global_agents/global_agents.ts` | If the old model had its **own** global agent (rather than a `dust-*` agent you just repointed), add its `GLOBAL_AGENTS_SID` to `RETIRED_GLOBAL_AGENTS_SID`. |
@@ -417,6 +447,10 @@ on `makeScript`. Template: `front/migrations/20260608_migrate_deepseek_r1_models
 - [ ] Every endpoint sharing the config mixin re-run green (all regions / provider APIs)
 - [ ] `llms` dust layer: dust mixin + endpoint(s) + `llms/stream/index.ts`
 - [ ] UI `model_configs.ts`; SDK union updated **and types rebuilt before `tsgo`**
+- [ ] `USED_MODEL_CONFIGS` holds at most two versions of the family; every model evicted by
+      that rule is `isLegacy: true` + `isLatest: false` and no longer named by any hardcoded
+      ladder (`ORDERED_*_MODEL_CONFIGS`, `getFastModelConfig`, `dust-*` global agents,
+      `MODEL_STREAMS`)
 - [ ] `tsgo` clean; `types` / `model_tiers` tests green
 - [ ] Live endpoint test passes (or limitation flagged for follow-up)
 
