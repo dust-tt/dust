@@ -29,3 +29,6 @@ jobs:
 
       - name: Request reviews
         uses: ./.github/actions/review-bot
+        with:
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack_channel: C09GELMTTRT

@@ -16,8 +16,20 @@ The `r?` must start the line without indentation. Surrounding lines and trailing
 only the consecutive mentions immediately after `r?` are reviewers. Fenced code, HTML comments,
 quoted lines, team mentions, and mentions after trailing prose are ignored.
 
-Only human requesters with repository write access can trigger the bot. The bot skips closed PRs
-and the PR author, and logs a warning for reviewers GitHub rejects.
+Only human requesters with repository `write`, `maintain`, or `admin` permission can trigger the bot.
+The bot skips closed PRs and the PR author, and logs a warning for reviewers GitHub rejects.
 
-The workflow uses `GITHUB_TOKEN` and loads this action from the default branch. Merge the workflow
-and action into that branch to activate it.
+Each eligible request also posts to `#engineering_pr_reviews` (`C09GELMTTRT`):
+
+```text
+@requester: https://github.com/dust-tt/dust/pull/123
+r? @reviewer please take a look
+```
+
+The requester and reviewer handles become real Slack mentions through `.authors` email mappings
+and Slack's `users.lookupByEmail`. Unmapped handles remain plain text. Only request lines are
+forwarded, with trailing prose preserved; other PR description or comment text is omitted.
+
+The workflow uses `GITHUB_TOKEN` and the existing `SLACK_BOT_TOKEN`, and loads this action from the
+default branch. The Slack bot needs `users:read.email` and permission to post in the reviews channel.
+Merge the workflow and action into that branch to activate it.

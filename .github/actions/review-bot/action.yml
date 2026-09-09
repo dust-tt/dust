@@ -1,15 +1,49 @@
 name: Review bot
-description: Request PR reviews from r? commands in descriptions and messages.
+description: Request PR reviews and notify Slack from r? commands in descriptions and messages.
+
+inputs:
+  slack_token:
+    description: Slack bot token for user lookup and review notifications.
+    required: true
+  slack_channel:
+    description: Slack channel ID for review notifications.
+    required: true
 
 runs:
   using: composite
   steps:
     - name: Request reviews
+      id: request
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       env:
         REVIEW_BOT_ACTION_PATH: ${{ github.action_path }}
+        SLACK_BOT_TOKEN: ${{ inputs.slack_token }}
+        SLACK_CHANNEL_ID: ${{ inputs.slack_channel }}
       with:
         script: |
           const path = require('node:path');
-          const { requestReviews } = require(path.join(process.env.REVIEW_BOT_ACTION_PATH, 'review-bot.ts'));
-          await requestReviews({ github, context, core });
+          const { readFileSync } = require('node:fs');
+          const { requestReviews, formatSlackNotification } = require(path.join(process.env.REVIEW_BOT_ACTION_PATH, 'review-bot.ts'));
+          const notification = await requestReviews({ github, context, core });
+          if (notification) {
+            const text = await formatSlackNotification({
+              notification,
+              authors: readFileSync('.authors', 'utf8'),
+              slackToken: process.env.SLACK_BOT_TOKEN,
+              core,
+            });
+            core.setOutput('slack_payload', JSON.stringify({
+              channel: process.env.SLACK_CHANNEL_ID,
+              text,
+              unfurl_links: false,
+              unfurl_media: false,
+            }));
+          }
+
+    - name: Post review request to Slack
+      if: steps.request.outputs.slack_payload != ''
+      uses: slackapi/slack-github-action@af78098f536edbc4de71162a307590698245be95 # v3.0.1
+      with:
+        method: chat.postMessage
+        token: ${{ inputs.slack_token }}
+        payload: ${{ steps.request.outputs.slack_payload }}

@@ -1,5 +1,11 @@
 type Repository = { owner: string; repo: string };
 type PullRequestParams = Repository & { pull_number: number };
+type ReviewRequest = { line: string; reviewers: string[] };
+type ReviewNotification = {
+  requester: string;
+  prUrl: string;
+  requests: ReviewRequest[];
+};
 
 type ReviewContext = {
   actor: string;
@@ -28,9 +34,9 @@ type ReviewBotOptions = {
         ): Promise<{ data: { permission: string } }>;
       };
       pulls: {
-        get(
-          params: PullRequestParams
-        ): Promise<{ data: { state: string; user: { login: string } } }>;
+        get(params: PullRequestParams): Promise<{
+          data: { state: string; user: { login: string }; html_url: string };
+        }>;
         requestReviewers(
           params: PullRequestParams & { reviewers: string[] }
         ): Promise<unknown>;
@@ -47,11 +53,13 @@ type ReviewBotOptions = {
 /**
  * @cc [label:product] review-request-syntax
  * Parse the leading list of GitHub mentions after a column-zero `r?` followed by whitespace on each
- * line. Trailing prose ends the list. Ignore fenced code and HTML comments, and deduplicate handles
- * case-insensitively.
+ * line, retaining the request line for notifications. Trailing prose ends the list. Ignore fenced
+ * code and HTML comments, and deduplicate handles case-insensitively within each request.
  */
-export function parseReviewers(body: string | null | undefined): string[] {
-  const reviewers = new Set<string>();
+export function parseReviewRequests(
+  body: string | null | undefined
+): ReviewRequest[] {
+  const requests: ReviewRequest[] = [];
   let fence: string | undefined;
   for (const line of (body ?? "")
     .replace(/<!--[\s\S]*?(?:-->|$)/g, (comment) =>
@@ -79,14 +87,18 @@ export function parseReviewers(body: string | null | undefined): string[] {
     if (!request) {
       continue;
     }
+    const reviewers = new Set<string>();
     for (const token of request[1].split(/[ \t]+/)) {
       if (!/^@[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(token)) {
         break;
       }
       reviewers.add(token.slice(1).toLowerCase());
     }
+    if (reviewers.size > 0) {
+      requests.push({ line, reviewers: [...reviewers] });
+    }
   }
-  return [...reviewers];
+  return requests;
 }
 
 function getRequest(context: ReviewContext) {
@@ -135,12 +147,14 @@ function getRequest(context: ReviewContext) {
 
 /**
  * @cc [label:security] review-request-access
- * Only accept human requesters with repository write access and open PRs.
+ * Only accept human requesters with repository `write`, `maintain`, or `admin` permission and open
+ * PRs.
  */
 /**
  * @cc [label:product] review-request-delivery
  * Request every parsed reviewer except the PR author for each eligible description edit or newly
  * posted request, including users who previously reviewed. Invalid reviewers do not block valid
+ * requests. Return the requester, PR URL, and request lines for Slack notification only for eligible
  * requests. Title edits and pushes do not request reviews.
  */
 /**
@@ -152,13 +166,13 @@ export async function requestReviews({
   github,
   context,
   core,
-}: ReviewBotOptions): Promise<void> {
+}: ReviewBotOptions): Promise<ReviewNotification | undefined> {
   const request = getRequest(context);
   if (!request || context.payload.sender?.type !== "User") {
     return;
   }
-  const reviewers = parseReviewers(request.body);
-  if (reviewers.length === 0) {
+  const requests = parseReviewRequests(request.body);
+  if (requests.length === 0) {
     return;
   }
 
@@ -188,6 +202,7 @@ export async function requestReviews({
   if (pr.state !== "open") {
     return;
   }
+  const reviewers = new Set(requests.flatMap((request) => request.reviewers));
   for (const reviewer of reviewers) {
     if (reviewer === pr.user.login.toLowerCase()) {
       continue;
@@ -207,4 +222,107 @@ export async function requestReviews({
       core.warning(`GitHub rejected the review request for @${reviewer}.`);
     }
   }
+  return { requester: context.actor, prUrl: pr.html_url, requests };
+}
+
+function escapeSlackText(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+/**
+ * @cc [label:product] review-request-slack-format
+ * Format an eligible request as the requester mention and PR URL, followed by its `r?` lines with
+ * trailing prose preserved. Resolve requester and reviewer mentions through `.authors` emails and
+ * Slack user lookup; unresolved handles remain plain text.
+ */
+/**
+ * @cc [label:security] review-request-slack-mentions
+ * Escape literal Slack control characters before inserting resolved user mentions. Only the
+ * requester and reviewers parsed from the request may become Slack mentions.
+ */
+export async function formatSlackNotification({
+  notification,
+  authors,
+  slackToken,
+  core,
+}: {
+  notification: ReviewNotification;
+  authors: string;
+  slackToken: string;
+  core: ReviewBotOptions["core"];
+}): Promise<string> {
+  const emails = new Map<string, string>();
+  for (const line of authors.split(/\r?\n/)) {
+    const entry = /^([^:]+):\s*(\S+)\s*$/.exec(line);
+    if (entry) {
+      emails.set(entry[1].toLowerCase(), entry[2]);
+    }
+  }
+
+  const handles = new Set([
+    notification.requester.toLowerCase(),
+    ...notification.requests.flatMap((request) => request.reviewers),
+  ]);
+  const mentions = new Map<string, string>();
+  await Promise.all(
+    [...handles].map(async (handle) => {
+      const email = emails.get(handle);
+      if (!email) {
+        core.warning(`No .authors email found for @${handle}.`);
+        return;
+      }
+
+      let data: unknown;
+      try {
+        const response = await fetch(
+          "https://slack.com/api/users.lookupByEmail",
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${slackToken}` },
+            body: new URLSearchParams({ email }),
+          }
+        );
+        if (!response.ok) {
+          core.warning(
+            `Slack user lookup failed for @${handle}: HTTP ${response.status}.`
+          );
+          return;
+        }
+        data = await response.json();
+      } catch {
+        core.warning(`Slack user lookup failed for @${handle}.`);
+        return;
+      }
+      if (
+        typeof data === "object" &&
+        data !== null &&
+        "ok" in data &&
+        data.ok === true &&
+        "user" in data &&
+        typeof data.user === "object" &&
+        data.user !== null &&
+        "id" in data.user &&
+        typeof data.user.id === "string" &&
+        /^[UW][A-Z0-9]+$/.test(data.user.id)
+      ) {
+        mentions.set(handle, `<@${data.user.id}>`);
+      } else {
+        core.warning(`No Slack user found for @${handle}.`);
+      }
+    })
+  );
+
+  const requester =
+    mentions.get(notification.requester.toLowerCase()) ??
+    escapeSlackText(`@${notification.requester}`);
+  const lines = notification.requests.map(({ line }) =>
+    escapeSlackText(line).replace(
+      /(?<!\S)@[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?(?=[ \t]|$)/gi,
+      (mention) => mentions.get(mention.slice(1).toLowerCase()) ?? mention
+    )
+  );
+  return `${requester}: ${escapeSlackText(notification.prUrl)}\n${lines.join("\n")}`;
 }
