@@ -74,9 +74,11 @@ async function resolveConversationCreator(
 
 /**
  * @cc [label:audit-logging;performance] conversation-access-audit-is-gated
- * MUST return without issuing any database query when `isAuditLogsEnabled(auth)` is false.
- * This runs on every conversation read, so creator resolution MUST NOT be performed for
- * workspaces that cannot receive audit events.
+ * When `isAuditLogsEnabled(auth)` is false, MUST return without performing creator resolution
+ * (no conversation-participant or user lookups for this emit). `isAuditLogsEnabled` itself may
+ * consult feature flags / plan state; that enablement check is allowed. This runs on every
+ * conversation read, so the expensive creator path MUST NOT run for workspaces that cannot
+ * receive audit events.
  */
 export async function emitConversationAccessedEvent(
   auth: Authenticator,
