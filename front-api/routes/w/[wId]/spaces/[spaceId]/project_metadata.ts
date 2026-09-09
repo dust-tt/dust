@@ -4,6 +4,7 @@ import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,
@@ -245,6 +246,10 @@ app.patch(
       if (refreshed) {
         metadata = refreshed;
       }
+    }
+
+    if (body.archive) {
+      await TriggerResource.disableAllForSpace(auth, space.id);
     }
 
     return ctx.json({ projectMetadata: metadata.toJSON() });

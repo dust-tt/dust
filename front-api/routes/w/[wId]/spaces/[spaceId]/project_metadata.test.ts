@@ -1,9 +1,12 @@
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { frameContentType } from "@app/types/files";
 import {
   DEFAULT_POD_FILE_TAB_ICON,
@@ -126,6 +129,37 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data.projectMetadata.archivedAt).not.toBeNull();
+  });
+
+  it("disables triggers targeting the pod when archiving", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+
+    const projectSpace = await SpaceFactory.project(
+      workspace,
+      auth.getNonNullableUser().id
+    );
+    await ProjectMetadataResource.makeNew(auth, projectSpace, {
+      description: "Test description",
+      archivedAt: null,
+    });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const trigger = await TriggerFactory.webhook(auth, {
+      agentConfigurationId: agent.sId,
+      status: "enabled",
+      spaceId: projectSpace.id,
+    });
+
+    const response = await patchMetadata(workspace, projectSpace.sId, {
+      archive: true,
+    });
+
+    expect(response.status).toBe(200);
+    const reloaded = await TriggerResource.fetchById(auth, trigger.sId);
+    expect(reloaded?.status).toBe("disabled");
+    expect(reloaded?.spaceId).toBe(projectSpace.id);
   });
 
   it("ignores tasks generation opt-in and returns hardcoded false", async () => {
