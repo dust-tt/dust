@@ -1,5 +1,5 @@
 name: Review bot
-description: Request PR reviews and notify Slack from r? commands in descriptions and messages.
+description: Request PR reviews, add PMRR labels, and notify Slack from descriptions and messages.
 
 inputs:
   slack_token:
@@ -12,7 +12,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Request reviews
+    - name: Label PMRR and request reviews
       id: request
       uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       env:
@@ -23,7 +23,8 @@ runs:
         script: |
           const path = require('node:path');
           const { readFileSync } = require('node:fs');
-          const { requestReviews, formatSlackNotification } = require(path.join(process.env.REVIEW_BOT_ACTION_PATH, 'review-bot.ts'));
+          const { labelPmrr, requestReviews, formatSlackNotification } = require(path.join(process.env.REVIEW_BOT_ACTION_PATH, 'review-bot.ts'));
+          await labelPmrr({ github, context });
           const notification = await requestReviews({ github, context, core });
           if (notification) {
             const text = await formatSlackNotification({

@@ -101,6 +101,12 @@ export function parseReviewRequests(
   return requests;
 }
 
+/**
+ * @cc [label:product] pull-request-message-events
+ * Read PR descriptions on opening or body edits, new conversation and inline comments, and newly
+ * submitted review summaries. Accept every PR state. Ignore ordinary issues, title-only edits,
+ * pushes, and comment edits.
+ */
 function getRequest(context: ReviewContext) {
   const { eventName, payload } = context;
   if (
@@ -143,6 +149,43 @@ function getRequest(context: ReviewContext) {
     };
   }
   return null;
+}
+
+/**
+ * @cc [label:product] pmrr-labeling
+ * Add the `PMRR` label when an eligible PR description or message contains `PMRR` case-insensitively,
+ * on open, closed, or merged PRs. Preserve other labels and never remove the label when text changes.
+ * Callers process labeling before attempting GitHub review requests or Slack delivery.
+ */
+/**
+ * @cc [label:security] review-automation-source
+ * Privileged workflow callers load this function from the repository's default branch, never from
+ * a PR revision.
+ */
+export async function labelPmrr({
+  github,
+  context,
+}: {
+  github: {
+    rest: {
+      issues: {
+        addLabels(
+          params: Repository & { issue_number: number; labels: string[] }
+        ): Promise<unknown>;
+      };
+    };
+  };
+  context: ReviewContext;
+}): Promise<void> {
+  const request = getRequest(context);
+  if (!request?.body?.toUpperCase().includes("PMRR")) {
+    return;
+  }
+  await github.rest.issues.addLabels({
+    ...context.repo,
+    issue_number: request.number,
+    labels: ["PMRR"],
+  });
 }
 
 /**

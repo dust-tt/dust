@@ -27,7 +27,7 @@ jobs:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
-      - name: Request reviews
+      - name: Run review bot
         uses: ./.github/actions/review-bot
         with:
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
