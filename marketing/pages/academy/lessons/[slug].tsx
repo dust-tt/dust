@@ -129,7 +129,7 @@ export default function LessonPage({
         </div>
       )}
       <Head>
-        <title>{lesson.title} | Dust Academy</title>
+        <title>{`${lesson.title} | Dust Academy`}</title>
         {preview && <meta name="robots" content="noindex, nofollow" />}
         {lesson.description && (
           <meta name="description" content={lesson.description} />

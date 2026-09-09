@@ -153,7 +153,7 @@ export default function CoursePage({
         </div>
       )}
       <Head>
-        <title>{course.title} | Dust Academy</title>
+        <title>{`${course.title} | Dust Academy`}</title>
         {preview && <meta name="robots" content="noindex, nofollow" />}
         {course.description && (
           <meta name="description" content={course.description} />

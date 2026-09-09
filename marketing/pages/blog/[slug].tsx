@@ -125,7 +125,7 @@ export default function BlogPost({
         </div>
       )}
       <Head>
-        <title>{post.title} | Dust Blog</title>
+        <title>{`${post.title} | Dust Blog`}</title>
         {preview && <meta name="robots" content="noindex, nofollow" />}
         {post.description && (
           <meta name="description" content={post.description} />

@@ -15,7 +15,6 @@ import {
 } from "@marketing/lib/utils/utm";
 import { isString } from "@marketing/types/shared/utils/general";
 import posthog from "posthog-js";
-import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useMemo, useRef } from "react";
 import { useCookies } from "react-cookie";
 
@@ -35,39 +34,15 @@ function isTrackablePathname(pathname: string): boolean {
   );
 }
 
-interface PostHogTrackerProps {
-  children: React.ReactNode;
+interface PostHogTrackerEffectsProps {
   // When true, assume cookies are accepted (logged in users).
   // Use in authenticated contexts (e.g. SPA) where the user is always logged in.
   authenticated?: boolean;
 }
 
-export function PostHogTracker({
-  children,
+export function PostHogTrackerEffects({
   authenticated,
-}: PostHogTrackerProps) {
-  // Always render PostHogProvider to avoid unmounting/remounting the entire
-  // tree when tracking state changes. Tracking is controlled via
-  // posthog.opt_in_capturing() / posthog.opt_out_capturing() instead.
-  return (
-    <PostHogProvider client={posthog}>
-      <PostHogTrackerInner authenticated={authenticated} />
-      {children}
-    </PostHogProvider>
-  );
-}
-
-/**
- * Inner component that handles all PostHog side-effects (initialization,
- * identification, opt-in/opt-out, workspace grouping, pageview tracking).
- * Separated from PostHogTracker so that user/subscription loading never
- * affects the children tree structure.
- */
-interface PostHogTrackerInnerProps {
-  authenticated?: boolean;
-}
-
-function PostHogTrackerInner({ authenticated }: PostHogTrackerInnerProps) {
+}: PostHogTrackerEffectsProps) {
   const router = useAppRouter();
   const [cookies] = useCookies([DUST_COOKIES_ACCEPTED]);
 
