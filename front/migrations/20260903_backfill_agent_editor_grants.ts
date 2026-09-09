@@ -3,6 +3,8 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -13,6 +15,7 @@ import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
+import type { Transaction } from "sequelize";
 import { col, fn, Op } from "sequelize";
 
 const AGENT_CONCURRENCY = 8;
@@ -132,6 +135,126 @@ async function syncEditorGrants(
   );
 }
 
+async function fetchMissingEditorHistory(
+  auth: Authenticator,
+  legacyGroup: GroupResource,
+  grantGroup: GroupResource | null,
+  transaction: Transaction
+): Promise<GroupMembershipModel[]> {
+  // Uses the (workspaceId, groupId, status, startAt) index; only these two groups are read.
+  const memberships = await GroupMembershipModel.findAll({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      groupId: grantGroup ? [legacyGroup.id, grantGroup.id] : [legacyGroup.id],
+      status: "active",
+      endAt: { [Op.lte]: new Date() },
+    },
+    transaction,
+  });
+  // Rejoining matches on endAt, not startAt: one row per user/revocation is sufficient.
+  const existingHistory = new Set(
+    memberships
+      .filter(({ groupId }) => groupId === grantGroup?.id)
+      .map(({ userId, endAt }) => JSON.stringify([userId, endAt]))
+  );
+  return memberships.filter(({ groupId, userId, endAt }) => {
+    const key = JSON.stringify([userId, endAt]);
+    if (groupId !== legacyGroup.id || existingHistory.has(key)) {
+      return false;
+    }
+    existingHistory.add(key);
+    return true;
+  });
+}
+
+/**
+ * @cc [owner:philipperolet,label:security] preserve-ended-editor-memberships
+ * Backfilling editor history MUST preserve ended timestamps and MUST NOT activate memberships.
+ */
+/**
+ * @cc [owner:philipperolet,label:migration] idempotent-editor-history
+ * Repeated executions MUST NOT duplicate a user's history for the same revocation timestamp.
+ */
+/**
+ * @cc [owner:philipperolet,label:migration] editor-history-dry-run
+ * Dry runs MUST NOT modify groups, grants, or memberships.
+ */
+async function backfillEditorHistory(
+  auth: Authenticator,
+  {
+    legacyGroup,
+    agentModelId,
+    execute,
+  }: {
+    legacyGroup: GroupResource;
+    agentModelId: ModelId;
+    execute: boolean;
+  }
+): Promise<number> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  assert(auth.isAdmin(), "Only admins can backfill editor history.");
+  assert(legacyGroup.workspaceId === workspaceId);
+  assert(legacyGroup.kind === "agent_editors");
+  const grant = {
+    grantType: "editor" as const,
+    resourceType: "agent" as const,
+    resourceId: agentModelId,
+  };
+  return withTransaction(async (transaction) => {
+    // Match GroupPermissionResource.getGrantLock so live editor changes cannot race this copy.
+    const key = `group_permissions:${workspaceId}:agent:${agentModelId}:editor`;
+    await frontSequelize.query("SELECT pg_advisory_xact_lock(hashtext(:key))", {
+      replacements: { key },
+      transaction,
+    });
+    let group = await GroupPermissionResource.findRegularAutoGroupForGrant(
+      auth,
+      {
+        ...grant,
+        transaction,
+      }
+    );
+    const missing = await fetchMissingEditorHistory(
+      auth,
+      legacyGroup,
+      group,
+      transaction
+    );
+    if (!execute || missing.length === 0) {
+      return missing.length;
+    }
+    if (!group) {
+      group = await GroupResource.makeNew(
+        {
+          workspaceId,
+          name: `Group for permission editor on agent (${agentModelId})`,
+          kind: "regular_auto",
+        },
+        { transaction }
+      );
+      await GroupPermissionResource.grant(auth, {
+        group,
+        ...grant,
+        transaction,
+      });
+    }
+    const groupId = group.id;
+    await GroupMembershipModel.bulkCreate(
+      missing.map(({ userId, workspaceId, startAt, endAt, status }) => ({
+        groupId,
+        userId,
+        workspaceId,
+        startAt,
+        endAt,
+        status,
+      })),
+      { transaction }
+    );
+    // Ended rows do not change current group membership, so no membership cache is invalidated.
+    return missing.length;
+  });
+}
+
 function reportEditorMismatch(
   configuration: AgentConfigurationModel,
   state: EditorState,
@@ -180,7 +303,7 @@ async function backfillAgentGrants(
   assert(agent.id !== null, "Custom agent must have a stable ID.");
   // Copy history after active-editor sync, which can delete an empty grant group.
   const endedMembershipsToAdd = initialState.legacyGroup
-    ? await GroupPermissionResource.backfillEditorHistory(auth, {
+    ? await backfillEditorHistory(auth, {
         legacyGroup: initialState.legacyGroup,
         agentModelId: agent.id,
         execute: spec.execute,

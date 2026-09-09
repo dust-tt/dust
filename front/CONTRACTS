@@ -20,6 +20,10 @@ function doWorkspace({ workspace }: { workspace: WorkspaceType }) { }
 @cc [owner:flvndvd,label:backend] models-behind-resources
 Sequelize models must not be used directly outside Resources.
 
+One-off data backfills are an exception: code used only by a backfill MUST stay in that backfill,
+including direct model or SQL access when existing Resource APIs do not fit. Reuse existing
+Resource APIs where appropriate, but do not add backfill-only methods to Resources.
+
 Any new model should be abstracted to the rest of the codebase through a pre-existing or new
 `Resource`.
 
