@@ -1,17 +1,18 @@
 name: Deploy
-run-name: Deploy ${{ inputs.component }} to ${{ inputs.regions }}
+run-name: Deploy ${{ inputs.component }} to ${{ inputs.cells }}
 
 on:
   workflow_dispatch:
     inputs:
-      regions:
-        description: "Regions to deploy to"
+      cells:
+        description: "Cells to deploy to (cell-00000 is us-central1, cell-00001 europe-west1)"
         required: true
         default: "all"
         type: choice
         options:
-          - "us-central1"
-          - "europe-west1"
+          - "cell-00000"
+          - "cell-00001"
+          - "cell-00002"
           - "all"
       component:
         description: "Name of the component to deploy"
@@ -120,7 +121,7 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.regions }}
+          region: ${{ inputs.cells }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
 
       - name: Slack Check Deployment Blocked
@@ -139,11 +140,13 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          if [ "${{ inputs.regions }}" = "all" ]; then
-            echo "matrix=[\"us-central1\",\"europe-west1\"]" >> "$GITHUB_OUTPUT"
-          else
-            echo "matrix=[\"${{ inputs.regions }}\"]" >> "$GITHUB_OUTPUT"
-          fi
+          # Marketing builds per region, and only the legacy cells have one.
+          CELLS="${{ inputs.cells }}"
+          if [ "$CELLS" = "all" ]; then CELLS="cell-00000,cell-00001"; fi
+          REGIONS=$(tr ',' '\n' <<< "$CELLS" \
+            | sed -n 's/^cell-00000$/us-central1/p; s/^cell-00001$/europe-west1/p' \
+            | jq -R . | jq -sc 'unique')
+          echo "matrix=$REGIONS" >> "$GITHUB_OUTPUT"
 
   # Components on the build-once path: one build, pushed to the global registry.
   # Marketing stays on the regional matrix: next build inlines region-specific
@@ -190,7 +193,7 @@ jobs:
           thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
           component: ${{ inputs.component }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.regions }}
+          region: ${{ inputs.cells }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           current_version: ${{ steps.build.outputs.current_version }}
           commit_diff: ${{ steps.build.outputs.commit_diff }}
@@ -204,7 +207,7 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.regions }}
+          region: ${{ inputs.cells }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
@@ -277,7 +280,7 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.regions }}
+          region: ${{ inputs.cells }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
@@ -313,7 +316,7 @@ jobs:
         env:
           OWNER: ${{ github.repository_owner }}
           COMPONENT: ${{ inputs.component }}
-          REGIONS: ${{ inputs.regions }}
+          CELLS: ${{ inputs.cells }}
           IMAGE_TAG: ${{ needs.prepare.outputs.short_sha }}
           SLACK_THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
@@ -332,7 +335,7 @@ jobs:
             const deploySpaAppPoke = process.env.DEPLOY_SPA_POKE === 'true';
 
             const payload = {
-              regions: process.env.REGIONS,
+              cells: process.env.CELLS,
               component,
               image_tag: process.env.IMAGE_TAG,
               slack_thread_ts: process.env.SLACK_THREAD_TS,
@@ -378,7 +381,7 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.regions }}
+          region: ${{ inputs.cells }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
