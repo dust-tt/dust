@@ -231,9 +231,9 @@ function escapeSlackText(text: string): string {
 
 /**
  * @cc [label:product] review-request-slack-format
- * Format an eligible request as the requester mention and PR URL, followed by its `r?` lines with
- * trailing prose preserved. Resolve requester and reviewer mentions through `.authors` emails and
- * Slack user lookup; unresolved handles remain plain text.
+ * Format each eligible `r?` line with trailing prose preserved, followed by the PR URL and
+ * `(from: @requester)` on the same line. Resolve requester and reviewer mentions through `.authors`
+ * emails and Slack user lookup; unresolved handles remain plain text.
  */
 /**
  * @cc [label:error-handling] review-request-slack-delivery
@@ -325,5 +325,10 @@ export async function formatSlackNotification({
       (mention) => mentions.get(mention.slice(1).toLowerCase()) ?? mention
     )
   );
-  return `${requester}: ${escapeSlackText(notification.prUrl)}\n${lines.join("\n")}`;
+  return lines
+    .map(
+      (line) =>
+        `${line} ${escapeSlackText(notification.prUrl)} (from: ${requester})`
+    )
+    .join("\n");
 }

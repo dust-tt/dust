@@ -23,13 +23,13 @@ for review requests GitHub rejects with a validation error, while still sending 
 Each eligible request also posts to `#engineering_pr_reviews` (`C09GELMTTRT`):
 
 ```text
-@requester: https://github.com/dust-tt/dust/pull/123
-r? @reviewer please take a look
+r? @reviewer please take a look https://github.com/dust-tt/dust/pull/123 (from: @requester)
 ```
 
 The requester and reviewer handles become real Slack mentions through `.authors` email mappings
 and Slack's `users.lookupByEmail`. Unmapped handles remain plain text. Only request lines are
-forwarded, with trailing prose preserved; other PR description or comment text is omitted.
+forwarded, each followed by the PR URL and requester on the same line. Trailing prose is preserved;
+other PR description or comment text is omitted.
 Slack delivery errors fail the workflow so rejected notifications are visible in the run logs.
 
 The workflow uses `GITHUB_TOKEN` and the existing `SLACK_BOT_TOKEN`, and loads this action from the
