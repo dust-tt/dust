@@ -53,6 +53,11 @@ leaves old incremental and dep artifacts behind on rebuilds; `infra.sh` runs
 uninstalled toolchains, and anything over 12GiB. Override with
 `DUST_CARGO_SWEEP_DAYS` / `DUST_CARGO_SWEEP_MAXSIZE`.
 
+Elasticsearch is started early in `infra.sh` (before Postgres) so JVM cold boot
+overlaps other services. Dev flags disable ML, GeoIP downloads, and monitoring
+collection. Wait timeout defaults to 240s (`DUST_ES_WAIT_SECONDS`) for Codespace
+first-boot contention.
+
 `--reset-volumes` drops that data too: the next `infra.sh` starts from a
 pristine cluster (schema, indices, collection) with no local workspaces or
 documents.

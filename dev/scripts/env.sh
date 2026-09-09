@@ -12,6 +12,8 @@ export DUST_APPS_PROMPT_FILE="${DUST_APPS_PROMPT_FILE:-/tmp/dust-infra/start-app
 # Persistent core/target volume: keep recent artifacts, drop the rest.
 export DUST_CARGO_SWEEP_DAYS="${DUST_CARGO_SWEEP_DAYS:-14}"
 export DUST_CARGO_SWEEP_MAXSIZE="${DUST_CARGO_SWEEP_MAXSIZE:-12GiB}"
+# ES cold start on Codespace first boot often exceeds 90s under contention.
+export DUST_ES_WAIT_SECONDS="${DUST_ES_WAIT_SECONDS:-240}"
 
 # 1Password Environment id for shared cloud-agent / container secrets (not a credential).
 # Cloud agents get it injected as a runtime secret; this default serves local docker runs.
