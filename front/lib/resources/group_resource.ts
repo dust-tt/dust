@@ -49,7 +49,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { MANAGER_ROLE_NAME } from "@app/types/user";
+import {
+  highestRole,
+  isMorePrivilegedRole,
+  MANAGER_ROLE_NAME,
+} from "@app/types/user";
 import type { DirectoryGroup } from "@workos-inc/node";
 import assert from "assert";
 import type {
@@ -61,20 +65,6 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { col, fn, Op, QueryTypes } from "sequelize";
-
-// Privilege ordering used to decide whether a role sync would upgrade or
-// downgrade a member. Higher is more privileged; `builder` is deprecated and
-// ranks with `user`.
-const ROLE_RANK: Record<MembershipRoleType, number> = {
-  admin: 3,
-  manager: 2,
-  builder: 1,
-  user: 1,
-};
-
-function roleRank(role: MembershipRoleType): number {
-  return ROLE_RANK[role];
-}
 
 type CachedGroup = {
   id: ModelId;
@@ -2788,17 +2778,21 @@ export class GroupResource extends BaseResource<GroupModel> {
       transaction,
     });
 
-    let role: MembershipRoleType = "user";
-    for (const group of userGroups) {
-      if (group.grantedRole === "admin") {
-        return "admin";
-      }
-      if (group.grantedRole === "manager") {
-        role = "manager";
-      }
-    }
+    return this.roleFromGrantedRoles(
+      removeNulls(userGroups.map((group) => group.grantedRole))
+    );
+  }
 
-    return role;
+  // The workspace role granted by a set of role-granting groups: the highest
+  // granted role (admin > manager per the shared `ROLES` ordering), or "user"
+  // when no group grants a role.
+  private static roleFromGrantedRoles(
+    grantedRoles: GroupGrantableRole[]
+  ): MembershipRoleType {
+    return grantedRoles.reduce<MembershipRoleType>(
+      (max, role) => highestRole(max, role),
+      "user"
+    );
   }
 
   /**
@@ -2859,7 +2853,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       // no longer granted by any group in the workspace, keep it rather than
       // downgrading them.
       if (
-        roleRank(newRole) < roleRank(currentMembership.role) &&
+        isMorePrivilegedRole(currentMembership.role, newRole) &&
         protectRoles?.has(currentMembership.role)
       ) {
         continue;
