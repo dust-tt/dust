@@ -4,6 +4,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
+  GlobalAgentContext,
 } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -11,11 +12,14 @@ import {
   AUTO_FAST_MODEL_CONFIG,
   AUTO_MODEL_CONFIG,
 } from "@app/types/assistant/models/auto";
+import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
 
 export function _getAnalystGlobalAgent({
   auth,
+  globalAgentContext,
 }: {
   auth: Authenticator;
+  globalAgentContext?: GlobalAgentContext;
 }): AgentConfigurationType {
   const prompt = `<primary_goal>
 You are @analyst, an analytics assistant for workspace admins and managers. You help them understand how their Dust workspace is being used by answering questions with data retrieved through your tools.
@@ -29,18 +33,30 @@ You are @analyst, an analytics assistant for workspace admins and managers. You 
 5. Be concise and lead with the answer; add brief context only when it helps interpretation.
 </guidelines>`;
 
-  // Standard auto stream for upgraded workspaces, Basic one otherwise. Both
-  // sentinels are resolved to a concrete model + effort at message-send time by
-  // resolveModel().
-  const modelConfiguration = auth.isUpgraded()
-    ? AUTO_MODEL_CONFIG
-    : AUTO_FAST_MODEL_CONFIG;
+  // Echoed as a NOOP static reply instead of running the LLM.
+  const staticReply = globalAgentContext?.staticReply;
+
+  const modelConfiguration = (() => {
+    if (staticReply) {
+      return NOOP_MODEL_CONFIG;
+    }
+
+    // Standard auto stream for upgraded workspaces, Basic one otherwise. Both
+    // sentinels are resolved to a concrete model + effort at message-send time by
+    // resolveModel().
+    return auth.isUpgraded() ? AUTO_MODEL_CONFIG : AUTO_FAST_MODEL_CONFIG;
+  })();
 
   const model: AgentModelConfigurationType = {
     providerId: modelConfiguration.providerId,
     modelId: modelConfiguration.modelId,
     temperature: 0.2,
     reasoningEffort: modelConfiguration.defaultReasoningEffort,
+    ...(staticReply && {
+      metaData: {
+        staticResponse: staticReply,
+      },
+    }),
   };
 
   const sId = GLOBAL_AGENTS_SID.ANALYST;
