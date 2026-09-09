@@ -1,12 +1,11 @@
 // @vitest-environment node: ZIP inspection requires Node builtins.
 
-import { Readable } from "node:stream";
+import { PassThrough, Readable } from "node:stream";
 import type { FolderArchiveFileSystem } from "@app/lib/api/files/folder_archive";
 import {
   planFolderArchive,
   streamFolderArchive,
 } from "@app/lib/api/files/folder_archive";
-import { streamToBuffer } from "@app/lib/utils/streams";
 import type { FileSystemEntry } from "@app/types/api/file_system/types";
 import type { FileSystemMount } from "@app/types/file_system";
 import { Ok } from "@app/types/shared/result";
@@ -22,6 +21,24 @@ const mount: FileSystemMount = {
   legacySandboxMountPoint: "/files/conversation",
   permissions: { canRead: true, canWrite: true },
 };
+
+const podMount: FileSystemMount = {
+  kind: "pod",
+  id: "p1",
+  scopedPrefix: "pod-p1",
+  sandboxMountPoint: "/files/pod-p1",
+  legacyPrefix: "project",
+  legacySandboxMountPoint: "/files/pod",
+  permissions: { canRead: true, canWrite: true },
+};
+
+async function webStreamToBuffer(stream: ReadableStream): Promise<Buffer> {
+  return Buffer.from(await new Response(stream).arrayBuffer());
+}
+
+async function nextEventLoopTurn(): Promise<void> {
+  await new Promise((resolve) => setImmediate(resolve));
+}
 
 function file(path: string, sizeBytes: number): FileSystemEntry {
   return {
@@ -105,14 +122,20 @@ describe("planFolderArchive", () => {
     });
   });
 
-  it("allows an empty mount root", async () => {
-    const result = await planFolderArchive(makeFileSystem(), "conversation-c1");
+  it.each([
+    mount,
+    podMount,
+  ])("allows an empty $kind mount root", async (currentMount) => {
+    const result = await planFolderArchive(
+      makeFileSystem({ mounts: [currentMount] }),
+      currentMount.scopedPrefix
+    );
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
       throw result.error;
     }
-    expect(result.value.directories).toEqual(["conversation-c1/"]);
+    expect(result.value.directories).toEqual([`${currentMount.scopedPrefix}/`]);
     expect(result.value.files).toEqual([]);
   });
 
@@ -203,7 +226,7 @@ describe("streamFolderArchive", () => {
       return new Ok(stream);
     };
 
-    const result = await streamToBuffer(
+    const result = await webStreamToBuffer(
       streamFolderArchive(fileSystem, {
         archiveFileName: "reports.zip",
         directories: ["reports/", "reports/empty/"],
@@ -220,11 +243,7 @@ describe("streamFolderArchive", () => {
       })
     );
 
-    expect(result.isOk()).toBe(true);
-    if (result.isErr()) {
-      throw new Error(result.error);
-    }
-    const zip = new AdmZip(result.value);
+    const zip = new AdmZip(result);
     expect(zip.getEntries().map((entry) => entry.entryName)).toEqual([
       "reports/",
       "reports/empty/",
@@ -234,5 +253,73 @@ describe("streamFolderArchive", () => {
     expect(zip.readAsText("reports/a.txt")).toBe("alpha");
     expect(zip.readAsText("reports/nested/b.txt")).toBe("bravo");
     expect(maxActiveReads).toBe(1);
+  });
+
+  it("cancels an active source after its delayed pipe setup", async () => {
+    const source = new PassThrough();
+    const fileSystem = makeFileSystem();
+    fileSystem.read = async () => new Ok(source);
+
+    const reader = streamFolderArchive(fileSystem, {
+      archiveFileName: "reports.zip",
+      directories: ["reports/"],
+      files: [
+        {
+          archivePath: "reports/a.txt",
+          canonicalPath: "conversation-c1/reports/a.txt",
+        },
+      ],
+    }).getReader();
+    await nextEventLoopTurn();
+
+    await reader.cancel();
+    await nextEventLoopTurn();
+
+    expect(source.destroyed).toBe(false);
+    const upstream = new PassThrough();
+    upstream.pipe(source);
+    expect(source.destroyed).toBe(true);
+    upstream.destroy();
+  });
+
+  it("cancels a source returned after the archive download is cancelled", async () => {
+    type ReadResult = Awaited<ReturnType<FolderArchiveFileSystem["read"]>>;
+
+    let resolveRead!: (result: ReadResult) => void;
+    const pendingRead = new Promise<ReadResult>((resolve) => {
+      resolveRead = resolve;
+    });
+    let markReadStarted!: () => void;
+    const readStarted = new Promise<void>((resolve) => {
+      markReadStarted = resolve;
+    });
+    const fileSystem = makeFileSystem();
+    fileSystem.read = () => {
+      markReadStarted();
+      return pendingRead;
+    };
+
+    const reader = streamFolderArchive(fileSystem, {
+      archiveFileName: "reports.zip",
+      directories: ["reports/"],
+      files: [
+        {
+          archivePath: "reports/a.txt",
+          canonicalPath: "conversation-c1/reports/a.txt",
+        },
+      ],
+    }).getReader();
+    await readStarted;
+    await reader.cancel();
+
+    const source = new PassThrough();
+    resolveRead(new Ok(source));
+    await nextEventLoopTurn();
+
+    expect(source.destroyed).toBe(false);
+    const upstream = new PassThrough();
+    upstream.pipe(source);
+    expect(source.destroyed).toBe(true);
+    upstream.destroy();
   });
 });

@@ -1,15 +1,17 @@
 import path from "node:path";
-import type { Readable } from "node:stream";
-import { PassThrough } from "node:stream";
+import { PassThrough, Readable } from "node:stream";
 import { finished } from "node:stream/promises";
 import type { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import type { DustFileSystemError } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { createReadableCancellationHandler } from "@app/types/shared/utils/streams";
 import { ZipArchive } from "archiver";
 
 const DIRECTORY_CONTENT_TYPE = "application/x-directory";
+// One slot permits a backend root-directory placeholder; the other detects one entry over limit.
+const FOLDER_ARCHIVE_LIST_EXTRA_ENTRIES = 2;
 
 export const DEFAULT_FOLDER_ARCHIVE_LIMITS: FolderArchiveLimits = {
   maxEntries: 5_000,
@@ -62,6 +64,11 @@ export type FolderArchiveFileSystem = Pick<
 
 export type FolderArchivePlanError = DustFileSystemError | FolderArchiveError;
 
+/**
+ * @cc [owner:davidebbo,label:product] mounted-root-is-downloadable
+ * A readable conversation or pod mount root is a valid archive target even when it has no stat
+ * result or listed children.
+ */
 export async function planFolderArchive(
   fileSystem: FolderArchiveFileSystem,
   canonicalFolderPath: string,
@@ -90,7 +97,7 @@ export async function planFolderArchive(
   }
 
   const listResult = await fileSystem.list(normalizedFolderPath, {
-    maxFiles: limits.maxEntries + 2,
+    maxFiles: limits.maxEntries + FOLDER_ARCHIVE_LIST_EXTRA_ENTRIES,
   });
   if (listResult.isErr()) {
     return new Err(listResult.error);
@@ -171,13 +178,25 @@ export async function planFolderArchive(
   });
 }
 
+/**
+ * @cc [owner:davidebbo,label:performance] archive-stream-backpressure
+ * The returned Web stream must propagate consumer backpressure to the ZIP output.
+ */
+/**
+ * @cc [owner:davidebbo,label:error-handling] archive-stream-cancellation
+ * Cancelling the returned Web stream must abort the archive and stop both active and subsequently
+ * resolved file-source streams without destroying a source before its first `pipe` event.
+ */
 export function streamFolderArchive(
   fileSystem: FolderArchiveFileSystem,
   plan: FolderArchivePlan
-): Readable {
+): ReadableStream {
   const output = new PassThrough();
+  // Node's stream/web declarations and TypeScript's DOM declarations describe the same runtime
+  // Web stream but currently disagree on BYOB generic constraints.
+  const webOutput = Readable.toWeb(output) as ReadableStream;
   const archive = new ZipArchive({ zlib: { level: 6 } });
-  let activeReadStream: Readable | null = null;
+  let cancelActiveReadStream: (() => void) | null = null;
   let failed = false;
 
   const fail = (error: unknown) => {
@@ -185,7 +204,7 @@ export function streamFolderArchive(
       return;
     }
     failed = true;
-    activeReadStream?.destroy();
+    cancelActiveReadStream?.();
     void archive.abort();
     output.destroy(normalizeError(error));
   };
@@ -221,16 +240,30 @@ export function streamFolderArchive(
         return;
       }
 
-      activeReadStream = readResult.value;
-      const streamFinished = finished(activeReadStream, { cleanup: true });
-      archive.append(activeReadStream, { name: file.archivePath });
-      await streamFinished;
-      activeReadStream = null;
+      const readStream = readResult.value;
+      const cancelReadStream = createReadableCancellationHandler(readStream);
+      if (failed) {
+        cancelReadStream();
+        return;
+      }
+
+      cancelActiveReadStream = cancelReadStream;
+      try {
+        const streamFinished = finished(readStream, { cleanup: true });
+        archive.append(readStream, { name: file.archivePath });
+        await streamFinished;
+      } finally {
+        cancelActiveReadStream = null;
+      }
+
+      if (failed) {
+        return;
+      }
     }
 
     await archive.finalize();
   };
 
   void writeArchive().catch(fail);
-  return output;
+  return webOutput;
 }
