@@ -5,16 +5,13 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 
-const ANALYTICS_EXPORT_NAMES = [
-  "analytics_table",
-  "automations",
-  "consumption_lines",
-  "credit_usage",
-  "programmatic_cost",
-  "workspace_usage_legacy",
-] as const;
-
-export type AnalyticsExportName = (typeof ANALYTICS_EXPORT_NAMES)[number];
+export type AnalyticsExportName =
+  | "analytics_table"
+  | "automations"
+  | "consumption_lines"
+  | "credit_usage"
+  | "programmatic_cost"
+  | "workspace_usage_legacy";
 
 export type AnalyticsExportParams = {
   exportName: AnalyticsExportName;
@@ -23,7 +20,7 @@ export type AnalyticsExportParams = {
   fileName?: string;
   rowCount?: number;
   period?: { start: string; end: string };
-  query?: Record<string, string | number | boolean | undefined>;
+  query?: Record<string, string | number | boolean>;
 };
 
 /**
@@ -37,36 +34,34 @@ export async function emitAnalyticsExportedEvent(
   auth: Authenticator,
   params: AnalyticsExportParams
 ): Promise<void> {
-  const exportQuery = params.query
-    ? Object.entries(params.query)
-        .filter(
-          (entry): entry is [string, string | number | boolean] =>
-            entry[1] !== undefined
-        )
-        .map(([key, value]) => `${key}=${value}`)
-        .join("&")
-    : "";
+  const metadata: Record<string, string> = {
+    export_name: params.exportName,
+    format: params.format,
+  };
+  if (params.dataset !== undefined) {
+    metadata.dataset = params.dataset;
+  }
+  if (params.fileName !== undefined) {
+    metadata.file_name = params.fileName;
+  }
+  if (params.rowCount !== undefined) {
+    metadata.row_count = String(params.rowCount);
+  }
+  if (params.period) {
+    metadata.period_start = params.period.start;
+    metadata.period_end = params.period.end;
+  }
+  if (params.query) {
+    metadata.export_query = Object.entries(params.query)
+      .map(([key, value]) => `${key}=${value}`)
+      .join("&");
+  }
 
-  void emitAuditLogEvent({
+  return emitAuditLogEvent({
     auth,
     action: "analytics.exported",
     targets: [buildAuditLogTarget("workspace", auth.getNonNullableWorkspace())],
     context: getAuditLogContext(auth),
-    metadata: {
-      export_name: params.exportName,
-      format: params.format,
-      ...(params.dataset !== undefined ? { dataset: params.dataset } : {}),
-      ...(params.fileName !== undefined ? { file_name: params.fileName } : {}),
-      ...(params.rowCount !== undefined
-        ? { row_count: String(params.rowCount) }
-        : {}),
-      ...(params.period
-        ? {
-            period_start: params.period.start,
-            period_end: params.period.end,
-          }
-        : {}),
-      ...(exportQuery ? { export_query: exportQuery } : {}),
-    },
+    metadata,
   });
 }

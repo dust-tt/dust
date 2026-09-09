@@ -37,25 +37,29 @@ async function resolveConversationCreator(
   conversation: AuditableConversation
 ): Promise<ConversationCreatorInfo> {
   const actorUser = auth.user();
-  const participants = await ConversationResource.listParticipantDetails(
+  const creatorModelId = await ConversationResource.fetchFirstParticipantUserId(
     auth,
     conversation
   );
-  const [creatorModelId] = participants.map((p) => p.userId);
-  if (creatorModelId === undefined) {
-    return { creator: null, relation: actorUser ? "no_creator" : null };
+  if (creatorModelId === null) {
+    return { creator: null, relation: "no_creator" };
   }
 
   const [creatorUser] = await UserResource.fetchByModelIds([creatorModelId]);
   if (!creatorUser) {
-    return { creator: null, relation: actorUser ? "no_creator" : null };
+    return { creator: null, relation: "no_creator" };
   }
 
   let relation: ConversationAccessRelation | null = null;
   if (actorUser) {
     if (actorUser.id === creatorModelId) {
       relation = "creator";
-    } else if (participants.some((p) => p.userId === actorUser.id)) {
+    } else if (
+      await ConversationResource.isConversationParticipant(auth, {
+        conversation,
+        user: actorUser.toJSON(),
+      })
+    ) {
       relation = "participant";
     } else {
       relation = "non_participant";
@@ -87,7 +91,18 @@ export async function emitConversationAccessedEvent(
     conversation
   );
 
-  void emitAuditLogEvent({
+  const metadata: Record<string, string> = {
+    conversation_id: conversation.sId,
+  };
+  if (creator) {
+    metadata.conversation_creator_id = creator.userId;
+    metadata.conversation_creator_email = creator.email;
+  }
+  if (relation) {
+    metadata.access_relation = relation;
+  }
+
+  return emitAuditLogEvent({
     auth,
     action: "conversation.accessed",
     targets: [
@@ -98,15 +113,6 @@ export async function emitConversationAccessedEvent(
       }),
     ],
     context: getAuditLogContext(auth),
-    metadata: {
-      conversation_id: conversation.sId,
-      ...(creator
-        ? {
-            conversation_creator_id: creator.userId,
-            conversation_creator_email: creator.email,
-          }
-        : {}),
-      ...(relation ? { access_relation: relation } : {}),
-    },
+    metadata,
   });
 }
