@@ -3,6 +3,10 @@ import {
   MAX_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_USER_SPEND_LIMIT_AWU_CREDITS,
 } from "@app/types/api/users/spend_limit";
+import {
+  MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
+  MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
+} from "@app/types/credits";
 import type { GroupType } from "@app/types/groups";
 
 export type GroupRow = {
@@ -13,6 +17,16 @@ export type GroupRow = {
   isHighest: boolean;
   onClick?: () => void;
 };
+
+export type SpendLimitInput =
+  | { kind: "unlimited" }
+  | { kind: "limited"; awuCredits: number };
+
+export function toSpendLimit(awuCredits: number | null): SpendLimitInput {
+  return awuCredits === null
+    ? { kind: "unlimited" }
+    : { kind: "limited", awuCredits };
+}
 
 export function parseCreditsInput(
   raw: string
@@ -32,6 +46,33 @@ export function parseCreditsInput(
     return {
       ok: false,
       message: `Credits cannot exceed ${MAX_USER_SPEND_LIMIT_AWU_CREDITS.toLocaleString("en-US")}.`,
+    };
+  }
+  return { ok: true, awuCredits: parsed };
+}
+
+// Unlike `parseCreditsInput`, the workspace default has no "unlimited" state:
+// it's always a concrete number, so an empty input is rejected rather than
+// silently coerced to 0 (which would mean "no pool access").
+export function parseDefaultLimitInput(
+  raw: string
+): { ok: true; awuCredits: number } | { ok: false; message: string } {
+  const trimmed = raw.trim();
+  if (trimmed === "") {
+    return {
+      ok: false,
+      message: `Enter a whole number of credits between ${MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS.toLocaleString("en-US")} and ${MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS.toLocaleString("en-US")}.`,
+    };
+  }
+  const parsed = Number(trimmed);
+  if (
+    !Number.isInteger(parsed) ||
+    parsed < MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
+    parsed > MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS
+  ) {
+    return {
+      ok: false,
+      message: `Enter a whole number of credits between ${MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS.toLocaleString("en-US")} and ${MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS.toLocaleString("en-US")}.`,
     };
   }
   return { ok: true, awuCredits: parsed };

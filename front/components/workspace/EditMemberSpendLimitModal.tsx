@@ -1,8 +1,9 @@
+import { CreditLimitInput } from "@app/components/workspace/CreditLimitInput";
 import { MemberGroupLimitTable } from "@app/components/workspace/MemberGroupLimitTable";
-import { MemberPersonalLimitInput } from "@app/components/workspace/MemberPersonalLimitInput";
 import {
   groupRowsForMember,
   parseCreditsInput,
+  toSpendLimit,
 } from "@app/components/workspace/member_spend_limit_helpers";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits } from "@app/lib/client/credits";
@@ -131,9 +132,10 @@ function MemberSpendLimitForm({
 
     const personalChanged =
       personalResult.awuCredits !== initialPersonalOverride;
-    const groupChanges = groupResults.filter(
-      ({ row, result }) =>
-        result.ok && result.awuCredits !== row.poolCapAwuCredits
+    const groupChanges = groupResults.flatMap(({ row, result }) =>
+      result.ok && result.awuCredits !== row.poolCapAwuCredits
+        ? [{ row, awuCredits: result.awuCredits }]
+        : []
     );
 
     if (!personalChanged && groupChanges.length === 0) {
@@ -145,13 +147,7 @@ function MemberSpendLimitForm({
     try {
       const tasks: Array<() => Promise<unknown>> = [];
       if (personalChanged) {
-        const limit =
-          personalResult.awuCredits === null
-            ? ({ kind: "unlimited" } as const)
-            : ({
-                kind: "limited",
-                awuCredits: personalResult.awuCredits,
-              } as const);
+        const limit = toSpendLimit(personalResult.awuCredits);
         tasks.push(() =>
           doUpdateSpendLimit({
             memberId: member.sId,
@@ -160,14 +156,8 @@ function MemberSpendLimitForm({
           })
         );
       }
-      for (const { row, result } of groupChanges) {
-        if (!result.ok) {
-          continue;
-        }
-        const limit =
-          result.awuCredits === null
-            ? ({ kind: "unlimited" } as const)
-            : ({ kind: "limited", awuCredits: result.awuCredits } as const);
+      for (const { row, awuCredits } of groupChanges) {
+        const limit = toSpendLimit(awuCredits);
         tasks.push(() =>
           doUpdateGroupSpendLimit({
             groupId: row.groupId,
@@ -210,7 +200,8 @@ function MemberSpendLimitForm({
       </DialogHeader>
       <DialogContainer>
         <div className="flex flex-col gap-5">
-          <MemberPersonalLimitInput
+          <CreditLimitInput
+            label="Personal limit"
             value={personalLimitInput}
             readOnly={readOnly}
             isHighest={hasPersonalOverride}
@@ -224,7 +215,7 @@ function MemberSpendLimitForm({
           {memberGroupRows.length > 0 && (
             <Page.Vertical gap="xs" align="stretch">
               <span className="flex items-center gap-1 text-sm font-medium text-foreground">
-                Group limit
+                Group limits
               </span>
               <MemberGroupLimitTable
                 rows={memberGroupRows}

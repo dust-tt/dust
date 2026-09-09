@@ -1,5 +1,6 @@
+import { CreditLimitNumberInput } from "@app/components/workspace/CreditLimitInput";
 import type { GroupRow } from "@app/components/workspace/member_spend_limit_helpers";
-import { DataTable, Input } from "@dust-tt/sparkle";
+import { DataTable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 interface MemberGroupLimitTableProps {
@@ -44,22 +45,12 @@ export function MemberGroupLimitTable({
         const draft = groupLimitInputs[groupId] ?? "";
         const message = groupValidationMessages[groupId] ?? null;
         return (
-          <Input
-            size="sm"
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            placeholder="No limit"
-            disabled={readOnly}
-            value={draft !== "" ? Number(draft).toLocaleString() : ""}
-            onChange={(e) => {
-              onChange(groupId, e.target.value.replace(/[^\d]/g, ""));
-            }}
-            isError={message !== null}
-            message={message ?? undefined}
-            messageStatus={message !== null ? "error" : undefined}
+          <CreditLimitNumberInput
+            value={draft}
+            readOnly={readOnly}
+            validationMessage={message}
+            onChange={(cleaned) => onChange(groupId, cleaned)}
             suffix="credits/m."
-            isUnit
           />
         );
       },

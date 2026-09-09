@@ -1,3 +1,4 @@
+import { parseDefaultLimitInput } from "@app/components/workspace/member_spend_limit_helpers";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import {
   useDefaultUserSpendLimit,
@@ -5,10 +6,6 @@ import {
   useUpdateUsageSettings,
   useUsageSettings,
 } from "@app/lib/swr/usage_settings";
-import {
-  MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
-  MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
-} from "@app/types/credits";
 import {
   InputWithSave,
   Page,
@@ -60,17 +57,12 @@ export function UsageSettingsCard({
   const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? 0;
 
   const handleSaveDefaultLimit = async (newValue: string) => {
-    const parsed = Number(newValue);
-    if (
-      !Number.isInteger(parsed) ||
-      parsed < MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
-      parsed > MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
-      parsed === currentDefaultLimit
-    ) {
+    const parseResult = parseDefaultLimitInput(newValue);
+    if (!parseResult.ok || parseResult.awuCredits === currentDefaultLimit) {
       // The component reverts to the current value when nothing is persisted.
       return;
     }
-    await doUpdateDefaultUserSpendLimit(parsed);
+    await doUpdateDefaultUserSpendLimit(parseResult.awuCredits);
   };
 
   return (
