@@ -111,6 +111,12 @@ makeScript(
       );
     }
 
+    if (trigger.editor !== user.id) {
+      throw new Error(
+        `User ${userSId} is not the current editor of trigger ${triggerSId}.`
+      );
+    }
+
     const candidates = await frontSequelize.query<EmptyTriggeredConversation>(
       `
       SELECT
@@ -124,13 +130,8 @@ makeScript(
         AND c."createdAt" >= :from
         AND c."createdAt" < :to
         AND c.visibility <> 'deleted'
-        AND EXISTS (
-          SELECT 1
-          FROM conversation_participants cp
-          WHERE cp."workspaceId" = c."workspaceId"
-            AND cp."conversationId" = c.id
-            AND cp."userId" = :userId
-        )
+        -- Failed trigger attempts create the conversation before participants
+        -- are added. Only exclude conversations shared with another user.
         AND NOT EXISTS (
           SELECT 1
           FROM conversation_participants cp_other
@@ -222,10 +223,12 @@ makeScript(
         },
       });
 
+      const hasOtherParticipant = participants.some(
+        (participant) => participant.userId !== user.id
+      );
       const isStillSafeToDelete =
         messageCount === 0 &&
-        participants.length === 1 &&
-        participants[0].userId === user.id &&
+        !hasOtherParticipant &&
         conversation.visibility !== "deleted";
 
       if (!isStillSafeToDelete) {
