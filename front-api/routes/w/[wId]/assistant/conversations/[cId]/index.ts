@@ -1,11 +1,7 @@
 import { deleteOrLeaveConversation } from "@app/lib/api/assistant/conversation";
 import { clearActionRequiredIfNoBlockedActions } from "@app/lib/api/assistant/conversation/blocked_actions";
 import { updateConversationTitle } from "@app/lib/api/assistant/conversation/title";
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
+import { emitConversationAccessedEvent } from "@app/lib/api/audit/conversation_access";
 import {
   moveConversationOutOfProject,
   moveConversationToProject,
@@ -219,21 +215,7 @@ app.get(
       return apiErrorForConversation(ctx, error);
     }
 
-    void emitAuditLogEvent({
-      auth,
-      action: "conversation.accessed",
-      targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        buildAuditLogTarget("conversation", {
-          sId: conversation.sId,
-          name: conversation.title ?? "",
-        }),
-      ],
-      context: getAuditLogContext(auth),
-      metadata: {
-        conversation_id: conversation.sId,
-      },
-    });
+    void emitConversationAccessedEvent(auth, conversation);
 
     return ctx.json({ conversation });
   }

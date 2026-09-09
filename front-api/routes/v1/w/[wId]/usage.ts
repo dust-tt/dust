@@ -1,3 +1,4 @@
+import { emitAnalyticsExportedEvent } from "@app/lib/api/audit/analytics_export";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getConversationsDataRetention } from "@app/lib/data_retention";
 import { unsafeGetUsageData } from "@app/lib/workspace_usage";
@@ -70,6 +71,14 @@ app.get("/", async (ctx) => {
   }
 
   const csvData = await unsafeGetUsageData(startDate, endDate, owner);
+  void emitAnalyticsExportedEvent(auth, {
+    exportName: "workspace_usage_legacy",
+    format: "csv",
+    period: {
+      start: query.start_date,
+      end: query.end_date ?? endDate.toISOString().slice(0, 10),
+    },
+  });
   ctx.header("Content-Type", "text/csv");
   return ctx.body(csvData);
 });
