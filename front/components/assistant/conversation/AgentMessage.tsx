@@ -133,7 +133,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import type { MutableRefObject, ReactElement, ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
@@ -247,7 +247,6 @@ interface AgentMessageProps {
   ) => Promise<Result<undefined, DustError>>;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
-  isAutoScrollEnabledRef: MutableRefObject<boolean>;
   isProjectArchived?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
 }
@@ -268,7 +267,6 @@ export function AgentMessage({
   handleSubmit,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
-  isAutoScrollEnabledRef,
   isProjectArchived = false,
   setLimitReachedCode,
 }: AgentMessageProps) {
@@ -324,7 +322,6 @@ export function AgentMessage({
   const { shouldStream, streamError } = useAgentMessageStream({
     agentMessage: agentMessage,
     conversationId,
-    isAutoScrollEnabledRef,
     owner,
     onEventCallback: useCallback(
       (eventPayload: {
