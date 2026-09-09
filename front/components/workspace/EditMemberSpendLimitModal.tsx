@@ -37,6 +37,9 @@ interface EditMemberSpendLimitModalProps {
   owner: LightWorkspaceType;
   groups: GroupType[];
   readOnly?: boolean;
+  // The workspace default applies to every member, so editing it is reserved
+  // to admins even where managers may edit personal and group limits.
+  canEditDefaultLimit?: boolean;
   // Fetched by the caller, same as `member`/`groups`: the customer-facing app
   // and poke reach this value through different routes (workspace-role-gated
   // vs. poke's superuser-scoped route), so the modal itself never fetches it.
@@ -49,6 +52,7 @@ interface MemberSpendLimitFormProps {
   owner: LightWorkspaceType;
   groups: GroupType[];
   readOnly: boolean;
+  canEditDefaultLimit: boolean;
   // Undefined while the workspace default is still being fetched: the field
   // then shows a "--" placeholder rather than a real 0, and saving is
   // blocked until it resolves (see `isDefaultLimitPending` below).
@@ -61,6 +65,7 @@ function MemberSpendLimitForm({
   owner,
   groups,
   readOnly,
+  canEditDefaultLimit,
   defaultLimitAwuCredits,
   onClose,
 }: MemberSpendLimitFormProps) {
@@ -74,11 +79,14 @@ function MemberSpendLimitForm({
     workspaceId: owner.sId,
   });
   const isDefaultHighest = member?.spendLimitSource === "default";
+  const canChangeDefaultLimit =
+    isDefaultHighest && canEditDefaultLimit && !readOnly;
   // While the workspace default is still loading, block saving instead of
   // treating the unresolved value as unchanged (which would let an admin
   // silently commit whatever ends up in the input once it finally arrives).
+  // Viewers who cannot edit it are not held back by its loading state.
   const isDefaultLimitPending =
-    isDefaultHighest && defaultLimitAwuCredits === undefined;
+    canChangeDefaultLimit && defaultLimitAwuCredits === undefined;
 
   const [defaultLimitInput, setDefaultLimitInput] = useState<string>(() =>
     defaultLimitAwuCredits !== undefined ? String(defaultLimitAwuCredits) : ""
@@ -153,14 +161,20 @@ function MemberSpendLimitForm({
       )
     );
 
-    const defaultLimitResult = parseDefaultLimitInput(defaultLimitInput);
+    // Only validated when this viewer may change it, so a locked field can
+    // never block saving the other limits.
+    const defaultLimitResult = canChangeDefaultLimit
+      ? parseDefaultLimitInput(defaultLimitInput)
+      : null;
     setDefaultLimitValidationMessage(
-      defaultLimitResult.ok ? null : defaultLimitResult.message
+      defaultLimitResult && !defaultLimitResult.ok
+        ? defaultLimitResult.message
+        : null
     );
 
     if (
       !personalResult.ok ||
-      !defaultLimitResult.ok ||
+      (defaultLimitResult && !defaultLimitResult.ok) ||
       groupResults.some(({ result }) => !result.ok)
     ) {
       return;
@@ -173,10 +187,17 @@ function MemberSpendLimitForm({
         ? [{ row, awuCredits: result.awuCredits }]
         : []
     );
-    const defaultLimitChanged =
-      defaultLimitResult.awuCredits !== defaultLimitAwuCredits;
+    const newDefaultLimit =
+      defaultLimitResult?.ok &&
+      defaultLimitResult.awuCredits !== defaultLimitAwuCredits
+        ? defaultLimitResult.awuCredits
+        : null;
 
-    if (!personalChanged && !defaultLimitChanged && groupChanges.length === 0) {
+    if (
+      !personalChanged &&
+      newDefaultLimit === null &&
+      groupChanges.length === 0
+    ) {
       onClose();
       return;
     }
@@ -184,10 +205,8 @@ function MemberSpendLimitForm({
     setIsSaving(true);
     try {
       const tasks: Array<() => Promise<unknown>> = [];
-      if (defaultLimitChanged) {
-        tasks.push(() =>
-          doUpdateDefaultUserSpendLimit(defaultLimitResult.awuCredits)
-        );
+      if (newDefaultLimit !== null) {
+        tasks.push(() => doUpdateDefaultUserSpendLimit(newDefaultLimit));
       }
       if (personalChanged) {
         const limit = toSpendLimit(personalResult.awuCredits);
@@ -261,10 +280,14 @@ function MemberSpendLimitForm({
             <CreditLimitInput
               label="Workspace default limit"
               value={defaultLimitInput}
-              readOnly={readOnly}
+              readOnly={!canChangeDefaultLimit}
+              readOnlyTooltip={
+                !readOnly && !canEditDefaultLimit
+                  ? "Only workspace admins can edit the workspace default limit."
+                  : undefined
+              }
               isHighest={false}
               validationMessage={defaultLimitValidationMessage}
-              placeholder="--"
               onChange={(cleaned) => {
                 setDefaultLimitInput(cleaned);
                 setDefaultLimitValidationMessage(null);
@@ -325,6 +348,7 @@ export function EditMemberSpendLimitModal({
   owner,
   groups,
   readOnly = false,
+  canEditDefaultLimit = false,
   defaultUserSpendLimitAwuCredits,
   isDefaultUserSpendLimitLoading,
 }: EditMemberSpendLimitModalProps) {
@@ -353,6 +377,7 @@ export function EditMemberSpendLimitModal({
           owner={owner}
           groups={groups}
           readOnly={readOnly}
+          canEditDefaultLimit={canEditDefaultLimit}
           defaultLimitAwuCredits={defaultUserSpendLimitAwuCredits}
           onClose={onClose}
         />

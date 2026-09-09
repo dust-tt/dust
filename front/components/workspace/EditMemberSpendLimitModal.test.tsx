@@ -35,10 +35,22 @@ function makeMember(
   });
 }
 
-function queryDefaultLimitInput(): HTMLElement | null {
-  const label = screen.queryByText("Workspace default limit");
+function queryLimitInput(labelText: string): HTMLElement | null {
+  const label = screen.queryByText(labelText);
   const container = label?.closest("div")?.parentElement;
   return container?.querySelector("input") ?? null;
+}
+
+function queryDefaultLimitInput(): HTMLElement | null {
+  return queryLimitInput("Workspace default limit");
+}
+
+function getPersonalLimitInput(): HTMLElement {
+  const input = queryLimitInput("Personal limit");
+  if (!input) {
+    throw new Error("Personal limit input not found");
+  }
+  return input;
 }
 
 function getDefaultLimitInput(): HTMLElement {
@@ -59,6 +71,7 @@ describe("EditMemberSpendLimitModal", () => {
         owner={owner}
         groups={groups}
         readOnly={false}
+        canEditDefaultLimit
         defaultUserSpendLimitAwuCredits={500}
         isDefaultUserSpendLimitLoading={false}
       />
@@ -66,6 +79,62 @@ describe("EditMemberSpendLimitModal", () => {
 
     expect(getDefaultLimitInput()).not.toBeDisabled();
     expect(getDefaultLimitInput()).toHaveValue("500");
+  });
+
+  it("locks the workspace default limit for managers while leaving the personal limit editable", () => {
+    render(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={vi.fn()}
+        member={makeMember("default")}
+        owner={owner}
+        groups={groups}
+        readOnly={false}
+        canEditDefaultLimit={false}
+        defaultUserSpendLimitAwuCredits={500}
+        isDefaultUserSpendLimitLoading={false}
+      />
+    );
+
+    expect(getDefaultLimitInput()).toBeDisabled();
+    expect(getDefaultLimitInput()).toHaveValue("500");
+    expect(getPersonalLimitInput()).not.toBeDisabled();
+  });
+
+  it("does not block a manager's save while the workspace default is still loading", () => {
+    render(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={vi.fn()}
+        member={makeMember("default")}
+        owner={owner}
+        groups={groups}
+        readOnly={false}
+        canEditDefaultLimit={false}
+        defaultUserSpendLimitAwuCredits={undefined}
+        isDefaultUserSpendLimitLoading
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Validate" })).not.toBeDisabled();
+  });
+
+  it("blocks an admin's save while the workspace default is still loading", () => {
+    render(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={vi.fn()}
+        member={makeMember("default")}
+        owner={owner}
+        groups={groups}
+        readOnly={false}
+        canEditDefaultLimit
+        defaultUserSpendLimitAwuCredits={undefined}
+        isDefaultUserSpendLimitLoading
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Validate" })).toBeDisabled();
   });
 
   it("shows the caller-supplied default limit but disables editing for read-only viewers", () => {

@@ -1452,6 +1452,7 @@ export function UsagePage() {
           owner={owner}
           groups={groups}
           readOnly={!isManager(owner)}
+          canEditDefaultLimit={isWorkspaceAdmin}
           defaultUserSpendLimitAwuCredits={defaultUserSpendLimit?.awuCredits}
           isDefaultUserSpendLimitLoading={isDefaultUserSpendLimitLoading}
         />
