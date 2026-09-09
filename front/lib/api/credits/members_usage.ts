@@ -2092,6 +2092,16 @@ export async function getMembersUsage({
   const subscription = auth.subscription();
   const { metronomeCustomerId } = workspace;
   const metronomeContractId = subscription?.metronomeContractId ?? null;
+  // Mirrors the enforcement branch in `lib/api/assistant/conversation.ts`:
+  // credit-priced workspaces resolve the per-user cap from the seat allowance +
+  // override/group/default; non-credit-priced (legacy) workspaces instead
+  // enforce a single workspace-wide per-member cap on a UTC-calendar-month
+  // window (`isNonCreditPricedUserSpendLimitReached`).
+  const isCreditPricedWorkspace = Boolean(
+    metronomeCustomerId &&
+      subscription?.plan &&
+      isCreditPricedPlan(subscription.plan)
+  );
 
   // Resolved up front (Redis-cached) so even empty pages carry the reset date
   // for the table header.
@@ -2133,6 +2143,19 @@ export async function getMembersUsage({
   // configuration row (created lazily; absent → no default configured).
   const creditUsageConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+
+  // Non-credit-priced (legacy) per-member cap: the raw pool default, applied
+  // uniformly to every member with no per-member/group override and no seat
+  // allowance (matching `getNonCreditPricedDefaultUserSpendLimit`). `0` means
+  // "no limit". Poke-only (`includeAlertLinks`): surfaces the enforced legacy
+  // cap in the admin members table without altering the customer usage page,
+  // whose unblock/override affordances don't apply on legacy plans.
+  const nonCreditPricedCapAwuCredits =
+    includeAlertLinks &&
+    !isCreditPricedWorkspace &&
+    (creditUsageConfig?.defaultPoolCapAwuCredits ?? 0) > 0
+      ? (creditUsageConfig?.defaultPoolCapAwuCredits ?? 0)
+      : null;
 
   // Memberships are needed up front to split consumed credits on seat type:
   // free-seat users are counted from `is_free_seat: true` usage, everyone else
@@ -2257,10 +2280,24 @@ export async function getMembersUsage({
   if (periodResult.isOk() && periodResult.value) {
     billingCycle = periodResult.value;
   }
-  const cycleBounds = billingCycle
+  // The per-cycle spend-cap counter is bucketed on the same window the
+  // enforcement writer accrues into: the UTC calendar month for
+  // non-credit-priced workspaces (no Metronome contract to anchor on), the
+  // Metronome billing period otherwise. Mirror `spendLimitCycleOverrideForAuth`
+  // so the poke counter read lands on the same Redis key. Poke-only
+  // (`includeAlertLinks`): only the admin members table surfaces the legacy
+  // rate-limiter state, and this leaves the customer usage page unchanged
+  // (`spendLimitCycleOverrideForAuth` is a no-op for credit-priced workspaces,
+  // so it only diverges on legacy plans). `billingCycle` stays Metronome-only
+  // below — the seat-usage pace classification only applies to credit-priced
+  // seats.
+  const spendCapCycle = includeAlertLinks
+    ? (spendLimitCycleOverrideForAuth(auth) ?? billingCycle)
+    : billingCycle;
+  const cycleBounds = spendCapCycle
     ? makeSpendLimitCycleWindowBounds(
-        billingCycle.cycleStart,
-        billingCycle.cycleEnd
+        spendCapCycle.cycleStart,
+        spendCapCycle.cycleEnd
       )
     : null;
   const lifetimeBounds = makeSpendLimitLifetimeWindowBounds();
@@ -2454,16 +2491,30 @@ export async function getMembersUsage({
           (seatAllowanceBySeatType[normalizedSeatType] ?? 0)
         : null;
 
-    const spendLimitSource = resolveEffectiveSpendLimitSource({
-      overrideAwuCredits,
-      groupCapAwuCredits,
-      defaultAwuCredits: effectiveDefaultAwuCredits,
-    });
-    const effectiveSpendLimitAwuCredits = resolveEffectiveSpendLimitAwuCredits({
-      overrideAwuCredits,
-      groupCapAwuCredits,
-      defaultAwuCredits: effectiveDefaultAwuCredits,
-    });
+    // Non-credit-priced (legacy) workspaces ignore the seat-allowance /
+    // override / group resolution above: enforcement applies the uniform
+    // workspace default to every member, so surface that same cap here to
+    // match. Poke-only (`nonCreditPricedCapAwuCredits` is gated on
+    // `includeAlertLinks`); the customer usage page keeps the original
+    // resolution untouched.
+    const useLegacyUniformCap = includeAlertLinks && !isCreditPricedWorkspace;
+    const spendLimitResolverInput = useLegacyUniformCap
+      ? {
+          overrideAwuCredits: null,
+          groupCapAwuCredits: null,
+          defaultAwuCredits: nonCreditPricedCapAwuCredits,
+        }
+      : {
+          overrideAwuCredits,
+          groupCapAwuCredits,
+          defaultAwuCredits: effectiveDefaultAwuCredits,
+        };
+    const spendLimitSource = resolveEffectiveSpendLimitSource(
+      spendLimitResolverInput
+    );
+    const effectiveSpendLimitAwuCredits = resolveEffectiveSpendLimitAwuCredits(
+      spendLimitResolverInput
+    );
     const effectiveCapAlert =
       spendLimitSource === "override"
         ? (perUserOverrideAlerts.get(userId) ?? null)
