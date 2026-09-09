@@ -6,7 +6,9 @@ import { z } from "zod";
 // dimension its mode does not cover, and so gets the clearing it expects.
 export const PatchSpaceMembersRequestBodySchema = z.object({
   isRestricted: z.boolean(),
-  name: z.string(),
+  // Optional: this endpoint never renames a space (PATCH on the space itself does). Omitted by
+  // surfaces with no editable name.
+  name: z.string().optional(),
   memberIds: z.array(z.string()).optional(),
   editorIds: z.array(z.string()).optional(),
   groupIds: z.array(z.string()).optional(),

@@ -968,12 +968,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return new Ok(undefined);
   }
 
+  /**
+   * @cc [owner:fabiencelier,label:product] global-space-name-immutable
+   * The global space cannot be renamed: it is always displayed as `GLOBAL_SPACE_NAME`, and its
+   * name is what its member group is named after.
+   */
   async updateName(
     auth: Authenticator,
     newName: string
   ): Promise<Result<undefined, Error>> {
     if (!auth.can("admin", this)) {
       return new Err(new Error("Only admins can update space names."));
+    }
+
+    if (this.isGlobal()) {
+      return new Err(new Error("The company space cannot be renamed."));
     }
 
     const trimmedName = newName.trim();
@@ -1106,7 +1115,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   async updatePermissions(
     auth: Authenticator,
     params: {
-      name: string;
       isRestricted: boolean;
     } & SpaceMembershipUpdate
   ): Promise<
