@@ -22,6 +22,7 @@ const AgentConfigModel: ModelStaticWorkspaceAware<AgentConfigurationModel> =
   AgentConfigurationModel;
 
 type EditorState = {
+  legacyGroup: GroupResource | null;
   legacyEditors: UserResource[];
   grantEditors: UserResource[];
 };
@@ -41,6 +42,7 @@ export type AgentEditorGrantStats = {
   agentCount: number;
   editorGrantsToAdd: number;
   editorGrantsToRemove: number;
+  endedMembershipsToAdd: number;
   mismatchedAgentCount: number;
 };
 
@@ -52,18 +54,16 @@ function userDifference(
   return left.filter(({ id }) => !rightIds.has(id));
 }
 
-async function fetchLegacyEditors(
+async function fetchLegacyGroup(
   auth: Authenticator,
   configuration: AgentConfigurationModel
-): Promise<UserResource[]> {
-  const group = await GroupResource.fetchByAgentConfiguration({
+): Promise<GroupResource | null> {
+  return GroupResource.fetchByAgentConfiguration({
     auth,
     agentConfiguration: configuration,
     // Some legacy agents have no editor group; tolerate its absence as in deletion flows.
     isDeletionFlow: true,
   });
-
-  return group ? group.getActiveMembers(auth) : [];
 }
 
 async function fetchGrantEditors(
@@ -88,12 +88,15 @@ async function fetchEditorState(
   agent: AgentResource,
   configuration: AgentConfigurationModel
 ): Promise<EditorState> {
-  const [legacyEditors, grantEditors] = await Promise.all([
-    fetchLegacyEditors(auth, configuration),
+  const [legacyGroup, grantEditors] = await Promise.all([
+    fetchLegacyGroup(auth, configuration),
     fetchGrantEditors(auth, agent),
   ]);
 
-  return { legacyEditors, grantEditors };
+  const legacyEditors = legacyGroup
+    ? await legacyGroup.getActiveMembers(auth)
+    : [];
+  return { legacyGroup, legacyEditors, grantEditors };
 }
 
 async function syncEditorGrants(
@@ -174,6 +177,15 @@ async function backfillAgentGrants(
   };
 
   await syncEditorGrants(auth, agent, configuration, changes, spec);
+  assert(agent.id !== null, "Custom agent must have a stable ID.");
+  // Copy history after active-editor sync, which can delete an empty grant group.
+  const endedMembershipsToAdd = initialState.legacyGroup
+    ? await GroupPermissionResource.backfillEditorHistory(auth, {
+        legacyGroup: initialState.legacyGroup,
+        agentModelId: agent.id,
+        execute: spec.execute,
+      })
+    : 0;
   const hasChanges = changes.toAdd.length > 0 || changes.toRemove.length > 0;
   const finalState =
     spec.execute && hasChanges
@@ -184,6 +196,7 @@ async function backfillAgentGrants(
     agentCount: 1,
     editorGrantsToAdd: changes.toAdd.length,
     editorGrantsToRemove: changes.toRemove.length,
+    endedMembershipsToAdd,
     mismatchedAgentCount: reportEditorMismatch(configuration, finalState, spec),
   };
 }
@@ -195,6 +208,8 @@ function sumStats(agentStats: AgentEditorGrantStats[]): AgentEditorGrantStats {
       editorGrantsToAdd: total.editorGrantsToAdd + current.editorGrantsToAdd,
       editorGrantsToRemove:
         total.editorGrantsToRemove + current.editorGrantsToRemove,
+      endedMembershipsToAdd:
+        total.endedMembershipsToAdd + current.endedMembershipsToAdd,
       mismatchedAgentCount:
         total.mismatchedAgentCount + current.mismatchedAgentCount,
     }),
@@ -202,6 +217,7 @@ function sumStats(agentStats: AgentEditorGrantStats[]): AgentEditorGrantStats {
       agentCount: 0,
       editorGrantsToAdd: 0,
       editorGrantsToRemove: 0,
+      endedMembershipsToAdd: 0,
       mismatchedAgentCount: 0,
     }
   );

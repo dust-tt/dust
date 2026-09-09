@@ -527,6 +527,115 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }, transaction);
   }
 
+  private static async fetchMissingEditorHistory(
+    auth: Authenticator,
+    legacyGroup: GroupResource,
+    grantGroup: GroupResource | null,
+    transaction: Transaction
+  ): Promise<GroupMembershipModel[]> {
+    // Uses the (workspaceId, groupId, status, startAt) index; only these two groups are read.
+    const memberships = await GroupMembershipModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        groupId: grantGroup
+          ? [legacyGroup.id, grantGroup.id]
+          : [legacyGroup.id],
+        status: "active",
+        endAt: { [Op.lte]: new Date() },
+      },
+      transaction,
+    });
+    // Rejoining matches on endAt, not startAt: one row per user/revocation is sufficient.
+    const existingHistory = new Set(
+      memberships
+        .filter(({ groupId }) => groupId === grantGroup?.id)
+        .map(({ userId, endAt }) => JSON.stringify([userId, endAt]))
+    );
+    return memberships.filter(({ groupId, userId, endAt }) => {
+      const key = JSON.stringify([userId, endAt]);
+      if (groupId !== legacyGroup.id || existingHistory.has(key)) {
+        return false;
+      }
+      existingHistory.add(key);
+      return true;
+    });
+  }
+
+  /**
+   * @cc [owner:philipperolet,label:security] preserve-ended-editor-memberships
+   * Backfilling editor history MUST preserve ended timestamps and MUST NOT activate memberships.
+   */
+  /**
+   * @cc [owner:philipperolet,label:migration] idempotent-editor-history
+   * Repeated executions MUST NOT duplicate a user's history for the same revocation timestamp.
+   */
+  /**
+   * @cc [owner:philipperolet,label:migration] editor-history-dry-run
+   * Dry runs MUST NOT modify groups, grants, or memberships.
+   */
+  static async backfillEditorHistory(
+    auth: Authenticator,
+    {
+      legacyGroup,
+      agentModelId,
+      execute,
+    }: {
+      legacyGroup: GroupResource;
+      agentModelId: ModelId;
+      execute: boolean;
+    }
+  ): Promise<number> {
+    assert(auth.isAdmin(), "Only admins can backfill editor history.");
+    this.assertGroupInWorkspace(auth, legacyGroup);
+    assert(legacyGroup.kind === "agent_editors");
+    const grant = {
+      grantType: "editor" as const,
+      resourceType: "agent" as const,
+      resourceId: agentModelId,
+    };
+    return withTransaction(async (transaction) => {
+      await this.getGrantLock(auth, grant, transaction);
+      let group = await this.findRegularAutoGroupForGrant(auth, {
+        ...grant,
+        transaction,
+      });
+      const missing = await this.fetchMissingEditorHistory(
+        auth,
+        legacyGroup,
+        group,
+        transaction
+      );
+      if (!execute || missing.length === 0) {
+        return missing.length;
+      }
+      if (!group) {
+        group = await GroupResource.makeNew(
+          {
+            workspaceId: auth.getNonNullableWorkspace().id,
+            name: autoGroupName(grant),
+            kind: "regular_auto",
+          },
+          { transaction }
+        );
+        await this.grant(auth, { group, ...grant, transaction });
+      }
+      const groupId = group.id;
+      await GroupMembershipModel.bulkCreate(
+        missing.map(({ userId, workspaceId, startAt, endAt, status }) => ({
+          groupId,
+          userId,
+          workspaceId,
+          startAt,
+          endAt,
+          status,
+        })),
+        { transaction }
+      );
+      // Ended rows do not change current group membership, so no membership cache is invalidated.
+      return missing.length;
+    });
+  }
+
   // Revoke a user's access by removing them from the regular_auto group that holds the grant. If the
   // user was the last member, revokes the grant and deletes the group. No-op when the user is not a
   // member of the backing group.
