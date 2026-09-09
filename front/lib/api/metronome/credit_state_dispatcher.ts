@@ -1,4 +1,5 @@
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
+import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
@@ -13,6 +14,11 @@ import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { resolveEffectiveSpendLimitAwuCredits } from "@app/lib/spend_limits/effective";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import {
+  hasMetronomeSeatBalance,
+  isSpendingFromPersonalSeat,
+  normalizeUserCreditState,
+} from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -80,6 +86,13 @@ async function fetchMaxGroupPoolCapForUser({
  * The state machine uses this limit to decide whether the user goes to
  * `on_pool` or `capped`.
  */
+/**
+ * @cc [owner:theogz,label:product] seat-exhausted-tracked-once
+ * A `seat_credits_exhausted` PostHog event is emitted only for a pro/max seat
+ * (`hasMetronomeSeatBalance`) whose credit state was `user_seat` before the
+ * transition, so a repeated alert for a seat already moved to `on_pool` never
+ * re-emits.
+ */
 export async function dispatchSeatBalanceExhausted({
   workspace,
   userId,
@@ -132,6 +145,14 @@ export async function dispatchSeatBalanceExhausted({
     defaultPoolCapAwuCredits,
   });
 
+  // Read before the transition mutates the resource in place: it tells a seat
+  // that was actually being spent from apart from a redundant alert for one
+  // already moved off its balance. Normalized because legacy rows still hold
+  // pre-narrowing states until the backfill migration lands.
+  const wasSpendingFromSeat = isSpendingFromPersonalSeat(
+    normalizeUserCreditState(membership.creditState)
+  );
+
   // Seats with pool access fall back to `on_pool`; free seats (no pool) have no
   // matching transition and stay `user_seat` — their blocking is the
   // rate-limiter lifetime cap, not this state.
@@ -155,6 +176,22 @@ export async function dispatchSeatBalanceExhausted({
       default:
         assertNever(result.error.type);
     }
+  }
+
+  // The paid seat allowance is spent. Emitted irrespective of the transition
+  // outcome: a seat with no pool budget has no matching transition but its
+  // credits are just as gone. `pool_limit_credits` is the runway left —
+  // `0` means nothing to fall back on.
+  if (wasSpendingFromSeat && hasMetronomeSeatBalance(membership.seatType)) {
+    PostHogServerSideTracking.trackEvent({
+      distinctId: userId,
+      event: "seat_credits_exhausted",
+      workspaceId: workspace.sId,
+      extra: {
+        seat_type: membership.seatType,
+        pool_limit_credits: poolLimitAwuCredits,
+      },
+    });
   }
 
   // The personal seat balance is exhausted: auto-upgrade one tier (free→pro,

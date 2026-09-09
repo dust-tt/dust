@@ -1,4 +1,5 @@
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
+import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { transitionUserCreditState } from "@app/lib/metronome/user_credit_state_machine";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -23,6 +24,10 @@ vi.mock("@app/lib/metronome/user_credit_state_machine", async () => {
 
 vi.mock("@app/lib/api/credits/auto_seat_upgrade", () => ({
   maybeAutoUpgradeSeat: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/posthog", () => ({
+  PostHogServerSideTracking: { trackEvent: vi.fn() },
 }));
 
 const TEST_METRONOME_CUSTOMER_ID = "cust_test_xxx";
@@ -103,5 +108,50 @@ describe("credit_state_dispatcher seat balance", () => {
         seatType: "max",
       }
     );
+  });
+});
+
+describe("credit_state_dispatcher seat exhaustion tracking", () => {
+  async function setupProSeat() {
+    const workspaceType = await WorkspaceFactory.metronome({
+      metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
+    });
+    const workspace = await WorkspaceResource.fetchById(workspaceType.sId);
+    if (!workspace) {
+      throw new Error("Workspace not found");
+    }
+    const user = await UserFactory.basic();
+    const membership = await MembershipFactory.associate(workspaceType, user, {
+      role: "user",
+      seatType: "pro",
+    });
+    return { workspace, workspaceType, user, membership };
+  }
+
+  it("tracks seat_credits_exhausted when the seat balance runs out", async () => {
+    const { workspace, workspaceType, user } = await setupProSeat();
+    vi.mocked(transitionUserCreditState).mockResolvedValue(new Ok("on_pool"));
+
+    await dispatchSeatBalanceExhausted({ workspace, userId: user.sId });
+
+    expect(PostHogServerSideTracking.trackEvent).toHaveBeenCalledWith({
+      distinctId: user.sId,
+      event: "seat_credits_exhausted",
+      workspaceId: workspaceType.sId,
+      extra: {
+        seat_type: "pro",
+        pool_limit_credits: 0,
+      },
+    });
+  });
+
+  it("does not track again for a seat already off its personal balance", async () => {
+    const { workspace, user, membership } = await setupProSeat();
+    await membership.updateCreditState("on_pool");
+    vi.mocked(transitionUserCreditState).mockResolvedValue(new Ok("on_pool"));
+
+    await dispatchSeatBalanceExhausted({ workspace, userId: user.sId });
+
+    expect(PostHogServerSideTracking.trackEvent).not.toHaveBeenCalled();
   });
 });
