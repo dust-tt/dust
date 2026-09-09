@@ -17,7 +17,7 @@ type ConversationAccessRelation =
   | "creator"
   | "participant"
   | "non_participant"
-  | "unowned";
+  | "no_creator";
 
 type ConversationCreatorInfo = {
   creator: { userId: string; email: string } | null;
@@ -30,7 +30,7 @@ type ConversationCreatorInfo = {
  * `createdAt`, matching `ConversationResource.isConversationCreator` and the `isCreator` flag
  * served by `lib/api/assistant/participants.ts`. When the conversation has no participant, or
  * the earliest participant's user record can no longer be fetched, `creator` MUST be null and
- * `relation` MUST be `"unowned"` — never a synthesized or placeholder identity.
+ * `relation` MUST be `"no_creator"` — never a synthesized or placeholder identity.
  */
 async function resolveConversationCreator(
   auth: Authenticator,
@@ -43,12 +43,12 @@ async function resolveConversationCreator(
   );
   const [creatorModelId] = participants.map((p) => p.userId);
   if (creatorModelId === undefined) {
-    return { creator: null, relation: actorUser ? "unowned" : null };
+    return { creator: null, relation: actorUser ? "no_creator" : null };
   }
 
   const [creatorUser] = await UserResource.fetchByModelIds([creatorModelId]);
   if (!creatorUser) {
-    return { creator: null, relation: actorUser ? "unowned" : null };
+    return { creator: null, relation: actorUser ? "no_creator" : null };
   }
 
   let relation: ConversationAccessRelation | null = null;

@@ -145,7 +145,7 @@ describe("emitConversationAccessedEvent", () => {
     );
   });
 
-  it("records unowned and omits creator keys when there is no participant", async () => {
+  it("records no_creator and omits creator keys when there is no participant", async () => {
     const { auth } = await setupActor();
     const conversation = await createConversationForAuth(auth);
 
@@ -157,7 +157,7 @@ describe("emitConversationAccessedEvent", () => {
     expect(call.metadata).toEqual(
       expect.objectContaining({
         conversation_id: conversation.sId,
-        access_relation: "unowned",
+        access_relation: "no_creator",
       })
     );
     expect(call.metadata).not.toHaveProperty("conversation_creator_id");
