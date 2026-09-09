@@ -62,20 +62,6 @@ import type {
 } from "sequelize";
 import { col, fn, Op, QueryTypes } from "sequelize";
 
-/**
- * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
- * ┃                                                                         ┃
- * ┃  IMPORTANT: GroupResource DOES NOT and SHOULD NOT have permissions      ┃
- * ┃  management of its own.                                                 ┃
- * ┃                                                                         ┃
- * ┃  Groups are designed to be used within the context of other resources   ┃
- * ┃  (e.g., SpaceResource, AgentConfigurationResource). The permissions     ┃
- * ┃  should be managed at the junction with parent resource level,          ┃
- * ┃  not at the group level.                                                ┃
- * ┃                                                                         ┃
- * ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
- */
-
 // Privilege ordering used to decide whether a role sync would upgrade or
 // downgrade a member. Higher is more privileged; `builder` is deprecated and
 // ranks with `user`.
