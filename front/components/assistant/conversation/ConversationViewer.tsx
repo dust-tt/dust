@@ -457,8 +457,7 @@ export const ConversationViewer = ({
 
         const firstUnreadIndex = findFirstUnreadMessageIndex(
           messagesAndNotices,
-          lastReadMs,
-          conversation
+          lastReadMs
         );
 
         if (firstUnreadIndex === -1) {

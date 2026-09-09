@@ -171,15 +171,11 @@ export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
 
 // Central helper to control which user message should be hidden in the UI.
 // Extend this list as we introduce more bootstrap/system user messages.
-export const isHiddenMessage = (
-  message: VirtuosoMessage,
-  conversation: ConversationWithoutContentType | undefined
-): boolean => {
+export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   return (
     (isUserMessage(message) &&
       (isHiddenMessageOrigin(message.context.origin) ||
-        isSidekickBootstrapMessage(message) ||
-        isBootstrappedOpeningMessage(message, conversation))) ||
+        isBootstrapMessage(message))) ||
     isHandoverUserMessage(message)
   );
 };
@@ -193,12 +189,9 @@ export const isHiddenMessage = (
 // item alone with a seeded size of 0, and only proceeds once the measured size
 // differs from the seed. A zero-height target therefore deadlocks the list in
 // its loading placeholder.
-export const isZeroHeightMessage = (
-  message: VirtuosoMessage,
-  conversation: ConversationWithoutContentType | undefined
-): boolean => {
+export const isZeroHeightMessage = (message: VirtuosoMessage): boolean => {
   return (
-    isHiddenMessage(message, conversation) &&
+    isHiddenMessage(message) &&
     !(isUserMessage(message) && message.context.origin === "wakeup")
   );
 };
@@ -288,17 +281,18 @@ export const isAtInitialStreamState = (
   );
 };
 
-const isSidekickBootstrapMessage = (
+const BOOTSTRAP_MESSAGE_ORIGINS: UserMessageOrigin[] = [
+  "agent_sidekick",
+  "analytics_panel",
+];
+
+const isBootstrapMessage = (
   message: UserMessageTypeWithContentFragments
 ): boolean => {
-  return message.context.origin === "agent_sidekick" && message.rank === 0;
-};
-
-const isBootstrappedOpeningMessage = (
-  message: UserMessageTypeWithContentFragments,
-  conversation: ConversationWithoutContentType | undefined
-): boolean => {
-  return message.rank === 0 && conversation?.metadata?.bootstrapped === true;
+  return (
+    message.rank === 0 &&
+    BOOTSTRAP_MESSAGE_ORIGINS.includes(message.context.origin)
+  );
 };
 
 export const convertLightMessageTypeToVirtuosoMessages = (

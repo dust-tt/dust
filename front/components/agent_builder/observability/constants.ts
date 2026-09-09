@@ -166,6 +166,10 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     label: SOURCE_ORIGIN_LABELS.agent_sidekick,
     color: buildColorClass("emerald", 300),
   },
+  analytics_panel: {
+    label: SOURCE_ORIGIN_LABELS.analytics_panel,
+    color: buildColorClass("green", 300),
+  },
   project_kickoff: {
     label: SOURCE_ORIGIN_LABELS.project_kickoff,
     color: buildColorClass("lime", 300),

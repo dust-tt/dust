@@ -96,6 +96,7 @@ export const CLIENT_MESSAGE_ORIGINS = [
   "project_kickoff",
   "extension",
   "agent_sidekick",
+  "analytics_panel",
   "reinforced_skill_notification",
 ] as const;
 
@@ -124,10 +125,9 @@ export type UserMessageOrigin =
   | "wakeup"
   | "zapier"
   | "zendesk"
-  // TODO onboarding_conversation, agent_sidekick, and project_kickoff aren't message origins. They
-  // have been used as a hack but should be removed and most likely handled as message metadata
-  // (to be created). For the hiding case, conversation metadata is enough and already exists:
-  // `ConversationMetadata.bootstrapped` is what the Analytics panel uses.
+  // TODO onboarding_conversation, agent_sidekick, analytics_panel, and project_kickoff aren't
+  // message origins. They have been used as a hack but should be removed and most likely handled
+  // as message metadata (to be created).
   | "onboarding_conversation"
   // for internal use, for reinforced agent batch LLM operations
   | "reinforcement"
@@ -531,8 +531,6 @@ export type ConversationMetadata = Record<string, unknown> & {
   useFileSystem?: boolean;
   /** Selects the database-backed filesystem for a fresh standalone conversation. */
   useDatabaseFileSystem?: boolean;
-  /** Set when the conversation's first message was written by that surface, not by the user. */
-  bootstrapped?: boolean;
 };
 
 function isConversationUrlAccessMode(

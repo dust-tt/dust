@@ -13042,6 +13042,7 @@
               "project_kickoff",
               "extension",
               "agent_sidekick",
+              "analytics_panel",
               "api",
               "cli",
               "cli_programmatic",

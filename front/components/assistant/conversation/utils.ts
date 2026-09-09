@@ -250,13 +250,12 @@ export function groupUnreadConversations(
 
 export function findFirstUnreadMessageIndex(
   messages: VirtuosoMessage[],
-  lastReadMs: number,
-  conversation: ConversationWithoutContentType | undefined
+  lastReadMs: number
 ): number {
   return messages.findIndex((m) => {
     // Zero-height rows deadlock VirtuosoMessageList when used as the initial
     // scroll target. Scroll to the first unread message that actually renders instead.
-    if (isZeroHeightMessage(m, conversation)) {
+    if (isZeroHeightMessage(m)) {
       return false;
     }
     if (m.created > lastReadMs) {
