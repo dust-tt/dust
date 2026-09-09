@@ -119,7 +119,7 @@ export function usePodFiles({
   disabled,
 }: {
   owner: LightWorkspaceType;
-  podId: string;
+  podId: string | null;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -129,7 +129,7 @@ export function usePodFiles({
     useSWRWithDefaults(
       !podId ? null : `/api/w/${owner.sId}/spaces/${podId}/files`,
       podFilesFetcher,
-      { disabled, keepPreviousData: true }
+      { disabled: disabled || !podId, keepPreviousData: true }
     );
 
   const refreshPodFiles = useCallback(async () => {

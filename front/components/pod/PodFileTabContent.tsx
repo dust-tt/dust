@@ -1,4 +1,4 @@
-import { getScopedRelativePath } from "@app/components/file_explorer/utils";
+import { MissingPodFileTabCallout } from "@app/components/pod/MissingPodFileTabCallout";
 import { PodFileTabPreview } from "@app/components/pod/PodFileTabPreview";
 import { PodFrameVisualization } from "@app/components/pod/PodFrameVisualization";
 import { usePodFrameRenderableContent } from "@app/hooks/usePodFrameRenderableContent";
@@ -44,12 +44,7 @@ export function PodFileTabContent({
   }
 
   if (isFileMetadataNotFound) {
-    return (
-      <div className="flex h-full w-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
-        This file is no longer available in the Pod files (
-        {getScopedRelativePath(tab.path)}).
-      </div>
-    );
+    return <MissingPodFileTabCallout path={tab.path} />;
   }
 
   if (!isFrame) {
@@ -98,12 +93,7 @@ function PodFileTabVisualization({
   }
 
   if (isNotFound || !fileId || !fileContent || !vizUrl) {
-    return (
-      <div className="flex h-full w-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
-        This frame is no longer available in the Pod files (
-        {getScopedRelativePath(framePath)}).
-      </div>
-    );
+    return <MissingPodFileTabCallout path={framePath} kind="frame" />;
   }
 
   return (
