@@ -1,5 +1,6 @@
+import { CreditLimitNumberInput } from "@app/components/workspace/CreditLimitInput";
 import type { GroupRow } from "@app/components/workspace/member_spend_limit_helpers";
-import { DataTable, Input } from "@dust-tt/sparkle";
+import { DataTable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 interface MemberGroupLimitTableProps {
@@ -10,6 +11,62 @@ interface MemberGroupLimitTableProps {
   onChange: (groupId: string, cleaned: string) => void;
 }
 
+type GroupLimitRow = GroupRow & {
+  draft: string;
+  validationMessage: string | null;
+  readOnly: boolean;
+  onDraftChange: (cleaned: string) => void;
+};
+
+// Column definitions live at module scope because the table renders each
+// `cell` function as a component type: a new identity per render would remount
+// the input on every keystroke and drop focus.
+const groupColumns: ColumnDef<GroupLimitRow, string>[] = [
+  {
+    id: "name",
+    header: "Group",
+    accessorFn: (row) => row.name,
+    cell: ({ row }) => (
+      <DataTable.CellContent
+        className={
+          row.original.isHighest
+            ? "font-semibold text-highlight-500"
+            : undefined
+        }
+      >
+        {row.original.name}
+      </DataTable.CellContent>
+    ),
+  },
+  {
+    id: "poolCapAwuCredits",
+    header: "Limit",
+    accessorFn: (row) => String(row.poolCapAwuCredits ?? ""),
+    meta: { className: "w-48" },
+    cell: ({ row }) => (
+      <CreditLimitNumberInput
+        value={row.original.draft}
+        readOnly={row.original.readOnly}
+        validationMessage={row.original.validationMessage}
+        onChange={row.original.onDraftChange}
+        suffix="credits/m."
+      />
+    ),
+  },
+  {
+    id: "memberCount",
+    header: "Members",
+    accessorFn: (row) => row.memberCount.toString(),
+    meta: { headerAlign: "right" },
+    cell: ({ row }) => (
+      <DataTable.BasicCellContent
+        label={row.original.memberCount.toLocaleString()}
+        className="justify-end"
+      />
+    ),
+  },
+];
+
 export function MemberGroupLimitTable({
   rows,
   readOnly,
@@ -17,70 +74,17 @@ export function MemberGroupLimitTable({
   groupValidationMessages,
   onChange,
 }: MemberGroupLimitTableProps) {
-  const groupColumns: ColumnDef<GroupRow, string>[] = [
-    {
-      id: "name",
-      header: "Group",
-      accessorFn: (row) => row.name,
-      cell: ({ row }) => (
-        <DataTable.CellContent
-          className={
-            row.original.isHighest
-              ? "font-semibold text-highlight-500"
-              : undefined
-          }
-        >
-          {row.original.name}
-        </DataTable.CellContent>
-      ),
-    },
-    {
-      id: "poolCapAwuCredits",
-      header: "Limit",
-      accessorFn: (row) => String(row.poolCapAwuCredits ?? ""),
-      meta: { className: "w-48" },
-      cell: ({ row }) => {
-        const groupId = row.original.groupId;
-        const draft = groupLimitInputs[groupId] ?? "";
-        const message = groupValidationMessages[groupId] ?? null;
-        return (
-          <Input
-            size="sm"
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            placeholder="No limit"
-            disabled={readOnly}
-            value={draft !== "" ? Number(draft).toLocaleString() : ""}
-            onChange={(e) => {
-              onChange(groupId, e.target.value.replace(/[^\d]/g, ""));
-            }}
-            isError={message !== null}
-            message={message ?? undefined}
-            messageStatus={message !== null ? "error" : undefined}
-            suffix="credits/m."
-            isUnit
-          />
-        );
-      },
-    },
-    {
-      id: "memberCount",
-      header: "Members",
-      accessorFn: (row) => row.memberCount.toString(),
-      meta: { headerAlign: "right" },
-      cell: ({ row }) => (
-        <DataTable.BasicCellContent
-          label={row.original.memberCount.toLocaleString()}
-          className="justify-end"
-        />
-      ),
-    },
-  ];
+  const data: GroupLimitRow[] = rows.map((row) => ({
+    ...row,
+    draft: groupLimitInputs[row.groupId] ?? "",
+    validationMessage: groupValidationMessages[row.groupId] ?? null,
+    readOnly,
+    onDraftChange: (cleaned) => onChange(row.groupId, cleaned),
+  }));
 
   return (
     <div className="overflow-x-auto">
-      <DataTable data={rows} columns={groupColumns} />
+      <DataTable data={data} columns={groupColumns} />
     </div>
   );
 }

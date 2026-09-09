@@ -94,7 +94,7 @@ import {
   isCreditPricedPlan,
   isSubscriptionCancellationScheduled,
 } from "@app/types/plan";
-import { isAdmin } from "@app/types/user";
+import { isAdmin, isManager } from "@app/types/user";
 import {
   AlertCircle,
   ArrowUp,
@@ -379,9 +379,13 @@ export function UsagePage() {
   const handleEditSpendLimitFromTable = useCallback(
     (member: MemberUsageType) => {
       setPendingApproveRequestId(null);
-      setEditSpendLimitMember(member);
+      if (isNewUsagePage) {
+        setSpendLimitRecapMember(member);
+      } else {
+        setEditSpendLimitMember(member);
+      }
     },
-    []
+    [isNewUsagePage]
   );
   const { setUserAllowedModelTier, clearUserAllowedModelTier } =
     useUserAllowedModelTierMutations({ owner });
@@ -986,7 +990,7 @@ export function UsagePage() {
       onRemoveSeat={onRemoveSeat}
       onEditSpendLimit={handleEditSpendLimitFromTable}
       onOpenChangeSeatRecap={handleChangeSeatFromTable}
-      onOpenSpendLimitRecap={setSpendLimitRecapMember}
+      onOpenSpendLimitRecap={handleEditSpendLimitFromTable}
       canUpgradeSeat={canUpgradeSeat}
       onSetUserModelTier={handleSetUserModelTier}
       pagination={pagination}
@@ -1060,11 +1064,11 @@ export function UsagePage() {
               description="Control credit consumption across your workspace."
             />
           ) : (
-            <div className="flex items-center justify-between">
-              <Page.Header
-                title={
-                  <div className="flex w-full items-center gap-4">
-                    <Page.H variant="h3">Usage</Page.H>
+            <Page.Header
+              title={
+                <div className="flex w-full items-center justify-between gap-4">
+                  <Page.H variant="h3">Usage</Page.H>
+                  <div className="flex items-center gap-4">
                     <Button
                       label="Breakdown in analytics"
                       iconRight={LinkExternal01}
@@ -1072,22 +1076,22 @@ export function UsagePage() {
                       variant="highlight-ghost"
                       href={`/w/${owner.sId}/analytics/consumption`}
                     />
+                    {!isNewUsagePage &&
+                      isCreditPriced &&
+                      usageSettings.topUpEnabled &&
+                      isWorkspaceAdmin && (
+                        <Button
+                          label="Top up"
+                          icon={ArrowUp}
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowBuyCreditDialog(true)}
+                        />
+                      )}
                   </div>
-                }
-              />
-              {!isNewUsagePage &&
-                isCreditPriced &&
-                usageSettings.topUpEnabled &&
-                isWorkspaceAdmin && (
-                  <Button
-                    label="Top up"
-                    icon={ArrowUp}
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowBuyCreditDialog(true)}
-                  />
-                )}
-            </div>
+                </div>
+              }
+            />
           )}
 
           {isCreditPricedFreePlan(subscription.plan.code) && (
@@ -1435,7 +1439,7 @@ export function UsagePage() {
           member={spendLimitRecapMember}
           owner={owner}
           groups={groups}
-          readOnly
+          readOnly={!isManager(owner)}
         />
 
         <BulkEditSpendLimitModal
