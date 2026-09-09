@@ -268,19 +268,28 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         transaction
       ));
 
-    const globalSpace =
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      existingSpaces.find((s) => s.isGlobal()) ||
-      (await SpaceResource.makeNew(
+    let globalSpace = existingSpaces.find((s) => s.isGlobal());
+    if (!globalSpace) {
+      // The global space is created with its own member group: that group's `member` grant is the
+      // only source of write on Company Data outside the admin/manager roles (see
+      // `spaceGroupRoles`).
+      const memberGroup = await SpaceResource.makeGlobalSpaceMemberGroup({
+        workspaceId: auth.getNonNullableWorkspace().id,
+        spaceName: GLOBAL_SPACE_NAME,
+        transaction,
+      });
+
+      globalSpace = await SpaceResource.makeNew(
         auth,
         {
           name: GLOBAL_SPACE_NAME,
           kind: "global",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        { members: [globalGroup] },
+        { members: [globalGroup, memberGroup] },
         transaction
-      ));
+      );
+    }
 
     const conversationsSpace =
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -301,6 +310,31 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       globalSpace,
       conversationsSpace,
     };
+  }
+
+  /**
+   * @cc [owner:fabiencelier,label:security] global-space-member-group
+   * A workspace's global space must be created with exactly one `regular_auto` member group,
+   * created by this method: that group's `member` grant is the global space's only source of
+   * `write` outside the `admin` and `manager` (and legacy `builder`) workspace roles.
+   */
+  static async makeGlobalSpaceMemberGroup({
+    workspaceId,
+    spaceName,
+    transaction,
+  }: {
+    workspaceId: ModelId;
+    spaceName: string;
+    transaction?: Transaction;
+  }): Promise<GroupResource> {
+    return GroupResource.makeNew(
+      {
+        name: `${SPACE_GROUP_PREFIX} ${spaceName}`,
+        kind: "regular_auto",
+        workspaceId,
+      },
+      { transaction }
+    );
   }
 
   get sId(): string {
@@ -2007,6 +2041,49 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return memberGroups[0];
   }
 
+  // New workspaces get the group at creation (`makeDefaultsForWorkspace`); this is how the
+  // `20260908_backfill_global_space_member_group` migration gives it to the workspaces that
+  // predate it.
+  /**
+   * @cc [owner:fabiencelier,label:backend] ensure-global-space-member-group
+   * Idempotently gives the global space its `regular_auto` member group and that group's `member`
+   * grant, preserving the grants of the groups already attached to the space.
+   */
+  async ensureGlobalSpaceMemberGroup(
+    auth: Authenticator,
+    transaction?: Transaction
+  ): Promise<void> {
+    assert(this.isGlobal(), "Only the global space has a member group to fix.");
+
+    // One transaction for the whole repair: `writeGroupPermissions` clears the space's grants
+    // before re-inserting them, so a failure halfway through an autocommitted repair would leave
+    // Company Data with no `reader` grant (unreadable workspace-wide) and a committed, unusable
+    // group whose name makes every retry collide.
+    await withTransaction(async (t: Transaction) => {
+      const autoGroups = await this.fetchRegularAutoGroups(auth, t);
+      if (autoGroups.length > 0) {
+        return;
+      }
+
+      // The groups already granted on the space (the workspace global group), re-passed so their
+      // grants survive the rewrite.
+      const existingGroups = await this.fetchGroupResources(auth, {
+        transaction: t,
+      });
+      const memberGroup = await SpaceResource.makeGlobalSpaceMemberGroup({
+        workspaceId: this.workspaceId,
+        spaceName: this.name,
+        transaction: t,
+      });
+
+      await this.writeGroupPermissions(auth, {
+        members: [...existingGroups, memberGroup],
+        editors: [],
+        transaction: t,
+      });
+    }, transaction);
+  }
+
   /**
    * Check if the auth is a member of this space.
    */
@@ -2163,7 +2240,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    *
    * 2. Global spaces:
    * - Read: All workspace members
-   * - Write: Workspace admins and builders
+   * - Write: Workspace admins and managers (legacy: builders), plus the members of the space's
+   *   member groups
    *
    * 3. Open spaces:
    * - Read: All workspace members
@@ -2238,8 +2316,8 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       }));
     }
 
-    // Global Workspace space and Conversations space: write comes from the role grants.
-    if (this.isGlobal() || this.isConversations()) {
+    // Conversations space: write comes from the role grants.
+    if (this.isConversations()) {
       return associatedGroups.map((group) => ({
         groupId: group.id,
         grantType: "reader",
@@ -2254,11 +2332,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // A space is open when the workspace global group is one of its groups.
     const isOpen = associatedGroups.some((group) => group.isGlobal());
 
-    // Open regular space: the workspace global group is attached as a viewer, so it must only read
-    // — conferring write would hand write on every open space to every workspace member. Every
-    // other group is a member group and reads and writes, exactly as on a restricted space; that is
-    // what makes a space's member list meaningful even when the space is open.
-    if (this.isRegular() && isOpen) {
+    // The global space (Company Data), and an open regular space: the workspace global group is
+    // attached as a viewer, so it must only read — conferring write would hand write on every such
+    // space to every workspace member. Every other group is a member group and reads and writes,
+    // exactly as on a restricted space; that is what makes the space's member list meaningful even
+    // though everyone can read it, and on Company Data it is what lets an admin grant write to
+    // people who are neither admins nor managers.
+    if (this.isGlobal() || (this.isRegular() && isOpen)) {
       return groups.map((group) => ({
         groupId: group.id,
         grantType: group.isGlobal() ? "reader" : "member",
