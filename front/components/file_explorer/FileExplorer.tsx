@@ -11,6 +11,7 @@ import type {
   ContentNodeEntry,
   FileEntry,
   FileEntryWithId,
+  FileExplorerDownloadEntry,
   FileExplorerEntry,
   FileExplorerFilter,
   FileExplorerMenuAction,
@@ -18,7 +19,6 @@ import type {
   FileExplorerSortMode,
   FileExplorerVirtualScopeRoot,
   FileSystemTreeNode,
-  FolderDownloadEntry,
   FolderEntry,
   FramePackageEntry,
 } from "@app/components/file_explorer/types";
@@ -54,8 +54,7 @@ interface FileExplorerProps {
   onDelete?: (entry: FileExplorerEntry) => Promise<void>;
   /** Restricts which entries get a Delete item when `onDelete` is set; all of them by default. */
   canDelete?: (entry: FileExplorerEntry) => boolean;
-  onFileDownload: (entry: FileEntry) => Promise<void>;
-  onFolderDownload?: (entry: FolderDownloadEntry) => Promise<void>;
+  onDownload: (entry: FileExplorerDownloadEntry) => Promise<void>;
   onMoveFile?: (
     entry: FileEntry,
     parentRelativePath: string
@@ -86,8 +85,7 @@ export function FileExplorer({
   onCurrentFolderChange,
   onDelete,
   canDelete,
-  onFileDownload,
-  onFolderDownload,
+  onDownload,
   onMoveFile,
   onOpenInteractive,
   onOpenInPanel,
@@ -368,8 +366,7 @@ export function FileExplorer({
             onFolderNavigate={handleFolderNavigate}
             onFileOpen={handleFileOpen}
             onFramePackageOpen={handleFramePackageOpen}
-            onFileDownload={onFileDownload}
-            onFolderDownload={onFolderDownload}
+            onDownload={onDownload}
             onMoveFileDrop={fileDragEnabled ? handleMoveFileDrop : undefined}
             onNodeOpen={handleNodeOpen}
             getFileMenuItems={
@@ -391,7 +388,7 @@ export function FileExplorer({
         fileUrl={previewFile ? getFileUrl(previewFile.path) : null}
         isOpen={showPreviewSheet}
         onOpenChange={setShowPreviewSheet}
-        onDownload={onFileDownload}
+        onDownload={onDownload}
         onPrev={handlePreviewPrev}
         onNext={handlePreviewNext}
         owner={owner}

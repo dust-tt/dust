@@ -49,7 +49,10 @@ export type FolderEntry = {
   name: string;
 };
 
-export type FolderDownloadEntry = FolderEntry | FramePackageEntry;
+export type FileExplorerDownloadEntry =
+  | FileEntry
+  | FramePackageEntry
+  | FolderEntry;
 
 export type FileExplorerEntry =
   | FileEntry

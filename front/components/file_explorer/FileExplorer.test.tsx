@@ -89,7 +89,7 @@ describe("FileExplorer file opening", () => {
       lastModifiedMs: 1,
     });
     let finishDownload: (() => void) | undefined;
-    const onFileDownload = vi.fn(
+    const onDownload = vi.fn(
       () =>
         new Promise<void>((resolve) => {
           finishDownload = resolve;
@@ -102,7 +102,7 @@ describe("FileExplorer file opening", () => {
         files={[archive]}
         getFileUrl={(path) => `/files/${path}`}
         isLoading={false}
-        onFileDownload={onFileDownload}
+        onDownload={onDownload}
       />
     );
 
@@ -110,7 +110,7 @@ describe("FileExplorer file opening", () => {
     fireEvent.click(archiveTitle);
 
     await waitFor(() =>
-      expect(onFileDownload).toHaveBeenCalledWith({
+      expect(onDownload).toHaveBeenCalledWith({
         ...archive,
         kind: "file",
       })
@@ -120,7 +120,7 @@ describe("FileExplorer file opening", () => {
       "true"
     );
     fireEvent.click(archiveTitle);
-    expect(onFileDownload).toHaveBeenCalledTimes(1);
+    expect(onDownload).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(mockClientFetch).not.toHaveBeenCalled();
 
@@ -156,7 +156,7 @@ describe("FileExplorer file opening", () => {
         files={[first, archive, second]}
         getFileUrl={(path) => `/files/${path}`}
         isLoading={false}
-        onFileDownload={vi.fn().mockResolvedValue(undefined)}
+        onDownload={vi.fn().mockResolvedValue(undefined)}
       />
     );
 
@@ -193,7 +193,7 @@ describe("FileExplorer navigation", () => {
         files={[nestedFile, rootFile]}
         getFileUrl={(path) => `/files/${path}`}
         isLoading={false}
-        onFileDownload={vi.fn().mockResolvedValue(undefined)}
+        onDownload={vi.fn().mockResolvedValue(undefined)}
       />
     );
 
@@ -219,7 +219,7 @@ describe("FileExplorer navigation", () => {
         files={[nestedFile]}
         getFileUrl={(path) => `/files/${path}`}
         isLoading={false}
-        onFileDownload={vi.fn().mockResolvedValue(undefined)}
+        onDownload={vi.fn().mockResolvedValue(undefined)}
         onRename={onRename}
       />
     );
@@ -243,7 +243,7 @@ describe("FileExplorer navigation", () => {
 
   it("downloads a folder from its canonical path", async () => {
     const user = userEvent.setup();
-    const onFolderDownload = vi.fn().mockResolvedValue(undefined);
+    const onDownload = vi.fn().mockResolvedValue(undefined);
     const nestedFile = makeFile({
       contentType: "text/plain",
       fileName: "nested.txt",
@@ -257,8 +257,7 @@ describe("FileExplorer navigation", () => {
         files={[nestedFile]}
         getFileUrl={(path) => `/files/${path}`}
         isLoading={false}
-        onFileDownload={vi.fn().mockResolvedValue(undefined)}
-        onFolderDownload={onFolderDownload}
+        onDownload={onDownload}
       />
     );
 
@@ -272,7 +271,7 @@ describe("FileExplorer navigation", () => {
     await user.click(within(folderRow).getByRole("button"));
     await user.click(screen.getByText("Download"));
 
-    expect(onFolderDownload).toHaveBeenCalledWith({
+    expect(onDownload).toHaveBeenCalledWith({
       kind: "folder",
       name: "folder",
       path: "conversation-c1/folder",
@@ -299,7 +298,7 @@ describe("FileExplorer Frame packages", () => {
     });
     const onOpenInteractive = vi.fn();
     const onDelete = vi.fn().mockResolvedValue(undefined);
-    const onFolderDownload = vi.fn().mockResolvedValue(undefined);
+    const onDownload = vi.fn().mockResolvedValue(undefined);
 
     render(
       <ControlledFileExplorer
@@ -309,8 +308,7 @@ describe("FileExplorer Frame packages", () => {
         getFileUrl={(path) => `/files/${path}`}
         isLoading={false}
         onDelete={onDelete}
-        onFileDownload={vi.fn().mockResolvedValue(undefined)}
-        onFolderDownload={onFolderDownload}
+        onDownload={onDownload}
         onMoveFile={vi.fn().mockResolvedValue(new Ok(undefined))}
         onOpenInteractive={onOpenInteractive}
         onRename={vi.fn()}
@@ -335,7 +333,7 @@ describe("FileExplorer Frame packages", () => {
     }
     await user.click(within(packageRow).getByRole("button"));
     await user.click(screen.getByText("Download"));
-    expect(onFolderDownload).toHaveBeenCalledWith(
+    expect(onDownload).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: "frame_package",
         path: "conversation-c1/status/manifest.json",

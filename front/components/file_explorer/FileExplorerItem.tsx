@@ -286,7 +286,7 @@ function FileExplorerDropTargetWrapper({
 interface FileExplorerFolderCardProps {
   node: FileSystemTreeNode;
   viewMode: ViewMode;
-  onDownload?: () => Promise<void>;
+  onDownload: () => Promise<void>;
   onNavigate: (node: FileSystemTreeNode) => void;
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
   extraMenuItems?: FileExplorerMenuAction[];
@@ -454,7 +454,7 @@ interface FileExplorerFramePackageCardProps {
   /** When set, title shows path relative to this folder (search mode). */
   searchFolderPath?: string;
   viewMode: ViewMode;
-  onDownload?: () => Promise<void>;
+  onDownload: () => Promise<void>;
   onOpen: (entry: FramePackageEntry) => void;
   extraMenuItems?: FileExplorerMenuAction[];
 }

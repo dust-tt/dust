@@ -9,10 +9,10 @@ import {
 import type {
   ContentNodeEntry,
   FileEntry,
+  FileExplorerDownloadEntry,
   FileExplorerEntry,
   FileExplorerMenuAction,
   FileSystemTreeNode,
-  FolderDownloadEntry,
   FolderEntry,
   FramePackageEntry,
 } from "@app/components/file_explorer/types";
@@ -35,8 +35,7 @@ interface FileExplorerContentProps {
   onFolderNavigate: (node: FileSystemTreeNode) => void;
   onFileOpen: (entry: FileEntry) => void;
   onFramePackageOpen: (entry: FramePackageEntry) => void;
-  onFileDownload: (entry: FileEntry) => Promise<void>;
-  onFolderDownload?: (entry: FolderDownloadEntry) => Promise<void>;
+  onDownload: (entry: FileExplorerDownloadEntry) => Promise<void>;
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
   onNodeOpen: (entry: ContentNodeEntry) => void;
   getFileMenuItems?: (entry: FileExplorerEntry) => FileExplorerMenuAction[];
@@ -55,8 +54,7 @@ export function FileExplorerContent({
   onFolderNavigate,
   onFileOpen,
   onFramePackageOpen,
-  onFileDownload,
-  onFolderDownload,
+  onDownload,
   onMoveFileDrop,
   onNodeOpen,
   getFileMenuItems,
@@ -74,9 +72,7 @@ export function FileExplorerContent({
           key={`dir:${node.path}`}
           node={node}
           viewMode={viewMode}
-          onDownload={
-            onFolderDownload ? () => onFolderDownload(folderEntry) : undefined
-          }
+          onDownload={() => onDownload(folderEntry)}
           onNavigate={onFolderNavigate}
           onMoveFileDrop={onMoveFileDrop}
           extraMenuItems={getFileMenuItems?.(folderEntry)}
@@ -110,7 +106,7 @@ export function FileExplorerContent({
             searchFolderPath={searchFolderPath}
             viewMode={viewMode}
             onOpen={onFileOpen}
-            onDownload={onFileDownload}
+            onDownload={onDownload}
             extraMenuItems={getFileMenuItems?.(entry)}
           />
         );
@@ -122,9 +118,7 @@ export function FileExplorerContent({
             entry={entry}
             searchFolderPath={searchFolderPath}
             viewMode={viewMode}
-            onDownload={
-              onFolderDownload ? () => onFolderDownload(entry) : undefined
-            }
+            onDownload={() => onDownload(entry)}
             onOpen={onFramePackageOpen}
             extraMenuItems={getFileMenuItems?.(entry)}
           />
