@@ -14,6 +14,7 @@ import React, {
 
 import { formatFileSize, isImageFile } from "../../utils/fileHandling.js";
 import { useTerminalSize } from "../../utils/hooks/use_terminal_size.js";
+import { describeSandbox } from "../../utils/sandbox.js";
 import { clearTerminal } from "../../utils/terminal.js";
 import { CLI_VERSION } from "../../utils/version.js";
 import type { Command } from "../commands/types.js";
@@ -229,6 +230,7 @@ const StaticConversationItem: FC<StaticConversationItemProps> = ({
             <Text dimColor>
               Dust CLI v{CLI_VERSION} · {displayPath}
             </Text>
+            <Text dimColor>{describeSandbox()}</Text>
             <Text dimColor>
               Chatting with{" "}
               <Text bold dimColor>
