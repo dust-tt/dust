@@ -17,7 +17,10 @@ import {
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import {
+  ensureIsAdmin,
+  ensureIsManager,
+} from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -75,9 +78,15 @@ function mapErrorToApiError(
 // Mounted at /api/w/:wId/usage_settings/default_user_spend_limit.
 const app = workspaceApp();
 
+/**
+ * @cc [owner:avervaet,label:security] read-guard-matches-page-role-gate
+ * This handler's role guard must never be weaker than the minimum workspace role that can
+ * reach the page(s) reading it (currently the Usage page, gated to managers and admins). Widen
+ * the guard only after widening that gate.
+ */
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureIsManager(),
   async (ctx): HandlerResult<GetDefaultUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");
 

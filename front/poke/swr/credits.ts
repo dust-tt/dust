@@ -18,6 +18,7 @@ import type {
 } from "@app/types/api/credits/awu_pool_summary";
 import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
 import type { PokeListCreditsResponseBody } from "@app/types/api/poke/credits";
+import type { GetDefaultUserSpendLimitResponseBody } from "@app/types/api/workspace/default_user_spend_limit";
 import type {
   MembershipSeatType,
   UserCreditState,
@@ -49,6 +50,27 @@ export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
     isLoading: !error && !data && !disabled,
     isError: error,
     mutate,
+  };
+}
+
+export function usePokeDefaultUserSpendLimit({
+  disabled,
+  owner,
+}: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
+  const defaultUserSpendLimitFetcher: Fetcher<GetDefaultUserSpendLimitResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/credits/default-user-spend-limit`,
+    defaultUserSpendLimitFetcher,
+    { disabled }
+  );
+
+  return {
+    defaultUserSpendLimit: data,
+    isDefaultUserSpendLimitLoading: !error && !data && !disabled,
+    isDefaultUserSpendLimitError: !!error,
   };
 }
 
