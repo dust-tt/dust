@@ -113,7 +113,7 @@ export const PodMainPage = () => {
           </div>
         }
       >
-        <BlockedActionsProvider owner={workspace}>
+        <BlockedActionsProvider owner={workspace} conversationApprovalEnabled>
           <GenerationContextProvider>
             <PodPageContent
               podInfo={podInfo}

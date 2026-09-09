@@ -10,7 +10,7 @@ import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useValidateAction } from "@app/lib/swr/tool_actions";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface MCPToolValidationRequiredProps {
   triggeringUser: UserType | null;
@@ -35,6 +35,9 @@ export function MCPToolValidationRequired({
     removeCompletedAction,
     isActionPulsing,
     stopPulsingAction,
+    conversationApprovalEnabled,
+    isToolApprovedForConversation,
+    approveToolForConversation,
   } = useBlockedActionsContext();
   const { validateAction, isValidating } = useValidateAction({
     owner,
@@ -112,6 +115,41 @@ export function MCPToolValidationRequired({
     return true;
   };
 
+  const { mcpServerName, toolName } = blockedAction.metadata;
+
+  // Grant an ephemeral, conversation-scoped approval for this tool, then unblock
+  // the current action as a one-off "approved" (nothing is persisted server-side).
+  const handleApproveForConversation = async (): Promise<boolean> => {
+    approveToolForConversation({ mcpServerName, toolName });
+    return handleValidation("approved");
+  };
+
+  /**
+   * @cc [owner:tdraier,label:react;product] conversation-approval-auto-submit
+   * When the tool has an ephemeral conversation approval and the current user can
+   * respond, the blocked action MUST be auto-submitted once as "approved" (never
+   * "always_approved", which would persist) and the validation card MUST NOT be
+   * rendered. Auto-submission MUST fire at most once per mounted action.
+   */
+  const isAutoApproved =
+    conversationApprovalEnabled &&
+    canCurrentUserRespond &&
+    isToolApprovedForConversation({ mcpServerName, toolName });
+
+  const hasAutoApprovedRef = useRef(false);
+  // `handleValidation` is recreated each render; the ref guard makes this fire once.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: handleValidation is intentionally excluded; the ref guard prevents re-firing
+  useEffect(() => {
+    if (isAutoApproved && !hasAutoApprovedRef.current) {
+      hasAutoApprovedRef.current = true;
+      void handleValidation("approved");
+    }
+  }, [isAutoApproved]);
+
+  if (isAutoApproved) {
+    return null;
+  }
+
   const shouldUseEditableToolValidation =
     canCurrentUserRespond &&
     hasFeature("editable_tool_inputs") &&
@@ -152,6 +190,9 @@ export function MCPToolValidationRequired({
       isValidating={isValidating}
       isPulsing={isPulsing}
       onValidate={handleValidation}
+      onApproveForConversation={
+        conversationApprovalEnabled ? handleApproveForConversation : undefined
+      }
     />
   );
 }
