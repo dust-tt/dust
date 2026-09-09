@@ -53,10 +53,16 @@ export function UsageSettingsCard({
 
   const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? null;
 
+  const validateDefaultLimit = (value: string) => {
+    const parseResult = parseDefaultLimitInput(value);
+    return parseResult.ok ? null : parseResult.message;
+  };
+
   const handleSaveDefaultLimit = async (newValue: string) => {
     const parseResult = parseDefaultLimitInput(newValue);
     if (!parseResult.ok || parseResult.awuCredits === currentDefaultLimit) {
-      // The component reverts to the current value when nothing is persisted.
+      // Invalid input is caught by `validate` before this runs; an unchanged
+      // value is simply a no-op save.
       return;
     }
     await doUpdateDefaultUserSpendLimit(parseResult.awuCredits);
@@ -90,6 +96,7 @@ export function UsageSettingsCard({
                   formatValue={(value) =>
                     value ? Number(value).toLocaleString() : value
                   }
+                  validate={validateDefaultLimit}
                   onSave={handleSaveDefaultLimit}
                   disabled={isDefaultUserSpendLimitLoading}
                 />
