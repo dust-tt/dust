@@ -1786,18 +1786,6 @@ export async function resolveMatchingMemberUserIds({
  * orders (consumed credits from the analytics index, never from the Metronome per-user usage
  * cache), so the order shown always agrees with the values displayed.
  */
-/**
- * @cc [owner:avervaet,label:product] incomparable-rows-sort-last
- * Users whose sort key for `orderColumn` is not comparable (a `null` `percent` for
- * `"seatUsage"`, or no computed key at all) always sort after every comparable user, regardless
- * of `orderDirection`; within each group, users order by key then tiebreaks, following
- * `orderDirection`.
- */
-/**
- * @cc [owner:avervaet,label:product] seat-usage-tiebreak-on-pool
- * When `orderColumn` is `"seatUsage"`, users tied on `percent` (including all incomparable users)
- * order by `consumedFromPoolAwuCredits`, following `orderDirection`.
- */
 async function resolveMembersUsagePageUsers({
   auth,
   workspace,
