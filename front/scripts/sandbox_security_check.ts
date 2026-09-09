@@ -824,9 +824,12 @@ export function assertRootInvokedHelpersSafe(output: string): void {
 }
 
 const POD_STATE_DIR_EXPECTATIONS = [
-  { path: "/pod-state", owner: "root:root", mode: "755" },
-  { path: "/pod-state/databases", owner: "dust-state:agent", mode: "2770" },
   { path: "/sandbox-state", owner: "root:root", mode: "755" },
+  {
+    path: "/sandbox-state/databases",
+    owner: "dust-state:agent",
+    mode: "2770",
+  },
   {
     path: "/sandbox-state/replica",
     owner: "dust-state:dust-state",
@@ -1166,8 +1169,8 @@ async function checkPodStateWorkloadAccess(
     providerId,
     `
 set -euo pipefail
-test -d /pod-state/databases
-proof=$(mktemp /pod-state/databases/dust-security-smoke-XXXXXX)
+test -d /sandbox-state/databases
+proof=$(mktemp /sandbox-state/databases/dust-security-smoke-XXXXXX)
 printf 'db-ok' > "$proof"
 test "$(cat "$proof")" = "db-ok"
 rm -f "$proof"
