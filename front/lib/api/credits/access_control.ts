@@ -31,6 +31,11 @@ import type { ModelId } from "@app/types/shared/model_id";
 export const PROGRAMMATIC_CAP_REACHED_MESSAGE =
   "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.";
 
+// Structured reason attached to logs and analytics when a run is blocked by the
+// programmatic monthly cap, as opposed to pool depletion or a generic rate limit.
+export const PROGRAMMATIC_MONTHLY_CAP_BLOCK_REASON =
+  "programmatic_monthly_cap" as const;
+
 /**
  * Whether the workspace is on a credit-priced (Metronome) plan, i.e. whether
  * the pool and programmatic-cap readers below apply to it.

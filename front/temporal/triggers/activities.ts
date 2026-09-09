@@ -10,10 +10,15 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
-import { PROGRAMMATIC_CAP_REACHED_MESSAGE } from "@app/lib/api/credits/access_control";
+import {
+  PROGRAMMATIC_CAP_REACHED_MESSAGE,
+  PROGRAMMATIC_MONTHLY_CAP_BLOCK_REASON,
+} from "@app/lib/api/credits/access_control";
+import { notifyAdminsTriggerBlockedByProgrammaticCap } from "@app/lib/api/credits/programmatic_cap_trigger_alert";
 import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
+import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -333,6 +338,7 @@ export async function runTriggeredAgentsActivity({
         triggerId: trigger.sId,
         agentConfigurationId: trigger.agentConfigurationId,
         workspaceId: auth.getNonNullableWorkspace().sId,
+        blockReason: PROGRAMMATIC_MONTHLY_CAP_BLOCK_REASON,
       },
       "Trigger run skipped: programmatic monthly cap reached."
     );
@@ -343,8 +349,20 @@ export async function runTriggeredAgentsActivity({
       extra: {
         trigger_id: trigger.sId,
         error_type: "credits_exhausted",
+        block_reason: PROGRAMMATIC_MONTHLY_CAP_BLOCK_REASON,
       },
     });
+    fireAndForgetNotification(
+      notifyAdminsTriggerBlockedByProgrammaticCap(auth, { trigger }),
+      {
+        message:
+          "[ProgrammaticCapTriggerAlert] Failed to notify admins of blocked trigger",
+        context: {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          triggerId: trigger.sId,
+        },
+      }
+    );
     if (webhookRequest) {
       await webhookRequest.markRelatedTrigger({
         trigger,
