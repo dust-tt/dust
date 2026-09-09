@@ -1842,16 +1842,15 @@ async function resolveMembersUsagePageUsers({
     memberships.map((m) => [m.userId, m])
   );
 
-  const sortKeyByUserId = new Map<string, number | string>();
-  const overageLimitByUserId = new Map<string, number>();
-  // Only populated for orderColumn "seatUsage": whether the seat has a
-  // personal usage percentage at all (free/pro/max with a resolved
-  // allowance) versus workspace/none seats, which spend straight from the
-  // pool and render "--" in that column.
-  const hasSeatUsagePercentByUserId = new Map<string, boolean>();
-  // Only populated for orderColumn "seatUsage": pool/overage consumption,
-  // used to break ties between seats at the same usage percentage.
-  const poolUsageTiebreakByUserId = new Map<string, number>();
+  const sortMetaByUserId = new Map<
+    string,
+    {
+      sortKey: number | string;
+      overageLimit?: number;
+      hasSeatUsagePercent?: boolean;
+      poolUsageTiebreak?: number;
+    }
+  >();
   switch (orderColumn) {
     case "consumedAwuCredits": {
       // Split consumed credits on seat type so free-seat users sort by their
@@ -1866,7 +1865,9 @@ async function resolveMembersUsagePageUsers({
         cycle: spendLimitCycleOverrideForAuth(auth),
       });
       for (const u of allUsers) {
-        sortKeyByUserId.set(u.sId, creditsByUserId.get(u.sId) ?? 0);
+        sortMetaByUserId.set(u.sId, {
+          sortKey: creditsByUserId.get(u.sId) ?? 0,
+        });
       }
       break;
     }
@@ -1926,8 +1927,6 @@ async function resolveMembersUsagePageUsers({
           0,
           totalConsumed - effectiveAllocationAwu
         );
-        sortKeyByUserId.set(u.sId, consumedFromPoolAwuCredits);
-
         const overrideAwuCredits =
           membership?.poolCapOverrideAwuCredits !== null &&
           membership?.poolCapOverrideAwuCredits !== undefined &&
@@ -1948,29 +1947,27 @@ async function resolveMembersUsagePageUsers({
             groupCapAwuCredits,
             defaultAwuCredits,
           });
-        overageLimitByUserId.set(
-          u.sId,
-          effectiveSpendLimitAwuCredits - seatAllowance
-        );
+        sortMetaByUserId.set(u.sId, {
+          sortKey: consumedFromPoolAwuCredits,
+          overageLimit: effectiveSpendLimitAwuCredits - seatAllowance,
+        });
       }
       break;
     }
     case "seatType": {
       for (const u of allUsers) {
-        sortKeyByUserId.set(
-          u.sId,
-          membershipByUserModelId.get(u.id)?.seatType ?? "none"
-        );
+        sortMetaByUserId.set(u.sId, {
+          sortKey: membershipByUserModelId.get(u.id)?.seatType ?? "none",
+        });
       }
       break;
     }
     case "creditState": {
       for (const u of allUsers) {
         const creditState = membershipByUserModelId.get(u.id)?.creditState;
-        sortKeyByUserId.set(
-          u.sId,
-          creditState ? normalizeUserCreditState(creditState) : ""
-        );
+        sortMetaByUserId.set(u.sId, {
+          sortKey: creditState ? normalizeUserCreditState(creditState) : "",
+        });
       }
       break;
     }
@@ -2019,25 +2016,22 @@ async function resolveMembersUsagePageUsers({
                 consumedByUserId.get(u.sId) ?? 0,
                 effectiveAllocationAwu
               );
-        sortKeyByUserId.set(
-          u.sId,
-          effectiveAllocationAwu > 0
-            ? Math.min(100, (consumed / effectiveAllocationAwu) * 100)
-            : consumed > 0
-              ? 100
-              : 0
-        );
-        // Mirrors the "--" condition in the seat-usage column: workspace/none
-        // seats have no personal allowance, so their percentage isn't
-        // comparable to free/pro/max seats and must never rank above them.
-        hasSeatUsagePercentByUserId.set(u.sId, effectiveAllocationAwu > 0);
-        poolUsageTiebreakByUserId.set(
-          u.sId,
-          Math.max(
+        sortMetaByUserId.set(u.sId, {
+          sortKey:
+            effectiveAllocationAwu > 0
+              ? Math.min(100, (consumed / effectiveAllocationAwu) * 100)
+              : consumed > 0
+                ? 100
+                : 0,
+          // Mirrors the "--" condition in the seat-usage column: workspace/none
+          // seats have no personal allowance, so their percentage isn't
+          // comparable to free/pro/max seats and must never rank above them.
+          hasSeatUsagePercent: effectiveAllocationAwu > 0,
+          poolUsageTiebreak: Math.max(
             0,
             (consumedByUserId.get(u.sId) ?? 0) - effectiveAllocationAwu
-          )
-        );
+          ),
+        });
       }
       break;
     }
@@ -2048,7 +2042,9 @@ async function resolveMembersUsagePageUsers({
         users: allUsers.map((u) => ({ id: u.id, sId: u.sId })),
       });
       for (const u of allUsers) {
-        sortKeyByUserId.set(u.sId, usedCountByUserId.get(u.sId) ?? 0);
+        sortMetaByUserId.set(u.sId, {
+          sortKey: usedCountByUserId.get(u.sId) ?? 0,
+        });
       }
       break;
     }
@@ -2060,7 +2056,9 @@ async function resolveMembersUsagePageUsers({
         plan: auth.plan(),
       });
       for (const u of allUsers) {
-        sortKeyByUserId.set(u.sId, usedCreditsByUserId.get(u.sId) ?? 0);
+        sortMetaByUserId.set(u.sId, {
+          sortKey: usedCreditsByUserId.get(u.sId) ?? 0,
+        });
       }
       break;
     }
@@ -2070,17 +2068,20 @@ async function resolveMembersUsagePageUsers({
 
   const directionFactor = orderDirection === "asc" ? 1 : -1;
   const sortedUsers = [...allUsers].sort((a, b) => {
+    const metaA = sortMetaByUserId.get(a.sId);
+    const metaB = sortMetaByUserId.get(b.sId);
+
     // Seats with a personal usage percentage (free/pro/max) always rank
     // above workspace/none seats, regardless of sort direction: the latter
     // have no comparable percentage and render "--" in the column.
-    const hasPercentA = hasSeatUsagePercentByUserId.get(a.sId) ?? true;
-    const hasPercentB = hasSeatUsagePercentByUserId.get(b.sId) ?? true;
+    const hasPercentA = metaA?.hasSeatUsagePercent ?? true;
+    const hasPercentB = metaB?.hasSeatUsagePercent ?? true;
     if (hasPercentA !== hasPercentB) {
       return hasPercentA ? -1 : 1;
     }
 
-    const keyA = sortKeyByUserId.get(a.sId) ?? 0;
-    const keyB = sortKeyByUserId.get(b.sId) ?? 0;
+    const keyA = metaA?.sortKey ?? 0;
+    const keyB = metaB?.sortKey ?? 0;
     const cmp =
       typeof keyA === "number" && typeof keyB === "number"
         ? keyA - keyB
@@ -2090,14 +2091,14 @@ async function resolveMembersUsagePageUsers({
     }
     // Tiebreak on pool/overage usage, in the same direction as the primary
     // sort (only populated for orderColumn "seatUsage").
-    const poolUsageA = poolUsageTiebreakByUserId.get(a.sId) ?? 0;
-    const poolUsageB = poolUsageTiebreakByUserId.get(b.sId) ?? 0;
+    const poolUsageA = metaA?.poolUsageTiebreak ?? 0;
+    const poolUsageB = metaB?.poolUsageTiebreak ?? 0;
     if (poolUsageA !== poolUsageB) {
       return (poolUsageA - poolUsageB) * directionFactor;
     }
     // Tiebreak on the highest overage limit, always descending
-    const overageLimitA = overageLimitByUserId.get(a.sId) ?? 0;
-    const overageLimitB = overageLimitByUserId.get(b.sId) ?? 0;
+    const overageLimitA = metaA?.overageLimit ?? 0;
+    const overageLimitB = metaB?.overageLimit ?? 0;
     if (overageLimitA !== overageLimitB) {
       return overageLimitB - overageLimitA;
     }
