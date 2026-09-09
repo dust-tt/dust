@@ -710,15 +710,6 @@ const AgentMessageView = ({
             <MetadataItem label="message" mono>
               {message.sId}
             </MetadataItem>
-            <MetadataItem label="agent">
-              <LinkWrapper
-                href={`/poke/${owner.sId}/assistants/${message.configuration.sId}`}
-                target="_blank"
-                className="font-mono text-highlight hover:underline"
-              >
-                {message.configuration.sId}
-              </LinkWrapper>
-            </MetadataItem>
             {message.modelInteractionDurationMs != null && (
               <MetadataItem label="LLM" mono>
                 {formatDurationMs(message.modelInteractionDurationMs)}
