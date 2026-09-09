@@ -135,7 +135,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     "admin",
     "builder",
     "user",
-  ] as const)("reports whether a %s key can patch a published agent", async (role) => {
+  ] as const)("reports edit permissions for a %s key on a published agent", async (role) => {
     const { workspace, key, agentConfig } = await setupTest(role);
     const response = await getAgentConfiguration(
       workspace,
@@ -145,7 +145,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.agentConfiguration.canEdit).toBe(role !== "user");
+    expect(data.agentConfiguration.canEdit).toBe(role === "admin");
 
     const patchResponse = await patchAgentConfiguration(
       workspace,
@@ -153,6 +153,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
       agentConfig.sId,
       { instructions: "Updated through the API" }
     );
+    // The PATCH endpoint still accepts legacy builder keys independently of `canEdit`.
     expect(patchResponse.status).toBe(role === "user" ? 403 : 200);
   });
 

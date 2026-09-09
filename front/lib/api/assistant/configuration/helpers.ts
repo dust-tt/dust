@@ -98,27 +98,20 @@ export async function getAgentIdFromName(
 
 /**
  * @cc [owner:philipperolet,label:security] regular-key-agent-editability
- * For regular keys on custom agents, editing requires builder access, active status, agent read
- * access or workspace admin, and read access to every requested space.
+ * For regular keys on custom agents, `canEdit` requires workspace admin access, active status,
+ * and read access to every requested space.
  */
 function canEditWithApiKey(
   auth: Authenticator,
   {
     status,
-    canRead,
     canReadSpaces,
   }: {
     status: AgentConfigurationType["status"];
-    canRead: boolean;
     canReadSpaces: boolean;
   }
 ): boolean {
-  return (
-    auth.isBuilder() &&
-    status === "active" &&
-    (canRead || auth.isAdmin()) &&
-    canReadSpaces
-  );
+  return auth.isAdmin() && status === "active" && canReadSpaces;
 }
 
 async function shadowAgentPermissions(
@@ -144,7 +137,6 @@ async function shadowAgentPermissions(
         const write = isRegularApiKey
           ? canEditWithApiKey(auth, {
               status: agent.status,
-              canRead: read,
               canReadSpaces: canReadRequestedSpaces(
                 auth,
                 spaceById,
@@ -233,7 +225,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       ? await TagResource.listForAgents(auth, configurationIds)
       : [];
   const spacesForApiKey =
-    isRegularApiKey && auth.isBuilder()
+    isRegularApiKey && auth.isAdmin()
       ? await SpaceResource.fetchByModelIds(auth, [
           ...new Set(
             agentConfigurations.flatMap((agent) => agent.requestedSpaceIds)
@@ -264,7 +256,6 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const canEdit = isRegularApiKey
       ? canEditWithApiKey(auth, {
           status: agent.status,
-          canRead,
           canReadSpaces: canReadRequestedSpaces(
             auth,
             spaceById,
