@@ -145,11 +145,20 @@ ensure_qdrant_create_collection_built() {
   fi
 }
 
+# GCP_SERVICE_ACCOUNT_B64 in 1Password is base64-encoded JSON (shell-safe). Decode to the
+# path Google clients read via SERVICE_ACCOUNT.
 write_gcp_service_account_file() {
-  if [ -n "${GCP_SERVICE_ACCOUNT:-}" ]; then
-    printf '%s' "$GCP_SERVICE_ACCOUNT" >"${SERVICE_ACCOUNT:-/tmp/dust-dev-sa.json}"
-    export SERVICE_ACCOUNT="${SERVICE_ACCOUNT:-/tmp/dust-dev-sa.json}"
+  if [ -z "${GCP_SERVICE_ACCOUNT_B64:-}" ]; then
+    return 0
   fi
+  local path="${SERVICE_ACCOUNT:-/tmp/dust-dev-sa.json}"
+  if ! printf '%s' "$GCP_SERVICE_ACCOUNT_B64" | base64 -d >"$path" 2>/dev/null; then
+    log "GCP_SERVICE_ACCOUNT_B64 is not valid base64 (expected base64-encoded service account JSON)"
+    rm -f "$path"
+    return 1
+  fi
+  chmod 600 "$path"
+  export SERVICE_ACCOUNT="$path"
 }
 
 # Materialized 1Password env for every shell (see BASH_ENV / dev/bashrc).
@@ -296,18 +305,9 @@ materialize_dev_environment() {
       ensure_bash_env_global
       return 1
     fi
-    local sanitized
-    sanitized="$(mktemp /tmp/dust-op-env.XXXXXX)"
-    if ! python3 "${DUST_REPO_ROOT}/dev/scripts/sanitize-op-env.py" "$tmp" "$sanitized"; then
-      rm -f "$tmp" "$sanitized"
-      log "Failed to sanitize 1Password env for shell sourcing"
-      ensure_bash_env_global
-      return 1
-    fi
-    rm -f "$tmp"
-    chmod 600 "$sanitized"
-    mv "$sanitized" "$DUST_OP_ENV_FILE"
-    log "Materialized 1Password env ($(grep -c '^export ' "$DUST_OP_ENV_FILE" | tr -d ' ') vars) -> ${DUST_OP_ENV_FILE}"
+    chmod 600 "$tmp"
+    mv "$tmp" "$DUST_OP_ENV_FILE"
+    log "Materialized 1Password env ($(grep -cE '^[A-Za-z_][A-Za-z0-9_]*=' "$DUST_OP_ENV_FILE" | tr -d ' ') vars) -> ${DUST_OP_ENV_FILE}"
     set -a
     # shellcheck disable=SC1090
     . "$DUST_OP_ENV_FILE"
@@ -317,7 +317,7 @@ materialize_dev_environment() {
     rm -f "$DUST_OP_ENV_FILE"
   fi
 
-  # 1Password (or host) JSON key → path Google clients actually read.
+  # Base64 GCP key from 1Password → JSON path Google clients actually read.
   write_gcp_service_account_file
   ensure_bash_env_global
   return 0
