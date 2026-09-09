@@ -1340,7 +1340,11 @@ async function isUserRateLimiterSpendCapped(
     billingCycle: BillingCycle | null;
   }
 ): Promise<boolean> {
-  if (thresholdAwuCredits === null || thresholdAwuCredits <= 0) {
+  // A threshold of exactly 0 is a real "block everything" cap, matching
+  // enforcement (`count >= threshold`, so `0 >= 0` blocks). A null threshold
+  // means it couldn't be resolved (not that the member is uncapped — that can't
+  // happen), so fail open; a negative one is nonsensical and also fails open.
+  if (thresholdAwuCredits === null || thresholdAwuCredits < 0) {
     return false;
   }
 
@@ -2500,7 +2504,15 @@ export async function getMembersUsage({
         ? freeStartingBalanceAwu
         : effectiveSpendLimitAwuCredits;
     let rateLimiterState: RateLimiterState | null = null;
-    if (rateCapThresholdAwuCredits !== null && rateCapThresholdAwuCredits > 0) {
+    // Every seat resolves to a numeric cap — there is no "uncapped" member; a
+    // cap of exactly 0 is a real "block everything" cap (enforcement caps on
+    // `count >= threshold`, so `0 >= 0` blocks). A null threshold here means the
+    // value wasn't resolved (not requested, or a free-seat grant read gap), so
+    // render "—"; otherwise evaluate the cap, including 0.
+    if (
+      rateCapThresholdAwuCredits !== null &&
+      rateCapThresholdAwuCredits >= 0
+    ) {
       const spend = rateLimiterSpendAwuCredits ?? 0;
       rateLimiterState =
         spend >= rateCapThresholdAwuCredits
