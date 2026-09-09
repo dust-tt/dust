@@ -1,0 +1,6 @@
+@cc [owner:Nils-Fedrigo,label:security] client-transports-share-request-resolution
+Every client-side transport helper in `client.ts` MUST obtain its target URL, headers and
+credentials mode from `resolveRequest`, and MUST NOT call `getBaseUrl` or `getDefaultInit` itself
+nor re-derive any part of that resolution. A transport that resolves its own URL or auth context
+drifts from the others as soon as one of them changes, and silently loses the caller's credentials
+(Bearer token in the browser extension, cookies in the SPA).

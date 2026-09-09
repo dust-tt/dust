@@ -1,5 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import { clientFetch } from "@app/lib/egress/client";
+import { clientFetch, clientUpload } from "@app/lib/egress/client";
 import type { FileUploadedRequestResponseBody } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -26,6 +26,14 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { ChangeEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 
+/**
+ * @cc [owner:Nils-Fedrigo,label:react] upload-progress-is-not-a-completion-signal
+ * While `isUploading` is `true`, `uploadProgress` MUST be `null` until the file's bytes start
+ * moving and the integer percentage of bytes sent afterwards. `100` MUST mean the bytes are all
+ * sent while the server is still processing the file, and MUST NOT be used to signal that the
+ * upload is done: completion is signalled by `isUploading` becoming `false`, at which point
+ * `uploadProgress` MUST be `null` again.
+ */
 export interface FileBlob {
   contentType: SupportedFileContentType;
   file: File;
@@ -33,6 +41,7 @@ export interface FileBlob {
   id: string;
   fileId: string | null;
   isUploading: boolean;
+  uploadProgress: number | null;
   sourceUrl?: string;
   size: number;
   publicUrl?: string;
@@ -217,12 +226,29 @@ export function useFileUploaderService({
           const formData = new FormData();
           formData.append("file", fileBlob.file);
 
-          // Upload a file to the obtained URL.
+          // Report the transfer to the attachment card. `clientUpload` already floors the
+          // percentage, so this only re-renders on whole-percent changes (at most 101 times per
+          // file) even for the very large spreadsheets allowed in conversations.
+          let lastReportedProgress: number | null = null;
+          const onProgress = (percentSent: number) => {
+            if (percentSent === lastReportedProgress) {
+              return;
+            }
+            lastReportedProgress = percentSent;
+
+            setFileBlobs((prevFiles) =>
+              prevFiles.map((f) =>
+                f.id === fileBlob.id ? { ...f, uploadProgress: percentSent } : f
+              )
+            );
+          };
+
+          // Upload a file to the obtained URL. `clientUpload` is used over `clientFetch` because
+          // `fetch` cannot report request body progress.
           let uploadResult;
           try {
-            uploadResult = await clientFetch(file.uploadUrl, {
-              method: "POST",
-              body: formData,
+            uploadResult = await clientUpload(file.uploadUrl, formData, {
+              onProgress,
             });
           } catch (err) {
             logger.error({ err }, "Error uploading files");
@@ -252,6 +278,7 @@ export function useFileUploaderService({
             ...fileBlob,
             fileId: file.sId,
             isUploading: false,
+            uploadProgress: null,
             sourceUrl: fileUploaded.downloadUrl,
             publicUrl: file.publicUrl,
             path: fileUploaded.path,
@@ -454,6 +481,7 @@ export function useFileUploaderService({
         id: fileData.id ?? fileData.fileId,
         fileId: fileData.fileId,
         isUploading: false,
+        uploadProgress: null,
         size: fileData.size,
         sourceUrl: fileData.sourceUrl,
         iconName: fileData.iconName,
@@ -505,5 +533,6 @@ const createFileBlob = (
   // Will be set once the file has been uploaded.
   fileId: null,
   isUploading: true,
+  uploadProgress: null,
   size: file.size,
 });

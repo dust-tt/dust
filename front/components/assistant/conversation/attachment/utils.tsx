@@ -223,6 +223,7 @@ export function attachmentToAttachmentCitation(
       title: attachment.title,
       sourceUrl: attachment.sourceUrl ?? null,
       isUploading: attachment.isUploading,
+      uploadProgress: attachment.uploadProgress,
       size: attachment.size,
       visual: (
         <IconForAttachmentCitation
