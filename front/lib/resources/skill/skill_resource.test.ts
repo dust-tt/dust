@@ -260,6 +260,9 @@ describe("SkillResource", () => {
         testContext.workspace.sId
       );
 
+      // Grant the other user editor access so they can update the skill.
+      await skill.addEditors(testContext.authenticator, [otherUser]);
+
       // First update creates version 1 with the original creator's editedBy.
       await skill.updateSkill(testContext.authenticator, {
         name: skill.name,
