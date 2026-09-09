@@ -6,7 +6,10 @@ import {
   countConversationMessages,
   renderConversationAsText,
 } from "@app/lib/api/assistant/conversation/render_as_text";
-import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getSmallWhitelistedModel,
+} from "@app/lib/api/assistant/models";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import { Authenticator } from "@app/lib/auth";
 import {
@@ -292,7 +295,10 @@ const runConversationSummaryToolCall = async (
 > => {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = await getSmallWhitelistedModel(auth);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+  const model = getSmallWhitelistedModel(auth, undefined, {
+    whiteListedProviders,
+  });
   if (!model) {
     return new Err(
       new DustError("no_whitelisted_model_found", "No whitelisted model found")

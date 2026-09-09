@@ -64,8 +64,13 @@ function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
   return { eq: EUROPE };
 }
 
-function getWhitelistedProviderIds(auth: Authenticator): ModelProviderIdType[] {
-  const whitelistedProviderIds = [...getWhitelistedProviders(auth)];
+function getWhitelistedProviderIds(
+  auth: Authenticator,
+  whiteListedProviders: ModelProviderIdType[] | null
+): ModelProviderIdType[] {
+  const whitelistedProviderIds = [
+    ...getWhitelistedProviders(auth, whiteListedProviders),
+  ];
   const byok = auth.getNonNullablePlan().isByok;
 
   return byok
@@ -127,9 +132,12 @@ function getLabAndHostFilter(
 }
 
 // Temporary helper while we have both systems
-export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
+export function getWorkspaceFilter(
+  auth: Authenticator,
+  whiteListedProviders: ModelProviderIdType[] | null
+): Where<EndpointConfig> {
   const byok = auth.getNonNullablePlan().isByok;
-  const providerIds = getWhitelistedProviderIds(auth);
+  const providerIds = getWhitelistedProviderIds(auth, whiteListedProviders);
 
   return {
     ...getLabAndHostFilter(providerIds),

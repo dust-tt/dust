@@ -2,12 +2,14 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { renderConversationAsText } from "@app/lib/api/assistant/conversation/render_as_text";
 import {
+  getEffectiveWhiteListedProviders,
   getSmallWhitelistedModel,
   getWhitelistedProviders,
 } from "@app/lib/api/assistant/models";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
@@ -177,7 +179,8 @@ async function generateConversationTitle(
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getFastModelConfig(auth);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+  const model = getFastModelConfig(auth, whiteListedProviders);
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate title")
@@ -257,9 +260,10 @@ async function generateConversationTitle(
 }
 
 function getFastModelConfig(
-  auth: Authenticator
+  auth: Authenticator,
+  whiteListedProviders: ModelProviderIdType[] | null
 ): ModelConfigurationType | null {
-  const providers = getWhitelistedProviders(auth);
+  const providers = getWhitelistedProviders(auth, whiteListedProviders);
 
   if (providers.has("openai")) {
     return GPT_5_1_MODEL_CONFIG;
@@ -271,5 +275,5 @@ function getFastModelConfig(
     return GEMINI_3_5_FLASH_MODEL_CONFIG;
   }
 
-  return getSmallWhitelistedModel(auth);
+  return getSmallWhitelistedModel(auth, undefined, { whiteListedProviders });
 }

@@ -1,5 +1,8 @@
 import { compactConversation } from "@app/lib/api/assistant/conversation/compaction";
-import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  isProviderWhitelistedForAuth,
+} from "@app/lib/api/assistant/models";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { isSupportedModel } from "@app/types/assistant/assistant";
 import type { CompactionMessageType } from "@app/types/assistant/conversation";
@@ -120,7 +123,14 @@ app.post(
       });
     }
 
-    if (!isProviderWhitelistedForAuth(auth, model.providerId)) {
+    const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+    if (
+      !isProviderWhitelistedForAuth(
+        auth,
+        model.providerId,
+        whiteListedProviders
+      )
+    ) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {

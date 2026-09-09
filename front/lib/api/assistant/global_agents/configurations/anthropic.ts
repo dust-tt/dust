@@ -8,6 +8,7 @@ import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/glob
 import { selectEnabledModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
+import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -306,11 +307,13 @@ export function _getClaude5SonnetGlobalAgent({
   settings,
   mcpServerViews,
   featureFlags,
+  whiteListedProviders,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettingsModel | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   featureFlags: WhitelistableFeature[];
+  whiteListedProviders: ModelProviderIdType[] | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -329,7 +332,7 @@ export function _getClaude5SonnetGlobalAgent({
         CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG,
         CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG,
       ],
-      { featureFlags }
+      { featureFlags, whiteListedProviders }
     ) ?? CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
 
   return {

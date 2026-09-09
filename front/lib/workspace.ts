@@ -30,7 +30,10 @@ export function renderLightWorkspaceType({
     metronomeCustomerId: workspace.metronomeCustomerId ?? null,
     regionalModelsOnly: workspace.regionalModelsOnly,
     sId: workspace.sId,
-    whiteListedProviders: workspace.whiteListedProviders,
+    whiteListedProviders:
+      "configuredWhiteListedProviders" in workspace
+        ? workspace.configuredWhiteListedProviders
+        : workspace.whiteListedProviders,
     workOSOrganizationId: workspace.workOSOrganizationId,
   };
 }

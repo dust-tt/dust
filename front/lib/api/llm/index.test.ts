@@ -1,4 +1,5 @@
 import { getWorkspaceFilter, legacyModelIdToModel } from "@app/lib/api/llm";
+import { getEffectiveWhiteListedProviders } from "@app/lib/api/assistant/models";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { getStreamEndpoints } from "@app/lib/llms/stream";
 import type { WorkspaceConfig } from "@app/lib/llms/types/filter";
@@ -37,7 +38,10 @@ describe("getWorkspaceFilter", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     const workspaceConfig = await getWorkspaceConfig(auth);
-    const filter = getWorkspaceFilter(auth);
+    const filter = getWorkspaceFilter(
+      auth,
+      await getEffectiveWhiteListedProviders(auth)
+    );
 
     const flashEndpoints = getStreamEndpoints(workspaceConfig, {
       ...filter,
@@ -64,7 +68,10 @@ describe("getWorkspaceFilter", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     const workspaceConfig = await getWorkspaceConfig(auth);
-    const filter = getWorkspaceFilter(auth);
+    const filter = getWorkspaceFilter(
+      auth,
+      await getEffectiveWhiteListedProviders(auth)
+    );
 
     const proEndpoints = getStreamEndpoints(workspaceConfig, {
       ...filter,

@@ -1,6 +1,9 @@
 import { getDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
-import { selectEnabledModel } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  selectEnabledModel,
+} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { getAgentAllowedTierNamesOverride } from "@app/lib/model_tiers/agent_tier_overrides";
 import {
@@ -71,6 +74,8 @@ export async function resolveModel(
 
   const requestedConfig = userConfig ?? agentConfig;
 
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+
   let enabled =
     requestedConfig && isModelStreamId(requestedConfig.modelId)
       ? requestedConfig
@@ -83,6 +88,7 @@ export async function resolveModel(
           ]),
           {
             featureFlags,
+            whiteListedProviders,
           }
         );
 

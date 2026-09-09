@@ -32,6 +32,7 @@ import {
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -84,6 +85,9 @@ interface DustLikeGlobalAgentArgs {
   // Workspace feature flags, forwarded to model selection so it runs the exact
   // same model availability check that is enforced when a message is posted.
   featureFlags: WhitelistableFeature[];
+  // Effective white-listed providers (kill switches applied), forwarded to
+  // model selection for the same reason.
+  whiteListedProviders: ModelProviderIdType[] | null;
   // When set, the @dust agent defaults to this stream meta-model (the highest
   // one the member's model-tier cap allows) instead of GPT 5.6 Luna.
   autoDefaultModelConfig?: ModelConfigurationType | null;
@@ -259,6 +263,7 @@ function _getDustLikeGlobalAgent(
     hasDeepDive,
     globalAgentContext,
     featureFlags,
+    whiteListedProviders,
   }: DustLikeGlobalAgentArgs,
   {
     agentId,
@@ -297,11 +302,13 @@ function _getDustLikeGlobalAgent(
       preferredModelConfiguration != null &&
       selectEnabledModel(auth, [preferredModelConfiguration], {
         featureFlags,
+        whiteListedProviders,
       }) != null;
 
     if (!auth.isUpgraded()) {
       return getSmallWhitelistedModel(auth, undefined, {
         featureFlags,
+        whiteListedProviders,
       });
     }
 
@@ -310,7 +317,10 @@ function _getDustLikeGlobalAgent(
       return preferredModelConfiguration;
     }
 
-    return getLargeWhitelistedModel(auth, undefined, { featureFlags });
+    return getLargeWhitelistedModel(auth, undefined, {
+      featureFlags,
+      whiteListedProviders,
+    });
   })();
 
   const model: AgentModelConfigurationType = modelConfiguration

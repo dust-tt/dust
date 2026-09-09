@@ -1,6 +1,9 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
-import { getFastestWhitelistedModel } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getFastestWhitelistedModel,
+} from "@app/lib/api/assistant/models";
 import type { SuggestionResults } from "@app/lib/api/assistant/suggestions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -103,7 +106,8 @@ export async function getBuilderNameSuggestions(
     "- The name should immediately convey what the agent does.";
   const conversation: ModelConversationTypeMultiActions =
     getConversationContext(inputs);
-  const model = getFastestWhitelistedModel(auth);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+  const model = getFastestWhitelistedModel(auth, { whiteListedProviders });
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model for name suggestions")

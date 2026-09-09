@@ -13,6 +13,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -34,6 +35,7 @@ function _getManagedDataSourceAgent(
     preFetchedDataSources,
     searchMCPServerView,
     featureFlags,
+    whiteListedProviders,
   }: {
     settings: GlobalAgentSettingsModel | null;
     connectorProvider: ConnectorProvider;
@@ -45,11 +47,18 @@ function _getManagedDataSourceAgent(
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     searchMCPServerView: MCPServerViewResource | null;
     featureFlags: WhitelistableFeature[];
+    whiteListedProviders: ModelProviderIdType[] | null;
   }
 ): AgentConfigurationType | null {
   const modelConfiguration = auth.isUpgraded()
-    ? getLargeWhitelistedModel(auth, undefined, { featureFlags })
-    : getSmallWhitelistedModel(auth, undefined, { featureFlags });
+    ? getLargeWhitelistedModel(auth, undefined, {
+        featureFlags,
+        whiteListedProviders,
+      })
+    : getSmallWhitelistedModel(auth, undefined, {
+        featureFlags,
+        whiteListedProviders,
+      });
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {
@@ -159,11 +168,13 @@ export function _getGoogleDriveGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     featureFlags,
+    whiteListedProviders,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     featureFlags: WhitelistableFeature[];
+    whiteListedProviders: ModelProviderIdType[] | null;
   }
 ): AgentConfigurationType | null {
   const agentId = GLOBAL_AGENTS_SID.GOOGLE_DRIVE;
@@ -182,6 +193,7 @@ export function _getGoogleDriveGlobalAgent(
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
     featureFlags,
+    whiteListedProviders,
   });
 }
 
@@ -192,11 +204,13 @@ export function _getSlackGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     featureFlags,
+    whiteListedProviders,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     featureFlags: WhitelistableFeature[];
+    whiteListedProviders: ModelProviderIdType[] | null;
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.SLACK;
@@ -215,6 +229,7 @@ export function _getSlackGlobalAgent(
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
     featureFlags,
+    whiteListedProviders,
   });
 }
 
@@ -225,11 +240,13 @@ export function _getGithubGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     featureFlags,
+    whiteListedProviders,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     featureFlags: WhitelistableFeature[];
+    whiteListedProviders: ModelProviderIdType[] | null;
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.GITHUB;
@@ -248,6 +265,7 @@ export function _getGithubGlobalAgent(
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
     featureFlags,
+    whiteListedProviders,
   });
 }
 
@@ -258,11 +276,13 @@ export function _getNotionGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     featureFlags,
+    whiteListedProviders,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     featureFlags: WhitelistableFeature[];
+    whiteListedProviders: ModelProviderIdType[] | null;
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.NOTION;
@@ -281,6 +301,7 @@ export function _getNotionGlobalAgent(
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
     featureFlags,
+    whiteListedProviders,
   });
 }
 
@@ -291,11 +312,13 @@ export function _getIntercomGlobalAgent(
     preFetchedDataSources,
     mcpServerViews,
     featureFlags,
+    whiteListedProviders,
   }: {
     settings: GlobalAgentSettingsModel | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     featureFlags: WhitelistableFeature[];
+    whiteListedProviders: ModelProviderIdType[] | null;
   }
 ) {
   const agentId = GLOBAL_AGENTS_SID.INTERCOM;
@@ -314,5 +337,6 @@ export function _getIntercomGlobalAgent(
     preFetchedDataSources,
     searchMCPServerView: mcpServerViews.search,
     featureFlags,
+    whiteListedProviders,
   });
 }

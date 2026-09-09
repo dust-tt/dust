@@ -1,7 +1,10 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getSmallWhitelistedModel,
+} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -193,7 +196,10 @@ export async function getSimilarAgents(
     return new Ok({ similar_agents: [] });
   }
 
-  const model = await getSmallWhitelistedModel(auth);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+  const model = getSmallWhitelistedModel(auth, undefined, {
+    whiteListedProviders,
+  });
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to check similar agents")

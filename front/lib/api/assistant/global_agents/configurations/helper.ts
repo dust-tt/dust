@@ -12,6 +12,7 @@ import {
   getSmallWhitelistedModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
+import type { ModelProviderIdType } from "@app/lib/resources/storage/models/workspace";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -23,10 +24,12 @@ import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 export function _getHelperGlobalAgent({
   auth,
   featureFlags,
+  whiteListedProviders,
   mcpServerViews,
 }: {
   auth: Authenticator;
   featureFlags: WhitelistableFeature[];
+  whiteListedProviders: ModelProviderIdType[] | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let prompt = `<primary_goal>
@@ -65,8 +68,14 @@ The user you're interacting with is granted with the role ${role}. Their name is
   }
 
   const modelConfiguration = auth.isUpgraded()
-    ? getLargeWhitelistedModel(auth, undefined, { featureFlags })
-    : getSmallWhitelistedModel(auth, undefined, { featureFlags });
+    ? getLargeWhitelistedModel(auth, undefined, {
+        featureFlags,
+        whiteListedProviders,
+      })
+    : getSmallWhitelistedModel(auth, undefined, {
+        featureFlags,
+        whiteListedProviders,
+      });
 
   const model: AgentModelConfigurationType = modelConfiguration
     ? {

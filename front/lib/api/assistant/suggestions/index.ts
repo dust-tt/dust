@@ -1,4 +1,7 @@
-import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getSmallWhitelistedModel,
+} from "@app/lib/api/assistant/models";
 import { getBuilderDescriptionSuggestions } from "@app/lib/api/assistant/suggestions/description";
 import { getBuilderEmojiSuggestions } from "@app/lib/api/assistant/suggestions/emoji";
 import { getBuilderNameSuggestions } from "@app/lib/api/assistant/suggestions/name";
@@ -22,8 +25,12 @@ async function getModelForSuggestionType(
     case "name":
     case "description":
     case "emoji":
-    case "tags":
-      return getSmallWhitelistedModel(auth);
+    case "tags": {
+      const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+      return getSmallWhitelistedModel(auth, undefined, {
+        whiteListedProviders,
+      });
+    }
 
     default:
       assertNever(type);

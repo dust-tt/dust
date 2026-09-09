@@ -4,6 +4,7 @@ import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { GEMINI_3_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
@@ -27,13 +28,25 @@ import {
 } from "@app/types/assistant/models/xai";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
-export function getWhitelistedProviders(
+// Effective white-listed providers for the authenticated workspace: the configured value
+// overlaid with the global provider kill switches. Resolved once at an async boundary and
+// passed into the synchronous gating functions below, like featureFlags.
+export async function getEffectiveWhiteListedProviders(
   auth: Authenticator
-): Set<ModelProviderIdType> {
+): Promise<ModelProviderIdType[] | null> {
   const owner = auth.getNonNullableWorkspace();
+  return WorkspaceResource.getWhiteListedProvidersFilteredByKillSwitches(
+    owner.whiteListedProviders
+  );
+}
+
+export function getWhitelistedProviders(
+  auth: Authenticator,
+  whiteListedProvidersInput: ModelProviderIdType[] | null
+): Set<ModelProviderIdType> {
   const plan = auth.getNonNullablePlan();
   const whiteListedProviders = new Set<ModelProviderIdType>(
-    owner.whiteListedProviders ?? MODEL_PROVIDER_IDS
+    whiteListedProvidersInput ?? MODEL_PROVIDER_IDS
   );
 
   // noop never sees user data, always whitelisted.
@@ -71,15 +84,20 @@ export { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist
 
 export function isProviderWhitelistedForAuth(
   auth: Authenticator,
-  providerId: ModelProviderIdType
+  providerId: ModelProviderIdType,
+  whiteListedProviders: ModelProviderIdType[] | null
 ): boolean {
-  return isProviderWhitelisted(getWhitelistedProviders(auth), providerId);
+  return isProviderWhitelisted(
+    getWhitelistedProviders(auth, whiteListedProviders),
+    providerId
+  );
 }
 
 type ModelEnablementContext = Parameters<typeof isModelEnabled>[1];
 
 function getModelEnablementContext(
   auth: Authenticator,
+  whiteListedProviders: ModelProviderIdType[] | null,
   excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
   featureFlags: WhitelistableFeature[] = []
 ): ModelEnablementContext {
@@ -90,8 +108,10 @@ function getModelEnablementContext(
     plan: auth.plan(),
     regionalModelsOnly: owner.regionalModelsOnly,
     region: regionConfig.getCurrentRegion(),
-    whitelistedProviders:
-      getWhitelistedProviders(auth).difference(excludeProviders),
+    whitelistedProviders: getWhitelistedProviders(
+      auth,
+      whiteListedProviders
+    ).difference(excludeProviders),
   };
 }
 
@@ -102,23 +122,28 @@ function getModelEnablementContext(
 // chosen model can never be rejected later as "not supported". It falls through
 // to the next candidate instead.
 //
-// The workspace feature flags must be passed in: selection happens in
-// synchronous global-agent builders where they are not otherwise in scope, and
-// using the real flags here is what keeps this check identical to the one
-// enforced at message time rather than a second, divergent check.
+// The workspace feature flags and effective white-listed providers must be
+// passed in: selection happens in synchronous global-agent builders where they
+// are not otherwise in scope, and using the real values here is what keeps this
+// check identical to the one enforced at message time rather than a second,
+// divergent check. Resolve the providers with getEffectiveWhiteListedProviders
+// at the nearest async boundary.
 export function selectEnabledModel(
   auth: Authenticator,
   candidates: ModelConfigurationType[],
   {
     featureFlags,
+    whiteListedProviders,
     excludeProviders = new Set(),
   }: {
     featureFlags: WhitelistableFeature[];
+    whiteListedProviders: ModelProviderIdType[] | null;
     excludeProviders?: ReadonlySet<ModelProviderIdType>;
   }
 ): ModelConfigurationType | null {
   const context = getModelEnablementContext(
     auth,
+    whiteListedProviders,
     excludeProviders,
     featureFlags
   );
@@ -132,9 +157,12 @@ const ORDERED_FAST_MODEL_CONFIGS: ModelConfigurationType[] = [
 ];
 
 export function getFastestWhitelistedModel(
-  auth: Authenticator
+  auth: Authenticator,
+  {
+    whiteListedProviders,
+  }: { whiteListedProviders: ModelProviderIdType[] | null }
 ): ModelConfigurationType | null {
-  const context = getModelEnablementContext(auth);
+  const context = getModelEnablementContext(auth, whiteListedProviders);
 
   return (
     ORDERED_FAST_MODEL_CONFIGS.find((m) => isModelEnabled(m, context)) ??
@@ -145,10 +173,21 @@ export function getFastestWhitelistedModel(
 export function getSmallWhitelistedModel(
   auth: Authenticator,
   excludeProviders: ReadonlySet<ModelProviderIdType> = new Set(),
-  { featureFlags = [] }: { featureFlags?: WhitelistableFeature[] } = {}
+  {
+    featureFlags = [],
+    whiteListedProviders,
+  }: {
+    featureFlags?: WhitelistableFeature[];
+    whiteListedProviders: ModelProviderIdType[] | null;
+  }
 ): ModelConfigurationType | null {
   return _getSmallWhitelistedModel(
-    getModelEnablementContext(auth, excludeProviders, featureFlags)
+    getModelEnablementContext(
+      auth,
+      whiteListedProviders,
+      excludeProviders,
+      featureFlags
+    )
   );
 }
 
@@ -158,10 +197,20 @@ export function getLargeWhitelistedModel(
   {
     forBatch = false,
     featureFlags = [],
-  }: { forBatch?: boolean; featureFlags?: WhitelistableFeature[] } = {}
+    whiteListedProviders,
+  }: {
+    forBatch?: boolean;
+    featureFlags?: WhitelistableFeature[];
+    whiteListedProviders: ModelProviderIdType[] | null;
+  }
 ): ModelConfigurationType | null {
   return _getLargeWhitelistedModel(
-    getModelEnablementContext(auth, excludeProviders, featureFlags),
+    getModelEnablementContext(
+      auth,
+      whiteListedProviders,
+      excludeProviders,
+      featureFlags
+    ),
     { forBatch }
   );
 }

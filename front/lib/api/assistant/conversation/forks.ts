@@ -7,7 +7,10 @@ import { compactConversation } from "@app/lib/api/assistant/conversation/compact
 import { replaceStandaloneAttachmentIds } from "@app/lib/api/assistant/conversation/compaction_attachment_id_replacements";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
-import { getSmallWhitelistedModel } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getSmallWhitelistedModel,
+} from "@app/lib/api/assistant/models";
 import { getFileContent } from "@app/lib/api/files/utils";
 import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
 import type { Authenticator } from "@app/lib/auth";
@@ -94,7 +97,10 @@ async function getForkCompactionModel(
     };
   }
 
-  const fallbackModel = getSmallWhitelistedModel(auth);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+  const fallbackModel = getSmallWhitelistedModel(auth, undefined, {
+    whiteListedProviders,
+  });
   if (!fallbackModel) {
     return null;
   }

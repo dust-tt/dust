@@ -1,7 +1,10 @@
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { validateWebhookFilter } from "@app/lib/api/assistant/configuration/triggers/webhook_filter_validation";
-import { getLargeWhitelistedModel } from "@app/lib/api/assistant/models";
+import {
+  getEffectiveWhiteListedProviders,
+  getLargeWhitelistedModel,
+} from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
@@ -361,7 +364,10 @@ export async function getWebhookFilterGeneration(
     providerSpecificInstructions: string | null;
   }
 ): Promise<Result<{ filter: string }, Error>> {
-  const model = await getLargeWhitelistedModel(auth);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
+  const model = getLargeWhitelistedModel(auth, undefined, {
+    whiteListedProviders,
+  });
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate filter")

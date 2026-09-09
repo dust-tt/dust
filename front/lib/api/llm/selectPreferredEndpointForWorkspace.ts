@@ -1,3 +1,4 @@
+import { getEffectiveWhiteListedProviders } from "@app/lib/api/assistant/models";
 import { getWorkspaceFilter, legacyModelIdToModel } from "@app/lib/api/llm";
 import { config as multiRegionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -36,6 +37,7 @@ export async function selectPreferredEndpointForWorkspace<
 ): Promise<T | null> {
   const plan = auth.getNonNullablePlan();
   const featureFlags = await getFeatureFlags(auth);
+  const whiteListedProviders = await getEffectiveWhiteListedProviders(auth);
 
   const endpoints = getEndpoints(
     {
@@ -44,7 +46,7 @@ export async function selectPreferredEndpointForWorkspace<
       isCreditPriced: isCreditPricedPlanPrefix(plan.code),
     },
     {
-      and: [getWorkspaceFilter(auth), filter],
+      and: [getWorkspaceFilter(auth, whiteListedProviders), filter],
     }
   );
 
