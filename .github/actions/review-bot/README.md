@@ -50,11 +50,31 @@ multiple times. Description edits retaining `cc` request another review, just li
 Bare `cc` stays plain text in Slack and is never sent to GitHub as a reviewer.
 
 The workflow calls the pinned
-[`spolu/code-contracts` contract-review action](https://github.com/spolu/code-contracts/tree/3d3bef00ef8d77978025a28673198b53c3bd6367/.github/actions/contract-review)
+[`spolu/code-contracts` contract-review action](https://github.com/spolu/code-contracts/tree/1a76d59690213bce5e7755a8cc60c35553cb87b1/.github/actions/contract-review)
 in a separate job using `gpt-6-astra` with `xhigh` reasoning effort and the existing `OPENAI_API_KEY`
 secret. It includes its own `review.md`, contract discovery tooling, review generation, and publication.
 Slack delivery failures do not block an emitted contract review request, and contract review failures
 do not block human reviews or Slack.
+
+Description and conversation-comment requests dispatch `review-bot.yml` on the PR's head branch.
+The review inspects that workflow run's commit, even if the branch advances while it is queued or
+running. Later pushes neither cancel the review nor trigger another one. The originating run ID
+preserves the human requester's identity and request across dispatches and retries; the action
+rechecks that person's access before reviewing.
+
+Inline comments and review summaries invoke the action directly in their request workflow because
+the imported action does not yet accept these events as delegated requests. They still publish a
+review and progress status on the captured PR head.
+
+Each review run reports a distinct `Contract review (<run-id>)` commit status linked to the workflow,
+including progress, completion, failure, and cancellation. Success means the review completed;
+findings remain in the comment review. Concurrent runs cannot overwrite one another's status.
+
+The request job needs `actions: write` to dispatch. Review execution needs `contents: read`,
+`pull-requests: write`, `statuses: write`, and `actions: read` to resolve delegated requesters.
+Manual dispatches select the PR's head branch, supply its number, and leave `request-run-id` empty.
+Merge the dispatch-capable workflow into main and bring it into a PR branch before requesting
+head-branch execution.
 
 The imported action accepts open PRs, including drafts, whose head branch is in this repository;
 it skips closed, merged, and fork PRs. It publishes a `COMMENT` review pinned to the inspected commit,

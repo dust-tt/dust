@@ -14,6 +14,7 @@ type ReviewNotification = {
 
 type ReviewContext = {
   actor: string;
+  runId: number;
   repo: Repository;
   eventName: string;
   payload: {
@@ -33,6 +34,15 @@ type ReviewContext = {
 type ReviewBotOptions = {
   github: {
     rest: {
+      actions: {
+        createWorkflowDispatch(
+          params: Repository & {
+            workflow_id: string;
+            ref: string;
+            inputs: Record<string, string>;
+          }
+        ): Promise<unknown>;
+      };
       repos: {
         getCollaboratorPermissionLevel(
           params: Repository & { username: string }
@@ -40,7 +50,12 @@ type ReviewBotOptions = {
       };
       pulls: {
         get(params: PullRequestParams): Promise<{
-          data: { user: { login: string }; html_url: string };
+          data: {
+            user: { login: string };
+            html_url: string;
+            state: string;
+            head: { ref: string; repo: { full_name: string } | null };
+          };
         }>;
         requestReviewers(
           params: PullRequestParams & { reviewers: string[] }
@@ -287,6 +302,61 @@ export async function requestReviews({
     prUrl: pr.html_url,
     requests,
   };
+}
+
+/**
+ * @cc [label:security] contract-review-dispatch-access
+ * Callers supply only PR numbers emitted for an authorized `cc` request. Skip closed and fork PRs.
+ * The imported action rechecks the human requester's access using the originating run ID.
+ */
+/**
+ * @cc [label:product] contract-review-head-dispatch
+ * Dispatch description and conversation-comment requests on the PR's head branch, preserving the
+ * originating run ID. The review inspects its workflow run's commit and reports a distinct commit
+ * status for each run; later pushes neither cancel the review nor request another one. Inline
+ * comments and review summaries use direct invocation because upstream rejects their delegation.
+ */
+/**
+ * @cc [label:security] review-automation-source
+ * Privileged workflow callers load this function from the repository's default branch, never from
+ * a PR revision.
+ */
+export async function dispatchContractReview({
+  github,
+  context,
+  core,
+  pullNumber,
+}: ReviewBotOptions & { pullNumber: number }): Promise<void> {
+  if (
+    context.eventName !== "pull_request_target" &&
+    context.eventName !== "issue_comment"
+  ) {
+    return;
+  }
+  const { data: pr } = await github.rest.pulls.get({
+    ...context.repo,
+    pull_number: pullNumber,
+  });
+  if (
+    pr.state !== "open" ||
+    pr.head.repo?.full_name.toLowerCase() !==
+      `${context.repo.owner}/${context.repo.repo}`.toLowerCase()
+  ) {
+    core.info("Skipping contract review dispatch: the PR is closed or a fork.");
+    return;
+  }
+  await github.rest.actions.createWorkflowDispatch({
+    ...context.repo,
+    workflow_id: "review-bot.yml",
+    ref: pr.head.ref,
+    inputs: {
+      "pull-request-number": String(pullNumber),
+      "request-run-id": String(context.runId),
+    },
+  });
+  core.info(
+    `Dispatched contract review on ${pr.head.ref} for PR #${pullNumber}.`
+  );
 }
 
 function escapeSlackText(text: string): string {
