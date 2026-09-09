@@ -304,8 +304,8 @@ async function buildRunUsageConsumptionEvidence(
     const { action, footprint } = toolCall.tool;
     const attributedSkillIds = attributedSkillIdsByActionModelId.get(action.id);
     assert(
-      attributedSkillIds,
-      "A selected tool action must have skill attribution"
+      attributedSkillIds !== undefined,
+      "A selected tool action must have computed skill attribution"
     );
 
     // A blocked action carries no result and no charge yet, and billing does not charge it. Record
@@ -355,8 +355,8 @@ async function buildRunUsageConsumptionEvidence(
   for (const action of sandboxChildRunActions) {
     const attributedSkillIds = attributedSkillIdsByActionModelId.get(action.id);
     assert(
-      attributedSkillIds,
-      "A selected sandbox child action must have skill attribution"
+      attributedSkillIds !== undefined,
+      "A selected sandbox child action must have computed skill attribution"
     );
 
     // A blocked child has not reached the nested tool yet. Unlike a directly model-emitted call,
@@ -646,21 +646,20 @@ async function computeAndStoreAgentMessageConsumptionAttributionComputation(
   const enrichedActionByModelId = new Map(
     enrichedActions.map((action) => [action.id, action])
   );
-  const attributedSkillIdsByActionModelId = new Map(
-    actionsToEnrich.map((action) => {
-      const enrichedAction = enrichedActionByModelId.get(action.id);
-      assert(enrichedAction, "A selected action must have enriched output");
+  const attributedSkillIdsByActionModelId = new Map<ModelId, string[]>();
+  for (const action of actionsToEnrich) {
+    const enrichedAction = enrichedActionByModelId.get(action.id);
+    assert(enrichedAction, "A selected action must have enriched output");
 
-      return [
-        action.id,
-        skillIdsAttributedToAction({
-          action,
-          enabledSkillIds: getEnabledSkillIdsFromAction(enrichedAction),
-          skills,
-        }),
-      ] as const;
-    })
-  );
+    attributedSkillIdsByActionModelId.set(
+      action.id,
+      skillIdsAttributedToAction({
+        action,
+        enabledSkillIds: getEnabledSkillIdsFromAction(enrichedAction),
+        skills,
+      })
+    );
+  }
 
   const records: CompletedAgentMessageConsumptionItem[] = [];
   // Tool calls whose action is still blocked (awaiting approval or authentication). Written pending:
