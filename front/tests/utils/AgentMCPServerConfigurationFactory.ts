@@ -38,7 +38,7 @@ export class AgentMCPServerConfigurationFactory {
       agentConfigurationId: agent.id,
       workspaceId: owner.id,
       mcpServerViewId: mcpServerView.id,
-      internalMCPServerId: "internal_mcp_server_id",
+      internalMCPServerId: mcpServerView.internalMCPServerId,
       additionalConfiguration: {},
       timeFrame: null,
       jsonSchema: null,
