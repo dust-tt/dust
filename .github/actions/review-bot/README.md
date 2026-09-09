@@ -50,7 +50,7 @@ multiple times. Description edits retaining `cc` request another review, just li
 Bare `cc` stays plain text in Slack and is never sent to GitHub as a reviewer.
 
 The workflow calls the pinned
-[`spolu/code-contracts` contract-review action](https://github.com/spolu/code-contracts/tree/1a76d59690213bce5e7755a8cc60c35553cb87b1/.github/actions/contract-review)
+[`spolu/code-contracts` contract-review action](https://github.com/spolu/code-contracts/tree/main/.github/actions/contract-review)
 in a separate job using `gpt-6-astra` with `xhigh` reasoning effort and the existing `OPENAI_API_KEY`
 secret. It includes its own `review.md`, contract discovery tooling, review generation, and publication.
 Slack delivery failures do not block an emitted contract review request, and contract review failures

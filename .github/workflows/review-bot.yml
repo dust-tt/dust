@@ -67,7 +67,7 @@ jobs:
       statuses: write
     steps:
       - name: Review contracts
-        uses: spolu/code-contracts/.github/actions/contract-review@1a76d59690213bce5e7755a8cc60c35553cb87b1
+        uses: spolu/code-contracts/.github/actions/contract-review@9dcf575448dd88f0934e2862abf03093a00c3f27
         with:
           pull-request-number: ${{ inputs.pull-request-number || needs.request-reviews.outputs.pull-request-number }}
           request-run-id: ${{ inputs.request-run-id }}
