@@ -31,6 +31,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+import assert from "assert";
 import { IncomingForm } from "formidable";
 import { readFile } from "fs/promises";
 
@@ -46,8 +47,6 @@ const EMAIL_WEBHOOK_RELAY_SOURCE_CELL_HEADER =
   "x-dust-email-webhook-source-cell";
 export const EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER =
   "x-dust-email-webhook-source-error";
-export const EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER =
-  "x-dust-email-webhook-remaining-cells";
 export const EMAIL_WEBHOOK_RELAY_HEADER_VALUE = "1";
 
 const EMAIL_RELAY_KEY_PREFIX = "email-webhook-relay";
@@ -79,32 +78,20 @@ function isRelayEligibleError(error: EmailTriggerError): boolean {
 }
 
 /**
- * @cc [owner:philipperolet,label:product] remaining-relay-cells
- * Relayed requests may only visit configured cells listed in the remaining-cells header;
- * legacy relays without that header must not relay again.
+ * @cc [owner:philipperolet,label:product] forward-only-relay
+ * Email relays only visit cells after the current cell in name order, with US first.
  */
-function getEmailRelayCells(headers: EmailWebhookHeaders): CellInfo[] {
-  const cells = cellsConfig.getOtherCells();
-  if (!isRelayedWebhookRequest(headers)) {
-    return cells;
-  }
-
-  const remainingCells = headers[EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER];
-  if (!isString(remainingCells)) {
-    return [];
-  }
-  const remaining = new Set(remainingCells.split(","));
-  return cells.filter((cell) => remaining.has(cell.name));
+function getNextEmailRelayCells(): CellInfo[] {
+  const cells = cellsConfig
+    .getAllCells()
+    .sort((a, b) => a.name.localeCompare(b.name));
+  assert(cells[0].name === "cell-00000", "US must come first");
+  const currentCell = cellsConfig.getCurrentCell();
+  return cells.filter((cell) => cell.name > currentCell.name);
 }
 
-export function shouldRelayToOtherCells({
-  headers,
-  error,
-}: {
-  headers: EmailWebhookHeaders;
-  error: EmailTriggerError;
-}): boolean {
-  return isRelayEligibleError(error) && getEmailRelayCells(headers).length > 0;
+export function shouldRelayToOtherCells(error: EmailTriggerError): boolean {
+  return isRelayEligibleError(error) && getNextEmailRelayCells().length > 0;
 }
 
 // Ordered from least to most informative: a user unknown in one cell may still
@@ -215,8 +202,8 @@ export async function recordEmailRelay(
 
 /**
  * @cc [owner:philipperolet,label:product] relay-handoff
- * Each relay passes only the cells after its target as remaining destinations, and stops
- * after a successful HTTP handoff. The receiving cell owns further lookup and error replies.
+ * Advance to another cell only after an explicit HTTP rejection. On acceptance, the
+ * receiving cell owns further lookup, forwarding, and error replies.
  */
 /**
  * @cc [owner:philipperolet,label:product] uncertain-relay-stops
@@ -224,16 +211,10 @@ export async function recordEmailRelay(
  */
 export async function relayEmailToOtherCells(
   email: InboundEmail,
-  {
-    sourceError,
-    headers: requestHeaders,
-  }: {
-    sourceError: EmailTriggerError;
-    headers: EmailWebhookHeaders;
-  }
+  { sourceError }: { sourceError: EmailTriggerError }
 ): Promise<Result<void, Error>> {
   try {
-    const cells = getEmailRelayCells(requestHeaders);
+    const cells = getNextEmailRelayCells();
 
     const headers = {
       Authorization: `Bearer ${cellsConfig.getLookupApiSecret()}`,
@@ -264,18 +245,12 @@ export async function relayEmailToOtherCells(
       );
     }
 
-    for (const [index, cell] of cells.entries()) {
+    for (const cell of cells) {
       const responseRes = await withRetry(
         async () => {
           const response = await fetch(`${cell.url}/api/email/webhook`, {
             method: "POST",
-            headers: {
-              ...headers,
-              [EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER]: cells
-                .slice(index + 1)
-                .map((remainingCell) => remainingCell.name)
-                .join(","),
-            },
+            headers,
             body,
           });
 
@@ -316,8 +291,9 @@ export async function relayEmailToOtherCells(
           "[email] Failed to relay inbound email to cell"
         );
         if (responseRes.isErr()) {
-          break;
+          return responseRes;
         }
+        // Only an explicit rejection lets us try the next cell.
         continue;
       }
 

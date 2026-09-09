@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 import {
   EMAIL_WEBHOOK_RELAY_HEADER,
   EMAIL_WEBHOOK_RELAY_HEADER_VALUE,
-  EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER,
   EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER,
 } from "@app/lib/api/assistant/email/webhook_helpers";
+import { config as cellsConfig } from "@app/lib/api/cells/config";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -16,18 +16,19 @@ vi.mock("@app/lib/api/cells/config", async (importOriginal) => {
     ...actual,
     config: {
       ...actual.config,
-      getCurrentRegion: () => "europe-west1",
+      getCurrentCell: vi.fn(),
       getLookupApiSecret: () => "test-lookup-secret",
-      getOtherCells: () => [
-        {
-          name: "cell-00001",
-          region: "europe-west1",
-          url: "http://other-region.test",
-        } satisfies CellInfo,
+      getAllCells: () => [
         {
           name: "cell-00002",
           region: "europe-west1",
           url: "http://last-cell.test",
+        } satisfies CellInfo,
+        actual.config.getCellInfo("cell-00000"),
+        {
+          name: "cell-00001",
+          region: "europe-west1",
+          url: "http://other-region.test",
         } satisfies CellInfo,
       ],
     },
@@ -112,9 +113,12 @@ const postWebhook = async (
   });
 };
 
+const getCurrentCellMock = vi.mocked(cellsConfig.getCurrentCell);
+
 describe("POST /api/email/webhook", () => {
   beforeEach(() => {
     vi.mocked(sendEmailToRecipients).mockClear();
+    getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00002"));
   });
 
   it("rejects requests without valid authorization", async () => {
@@ -125,6 +129,7 @@ describe("POST /api/email/webhook", () => {
   });
 
   it("relays with the source error type when no local workspace has email agents enabled", async () => {
+    getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00000"));
     const { user } = await createResourceTest({ role: "admin" });
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}"));
     vi.stubGlobal("fetch", fetchMock);
@@ -141,9 +146,6 @@ describe("POST /api/email/webhook", () => {
       expect(relayInit.headers[EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]).toBe(
         "email_agents_disabled"
       );
-      expect(
-        relayInit.headers[EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER]
-      ).toBe("cell-00002");
       // No bounce from the source region once the relay succeeded.
       expect(sendEmailToRecipients).not.toHaveBeenCalled();
     } finally {
@@ -152,13 +154,13 @@ describe("POST /api/email/webhook", () => {
   });
 
   it("forwards lookup misses without sending an error reply", async () => {
+    getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00001"));
     const fetchMock = vi.fn().mockResolvedValue(new Response("{}"));
     vi.stubGlobal("fetch", fetchMock);
 
     try {
       const response = await postWebhook("unknown-sender@example.com", {
         ...RELAY_AUTH_HEADERS,
-        [EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER]: "cell-00002",
         [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: "email_agents_disabled",
       });
       expect(response.status).toBe(200);
@@ -166,9 +168,6 @@ describe("POST /api/email/webhook", () => {
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
       const [relayUrl, relayInit] = fetchMock.mock.calls[0];
       expect(relayUrl).toBe("http://last-cell.test/api/email/webhook");
-      expect(
-        relayInit.headers[EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER]
-      ).toBe("");
       expect(relayInit.headers[EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]).toBe(
         "email_agents_disabled"
       );
@@ -179,6 +178,7 @@ describe("POST /api/email/webhook", () => {
   });
 
   it("tries the next cell after an HTTP error", async () => {
+    getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00000"));
     const { user } = await createResourceTest({ role: "admin" });
     const fetchMock = vi
       .fn()
@@ -190,11 +190,10 @@ describe("POST /api/email/webhook", () => {
       await postWebhook(user.email, { Authorization: SENDGRID_AUTH_HEADER });
 
       await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-      const [relayUrl, relayInit] = fetchMock.mock.calls[1];
-      expect(relayUrl).toBe("http://last-cell.test/api/email/webhook");
-      expect(
-        relayInit.headers[EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER]
-      ).toBe("");
+      expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+        "http://other-region.test/api/email/webhook",
+        "http://last-cell.test/api/email/webhook",
+      ]);
       expect(sendEmailToRecipients).not.toHaveBeenCalled();
     } finally {
       vi.unstubAllGlobals();
@@ -202,6 +201,7 @@ describe("POST /api/email/webhook", () => {
   });
 
   it("does not try another cell when receipt is uncertain", async () => {
+    getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00000"));
     const fetchMock = vi.fn().mockRejectedValue(new Error("Response lost"));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -244,6 +244,7 @@ describe("POST /api/email/webhook", () => {
   });
 
   it("retries transient relay failures", async () => {
+    getCurrentCellMock.mockReturnValue(cellsConfig.getCellInfo("cell-00000"));
     const { user } = await createResourceTest({ role: "admin" });
     const fetchMock = vi
       .fn()
@@ -324,21 +325,13 @@ describe("POST /api/email/webhook", () => {
     expect(message.html).toContain("Email agents are disabled");
   });
 
-  it.each([
-    undefined,
-    "",
-  ])("replies once after relay exhaustion (%s)", async (remainingCells) => {
+  it("replies once in the last cell without relaying back", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
     try {
       const response = await postWebhook("unknown-sender@example.com", {
         ...RELAY_AUTH_HEADERS,
-        ...(remainingCells === undefined
-          ? {}
-          : {
-              [EMAIL_WEBHOOK_RELAY_REMAINING_CELLS_HEADER]: remainingCells,
-            }),
         [EMAIL_WEBHOOK_RELAY_SOURCE_ERROR_HEADER]: "email_agents_disabled",
       });
       expect(response.status).toBe(200);

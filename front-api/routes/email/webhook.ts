@@ -199,9 +199,8 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
           localError: userRes.error,
           senderEmail: email.sender.email,
         });
-        if (shouldRelayToOtherCells({ headers, error: userRes.error })) {
+        if (shouldRelayToOtherCells(userRes.error)) {
           const relayRes = await relayEmailToOtherCells(email, {
-            headers,
             sourceError: error,
           });
           if (relayRes.isOk()) {
