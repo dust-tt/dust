@@ -436,7 +436,7 @@ function _getDustLikeGlobalAgent(
     ...dustAgent,
     status: "active",
     actions,
-    skills: [
+    codeDefinedSkillIds: [
       "discover_knowledge",
       "discover_skills",
       "frames",

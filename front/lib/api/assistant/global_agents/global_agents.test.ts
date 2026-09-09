@@ -105,8 +105,8 @@ describe("getGlobalAgents custom model agents", () => {
     expect(agents[0].instructions).not.toContain(
       "https://dust-community.tightknit.community/join"
     );
-    expect(agents[0].skills).toContain("discover_skills");
-    expect(agents[0].skills).toContain("support");
+    expect(agents[0].codeDefinedSkillIds).toContain("discover_skills");
+    expect(agents[0].codeDefinedSkillIds).toContain("support");
   });
 
   it("reserves Go Deep for explicit deep research requests", async () => {
