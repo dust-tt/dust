@@ -2691,8 +2691,13 @@ export async function getMembersUsage({
             nowMs: Date.now(),
           })?.target ?? null)
         : null;
+    // Same lifetime-grant caveat as `seatUsageTarget` above: a free seat's
+    // balance never resets on a billing cycle, so pace-against-the-cycle
+    // doesn't apply to it either.
     const overallUsageTarget =
-      billingCycle && effectiveSpendLimitAwuCredits !== null
+      billingCycle &&
+      membership.seatType !== "free" &&
+      effectiveSpendLimitAwuCredits !== null
         ? (computeCreditUsageStatus({
             consumedAwuCredits: totalConsumedCredits,
             limitAwuCredits: effectiveSpendLimitAwuCredits,
