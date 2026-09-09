@@ -45,7 +45,10 @@ import type {
   SkillDefinition,
 } from "@app/lib/resources/skill/code_defined/shared";
 import { SystemSkillsRegistry } from "@app/lib/resources/skill/code_defined/system_registry";
-import type { SkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
+import type {
+  SkillConfigurationFindOptions,
+  SkillHydrationOptions,
+} from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
@@ -78,6 +81,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
+  AgentSkillType,
   SkillAvailability,
   SkillReinforcementMode,
   SkillSourceMetadata,
@@ -1259,16 +1263,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       withTools,
       withToolMetadata,
       withFileAttachments,
-    }: {
+    }: SkillHydrationOptions & {
       agentLoopData?: AgentLoopExecutionData;
       effectiveSpaceIds?: string[];
       permissionFiltering?: SkillPermissionFilteringMode;
       status?: SkillStatus | SkillStatus[];
       transaction?: Transaction;
-      withInstructions?: boolean;
-      withTools?: boolean;
-      withToolMetadata?: boolean;
-      withFileAttachments?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
     const customSkillModelIds = removeNulls(refs.map((r) => r.customSkillId));
@@ -1435,17 +1435,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * Batched version of listByAgentConfiguration. Performs 2 SQL queries.
-   * Does not support global agents as we rely on the ID for mapping.
+   * Does not support global agents as we rely on the ID for mapping: they all share the same
+   * model id and hold no `AgentSkillModel` row. Use `listByCodeDefinedSkillIds` for those.
    */
-  static async listByAgentConfigurations(
+  static async listByAgentConfigurations<
+    T extends Pick<LightAgentConfigurationType, "id" | "sId">,
+  >(
     auth: Authenticator,
-    agentConfigurations: AgentLoopExecutionData["agentConfiguration"][]
-  ): Promise<
-    {
-      agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
-      skill: SkillResource;
-    }[]
-  > {
+    agentConfigurations: T[],
+    fetchOptions?: SkillHydrationOptions
+  ): Promise<{ agentConfiguration: T; skill: SkillResource }[]> {
     assert(
       agentConfigurations.every((c) => !isGlobalAgentId(c.sId)),
       "Global agents are not supported"
@@ -1465,13 +1464,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
+    if (agentSkills.length === 0) {
+      return [];
+    }
+
     // Fetch all unique skills in one batch.
     const allSkills = await this.fetchBySkillReferences(
       auth,
       agentSkills.map((s) => ({
         customSkillId: s.customSkillId,
         globalSkillId: s.globalSkillId,
-      }))
+      })),
+      fetchOptions
     );
 
     const skillByCustomId = new Map<ModelId, SkillResource>();
@@ -1504,6 +1508,31 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           }
         });
       })
+    );
+  }
+
+  /**
+   * Resolves the code-defined skills a global agent declares, in one SQL query. Global agents
+   * hold no `AgentSkillModel` row, so they cannot go through `listByAgentConfigurations`.
+   * Skills the caller cannot access are filtered out, so the result can be shorter than the
+   * requested ids.
+   */
+  static async listByCodeDefinedSkillIds(
+    auth: Authenticator,
+    codeDefinedSkillIds: string[],
+    fetchOptions?: SkillHydrationOptions
+  ): Promise<SkillResource[]> {
+    if (codeDefinedSkillIds.length === 0) {
+      return [];
+    }
+
+    return this.fetchBySkillReferences(
+      auth,
+      codeDefinedSkillIds.map((globalSkillId) => ({
+        customSkillId: null,
+        globalSkillId,
+      })),
+      fetchOptions
     );
   }
 
@@ -4539,6 +4568,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       canAdministrate: this.canAdministrate(auth),
       isDefault: isDefaultFromAvailability(this.availability),
       availability: this.availability,
+    };
+  }
+
+  /**
+   * @cc [owner:fabiencelier,label:security] no-private-skill-fields
+   * The returned object MUST only carry fields that are public to any actor who can see the
+   * skill: instructions, tools, files and space ids are redacted for some callers by `toJSON`
+   * and MUST NOT be added here.
+   */
+  toAgentSkillJSON(): AgentSkillType {
+    return {
+      sId: this.sId,
+      name: this.name,
     };
   }
 

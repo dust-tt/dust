@@ -8,17 +8,30 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SkillHydrationOptions } from "@app/lib/resources/skill/types";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { tagsSorter } from "@app/lib/utils";
 import type {
   AgentConfigurationType,
+  AgentConfigurationWithSkillsType,
   AgentFetchVariant,
   AgentModelConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
+import { removeNulls } from "@app/types/shared/utils/general";
+import partition from "lodash/partition";
+import uniq from "lodash/uniq";
+
+const LABELS_ONLY_FETCH_OPTIONS: SkillHydrationOptions = {
+  withInstructions: false,
+  withTools: false,
+  withFileAttachments: false,
+};
 
 export function getModelForAgentConfiguration(
   agent: AgentConfigurationModel
@@ -310,4 +323,69 @@ export function redactPrivateAgentConfigurationFields(
     codeDefinedSkillIds: [],
     canRead: false,
   };
+}
+
+/**
+ * @cc [owner:fabiencelier,label:security] no-skills-for-redacted-agents
+ * An agent whose details were redacted (`canRead === false`) MUST get an empty `skills` array:
+ * its skills are private, consistently with `redactPrivateAgentConfigurationFields`.
+ */
+export async function serializeAgentConfigurationsWithSkills<
+  // `codeDefinedSkillIds` is declared on the full configuration schema, but `getGlobalAgents`
+  // puts it on global agents in every variant, so light configurations carry it too.
+  T extends LightAgentConfigurationType & { codeDefinedSkillIds?: string[] },
+>(
+  auth: Authenticator,
+  agents: T[]
+): Promise<AgentConfigurationWithSkillsType<T>[]> {
+  const readableAgents = agents.filter((agent) => agent.canRead);
+
+  // Workspace agents hold `AgentSkillModel` rows; global agents declare their skills in code.
+  const [globalAgents, workspaceAgents] = partition(readableAgents, (agent) =>
+    isGlobalAgentId(agent.sId)
+  );
+
+  // Only `sId` and `name` reach the wire, so skip the instructions, tools and file attachments:
+  // see the `labels-only-skips-dynamic-instructions` contract.
+  const [workspaceAgentSkills, codeDefinedSkills] = await Promise.all([
+    SkillResource.listByAgentConfigurations(
+      auth,
+      workspaceAgents,
+      LABELS_ONLY_FETCH_OPTIONS
+    ),
+    SkillResource.listByCodeDefinedSkillIds(
+      auth,
+      uniq(globalAgents.flatMap((agent) => agent.codeDefinedSkillIds ?? [])),
+      LABELS_ONLY_FETCH_OPTIONS
+    ),
+  ]);
+
+  const skillsByAgentSId: Record<string, SkillResource[]> = {};
+  for (const { agentConfiguration, skill } of workspaceAgentSkills) {
+    skillsByAgentSId[agentConfiguration.sId] = [
+      ...(skillsByAgentSId[agentConfiguration.sId] ?? []),
+      skill,
+    ];
+  }
+
+  const codeDefinedSkillBySId = new Map(
+    codeDefinedSkills.map((skill) => [skill.sId, skill])
+  );
+  for (const agent of globalAgents) {
+    skillsByAgentSId[agent.sId] = removeNulls(
+      (agent.codeDefinedSkillIds ?? []).map(
+        (skillId) => codeDefinedSkillBySId.get(skillId) ?? null
+      )
+    );
+  }
+
+  // `codeDefinedSkillIds` does not reach the wire: the resolved `skills` replace it.
+  return agents.map(
+    ({ codeDefinedSkillIds: _codeDefinedSkillIds, ...agent }) => ({
+      ...agent,
+      skills: (skillsByAgentSId[agent.sId] ?? []).map((skill) =>
+        skill.toAgentSkillJSON()
+      ),
+    })
+  );
 }

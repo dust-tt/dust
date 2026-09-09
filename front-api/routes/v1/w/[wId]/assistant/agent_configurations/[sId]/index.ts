@@ -2,6 +2,7 @@ import {
   archiveAgentConfiguration,
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
+import { serializeAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
@@ -313,9 +314,11 @@ app.get(
       });
     }
 
-    return ctx.json({
+    const [serialized] = await serializeAgentConfigurationsWithSkills(auth, [
       agentConfiguration,
-    });
+    ]);
+
+    return ctx.json({ agentConfiguration: serialized });
   }
 );
 
@@ -379,15 +382,21 @@ app.patch(
         return apiError(ctx, patchResult.error);
       }
 
+      const [patched] = await serializeAgentConfigurationsWithSkills(auth, [
+        patchResult.value.agentConfiguration,
+      ]);
+
       return ctx.json({
-        agentConfiguration: patchResult.value.agentConfiguration,
+        agentConfiguration: patched,
         skippedActions: patchResult.value.skippedActions,
       });
     }
 
-    return ctx.json({
+    const [serialized] = await serializeAgentConfigurationsWithSkills(auth, [
       agentConfiguration,
-    });
+    ]);
+
+    return ctx.json({ agentConfiguration: serialized });
   }
 );
 
