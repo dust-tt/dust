@@ -251,7 +251,11 @@ export async function getAgentDataSourceConfigurations(
   });
 
   if (configInfosRes.some((res) => res.isErr())) {
-    return new Err(new MCPError("Failed to parse data source configurations."));
+    return new Err(
+      new MCPError("Failed to parse data source configurations.", {
+        tracked: false,
+      })
+    );
   }
 
   const configInfos = removeNulls(
@@ -265,14 +269,20 @@ export async function getAgentDataSourceConfigurations(
       if (!sIdParts) {
         return new Err(
           new MCPError(
-            `Invalid data source configuration ID: ${configInfo.sId}`
+            `Invalid data source configuration ID: ${configInfo.sId}`,
+            {
+              tracked: false,
+            }
           )
         );
       }
       if (sIdParts.resourceName !== "data_source_configuration") {
         return new Err(
           new MCPError(
-            `ID is not a data source configuration ID: ${configInfo.sId}`
+            `ID is not a data source configuration ID: ${configInfo.sId}`,
+            {
+              tracked: false,
+            }
           )
         );
       }
@@ -296,7 +306,10 @@ export async function getAgentDataSourceConfigurations(
   ) {
     return new Err(
       new MCPError(
-        "Failed to fetch data source configurations, mismatched number of configurations found."
+        "Failed to fetch data source configurations, mismatched number of configurations found.",
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -327,7 +340,10 @@ export async function getAgentDataSourceConfigurations(
       if (!sIdParts) {
         return new Err(
           new MCPError(
-            `Invalid data source view ID: ${configInfo.configuration.dataSourceViewId}`
+            `Invalid data source view ID: ${configInfo.configuration.dataSourceViewId}`,
+            {
+              tracked: false,
+            }
           )
         );
       }
@@ -343,7 +359,10 @@ export async function getAgentDataSourceConfigurations(
   if (dataSourceViews.some((dataSourceView) => !dataSourceView.canRead(auth))) {
     return new Err(
       new MCPError(
-        "Failed to fetch data source views, some views are not readable."
+        "Failed to fetch data source views, some views are not readable.",
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -351,7 +370,10 @@ export async function getAgentDataSourceConfigurations(
   if (dataSourceViews.length !== dataSourceViewIDs.size) {
     return new Err(
       new MCPError(
-        "Failed to fetch data source views, mismatched number of views found."
+        "Failed to fetch data source views, mismatched number of views found.",
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -376,9 +398,7 @@ export async function getAgentDataSourceConfigurations(
         );
         if (!agentConfig) {
           return new Err(
-            new MCPError(
-              `Data source configuration not found: ${configInfo.sId}`
-            )
+            new Error(`Data source configuration not found: ${configInfo.sId}`)
           );
         }
         const dataSourceViewSId = DataSourceViewResource.modelIdToSId({
