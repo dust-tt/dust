@@ -48,13 +48,14 @@ import { getWebhookRouterEntryHandler } from "./api/get_webhook_router_config";
 import { profilerAPIHandler } from "./api/profiler";
 import { syncWebhookRouterEntryHandler } from "./api/sync_webhook_router_config";
 import { webhookFirecrawlAPIHandler } from "./api/webhooks/webhook_firecrawl";
+import { safeMorganFormat, sanitizeRequestUrl } from "./logger/request_logging";
 
 export function startServer(port: number) {
   setupGlobalErrorHandler(logger);
   const app = express();
 
   // Initialize logger.
-  app.use(morgan("tiny"));
+  app.use(morgan<Request, Response>(safeMorganFormat));
 
   // Indicates that the app is behind a proxy / LB. req.ip will be the left-most entry in the X-Forwarded-* header.
   app.set("trust proxy", true);
@@ -94,7 +95,7 @@ export function startServer(port: number) {
           next();
         } else {
           logger.info(
-            { clientIp, url: req.originalUrl },
+            { clientIp, url: sanitizeRequestUrl(req.originalUrl) },
             "Connector query rate limited."
           );
           res.status(429).send("Too many requests");
