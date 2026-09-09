@@ -1,5 +1,5 @@
 import { Argument, Command } from "@commander-js/extra-typings";
-import { AdminCommandSchema } from "@connectors/types";
+import { AdminCommandSchema, normalizeError } from "@connectors/types";
 import { fromError } from "zod-validation-error";
 
 process.env.INTERACTIVE_CLI = process.env.INTERACTIVE_CLI || "1";
@@ -471,7 +471,7 @@ program
     await dispatch("zendesk", subcommand, opts);
   });
 
-program.parseAsync(process.argv).catch((err: Error) => {
-  console.error(`\x1b[31mError: ${err.message}\x1b[0m`);
+program.parseAsync(process.argv).catch((err: unknown) => {
+  console.error(`\x1b[31mError: ${normalizeError(err).message}\x1b[0m`);
   process.exit(1);
 });

@@ -2353,7 +2353,10 @@ export class CoreAPI {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         (init && init.signal && (init.signal as AbortSignal).aborted) ||
         // Some environments throw an AbortError with name property.
-        (e as any)?.name === "AbortError";
+        (typeof e === "object" &&
+          e !== null &&
+          "name" in e &&
+          e.name === "AbortError");
       const err: CoreAPIError = isAbort
         ? {
             code: "request_timeout",

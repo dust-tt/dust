@@ -1,4 +1,5 @@
 import { connectorsSequelize } from "@connectors/resources/storage";
+import { normalizeError } from "@dust-tt/client";
 
 async function main() {
   await connectorsSequelize.query(`
@@ -14,7 +15,7 @@ main()
     process.exit(0);
   })
   .catch((err) => {
-    console.error("\x1b[31m%s\x1b[0m", `Error: ${err.message}`);
+    console.error("\x1b[31m%s\x1b[0m", `Error: ${normalizeError(err).message}`);
     console.log(err);
     process.exit(1);
   });
