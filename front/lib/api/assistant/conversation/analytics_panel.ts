@@ -5,10 +5,12 @@ export async function promoteAnalyticsPanelConversation(
   auth: Authenticator,
   { conversation }: { conversation: ConversationResource }
 ): Promise<void> {
-  if (
-    conversation.visibility !== "test" ||
-    conversation.metadata?.origin !== "analytics_panel"
-  ) {
+  if (conversation.visibility !== "test") {
+    return;
+  }
+
+  const openingOrigin = await conversation.openingUserMessageOrigin(auth);
+  if (openingOrigin !== "analytics_panel") {
     return;
   }
 

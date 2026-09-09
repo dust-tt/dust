@@ -25,7 +25,6 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageStatus,
   AgentMessageType,
-  ConversationMetadata,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -98,7 +97,6 @@ export class ConversationFactory {
       requestedSpaceIds,
       spaceId,
       visibility = "unlisted",
-      metadata,
       depth,
       triggerId,
       t,
@@ -109,7 +107,6 @@ export class ConversationFactory {
       requestedSpaceIds?: ModelId[];
       spaceId?: ModelId;
       visibility?: ConversationVisibility;
-      metadata?: ConversationMetadata;
       depth?: number;
       triggerId?: ModelId | null;
       t?: Transaction;
@@ -121,7 +118,6 @@ export class ConversationFactory {
     const conversation = await createConversation(auth, {
       title: "Test Conversation",
       visibility,
-      metadata,
       depth,
       triggerId,
       spaceId: spaceId ?? null,

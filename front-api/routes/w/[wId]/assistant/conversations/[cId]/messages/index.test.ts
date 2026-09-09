@@ -13,6 +13,11 @@ vi.mock("@app/lib/api/programmatic_usage/tracking", () => ({
   checkProgrammaticUsageLimits: vi.fn(),
 }));
 
+vi.mock("@app/temporal/agent_loop/client", () => ({
+  launchAgentLoopWorkflow: vi.fn(),
+  launchCompactionWorkflow: vi.fn(),
+}));
+
 async function setupTest(role: MembershipRoleType = "admin") {
   const { workspace, auth, globalSpace, user } =
     await createPrivateApiMockRequest({ role, method: "POST" });
@@ -99,9 +104,17 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages", () => {
 
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
+      messagesCreatedAt: [],
       visibility: "test",
-      metadata: { origin: "analytics_panel" },
+    });
+
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "<dust_system>Opening message</dust_system>",
+      origin: "analytics_panel",
+      rank: 0,
     });
 
     const response = await postMessage(workspace, conversation.sId, {
@@ -126,13 +139,22 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages", () => {
     });
   });
 
-  it("leaves a test conversation without the Analytics-panel marker hidden", async () => {
+  it("leaves a test conversation the Analytics panel did not open hidden", async () => {
     const { workspace, auth, user } = await setupTest("admin");
 
     const conversation = await ConversationFactory.create(auth, {
       agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
-      messagesCreatedAt: [new Date()],
+      messagesCreatedAt: [],
       visibility: "test",
+    });
+
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "Hello",
+      origin: "web",
+      rank: 0,
     });
 
     const response = await postMessage(workspace, conversation.sId, {
