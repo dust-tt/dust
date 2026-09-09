@@ -12,7 +12,6 @@ import {
   SettingsList,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
 
 interface UsageSettingsCardProps {
   workspaceId: string;
@@ -34,8 +33,6 @@ export function UsageSettingsCard({
   const { doUpdateUsageSettings, isUpdatingUsageSettings } =
     useUpdateUsageSettings({ workspaceId });
 
-  const [isEditingDefaultLimit, setIsEditingDefaultLimit] = useState(false);
-
   const handleToggleAllowUpgradeRequest = async () => {
     await doUpdateUsageSettings({
       allowUpgradeRequest: !usageSettings.allowUpgradeRequest,
@@ -54,7 +51,7 @@ export function UsageSettingsCard({
     });
   };
 
-  const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? 0;
+  const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? null;
 
   const handleSaveDefaultLimit = async (newValue: string) => {
     const parseResult = parseDefaultLimitInput(newValue);
@@ -86,24 +83,14 @@ export function UsageSettingsCard({
                 <InputWithSave
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  placeholder="No access"
-                  value={
-                    currentDefaultLimit === 0
-                      ? ""
-                      : currentDefaultLimit.toLocaleString()
-                  }
-                  unit={
-                    currentDefaultLimit === 0 && !isEditingDefaultLimit
-                      ? undefined
-                      : "credits/month"
-                  }
+                  placeholder="--"
+                  value={currentDefaultLimit?.toLocaleString() ?? ""}
+                  unit="credits/month"
                   normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                   formatValue={(value) =>
                     value ? Number(value).toLocaleString() : value
                   }
                   onSave={handleSaveDefaultLimit}
-                  onFocus={() => setIsEditingDefaultLimit(true)}
-                  onBlur={() => setIsEditingDefaultLimit(false)}
                   disabled={isDefaultUserSpendLimitLoading}
                 />
               </div>

@@ -6,7 +6,6 @@ interface CreditLimitNumberInputProps {
   validationMessage: string | null;
   onChange: (cleaned: string) => void;
   suffix?: string;
-  placeholder?: string;
 }
 
 export function CreditLimitNumberInput({
@@ -15,7 +14,6 @@ export function CreditLimitNumberInput({
   validationMessage,
   onChange,
   suffix = "credits/month",
-  placeholder = "0",
 }: CreditLimitNumberInputProps) {
   return (
     <Input
@@ -23,7 +21,7 @@ export function CreditLimitNumberInput({
       type="text"
       inputMode="numeric"
       pattern="[0-9]*"
-      placeholder={placeholder}
+      placeholder="--"
       disabled={readOnly}
       value={value !== "" ? Number(value).toLocaleString() : ""}
       onChange={(e) => {
@@ -45,7 +43,6 @@ interface CreditLimitInputProps {
   isHighest: boolean;
   validationMessage: string | null;
   onChange: (cleaned: string) => void;
-  placeholder?: string;
 }
 
 export function CreditLimitInput({
@@ -55,7 +52,6 @@ export function CreditLimitInput({
   isHighest,
   validationMessage,
   onChange,
-  placeholder,
 }: CreditLimitInputProps) {
   return (
     <Page.Vertical gap="xs" align="stretch">
@@ -68,7 +64,6 @@ export function CreditLimitInput({
         readOnly={readOnly}
         validationMessage={validationMessage}
         onChange={onChange}
-        placeholder={placeholder}
       />
     </Page.Vertical>
   );

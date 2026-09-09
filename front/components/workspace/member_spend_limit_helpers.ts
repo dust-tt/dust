@@ -1,4 +1,5 @@
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
+import type { UserSpendLimit } from "@app/types/api/users/spend_limit";
 import {
   MAX_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_USER_SPEND_LIMIT_AWU_CREDITS,
@@ -18,64 +19,67 @@ export type GroupRow = {
   onClick?: () => void;
 };
 
-export type SpendLimitInput =
-  | { kind: "unlimited" }
-  | { kind: "limited"; awuCredits: number };
-
-export function toSpendLimit(awuCredits: number | null): SpendLimitInput {
+export function toSpendLimit(awuCredits: number | null): UserSpendLimit {
   return awuCredits === null
     ? { kind: "unlimited" }
     : { kind: "limited", awuCredits };
 }
 
-export function parseCreditsInput(
-  raw: string
-): { ok: true; awuCredits: number | null } | { ok: false; message: string } {
+type ParsedCredits<T> =
+  | { ok: true; awuCredits: T }
+  | { ok: false; message: string };
+
+function outOfRangeMessage(min: number, max: number): string {
+  return `Enter a whole number of credits between ${min.toLocaleString("en-US")} and ${max.toLocaleString("en-US")}.`;
+}
+
+// An empty input parses to null so callers decide what "no value" means.
+function parseBoundedCreditsInput(
+  raw: string,
+  min: number,
+  max: number
+): ParsedCredits<number | null> {
   const trimmed = raw.trim();
   if (trimmed === "") {
     return { ok: true, awuCredits: null };
   }
   const parsed = Number(trimmed);
-  if (!Number.isInteger(parsed) || parsed < MIN_USER_SPEND_LIMIT_AWU_CREDITS) {
-    return {
-      ok: false,
-      message: `Enter a whole number of credits between ${MIN_USER_SPEND_LIMIT_AWU_CREDITS.toLocaleString("en-US")} and ${MAX_USER_SPEND_LIMIT_AWU_CREDITS.toLocaleString("en-US")}.`,
-    };
-  }
-  if (parsed > MAX_USER_SPEND_LIMIT_AWU_CREDITS) {
-    return {
-      ok: false,
-      message: `Credits cannot exceed ${MAX_USER_SPEND_LIMIT_AWU_CREDITS.toLocaleString("en-US")}.`,
-    };
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    return { ok: false, message: outOfRangeMessage(min, max) };
   }
   return { ok: true, awuCredits: parsed };
 }
 
-// Unlike `parseCreditsInput`, the workspace default has no "unlimited" state:
-// it's always a concrete number, so an empty input is rejected rather than
-// silently coerced to 0 (which would mean "no pool access").
-export function parseDefaultLimitInput(
-  raw: string
-): { ok: true; awuCredits: number } | { ok: false; message: string } {
-  const trimmed = raw.trim();
-  if (trimmed === "") {
+export function parseCreditsInput(raw: string): ParsedCredits<number | null> {
+  return parseBoundedCreditsInput(
+    raw,
+    MIN_USER_SPEND_LIMIT_AWU_CREDITS,
+    MAX_USER_SPEND_LIMIT_AWU_CREDITS
+  );
+}
+
+// The workspace default has no "unlimited" state: it is always a concrete
+// number, so an empty input is rejected rather than coerced to 0 (which would
+// mean "no pool access").
+export function parseDefaultLimitInput(raw: string): ParsedCredits<number> {
+  const result = parseBoundedCreditsInput(
+    raw,
+    MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
+    MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS
+  );
+  if (!result.ok) {
+    return result;
+  }
+  if (result.awuCredits === null) {
     return {
       ok: false,
-      message: `Enter a whole number of credits between ${MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS.toLocaleString("en-US")} and ${MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS.toLocaleString("en-US")}.`,
+      message: outOfRangeMessage(
+        MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
+        MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS
+      ),
     };
   }
-  const parsed = Number(trimmed);
-  if (
-    !Number.isInteger(parsed) ||
-    parsed < MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
-    parsed > MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS
-  ) {
-    return {
-      ok: false,
-      message: `Enter a whole number of credits between ${MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS.toLocaleString("en-US")} and ${MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS.toLocaleString("en-US")}.`,
-    };
-  }
-  return { ok: true, awuCredits: parsed };
+  return { ok: true, awuCredits: result.awuCredits };
 }
 
 export function groupRowsForMember(
