@@ -17,8 +17,10 @@ request reviews.
 
 The `r?` must start the line without indentation. Surrounding lines and trailing prose are allowed;
 only consecutive GitHub mentions and bare `cc` tokens immediately after `r?` are reviewers. `cc` is
-case-insensitive; `@cc` requests the GitHub user instead. Fenced code, HTML comments, quoted lines,
-team mentions, and tokens after trailing prose are ignored.
+case-insensitive; `@cc` requests the GitHub user instead. Team mentions and tokens after trailing
+prose are ignored. Markdown filtering is best-effort: simple fenced blocks, HTML comments, and
+explicitly quoted lines are skipped. Inline code, nested blocks, lazy quote continuations, and
+interactions between comments and fences may cause missed or extra requests.
 
 GitHub reviews, contract reviews, and Slack notifications require a human requester with repository
 `write`, `maintain`, or `admin` permission.

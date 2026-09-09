@@ -74,8 +74,10 @@ type ReviewBotOptions = {
  * @cc [label:product] review-request-syntax
  * Parse consecutive GitHub mentions and bare `cc` tokens after a column-zero `r?` followed by
  * whitespace, retaining the request line for notifications. Bare `cc` requests a contract review
- * case-insensitively; `@cc` remains a GitHub mention. Trailing prose ends the list. Ignore fenced
- * code and HTML comments, and deduplicate handles case-insensitively within each request.
+ * case-insensitively; `@cc` remains a GitHub mention. Trailing prose ends the list. Deduplicate
+ * handles case-insensitively within each request. Markdown filtering is best-effort: skip simple
+ * fenced blocks, HTML comments, and explicitly quoted lines. Inline code, nested blocks, lazy quote
+ * continuations, and interactions between comments and fences may cause missed or extra requests.
  */
 export function parseReviewRequests(
   body: string | null | undefined
@@ -231,8 +233,11 @@ export async function labelPmrr({
  * Each eligible event with bare `cc` in a reviewer list requests one contract review, including
  * description edits retaining `cc`. Callers emit `pull-request-number` before Slack delivery and
  * invoke the pinned `spolu/code-contracts` contract-review action in a separate job even if Slack
- * delivery fails. That action reviews only open PRs with heads in this repository and publishes
- * a COMMENT review pinned to the inspected head.
+ * delivery fails. Description and conversation-comment requests require `review-bot.yml` to be
+ * registered on the default branch and present on the PR head with `workflow_dispatch` and its
+ * review inputs; missing prerequisites can fail dispatch. Inline comments and review summaries
+ * invoke the action directly. That action reviews only open PRs with heads in this repository and
+ * publishes a COMMENT review pinned to the inspected head.
  */
 /**
  * @cc [label:security] review-automation-source
