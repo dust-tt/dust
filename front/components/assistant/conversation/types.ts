@@ -173,11 +173,15 @@ export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
 
 // Central helper to control which user message should be hidden in the UI.
 // Extend this list as we introduce more bootstrap/system user messages.
-export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
+export const isHiddenMessage = (
+  message: VirtuosoMessage,
+  conversation: ConversationWithoutContentType | undefined
+): boolean => {
   return (
     (isUserMessage(message) &&
       (isHiddenMessageOrigin(message.context.origin) ||
-        isSidekickBootstrapMessage(message))) ||
+        isSidekickBootstrapMessage(message) ||
+        isBootstrappedOpeningMessage(message, conversation))) ||
     isHandoverUserMessage(message)
   );
 };
@@ -191,9 +195,12 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
 // item alone with a seeded size of 0, and only proceeds once the measured size
 // differs from the seed. A zero-height target therefore deadlocks the list in
 // its loading placeholder.
-export const isZeroHeightMessage = (message: VirtuosoMessage): boolean => {
+export const isZeroHeightMessage = (
+  message: VirtuosoMessage,
+  conversation: ConversationWithoutContentType | undefined
+): boolean => {
   return (
-    isHiddenMessage(message) &&
+    isHiddenMessage(message, conversation) &&
     !(isUserMessage(message) && message.context.origin === "wakeup")
   );
 };
@@ -287,6 +294,13 @@ const isSidekickBootstrapMessage = (
   message: UserMessageTypeWithContentFragments
 ): boolean => {
   return message.context.origin === "agent_sidekick" && message.rank === 0;
+};
+
+const isBootstrappedOpeningMessage = (
+  message: UserMessageTypeWithContentFragments,
+  conversation: ConversationWithoutContentType | undefined
+): boolean => {
+  return message.rank === 0 && conversation?.metadata?.bootstrapped === true;
 };
 
 export const convertLightMessageTypeToVirtuosoMessages = (

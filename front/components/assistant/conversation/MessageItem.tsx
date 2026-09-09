@@ -263,7 +263,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       );
     }
 
-    if (isHiddenMessage(data)) {
+    if (isHiddenMessage(data, context.conversation)) {
       // This is hacky but in case of handover we generate a user message from the agent and we want
       // to hide it in the conversation because it has no value to display.
       return null;

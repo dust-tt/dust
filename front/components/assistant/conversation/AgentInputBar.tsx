@@ -264,7 +264,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     const userMessageIndices: number[] = [];
     for (let i = 0; i < allMessages.length; i++) {
       const msg = allMessages[i];
-      if (isUserMessage(msg) && !isHiddenMessage(msg)) {
+      if (isUserMessage(msg) && !isHiddenMessage(msg, context.conversation)) {
         userMessageIndices.push(i);
       }
     }
@@ -337,7 +337,13 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
         }
       },
     };
-  }, [methods, listOffset, visibleListHeight, bottomOffset]);
+  }, [
+    methods,
+    listOffset,
+    visibleListHeight,
+    bottomOffset,
+    context.conversation,
+  ]);
 
   const blockedActionItems = getBlockedActionItems(context.user.sId);
   const blockedActions = blockedActionItems.map((item) => item.blockedAction);
