@@ -3,11 +3,6 @@ import { StatsD } from "hot-shots";
 
 let statsDClient: StatsD | undefined = undefined;
 
-/**
- * @cc [owner:aubin-tchoi,label:performance] statsd-pod-origin-tag
- * When `DD_ENTITY_ID` is set, the client must identify the pod through
- * `dd.internal.entity_id` without adding `dd.internal.entity_tag` as a global tag.
- */
 function getStatsDClient(): StatsD {
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!statsDClient) {
