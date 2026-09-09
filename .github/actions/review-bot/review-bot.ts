@@ -275,7 +275,7 @@ function escapeSlackText(text: string): string {
 /**
  * @cc [label:product] review-request-slack-format
  * Format each eligible `r?` line with trailing prose preserved, followed by the PR URL and
- * `(from: @requester)` on the same line. Resolve requester and reviewer mentions through `.authors`
+ * `(req:@requester)` on the same line. Resolve requester and reviewer mentions through `.authors`
  * emails and Slack user lookup; unresolved handles remain plain text.
  */
 /**
@@ -371,7 +371,7 @@ export async function formatSlackNotification({
   return lines
     .map(
       (line) =>
-        `${line} ${escapeSlackText(notification.prUrl)} (from: ${requester})`
+        `${line} ${escapeSlackText(notification.prUrl)} (req:${requester})`
     )
     .join("\n");
 }
