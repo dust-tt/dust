@@ -230,6 +230,8 @@ If a dynamic import is strictly necessary, it must:
 Never access environment variables directly via `process.env`. Instead, use the `@app/lib/api/config`
 module which provides type-safe access to environment variables.
 
+GitHub workflows and action scripts under `.github/` are out of scope and may use `process.env`.
+
 Example:
 
 ```

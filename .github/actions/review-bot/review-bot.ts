@@ -1,14 +1,20 @@
 type Repository = { owner: string; repo: string };
 type PullRequestParams = Repository & { pull_number: number };
-type ReviewRequest = { line: string; reviewers: string[] };
+type ReviewRequest = {
+  line: string;
+  reviewers: string[];
+  contractReview: boolean;
+};
 type ReviewNotification = {
   requester: string;
+  pullNumber: number;
   prUrl: string;
   requests: ReviewRequest[];
 };
 
 type ReviewContext = {
   actor: string;
+  runId: number;
   repo: Repository;
   eventName: string;
   payload: {
@@ -28,6 +34,15 @@ type ReviewContext = {
 type ReviewBotOptions = {
   github: {
     rest: {
+      actions: {
+        createWorkflowDispatch(
+          params: Repository & {
+            workflow_id: string;
+            ref: string;
+            inputs: Record<string, string>;
+          }
+        ): Promise<unknown>;
+      };
       repos: {
         getCollaboratorPermissionLevel(
           params: Repository & { username: string }
@@ -35,7 +50,12 @@ type ReviewBotOptions = {
       };
       pulls: {
         get(params: PullRequestParams): Promise<{
-          data: { user: { login: string }; html_url: string };
+          data: {
+            user: { login: string };
+            html_url: string;
+            state: string;
+            head: { ref: string; repo: { full_name: string } | null };
+          };
         }>;
         requestReviewers(
           params: PullRequestParams & { reviewers: string[] }
@@ -52,9 +72,12 @@ type ReviewBotOptions = {
 
 /**
  * @cc [label:product] review-request-syntax
- * Parse the leading list of GitHub mentions after a column-zero `r?` followed by whitespace on each
- * line, retaining the request line for notifications. Trailing prose ends the list. Ignore fenced
- * code and HTML comments, and deduplicate handles case-insensitively within each request.
+ * Parse consecutive GitHub mentions and bare `cc` tokens after a column-zero `r?` followed by
+ * whitespace, retaining the request line for notifications. Bare `cc` requests a contract review
+ * case-insensitively; `@cc` remains a GitHub mention. Trailing prose ends the list. Deduplicate
+ * handles case-insensitively within each request. Markdown filtering is best-effort: skip simple
+ * fenced blocks, HTML comments, and explicitly quoted lines. Inline code, nested blocks, lazy quote
+ * continuations, and interactions between comments and fences may cause missed or extra requests.
  */
 export function parseReviewRequests(
   body: string | null | undefined
@@ -88,14 +111,19 @@ export function parseReviewRequests(
       continue;
     }
     const reviewers = new Set<string>();
+    let contractReview = false;
     for (const token of request[1].split(/[ \t]+/)) {
+      if (token.toLowerCase() === "cc") {
+        contractReview = true;
+        continue;
+      }
       if (!/^@[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(token)) {
         break;
       }
       reviewers.add(token.slice(1).toLowerCase());
     }
-    if (reviewers.size > 0) {
-      requests.push({ line, reviewers: [...reviewers] });
+    if (reviewers.size > 0 || contractReview) {
+      requests.push({ line, reviewers: [...reviewers], contractReview });
     }
   }
   return requests;
@@ -194,11 +222,22 @@ export async function labelPmrr({
  */
 /**
  * @cc [label:product] review-request-delivery
- * Request every parsed reviewer except the PR author for each eligible description edit or newly
- * posted request, including users who previously reviewed. Open, closed, and merged PRs are eligible.
- * GitHub validation failures do not block other reviewers or Slack notifications. Return the
- * requester, PR URL, and request lines for Slack notification only for eligible requests. Title
- * edits and pushes do not request reviews.
+ * Request every parsed GitHub reviewer except the PR author for each eligible description edit or
+ * new request, including users who previously reviewed. Open, closed, and merged PRs are eligible.
+ * GitHub validation failures do not block other reviewers, contract reviews, or Slack delivery.
+ * Return the requester, PR number, URL, and request lines only for eligible requests. Title edits
+ * and pushes do not request reviews.
+ */
+/**
+ * @cc [label:product] contract-review-delivery
+ * Each eligible event with bare `cc` in a reviewer list requests one contract review, including
+ * description edits retaining `cc`. Callers emit `pull-request-number` before Slack delivery and
+ * invoke the pinned `spolu/code-contracts` contract-review action in a separate job even if Slack
+ * delivery fails. Description and conversation-comment requests require `review-bot.yml` to be
+ * registered on the default branch and present on the PR head with `workflow_dispatch` and its
+ * review inputs; missing prerequisites can fail dispatch. Inline comments and review summaries
+ * invoke the action directly. That action reviews only open PRs with heads in this repository and
+ * publishes a COMMENT review pinned to the inspected head.
  */
 /**
  * @cc [label:security] review-automation-source
@@ -262,7 +301,67 @@ export async function requestReviews({
       core.warning(`GitHub rejected the review request for @${reviewer}.`);
     }
   }
-  return { requester: context.actor, prUrl: pr.html_url, requests };
+  return {
+    requester: context.actor,
+    pullNumber: request.number,
+    prUrl: pr.html_url,
+    requests,
+  };
+}
+
+/**
+ * @cc [label:security] contract-review-dispatch-access
+ * Callers supply only PR numbers emitted for an authorized `cc` request. Skip closed and fork PRs.
+ * The imported action rechecks the human requester's access using the originating run ID.
+ */
+/**
+ * @cc [label:product] contract-review-head-dispatch
+ * Dispatch description and conversation-comment requests on the PR's head branch, preserving the
+ * originating run ID. The review inspects its workflow run's commit and reports a distinct commit
+ * status for each run; later pushes neither cancel the review nor request another one. Inline
+ * comments and review summaries use direct invocation because upstream rejects their delegation.
+ */
+/**
+ * @cc [label:security] review-automation-source
+ * Privileged workflow callers load this function from the repository's default branch, never from
+ * a PR revision.
+ */
+export async function dispatchContractReview({
+  github,
+  context,
+  core,
+  pullNumber,
+}: ReviewBotOptions & { pullNumber: number }): Promise<void> {
+  if (
+    context.eventName !== "pull_request_target" &&
+    context.eventName !== "issue_comment"
+  ) {
+    return;
+  }
+  const { data: pr } = await github.rest.pulls.get({
+    ...context.repo,
+    pull_number: pullNumber,
+  });
+  if (
+    pr.state !== "open" ||
+    pr.head.repo?.full_name.toLowerCase() !==
+      `${context.repo.owner}/${context.repo.repo}`.toLowerCase()
+  ) {
+    core.info("Skipping contract review dispatch: the PR is closed or a fork.");
+    return;
+  }
+  await github.rest.actions.createWorkflowDispatch({
+    ...context.repo,
+    workflow_id: "review-bot.yml",
+    ref: pr.head.ref,
+    inputs: {
+      "pull-request-number": String(pullNumber),
+      "request-run-id": String(context.runId),
+    },
+  });
+  core.info(
+    `Dispatched contract review on ${pr.head.ref} for PR #${pullNumber}.`
+  );
 }
 
 function escapeSlackText(text: string): string {
