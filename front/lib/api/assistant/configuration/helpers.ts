@@ -166,7 +166,7 @@ async function shadowAgentPermissions(
  */
 /**
  * @cc [owner:philipperolet,label:security] agent-editability
- * For user and system-key callers, `canEdit` allows legacy authors/editors or user-less system-key
+ * Outside regular API keys, `canEdit` allows legacy authors/editors or user-less system-key/Poke
  * callers with agent write permission; workspace admin role alone does not grant it.
  */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
@@ -230,18 +230,18 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
 
     const isAuthor = agent.authorId === auth.user()?.id;
     const isMember = editorIds.includes(agent.id);
-    const canEditAsSystem =
+    const canEditWithoutUser =
       !user &&
-      auth.isSystemKey() &&
+      (auth.isSystemKey() || auth.isDustSuperUser()) &&
       auth.can("write", AgentResource.fromAgentConfigurationModel(agent));
 
     const canRead =
-      isAuthor || isMember || canEditAsSystem || agent.scope === "visible";
+      isAuthor || isMember || canEditWithoutUser || agent.scope === "visible";
     const canEdit = isRegularApiKey
       ? auth.isAdmin() &&
         agent.status === "active" &&
         canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
-      : isAuthor || isMember || canEditAsSystem;
+      : isAuthor || isMember || canEditWithoutUser;
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       sId: agent.sId,
