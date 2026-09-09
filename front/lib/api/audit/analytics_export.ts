@@ -5,7 +5,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import type { Authenticator } from "@app/lib/auth";
 
-export const ANALYTICS_EXPORT_NAMES = [
+const ANALYTICS_EXPORT_NAMES = [
   "analytics_table",
   "automations",
   "consumption_lines",
@@ -26,24 +26,6 @@ export type AnalyticsExportParams = {
   query?: Record<string, string | number | boolean | undefined>;
 };
 
-function flattenExportQuery(
-  query: AnalyticsExportParams["query"]
-): string | undefined {
-  if (!query) {
-    return undefined;
-  }
-  const pairs = Object.entries(query)
-    .filter(
-      (entry): entry is [string, string | number | boolean] =>
-        entry[1] !== undefined
-    )
-    .map(([key, value]) => `${key}=${value}`);
-  if (pairs.length === 0) {
-    return undefined;
-  }
-  return pairs.join("&");
-}
-
 /**
  * @cc [label:audit-logging;security] analytics-export-audited-at-egress
  * Every handler that returns a bulk analytics dataset to a caller MUST call this after the
@@ -55,7 +37,15 @@ export async function emitAnalyticsExportedEvent(
   auth: Authenticator,
   params: AnalyticsExportParams
 ): Promise<void> {
-  const exportQuery = flattenExportQuery(params.query);
+  const exportQuery = params.query
+    ? Object.entries(params.query)
+        .filter(
+          (entry): entry is [string, string | number | boolean] =>
+            entry[1] !== undefined
+        )
+        .map(([key, value]) => `${key}=${value}`)
+        .join("&")
+    : "";
 
   void emitAuditLogEvent({
     auth,
