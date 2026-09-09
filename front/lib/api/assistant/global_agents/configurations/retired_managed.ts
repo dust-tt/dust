@@ -11,7 +11,7 @@ import {
   getSmallWhitelistedModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
+import type { GlobalAgentSettings } from "@app/lib/resources/agent/global_agent_settings_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationType,
@@ -35,7 +35,7 @@ function _getManagedDataSourceAgent(
     searchMCPServerView,
     featureFlags,
   }: {
-    settings: GlobalAgentSettingsModel | null;
+    settings: GlobalAgentSettings | null;
     connectorProvider: ConnectorProvider;
     agentId: GLOBAL_AGENTS_SID;
     name: string;
@@ -160,7 +160,7 @@ export function _getGoogleDriveGlobalAgent(
     mcpServerViews,
     featureFlags,
   }: {
-    settings: GlobalAgentSettingsModel | null;
+    settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     featureFlags: WhitelistableFeature[];
@@ -193,7 +193,7 @@ export function _getSlackGlobalAgent(
     mcpServerViews,
     featureFlags,
   }: {
-    settings: GlobalAgentSettingsModel | null;
+    settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     featureFlags: WhitelistableFeature[];
@@ -226,7 +226,7 @@ export function _getGithubGlobalAgent(
     mcpServerViews,
     featureFlags,
   }: {
-    settings: GlobalAgentSettingsModel | null;
+    settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     featureFlags: WhitelistableFeature[];
@@ -259,7 +259,7 @@ export function _getNotionGlobalAgent(
     mcpServerViews,
     featureFlags,
   }: {
-    settings: GlobalAgentSettingsModel | null;
+    settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     featureFlags: WhitelistableFeature[];
@@ -292,7 +292,7 @@ export function _getIntercomGlobalAgent(
     mcpServerViews,
     featureFlags,
   }: {
-    settings: GlobalAgentSettingsModel | null;
+    settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     featureFlags: WhitelistableFeature[];

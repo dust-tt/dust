@@ -24,7 +24,7 @@ import {
   selectEnabledModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
+import type { GlobalAgentSettings } from "@app/lib/resources/agent/global_agent_settings_resource";
 import type {
   AgentConfigurationType,
   AgentModelConfigurationType,
@@ -456,7 +456,7 @@ export function _getDeepDiveGlobalAgent(
     hasSandbox,
     featureFlags,
   }: {
-    settings: GlobalAgentSettingsModel | null;
+    settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     hasSandbox?: boolean;
@@ -613,7 +613,7 @@ export function _getDustTaskGlobalAgent(
     mcpServerViews,
     featureFlags,
   }: {
-    settings: GlobalAgentSettingsModel | null;
+    settings: GlobalAgentSettings | null;
     preFetchedDataSources: PrefetchedDataSourcesType | null;
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
     featureFlags: WhitelistableFeature[];
@@ -729,7 +729,7 @@ export function _getPlanningAgent(
     settings,
     featureFlags,
   }: {
-    settings: GlobalAgentSettingsModel | null;
+    settings: GlobalAgentSettings | null;
     featureFlags: WhitelistableFeature[];
   }
 ): AgentConfigurationType | null {

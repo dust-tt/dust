@@ -6,7 +6,7 @@ import {
 import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/global_agents/tools";
 import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
+import type { GlobalAgentSettings } from "@app/lib/resources/agent/global_agent_settings_resource";
 import type {
   AgentConfigurationStatus,
   AgentConfigurationType,
@@ -36,7 +36,7 @@ export function _getGPT35TurboGlobalAgent({
   settings,
   mcpServerViews,
 }: {
-  settings: GlobalAgentSettingsModel | null;
+  settings: GlobalAgentSettings | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "active";
@@ -86,7 +86,7 @@ export function _getGPT4GlobalAgent({
   mcpServerViews,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettingsModel | null;
+  settings: GlobalAgentSettings | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
@@ -143,7 +143,7 @@ export function _getGPT5GlobalAgent({
   mcpServerViews,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettingsModel | null;
+  settings: GlobalAgentSettings | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
@@ -207,7 +207,7 @@ export function _getGPT5ThinkingGlobalAgent({
   mcpServerViews,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettingsModel | null;
+  settings: GlobalAgentSettings | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
@@ -268,7 +268,7 @@ export function _getGPT5MiniGlobalAgent({
   mcpServerViews,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettingsModel | null;
+  settings: GlobalAgentSettings | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
@@ -328,7 +328,7 @@ export function _getGPT5NanoGlobalAgent({
   mcpServerViews,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettingsModel | null;
+  settings: GlobalAgentSettings | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let status = settings?.status ?? "disabled_by_admin";
@@ -385,7 +385,7 @@ export function _getO3MiniGlobalAgent({
   mcpServerViews,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettingsModel | null;
+  settings: GlobalAgentSettings | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let status = settings?.status ?? "disabled_by_admin";
@@ -439,7 +439,7 @@ export function _getO1GlobalAgent({
   mcpServerViews,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettingsModel | null;
+  settings: GlobalAgentSettings | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
@@ -491,7 +491,7 @@ export function _getO1MiniGlobalAgent({
   settings,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettingsModel | null;
+  settings: GlobalAgentSettings | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -537,7 +537,7 @@ export function _getO1HighReasoningGlobalAgent({
   mcpServerViews,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettingsModel | null;
+  settings: GlobalAgentSettings | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
@@ -591,7 +591,7 @@ export function _getO3GlobalAgent({
   mcpServerViews,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettingsModel | null;
+  settings: GlobalAgentSettings | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";

@@ -1,5 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
-import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
+import { GlobalAgentSettingsResource } from "@app/lib/resources/agent/global_agent_settings_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import memoizer from "lru-memoizer";
 
@@ -10,12 +10,10 @@ const DEEP_DIVE_DISABLED_TTL_MS = 3 * 1000; // 3 seconds
 // causes memory growth.
 const _isDeepDiveDisabledByAdmin = memoizer<Authenticator, boolean>({
   load: (auth, callback) => {
-    GlobalAgentSettingsModel.findOne({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        agentId: GLOBAL_AGENTS_SID.DEEP_DIVE,
-      },
-    })
+    GlobalAgentSettingsResource.fetchByAgentId(
+      auth,
+      GLOBAL_AGENTS_SID.DEEP_DIVE
+    )
       .then((settings) =>
         callback(null, settings?.status === "disabled_by_admin")
       )

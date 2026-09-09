@@ -6,7 +6,7 @@ import {
 import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/global_agents/tools";
 import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
+import type { GlobalAgentSettings } from "@app/lib/resources/agent/global_agent_settings_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -18,7 +18,7 @@ export function _getGeminiProGlobalAgent({
   mcpServerViews,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettingsModel | null;
+  settings: GlobalAgentSettings | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";

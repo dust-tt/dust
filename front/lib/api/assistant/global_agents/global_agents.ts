@@ -117,7 +117,8 @@ import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getDefaultStreamConfigForAuth } from "@app/lib/model_tiers/enabled_models";
-import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
+import type { GlobalAgentSettings } from "@app/lib/resources/agent/global_agent_settings_resource";
+import { GlobalAgentSettingsResource } from "@app/lib/resources/agent/global_agent_settings_resource";
 import type {
   AgentConfigurationType,
   AgentFetchVariant,
@@ -151,7 +152,7 @@ function getGlobalAgent({
   auth: Authenticator;
   sId: string | number;
   preFetchedDataSources: PrefetchedDataSourcesType | null;
-  globalAgentSettings: GlobalAgentSettingsModel[];
+  globalAgentSettings: GlobalAgentSettings[];
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   sidekickContext: SidekickContext | null;
   hasDeepDive: boolean;
@@ -1014,7 +1015,9 @@ export async function getGlobalAgents(
   auth: Authenticator,
   agentIds?: string[],
   variant: AgentFetchVariant = "full",
-  options?: { globalAgentContext?: GlobalAgentContext }
+  options?: {
+    globalAgentContext?: GlobalAgentContext;
+  }
 ): Promise<AgentConfigurationType[]> {
   if (agentIds !== undefined && agentIds.some((sId) => !isGlobalAgentId(sId))) {
     throw new Error("Invalid agentIds.");
@@ -1041,9 +1044,7 @@ export async function getGlobalAgents(
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
       : null,
-    GlobalAgentSettingsModel.findAll({
-      where: { workspaceId: owner.id },
-    }),
+    GlobalAgentSettingsResource.listForWorkspace(auth),
     getMCPServerViewsForGlobalAgents(auth, variant),
   ]);
 
@@ -1235,25 +1236,6 @@ export async function upsertGlobalAgentSettings(
     status: GlobalAgentStatus;
   }
 ): Promise<boolean> {
-  const owner = auth.getNonNullableWorkspace();
-
-  if (!isGlobalAgentId(agentId)) {
-    throw new Error("Global Agent not found: invalid agentId.");
-  }
-
-  const settings = await GlobalAgentSettingsModel.findOne({
-    where: { workspaceId: owner.id, agentId },
-  });
-
-  if (settings) {
-    await settings.update({ status });
-  } else {
-    await GlobalAgentSettingsModel.create({
-      workspaceId: owner.id,
-      agentId,
-      status,
-    });
-  }
-
+  await GlobalAgentSettingsResource.upsert(auth, { agentId, status });
   return true;
 }

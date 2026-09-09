@@ -26,11 +26,11 @@ import {
   selectEnabledModel,
 } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import {
   isDustCompanyPlan,
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
+import type { GlobalAgentSettings } from "@app/lib/resources/agent/global_agent_settings_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationType,
@@ -76,7 +76,7 @@ import type {
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 
 interface DustLikeGlobalAgentArgs {
-  settings: GlobalAgentSettingsModel | null;
+  settings: GlobalAgentSettings | null;
   preFetchedDataSources: PrefetchedDataSourcesType | null;
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   hasDeepDive: boolean;
