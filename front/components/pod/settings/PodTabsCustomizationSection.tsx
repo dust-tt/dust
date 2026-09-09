@@ -1,17 +1,35 @@
+import { getFileExplorerPipeline } from "@app/components/file_explorer/fileExplorerPipeline";
+import type {
+  FileEntry,
+  FileExplorerEntry,
+  FramePackageEntry,
+} from "@app/components/file_explorer/types";
+import {
+  getScopedRelativePath,
+  isFilePreviewableContentType,
+} from "@app/components/file_explorer/utils";
+import type { AddablePodTabFile } from "@app/components/pod/settings/AddPodFileMenu";
+import { AddPodFileMenu } from "@app/components/pod/settings/AddPodFileMenu";
 import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { usePodFiles } from "@app/lib/swr/pods";
+import { frameV2ContentType } from "@app/types/files";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
   DEFAULT_POD_FILE_TAB_ICON,
   MAX_POD_FILE_TAB_TITLE_LENGTH,
+  MAX_POD_FILE_TABS,
 } from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,
   Button,
   ChevronSelectorVertical,
+  Chip,
   cn,
+  EmptyCTA,
   Icon,
   IconPicker,
   Input,
@@ -24,7 +42,7 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import type { DragEvent } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const POD_TAB_DRAG_MIME = "application/x-dust-pod-tab-path";
 
@@ -40,6 +58,28 @@ function isTabReorderDrag(event: DragEvent) {
   return event.dataTransfer.types.includes(POD_TAB_DRAG_MIME);
 }
 
+function isAddablePodTabEntry(
+  entry: FileExplorerEntry,
+  existingTabPaths: ReadonlySet<string>
+): entry is FileEntry | FramePackageEntry {
+  if (existingTabPaths.has(entry.path)) {
+    return false;
+  }
+
+  if (entry.kind === "frame_package") {
+    return true;
+  }
+
+  if (entry.kind !== "file") {
+    return false;
+  }
+
+  return (
+    entry.contentType !== frameV2ContentType &&
+    isFilePreviewableContentType(entry.contentType)
+  );
+}
+
 export function PodTabsCustomizationSection({
   owner,
   podId,
@@ -47,20 +87,73 @@ export function PodTabsCustomizationSection({
   tabsOrder,
   isEditor,
 }: PodTabsCustomizationSectionProps) {
-  const { orderedFileTabs, updateFileTab, removeFileTab, reorderFileTab } =
-    usePodFileTabs({
-      owner,
-      podId,
-      fileTabs,
-      tabsOrder,
-      isEditor,
+  const { hasFeature } = useFeatureFlags();
+  const displayFramePackages = hasFeature("frames_v2");
+
+  const {
+    orderedFileTabs,
+    updateFileTab,
+    removeFileTab,
+    reorderFileTab,
+    addFileTab,
+  } = usePodFileTabs({
+    owner,
+    podId,
+    fileTabs,
+    tabsOrder,
+    isEditor,
+  });
+
+  const { files: podFiles, isPodFilesLoading } = usePodFiles({
+    owner,
+    podId,
+  });
+
+  const existingTabPaths = useMemo(
+    () => new Set(fileTabs.map((tab) => tab.path)),
+    [fileTabs]
+  );
+
+  const podFilePaths = useMemo(
+    () =>
+      new Set(
+        podFiles.filter((file) => !file.isDirectory).map((file) => file.path)
+      ),
+    [podFiles]
+  );
+
+  const addableFiles = useMemo((): AddablePodTabFile[] => {
+    const { entryByRelativePath } = getFileExplorerPipeline({
+      activeFilter: "all",
+      contentNodes: [],
+      currentFolderPath: "",
+      displayFramePackages,
+      files: podFiles,
+      searchQuery: "",
+      sortMode: "name-asc",
     });
+
+    return [...entryByRelativePath.values()]
+      .filter((entry): entry is FileEntry | FramePackageEntry =>
+        isAddablePodTabEntry(entry, existingTabPaths)
+      )
+      .map((entry) => ({
+        path: entry.path,
+        fileName: entry.fileName,
+        contentType: entry.contentType,
+      }))
+      .sort((a, b) =>
+        a.fileName.localeCompare(b.fileName, undefined, { sensitivity: "base" })
+      );
+  }, [displayFramePackages, existingTabPaths, podFiles]);
 
   const [draggingPath, setDraggingPath] = useState<string | null>(null);
   const [dropTargetPath, setDropTargetPath] = useState<string | null>(null);
   const [iconPickerPath, setIconPickerPath] = useState<string | null>(null);
   const [editingTitlePath, setEditingTitlePath] = useState<string | null>(null);
   const [editingTitleValue, setEditingTitleValue] = useState("");
+
+  const atTabLimit = orderedFileTabs.length >= MAX_POD_FILE_TABS;
 
   const handleDragStart = (path: string, event: DragEvent<HTMLDivElement>) => {
     event.dataTransfer.setData(POD_TAB_DRAG_MIME, path);
@@ -118,30 +211,69 @@ export function PodTabsCustomizationSection({
     await updatePromise;
   };
 
+  const handleAddFile = (file: AddablePodTabFile) => {
+    void addFileTab(file.path, {
+      fileName: file.fileName,
+      skipConfirm: true,
+    });
+  };
+
+  const addFileTrigger = (
+    <Button
+      size="xs"
+      variant="outline"
+      icon={Plus}
+      tooltip={
+        atTabLimit
+          ? `A pod can have at most ${MAX_POD_FILE_TABS} custom tabs.`
+          : "Add file to Tabs"
+      }
+      disabled={atTabLimit}
+    />
+  );
+
   return (
     <div className="flex w-full flex-col gap-2">
       <h3 className="heading-lg">Pod Customization</h3>
       <div className="flex w-full flex-col gap-3">
         <div className="flex items-center gap-2">
-          <h4 className="heading-base flex-1">Pod Tabs</h4>
-          {isEditor && (
-            <Button
-              size="xs"
-              variant="outline"
-              icon={Plus}
-              tooltip="Add file to top bar"
-              disabled
+          <h4 className="heading-base flex-1">Tabs</h4>
+          {isEditor && orderedFileTabs.length > 0 && (
+            <AddPodFileMenu
+              files={addableFiles}
+              onSelect={handleAddFile}
+              trigger={addFileTrigger}
             />
           )}
         </div>
         <p className="text-sm text-muted-foreground">
-          Files pinned to this Pod&apos;s top bar. Drag to reorder, or pick a
+          Files pinned to this Pod&apos;s Tabs. Drag to reorder, or pick a
           custom icon.
         </p>
         {orderedFileTabs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No files in the top bar yet. Add one from Files.
-          </p>
+          isEditor ? (
+            <EmptyCTA
+              message="No files in the Tabs yet."
+              action={
+                <AddPodFileMenu
+                  files={addableFiles}
+                  onSelect={handleAddFile}
+                  trigger={
+                    <Button
+                      variant="highlight"
+                      icon={Plus}
+                      label="Add file"
+                      disabled={atTabLimit}
+                    />
+                  }
+                />
+              }
+            />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No files in the Tabs yet.
+            </p>
+          )
         ) : (
           <ListGroup>
             {orderedFileTabs.map((tab) => {
@@ -152,6 +284,8 @@ export function PodTabsCustomizationSection({
               const isPickerOpen = iconPickerPath === tab.path;
               const isEditingTitle = editingTitlePath === tab.path;
               const canDrag = isEditor && !isEditingTitle;
+              const isFileMissing =
+                !isPodFilesLoading && !podFilePaths.has(tab.path);
 
               return (
                 <div
@@ -275,12 +409,19 @@ export function PodTabsCustomizationSection({
                         {tab.title}
                       </button>
                     )}
+                    {isFileMissing && (
+                      <Chip
+                        size="xs"
+                        color="warning"
+                        label={`File ${getScopedRelativePath(tab.path)} missing or renamed`}
+                      />
+                    )}
                     {isEditor && (
                       <Button
                         size="xs"
                         variant="ghost-secondary"
                         icon={XClose}
-                        tooltip="Remove from top bar"
+                        tooltip="Remove from Tabs"
                         onClick={() =>
                           void removeFileTab(tab.path, {
                             fileName: tab.title,
