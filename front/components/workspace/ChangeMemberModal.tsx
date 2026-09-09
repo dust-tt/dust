@@ -1,13 +1,13 @@
 import {
+  GROUP_ROLE_MANAGED_MESSAGE,
   getRoleDescription,
-  ROLE_PROVISIONING_MESSAGE,
 } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { MemberGroupsSection } from "@app/components/workspace/MemberGroupsSection";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { SearchMembersAdminResponseBody } from "@app/lib/api/workspace";
 import { handleMembersRoleChange } from "@app/lib/client/members";
-import { useProvisioningStatus } from "@app/lib/swr/workos";
+import { useWorkspaceGrantedRoles } from "@app/lib/swr/groups";
 import type {
   ActiveRoleType,
   LightWorkspaceType,
@@ -37,14 +37,14 @@ import { useState } from "react";
 import type { KeyedMutator } from "swr";
 
 function getMemberRoleMessage({
-  hasActiveRoleProvisioningGroups,
+  rolesManagedByGroups,
   role,
 }: {
-  hasActiveRoleProvisioningGroups: boolean;
+  rolesManagedByGroups: boolean;
   role: ActiveRoleType;
 }): string {
-  if (hasActiveRoleProvisioningGroups) {
-    return ROLE_PROVISIONING_MESSAGE;
+  if (rolesManagedByGroups) {
+    return GROUP_ROLE_MANAGED_MESSAGE;
   }
 
   return `The role defines the rights of a member of the workspace. ${getRoleDescription(
@@ -71,18 +71,16 @@ export function ChangeMemberModal({
   );
   const [isSaving, setIsSaving] = useState(false);
 
-  const { roleProvisioningStatus } = useProvisioningStatus({
+  const { grantedRoles } = useWorkspaceGrantedRoles({
     workspaceId: workspace.sId,
   });
 
-  const hasActiveRoleProvisioningGroups = () => {
-    return roleProvisioningStatus.grantedRoles.length > 0;
-  };
+  const rolesManagedByGroups = grantedRoles.length > 0;
 
   const roleMessage =
     role && isActiveRoleType(role)
       ? getMemberRoleMessage({
-          hasActiveRoleProvisioningGroups: hasActiveRoleProvisioningGroups(),
+          rolesManagedByGroups,
           role,
         })
       : "";
@@ -145,7 +143,7 @@ export function ChangeMemberModal({
                       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                       selectedRole={selectedRole || role}
                       onChange={setSelectedRole}
-                      disabled={hasActiveRoleProvisioningGroups()}
+                      disabled={rolesManagedByGroups}
                     />
                   </div>
                   <Page.P>{roleMessage}</Page.P>
@@ -231,7 +229,7 @@ export function ChangeMemberModal({
                 disabled:
                   selectedRole === member.workspace.role ||
                   isSaving ||
-                  hasActiveRoleProvisioningGroups(),
+                  rolesManagedByGroups,
                 isLoading: isSaving,
               }}
             />

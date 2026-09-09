@@ -1,4 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetWorkspaceGrantedRolesResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
 import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -64,6 +65,37 @@ export function useGroups({
     isGroupsLoading: !error && !data && !disabled,
     isGroupsError: !!error,
     mutateGroups: mutate,
+  };
+}
+
+// Workspace roles (admin/manager) that are granted by at least one group, i.e.
+// (partly) managed through group membership. Used to restrict manual role
+// editing in the members UI.
+function grantedRolesUrl(workspaceId: string): string {
+  return `/api/w/${workspaceId}/granted-roles`;
+}
+
+export function useWorkspaceGrantedRoles({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const grantedRolesFetcher: Fetcher<GetWorkspaceGrantedRolesResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    grantedRolesUrl(workspaceId),
+    grantedRolesFetcher,
+    { disabled }
+  );
+
+  return {
+    grantedRoles: data?.grantedRoles ?? emptyArray<GroupGrantableRole>(),
+    isGrantedRolesLoading: !error && !data && !disabled,
+    isGrantedRolesError: error,
   };
 }
 
@@ -639,7 +671,7 @@ export function useUpdateGroupGrantedRole({
         // Changing the mapping re-syncs member roles, so refresh the groups
         // list and anything derived from role-granting groups.
         await invalidateWorkspaceGroups(owner.sId);
-        await mutate(`/api/w/${owner.sId}/provisioning-status`);
+        await mutate(grantedRolesUrl(owner.sId));
 
         return body;
       } finally {

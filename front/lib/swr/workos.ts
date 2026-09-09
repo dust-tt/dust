@@ -3,7 +3,6 @@ import type {
   AuditLogsPortal,
   AuditLogsPortalResponse,
 } from "@app/lib/api/audit/workos_audit";
-import type { GetProvisioningStatusResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -14,8 +13,6 @@ import {
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type { GetWorkspaceDomainsResponseBody } from "@app/types/api/workos/organization";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useMemo } from "react";
-import type { Fetcher } from "swr";
 
 /**
  * Workspace domains
@@ -217,41 +214,6 @@ export function useDisableWorkOSDirectorySyncConnection({
 
   return {
     doDisableWorkOSDirectorySyncConnection,
-  };
-}
-
-export function useProvisioningStatus({
-  workspaceId,
-  disabled,
-}: {
-  workspaceId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const provisioningStatusFetcher: Fetcher<GetProvisioningStatusResponseBody> =
-    fetcher;
-
-  const { data, error } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/provisioning-status`,
-    provisioningStatusFetcher,
-    {
-      disabled,
-    }
-  );
-
-  const roleProvisioningStatus = useMemo(() => {
-    if (!data) {
-      return {
-        grantedRoles: [],
-      };
-    }
-    return data;
-  }, [data]);
-
-  return {
-    roleProvisioningStatus,
-    isProvisioningStatusLoading: !error && !data && !disabled,
-    isProvisioningStatusError: error,
   };
 }
 

@@ -816,7 +816,7 @@ export type GetWorkspaceVerifiedDomainsResponseBody = {
   verifiedDomains: WorkspaceDomain[];
 };
 
-export type GetProvisioningStatusResponseBody = {
+export type GetWorkspaceGrantedRolesResponseBody = {
   // Distinct workspace roles granted by at least one group in the workspace
   // (a subset of ["admin", "manager"]). When non-empty, member roles are
   // (partly) managed through group membership and manual role editing is
