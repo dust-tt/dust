@@ -6,13 +6,8 @@ import { PodEditInformationValidationDetails } from "@app/components/assistant/c
 import { PodMembersUpdateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodMembersUpdateValidationDetails";
 import { PodTasksCreateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodTasksCreateValidationDetails";
 import { PodTasksUpdateValidationDetails } from "@app/components/assistant/conversation/tool_validation/PodTasksUpdateValidationDetails";
-import { SandboxFunctionPublishValidationDetails } from "@app/components/assistant/conversation/tool_validation/SandboxFunctionPublishValidationDetails";
-import { SandboxFunctionUnpublishValidationDetails } from "@app/components/assistant/conversation/tool_validation/SandboxFunctionUnpublishValidationDetails";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
-import {
-  ASHBY_SERVER_NAME,
-  validateToolInputs,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import { ASHBY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   CREATE_REFERRAL_TOOL_NAME,
   UPDATE_JOB_POSTING_TOOL_NAME,
@@ -39,7 +34,6 @@ import {
   isPodTasksCreateTasksInput,
   isPodTasksUpdateTasksInput,
 } from "@app/lib/api/actions/servers/pod_tasks/types";
-import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import {
   SKILL_AUTHORING_SERVER_NAME,
   UPDATE_SKILL_TOOL_NAME,
@@ -229,34 +223,6 @@ export function ToolValidationDetails({
         user={user}
         conversationId={conversationId}
       />
-    );
-  }
-
-  if (
-    blockedAction.metadata.mcpServerName === SANDBOX_FUNCTIONS_SERVER_NAME &&
-    blockedAction.metadata.toolName === "publish" &&
-    validateToolInputs(
-      SANDBOX_FUNCTIONS_SERVER_NAME,
-      "publish",
-      blockedAction.inputs
-    )
-  ) {
-    return (
-      <SandboxFunctionPublishValidationDetails input={blockedAction.inputs} />
-    );
-  }
-
-  if (
-    blockedAction.metadata.mcpServerName === SANDBOX_FUNCTIONS_SERVER_NAME &&
-    blockedAction.metadata.toolName === "unpublish" &&
-    validateToolInputs(
-      SANDBOX_FUNCTIONS_SERVER_NAME,
-      "unpublish",
-      blockedAction.inputs
-    )
-  ) {
-    return (
-      <SandboxFunctionUnpublishValidationDetails input={blockedAction.inputs} />
     );
   }
 

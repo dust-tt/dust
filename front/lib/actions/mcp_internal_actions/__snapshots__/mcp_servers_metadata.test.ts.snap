@@ -2059,48 +2059,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
-  "sandbox_functions": {
-    "call": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "db_list": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "db_query": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "db_reconcile": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "db_schema": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "get": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "inspect_invocations": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "list": {
-      "freeUsage": false,
-      "toolCostCategory": "advanced",
-    },
-    "publish": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-    "unpublish": {
-      "freeUsage": true,
-      "toolCostCategory": "basic",
-    },
-  },
   "search": {
     "semantic_search": {
       "freeUsage": false,
@@ -3262,18 +3220,6 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "bash": "never_ask",
     "describe_toolset": "never_ask",
     "request_egress_domain": "low",
-  },
-  "sandbox_functions": {
-    "call": "low",
-    "db_list": "never_ask",
-    "db_query": "never_ask",
-    "db_reconcile": "never_ask",
-    "db_schema": "never_ask",
-    "get": "never_ask",
-    "inspect_invocations": "never_ask",
-    "list": "never_ask",
-    "publish": "low",
-    "unpublish": "high",
   },
   "search": {
     "semantic_search": "never_ask",

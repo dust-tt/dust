@@ -1,17 +1,11 @@
-import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { FileFactory } from "@app/tests/utils/FileFactory";
+import { makeTestFrameInvocation } from "@app/tests/utils/FrameFunctionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { SandboxFunctionInvocationEvent } from "@app/types/api/sandbox_functions";
-import { sandboxFunctionContentType } from "@app/types/files";
 import { honoApp } from "@front-api/app";
 import {
   asyncIteratorFrom,
   parseSseDataPayloads,
 } from "@front-api/tests/utils/sse";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
@@ -26,57 +20,6 @@ vi.mock("@app/lib/api/sandbox_functions/events", async (importOriginal) => {
 });
 
 import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functions/events";
-
-const inputSchema: JSONSchema = {
-  type: "object",
-  properties: {
-    message: { type: "string" },
-  },
-};
-
-const outputSchema: JSONSchema = {
-  type: "object",
-  properties: {
-    ok: { type: "boolean" },
-  },
-};
-
-async function setupSandboxFunctionInvocation({
-  withSandboxFunctionsFeatureFlag = true,
-}: {
-  withSandboxFunctionsFeatureFlag?: boolean;
-} = {}) {
-  const { workspace, auth } = await createPrivateApiMockRequest({
-    role: "admin",
-  });
-  if (withSandboxFunctionsFeatureFlag) {
-    await FeatureFlagFactory.basic(auth, "sandbox_functions");
-  }
-
-  const space = await SpaceFactory.project(workspace);
-  const file = await FileFactory.create(auth, null, {
-    contentType: sandboxFunctionContentType,
-    fileName: "function.ts",
-    fileSize: 100,
-    status: "created",
-    useCase: "project_context",
-    useCaseMetadata: { spaceId: space.sId },
-  });
-  const sandboxFunction = await SandboxFunctionResource.makeNew(auth, {
-    space,
-    file,
-    slug: "run-function",
-    description: "Run the function.",
-    inputSchema,
-    outputSchema,
-  });
-  const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
-    sandboxFunction,
-    input: undefined,
-  });
-
-  return { workspace, auth, space, sandboxFunction, invocation };
-}
 
 function getEvents({
   workspaceId,
@@ -99,7 +42,7 @@ describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invoc
 
   it("streams sandbox function invocation events to the client", async () => {
     const { workspace, sandboxFunction, invocation } =
-      await setupSandboxFunctionInvocation();
+      await makeTestFrameInvocation();
     const resultEvent: {
       eventId: string;
       data: SandboxFunctionInvocationEvent;
@@ -136,8 +79,7 @@ describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invoc
   });
 
   it("returns 404 when the invocation does not exist", async () => {
-    const { workspace, sandboxFunction } =
-      await setupSandboxFunctionInvocation();
+    const { workspace, sandboxFunction } = await makeTestFrameInvocation();
 
     const response = await getEvents({
       workspaceId: workspace.sId,
@@ -149,15 +91,13 @@ describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invoc
     expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
   });
 
-  it("hides another member's invocation from a Pod reader", async () => {
-    const { workspace, auth, space, sandboxFunction, invocation } =
-      await setupSandboxFunctionInvocation();
-    const { user } = await createPrivateApiMockRequest({
+  it("hides another member's invocation from a Frame reader without use rights", async () => {
+    const { workspace, sandboxFunction, invocation } =
+      await makeTestFrameInvocation({ shareScope: "emails_only" });
+    await createPrivateApiMockRequest({
       role: "user",
       workspace,
     });
-    const addResult = await space.addMembers(auth, { userIds: [user.sId] });
-    expect(addResult.isOk()).toBe(true);
 
     const response = await getEvents({
       workspaceId: workspace.sId,
@@ -169,11 +109,9 @@ describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invoc
     expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
   });
 
-  it("requires sandbox functions to be enabled", async () => {
+  it("requires Frames v2 to be enabled", async () => {
     const { workspace, sandboxFunction, invocation } =
-      await setupSandboxFunctionInvocation({
-        withSandboxFunctionsFeatureFlag: false,
-      });
+      await makeTestFrameInvocation({ enableFramesV2: false });
 
     const response = await getEvents({
       workspaceId: workspace.sId,
@@ -185,7 +123,7 @@ describe("GET /api/sse/w/[wId]/sandbox-functions/[functionId]/invocations/[invoc
     expect(await response.json()).toMatchObject({
       error: {
         type: "feature_flag_not_found",
-        message: "Sandbox Functions are not enabled for this workspace.",
+        message: "Frames are not enabled for this workspace.",
       },
     });
     expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
