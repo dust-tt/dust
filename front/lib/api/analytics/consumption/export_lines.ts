@@ -274,6 +274,32 @@ export async function fetchConsumptionExportBucketCsv(
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<string, ElasticsearchError>> {
+  const rows = await fetchConsumptionExportRows(auth, { period, filter });
+  if (rows.isErr()) {
+    return rows;
+  }
+
+  return new Ok(
+    rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows.value, {
+      includeHeader: false,
+    })
+  );
+}
+
+export function buildConsumptionLineExportCsvHeader(): string {
+  return rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, []);
+}
+
+export async function fetchConsumptionExportRows(
+  auth: Authenticator,
+  {
+    period,
+    filter,
+  }: {
+    period: ConsumptionPeriod;
+    filter?: ConsumptionScopeFilter;
+  }
+): Promise<Result<ConsumptionLineExportRow[], ElasticsearchError>> {
   const query = buildConsumptionScopeQuery({
     auth,
     startDate: period.startDate,
@@ -287,12 +313,16 @@ export async function fetchConsumptionExportBucketCsv(
   }
 
   const rows = await buildConsumptionLineExportRows(auth, docsResult.value);
+  return new Ok(rows);
+}
 
-  return new Ok(
-    rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows, { includeHeader: false })
+export function rowsToNdjson(rows: ConsumptionLineExportRow[]): string {
+  return (
+    rows.map((row) => JSON.stringify(row)).join("\n") +
+    (rows.length > 0 ? "\n" : "")
   );
 }
 
-export function buildConsumptionLineExportCsvHeader(): string {
-  return rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, []);
+export function rowsToCsvString(rows: ConsumptionLineExportRow[]): string {
+  return rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows);
 }

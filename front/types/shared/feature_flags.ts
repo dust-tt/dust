@@ -431,6 +431,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "avervaet",
   },
+  consumption_export_api: {
+    description:
+      "Enable the public API endpoint for raw consumption analytics export (POST /api/v1/w/:wId/analytics/consumption/export).",
+    stage: "dust_only",
+    owner: "sylvain",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";
