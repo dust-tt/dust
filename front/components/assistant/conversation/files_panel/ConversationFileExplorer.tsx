@@ -4,6 +4,7 @@ import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import type {
   FileEntry,
   FileExplorerEntry,
+  FileExplorerMenuAction,
   FileExplorerPathEntry,
   FileExplorerVirtualScopeRoot,
 } from "@app/components/file_explorer/types";
@@ -12,6 +13,7 @@ import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
+import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
   downloadFile,
@@ -19,11 +21,12 @@ import {
   useDeleteFileByPath,
 } from "@app/lib/swr/files";
 import { usePodFiles } from "@app/lib/swr/pods";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import { opensInSidePanel } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, XClose } from "@dust-tt/sparkle";
+import { Button, Pin02, XClose } from "@dust-tt/sparkle";
 import { useCallback, useContext, useMemo } from "react";
 
 function isFramePackageEntry(entry: FileExplorerEntry): boolean {
@@ -90,6 +93,45 @@ export function ConversationFileExplorer({
       ...podFiles.map((f) => withVirtualExplorerPath(f, "pod")),
     ];
   }, [isPod, podFiles, sandboxFiles]);
+
+  const { spaceInfo: podInfo } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: isPod ? conversation.spaceId : null,
+  });
+
+  const canPin = isPod && (podInfo?.isEditor ?? false) && !podInfo?.archivedAt;
+
+  const { togglePin, isPinned } = usePinPodBanner({
+    owner,
+    podId: isPod ? conversation.spaceId : "",
+    pinnedFramePath: podInfo?.pinnedFramePath ?? null,
+    isEditor: canPin,
+  });
+
+  const getExtraFileMenuItems = useCallback(
+    (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
+      if (
+        !canPin ||
+        entry.kind !== "frame_package" ||
+        !entry.path.startsWith(`pod-${conversation.spaceId}/`)
+      ) {
+        return [];
+      }
+
+      const pinned = isPinned(entry.path);
+      return [
+        {
+          label: pinned ? "Unpin from banner" : "Pin as Pod banner",
+          icon: Pin02,
+          onClick: (e) => {
+            e.stopPropagation();
+            void togglePin(entry.path, { fileName: entry.fileName });
+          },
+        },
+      ];
+    },
+    [canPin, conversation.spaceId, isPinned, togglePin]
+  );
 
   const getFileUrl = useCallback(
     (path: string) => getFilePathViewUrl(owner, path),
@@ -170,6 +212,7 @@ export function ConversationFileExplorer({
           defaultViewMode={isPod ? "list" : "grid"}
           displayFramePackages={hasFeature("frames_v2")}
           files={files}
+          getExtraFileMenuItems={getExtraFileMenuItems}
           hideBreadcrumbAtRoot={!isPod}
           isLoading={
             isPod
