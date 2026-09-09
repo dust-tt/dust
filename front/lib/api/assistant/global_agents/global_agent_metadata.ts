@@ -529,7 +529,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG,
         name: "dust-goog",
-        description: "Same as dust but running Gemini 3.5 Flash.",
+        description: "Same as dust but running Gemini 3.8 Flash.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM:
