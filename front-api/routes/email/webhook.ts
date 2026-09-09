@@ -15,8 +15,8 @@ import {
   EMAIL_WEBHOOK_RELAY_LOOKUP,
   hasValidRelayAuthorization,
   hasValidSendgridAuthorization,
+  isDuplicateEmailRelay,
   parseSendgridWebhookContent,
-  recordEmailRelay,
   relayEmailToOtherCells,
   replyToError,
   resolveRelayedErrorReply,
@@ -149,12 +149,25 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
 
   const email = emailRes.value;
 
-  // Lookup relays return misses to US before deduplication; a retry must return the miss again.
+  // Resolve lookup relays before responding, but only claim emails accepted for processing.
   const relayUserRes =
     isRelayRequest &&
     headers[EMAIL_WEBHOOK_RELAY_HEADER] === EMAIL_WEBHOOK_RELAY_LOOKUP
       ? await userAndWorkspaceFromEmail({ email: email.sender.email })
       : undefined;
+  if (
+    isRelayRequest &&
+    (await isDuplicateEmailRelay(email.threadingHeaders.messageId, {
+      record: !relayUserRes?.isErr(),
+    }))
+  ) {
+    logger.info(
+      { senderEmail: email.sender.email },
+      "[email] Ignoring duplicate inbound email relay"
+    );
+    return ctx.json({ success: true });
+  }
+
   if (relayUserRes?.isErr()) {
     return ctx.json({
       success: true,
@@ -164,17 +177,6 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
         senderEmail: email.sender.email,
       }),
     });
-  }
-
-  if (
-    isRelayRequest &&
-    !(await recordEmailRelay(email.threadingHeaders.messageId))
-  ) {
-    logger.info(
-      { senderEmail: email.sender.email },
-      "[email] Ignoring duplicate inbound email relay"
-    );
-    return ctx.json({ success: true });
   }
 
   // Acknowledge the webhook now — from here on, all errors should be sent as

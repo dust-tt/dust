@@ -255,7 +255,7 @@ describe("POST /api/email/webhook", () => {
     }
   });
 
-  it("accepts a workspace match and deduplicates processing errors", async () => {
+  it("keeps an accepted email deduplicated after workspace eligibility changes", async () => {
     const { user, workspace } = await createResourceTest({ role: "admin" });
     await WorkspaceResource.updateMetadata(workspace.id, {
       allowEmailAgents: true,
@@ -275,6 +275,9 @@ describe("POST /api/email/webhook", () => {
       await vi.waitFor(() =>
         expect(sendEmailToRecipients).toHaveBeenCalledOnce()
       );
+      await WorkspaceResource.updateMetadata(workspace.id, {
+        allowEmailAgents: false,
+      });
     }
     const [{ message }] = vi.mocked(sendEmailToRecipients).mock.calls[0];
     expect(message.html).toContain("temporarily unavailable");

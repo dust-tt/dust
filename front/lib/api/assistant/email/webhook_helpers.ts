@@ -201,20 +201,28 @@ function makeEmailRelayKey(messageId: string): string {
   return `${EMAIL_RELAY_KEY_PREFIX}:${messageId}`;
 }
 
-export async function recordEmailRelay(
-  messageId: string | null
+/**
+ * @cc [owner:philipperolet,label:product] accepted-relay-dedupe
+ * Accepted Message-IDs remain duplicates within the TTL; lookup misses must not record new IDs.
+ */
+export async function isDuplicateEmailRelay(
+  messageId: string | null,
+  { record }: { record: boolean }
 ): Promise<boolean> {
   if (!messageId) {
-    return true;
+    return false;
   }
 
   const redis = await getRedisStreamClient({ origin: "email_context" });
+  if (!record) {
+    return (await redis.exists(makeEmailRelayKey(messageId))) > 0;
+  }
   const result = await redis.set(makeEmailRelayKey(messageId), "1", {
     NX: true,
     EX: EMAIL_RELAY_DEDUPE_TTL_SECONDS,
   });
 
-  return result === "OK";
+  return result !== "OK";
 }
 
 /**
