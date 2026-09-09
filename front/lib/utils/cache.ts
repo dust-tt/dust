@@ -1,5 +1,6 @@
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
+import { runAfterTransactionCommit } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -449,21 +450,12 @@ export function invalidateCacheAfterCommit(
   transaction: Transaction | undefined,
   invalidateFn: () => Promise<void>
 ): void {
-  if (transaction) {
-    transaction.afterCommit(() =>
-      invalidateFn().catch((err) => {
-        logger.error(
-          { panic: true, err },
-          "Failed to invalidate cache after transaction commit"
-        );
-      })
-    );
-  } else {
-    invalidateFn().catch((err) => {
+  void runAfterTransactionCommit(transaction, async () => {
+    await invalidateFn().catch((err) => {
       logger.error(
         { panic: true, err },
         "Failed to invalidate cache after transaction commit"
       );
     });
-  }
+  });
 }
