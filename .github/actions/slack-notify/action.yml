@@ -109,16 +109,10 @@ runs:
           cell-*|all) HEADER_TEXT="🔨 \`${{ inputs.image_tag }}\` built" ;;
           *) HEADER_TEXT="🔨 \`${{ inputs.image_tag }}\` built for ${{ inputs.region }}" ;;
         esac
-        DETAILS_TEXT=""
-
+        MAIN_BLOCK_TEXT="$HEADER_TEXT"
         if [ -n "${{ inputs.current_version }}" ]; then
-          DETAILS_TEXT="${DETAILS_TEXT}
-        • Changes: \`${{ inputs.current_version }}\` → \`${{ inputs.image_tag }}\` (${{ inputs.commit_count }} commits)"
+          MAIN_BLOCK_TEXT="${HEADER_TEXT} · \`${{ inputs.current_version }}\` → \`${{ inputs.image_tag }}\`, ${{ inputs.commit_count }} commits"
         fi
-
-        # Combine for the first block
-        MAIN_BLOCK_TEXT="$HEADER_TEXT
-        $DETAILS_TEXT"
 
         # 2. Build Changelog Section
         CHANGELOG_TEXT=""
