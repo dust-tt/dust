@@ -74,6 +74,7 @@ function CreditDetailRow({
       }}
       onPointerLeave={() => setIsLabelExpanded(false)}
     >
+      {/* Span both columns without pushing the credit count onto another row. */}
       <dt className="col-span-2 col-start-1 row-start-1 grid grid-cols-subgrid items-start font-medium text-foreground">
         <span className="col-start-1 row-start-1 flex items-center gap-2">
           {icon && (
@@ -104,6 +105,7 @@ function CreditDetailRow({
           <span
             aria-hidden
             className={classNames(
+              // Overlay the original label and extend across the hidden credit column.
               "pointer-events-none col-span-2 col-start-1 row-start-1 justify-self-start break-all animate-credit-label-reveal select-none motion-reduce:animate-none",
               icon ? "ml-6" : ""
             )}
