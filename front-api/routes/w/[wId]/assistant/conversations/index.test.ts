@@ -196,7 +196,7 @@ describe("POST /api/w/:wId/assistant/conversations", () => {
           spaceId: null,
           message: null,
           contentFragments: [],
-          bootstrap: "analytics_panel",
+          conversationOrigin: "analytics_panel",
         }),
       }
     );
@@ -223,7 +223,7 @@ describe("POST /api/w/:wId/assistant/conversations", () => {
     ).toBeUndefined();
   });
 
-  it("rejects a bootstrap request that also carries a message", async () => {
+  it("rejects a conversation origin combined with a message", async () => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "POST",
       role: "admin",
@@ -244,7 +244,7 @@ describe("POST /api/w/:wId/assistant/conversations", () => {
             context: { timezone: "UTC", profilePictureUrl: null },
           },
           contentFragments: [],
-          bootstrap: "analytics_panel",
+          conversationOrigin: "analytics_panel",
         }),
       }
     );

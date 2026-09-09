@@ -1,7 +1,10 @@
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import { z } from "zod";
-import { CLIENT_MESSAGE_ORIGINS } from "../assistant/conversation";
+import {
+  CLIENT_MESSAGE_ORIGINS,
+  CONVERSATION_ORIGINS,
+} from "../assistant/conversation";
 import { ModelSelectionSchema } from "../assistant/models/types";
 import type { SupportedNonImageContentType } from "../files";
 import { getSupportedNonImageMimeTypes } from "../files";
@@ -196,13 +199,13 @@ export const InternalPostConversationsRequestBodySchema = z
     metadata: ConversationMetadataSchema.optional(),
     selectedSpaceIds: z.array(z.string()).optional(),
     skipToolsValidation: z.boolean().optional(),
-    // Asks the server to author the opening message itself, for surfaces whose conversation is
-    // not started by something the user typed. The server owns its content, mentions and origin.
-    bootstrap: z.literal("analytics_panel").optional(),
+    // Set when a surface opens the conversation on the user's behalf rather than the user
+    // starting it. The server then authors the opening message.
+    conversationOrigin: z.enum(CONVERSATION_ORIGINS).optional(),
   })
-  .refine((body) => !(body.bootstrap && body.message), {
-    message: "`bootstrap` cannot be combined with `message`.",
-    path: ["bootstrap"],
+  .refine((body) => !(body.conversationOrigin && body.message), {
+    message: "`conversationOrigin` cannot be combined with `message`.",
+    path: ["conversationOrigin"],
   });
 
 /** Response shape for POST /api/w/[wId]/assistant/conversations (deferred or combined). */
