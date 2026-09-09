@@ -17,7 +17,10 @@ import {
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
+import {
+  ensureIsAdmin,
+  ensureIsManager,
+} from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
@@ -77,7 +80,7 @@ const app = workspaceApp();
 
 app.get(
   "/",
-  ensureIsAdmin(),
+  ensureIsManager(),
   async (ctx): HandlerResult<GetDefaultUserSpendLimitResponseBody> => {
     const auth = ctx.get("auth");
 
