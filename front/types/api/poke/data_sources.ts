@@ -31,6 +31,7 @@ export type PokeGetDataSourceDetails = {
   dataSourceViews: DataSourceViewType[];
   coreDataSource: CoreAPIDataSource;
   connector: InternalConnectorType | null;
+  oauthConnectedAccount: string | null;
   features: FeaturesType;
   temporalWorkspace: string;
   temporalRunningWorkflows: {

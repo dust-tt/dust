@@ -11,6 +11,8 @@ import type { InternalConnectorType } from "@app/types/connectors/connectors_api
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { isSlackAutoReadPatterns } from "@app/types/connectors/slack";
 import { CoreAPI } from "@app/types/core/core_api";
+import { OAuthAPI } from "@app/types/oauth/oauth_api";
+import { isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -100,6 +102,31 @@ app.get(
         logger.error(
           { connectorId: dataSource.connectorId },
           "Failed to get connector"
+        );
+      }
+    }
+
+    // Surface the external account authorizing the OAuth connection (e.g. the Microsoft account
+    // behind a SharePoint connection) so admins can verify which identity backs it.
+    let oauthConnectedAccount: string | null = null;
+    if (connector?.connectionId) {
+      const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+      const metadataRes = await oauthAPI.getConnectionMetadata({
+        connectionId: connector.connectionId,
+      });
+      if (metadataRes.isOk()) {
+        const { connected_account } = metadataRes.value.connection.metadata;
+        oauthConnectedAccount = isString(connected_account)
+          ? connected_account
+          : null;
+      } else {
+        logger.error(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            connectionId: connector.connectionId,
+            error: metadataRes.error,
+          },
+          "Failed to fetch OAuth connection metadata"
         );
       }
     }
@@ -263,6 +290,7 @@ app.get(
       dataSourceViews: dataSourceViews.map((view) => view.toJSON()),
       coreDataSource: coreDataSourceRes.value.data_source,
       connector,
+      oauthConnectedAccount,
       features,
       temporalWorkspace: config.getTemporalConnectorsNamespace() ?? "",
       temporalRunningWorkflows: workflowInfos,
