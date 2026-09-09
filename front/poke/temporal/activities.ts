@@ -47,6 +47,7 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
@@ -825,6 +826,7 @@ export async function deleteWorkspaceActivity({
   await FileResource.deleteAllForWorkspace(auth);
   await RunResource.deleteAllForWorkspace(auth);
   await MembershipResource.deleteAllForWorkspace(auth);
+  await MembershipUpgradeRequestResource.deleteAllForWorkspace(auth);
   await GroupPermissionResource.deleteAllForWorkspace(auth);
   await GroupMembershipModel.destroy({
     where: { workspaceId: workspace.id },
