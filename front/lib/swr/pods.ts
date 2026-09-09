@@ -50,6 +50,7 @@ import type {
 } from "@app/types/api/sandbox/egress_policy";
 import type {
   CheckNameResponseBody,
+  GetSpaceResponseBody,
   PatchPodMetadataBodyType,
 } from "@app/types/api/spaces";
 import type {
@@ -1078,59 +1079,163 @@ export function useUpdatePodMetadata({
     options: { disabled: true },
   });
 
-  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: podId,
-    disabled: true,
-  });
+  // `includeAllMembers: true` matches PodPage's live space-info key so
+  // optimistic updates land in the cache the settings UI reads from.
+  const { mutateSpaceInfo, mutateSpaceInfoRegardlessOfQueryParams } =
+    useSpaceInfo({
+      workspaceId: owner.sId,
+      spaceId: podId,
+      includeAllMembers: true,
+      disabled: true,
+    });
 
   return async (
     updates: PatchPodMetadataBodyType
   ): Promise<PodMetadataType | null> => {
     const url = `/api/w/${owner.sId}/spaces/${podId}/project_metadata`;
 
-    const res = await clientFetch(url, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
+    const applyMutationOnSpace =
+      updates.description !== undefined ||
+      updates.pinnedFramePath !== undefined ||
+      updates.frameTabs !== undefined ||
+      updates.tabsOrder !== undefined ||
+      updates.archive !== undefined;
 
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Error updating Pod metadata",
-        description: `Error: ${errorData.message}`,
+    const applySpaceOptimistic = (
+      data: GetSpaceResponseBody | undefined
+    ): GetSpaceResponseBody | undefined => {
+      if (!data) {
+        return data;
+      }
+      return {
+        ...data,
+        space: {
+          ...data.space,
+          ...(updates.description !== undefined
+            ? { description: updates.description }
+            : {}),
+          ...(updates.pinnedFramePath !== undefined
+            ? { pinnedFramePath: updates.pinnedFramePath }
+            : {}),
+          ...(updates.frameTabs !== undefined
+            ? { frameTabs: updates.frameTabs }
+            : {}),
+          ...(updates.tabsOrder !== undefined
+            ? { tabsOrder: updates.tabsOrder }
+            : {}),
+          ...(updates.archive === true
+            ? { archivedAt: data.space.archivedAt ?? Date.now() }
+            : updates.archive === false
+              ? { archivedAt: null }
+              : {}),
+        },
+      };
+    };
+
+    const applySpaceFromMetadata = (
+      data: GetSpaceResponseBody | undefined,
+      metadata: PodMetadataType
+    ): GetSpaceResponseBody | undefined => {
+      if (!data) {
+        return data;
+      }
+      return {
+        ...data,
+        space: {
+          ...data.space,
+          description: metadata.description,
+          pinnedFramePath: metadata.pinnedFramePath,
+          frameTabs: metadata.frameTabs,
+          tabsOrder: metadata.tabsOrder,
+          archivedAt: metadata.archivedAt,
+        },
+      };
+    };
+
+    const patchRequest = async (): Promise<PodMetadataType> => {
+      const res = await clientFetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
       });
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Error updating Pod metadata",
+          description: `Error: ${errorData.message}`,
+        });
+        throw new Error(errorData.message);
+      }
+
+      const response: PatchPodMetadataResponseBody = await res.json();
+      return response.projectMetadata;
+    };
+
+    try {
+      let projectMetadata: PodMetadataType;
+
+      if (applyMutationOnSpace) {
+        // Official SWR optimistic update: write the pending space fields into
+        // cache immediately, roll back on error, then populate from the PATCH.
+        let patched: PodMetadataType | null = null;
+        await mutateSpaceInfo(
+          async (current) => {
+            patched = await patchRequest();
+            void mutatePodMetadata(
+              { projectMetadata: patched },
+              { revalidate: false }
+            );
+            return applySpaceFromMetadata(current, patched);
+          },
+          {
+            optimisticData: (current) =>
+              applySpaceOptimistic(current) as GetSpaceResponseBody,
+            rollbackOnError: true,
+            populateCache: true,
+            revalidate: false,
+          }
+        );
+        if (!patched) {
+          return null;
+        }
+        projectMetadata = patched;
+        // Refresh any other space-info query-param variants (not the live key —
+        // we already populated it above).
+        void mutateSpaceInfoRegardlessOfQueryParams();
+      } else {
+        projectMetadata = await patchRequest();
+        void mutatePodMetadata({ projectMetadata }, { revalidate: false });
+        void mutateSpaceInfoRegardlessOfQueryParams();
+      }
+
+      void mutatePodConversationsSummary();
+
+      const title =
+        updates.frameTabs !== undefined || updates.tabsOrder !== undefined
+          ? updates.frameTabs?.length === 0
+            ? "Pod tabs cleared"
+            : "Pod tabs updated"
+          : updates.pinnedFramePath !== undefined
+            ? updates.pinnedFramePath
+              ? "Frame pinned as Pod banner"
+              : "Banner unpinned"
+            : updates.archive !== undefined
+              ? updates.archive
+                ? "Pod archived"
+                : "Pod unarchived"
+              : "Pod updated";
+
+      sendNotification({
+        type: "success",
+        title,
+      });
+
+      return projectMetadata;
+    } catch {
       return null;
     }
-
-    void mutatePodMetadata();
-    void mutatePodConversationsSummary();
-    void mutateSpaceInfoRegardlessOfQueryParams();
-
-    const title =
-      updates.frameTabs !== undefined || updates.tabsOrder !== undefined
-        ? updates.frameTabs?.length === 0
-          ? "Pod tabs cleared"
-          : "Pod tabs updated"
-        : updates.pinnedFramePath !== undefined
-          ? updates.pinnedFramePath
-            ? "Frame pinned as Pod banner"
-            : "Banner unpinned"
-          : updates.archive !== undefined
-            ? updates.archive
-              ? "Pod archived"
-              : "Pod unarchived"
-            : "Pod updated";
-
-    sendNotification({
-      type: "success",
-      title,
-    });
-
-    const response: PatchPodMetadataResponseBody = await res.json();
-    return response.projectMetadata;
   };
 }
 
