@@ -4,6 +4,10 @@ import {
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import {
+  ANALYTICS_PANEL_BOOTSTRAP_MESSAGE,
+  ANALYTICS_PANEL_CONVERSATION_INIT,
+} from "@app/lib/api/assistant/conversation/analytics_panel";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import {
   addSelectedConversationSpaces,
@@ -251,12 +255,21 @@ app.post(
       title,
       visibility,
       spaceId,
-      message,
+      message: clientMessage,
       contentFragments,
       metadata,
       selectedSpaceIds,
       skipToolsValidation,
+      bootstrap,
     } = ctx.req.valid("json");
+
+    const conversationInit = bootstrap
+      ? ANALYTICS_PANEL_CONVERSATION_INIT
+      : { title, visibility, metadata };
+
+    const message = bootstrap
+      ? ANALYTICS_PANEL_BOOTSTRAP_MESSAGE
+      : clientMessage;
 
     const allSelectedSpaceIds = uniq([
       ...(selectedSpaceIds ?? []),
@@ -332,17 +345,15 @@ app.post(
     }
 
     const newConversationResource = await createConversation(auth, {
-      title,
-      visibility,
+      ...conversationInit,
       spaceId: spaceModelId,
-      metadata,
     });
 
     let newConversation: ConversationType = {
       ...newConversationResource.toJSON(),
       content: [],
       owner: auth.getNonNullableWorkspace(),
-      visibility: visibility,
+      visibility: conversationInit.visibility,
     };
 
     if (allSelectedSpaceIds.length > 0) {

@@ -524,12 +524,18 @@ export type ConversationUrlAccessMode =
 
 const CONVERSATION_METADATA_URL_ACCESS_MODE_KEY = "urlAccessMode";
 
+export const CONVERSATION_ORIGINS = ["analytics_panel"] as const;
+
+export type ConversationOrigin = (typeof CONVERSATION_ORIGINS)[number];
+
 export type ConversationMetadata = Record<string, unknown> & {
   urlAccessMode?: ConversationUrlAccessMode;
   projectTaskId?: string;
   useFileSystem?: boolean;
   /** Selects the database-backed filesystem for a fresh standalone conversation. */
   useDatabaseFileSystem?: boolean;
+  /** The surface that created the conversation, when it was not a plain user conversation. */
+  origin?: ConversationOrigin;
 };
 
 function isConversationUrlAccessMode(

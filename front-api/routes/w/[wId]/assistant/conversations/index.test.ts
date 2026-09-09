@@ -21,6 +21,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 
@@ -176,6 +177,79 @@ describe("POST /api/w/:wId/assistant/conversations", () => {
     );
     expect(created).toBeDefined();
     expect(created.unread).toBe(false);
+  });
+
+  it("creates a hidden analyst conversation holding a message the caller did not send", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/assistant/conversations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: null,
+          visibility: "unlisted",
+          spaceId: null,
+          message: null,
+          contentFragments: [],
+          bootstrap: "analytics_panel",
+        }),
+      }
+    );
+
+    expect(response.status).toBe(200);
+
+    const responseData = await response.json();
+    expect(responseData.conversation.visibility).toBe("test");
+    expect(responseData.conversation.metadata.origin).toBe("analytics_panel");
+    expect(responseData.message.rank).toBe(0);
+    expect(responseData.message.mentions).toEqual([
+      { configurationId: GLOBAL_AGENTS_SID.ANALYST },
+    ]);
+
+    const listResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/assistant/conversations`,
+      { method: "GET" }
+    );
+    const listData = await listResponse.json();
+    expect(
+      listData.conversations.find(
+        (c: { sId: string }) => c.sId === responseData.conversation.sId
+      )
+    ).toBeUndefined();
+  });
+
+  it("rejects a bootstrap request that also carries a message", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+    });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/assistant/conversations`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: null,
+          visibility: "unlisted",
+          spaceId: null,
+          message: {
+            content: "hello",
+            mentions: [],
+            context: { timezone: "UTC", profilePictureUrl: null },
+          },
+          contentFragments: [],
+          bootstrap: "analytics_panel",
+        }),
+      }
+    );
+
+    expect(response.status).toBe(400);
   });
 
   it("requires the database filesystem flag for a standalone conversation", async () => {
