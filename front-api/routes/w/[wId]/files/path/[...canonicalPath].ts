@@ -18,6 +18,7 @@ import {
   streamFolderArchive,
 } from "@app/lib/api/files/folder_archive";
 import { requestDustProjectIncrementalSyncForScopedPath } from "@app/lib/api/projects/request_incremental_sync";
+import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
 import type { DustFileSystemError } from "@app/types/file_system";
 import {
   DUST_FILE_CONTENT_TYPE_HEADER,
@@ -136,7 +137,9 @@ async function resolveFs(
   return { fs: fsResult.value, err: null };
 }
 
-function mapFolderArchiveError(error: FolderArchivePlanError) {
+function mapFolderArchiveError(
+  error: FolderArchivePlanError
+): APIErrorWithContentfulStatusCode {
   if (!isFolderArchiveError(error)) {
     return mapDustFsError(error);
   }
@@ -147,26 +150,26 @@ function mapFolderArchiveError(error: FolderArchivePlanError) {
       return {
         status_code: 404,
         api_error: { type: "file_not_found", message: error.message },
-      } as const;
+      };
 
     case "not_directory":
       return {
         status_code: 400,
         api_error: { type: "invalid_request_error", message: error.message },
-      } as const;
+      };
 
     case "too_many_entries":
     case "too_large":
       return {
         status_code: 413,
         api_error: { type: "invalid_request_error", message: error.message },
-      } as const;
+      };
 
     case "internal":
       return {
         status_code: 500,
         api_error: { type: "internal_server_error", message: error.message },
-      } as const;
+      };
 
     default:
       return assertNever(code);
@@ -203,10 +206,10 @@ async function handleFolderArchiveRequest(
     return new Response(null, { status: 200, headers });
   }
 
-  return new Response(
-    readableToReadableStream(streamFolderArchive(dustFs, planResult.value)),
-    { status: 200, headers }
-  );
+  return new Response(streamFolderArchive(dustFs, planResult.value), {
+    status: 200,
+    headers,
+  });
 }
 
 async function handleHeadRequest(
@@ -613,42 +616,44 @@ app.delete(
   }
 );
 
-function mapDustFsError(err: DustFileSystemError) {
+function mapDustFsError(
+  err: DustFileSystemError
+): APIErrorWithContentfulStatusCode {
   switch (err.code) {
     case "not_found":
       return {
         status_code: 404,
         api_error: { type: "file_not_found", message: err.message },
-      } as const;
+      };
 
     case "unauthorized":
       return {
         status_code: 403,
         api_error: { type: "workspace_auth_error", message: err.message },
-      } as const;
+      };
 
     case "invalid_path":
     case "legacy_path":
       return {
         status_code: 400,
         api_error: { type: "invalid_request_error", message: err.message },
-      } as const;
+      };
 
     case "already_exists":
       return {
         status_code: 409,
         api_error: { type: "invalid_request_error", message: err.message },
-      } as const;
+      };
 
     case "too_many_mounts":
     case "internal":
       return {
         status_code: 500,
         api_error: { type: "internal_server_error", message: err.message },
-      } as const;
+      };
 
     default:
-      assertNever(err.code);
+      return assertNever(err.code);
   }
 }
 
