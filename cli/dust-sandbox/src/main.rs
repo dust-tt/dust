@@ -29,7 +29,7 @@ enum Commands {
         #[command(subcommand)]
         command: commands::function::FunctionCommand,
     },
-    /// Manage pod databases
+    /// Manage sandbox databases
     Db {
         #[command(subcommand)]
         command: commands::db::DbCommand,

@@ -9,7 +9,7 @@ use super::{db_file_path, spawn_runner};
 /// must match the env var set in front/lib/api/sandbox_functions/dsbx_db.ts.
 const POD_QUERY_SPILL_DIR_ENV: &str = "DUST_POD_QUERY_SPILL_DIR";
 
-/// Execute one SQL statement (from stdin) against the pod database `name`.
+/// Execute one SQL statement (from stdin) against the sandbox database `name`.
 /// The runner allows SELECT and DML and refuses DDL (a statement that changes
 /// the schema is rolled back), so the schema only evolves through reconcile.
 /// Rows come back in the stdout JSON envelope; a result crossing the inline
