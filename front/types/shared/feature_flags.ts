@@ -233,11 +233,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "frankaloia",
   },
-  databricks_tool: {
-    description: "Databricks MCP tool",
-    stage: "self_serve",
-    owner: "FlagBenett",
-  },
   servicenow_tool: {
     description: "ServiceNow MCP tool",
     stage: "self_serve",
