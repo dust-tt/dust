@@ -230,14 +230,14 @@ export async function labelPmrr({
  */
 /**
  * @cc [label:product] contract-review-delivery
- * Each eligible event with bare `cc` in a reviewer list requests one contract review, including
- * description edits retaining `cc`. Callers emit `pull-request-number` before Slack delivery and
- * invoke the pinned `spolu/code-contracts` contract-review action in a separate job even if Slack
- * delivery fails. Description and conversation-comment requests require `review-bot.yml` to be
- * registered on the default branch and present on the PR head with `workflow_dispatch` and its
- * review inputs; missing prerequisites can fail dispatch. Inline comments and review summaries
- * invoke the action directly. That action reviews only open PRs with heads in this repository and
- * publishes a COMMENT review pinned to the inspected head.
+ * Each eligible event with a parsed `r?` request MUST request one contract review, including
+ * description edits retaining the request. Bare `cc` is optional. Callers emit `pull-request-number`
+ * before Slack delivery and invoke the pinned `spolu/code-contracts` contract-review action in a
+ * separate job even if Slack delivery fails. Description and conversation-comment requests require
+ * `review-bot.yml` to be registered on the default branch and present on the PR head with
+ * `workflow_dispatch` and its review inputs; missing prerequisites can fail dispatch. Inline comments
+ * and review summaries invoke the action directly. That action reviews only open PRs with heads in
+ * this repository and publishes a COMMENT review pinned to the inspected head.
  */
 /**
  * @cc [label:security] review-automation-source
@@ -311,7 +311,7 @@ export async function requestReviews({
 
 /**
  * @cc [label:security] contract-review-dispatch-access
- * Callers supply only PR numbers emitted for an authorized `cc` request. Skip closed and fork PRs.
+ * Callers supply only PR numbers emitted for an authorized `r?` request. Skip closed and fork PRs.
  * The imported action rechecks the human requester's access using the originating run ID.
  */
 /**

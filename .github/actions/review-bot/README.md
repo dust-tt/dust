@@ -1,7 +1,7 @@
 # Review bot
 
-Start a line in a PR description or message with `r?`, followed by GitHub user mentions or bare `cc`
-for a contract review:
+Start a line in a PR description or message with `r?`, followed by GitHub user mentions to request
+their reviews and a contract review. Use `r? cc` to request only a contract review:
 
 ```text
 r? @spolu @flvndvd
@@ -47,9 +47,10 @@ The bot also adds the `PMRR` label whenever an eligible description or message c
 (case-insensitively), on open, closed, or merged PRs. Labeling runs before review requests, does not
 require an `r?` command or requester write access, and never removes labels.
 
-Each eligible event with `cc` in a reviewer list triggers one contract review, even if `cc` appears
-multiple times. Description edits retaining `cc` request another review, just like human reviewers.
-Bare `cc` stays plain text in Slack and is never sent to GitHub as a reviewer.
+Each eligible event containing an `r?` request triggers one contract review, regardless of whether
+`cc` appears in the reviewer list or how many request lines it contains. Description edits retaining
+the request trigger another review, just like human reviewers. Bare `cc` stays plain text in Slack
+and is never sent to GitHub as a reviewer.
 
 The workflow calls the pinned
 [`spolu/code-contracts` contract-review action](https://github.com/spolu/code-contracts/tree/main/.github/actions/contract-review)

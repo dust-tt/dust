@@ -11,7 +11,7 @@ inputs:
 
 outputs:
   pull-request-number:
-    description: PR number when an authorized reviewer list includes bare cc; empty otherwise.
+    description: PR number for an authorized review request; empty otherwise.
     value: ${{ steps.request.outputs.pull-request-number }}
 
 runs:
@@ -32,9 +32,7 @@ runs:
           await labelPmrr({ github, context });
           const notification = await requestReviews({ github, context, core });
           if (notification) {
-            if (notification.requests.some((request) => request.contractReview)) {
-              core.setOutput('pull-request-number', notification.pullNumber);
-            }
+            core.setOutput('pull-request-number', notification.pullNumber);
             const text = await formatSlackNotification({
               notification,
               authors: readFileSync('.authors', 'utf8'),
