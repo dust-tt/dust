@@ -1777,6 +1777,12 @@ export async function resolveMatchingMemberUserIds({
 // for those columns. Every other column is not indexed, so to sort by it we
 // fetch the full matching set with Elasticsearch `search_after`, rank it by
 // the relevant signal, sort in-app, then slice the requested page.
+/**
+ * @cc [owner:avervaet,label:product] sort-keys-match-rendered-source
+ * Every in-app sort key must be derived from the same data source as the response field it
+ * orders (consumed credits from the analytics index, never from the Metronome per-user usage
+ * cache), so the order shown always agrees with the values displayed.
+ */
 async function resolveMembersUsagePageUsers({
   auth,
   workspace,
@@ -1860,14 +1866,11 @@ async function resolveMembersUsagePageUsers({
         { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType },
         freeSeatCredits,
       ] = await Promise.all([
-        fetchConsumedAwuCreditsFromMetronomeByUserId({
-          workspaceId: workspace.sId,
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
-          users: allUsers.map((u) => ({
-            sId: u.sId,
-            seatType: membershipByUserModelId.get(u.id)?.seatType ?? null,
-          })),
+        fetchConsumedAwuCreditsByUserId({
+          workspace,
+          userIds: allUsers.map((u) => u.sId),
+          freeSeatUserIds,
+          cycle: spendLimitCycleOverrideForAuth(auth),
         }),
         fetchEffectivePerUserSpendLimits({
           metronomeCustomerId: workspace.metronomeCustomerId,
@@ -1962,15 +1965,11 @@ async function resolveMembersUsagePageUsers({
       );
       const [consumedByUserId, seatDataByUserId, freeSeatCredits] =
         await Promise.all([
-          fetchConsumedAwuCreditsFromMetronomeByUserId({
-            workspaceId: workspace.sId,
-            metronomeCustomerId: workspace.metronomeCustomerId,
-            metronomeContractId:
-              auth.subscription()?.metronomeContractId ?? null,
-            users: allUsers.map((u) => ({
-              sId: u.sId,
-              seatType: membershipByUserModelId.get(u.id)?.seatType ?? null,
-            })),
+          fetchConsumedAwuCreditsByUserId({
+            workspace,
+            userIds: allUsers.map((u) => u.sId),
+            freeSeatUserIds,
+            cycle: spendLimitCycleOverrideForAuth(auth),
           }),
           fetchSeatDataForMembersTable({
             metronomeCustomerId: workspace.metronomeCustomerId,
