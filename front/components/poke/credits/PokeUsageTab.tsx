@@ -30,6 +30,7 @@ import {
   ContentMessage,
   ProgressBar,
   Spinner,
+  ValueCard,
 } from "@dust-tt/sparkle";
 
 interface PokeUsageTabProps {
@@ -281,19 +282,17 @@ function PokeLegacyPerMemberCapCard({
   capAwuCredits,
 }: PokeLegacyPerMemberCapCardProps) {
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
-      <span className="text-sm font-medium text-foreground">
-        Per-member credit limit (legacy)
-      </span>
-      <div className="flex items-center gap-2">
-        <span className="text-xs text-muted-foreground">Cap</span>
-        <span className="text-sm font-medium text-foreground">
+    <ValueCard
+      title="Per-member credit limit (legacy)"
+      subtitle="Enforced per member, per calendar month"
+      content={
+        <span className="heading-lg text-foreground">
           {capAwuCredits !== null
-            ? `${formatCredits(capAwuCredits)} credits / member / month`
+            ? `${formatCredits(capAwuCredits)} credits`
             : "No limit set"}
         </span>
-      </div>
-    </div>
+      }
+    />
   );
 }
 
