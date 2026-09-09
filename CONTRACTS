@@ -483,31 +483,32 @@ hardening that makes the path root-owned and not group/other writable, plus a re
 attempts to write the attacker-controlled file as the workload user.
 
 @cc [owner:spolu,label:error-handling] no-catching-own-errors
-Never catch your own errors. `catch` is authorized around external libraries (whose error handling
-we don't control), but otherwise errors that may alter the execution upstream should be returned
-using our `Result<>` pattern. It is OK to throw errors, since we can't catch them these are
-guaranteed to trigger an internal error (and return a 500).
+Repository functions MUST return failures that callers are expected to handle as `Err<E>` values in
+`Result<T, E>`, rather than throw them.
+
+Applicable local contracts MAY define explicit exceptions to this rule, limited to the boundaries
+and failure cases they specify; callers MAY catch those documented failures using runtime type
+guards. `catch` is also permitted around external-library calls whose exceptions we do not control.
+Outside these exceptions, errors thrown by repository code MUST propagate to the runtime's error
+handler.
 
 @cc [owner:spolu,label:error-handling] normalize-caught-errors
-Never catch and cast what was caught as `Error`. JS allows throwing anything (string, number,
-random object, ...), so the cast may be invalid and hides errors from the logs. Use `normalizeError`
-instead, this function properly checks the content of the caught object and always returns a valid
-`Error` object.
-
-Example:
-
-```
-// BAD
+Caught values MUST NOT be treated as `Error` or an error subtype through a type assertion. When an
+`Error` is required, code MUST use `normalizeError(caught)` unless a runtime type guard has already
+established the required type. Inspecting a caught value with a type guard or rethrowing it
+unchanged does not require normalization.
+```typescript
+// BAD: A type assertion does not validate the caught value.
 try {
-  // Some code.
+  await externalClient.request();
 } catch (err) {
-  return new Err(err as Err);
+  return new Err(err as Error);
 }
 
-// GOOD
+// GOOD: Normalize the caught value before returning it as an error.
 try {
-  // Some code.
-} catch(err) {
+  await externalClient.request();
+} catch (err) {
   return new Err(normalizeError(err));
 }
 ```
