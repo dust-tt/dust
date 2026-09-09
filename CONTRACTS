@@ -489,7 +489,12 @@ Repository functions MUST return failures that callers are expected to handle as
 External-service adapters whose local contract requires throwing recognized provider failures are
 exempt: they MAY throw documented errors, and callers MAY catch them using runtime type guards.
 `catch` is also permitted around external-library calls whose exceptions we do not control.
-Other errors thrown by repository code MUST propagate to the runtime's error handler.
+
+Temporal activity entrypoints MAY throw expected failures under the local
+`temporal-activity-failure-boundary` contract. Workflow callers MAY handle failures delivered by
+Temporal under `temporal-workflow-activity-failures`. These exceptions do not extend to helpers.
+Outside these exceptions, errors thrown by repository code MUST propagate to the runtime's error
+handler.
 
 @cc [owner:spolu,label:error-handling] normalize-caught-errors
 Caught values MUST NOT be treated as `Error` or an error subtype through a type assertion. When an
