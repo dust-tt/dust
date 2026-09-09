@@ -3,8 +3,25 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { createPlugin } from "@app/lib/api/poke/types";
+import type { UserIdentityMergeTransferCounts } from "@app/lib/iam/users";
 import { mergeUserIdentities } from "@app/lib/iam/users";
 import { Err, Ok } from "@app/types/shared/result";
+
+// Labels for the transferred-asset summary shown after a merge, in display order.
+const TRANSFER_COUNT_LABELS: [keyof UserIdentityMergeTransferCounts, string][] =
+  [
+    ["conversations", "Conversations"],
+    ["userMessages", "Messages"],
+    ["agentConfigurations", "Agents (authored)"],
+    ["agentUserRelations", "Agent relations"],
+    ["groupMemberships", "Group memberships"],
+    ["triggers", "Triggers"],
+    ["files", "Files"],
+    ["contentFragments", "Content fragments"],
+    ["agentMemories", "Agent memories"],
+    ["keys", "API keys"],
+    ["dustAppSecrets", "Dust app secrets"],
+  ];
 
 export const userIdentityMergePlugin = createPlugin({
   manifest: {
@@ -84,9 +101,23 @@ export const userIdentityMergePlugin = createPlugin({
       },
     });
 
+    const { primaryUser, secondaryUser, transferCounts } = mergeResult.value;
+
+    const transferRows = TRANSFER_COUNT_LABELS.map(
+      ([key, label]) => `| ${label} | ${transferCounts[key]} |`
+    ).join("\n");
+
     return new Ok({
-      display: "text",
-      value: `User identities successfully merged into primary identity with email: ${mergeResult.value.primaryUser.email}`,
+      display: "markdown",
+      value: `
+User identities successfully merged into primary identity with email: ${primaryUser.email}
+
+Transferred from secondary (${secondaryUser.sId}) to primary (${primaryUser.sId}):
+
+| Asset | Transferred |
+|-------|-------------|
+${transferRows}
+      `,
     });
   },
 });

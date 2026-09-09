@@ -5363,7 +5363,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       primaryUserId: ModelId;
       secondaryUserId: ModelId;
     }
-  ): Promise<void> {
+  ): Promise<number> {
     // Find conversations where primary user is already a participant
     const primaryUserParticipations =
       await ConversationParticipantModel.findAll({
@@ -5389,8 +5389,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       });
     }
 
-    // Update remaining secondary user participations to point to primary user
-    await ConversationParticipantModel.update(
+    // Update remaining secondary user participations to point to primary user. The affected-row
+    // count is the number of conversations actually transferred (duplicates the primary already
+    // participated in were deleted above, not transferred).
+    const [transferredCount] = await ConversationParticipantModel.update(
       { userId: primaryUserId },
       {
         where: {
@@ -5399,6 +5401,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       }
     );
+
+    return transferredCount;
   }
 
   toListItem(): ConversationListItemType {
