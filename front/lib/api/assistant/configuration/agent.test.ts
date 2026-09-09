@@ -132,7 +132,12 @@ describe("getAgentConfigurations", () => {
         requestedRole: "admin",
       });
     assert(impersonatedAuth);
+    const resource = await AgentResource.fetchByAgentConfiguration(
+      authenticator,
+      agent
+    );
     for (const auth of [adminAuth, impersonatedAuth]) {
+      expect(auth.can("write", resource)).toBe(false);
       const configuration = await getAgentConfiguration(auth, {
         agentId: agent.sId,
         variant: "light",

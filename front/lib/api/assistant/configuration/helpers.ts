@@ -99,8 +99,10 @@ export async function getAgentIdFromName(
 async function shadowAgentPermissions(
   auth: Authenticator,
   agentModels: AgentConfigurationModel[],
-  legacyAgents: AgentConfigurationType[]
+  legacyAgents: AgentConfigurationType[],
+  spaceById: Map<ModelId, SpaceResource>
 ): Promise<void> {
+  const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
   await shadowCompare({
     auth,
     legacy: legacyAgents.map((agent) => ({
@@ -113,11 +115,21 @@ async function shadowAgentPermissions(
     candidate: async () =>
       agentModels.map((agent) => {
         const resource = AgentResource.fromAgentConfigurationModel(agent);
+        const read = auth.can("read", resource);
+        const write =
+          auth.can("write", resource) &&
+          (!isRegularApiKey ||
+            (agent.status === "active" &&
+              canReadRequestedSpaces(
+                auth,
+                spaceById,
+                agent.requestedSpaceIds
+              )));
         return {
           agentId: agent.sId,
           agentConfigurationModelId: agent.id,
-          read: auth.can("read", resource),
-          write: auth.can("write", resource),
+          read,
+          write,
           admin: auth.can("admin", resource),
         };
       }),
@@ -146,6 +158,11 @@ async function shadowAgentPermissions(
 
 /**
  * Enrich agent configurations with additional data (actions, tags, favorites).
+ */
+/**
+ * @cc [owner:philipperolet,label:security] regular-key-agent-editability
+ * For regular keys on custom agents, `canEdit` requires workspace admin access, active status,
+ * and read access to every requested space.
  */
 /**
  * @cc [owner:philipperolet,label:security] agent-editability
@@ -192,7 +209,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       ? await TagResource.listForAgents(auth, configurationIds)
       : [];
   const spacesForApiKey =
-    isRegularApiKey && auth.isBuilder()
+    isRegularApiKey && auth.isAdmin()
       ? await SpaceResource.fetchByModelIds(auth, [
           ...new Set(
             agentConfigurations.flatMap((agent) => agent.requestedSpaceIds)
@@ -221,9 +238,8 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const canRead =
       isAuthor || isMember || canEditAsSystem || agent.scope === "visible";
     const canEdit = isRegularApiKey
-      ? auth.isBuilder() &&
+      ? auth.isAdmin() &&
         agent.status === "active" &&
-        (canRead || auth.isAdmin()) &&
         canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
       : isAuthor || isMember || canEditAsSystem;
     const agentConfigurationType: AgentConfigurationType = {
@@ -269,7 +285,8 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   await shadowAgentPermissions(
     auth,
     agentConfigurations,
-    agentConfigurationTypes
+    agentConfigurationTypes,
+    spaceById
   );
 
   return agentConfigurationTypes;

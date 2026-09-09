@@ -1,11 +1,31 @@
 import { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+beforeEach(() => {
+  vi.spyOn(logger, "warn");
+});
+
+afterEach(() => {
+  try {
+    expect(logger.warn).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        check: "agent_permissions",
+        authMethod: "api_key",
+      }),
+      "group_permissions_shadow_mismatch"
+    );
+  } finally {
+    vi.mocked(logger.warn).mockRestore();
+  }
+});
 
 async function setupTest(role: "admin" | "builder" | "user" = "builder") {
   const { workspace, key } = await createPublicApiMockRequest({ role });
@@ -22,6 +42,7 @@ async function setupTest(role: "admin" | "builder" | "user" = "builder") {
   );
 
   const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+  await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
 
   return { workspace, key, agentConfig, auth, user };
 }
@@ -114,7 +135,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     "admin",
     "builder",
     "user",
-  ] as const)("reports whether a %s key can patch a published agent", async (role) => {
+  ] as const)("reports edit permissions for a %s key on a published agent", async (role) => {
     const { workspace, key, agentConfig } = await setupTest(role);
     const response = await getAgentConfiguration(
       workspace,
@@ -124,7 +145,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.agentConfiguration.canEdit).toBe(role !== "user");
+    expect(data.agentConfiguration.canEdit).toBe(role === "admin");
 
     const patchResponse = await patchAgentConfiguration(
       workspace,
@@ -132,6 +153,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
       agentConfig.sId,
       { instructions: "Updated through the API" }
     );
+    // The PATCH endpoint still accepts legacy builder keys independently of `canEdit`.
     expect(patchResponse.status).toBe(role === "user" ? 403 : 200);
   });
 
