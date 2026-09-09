@@ -653,3 +653,15 @@ switch (event.type) {
 
 Reviewer: If you see `assertNever` used in frontend component or hook code, require the author to
 switch to `assertNeverAndIgnore`.
+
+@cc [label:product;backend] image-models-priced-before-use
+Every id added to `IMAGE_MODEL_IDS` must get an `IMAGE_MODEL_PRICING` entry in
+`lib/api/assistant/token_pricing/global.ts`, with the provider pricing URL and verification date
+in a comment, before any code path can select it. A missing entry never fails: lookup falls back
+to `DEFAULT_PRICING` (a text model's rates), so every generation on that model is silently
+mispriced.
+Never delete the entry of a model that has run — move it to `LEGACY_MODEL_PRICING` so historical
+usage still costs out.
+
+Reviewer: for a new image model, check the pricing entry exists and its numbers match the linked
+provider page.

@@ -12,7 +12,10 @@ import type { Authenticator } from "@app/lib/auth";
 import { trustedFetch } from "@app/lib/egress/server";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
 import type { ImageModelIdType } from "@app/types/assistant/models/models";
-import { GPT_IMAGE_2_MODEL_ID } from "@app/types/assistant/models/openai";
+import {
+  GPT_IMAGE_2_5_FLARE_MODEL_ID,
+  GPT_IMAGE_2_MODEL_ID,
+} from "@app/types/assistant/models/openai";
 import { OPENAI_PROVIDER_ID } from "@app/types/assistant/models/providers";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
@@ -177,7 +180,11 @@ export class ImageGenerationOpenAILLM extends ImageGenerationLLM {
   private getUsageMetadata(
     response: ImagesResponse
   ): Result<TokenCountDetails, ImageGenerationError> {
-    if (this.modelId === GPT_IMAGE_2_MODEL_ID && !response.usage) {
+    if (
+      (this.modelId === GPT_IMAGE_2_MODEL_ID ||
+        this.modelId === GPT_IMAGE_2_5_FLARE_MODEL_ID) &&
+      !response.usage
+    ) {
       return new Err(
         new ImageGenerationError(
           "api_error",

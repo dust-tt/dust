@@ -619,6 +619,11 @@ const IMAGE_MODEL_PRICING: Record<string, PricingEntry> = {
     input: 8.0,
     output: 30.0,
   },
+  // Verified 2026-09-09: https://developers.openai.com/api/docs/pricing
+  "gpt-image-2.5-flare": {
+    input: 8.0,
+    output: 30.0,
+  },
 };
 
 // Pricing for legacy/deprecated models that are no longer in BaseModelIdType.
