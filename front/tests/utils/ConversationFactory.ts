@@ -219,6 +219,25 @@ export class ConversationFactory {
     );
   }
 
+  static async setAgentMessageUpdatedAtForTest(
+    auth: Authenticator,
+    agentMessageModelId: ModelId,
+    updatedAt: Date
+  ): Promise<void> {
+    // As above, bypass Sequelize's automatic timestamp for a historical billing snapshot.
+    // biome-ignore lint/plugin/noRawSql: backdate a managed timestamp in tests.
+    await frontSequelize.query(
+      `UPDATE agent_messages SET "updatedAt" = :updatedAt WHERE id = :id AND "workspaceId" = :workspaceId`,
+      {
+        replacements: {
+          updatedAt: updatedAt.toISOString(),
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
   static async createFunctionCallStepForTest(
     auth: Authenticator,
     agentMessageId: ModelId,

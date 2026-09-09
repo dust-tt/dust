@@ -224,6 +224,154 @@ async function buildDocuments(
 }
 
 describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
+  it("replaces a billed pause with the resumed snapshot using the same consumption keys", async () => {
+    const context = await setupSettledMessage();
+    const pausedAt = new Date("2026-08-04T12:00:00.000Z");
+    await AgentMessageModel.update(
+      { status: "created", completedAt: null },
+      {
+        where: {
+          id: context.agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+    await ConversationFactory.setAgentMessageUpdatedAtForTest(
+      context.auth,
+      context.agentMessageModelId,
+      pausedAt
+    );
+    const { action } = await AgentMCPActionFactory.create(context.auth, {
+      workspace: context.workspace,
+      conversationModelId: context.conversation.id,
+      agentMessageModelId: context.agentMessageModelId,
+      dustRunId: context.run.dustRunId,
+    });
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(
+      context.auth,
+      {
+        conversation: context.conversation,
+        agentMessageModelId: context.agentMessageModelId,
+        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        records: [
+          {
+            itemType: "input",
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: 100,
+            grossAttributedCreditAmountMicro: 1_000_000,
+          },
+          {
+            itemType: "output",
+            runUsageModelId: context.runUsageModelId,
+            outputTokensCount: 18,
+            grossAttributedCreditAmountMicro: 500_000,
+          },
+        ],
+        pendingToolItems: [
+          {
+            action,
+            runUsageModelId: context.runUsageModelId,
+            outputTokensCount: 2,
+            grossAttributedCreditAmountMicro: 100_000,
+          },
+        ],
+      }
+    );
+    const paused = await buildDocuments(context);
+    expect(paused).toHaveLength(2);
+    expect(paused?.reduce((sum, doc) => sum + doc.credit_micro, 0)).toBe(
+      5_000_000
+    );
+    expect(
+      paused?.every((doc) => doc.completed_at === pausedAt.toISOString())
+    ).toBe(true);
+    expect(
+      paused?.find((doc) => doc.consumption_type === "tool")
+    ).toMatchObject({
+      status: "blocked_validation_required",
+      gross_credit_micro: { direct: 0 },
+    });
+
+    await AgentMCPActionFactory.setStatus(context.auth, {
+      action,
+      status: "succeeded",
+    });
+    const { run, runUsageModelId } = await RunFactory.createWithUsage(
+      context.auth,
+      {
+        inputTokens: 100,
+        outputTokens: 20,
+        modelId: GPT_5_MINI_MODEL_CONFIG.modelId,
+      }
+    );
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(
+      context.auth,
+      {
+        conversation: context.conversation,
+        agentMessageModelId: context.agentMessageModelId,
+        attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        records: [
+          {
+            itemType: "tool",
+            action,
+            runUsageModelId: context.runUsageModelId,
+            inputTokensCount: 2,
+            outputTokensCount: 2,
+            directCreditAmountMicro: 3_000_000,
+            grossAttributedCreditAmountMicro: 3_100_000,
+          },
+          {
+            itemType: "input",
+            runUsageModelId,
+            inputTokensCount: 100,
+            grossAttributedCreditAmountMicro: 1_000_000,
+          },
+          {
+            itemType: "output",
+            runUsageModelId,
+            outputTokensCount: 20,
+            grossAttributedCreditAmountMicro: 500_000,
+          },
+        ],
+        pendingToolItems: [],
+      }
+    );
+    await AgentMessageModel.update(
+      {
+        status: "succeeded",
+        completedAt: context.completedAt,
+        costCredits: 9,
+        runIds: [context.run.dustRunId, run.dustRunId],
+      },
+      {
+        where: {
+          id: context.agentMessageModelId,
+          workspaceId: context.workspace.id,
+        },
+      }
+    );
+    const resumed = await buildDocuments(context);
+    expect(resumed).toHaveLength(3);
+    // Mirror stable-key upserts: the previous pause must not leave extra units or charges.
+    const indexed = new Map(paused?.map((doc) => [doc.consumption_key, doc]));
+    for (const document of resumed ?? []) {
+      indexed.set(document.consumption_key, document);
+    }
+    expect(indexed.size).toBe(3);
+    expect(
+      [...indexed.values()].reduce((sum, doc) => sum + doc.credit_micro, 0)
+    ).toBe(9_000_000);
+    expect(
+      [...indexed.values()].every(
+        (doc) => doc.completed_at === context.completedAt.toISOString()
+      )
+    ).toBe(true);
+    expect(indexed.get(`tool-action:${action.id}`)).toMatchObject({
+      status: "succeeded",
+      gross_credit_micro: { direct: 3_000_000 },
+    });
+  });
+
   it("projects one additive LLM document and one tool document", async () => {
     const { action, billedMessageCreditMicro, context } =
       await setupLlmAndToolConsumptionScenario();

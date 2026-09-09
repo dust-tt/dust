@@ -1,6 +1,7 @@
 import {
   fetchConsumedAwuCreditsByApiKeyName,
   fetchSeatDataForMembersTable,
+  getEsConsumedAwuCreditsForUser,
   getEsConsumedProgrammaticAwuCredits,
 } from "@app/lib/api/credits/members_usage";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
@@ -10,13 +11,18 @@ import {
   buildSeatDataByUserId,
   getCachedSeatDataByUserId,
 } from "@app/lib/metronome/seats";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock(import("@app/lib/api/elasticsearch"), async (orig) => {
   const mod = await orig();
-  return { ...mod, searchConsumptionAnalytics: vi.fn() };
+  return {
+    ...mod,
+    searchConsumptionAnalytics: vi.fn(),
+  };
 });
 
 vi.mock("@app/lib/metronome/seats", async () => {
@@ -97,6 +103,121 @@ describe("fetchConsumedAwuCreditsByApiKeyName", () => {
         size: 0,
       }
     );
+  });
+});
+
+describe("getEsConsumedAwuCreditsForUser", () => {
+  afterEach(() => {
+    vi.mocked(searchConsumptionAnalytics).mockReset();
+  });
+
+  it.each([
+    { totalCreditMicro: 13_200_000, freeCreditMicro: 10_600_000, expected: 3 },
+    { totalCreditMicro: 2_600_000, freeCreditMicro: undefined, expected: 3 },
+    { totalCreditMicro: 11_000_000, freeCreditMicro: 11_000_000, expected: 0 },
+  ])("subtracts free usage before rounding: %j", async ({
+    totalCreditMicro,
+    freeCreditMicro,
+    expected,
+  }) => {
+    const workspace = await WorkspaceFactory.creditPriced();
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const user = await UserFactory.basic();
+    const cycle = {
+      cycleStart: new Date("2026-08-01T00:00:00.000Z"),
+      cycleEnd: new Date("2026-09-01T00:00:00.000Z"),
+    };
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({
+        by_user: {
+          buckets: [
+            {
+              key: user.sId,
+              total_credits: { value: totalCreditMicro },
+              free_credits:
+                freeCreditMicro === undefined
+                  ? undefined
+                  : { credits: { value: freeCreditMicro } },
+            },
+          ],
+        },
+      })
+    );
+
+    const result = await getEsConsumedAwuCreditsForUser(auth, {
+      user,
+      cycle,
+    });
+
+    expect(result).toBe(expected);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledWith(
+      {
+        bool: {
+          filter: [
+            { term: { workspace_id: workspace.sId } },
+            { terms: { "user.id": [user.sId] } },
+            {
+              range: {
+                completed_at: {
+                  gte: cycle.cycleStart.toISOString(),
+                  lte: cycle.cycleEnd.toISOString(),
+                },
+              },
+            },
+          ],
+        },
+      },
+      {
+        aggregations: {
+          by_user: {
+            terms: { field: "user.id", size: 1 },
+            aggs: {
+              total_credits: { sum: { field: "credit_micro" } },
+              free_credits: {
+                filter: { term: { "user.seat_type": "free" } },
+                aggs: { credits: { sum: { field: "credit_micro" } } },
+              },
+            },
+          },
+        },
+        size: 0,
+      }
+    );
+  });
+
+  it("selects free-seat usage from the consumption index", async () => {
+    const workspace = await WorkspaceFactory.creditPriced();
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, {
+      role: "user",
+      seatType: "free",
+    });
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const cycle = {
+      cycleStart: new Date(0),
+      cycleEnd: new Date("3000-01-01T00:00:00.000Z"),
+    };
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
+      esResponse({
+        by_user: {
+          buckets: [
+            {
+              key: user.sId,
+              total_credits: { value: 37_000_000 },
+              free_credits: { credits: { value: 26_000_000 } },
+            },
+          ],
+        },
+      })
+    );
+
+    const result = await getEsConsumedAwuCreditsForUser(auth, {
+      user,
+      cycle,
+    });
+
+    expect(result).toBe(26);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledOnce();
   });
 });
 
