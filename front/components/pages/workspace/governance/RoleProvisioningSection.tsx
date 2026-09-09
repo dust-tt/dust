@@ -36,32 +36,34 @@ function RoleProvisioningRow({
   const handleSelectionChange = async (nextGroupIds: string[]) => {
     const currentIds = new Set(selectedGroups.map((g) => g.sId));
     const nextIds = new Set(nextGroupIds);
+    const groupById = new Map(groups.map((g) => [g.sId, g]));
 
-    const added = nextGroupIds.filter((id) => !currentIds.has(id));
-    const removed = [...currentIds].filter((id) => !nextIds.has(id));
+    // Newly selected groups get this row's role; removed ones have it cleared.
+    const updates: {
+      groupId: string;
+      grantedRole: GroupGrantableRole | null;
+    }[] = [
+      ...nextGroupIds
+        .filter((id) => !currentIds.has(id))
+        .map((groupId) => ({ groupId, grantedRole: role })),
+      ...[...currentIds]
+        .filter((id) => !nextIds.has(id))
+        .map((groupId) => ({ groupId, grantedRole: null })),
+    ];
 
-    for (const groupId of added) {
-      const group = groups.find((g) => g.sId === groupId);
-      if (!group) {
-        continue;
-      }
-      await doUpdateGroupGrantedRole({
-        groupId,
-        groupName: group.name,
-        grantedRole: role,
-      });
-    }
-    for (const groupId of removed) {
-      const group = groups.find((g) => g.sId === groupId);
-      if (!group) {
-        continue;
-      }
-      await doUpdateGroupGrantedRole({
-        groupId,
-        groupName: group.name,
-        grantedRole: null,
-      });
-    }
+    await Promise.all(
+      updates.map(({ groupId, grantedRole }) => {
+        const group = groupById.get(groupId);
+        if (!group) {
+          return undefined;
+        }
+        return doUpdateGroupGrantedRole({
+          groupId,
+          groupName: group.name,
+          grantedRole,
+        });
+      })
+    );
   };
 
   return (
