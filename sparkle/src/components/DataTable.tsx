@@ -16,6 +16,7 @@ import {
 } from "@sparkle/components/Dropdown";
 import { Icon } from "@sparkle/components/Icon";
 import { IconButton } from "@sparkle/components/IconButton";
+import { LoadMore } from "@sparkle/components/LoadMore";
 import { Pagination } from "@sparkle/components/Pagination";
 import {
   radioIndicatorStyles,
@@ -51,7 +52,13 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import React, { type ReactNode, useEffect, useRef, useState } from "react";
+import React, {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { breakpoints, useWindowSize } from "./WindowUtility";
 
 const cellHeight = "h-12";
@@ -105,6 +112,10 @@ interface DataTableProps<TData extends TBaseData> {
   pagination?: PaginationState;
   /** Called with the new pagination state when the user changes page. */
   setPagination?: (pagination: PaginationState) => void;
+  /** Shows a clickable "Load more" footer, as an alternative to pagination. Ignored when pagination is set. */
+  onLoadMore?: () => void;
+  /** Swaps the "Load more" label for an animated "Loading" and disables it. */
+  isLoadingMore?: boolean;
   /** Minimum breakpoint per column id below which the column is hidden. */
   columnsBreakpoints?: ColumnBreakpoint;
   /** Controlled sorting state. */
@@ -145,6 +156,91 @@ interface DataTableProps<TData extends TBaseData> {
  * ScrollableDataTable, which virtualizes rows and supports onLoadMore.
  * @summary Sortable, filterable, paginated data table.
  */
+const ROW_REVEAL_DURATION_MS = 300;
+
+/**
+ * Reveals appended rows by animating the table's height, so the rows slide into
+ * view at exactly the rate the footer below them moves down. Animating the
+ * footer instead would let the rows pop in ahead of it.
+ */
+function useRowRevealAnimation(rowCount: number, enabled: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const previousHeightRef = useRef<number | null>(null);
+  const previousRowCountRef = useRef(rowCount);
+
+  // Keep the last laid-out height current through every layout change, not just
+  // row changes. Cells are skipped on the first commit (the window size is not
+  // measured yet), so a height recorded only on mount would be the height of a
+  // table with no columns, and the first reveal would animate from ~nothing.
+  // ResizeObserver callbacks run after layout effects, so the value read below
+  // is always the height from before the new rows landed.
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element || !enabled) {
+      return;
+    }
+
+    previousHeightRef.current = element.scrollHeight;
+
+    const observer = new ResizeObserver(() => {
+      previousHeightRef.current = element.scrollHeight;
+    });
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [enabled]);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+
+    // `scrollHeight` reports the content height even while we pin `height`
+    // mid-animation, so this stays correct if rows land back to back.
+    const height = element.scrollHeight;
+    const previousHeight = previousHeightRef.current;
+    const grew = rowCount > previousRowCountRef.current;
+
+    previousRowCountRef.current = rowCount;
+
+    if (
+      !enabled ||
+      !grew ||
+      previousHeight === null ||
+      previousHeight >= height ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const clear = () => {
+      element.style.transition = "";
+      element.style.height = "";
+      element.style.overflow = "";
+    };
+
+    element.style.overflow = "hidden";
+    element.style.transition = "none";
+    element.style.height = `${previousHeight}px`;
+
+    const frame = requestAnimationFrame(() => {
+      element.style.transition = `height ${ROW_REVEAL_DURATION_MS}ms ease-out`;
+      element.style.height = `${height}px`;
+    });
+
+    element.addEventListener("transitionend", clear, { once: true });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      element.removeEventListener("transitionend", clear);
+      clear();
+    };
+  }, [rowCount, enabled]);
+
+  return ref;
+}
+
 export function DataTable<TData extends TBaseData>({
   data,
   totalRowCount,
@@ -157,6 +253,8 @@ export function DataTable<TData extends TBaseData>({
   columnsBreakpoints = {},
   pagination,
   setPagination,
+  onLoadMore,
+  isLoadingMore = false,
   sorting,
   setSorting,
   isServerSideSorting = false,
@@ -250,9 +348,17 @@ export function DataTable<TData extends TBaseData>({
     }
   }, [filter, filterColumn]);
 
+  const rows = table.getRowModel().rows;
+  // Uses the rendered row count, not `data.length`, so filtering keeps the
+  // measured height in sync.
+  const rowRevealRef = useRowRevealAnimation(
+    rows.length,
+    !!onLoadMore && !pagination
+  );
+
   return (
     <div className={cn("flex flex-col gap-2", className, widthClassName)}>
-      <DataTable.Root>
+      <DataTable.Root containerRef={rowRevealRef}>
         <DataTable.Header>
           {table.getHeaderGroups().map((headerGroup) => (
             <DataTable.Row key={headerGroup.id} widthClassName={widthClassName}>
@@ -313,7 +419,7 @@ export function DataTable<TData extends TBaseData>({
           ))}
         </DataTable.Header>
         <DataTable.Body>
-          {table.getRowModel().rows.map((row) => {
+          {rows.map((row) => {
             const handleRowClick = () => {
               if (enableRowSelection && row.getCanSelect()) {
                 row.toggleSelected(!enableMultiRowSelection ? true : undefined);
@@ -371,12 +477,23 @@ export function DataTable<TData extends TBaseData>({
           />
         </div>
       )}
+      {!pagination && onLoadMore && (
+        <div className="p-1">
+          <LoadMore
+            onLoadMore={onLoadMore}
+            isLoading={isLoadingMore}
+            rowCount={data.length}
+            totalRowCount={totalRowCount}
+            totalRowCountIsCapped={rowCountIsCapped}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
 export interface ScrollableDataTableProps<TData extends TBaseData>
-  extends DataTableProps<TData> {
+  extends Omit<DataTableProps<TData>, "onLoadMore" | "isLoadingMore"> {
   /** Height of the scroll container: a max-height class name, true to fill the parent (flex-1), or unset for the default max-h-100. */
   maxHeight?: string | boolean;
   /** Called when the user scrolls near the bottom — use it for infinite loading. */
@@ -778,6 +895,8 @@ interface DataTableRootProps extends React.HTMLAttributes<HTMLTableElement> {
   children: ReactNode;
   containerClassName?: string;
   containerProps?: React.HTMLAttributes<HTMLDivElement>;
+  /** Ref to the container wrapping the table element. */
+  containerRef?: React.Ref<HTMLDivElement>;
 }
 
 /** The underlying table element with its container-query wrapper. */
@@ -786,10 +905,12 @@ DataTable.Root = function DataTableRoot({
   className,
   containerClassName,
   containerProps,
+  containerRef,
   ...props
 }: DataTableRootProps) {
   return (
     <div
+      ref={containerRef}
       className={cn("@container/table", containerClassName)}
       {...containerProps}
     >

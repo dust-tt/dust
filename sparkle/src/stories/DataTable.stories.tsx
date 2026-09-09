@@ -614,6 +614,45 @@ export const ServerSidePagination = () => {
   );
 };
 
+export const DataTableLoadMoreExample = () => {
+  const [visibleCount, setVisibleCount] = React.useState(2);
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+  const [filter, setFilter] = React.useState<string>("");
+
+  const rows = useMemo(() => data.slice(0, visibleCount), [visibleCount]);
+
+  const handleLoadMore = () => {
+    setIsLoadingMore(true);
+    // Simulate a server round-trip.
+    setTimeout(() => {
+      setVisibleCount((count) => Math.min(count + 2, data.length));
+      setIsLoadingMore(false);
+    }, 600);
+  };
+
+  return (
+    <div className="w-full max-w-4xl overflow-x-auto">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <DataTable
+        className="w-full max-w-4xl overflow-x-auto"
+        data={rows}
+        totalRowCount={data.length}
+        filter={filter}
+        filterColumn="name"
+        onLoadMore={handleLoadMore}
+        isLoadingMore={isLoadingMore}
+        columns={columns}
+        columnsBreakpoints={{ lastUpdated: "sm" }}
+      />
+    </div>
+  );
+};
+
 const createData = (start: number, count: number): TransformedData[] => {
   return Array.from({ length: count }, (_, i) => {
     const index = start + i;

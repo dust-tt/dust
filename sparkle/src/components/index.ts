@@ -201,6 +201,7 @@ export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export { ListGroup, ListItem, ListItemSection } from "./ListItem";
 export { LoadingBlock } from "./LoadingBlock";
+export { LoadMore } from "./LoadMore";
 export { MessageCard } from "./MessageCard";
 export type {
   MultiPageDialogFooterProps,
