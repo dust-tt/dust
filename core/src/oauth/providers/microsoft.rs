@@ -362,6 +362,26 @@ mod tests {
     }
 
     #[test]
+    fn returns_none_for_opaque_or_non_jwt_token_formats() {
+        // Graph tokens are sometimes opaque/encrypted rather than a decodable JWT: extraction must
+        // degrade to `None`, never error, so finalize keeps working.
+        // Segment count of a JWT but the payload is not valid base64url.
+        assert_eq!(extract_account_from_access_token("aaa.!!!.bbb"), None);
+        // Valid base64url payload that is not JSON.
+        let not_json = general_purpose::URL_SAFE_NO_PAD.encode("not json");
+        assert_eq!(
+            extract_account_from_access_token(&format!("aaa.{}.bbb", not_json)),
+            None
+        );
+        // Valid JSON payload that is not an object (so `.get(...)` yields nothing).
+        let json_array = general_purpose::URL_SAFE_NO_PAD.encode("[1,2,3]");
+        assert_eq!(
+            extract_account_from_access_token(&format!("aaa.{}.bbb", json_array)),
+            None
+        );
+    }
+
+    #[test]
     fn ignores_blank_account_claims() {
         let token = make_jwt(json!({ "upn": "   ", "email": "real@manageris.com" }));
         assert_eq!(
