@@ -24,7 +24,7 @@ for review requests GitHub rejects with a validation error, while still sending 
 Each eligible request also posts to `#engineering_pr_reviews` (`C09GELMTTRT`):
 
 ```text
-r? @reviewer please take a look https://github.com/dust-tt/dust/pull/123 (from: @requester)
+r? @reviewer please take a look https://github.com/dust-tt/dust/pull/123 (req:@requester)
 ```
 
 The requester and reviewer handles become real Slack mentions through `.authors` email mappings
