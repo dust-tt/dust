@@ -113,6 +113,11 @@ export function isJSONParsingError(err: unknown): err is Error {
 export class MicrosoftCastKnownErrorsInterceptor
   implements ActivityInboundCallsInterceptor
 {
+  /**
+   * @cc [owner:aubin-tchoi,label:error-handling] graph-authentication-failures
+   * Graph HTTP 401 errors escaping Microsoft activities are rethrown as
+   * `ExternalOAuthTokenError`, preserving the original Graph error as the cause.
+   */
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
@@ -126,6 +131,9 @@ export class MicrosoftCastKnownErrorsInterceptor
           nextRetryDelay: err.retryAfterMs,
           cause: err,
         });
+      }
+      if (err instanceof GraphError && err.statusCode === 401) {
+        throw new ExternalOAuthTokenError(err);
       }
       // See https://learn.microsoft.com/en-us/answers/questions/1339560/sign-in-error-code-50173
       // TODO(2025-02-12): add an error type for Microsoft client errors and catch them at strategic locations (e.g. API call to instantiate a client)
