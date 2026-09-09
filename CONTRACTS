@@ -490,11 +490,9 @@ External-service adapters whose local contract requires throwing recognized prov
 exempt: they MAY throw documented errors, and callers MAY catch them using runtime type guards.
 `catch` is also permitted around external-library calls whose exceptions we do not control.
 
-Temporal activity entrypoints MAY throw expected failures under the local
-`temporal-activity-failure-boundary` contract. Workflow callers MAY handle failures delivered by
-Temporal under `temporal-workflow-activity-failures`. These exceptions do not extend to helpers.
-Outside these exceptions, errors thrown by repository code MUST propagate to the runtime's error
-handler.
+Applicable local contracts MAY define explicit exceptions to this rule, limited to the boundaries
+and failure cases they specify. Outside these exceptions, errors thrown by repository code MUST
+propagate to the runtime's error handler.
 
 @cc [owner:spolu,label:error-handling] normalize-caught-errors
 Caught values MUST NOT be treated as `Error` or an error subtype through a type assertion. When an
