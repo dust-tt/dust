@@ -8,7 +8,7 @@ import type {
   FileExplorerPathEntry,
   FileExplorerVirtualScopeRoot,
 } from "@app/components/file_explorer/types";
-import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
+import { useFileExplorerDownload } from "@app/components/file_explorer/useFileExplorerDownload";
 import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
 import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
@@ -198,7 +198,7 @@ export function ConversationFileExplorer({
     [owner]
   );
 
-  const onFileDownload = useFileDownload({ getFileResponse });
+  const onDownload = useFileExplorerDownload({ owner, getFileResponse });
 
   const onOpenInteractive = useCallback(
     (entry: { fileId: string }) =>
@@ -278,7 +278,7 @@ export function ConversationFileExplorer({
           onCurrentFolderChange={setCurrentFolderPath}
           onDelete={hasFeature("frames_v2") ? onDelete : undefined}
           canDelete={isFramePackageEntry}
-          onFileDownload={onFileDownload}
+          onDownload={onDownload}
           onOpenInteractive={onOpenInteractive}
           onOpenInPanel={onOpenInPanel}
           owner={owner}
