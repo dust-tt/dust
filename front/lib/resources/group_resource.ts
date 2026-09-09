@@ -1485,7 +1485,8 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   static async getActiveMembershipsForGroups(
     auth: Authenticator,
-    groups: GroupResource[]
+    groups: GroupResource[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Record<ModelId, ModelId[]>> {
     const owner = auth.getNonNullableWorkspace();
     if (groups.length === 0) {
@@ -1500,6 +1501,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         startAt: { [Op.lte]: new Date() },
         [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
       },
+      transaction,
     });
 
     return res.reduce<Record<ModelId, ModelId[]>>((acc, m) => {
@@ -2795,6 +2797,45 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
   }
 
+  // Builds `userModelId -> granted roles` for the whole workspace by loading the
+  // role-granting groups (those with a non-null `grantedRole`) and their active
+  // memberships once. No `canRead` filtering: role provisioning must consider
+  // every role-granting group regardless of the caller's read access.
+  private static async listGrantedRolesByUserInWorkspace(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Map<ModelId, GroupGrantableRole[]>> {
+    const roleGrantingGroups = await this.baseFetch(
+      auth,
+      { where: { grantedRole: { [Op.ne]: null } } },
+      transaction
+    );
+
+    const membershipsByGroup = await this.getActiveMembershipsForGroups(
+      auth,
+      roleGrantingGroups,
+      { transaction }
+    );
+
+    const grantedRolesByUser = new Map<ModelId, GroupGrantableRole[]>();
+    for (const group of roleGrantingGroups) {
+      const grantedRole = group.grantedRole;
+      if (!grantedRole) {
+        continue;
+      }
+      for (const userModelId of membershipsByGroup[group.id] ?? []) {
+        const roles = grantedRolesByUser.get(userModelId);
+        if (roles) {
+          roles.push(grantedRole);
+        } else {
+          grantedRolesByUser.set(userModelId, [grantedRole]);
+        }
+      }
+    }
+
+    return grantedRolesByUser;
+  }
+
   /**
    * Recomputes the workspace role of each given user from their role-granting
    * group memberships and persists it when it changed. `allowLastAdminRemoval`
@@ -2831,6 +2872,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     const workspace = auth.getNonNullableWorkspace();
     const author = auth.user()?.toJSON() ?? "no-author";
 
+    // Load the workspace's role-granting groups (and their active memberships)
+    // once, then derive each user's roles from that, rather than refetching a
+    // user's groups per member.
+    const grantedRolesByUser = await this.listGrantedRolesByUserInWorkspace(
+      auth,
+      { transaction }
+    );
+
     for (const user of users) {
       const currentMembership =
         await MembershipResource.getActiveMembershipOfUserInWorkspace({
@@ -2842,9 +2891,9 @@ export class GroupResource extends BaseResource<GroupModel> {
         continue;
       }
 
-      const newRole = await this.computeUserRoleFromGroups(auth, user, {
-        transaction,
-      });
+      const newRole = this.roleFromGrantedRoles(
+        grantedRolesByUser.get(user.id) ?? []
+      );
       if (newRole === currentMembership.role) {
         continue;
       }
