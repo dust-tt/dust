@@ -35,7 +35,7 @@ type ReviewBotOptions = {
       };
       pulls: {
         get(params: PullRequestParams): Promise<{
-          data: { state: string; user: { login: string }; html_url: string };
+          data: { user: { login: string }; html_url: string };
         }>;
         requestReviewers(
           params: PullRequestParams & { reviewers: string[] }
@@ -147,15 +147,15 @@ function getRequest(context: ReviewContext) {
 
 /**
  * @cc [label:security] review-request-access
- * Only accept human requesters with repository `write`, `maintain`, or `admin` permission and open
- * PRs.
+ * Only accept human requesters with repository `write`, `maintain`, or `admin` permission.
  */
 /**
  * @cc [label:product] review-request-delivery
  * Request every parsed reviewer except the PR author for each eligible description edit or newly
- * posted request, including users who previously reviewed. Invalid reviewers do not block valid
- * requests. Return the requester, PR URL, and request lines for Slack notification only for eligible
- * requests. Title edits and pushes do not request reviews.
+ * posted request, including users who previously reviewed. Open, closed, and merged PRs are eligible.
+ * GitHub validation failures do not block other reviewers or Slack notifications. Return the
+ * requester, PR URL, and request lines for Slack notification only for eligible requests. Title
+ * edits and pushes do not request reviews.
  */
 /**
  * @cc [label:security] review-automation-source
@@ -199,9 +199,6 @@ export async function requestReviews({
 
   const params = { ...context.repo, pull_number: request.number };
   const { data: pr } = await github.rest.pulls.get(params);
-  if (pr.state !== "open") {
-    return;
-  }
   const reviewers = new Set(requests.flatMap((request) => request.reviewers));
   for (const reviewer of reviewers) {
     if (reviewer === pr.user.login.toLowerCase()) {

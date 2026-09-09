@@ -17,7 +17,8 @@ only the consecutive mentions immediately after `r?` are reviewers. Fenced code,
 quoted lines, team mentions, and mentions after trailing prose are ignored.
 
 Only human requesters with repository `write`, `maintain`, or `admin` permission can trigger the bot.
-The bot skips closed PRs and the PR author, and logs a warning for reviewers GitHub rejects.
+Requests are accepted on open, closed, and merged PRs. The bot skips the PR author and logs a warning
+for review requests GitHub rejects with a validation error, while still sending the Slack notification.
 
 Each eligible request also posts to `#engineering_pr_reviews` (`C09GELMTTRT`):
 
