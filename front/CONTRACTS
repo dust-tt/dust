@@ -254,7 +254,7 @@ must not build a wire shape by reading a Resource's fields, and must not spread 
 fields to it. If a caller needs a shape that no existing method produces, add a new
 `to<Audience>JSON` on the Resource next to the others.
 
-@cc [owner:spolu;flvndvd,label:backend] thin-api-handlers
+@cc [label:backend] thin-api-handlers
 API handlers must stay thin: non-trivial business logic must live in `lib/api/*` or the appropriate
 Resource, subject to the HTTP-coupling exceptions below.
 
@@ -304,7 +304,7 @@ authorize → validate → call business function → respond. But if the extrac
 HTTP status codes or `APIErrorWithStatusCode` into the lib, push back and keep the logic in
 the handler instead.
 
-@cc [owner:spolu,label:backend] transport-independent-business-results
+@cc [label:backend] transport-independent-business-results
 Functions in `lib/api/*` and other shared business-logic modules must not return HTTP error
 envelopes, `APIErrorWithStatusCode`, or values that encode HTTP status codes. HTTP response
 semantics belong in the handler layer.
