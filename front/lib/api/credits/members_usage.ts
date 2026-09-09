@@ -9,6 +9,10 @@ import {
   makeSpendLimitCycleWindowBounds,
   makeSpendLimitLifetimeWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
+import {
+  computeSeatUsage,
+  splitConsumedAwuCredits,
+} from "@app/lib/api/credits/seat_usage";
 import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import {
   bucketsToArray,
@@ -1510,12 +1514,11 @@ export async function getMemberUsage({
   }
   const effectiveAllocationAwu = freeSeatAllowanceAwu ?? awuAllocation;
 
-  const consumedFromAllowanceAwuCredits = Math.min(
-    totalConsumedCredits,
-    effectiveAllocationAwu
-  );
-  const consumedFromPoolAwuCredits =
-    totalConsumedCredits - consumedFromAllowanceAwuCredits;
+  const { consumedFromAllowanceAwuCredits, consumedFromPoolAwuCredits } =
+    splitConsumedAwuCredits({
+      totalConsumedAwuCredits: totalConsumedCredits,
+      allowanceAwuCredits: effectiveAllocationAwu,
+    });
 
   const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
   const defaultAwuCredits = normalizedSeatType
@@ -1785,10 +1788,11 @@ export async function resolveMatchingMemberUserIds({
  */
 /**
  * @cc [owner:avervaet,label:product] seat-usage-order-excludes-non-seat-based
- * When `orderColumn` is `"seatUsage"`, users on a seat type without a personal usage percentage
- * (`workspace`/`workspace_yearly`/no seat) always sort after users on `free`/`pro`/`max`,
- * regardless of `orderDirection`. Within each group, ordering follows seat usage percentage, then
- * pool/overage consumption as a tiebreaker, both in `orderDirection`.
+ * When `orderColumn` is `"seatUsage"`, users without a personal usage percentage (no positive
+ * allowance: `workspace`/`workspace_yearly`/no seat) always sort after users with one
+ * (`free`/`pro`/`max`), regardless of `orderDirection`. Users with a percentage order by it, then
+ * by pool/overage consumption; users without one order by pool/overage consumption only. Both
+ * follow `orderDirection`.
  */
 async function resolveMembersUsagePageUsers({
   auth,
@@ -1923,10 +1927,10 @@ async function resolveMembersUsagePageUsers({
             ? (freeStartingByUserId.get(u.sId) ?? null)
             : null;
         const effectiveAllocationAwu = freeStartingBalanceAwu ?? seatAllowance;
-        const consumedFromPoolAwuCredits = Math.max(
-          0,
-          totalConsumed - effectiveAllocationAwu
-        );
+        const { consumedFromPoolAwuCredits } = splitConsumedAwuCredits({
+          totalConsumedAwuCredits: totalConsumed,
+          allowanceAwuCredits: effectiveAllocationAwu,
+        });
         const overrideAwuCredits =
           membership?.poolCapOverrideAwuCredits !== null &&
           membership?.poolCapOverrideAwuCredits !== undefined &&
@@ -2006,31 +2010,27 @@ async function resolveMembersUsagePageUsers({
             ? (freeStartingByUserId.get(u.sId) ?? null)
             : null;
         const effectiveAllocationAwu = freeStartingBalanceAwu ?? awuAllocation;
-        const consumed =
-          seatType === "free"
-            ? Math.max(
-                0,
-                effectiveAllocationAwu - (freeBalanceByUserId.get(u.sId) ?? 0)
-              )
-            : Math.min(
-                consumedByUserId.get(u.sId) ?? 0,
-                effectiveAllocationAwu
-              );
+        // Same inputs the response builder emits for this row, so the sort
+        // ranks exactly what the column renders.
+        const { consumedFromAllowanceAwuCredits, consumedFromPoolAwuCredits } =
+          splitConsumedAwuCredits({
+            totalConsumedAwuCredits: consumedByUserId.get(u.sId) ?? 0,
+            allowanceAwuCredits: effectiveAllocationAwu,
+          });
+        const { percent, hasPercent } = computeSeatUsage({
+          seatType,
+          memberUsageLimit:
+            effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
+          seatBalanceAwu:
+            seatType === "free"
+              ? (freeBalanceByUserId.get(u.sId) ?? null)
+              : null,
+          consumedFromAllowanceAwuCredits,
+        });
         sortMetaByUserId.set(u.sId, {
-          sortKey:
-            effectiveAllocationAwu > 0
-              ? Math.min(100, (consumed / effectiveAllocationAwu) * 100)
-              : consumed > 0
-                ? 100
-                : 0,
-          // Mirrors the "--" condition in the seat-usage column: workspace/none
-          // seats have no personal allowance, so their percentage isn't
-          // comparable to free/pro/max seats and must never rank above them.
-          hasSeatUsagePercent: effectiveAllocationAwu > 0,
-          poolUsageTiebreak: Math.max(
-            0,
-            (consumedByUserId.get(u.sId) ?? 0) - effectiveAllocationAwu
-          ),
+          sortKey: percent,
+          hasSeatUsagePercent: hasPercent,
+          poolUsageTiebreak: consumedFromPoolAwuCredits,
         });
       }
       break;
@@ -2071,9 +2071,8 @@ async function resolveMembersUsagePageUsers({
     const metaA = sortMetaByUserId.get(a.sId);
     const metaB = sortMetaByUserId.get(b.sId);
 
-    // Seats with a personal usage percentage (free/pro/max) always rank
-    // above workspace/none seats, regardless of sort direction: the latter
-    // have no comparable percentage and render "--" in the column.
+    // Rows without a comparable percentage group last regardless of
+    // direction (see contract on this function).
     const hasPercentA = metaA?.hasSeatUsagePercent ?? true;
     const hasPercentB = metaB?.hasSeatUsagePercent ?? true;
     if (hasPercentA !== hasPercentB) {
@@ -2480,15 +2479,12 @@ export async function getMembersUsage({
         : null;
     const effectiveAllocationAwu = freeStartingBalanceAwu ?? awuAllocation;
 
-    // Credits drain seat-allowance-first, then the workspace pool, so the
-    // allowance covers up to the user's seat allocation and the remainder
-    // overflows to the pool.
-    const consumedFromAllowanceAwuCredits = Math.min(
-      totalConsumedCredits,
-      effectiveAllocationAwu
-    );
-    const consumedFromPoolAwuCredits =
-      totalConsumedCredits - consumedFromAllowanceAwuCredits;
+    // Credits drain seat-allowance-first, then the workspace pool.
+    const { consumedFromAllowanceAwuCredits, consumedFromPoolAwuCredits } =
+      splitConsumedAwuCredits({
+        totalConsumedAwuCredits: totalConsumedCredits,
+        allowanceAwuCredits: effectiveAllocationAwu,
+      });
 
     // Resolve the default cap for this member's seat type, and the user's
     // override if any. Both thresholds are derived from pool-only DB values
