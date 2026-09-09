@@ -1052,6 +1052,33 @@ export class DustFileSystem {
   }
 
   /**
+   * Compute the canonical scoped path a rename of `scopedPath` to `newFileName` targets, so callers
+   * can inspect the destination before any mutation. Returns `Err("invalid_path")` when
+   * `newFileName` is empty or contains a path separator.
+   */
+  static resolveRenameDestination(
+    scopedPath: string,
+    newFileName: string
+  ): Result<string, DustFileSystemError> {
+    if (
+      !newFileName ||
+      newFileName.includes("/") ||
+      newFileName.includes("\\")
+    ) {
+      return new Err(
+        new DustFileSystemError(
+          "invalid_path",
+          "newFileName must be a non-empty string without path separators."
+        )
+      );
+    }
+
+    const lastSlash = scopedPath.lastIndexOf("/");
+    const parentDir = lastSlash >= 0 ? scopedPath.slice(0, lastSlash) : "";
+    return new Ok(parentDir ? `${parentDir}/${newFileName}` : newFileName);
+  }
+
+  /**
    * Rename `scopedPath` to `newFileName` within the same directory.
    *
    * `newFileName` must be a plain filename with no path separators.
@@ -1068,22 +1095,14 @@ export class DustFileSystem {
   ): Promise<
     Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
   > {
-    if (
-      !newFileName ||
-      newFileName.includes("/") ||
-      newFileName.includes("\\")
-    ) {
-      return new Err(
-        new DustFileSystemError(
-          "invalid_path",
-          "newFileName must be a non-empty string without path separators."
-        )
-      );
+    const destResult = DustFileSystem.resolveRenameDestination(
+      scopedPath,
+      newFileName
+    );
+    if (destResult.isErr()) {
+      return destResult;
     }
-
-    const lastSlash = scopedPath.lastIndexOf("/");
-    const parentDir = lastSlash >= 0 ? scopedPath.slice(0, lastSlash) : "";
-    const dest = parentDir ? `${parentDir}/${newFileName}` : newFileName;
+    const dest = destResult.value;
 
     if (dest === scopedPath) {
       return new Ok({ dest, sourceDeletionFailed: false });
