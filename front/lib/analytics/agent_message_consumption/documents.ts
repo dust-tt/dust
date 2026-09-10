@@ -39,13 +39,6 @@ export type ConsumptionDocumentsSkipReason =
  * LLM documents receive the remaining model cost. Together, all credit_micro values reconcile to
  * the authoritative message charge.
  */
-/**
- * @cc [owner:aubin-tchoi,label:product] llm-documents-cover-message-counts
- * Every successful nonempty result MUST include an LLM document. All documents in
- * that result MUST share workspace_id, agent_message_id, agent, conversation_id,
- * user, context_origin, and completed_at so distinct message, conversation, and
- * user counts can exclude tool documents without losing coverage.
- */
 export function buildAgentMessageConsumptionAnalyticsDocuments(
   input: AgentMessageConsumptionAnalyticsInput
 ): Result<
