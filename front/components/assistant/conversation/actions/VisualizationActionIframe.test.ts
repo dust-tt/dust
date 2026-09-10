@@ -153,11 +153,7 @@ describe("getSandboxFunctionInvocationAccessError", () => {
 
   it("keeps the generic unsupported error for disabled legacy calls", () => {
     expect(
-      getSandboxFunctionInvocationAccessError(
-        { kind: "legacy", podFunctionScope: null },
-        false,
-        false
-      )
+      getSandboxFunctionInvocationAccessError({ kind: "legacy" }, false, false)
     ).toEqual({
       code: "not_supported",
       message: "Function calls are not available in this Frame.",
