@@ -40,6 +40,7 @@ import {
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { formatDateFromMillis } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 
@@ -213,7 +214,9 @@ const handlers: ToolHandlers<typeof WORKSPACE_ANALYTICS_TOOLS_METADATA> = {
     }
 
     const toolNames = agent.actions.map((action) => action.name).join(", ");
-    const skillNames = (agent.skills ?? []).join(", ");
+    // Only reached for an agent the caller can read, so its skills are not private.
+    const skills = await SkillResource.listByAgentConfiguration(auth, agent);
+    const skillNames = skills.map((skill) => skill.name).join(", ");
 
     return new Ok([
       {

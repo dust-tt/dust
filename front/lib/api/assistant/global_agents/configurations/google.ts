@@ -55,7 +55,7 @@ export function _getGeminiProGlobalAgent({
         mcpServerViews,
       }),
     ],
-    skills: ["frames"],
+    codeDefinedSkillIds: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],

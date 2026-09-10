@@ -1509,7 +1509,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * Returns skill references for an agent configuration.
-   * For global agents, returns references from the config's skills field.
+   * For global agents, returns references from the config's `codeDefinedSkillIds` field.
    * For non-global agents, queries the database.
    * TODO(2026-01-30 agent-resource): move this to an AgentResource that would bundle the logic
    *   about loading skills and will expose a unified interface.
@@ -1526,12 +1526,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // For global agents, skills are defined in the config, not in the database.
     if (
       isGlobalAgentId(agentConfiguration.sId) &&
-      "skills" in agentConfiguration
+      "codeDefinedSkillIds" in agentConfiguration
     ) {
-      return (agentConfiguration.skills ?? []).map((globalSkillId) => ({
-        customSkillId: null,
-        globalSkillId,
-      }));
+      return (agentConfiguration.codeDefinedSkillIds ?? []).map(
+        (globalSkillId) => ({
+          customSkillId: null,
+          globalSkillId,
+        })
+      );
     }
 
     const workspace = auth.getNonNullableWorkspace();

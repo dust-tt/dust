@@ -203,7 +203,8 @@ export type LightAgentConfigurationType = z.infer<
 export const AgentConfigurationSchema = LightAgentConfigurationSchema.extend({
   instructionsHtml: z.string().nullable(),
   actions: z.array(MCPServerConfigurationSchema),
-  skills: z.array(z.string()).optional(),
+  // Code-defined skill ids, only set by the in-code global agent definitions.
+  codeDefinedSkillIds: z.array(z.string()).optional(),
 });
 
 export type AgentConfigurationType = z.infer<typeof AgentConfigurationSchema>;
