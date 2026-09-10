@@ -18,12 +18,11 @@ const COMMIT_HASH = process.env.NEXT_PUBLIC_COMMIT_HASH;
 
 const CONSOLE_MESSAGE_SHOWN_KEY = "dust_console_message_shown";
 
-// PostHogTracker calls useRouter at the top level, which throws during static
-// prerendering. Load it client-side only.
-const PostHogTracker = dynamic(
+// Client-only: as a wrapper this would strip the page tree from the SSR output.
+const PostHogTrackerEffects = dynamic(
   () =>
     import("@marketing/components/app/PostHogTracker").then(
-      (m) => m.PostHogTracker
+      (m) => m.PostHogTrackerEffects
     ),
   { ssr: false }
 );
@@ -34,6 +33,8 @@ import { SignUpModalProvider } from "@marketing/hooks/useSignUpModal";
 import { fetcher, fetcherWithBody } from "@marketing/lib/swr/fetcher";
 import { initDatadogLogs } from "@marketing/logger/datadogLogger";
 import { SparkleContext } from "@dust-tt/sparkle";
+import posthog from "posthog-js";
+import { PostHogProvider } from "posthog-js/react";
 import { useMemo } from "react";
 
 if (DATADOG_CLIENT_TOKEN) {
@@ -123,14 +124,15 @@ export default function App({ Component, pageProps }: AppPropsWithLayout) {
 
   return (
     <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
-      <PostHogTracker>
+      <PostHogProvider client={posthog}>
+        <PostHogTrackerEffects />
         <SparkleContext.Provider value={sparkleContextValue}>
           <SignUpModalProvider>
             {getLayout(<Component {...pageProps} />, pageProps)}
             <RegionSelectionModal />
           </SignUpModalProvider>
         </SparkleContext.Provider>
-      </PostHogTracker>
+      </PostHogProvider>
     </FetcherProvider>
   );
 }

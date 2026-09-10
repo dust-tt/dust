@@ -133,7 +133,7 @@ export default function BlogListing({ posts }: BlogListingPageProps) {
   return (
     <>
       <Head>
-        <title>{selectedTag ? `${selectedTag} | ` : ""}Blog | Dust</title>
+        <title>{`${selectedTag ? `${selectedTag} | ` : ""}Blog | Dust`}</title>
         <meta
           name="description"
           content="Insights, tutorials, and updates from the Dust team on AI agents, enterprise productivity, and building with AI."
