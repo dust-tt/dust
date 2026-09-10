@@ -179,6 +179,8 @@ const isSupportedPanelType = (
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;
+  // Preview affordances render nothing without a conversation to host the panel.
+  hasConversation: boolean;
   // True between closePanel() and the end of the collapse transition. `currentPanel` keeps the
   // old value meanwhile so the panel content does not flicker; toggles read this to unselect
   // right away.
@@ -216,6 +218,23 @@ export function useConversationSidePanelContext() {
   return context;
 }
 
+// Separate from the main context so the setter stays out of consumers' reach.
+const SidePanelConversationRegistrationContext = React.createContext<
+  ((hasConversation: boolean) => void) | undefined
+>(undefined);
+
+// Called by whichever surface renders the panel content.
+export function useRegisterSidePanelConversation(hasConversation: boolean) {
+  const setHasConversation = React.useContext(
+    SidePanelConversationRegistrationContext
+  );
+
+  useEffect(() => {
+    setHasConversation?.(hasConversation);
+    return () => setHasConversation?.(false);
+  }, [hasConversation, setHasConversation]);
+}
+
 export function parseDataAsMessageIdAndActionId(data?: string): {
   messageId?: string;
   actionId?: string;
@@ -246,6 +265,7 @@ export function ConversationSidePanelProvider({
   const previousConversationIdRef = React.useRef(activeConversationId);
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
+  const [hasConversation, setHasConversation] = React.useState(false);
   const [isPanelClosing, setIsPanelClosing] = React.useState(false);
   const [virtuosoMsg, setVirtuosoMsg] =
     React.useState<AgentMessageWithStreaming | null>(null);
@@ -438,6 +458,7 @@ export function ConversationSidePanelProvider({
       currentPanel: isSupportedPanelType(currentPanel)
         ? currentPanel
         : undefined,
+      hasConversation,
       isPanelClosing,
       openPanel,
       togglePanel,
@@ -452,6 +473,7 @@ export function ConversationSidePanelProvider({
     }),
     [
       currentPanel,
+      hasConversation,
       isPanelClosing,
       openPanel,
       togglePanel,
@@ -465,8 +487,12 @@ export function ConversationSidePanelProvider({
   );
 
   return (
-    <ConversationSidePanelContext.Provider value={value}>
-      {children}
-    </ConversationSidePanelContext.Provider>
+    <SidePanelConversationRegistrationContext.Provider
+      value={setHasConversation}
+    >
+      <ConversationSidePanelContext.Provider value={value}>
+        {children}
+      </ConversationSidePanelContext.Provider>
+    </SidePanelConversationRegistrationContext.Provider>
   );
 }
