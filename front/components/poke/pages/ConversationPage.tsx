@@ -38,7 +38,7 @@ import {
   Chip,
   Clipboard,
   ClipboardCheck,
-  Code02,
+  Code01,
   CodeBlock,
   Collapsible,
   CollapsibleContent,
@@ -1366,7 +1366,7 @@ export function ConversationPage() {
                   )}
                   <div className="ml-auto shrink-0 rounded-2xl border border-border-dark bg-background p-1">
                     <NavTabPillList>
-                      <NavTabPillTrigger value="raw" icon={Code02}>
+                      <NavTabPillTrigger value="raw" icon={Code01}>
                         Raw text
                       </NavTabPillTrigger>
                       <NavTabPillTrigger value="markdown" icon={File02}>
