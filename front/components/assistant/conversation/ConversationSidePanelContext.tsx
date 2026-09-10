@@ -33,6 +33,12 @@ type OpenPanelParams =
   | {
       type: "file_preview";
       filePath: string;
+      fileId?: undefined;
+    }
+  | {
+      type: "file_preview";
+      fileId: string;
+      filePath?: undefined;
     }
   | {
       type: "files";
@@ -91,6 +97,26 @@ export function useConversationSidePanelContext() {
   return context;
 }
 
+const FILE_PREVIEW_FILE_ID_PREFIX = "id:";
+
+export function encodeFilePreviewFileId(fileId: string): string {
+  return `${FILE_PREVIEW_FILE_ID_PREFIX}${fileId}`;
+}
+
+// Content fragments without a sandbox path are addressed by id instead.
+export function parseFilePreviewData(data?: string): {
+  fileId?: string;
+  filePath?: string;
+} {
+  if (!data) {
+    return {};
+  }
+
+  return data.startsWith(FILE_PREVIEW_FILE_ID_PREFIX)
+    ? { fileId: data.slice(FILE_PREVIEW_FILE_ID_PREFIX.length) }
+    : { filePath: data };
+}
+
 export function parseDataAsMessageIdAndActionId(data?: string): {
   messageId?: string;
   actionId?: string;
@@ -118,7 +144,7 @@ function getPanelData(params: OpenPanelParams): string {
         : params.fileId;
 
     case FILE_PREVIEW_SIDE_PANEL_TYPE:
-      return params.filePath;
+      return params.filePath ?? encodeFilePreviewFileId(params.fileId);
 
     case FILES_SIDE_PANEL_TYPE:
       return "files";

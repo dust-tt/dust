@@ -9,7 +9,10 @@ import type {
   FileExplorerVirtualScopeRoot,
 } from "@app/components/file_explorer/types";
 import { useFileExplorerDownload } from "@app/components/file_explorer/useFileExplorerDownload";
-import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
+import {
+  isFilePreviewableContentType,
+  withVirtualExplorerPath,
+} from "@app/components/file_explorer/utils";
 import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
@@ -26,7 +29,6 @@ import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
-import { opensInSidePanel } from "@app/types/files";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
   DEFAULT_POD_FILE_TAB_ICON,
@@ -208,7 +210,7 @@ export function ConversationFileExplorer({
 
   const onOpenInPanel = useCallback(
     (entry: FileEntry): boolean => {
-      if (opensInSidePanel(entry.contentType)) {
+      if (isFilePreviewableContentType(entry.contentType)) {
         openPanel({ type: "file_preview", filePath: entry.path });
         return true;
       }

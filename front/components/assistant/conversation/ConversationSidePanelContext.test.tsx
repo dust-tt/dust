@@ -82,6 +82,18 @@ describe("ConversationSidePanelProvider selection", () => {
     );
     expect(probe.panel.data).toBe("msg_1@act_1");
   });
+
+  it("addresses path-less files by id without colliding with paths", () => {
+    const probe = renderProvider();
+
+    act(() => probe.panel.openPanel({ type: "file_preview", fileId: "fil_1" }));
+    expect(probe.panel.data).toBe("id:fil_1");
+
+    act(() =>
+      probe.panel.openPanel({ type: "file_preview", filePath: "a.md" })
+    );
+    expect(probe.panel.data).toBe("a.md");
+  });
 });
 
 describe("ConversationSidePanelProvider toggle", () => {

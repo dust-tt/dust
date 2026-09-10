@@ -1,21 +1,21 @@
-import { FilePreviewDialog } from "@app/components/file_explorer/FilePreviewDialog";
-import type { FileEntry } from "@app/components/file_explorer/types";
+import { ConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { isFilePreviewableContentType } from "@app/components/file_explorer/utils";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   fetchFileIdFromPath,
   getFileDownloadUrl,
   getFilePathDownloadUrl,
-  getFilePathViewUrl,
-  getFileViewUrl,
 } from "@app/lib/swr/files";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
-  useState,
+  useRef,
 } from "react";
 
 interface PreviewableFile {
@@ -25,14 +25,21 @@ interface PreviewableFile {
   contentType: string;
 }
 
+interface FrameFile {
+  fileId?: string | null;
+  filePath?: string;
+}
+
 type FilePreviewContextType = {
+  canPreview: boolean;
   openFilePreview: (file: PreviewableFile) => void;
-  resolveFileIdFromPath: (filePath: string) => Promise<string | null>;
+  openFramePreview: (frame: FrameFile) => Promise<void>;
 };
 
 const FilePreviewContext = createContext<FilePreviewContextType>({
+  canPreview: false,
   openFilePreview: () => {},
-  resolveFileIdFromPath: () => Promise.resolve(null),
+  openFramePreview: () => Promise.resolve(),
 });
 
 interface FilePreviewProviderProps {
@@ -44,19 +51,32 @@ export function FilePreviewProvider({
   owner,
   children,
 }: FilePreviewProviderProps) {
-  const [previewState, setPreviewState] = useState<{
-    entry: FileEntry;
-    fileUrl: string;
-    downloadUrl: string;
-  } | null>(null);
+  const sidePanel = useContext(ConversationSidePanelContext);
+  const sendNotification = useSendNotification();
+  const canPreview = sidePanel != null;
+
+  // The side panel context value changes on every panel navigation. Reading it
+  // through a ref keeps the callbacks below stable, so citations do not all
+  // re-render each time the panel switches.
+  const sidePanelRef = useRef(sidePanel);
+  useEffect(() => {
+    sidePanelRef.current = sidePanel;
+  });
 
   const openFilePreview = useCallback(
     (file: PreviewableFile) => {
-      const fileUrl = file.filePath
-        ? getFilePathViewUrl(owner, file.filePath)
-        : file.fileId
-          ? getFileViewUrl(owner, file.fileId)
-          : null;
+      const panel = sidePanelRef.current;
+
+      if (isFilePreviewableContentType(file.contentType) && panel) {
+        if (file.filePath) {
+          panel.openPanel({ type: "file_preview", filePath: file.filePath });
+          return;
+        }
+        if (file.fileId) {
+          panel.openPanel({ type: "file_preview", fileId: file.fileId });
+          return;
+        }
+      }
 
       const downloadUrl = file.filePath
         ? getFilePathDownloadUrl(owner, file.filePath)
@@ -64,67 +84,47 @@ export function FilePreviewProvider({
           ? getFileDownloadUrl(owner, file.fileId)
           : null;
 
-      if (!fileUrl || !downloadUrl) {
-        return;
-      }
-
-      if (!isFilePreviewableContentType(file.contentType)) {
+      if (downloadUrl) {
         window.open(downloadUrl, "_blank");
-        return;
       }
-
-      setPreviewState({
-        entry: {
-          kind: "file",
-          isDirectory: false,
-          fileName: file.title,
-          path: file.filePath ?? file.title,
-          contentType: file.contentType,
-          fileId: file.fileId ?? null,
-          thumbnailUrl: null,
-          sizeBytes: 0,
-          // No mtime here: stands in to cache-bust the per-URL cached PDF
-          // conversion, so an edited file stops rendering its stale one.
-          lastModifiedMs: Date.now(),
-        },
-        fileUrl,
-        downloadUrl,
-      });
     },
     [owner]
   );
 
-  const resolveFileIdFromPath = useCallback(
-    (filePath: string) => fetchFileIdFromPath({ owner, filePath }),
-    [owner]
+  const openFramePreview = useCallback(
+    async ({ fileId, filePath }: FrameFile) => {
+      try {
+        const resolvedFileId =
+          fileId ??
+          (filePath ? await fetchFileIdFromPath({ owner, filePath }) : null);
+
+        if (!resolvedFileId) {
+          throw new Error("No linked file was found for this Frame.");
+        }
+
+        sidePanelRef.current?.openPanel({
+          type: "interactive_content",
+          fileId: resolvedFileId,
+        });
+      } catch (error) {
+        sendNotification({
+          type: "error",
+          title: "Failed to open Frame",
+          description: normalizeError(error).message,
+        });
+      }
+    },
+    [owner, sendNotification]
   );
 
-  const handleDownload = useCallback(async () => {
-    if (previewState?.downloadUrl) {
-      window.open(previewState.downloadUrl, "_blank");
-    }
-  }, [previewState?.downloadUrl]);
-
   const contextValue = useMemo(
-    () => ({ openFilePreview, resolveFileIdFromPath }),
-    [openFilePreview, resolveFileIdFromPath]
+    () => ({ canPreview, openFilePreview, openFramePreview }),
+    [canPreview, openFilePreview, openFramePreview]
   );
 
   return (
     <FilePreviewContext.Provider value={contextValue}>
       {children}
-      <FilePreviewDialog
-        entry={previewState?.entry ?? null}
-        fileUrl={previewState?.fileUrl ?? null}
-        isOpen={!!previewState}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPreviewState(null);
-          }
-        }}
-        onDownload={handleDownload}
-        owner={owner}
-      />
     </FilePreviewContext.Provider>
   );
 }
