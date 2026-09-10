@@ -197,6 +197,7 @@ export function getLightAgentMessageFromAgentMessage(
     completionDurationMs: agentMessage.completionDurationMs,
     reactions: agentMessage.reactions,
     prunedContext: agentMessage.prunedContext,
+    pausedAtCreditSpendCheckpoint: agentMessage.pausedAtCreditSpendCheckpoint,
     costCredits: agentMessage.costCredits,
     subAgentCostCredits: agentMessage.subAgentCostCredits,
     activitySteps: [],
