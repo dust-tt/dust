@@ -653,7 +653,7 @@ async function _checkRoleGrants(
           )
         );
       }
-    } else if (grantOn === "WAREHOUSE") {
+    } else if (["WAREHOUSE", "DATABASE"].includes(grantOn)) {
       if (!["USAGE", "READ", "MONITOR"].includes(g.privilege)) {
         return new Err(
           new TestConnectionError(
@@ -662,12 +662,24 @@ async function _checkRoleGrants(
           )
         );
       }
-    } else if (["SCHEMA", "DATABASE"].includes(grantOn)) {
-      if (!["USAGE", "READ", "MONITOR"].includes(g.privilege)) {
+    } else if (grantOn === "SCHEMA") {
+      // CREATE WORKSPACE creates editor files without granting table write access.
+      if (
+        !["USAGE", "READ", "MONITOR", "CREATE WORKSPACE"].includes(g.privilege)
+      ) {
         return new Err(
           new TestConnectionError(
             "NOT_READONLY",
-            `Non-usage, read, or monitor grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+            `Non-usage, read, monitor, or create workspace grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          )
+        );
+      }
+    } else if (grantOn === "WORKSPACE") {
+      if (g.privilege !== "READ") {
+        return new Err(
+          new TestConnectionError(
+            "NOT_READONLY",
+            `Non-read grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
       }
