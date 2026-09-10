@@ -18,7 +18,6 @@ import {
   ContentMessage,
   cn,
   DataTable,
-  Page,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -81,7 +80,7 @@ interface WorkspaceCreditUsageValueCardsProps {
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
   programmaticConsumedCredits: number | null;
-  isLoading: boolean;
+  isRefreshing: boolean;
 }
 
 export function WorkspaceCreditUsageValueCards({
@@ -91,7 +90,7 @@ export function WorkspaceCreditUsageValueCards({
   currentCycleStartMs,
   currentCycleEndMs,
   programmaticConsumedCredits,
-  isLoading,
+  isRefreshing,
 }: WorkspaceCreditUsageValueCardsProps) {
   const cycleDayLabel = formatCycleDayLabel(
     currentCycleStartMs,
@@ -106,6 +105,7 @@ export function WorkspaceCreditUsageValueCards({
           label="Remaining credits in the pool"
           value={formatCredits(totalRemainingCredits)}
           hint={null}
+          isRefreshing={isRefreshing}
         />
       )}
       <SummaryCard
@@ -116,6 +116,7 @@ export function WorkspaceCreditUsageValueCards({
             : "—"
         }
         hint={cycleDayLabel}
+        isRefreshing={isRefreshing}
       />
       <SummaryCard
         label="Programmatic usage this cycle"
@@ -128,6 +129,7 @@ export function WorkspaceCreditUsageValueCards({
           programmaticConsumedCredits,
           consumedCredits
         )}
+        isRefreshing={isRefreshing}
       />
     </div>
   );
@@ -194,7 +196,6 @@ export function WorkspaceCreditPoolCycleHistoryTable({
 
   return (
     <>
-      <Page.H variant="h5">Previous cycles</Page.H>
       <DataTable
         data={rows}
         columns={CYCLE_HISTORY_COLUMNS}
@@ -255,6 +256,8 @@ function WorkspaceCreditPoolHistory({
 
 interface WorkspaceCreditPoolSectionProps {
   cardsStatus: CreditPoolFetchStatus;
+  // Background refresh of already displayed cards (e.g. right after a purchase).
+  isCardsRefreshing: boolean;
   tableStatus: CreditPoolFetchStatus;
   showPoolCard: boolean;
   isVisible: boolean;
@@ -269,6 +272,7 @@ interface WorkspaceCreditPoolSectionProps {
 
 export function WorkspaceCreditPoolSection({
   cardsStatus,
+  isCardsRefreshing,
   tableStatus,
   showPoolCard,
   isVisible,
@@ -285,9 +289,7 @@ export function WorkspaceCreditPoolSection({
   }
 
   return (
-    <Page.Vertical gap="xs" align="stretch">
-      <Page.H variant="h4">Credit consumption</Page.H>
-
+    <div className="flex flex-col items-stretch gap-10">
       {cardsStatus === "error" ? (
         <ContentMessage
           title="Failed to load Workspace Credits Pool"
@@ -309,7 +311,7 @@ export function WorkspaceCreditPoolSection({
             currentCycleStartMs={currentCycleStartMs}
             currentCycleEndMs={currentCycleEndMs}
             programmaticConsumedCredits={programmaticConsumedCredits}
-            isLoading={false}
+            isRefreshing={isCardsRefreshing}
           />
           <WorkspaceCreditPoolHistory
             tableStatus={tableStatus}
@@ -318,7 +320,7 @@ export function WorkspaceCreditPoolSection({
           />
         </>
       )}
-    </Page.Vertical>
+    </div>
   );
 }
 
@@ -343,6 +345,7 @@ export function useCycleHistoryLimit() {
 interface CreditPoolCardsFromCycleDataProps {
   awuPoolCurrentCycle: AwuPoolCurrentCycleResponseBody | null;
   cardsStatus: CreditPoolFetchStatus;
+  isCardsRefreshing?: boolean;
   poolCycleBreakdown: AwuPoolCycleBreakdown[];
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
   tableStatus: CreditPoolFetchStatus;
@@ -351,6 +354,7 @@ interface CreditPoolCardsFromCycleDataProps {
 export function CreditPoolCardsFromCycleData({
   awuPoolCurrentCycle,
   cardsStatus,
+  isCardsRefreshing = false,
   poolCycleBreakdown,
   excessCycleBreakdown,
   tableStatus,
@@ -381,6 +385,7 @@ export function CreditPoolCardsFromCycleData({
   return (
     <WorkspaceCreditPoolSection
       cardsStatus={cardsStatus}
+      isCardsRefreshing={isCardsRefreshing}
       tableStatus={tableStatus}
       showPoolCard={hasPool}
       isVisible={hasPool || hasExcessData}
@@ -407,6 +412,7 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
     awuPoolCurrentCycle,
     isAwuPoolCurrentCycleLoading,
     isAwuPoolCurrentCycleError,
+    isAwuPoolCurrentCycleValidating,
   } = useAwuPoolCurrentCycle({ workspaceId: owner.sId, disabled });
   const {
     cycleBreakdown: poolCycleBreakdown,
@@ -428,6 +434,9 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
         isAwuPoolCurrentCycleLoading,
         !!isAwuPoolCurrentCycleError
       )}
+      isCardsRefreshing={
+        isAwuPoolCurrentCycleValidating && !isAwuPoolCurrentCycleLoading
+      }
       poolCycleBreakdown={poolCycleBreakdown}
       excessCycleBreakdown={excessCycleBreakdown}
       tableStatus={toCreditPoolFetchStatus(

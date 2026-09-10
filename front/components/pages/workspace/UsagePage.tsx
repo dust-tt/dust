@@ -53,6 +53,8 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { useSearchParam } from "@app/lib/platform";
 import {
+  useAwuPoolCurrentCycle,
+  useAwuPoolCycleHistory,
   useAwuPoolSummary,
   useAwuPurchaseInfo,
   useMyUsage,
@@ -116,6 +118,7 @@ import {
   LinkExternal01,
   LoadingBlock,
   Page,
+  Plus,
   ProgressBar,
   SearchInput,
   Spinner,
@@ -287,9 +290,7 @@ export function UsagePage() {
     sort?.id === "email" || sort?.id === "seatUsage"
       ? sort.id
       : sort?.id === "consumedFromPoolAwuCredits"
-        ? isNewUsagePage
-          ? "consumedFromPoolAwuCredits"
-          : "consumedAwuCredits"
+        ? "consumedAwuCredits"
         : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
@@ -506,6 +507,18 @@ export function UsagePage() {
   } = useAwuPoolSummary({
     workspaceId: owner.sId,
     disabled: !isCreditPriced,
+  });
+
+  // The pool cards read the cycle endpoints, so a purchase must revalidate
+  // those too. Disabled here: the cards own the fetch, we only borrow the
+  // mutate functions.
+  const { mutateAwuPoolCurrentCycle } = useAwuPoolCurrentCycle({
+    workspaceId: owner.sId,
+    disabled: true,
+  });
+  const { mutateAwuPoolCycleHistory } = useAwuPoolCycleHistory({
+    workspaceId: owner.sId,
+    disabled: true,
   });
 
   // TODO(2026-08-24): add back logic to show consumption here.
@@ -904,8 +917,8 @@ export function UsagePage() {
 
   const topUpButton = isWorkspaceAdmin ? (
     <Button
-      label="Top up"
-      icon={ArrowUp}
+      label={isNewUsagePage ? "Add credits" : "Top up"}
+      icon={isNewUsagePage ? Plus : ArrowUp}
       size="sm"
       variant="outline"
       disabled={!isCreditPriced || !usageSettings.topUpEnabled}
@@ -1064,6 +1077,8 @@ export function UsagePage() {
           onClose={() => setShowBuyCreditDialog(false)}
           onPurchaseSuccess={() => {
             void mutateAwuPoolSummary();
+            void mutateAwuPoolCurrentCycle();
+            void mutateAwuPoolCycleHistory();
           }}
           workspaceId={owner.sId}
           awuPurchaseInfo={awuPurchaseInfo}
@@ -1250,10 +1265,8 @@ export function UsagePage() {
 
           {isNewUsagePage && isCreditPriced ? (
             <div className="flex flex-col items-stretch gap-4">
+              <div className="flex justify-end">{topUpButton}</div>
               <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
-              {usageSettings.topUpEnabled && (
-                <div className="flex justify-end">{topUpButton}</div>
-              )}
             </div>
           ) : null}
 
@@ -1325,8 +1338,9 @@ export function UsagePage() {
                   : "members"
               )
             }
+            className="flex flex-col gap-4"
           >
-            <TabsList className="mb-4">
+            <TabsList>
               <TabsTrigger value="members" label="Members" />
               <TabsTrigger value="groups" label="Groups" />
               {isWorkspaceAdmin && isCreditPriced && (
@@ -1338,7 +1352,7 @@ export function UsagePage() {
             </TabsList>
 
             <TabsContent value="members" className={TAB_CONTENT_CLASS}>
-              <Page.Vertical gap="sm" align="stretch">
+              <div className="flex flex-col items-stretch gap-4">
                 {searchRow}
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-row items-center justify-between gap-2">
@@ -1397,7 +1411,7 @@ export function UsagePage() {
                     )}
                   </div>
                 </div>
-              </Page.Vertical>
+              </div>
             </TabsContent>
             <TabsContent value="groups" className={TAB_CONTENT_CLASS}>
               <GroupsUsageTable

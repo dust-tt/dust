@@ -2,6 +2,7 @@ import {
   getEsConsumedAwuCreditsForWorkspace,
   resolveMetronomeCycle,
 } from "@app/lib/api/credits/members_usage";
+import { getRedisCacheClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
 import { amountCents } from "@app/lib/metronome/amounts";
@@ -24,7 +25,7 @@ import {
   getProductSeatTypes,
   getSeatTypesByProductIdFromContract,
 } from "@app/lib/metronome/seat_types";
-import { cacheWithRedis } from "@app/lib/utils/cache";
+import { buildCacheWithRedisKey, cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type {
   AwuPoolCurrentCycleResponseBody,
@@ -381,6 +382,34 @@ const getCachedAwuPoolCycleHistoryOutcome = cacheWithRedis(
     ttlMs: AWU_POOL_CYCLE_HISTORY_CACHE_TTL_MS,
   }
 );
+
+/**
+ * @cc [owner:arthurvervaet,label:product;performance] pool-cache-dropped-after-grant
+ * Deletes, in a single Redis command, every cached current-cycle and cycle-history entry of the
+ * workspace (for any `cycleHistoryLimit` in `[1, MAX_CYCLE_HISTORY_LIMIT]`) that exists when the
+ * command runs, so a reader never observes one cache refreshed and the other still stale. A read
+ * whose recompute started before the grant became effective can still write its pre-grant result
+ * after the deletion; that stale entry lives at most one cache TTL. Any code path that changes the
+ * workspace's pool balance outside a cycle rollover (credit purchase settlement, coupon redemption)
+ * MUST call it once the grant is effective, so the next read reflects the new balance instead of
+ * waiting for the cache TTL.
+ */
+export async function invalidateAwuPoolCaches(
+  auth: Authenticator
+): Promise<void> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const keys = [
+    buildCacheWithRedisKey(AWU_POOL_CURRENT_CYCLE_CACHE_ID, workspaceId),
+    ...Array.from({ length: MAX_CYCLE_HISTORY_LIMIT }, (_, i) =>
+      buildCacheWithRedisKey(
+        AWU_POOL_CYCLE_HISTORY_CACHE_ID,
+        cacheResolverKeyWithHistoryLimit(workspaceId, i + 1)
+      )
+    ),
+  ];
+  const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
+  await redisCli.del(keys);
+}
 
 export async function getAwuPoolCycleHistory(
   auth: Authenticator,

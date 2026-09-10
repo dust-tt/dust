@@ -303,15 +303,16 @@ export function useAwuPoolCycleHistory({
   const { fetcher } = useFetcher();
   const awuFetcher: Fetcher<AwuPoolCycleHistoryResponseBody> = fetcher;
 
-  const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/credits/awu-pool-cycle-history${
-      cycleHistoryLimit ? `?cycleHistoryLimit=${cycleHistoryLimit}` : ""
-    }`,
-    awuFetcher,
-    // Keep rows on screen while a larger limit is fetched so "Load more"
-    // appends instead of swapping the table for a spinner.
-    { disabled, keepPreviousData: true }
-  );
+  const { data, error, isValidating, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      `/api/w/${workspaceId}/credits/awu-pool-cycle-history${
+        cycleHistoryLimit ? `?cycleHistoryLimit=${cycleHistoryLimit}` : ""
+      }`,
+      awuFetcher,
+      // Keep rows on screen while a larger limit is fetched so "Load more"
+      // appends instead of swapping the table for a spinner.
+      { disabled, keepPreviousData: true }
+    );
 
   const isUsable = !error && !disabled;
 
@@ -328,7 +329,7 @@ export function useAwuPoolCycleHistory({
     isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
     isAwuPoolCycleHistoryError: error,
     isAwuPoolCycleHistoryValidating: isValidating,
-    mutateAwuPoolCycleHistory: mutate,
+    mutateAwuPoolCycleHistory: mutateRegardlessOfQueryParams,
   };
 }
 
