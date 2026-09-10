@@ -124,6 +124,53 @@ describe("getCompletionDuration", () => {
       ])
     ).toBe(FIFTEEN_MIN_MS - webSearchWaitMs);
   });
+
+  it("does not subtract ordinary-tool wait that overlaps nested-agent occupancy", () => {
+    expect(
+      getCompletionDuration(0, FIFTEEN_MIN_MS, [
+        makeDurationAction({
+          internalMCPServerName: RUN_AGENT_SERVER_NAME,
+          toolName: "run_agent",
+          createdAt: 0,
+          updatedAt: FIFTEEN_MIN_MS,
+          executionDurationMs: FOUR_MIN_54_SEC_MS,
+        }),
+        makeDurationAction({
+          id: 2,
+          sId: "act_2",
+          toolName: "websearch",
+          createdAt: 5 * 60 * 1000,
+          updatedAt: 6 * 60 * 1000,
+          executionDurationMs: 30_000,
+        }),
+      ])
+    ).toBe(FIFTEEN_MIN_MS);
+  });
+
+  it("subtracts only the ordinary-tool wait that falls outside nested occupancy", () => {
+    const nestedStartMs = 60_000;
+    const waitStartMs = 0;
+    const waitEndMs = 90_000;
+    expect(
+      getCompletionDuration(0, FIFTEEN_MIN_MS, [
+        makeDurationAction({
+          createdAt: waitStartMs,
+          updatedAt: waitEndMs + 30_000,
+          executionDurationMs: 30_000,
+          toolName: "websearch",
+        }),
+        makeDurationAction({
+          id: 2,
+          sId: "act_2",
+          internalMCPServerName: RUN_AGENT_SERVER_NAME,
+          toolName: "run_agent",
+          createdAt: nestedStartMs,
+          updatedAt: FIFTEEN_MIN_MS,
+          executionDurationMs: FOUR_MIN_54_SEC_MS,
+        }),
+      ])
+    ).toBe(FIFTEEN_MIN_MS - (nestedStartMs - waitStartMs));
+  });
 });
 
 describe("batchRenderMessages", () => {

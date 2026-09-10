@@ -1,27 +1,55 @@
-export function getLatestHandoffDescendantCompletedTs(
+type HandoffTimingMessage = {
+  sId: string;
+  parentAgentMessageId: string | null;
+  completedTs: number | null;
+};
+
+function indexHandoffChildren(
+  messages: HandoffTimingMessage[]
+): Map<string, HandoffTimingMessage[]> {
+  const childrenByParent = new Map<string, HandoffTimingMessage[]>();
+  for (const message of messages) {
+    if (!message.parentAgentMessageId) {
+      continue;
+    }
+    const siblings = childrenByParent.get(message.parentAgentMessageId);
+    if (siblings) {
+      siblings.push(message);
+    } else {
+      childrenByParent.set(message.parentAgentMessageId, [message]);
+    }
+  }
+  return childrenByParent;
+}
+
+function latestDescendantCompletedTs(
   originMessageId: string,
-  messages: Array<{
-    sId: string;
-    parentAgentMessageId: string | null;
-    completedTs: number | null;
-  }>
+  childrenByParent: Map<string, HandoffTimingMessage[]>
 ): number | null {
-  const children = messages.filter(
-    (m) => m.parentAgentMessageId === originMessageId
-  );
-  if (children.length === 0) {
+  const children = childrenByParent.get(originMessageId);
+  if (!children || children.length === 0) {
     return null;
   }
 
   let latest: number | null = null;
   for (const child of children) {
-    const nested = getLatestHandoffDescendantCompletedTs(child.sId, messages);
+    const nested = latestDescendantCompletedTs(child.sId, childrenByParent);
     const candidate = nested ?? child.completedTs;
     if (candidate !== null && (latest === null || candidate > latest)) {
       latest = candidate;
     }
   }
   return latest;
+}
+
+export function getLatestHandoffDescendantCompletedTs(
+  originMessageId: string,
+  messages: HandoffTimingMessage[]
+): number | null {
+  return latestDescendantCompletedTs(
+    originMessageId,
+    indexHandoffChildren(messages)
+  );
 }
 
 /**
@@ -45,11 +73,7 @@ export function getAgentMessageHeaderTimestampMs({
   messageId: string;
   parentAgentVisible: boolean;
   hasHandedOver: boolean;
-  messages: Array<{
-    sId: string;
-    parentAgentMessageId: string | null;
-    completedTs: number | null;
-  }>;
+  messages: HandoffTimingMessage[];
 }): number | undefined {
   if (parentAgentVisible) {
     return undefined;

@@ -67,18 +67,79 @@ function isNestedAgentAction(
   );
 }
 
+type TimeRange = { start: number; end: number };
+
+function mergeTimeRanges(ranges: TimeRange[]): TimeRange[] {
+  if (ranges.length === 0) {
+    return [];
+  }
+
+  const sorted = [...ranges].sort((a, b) => a.start - b.start);
+  const merged: TimeRange[] = [{ ...sorted[0] }];
+
+  for (let i = 1; i < sorted.length; i++) {
+    const last = merged[merged.length - 1];
+    const range = sorted[i];
+    if (range.start <= last.end) {
+      last.end = Math.max(last.end, range.end);
+    } else {
+      merged.push({ ...range });
+    }
+  }
+
+  return merged;
+}
+
+function subtractTimeRanges(
+  waitRanges: TimeRange[],
+  occupiedRanges: TimeRange[]
+): TimeRange[] {
+  if (occupiedRanges.length === 0) {
+    return waitRanges;
+  }
+
+  const remaining: TimeRange[] = [];
+  for (const wait of waitRanges) {
+    let cursor = wait.start;
+    for (const occupied of occupiedRanges) {
+      if (occupied.end <= cursor) {
+        continue;
+      }
+      if (occupied.start >= wait.end) {
+        break;
+      }
+      if (occupied.start > cursor) {
+        remaining.push({
+          start: cursor,
+          end: Math.min(occupied.start, wait.end),
+        });
+      }
+      cursor = Math.max(cursor, occupied.end);
+      if (cursor >= wait.end) {
+        break;
+      }
+    }
+    if (cursor < wait.end) {
+      remaining.push({ start: cursor, end: wait.end });
+    }
+  }
+
+  return remaining.filter((range) => range.end > range.start);
+}
+
 /**
  * @cc [owner:frankaloia,label:product] exclude-tool-approval-wait
- * For ordinary (non-nested-agent) actions, the duration MUST subtract the gap
- * between `createdAt` and execution start (`updatedAt - executionDurationMs`).
- * That gap is tool-approval / queue wait and MUST NOT count as generation time.
+ * For ordinary (non-nested-agent) actions, the duration MUST subtract wait
+ * between `createdAt` and execution start (`updatedAt - executionDurationMs`),
+ * except any portion that overlaps a nested-agent action's `createdAt`→`updatedAt`
+ * span. Overlapping wait is parallel to nested work and MUST NOT reduce duration.
  */
 /**
  * @cc [owner:frankaloia,label:product] nested-agent-time-counts
- * The returned duration MUST include time spent in nested agent actions
- * (`run_agent`, `agent_delegation`). Those actions often pause or resume across
- * the 10-minute tool activity timeout, so `executionDurationMs` only covers the
- * last attempt and MUST NOT be used to classify the rest as wait.
+ * The returned duration MUST include each nested agent action's full
+ * `createdAt`→`updatedAt` span (`run_agent`, `agent_delegation`). Ordinary-tool
+ * wait that overlaps those spans MUST NOT be subtracted. `executionDurationMs`
+ * on nested agents MUST NOT be used to classify their gaps as wait.
  */
 export function getCompletionDuration(
   created: number,
@@ -89,51 +150,30 @@ export function getCompletionDuration(
     return null;
   }
 
-  // Assumption: Each action has two phases: wait period, then execution period
-  // Action timeline: [createdAt] ----wait---- [executionStart] ----execute---- [updatedAt]
-  // Where executionStart = updatedAt - executionDurationMs
-  //
-  // Message timeline: [created] ---blank---[action 1] --- blank --- [action 2] --- blank --- [completedTs]
-  //
-  // Nested agent actions are excluded: their pause/resume gaps are child-agent
-  // work, not queue or approval wait.
+  // Ordinary tools: [createdAt] ----wait---- [executionStart] ----execute---- [updatedAt]
+  // Nested agents:  [createdAt] ----------------child work---------------- [updatedAt]
+  // Wait overlapping nested occupancy is parallel to child work, so it is not subtracted.
 
-  const waitRanges: Array<{ start: number; end: number }> = actions
-    .filter((a) => a.executionDurationMs !== null)
-    .filter((a) => !isNestedAgentAction(a))
-    .map((a) => ({
-      start: a.createdAt,
-      end: a.updatedAt - a.executionDurationMs!,
-    }))
-    .filter((r) => r.end > r.start) // Filter out actions with no wait time
-    .sort((a, b) => a.start - b.start);
+  const nestedOccupancy = mergeTimeRanges(
+    actions
+      .filter((a) => isNestedAgentAction(a))
+      .map((a) => ({ start: a.createdAt, end: a.updatedAt }))
+      .filter((r) => r.end > r.start)
+  );
 
-  if (waitRanges.length === 0) {
-    return completedTs - created;
-  }
+  const waitRanges = mergeTimeRanges(
+    actions
+      .filter((a) => a.executionDurationMs !== null)
+      .filter((a) => !isNestedAgentAction(a))
+      .map((a) => ({
+        start: a.createdAt,
+        end: a.updatedAt - a.executionDurationMs!,
+      }))
+      .filter((r) => r.end > r.start)
+  );
 
-  // Merge overlapping wait periods
-  const mergedWaitRanges: Array<{ start: number; end: number }> = [];
-  let currentRange = waitRanges[0];
-
-  for (let i = 1; i < waitRanges.length; i++) {
-    const range = waitRanges[i];
-    if (range.start <= currentRange.end) {
-      // Overlapping or adjacent - merge by extending the end
-      currentRange = {
-        start: currentRange.start,
-        end: Math.max(currentRange.end, range.end),
-      };
-    } else {
-      // Non-overlapping - save current and start new range
-      mergedWaitRanges.push(currentRange);
-      currentRange = range;
-    }
-  }
-  mergedWaitRanges.push(currentRange);
-
-  // Calculate total wait time
-  const totalWaitTimeMs = mergedWaitRanges.reduce(
+  const subtractableWait = subtractTimeRanges(waitRanges, nestedOccupancy);
+  const totalWaitTimeMs = subtractableWait.reduce(
     (sum, range) => sum + (range.end - range.start),
     0
   );
