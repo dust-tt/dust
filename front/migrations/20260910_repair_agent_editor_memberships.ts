@@ -3,6 +3,7 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
@@ -117,7 +118,7 @@ async function fetchActiveWorkspaceUsers(
   now: Date,
   transaction: Transaction
 ): Promise<Set<ModelId>> {
-  // History-bearing users only; uses (workspaceId, userId, startAt, endAt).
+  // Source-group users only; uses (workspaceId, userId, startAt, endAt).
   const memberships = await MembershipModel.findAll({
     attributes: ["userId"],
     where: {
@@ -134,14 +135,14 @@ async function fetchActiveWorkspaceUsers(
 function selectMissingMemberships(
   source: MembershipHistory[],
   target: MembershipHistory[],
-  restoredUserIds: Set<ModelId>
+  activeUserIds: Set<ModelId>
 ): MembershipToCopy[] {
   // Match history by user/end time; any current target row covers current access.
   const existingKeys = new Set(target.map((membership) => membership.key));
   const missing: MembershipToCopy[] = [];
   for (const membership of source) {
     // Preserve ended history even for revoked users. Current access requires workspace membership.
-    if (membership.active && !restoredUserIds.has(membership.userId)) {
+    if (membership.active && !activeUserIds.has(membership.userId)) {
       continue;
     }
     if (existingKeys.has(membership.key)) {
@@ -161,7 +162,7 @@ async function fetchMissingMemberships(
   auth: Authenticator,
   sourceGroupModelId: ModelId,
   targetGroupModelId: ModelId | null,
-  transaction: Transaction
+  { rebuild, transaction }: { rebuild: boolean; transaction: Transaction }
 ): Promise<MembershipToCopy[]> {
   const workspaceId = auth.getNonNullableWorkspace().id;
   const now = new Date();
@@ -181,21 +182,73 @@ async function fetchMissingMemberships(
   const target = memberships.filter(
     (membership) => membership.groupId === targetGroupModelId
   );
-  // Only history-bearing users can contribute active rows; no workspace-wide editor comparison.
-  const historicalUserIds = [
+  // Normally only history-bearing users contribute active rows. Orphans need all legacy editors.
+  const eligibleUserIds = [
     ...new Set(
       source
-        .filter((membership) => !membership.active)
+        .filter((membership) => rebuild || !membership.active)
         .map((membership) => membership.userId)
     ),
   ];
-  const restoredUserIds = await fetchActiveWorkspaceUsers(
+  const activeUserIds = await fetchActiveWorkspaceUsers(
     workspaceId,
-    historicalUserIds,
+    eligibleUserIds,
     now,
     transaction
   );
-  return selectMissingMemberships(source, target, restoredUserIds);
+  return selectMissingMemberships(source, target, activeUserIds);
+}
+
+/**
+ * @cc [owner:philipperolet,label:security] delete-confirmed-orphans-only
+ * Only the exact-name regular_auto group with no grants may be deleted for a rebuild.
+ */
+async function removeOrphanGroup(
+  auth: Authenticator,
+  agentModelId: ModelId,
+  {
+    execute,
+    transaction,
+    logger,
+  }: { execute: boolean; transaction: Transaction; logger: Logger }
+): Promise<boolean> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  // The unique (workspaceId, name) index bounds this lookup. Lock against new grant FK references.
+  const model = await GroupModel.findOne({
+    where: {
+      workspaceId,
+      name: `Group for permission editor on agent (${agentModelId})`,
+    },
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+  });
+  if (!model) {
+    return false;
+  }
+  assert(model.kind === "regular_auto", "Colliding group is not regular_auto.");
+  const orphan = new GroupResource(GroupModel, model.get());
+  const grants = await GroupPermissionResource.listForGroup(
+    auth,
+    orphan,
+    transaction
+  );
+  assert(grants.length === 0, "Colliding group still has grants.");
+  logger.info(
+    {
+      execute,
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      agentModelId,
+      orphanGroupModelId: orphan.id,
+    },
+    "Rebuilding orphaned agent editor group from legacy memberships"
+  );
+  if (execute) {
+    const deleted = await orphan.delete(auth, { transaction });
+    if (deleted.isErr()) {
+      throw deleted.error;
+    }
+  }
+  return true;
 }
 
 async function copyMemberships(
@@ -260,8 +313,12 @@ async function copyMemberships(
  */
 /**
  * @cc [owner:philipperolet,label:security] repair-current-editors-only
- * Active grants MUST only be copied for history-bearing users who currently belong to both
- * the legacy editor group and the workspace.
+ * Active grants MUST only be copied for users currently in both the legacy group and workspace.
+ * Limit this to history-bearing users unless rebuilding an orphan, which needs all legacy editors.
+ */
+/**
+ * @cc [owner:philipperolet,label:migration] atomic-orphan-rebuild
+ * Orphan deletion and rebuilding its grant and memberships MUST commit or roll back together.
  */
 /**
  * @cc [owner:philipperolet,label:migration] editor-repair-dry-run
@@ -274,7 +331,8 @@ async function copyMemberships(
 async function repairEditorGroup(
   auth: Authenticator,
   source: EditorGroup,
-  execute: boolean
+  execute: boolean,
+  logger: Logger
 ): Promise<Counts> {
   return withTransaction(async (transaction) => {
     // Same lock as GroupPermissionResource.getGrantLock, including live grant-group cleanup.
@@ -292,11 +350,18 @@ async function repairEditorGroup(
         transaction,
       }
     );
+    const rebuild =
+      !group &&
+      (await removeOrphanGroup(auth, source.agentModelId, {
+        execute,
+        transaction,
+        logger,
+      }));
     const missing = await fetchMissingMemberships(
       auth,
       source.groupModelId,
       group?.id ?? null,
-      transaction
+      { rebuild, transaction }
     );
     const active = missing.filter((membership) => membership.active).length;
     if (execute && missing.length > 0) {
@@ -331,7 +396,7 @@ async function repairBatch(
     async (editor) => {
       const auth = auths.get(editor.workspaceId);
       assert(auth);
-      const counts = await repairEditorGroup(auth, editor, execute);
+      const counts = await repairEditorGroup(auth, editor, execute, logger);
       logger.info(
         { execute, ...editor, ...counts },
         "Agent editor memberships checked"
