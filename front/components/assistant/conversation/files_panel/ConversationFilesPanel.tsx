@@ -6,6 +6,7 @@ import { SandboxStatusChip } from "@app/components/assistant/conversation/files_
 import { SandboxTab } from "@app/components/assistant/conversation/files_panel/SandboxTab";
 import type { ConversationAttachmentItem } from "@app/components/assistant/conversation/files_panel/types";
 import { conversationAttachmentToRow } from "@app/components/assistant/conversation/files_panel/utils";
+import { SidePanelCloseButton } from "@app/components/assistant/conversation/SidePanelCloseButton";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationAttachments } from "@app/hooks/conversations/useConversationAttachments";
 import { useConversationSandboxStatus } from "@app/hooks/conversations/useConversationSandboxStatus";
@@ -16,14 +17,7 @@ import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isFrameContentType, opensInSidePanel } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  Button,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  XClose,
-} from "@dust-tt/sparkle";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 interface ConversationFilesPanelProps {
@@ -41,7 +35,7 @@ export function ConversationFilesPanel({
   const { openFilePreview } = useFilePreviewContext();
   const isDownloadingRef = useRef(false);
   const blobUrlRef = useRef<string | null>(null);
-  const { openPanel, closePanel } = useConversationSidePanelContext();
+  const { openPanel } = useConversationSidePanelContext();
   const sendNotification = useSendNotification();
 
   const { attachments, isConversationAttachmentsLoading } =
@@ -180,12 +174,7 @@ export function ConversationFilesPanel({
               <span className="text-sm font-semibold text-foreground">
                 Working Files
               </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={closePanel}
-                icon={XClose}
-              />
+              <SidePanelCloseButton />
             </div>
           </AppLayoutTitle>
           {filesContent}
@@ -210,12 +199,7 @@ export function ConversationFilesPanel({
               </TabsList>
               <div className="flex items-center gap-2">
                 {sandboxStatus && <SandboxStatusChip status={sandboxStatus} />}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={closePanel}
-                  icon={XClose}
-                />
+                <SidePanelCloseButton />
               </div>
             </div>
           </AppLayoutTitle>

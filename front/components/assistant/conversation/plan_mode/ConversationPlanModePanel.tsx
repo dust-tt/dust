@@ -1,5 +1,5 @@
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { extractPlanTitle } from "@app/components/assistant/conversation/plan_mode/utils";
+import { SidePanelCloseButton } from "@app/components/assistant/conversation/SidePanelCloseButton";
 import { ConfirmContext } from "@app/components/Confirm";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import {
@@ -8,7 +8,7 @@ import {
 } from "@app/hooks/conversations/usePlanFile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Archive, Button, Markdown, Spinner, XClose } from "@dust-tt/sparkle";
+import { Archive, Button, Markdown, Spinner } from "@dust-tt/sparkle";
 import { useContext } from "react";
 
 interface ConversationPlanModePanelProps {
@@ -20,7 +20,6 @@ export function ConversationPlanModePanel({
   conversation,
   owner,
 }: ConversationPlanModePanelProps) {
-  const { closePanel } = useConversationSidePanelContext();
   const { content, isPlanLoading } = usePlanFile({
     conversationId: conversation.sId,
     workspaceId: owner.sId,
@@ -67,12 +66,7 @@ export function ConversationPlanModePanel({
                 onClick={() => void archivePlan()}
               />
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={closePanel}
-              icon={XClose}
-            />
+            <SidePanelCloseButton />
           </div>
         </div>
       </AppLayoutTitle>

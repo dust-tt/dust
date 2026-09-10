@@ -1,5 +1,5 @@
+import { SidePanelCloseButton } from "@app/components/assistant/conversation/SidePanelCloseButton";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { Button, XClose } from "@dust-tt/sparkle";
 import type React from "react";
 
 interface ConversationSidePanelHeaderProps {
@@ -16,10 +16,8 @@ export function ConversationSidePanelHeader({
       <div className="flex h-full items-center">
         {children}
         {onClose && (
-          <Button
-            variant="ghost"
+          <SidePanelCloseButton
             onClick={onClose}
-            icon={XClose}
             className="text-element-600 hover:text-element-900 ml-auto"
           />
         )}

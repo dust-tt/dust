@@ -76,6 +76,37 @@ export function panelIdentityKey(params: OpenPanelParams): string {
   return `${params.type}:${panelDataKey(params)}`;
 }
 
+// What goes in the history for a panel: a Frame is stored without its timestamp so going back
+// loads its latest version rather than a streaming-era snapshot.
+export function panelHistoryEntry(params: OpenPanelParams): OpenPanelParams {
+  if (params.type === INTERACTIVE_CONTENT_SIDE_PANEL_TYPE) {
+    return { type: params.type, fileId: params.fileId };
+  }
+  return params;
+}
+
+// Name of a panel, for the close button tooltip ("Back to Files").
+export function panelBackLabel(params: OpenPanelParams): string {
+  switch (params.type) {
+    case AGENT_ACTIONS_SIDE_PANEL_TYPE:
+      return "Actions";
+    case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
+      return "Frame";
+    case FILE_PREVIEW_SIDE_PANEL_TYPE:
+      return "File";
+    case FILES_SIDE_PANEL_TYPE:
+      return "Files";
+    case CREDITS_SIDE_PANEL_TYPE:
+      return "Credit usage";
+    case PLAN_SIDE_PANEL_TYPE:
+      return "Plan";
+    case SKILL_SIDE_PANEL_TYPE:
+      return "Skill";
+    default:
+      return assertNever(params);
+  }
+}
+
 // Inverse of panelDataKey, for panels restored from the URL hash (deep links, back/forward).
 export function panelParamsFromHash(
   type: ConversationSidePanelType,

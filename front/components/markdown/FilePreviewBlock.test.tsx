@@ -192,6 +192,8 @@ describe("getFilePreviewPlugin", () => {
         value={{
           currentPanel: undefined,
           isPanelClosing: false,
+          previousPanel: null,
+          forgetPanels: vi.fn(),
           openPanel,
           togglePanel: vi.fn(),
           closePanel: vi.fn(),

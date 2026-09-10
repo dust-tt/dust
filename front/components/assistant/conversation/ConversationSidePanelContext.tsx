@@ -2,6 +2,7 @@ import { getDefaultRightPanelSize } from "@app/components/assistant/conversation
 import type { OpenPanelParams } from "@app/components/assistant/conversation/side_panel_params";
 import {
   panelDataKey,
+  panelHistoryEntry,
   panelIdentityKey,
   panelParamsFromHash,
 } from "@app/components/assistant/conversation/side_panel_params";
@@ -36,9 +37,12 @@ interface ConversationSidePanelContextType {
   isPanelClosing: boolean;
   openPanel: (params: OpenPanelParams) => void;
   togglePanel: (params: OpenPanelParams) => void;
-  // Goes back to the panel shown before the current one when it was never closed itself,
-  // otherwise collapses the side panel.
+  // Panel that closePanel would go back to, null when it would collapse.
+  previousPanel: OpenPanelParams | null;
+  // Pops back to the previous panel in the history, or collapses when the history is empty.
   closePanel: () => void;
+  // Removes panels of that type from the history, for content that no longer exists.
+  forgetPanels: (type: ConversationSidePanelType) => void;
   onPanelClosed: () => void;
   setPanelRef: (ref: ImperativePanelHandle | null) => void;
   panelRef: React.MutableRefObject<ImperativePanelHandle | null>;
@@ -106,9 +110,17 @@ export function ConversationSidePanelProvider({
   );
 
   // Panels shown before the current one and not closed since, most recent last. Closing pops
-  // from here; opening a different panel pushes the current one.
+  // from here; opening a panel of another type pushes the current one (same-type panels replace
+  // each other, so browsing tool steps or Frames does not pile up). The ref is read synchronously
+  // in callbacks; `previousPanel` mirrors its top so consumers re-render.
   const panelHistoryRef = React.useRef<OpenPanelParams[]>([]);
+  const [previousPanel, setPreviousPanel] =
+    React.useState<OpenPanelParams | null>(null);
   const currentParamsRef = React.useRef<OpenPanelParams | null>(null);
+  const setHistory = useCallback((history: OpenPanelParams[]) => {
+    panelHistoryRef.current = history;
+    setPreviousPanel(history[history.length - 1] ?? null);
+  }, []);
 
   // This should be called once the closing animation is done (onTransitionEnd)
   // so you won't have content flickering. The whole side panel is gone at this point (X with
@@ -116,10 +128,10 @@ export function ConversationSidePanelProvider({
   const onPanelClosed = useCallback(() => {
     setIsPanelClosing(false);
     currentParamsRef.current = null;
-    panelHistoryRef.current = [];
+    setHistory([]);
     setData(undefined);
     setCurrentPanel(undefined);
-  }, [setData, setCurrentPanel]);
+  }, [setData, setCurrentPanel, setHistory]);
 
   // Collapse without touching the history.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -153,13 +165,25 @@ export function ConversationSidePanelProvider({
   );
 
   const closePanel = useCallback(() => {
-    const previous = panelHistoryRef.current.pop();
+    const history = panelHistoryRef.current;
+    const previous = history[history.length - 1];
     if (previous) {
+      setHistory(history.slice(0, -1));
       showPanel(previous);
       return;
     }
     collapsePanel();
-  }, [showPanel, collapsePanel]);
+  }, [showPanel, collapsePanel, setHistory]);
+
+  const forgetPanels = useCallback(
+    (type: ConversationSidePanelType) => {
+      const history = panelHistoryRef.current;
+      if (history.some((entry) => entry.type === type)) {
+        setHistory(history.filter((entry) => entry.type !== type));
+      }
+    },
+    [setHistory]
+  );
 
   // Shared selection; `toggle` decides whether re-selecting the shown panel closes it. A panel
   // that is already closing reads as unselected, so re-selecting it reopens instead.
@@ -179,14 +203,24 @@ export function ConversationSidePanelProvider({
         return;
       }
 
-      if (current) {
-        panelHistoryRef.current = [...panelHistoryRef.current, current].slice(
-          -MAX_PANEL_HISTORY
-        );
+      // The panel being shown never stays in the history, and only a change of panel type
+      // stacks the current one.
+      const targetKey = panelIdentityKey(params);
+      let history = panelHistoryRef.current.filter(
+        (entry) => panelIdentityKey(entry) !== targetKey
+      );
+      if (current && current.type !== params.type) {
+        const entry = panelHistoryEntry(current);
+        const entryKey = panelIdentityKey(entry);
+        history = [
+          ...history.filter((e) => panelIdentityKey(e) !== entryKey),
+          entry,
+        ].slice(-MAX_PANEL_HISTORY);
       }
+      setHistory(history);
       showPanel(params);
     },
-    [isPanelClosing, closePanel, showPanel]
+    [isPanelClosing, closePanel, showPanel, setHistory]
   );
 
   // Idempotent open for programmatic callers: a toggle could mis-close during a close→reopen
@@ -249,9 +283,11 @@ export function ConversationSidePanelProvider({
         ? currentPanel
         : undefined,
       isPanelClosing,
+      previousPanel,
       openPanel,
       togglePanel,
       closePanel,
+      forgetPanels,
       onPanelClosed,
       setPanelRef,
       panelRef,
@@ -262,9 +298,11 @@ export function ConversationSidePanelProvider({
     [
       currentPanel,
       isPanelClosing,
+      previousPanel,
       openPanel,
       togglePanel,
       closePanel,
+      forgetPanels,
       onPanelClosed,
       setPanelRef,
       virtuosoMsg,
