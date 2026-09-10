@@ -31,12 +31,9 @@ export function AttachmentCitation({
     : null;
   const audioSizeBytes = isRegularFile ? attachmentCitation.size : undefined;
 
-  // The file's bytes are still moving: we know the real percentage.
   const isTransferringBytes =
     isLoading && uploadProgress !== null && uploadProgress < 100;
 
-  // Audio is transcribed server-side, within the still-open upload request, so it only starts once
-  // the bytes are in (or right away when the transfer reports no progress at all).
   const isTranscribingAudio =
     isLoading && !isTransferringBytes && isAudioContentType(attachmentCitation);
 
@@ -50,7 +47,7 @@ export function AttachmentCitation({
       return `Uploading… ${uploadProgress}%`;
     }
     if (isTranscribingAudio && transcriptionProgress !== null) {
-      return `${transcriptionProgress}%`;
+      return `Transcribing…${transcriptionProgress}%`;
     }
     // Bytes are in but the request is still open: the server is extracting/converting the file.
     if (isLoading && uploadProgress === 100) {
