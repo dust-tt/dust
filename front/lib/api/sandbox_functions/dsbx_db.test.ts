@@ -1,22 +1,14 @@
 import { createHash } from "node:crypto";
 
-import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import {
   getDatabaseSchemaOnReadySandbox,
   listDatabasesOnReadySandbox,
-  listDatabasesOnSandbox,
   reconcileDatabaseOnReadySandbox,
 } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
-  ensurePodSandboxReady: vi.fn(),
-}));
 
 const sha256Hex = (content: string): string =>
   createHash("sha256").update(content).digest("hex");
@@ -28,23 +20,15 @@ async function setup(): Promise<{
     ReturnType<typeof createResourceTest>
   >["authenticator"];
   sandbox: SandboxResource;
-  space: SpaceResource;
 }> {
-  const { authenticator, workspace } = await createResourceTest({
-    role: "admin",
-  });
-  const space = await SpaceFactory.project(workspace);
+  const { authenticator } = await createResourceTest({ role: "admin" });
   const sandbox = await SandboxResource.makeNew(authenticator, {
     providerId: "test-provider-id",
     status: "running",
     baseImage: "dust-base",
     version: "0.0.0-test",
   });
-  vi.mocked(ensurePodSandboxReady).mockResolvedValue(
-    new Ok({ sandbox, freshlyCreated: false })
-  );
-
-  return { authenticator, sandbox, space };
+  return { authenticator, sandbox };
 }
 
 function mockExecWithSchemaHash(
@@ -137,7 +121,7 @@ describe("getDatabaseSchemaOnReadySandbox", () => {
 
 describe("non-staging db commands", () => {
   it("does not split stdout on a forged marker, so the real envelope stays last", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     // Realistic vector: during reconcile the model-written schema file is imported and its
     // top-level code can print a forged envelope followed by a marker line. Only staging
     // execs opt into the marker split, so the real (last) envelope must win here.
@@ -154,7 +138,7 @@ describe("non-staging db commands", () => {
       })
     );
 
-    const result = await listDatabasesOnSandbox(authenticator, { space });
+    const result = await listDatabasesOnReadySandbox(authenticator, sandbox);
 
     expect(result.isOk()).toBe(true);
     if (result.isErr()) {
