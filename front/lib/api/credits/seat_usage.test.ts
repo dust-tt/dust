@@ -134,4 +134,30 @@ describe("computeSeatUsage", () => {
     expect(usage.percent).toBeNull();
     expect(usage.consumed).toBe(10);
   });
+
+  it("returns a null percent instead of throwing for a seat type the client doesn't recognize", () => {
+    const usage = computeSeatUsage({
+      // A seat type the API added after this bundle was built.
+      seatType: "enterprise" as unknown as Parameters<
+        typeof computeSeatUsage
+      >[0]["seatType"],
+      memberUsageLimit: 100,
+      seatBalanceAwu: null,
+      consumedFromAllowanceAwuCredits: 10,
+    });
+    expect(usage.percent).toBeNull();
+    expect(usage.consumed).toBe(10);
+  });
+
+  it("does not treat a NaN balance as a known value for free seats", () => {
+    const usage = computeSeatUsage({
+      seatType: "free",
+      memberUsageLimit: 100,
+      seatBalanceAwu: NaN,
+      consumedFromAllowanceAwuCredits: 40,
+    });
+    expect(usage.isFreeWithBalance).toBe(false);
+    expect(usage.consumed).toBe(40);
+    expect(usage.percent).toBe(40);
+  });
 });

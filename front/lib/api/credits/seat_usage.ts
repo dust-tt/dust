@@ -1,5 +1,6 @@
 import type { MembershipSeatType } from "@app/types/memberships";
-import { isSeatBased } from "@app/types/memberships";
+import { isMembershipSeatType, isSeatBased } from "@app/types/memberships";
+import { isNumber } from "@app/types/shared/utils/general";
 
 // Pure seat-usage arithmetic. Every place that derives a seat percentage or an
 // allowance/pool split must go through here so the numbers never drift apart.
@@ -54,14 +55,18 @@ export function computeSeatUsage({
   const allowance = memberUsageLimit ?? 0;
   const isFreeWithBalance =
     seatType === "free" &&
-    typeof seatBalanceAwu === "number" &&
-    typeof memberUsageLimit === "number";
+    isNumber(seatBalanceAwu) &&
+    isNumber(memberUsageLimit);
   const consumed = isFreeWithBalance
     ? Math.max(0, memberUsageLimit - seatBalanceAwu)
     : consumedFromAllowanceAwuCredits;
+  // Reached from client-side rendering with seat types sourced from the API,
+  // so a value the client bundle doesn't recognize yet (the server started
+  // emitting a new seat type before the client redeployed) must degrade to
+  // "no percentage" instead of crashing the render.
   return {
     percent:
-      isSeatBased(seatType) && allowance > 0
+      isMembershipSeatType(seatType) && isSeatBased(seatType) && allowance > 0
         ? Math.min(100, (consumed / allowance) * 100)
         : null,
     consumed,

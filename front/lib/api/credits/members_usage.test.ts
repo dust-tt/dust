@@ -284,6 +284,21 @@ describe("makeMembersUsageComparator", () => {
     expect(sortIds({ meta, orderDirection: "desc" })).toEqual(["c", "b", "a"]);
   });
 
+  it("does not let a NaN sort key produce a NaN comparison", () => {
+    const compare = makeMembersUsageComparator({
+      sortMetaByUserId: new Map([
+        ["a", { sortKey: NaN }],
+        ["b", { sortKey: 50 }],
+      ]),
+      displayNameByUserId: new Map([
+        ["a", "user a"],
+        ["b", "user b"],
+      ]),
+      orderDirection: "asc",
+    });
+    expect(Number.isFinite(compare({ sId: "a" }, { sId: "b" }))).toBe(true);
+  });
+
   it("falls back to a case-insensitive name order, then id", () => {
     const meta = {
       z: { sortKey: 1 },

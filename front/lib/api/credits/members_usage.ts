@@ -103,6 +103,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isNumber } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 import { z } from "zod";
@@ -1812,7 +1813,7 @@ export function makeMembersUsageComparator({
     }
     if (keyA !== null && keyB !== null) {
       const cmp =
-        typeof keyA === "number" && typeof keyB === "number"
+        isNumber(keyA) && isNumber(keyB)
           ? keyA - keyB
           : String(keyA).localeCompare(String(keyB));
       if (cmp !== 0) {
@@ -1926,6 +1927,7 @@ async function resolveMembersUsagePageUsers({
       const [
         consumedByUserId,
         { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType },
+        seatDataByUserId,
         freeSeatCredits,
       ] = await Promise.all([
         fetchConsumedAwuCreditsByUserId({
@@ -1940,6 +1942,10 @@ async function resolveMembersUsagePageUsers({
           defaultPoolCapAwuCredits:
             creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
           includeAlertLinks: false,
+        }),
+        fetchSeatDataForMembersTable({
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
         }),
         freeSeatUserIds.length > 0
           ? fetchFreeSeatCreditsForMembersTable({
@@ -1968,7 +1974,10 @@ async function resolveMembersUsagePageUsers({
           seatType === "free"
             ? (freeStartingByUserId.get(u.sId) ?? null)
             : null;
-        const effectiveAllocationAwu = freeStartingBalanceAwu ?? seatAllowance;
+        // Same per-user allocation the response builder splits on, so the
+        // in-app sort key agrees with the pool figure it renders.
+        const awuAllocation = seatDataByUserId.get(u.sId)?.awuAllocation ?? 0;
+        const effectiveAllocationAwu = freeStartingBalanceAwu ?? awuAllocation;
         const { consumedFromPoolAwuCredits } = splitConsumedAwuCredits({
           totalConsumedAwuCredits: totalConsumed,
           allowanceAwuCredits: effectiveAllocationAwu,
