@@ -354,7 +354,7 @@ const InputBarContainer = ({
   );
   const { subscription } = useAuth();
   const { featureFlags } = useFeatureFlags();
-  const IsInlineReferenceEnabled = featureFlags.includes("inline_tool_knowledge_reference");
+  const isInlineReferenceEnabled = featureFlags.includes("inline_tool_knowledge_reference");
   const isMobile = useIsMobile();
   const clientType = useClientType();
   const {
@@ -418,10 +418,10 @@ const InputBarContainer = ({
   attachedNodesRef.current = attachedNodes;
   const selectedMCPServerViewIds = useMemo(
     () =>
-      IsInlineReferenceEnabled
+      isInlineReferenceEnabled
         ? new Set<string>()
         : new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
-    [IsInlineReferenceEnabled, selectedMCPServerViews]
+    [isInlineReferenceEnabled, selectedMCPServerViews]
   );
   const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
   selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
@@ -708,7 +708,7 @@ const InputBarContainer = ({
     debugger;
     onMCPServerViewSelect(view);
 
-    if (!IsInlineReferenceEnabled) {
+    if (!isInlineReferenceEnabled) {
       return;
     }
 
@@ -1787,7 +1787,7 @@ const InputBarContainer = ({
             }}
           >
             <div className="mb-1 flex flex-wrap items-center px-3">
-              {!IsInlineReferenceEnabled &&
+              {!isInlineReferenceEnabled &&
                 selectedMCPServerViews.map((msv) => (
                   <Fragment key={msv.sId}>
                     {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}

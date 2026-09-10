@@ -270,13 +270,13 @@ export const InputBar = React.memo(function InputBar({
     workspaceId: owner.sId,
   });
 
-  const IsInlineReferenceEnabled = featureFlags.includes("inline_tool_knowledge_reference");
+  const isInlineReferenceEnabled = featureFlags.includes("inline_tool_knowledge_reference");
 
   useEffect(() => {
-    if (!IsInlineReferenceEnabled) {
+    if (!isInlineReferenceEnabled) {
       setSelectedMCPServerViews(conversationTools);
     }
-  }, [conversationTools, IsInlineReferenceEnabled]);
+  }, [conversationTools, isInlineReferenceEnabled]);
 
   const { addTool, deleteTool } = useAddDeleteConversationTool({
     conversationId: conversation?.sId,
@@ -413,7 +413,7 @@ export const InputBar = React.memo(function InputBar({
 
   const handleMCPServerViewSelect = useCallback(
     (serverView: MCPServerViewLightType) => {
-      if (!IsInlineReferenceEnabled && selectedMCPServerViewIds.has(serverView.sId)) {
+      if (!isInlineReferenceEnabled && selectedMCPServerViewIds.has(serverView.sId)) {
         return;
       }
 
@@ -422,17 +422,17 @@ export const InputBar = React.memo(function InputBar({
           ? prev
           : [...prev, serverView]
       );
-      if (!IsInlineReferenceEnabled) {
+      if (!isInlineReferenceEnabled) {
         void addTool(serverView.sId);
       }
     },
-    [addTool, IsInlineReferenceEnabled, selectedMCPServerViewIds]
+    [addTool, isInlineReferenceEnabled, selectedMCPServerViewIds]
   );
 
   const handleMCPServerViewDeselect = useCallback(
     (serverView: MCPServerViewLightType) => {
       if (
-        !IsInlineReferenceEnabled &&
+        !isInlineReferenceEnabled &&
         !selectedMCPServerViewIds.has(serverView.sId)
       ) {
         return;
@@ -441,11 +441,11 @@ export const InputBar = React.memo(function InputBar({
       setSelectedMCPServerViews((prev) =>
         prev.filter((sv) => sv.sId !== serverView.sId)
       );
-      if (!IsInlineReferenceEnabled) {
+      if (!isInlineReferenceEnabled) {
         void deleteTool(serverView.sId);
       }
     },
-    [deleteTool, IsInlineReferenceEnabled, selectedMCPServerViewIds]
+    [deleteTool, isInlineReferenceEnabled, selectedMCPServerViewIds]
   );
 
   const clearSideChannelSelections = useCallback(async () => {
@@ -455,12 +455,12 @@ export const InputBar = React.memo(function InputBar({
     setSelectedMCPServerViews([]);
     setAttachedNodes([]);
 
-    if (!IsInlineReferenceEnabled) {
+    if (!isInlineReferenceEnabled) {
       await Promise.all(
         serverViewIds.map((serverViewId) => deleteTool(serverViewId))
       );
     }
-  }, [deleteTool, IsInlineReferenceEnabled, selectedMCPServerViews]);
+  }, [deleteTool, isInlineReferenceEnabled, selectedMCPServerViews]);
 
   const handleSelectedSpaceIdsChange = useCallback(
     async (spaceIds: string[]): Promise<string[] | null> => {
@@ -561,12 +561,12 @@ export const InputBar = React.memo(function InputBar({
       mentions.some((m) => m.id === a.sId && m.type === "agent")
     );
 
-    const messageTools = IsInlineReferenceEnabled ? extractToolTags(markdown) : [];
+    const messageTools = isInlineReferenceEnabled ? extractToolTags(markdown) : [];
     const toolIdsToAttach = getToolIdsToAttach(
       messageTools,
       new Set(conversationTools.map((serverView) => serverView.sId))
     );
-    const trackedTools = IsInlineReferenceEnabled
+    const trackedTools = isInlineReferenceEnabled
       ? messageTools.map((t) => t.name)
       : selectedMCPServerViews.map((t) => t.server.name);
 
@@ -612,7 +612,7 @@ export const InputBar = React.memo(function InputBar({
             }),
             contentNodes: attachedNodes,
           },
-          IsInlineReferenceEnabled
+          isInlineReferenceEnabled
             ? toolIdsToAttach
             : selectedMCPServerViews.map((sv) => sv.sId),
           selectedSpaceIds,
@@ -623,7 +623,7 @@ export const InputBar = React.memo(function InputBar({
           clearDraft();
           resetEditorText();
           fileUploaderService.resetUpload();
-          if (IsInlineReferenceEnabled) {
+          if (isInlineReferenceEnabled) {
             setSelectedMCPServerViews([]);
           }
           setSelectedSpacesState({
@@ -663,7 +663,7 @@ export const InputBar = React.memo(function InputBar({
         clearDraft();
         fileUploaderService.resetUpload();
         setAttachedNodes([]);
-        if (IsInlineReferenceEnabled) {
+        if (isInlineReferenceEnabled) {
           setSelectedMCPServerViews([]);
         }
 
@@ -693,7 +693,7 @@ export const InputBar = React.memo(function InputBar({
   };
 
   const handleResetMCPServerViews = () => {
-    if (!IsInlineReferenceEnabled) {
+    if (!isInlineReferenceEnabled) {
       selectedMCPServerViews.forEach((sv) => void deleteTool(sv.sId));
     }
     setSelectedMCPServerViews([]);
