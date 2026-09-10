@@ -1,4 +1,7 @@
-import { buildInputBarSlashCommandItems } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionItems";
+import {
+  filterInputBarSlashCommandItems,
+  getInputBarSlashCommandItems,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionItems";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { AttachContextSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSubMenuDropdown";
 import { applyAttachContextSelection } from "@app/components/editor/extensions/shared/slash_suggestion/applyAttachContextSelection";
@@ -126,20 +129,19 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       [editor, onClose, onModelSelectRef, range, storage]
     );
 
-    const getCommandItems = useCallback(
-      (commandQuery: string) =>
-        buildInputBarSlashCommandItems({
+    const allCommandItems = useMemo(
+      () =>
+        getInputBarSlashCommandItems({
           commands: slashCommandsRef.current ?? [],
           includeAttachKnowledge: includeAttachKnowledgeRef.current ?? false,
           includePickModel: includePickModelRef.current ?? false,
-          query: commandQuery,
         }),
       [includeAttachKnowledgeRef, includePickModelRef, slashCommandsRef]
     );
 
     const commandItems = useMemo(
-      () => getCommandItems(query),
-      [getCommandItems, query]
+      () => filterInputBarSlashCommandItems(allCommandItems, query),
+      [allCommandItems, query]
     );
 
     // "/model fab" opens the model sub-menu with "fab" as its query without pushing a frame.
@@ -149,10 +151,10 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
         activeFrame
           ? { frame: activeFrame, fromQuery: false, query }
           : resolveSlashSubMenuFromQuery({
-              commandItems: getCommandItems(""),
+              commandItems: allCommandItems,
               query,
             }),
-      [activeFrame, getCommandItems, query]
+      [activeFrame, allCommandItems, query]
     );
 
     const { capabilityItems, isLoading } = useInputBarSlashCommandCapabilities({
