@@ -1,4 +1,6 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
+import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
+import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
@@ -19,7 +21,7 @@ import {
   ContentMessage,
   cn,
   DataTable,
-  Spinner,
+  LoadingBlock,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
@@ -81,6 +83,7 @@ interface WorkspaceCreditUsageValueCardsProps {
   currentCycleStartMs: number | null;
   currentCycleEndMs: number | null;
   programmaticConsumedCredits: number | null;
+  isLoading: boolean;
   isRefreshing: boolean;
 }
 
@@ -91,8 +94,24 @@ export function WorkspaceCreditUsageValueCards({
   currentCycleStartMs,
   currentCycleEndMs,
   programmaticConsumedCredits,
+  isLoading,
   isRefreshing,
 }: WorkspaceCreditUsageValueCardsProps) {
+  if (isLoading) {
+    return (
+      <div
+        className={cn(
+          "grid gap-4",
+          showPoolCard ? "grid-cols-3" : "grid-cols-2"
+        )}
+      >
+        {Array.from({ length: showPoolCard ? 3 : 2 }, (_, index) => (
+          <LoadingBlock key={index} className="h-24 rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
   const cycleDayLabel = formatCycleDayLabel(
     currentCycleStartMs,
     currentCycleEndMs
@@ -181,6 +200,17 @@ const CYCLE_HISTORY_COLUMNS: ColumnDef<CycleHistoryRowData, string>[] = [
 export const INITIAL_CYCLE_HISTORY_ROW_COUNT = 2;
 export const CYCLE_HISTORY_LOAD_MORE_COUNT = 5;
 
+function CycleHistorySkeletonCell({ columnId }: UsageTableSkeletonCellProps) {
+  switch (columnId) {
+    case "cycle":
+      return <LoadingBlock className="h-3 w-56 max-w-full" />;
+    case "consumedCredits":
+      return <LoadingBlock className="ml-auto h-3 w-16" />;
+    default:
+      return null;
+  }
+}
+
 export function WorkspaceCreditPoolCycleHistoryTable({
   cycleBreakdown,
   cycleHistoryLoadMore,
@@ -241,8 +271,16 @@ function WorkspaceCreditPoolHistory({
       );
     case "loading":
       return (
-        <div className="flex justify-center py-4">
-          <Spinner />
+        <div className="flex flex-col gap-2">
+          <UsageTableSkeleton
+            columns={CYCLE_HISTORY_COLUMNS}
+            SkeletonCell={CycleHistorySkeletonCell}
+            rowCount={INITIAL_CYCLE_HISTORY_ROW_COUNT}
+          />
+          <div className="flex h-6 items-center justify-between px-1">
+            <LoadingBlock className="h-3 w-16" />
+            <LoadingBlock className="h-3 w-14" />
+          </div>
         </div>
       );
     case "ready":
@@ -302,10 +340,6 @@ export function WorkspaceCreditPoolSection({
         >
           An error occurred while loading the workspace&apos;s credit pool data.
         </ContentMessage>
-      ) : cardsStatus === "loading" ? (
-        <div className="flex justify-center py-8">
-          <Spinner />
-        </div>
       ) : (
         <>
           <WorkspaceCreditUsageValueCards
@@ -315,10 +349,11 @@ export function WorkspaceCreditPoolSection({
             currentCycleStartMs={currentCycleStartMs}
             currentCycleEndMs={currentCycleEndMs}
             programmaticConsumedCredits={programmaticConsumedCredits}
+            isLoading={cardsStatus === "loading"}
             isRefreshing={isCardsRefreshing}
           />
           <WorkspaceCreditPoolHistory
-            tableStatus={tableStatus}
+            tableStatus={cardsStatus === "loading" ? "loading" : tableStatus}
             cycleBreakdown={cycleBreakdown}
             cycleHistoryLoadMore={cycleHistoryLoadMore}
           />
@@ -417,7 +452,10 @@ export function CreditPoolCardsFromCycleData({
       cardsStatus={cardsStatus}
       isCardsRefreshing={isCardsRefreshing}
       tableStatus={tableStatus}
-      showPoolCard={hasPool}
+      // Reserve the three-card layout until the pool response is available.
+      showPoolCard={
+        hasPool || (cardsStatus === "loading" && !awuPoolCurrentCycle)
+      }
       isVisible={hasPool || hasExcessData}
       totalRemainingCredits={totalRemainingCredits}
       consumedCredits={
