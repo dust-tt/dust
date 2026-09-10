@@ -1,4 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { GetWorkspaceGrantedRolesResponseBody } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
 import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -9,9 +10,10 @@ import type {
   PatchGroupResponseBody,
   PostGroupResponseBody,
   PostMemberGroupResponseBody,
+  PutGroupGrantedRoleResponseBody,
 } from "@app/types/api/groups/manage";
 import type { PutGroupSpendLimitResponseBody } from "@app/types/api/groups/spend_limit";
-import type { GroupKind } from "@app/types/groups";
+import type { GroupGrantableRole, GroupKind } from "@app/types/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -63,6 +65,37 @@ export function useGroups({
     isGroupsLoading: !error && !data && !disabled,
     isGroupsError: !!error,
     mutateGroups: mutate,
+  };
+}
+
+// Workspace roles (admin/manager) that are granted by at least one group, i.e.
+// (partly) managed through group membership. Used to restrict manual role
+// editing in the members UI.
+function grantedRolesUrl(workspaceId: string): string {
+  return `/api/w/${workspaceId}/granted-roles`;
+}
+
+export function useWorkspaceGrantedRoles({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const grantedRolesFetcher: Fetcher<GetWorkspaceGrantedRolesResponseBody> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    grantedRolesUrl(workspaceId),
+    grantedRolesFetcher,
+    { disabled }
+  );
+
+  return {
+    grantedRoles: data?.grantedRoles ?? emptyArray<GroupGrantableRole>(),
+    isGrantedRolesLoading: !error && !data && !disabled,
+    isGrantedRolesError: error,
   };
 }
 
@@ -583,4 +616,70 @@ export function useUpdateGroupSpendLimit({
   );
 
   return { doUpdateGroupSpendLimit };
+}
+
+export function useUpdateGroupGrantedRole({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const doUpdateGroupGrantedRole = useCallback(
+    async ({
+      groupId,
+      groupName,
+      grantedRole,
+    }: {
+      groupId: string;
+      groupName: string;
+      grantedRole: GroupGrantableRole | null;
+    }): Promise<PutGroupGrantedRoleResponseBody | null> => {
+      setIsUpdating(true);
+      try {
+        const res = await clientFetch(
+          `/api/w/${owner.sId}/groups/${groupId}/granted_role`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ grantedRole }),
+          }
+        );
+
+        if (!res.ok) {
+          const error = await res.json();
+          sendNotification({
+            type: "error",
+            title: "Failed to update group role",
+            description:
+              error?.error?.message ?? "An unexpected error occurred.",
+          });
+          return null;
+        }
+
+        const body: PutGroupGrantedRoleResponseBody = await res.json();
+
+        sendNotification({
+          type: "success",
+          title: "Group role updated",
+          description: grantedRole
+            ? `Members of ${groupName} are now ${grantedRole}s.`
+            : `${groupName} no longer grants a role.`,
+        });
+
+        // Changing the mapping re-syncs member roles, so refresh the groups
+        // list and anything derived from role-granting groups.
+        await invalidateWorkspaceGroups(owner.sId);
+        await mutate(grantedRolesUrl(owner.sId));
+
+        return body;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return { doUpdateGroupGrantedRole, isUpdating };
 }

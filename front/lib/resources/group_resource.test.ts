@@ -70,7 +70,7 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
   };
 });
 
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -1100,6 +1100,414 @@ describe("GroupResource", () => {
         await transaction.rollback();
         throw err;
       }
+    });
+  });
+
+  describe("role-granting groups", () => {
+    async function makeRoleGroup(
+      name: string,
+      grantedRole: "admin" | "manager" | null,
+      kind: "provisioned" | "regular_manual" = "provisioned"
+    ) {
+      return GroupResource.makeNew({
+        name,
+        workspaceId: workspace.id,
+        kind,
+        ...(kind === "provisioned" ? { workOSGroupId: `workos-${name}` } : {}),
+        grantedRole,
+      });
+    }
+
+    async function roleOf(member: UserResource) {
+      const membership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: member,
+          workspace,
+        });
+      return membership?.role;
+    }
+
+    describe("computeUserRoleFromGroups", () => {
+      let member: UserResource;
+
+      beforeEach(async () => {
+        member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+      });
+
+      it("returns 'user' when in no role-granting group", async () => {
+        expect(
+          await GroupResource.computeUserRoleFromGroups(authenticator, member)
+        ).toBe("user");
+      });
+
+      it("grants 'admin' from an admin-granting group", async () => {
+        const group = await makeRoleGroup("g-admin", "admin");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+
+        expect(
+          await GroupResource.computeUserRoleFromGroups(authenticator, member)
+        ).toBe("admin");
+      });
+
+      it("grants 'manager' from a manager-granting group", async () => {
+        const group = await makeRoleGroup("g-manager", "manager");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+
+        expect(
+          await GroupResource.computeUserRoleFromGroups(authenticator, member)
+        ).toBe("manager");
+      });
+
+      it("prefers 'admin' over 'manager'", async () => {
+        const adminGroup = await makeRoleGroup("g-admin", "admin");
+        const managerGroup = await makeRoleGroup("g-manager", "manager");
+        await adminGroup.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+        await managerGroup.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+
+        expect(
+          await GroupResource.computeUserRoleFromGroups(authenticator, member)
+        ).toBe("admin");
+      });
+    });
+
+    describe("membership role sync", () => {
+      it("upgrades a member's role when added to a role-granting group", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup("g-admin", "admin");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+
+        expect(await roleOf(member)).toBe("admin");
+      });
+
+      it("downgrades a member's role when removed from a role-granting group", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup("g-manager", "manager");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+        expect(await roleOf(member)).toBe("manager");
+
+        await group.dangerouslyRemoveMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+        expect(await roleOf(member)).toBe("user");
+      });
+
+      it("does not change roles for groups that grant no role", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup("g-none", null, "regular_manual");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+        });
+
+        expect(await roleOf(member)).toBe("user");
+      });
+    });
+
+    describe("setGrantedRole", () => {
+      it("backfills members' roles when a mapping is set", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup("g-manual", null, "regular_manual");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+        });
+        expect(await roleOf(member)).toBe("user");
+
+        const setRes = await group.setGrantedRole(authenticator, "manager");
+        expect(setRes.isOk()).toBe(true);
+        expect(await roleOf(member)).toBe("manager");
+      });
+
+      it("does not downgrade members when the mapping is cleared (last group keeps the role)", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup("g-manual", null, "regular_manual");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+        });
+
+        await group.setGrantedRole(authenticator, "manager");
+        expect(await roleOf(member)).toBe("manager");
+
+        // Clearing the only manager-granting group must not strip the role.
+        const clearRes = await group.setGrantedRole(authenticator, null);
+        expect(clearRes.isOk()).toBe(true);
+        expect(await roleOf(member)).toBe("manager");
+      });
+
+      it("downgrades members of a cleared group when another group still grants the role", async () => {
+        const user1 = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, user1, { role: "user" });
+        const user2 = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, user2, { role: "user" });
+
+        const groupA = await makeRoleGroup("g-a", "admin", "regular_manual");
+        await groupA.dangerouslyAddMembers(authenticator, {
+          users: [user1.toJSON()],
+        });
+        const groupB = await makeRoleGroup("g-b", "admin", "regular_manual");
+        await groupB.dangerouslyAddMembers(authenticator, {
+          users: [user2.toJSON()],
+        });
+        expect(await roleOf(user1)).toBe("admin");
+        expect(await roleOf(user2)).toBe("admin");
+
+        // Remove groupB from admin. groupA still grants admin, so user2 (only in
+        // groupB) is downgraded while user1 stays admin.
+        const res = await groupB.setGrantedRole(authenticator, null);
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(user1)).toBe("admin");
+        expect(await roleOf(user2)).toBe("user");
+      });
+
+      it("does not downgrade admins when the mapping is lowered to manager", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup("g-manual", null, "regular_manual");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+        });
+
+        await group.setGrantedRole(authenticator, "admin");
+        expect(await roleOf(member)).toBe("admin");
+
+        const res = await group.setGrantedRole(authenticator, "manager");
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(member)).toBe("admin");
+      });
+
+      it("does not downgrade the acting admin, but downgrades other members", async () => {
+        // `user`/`authenticator` is the acting admin. Keep admin still granted by
+        // another group so the last-group protection does not apply, isolating the
+        // acting-admin protection.
+        const otherAdmin = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, otherAdmin, {
+          role: "admin",
+        });
+        const adminGroupY = await makeRoleGroup(
+          "g-admin-y",
+          "admin",
+          "regular_manual"
+        );
+        await adminGroupY.dangerouslyAddMembers(authenticator, {
+          users: [otherAdmin.toJSON()],
+        });
+
+        const memberZ = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, memberZ, { role: "user" });
+
+        const groupX = await makeRoleGroup("g-x", "admin", "regular_manual");
+        await groupX.dangerouslyAddMembers(authenticator, {
+          users: [user.toJSON(), memberZ.toJSON()],
+        });
+        expect(await roleOf(user)).toBe("admin");
+        expect(await roleOf(memberZ)).toBe("admin");
+
+        // Remap X to manager. Admin is still granted by Y, so only the acting
+        // admin (`user`) is kept; the other member is downgraded.
+        const res = await groupX.setGrantedRole(authenticator, "manager");
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(user)).toBe("admin");
+        expect(await roleOf(memberZ)).toBe("manager");
+      });
+
+      it("rejects mapping a non-manageable group kind", async () => {
+        const autoGroup = await GroupResource.makeNew({
+          name: "g-auto",
+          workspaceId: workspace.id,
+          kind: "regular_auto",
+        });
+
+        const res = await autoGroup.setGrantedRole(authenticator, "admin");
+        expect(res.isErr()).toBe(true);
+      });
+    });
+
+    describe("admin-granting group membership is admin-only", () => {
+      it("lets an admin add a member to an admin-granting group", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup(
+          "g-admin-manual",
+          "admin",
+          "regular_manual"
+        );
+
+        const res = await group.updateRegularManualGroupMembers(authenticator, {
+          addUserIds: [member.sId],
+          removeUserIds: [],
+        });
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(member)).toBe("admin");
+      });
+
+      it("blocks a manager from adding a member to an admin-granting group", async () => {
+        const manager = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, manager, {
+          role: "manager",
+        });
+        const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          manager.sId,
+          workspace.sId
+        );
+
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup(
+          "g-admin-manual",
+          "admin",
+          "regular_manual"
+        );
+
+        const res = await group.updateRegularManualGroupMembers(managerAuth, {
+          addUserIds: [member.sId],
+          removeUserIds: [],
+        });
+        expect(res.isErr()).toBe(true);
+        if (res.isErr()) {
+          expect(res.error.code).toBe("unauthorized");
+        }
+        expect(await roleOf(member)).toBe("user");
+      });
+
+      it("lets a manager add a member to a manager-granting group", async () => {
+        const manager = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, manager, {
+          role: "manager",
+        });
+        const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          manager.sId,
+          workspace.sId
+        );
+
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup(
+          "g-manager-manual",
+          "manager",
+          "regular_manual"
+        );
+
+        const res = await group.updateRegularManualGroupMembers(managerAuth, {
+          addUserIds: [member.sId],
+          removeUserIds: [],
+        });
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(member)).toBe("manager");
+      });
+
+      it("does not downgrade an admin who removes themselves from the last admin group", async () => {
+        // `authenticator`/`user` is the acting admin and the only member of the
+        // only admin-granting group.
+        const adminGroup = await makeRoleGroup(
+          "g-admin",
+          "admin",
+          "regular_manual"
+        );
+        await adminGroup.dangerouslyAddMembers(authenticator, {
+          users: [user.toJSON()],
+        });
+        expect(await roleOf(user)).toBe("admin");
+
+        // Removing themselves must not strip their own admin (no self-lockout).
+        await adminGroup.dangerouslyRemoveMembers(authenticator, {
+          users: [user.toJSON()],
+        });
+        expect(await roleOf(user)).toBe("admin");
+      });
+
+      it("lets another admin downgrade an admin by removing them from the admin group", async () => {
+        const otherAdmin = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, otherAdmin, {
+          role: "admin",
+        });
+        const otherAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          otherAdmin.sId,
+          workspace.sId
+        );
+
+        const target = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, target, { role: "user" });
+
+        const adminGroup = await makeRoleGroup(
+          "g-admin",
+          "admin",
+          "regular_manual"
+        );
+        await adminGroup.dangerouslyAddMembers(otherAdminAuth, {
+          users: [target.toJSON()],
+        });
+        expect(await roleOf(target)).toBe("admin");
+
+        // Another admin removing `target` (not the acting user) downgrades them.
+        await adminGroup.dangerouslyRemoveMembers(otherAdminAuth, {
+          users: [target.toJSON()],
+        });
+        expect(await roleOf(target)).toBe("user");
+      });
+
+      it("does not let a manager demote an admin via a manager-granting group", async () => {
+        const manager = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, manager, {
+          role: "manager",
+        });
+        const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          manager.sId,
+          workspace.sId
+        );
+
+        const targetAdmin = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, targetAdmin, {
+          role: "admin",
+        });
+
+        const group = await makeRoleGroup(
+          "g-manager-manual",
+          "manager",
+          "regular_manual"
+        );
+
+        // A manager may edit a manager-granting group, but adding an admin to it
+        // must not downgrade that admin to manager (would bypass the admin-role
+        // change guard).
+        const res = await group.updateRegularManualGroupMembers(managerAuth, {
+          addUserIds: [targetAdmin.sId],
+          removeUserIds: [],
+        });
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(targetAdmin)).toBe("admin");
+      });
     });
   });
 });

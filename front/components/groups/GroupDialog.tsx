@@ -1,15 +1,18 @@
 import type { SearchMemberType } from "@app/components/members/MemberSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useCreateGroup, useGroup, useUpdateGroup } from "@app/lib/swr/groups";
 import type { GroupType } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  ContentMessage,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  InfoCircle,
   Input,
   Spinner,
 } from "@dust-tt/sparkle";
@@ -34,11 +37,17 @@ export function GroupDialog({
 }: GroupDialogProps) {
   const isEdit = groupId !== null;
 
+  const { isAdmin } = useAuth();
   const { group, members, isGroupLoading } = useGroup({
     owner,
     groupId,
     disabled: !isOpen,
   });
+
+  // Managing the membership of a group that grants the admin role is restricted
+  // to admins: adding a member escalates them to admin. Managers can view but
+  // not edit such a group.
+  const isReadOnlyForManager = !isAdmin && group?.grantedRole === "admin";
 
   // In edit mode we wait for the group and its members before mounting the
   // form so the member table can seed its selection from the fetched members.
@@ -57,6 +66,7 @@ export function GroupDialog({
             groupId={groupId}
             initialName={group?.name ?? ""}
             initialMembers={members}
+            readOnly={isReadOnlyForManager}
             onCreated={onCreated}
             onClose={() => onOpenChange(false)}
           />
@@ -77,6 +87,9 @@ interface GroupFormProps {
   groupId: string | null;
   initialName: string;
   initialMembers: SearchMemberType[];
+  // When true, the group grants the admin role and the current user is not an
+  // admin: membership is read-only (see the admin-only membership contract).
+  readOnly?: boolean;
   onCreated?: (group: GroupType) => void;
   onClose: () => void;
 }
@@ -86,6 +99,7 @@ function GroupForm({
   groupId,
   initialName,
   initialMembers,
+  readOnly = false,
   onCreated,
   onClose,
 }: GroupFormProps) {
@@ -119,24 +133,44 @@ function GroupForm({
   };
 
   const shouldDisableButton =
-    isSubmitting || name.trim().length === 0 || selectedMemberIds.size === 0;
+    readOnly ||
+    isSubmitting ||
+    name.trim().length === 0 ||
+    selectedMemberIds.size === 0;
 
   return (
     <>
       <DialogContainer>
         <div className="flex flex-col gap-5">
+          {readOnly && (
+            <ContentMessage
+              variant="warning"
+              icon={InfoCircle}
+              title="Managed by admins"
+              size="sm"
+            >
+              This group grants the Admin role. Only workspace admins can change
+              its members.
+            </ContentMessage>
+          )}
           <Input
             name="group-name"
             label="Group name"
             placeholder="e.g. Sales"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            disabled={readOnly}
             autoFocus
           />
           <MemberSelectionTable
             owner={owner}
             selectedMemberIds={selectedMemberIds}
-            onSelectionChange={(ids) => setSelectedMemberIds(ids)}
+            onSelectionChange={(ids) => {
+              if (readOnly) {
+                return;
+              }
+              setSelectedMemberIds(ids);
+            }}
             initialMembers={initialMembers}
           />
         </div>

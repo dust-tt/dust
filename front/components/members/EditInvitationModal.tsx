@@ -1,12 +1,12 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import {
+  GROUP_ROLE_MANAGED_MESSAGE,
   getRoleDescription,
-  ROLE_PROVISIONING_GROUPS_LABEL,
 } from "@app/components/members/Roles";
 import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { sendInvitations, updateInvitation } from "@app/lib/invitations";
-import { useProvisioningStatus } from "@app/lib/swr/workos";
+import { useWorkspaceGrantedRoles } from "@app/lib/swr/groups";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { ActiveRoleType, WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
@@ -25,14 +25,14 @@ import {
 import { useContext, useEffect, useState } from "react";
 
 function getInvitationRoleMessage({
-  isRoleManagedByProvisioning,
+  isRoleManagedByGroup,
   role,
 }: {
-  isRoleManagedByProvisioning: boolean;
+  isRoleManagedByGroup: boolean;
   role: ActiveRoleType;
 }): string {
-  if (isRoleManagedByProvisioning) {
-    return `This invitation's role is managed by your identity provider through group provisioning (${ROLE_PROVISIONING_GROUPS_LABEL}). Role changes must be made in your identity provider.`;
+  if (isRoleManagedByGroup) {
+    return GROUP_ROLE_MANAGED_MESSAGE;
   }
 
   return `The role defines the rights of a member for the workspace. ${getRoleDescription(
@@ -61,18 +61,17 @@ export function EditInvitationModal({
   const canManageAdminInvitation =
     invitation?.initialRole !== "admin" || isAdmin(owner);
 
-  const { roleProvisioningStatus } = useProvisioningStatus({
+  const { grantedRoles } = useWorkspaceGrantedRoles({
     workspaceId: owner.sId,
   });
 
-  // Check if this invitation's role would be managed by provisioning groups
-  const isRoleManagedByProvisioning =
-    (roleProvisioningStatus.hasAdminGroup && selectedRole === "admin") ||
-    (roleProvisioningStatus.hasManagerGroup && selectedRole === "manager");
+  // Check if this invitation's role would be managed by a role-granting group.
+  const isRoleManagedByGroup =
+    selectedRole !== undefined && grantedRoles.some((r) => r === selectedRole);
 
   const roleMessage = invitation
     ? getInvitationRoleMessage({
-        isRoleManagedByProvisioning,
+        isRoleManagedByGroup,
         role: invitation.initialRole,
       })
     : "";
@@ -131,7 +130,7 @@ export function EditInvitationModal({
                   <RoleDropDown
                     selectedRole={selectedRole}
                     onChange={setSelectedRole}
-                    disabled={isRoleManagedByProvisioning}
+                    disabled={isRoleManagedByGroup}
                   />
                 </div>
                 <div className="text-muted-foreground">{roleMessage}</div>
@@ -177,8 +176,7 @@ export function EditInvitationModal({
             label: "Update role",
             onClick: handleSave,
             disabled:
-              selectedRole === invitation?.initialRole ||
-              isRoleManagedByProvisioning,
+              selectedRole === invitation?.initialRole || isRoleManagedByGroup,
           }}
         />
       </SheetContent>

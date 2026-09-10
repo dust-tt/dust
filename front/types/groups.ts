@@ -78,6 +78,20 @@ export function isUserVisibleGroupKind(
 
 export type UserVisibleGroupKind = (typeof USER_VISIBLE_GROUP_KINDS)[number];
 
+// A group can grant a workspace role to its active members. Only "admin" and
+// "manager" are grantable: every member is at least a "user", and "builder" is
+// deprecated. A group with a null `grantedRole` grants no role. When a user
+// belongs to several role-granting groups, the highest role wins
+// (admin > manager). See `GroupResource.computeUserRoleFromGroups`.
+export const GROUP_GRANTABLE_ROLES = ["admin", "manager"] as const;
+export type GroupGrantableRole = (typeof GROUP_GRANTABLE_ROLES)[number];
+
+export function isGroupGrantableRole(
+  value: unknown
+): value is GroupGrantableRole {
+  return GROUP_GRANTABLE_ROLES.includes(value as GroupGrantableRole);
+}
+
 export function isGroupKind(value: unknown): value is GroupKind {
   return GROUP_KINDS.includes(value as GroupKind);
 }
@@ -106,6 +120,9 @@ export type GroupType = {
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // null means the group carries no cap (falls back to the workspace default).
   poolCapAwuCredits: number | null;
+  // Workspace role granted to this group's active members (admin or manager),
+  // or null when the group grants no role.
+  grantedRole: GroupGrantableRole | null;
   // Member sIds, only populated when explicitly requested
   memberIds?: string[];
 };
