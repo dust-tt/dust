@@ -184,7 +184,11 @@ app.post(
               },
             });
           }
-          const key = auth.key();
+          // Must resolve the same key as the authoritative gate in
+          // `postUserMessage`, or a capped originating key behind an uncapped
+          // system key would pass here and be rejected there — persisting the
+          // empty conversation this precheck exists to avoid.
+          const key = auth.keyForUsageAttribution();
           if (key && (await isApiKeyBlocked(auth, { keyModelId: key.id }))) {
             return apiError(ctx, {
               status_code: 429,

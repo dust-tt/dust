@@ -1740,8 +1740,9 @@ export class Authenticator {
   // on a direct call.
   /**
    * @cc [owner:fabiencelier,label:product;performance] one-usage-key-identity
-   * Every per-API-key spend-cap read, gate and increment, and every persisted usage attribution,
-   * MUST resolve the key through this method.
+   * Every per-API-key spend-cap read, gate and increment, every persisted usage attribution, and
+   * every api-key field on an observability trace MUST resolve the key through this method.
+   * Authorization checks are the exception and MUST keep using `key()`.
    */
   keyForUsageAttribution(): { id: ModelId; name: string } | null {
     if (this._attributionKey) {
