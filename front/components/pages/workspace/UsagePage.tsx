@@ -1269,8 +1269,9 @@ export function UsagePage() {
           {!isNewUsagePage &&
           isCreditPriced &&
           !showConsumptionAnalytics &&
-          !isAwuPoolCurrentCycleLoading &&
-          (isAwuPoolCurrentCycleError || hasPool) ? (
+          (isAwuPoolCurrentCycleLoading ||
+            isAwuPoolCurrentCycleError ||
+            hasPool) ? (
             <Page.Vertical gap="xs" align="stretch">
               <Page.H variant="h4">Workspace credit pool</Page.H>
 
