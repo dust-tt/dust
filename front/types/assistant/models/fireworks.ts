@@ -22,6 +22,8 @@ export const FIREWORKS_GLM_5_MODEL_ID =
   "accounts/fireworks/models/glm-5" as const;
 export const FIREWORKS_GLM_5P2_MODEL_ID =
   "accounts/fireworks/models/glm-5p2" as const;
+export const FIREWORKS_GLM_5P3_MODEL_ID =
+  "accounts/fireworks/models/glm-5p3" as const;
 export const FIREWORKS_GLM_5P3_FLASH_MODEL_ID =
   "accounts/fireworks/models/glm-5p3-flash" as const;
 export const FIREWORKS_INKLING_MODEL_ID =
@@ -362,7 +364,8 @@ export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
     "Z.ai's GLM-5.2 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context, served via Fireworks).",
   shortDescription: "GLM-5.2 for coding and agentic tasks.",
   isLegacy: false,
-  isLatest: true,
+  // Superseded as the latest full-size GLM by GLM-5.3.
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: false,
   supportedReasoningEfforts: {
@@ -372,6 +375,50 @@ export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
     high: true,
   },
   defaultReasoningEffort: "high",
+  supportsResponseFormat: true,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+// Specs, pricing, and availability taken 2026-09-07 from
+// https://docs.z.ai/guides/llm/glm-5.3 and
+// https://fireworks.ai/models/fireworks/glm-5p3. Z.ai documents a text-only
+// 1M-context model with 131,072 max output; it shares GLM-5.2's base weights
+// and Fireworks price, with gains from post-training.
+export const FIREWORKS_GLM_5P3_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "fireworks",
+  modelMaker: "zai",
+  modelId: FIREWORKS_GLM_5P3_MODEL_ID,
+  displayName: "GLM-5.3",
+  contextSize: 1_000_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Z.ai's GLM-5.3 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context, served via Fireworks).",
+  shortDescription: "GLM-5.3 for coding and agentic tasks.",
+  isLegacy: false,
+  // Latest full-size GLM, superseding GLM-5.2. GLM-5.3 Flash stays the latest
+  // of the separate efficiency subfamily.
+  isLatest: true,
+  generationTokensCount: 64_000,
+  // Z.ai documents GLM-5.3 as text-only; unlike GLM-5.3 Flash it takes no
+  // image input, which Fireworks also reports.
+  supportsVision: false,
+  // GLM-5.3 documents low/high/max. Dust maps light/medium/high onto those
+  // native efforts in the llms layer; thinking cannot be disabled.
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  // Dust's `high` maps to Z.ai's documented `max` default, and matches the
+  // default GLM-5.2 shipped with.
+  defaultReasoningEffort: "high",
+  useNativeLightReasoning: true,
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
