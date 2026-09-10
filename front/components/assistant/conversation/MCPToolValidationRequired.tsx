@@ -138,8 +138,11 @@ export function MCPToolValidationRequired({
 
   // Keep a ref to the latest `handleValidation` so the one-shot auto-approve
   // effect never fires with a stale closure while depending only on the trigger.
+  // The ref is synced in an effect (not during render) to keep render pure.
   const handleValidationRef = useRef(handleValidation);
-  handleValidationRef.current = handleValidation;
+  useEffect(() => {
+    handleValidationRef.current = handleValidation;
+  });
 
   const hasAutoApprovedRef = useRef(false);
   useEffect(() => {
