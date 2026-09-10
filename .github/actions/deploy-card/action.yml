@@ -193,7 +193,7 @@ runs:
 
           if (shipping.commits.length > 0) {
             const newest = shipping.commits.slice(-20).reverse();
-            const lines = newest.map((c) => `• <${c.html_url}|${esc(c.commit.message.split('\n')[0])}> (${esc(c.commit.author.name)})`);
+            const lines = newest.map((c) => `• <${c.html_url}|${esc(c.commit.message.split('\n')[0])}> by ${authors.get((c.author && c.author.login) || c.commit.author.name)}`);
             if (shipping.total > newest.length) lines.push(`… and ${shipping.total - newest.length} more`);
             await slack('chat.postMessage', { channel: process.env.CHANNEL, thread_ts: posted.ts, text: `📝 ${revert ? 'What is being rolled back' : 'What is shipping'}\n${lines.join('\n')}` });
           }
