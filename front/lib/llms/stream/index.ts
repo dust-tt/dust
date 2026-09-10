@@ -3,6 +3,7 @@ import { DustAnthropicClaudeFableFiveGlobalAnthropicStream } from "@app/lib/llms
 import { DustAnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_haiku_four_dot_five_eu_agent_platform";
 import { DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_haiku_four_dot_five_global_anthropic";
 import { DustAnthropicClaudeOpusFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_five_global_anthropic";
+import { DustAnthropicClaudeOpusFiveGlobalBedrockStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_five_global_bedrock";
 import { DustAnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_four_dot_eight_eu_agent_platform";
 import { DustAnthropicClaudeOpusFourDotEightGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_four_dot_eight_global_anthropic";
 import { DustAnthropicClaudeOpusFourDotSevenEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_four_dot_seven_eu_agent_platform";
@@ -118,6 +119,10 @@ export const DUST_STREAM_ENDPOINTS = {
     DustAnthropicClaudeFableFiveGlobalAnthropicStream,
   [DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream.id]:
     DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream,
+  // Registered before the direct Anthropic endpoint: both are `global`, so the
+  // region sort leaves them tied and registration order decides which one wins.
+  [DustAnthropicClaudeOpusFiveGlobalBedrockStream.id]:
+    DustAnthropicClaudeOpusFiveGlobalBedrockStream,
   [DustAnthropicClaudeOpusFiveGlobalAnthropicStream.id]:
     DustAnthropicClaudeOpusFiveGlobalAnthropicStream,
   [DustAnthropicClaudeOpusFourDotEightGlobalAnthropicStream.id]:
