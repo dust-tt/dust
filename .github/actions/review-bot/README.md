@@ -69,9 +69,9 @@ Inline comments and review summaries invoke the action directly in their request
 the imported action does not yet accept these events as delegated requests. They still publish a
 review and progress status on the captured PR head.
 
-Each review run reports a distinct `Contract review (<run-id>)` commit status linked to the workflow,
-including progress, completion, failure, and cancellation. Success means the review completed;
-findings remain in the comment review. Concurrent runs cannot overwrite one another's status.
+Each review run reports a distinct `Review Code Contracts (<run-id>)` commit status linked to the
+workflow, including progress, completion, failure, and cancellation. Success means the review
+completed; findings remain in the comment review. Concurrent runs cannot overwrite one another's status.
 
 The request job needs `actions: write` to dispatch. Review execution needs `contents: read`,
 `pull-requests: write`, `statuses: write`, and `actions: read` to resolve delegated requesters.
