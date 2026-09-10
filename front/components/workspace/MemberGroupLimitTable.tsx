@@ -29,9 +29,7 @@ const groupColumns: ColumnDef<GroupLimitRow, string>[] = [
     cell: ({ row }) => (
       <DataTable.CellContent
         className={
-          row.original.isHighest
-            ? "font-semibold text-highlight-500"
-            : undefined
+          row.original.isActive ? "font-semibold text-highlight-500" : undefined
         }
       >
         {row.original.name}
