@@ -1,4 +1,3 @@
-import logger from "@app/logger/logger";
 import type {
   ResponseInputItem,
   ResponseToolSearchOutputItemParam,
@@ -53,17 +52,12 @@ const openAIToolSearchItemSchema: z.ZodType<OpenAIToolSearchItem> = z.union([
   toolSearchOutputSchema,
 ]);
 
+// Returns null silently when the item is not a tool-search item:
+// `parseOpenAIServerToolItem` tries every server-tool family and owns the
+// "unparseable" warning.
 export function parseOpenAIToolSearchItem(
   block: unknown
 ): ResponseInputItem | null {
   const result = openAIToolSearchItemSchema.safeParse(block);
-  if (result.success) {
-    return result.data;
-  }
-
-  logger.warn(
-    { validationIssues: result.error.issues },
-    "[tool-search] Dropping unparseable OpenAI tool-search item"
-  );
-  return null;
+  return result.success ? result.data : null;
 }

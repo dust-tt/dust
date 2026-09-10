@@ -1,5 +1,6 @@
+import { OPENAI_WEB_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/native_web_search";
+import { parseOpenAIServerToolItem } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/server_tool_passthrough";
 import { OPENAI_TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search";
-import { parseOpenAIToolSearchItem } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/tool_search_passthrough";
 import type {
   OutputFormat,
   Reasoning,
@@ -240,7 +241,7 @@ export function assistantProviderPassthroughMessageToInputItems(
     return [];
   }
 
-  const item = parseOpenAIToolSearchItem(message.content.block);
+  const item = parseOpenAIServerToolItem(message.content.block);
   return item ? [item] : [];
 }
 
@@ -329,7 +330,12 @@ export function toolSpecsToOpenAITools(
   {
     forceTool,
     toolSearchEnabled,
-  }: { forceTool: string | undefined; toolSearchEnabled: boolean }
+    nativeWebSearchEnabled,
+  }: {
+    forceTool: string | undefined;
+    toolSearchEnabled: boolean;
+    nativeWebSearchEnabled: boolean;
+  }
 ): Tool[] {
   const converted = tools.map((tool) =>
     toFunctionTool(tool, {
@@ -337,9 +343,20 @@ export function toolSpecsToOpenAITools(
     })
   );
 
-  return converted.some((tool) => tool.defer_loading)
-    ? [OPENAI_TOOL_SEARCH_TOOL, ...converted]
-    : converted;
+  // Server tools go first, in a fixed order, so the serialized tools prefix
+  // stays byte-stable across steps for prompt caching.
+  return [
+    ...(converted.some((tool) => tool.defer_loading)
+      ? [OPENAI_TOOL_SEARCH_TOOL]
+      : []),
+    // A forced tool_choice targets a function tool, so keep force-called
+    // requests (auxiliary calls only) free of server tools. `disableToolUse`
+    // deliberately does NOT drop it: tool_choice "none" already forbids every
+    // tool, and removing it would invalidate the cached tools prefix on the last
+    // step of every turn.
+    ...(nativeWebSearchEnabled && !forceTool ? [OPENAI_WEB_SEARCH_TOOL] : []),
+    ...converted,
+  ];
 }
 
 export function forceToolToToolChoice(

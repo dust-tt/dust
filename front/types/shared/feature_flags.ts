@@ -161,6 +161,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "fontanierh",
   },
+  provider_native_web_search: {
+    description:
+      "Use the model provider's server-side web search (Anthropic, OpenAI) instead of Dust's own websearch tool. Dust's webbrowser tool is unaffected",
+    stage: "dust_only",
+    owner: "Nils-Fedrigo",
+  },
   salesforce_synced_queries: {
     description: "Salesforce Connection: retrieval on Synchronized queries",
     stage: "ask_owner",

@@ -11,7 +11,10 @@ import {
   isServerSideMCPServerConfigurationWithName,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
-import { computeStepContexts } from "@app/lib/actions/utils";
+import {
+  computeStepContexts,
+  isDustWebsearchTool,
+} from "@app/lib/actions/utils";
 import { createClientSideMCPServerConfigurations } from "@app/lib/api/actions/mcp_client_side";
 import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import {
@@ -58,11 +61,11 @@ import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
+import { ANTHROPIC_WEB_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/native_web_search";
+import { parseAnthropicServerToolBlock } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/server_tool_passthrough";
 import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
-import {
-  parseAnthropicToolSearchBlock,
-  TOOL_SEARCH_SERVER_TOOL_NAMES,
-} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
+import { TOOL_SEARCH_SERVER_TOOL_NAMES } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
+import { isNativeWebSearchEnabled } from "@app/lib/model_constructors/types/native_web_search";
 import {
   isToolDeferred,
   isToolSearchEnabledForModel,
@@ -148,7 +151,8 @@ export function shouldSurfaceModelError({
 // tool itself, are actually in context up front.
 export function buildToolDefinitionsForTokenCount(
   specifications: AgentActionSpecification[],
-  toolSearchEnabled: boolean
+  toolSearchEnabled: boolean,
+  nativeWebSearchEnabled = false
 ): string {
   const specsInContext = toolSearchEnabled
     ? specifications.filter(
@@ -157,6 +161,10 @@ export function buildToolDefinitionsForTokenCount(
     : specifications;
   return JSON.stringify([
     ...(toolSearchEnabled ? [TOOL_SEARCH_TOOL] : []),
+    // Rough by design: the provider injects the real web search definition
+    // server-side and never exposes its token cost. The estimate's dominant term
+    // is the removal of Dust's `websearch` schema, which is exact.
+    ...(nativeWebSearchEnabled ? [ANTHROPIC_WEB_SEARCH_TOOL] : []),
     ...specsInContext.map((s) => ({
       name: s.name,
       description: s.description,
@@ -210,7 +218,9 @@ function getReplayedToolNames(
           ) {
             // OpenAI keeps loaded definitions in the replayed tool_search_output
             // item. Anthropic requires referenced tools in the current request.
-            const block = parseAnthropicToolSearchBlock(content.value.block);
+            // Other server tools (native web search) parse fine and fall through
+            // the narrowing below: they carry no tool references.
+            const block = parseAnthropicServerToolBlock(content.value.block);
 
             if (
               block?.type === "tool_search_tool_result" &&
@@ -537,6 +547,23 @@ export async function runModel(
     ? mcpActions
     : mcpActions.filter((s) => s.serverName !== "ask_user_question");
 
+  const nativeWebSearchEnabled = isNativeWebSearchEnabled({
+    host: modelInfo.endpoint.host,
+    featureFlags,
+  });
+
+  // The provider's native search replaces Dust's `websearch` entirely. Dropping
+  // it here, before anything derives from the action list, keeps the tools array,
+  // the token-count estimate, the prompt and tool-call resolution in agreement.
+  // Both servers that mount `websearch` also mount `webbrowser`, so neither is
+  // left empty; a server's own instructions are independent of its tools anyway.
+  const mcpActionsForModel = nativeWebSearchEnabled
+    ? filteredMcpActions.map((s) => ({
+        ...s,
+        tools: s.tools.filter((tool) => !isDustWebsearchTool(tool)),
+      }))
+    : filteredMcpActions;
+
   const isLastStep = step === agentConfiguration.maxStepsPerRun;
 
   // On the last step we force the agent to run the generation: the tools are
@@ -545,7 +572,7 @@ export async function runModel(
   // replayed history resolvable), but the model is forbidden from calling them
   // (tool choice "none"). Same treatment after an empty step.
   const disableToolUse = isLastStep || forceDisableToolUse;
-  const availableActions = filteredMcpActions.flatMap((s) => s.tools);
+  const availableActions = mcpActionsForModel.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
   if (agentConfiguration.actions.length || availableActions.length > 0) {
@@ -608,7 +635,7 @@ export async function runModel(
     modelInfo,
     hasAvailableActions: availableActions.length > 0,
     conversation,
-    serverToolsAndInstructions: filteredMcpActions,
+    serverToolsAndInstructions: mcpActionsForModel,
     systemSkills,
     toolsetsContext,
     userContext,
@@ -618,6 +645,7 @@ export async function runModel(
     hasSandboxTools,
     disableFormattingPrompt,
     hasSelectedSpacesOutsideAgentScope,
+    nativeWebSearchEnabled,
   });
   // Only the shared skills message receives the leading skills cache breakpoint.
   const leadingMessages = removeNulls([
@@ -637,7 +665,8 @@ export async function runModel(
   // This is a rough estimate of the number of tokens.
   const tools = buildToolDefinitionsForTokenCount(
     baseSpecifications,
-    toolSearchEnabled
+    toolSearchEnabled,
+    nativeWebSearchEnabled
   );
 
   // Turn the conversation into a digest that can be presented to the model.
@@ -868,6 +897,7 @@ export async function runModel(
     modelConversationRes,
     conversation,
     toolSearchEnabled,
+    nativeWebSearchEnabled,
     disableToolUse,
     userMessage,
     specifications,
