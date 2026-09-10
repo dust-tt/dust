@@ -54,13 +54,6 @@ function getSlashCommandSubMenuId(item: SlashCommand): SlashSubMenuId | null {
   return null;
 }
 
-export interface ResolvedSlashSubMenu {
-  frame: SlashMenuStackFrame;
-  // True when the frame is derived from the query text rather than the menu stack.
-  fromQuery: boolean;
-  query: string;
-}
-
 /**
  * @cc [owner:PopDaph,label:product] space-enters-first-sub-menu-command
  * A query containing a space resolves to the sub-menu of the first item of `commandItems` whose
@@ -74,7 +67,7 @@ export function resolveSlashSubMenuFromQuery({
 }: {
   commandItems: SlashCommand[];
   query: string;
-}): ResolvedSlashSubMenu | null {
+}): { frame: SlashMenuStackFrame; query: string } | null {
   const spaceIndex = query.indexOf(" ");
   if (spaceIndex <= 0) {
     return null;
@@ -94,7 +87,6 @@ export function resolveSlashSubMenuFromQuery({
 
   return {
     frame: { command, subMenuId },
-    fromQuery: true,
     query: query.slice(spaceIndex + 1),
   };
 }

@@ -12,7 +12,6 @@ import type {
   SlashCommandDropdownRef,
 } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import type { ResolvedSlashSubMenu } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   clearSlashSubMenuStack,
@@ -81,10 +80,11 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
     const subMenuRef = useRef<SlashCommandDropdownRef>(null);
-    const { activeFrame, pop, storage } = useSlashMenuStack(
-      editor,
-      "inputBarSlashSuggestion"
-    );
+    const {
+      activeFrame: stackFrame,
+      pop,
+      storage,
+    } = useSlashMenuStack(editor, "inputBarSlashSuggestion");
 
     const isNodeAttached = useCallback(
       (node: DataSourceViewContentNode) => {
@@ -146,16 +146,18 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
 
     // "/model fab" opens the model sub-menu with "fab" as its query without pushing a frame.
     // Back then relies on `pop` deleting the text after "/", not on the (empty) stack.
-    const subMenu = useMemo<ResolvedSlashSubMenu | null>(
+    const queryFrame = useMemo(
       () =>
-        activeFrame
-          ? { frame: activeFrame, fromQuery: false, query }
+        stackFrame
+          ? null
           : resolveSlashSubMenuFromQuery({
               commandItems: allCommandItems,
               query,
             }),
-      [activeFrame, allCommandItems, query]
+      [allCommandItems, query, stackFrame]
     );
+    const activeFrame = stackFrame ?? queryFrame?.frame ?? null;
+    const subMenuQuery = queryFrame?.query ?? query;
 
     const { capabilityItems, isLoading } = useInputBarSlashCommandCapabilities({
       owner,
@@ -181,9 +183,12 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       ref,
       () => ({
         onKeyDown: ({ event }) => {
-          if (subMenu) {
+          if (
+            activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID ||
+            activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID
+          ) {
             // The command text is still in the editor: let Backspace edit it.
-            if (subMenu.fromQuery && event.key === "Backspace") {
+            if (queryFrame && event.key === "Backspace") {
               return false;
             }
 
@@ -207,14 +212,14 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           return dropdownRef.current?.onKeyDown({ event }) ?? false;
         },
       }),
-      [flatItems.length, onClose, query, subMenu]
+      [activeFrame?.subMenuId, flatItems.length, onClose, query, queryFrame]
     );
 
-    if (subMenu?.frame.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID) {
+    if (activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID) {
       return (
         <AttachContextSubMenuDropdown
           ref={subMenuRef}
-          activeFrame={subMenu.frame}
+          activeFrame={activeFrame}
           clientRect={clientRect}
           conversationId={conversationIdRef?.current ?? null}
           editor={editor}
@@ -223,7 +228,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           onClose={onClose}
           onSelect={handleAttachContextSelect}
           owner={owner}
-          query={subMenu.query}
+          query={subMenuQuery}
           range={range}
           spaceId={spaceIdRef.current ?? null}
           useCase="conversation-input"
@@ -231,18 +236,18 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       );
     }
 
-    if (subMenu?.frame.subMenuId === PICK_MODEL_SUB_MENU_ID) {
+    if (activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID) {
       return (
         <PickModelSubMenuDropdown
           ref={subMenuRef}
-          activeFrame={subMenu.frame}
+          activeFrame={activeFrame}
           clientRect={clientRect}
           editor={editor}
           onBack={() => pop(range)}
           onClose={onClose}
           onSelect={handleModelSelect}
           owner={owner}
-          query={subMenu.query}
+          query={subMenuQuery}
           range={range}
         />
       );

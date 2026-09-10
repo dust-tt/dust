@@ -209,7 +209,6 @@ describe("resolveSlashSubMenuFromQuery", () => {
     expect(resolved?.frame.command.action).toBe(
       PICK_MODEL_SLASH_COMMAND_ACTION
     );
-    expect(resolved?.fromQuery).toBe(true);
     expect(resolved?.query).toBe("fab high");
 
     expect(
