@@ -4,6 +4,7 @@ import {
   Bell01,
   Brackets,
   Breadcrumbs,
+  Inbox01,
   Button,
   CheckCircle,
   CheckDone01,
@@ -33,7 +34,6 @@ import {
   FolderOpen,
   Heart,
   Icon,
-  Mail01,
   IntersectDust,
   Lightbulb04,
   Link01,
@@ -327,9 +327,6 @@ function PeopleAgent() {
 
   // ── Space panel tab state (lifted from GroupConversationView) ────────────
   const [spaceActiveTab, setSpaceActiveTab] = useState("conversations");
-  const [inboxActiveTab, setInboxActiveTab] = useState<
-    "conversations" | "tasks"
-  >("conversations");
   const [podTabsBySpaceId, setPodTabsBySpaceId] = useState<
     Map<string, PodTabsState>
   >(new Map());
@@ -1220,7 +1217,7 @@ function PeopleAgent() {
   const p2Label = (() => {
     if (p2View.kind === "inbox") return "Inbox";
     if (p2View.kind === "conversations") return "Conversations";
-    if (p2View.kind === "automations") return "Automations";
+    if (p2View.kind === "automations") return "Automated work";
     if (podContext) return podContext.space.name;
     if (p2View.kind === "conversation")
       return selectedConversation?.title ?? "Conversation";
@@ -1243,7 +1240,6 @@ function PeopleAgent() {
           users={mockUsers}
           agents={mockAgents}
           currentUserId={user.id}
-          activeTab={inboxActiveTab}
           personalSectionLabel="Conversations"
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
@@ -1695,29 +1691,11 @@ function PeopleAgent() {
       );
     if (p2View.kind === "inbox")
       return (
-        <NavTabPill
-          value={inboxActiveTab}
-          onValueChange={(value) =>
-            setInboxActiveTab(value as "conversations" | "tasks")
-          }
-        >
-          <NavTabPillList>
-            <NavTabPillTrigger
-              value="conversations"
-              icon={MessageChatSquare}
-              aria-label="Conversations"
-            >
-              Conversations
-            </NavTabPillTrigger>
-            <NavTabPillTrigger
-              value="tasks"
-              icon={CheckCircle}
-              aria-label="Tasks"
-            >
-              Tasks
-            </NavTabPillTrigger>
-          </NavTabPillList>
-        </NavTabPill>
+        <Breadcrumbs
+          items={[{ label: "Inbox", icon: Inbox01 }]}
+          size="sm"
+          hasLighterFont
+        />
       );
     if (p2View.kind === "conversations")
       return (
@@ -1730,7 +1708,7 @@ function PeopleAgent() {
     if (p2View.kind === "automations")
       return (
         <Breadcrumbs
-          items={[{ label: "Automations", icon: Zap }]}
+          items={[{ label: "Automated work", icon: Zap }]}
           size="sm"
           hasLighterFont
         />
@@ -1965,7 +1943,7 @@ function PeopleAgent() {
               />
               <NavigationListItem
                 label="Inbox"
-                icon={Mail01}
+                icon={Inbox01}
                 selected={p2View.kind === "inbox"}
                 count={unreadCount > 0 ? unreadCount : undefined}
                 onClick={() => {
@@ -1985,7 +1963,7 @@ function PeopleAgent() {
                 }}
               />
               <NavigationListItem
-                label="Automations"
+                label="Automated work"
                 icon={Zap}
                 selected={p2View.kind === "automations"}
                 onClick={() => {

@@ -5,7 +5,6 @@ import {
   Brackets,
   Breadcrumbs,
   Button,
-  CheckCircle,
   CheckDone01,
   ChevronDown,
   ClipboardCheck,
@@ -79,6 +78,7 @@ import {
 } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
+import { AutomationsManageView } from "../components/AutomationsManageView";
 import {
   ConversationActions,
   conversationFilesFor,
@@ -117,6 +117,7 @@ import {
   type Conversation,
   createConversationsWithMessages,
   createMockRequests,
+  createMockTriggers,
   createSpace,
   type DataSource,
   type DataSourceFileType,
@@ -133,6 +134,7 @@ import {
   MY_POD_SPACE,
   type RequestOutcome,
   type Space,
+  type Trigger,
   type User,
 } from "../data";
 import {
@@ -233,6 +235,9 @@ function Inbox() {
       new Set(randomSpaces.slice(0, 2).map((space) => space.id))
     );
     setConversationsWithMessages(createConversationsWithMessages(u.id));
+    // Every trigger belongs to whoever opened the playground, since the
+    // Manage tab only ever lists the ones you own.
+    setTriggers(createMockTriggers(u.id));
   }, []);
 
   // ── Navigation state ──────────────────────────────────────────────────────
@@ -264,11 +269,12 @@ function Inbox() {
 
   // ── Space panel tab state (lifted from GroupConversationView) ────────────
   const [spaceActiveTab, setSpaceActiveTab] = useState("conversations");
-  const [inboxActiveTab, setInboxActiveTab] = useState<
-    "conversations" | "tasks"
-  >("conversations");
   const [requestsActiveTab, setRequestsActiveTab] =
     useState<RequestsTab>("pending");
+  const [automatedWorkTab, setAutomatedWorkTab] = useState<
+    "conversations" | "manage"
+  >("conversations");
+  const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [requests, setRequests] = useState<AdminRequest[]>(createMockRequests);
   // Requests handled since the list was last refreshed. They stay in Pending,
   // showing their outcome, instead of vanishing under the cursor.
@@ -485,6 +491,19 @@ function Inbox() {
   const handleClearHandledRequests = useCallback(() => {
     setStickyRequestIds(new Set());
   }, []);
+
+  const handleToggleTrigger = useCallback(
+    (triggerId: string, enabled: boolean) => {
+      setTriggers((prev) =>
+        prev.map((trigger) =>
+          trigger.id === triggerId
+            ? { ...trigger, status: enabled ? "enabled" : "disabled" }
+            : trigger
+        )
+      );
+    },
+    []
+  );
 
   // ── Pod context & tab state ───────────────────────────────────────────────
   const podContext = useMemo(
@@ -1081,7 +1100,7 @@ function Inbox() {
     if (p2View.kind === "inbox") return "Inbox";
     if (p2View.kind === "requests") return "Requests";
     if (p2View.kind === "conversations") return "Conversations";
-    if (p2View.kind === "automations") return "Automations";
+    if (p2View.kind === "automations") return "Automated work";
     if (podContext) return podContext.space.name;
     if (p2View.kind === "conversation")
       return selectedConversation?.title ?? "Conversation";
@@ -1101,7 +1120,6 @@ function Inbox() {
           agents={mockAgents}
           requests={requests}
           currentUserId={user.id}
-          activeTab={inboxActiveTab}
           personalSectionLabel="Conversations"
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
@@ -1184,7 +1202,13 @@ function Inbox() {
         />
       );
     if (p2View.kind === "automations")
-      return (
+      return automatedWorkTab === "manage" ? (
+        <AutomationsManageView
+          triggers={triggers}
+          currentUserId={user.id}
+          onToggleTrigger={handleToggleTrigger}
+        />
+      ) : (
         <GroupConversationView
           space={MY_POD_SPACE}
           conversations={allConversations.filter(isTriggeredConversation)}
@@ -1554,29 +1578,11 @@ function Inbox() {
       );
     if (p2View.kind === "inbox")
       return (
-        <NavTabPill
-          value={inboxActiveTab}
-          onValueChange={(value) =>
-            setInboxActiveTab(value as "conversations" | "tasks")
-          }
-        >
-          <NavTabPillList>
-            <NavTabPillTrigger
-              value="conversations"
-              icon={MessageChatSquare}
-              aria-label="Conversations"
-            >
-              Conversations
-            </NavTabPillTrigger>
-            <NavTabPillTrigger
-              value="tasks"
-              icon={CheckCircle}
-              aria-label="Tasks"
-            >
-              Tasks
-            </NavTabPillTrigger>
-          </NavTabPillList>
-        </NavTabPill>
+        <Breadcrumbs
+          items={[{ label: "Inbox", icon: Inbox01 }]}
+          size="sm"
+          hasLighterFont
+        />
       );
     if (p2View.kind === "requests")
       return (
@@ -1596,11 +1602,29 @@ function Inbox() {
       );
     if (p2View.kind === "automations")
       return (
-        <Breadcrumbs
-          items={[{ label: "Automations", icon: Zap }]}
-          size="sm"
-          hasLighterFont
-        />
+        <NavTabPill
+          value={automatedWorkTab}
+          onValueChange={(value) =>
+            setAutomatedWorkTab(value as "conversations" | "manage")
+          }
+        >
+          <NavTabPillList>
+            <NavTabPillTrigger
+              value="conversations"
+              icon={MessageChatSquare}
+              aria-label="Conversations"
+            >
+              Conversations
+            </NavTabPillTrigger>
+            <NavTabPillTrigger
+              value="manage"
+              icon={Zap}
+              aria-label="Manage Automations"
+            >
+              Manage Automations
+            </NavTabPillTrigger>
+          </NavTabPillList>
+        </NavTabPill>
       );
     if (podContext) return podTopBarLeft;
     if (p2View.kind === "profile")
@@ -1841,7 +1865,7 @@ function Inbox() {
                 }}
               />
               <NavigationListItem
-                label="Automations"
+                label="Automated work"
                 icon={Zap}
                 selected={p2View.kind === "automations"}
                 onClick={() => {

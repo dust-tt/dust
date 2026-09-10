@@ -13,7 +13,6 @@ import {
   ListGroup,
   MessageChatSquare,
   ReplySection,
-  SearchInput,
   SearchInputWithPopover,
   UniversalSearchItem,
   Zap,
@@ -34,9 +33,6 @@ import type {
 import { getUserById } from "../data/users";
 import { EmptyState } from "./EmptyState";
 import { RequestListItem } from "./RequestListItem";
-import { TaskItem } from "./TaskItem";
-
-type InboxTab = "conversations" | "tasks";
 
 type InboxConversationSearchItem = {
   type: "conversation";
@@ -47,11 +43,6 @@ type InboxConversationSearchItem = {
   score: number;
 };
 
-interface InboxTask {
-  id: string;
-  text: string;
-}
-
 interface InboxViewProps {
   spaces: Space[];
   conversations: Conversation[];
@@ -59,7 +50,6 @@ interface InboxViewProps {
   agents: Agent[];
   /** The requests queue; only the pending ones surface here. */
   requests?: AdminRequest[];
-  activeTab?: InboxTab;
   selectedConversationId?: string | null;
   selectedRequestId?: string | null;
   currentUserId?: string;
@@ -71,57 +61,6 @@ interface InboxViewProps {
   /** Opens the full requests queue from the section header. */
   onRequestsClick?: () => void;
   personalSectionLabel?: string;
-}
-
-const INBOX_TASK_ITEMS: InboxTask[] = [
-  {
-    id: "fake-todo-design-copy",
-    text: "Tighten the onboarding copy for a sharper first-run flow.",
-  },
-  {
-    id: "fake-todo-risk-log",
-    text: "Add the latest mitigation notes to the weekly risk log.",
-  },
-  {
-    id: "fake-todo-customer-brief",
-    text: "Prepare the customer brief for the roadmap sync.",
-  },
-  {
-    id: "fake-todo-data-check",
-    text: "Validate the dashboard numbers against the source export.",
-  },
-  {
-    id: "fake-todo-launch-owner",
-    text: "Document who owns each beta rollout checklist item.",
-  },
-  {
-    id: "fake-todo-budget-follow-up",
-    text: "Resolve the budget question before planning closes.",
-  },
-  {
-    id: "fake-todo-doc-update",
-    text: "Update the implementation notes with the latest constraints.",
-  },
-  {
-    id: "fake-todo-support-plan",
-    text: "Draft the first-week support plan.",
-  },
-  {
-    id: "fake-todo-qa-scope",
-    text: "Split the QA scope into smoke tests and regression checks.",
-  },
-  {
-    id: "fake-todo-api-contract",
-    text: "Write down the API contract changes for the integrations team.",
-  },
-];
-
-function seededRandom(seed: string, index: number): number {
-  const hash = seed
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const x = Math.sin((hash + index) * 12.9898) * 43758.5453;
-  return x - Math.floor(x);
 }
 
 function buildInboxConversationSearchResults(
@@ -164,23 +103,6 @@ function buildInboxConversationSearchResults(
       }
       return a.title.localeCompare(b.title);
     });
-}
-
-function getTasksForPod(podKey: string): InboxTask[] {
-  const count =
-    Math.floor(seededRandom(podKey, 0) * 3) + (podKey === "my-pod" ? 2 : 1);
-
-  return [...INBOX_TASK_ITEMS]
-    .sort(
-      (a, b) =>
-        seededRandom(`${podKey}-${a.id}`, 0) -
-        seededRandom(`${podKey}-${b.id}`, 0)
-    )
-    .slice(0, Math.min(count, INBOX_TASK_ITEMS.length))
-    .map((task) => ({
-      ...task,
-      id: `${podKey}-${task.id}`,
-    }));
 }
 
 function getRandomParticipants(
@@ -277,7 +199,6 @@ export function InboxView({
   users,
   agents,
   requests,
-  activeTab = "conversations",
   selectedConversationId = null,
   selectedRequestId = null,
   currentUserId,
@@ -299,31 +220,12 @@ export function InboxView({
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
     new Set()
   );
-  const [collapsedTaskSections, setCollapsedTaskSections] = useState<
-    Set<string>
-  >(new Set());
-  const [checkedTaskKeys, setCheckedTaskKeys] = useState<Set<string>>(
-    new Set()
-  );
   const [conversationSearchText, setConversationSearchText] = useState("");
   const [isConversationSearchOpen, setIsConversationSearchOpen] =
     useState(false);
-  const [taskSearchText, setTaskSearchText] = useState("");
 
   const toggleSectionCollapse = (sectionKey: string) => {
     setCollapsedSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(sectionKey)) {
-        next.delete(sectionKey);
-      } else {
-        next.add(sectionKey);
-      }
-      return next;
-    });
-  };
-
-  const toggleTaskSectionCollapse = (sectionKey: string) => {
-    setCollapsedTaskSections((prev) => {
       const next = new Set(prev);
       if (next.has(sectionKey)) {
         next.delete(sectionKey);
@@ -500,68 +402,6 @@ export function InboxView({
     spacesWithUnread.length > 0 ||
     pendingRequests.length > 0;
 
-  const baseInboxTaskGroups = useMemo(() => {
-    const groups: Array<{
-      key: string;
-      label: string;
-      onHeaderClick?: () => void;
-      tasks: InboxTask[];
-    }> = [];
-
-    const myPodTasks = getTasksForPod("my-pod").filter(
-      (task) => !checkedTaskKeys.has(task.id)
-    );
-    if (myPodTasks.length > 0) {
-      groups.push({
-        key: "my-pod",
-        label: personalSectionLabel,
-        onHeaderClick: onMyPodClick,
-        tasks: myPodTasks,
-      });
-    }
-
-    spaces.forEach((space) => {
-      const tasks = getTasksForPod(space.id).filter(
-        (task) => !checkedTaskKeys.has(task.id)
-      );
-      if (tasks.length > 0) {
-        groups.push({
-          key: space.id,
-          label: space.name,
-          onHeaderClick: () => onSpaceClick?.(space),
-          tasks,
-        });
-      }
-    });
-
-    return groups;
-  }, [
-    checkedTaskKeys,
-    onMyPodClick,
-    onSpaceClick,
-    personalSectionLabel,
-    spaces,
-  ]);
-
-  const inboxTaskGroups = useMemo(() => {
-    const normalizedSearch = taskSearchText.trim().toLowerCase();
-
-    return baseInboxTaskGroups
-      .map((group) => ({
-        ...group,
-        tasks:
-          normalizedSearch.length === 0
-            ? group.tasks
-            : group.tasks.filter((task) =>
-                task.text.toLowerCase().includes(normalizedSearch)
-              ),
-      }))
-      .filter((group) => group.tasks.length > 0);
-  }, [baseInboxTaskGroups, taskSearchText]);
-
-  const hasTaskContent = baseInboxTaskGroups.length > 0;
-  const hasFilteredTaskContent = inboxTaskGroups.length > 0;
-
   const allConversationSectionsCollapsed = useMemo(() => {
     if (!hasConversationContent) return true;
 
@@ -591,14 +431,6 @@ export function InboxView({
     pendingRequests.length,
     spacesWithUnread,
   ]);
-
-  const allTaskSectionsCollapsed = useMemo(() => {
-    if (!hasFilteredTaskContent) return true;
-
-    return inboxTaskGroups.every((group) =>
-      collapsedTaskSections.has(group.key)
-    );
-  }, [collapsedTaskSections, hasFilteredTaskContent, inboxTaskGroups]);
 
   const handleConversationSearchSelect = (
     item: InboxConversationSearchItem
@@ -692,16 +524,6 @@ export function InboxView({
     </div>
   );
 
-  const renderTasksToolbar = () => (
-    <SearchInput
-      name="inbox-task-search"
-      value={taskSearchText}
-      onChange={setTaskSearchText}
-      placeholder="Search tasks..."
-      className="w-full"
-    />
-  );
-
   const renderInboxSectionHeader = ({
     label,
     icon,
@@ -780,8 +602,13 @@ export function InboxView({
     <EmptyState icon={Inbox01} title={title} description={description} />
   );
 
+  // Nothing left to read, whether the Inbox came in empty or was just cleared.
+  // It then has nothing to search, mark as read, or greet you about either, so
+  // the empty state gets the panel to itself.
+  const isEmpty = !hasConversationContent || allConversationSectionsCollapsed;
+
   const renderConversationsTab = () => {
-    if (!hasConversationContent) {
+    if (isEmpty) {
       return renderEmptyState(
         "Inbox",
         <>
@@ -789,22 +616,6 @@ export function InboxView({
           <br />
           Nothing new under the sun.
         </>
-      );
-    }
-
-    if (allConversationSectionsCollapsed) {
-      return (
-        <div className="flex flex-1 flex-col gap-3">
-          {renderConversationsToolbar()}
-          {renderEmptyState(
-            "Inbox",
-            <>
-              You're all caught up!
-              <br />
-              Nothing new under the sun.
-            </>
-          )}
-        </div>
       );
     }
 
@@ -871,7 +682,7 @@ export function InboxView({
               <CollapsibleContent>
                 <div className="flex flex-col gap-1">
                   {renderInboxSectionHeader({
-                    label: "Automations",
+                    label: "Automated work",
                     icon: Zap,
                     onHeaderClick: onAutomationsClick,
                     action: {
@@ -951,117 +762,17 @@ export function InboxView({
     );
   };
 
-  const renderTasksTab = () => {
-    if (!hasTaskContent) {
-      return renderEmptyState(
-        "All tasks done",
-        "No ongoing tasks across your pods."
-      );
-    }
-
-    if (!hasFilteredTaskContent) {
-      return (
-        <div className="flex flex-1 flex-col gap-3">
-          {renderTasksToolbar()}
-          <div className="flex flex-1 flex-col items-center justify-center gap-2">
-            <p className="text-center text-lg text-muted-foreground">
-              No tasks match your search.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    if (allTaskSectionsCollapsed) {
-      return (
-        <div className="flex flex-1 flex-col gap-3">
-          {renderTasksToolbar()}
-          {renderEmptyState(
-            "All tasks done",
-            "No ongoing tasks across your pods."
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex flex-col gap-3">
-        {renderTasksToolbar()}
-        {inboxTaskGroups.map((group) => (
-          <Collapsible
-            key={group.key}
-            open={!collapsedTaskSections.has(group.key)}
-            onOpenChange={(open) => {
-              if (!open) {
-                setCollapsedTaskSections((prev) =>
-                  new Set(prev).add(group.key)
-                );
-              } else {
-                setCollapsedTaskSections((prev) => {
-                  const next = new Set(prev);
-                  next.delete(group.key);
-                  return next;
-                });
-              }
-            }}
-            className="flex flex-col"
-          >
-            <CollapsibleContent>
-              <div className="flex flex-col gap-1">
-                {renderInboxSectionHeader({
-                  label: group.label,
-                  onHeaderClick: group.onHeaderClick,
-                  action: {
-                    label: "Mark as done",
-                    onAction: () => toggleTaskSectionCollapse(group.key),
-                  },
-                })}
-
-                <ListGroup className="border-transparent! gap-0.5">
-                  <div className="flex flex-col gap-2 px-3 py-1">
-                    {group.tasks.map((task) => (
-                      <TaskItem
-                        key={task.id}
-                        id={task.id}
-                        text={task.text}
-                        isEditable
-                        isChecked={checkedTaskKeys.has(task.id)}
-                        isMutedAfterCheck
-                        className="w-full py-1"
-                        onCheckedChange={(checked) => {
-                          setCheckedTaskKeys((prev) => {
-                            const next = new Set(prev);
-                            if (checked) {
-                              next.add(task.id);
-                            } else {
-                              next.delete(task.id);
-                            }
-                            return next;
-                          });
-                        }}
-                      />
-                    ))}
-                  </div>
-                </ListGroup>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        ))}
-      </div>
-    );
-  };
-
   return (
     <div className="flex h-full w-full flex-col overflow-x-clip overflow-y-auto bg-background">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 pt-8 pb-8">
-        {greeting && (
+      {/* flex-1 so an empty state, which grows to fill its parent, centers on
+          the panel rather than collapsing under the greeting. */}
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 pt-8 pb-8">
+        {greeting && !isEmpty && (
           <div className="heading-2xl text-center text-foreground">
             {greeting}
           </div>
         )}
-        {activeTab === "conversations"
-          ? renderConversationsTab()
-          : renderTasksTab()}
+        {renderConversationsTab()}
       </div>
     </div>
   );

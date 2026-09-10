@@ -10,4 +10,5 @@ export * from "./myPod";
 export * from "./requests";
 export * from "./spaces";
 export * from "./spaceMembers";
+export * from "./triggers";
 export * from "./users";

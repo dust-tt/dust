@@ -296,3 +296,63 @@ export interface AdminRequest {
   /** What the decision maker did, or why they declined. */
   resolutionMessage?: string;
 }
+
+// ── Triggers ─────────────────────────────────────────────────────────────────
+// What runs an agent without anyone asking: a schedule or a webhook. A single
+// editor owns one — the product has no subscribers — and every firing opens a
+// conversation, which is what the Conversations tab lists.
+
+export type TriggerKind = "schedule" | "webhook";
+
+/**
+ * The states a trigger can be in. The product also has `relocating` and
+ * `downgraded`, which are transient and left out here.
+ */
+export type TriggerStatus = "enabled" | "disabled" | "disabled_by_manager";
+
+/** Whose credits a run is charged to. */
+export type TriggerPool = "member" | "workspace";
+
+/** Platforms a webhook source can come from, limited to the ones with a logo. */
+export type TriggerProvider =
+  | "github"
+  | "jira"
+  | "zendesk"
+  | "slack"
+  | "notion";
+
+export interface TriggerSchedule {
+  /** Kept because the product stores one; the UI reads `label`. */
+  cron: string;
+  /** The cron in prose, the way the product renders it through cronstrue. */
+  label: string;
+  timezone: string;
+}
+
+export interface TriggerWebhook {
+  provider: TriggerProvider;
+  /** The webhook source as it is named in the workspace. */
+  sourceName: string;
+  /** The event that fires it, when the source narrows it down to one. */
+  event?: string;
+}
+
+export interface Trigger {
+  id: string;
+  name: string;
+  kind: TriggerKind;
+  /** The agent the trigger runs. */
+  agentId: string;
+  /** The one user who owns it, and the only one who can edit it. */
+  editorId: string;
+  status: TriggerStatus;
+  pool: TriggerPool;
+  /** The Pod its conversations land in. Absent means the default space. */
+  spaceId?: string;
+  /** Set on schedule triggers. */
+  schedule?: TriggerSchedule;
+  /** Set on webhook triggers. */
+  webhook?: TriggerWebhook;
+  createdAt: Date;
+  lastRunAt?: Date;
+}

@@ -49,6 +49,7 @@ import {
   TabsContent,
   Trash01,
   TypingAnimation,
+  Umbrella03,
   Upload01,
   Users01,
   XClose,
@@ -1234,7 +1235,9 @@ function GroupConversationTabContent({
         <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-4">
           <div
             className={cn(
-              "mx-auto flex w-full max-w-4xl flex-col gap-3 py-8",
+              // flex-1 so an empty state below the input centers on what is
+              // left of the panel instead of hugging it.
+              "mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 py-8",
               contentClassName
             )}
           >
@@ -1275,6 +1278,7 @@ function ProjectSetupEmptyState({
 }) {
   return (
     <EmptyState
+      icon={Umbrella03}
       title="It's quiet in here."
       description="Your Pod is ready but empty! Let us help you invite people, add key data, and more."
       action={
