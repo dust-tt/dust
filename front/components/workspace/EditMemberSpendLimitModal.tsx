@@ -92,12 +92,12 @@ function MemberSpendLimitForm({
   // server may have introduced a seat type the client hasn't refreshed to
   // know about yet, so unrecognized values are treated as non-pool rather
   // than passed to the exhaustive normalizer.
-  const isDefaultHighest =
+  const isDefaultActive =
     member?.spendLimitSource === "default" &&
     isMembershipSeatType(member.seatType) &&
     normalizeToPoolLimitSeatType(member.seatType) !== null;
   const showDefaultLimit =
-    isDefaultHighest && defaultUserSpendLimit.status !== "unavailable";
+    isDefaultActive && defaultUserSpendLimit.status !== "unavailable";
   const canChangeDefaultLimit =
     showDefaultLimit && canEditDefaultLimit && !readOnly;
   const isDefaultLimitLoaded = defaultUserSpendLimit.status === "ready";
@@ -320,7 +320,7 @@ function MemberSpendLimitForm({
                   ? "Only workspace admins can edit the workspace default limit."
                   : undefined
               }
-              isHighest={false}
+              isActive={false}
               validationMessage={
                 defaultUserSpendLimit.status === "error"
                   ? "The workspace default limit could not be loaded."
@@ -337,12 +337,23 @@ function MemberSpendLimitForm({
             label="Personal limit"
             value={personalLimitInput}
             readOnly={readOnly}
-            isHighest={hasPersonalOverride}
+            isActive={hasPersonalOverride}
             validationMessage={validationMessage}
             onChange={(cleaned) => {
               setPersonalLimitInput(cleaned);
               setValidationMessage(null);
             }}
+            action={
+              personalLimitInput !== ""
+                ? {
+                    label: "Remove personal limit",
+                    onClick: () => {
+                      setPersonalLimitInput("");
+                      setValidationMessage(null);
+                    },
+                  }
+                : undefined
+            }
           />
 
           {memberGroupRows.length > 0 && (

@@ -15,7 +15,7 @@ export type GroupRow = {
   name: string;
   poolCapAwuCredits: number | null;
   memberCount: number;
-  isHighest: boolean;
+  isActive: boolean;
   onClick?: () => void;
 };
 
@@ -114,6 +114,6 @@ export function groupRowsForMember(
     name: g.name,
     poolCapAwuCredits: g.poolCapAwuCredits,
     memberCount: g.memberCount,
-    isHighest: !hasPersonalOverride && g.sId === highest?.sId,
+    isActive: !hasPersonalOverride && g.sId === highest?.sId,
   }));
 }

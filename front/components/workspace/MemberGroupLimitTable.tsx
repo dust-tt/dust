@@ -1,6 +1,6 @@
 import { CreditLimitNumberInput } from "@app/components/workspace/CreditLimitInput";
 import type { GroupRow } from "@app/components/workspace/member_spend_limit_helpers";
-import { DataTable } from "@dust-tt/sparkle";
+import { Chip, DataTable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 interface MemberGroupLimitTableProps {
@@ -29,12 +29,15 @@ const groupColumns: ColumnDef<GroupLimitRow, string>[] = [
     cell: ({ row }) => (
       <DataTable.CellContent
         className={
-          row.original.isHighest
-            ? "font-semibold text-highlight-500"
-            : undefined
+          row.original.isActive ? "font-semibold text-highlight-500" : undefined
         }
       >
-        {row.original.name}
+        <div className="flex items-center gap-2">
+          {row.original.name}
+          {row.original.isActive && (
+            <Chip size="mini" color="highlight" label="Active" />
+          )}
+        </div>
       </DataTable.CellContent>
     ),
   },

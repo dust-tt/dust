@@ -1,4 +1,4 @@
-import { Chip, Input, Page, Tooltip } from "@dust-tt/sparkle";
+import { Button, Chip, Input, Page, Tooltip } from "@dust-tt/sparkle";
 
 interface CreditLimitNumberInputProps {
   value: string;
@@ -42,9 +42,12 @@ interface CreditLimitInputProps {
   readOnly: boolean;
   // Shown on hover when the field is read-only, to say why it is locked.
   readOnlyTooltip?: string;
-  isHighest: boolean;
+  isActive: boolean;
   validationMessage: string | null;
   onChange: (cleaned: string) => void;
+  // Small text action rendered on the opposite end of the label row (e.g. to
+  // clear the field). Omit when the field has nothing to clear back to.
+  action?: { label: string; onClick: () => void };
 }
 
 export function CreditLimitInput({
@@ -52,9 +55,10 @@ export function CreditLimitInput({
   value,
   readOnly,
   readOnlyTooltip,
-  isHighest,
+  isActive,
   validationMessage,
   onChange,
+  action,
 }: CreditLimitInputProps) {
   const input = (
     <CreditLimitNumberInput
@@ -68,7 +72,16 @@ export function CreditLimitInput({
     <Page.Vertical gap="xs" align="stretch">
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-foreground">{label}</span>
-        {isHighest && <Chip size="mini" color="highlight" label="Highest" />}
+        {isActive && <Chip size="mini" color="highlight" label="Active" />}
+        {!readOnly && action && (
+          <Button
+            variant="ghost"
+            size="xs"
+            label={action.label}
+            onClick={action.onClick}
+            className="ml-auto"
+          />
+        )}
       </div>
       {readOnly && readOnlyTooltip ? (
         <Tooltip
