@@ -11,14 +11,12 @@ import { describe, expect, it } from "vitest";
 import type { ZodTypeAny } from "zod";
 
 import * as allExports from "./types";
+import { ModelIdSchema } from "./types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Zod internals
 type ZodDef = any;
 
-const MODEL_ID_REF: ZodTypeAny = (() => {
-  const schema = allExports.GetDataSourcesResponseSchema as ZodDef;
-  return schema.shape.data_sources._def.type.shape.id as ZodTypeAny;
-})();
+const MODEL_ID_REF: ZodTypeAny = ModelIdSchema;
 
 const V1_ROUTE_DIRS = [
   path.resolve(__dirname, "../../../front-api/routes/v1"),

@@ -179,7 +179,7 @@ const ConnectorsAPIErrorSchema = z.object({
 
 export type ConnectorsAPIError = z.infer<typeof ConnectorsAPIErrorSchema>;
 
-const ModelIdSchema = z.number();
+export const ModelIdSchema = z.number();
 
 export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
