@@ -1,11 +1,6 @@
-import type {
-  ConversationToolActionRequest,
-  FetchConversationToolsResponse,
-} from "@app/lib/api/assistant/conversation/tools";
-import { clientFetch } from "@app/lib/egress/client";
+import type { FetchConversationToolsResponse } from "@app/lib/api/assistant/conversation/tools";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import logger from "@app/logger/logger";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import type { Fetcher } from "swr";
 
 export function useConversationTools({
@@ -41,104 +36,4 @@ export function useConversationTools({
     isConversationToolsError: error,
     mutateConversationTools: mutate,
   };
-}
-
-export function useAddDeleteConversationTool({
-  conversationId,
-  workspaceId,
-}: {
-  conversationId?: string | null;
-  workspaceId: string;
-}) {
-  const { mutateConversationTools } = useConversationTools({
-    conversationId,
-    workspaceId,
-    options: {
-      disabled: true,
-    },
-  });
-
-  const addTool = useCallback(
-    async (mcpServerViewId: string): Promise<boolean> => {
-      if (!conversationId) {
-        return false;
-      }
-
-      try {
-        const response = await clientFetch(
-          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              action: "add",
-              mcp_server_view_id: mcpServerViewId,
-            } satisfies ConversationToolActionRequest),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to add tool to conversation");
-        }
-
-        const result = await response.json();
-        if (result.success) {
-          // Refetch the tools list to get the updated state
-          void mutateConversationTools();
-          return true;
-        }
-
-        return false;
-      } catch (err) {
-        logger.error({ err }, "Error adding tool to conversation");
-        return false;
-      }
-    },
-    [conversationId, workspaceId, mutateConversationTools]
-  );
-
-  const deleteTool = useCallback(
-    async (mcpServerViewId: string): Promise<boolean> => {
-      if (!conversationId) {
-        return false;
-      }
-
-      try {
-        const response = await clientFetch(
-          `/api/w/${workspaceId}/assistant/conversations/${conversationId}/tools`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              action: "delete",
-              mcp_server_view_id: mcpServerViewId,
-            } satisfies ConversationToolActionRequest),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to remove tool from conversation");
-        }
-
-        const result = await response.json();
-        if (result.success) {
-          // Refetch the tools list to get the updated state
-          void mutateConversationTools();
-          return true;
-        }
-
-        return false;
-      } catch (err) {
-        logger.error({ err }, "Error removing tool from conversation");
-        return false;
-      }
-    },
-    [conversationId, workspaceId, mutateConversationTools]
-  );
-
-  return { addTool, deleteTool };
 }

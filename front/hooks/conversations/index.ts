@@ -21,10 +21,7 @@ export {
   useJoinConversation,
 } from "./useConversationParticipants";
 export { useConversations } from "./useConversations";
-export {
-  useAddDeleteConversationTool,
-  useConversationTools,
-} from "./useConversationTools";
+export { useConversationTools } from "./useConversationTools";
 export { useConversationUrlAccessMode } from "./useConversationUrlAccessMode";
 export {
   usePodConversations,
