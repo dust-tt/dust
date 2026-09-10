@@ -84,6 +84,32 @@ describe("getAgentConfigurations", () => {
     }
   });
 
+  it.each([true, false])(
+    "internal admins report edit access from their grants (all groups: %s)",
+    async (dangerouslyRequestAllGroups) => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { scope: "hidden" }
+      );
+      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId, {
+        dangerouslyRequestAllGroups,
+      });
+
+      const configuration = await getAgentConfiguration(auth, {
+        agentId: agent.sId,
+        variant: "light",
+      });
+
+      expect(configuration).toMatchObject({
+        canRead: dangerouslyRequestAllGroups,
+        canEdit: dangerouslyRequestAllGroups,
+      });
+    }
+  );
+
   it("respects the agent grants of a scoped system key", async () => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",

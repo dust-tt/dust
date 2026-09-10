@@ -208,6 +208,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
+    expect(data.agentConfiguration.canRead).toBe(false);
     expect(data.agentConfiguration.canEdit).toBe(role === "admin");
 
     const patchResponse = await patchAgentConfiguration(
