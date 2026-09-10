@@ -12,6 +12,14 @@ import {
   subYears,
 } from "date-fns";
 
+function isTimestamp(value: Date | number): value is number {
+  return typeof value === "number";
+}
+
+function toDate(value: Date | number): Date {
+  return isTimestamp(value) ? new Date(value) : value;
+}
+
 /**
  * Returns a Date that is `days` days before the given reference date (defaults to now).
  */
@@ -132,7 +140,7 @@ export const formatCalendarDate = (date: Date | number): string => {
  * @returns A formatted string like "3 hours ago" or "in 2 days"
  */
 export const formatRelativeTime = (date: Date | number): string => {
-  const dateObj = typeof date === "number" ? new Date(date) : date;
+  const dateObj = toDate(date);
   return formatDistanceToNow(dateObj, { addSuffix: true });
 };
 
@@ -149,7 +157,7 @@ export const formatRelativeTime = (date: Date | number): string => {
  * "Last Monday at 3:45:00 PM", or "09/10/2026"
  */
 export const formatCalendarDateTime = (date: Date | number): string => {
-  const dateObj = typeof date === "number" ? new Date(date) : date;
+  const dateObj = toDate(date);
   const time = format(dateObj, "h:mm:ss a");
 
   if (isToday(dateObj)) {
@@ -159,8 +167,8 @@ export const formatCalendarDateTime = (date: Date | number): string => {
     return `Yesterday at ${time}`;
   }
 
-  const dayDiff = differenceInCalendarDays(new Date(), dateObj);
-  if (dayDiff >= 2 && dayDiff <= 6) {
+  const diffDays = differenceInCalendarDays(new Date(), dateObj);
+  if (diffDays >= 2 && diffDays <= 6) {
     return `Last ${format(dateObj, "EEEE")} at ${time}`;
   }
 
@@ -191,7 +199,7 @@ export const getRelativeDateBucket = (
   date: Date | number,
   now: Date = new Date()
 ): RelativeDateBucket => {
-  const dateObj = typeof date === "number" ? new Date(date) : date;
+  const dateObj = toDate(date);
   const today = startOfDay(now);
 
   if (dateObj.getTime() >= today.getTime()) {
