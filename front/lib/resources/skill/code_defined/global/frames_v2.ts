@@ -336,10 +336,14 @@ Before publishing a Frames v2 manifest, validate the current source snapshot:
 dsbx frame validate /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
 
-This runs the manifest, UI, function-build, database-contract, and Tailwind checks without storing or
-activating a publication or reconciling Frame-owned databases. Fix every error and Tailwind warning
-before publishing. Use this command instead of \`bun build\` or an ad hoc regex scan: those do not use
-the Frame build context and report unrelated or noisy failures.
+This runs the manifest, UI, function-build, database-contract, Tailwind, and function-call checks
+without storing or activating a publication or reconciling Frame-owned databases. The function-call
+check reports UI code that calls a function this manifest does not declare, or that passes an input
+the function's \`schema.input\` rejects — both of which otherwise fail only once a viewer triggers
+the call. Fix every error and every warning before publishing.
+
+Use this command instead of \`bun build\` or an ad hoc regex scan: those do not use the Frame build
+context and report unrelated or noisy failures.
 
 There is no separate v2 function publish. Once validation is clean, publish the manifest once; the
 UI source, all declared functions, and all declared database schemas are built or reconciled,
