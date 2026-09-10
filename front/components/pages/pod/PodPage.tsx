@@ -1,7 +1,7 @@
+import { PodFileTabNavTrigger } from "@app/components/pod/PodFileTabNavTrigger";
 import { PodHeaderActions } from "@app/components/pod/PodHeaderActions";
 import { PodNavAddFileTabButton } from "@app/components/pod/PodNavAddFileTabButton";
 import { PodPageContent } from "@app/components/pod/PodPageContent";
-import { getIcon } from "@app/components/resources/resources_icons";
 import { useActivePodId } from "@app/hooks/useActivePodId";
 import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
 import {
@@ -21,7 +21,6 @@ import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import {
   buildPodNavItemsBeforeSettings,
-  makePodFileTabValue,
   normalizeTabsOrder,
   parsePodFileTabPath,
   sortPodFileTabs,
@@ -201,18 +200,20 @@ export function PodPage() {
                   const isFileMissing =
                     !isPodFilesLoading && !podFilePaths.has(item.tab.path);
                   return (
-                    <NavTabPillTrigger
+                    <PodFileTabNavTrigger
                       key={item.tab.path}
-                      value={makePodFileTabValue(item.tab.path)}
-                      icon={getIcon(item.tab.icon)}
+                      owner={owner}
+                      podId={podInfo.sId}
+                      fileTabs={fileTabs}
+                      tabsOrder={tabsOrder}
+                      isEditor={podInfo.isEditor}
+                      tab={item.tab}
                       className={
                         isFileMissing
                           ? MISSING_FILE_TAB_TRIGGER_CLASSNAME
                           : undefined
                       }
-                    >
-                      {item.tab.title}
-                    </NavTabPillTrigger>
+                    />
                   );
                 }
                 default: {
