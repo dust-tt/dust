@@ -136,6 +136,50 @@ describe("db query", () => {
     });
   });
 
+  test("can return only a preview without creating an inaccessible spill file", async () => {
+    await withDir(async (dir) => {
+      const dbPath = join(dir, "notes.db");
+      unwrap(await reconcile(dbPath, fx("notes.db.ts")));
+      const db = new Database(dbPath);
+      const insert = db.prepare("INSERT INTO notes (label) VALUES (?)");
+      db.exec("BEGIN");
+      for (let i = 0; i < QUERY_INLINE_ROW_CAP + 1; i++) {
+        insert.run(`row-${i}`);
+      }
+      db.exec("COMMIT");
+      db.close();
+
+      const result = unwrap(
+        runQuery(dbPath, "SELECT label FROM notes ORDER BY id", undefined, null)
+      );
+      expect(result.rows.length).toBe(QUERY_INLINE_ROW_CAP);
+      expect(result.row_count).toBe(QUERY_INLINE_ROW_CAP + 1);
+      expect(result.results_file).toBeNull();
+      expect(result.note).toContain("Refine the query with LIMIT and OFFSET");
+    });
+  });
+
+  test("remote previews never skip an oversized row and include later rows", async () => {
+    await withDir(async (dir) => {
+      const dbPath = join(dir, "notes.db");
+      unwrap(await reconcile(dbPath, fx("notes.db.ts")));
+      const db = new Database(dbPath);
+      const insert = db.prepare("INSERT INTO notes (label) VALUES (?)");
+      insert.run("first");
+      insert.run("x".repeat(QUERY_INLINE_PAYLOAD_CAP_BYTES));
+      insert.run("third");
+      db.close();
+
+      const result = unwrap(
+        runQuery(dbPath, "SELECT label FROM notes ORDER BY id", undefined, null)
+      );
+      expect(result.rows).toEqual([{ label: "first" }]);
+      expect(result.row_count).toBe(3);
+      expect(result.results_file).toBeNull();
+      expect(result.note).toContain("the first 1 are shown here");
+    });
+  });
+
   test("runs DML and reports the affected rows", async () => {
     await withDir(async (dir) => {
       const dbPath = await seeded(dir);
@@ -420,6 +464,33 @@ describe("runner db-query envelope", () => {
       const envelope = JSON.parse(stdout.trim());
       expect(envelope.ok).toBe(true);
       expect(envelope.rows).toEqual([{ n: 0 }]);
+    });
+  });
+
+  test("db-query keeps large remote results inline as a preview", async () => {
+    await withDir(async (dir) => {
+      const dbPath = join(dir, "notes.db");
+      await run(["db-reconcile", dbPath, fx("notes.db.ts")]);
+      const db = new Database(dbPath);
+      const insert = db.prepare("INSERT INTO notes (label) VALUES (?)");
+      db.exec("BEGIN");
+      for (let i = 0; i < QUERY_INLINE_ROW_CAP + 1; i++) {
+        insert.run(`row-${i}`);
+      }
+      db.exec("COMMIT");
+      db.close();
+
+      const { stdout, code } = await run(
+        ["db-query", dbPath],
+        "SELECT label FROM notes ORDER BY id",
+        { DUST_DB_QUERY_INLINE_ONLY: "1" }
+      );
+
+      expect(code).toBe(0);
+      const envelope = JSON.parse(stdout.trim());
+      expect(envelope.row_count).toBe(QUERY_INLINE_ROW_CAP + 1);
+      expect(envelope.rows.length).toBe(QUERY_INLINE_ROW_CAP);
+      expect(envelope.results_file).toBeNull();
     });
   });
 

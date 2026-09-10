@@ -3,22 +3,43 @@ use std::path::Path;
 use anyhow::{anyhow, Result};
 use serde::Serialize;
 
-use super::{databases_dir, emit_error};
+use crate::api::DustApiClient;
+
+use super::{databases_dir, emit_error, execution_target, DbExecutionTarget};
 
 #[derive(Serialize, Debug, PartialEq)]
-struct DatabaseEntry {
+pub(crate) struct DatabaseEntry {
     name: String,
     size_bytes: u64,
 }
 
-/// List the live pod databases (`*.db` files in the databases directory) with
+/// List the live sandbox databases (`*.db` files in the databases directory) with
 /// their sizes as a one-line JSON envelope. A missing directory is an empty
 /// list: it is created by the first reconcile that claims a database.
-pub fn cmd_db_list() -> Result<()> {
-    let dir = databases_dir();
-    let databases = enumerate_databases(&dir)
-        .map_err(|e| emit_error(anyhow!("cannot read {}: {e}", dir.display())))?;
+pub async fn cmd_db_list(frame_id: Option<&str>) -> Result<()> {
+    let databases = match execution_target(frame_id)? {
+        DbExecutionTarget::Local => list_local_databases()?,
+        DbExecutionTarget::RemoteFrame(frame_id) => DustApiClient::from_env()?
+            .list_frame_databases(frame_id)
+            .await?
+            .items
+            .into_iter()
+            .map(|database| DatabaseEntry {
+                name: database.name,
+                size_bytes: database.size_bytes,
+            })
+            .collect(),
+    };
 
+    print_databases(&databases)
+}
+
+fn list_local_databases() -> Result<Vec<DatabaseEntry>> {
+    let dir = databases_dir();
+    enumerate_databases(&dir).map_err(|e| emit_error(anyhow!("cannot read {}: {e}", dir.display())))
+}
+
+fn print_databases(databases: &[DatabaseEntry]) -> Result<()> {
     println!(
         "{}",
         serde_json::json!({ "ok": true, "databases": databases })

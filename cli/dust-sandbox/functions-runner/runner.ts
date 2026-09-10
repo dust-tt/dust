@@ -22,6 +22,8 @@ import { BadInputError, parseInput, type RequestInput } from "./protocol.ts";
 import { getFunctionSchema } from "./schema.ts";
 import { serve } from "./serve.ts";
 
+const DB_QUERY_INLINE_ONLY_ENV = "DUST_DB_QUERY_INLINE_ONLY";
+
 // Everything this process creates — including files the function body creates
 // itself — must stay group-writable. The shared sandbox directories are setgid
 // with a `g::rwx` default ACL (`/sandbox-state/databases`, `/files`), but a default
@@ -123,8 +125,8 @@ async function dbSchemaHandler(args: string[]): Promise<number> {
 }
 
 async function dbQueryHandler(args: string[]): Promise<number> {
-  // spillDir is where an oversized result is written as a pod file; Rust passes the pod-files
-  // dir. Absent (a bare dbPath), runQuery falls back to a temp dir.
+  // spillDir is where an oversized local result is written; Rust passes a mounted files
+  // directory when the caller can read it. Absent, runQuery falls back to a temp directory.
   const [dbPath, spillDir] = args;
   if (!dbPath) {
     return emitDbBadArgs(
@@ -137,7 +139,12 @@ async function dbQueryHandler(args: string[]): Promise<number> {
     return 1;
   }
   const sql = await Bun.stdin.text();
-  const result = runQuery(dbPath, sql, maxSizeBytes.value, spillDir);
+  const result = runQuery(
+    dbPath,
+    sql,
+    maxSizeBytes.value,
+    process.env[DB_QUERY_INLINE_ONLY_ENV] === "1" ? null : spillDir
+  );
   if (result.isErr()) {
     emitEnvelopeLine(errorEnvelope(result.error));
     return 1;

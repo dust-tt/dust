@@ -64,6 +64,12 @@ export type SandboxCtx = {
   };
 };
 
+export type SandboxFrameCtx = SandboxCtx & {
+  Variables: {
+    frame: FileResource;
+  };
+};
+
 export type SpaceCtx = WorkspaceAwareCtx & {
   Variables: {
     space: SpaceResource;
@@ -97,4 +103,5 @@ export const pokeFrameFunctionApp = () => createHono<PokeFrameFunctionCtx>();
 export const pokeFrameApp = () => createHono<PokeFrameCtx>();
 export const publicApiApp = () => createHono<PublicApiCtx>();
 export const sandboxApp = () => createHono<SandboxCtx>();
+export const sandboxFrameApp = () => createHono<SandboxFrameCtx>();
 export const skillApp = () => createHono<SkillCtx>();

@@ -22,9 +22,10 @@ export function runQuery(
   sql: string,
   // Omitted only by tests that don't exercise the quota; runner.ts always passes it.
   maxSizeBytes?: number,
-  // Directory the spill file is written to — a pod file, so the caller can read the full result
-  // set. runner.ts passes the pod-files dir from Rust; tests omit it and fall back to a temp dir.
-  spillDir?: string
+  // Directory for a spill file the local caller can read. `null` keeps only the inline preview
+  // when the caller cannot access this sandbox's files;
+  // tests omit it and fall back to a temp dir.
+  spillDir?: string | null
 ): Result<QueryOutcome, DbCommandError> {
   const trimmed = sql.trim();
   if (trimmed.length === 0) {
@@ -198,7 +199,7 @@ function executionError(e: unknown): DbCommandError {
 // so `INSERT … RETURNING` correctly returns its rows.
 function execute(
   statement: Statement,
-  spillDir: string | undefined
+  spillDir: string | null | undefined
 ): Result<QueryOutcome, DbCommandError> {
   if (statement.columnNames.length > 0) {
     return collectRows(statement, spillDir);
@@ -222,7 +223,7 @@ function execute(
 // Execute a result-returning statement, spilling beyond the inline bounds.
 function collectRows(
   statement: Statement,
-  spillDir: string | undefined
+  spillDir: string | null | undefined
 ): Result<QueryOutcome, DbCommandError> {
   const preview: Record<string, unknown>[] = [];
   let previewBytes = 0;
@@ -230,9 +231,13 @@ function collectRows(
   let rowCount = 0;
   let spillFd: number | null = null;
   let spillPath: string | null = null;
+  let previewTruncated = false;
   try {
     for (const row of statement.iterate()) {
       rowCount++;
+      if (spillDir === null && previewTruncated) {
+        continue;
+      }
       const rowJson = JSON.stringify(row, jsonReplacer);
       if (spillFd === null) {
         if (
@@ -243,6 +248,10 @@ function collectRows(
           preview.push(JSON.parse(rowJson));
           previewBytes += Buffer.byteLength(rowJson, "utf8");
           previewJson.push(rowJson);
+          continue;
+        }
+        if (spillDir === null) {
+          previewTruncated = true;
           continue;
         }
         const dir = spillDir ?? tmpdir();
@@ -271,10 +280,13 @@ function collectRows(
     changes: null,
     results_file: spillPath,
     note:
-      spillPath === null
-        ? null
-        : `${rowCount} rows total; the first ${preview.length} are shown here as a preview. ` +
-          `The complete result set is in ${spillPath}, one JSON object per line.`,
+      spillPath !== null
+        ? `${rowCount} rows total; the first ${preview.length} are shown here as a preview. ` +
+          `The complete result set is in ${spillPath}, one JSON object per line.`
+        : previewTruncated
+          ? `${rowCount} rows total; the first ${preview.length} are shown here as a preview. ` +
+            "Refine the query with LIMIT and OFFSET to inspect the remaining rows."
+          : null,
   });
 }
 

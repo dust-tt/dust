@@ -11,7 +11,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
+import frameById from "./[frameId]";
 import call from "./call";
 import callById from "./call_by_id";
 import register from "./register";
@@ -122,5 +122,7 @@ app.post(
     }
   }
 );
+
+app.route("/:frameId{fil_[A-Za-z0-9]+}", frameById);
 
 export default app;

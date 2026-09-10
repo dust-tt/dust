@@ -3,6 +3,37 @@ use std::io::IsTerminal;
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameDatabaseEntry {
+    pub name: String,
+    pub size_bytes: u64,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameDatabaseListResponse {
+    pub items: Vec<FrameDatabaseEntry>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameDatabaseQueryRequest<'a> {
+    pub database: &'a str,
+    pub sql: &'a str,
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameDatabaseQueryResponse {
+    pub columns: Vec<String>,
+    pub rows: Vec<serde_json::Map<String, serde_json::Value>>,
+    pub row_count: u64,
+    pub changes: Option<u64>,
+    pub results_file: Option<String>,
+    pub note: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FrameCallByIdRequest<'a> {

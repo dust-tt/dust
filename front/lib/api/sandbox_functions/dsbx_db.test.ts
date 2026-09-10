@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   getDatabaseSchemaOnReadySandbox,
   listDatabasesOnReadySandbox,
+  queryDatabaseOnReadySandbox,
   reconcileDatabaseOnReadySandbox,
 } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -189,6 +190,87 @@ describe("listDatabasesOnReadySandbox", () => {
     const result = await listDatabasesOnReadySandbox(authenticator, sandbox);
 
     expect(result.isErr()).toBe(true);
+  });
+});
+
+describe("queryDatabaseOnReadySandbox", () => {
+  it("uses sandbox scratch space for large results by default", async () => {
+    const { authenticator, sandbox } = await setup();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          ok: true,
+          columns: ["id"],
+          rows: [{ id: 1 }],
+          row_count: 1,
+          changes: null,
+          results_file: null,
+          note: null,
+        }),
+        stderr: "",
+      })
+    );
+
+    await queryDatabaseOnReadySandbox(authenticator, {
+      sandbox,
+      database: "tasks",
+      sql: "SELECT id FROM tasks",
+    });
+
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      authenticator,
+      expect.stringContaining("db query -- 'tasks'"),
+      expect.objectContaining({
+        envVars: expect.objectContaining({
+          DUST_POD_QUERY_SPILL_DIR: "/tmp/dust-sandbox-db-query-results",
+        }),
+      })
+    );
+  });
+
+  it("runs a data-changing statement against the supplied owner sandbox", async () => {
+    const { authenticator, sandbox } = await setup();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          ok: true,
+          columns: [],
+          rows: [],
+          row_count: 0,
+          changes: 2,
+          results_file: null,
+          note: null,
+        }),
+        stderr: "",
+      })
+    );
+
+    const result = await queryDatabaseOnReadySandbox(authenticator, {
+      sandbox,
+      database: "tasks",
+      sql: "UPDATE tasks SET done = 1 WHERE owner = 'me'",
+      resultMode: "inline_preview",
+    });
+
+    expect(result.isOk() && result.value).toEqual({
+      columns: [],
+      rows: [],
+      rowCount: 0,
+      changes: 2,
+      resultsFile: null,
+      note: null,
+    });
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      authenticator,
+      expect.stringContaining("db query -- 'tasks'"),
+      expect.objectContaining({
+        envVars: expect.objectContaining({ DUST_DB_QUERY_INLINE_ONLY: "1" }),
+        stdin: "UPDATE tasks SET done = 1 WHERE owner = 'me'",
+        user: "agent-proxied",
+      })
+    );
   });
 });
 
