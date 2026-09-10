@@ -49,9 +49,11 @@ function makeFile({
   };
 }
 
+const owner = LightWorkspaceFactory.build();
+
 type ControlledFileExplorerProps = Omit<
   ComponentProps<typeof FileExplorer>,
-  "currentFolderPath" | "onCurrentFolderChange"
+  "currentFolderPath" | "onCurrentFolderChange" | "owner"
 >;
 
 // `FileExplorer` is a controlled component: folder navigation lives in the
@@ -64,9 +66,15 @@ function ControlledFileExplorer(props: ControlledFileExplorerProps) {
       {...props}
       currentFolderPath={currentFolderPath}
       onCurrentFolderChange={setCurrentFolderPath}
+      owner={owner}
     />
   );
 }
+
+// Layout and sort preferences persist in localStorage per workspace.
+beforeEach(() => {
+  localStorage.clear();
+});
 
 beforeAll(() => {
   // Radix relies on this browser API when opening dropdown content.
@@ -368,14 +376,13 @@ describe("FileExplorer Frame packages", () => {
 });
 
 describe("FileExplorer preferences", () => {
-  const owner = LightWorkspaceFactory.build();
   const file = makeFile({
     contentType: "text/plain",
     fileName: "notes.txt",
     lastModifiedMs: 1,
   });
 
-  function renderExplorer(withOwner = false) {
+  function renderExplorer() {
     return render(
       <ControlledFileExplorer
         defaultViewMode="grid"
@@ -383,7 +390,6 @@ describe("FileExplorer preferences", () => {
         getFileUrl={(path) => `/files/${path}`}
         isLoading={false}
         onDownload={vi.fn().mockResolvedValue(undefined)}
-        owner={withOwner ? owner : undefined}
       />
     );
   }
@@ -401,13 +407,9 @@ describe("FileExplorer preferences", () => {
     await user.click(await screen.findByText("List"));
   }
 
-  beforeEach(() => {
-    localStorage.clear();
-  });
-
   it("restores view and sort mode after a remount", async () => {
     const user = userEvent.setup();
-    const { unmount } = renderExplorer(true);
+    const { unmount } = renderExplorer();
     expect(isListLayout()).toBe(false);
 
     await pickListLayout(user);
@@ -416,22 +418,10 @@ describe("FileExplorer preferences", () => {
     expect(isListLayout()).toBe(true);
     unmount();
 
-    renderExplorer(true);
+    renderExplorer();
     expect(isListLayout()).toBe(true);
     expect(
       screen.getByRole("button", { name: "Name Z → A" })
     ).toBeInTheDocument();
-  });
-
-  it("keeps the default when no owner is given", async () => {
-    const user = userEvent.setup();
-    const { unmount } = renderExplorer();
-
-    await pickListLayout(user);
-    expect(isListLayout()).toBe(true);
-    unmount();
-
-    renderExplorer();
-    expect(isListLayout()).toBe(false);
   });
 });
