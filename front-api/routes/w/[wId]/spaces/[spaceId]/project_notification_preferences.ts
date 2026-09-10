@@ -14,7 +14,7 @@ import { withSpace } from "@front-api/middlewares/with_space";
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/spaces/{spaceId}/project_notification_preferences:
  *   get:
  *     summary: Get project notification preference

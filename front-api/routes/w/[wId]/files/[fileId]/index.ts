@@ -68,7 +68,7 @@ function getSecureFileAction(
 const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/files/{fileId}:
  *   get:
  *     summary: Get or download a file

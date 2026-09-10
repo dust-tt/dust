@@ -17,7 +17,7 @@ const ParamsSchema = z.object({
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/wakeups:
  *   get:
  *     summary: List wake-ups for a conversation

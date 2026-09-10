@@ -54,7 +54,7 @@ const PostSandboxFunctionInvocationBodySchema = z
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/sandbox-functions/{functionId}/invocations/{invocationId}/events:
  *   get:
  *     summary: Stream sandbox function invocation events

@@ -14,7 +14,7 @@ const ParamsSchema = z.object({
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/feedbacks:
  *   get:
  *     summary: Get conversation feedbacks

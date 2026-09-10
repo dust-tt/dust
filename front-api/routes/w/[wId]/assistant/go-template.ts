@@ -39,7 +39,7 @@ function getGoTemplateApiError(
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/go-template:
  *   get:
  *     summary: Resolve a conversation go template draft

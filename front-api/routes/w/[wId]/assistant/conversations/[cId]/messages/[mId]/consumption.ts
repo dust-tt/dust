@@ -18,7 +18,7 @@ const app = workspaceApp();
 app.use(withFeatureFlag("conversation_consumption_details"));
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/consumption:
  *   get:
  *     summary: Get an agent message credit attribution

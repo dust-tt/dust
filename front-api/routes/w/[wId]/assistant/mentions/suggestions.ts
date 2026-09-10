@@ -5,7 +5,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/mentions/suggestions:
  *   get:
  *     summary: Get mention suggestions

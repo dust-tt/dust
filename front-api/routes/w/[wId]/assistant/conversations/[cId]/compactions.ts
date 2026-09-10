@@ -28,7 +28,7 @@ const PostConversationCompactionsBodySchema = z.object({
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/compactions:
  *   post:
  *     summary: Compact a conversation

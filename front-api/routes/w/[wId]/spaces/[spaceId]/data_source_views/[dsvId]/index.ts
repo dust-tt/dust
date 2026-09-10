@@ -28,7 +28,7 @@ import tables from "./tables";
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/spaces/{spaceId}/data_source_views/{dsvId}:
  *   get:
  *     summary: Get a data source view

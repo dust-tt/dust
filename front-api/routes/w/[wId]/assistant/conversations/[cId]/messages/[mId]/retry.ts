@@ -18,7 +18,7 @@ const ParamsSchema = z.object({
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/retry:
  *   post:
  *     summary: Retry an agent message

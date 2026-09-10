@@ -10,7 +10,7 @@ export type GetWorkspaceFeatureFlagsResponseType = {
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/feature-flags:
  *   get:
  *     summary: Get workspace feature flags

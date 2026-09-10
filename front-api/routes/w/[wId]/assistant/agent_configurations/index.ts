@@ -40,7 +40,7 @@ import webhookFilterGenerator from "./webhook_filter_generator";
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/agent_configurations:
  *   get:
  *     summary: List agent configurations

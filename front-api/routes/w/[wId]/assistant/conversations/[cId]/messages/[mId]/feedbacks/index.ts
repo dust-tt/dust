@@ -26,7 +26,7 @@ const MessageFeedbackRequestBodySchema = z.object({
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/feedbacks:
  *   post:
  *     summary: Submit message feedback

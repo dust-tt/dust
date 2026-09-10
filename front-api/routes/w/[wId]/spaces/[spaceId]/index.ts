@@ -53,7 +53,7 @@ import webhookSourceViews from "./webhook_source_views";
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/spaces/{spaceId}:
  *   get:
  *     summary: Get a space

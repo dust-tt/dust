@@ -27,7 +27,7 @@ import dsvId from "./[dsvId]";
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/spaces/{spaceId}/data_source_views:
  *   get:
  *     summary: List data source views

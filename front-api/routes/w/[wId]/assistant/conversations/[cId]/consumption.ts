@@ -14,7 +14,7 @@ const ParamsSchema = z.object({
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/consumption:
  *   get:
  *     summary: Get a conversation credit attribution

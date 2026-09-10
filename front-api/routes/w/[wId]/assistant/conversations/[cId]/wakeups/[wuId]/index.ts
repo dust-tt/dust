@@ -22,7 +22,7 @@ export type DeleteConversationWakeUpResponseBody = {
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/wakeups/{wuId}:
  *   delete:
  *     summary: Cancel a wake-up

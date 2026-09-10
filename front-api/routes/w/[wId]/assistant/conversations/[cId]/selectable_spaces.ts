@@ -15,7 +15,7 @@ const ParamsSchema = z.object({
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/selectable_spaces:
  *   get:
  *     summary: List selectable Spaces

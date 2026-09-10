@@ -91,7 +91,7 @@ const FileUploadUrlRequestSchema = z.discriminatedUnion("useCase", [
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/files:
  *   post:
  *     summary: Create a file upload

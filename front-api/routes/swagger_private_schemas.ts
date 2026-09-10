@@ -1,5 +1,5 @@
 /**
- * @swagger
+ * @ignoreswagger
  * components:
  *   schemas:
  *     PrivateConsumptionFacet:

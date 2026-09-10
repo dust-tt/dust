@@ -24,7 +24,7 @@ const PostMessageEventBodySchema = z.object({
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/cancel:
  *   post:
  *     summary: Cancel message generation

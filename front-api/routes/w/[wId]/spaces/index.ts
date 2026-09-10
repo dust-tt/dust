@@ -46,7 +46,7 @@ const GetSpacesQuerySchema = z.object({
 });
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/spaces:
  *   get:
  *     summary: List spaces

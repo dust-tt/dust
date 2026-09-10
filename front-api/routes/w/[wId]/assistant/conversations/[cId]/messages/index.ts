@@ -49,7 +49,7 @@ export interface FetchConversationMessagesResponse {
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/messages:
  *   get:
  *     summary: List messages in a conversation

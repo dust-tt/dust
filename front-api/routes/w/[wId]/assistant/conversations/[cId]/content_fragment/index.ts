@@ -22,7 +22,7 @@ export type PostContentFragmentResponseBody = {
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/content_fragment:
  *   post:
  *     summary: Create a content fragment

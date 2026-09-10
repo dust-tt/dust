@@ -8,7 +8,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/extension/config:
  *   get:
  *     summary: Get extension configuration

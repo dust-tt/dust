@@ -68,7 +68,7 @@ function isConversationNotFoundError(err: unknown): err is ConversationError {
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations:
  *   get:
  *     summary: List conversations

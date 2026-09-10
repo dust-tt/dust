@@ -68,7 +68,7 @@ function redirectTo(ctx: Context, sanitizedReturnTo: string) {
 const app = createHono();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/workos/login:
  *   get:
  *     summary: Initiate WorkOS login

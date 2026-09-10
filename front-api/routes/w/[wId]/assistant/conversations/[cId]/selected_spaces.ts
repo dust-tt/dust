@@ -21,7 +21,7 @@ const AddSelectedConversationSpacesRequestSchema = z.object({
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/selected_spaces:
  *   post:
  *     summary: Select Spaces for a conversation

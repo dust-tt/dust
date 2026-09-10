@@ -68,7 +68,7 @@ const PatchConversationsRequestBodySchema = z.union([
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}:
  *   get:
  *     summary: Get a conversation

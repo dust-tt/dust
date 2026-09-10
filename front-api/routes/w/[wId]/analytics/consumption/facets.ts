@@ -15,7 +15,7 @@ import { consumptionAnalyticsApp } from "./context";
 const app = consumptionAnalyticsApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/analytics/consumption/facets:
  *   post:
  *     summary: List consumption analytics facets

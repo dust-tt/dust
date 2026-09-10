@@ -11,7 +11,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 const app = workspaceApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/w/{wId}/assistant/conversations/{cId}/messages/{mId}/events:
  *   get:
  *     summary: Stream message events

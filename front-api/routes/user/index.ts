@@ -35,7 +35,7 @@ const PatchUserBodySchema = z.object({
 const app = sessionApp();
 
 /**
- * @swagger
+ * @ignoreswagger
  * /api/user:
  *   get:
  *     summary: Get current user
