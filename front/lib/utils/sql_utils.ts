@@ -1,5 +1,5 @@
 import { frontSequelize } from "@app/lib/resources/storage";
-import type { Transaction } from "sequelize";
+import type { Transaction, TransactionOptions } from "sequelize";
 import { Sequelize } from "sequelize";
 import { injectReplacements } from "sequelize/lib/utils/sql";
 
@@ -46,7 +46,8 @@ function getCurrentTransaction(): Transaction | null {
 
 export async function withTransaction<T>(
   fn: (transaction: Transaction) => Promise<T>,
-  transaction?: Transaction
+  transaction?: Transaction,
+  options: Pick<TransactionOptions, "isolationLevel"> = {}
 ): Promise<T> {
   if (transaction) {
     return fn(transaction);
@@ -65,5 +66,5 @@ export async function withTransaction<T>(
     );
   }
 
-  return frontSequelize.transaction(fn);
+  return frontSequelize.transaction(options, fn);
 }

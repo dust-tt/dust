@@ -32,6 +32,31 @@ export type SkillSearchPermissionFiltering = Exclude<
   "dangerously_skip"
 >;
 
+export const SEARCH_MODES = [
+  "autocomplete",
+  "management",
+  "discovery",
+] as const;
+export type SearchMode = (typeof SEARCH_MODES)[number];
+
+// OR within a dimension, AND across dimensions. Selection never replaces ACLs.
+export interface SkillSearchFilters {
+  spaceIds?: string[];
+  toolIds?: string[];
+  editedByMe?: boolean;
+  availability?: SkillWithoutInstructionsAndToolsType["availability"][];
+  isDefault?: boolean;
+}
+
+export interface SkillSearchOptions {
+  searchTerm: string;
+  mode?: SearchMode;
+  filters?: SkillSearchFilters;
+  permissionFiltering?: SkillSearchPermissionFiltering;
+  limit?: number;
+  cursor?: string;
+}
+
 export type SearchSkillsResponseBody = {
   skills: SkillSearchResult[];
   // Null means exhausted; optional for clients talking to an older server.

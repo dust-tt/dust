@@ -1,6 +1,13 @@
 import type * as activities from "@app/temporal/es_indexation/activities";
-import { proxyActivities, setHandler, sleep } from "@temporalio/workflow";
+import {
+  continueAsNew,
+  proxyActivities,
+  setHandler,
+  sleep,
+  workflowInfo,
+} from "@temporalio/workflow";
 
+import { concurrentExecutor } from "../workflow_utils";
 import { indexSkillSearchSignal, indexUserSearchSignal } from "./signals";
 
 const DEBOUNCE_DELAY_MS = 1_000;
@@ -71,4 +78,46 @@ export async function deleteWorkspaceSkillSearchWorkflow({
   workspaceId: string;
 }): Promise<void> {
   await deleteWorkspaceSkillSearchActivity({ workspaceId });
+}
+
+const {
+  listSearchUsageWorkspacesActivity,
+  refreshWorkspaceSearchUsageActivity,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "10 minutes",
+  retry: { maximumAttempts: 3 },
+});
+
+export async function refreshSearchUsageWorkflow({
+  afterWorkspaceModelId = 0,
+  evaluatedAtMs = workflowInfo().startTime.getTime(),
+}: {
+  afterWorkspaceModelId?: number;
+  evaluatedAtMs?: number;
+} = {}): Promise<void> {
+  const workspaces = await listSearchUsageWorkspacesActivity(
+    afterWorkspaceModelId
+  );
+  await concurrentExecutor(
+    workspaces,
+    ({ workspaceId }) =>
+      refreshWorkspaceSearchUsageActivity({ workspaceId, evaluatedAtMs }),
+    { concurrency: 5 }
+  );
+  if (workspaces.length === 50) {
+    await continueAsNew<typeof refreshSearchUsageWorkflow>({
+      afterWorkspaceModelId: workspaces[workspaces.length - 1].workspaceModelId,
+      evaluatedAtMs,
+    });
+  }
+}
+
+export async function refreshWorkspaceSearchUsageWorkflow({
+  workspaceId,
+  evaluatedAtMs = workflowInfo().startTime.getTime(),
+}: {
+  workspaceId: string;
+  evaluatedAtMs?: number;
+}): Promise<void> {
+  await refreshWorkspaceSearchUsageActivity({ workspaceId, evaluatedAtMs });
 }

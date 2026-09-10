@@ -1,3 +1,5 @@
+import type { SearchMode } from "@app/types/api/skills";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
 // Fixed scores make indexed and code-defined skills comparable without corpus
@@ -16,7 +18,8 @@ function escapeWildcard(value: string): string {
 }
 
 export function buildSkillMatchQuery(
-  searchTerm: string
+  searchTerm: string,
+  mode: SearchMode = "autocomplete"
 ): estypes.QueryDslQueryContainer {
   const query = searchTerm.trim();
   if (!query) {
@@ -30,12 +33,12 @@ export function buildSkillMatchQuery(
     ["name.subsequence", `*${literal}*`, MATCH_SCORES.substring],
     ["name.subsequence", subsequence, MATCH_SCORES.subsequence],
     [
-      "user_facing_description.subsequence",
+      "description.subsequence",
       `*${literal}*`,
       MATCH_SCORES.descriptionSubstring,
     ],
     [
-      "user_facing_description.subsequence",
+      "description.subsequence",
       subsequence,
       MATCH_SCORES.descriptionSubsequence,
     ],
@@ -44,12 +47,18 @@ export function buildSkillMatchQuery(
   return {
     dis_max: {
       tie_breaker: 0,
-      queries: matches.map(([field, value, boost]) => ({
-        constant_score: {
-          filter: { wildcard: { [field]: { value, case_insensitive: true } } },
-          boost,
-        },
-      })),
+      queries: matches
+        .filter(
+          ([field]) => mode !== "autocomplete" || field === "name.subsequence"
+        )
+        .map(([field, value, boost]) => ({
+          constant_score: {
+            filter: {
+              wildcard: { [field]: { value, case_insensitive: true } },
+            },
+            boost,
+          },
+        })),
     },
   };
 }
@@ -59,11 +68,13 @@ export function getSkillSearchScore({
   name,
   description = "",
   aliases = [],
+  mode = "autocomplete",
 }: {
   searchTerm: string;
   name: string;
   description?: string;
   aliases?: readonly string[];
+  mode?: SearchMode;
 }): number {
   // ES wildcard case_insensitive folds ASCII only (including on wildcard fields).
   const normalize = (value: string) =>
@@ -100,14 +111,73 @@ export function getSkillSearchScore({
               : 0;
     score = Math.max(score, candidateScore);
   }
-  return Math.max(
-    score,
-    normalize(description).includes(query)
-      ? MATCH_SCORES.descriptionSubstring
-      : isSubsequence(normalize(description))
-        ? MATCH_SCORES.descriptionSubsequence
-        : 0
-  );
+  return mode === "autocomplete"
+    ? score
+    : Math.max(
+        score,
+        normalize(description).includes(query)
+          ? MATCH_SCORES.descriptionSubstring
+          : isSubsequence(normalize(description))
+            ? MATCH_SCORES.descriptionSubsequence
+            : 0
+      );
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:product] skill-search-ranking
+ * Indexed and code-defined results use the same mode, signals and float32 score;
+ * autocomplete ignores description and usage, management sorts by usage then name.
+ */
+export function getSearchRankingScore({
+  matchScore,
+  mode,
+  activeUsers = 0,
+}: {
+  matchScore: number;
+  mode: SearchMode;
+  activeUsers?: number;
+}): number {
+  if (matchScore <= 0) {
+    return 0;
+  }
+  switch (mode) {
+    case "autocomplete":
+      return matchScore;
+    case "management":
+      return Math.fround(1 + activeUsers);
+    case "discovery":
+      return Math.fround(matchScore + Math.log1p(activeUsers));
+    default:
+      return assertNever(mode);
+  }
+}
+
+export function applySearchRanking(
+  query: estypes.QueryDslQueryContainer,
+  mode: SearchMode
+): estypes.QueryDslQueryContainer {
+  switch (mode) {
+    case "autocomplete":
+      return query;
+    case "management":
+      return {
+        script_score: {
+          query,
+          script: { source: "1 + doc['active_users'].value" },
+        },
+      };
+    case "discovery":
+      return {
+        script_score: {
+          query,
+          script: {
+            source: "_score + Math.log1p(doc['active_users'].value)",
+          },
+        },
+      };
+    default:
+      return assertNever(mode);
+  }
 }
 
 export interface RankedSkill {
@@ -132,7 +202,7 @@ function compareUtf8Strings(a: string, b: string): number {
 export function compareRankedSkills(a: RankedSkill, b: RankedSkill): number {
   // Keyword fields sort by UTF-8 bytes, not locale collation or UTF-16 units.
   return (
-    b.score - a.score ||
+    Math.fround(b.score) - Math.fround(a.score) ||
     compareUtf8Strings(a.name, b.name) ||
     compareUtf8Strings(a.sId, b.sId)
   );
