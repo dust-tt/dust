@@ -5,7 +5,7 @@
  *     summary: Export workspace analytics
  *     description: Export analytics data for the workspace identified by {wId} in CSV or JSON format.
  *     tags:
- *       - Workspace
+ *       - Analytics
  *     security:
  *       - BearerAuth: []
  *     parameters:
