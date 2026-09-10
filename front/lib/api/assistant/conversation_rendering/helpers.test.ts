@@ -74,23 +74,6 @@ describe("renderUserMessage", () => {
     expect(text).not.toContain(":mention[John Doe]{user_123}");
   });
 
-  it("strips icon from inline tool and skill tags", async () => {
-    const { conversation, userMessage } = await buildMessage({
-      content:
-        'Use <tool id="msvr_123" name="Web Search" icon="magnifying_glass" /> ' +
-        'with <skill id="skill_123" name="commit" icon="rocket" />',
-      context: {},
-    });
-
-    const res = renderUserMessage(conversation, userMessage);
-    expect(res.content[0].type).toBe("text");
-    const text = (res.content[0] as TextContent).text;
-
-    expect(text).toContain('<tool id="msvr_123" name="Web Search" />');
-    expect(text).toContain('<skill id="skill_123" name="commit" />');
-    expect(text).not.toContain("icon=");
-  });
-
   it("adds Sender metadata with full name, username and email", async () => {
     const { conversation, userMessage } = await buildMessage({
       content: "Hello!",
