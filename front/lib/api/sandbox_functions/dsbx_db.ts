@@ -1,14 +1,7 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { getRedisStreamClient } from "@app/lib/api/redis";
-import { isValidPodDatabaseName } from "@app/lib/api/sandbox/db";
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
-import {
-  podDatabasePrefixFromPodPath,
-  resolvePodDatabaseName,
-} from "@app/lib/api/sandbox_functions/db_naming";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import type { StagingHashes } from "@app/lib/api/sandbox_functions/staging_integrity";
@@ -18,16 +11,13 @@ import {
   verifyStagingContent,
 } from "@app/lib/api/sandbox_functions/staging_integrity";
 import type { Authenticator } from "@app/lib/auth";
-import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import tracer from "@app/logger/tracer";
-import { SCOPED_PREFIX_POD } from "@app/types/file_system";
+import { SANDBOX_DATABASE_NAME_REGEX } from "@app/types/api/sandbox_functions";
 import {
   SANDBOX_STATE_DATABASES_DIR,
   sandboxDatabaseExecEnvVars,
-  TOOL_OUTPUTS_FOLDER_NAME,
 } from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -155,25 +145,6 @@ async function execDbCommandOnReadySandbox<S extends z.ZodTypeAny>(
   });
 }
 
-// Ensure the Pod sandbox is up before using the owner-neutral ready-sandbox primitive.
-async function execDbCommand<S extends z.ZodTypeAny>(
-  auth: Authenticator,
-  space: SpaceResource,
-  args: DbCommandArgs<S>
-): Promise<DbCommandResult<S>> {
-  const ensureResult = await ensurePodSandboxReady(auth, space);
-  if (ensureResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError(
-        "sandbox_unavailable",
-        ensureResult.error.message
-      )
-    );
-  }
-
-  return execDbCommandOnReadySandbox(auth, ensureResult.value.sandbox, args);
-}
-
 // Success mirrors the reconcile result in cli/dust-sandbox/functions-runner/db/reconcile.ts.
 const reconcileEnvelopeSchema = z.union([
   z.object({
@@ -236,149 +207,15 @@ export async function reconcileDatabaseOnReadySandbox(
   );
 }
 
-async function reconcileDatabaseOnSandbox(
-  auth: Authenticator,
-  {
-    space,
-    database,
-    schemaFileSandboxPath,
-  }: {
-    space: SpaceResource;
-    database: string;
-    schemaFileSandboxPath: string;
-  }
-): Promise<Result<ReconcileDatabaseResult, SandboxFunctionError>> {
-  const ensureResult = await ensurePodSandboxReady(auth, space);
-  if (ensureResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError(
-        "sandbox_unavailable",
-        ensureResult.error.message
-      )
-    );
-  }
-
-  const result = await reconcileDatabaseOnReadySandbox(auth, {
-    sandbox: ensureResult.value.sandbox,
-    database,
-    schemaFileSandboxPath,
-  });
-  if (result.isOk() && result.value.statements.length > 0) {
-    logger.info(
-      {
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        podId: space.sId,
-        database,
-        created: result.value.created,
-        statements: result.value.statements,
-      },
-      "Pod database reconciled: applied DDL"
-    );
-  }
-  return result;
-}
-
-const RECONCILE_LOCK_ACQUIRE_TIMEOUT_MS = 30_000;
-
-/**
- * Resolve a model-supplied scoped schema-file path (e.g. `pod-{id}/MyApp/databases/chat.db.ts`) to
- * its in-sandbox path and reconcile against it. The only path that applies schema changes to a live
- * database (publish validates but never applies); concurrent reconciles of one pod are serialized
- * under a per-pod lock.
- *
- * `database` is the app-relative name the schema file declares (`chat`); the on-disk name is that
- * name qualified with the app prefix taken from the schema file's own app folder. The live database
- * set is read inside the lock, because which name wins depends on what already exists (see
- * resolvePodDatabaseName) and a concurrent reconcile could otherwise create it in between.
- */
-export async function reconcileDatabaseFromPodPath(
-  auth: Authenticator,
-  {
-    space,
-    database,
-    path: scopedPath,
-  }: { space: SpaceResource; database: string; path: string }
-): Promise<Result<ReconcileDatabaseResult, SandboxFunctionError>> {
-  const fsResult = await DustFileSystem.forPod(auth, space);
-  if (fsResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError("invalid_path", fsResult.error.message)
-    );
-  }
-  const resolved = fsResult.value.toSandboxPath(scopedPath);
-  if (resolved.isErr()) {
-    return new Err(
-      new SandboxFunctionError("invalid_path", resolved.error.message)
-    );
-  }
-
-  const prefixResult = podDatabasePrefixFromPodPath({
-    sourcePath: scopedPath,
-    podId: space.sId,
-  });
-  if (prefixResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError("invalid_path", prefixResult.error.message)
-    );
-  }
-  const prefix = prefixResult.value;
-
-  // Acquire the per-pod lock directly (not via executeWithLock) so a timeout surfaces as a
-  // retryable publish_conflict Result instead of a thrown error.
-  const client = await getRedisStreamClient({ origin: "lock" });
-  const lockName = `sandbox_function:db_reconcile:${space.sId}`;
-  const lockValue = await tracer.trace(
-    "lock.acquire",
-    { resource: "sandbox_function.db_reconcile" },
-    async () => {
-      const startMs = Date.now();
-      while (Date.now() - startMs < RECONCILE_LOCK_ACQUIRE_TIMEOUT_MS) {
-        const acquired = await distributedLock(client, lockName);
-        if (acquired) {
-          return acquired;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      }
-      return undefined;
-    }
-  );
-  if (!lockValue) {
-    return new Err(
-      new SandboxFunctionError(
-        "publish_conflict",
-        "Another reconcile is in progress for this pod; retry shortly."
-      )
-    );
-  }
-  try {
-    const existingResult = await listDatabasesOnSandbox(auth, { space });
-    if (existingResult.isErr()) {
-      return new Err(existingResult.error);
-    }
-
-    return await reconcileDatabaseOnSandbox(auth, {
-      space,
-      database: resolvePodDatabaseName({
-        prefix,
-        name: database,
-        existingNames: existingResult.value.map((entry) => entry.name),
-      }),
-      schemaFileSandboxPath: resolved.value,
-    });
-  } finally {
-    await distributedUnlock(client, lockName, lockValue);
-  }
-}
-
 /** Absolute path so the command never resolves `rm` through a workload-influenced PATH. */
 const RM_BIN_PATH = "/bin/rm";
 
 /**
- * SQLite sidecars that belong to a database file and must go with it. `@dust/pod` runs with
+ * SQLite sidecars that belong to a database file and must go with it. The runner uses
  * `wal_autocheckpoint=0`, so recent rows can live entirely in `-wal`: leaving it behind would let a
  * later reconcile of the same name recover data this delete was meant to destroy.
  */
-const POD_DATABASE_SIDECAR_SUFFIXES = ["-wal", "-shm"];
+const DATABASE_SIDECAR_SUFFIXES = ["-wal", "-shm"];
 
 // `rm` prints nothing on success, so the command appends the envelope itself. Under `set -euo
 // pipefail` a failed `rm` never reaches the echo, leaving no envelope for parseDbEnvelope to find —
@@ -389,32 +226,33 @@ const deleteEnvelopeSchema = z.union([
 ]);
 
 /**
- * Remove a live pod database and its SQLite sidecars from the databases directory.
+ * Remove a live database and its SQLite sidecars from the sandbox's databases directory.
  *
  * Deliberately NOT a dsbx subcommand: dsbx is the agent-facing CLI, and a destructive database
- * primitive there would be discoverable from inside the sandbox. Front builds the command instead, so
- * this adds no surface a workload can reach. It grants no new capability either — the databases dir is
- * group-writable by `agent` (mode 2770), so workload code can already unlink its own database files.
+ * primitive there would be discoverable from inside the sandbox. Front builds the command instead,
+ * so this adds no surface a workload can reach. It grants no new capability either — the databases
+ * dir is group-writable by `agent` (mode 2770), so workload code can already unlink its own
+ * database files.
  *
  * Idempotent: `rm -f` succeeds when the files are already gone, so a caller working from a replica
  * listing never has to check what is live first.
  *
- * Only the LIVE files go. The litestream replica is the durable copy, so a caller deleting a database
- * for good must also restart the daemon (`restartLitestreamDaemon`, which is what makes it let go of
- * the removed files) and wipe the replica prefix (`deletePodDatabaseReplica`), or the next cold-start
- * restore brings the database back. Returns the sandbox so that restart needs no second lookup.
+ * Only the LIVE files go. The litestream replica is the durable copy, so a caller deleting a
+ * database for good must also restart the daemon (`restartLitestreamDaemon`, which is what makes it
+ * let go of the removed files) and wipe the replica prefix (`deleteFrameDatabaseReplica`), or the
+ * next cold-start restore brings the database back.
  */
-export async function deleteDatabaseOnSandbox(
+export async function deleteDatabaseOnReadySandbox(
   auth: Authenticator,
-  { space, database }: { space: SpaceResource; database: string }
-): Promise<Result<{ sandbox: SandboxResource }, SandboxFunctionError>> {
+  { sandbox, database }: { sandbox: SandboxResource; database: string }
+): Promise<Result<undefined, SandboxFunctionError>> {
   // The name contract (`^[a-z][a-z0-9_]{0,63}$`) admits no separator or dot, so a validated name
   // cannot escape the databases directory. The same guard runs on the replica path.
-  if (!isValidPodDatabaseName(database)) {
+  if (!SANDBOX_DATABASE_NAME_REGEX.test(database)) {
     return new Err(
       new SandboxFunctionError(
         "internal",
-        `Invalid pod database name: '${database}'.`
+        `Invalid sandbox database name: '${database}'.`
       )
     );
   }
@@ -424,10 +262,10 @@ export async function deleteDatabaseOnSandbox(
   // workload-writable databases dir cannot make this reach a foreign file.
   const paths = [
     dbPath,
-    ...POD_DATABASE_SIDECAR_SUFFIXES.map((suffix) => `${dbPath}${suffix}`),
-  ].map((path) => shellEscape(path));
+    ...DATABASE_SIDECAR_SUFFIXES.map((suffix) => `${dbPath}${suffix}`),
+  ].map((each) => shellEscape(each));
 
-  const result = await execDbCommand(auth, space, {
+  const result = await execDbCommandOnReadySandbox(auth, sandbox, {
     // `--` stops the paths from being read as flags.
     command: [
       "set -euo pipefail",
@@ -435,23 +273,23 @@ export async function deleteDatabaseOnSandbox(
       `echo '{"ok":true}'`,
     ].join("\n"),
     schema: deleteEnvelopeSchema,
-    what: `remove pod database ${database}`,
+    what: `remove sandbox database ${database}`,
   });
   if (result.isErr()) {
     return result;
   }
-  const { envelope, sandbox } = result.value;
+  const { envelope } = result.value;
 
   if ("ok" in envelope && envelope.ok) {
     logger.info(
       {
         workspaceId: auth.getNonNullableWorkspace().sId,
-        podId: space.sId,
+        sandboxId: sandbox.sId,
         database,
       },
-      "Pod database deleted: removed live files"
+      "Sandbox database deleted: removed live files"
     );
-    return new Ok({ sandbox });
+    return new Ok(undefined);
   }
 
   return new Err(dbErrorToSandboxFunctionError(database, envelope, "internal"));
@@ -520,21 +358,23 @@ const schemaEnvelopeSchema = z.union([
   dbErrorEnvelopeSchema,
 ]);
 
-// Non-mounted scratch root for regenerated schema files (cf. BUILD_STAGING_ROOT).
+// Non-mounted scratch roots for regenerated schema files and oversized query results
+// (cf. BUILD_STAGING_ROOT).
 const DB_SCHEMA_STAGING_ROOT = "/tmp/dust-sandbox-db-schemas";
+const DB_QUERY_SPILL_ROOT = "/tmp/dust-sandbox-db-query-results";
 
 /**
  * `dsbx db schema`: regenerate a drizzle schema file from the live database and read its text
  * back. SQLite does not store column modes, so the text carries storage types only — the authored
  * databases/{db}.db.ts stays the source of truth.
  */
-export async function getDatabaseSchemaOnSandbox(
+export async function getDatabaseSchemaOnReadySandbox(
   auth: Authenticator,
-  { space, database }: { space: SpaceResource; database: string }
+  { sandbox, database }: { sandbox: SandboxResource; database: string }
 ): Promise<Result<string, SandboxFunctionError>> {
   const outDir = path.posix.join(DB_SCHEMA_STAGING_ROOT, randomUUID());
   const outPath = path.posix.join(outDir, `${database}.db.ts`);
-  const result = await execDbCommand(auth, space, {
+  const result = await execDbCommandOnReadySandbox(auth, sandbox, {
     command: [
       "set -euo pipefail",
       `rm -rf -- ${shellEscape(outDir)}`,
@@ -554,7 +394,6 @@ export async function getDatabaseSchemaOnSandbox(
     return result;
   }
   const {
-    sandbox,
     envelope,
     stagingHashes,
     execStderr: execStderrForIntegrity,
@@ -605,7 +444,8 @@ export interface QueryDatabaseResult {
   // result-returning statements.
   changes: number | null;
   // Set when the result crossed the runner's inline bounds: `rows` is then a preview and the full
-  // result set is at this sandbox path, one JSON object per line.
+  // result set is at this sandbox path, one JSON object per line. Read it back off the same
+  // sandbox; it is scratch space, so it does not outlive the sandbox.
   resultsFile: string | null;
   note: string | null;
 }
@@ -614,25 +454,24 @@ export interface QueryDatabaseResult {
  * `dsbx db query`: execute one SQL statement (stdin) against a live database. The runner allows
  * SELECT and DML but refuses DDL/PRAGMA/ATTACH, so the schema only evolves through reconcile.
  */
-export async function queryDatabaseOnSandbox(
+export async function queryDatabaseOnReadySandbox(
   auth: Authenticator,
   {
-    space,
+    sandbox,
     database,
     sql,
-  }: { space: SpaceResource; database: string; sql: string }
+  }: { sandbox: SandboxResource; database: string; sql: string }
 ): Promise<Result<QueryDatabaseResult, SandboxFunctionError>> {
-  const result = await execDbCommand(auth, space, {
+  const result = await execDbCommandOnReadySandbox(auth, sandbox, {
     // `--` stops the model-influenced database name from being read as a flag.
     command: `set -euo pipefail\n${DSBX_BIN_PATH} db query -- ${shellEscape(database)}`,
     schema: queryEnvelopeSchema,
     what: `dsbx db query ${database}`,
-    // Oversized results spill into this pod-files dir (writable by agent-proxied), so the full
-    // set becomes a pod file. Mirrors the pod mount in dust_file_system.ts. The var name must
-    // match POD_QUERY_SPILL_DIR_ENV in cli/dust-sandbox/src/commands/db/query.rs.
-    envVars: {
-      DUST_POD_QUERY_SPILL_DIR: `/files/${SCOPED_PREFIX_POD}${space.sId}/${TOOL_OUTPUTS_FOLDER_NAME}/db`,
-    },
+    // Oversized results spill here rather than into a files mount: a Frame-owned sandbox carries
+    // no agent-visible one. The spill is a plain sandbox path, so `resultsFile` is read back off
+    // the same sandbox the caller passed in. The var name must match POD_QUERY_SPILL_DIR_ENV in
+    // cli/dust-sandbox/src/commands/db/query.rs.
+    envVars: { DUST_POD_QUERY_SPILL_DIR: DB_QUERY_SPILL_ROOT },
     stdin: sql,
   });
   if (result.isErr()) {
