@@ -71,7 +71,7 @@ export function buildProgrammaticCapReachedEmailCopy({
     case "programmatic_cap_disabled":
       return {
         subject: `[Dust] Your programmatic triggers are paused in ${workspaceName}`,
-        content: `A scheduled trigger in your Dust workspace "${workspaceName}" could not run because the workspace's monthly programmatic usage limit is set to 0 credits.\nProgrammatic triggers will remain blocked until an admin sets a positive limit in workspace usage settings.`,
+        content: `A scheduled trigger in your Dust workspace "${workspaceName}" could not run because the workspace's monthly programmatic usage limit is set to 0 credits.\nProgrammatic triggers will remain blocked until you set a positive limit in workspace usage settings.`,
       };
     default:
       return assertNever(reason);
