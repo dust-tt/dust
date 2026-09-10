@@ -1,5 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { SeatProvisioningSection } from "@app/components/pages/workspace/usage/SeatProvisioningSection";
 import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { BulkEditSpendLimitModal } from "@app/components/workspace/BulkEditSpendLimitModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
@@ -84,7 +85,11 @@ import {
   useUsageSettings,
 } from "@app/lib/swr/usage_settings";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
-import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
+import type { GroupGrantableSeatType } from "@app/types/groups";
+import {
+  CAP_ELIGIBLE_GROUP_KINDS,
+  isGroupGrantableSeatType,
+} from "@app/types/groups";
 import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
@@ -225,6 +230,7 @@ export function UsagePage() {
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
   const isNewUsagePage = hasFeature("enable_new_usage_page");
+  const groupSeatProvisioningEnabled = hasFeature("group_seat_provisioning");
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
   // Workspaces off a credit plan see this page without the credit pool, seat
   // and credits columns, spend limits and upgrade requests. Credit actions (top
@@ -623,6 +629,23 @@ export function UsagePage() {
     return map;
   }, [groups]);
 
+  // Names of groups that grant a seat: a member of any of these has their seat
+  // managed by group membership, so manual seat changes are locked for them.
+  const seatGrantingGroupNames = useMemo(
+    () =>
+      new Set(
+        groups.filter((g) => g.grantedSeatType !== null).map((g) => g.name)
+      ),
+    [groups]
+  );
+  const isSeatManagedByGroup = useCallback(
+    (member: MemberUsageType | null): boolean =>
+      groupSeatProvisioningEnabled &&
+      member !== null &&
+      member.groups.some((name) => seatGrantingGroupNames.has(name)),
+    [groupSeatProvisioningEnabled, seatGrantingGroupNames]
+  );
+
   // Cross-page selection for batch actions on the members table. Resets when the
   // filter identity changes (the "all matching" set is no longer the same).
   const pageItemIds = useMemo(
@@ -862,6 +885,24 @@ export function UsagePage() {
     return [...currentBaseSeatTypes].sort(
       (a, b) => SEAT_TYPE_ORDER[a] - SEAT_TYPE_ORDER[b]
     );
+  }, [seatPlans]);
+
+  // Grantable seat tiers the contract bills — one entry per tier
+  // (workspace/pro/max), regardless of cadence, ordered by tier. A group grants
+  // a tier (monthly by default), so cadences are collapsed here: a Pro row shows
+  // whether the contract bills pro, pro_yearly, or both.
+  const grantableSeatTypes = useMemo<GroupGrantableSeatType[]>(() => {
+    const tiers = new Set<GroupGrantableSeatType>();
+    for (const key of Object.keys(seatPlans)) {
+      if (!isMembershipSeatType(key)) {
+        continue;
+      }
+      const tier = toBaseSeatType(key);
+      if (isGroupGrantableSeatType(tier)) {
+        tiers.add(tier);
+      }
+    }
+    return [...tiers].sort((a, b) => SEAT_TYPE_ORDER[a] - SEAT_TYPE_ORDER[b]);
   }, [seatPlans]);
 
   const { usageSettings } = useUsageSettings({
@@ -1431,6 +1472,12 @@ export function UsagePage() {
                     />
                   )}
                   <ModelTiersSettingsCard owner={owner} />
+                  {isCreditPriced && groupSeatProvisioningEnabled && (
+                    <SeatProvisioningSection
+                      owner={owner}
+                      availableSeatTypes={grantableSeatTypes}
+                    />
+                  )}
                   {isCreditPriced && (
                     <LockedSection
                       locked={!isAwuPoolCurrentCycleLoading && !hasPool}
@@ -1459,6 +1506,7 @@ export function UsagePage() {
           isSeatPlanError={!!isSeatPlanError}
           onSavingChange={handleSeatChangePendingChange}
           onSaved={handleSeatMutationSaved}
+          seatManagedByGroup={isSeatManagedByGroup(changeSeatMember)}
         />
 
         <EditSpendLimitModal
