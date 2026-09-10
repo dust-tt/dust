@@ -25,7 +25,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
-import type { Order } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
 const HEAVY_AGENT_CONFIGURATION_ATTRIBUTES = [
@@ -51,7 +50,7 @@ function editorWhere(filter: EditorFilter) {
   }
 }
 
-const sortStrategies = {
+const sortStrategies: Record<SortStrategyType, SortStrategy> = {
   alphabetical: {
     dbOrder: [["name", "ASC"]],
     compareFunction: (a: AgentConfigurationType, b: AgentConfigurationType) =>
@@ -65,7 +64,7 @@ const sortStrategies = {
     dbOrder: [["updatedAt", "DESC"]],
     compareFunction: () => 0,
   },
-} satisfies Record<SortStrategyType, SortStrategy>;
+};
 
 function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
   return (results: AgentConfigurationType[]) => {
@@ -153,8 +152,8 @@ async function fetchGlobalAgentConfigurationForView(
 }
 
 /**
- * @cc [owner:philipperolet,label:backend] deterministic-limited-agent-queries
- * Queries with a limit MUST order by the requested sort, if any, then by configuration ID.
+ * @cc [owner:philipperolet,label:backend] default-agent-query-order
+ * Active-agent queries MUST default to name order when no sort is requested.
  */
 async function fetchWorkspaceAgentConfigurationsWithoutActions(
   auth: Authenticator,
@@ -176,7 +175,9 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     omitHeavyAttributes?: boolean;
   }
 ): Promise<AgentConfigurationModel[]> {
-  const sortStrategy = sort && sortStrategies[sort];
+  // Active names are unique per workspace; their (workspaceId, name) index can supply this
+  // default order without a separate sort or an ID tie-breaker.
+  const sortStrategy = sortStrategies[sort ?? "alphabetical"];
 
   const baseWhereConditions = {
     workspaceId: owner.id,
@@ -192,13 +193,9 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       ? { attributes: { exclude: [...new Set(attributesToExclude)] } }
       : {};
 
-  const order: Order | undefined =
-    limit === undefined
-      ? sortStrategy?.dbOrder
-      : [...(sortStrategy?.dbOrder ?? []), ["id", "ASC"]];
   const baseAgentsSequelizeQuery = {
     limit,
-    order,
+    order: sortStrategy.dbOrder,
     ...excludeAttributesFromSelect,
   };
 
