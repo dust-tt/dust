@@ -59,7 +59,6 @@ import { ProviderCredentialResource } from "@app/lib/resources/provider_credenti
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -171,12 +170,6 @@ export async function scrubSpaceActivity({
   assert(space.isDeletable(), "Space cannot be deleted.");
 
   if (space.isProject()) {
-    const deleteSandboxFunctionsResult =
-      await SandboxFunctionResource.deleteAllForSpace(auth, space);
-    if (deleteSandboxFunctionsResult.isErr()) {
-      throw deleteSandboxFunctionsResult.error;
-    }
-
     // Destroy the pod sandbox at the provider and drop its ownership row. The
     // FK from sandbox_owners to spaces is `onDelete: "RESTRICT"`, so the row
     // must be gone before the space can be hard-deleted. Runs before the pod

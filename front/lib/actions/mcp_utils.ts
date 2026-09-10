@@ -296,11 +296,18 @@ export async function handleBase64Upload(
       );
       break;
     case "sandbox_function":
-      writeResult = await writeToPodFolder(
-        auth,
-        runContext.invocation.sandboxFunction.space,
-        writeArgs
-      );
+      if (!runContext.pod) {
+        return {
+          content: {
+            type: "text",
+            text:
+              "This Frame does not run in a Pod, so there is nowhere to save the generated " +
+              "file.",
+          },
+          file: null,
+        };
+      }
+      writeResult = await writeToPodFolder(auth, runContext.pod, writeArgs);
       break;
     default:
       assertNever(runContext);

@@ -26,7 +26,7 @@ function mockToolCallResult(result: CallToolResult) {
 }
 
 async function setupSandboxFunctionRun() {
-  const { auth, workspace, invocation, globalSpace } =
+  const { auth, workspace, invocation, globalSpace, podSpace } =
     await createPersistedSandboxFunctionInvocationTokenTestContext();
   const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
     name: "common_utilities",
@@ -48,6 +48,7 @@ async function setupSandboxFunctionRun() {
     contextType: "sandbox_function",
     action,
     invocation,
+    pod: podSpace,
     toolConfiguration: action.toolConfiguration,
   };
 

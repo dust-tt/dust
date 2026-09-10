@@ -13,6 +13,7 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { getShutdownSignal } from "@app/lib/shutdown_signal";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -58,10 +59,21 @@ export async function runSandboxFunctionToolActivity(
     workspaceId: auth.getNonNullableWorkspace().sId,
   });
 
+  // Where files this tool persists belong: the Pod the invoked Frame runs in. Resolved here, once,
+  // so the tool paths below stay synchronous.
+  const frame = invocation.sandboxFunction.frame;
+  const frameContext = frame
+    ? await frame.resolveFrameScopedPathContext(auth)
+    : null;
+  const pod = frameContext?.spaceId
+    ? await SpaceResource.fetchById(auth, frameContext.spaceId)
+    : null;
+
   const runContext: SandboxFunctionRunContext = {
     contextType: "sandbox_function",
     action,
     invocation,
+    pod,
     toolConfiguration: action.toolConfiguration,
   };
 

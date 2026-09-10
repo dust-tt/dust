@@ -6,6 +6,7 @@ import type {
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { FileModel } from "@app/lib/resources/storage/models/files";
 import type { AgentConfigurationWithoutModelType } from "@app/types/assistant/agent";
 import type {
@@ -176,6 +177,9 @@ export type SandboxFunctionRunContext = {
   contextType: "sandbox_function";
   action: SandboxFunctionMCPActionResource;
   invocation: SandboxFunctionInvocationResource;
+  // The Pod the invoked Frame runs in, resolved once when the context is built. Null for a Frame
+  // outside any Pod: tools that persist files have nowhere to put them and refuse.
+  pod: SpaceResource | null;
   toolConfiguration: LightMCPToolConfigurationType;
 };
 

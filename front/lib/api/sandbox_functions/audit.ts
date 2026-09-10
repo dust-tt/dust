@@ -11,27 +11,17 @@ export function buildSandboxFunctionAuditMetadata(
 ): Record<string, string> {
   const { sandboxFunction } = invocation;
   const frame = sandboxFunction.frame;
-
-  if (frame) {
-    assert(
-      sandboxFunction.publicationId !== null,
-      "Frame functions must belong to a publication."
-    );
-
-    return {
-      frame_id: frame.sId,
-      frame_function_id: sandboxFunction.sId,
-      frame_function_name: sandboxFunction.slug,
-      frame_publication_id: sandboxFunction.publicationId,
-      invocation_id: invocation.sId,
-      ...(invocation.origin ? { invocation_origin: invocation.origin } : {}),
-    };
-  }
+  assert(frame, "Only Frame functions can be invoked.");
+  assert(
+    sandboxFunction.publicationId !== null,
+    "Frame functions must belong to a publication."
+  );
 
   return {
-    pod_id: sandboxFunction.space.sId,
-    pod_function_id: sandboxFunction.sId,
-    pod_function_slug: sandboxFunction.slug,
+    frame_id: frame.sId,
+    frame_function_id: sandboxFunction.sId,
+    frame_function_name: sandboxFunction.slug,
+    frame_publication_id: sandboxFunction.publicationId,
     invocation_id: invocation.sId,
     // Null for invocations recorded before origins were tracked.
     ...(invocation.origin ? { invocation_origin: invocation.origin } : {}),

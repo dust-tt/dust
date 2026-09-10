@@ -11,12 +11,8 @@ import {
 import { isSandboxNotRunningError } from "@app/lib/api/sandbox/errors";
 import { recordSandboxFunctionRun } from "@app/lib/api/sandbox/instrumentation";
 import type { EnsureSandboxReadyResult } from "@app/lib/api/sandbox/lifecycle";
-import {
-  ensureFrameSandboxReady,
-  ensurePodSandboxReady,
-} from "@app/lib/api/sandbox/lifecycle";
+import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
-import { podDatabasePrefixFromSlug } from "@app/lib/api/sandbox_functions/db_naming";
 import type { SandboxFunctionInvocationErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
@@ -24,7 +20,6 @@ import {
   parseStdoutResultEnvelope,
   resolveSpilledResult,
 } from "@app/lib/api/sandbox_functions/result_delivery";
-import type { SandboxFunctionAuthorization } from "@app/lib/api/sandbox_functions/workspace_user";
 import {
   authorizeSandboxFunctionInvocation,
   getAuthenticatedWorkspaceUser,
@@ -66,7 +61,6 @@ import type {
 import {
   getFramePublicationDescriptorMountPoint,
   getFramePublicationFunctionsMountPoint,
-  getPodSandboxFunctionsMountPoint,
   sandboxDatabaseExecEnvVars,
 } from "@app/types/mount_path";
 import { isDevelopment } from "@app/types/shared/env";
@@ -382,7 +376,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
               ? { frameSourceScopeId: sourceSpaceId ?? sourceConversationId }
               : {}),
           }
-        : { spaceId: this.sandboxFunction.space.sId }),
+        : {}),
     };
   }
 
@@ -628,11 +622,18 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const { sandboxFunction } = this;
       const frame = sandboxFunction.frame;
       const publicationId = sandboxFunction.publicationId;
-      const functionKind = frame ? "Frame function" : "Pod Function";
+      if (!frame) {
+        return new Err(
+          new SandboxFunctionInvocationError(
+            "This function is not owned by a Frame: legacy Pod functions can no longer be run.",
+            "frame_runtime_unavailable"
+          )
+        );
+      }
       if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
         return new Err(
           new SandboxFunctionInvocationError(
-            `This ${functionKind} belongs to another workspace.`
+            "This Frame function belongs to another workspace."
           )
         );
       }
@@ -643,7 +644,6 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       // wake a sandbox, a paid side effect that stays gated behind the checks.
       const runFunctionCheck = async (): Promise<{
         persistedFunction: SandboxFunctionModel;
-        podAuthorization: SandboxFunctionAuthorization | null;
         error: {
           code: SandboxFunctionInvocationErrorCode;
           message: string;
@@ -658,47 +658,24 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         if (!persistedFunction) {
           return null;
         }
-        if (frame) {
-          // Frame invocations always require a workspace member. This scope-independent check
-          // gates the paid wakeup; Pod membership and token scope are evaluated below from the
-          // lifecycle-locked scope, after a concurrent move can no longer change it.
-          const user = await getAuthenticatedWorkspaceUser(auth);
-          return {
-            persistedFunction,
-            podAuthorization: null,
-            error: user
-              ? null
-              : {
-                  code: "user_authentication_required",
-                  message:
-                    "This Frame function requires a logged-in user from its workspace.",
-                },
-          };
-        }
-        const authorization = await authorizeSandboxFunctionInvocation(auth, {
-          userIdentity: persistedFunction.userIdentity,
-          origin: this.origin ?? "delegated",
-          owner: { kind: "pod", space: sandboxFunction.space },
-        });
+        // Frame invocations always require a workspace member. This scope-independent check
+        // gates the paid wakeup; Pod membership and token scope are evaluated below from the
+        // lifecycle-locked scope, after a concurrent move can no longer change it.
+        const user = await getAuthenticatedWorkspaceUser(auth);
         return {
           persistedFunction,
-          podAuthorization: authorization,
-          error: authorization.authorized
+          error: user
             ? null
             : {
-                code: authorization.errorCode,
-                message: authorization.errorMessage,
+                code: "user_authentication_required",
+                message:
+                  "This Frame function requires a logged-in user from its workspace.",
               },
         };
       };
       const runEnsure = async (): Promise<
         Result<EnsureSandboxReadyResult & { scope?: FrameSandboxScope }, Error>
-      > =>
-        frame
-          ? ensureFrameSandboxReady(auth, frame, { requireRunning: inline })
-          : ensurePodSandboxReady(auth, sandboxFunction.space, {
-              requireRunning: inline,
-            });
+      > => ensureFrameSandboxReady(auth, frame, { requireRunning: inline });
 
       let functionCheck;
       let ensureResult;
@@ -716,7 +693,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         }
       }
       if (!functionCheck) {
-        return new Err(new Error(`The ${functionKind} no longer exists.`));
+        return new Err(new Error("The Frame function no longer exists."));
       }
       const { persistedFunction } = functionCheck;
       if (functionCheck.error !== null) {
@@ -729,39 +706,25 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       }
       if (!ensureResult) {
         // Unreachable: ensureResult is only null when a check above already returned.
-        return new Err(
-          new Error(
-            `The ${frame ? "Frame" : "Pod"} sandbox could not be prepared.`
-          )
-        );
+        return new Err(new Error("The Frame sandbox could not be prepared."));
       }
       if (ensureResult.isErr()) {
         return ensureResult;
       }
 
-      let authorization: SandboxFunctionAuthorization | null;
-      if (frame) {
-        const { scope } = ensureResult.value;
-        if (!scope) {
-          return new Err(new Error("The Frame runtime scope is missing."));
-        }
-        authorization = await authorizeSandboxFunctionInvocation(auth, {
-          userIdentity: persistedFunction.userIdentity,
-          origin: this.origin ?? "delegated",
-          owner: {
-            kind: "frame",
-            frame,
-            scope,
-          },
-        });
-      } else {
-        authorization = functionCheck.podAuthorization;
+      const { scope } = ensureResult.value;
+      if (!scope) {
+        return new Err(new Error("The Frame runtime scope is missing."));
       }
-      if (!authorization) {
-        return new Err(
-          new Error(`The ${functionKind} authorization is missing.`)
-        );
-      }
+      const authorization = await authorizeSandboxFunctionInvocation(auth, {
+        userIdentity: persistedFunction.userIdentity,
+        origin: this.origin ?? "delegated",
+        owner: {
+          kind: "frame",
+          frame,
+          scope,
+        },
+      });
       if (!authorization.authorized) {
         return new Err(
           new SandboxFunctionInvocationError(
@@ -771,7 +734,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         );
       }
 
-      // No updateLastActivityAt here: ensurePodSandboxReady's ensureActive just wrote it.
+      // No updateLastActivityAt here: ensureFrameSandboxReady's ensureActive just wrote it.
       const sandbox = ensureResult.value.sandbox;
 
       const execId = generateExecId();
@@ -786,13 +749,11 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       const token = await generateSandboxFunctionInvocationToken(auth, {
         sandbox,
         sandboxFunction,
-        owner: frame
-          ? {
-              kind: "frame",
-              frameId: frame.sId,
-              spaceId: authorization.runtimeSpaceId,
-            }
-          : { kind: "pod", spaceId: authorization.runtimeSpaceId },
+        owner: {
+          kind: "frame",
+          frameId: frame.sId,
+          spaceId: authorization.runtimeSpaceId,
+        },
         invocationId: this.sId,
         execId,
         noTools,
@@ -826,64 +787,50 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         authorization.pod
       );
 
-      let functionsDirectory: string;
-      let databaseEnvVars: ReturnType<typeof sandboxDatabaseExecEnvVars>;
-      if (frame) {
-        if (!publicationId) {
-          return new Err(
-            new Error("The Frame function has no publication identity.")
-          );
-        }
-        functionsDirectory = getFramePublicationFunctionsMountPoint({
-          frameId: frame.sId,
-          publicationId,
-        });
-        databaseEnvVars = sandboxDatabaseExecEnvVars({
-          framePublicationDescriptorPath:
-            getFramePublicationDescriptorMountPoint({
-              frameId: frame.sId,
-              publicationId,
-            }),
-        });
-      } else {
-        functionsDirectory = getPodSandboxFunctionsMountPoint(
-          sandboxFunction.space.sId
+      if (!publicationId) {
+        return new Err(
+          new Error("The Frame function has no publication identity.")
         );
-        databaseEnvVars = sandboxDatabaseExecEnvVars({
-          databasePrefix: podDatabasePrefixFromSlug(sandboxFunction.slug),
-        });
       }
+      const functionsDirectory = getFramePublicationFunctionsMountPoint({
+        frameId: frame.sId,
+        publicationId,
+      });
+      const databaseEnvVars = sandboxDatabaseExecEnvVars({
+        framePublicationDescriptorPath: getFramePublicationDescriptorMountPoint(
+          {
+            frameId: frame.sId,
+            publicationId,
+          }
+        ),
+      });
 
       const execStartedAtMs = Date.now();
       const execResult = await tracer.trace(
         "sandbox.function.execute",
-        { resource: frame ? "frame" : "pod" },
+        { resource: "frame" },
         async (span) => {
           span?.setTag("workspace.id", auth.getNonNullableWorkspace().sId);
-          span?.setTag("function.owner_kind", frame ? "frame" : "pod");
+          span?.setTag("function.owner_kind", "frame");
           span?.setTag("sandbox_function.id", sandboxFunction.sId);
           span?.setTag("function.name", sandboxFunction.slug);
           span?.setTag("invocation.id", this.sId);
-          if (frame) {
-            span?.setTag("frame.id", frame.sId);
-            span?.setTag("frame.publication_id", publicationId ?? "unknown");
-            span?.setTag(
-              "frame.source_scope",
-              frame.useCaseMetadata?.spaceId
-                ? "pod"
-                : frame.useCaseMetadata?.conversationId
-                  ? "conversation"
-                  : "unknown"
-            );
-            span?.setTag(
-              "frame.source_scope_id",
-              frame.useCaseMetadata?.spaceId ??
-                frame.useCaseMetadata?.conversationId ??
-                "unknown"
-            );
-          } else {
-            span?.setTag("pod.space_id", sandboxFunction.space.sId);
-          }
+          span?.setTag("frame.id", frame.sId);
+          span?.setTag("frame.publication_id", publicationId);
+          span?.setTag(
+            "frame.source_scope",
+            frame.useCaseMetadata?.spaceId
+              ? "pod"
+              : frame.useCaseMetadata?.conversationId
+                ? "conversation"
+                : "unknown"
+          );
+          span?.setTag(
+            "frame.source_scope_id",
+            frame.useCaseMetadata?.spaceId ??
+              frame.useCaseMetadata?.conversationId ??
+              "unknown"
+          );
 
           return sandbox.exec(auth, command, {
             workingDirectory: SANDBOX_FUNCTION_WORKING_DIRECTORY,
@@ -1299,9 +1246,9 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
     options?: ResourceFindOptions<SandboxFunctionInvocationModel>
   ): Promise<SandboxFunctionInvocationResource[]> {
     const { where, ...rest } = options ?? {};
-    // User-facing reads expose the caller's invocations, or every invocation to a Pod
-    // administrator. Execution paths use the explicit system access after validating their
-    // server-owned invocation token or workflow input.
+    // User-facing reads expose the caller's own invocations only. Execution paths use the
+    // explicit system access after validating their server-owned invocation token or workflow
+    // input; Poke reads use the explicit admin access.
     let viewerModelId: ModelId | undefined;
     switch (access) {
       case "viewer": {
@@ -1309,11 +1256,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
         if (!viewer) {
           return [];
         }
-        viewerModelId = sandboxFunction.frame
-          ? viewer.id
-          : auth.can("admin", sandboxFunction.space)
-            ? undefined
-            : viewer.id;
+        viewerModelId = viewer.id;
         break;
       }
       case "system":

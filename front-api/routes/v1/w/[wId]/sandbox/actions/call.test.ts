@@ -139,36 +139,11 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
     expect(body.error.type).toBe("fast_function_called_tools");
     // Prod frames string-match this phrase to classify the refusal; keep it stable.
     expect(body.error.message).toContain("published as fast");
-    // Self-heal has already recorded the function as durable by the time the refusal is built,
-    // so the copy must steer the caller to a retry, not a republish.
-    expect(body.error.message).toContain("retrying the invocation will work");
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
 
-  // The refusal is the only evidence that the published mode is wrong, so it is also what fixes
-  // it: this invocation still fails, the next one runs durably.
-  it("records the function as durable after refusing its tool call", async () => {
-    const { auth, token, workspace, view, sandboxFunction } =
-      await setupWithView({ noTools: true });
-    expect(sandboxFunction.executionMode).toBe("fast");
-
-    const response = await callSandboxTool(workspace, token, {
-      serverViewId: view.sId,
-      toolName: "generate_random_number",
-      arguments: { max: 10 },
-    });
-    expect(response.status).toBe(403);
-
-    // The write is deliberately not awaited by the request, so let it settle.
-    await vi.waitFor(async () => {
-      const refetched = await SandboxFunctionResource.fetchById(
-        auth,
-        sandboxFunction.sId
-      );
-      expect(refetched?.executionMode).toBe("durable");
-    });
-  });
-
+  // A published Frame function's mode is immutable: the refusal is the whole outcome, and only a
+  // republish can change how the function runs.
   it("keeps an immutable Frame publication fast after refusing its tool call", async () => {
     const {
       auth,
@@ -221,24 +196,6 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
       status: "running",
       toolName: "generate_random_number",
     });
-  });
-
-  it("leaves a durable function's mode alone when its tool call succeeds", async () => {
-    const { auth, token, workspace, view, sandboxFunction } =
-      await setupWithView();
-
-    const response = await callSandboxTool(workspace, token, {
-      serverViewId: view.sId,
-      toolName: "generate_random_number",
-      arguments: { max: 10 },
-    });
-    expect(response.status).toBe(202);
-
-    const refetched = await SandboxFunctionResource.fetchById(
-      auth,
-      sandboxFunction.sId
-    );
-    expect(refetched?.executionMode).toBe("durable");
   });
 
   it("returns 404 for an unknown server view", async () => {
