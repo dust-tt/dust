@@ -5,7 +5,7 @@ import { UsageTableSkeleton } from "@app/components/workspace/usage/UsageTableSk
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
-import { DataTable, Spinner, Users01 } from "@dust-tt/sparkle";
+import { DataTable, Users01 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -13,7 +13,6 @@ interface GroupsUsageTableProps {
   owner: LightWorkspaceType;
   showSpendLimitColumn?: boolean;
   showModelTiersColumn?: boolean;
-  useLoadingSkeleton?: boolean;
 }
 
 type GroupRowData = {
@@ -30,7 +29,6 @@ export function GroupsUsageTable({
   owner,
   showSpendLimitColumn = true,
   showModelTiersColumn = false,
-  useLoadingSkeleton = false,
 }: GroupsUsageTableProps) {
   const { groups, isGroupsLoading } = useGroups({
     owner,
@@ -122,14 +120,6 @@ export function GroupsUsageTable({
     ],
     [owner, showSpendLimitColumn, showModelTiersColumn, doUpdateGroupSpendLimit]
   );
-
-  if (isGroupsLoading && !useLoadingSkeleton) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-3">

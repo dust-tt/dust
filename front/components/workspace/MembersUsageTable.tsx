@@ -1203,7 +1203,6 @@ interface MembersUsageTableProps {
   // response) shown under the credits column header. Null hides the line.
   creditsResetAt: string | null;
   isLoading: boolean;
-  useLoadingSkeleton?: boolean;
   isRefreshing?: boolean;
   totalAllowedUsagePendingMemberIds: ReadonlySet<string>;
   seatChangePendingMemberIds: ReadonlySet<string>;
@@ -1257,7 +1256,6 @@ export function MembersUsageTable({
   members,
   creditsResetAt,
   isLoading,
-  useLoadingSkeleton = false,
   isRefreshing = false,
   totalAllowedUsagePendingMemberIds,
   seatChangePendingMemberIds,
@@ -1499,30 +1497,28 @@ export function MembersUsageTable({
   );
 
   if (isLoading) {
-    if (useLoadingSkeleton) {
-      const remainingRows =
-        totalRowCount - pagination.pageIndex * pagination.pageSize;
-      return (
-        <div className="flex flex-col gap-2">
-          <UsageTableSkeleton
-            columns={columns}
-            rowCount={
-              remainingRows > 0
-                ? Math.min(pagination.pageSize, remainingRows)
-                : pagination.pageSize
-            }
-          />
-          <div className="flex h-8 items-center justify-end px-1">
-            <LoadingBlock className="h-3 w-14" />
-          </div>
-        </div>
-      );
-    }
+    const remainingRows =
+      totalRowCount - pagination.pageIndex * pagination.pageSize;
     return (
-      <div className="flex w-full flex-col space-y-2">
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
+      <div className="flex flex-col gap-2">
+        <UsageTableSkeleton
+          columns={columns}
+          headerHeight={
+            showSeatAndCredits &&
+            (showPremiumMessageUsage ||
+              (variant === "legacy" && creditsResetAt))
+              ? 32
+              : 16
+          }
+          rowCount={
+            remainingRows > 0
+              ? Math.min(pagination.pageSize, remainingRows)
+              : pagination.pageSize
+          }
+        />
+        <div className="flex h-8 items-center justify-end px-1">
+          <LoadingBlock className="h-3 w-14" />
+        </div>
       </div>
     );
   }

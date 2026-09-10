@@ -3,6 +3,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 interface UsageTableSkeletonProps<TData> {
   columns: ColumnDef<TData, string>[];
+  headerHeight?: number;
   rowCount?: number;
   rowHeight?: number;
 }
@@ -14,6 +15,7 @@ interface UsageTableSkeletonProps<TData> {
  */
 export function UsageTableSkeleton<TData>({
   columns,
+  headerHeight = 16,
   rowCount = 5,
   rowHeight = 48,
 }: UsageTableSkeletonProps<TData>) {
@@ -33,6 +35,7 @@ export function UsageTableSkeleton<TData>({
                       "flex items-center",
                       column.id === "modelTiers" ? "h-6" : "h-4"
                     )}
+                    style={{ minHeight: headerHeight }}
                   >
                     <LoadingBlock
                       className={cn(

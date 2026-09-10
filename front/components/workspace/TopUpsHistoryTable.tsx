@@ -3,18 +3,12 @@ import { formatCredits } from "@app/lib/client/credits";
 import { useAwuTopUpsHistory } from "@app/lib/swr/credits";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import {
-  AlertCircle,
-  ContentMessage,
-  DataTable,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { AlertCircle, ContentMessage, DataTable } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
 interface TopUpsHistoryTableProps {
   owner: LightWorkspaceType;
-  useLoadingSkeleton?: boolean;
 }
 
 type TopUpRowData = {
@@ -62,10 +56,7 @@ const COLUMNS: ColumnDef<TopUpRowData, string>[] = [
   },
 ];
 
-export function TopUpsHistoryTable({
-  owner,
-  useLoadingSkeleton = false,
-}: TopUpsHistoryTableProps) {
+export function TopUpsHistoryTable({ owner }: TopUpsHistoryTableProps) {
   const { topUps, isTopUpsHistoryLoading, isTopUpsHistoryError } =
     useAwuTopUpsHistory({ workspaceId: owner.sId });
 
@@ -96,14 +87,7 @@ export function TopUpsHistoryTable({
   }
 
   if (isTopUpsHistoryLoading) {
-    if (useLoadingSkeleton) {
-      return <UsageTableSkeleton columns={COLUMNS} />;
-    }
-    return (
-      <div className="flex justify-center py-8">
-        <Spinner />
-      </div>
-    );
+    return <UsageTableSkeleton columns={COLUMNS} />;
   }
 
   if (rows.length === 0) {

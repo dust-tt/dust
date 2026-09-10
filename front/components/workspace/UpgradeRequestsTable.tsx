@@ -6,14 +6,7 @@ import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
-import {
-  Button,
-  Check,
-  DataTable,
-  LoadingBlock,
-  Spinner,
-  XClose,
-} from "@dust-tt/sparkle";
+import { Button, Check, DataTable, Spinner, XClose } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -159,7 +152,6 @@ function buildActionsColumn({
 interface UpgradeRequestsTableProps {
   requests: MembershipUpgradeRequestType[];
   isLoading: boolean;
-  useLoadingSkeleton?: boolean;
   seatPlans: SeatPlanResponseBody;
   pendingRequestIds: ReadonlySet<string>;
   onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
@@ -170,7 +162,6 @@ interface UpgradeRequestsTableProps {
 export function UpgradeRequestsTable({
   requests,
   isLoading,
-  useLoadingSkeleton = false,
   seatPlans,
   pendingRequestIds,
   onUpgradePlan,
@@ -207,16 +198,7 @@ export function UpgradeRequestsTable({
   );
 
   if (isLoading) {
-    if (useLoadingSkeleton) {
-      return <UsageTableSkeleton columns={columns} />;
-    }
-    return (
-      <div className="flex w-full flex-col space-y-2">
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-      </div>
-    );
+    return <UsageTableSkeleton columns={columns} />;
   }
 
   if (rows.length === 0) {
