@@ -36,6 +36,12 @@ type OpenPanelParams =
   | {
       type: "file_preview";
       filePath: string;
+      fileId?: undefined;
+    }
+  | {
+      type: "file_preview";
+      fileId: string;
+      filePath?: undefined;
     }
   | {
       type: "files";
@@ -51,6 +57,26 @@ type OpenPanelParams =
       skillId: string;
     };
 
+const FILE_PREVIEW_FILE_ID_PREFIX = "id:";
+
+function encodeFilePreviewFileId(fileId: string): string {
+  return `${FILE_PREVIEW_FILE_ID_PREFIX}${fileId}`;
+}
+
+// Content fragments without a sandbox path are addressed by id instead.
+export function parseFilePreviewData(data?: string): {
+  fileId?: string;
+  filePath?: string;
+} {
+  if (!data) {
+    return {};
+  }
+
+  return data.startsWith(FILE_PREVIEW_FILE_ID_PREFIX)
+    ? { fileId: data.slice(FILE_PREVIEW_FILE_ID_PREFIX.length) }
+    : { filePath: data };
+}
+
 // The `spid` hash value for a panel. Two panels are the same when type and key match.
 function panelDataKey(params: OpenPanelParams): string {
   switch (params.type) {
@@ -63,7 +89,7 @@ function panelDataKey(params: OpenPanelParams): string {
         ? `${params.fileId}@${params.timestamp}`
         : params.fileId;
     case FILE_PREVIEW_SIDE_PANEL_TYPE:
-      return params.filePath;
+      return params.filePath ?? encodeFilePreviewFileId(params.fileId);
     case FILES_SIDE_PANEL_TYPE:
     case CREDITS_SIDE_PANEL_TYPE:
     case PLAN_SIDE_PANEL_TYPE:
@@ -111,8 +137,13 @@ function panelParamsFromHash(
       const [fileId, timestamp] = data.split("@");
       return { type, fileId, timestamp };
     }
-    case FILE_PREVIEW_SIDE_PANEL_TYPE:
-      return { type, filePath: data };
+    case FILE_PREVIEW_SIDE_PANEL_TYPE: {
+      const { fileId, filePath } = parseFilePreviewData(data);
+      if (filePath) {
+        return { type, filePath };
+      }
+      return fileId ? { type, fileId } : null;
+    }
     case FILES_SIDE_PANEL_TYPE:
     case CREDITS_SIDE_PANEL_TYPE:
     case PLAN_SIDE_PANEL_TYPE:

@@ -1,6 +1,6 @@
 import {
   FilePreviewContent,
-  MAX_CSV_ROWS,
+  formatRecordCounts,
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
@@ -132,8 +132,7 @@ export function FilePreviewDialog({
                   "text-muted-foreground"
                 )}
               >
-                Showing {recordCounts.displayed} of {recordCounts.total} records
-                {recordCounts.total > MAX_CSV_ROWS && " (truncated)"}
+                {formatRecordCounts(recordCounts)}
               </span>
             )}
           </div>
