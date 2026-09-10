@@ -53,6 +53,7 @@ export const UserMessageView = ({
         >
           {hasDustSystemTag && !isExpanded ? (
             <button
+              type="button"
               onClick={() => setIsExpanded(true)}
               className={cn(
                 "flex cursor-pointer items-center gap-1",
@@ -66,6 +67,7 @@ export const UserMessageView = ({
             <>
               {hasDustSystemTag && (
                 <button
+                  type="button"
                   onClick={() => setIsExpanded(false)}
                   className={cn(
                     "mb-2 flex cursor-pointer items-center gap-1",
