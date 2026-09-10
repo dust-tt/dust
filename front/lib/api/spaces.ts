@@ -29,7 +29,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import { launchSkillsSearchIndexation } from "@app/lib/skill_search/indexation";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces_utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -247,7 +246,6 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     "softDeleteSpace: starting agent requestedSpaceIds cleanup"
   );
 
-  const updatedSkillIds: string[] = [];
   let cleanupError: unknown = null;
   try {
     await withTransaction(async (t) => {
@@ -369,8 +367,7 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       const mcpServerViewIdSet = new Set(mcpServerViewIds);
       const dataSourceViewIdSet = new Set(dataSourceViewIds);
 
-      // Update each skill to remove MCP server views and attached knowledge from the deleted space.
-      // Note: updateSkill manages its own transaction, so we call it sequentially.
+      // Skill cleanup shares the space transaction; indexation waits for its commit.
       for (const skill of skillsToUpdate) {
         // Filter out MCP server views from the deleted space.
         const filteredMCPServerViews = skill.mcpServerViews.filter(
@@ -429,23 +426,26 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
           );
         }
 
-        await skill.updateSkill(auth, {
-          name: skill.name,
-          agentFacingDescription: skill.agentFacingDescription,
-          userFacingDescription: skill.userFacingDescription,
-          instructions: skill.instructions,
-          icon: skill.icon,
-          mcpServerViews: filteredMCPServerViews,
-          attachedKnowledge: filteredAttachedKnowledge,
-          manuallyRequestedSpaceIds,
-          requestedSpaceIds,
-        });
-        updatedSkillIds.push(skill.sId);
+        await skill.updateSkill(
+          auth,
+          {
+            name: skill.name,
+            agentFacingDescription: skill.agentFacingDescription,
+            userFacingDescription: skill.userFacingDescription,
+            instructions: skill.instructions,
+            icon: skill.icon,
+            mcpServerViews: filteredMCPServerViews,
+            attachedKnowledge: filteredAttachedKnowledge,
+            manuallyRequestedSpaceIds,
+            requestedSpaceIds,
+          },
+          { transaction: t }
+        );
       }
 
       // Strip the space from every agent still referencing it, atomically with
       // the space soft-delete. We query fresh here (inside the outer transaction,
-      // after updateSkill's inner transactions have committed) rather than a
+      // after updateSkill has updated their requirements) rather than a
       // snapshot taken before the skill loop: cleaning a skill recomputes the
       // requestedSpaceIds of every agent using it, so the set of agents still
       // referencing this space can change during the loop. This catches both
@@ -499,23 +499,6 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       { ...logContext, error: err },
       "softDeleteSpace: agent requestedSpaceIds cleanup failed — scrub workflow will NOT be launched"
     );
-  }
-
-  if (updatedSkillIds.length > 0) {
-    try {
-      await launchSkillsSearchIndexation({
-        workspaceId,
-        skillIds: updatedSkillIds,
-      });
-    } catch (indexationError) {
-      if (cleanupError === null) {
-        throw indexationError;
-      }
-      logger.error(
-        { ...logContext, error: indexationError },
-        "softDeleteSpace: failed to index skills committed before cleanup failed"
-      );
-    }
   }
 
   if (cleanupError !== null) {

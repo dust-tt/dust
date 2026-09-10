@@ -1,27 +1,28 @@
-import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { makeSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   launchDeleteWorkspaceSkillSearchWorkflow,
   launchIndexSkillSearchWorkflow,
 } from "@app/temporal/es_indexation/client";
-import type { ModelId } from "@app/types/shared/model_id";
-import { removeNulls } from "@app/types/shared/utils/general";
-import type { LightWorkspaceType } from "@app/types/user";
+import type { Transaction } from "sequelize";
 
 const SKILL_SEARCH_INDEXATION_CONCURRENCY = 8;
 
-export async function launchSkillSearchIndexation({
-  workspaceId,
-  skillId,
-}: {
-  workspaceId: string;
-  skillId: string;
-}): Promise<void> {
-  const result = await launchIndexSkillSearchWorkflow({ workspaceId, skillId });
-  if (result.isErr()) {
-    throw result.error;
+/**
+ * @cc [owner:aubin-tchoi,label:backend;concurrency] skill-indexation-after-commit
+ * An explicit transaction defers skill indexing until it and its ancestors commit;
+ * rolling back any enclosing transaction suppresses the effect.
+ */
+export async function runAfterSkillSearchCommit(
+  transaction: Transaction | undefined,
+  effect: () => Promise<void>
+): Promise<void> {
+  if (!transaction) {
+    await effect();
+    return;
   }
+  transaction.afterCommit(() =>
+    runAfterSkillSearchCommit(transaction.parent, effect)
+  );
 }
 
 export async function launchSkillsSearchIndexation({
@@ -40,47 +41,6 @@ export async function launchSkillsSearchIndexation({
   if (failedResult?.isErr()) {
     throw failedResult.error;
   }
-}
-
-export async function launchSkillsSearchIndexationForGroups({
-  workspace,
-  groupModelIds,
-}: {
-  workspace: LightWorkspaceType;
-  groupModelIds: readonly ModelId[];
-}): Promise<void> {
-  const uniqueGroupModelIds = [...new Set(groupModelIds)];
-  if (uniqueGroupModelIds.length === 0) {
-    return;
-  }
-
-  const skillEditorGrants = await GroupPermissionResource.listForGroups(
-    workspace,
-    {
-      groupModelIds: uniqueGroupModelIds,
-      grantType: "editor",
-      resourceType: "skill",
-    }
-  );
-  const skillIds = [
-    ...new Set(
-      removeNulls(
-        skillEditorGrants.map((grant) =>
-          grant.resourceId > 0
-            ? makeSId("skill", {
-                id: grant.resourceId,
-                workspaceId: workspace.id,
-              })
-            : null
-        )
-      )
-    ),
-  ];
-
-  await launchSkillsSearchIndexation({
-    workspaceId: workspace.sId,
-    skillIds,
-  });
 }
 
 export async function launchWorkspaceSkillSearchDeletion({

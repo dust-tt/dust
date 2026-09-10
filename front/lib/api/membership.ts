@@ -34,7 +34,6 @@ import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
-import { launchSkillsSearchIndexationForGroups } from "@app/lib/skill_search/indexation";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -299,10 +298,6 @@ export async function createAndTrackMembership({
         },
         "[Membership] Restored group memberships for rejoining user"
       );
-      await launchSkillsSearchIndexationForGroups({
-        workspace: w,
-        groupModelIds: restoredGroupModelIds,
-      });
     }
   }
 

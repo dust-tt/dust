@@ -38,12 +38,12 @@ import {
   GroupResource,
   MANAGER_GROUP_NAME,
 } from "@app/lib/resources/group_resource";
+import { GroupSearchIndexationResource } from "@app/lib/resources/group_search_indexation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { launchSkillsSearchIndexationForGroups } from "@app/lib/skill_search/indexation";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
 import { GROUP_KINDS } from "@app/types/groups";
@@ -1241,10 +1241,10 @@ async function handleCreateOrUpdateWorkOSUser(
       await GroupResource.dangerouslyListAllUserGroupsInWorkspace({
         auth,
         user: createdOrUpdatedUser,
-        groupKinds: ["regular_auto"],
+        groupKinds: ["regular_auto", "agent_editors"],
         dangerouslySkipMembershipCheck: true,
       });
-    await launchSkillsSearchIndexationForGroups({
+    await GroupSearchIndexationResource.launchForGroups({
       workspace,
       groupModelIds: currentGrantGroups.map((group) => group.id),
     });
@@ -1424,11 +1424,9 @@ async function revokeWorkOSUserMembership({
     throw membershipRevokeResult.error;
   }
 
-  await launchSkillsSearchIndexationForGroups({
+  await GroupSearchIndexationResource.launchForGroups({
     workspace,
-    groupModelIds: affectedGroups
-      .filter((group) => group.isRegularAuto())
-      .map((group) => group.id),
+    groupModelIds: affectedGroups.map((group) => group.id),
   });
   if (membershipRevokeResult.isErr()) {
     logger.info(
