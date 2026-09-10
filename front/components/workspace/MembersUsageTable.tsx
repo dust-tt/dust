@@ -70,7 +70,7 @@ import type {
   RowSelectionState,
   SortingState,
 } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 
 const EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID: Record<
   string,
@@ -1091,6 +1091,7 @@ function buildCreditPlanColumns({
   showPremiumMessageUsage,
   premiumMessageWindowDays,
   fairUseWindowDays,
+  showUnblockWidth,
 }: {
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
@@ -1098,6 +1099,7 @@ function buildCreditPlanColumns({
   showPremiumMessageUsage: boolean;
   premiumMessageWindowDays: number;
   fairUseWindowDays: number | null;
+  showUnblockWidth: boolean;
 }): ColumnDef<RowData, string>[] {
   return [
     // Premium message plans have no seats: every member is billed per
@@ -1126,8 +1128,19 @@ function buildCreditPlanColumns({
     ...(showPremiumMessageUsage && fairUseWindowDays !== null
       ? [buildFairUseCreditsColumn(fairUseWindowDays)]
       : []),
+    // Icon-wide until an "Unblock" button has shown up, button-wide from then on.
     ...(variant === "compact" && !showPremiumMessageUsage
-      ? [offPaceColumn]
+      ? [
+          showUnblockWidth
+            ? offPaceColumn
+            : {
+                ...offPaceColumn,
+                meta: {
+                  ...offPaceColumn.meta,
+                  className: "hidden @4xl:table-cell @4xl:w-12",
+                },
+              },
+        ]
       : []),
   ];
 }
@@ -1143,6 +1156,7 @@ function buildColumns({
   showPremiumMessageUsage,
   premiumMessageWindowDays,
   fairUseWindowDays,
+  showUnblockWidth,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
@@ -1154,6 +1168,7 @@ function buildColumns({
   showPremiumMessageUsage: boolean;
   premiumMessageWindowDays: number;
   fairUseWindowDays: number | null;
+  showUnblockWidth: boolean;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
@@ -1168,6 +1183,7 @@ function buildColumns({
           showPremiumMessageUsage,
           premiumMessageWindowDays,
           fairUseWindowDays,
+          showUnblockWidth,
         })
       : []),
     // Every row action belongs to one of these two groups.
@@ -1440,6 +1456,15 @@ export function MembersUsageTable({
   const fairUseWindowDays =
     members.find((m) => m.fairUse)?.fairUse?.windowDays ?? null;
 
+  // Whether a member is blocked is only known page by page, so the off-pace
+  // column latches onto the button width the first time one shows up and
+  // keeps it: widening once beats resizing on every page change.
+  const hasSeenSpendCappedRowRef = useRef(false);
+  if (members.some((m) => m.isSpendCapped)) {
+    hasSeenSpendCappedRowRef.current = true;
+  }
+  const showUnblockWidth = hasSeenSpendCappedRowRef.current;
+
   const columns = useMemo(
     () =>
       buildColumns({
@@ -1453,6 +1478,7 @@ export function MembersUsageTable({
         showPremiumMessageUsage,
         premiumMessageWindowDays,
         fairUseWindowDays,
+        showUnblockWidth,
       }),
     [
       enableSelection,
@@ -1465,6 +1491,7 @@ export function MembersUsageTable({
       premiumMessageWindowDays,
       showPremiumMessageUsage,
       fairUseWindowDays,
+      showUnblockWidth,
     ]
   );
 
