@@ -96,4 +96,27 @@ describe("conversationToContents — trailing model turn", () => {
 
     expect(contents).toEqual([]);
   });
+
+  it("appends nothing when every message converts to nothing", async () => {
+    // A passthrough-only conversation converts to no Contents at all. There is
+    // no trailing model turn to close, so the guard stays out of it rather than
+    // inventing a user turn for a request that has nothing to answer.
+    const conversation: BaseConversation = {
+      system: [],
+      messages: [
+        {
+          role: "assistant",
+          type: "provider_passthrough",
+          content: {
+            provider: "anthropic",
+            block: { type: "server_tool_use", id: "x", name: "y", input: {} },
+          },
+        },
+      ],
+    };
+
+    const contents = await conversationToContents(conversation, converters);
+
+    expect(contents).toEqual([]);
+  });
 });

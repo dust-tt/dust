@@ -273,9 +273,11 @@ function partKinds(content: Content): string[] {
 
 /**
  * @cc [owner:frankaloia,label:backend] no-trailing-model-turn
- * The returned contents MUST NOT end with a `model` Content. When the conversation ends on an
- * assistant turn, a non-empty synthetic `user` Content is appended; Gemini rejects both a
- * trailing model turn and an empty text part.
+ * The returned contents MUST NOT end with a `model` Content: when the converted contents would,
+ * a `user` Content with a non-empty text part is appended, since Gemini rejects a trailing model
+ * turn and an empty text part alike. The requirement is about the returned contents, not the
+ * input: a conversation whose messages all convert to nothing yields an empty array, and nothing
+ * is appended to it.
  */
 export async function conversationToContents(
   conversation: BaseConversation,
