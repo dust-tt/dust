@@ -292,7 +292,7 @@ export function ToolValidationCard({
           )}
           {onApproveForConversation && canAlwaysAllow && (
             <Button
-              label="Allows all in this conversation"
+              label="Allow all in this conversation"
               variant="outline"
               icon={Check}
               tooltip="Stop asking for this tool for the rest of this conversation, on any page or input. Nothing is saved once the conversation ends."
