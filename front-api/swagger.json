@@ -22,6 +22,7 @@
       }
     ],
     "tags": [
+      { "name": "Analytics", "description": "Workspace analytics" },
       { "name": "Agents", "description": "Agent configurations" },
       { "name": "Apps", "description": "Dust apps" },
       { "name": "Conversations", "description": "Conversations" },
@@ -35,18 +36,7 @@
       { "name": "Triggers", "description": "Triggers" },
       { "name": "Skills", "description": "Skills" },
       { "name": "Spaces", "description": "Spaces" },
-      { "name": "Workspace", "description": "Workspace" },
-      { "name": "Private User", "description": "Private API - User" },
-      { "name": "Private Authentication", "description": "Private API - Authentication (WorkOS)" },
-      { "name": "Private Agents", "description": "Private API - Agent configurations" },
-      { "name": "Private Conversations", "description": "Private API - Conversations" },
-      { "name": "Private Messages", "description": "Private API - Messages" },
-      { "name": "Private Events", "description": "Private API - SSE event streams" },
-      { "name": "Private Files", "description": "Private API - File uploads" },
-      { "name": "Private Mentions", "description": "Private API - Mention suggestions" },
-      { "name": "Private Spaces", "description": "Private API - Spaces and data source views" },
-      { "name": "Private Extension", "description": "Private API - Extension configuration" },
-      { "name": "Private Workspace", "description": "Private API - Workspace settings" }
+      { "name": "Workspace", "description": "Workspace" }
     ]
   }
 }
