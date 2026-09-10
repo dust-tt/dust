@@ -354,7 +354,9 @@ const InputBarContainer = ({
   );
   const { subscription } = useAuth();
   const { featureFlags } = useFeatureFlags();
-  const isInlineReferenceEnabled = featureFlags.includes("inline_tool_knowledge_reference");
+  const isInlineReferenceEnabled = featureFlags.includes(
+    "inline_tool_knowledge_reference"
+  );
   const isMobile = useIsMobile();
   const clientType = useClientType();
   const {

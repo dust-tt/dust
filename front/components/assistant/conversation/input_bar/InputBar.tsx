@@ -270,7 +270,9 @@ export const InputBar = React.memo(function InputBar({
     workspaceId: owner.sId,
   });
 
-  const isInlineReferenceEnabled = featureFlags.includes("inline_tool_knowledge_reference");
+  const isInlineReferenceEnabled = featureFlags.includes(
+    "inline_tool_knowledge_reference"
+  );
 
   useEffect(() => {
     if (!isInlineReferenceEnabled) {
@@ -413,7 +415,10 @@ export const InputBar = React.memo(function InputBar({
 
   const handleMCPServerViewSelect = useCallback(
     (serverView: MCPServerViewLightType) => {
-      if (!isInlineReferenceEnabled && selectedMCPServerViewIds.has(serverView.sId)) {
+      if (
+        !isInlineReferenceEnabled &&
+        selectedMCPServerViewIds.has(serverView.sId)
+      ) {
         return;
       }
 
@@ -561,7 +566,9 @@ export const InputBar = React.memo(function InputBar({
       mentions.some((m) => m.id === a.sId && m.type === "agent")
     );
 
-    const messageTools = isInlineReferenceEnabled ? extractToolTags(markdown) : [];
+    const messageTools = isInlineReferenceEnabled
+      ? extractToolTags(markdown)
+      : [];
     const toolIdsToAttach = getToolIdsToAttach(
       messageTools,
       new Set(conversationTools.map((serverView) => serverView.sId))
