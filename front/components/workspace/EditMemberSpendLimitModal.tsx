@@ -320,7 +320,7 @@ function MemberSpendLimitForm({
                   ? "Only workspace admins can edit the workspace default limit."
                   : undefined
               }
-              isActive={false}
+              isActive={isDefaultActive}
               validationMessage={
                 defaultUserSpendLimit.status === "error"
                   ? "The workspace default limit could not be loaded."
