@@ -675,12 +675,11 @@ async function _checkRoleGrants(
         );
       }
     } else if (grantOn === "WORKSPACE") {
-      // These privileges manage editor files; queries still use the role's data privileges.
-      if (!["READ", "WRITE", "OWNERSHIP"].includes(g.privilege)) {
+      if (g.privilege !== "READ") {
         return new Err(
           new TestConnectionError(
             "NOT_READONLY",
-            `Unsupported grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+            `Non-read grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
       }
