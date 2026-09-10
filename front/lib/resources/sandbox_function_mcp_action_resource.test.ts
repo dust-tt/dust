@@ -1,14 +1,12 @@
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { sandboxFunctionContentType } from "@app/types/files";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -69,22 +67,10 @@ async function setup() {
   });
 
   const podSpace = await SpaceFactory.project(workspace);
-  const file = await FileFactory.create(authenticator, null, {
-    contentType: sandboxFunctionContentType,
-    fileName: "greet.ts",
-    fileSize: 100,
-    status: "created",
-    useCase: "project_context",
-    useCaseMetadata: { spaceId: podSpace.sId },
-  });
-  const sandboxFunction = await SandboxFunctionResource.makeNew(authenticator, {
-    space: podSpace,
-    file,
-    slug: "greet",
-    description: "Greet someone.",
-    inputSchema,
-    outputSchema,
-  });
+  const { frame, sandboxFunction } = await createTestFrameFunction(
+    authenticator,
+    { space: podSpace, inputSchema, outputSchema }
+  );
   const invocation = await SandboxFunctionInvocationResource.makeNew(
     authenticator,
     { sandboxFunction, input: undefined }
@@ -100,6 +86,7 @@ async function setup() {
   return {
     authenticator,
     workspace,
+    frame,
     sandboxFunction,
     invocation,
     mcpServerView,
@@ -307,7 +294,9 @@ describe("SandboxFunctionMCPActionResource", () => {
     expect(gcsStore.size).toBe(0);
   });
 
-  it("deletes actions across invocations when the sandbox function is deleted", async () => {
+  // A Frame function's rows belong to the Frame: deleting it cascades through
+  // `deleteAllForSandboxFunctionModelIds`, which is the unit under test here.
+  it("deletes actions across invocations when the function's rows are deleted", async () => {
     const { authenticator, sandboxFunction, invocation, mcpServerView } =
       await setup();
     const action = await SandboxFunctionMCPActionFactory.create(authenticator, {
@@ -318,8 +307,12 @@ describe("SandboxFunctionMCPActionResource", () => {
       { content: { type: "text", text: "4" } },
     ]);
 
-    const deleteResult = await sandboxFunction.delete(authenticator);
-    expect(deleteResult.isOk()).toBe(true);
+    await SandboxFunctionInvocationResource.deleteAllForSandboxFunctionModelIds(
+      {
+        workspaceModelId: sandboxFunction.workspaceId,
+        sandboxFunctionModelIds: [sandboxFunction.id],
+      }
+    );
 
     expect(
       await SandboxFunctionMCPActionResource.fetchById(

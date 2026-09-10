@@ -22,10 +22,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { AgentMCPActionType } from "@app/types/actions";
-import {
-  frameV2ContentType,
-  sandboxFunctionContentType,
-} from "@app/types/files";
+import { frameV2ContentType } from "@app/types/files";
 
 process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 
@@ -167,7 +164,11 @@ export async function createSandboxFunctionInvocationTokenTestContext({
     sandboxFunction: {
       sId: "sfn_test",
     },
-    owner: { kind: "pod", spaceId: context.globalSpace.sId },
+    owner: {
+      kind: "frame",
+      frameId: "fil_test_frame",
+      spaceId: context.globalSpace.sId,
+    },
     invocationId: `test-invocation-${context.sandbox.sId}`,
     execId: `test-function-exec-${context.sandbox.sId}`,
   });
@@ -198,32 +199,62 @@ export async function createPersistedSandboxFunctionInvocationTokenTestContext({
     workspace.sId
   );
 
-  const file = await FileFactory.create(auth, null, {
-    contentType: sandboxFunctionContentType,
-    fileName: "greet.ts",
+  const publicationId = "publication-1";
+  // Deliberately not "ready": markAsReady copies the file into its mount, which this suite's
+  // file-storage mock does not implement, and nothing here reads the frame's contents.
+  const frame = await FileFactory.create(auth, null, {
+    contentType: frameV2ContentType,
+    fileName: "manifest.json",
     fileSize: 100,
     status: "created",
     useCase: "project_context",
-    useCaseMetadata: { spaceId: podSpace.sId },
-  });
-  const sandboxFunction = await SandboxFunctionResource.makeNew(auth, {
-    space: podSpace,
-    file,
-    slug: "greet",
-    description: "Greet someone.",
-    // A token that denies tools only ever belongs to a function published as fast.
-    executionMode: noTools ? "fast" : "durable",
-    inputSchema: {
-      type: "object",
-      properties: { message: { type: "string" } },
-      required: ["message"],
-    },
-    outputSchema: {
-      type: "object",
-      properties: { greeting: { type: "string" } },
-      required: ["greeting"],
+    useCaseMetadata: {
+      spaceId: podSpace.sId,
+      activePublicationId: publicationId,
     },
   });
+  await withTransaction((transaction) =>
+    SandboxFunctionResource.createForFramePublication(
+      auth,
+      {
+        frame,
+        publicationId,
+        functions: [
+          {
+            name: "greet",
+            description: "Greet someone.",
+            userIdentity: "optional",
+            // A token that denies tools only ever belongs to a function published as fast.
+            executionMode: noTools ? "fast" : "durable",
+            defaultStake: "low",
+            bundleCode:
+              "export default { fetch: async () => Response.json({}) };",
+            inputSchema: {
+              type: "object",
+              properties: { message: { type: "string" } },
+              required: ["message"],
+            },
+            outputSchema: {
+              type: "object",
+              properties: { greeting: { type: "string" } },
+              required: ["greeting"],
+            },
+          },
+        ],
+      },
+      transaction
+    )
+  );
+  const sandboxFunction =
+    await SandboxFunctionResource.fetchByFramePublicationAndSlug(auth, {
+      frame,
+      publicationId,
+      slug: "greet",
+    });
+  if (!sandboxFunction) {
+    throw new Error("Expected the Frame function to exist.");
+  }
+
   const invocation = await SandboxFunctionInvocationResource.makeNew(auth, {
     sandboxFunction,
     input: undefined,
@@ -234,7 +265,7 @@ export async function createPersistedSandboxFunctionInvocationTokenTestContext({
     sandboxFunction: {
       sId: sandboxFunction.sId,
     },
-    owner: { kind: "pod", spaceId: podSpace.sId },
+    owner: { kind: "frame", frameId: frame.sId, spaceId: podSpace.sId },
     invocationId: invocation.sId,
     execId: `test-function-exec-${context.sandbox.sId}`,
     noTools,
