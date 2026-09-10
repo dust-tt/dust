@@ -405,7 +405,7 @@ describe("FileExplorer preferences", () => {
 
   it("restores view and sort mode after a remount", async () => {
     const user = userEvent.setup();
-    const { unmount } = renderExplorer("pod:p1");
+    const { unmount } = renderExplorer("w1");
     expect(isListLayout()).toBe(false);
 
     await pickListLayout(user);
@@ -414,7 +414,7 @@ describe("FileExplorer preferences", () => {
     expect(isListLayout()).toBe(true);
     unmount();
 
-    renderExplorer("pod:p1");
+    renderExplorer("w1");
     expect(isListLayout()).toBe(true);
     expect(
       screen.getByRole("button", { name: "Name Z → A" })

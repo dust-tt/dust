@@ -13,7 +13,6 @@ import type {
 } from "@app/components/file_explorer/types";
 import { useFileExplorerDownload } from "@app/components/file_explorer/useFileExplorerDownload";
 import {
-  getFileExplorerPreferencesKey,
   isFilePreviewableContentType,
   joinMountRelativePath,
 } from "@app/components/file_explorer/utils";
@@ -886,10 +885,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         toolbarExtraActions={addButton}
         isLoading={isLoading}
         owner={owner}
-        preferencesKey={getFileExplorerPreferencesKey({
-          kind: "pod",
-          podId: pod.sId,
-        })}
+        preferencesKey={owner.sId}
       />
     </>
   );

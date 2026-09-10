@@ -64,7 +64,7 @@ interface FileExplorerProps {
   onOpenInPanel?: (entry: FileEntry) => boolean;
   onRename?: (entry: FileEntry | FolderEntry) => void;
   owner?: LightWorkspaceType;
-  /** Persists view and sort mode in localStorage under this key; in-memory only when unset. */
+  /** Persists view and sort mode in localStorage under this key (one per workspace); in-memory only when unset. */
   preferencesKey?: string;
   getExtraFileMenuItems?: (
     entry: FileExplorerEntry
