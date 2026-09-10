@@ -54,6 +54,7 @@ import HuggingFaceLogo from "./HuggingFace";
 import ImageLogo from "./Image";
 import IntercomLogo from "./Intercom";
 import JiraLogo from "./Jira";
+import LangfuseLogo from "./Langfuse";
 import LemlistLogo from "./Lemlist";
 import LinearLogo from "./Linear";
 import LinkedinLogo from "./Linkedin";
@@ -93,6 +94,7 @@ import StatuspageLogo from "./Statuspage";
 import StripeLogo from "./Stripe";
 import SupabaseLogo from "./Supabase";
 import TableLogo from "./Table";
+import TemporalLogo from "./Temporal";
 import ThinkingMachinesLogo from "./ThinkingMachines";
 import TogetheraiLogo from "./Togetherai";
 import UkgLogo from "./Ukg";
@@ -166,6 +168,7 @@ export const PLATFORM_LOGOS = {
   ImageLogo,
   IntercomLogo,
   JiraLogo,
+  LangfuseLogo,
   LemlistLogo,
   LinearLogo,
   LinkedinLogo,
@@ -205,6 +208,7 @@ export const PLATFORM_LOGOS = {
   StripeLogo,
   SupabaseLogo,
   TableLogo,
+  TemporalLogo,
   ThinkingMachinesLogo,
   TogetheraiLogo,
   UkgLogo,

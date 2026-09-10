@@ -27,33 +27,43 @@ import {
   assertNeverAndIgnore,
 } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
+  ButtonGroup,
+  buttonVariants,
   Check,
   ChevronDown,
   Chip,
   Clipboard,
   ClipboardCheck,
+  Code02,
   CodeBlock,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   ConversationMessage,
   cn,
+  DatadogLogo,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  File02,
   Input,
+  LangfuseLogo,
   LinkWrapper,
   Markdown,
-  Page,
+  NavTabPill,
+  NavTabPillContent,
+  NavTabPillList,
+  NavTabPillTrigger,
   Spinner,
+  TemporalLogo,
   useCopyToClipboard,
   XClose,
 } from "@dust-tt/sparkle";
-import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import type { ComponentProps, ReactNode } from "react";
 import { useRef, useState } from "react";
 
@@ -153,7 +163,7 @@ function getToolSearchResultSummary(content: unknown): string | null {
       return "0 tools found";
     }
 
-    return `${toolNames.length} tool${toolNames.length > 1 ? "s" : ""} found: ${toolNames.join(", ")}`;
+    return `${toolNames.length} tool${pluralize(toolNames.length)} found: ${toolNames.join(", ")}`;
   }
 
   if (
@@ -246,47 +256,38 @@ interface AgentTraceLinksProps {
 
 function AgentTraceLinks({ runUrls, langfuseUiBaseUrl }: AgentTraceLinksProps) {
   return (
-    <span className="flex min-w-full flex-wrap items-center gap-x-2 gap-y-1">
-      <span className="shrink-0 text-sm text-muted-foreground">
-        {runUrls.length > 1 ? "traces" : "trace"}
-      </span>
-      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+    <div className="flex min-w-full flex-wrap items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         {runUrls.map(({ runId, url, isLLM }, index) => {
           const traceLabelSuffix = runUrls.length > 1 ? ` ${index + 1}` : "";
 
           return (
-            <span
-              key={runId}
-              className="inline-flex items-center gap-1 whitespace-nowrap"
-            >
+            <ButtonGroup key={runId}>
               <a
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
                 title={runId}
-                className="text-highlight hover:underline"
+                className={buttonVariants({ variant: "outline", size: "xs" })}
               >
                 Poke{traceLabelSuffix}
               </a>
               {isLLM && langfuseUiBaseUrl && (
-                <>
-                  <span className="text-muted-foreground">·</span>
-                  <a
-                    href={getLangfuseTraceUrl(langfuseUiBaseUrl, runId)}
-                    title={`Open ${runId} in Langfuse`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-highlight hover:underline"
-                  >
-                    Langfuse{traceLabelSuffix}
-                  </a>
-                </>
+                <a
+                  href={getLangfuseTraceUrl(langfuseUiBaseUrl, runId)}
+                  title={`Open ${runId} in Langfuse`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={buttonVariants({ variant: "outline", size: "xs" })}
+                >
+                  Langfuse{traceLabelSuffix}
+                </a>
               )}
-            </span>
+            </ButtonGroup>
           );
         })}
-      </span>
-    </span>
+      </div>
+    </div>
   );
 }
 
@@ -366,18 +367,21 @@ function ToolActionContent({
             }
           />
         ) : (
-          <span className="flex h-7 w-7 items-center justify-center rounded-md border border-separator bg-background">
+          <span
+            className={cn(
+              "flex h-7 w-7 items-center justify-center",
+              "rounded-md border border-separator bg-background"
+            )}
+          >
             <ActionIcon className="h-4 w-4 text-muted-foreground" />
           </span>
         )}
       </span>
       <span className="flex min-w-0 flex-1 items-center gap-3">
-        <span className="w-24 shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
+        <span className="w-24 shrink-0 text-sm tabular-nums text-muted-foreground">
           {action.created ? new Date(action.created).toLocaleTimeString() : "—"}
         </span>
-        <span className="shrink-0 rounded-md border border-separator bg-background px-1.5 py-0.5 font-mono text-sm tabular-nums text-muted-foreground">
-          Step {action.step}
-        </span>
+        <Chip label={`Step ${action.step}`} />
         <span className="flex min-w-0 flex-col">
           <span
             className="truncate text-sm font-medium text-foreground"
@@ -402,7 +406,7 @@ function ToolActionContent({
           />
         )}
       </span>
-      <span className="w-16 shrink-0 text-right font-mono text-sm tabular-nums text-muted-foreground">
+      <span className="w-16 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
         {duration}
       </span>
       <span className="w-8 shrink-0 text-right">
@@ -427,7 +431,7 @@ function ToolActionView({ action, isExpanded, onToggle }: ToolActionViewProps) {
     <div>
       <div
         className={cn(
-          "mt-2 flex w-full items-center gap-2 rounded-md border border-separator bg-muted-background px-2 py-1.5 text-left",
+          "mt-2 flex w-full items-center gap-2 rounded-md border border-separator bg-muted-background p-2 text-left",
           action.status === "errored"
             ? "border-border-warning bg-background"
             : null
@@ -474,7 +478,13 @@ function ProviderPassthroughView({
 
   return (
     <div>
-      <div className="mt-2 flex w-full items-center gap-2 rounded-md border border-separator bg-muted-background px-2 py-1.5 text-left">
+      <div
+        className={cn(
+          "mt-2 flex w-full items-center gap-2",
+          "rounded-md border border-separator bg-muted-background",
+          "p-2 text-left"
+        )}
+      >
         <span className="shrink-0">
           <Button
             variant="outline"
@@ -497,12 +507,10 @@ function ProviderPassthroughView({
           />
         </span>
         <span className="flex min-w-0 flex-1 items-center gap-3">
-          <span className="w-24 shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
+          <span className="w-24 shrink-0 text-sm tabular-nums text-muted-foreground">
             —
           </span>
-          <span className="shrink-0 rounded-md border border-separator bg-background px-1.5 py-0.5 font-mono text-sm tabular-nums text-muted-foreground">
-            Step {entry.step}
-          </span>
+          <Chip label={`Step ${entry.step}`} />
           <span
             className="min-w-0 truncate text-sm font-medium text-foreground"
             title={title}
@@ -537,7 +545,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
   const [isExpanded, setIsExpanded] = useState(!hasDustSystemTag);
 
   return (
-    <div className="flex flex-grow flex-col">
+    <div className="flex grow flex-col">
       <div className="max-w-full self-end">
         <ConversationMessage
           pictureUrl={message.user?.image}
@@ -547,7 +555,10 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
           {hasDustSystemTag && !isExpanded ? (
             <button
               onClick={() => setIsExpanded(true)}
-              className="flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground"
+              className={cn(
+                "flex cursor-pointer items-center gap-1",
+                "text-sm italic text-muted-foreground hover:text-foreground"
+              )}
             >
               <ChevronDown className="h-4 w-4" />
               <span>Hidden System Message (click to expand)</span>
@@ -557,7 +568,10 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
               {hasDustSystemTag && (
                 <button
                   onClick={() => setIsExpanded(false)}
-                  className="mb-2 flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground"
+                  className={cn(
+                    "mb-2 flex cursor-pointer items-center gap-1",
+                    "text-sm italic text-muted-foreground hover:text-foreground"
+                  )}
                 >
                   <XClose className="h-4 w-4" />
                   <span>Hide System Message</span>
@@ -571,16 +585,16 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
             </>
           )}
           <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <span>date: {new Date(message.created).toLocaleString()}</span>
-            {message.context.origin === "wakeup" && (
-              <StatusBadge label="wake-up" color="highlight" />
-            )}
             <StatusBadge
               label={
                 USER_VISIBILITY[message.visibility]?.label ?? message.visibility
               }
               color={USER_VISIBILITY[message.visibility]?.color ?? "primary"}
             />
+            <span>{new Date(message.created).toLocaleString()}</span>
+            {message.context.origin === "wakeup" && (
+              <StatusBadge label="wake-up" color="highlight" />
+            )}
           </div>
         </ConversationMessage>
       </div>
@@ -684,41 +698,35 @@ const AgentMessageView = ({
             <div className="whitespace-pre-wrap">{message.content}</div>
           ))}
         {message.error && (
-          <div className="my-3 rounded-md border border-border-warning bg-background px-3 py-2 text-sm font-medium text-warning">
+          <div
+            className={cn(
+              "my-3 rounded-md border border-border-warning bg-background",
+              "p-2 text-sm font-medium text-warning"
+            )}
+          >
             {message.error.message}
           </div>
         )}
-        <div className="mt-3 rounded-md border border-separator bg-muted-background px-3 py-2">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="mt-3 rounded-md border border-separator bg-muted-background p-2">
+          <div className="flex flex-wrap items-center gap-4">
             <StatusBadge
               label={AGENT_STATUS[message.status]?.label ?? message.status}
               color={AGENT_STATUS[message.status]?.color ?? "primary"}
             />
-            <MetadataItem label="date" mono>
+            <MetadataItem label="date">
               {new Date(message.created).toLocaleString()}
             </MetadataItem>
-            <MetadataItem label="version" mono>
-              {message.version}
-            </MetadataItem>
+            <MetadataItem label="version">{message.version}</MetadataItem>
             <MetadataItem label="message" mono>
               {message.sId}
             </MetadataItem>
-            <MetadataItem label="agent">
-              <LinkWrapper
-                href={`/poke/${owner.sId}/assistants/${message.configuration.sId}`}
-                target="_blank"
-                className="font-mono text-highlight hover:underline"
-              >
-                {message.configuration.sId}
-              </LinkWrapper>
-            </MetadataItem>
             {message.modelInteractionDurationMs != null && (
-              <MetadataItem label="LLM" mono>
+              <MetadataItem label="LLM">
                 {formatDurationMs(message.modelInteractionDurationMs)}
               </MetadataItem>
             )}
             {message.completionDurationMs != null && (
-              <MetadataItem label="total" mono>
+              <MetadataItem label="total">
                 {formatDurationMs(message.completionDurationMs)}
               </MetadataItem>
             )}
@@ -874,7 +882,7 @@ export function ConversationPage() {
   const pod =
     spaceDetails?.space.kind === "project" ? spaceDetails.space : null;
 
-  const [useMarkdown, setUseMarkdown] = useState(false);
+  const [useMarkdown, setUseMarkdown] = useState(true);
   const { data: agents } = usePokeAgentConfigurations({
     owner,
     agentsGetView: "admin_internal",
@@ -1008,12 +1016,7 @@ export function ConversationPage() {
     );
   }
 
-  const {
-    conversationDataSourceId,
-    langfuseUiBaseUrl,
-    sandbox,
-    temporalWorkspace,
-  } = conversationConfig;
+  const { langfuseUiBaseUrl, sandbox, temporalWorkspace } = conversationConfig;
 
   const sandboxConnect = sandbox
     ? { command: makeSandboxConnectCommand(sandbox), status: sandbox.status }
@@ -1029,8 +1032,13 @@ export function ConversationPage() {
 
   return (
     conversation && (
-      <div className="max-w-6xl">
-        <h3 className="text-xl font-bold">
+      <div
+        className={cn(
+          "mx-auto grid w-full max-w-5xl grid-cols-1 gap-6 xl:max-w-492",
+          "2xl:grid-cols-[minmax(16rem,1fr)_minmax(0,93.5rem)]"
+        )}
+      >
+        <h3 className="text-xl font-bold 2xl:col-start-2">
           Conversation in workspace{" "}
           <LinkWrapper href={`/poke/${owner.sId}`} className="text-highlight">
             {owner.name}
@@ -1048,7 +1056,7 @@ export function ConversationPage() {
             </>
           )}
         </h3>
-        <Page.Vertical align="stretch">
+        <aside className="w-full min-w-0 max-w-5xl 2xl:col-start-1 2xl:row-start-2 2xl:self-start">
           <PluginList
             pluginResourceTarget={{
               resourceId: conversation.sId,
@@ -1056,28 +1064,33 @@ export function ConversationPage() {
               workspace: owner,
             }}
           />
-          <div className="flex flex-col items-start gap-2">
+        </aside>
+        <div className="flex min-w-0 flex-col gap-3 2xl:col-start-2 2xl:row-start-2">
+          <div className="flex w-full max-w-5xl flex-col items-start gap-3">
             <div className="flex flex-wrap gap-2">
               {langfuseUiBaseUrl && (
                 <Button
                   href={`${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BconversationId%3B%3D%3B${conversationId}`}
-                  label="Langfuse Traces"
-                  variant="primary"
+                  label="Langfuse"
+                  icon={LangfuseLogo}
+                  variant="outline"
                   size="xs"
                   target="_blank"
                 />
               )}
               <Button
                 href={`http://go/trace-conversation/${conversation.sId}`}
-                label="Trace Conversation"
-                variant="primary"
+                label="Datadog"
+                icon={DatadogLogo}
+                variant="outline"
                 size="xs"
                 target="_blank"
               />
               <Button
                 href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/workflows?query=%60conversationId%60%3D"${conversationId}"`}
-                label="Temporal Workflows"
-                variant="primary"
+                label="Temporal"
+                icon={TemporalLogo}
+                variant="outline"
                 size="xs"
                 target="_blank"
               />
@@ -1106,29 +1119,12 @@ export function ConversationPage() {
                 }}
               />
               <Button
-                href={`/poke/${owner.sId}/data_sources/${conversationDataSourceId}`}
-                label="Conversation DS"
-                variant="primary"
-                size="xs"
-                target="_blank"
-                disabled={!conversationDataSourceId}
-              />
-              <Button
-                label={useMarkdown ? "Plain Text" : "Preview Markdown"}
-                variant="outline"
-                size="xs"
-                icon={useMarkdown ? DocumentTextIcon : CodeBracketIcon}
-                onClick={() => setUseMarkdown(!useMarkdown)}
-              />
-              <Button
-                label="Self-improving skills test"
+                label="Self-improving skills"
                 variant="primary"
                 size="xs"
                 onClick={() => void copyTestCase()}
                 disabled={isTestCaseLoading}
               />
-            </div>
-            <div className="flex items-center gap-2">
               <Button
                 label="Render Conversation"
                 variant="primary"
@@ -1142,52 +1138,52 @@ export function ConversationPage() {
                 }}
                 disabled={isRendering}
               />
-              {showRenderControls && (
-                <>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        label={
-                          selectedAgentId
-                            ? `Agent: ${
-                                agents.find((a) => a.sId === selectedAgentId)
-                                  ?.name ?? selectedAgentId
-                              }`
-                            : "Select Agent"
-                        }
-                        variant="outline"
-                        size="xs"
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      {agents.map((a) => (
-                        <DropdownMenuItem
-                          key={a.sId}
-                          onClick={() =>
-                            setAgentSelection({
-                              agentId: a.sId,
-                              conversationId,
-                            })
-                          }
-                        >
-                          {a.name} ({a.sId})
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <Input
-                    aria-label="Context size override"
-                    placeholder="Context size override"
-                    value={contextSizeOverride}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setContextSizeOverride(e.target.value)
-                    }
-                    className="h-7 w-44"
-                  />
-                </>
-              )}
-              {isRendering && <Spinner size="xs" />}
             </div>
+            {showRenderControls && (
+              <div className="flex flex-wrap items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      label={
+                        selectedAgentId
+                          ? `Agent: ${
+                              agents.find((a) => a.sId === selectedAgentId)
+                                ?.name ?? selectedAgentId
+                            }`
+                          : "Select Agent"
+                      }
+                      variant="outline"
+                      size="xs"
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {agents.map((a) => (
+                      <DropdownMenuItem
+                        key={a.sId}
+                        onClick={() =>
+                          setAgentSelection({
+                            agentId: a.sId,
+                            conversationId,
+                          })
+                        }
+                      >
+                        {a.name} ({a.sId})
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Input
+                  aria-label="Context size override"
+                  placeholder="Context size override"
+                  value={contextSizeOverride}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setContextSizeOverride(e.target.value)
+                  }
+                  className="h-7 w-44"
+                />
+                {isRendering && <Spinner size="xs" />}
+              </div>
+            )}
           </div>
           {(renderError !== null || renderResult !== null) && (
             <div className="mt-2 rounded-md border p-2">
@@ -1289,32 +1285,6 @@ export function ConversationPage() {
               )}
             </div>
           )}
-          {(pendingUserCount > 0 || createdAgentCount > 0) && (
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-separator bg-muted-background px-3 py-2 text-sm text-muted-foreground">
-              <span className="text-sm font-medium text-foreground">
-                Active messages
-              </span>
-              {pendingUserCount > 0 && (
-                <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
-                  <span className="font-mono tabular-nums">
-                    {pendingUserCount}
-                  </span>
-                  user message
-                  {pendingUserCount > 1 ? "s" : ""} queued
-                </span>
-              )}
-              {createdAgentCount > 0 && (
-                <span className="inline-flex h-7 items-center gap-1.5 rounded-md border border-separator bg-background px-2 text-sm text-foreground">
-                  <Spinner size="xs" />
-                  <span className="font-mono tabular-nums">
-                    {createdAgentCount}
-                  </span>
-                  agent message
-                  {createdAgentCount > 1 ? "s" : ""} generating
-                </span>
-              )}
-            </div>
-          )}
           <div
             className={cn(
               "grid w-full grid-cols-1 gap-6 py-4",
@@ -1350,69 +1320,129 @@ export function ConversationPage() {
                 />
               </div>
             </aside>
-            <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
-              {conversation.content.map((messages, i) => {
-                return (
-                  <div key={`messages-${i}`} className="flex flex-col gap-4">
-                    {messages.map((m, j) => {
-                      switch (m.type) {
-                        case "agent_message": {
-                          return (
-                            <AgentMessageView
-                              key={`message-${i}-${j}`}
-                              conversationId={conversationId}
-                              isConsumptionOpen={activeMessageId === m.sId}
-                              message={m}
-                              onConsumptionOpenChange={(open) =>
-                                setMessageOpen(m.sId, open)
-                              }
-                              onConsumptionPanelExitComplete={() =>
-                                completeMessagePanelExit(m.sId)
-                              }
-                              onConsumptionPanelRefChange={(element) =>
-                                handleMessagePanelRefChange(m.sId, element)
-                              }
-                              useMarkdown={useMarkdown}
-                              owner={owner}
-                              langfuseUiBaseUrl={langfuseUiBaseUrl}
-                            />
-                          );
-                        }
-                        case "user_message": {
-                          return (
-                            <UserMessageView
-                              message={m}
-                              key={`message-${i}-${j}`}
-                              useMarkdown={useMarkdown}
-                            />
-                          );
-                        }
-                        case "content_fragment": {
-                          return (
-                            <ContentFragmentView
-                              message={m}
-                              key={`message-${i}-${j}`}
-                            />
-                          );
-                        }
-                        case "compaction_message": {
-                          return (
-                            <CompactionMessageView
-                              message={m}
-                              key={`message-${i}-${j}`}
-                            />
-                          );
-                        }
-                        default:
-                          assertNeverAndIgnore(m);
-                      }
-                    })}
+            <NavTabPill
+              value={useMarkdown ? "markdown" : "raw"}
+              onValueChange={(value) => setUseMarkdown(value === "markdown")}
+              asChild
+            >
+              <div className="flex min-w-0 flex-col justify-start gap-8 xl:col-start-1 xl:row-start-1">
+                <div className="flex flex-wrap items-center gap-3 border-b border-separator pb-4">
+                  <h4 className="text-base font-semibold">Messages</h4>
+                  {(pendingUserCount > 0 || createdAgentCount > 0) && (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="sr-only">Active messages</span>
+                      {pendingUserCount > 0 && (
+                        <span
+                          className={cn(
+                            "inline-flex h-7 items-center gap-2 whitespace-nowrap",
+                            "rounded-md border border-separator bg-background",
+                            "px-2 text-sm text-foreground"
+                          )}
+                        >
+                          <span className="tabular-nums">
+                            {pendingUserCount}
+                          </span>
+                          user message
+                          {pluralize(pendingUserCount)} queued
+                        </span>
+                      )}
+                      {createdAgentCount > 0 && (
+                        <span
+                          className={cn(
+                            "inline-flex h-7 items-center gap-2 whitespace-nowrap",
+                            "rounded-md border border-separator bg-background",
+                            "px-2 text-sm text-foreground"
+                          )}
+                        >
+                          <Spinner size="xs" />
+                          <span className="tabular-nums">
+                            {createdAgentCount}
+                          </span>
+                          agent message
+                          {pluralize(createdAgentCount)} generating
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <div className="ml-auto shrink-0 rounded-2xl border border-border-dark bg-background p-1">
+                    <NavTabPillList>
+                      <NavTabPillTrigger value="raw" icon={Code02}>
+                        Raw text
+                      </NavTabPillTrigger>
+                      <NavTabPillTrigger value="markdown" icon={File02}>
+                        Markdown
+                      </NavTabPillTrigger>
+                    </NavTabPillList>
                   </div>
-                );
-              })}
-            </div>
+                </div>
+                <NavTabPillContent value={useMarkdown ? "markdown" : "raw"}>
+                  {conversation.content.map((messages, i) => {
+                    return (
+                      <div
+                        key={`messages-${i}`}
+                        className="flex flex-col gap-4"
+                      >
+                        {messages.map((m, j) => {
+                          switch (m.type) {
+                            case "agent_message": {
+                              return (
+                                <AgentMessageView
+                                  key={`message-${i}-${j}`}
+                                  conversationId={conversationId}
+                                  isConsumptionOpen={activeMessageId === m.sId}
+                                  message={m}
+                                  onConsumptionOpenChange={(open) =>
+                                    setMessageOpen(m.sId, open)
+                                  }
+                                  onConsumptionPanelExitComplete={() =>
+                                    completeMessagePanelExit(m.sId)
+                                  }
+                                  onConsumptionPanelRefChange={(element) =>
+                                    handleMessagePanelRefChange(m.sId, element)
+                                  }
+                                  useMarkdown={useMarkdown}
+                                  owner={owner}
+                                  langfuseUiBaseUrl={langfuseUiBaseUrl}
+                                />
+                              );
+                            }
+                            case "user_message": {
+                              return (
+                                <UserMessageView
+                                  message={m}
+                                  key={`message-${i}-${j}`}
+                                  useMarkdown={useMarkdown}
+                                />
+                              );
+                            }
+                            case "content_fragment": {
+                              return (
+                                <ContentFragmentView
+                                  message={m}
+                                  key={`message-${i}-${j}`}
+                                />
+                              );
+                            }
+                            case "compaction_message": {
+                              return (
+                                <CompactionMessageView
+                                  message={m}
+                                  key={`message-${i}-${j}`}
+                                />
+                              );
+                            }
+                            default:
+                              assertNeverAndIgnore(m);
+                          }
+                        })}
+                      </div>
+                    );
+                  })}
+                </NavTabPillContent>
+              </div>
+            </NavTabPill>
           </div>
-        </Page.Vertical>
+        </div>
       </div>
     )
   );

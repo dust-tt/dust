@@ -24,20 +24,24 @@ function PluginRunItem({ run, onClick }: PluginRunItemProps) {
   return (
     <div
       className={cn(
-        "flex cursor-pointer items-center justify-between rounded-lg border p-4 transition-colors",
+        "flex min-w-0 cursor-pointer flex-col items-start justify-between gap-3 rounded-lg border p-4 transition-colors @xs:flex-row @xs:items-center",
         "hover:bg-primary-50"
       )}
       onClick={onClick}
     >
-      <div className="flex flex-1 items-center space-x-3">
+      <div className="flex min-w-0 items-center gap-3 @xs:flex-1">
         <PluginRunStatusChip status={run.status} />
-        <div className="flex-1">
-          <div className="text-sm font-medium">{run.pluginId}</div>
-          <div className="mt-1 flex items-center space-x-2 text-xs text-gray-500">
-            <User className="h-3 w-3" />
-            <span>{run.author}</span>
-            <Clock className="ml-2 h-3 w-3" />
-            <span>{formatTimestampToFriendlyDate(run.createdAt)}</span>
+        <div className="min-w-0 flex-1">
+          <div className="break-words text-sm font-medium">{run.pluginId}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+            <span className="inline-flex min-w-0 items-center gap-1">
+              <User className="h-3 w-3 shrink-0" />
+              <span className="truncate">{run.author}</span>
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <Clock className="h-3 w-3 shrink-0" />
+              <span>{formatTimestampToFriendlyDate(run.createdAt)}</span>
+            </span>
           </div>
         </div>
       </div>
@@ -116,8 +120,8 @@ export function PluginRunsList({ pluginResourceTarget }: PluginRunsListProps) {
   }
 
   return (
-    <div className="h-full p-4">
-      <div className="max-h-96 space-y-2 overflow-y-auto">
+    <div className="h-full @container">
+      <div className="max-h-96 space-y-2 overflow-y-auto p-4">
         {pluginRuns.map((run) => (
           <PluginRunItem
             key={`${run.pluginId}-${run.createdAt}`}
