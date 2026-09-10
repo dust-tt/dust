@@ -3,7 +3,6 @@ import type {
   ConnectorManagerError,
   CreateConnectorErrorCode,
 } from "@connectors/connectors/interface";
-import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -228,7 +227,8 @@ const _createConnectorAPIHandler = async (
 
     return res.status(200).json(connector.toJSON());
   } catch (e) {
-    logger.error(errorFromAny(e), "Error in createConnectorAPIHandler");
+    const error = normalizeError(e);
+    logger.error(error, "Error in createConnectorAPIHandler");
 
     const errorMessage = `An unexpected error occured while creating the ${req.params.connector_provider} connector`;
 
@@ -242,7 +242,7 @@ const _createConnectorAPIHandler = async (
           message: errorMessage,
         },
       },
-      normalizeError(e)
+      error
     );
   }
 };
