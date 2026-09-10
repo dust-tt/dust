@@ -22,7 +22,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 
 export type CreditPoolFetchStatus = "loading" | "error" | "ready";
@@ -195,7 +194,6 @@ export function WorkspaceCreditPoolCycleHistoryTable({
 
   return (
     <>
-      <Page.H variant="h5">Previous cycles</Page.H>
       <DataTable
         data={rows}
         columns={CYCLE_HISTORY_COLUMNS}
@@ -266,7 +264,6 @@ interface WorkspaceCreditPoolSectionProps {
   cycleBreakdown: AwuPoolCycleBreakdown[];
   programmaticConsumedCredits: number | null;
   cycleHistoryLoadMore: CycleHistoryLoadMore;
-  headerAction?: ReactNode;
 }
 
 export function WorkspaceCreditPoolSection({
@@ -281,7 +278,6 @@ export function WorkspaceCreditPoolSection({
   cycleBreakdown,
   programmaticConsumedCredits,
   cycleHistoryLoadMore,
-  headerAction,
 }: WorkspaceCreditPoolSectionProps) {
   if (cardsStatus === "ready" && !isVisible) {
     return null;
@@ -289,11 +285,6 @@ export function WorkspaceCreditPoolSection({
 
   return (
     <Page.Vertical gap="xs" align="stretch">
-      <div className="flex items-center justify-between">
-        <Page.H variant="h4">Credit consumption</Page.H>
-        {headerAction}
-      </div>
-
       {cardsStatus === "error" ? (
         <ContentMessage
           title="Failed to load Workspace Credits Pool"
@@ -353,7 +344,6 @@ interface CreditPoolCardsFromCycleDataProps {
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
   tableStatus: CreditPoolFetchStatus;
   cycleHistoryLoadMore: CycleHistoryLoadMore;
-  headerAction?: ReactNode;
 }
 export function CreditPoolCardsFromCycleData({
   awuPoolCurrentCycle,
@@ -362,7 +352,6 @@ export function CreditPoolCardsFromCycleData({
   excessCycleBreakdown,
   tableStatus,
   cycleHistoryLoadMore,
-  headerAction,
 }: CreditPoolCardsFromCycleDataProps) {
   const {
     totalRemainingCredits,
@@ -401,7 +390,6 @@ export function CreditPoolCardsFromCycleData({
       cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
       programmaticConsumedCredits={programmaticConsumedCredits}
       cycleHistoryLoadMore={cycleHistoryLoadMore}
-      headerAction={headerAction}
     />
   );
 }
@@ -409,13 +397,8 @@ export function CreditPoolCardsFromCycleData({
 interface CreditPoolCardsProps {
   owner: LightWorkspaceType;
   disabled: boolean;
-  headerAction?: ReactNode;
 }
-export function CreditPoolCards({
-  owner,
-  disabled,
-  headerAction,
-}: CreditPoolCardsProps) {
+export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
   const { cycleHistoryLimit, onLoadMoreCycleHistory } = useCycleHistoryLimit();
   const {
     awuPoolCurrentCycle,
@@ -454,7 +437,6 @@ export function CreditPoolCards({
           isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading,
         onLoadMore: onLoadMoreCycleHistory,
       }}
-      headerAction={headerAction}
     />
   );
 }
