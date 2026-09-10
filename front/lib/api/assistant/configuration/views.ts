@@ -25,6 +25,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
+import type { Order } from "sequelize";
 import { Op, Sequelize } from "sequelize";
 
 const HEAVY_AGENT_CONFIGURATION_ATTRIBUTES = [
@@ -50,7 +51,7 @@ function editorWhere(filter: EditorFilter) {
   }
 }
 
-const sortStrategies: Record<SortStrategyType, SortStrategy> = {
+const sortStrategies = {
   alphabetical: {
     dbOrder: [["name", "ASC"]],
     compareFunction: (a: AgentConfigurationType, b: AgentConfigurationType) =>
@@ -64,7 +65,7 @@ const sortStrategies: Record<SortStrategyType, SortStrategy> = {
     dbOrder: [["updatedAt", "DESC"]],
     compareFunction: () => 0,
   },
-};
+} satisfies Record<SortStrategyType, SortStrategy>;
 
 function makeApplySortAndLimit(sort?: SortStrategyType, limit?: number) {
   return (results: AgentConfigurationType[]) => {
@@ -151,6 +152,10 @@ async function fetchGlobalAgentConfigurationForView(
   return matchingGlobalAgents.filter((a) => a.status === "active");
 }
 
+/**
+ * @cc [owner:philipperolet,label:backend] deterministic-limited-agent-queries
+ * Queries with a limit MUST order by the requested sort, if any, then by configuration ID.
+ */
 async function fetchWorkspaceAgentConfigurationsWithoutActions(
   auth: Authenticator,
   {
@@ -187,9 +192,14 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       ? { attributes: { exclude: [...new Set(attributesToExclude)] } }
       : {};
 
+  // A unique order keeps legacy and grant queries on the same page despite different query plans.
+  const order: Order | undefined =
+    limit === undefined
+      ? sortStrategy?.dbOrder
+      : [...(sortStrategy?.dbOrder ?? []), ["id", "ASC"]];
   const baseAgentsSequelizeQuery = {
     limit,
-    order: sortStrategy?.dbOrder,
+    order,
     ...excludeAttributesFromSelect,
   };
 

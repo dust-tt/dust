@@ -1,6 +1,7 @@
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -32,6 +33,56 @@ async function listAgentIdsForAnalytics(auth: Authenticator) {
 }
 
 const REPORTING_ROLES = ["admin", "manager"] as const;
+
+describe("getAgentConfigurationsForView, limited results", () => {
+  it.each([
+    undefined,
+    "updatedAt",
+  ] as const)("uses configuration IDs to break ties with sort=%s", async (sort) => {
+    const { workspace, authenticator } = await createResourceTest({});
+    const first = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Ordering C" }
+    );
+    const second = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Ordering B" }
+    );
+    const third = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Ordering A" }
+    );
+    // Tie timestamps, then move the first row by updating it without creating a new version.
+    await AgentConfigurationModel.update(
+      {
+        description: "Ordering fixture",
+        updatedAt: new Date("2026-09-01T00:00:00Z"),
+      },
+      {
+        where: {
+          workspaceId: workspace.id,
+          id: [first.id, second.id, third.id],
+        },
+        silent: true,
+      }
+    );
+    await AgentConfigurationModel.update(
+      { description: "Edited description" },
+      { where: { workspaceId: workspace.id, id: first.id }, silent: true }
+    );
+
+    const agents = await getAgentConfigurationsForView({
+      auth: authenticator,
+      agentsGetView: "list",
+      variant: "light",
+      agentPrefix: "Ordering",
+      limit: 2,
+      sort,
+    });
+
+    expect(agents.map((agent) => agent.sId)).toEqual([first.sId, second.sId]);
+  });
+});
 
 describe("getAgentConfigurationsForView, 'analytics' view", () => {
   it.each(
