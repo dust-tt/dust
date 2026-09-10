@@ -18,7 +18,6 @@ import {
   ContentMessage,
   cn,
   DataTable,
-  Page,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -289,8 +288,10 @@ export function WorkspaceCreditPoolSection({
     return null;
   }
 
+  // Matches the gap the usage page keeps between this section and the tabs
+  // below it, so cards, cycle history and member table are evenly spaced.
   return (
-    <Page.Vertical gap="xs" align="stretch">
+    <div className="flex flex-col items-stretch gap-10">
       {cardsStatus === "error" ? (
         <ContentMessage
           title="Failed to load Workspace Credits Pool"
@@ -321,7 +322,7 @@ export function WorkspaceCreditPoolSection({
           />
         </>
       )}
-    </Page.Vertical>
+    </div>
   );
 }
 
