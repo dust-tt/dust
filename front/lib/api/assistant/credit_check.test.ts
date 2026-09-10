@@ -1,4 +1,7 @@
-import { checkPoolCreditGate } from "@app/lib/api/assistant/credit_check";
+import {
+  checkCreditSpendCheckpointGate,
+  checkPoolCreditGate,
+} from "@app/lib/api/assistant/credit_check";
 import type { Authenticator } from "@app/lib/auth";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,11 +11,13 @@ const {
   mockIsApiBlocked,
   mockIsProgrammaticApiBlocked,
   mockIsProgrammaticUsage,
+  mockGetCreditSpendCheckpointAwuCredits,
 } = vi.hoisted(() => ({
   mockIsUserBlocked: vi.fn(),
   mockIsApiBlocked: vi.fn(),
   mockIsProgrammaticApiBlocked: vi.fn(),
   mockIsProgrammaticUsage: vi.fn(),
+  mockGetCreditSpendCheckpointAwuCredits: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/credits/access_control", () => ({
@@ -28,6 +33,13 @@ vi.mock("@app/lib/api/programmatic_usage/tracking", () => ({
 vi.mock("@app/types/plan", () => ({
   isCreditPricedPlan: (plan: { code: string }) =>
     plan.code.startsWith("ENT_NEW"),
+}));
+
+vi.mock("@app/lib/api/config", () => ({
+  default: {
+    getCreditSpendCheckpointThresholdAwuCredits:
+      mockGetCreditSpendCheckpointAwuCredits,
+  },
 }));
 
 // Minimal stand-in for the Authenticator class exposing only the members the gate reads. A class
@@ -49,7 +61,7 @@ function makeAuth({
   return {
     getNonNullableWorkspace: () => ({ sId: "ws_test", metronomeCustomerId }),
     subscription: () => ({ plan }),
-    user: () => (hasUser ? { sId: "user_test" } : null),
+    user: () => (hasUser ? { id: 42, sId: "user_test" } : null),
   } as unknown as Authenticator;
 }
 
@@ -153,5 +165,36 @@ describe("checkPoolCreditGate", () => {
     mockIsUserBlocked.mockRejectedValue(new Error("redis unavailable"));
     const auth = makeAuth();
     await expect(callGate(auth)).rejects.toThrow("redis unavailable");
+  });
+});
+
+describe("checkCreditSpendCheckpointGate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockGetCreditSpendCheckpointAwuCredits.mockReturnValue(1000);
+  });
+
+  it("does not notify when there is no user", async () => {
+    const auth = makeAuth({ hasUser: false });
+    const result = await checkCreditSpendCheckpointGate(auth, {
+      consumedAwuCredits: 5000,
+    });
+    expect(result).toEqual({ crossed: false });
+  });
+
+  it("does not notify when this message's consumed credits are below the threshold", async () => {
+    const auth = makeAuth({ hasUser: true });
+    const result = await checkCreditSpendCheckpointGate(auth, {
+      consumedAwuCredits: 999,
+    });
+    expect(result).toEqual({ crossed: false });
+  });
+
+  it("notifies with the fixed threshold once this message's consumed credits reach it", async () => {
+    const auth = makeAuth({ hasUser: true });
+    const result = await checkCreditSpendCheckpointGate(auth, {
+      consumedAwuCredits: 1000,
+    });
+    expect(result).toEqual({ crossed: true, thresholdAwuCredits: 1000 });
   });
 });
