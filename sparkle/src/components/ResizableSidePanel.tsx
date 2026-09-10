@@ -133,7 +133,7 @@ export const ResizableSidePanel = React.forwardRef<
           <ResizableHandle
             withHandle={isOpen && isResizable}
             disabled={!isOpen || !isResizable}
-            className="hidden md:flex"
+            className="z-50 hidden md:flex"
             onDragging={(isDragging) => {
               // Pointer resizing skips transitions, so release completes a drag collapse.
               if (!isDragging && panelRef.current?.isCollapsed()) {
