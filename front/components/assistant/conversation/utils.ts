@@ -1,4 +1,6 @@
 import { removeDiacritics, subFilter } from "@app/lib/utils";
+import type { RelativeDateBucket } from "@app/lib/utils/timestamps";
+import { getRelativeDateBucket } from "@app/lib/utils/timestamps";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import type {
   AgentMessageType,
@@ -18,7 +20,6 @@ import {
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { truncate } from "@app/types/shared/utils/string_utils";
 import type { PodListItemType } from "@app/types/space";
-import moment from "moment";
 import type { VirtuosoMessage } from "./types";
 import { isZeroHeightMessage } from "./types";
 
@@ -32,14 +33,6 @@ function isReinforcedSkillConversation(
     conversation.metadata?.reinforcedSkillNotification
   );
 }
-
-type GroupLabel =
-  | "Today"
-  | "Yesterday"
-  | "Last Week"
-  | "Last Month"
-  | "Last 12 Months"
-  | "Older";
 
 // We treat the conversations as unread if they are unread or have an action required
 // (note that action required conversations are never marked as unread).
@@ -112,13 +105,7 @@ export function getGroupConversationsByUnreadAndActionRequired(
 export function getGroupConversationsByDate<
   T extends ConversationListItemType | PodConversationListItemType,
 >({ conversations, titleFilter }: { conversations: T[]; titleFilter: string }) {
-  const today = moment().startOf("day");
-  const yesterday = moment().subtract(1, "days").startOf("day");
-  const lastWeek = moment().subtract(1, "weeks").startOf("day");
-  const lastMonth = moment().subtract(1, "months").startOf("day");
-  const lastYear = moment().subtract(1, "years").startOf("day");
-
-  const groups: Record<GroupLabel, T[]> = {
+  const groups: Record<RelativeDateBucket, T[]> = {
     Today: [],
     Yesterday: [],
     "Last Week": [],
@@ -140,20 +127,10 @@ export function getGroupConversationsByDate<
       return;
     }
 
-    const updatedAt = moment(conversation.updated ?? conversation.created);
-    if (updatedAt.isSameOrAfter(today)) {
-      groups["Today"].push(conversation);
-    } else if (updatedAt.isSameOrAfter(yesterday)) {
-      groups["Yesterday"].push(conversation);
-    } else if (updatedAt.isSameOrAfter(lastWeek)) {
-      groups["Last Week"].push(conversation);
-    } else if (updatedAt.isSameOrAfter(lastMonth)) {
-      groups["Last Month"].push(conversation);
-    } else if (updatedAt.isSameOrAfter(lastYear)) {
-      groups["Last 12 Months"].push(conversation);
-    } else {
-      groups["Older"].push(conversation);
-    }
+    const bucket = getRelativeDateBucket(
+      conversation.updated ?? conversation.created
+    );
+    groups[bucket].push(conversation);
   });
 
   return groups;
