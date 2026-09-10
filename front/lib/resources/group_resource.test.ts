@@ -1501,6 +1501,38 @@ describe("GroupResource", () => {
         expect(res.isOk()).toBe(true);
         expect(await roleOf(member)).toBe("manager");
       });
+
+      it("does not let a manager demote an admin via a manager-granting group", async () => {
+        const manager = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, manager, {
+          role: "manager",
+        });
+        const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          manager.sId,
+          workspace.sId
+        );
+
+        const targetAdmin = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, targetAdmin, {
+          role: "admin",
+        });
+
+        const group = await makeRoleGroup(
+          "g-manager-manual",
+          "manager",
+          "regular_manual"
+        );
+
+        // A manager may edit a manager-granting group, but adding an admin to it
+        // must not downgrade that admin to manager (would bypass the admin-role
+        // change guard).
+        const res = await group.updateRegularManualGroupMembers(managerAuth, {
+          addUserIds: [targetAdmin.sId],
+          removeUserIds: [],
+        });
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(targetAdmin)).toBe("admin");
+      });
     });
   });
 });

@@ -2837,6 +2837,14 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
+   * @cc [owner:tdraier,label:security] role-sync-admin-role-actor-guard
+   * This sync MUST NOT change a user's role to or from "admin" unless the acting
+   * `auth` is a workspace admin or a Poke super user — mirroring the direct
+   * role-change guard (`members/[uId]` PATCH). A manager triggering a role-
+   * granting group membership change (add/remove on a manager-granting group,
+   * which managers may edit) MUST NOT be able to demote an admin as a side
+   * effect.
+   *
    * Recomputes the workspace role of each given user from their role-granting
    * group memberships and persists it when it changed. `allowLastAdminRemoval`
    * is set because this is a system-driven sync (mirroring directory-sync
@@ -2878,6 +2886,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     const workspace = auth.getNonNullableWorkspace();
     const author = auth.user()?.toJSON() ?? "no-author";
 
+    // Only admins (and Poke super users) may change the admin role — mirroring
+    // the direct role-change guard. Without this, a manager could demote an
+    // admin (even the last admin) by adding them to / removing them from a
+    // manager-granting group, bypassing that guard.
+    const canModifyAdminRole = auth.isAdmin() || auth.isDustSuperUser();
+
     // Load the workspace's role-granting groups (and their active memberships)
     // once, then derive each user's roles from that, rather than refetching a
     // user's groups per member.
@@ -2901,6 +2915,15 @@ export class GroupResource extends BaseResource<GroupModel> {
         grantedRolesByUser.get(user.id) ?? []
       );
       if (newRole === currentMembership.role) {
+        continue;
+      }
+
+      // A non-admin actor must never change a user who currently holds, or would
+      // be set to, the admin role.
+      if (
+        !canModifyAdminRole &&
+        (currentMembership.role === "admin" || newRole === "admin")
+      ) {
         continue;
       }
 
