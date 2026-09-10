@@ -14,9 +14,9 @@ import {
   Button,
   Chip,
   DataTable,
-  DataTableLoadingSkeleton,
   Mail01,
   Page,
+  Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type React from "react";
@@ -143,7 +143,9 @@ export function InvitationsList({
       />
       <div className="flex flex-col gap-1 pt-2">
         {isInvitationsLoading && (
-          <DataTableLoadingSkeleton showSelectionColumn={false} rows={3} />
+          <div className="flex justify-center py-8">
+            <Spinner />
+          </div>
         )}
         {!isInvitationsLoading && invitations.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center">

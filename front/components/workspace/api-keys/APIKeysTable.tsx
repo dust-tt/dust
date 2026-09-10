@@ -17,7 +17,6 @@ import {
   ChevronRight,
   Chip,
   DataTable,
-  DataTableLoadingSkeleton,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -30,7 +29,7 @@ import {
   LoadingBlock,
   Lock01,
   SearchInput,
-  Separator,
+  Spinner,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -697,24 +696,9 @@ export function APIKeysTable({
       </div>
 
       {isLoading || isSpacesLoading ? (
-        <>
-          <DataTableLoadingSkeleton
-            className="pt-4"
-            showSelectionColumn={false}
-            showTrailingCell
-          />
-          <Separator />
-          <div className="flex items-center justify-between">
-            <LoadingBlock className="h-4 w-20" />
-            <div className="flex items-center gap-3">
-              <LoadingBlock className="h-4 w-24" />
-              <div className="flex items-center gap-2">
-                <LoadingBlock className="h-8 w-8 rounded-xl" />
-                <LoadingBlock className="h-8 w-8 rounded-xl" />
-              </div>
-            </div>
-          </div>
-        </>
+        <div className="flex justify-center py-8">
+          <Spinner />
+        </div>
       ) : isError ? (
         <div className="py-8 text-center text-sm text-muted-foreground">
           Failed to load API keys.

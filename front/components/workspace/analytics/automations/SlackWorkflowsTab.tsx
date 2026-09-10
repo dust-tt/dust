@@ -15,10 +15,10 @@ import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   DataTable,
-  DataTableLoadingSkeleton,
   LoadingBlock,
   Plus,
   SearchInput,
+  Spinner,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -282,7 +282,9 @@ function SlackWorkflowsTableBody({
 }: SlackWorkflowsTableBodyProps) {
   if (isLoading) {
     return (
-      <DataTableLoadingSkeleton showSelectionColumn={false} showTrailingCell />
+      <div className="flex justify-center py-8">
+        <Spinner />
+      </div>
     );
   }
 

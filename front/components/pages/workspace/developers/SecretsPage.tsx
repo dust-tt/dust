@@ -9,7 +9,6 @@ import {
   BookOpen01,
   Button,
   DataTable,
-  DataTableLoadingSkeleton,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -21,6 +20,7 @@ import {
   Page,
   Plus,
   SearchInput,
+  Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
@@ -344,7 +344,11 @@ function SecretsTable({
   searchQuery,
 }: SecretsTableProps) {
   if (isLoading) {
-    return <DataTableLoadingSkeleton showSelectionColumn={false} />;
+    return (
+      <div className="flex justify-center py-8">
+        <Spinner />
+      </div>
+    );
   }
 
   if (isError) {
