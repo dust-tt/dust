@@ -10,6 +10,7 @@ import { markdownCitationToAttachmentCitation } from "@app/components/assistant/
 import { BlockedAction } from "@app/components/assistant/conversation/BlockedAction";
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { CreditCostPopover } from "@app/components/assistant/conversation/CreditCostPopover";
+import { CreditSpendCheckpointPausedCard } from "@app/components/assistant/conversation/CreditSpendCheckpointPausedCard";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
@@ -1262,6 +1263,20 @@ function AgentMessageContent({
 
   const blockedAction = getFirstBlockedActionForMessage(sId);
 
+  const creditSpendCheckpointPausedElement =
+    agentMessage.pausedAtCreditSpendCheckpoint &&
+    agentMessage.status === "created" ? (
+      <CreditSpendCheckpointPausedCard
+        owner={owner}
+        conversationId={conversationId}
+        messageId={sId}
+        triggeringUser={triggeringUser}
+        thresholdAwuCredits={
+          agentMessage.pausedAtCreditSpendCheckpoint.thresholdAwuCredits
+        }
+      />
+    ) : null;
+
   const retryHandlerWithResetState = useCallback(
     // Conversation and message might be different than the current ones in case of subagents.
     async (conversationAndMessage: {
@@ -1477,6 +1492,7 @@ function AgentMessageContent({
           isLastMessage={isLastMessage}
         />
         {blockedActionElement}
+        {creditSpendCheckpointPausedElement}
         <AgentMessageInteractiveContentGeneratedFiles
           files={interactiveFiles}
           collapsible={uiView === "compact"}
