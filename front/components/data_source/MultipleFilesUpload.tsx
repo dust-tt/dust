@@ -5,6 +5,7 @@ import type {
   FileBlobWithFileId,
 } from "@app/hooks/useFileUploaderService";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpsertFileAsDatasourceEntry } from "@app/lib/swr/files";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
@@ -30,12 +31,25 @@ import {
 } from "@dust-tt/sparkle";
 import type { ChangeEvent } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 // Helper to check if a file should be treated as a table based on its MIME type
 function isDelimitedFile(file: File): boolean {
   const contentType = file.type || "application/octet-stream";
   return isSupportedDelimitedTextContentType(contentType);
+}
+
+// Returns the lower-cased extension (including the leading dot) of a file name,
+// or "" when the name has no extension.
+function getFileExtension(fileName: string): string {
+  const dotIndex = fileName.lastIndexOf(".");
+  return dotIndex === -1 ? "" : fileName.slice(dotIndex).toLowerCase();
 }
 
 type MultipleFilesUploadProps = {
@@ -64,6 +78,15 @@ export const MultipleFilesUpload = ({
   const [wasOpened, setWasOpened] = useState(isOpen);
   const [pendingFiles, setPendingFiles] = useState<File[] | null>(null);
   const [duplicateFiles, setDuplicateFiles] = useState<string[]>([]);
+  const sendNotification = useSendNotification();
+
+  // The same set of extensions the file picker restricts to via the `accept`
+  // attribute below. The drop path bypasses that filter, so we validate against
+  // it explicitly to keep both entry points consistent.
+  const supportedExtensions = useMemo(
+    () => new Set<string>(getSupportedNonImageFileExtensions()),
+    []
+  );
 
   const close = useCallback(
     (save: boolean) => {
@@ -106,8 +129,38 @@ export const MultipleFilesUpload = ({
   }>(null);
 
   const checkDuplicatesAndUpload = useCallback(
-    async (files: File[], skipDuplicateCheck = false) => {
+    async (inputFiles: File[], skipDuplicateCheck = false) => {
       // Empty file input
+      if (inputFiles.length === 0) {
+        close(false);
+        return;
+      }
+
+      // Reject unsupported formats before uploading. The file picker already
+      // restricts formats via its `accept` attribute, but the drag-and-drop
+      // path does not, so unsupported files (e.g. .xlsm) would otherwise be
+      // sent to the server only to fail downstream with no clear message.
+      const unsupportedFiles = inputFiles.filter(
+        (file) => !supportedExtensions.has(getFileExtension(file.name))
+      );
+      if (unsupportedFiles.length > 0) {
+        const names = unsupportedFiles.map((file) => file.name).join(", ");
+        sendNotification({
+          type: "error",
+          title:
+            unsupportedFiles.length === 1
+              ? "Unsupported file format"
+              : "Unsupported file formats",
+          description:
+            unsupportedFiles.length === 1
+              ? `"${names}" is not a supported format and was skipped.`
+              : `The following files are not a supported format and were skipped: ${names}.`,
+        });
+      }
+
+      const files = inputFiles.filter((file) =>
+        supportedExtensions.has(getFileExtension(file.name))
+      );
       if (files.length === 0) {
         close(false);
         return;
@@ -236,6 +289,8 @@ export const MultipleFilesUpload = ({
       plan.limits.dataSources.documents.count,
       totalNodesCount,
       doUpsertFileAsDataSourceEntry,
+      sendNotification,
+      supportedExtensions,
     ]
   );
 
