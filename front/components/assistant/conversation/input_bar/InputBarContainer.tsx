@@ -261,7 +261,7 @@ export interface InputBarContainerProps {
    * re-arms only when the user sends a new message (new source id) or switches conversation, not
    * on unrelated conversation updates (streaming, other participants' messages). Re-inserting on
    * every update re-adds the mention to the empty composer and prevents the user from dismissing
-   * it (#10353).
+   * it.
    */
   stickyMentionsSourceId?: string | null;
   user: UserType | null;
@@ -868,7 +868,7 @@ const InputBarContainer = ({
   // Tracks the (conversation, source message) for which sticky human mentions were last
   // prefilled, so we insert them once per source rather than on every re-render. Without this,
   // streaming updates and other participants' messages would keep re-inserting the mention into
-  // the empty composer, and the user could not dismiss it (see #10353).
+  // the empty composer, and the user could not dismiss it.
   const appliedStickyMentionKeyRef = useRef<string | null>(null);
 
   const saveCurrentDraftWithSelectedSpaces = useCallback(
@@ -1440,8 +1440,8 @@ const InputBarContainer = ({
     // No draft — insert sticky user mentions into the editor, but only once per source message.
     // The effect re-runs on every conversation update (streaming, other participants' messages),
     // so without this key it would keep re-inserting the mention into the empty composer and the
-    // user could never dismiss it (#10353). The key changes when the current user sends a new
-    // message (new source id) or switches conversation, which is exactly when we want to re-prefill.
+    // user could never dismiss it. The key changes when the current user sends a new message (new
+    // source id) or switches conversation, which is exactly when we want to re-prefill.
     const stickyUserMentions = stickyMentions?.filter(isRichUserMention) ?? [];
     const stickyMentionKey = `${conversation?.sId ?? "new"}::${stickyMentionsSourceId ?? ""}`;
     if (
