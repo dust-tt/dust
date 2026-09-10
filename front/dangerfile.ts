@@ -26,6 +26,25 @@ const hasLabel = (label: string) => {
   return danger.github.issue.labels.some((l) => l.name === label);
 };
 
+// dangerfile.ts can't safely import `@app/*`-aliased modules (Danger's own
+// TypeScript transpiler doesn't resolve tsconfig path aliases at runtime), so
+// this stays a self-contained stand-in for `concurrentExecutor`.
+async function concurrentlyProcess<T>(
+  items: T[],
+  process: (item: T) => Promise<void>,
+  concurrency: number
+) {
+  const queue = [...items];
+  await Promise.all(
+    Array.from({ length: concurrency }, async () => {
+      let item: T | undefined;
+      while ((item = queue.shift()) !== undefined) {
+        await process(item);
+      }
+    })
+  );
+}
+
 function failMigrationAck() {
   fail(
     "Files in `**/models/` have been modified. " +
@@ -278,6 +297,52 @@ async function checkRawSqlRegistry(filePaths: string[]) {
         );
       }
     }
+  }
+}
+
+/**
+ * MOMENT-BAN: delete this function and its call site, plus the lefthook hook,
+ * check script, and CONTRACTS entry (grep the repo for "MOMENT-BAN"), once no
+ * file imports `moment` anymore.
+ *
+ * Fail on files that start importing `moment` where they didn't before.
+ * See https://github.com/dust-tt/decisions/issues/1009: `moment` is being
+ * phased out in favor of `date-fns`; existing usage is migrated
+ * opportunistically, so only newly-introduced imports are blocked here.
+ */
+async function checkNoNewMomentUsage(filePaths: string[]) {
+  const momentImportPattern =
+    /((?:import|from)\s+["']moment(-timezone)?(\/[^"']*)?["']|(?:require|import)\(["']moment(-timezone)?(\/[^"']*)?["']\))/;
+
+  const filesWithNewMoment: string[] = [];
+
+  await concurrentlyProcess(
+    filePaths,
+    async (file) => {
+      try {
+        const content = await danger.git.diffForFile(file);
+        if (
+          content !== null &&
+          momentImportPattern.test(content.after) &&
+          !momentImportPattern.test(content.before ?? "")
+        ) {
+          filesWithNewMoment.push(file);
+        }
+      } catch (error) {
+        warn(`Error checking file ${file} for new \`moment\` usage: ${error}`);
+      }
+    },
+    8
+  );
+
+  if (filesWithNewMoment.length > 0) {
+    fail(
+      "`moment` is being phased out in favor of `date-fns` " +
+        "(see `front/lib/utils/timestamps.ts` and " +
+        "https://github.com/dust-tt/decisions/issues/1009). " +
+        "The following files newly import `moment`, please use `date-fns` instead:\n" +
+        filesWithNewMoment.map((f) => `- ${f}`).join("\n")
+    );
   }
 }
 
@@ -536,6 +601,14 @@ async function checkDiffFiles() {
   });
   if (modifiedFrontFiles.length > 0) {
     await checkRawSqlRegistry(modifiedFrontFiles);
+  }
+
+  // MOMENT-BAN: remove once no file imports `moment` anymore.
+  const modifiedFrontSourceFiles = diffFiles.filter((path) => {
+    return path.startsWith("front/") && /\.(ts|tsx|js|jsx)$/.test(path);
+  });
+  if (modifiedFrontSourceFiles.length > 0) {
+    await checkNoNewMomentUsage(modifiedFrontSourceFiles);
   }
 
   // Sparkle version consistency check

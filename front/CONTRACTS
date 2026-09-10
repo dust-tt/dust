@@ -676,3 +676,15 @@ usage still costs out.
 
 Reviewer: for a new image model, check the pricing entry exists and its numbers match the linked
 provider page.
+
+@cc [owner:avervaet,label:coding] date-fns-over-moment
+New code must not import `moment` (or `moment-timezone`). Use `date-fns` instead, extending the
+helpers in `lib/utils/timestamps.ts` for relative-time / calendar-style formatting when the
+existing ones don't cover a pattern. Files that already import `moment` may keep doing so; migrate
+them to `date-fns` opportunistically when touched for unrelated reasons, rather than as a
+dedicated migration.
+See https://github.com/dust-tt/decisions/issues/1009.
+This is enforced by a lefthook hook and a dangerfile check (grep the repo for "MOMENT-BAN"); once
+no file imports `moment` anymore, remove this contract along with those.
+
+Reviewer: if a file that did not previously import `moment` starts to, require `date-fns` instead.
