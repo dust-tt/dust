@@ -70,7 +70,7 @@ export class HubspotOAuthProvider implements BaseOAuthStrategyProvider {
     return (
       `https://app.hubspot.com/oauth/authorize` +
       `?client_id=${config.getOAuthHubspotClientId()}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("hubspot"))}` +
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "hubspot", connection }))}` +
       `&scope=${encodeURIComponent(requiredScopes.join(" "))}` +
       `&optional_scope=${encodeURIComponent(filteredOptionalScopes.join(" "))}` +
       `&state=${connection.connection_id}`

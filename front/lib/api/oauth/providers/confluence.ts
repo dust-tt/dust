@@ -1,3 +1,4 @@
+import type { ParsedUrlQuery } from "node:querystring";
 import config from "@app/lib/api/config";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
@@ -9,7 +10,6 @@ import type {
   OAuthConnectionType,
   OAuthUseCase,
 } from "@app/types/oauth/lib";
-import type { ParsedUrlQuery } from "querystring";
 
 export class ConfluenceOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
@@ -37,7 +37,7 @@ export class ConfluenceOAuthProvider implements BaseOAuthStrategyProvider {
       `https://auth.atlassian.com/authorize?audience=api.atlassian.com` +
       `&client_id=${config.getOAuthConfluenceClientId()}` +
       `&scope=${encodeURIComponent(scopes.join(" "))}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("confluence"))}` +
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "confluence", connection }))}` +
       `&state=${connection.connection_id}` +
       `&response_type=code&prompt=consent`
     );

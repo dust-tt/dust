@@ -36,7 +36,7 @@ export class DiscordOAuthProvider implements BaseOAuthStrategyProvider {
       `client_id=${clientId}` +
       `&scope=${encodeURIComponent(bot_scopes.join("+"))}` +
       `&permissions=83968` + // Allows the bot to read message history, embed links, and send messages
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("discord"))}` +
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "discord", connection }))}` +
       `&response_type=code` +
       `&state=${connection.connection_id}`
     );

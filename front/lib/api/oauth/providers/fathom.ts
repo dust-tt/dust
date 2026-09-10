@@ -23,7 +23,7 @@ export class FathomOAuthProvider implements BaseOAuthStrategyProvider {
     return (
       `https://fathom.video/external/v1/oauth2/authorize` +
       `?client_id=${config.getOAuthFathomClientId()}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("fathom"))}` +
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "fathom", connection }))}` +
       `&scope=${encodeURIComponent(scopes.join(" "))}` +
       `&state=${connection.connection_id}` +
       `&response_type=code`

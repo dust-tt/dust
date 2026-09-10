@@ -216,7 +216,12 @@ export function RemoteMCPServerConfigurationSection({
           {!defaultServerConfig && authMethod === "oauth-static" && (
             <div className="text-xs text-muted-foreground">
               The redirect URI to allow is{" "}
-              <strong>{finalizeUriForProvider("mcp_static")}</strong>
+              <strong>
+                {finalizeUriForProvider({
+                  provider: "mcp_static",
+                  connection: null,
+                })}
+              </strong>
             </div>
           )}
         </div>

@@ -52,7 +52,7 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
       `?response_type=code` +
       `&client_id=${clientId}` +
       `&state=${connection.connection_id}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("salesforce"))}` +
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "salesforce", connection }))}` +
       `&code_challenge=${connection.metadata.code_challenge}` +
       `&code_challenge_method=S256`
     );

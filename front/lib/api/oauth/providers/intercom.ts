@@ -22,7 +22,7 @@ export class IntercomOAuthProvider implements BaseOAuthStrategyProvider {
       `https://app.intercom.com/oauth` +
       `?client_id=${config.getOAuthIntercomClientId()}` +
       `&state=${connection.connection_id}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("intercom"))}`
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "intercom", connection }))}`
     );
   }
 

@@ -60,7 +60,10 @@ export class ServiceNowOAuthProvider implements BaseOAuthStrategyProvider {
       response_type: "code",
       client_id: clientId,
       state: connection.connection_id,
-      redirect_uri: finalizeUriForProvider("servicenow"),
+      redirect_uri: finalizeUriForProvider({
+        provider: "servicenow",
+        connection,
+      }),
     });
 
     const authUrl = `${instanceUrl.trim().replace(/\/$/, "")}/oauth_auth.do?${qs}`;

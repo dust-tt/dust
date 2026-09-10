@@ -121,7 +121,7 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       `https://slack.com/oauth/v2/authorize?` +
       `client_id=${clientId}` +
       `&scope=${encodeURIComponent(bot_scopes.join(" "))}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("slack"))}` +
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "slack", connection }))}` +
       // Force the team id to be the same as the admin-setup.
       // Edge-case: if the user is not in the team of not logged, it might still connect to the wrong team.
       // We catch it in the `checkConnectionValidPostFinalize` method.

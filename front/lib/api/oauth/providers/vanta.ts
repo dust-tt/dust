@@ -18,7 +18,9 @@ import type { ParsedUrlQuery } from "querystring";
 
 export class VantaOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({ connection }: { connection: OAuthConnectionType }) {
-    const finalizeUrl = new URL(finalizeUriForProvider("vanta"));
+    const finalizeUrl = new URL(
+      finalizeUriForProvider({ provider: "vanta", connection })
+    );
     finalizeUrl.searchParams.set("state", connection.connection_id);
     finalizeUrl.searchParams.set("code", "client_credentials");
     return finalizeUrl.toString();

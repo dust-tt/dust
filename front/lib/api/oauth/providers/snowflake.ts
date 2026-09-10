@@ -120,7 +120,10 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       response_type: "code",
       client_id: clientId,
       state: connection.connection_id,
-      redirect_uri: finalizeUriForProvider("snowflake"),
+      redirect_uri: finalizeUriForProvider({
+        provider: "snowflake",
+        connection,
+      }),
       scope: `session:role:${role.toUpperCase()}`,
     });
 

@@ -38,7 +38,7 @@ export class ConfluenceToolsOAuthProvider implements BaseOAuthStrategyProvider {
       `https://auth.atlassian.com/authorize?audience=api.atlassian.com` +
       `&client_id=${config.getOAuthConfluenceToolsClientId()}` +
       `&scope=${encodeURIComponent(scopes.join(" "))}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("confluence_tools"))}` +
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "confluence_tools", connection }))}` +
       `&state=${connection.connection_id}` +
       `&response_type=code&prompt=consent`
     );
