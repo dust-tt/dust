@@ -763,3 +763,78 @@ describe("hasSelectedRemoteDatabasePermissions", async () => {
     );
   });
 });
+
+// Guards the race in the `remote-databases-skip-enumeration-when-nothing-selected` contract: a
+// selection saved between the precheck and `sync`'s read must survive the empty-tree cleanup.
+describe("sync empty tree with preserveSelectedPermissions", async () => {
+  const makeConnector = (suffix = "") =>
+    ConnectorResource.makeNew(
+      "bigquery",
+      {
+        connectionId: `test-connection-id${suffix}`,
+        workspaceId: `test-workspace-id${suffix}`,
+        dataSourceId: `test-data-source-id${suffix}`,
+        workspaceAPIKey: "test-workspace-api-key",
+      },
+      {
+        useMetadataForDBML: false,
+      }
+    );
+
+  it("preserves a concurrently-selected table (skip path)", async () => {
+    const connector = await makeConnector("-preserve");
+
+    await RemoteTableModel.create({
+      internalId: "db.schema.table",
+      name: "table",
+      databaseName: "db",
+      schemaName: "schema",
+      permission: "selected",
+      lastUpsertedAt: new Date(),
+      connectorId: connector.id,
+    });
+
+    await sync({
+      remoteDBTree: undefined,
+      connector,
+      mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
+      preserveSelectedPermissions: true,
+      tags: [],
+    });
+
+    const table = await RemoteTableModel.findOne({
+      where: { internalId: "db.schema.table" },
+    });
+
+    expect(table).not.toBeNull();
+    expect(table?.permission).toBe("selected");
+    expect(table?.lastUpsertedAt).toBeNull();
+  });
+
+  it("deletes a selected table when not preserving (default cleanup)", async () => {
+    const connector = await makeConnector("-delete");
+
+    await RemoteTableModel.create({
+      internalId: "db.schema.table",
+      name: "table",
+      databaseName: "db",
+      schemaName: "schema",
+      permission: "selected",
+      lastUpsertedAt: new Date(),
+      connectorId: connector.id,
+    });
+
+    await sync({
+      remoteDBTree: undefined,
+      connector,
+      mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
+      tags: [],
+    });
+
+    const table = await RemoteTableModel.findOne({
+      where: { internalId: "db.schema.table" },
+    });
+
+    expect(table).toBeNull();
+  });
+});

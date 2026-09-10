@@ -54,11 +54,13 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
   const activityLogger = getActivityLogger(connector);
 
   // Enumerating a BigQuery project's datasets and tables can take hours on large warehouses
-  // (observed 14h on a 100k+ table project). When nothing is selected there is nothing to sync,
-  // so skip the enumeration entirely and let `sync` run its cleanup with an empty tree. See the
+  // (observed 14h on a 100k+ table project). When nothing is selected there is nothing to sync, so
+  // skip the enumeration entirely and let `sync` run its cleanup with an empty tree. See the
   // `remote-databases-skip-enumeration-when-nothing-selected` contract in remote_databases.
+  const hasSelection = await hasSelectedRemoteDatabasePermissions(connector.id);
+
   let tree: RemoteDBTree | undefined;
-  if (await hasSelectedRemoteDatabasePermissions(connector.id)) {
+  if (hasSelection) {
     const treeRes = await fetchTree({
       credentials,
       fetchTablesDescription: useMetadataForDBML,
@@ -80,6 +82,10 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
     mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
     connector,
     tags: useMetadataForDBML ? [USE_METADATA_FOR_DBML_TAG] : [],
+    // On the skip path a selection may have been saved between the precheck and `sync`'s read;
+    // preserve it instead of deleting it so the resync it signaled can recover it. Required by the
+    // `remote-databases-skip-enumeration-when-nothing-selected` contract.
+    preserveSelectedPermissions: !hasSelection,
   });
 
   await syncSucceeded(connectorId);
