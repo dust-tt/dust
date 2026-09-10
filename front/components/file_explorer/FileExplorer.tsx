@@ -102,8 +102,8 @@ export function FileExplorer({
   const { value: preferences, setValue: setPreferences } =
     useScopedPodUiPreferences({
       scope: "fileExplorer",
-      // View and sort mode persist per workspace.
-      resourceId: owner.sId,
+      // One layout and sort preference for the whole app, not per workspace or pod.
+      resourceId: "global",
       defaultValue: defaultPreferences,
     });
   const { viewMode, sortMode } = preferences;
