@@ -82,6 +82,7 @@ import {
   getNotionDatabaseTableId,
   INTERNAL_MIME_TYPES,
   isDevelopment,
+  normalizeError,
   slugify,
 } from "@connectors/types";
 import { redisClient } from "@connectors/types/shared/redis_client";
@@ -866,7 +867,8 @@ export async function deleteDatabase({
  * @cc [owner:spolu,label:product;error-handling] garbage-collection-preserves-unchecked-resources
  * If an accessibility check fails with an unhealthy Notion error at or beyond the skip threshold,
  * garbage collection MUST retain the resource. Before that threshold, or for unrecognized failures,
- * the activity MUST rethrow the failure instead of treating the resource as inaccessible.
+ * the activity MUST propagate the failure as an `Error` instead of treating the resource as
+ * inaccessible.
  */
 export async function garbageCollectBatch({
   connectorId,
@@ -955,7 +957,7 @@ export async function garbageCollectBatch({
         );
         resourceIsAccessible = true;
       } else {
-        throw e;
+        throw normalizeError(e);
       }
     }
 
