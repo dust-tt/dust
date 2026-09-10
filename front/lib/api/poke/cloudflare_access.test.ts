@@ -27,19 +27,16 @@ vi.mock("@app/logger/logger", () => ({
 }));
 
 import {
+  clearCloudflareAccessJwksCacheForTests,
   getCloudflareAccessConfig,
   resolveCloudflareAccessToken,
+  verifyCloudflareAccessJwt,
 } from "./cloudflare_access";
 
-let verifyCloudflareAccessJwt: typeof import("./cloudflare_access").verifyCloudflareAccessJwt;
-
 describe("cloudflare_access", () => {
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
-    // Vitest exception to prefer-static-imports: resetModules cannot re-evaluate static imports.
-    // Re-import to clear the cached JWKS between cases without a test-only runtime reset API.
-    vi.resetModules();
-    ({ verifyCloudflareAccessJwt } = await import("./cloudflare_access"));
+    clearCloudflareAccessJwksCacheForTests();
   });
 
   describe("getCloudflareAccessConfig", () => {
