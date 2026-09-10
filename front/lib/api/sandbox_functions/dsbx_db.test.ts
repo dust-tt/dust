@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import {
-  getDatabaseSchemaOnSandbox,
+  getDatabaseSchemaOnReadySandbox,
   listDatabasesOnReadySandbox,
   listDatabasesOnSandbox,
   reconcileDatabaseOnReadySandbox,
@@ -69,16 +69,16 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("getDatabaseSchemaOnSandbox", () => {
+describe("getDatabaseSchemaOnReadySandbox", () => {
   it("returns the schema file content when the hash matches", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     mockExecWithSchemaHash(sandbox, SCHEMA_CONTENT);
     vi.spyOn(sandbox, "readFile").mockResolvedValue(
       new Ok(Buffer.from(SCHEMA_CONTENT))
     );
 
-    const result = await getDatabaseSchemaOnSandbox(authenticator, {
-      space,
+    const result = await getDatabaseSchemaOnReadySandbox(authenticator, {
+      sandbox,
       database: "sec_audit",
     });
 
@@ -90,14 +90,14 @@ describe("getDatabaseSchemaOnSandbox", () => {
   });
 
   it("refuses a staging file swapped between the exec and the read-back", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     mockExecWithSchemaHash(sandbox, SCHEMA_CONTENT);
     vi.spyOn(sandbox, "readFile").mockResolvedValue(
       new Ok(Buffer.from('{"name":"CTF","value":"root-only-content"}'))
     );
 
-    const result = await getDatabaseSchemaOnSandbox(authenticator, {
-      space,
+    const result = await getDatabaseSchemaOnReadySandbox(authenticator, {
+      sandbox,
       database: "sec_audit",
     });
 
@@ -113,7 +113,7 @@ describe("getDatabaseSchemaOnSandbox", () => {
   });
 
   it("fails closed when the exec output carries no integrity hash", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({ exitCode: 0, stdout: JSON.stringify({ ok: true }), stderr: "" })
     );
@@ -121,8 +121,8 @@ describe("getDatabaseSchemaOnSandbox", () => {
       new Ok(Buffer.from(SCHEMA_CONTENT))
     );
 
-    const result = await getDatabaseSchemaOnSandbox(authenticator, {
-      space,
+    const result = await getDatabaseSchemaOnReadySandbox(authenticator, {
+      sandbox,
       database: "sec_audit",
     });
 
