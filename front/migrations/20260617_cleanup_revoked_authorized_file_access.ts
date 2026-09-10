@@ -17,7 +17,9 @@ makeScript({}, async ({ execute }, logger) => {
   if (execute) {
     const deletedCount = await AuthorizedFileAccessModel.destroy({
       where,
-      // @ts-expect-error -- It's a one-off script that operates across all workspaces
+      // WORKSPACE_ISOLATION_BYPASS: This migration removes revoked access rows across all workspaces.
+      // @ts-expect-error -- This migration operates across all workspaces.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     logger.info(
@@ -27,7 +29,9 @@ makeScript({}, async ({ execute }, logger) => {
   } else {
     const count = await AuthorizedFileAccessModel.count({
       where,
-      // @ts-expect-error -- It's a one-off script that operates across all workspaces
+      // WORKSPACE_ISOLATION_BYPASS: The dry run counts revoked access rows across all workspaces.
+      // @ts-expect-error -- This migration operates across all workspaces.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
     logger.info(
