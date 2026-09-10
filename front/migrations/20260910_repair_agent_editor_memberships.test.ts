@@ -4,6 +4,7 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import logger from "@app/logger/logger";
 import { repairEditorMemberships } from "@app/migrations/20260910_repair_agent_editor_memberships";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -11,6 +12,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import assert from "assert";
+import { literal, Op } from "sequelize";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const REVOKED_AT = new Date("2026-05-02T12:00:00Z");
@@ -75,6 +77,43 @@ async function seedRevokedEditor() {
 
 describe("repairEditorMemberships", () => {
   afterEach(() => vi.useRealTimers());
+
+  it("compares exact end timestamps and copies the earliest duplicate only once", async () => {
+    const { workspace, user, legacy, target } = await seedRevokedEditor();
+    const where = {
+      workspaceId: workspace.id,
+      groupId: legacy.id,
+      userId: user.id,
+    };
+    await GroupMembershipModel.create({
+      ...where,
+      status: "active",
+      startAt: REVOKED_AT,
+      endAt: REVOKED_AT,
+    });
+    // Both source rows now end one microsecond after the already-copied target history.
+    await GroupMembershipModel.update(
+      { endAt: literal("\"endAt\" + INTERVAL '1 microsecond'") },
+      { where: { ...where, endAt: REVOKED_AT } }
+    );
+    const spec = {
+      wId: workspace.sId,
+      logger: logger.child({}, { level: "silent" }),
+    };
+    for (const execute of [false, true]) {
+      await expect(
+        repairEditorMemberships({ ...spec, execute })
+      ).resolves.toEqual({ ended: 1, active: 0 });
+    }
+    await expect(
+      repairEditorMemberships({ ...spec, execute: true })
+    ).resolves.toEqual({ ended: 0, active: 0 });
+    const copied = await GroupMembershipModel.findOne({
+      where: { ...where, groupId: target.id, endAt: { [Op.gt]: REVOKED_AT } },
+    });
+    assert(copied);
+    expect(copied.startAt.getTime()).toBeLessThan(REVOKED_AT.getTime());
+  });
 
   it("uses the latest non-draft configuration's editor group", async () => {
     const { auth, workspace, agent, target } = await seedRevokedEditor();
