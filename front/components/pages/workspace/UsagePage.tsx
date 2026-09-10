@@ -282,7 +282,9 @@ export function UsagePage() {
     sort?.id === "email" || sort?.id === "seatUsage"
       ? sort.id
       : sort?.id === "consumedFromPoolAwuCredits"
-        ? "consumedAwuCredits"
+        ? isNewUsagePage
+          ? "consumedFromPoolAwuCredits"
+          : "consumedAwuCredits"
         : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
