@@ -47,7 +47,7 @@ function makeSkillDocument(
     description: "Description",
     icon: null,
     edited_by: null,
-    editor_user_ids: [],
+    editors: [],
     requested_space_ids: [],
     tools: [],
     active_users: 0,
@@ -85,7 +85,7 @@ function expectedEditorFilter(auth: Authenticator) {
   return {
     bool: {
       should: [
-        { term: { editor_user_ids: auth.getNonNullableUser().id } },
+        { term: { editors: auth.getNonNullableUser().id } },
         {
           terms: {
             editor_group_ids: [...new Set(auth.groupModelIds())],
@@ -439,7 +439,7 @@ describe("skill_search/search", () => {
     });
     expect(
       request.query.bool.must[0].bool.must[0].dis_max.queries
-    ).toHaveLength(4);
+    ).toHaveLength(3);
 
     const filters = request.query.bool.must[0].bool.filter;
     expect(filters).toEqual(
@@ -539,13 +539,13 @@ describe("skill_search/search", () => {
   });
 
   it.each([
-    ["sand", "*s*a*n*d*"],
-    ["*", "*\\**"],
-    ["?", "*\\?*"],
-    ["\\", "*\\\\*"],
-    ["a*b?c\\d", "*a*\\**b*\\?*c*\\\\*d*"],
-    ["a.b", "*a*.*b*"],
-  ])("builds a literal subsequence pattern for %s", async (query, pattern) => {
+    "report b",
+    "*",
+    "?",
+    "\\",
+    "a*b?c\\d",
+    "a.b",
+  ])("builds a word-prefix query without interpreting wildcard syntax for %s", async (query) => {
     const { auth } = await createPrivateApiMockRequest({ role: "user" });
     mockHits([]);
 
@@ -554,10 +554,23 @@ describe("skill_search/search", () => {
     const matches =
       mockClientSearch.mock.calls[0][0].query.bool.must[0].bool.must[0].dis_max
         .queries;
-    expect(
-      matches[3].constant_score.filter.wildcard["name.subsequence"].value
-    ).toBe(pattern);
-    expect(matches).toHaveLength(4);
+    expect(matches).toHaveLength(3);
+    expect(matches[0].constant_score.filter.term["name.keyword"].value).toBe(
+      query
+    );
+    expect(matches[1].constant_score.filter.prefix["name.keyword"].value).toBe(
+      query
+    );
+    expect(matches[2].constant_score.filter.multi_match).toEqual({
+      query,
+      type: "bool_prefix",
+      operator: "and",
+      fields: [
+        "name.autocomplete",
+        "name.autocomplete._2gram",
+        "name.autocomplete._3gram",
+      ],
+    });
   });
 
   it("derives open and restricted pod access from grants without a space fetch", async () => {
@@ -618,7 +631,7 @@ describe("skill_search/search", () => {
         workspaceId: workspace.id,
       }),
       availability: "editors",
-      editor_user_ids: [auth.getNonNullableUser().id],
+      editors: [auth.getNonNullableUser().id],
     });
     mockHits([editorsOnlySkill]);
     const currentStateSpy = vi
@@ -650,7 +663,7 @@ describe("skill_search/search", () => {
         }),
         availability: "editors",
       }),
-      editor_user_ids: auth.getNonNullableUser().id,
+      editors: auth.getNonNullableUser().id,
     } as unknown as SkillSearchDocument;
     mockHits([malformedSkill]);
 

@@ -7,14 +7,28 @@ import type { estypes } from "@elastic/elasticsearch";
 const MATCH_SCORES = {
   exact: 100,
   prefix: 80,
-  substring: 60,
-  subsequence: 40,
-  descriptionSubstring: 20,
-  descriptionSubsequence: 10,
+  name: 60,
+  description: 20,
 };
 
-function escapeWildcard(value: string): string {
-  return value.replace(/[\\*?]/g, "\\$&");
+/**
+ * @cc [owner:aubin-tchoi,label:product] skill-search-tokenization
+ * Local tokenization must match skill_search_analyzer in the versioned ES settings,
+ * including case boundaries, punctuation and Unicode simple lowercasing.
+ */
+function tokenize(value: string): string[] {
+  // Lowercase each code point independently, like Lucene's lowercase filter.
+  // U+0130 is the only JS lowercase expansion; Lucene maps it to plain "i".
+  return value
+    .split(
+      /(?<=[\p{Ll}\p{N}])(?=\p{Lu})|(?<=\p{Lu})(?=\p{Lu}\p{Ll})|[^\p{L}\p{M}\p{N}]+/u
+    )
+    .filter(Boolean)
+    .map((token) =>
+      Array.from(token, (character) =>
+        character === "\u0130" ? "i" : character.toLowerCase()
+      ).join("")
+    );
 }
 
 export function buildSkillMatchQuery(
@@ -25,42 +39,50 @@ export function buildSkillMatchQuery(
   if (!query) {
     return { constant_score: { filter: { match_all: {} }, boost: 1 } };
   }
-  const literal = escapeWildcard(query);
-  const subsequence = `*${Array.from(query, escapeWildcard).join("*")}*`;
-  const matches = [
-    ["name.subsequence", literal, MATCH_SCORES.exact],
-    ["name.subsequence", `${literal}*`, MATCH_SCORES.prefix],
-    ["name.subsequence", `*${literal}*`, MATCH_SCORES.substring],
-    ["name.subsequence", subsequence, MATCH_SCORES.subsequence],
-    [
-      "description.subsequence",
-      `*${literal}*`,
-      MATCH_SCORES.descriptionSubstring,
-    ],
-    [
-      "description.subsequence",
-      subsequence,
-      MATCH_SCORES.descriptionSubsequence,
-    ],
-  ] as const;
-
-  return {
-    dis_max: {
-      tie_breaker: 0,
-      queries: matches
-        .filter(
-          ([field]) => mode !== "autocomplete" || field === "name.subsequence"
-        )
-        .map(([field, value, boost]) => ({
-          constant_score: {
-            filter: {
-              wildcard: { [field]: { value, case_insensitive: true } },
-            },
-            boost,
-          },
-        })),
+  const matches: estypes.QueryDslQueryContainer[] = [
+    {
+      constant_score: {
+        filter: {
+          term: { "name.keyword": { value: query, case_insensitive: true } },
+        },
+        boost: MATCH_SCORES.exact,
+      },
     },
-  };
+    {
+      constant_score: {
+        filter: {
+          prefix: { "name.keyword": { value: query, case_insensitive: true } },
+        },
+        boost: MATCH_SCORES.prefix,
+      },
+    },
+    {
+      constant_score: {
+        filter: {
+          multi_match: {
+            query,
+            type: "bool_prefix",
+            operator: "and",
+            fields: [
+              "name.autocomplete",
+              "name.autocomplete._2gram",
+              "name.autocomplete._3gram",
+            ],
+          },
+        },
+        boost: MATCH_SCORES.name,
+      },
+    },
+  ];
+  if (mode !== "autocomplete") {
+    matches.push({
+      constant_score: {
+        filter: { match: { description: { query, operator: "and" } } },
+        boost: MATCH_SCORES.description,
+      },
+    });
+  }
+  return { dis_max: { tie_breaker: 0, queries: matches } };
 }
 
 export function getSkillSearchScore({
@@ -76,51 +98,43 @@ export function getSkillSearchScore({
   aliases?: readonly string[];
   mode?: SearchMode;
 }): number {
-  // ES wildcard case_insensitive folds ASCII only (including on wildcard fields).
+  // Keyword term/prefix case_insensitive folds ASCII only.
   const normalize = (value: string) =>
     value.replace(/[A-Z]/g, (character) => character.toLowerCase());
   const query = normalize(searchTerm.trim());
   if (!query) {
     return 1;
   }
-  // Each scan moves forward, so repeated characters cannot cause backtracking.
-  const isSubsequence = (value: string) => {
-    let offset = 0;
-    for (const character of query) {
-      const found = value.indexOf(character, offset);
-      if (found < 0) {
-        return false;
-      }
-      offset = found + character.length;
-    }
-    return true;
-  };
+  const queryTokens = tokenize(searchTerm.trim());
+  const lastToken = queryTokens.at(-1);
+  const completeTokens = queryTokens.slice(0, -1);
 
   let score = 0;
   for (const value of [name, ...aliases]) {
     const candidate = normalize(value);
+    const tokens = new Set(tokenize(value));
     const candidateScore =
       candidate === query
         ? MATCH_SCORES.exact
         : candidate.startsWith(query)
           ? MATCH_SCORES.prefix
-          : candidate.includes(query)
-            ? MATCH_SCORES.substring
-            : isSubsequence(candidate)
-              ? MATCH_SCORES.subsequence
-              : 0;
+          : lastToken &&
+              completeTokens.every((token) => tokens.has(token)) &&
+              [...tokens].some((token) => token.startsWith(lastToken))
+            ? MATCH_SCORES.name
+            : 0;
     score = Math.max(score, candidateScore);
   }
-  return mode === "autocomplete"
-    ? score
-    : Math.max(
-        score,
-        normalize(description).includes(query)
-          ? MATCH_SCORES.descriptionSubstring
-          : isSubsequence(normalize(description))
-            ? MATCH_SCORES.descriptionSubsequence
-            : 0
-      );
+  if (mode === "autocomplete" || queryTokens.length === 0) {
+    return score;
+  }
+  const descriptionTokens = new Set(tokenize(description));
+  return Math.max(
+    score,
+    queryTokens.every((token) => descriptionTokens.has(token))
+      ? MATCH_SCORES.description
+      : 0
+  );
 }
 
 /**

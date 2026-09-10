@@ -12,19 +12,31 @@ describe("shared skill ranking", () => {
     ["skill", "SKILL", "", 100],
     ["skill", "Skill builder", "", 80],
     ["skill", "My skill", "", 60],
-    ["sand", "Search And Navigate Data", "", 40],
+    ["sand", "Search And Navigate Data", "", 0],
+    ["report b", "WeeklyReportBot", "", 60],
+    ["bot week", "WeeklyReportBot", "", 60],
+    ["weekly missing", "WeeklyReportBot", "", 0],
+    ["eport", "WeeklyReportBot", "", 0],
+    ["report", "WeeklyReportBot", "", 60],
+    ["http b", "HTTPBot", "", 60],
+    ["weekly rep", "Weekly_Report-Bot", "", 60],
     ["skill", "Other", "Find a skill", 20],
-    ["sand", "Other", "Search And Navigate Data", 10],
+    ["sand", "Other", "Search And Navigate Data", 0],
+    ["find skill", "Other", "Find a helpful skill", 20],
+    ["find ski", "Other", "Find a helpful skill", 0],
+    ["skills", "Other", "Find a skill", 0],
     ["missing", "Other", "Description", 0],
     ["*?\\", "*?\\", "", 100],
     ["a.b", "axb", "", 0],
-    ["ab", "A\nB", "", 40],
+    ["ab", "A\nB", "", 0],
     ["skill", "skill\n", "", 80],
-    ["😀", "A😀B", "", 60],
-    // ES 8 wildcard case folding is ASCII-only, not JS Unicode /iu matching.
-    ["Ä", "ä", "", 0],
+    ["😀", "A😀B", "", 0],
+    // Keyword case folding is ASCII-only; analyzed name matches are Unicode-aware.
+    ["Ä", "ä", "", 60],
     ["Ä", "Ä", "", 100],
-    ["k", "K", "", 0],
+    ["k", "K", "", 60],
+    ["istan", "İstanbul", "", 60],
+    ["ΟΣ", "οσ", "", 60],
   ])("scores %j against %j consistently with ES", (searchTerm, name, description, expected) => {
     expect(
       getSkillSearchScore({ searchTerm, name, description, mode: "discovery" })
@@ -44,7 +56,7 @@ describe("shared skill ranking", () => {
     expect(query.dis_max?.tie_breaker).toBe(0);
     expect(
       query.dis_max?.queries.map((clause) => clause.constant_score?.boost)
-    ).toEqual([100, 80, 60, 40, 20, 10]);
+    ).toEqual([100, 80, 60, 20]);
   });
 
   it("autocomplete ignores description-only matches and usage", () => {
@@ -55,7 +67,7 @@ describe("shared skill ranking", () => {
         description: "research",
       })
     ).toBe(0);
-    expect(buildSkillMatchQuery("research").dis_max?.queries).toHaveLength(4);
+    expect(buildSkillMatchQuery("research").dis_max?.queries).toHaveLength(3);
     expect(
       getSearchRankingScore({
         matchScore: 80,
@@ -96,7 +108,7 @@ describe("shared skill ranking", () => {
     ).toBe(0);
   });
 
-  it("handles long failing subsequences without regex backtracking", () => {
+  it("does not recall character subsequences", () => {
     expect(
       getSkillSearchScore({
         searchTerm: `${"a".repeat(199)}b`,

@@ -57,7 +57,7 @@ export async function searchSkillsForCommandMenu(
   );
   const codeDefined = await listCodeDefinedSearchSkills(auth, options);
   const fingerprint = getSkillSearchFingerprint({
-    version: 5,
+    version: 6,
     workspaceId: auth.getNonNullableWorkspace().sId,
     userId: auth.user()?.sId,
     keyId: auth.key()?.id,
