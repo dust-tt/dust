@@ -11,7 +11,22 @@
 
 set -euo pipefail
 
-moment_import_pattern=$'((import|from)[[:space:]]+["\x27]moment(-timezone)?(/[^"\x27]*)?["\x27]|require\\(["\x27]moment(-timezone)?(/[^"\x27]*)?["\x27]\\))'
+moment_import_pattern=$'((import|from)[[:space:]]+["\x27]moment(-timezone)?(/[^"\x27]*)?["\x27]|(require|import)\\(["\x27]moment(-timezone)?(/[^"\x27]*)?["\x27]\\))'
+
+has_moment_import() {
+  # Collapse newlines (via `tr`, not bash's ${//} substitution, which is
+  # O(n^2) and hangs on large files) so a multi-line `from\n"moment"` still
+  # matches. Written to a temp file rather than piped into `grep -q`: with
+  # `pipefail`, grep's early exit on match can SIGPIPE the writing process,
+  # making the pipeline look like a failed match even though it matched.
+  local tmpfile
+  tmpfile=$(mktemp)
+  tr '\n' ' ' <<<"$1" >"$tmpfile"
+  local matched=0
+  grep -qE "$moment_import_pattern" "$tmpfile" || matched=1
+  rm -f "$tmpfile"
+  return "$matched"
+}
 
 violations=()
 
@@ -22,13 +37,13 @@ for f in "$@"; do
   esac
 
   staged_content=$(git show ":$f" 2>/dev/null || true)
-  if [ -z "$staged_content" ] || ! echo "$staged_content" | grep -qE "$moment_import_pattern"; then
+  if [ -z "$staged_content" ] || ! has_moment_import "$staged_content"; then
     continue
   fi
 
   if git cat-file -e "HEAD:$f" 2>/dev/null; then
     head_content=$(git show "HEAD:$f")
-    if echo "$head_content" | grep -qE "$moment_import_pattern"; then
+    if has_moment_import "$head_content"; then
       continue
     fi
   fi

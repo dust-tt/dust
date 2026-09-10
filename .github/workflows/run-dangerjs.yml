@@ -28,10 +28,16 @@ jobs:
           echo "Checking for changed files..."
 
           # Define monitored paths
+          # MOMENT-BAN: front/components/ and front/hooks/ are included so the
+          # date-fns-over-moment dangerfile check (front/CONTRACTS:669) isn't
+          # skipped for PRs that only touch those directories. Remove this
+          # note (but keep the paths) once no file imports `moment` anymore.
           MONITORED_PATHS=(
             'front/lib/'
             'front/types/assistant/models/'
             'front/temporal/'
+            'front/components/'
+            'front/hooks/'
             'front-api/'
             'connectors/src/lib/models/'
             'connectors/src/resources/storage/models/'

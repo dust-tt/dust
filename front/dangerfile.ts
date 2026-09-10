@@ -26,6 +26,25 @@ const hasLabel = (label: string) => {
   return danger.github.issue.labels.some((l) => l.name === label);
 };
 
+// dangerfile.ts can't safely import `@app/*`-aliased modules (Danger's own
+// TypeScript transpiler doesn't resolve tsconfig path aliases at runtime), so
+// this stays a self-contained stand-in for `concurrentExecutor`.
+async function concurrentlyProcess<T>(
+  items: T[],
+  process: (item: T) => Promise<void>,
+  concurrency: number
+) {
+  const queue = [...items];
+  await Promise.all(
+    Array.from({ length: concurrency }, async () => {
+      let item: T | undefined;
+      while ((item = queue.shift()) !== undefined) {
+        await process(item);
+      }
+    })
+  );
+}
+
 function failMigrationAck() {
   fail(
     "Files in `**/models/` have been modified. " +
@@ -293,12 +312,13 @@ async function checkRawSqlRegistry(filePaths: string[]) {
  */
 async function checkNoNewMomentUsage(filePaths: string[]) {
   const momentImportPattern =
-    /((?:import|from)\s+["']moment(-timezone)?(\/[^"']*)?["']|require\(["']moment(-timezone)?(\/[^"']*)?["']\))/;
+    /((?:import|from)\s+["']moment(-timezone)?(\/[^"']*)?["']|(?:require|import)\(["']moment(-timezone)?(\/[^"']*)?["']\))/;
 
   const filesWithNewMoment: string[] = [];
 
-  await Promise.all(
-    filePaths.map(async (file) => {
+  await concurrentlyProcess(
+    filePaths,
+    async (file) => {
       try {
         const content = await danger.git.diffForFile(file);
         if (
@@ -309,9 +329,10 @@ async function checkNoNewMomentUsage(filePaths: string[]) {
           filesWithNewMoment.push(file);
         }
       } catch (error) {
-        console.error(`Error checking file ${file}:`, error);
+        warn(`Error checking file ${file} for new \`moment\` usage: ${error}`);
       }
-    })
+    },
+    8
   );
 
   if (filesWithNewMoment.length > 0) {
