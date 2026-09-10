@@ -315,11 +315,11 @@ describe("findConversationsWithSkills", () => {
   it("excludes skills with reinforcement='off' and only returns conversations with at least one eligible skill", async () => {
     // Create 3 skills: one per reinforcement mode.
     const skillOn = await SkillFactory.create(auth, { name: "Skill On" });
-    await skillOn.updateReinforcement("on");
+    await skillOn.updateReinforcement(auth, "on");
     const skillAuto = await SkillFactory.create(auth, { name: "Skill Auto" });
     // "auto" is the default, no update needed.
     const skillOff = await SkillFactory.create(auth, { name: "Skill Off" });
-    await skillOff.updateReinforcement("off");
+    await skillOff.updateReinforcement(auth, "off");
 
     const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
 

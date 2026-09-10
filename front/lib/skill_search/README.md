@@ -1,8 +1,5 @@
 # Skill search
 
-This document describes the full skills-only stack. Resource-owned mutation
-indexation is introduced by the lifecycle follow-up.
-
 PostgreSQL is authoritative. One document per active custom skill lives in
 `front.skills`, initially backed by `front.skills_1`. Document IDs are
 `<workspaceId>_<skillId>`. Global and system skills remain code-defined and are

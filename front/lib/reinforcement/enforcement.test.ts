@@ -197,7 +197,7 @@ describe("filterSkillsUnderSelfImprovementCap", () => {
 
     // Same consumption as overCapSkill but with a higher per-skill override.
     const customCapSkill = await createSkill(auth, "Custom Cap Skill");
-    await customCapSkill.updateSelfImprovementCostsCap(30_000_000);
+    await customCapSkill.updateSelfImprovementCostsCap(auth, 30_000_000);
     await recordUsage(auth, customCapSkill, {
       microUsd: 20_000_000,
       awuCredits: 2_353,
@@ -238,7 +238,7 @@ describe("filterSkillsUnderSelfImprovementCap", () => {
 
     // Same consumption as overCapSkill but with a higher per-skill override.
     const customCapSkill = await createSkill(auth, "AWU Custom Cap Skill");
-    await customCapSkill.updateSelfImprovementCostsCapAwuCredits(3_000);
+    await customCapSkill.updateSelfImprovementCostsCapAwuCredits(auth, 3_000);
     await recordUsage(auth, customCapSkill, {
       microUsd: 100,
       awuCredits: 2_500,

@@ -17,7 +17,6 @@ import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { launchSkillsSearchIndexationForGroups } from "@app/lib/skill_search/indexation";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -332,14 +331,9 @@ export async function mergeUserIdentities({
   await AgentMemoryModel.update(userIdValues, userIdOptions);
 
   // Migrate group memberships from secondary user to primary user.
-  const potentiallyAffectedGroupIds =
-    await GroupResource.migrateUserMemberships(auth, {
-      primaryUser,
-      secondaryUser,
-    });
-  await launchSkillsSearchIndexationForGroups({
-    workspace,
-    groupModelIds: potentiallyAffectedGroupIds,
+  await GroupResource.migrateUserMemberships(auth, {
+    primaryUser,
+    secondaryUser,
   });
 
   // Delete all agent-user relations for the secondary user that already have a relation.

@@ -3,6 +3,7 @@ import { DustError } from "@app/lib/error";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { GroupSearchIndexationResource } from "@app/lib/resources/group_search_indexation_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -20,6 +21,8 @@ import {
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
+import { invalidateGroupPermissionsCacheAfterCommit } from "@app/lib/utils/group_permissions_cache";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
@@ -304,7 +307,7 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * Migrates all group memberships from one user to another within a workspace.
    * Handles duplicate memberships by destroying them first.
-   * Returns regular_auto groups that may carry an affected editor grant. The
+   * Returns groups that may carry an affected editor grant. The
    * result includes both users' membership history so a retry after a completed
    * migration returns the same groups and can retry a failed invalidation.
    */
@@ -313,63 +316,83 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       primaryUser,
       secondaryUser,
+      transaction: existingTransaction,
     }: {
       primaryUser: UserResource;
       secondaryUser: UserResource;
+      transaction?: Transaction;
     }
   ): Promise<ModelId[]> {
     const workspace = auth.getNonNullableWorkspace();
-    const potentiallyAffectedMemberships = await GroupMembershipModel.findAll({
-      attributes: ["groupId"],
-      where: {
-        userId: [primaryUser.id, secondaryUser.id],
-        workspaceId: workspace.id,
-      },
-      include: [
+    const groupModelIds = await withTransaction(async (transaction) => {
+      const potentiallyAffectedMemberships = await GroupMembershipModel.findAll(
         {
-          model: GroupModel,
-          as: "group",
-          attributes: [],
-          required: true,
+          attributes: ["groupId"],
           where: {
+            userId: [primaryUser.id, secondaryUser.id],
             workspaceId: workspace.id,
-            kind: "regular_auto",
           },
-        },
-      ],
-    });
-    const primaryMemberships = await GroupMembershipModel.findAll({
-      where: { userId: primaryUser.id, workspaceId: workspace.id },
-      attributes: ["groupId"],
-    });
-    const primaryGroupIds = primaryMemberships.map((m) => m.groupId);
-
-    if (primaryGroupIds.length > 0) {
-      await GroupMembershipModel.destroy({
-        where: {
-          userId: secondaryUser.id,
-          groupId: primaryGroupIds,
-          workspaceId: workspace.id,
-        },
+          include: [
+            {
+              model: GroupModel,
+              as: "group",
+              attributes: [],
+              required: true,
+              where: {
+                workspaceId: workspace.id,
+                kind: { [Op.notIn]: ["global", "system"] },
+              },
+            },
+          ],
+          transaction,
+        }
+      );
+      const primaryMemberships = await GroupMembershipModel.findAll({
+        where: { userId: primaryUser.id, workspaceId: workspace.id },
+        attributes: ["groupId"],
+        transaction,
       });
-    }
+      const primaryGroupIds = primaryMemberships.map((m) => m.groupId);
 
-    await GroupMembershipModel.update(
-      { userId: primaryUser.id },
-      { where: { userId: secondaryUser.id, workspaceId: workspace.id } }
-    );
+      if (primaryGroupIds.length > 0) {
+        await GroupMembershipModel.destroy({
+          where: {
+            userId: secondaryUser.id,
+            groupId: primaryGroupIds,
+            workspaceId: workspace.id,
+          },
+          transaction,
+        });
+      }
+
+      await GroupMembershipModel.update(
+        { userId: primaryUser.id },
+        {
+          where: { userId: secondaryUser.id, workspaceId: workspace.id },
+          transaction,
+        }
+      );
+
+      return [
+        ...new Set(
+          potentiallyAffectedMemberships.map((membership) => membership.groupId)
+        ),
+      ];
+    }, existingTransaction);
 
     // Always invalidate
-    await GroupResource.batchInvalidateGroupIdsCacheForUsers([
-      [{ user: { id: primaryUser.id }, workspace: { id: workspace.id } }],
-      [{ user: { id: secondaryUser.id }, workspace: { id: workspace.id } }],
-    ]);
+    invalidateCacheAfterCommit(existingTransaction, async () => {
+      await GroupResource.batchInvalidateGroupIdsCacheForUsers([
+        [{ user: { id: primaryUser.id }, workspace: { id: workspace.id } }],
+        [{ user: { id: secondaryUser.id }, workspace: { id: workspace.id } }],
+      ]);
+    });
+    await GroupSearchIndexationResource.launchForGroups(
+      { workspace, groupModelIds },
+      { transaction: existingTransaction }
+    );
 
-    return [
-      ...new Set(
-        potentiallyAffectedMemberships.map((membership) => membership.groupId)
-      ),
-    ];
+    return groupModelIds;
   }
 
   static async makeNew(
@@ -1780,6 +1803,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     });
 
+    await GroupSearchIndexationResource.launchForGroups(
+      { workspace: owner, groupModelIds: [this.id] },
+      { transaction }
+    );
+
     return new Ok(undefined);
   }
 
@@ -1929,6 +1957,11 @@ export class GroupResource extends BaseResource<GroupModel> {
         ])
       );
     });
+
+    await GroupSearchIndexationResource.launchForGroups(
+      { workspace: owner, groupModelIds: [this.id] },
+      { transaction }
+    );
 
     return new Ok(undefined);
   }
@@ -2084,6 +2117,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     }
 
+    if (affectedUserIds.length > 0) {
+      await GroupSearchIndexationResource.launchForGroups(
+        { workspace: auth.getNonNullableWorkspace(), groupModelIds: [this.id] },
+        { transaction }
+      );
+    }
     return affectedUserIds;
   }
 
@@ -2199,6 +2238,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     });
 
+    await GroupSearchIndexationResource.launchForGroups(
+      { workspace, groupModelIds: groupIdsToRestore },
+      { transaction }
+    );
+
     return groupIdsToRestore;
   }
 
@@ -2259,6 +2303,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     }
 
+    if (affectedUserIds.length > 0) {
+      await GroupSearchIndexationResource.launchForGroups(
+        { workspace: auth.getNonNullableWorkspace(), groupModelIds: [this.id] },
+        { transaction }
+      );
+    }
     return affectedUserIds;
   }
 
@@ -2503,6 +2553,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     const owner = auth.getNonNullableWorkspace();
+    // Capture editor targets before deleting their grants.
+    const searchTargets = await GroupSearchIndexationResource.fetchForGroups(
+      owner,
+      [this.id],
+      transaction
+    );
     try {
       // Fetch active member user IDs before deletion for cache invalidation
       const activeMemberships = await GroupMembershipModel.findAll({
@@ -2578,11 +2634,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       invalidateCacheAfterCommit(transaction, () =>
         GroupResource.invalidateWorkspaceGroupsFromSystemKeyCache(workspaceId)
       );
-
-      return new Ok(undefined);
     } catch (err) {
       return new Err(normalizeError(err));
     }
+    await invalidateGroupPermissionsCacheAfterCommit(
+      owner.id,
+      [this.id],
+      transaction
+    );
+    await GroupSearchIndexationResource.launch(
+      owner,
+      searchTargets,
+      transaction
+    );
+    return new Ok(undefined);
   }
 
   // Permissions

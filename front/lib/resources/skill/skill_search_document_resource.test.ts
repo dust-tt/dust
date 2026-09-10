@@ -2,6 +2,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSearchDocumentResource } from "@app/lib/resources/skill/skill_search_document_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -11,7 +12,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import assert from "assert";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("SkillSearchDocumentResource", () => {
   let testContext: Awaited<ReturnType<typeof createResourceTest>>;
@@ -168,10 +169,16 @@ describe("SkillSearchDocumentResource", () => {
       requestedSpaceIds: [globalSpace.id],
       mcpServerViews: [tool],
     });
+    vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
     const favorited = await skill.setFavorite(auth, true);
     expect(favorited.isOk()).toBe(true);
     const alreadyFavorite = await skill.setFavorite(auth, true);
     expect(alreadyFavorite.isOk()).toBe(true);
+    expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledOnce();
+    expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledWith({
+      workspaceId: workspace.sId,
+      skillId: skill.sId,
+    });
     const document = await SkillSearchDocumentResource.fetchSearchDocument(
       auth,
       skill.sId
@@ -196,6 +203,7 @@ describe("SkillSearchDocumentResource", () => {
       skill.sId
     );
     expect(updated?.favorite_count).toBe(0);
+    expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledTimes(2);
   });
   it("fails closed when permission-bearing fields are stale", async () => {
     const regularSpace = await SpaceFactory.regular(testContext.workspace);

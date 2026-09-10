@@ -52,7 +52,7 @@ export const skillReinforcementPlugin = createPlugin({
       return new Err(new Error("Invalid reinforcement mode"));
     }
 
-    await resource.updateReinforcement(reinforcement);
+    await resource.updateReinforcement(auth, reinforcement);
 
     return new Ok({
       display: "text",

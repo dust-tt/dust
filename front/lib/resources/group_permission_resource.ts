@@ -4,12 +4,18 @@ import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { assertValidGrant } from "@app/lib/resources/group_permission_registry";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupSearchIndexationResource } from "@app/lib/resources/group_search_indexation_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { invalidateCacheAfterCommit } from "@app/lib/utils/cache";
 import { defineCacheOperations } from "@app/lib/utils/cache_operations";
+import {
+  GROUP_PERMISSIONS_CACHE_SCHEMA_VERSION as CACHE_SCHEMA_VERSION,
+  groupPermissionsCacheKey as cacheKey,
+  invalidateGroupPermissionsCacheAfterCommit,
+} from "@app/lib/utils/group_permissions_cache";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
@@ -46,8 +52,7 @@ import { z } from "zod";
 
 // Grants are cached in a Redis hash per workspace, one field per groupId, so a caller reads its
 // own groups and fills only what is missing. Fields never expire: readers fill with HSETNX and
-// mutations overwrite with HSET after commit, so a stale in-flight read cannot replace a fresher
-// value.
+// mutations invalidate the affected fields after commit.
 
 export type GroupGrant = {
   groupId: ModelId;
@@ -56,14 +61,7 @@ export type GroupGrant = {
   resourceId: number;
 };
 
-// Bump to orphan hashes written under the previous field encoding.
-const CACHE_SCHEMA_VERSION = 1;
-
 type SerializedGrant = [GrantType, GroupPermissionResourceType, number];
-
-function cacheKey(workspaceModelId: ModelId): string {
-  return `group_permissions:v${CACHE_SCHEMA_VERSION}:ws:${workspaceModelId}`;
-}
 
 // One field per requested group, so a group with no grant caches as [] instead of missing forever.
 function encodeFields(
@@ -108,7 +106,8 @@ function decodeField(groupId: ModelId, value: string): GroupGrant[] {
 }
 
 /**
- * All writes to `group_permissions` go through this resource — never a raw model write elsewhere.
+ * Grant writes go through this resource. GroupResource also deletes grants during group teardown,
+ * using the same cache invalidation helper after commit.
  * This file covers instance-level grants and reads; wildcard / type-level writes (resourceId = -1,
  * "*") land through dedicated named methods in a follow-up so a defaulted -1 can never silently
  * grant a whole type.
@@ -247,7 +246,7 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     assertValidGrant({ grantType, resourceType, resourceId });
 
     const workspaceId = auth.getNonNullableWorkspace().id;
-    return withTransaction(async (t) => {
+    const permission = await withTransaction(async (t) => {
       if (group.kind === "regular_auto") {
         await this.getGrantLock(
           auth,
@@ -266,21 +265,34 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         );
       }
 
-      const [row] = await GroupPermissionModel.findOrCreate({
-        where: {
-          workspaceId,
-          groupId: group.id,
-          grantType,
-          resourceType,
-          resourceId,
-        },
+      const where = {
+        workspaceId,
+        groupId: group.id,
+        grantType,
+        resourceType,
+        resourceId,
+      };
+      // Like grantMany, let the unique index make insertion idempotent. findOrCreate opens
+      // another savepoint, which in Sequelize v6 changes the caller savepoint's rollback name.
+      await GroupPermissionModel.bulkCreate([where], {
+        ignoreDuplicates: true,
         transaction: t,
       });
+      const row = await GroupPermissionModel.findOne({ where, transaction: t });
+      assert(row, "The grant must exist after insertion.");
 
       await this.invalidateGroupGrantsAfterCommit(auth, [group.id], t);
 
       return new this(GroupPermissionModel, row.get());
     }, transaction);
+    await GroupSearchIndexationResource.launchForGrants(
+      {
+        workspace: auth.getNonNullableWorkspace(),
+        grants: [{ grantType, resourceType, resourceId }],
+      },
+      { transaction }
+    );
+    return permission;
   }
 
   // Find the regular_auto group backing user-level grants for the given tuple. At most one exists
@@ -719,6 +731,13 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       transaction,
     });
     await this.invalidateGroupGrantsAfterCommit(auth, [group.id], transaction);
+    await GroupSearchIndexationResource.launchForGrants(
+      {
+        workspace: auth.getNonNullableWorkspace(),
+        grants: [{ grantType, resourceType, resourceId }],
+      },
+      { transaction }
+    );
   }
 
   // Read grants for the given groups, optionally narrowed by grant type / resource type /
@@ -828,48 +847,17 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
   }
 
-  private static async invalidateGroupGrants(
-    auth: Authenticator,
-    groupModelIds: ModelId[]
-  ): Promise<void> {
-    const workspace = auth.getNonNullableWorkspace();
-    const statsDClient = statsDMetrics;
-    try {
-      const redis = await getRedisCacheClient({
-        origin: "group_permissions_cache",
-      });
-      await redis.hDel(cacheKey(workspace.id), groupModelIds.map(String));
-
-      statsDClient.increment("group_permissions_cache.invalidate", 1, [
-        "result:ok",
-      ]);
-    } catch (err) {
-      // Fields never expire, so a lost delete keeps revoked grants readable until the next
-      // mutation on those groups or a Poke flush.
-      logger.error(
-        { panic: true, err: normalizeError(err), workspaceId: workspace.id },
-        "group_permissions cache invalidation failed"
-      );
-      statsDClient.increment("group_permissions_cache.invalidate", 1, [
-        "result:error",
-      ]);
-    }
-  }
-
   // After commit only: inside the transaction a reader would refill the field from rows that are
-  // not committed yet. Deletes rather than rewrites the fields: a rewrite that fails leaves
-  // revoked grants readable, a delete that fails only costs the next reader a query.
+  // not committed yet. The next read reloads invalidated fields from committed state.
   private static async invalidateGroupGrantsAfterCommit(
     auth: Authenticator,
     groupModelIds: ModelId[],
     transaction?: Transaction
   ): Promise<void> {
-    if (groupModelIds.length === 0) {
-      return;
-    }
-
-    await invalidateCacheAfterCommit(transaction, () =>
-      this.invalidateGroupGrants(auth, [...new Set(groupModelIds)])
+    await invalidateGroupPermissionsCacheAfterCommit(
+      auth.getNonNullableWorkspace().id,
+      groupModelIds,
+      transaction
     );
   }
 
@@ -958,6 +946,18 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       transaction
     );
 
+    await GroupSearchIndexationResource.launchForGrants(
+      {
+        workspace: auth.getNonNullableWorkspace(),
+        grants: uniqueResourceIds.map((resourceId) => ({
+          grantType: "editor",
+          resourceType,
+          resourceId,
+        })),
+      },
+      { transaction }
+    );
+
     return deleted;
   }
 
@@ -1027,24 +1027,33 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
 
   static async deleteByModelIds(
     auth: Authenticator,
-    ids: ModelId[]
+    ids: ModelId[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     if (ids.length === 0) {
       return;
     }
 
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const groupModelIds = await this.listGroupModelIdsForGrants({
-      id: ids,
-      workspaceId,
-    });
-    await GroupPermissionModel.destroy({
-      where: {
-        id: ids,
-        workspaceId,
-      },
-    });
-    await this.invalidateGroupGrantsAfterCommit(auth, groupModelIds);
+    const grants = await withTransaction(async (t) => {
+      const where = { id: ids, workspaceId };
+      const rows = await GroupPermissionModel.findAll({
+        attributes: ["groupId", "grantType", "resourceType", "resourceId"],
+        where,
+        transaction: t,
+      });
+      await GroupPermissionModel.destroy({ where, transaction: t });
+      return rows.map((row) => row.get());
+    }, transaction);
+    await this.invalidateGroupGrantsAfterCommit(
+      auth,
+      grants.map((grant) => grant.groupId),
+      transaction
+    );
+    await GroupSearchIndexationResource.launchForGrants(
+      { workspace: auth.getNonNullableWorkspace(), grants },
+      { transaction }
+    );
   }
 
   // Workspace-scrub hook: drop every grant for the workspace. Must run before groups and the
@@ -1186,6 +1195,10 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       auth,
       grants.map(({ group }) => group.id),
       transaction
+    );
+    await GroupSearchIndexationResource.launchForGrants(
+      { workspace: auth.getNonNullableWorkspace(), grants },
+      { transaction }
     );
   }
 
@@ -1419,6 +1432,10 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
+    assert(
+      this.workspaceId === workspaceId,
+      "Grant does not belong to the authenticated workspace."
+    );
     await this.model.destroy({
       where: {
         id: this.id,
@@ -1430,6 +1447,10 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       auth,
       [this.groupId],
       transaction
+    );
+    await GroupSearchIndexationResource.launchForGrants(
+      { workspace: auth.getNonNullableWorkspace(), grants: [this] },
+      { transaction }
     );
 
     return new Ok(undefined);

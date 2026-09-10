@@ -123,7 +123,7 @@ app.patch(
     }
 
     if (reinforcement !== undefined) {
-      await skill.updateReinforcement(reinforcement);
+      await skill.updateReinforcement(auth, reinforcement);
 
       void emitAuditLogEvent({
         auth,
@@ -139,15 +139,17 @@ app.patch(
       });
     }
     if (selfImprovementLock !== undefined) {
-      await skill.updateSelfImprovementLock(selfImprovementLock);
+      await skill.updateSelfImprovementLock(auth, selfImprovementLock);
     }
     if (selfImprovementCostsCapMicroUsd !== undefined) {
       await skill.updateSelfImprovementCostsCap(
+        auth,
         selfImprovementCostsCapMicroUsd
       );
     }
     if (selfImprovementCostsCapAwuCredits !== undefined) {
       await skill.updateSelfImprovementCostsCapAwuCredits(
+        auth,
         selfImprovementCostsCapAwuCredits
       );
     }
