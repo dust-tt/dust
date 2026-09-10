@@ -257,9 +257,6 @@ interface AgentTraceLinksProps {
 function AgentTraceLinks({ runUrls, langfuseUiBaseUrl }: AgentTraceLinksProps) {
   return (
     <div className="flex min-w-full flex-wrap items-center gap-2">
-      <span className="shrink-0 text-sm text-muted-foreground">
-        trace{pluralize(runUrls.length)}
-      </span>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         {runUrls.map(({ runId, url, isLLM }, index) => {
           const traceLabelSuffix = runUrls.length > 1 ? ` ${index + 1}` : "";
