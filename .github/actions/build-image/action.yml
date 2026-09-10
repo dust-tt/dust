@@ -280,12 +280,13 @@ runs:
 
         echo "📋 Getting commit diff: $CURRENT_TAG → $TARGET_TAG"
 
-        # front-edge changelogs skip per-commit authors, the run initiator is
-        # already named in the start message.
-        if [ "${{ inputs.component }}" = "front-edge" ]; then
-          LOG_FORMAT="%h %s"
-        else
+        # Only front changelogs credit per-commit authors, it is the deploy
+        # where the whole monorepo's work ships. Everywhere else the run
+        # initiator is already named in the start message.
+        if [ "${{ inputs.component }}" = "front" ]; then
           LOG_FORMAT="%h %s (%an)"
+        else
+          LOG_FORMAT="%h %s"
         fi
 
         # Get commits between versions (handle case where CURRENT_TAG might not exist in git)
