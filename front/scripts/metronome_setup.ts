@@ -36,6 +36,7 @@ import {
   STRIPE_PRODUCT_ID_CUSTOM_FIELD_KEY,
   SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
+import { isMetronomeConflictError } from "@app/lib/metronome/errors";
 import { invalidateProductSeatTypesCache } from "@app/lib/metronome/seat_types";
 import type {
   PackageDef,
@@ -1842,8 +1843,7 @@ async function syncAlerts(): Promise<void> {
       // alert is NOT updated — its custom_field_filters stay whatever they were
       // at creation. To apply changed filters, archive the alert first (for the
       // pool defaults: re-run with --recreate-pool-defaults).
-      const status = (err as { status?: number })?.status;
-      if (status === 409) {
+      if (isMetronomeConflictError(err)) {
         console.log(
           `  ✓ ${desired.name} — already exists (uniqueness_key="${desired.uniqueness_key}"), NOT updated (existing filters kept). ` +
             `Re-run with --recreate-pool-defaults --execute to apply current filters to pool defaults.`
