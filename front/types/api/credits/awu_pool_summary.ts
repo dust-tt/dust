@@ -37,11 +37,22 @@ export type AwuPoolCycleHistoryOverflow = {
   excessCycleBreakdown: boolean;
 };
 
+/**
+ * @cc [owner:avervaet,label:api] hasMoreCycleHistory-stays-boolean
+ * `hasMoreCycleHistory` MUST remain a plain `boolean` (true if either breakdown has more), never
+ * an object, so that a client bundle predating `hasMoreCycleHistoryByBreakdown` keeps reading a
+ * boolean rather than a truthy object that would leave its "Load more" control always enabled.
+ * Per-breakdown detail belongs in `hasMoreCycleHistoryByBreakdown` instead. Remove this contract
+ * and `hasMoreCycleHistory` together once old clients are confirmed cycled out.
+ */
 export type AwuPoolCycleHistoryResponseBody = {
   // Per-cycle pool consumption, most recent first
   cycleBreakdown: AwuPoolCycleBreakdown[];
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
-  hasMoreCycleHistory: AwuPoolCycleHistoryOverflow;
+  // Deprecated: true if either breakdown has more. Kept for backward compatibility with clients
+  // predating `hasMoreCycleHistoryByBreakdown`.
+  hasMoreCycleHistory: boolean;
+  hasMoreCycleHistoryByBreakdown: AwuPoolCycleHistoryOverflow;
 };
 
 export type AwuPoolSummaryResponseBody = AwuPoolCurrentCycleResponseBody &

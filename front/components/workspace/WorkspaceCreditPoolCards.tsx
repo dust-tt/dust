@@ -453,7 +453,7 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
   const {
     cycleBreakdown: poolCycleBreakdown,
     excessCycleBreakdown,
-    hasMoreCycleHistory,
+    hasMoreCycleHistoryByBreakdown: hasMoreCycleHistory,
     isAwuPoolCycleHistoryLoading,
     isAwuPoolCycleHistoryError,
     isAwuPoolCycleHistoryValidating,

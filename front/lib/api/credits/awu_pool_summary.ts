@@ -30,6 +30,7 @@ import logger from "@app/logger/logger";
 import type {
   AwuPoolCurrentCycleResponseBody,
   AwuPoolCycleBreakdown,
+  AwuPoolCycleHistoryOverflow,
   AwuPoolCycleHistoryResponseBody,
   AwuPoolSummaryResponseBody,
 } from "@app/types/api/credits/awu_pool_summary";
@@ -367,7 +368,7 @@ function cacheResolverKeyWithHistoryLimit(
   return `${workspaceId}-${cycleHistoryLimit}`;
 }
 
-const AWU_POOL_CYCLE_HISTORY_CACHE_ID = "awuPoolCycleHistoryV2";
+const AWU_POOL_CYCLE_HISTORY_CACHE_ID = "awuPoolCycleHistoryV3";
 const AWU_POOL_CYCLE_HISTORY_CACHE_TTL_MS = 60 * 1000;
 
 const getCachedAwuPoolCycleHistoryOutcome = cacheWithRedis(
@@ -466,7 +467,8 @@ async function getAwuPoolCycleHistoryUncached(
     return new Ok({
       cycleBreakdown: [],
       excessCycleBreakdown: [],
-      hasMoreCycleHistory: {
+      hasMoreCycleHistory: false,
+      hasMoreCycleHistoryByBreakdown: {
         cycleBreakdown: false,
         excessCycleBreakdown: false,
       },
@@ -485,15 +487,19 @@ async function getAwuPoolCycleHistoryUncached(
   );
   const belowMaxLimit = cycleHistoryLimit < MAX_CYCLE_HISTORY_LIMIT;
 
+  const hasMoreCycleHistoryByBreakdown: AwuPoolCycleHistoryOverflow = {
+    cycleBreakdown: belowMaxLimit && consumedCycles.length > cycleHistoryLimit,
+    excessCycleBreakdown:
+      belowMaxLimit && excessCycles.length > cycleHistoryLimit,
+  };
+
   return new Ok({
     cycleBreakdown: consumedCycles.slice(0, cycleHistoryLimit),
     excessCycleBreakdown: excessCycles.slice(0, cycleHistoryLimit),
-    hasMoreCycleHistory: {
-      cycleBreakdown:
-        belowMaxLimit && consumedCycles.length > cycleHistoryLimit,
-      excessCycleBreakdown:
-        belowMaxLimit && excessCycles.length > cycleHistoryLimit,
-    },
+    hasMoreCycleHistory:
+      hasMoreCycleHistoryByBreakdown.cycleBreakdown ||
+      hasMoreCycleHistoryByBreakdown.excessCycleBreakdown,
+    hasMoreCycleHistoryByBreakdown,
   });
 }
 

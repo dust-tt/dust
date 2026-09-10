@@ -1,7 +1,11 @@
 import { cn } from "@sparkle/lib/utils";
 import React from "react";
 
-const LOADING_DOT_DELAYS = ["0ms", "250ms", "500ms"];
+const LOADING_DOT_DELAY_CLASS_NAMES = [
+  "[animation-delay:0ms]",
+  "[animation-delay:250ms]",
+  "[animation-delay:500ms]",
+];
 
 const CONTROL_CLASS_NAME = cn(
   "text-xs font-medium",
@@ -56,11 +60,13 @@ export function LoadMore({
           {isLoading ? (
             <span>
               {loadingLabel}
-              {LOADING_DOT_DELAYS.map((delay) => (
+              {LOADING_DOT_DELAY_CLASS_NAMES.map((delayClassName) => (
                 <span
-                  key={delay}
-                  className="animate-loading-dot opacity-100 motion-reduce:animate-none"
-                  style={{ animationDelay: delay }}
+                  key={delayClassName}
+                  className={cn(
+                    "animate-loading-dot opacity-100 motion-reduce:animate-none",
+                    delayClassName
+                  )}
                 >
                   .
                 </span>

@@ -70,15 +70,19 @@ function poolBalanceWithDeduction(
 ): MetronomeBalance {
   return {
     id: `commit-${invoiceId}`,
+    created_at: new Date().toISOString(),
+    product: { id: "product-pool", name: "Pool" },
+    type: "PREPAID",
     ledger: [
       {
         type: "PREPAID_COMMIT_AUTOMATED_INVOICE_DEDUCTION",
         amount: -consumedCredits,
         invoice_id: invoiceId,
+        segment_id: `segment-${invoiceId}`,
         timestamp: new Date().toISOString(),
       },
     ],
-  } as unknown as MetronomeBalance;
+  };
 }
 
 async function requestAsManager(query = "") {
@@ -137,7 +141,8 @@ describe("GET /api/w/[wId]/credits/awu-pool-cycle-history", () => {
     expect(await response.json()).toEqual({
       cycleBreakdown: [],
       excessCycleBreakdown: [],
-      hasMoreCycleHistory: {
+      hasMoreCycleHistory: false,
+      hasMoreCycleHistoryByBreakdown: {
         cycleBreakdown: false,
         excessCycleBreakdown: false,
       },
@@ -171,10 +176,10 @@ describe("GET /api/w/[wId]/credits/awu-pool-cycle-history", () => {
 
     expect(response.status).toBe(200);
     expect(cycleIds(body.excessCycleBreakdown)).toEqual(["inv-0", "inv-3"]);
-    expect(body.hasMoreCycleHistory.excessCycleBreakdown).toBe(true);
+    expect(body.hasMoreCycleHistoryByBreakdown.excessCycleBreakdown).toBe(true);
     // No pool ledger data was mocked, so the pool breakdown stays empty and must not
     // borrow "more" from the unrelated excess breakdown.
-    expect(body.hasMoreCycleHistory.cycleBreakdown).toBe(false);
+    expect(body.hasMoreCycleHistoryByBreakdown.cycleBreakdown).toBe(false);
   });
 
   it("reports no more history when the remaining invoices have no consumption", async () => {
@@ -191,7 +196,9 @@ describe("GET /api/w/[wId]/credits/awu-pool-cycle-history", () => {
     const body = await response.json();
 
     expect(cycleIds(body.excessCycleBreakdown)).toEqual(["inv-0", "inv-1"]);
-    expect(body.hasMoreCycleHistory.excessCycleBreakdown).toBe(false);
+    expect(body.hasMoreCycleHistoryByBreakdown.excessCycleBreakdown).toBe(
+      false
+    );
   });
 
   it("reports no more history at the 24 cycle cap even when more exist", async () => {
@@ -204,7 +211,9 @@ describe("GET /api/w/[wId]/credits/awu-pool-cycle-history", () => {
 
     expect(response.status).toBe(200);
     expect(body.excessCycleBreakdown).toHaveLength(24);
-    expect(body.hasMoreCycleHistory.excessCycleBreakdown).toBe(false);
+    expect(body.hasMoreCycleHistoryByBreakdown.excessCycleBreakdown).toBe(
+      false
+    );
   });
 
   it("falls back to the default limit when the requested one is out of range", async () => {
@@ -217,7 +226,7 @@ describe("GET /api/w/[wId]/credits/awu-pool-cycle-history", () => {
 
     expect(response.status).toBe(200);
     expect(body.excessCycleBreakdown).toHaveLength(5);
-    expect(body.hasMoreCycleHistory.excessCycleBreakdown).toBe(true);
+    expect(body.hasMoreCycleHistoryByBreakdown.excessCycleBreakdown).toBe(true);
   });
 
   it("does not borrow 'more history' from the excess breakdown for the pool breakdown", async () => {
@@ -239,7 +248,9 @@ describe("GET /api/w/[wId]/credits/awu-pool-cycle-history", () => {
     expect(response.status).toBe(200);
     expect(cycleIds(body.cycleBreakdown)).toEqual(["inv-0"]);
     expect(body.excessCycleBreakdown).toEqual([]);
-    expect(body.hasMoreCycleHistory.cycleBreakdown).toBe(true);
-    expect(body.hasMoreCycleHistory.excessCycleBreakdown).toBe(false);
+    expect(body.hasMoreCycleHistoryByBreakdown.cycleBreakdown).toBe(true);
+    expect(body.hasMoreCycleHistoryByBreakdown.excessCycleBreakdown).toBe(
+      false
+    );
   });
 });

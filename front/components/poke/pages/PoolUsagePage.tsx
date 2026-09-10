@@ -89,7 +89,7 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
   const {
     cycleBreakdown: poolCycleBreakdown,
     excessCycleBreakdown,
-    hasMoreCycleHistory,
+    hasMoreCycleHistoryByBreakdown: hasMoreCycleHistory,
     isAwuPoolCycleHistoryLoading,
     isAwuPoolCycleHistoryError,
     isAwuPoolCycleHistoryValidating,
