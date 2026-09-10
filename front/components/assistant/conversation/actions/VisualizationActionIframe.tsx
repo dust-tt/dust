@@ -13,7 +13,6 @@ import datadogLogger from "@app/logger/datadogLogger";
 import type { FrameFunctionReferenceScope } from "@app/types/api/frame_function_reference";
 import { resolveFrameFunctionReference } from "@app/types/api/frame_function_reference";
 import type { GetFramePermissionsResponseBody } from "@app/types/api/frame_permissions";
-import { podFunctionScopeFromFramePath } from "@app/types/api/pod_function_reference";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
@@ -734,18 +733,12 @@ export const VisualizationActionIframe = forwardRef<
   const [isCodeDrawerOpen, setCodeDrawerOpened] = useState(false);
   const vizIframeRef = useRef<HTMLIFrameElement | null>(null);
 
-  // Only Pod hosts pass a frame path, so only Frames in an app folder get a scope; everything else
-  // resolves to null and must use fully qualified references.
-  const podFunctionScope = useMemo(
-    () => podFunctionScopeFromFramePath(props.framePath),
-    [props.framePath]
-  );
   const functionReferenceScope = useMemo<FrameFunctionReferenceScope>(
     () =>
       props.frameId
         ? { kind: "v2", frameId: props.frameId }
-        : { kind: "legacy", podFunctionScope },
-    [podFunctionScope, props.frameId]
+        : { kind: "legacy" },
+    [props.frameId]
   );
 
   // In-flight sandbox function invocations. Each entry mounts a

@@ -1,16 +1,16 @@
-import type { PodFunctionScope } from "@app/types/api/pod_function_reference";
-import {
-  isRelativePodFunctionReference,
-  resolvePodFunctionReference,
-} from "@app/types/api/pod_function_reference";
 import { frameV2ContentType, isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
+/** One slug segment: lowercase alphanumeric with single hyphen separators, e.g. `list-notes`. */
+const BARE_FUNCTION_NAME_REGEX = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 export type FrameFunctionReferenceScope =
   | { kind: "v2"; frameId: string }
-  | { kind: "legacy"; podFunctionScope: PodFunctionScope | null };
+  // Legacy Frames used to call Pod functions, which no longer exist. They still render; they
+  // just have nothing to call.
+  | { kind: "legacy" };
 
 export type FrameFunctionReferenceKind = FrameFunctionReferenceScope["kind"];
 
@@ -34,7 +34,7 @@ export function resolveFrameFunctionReference(
 ): Result<string, Error> {
   switch (scope.kind) {
     case "v2":
-      if (!isRelativePodFunctionReference(reference)) {
+      if (!BARE_FUNCTION_NAME_REGEX.test(reference)) {
         return new Err(
           new Error(
             `'${reference}' is not a Frames v2 function name: expected a bare manifest function name.`
@@ -43,7 +43,9 @@ export function resolveFrameFunctionReference(
       }
       return new Ok(`${scope.frameId}/${reference}`);
     case "legacy":
-      return resolvePodFunctionReference(reference, scope.podFunctionScope);
+      return new Err(
+        new Error("Function calls are not available in this Frame.")
+      );
     default:
       return assertNever(scope);
   }

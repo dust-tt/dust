@@ -29,16 +29,12 @@ describe("resolveFrameFunctionReference", () => {
     expect(result.isErr()).toBe(true);
   });
 
-  it("keeps legacy Pod-relative resolution unchanged", () => {
+  it("refuses every reference from a legacy Frame", () => {
     const result = resolveFrameFunctionReference("list-comments", {
       kind: "legacy",
-      podFunctionScope: { podId: "pod_123", appPrefix: "comments" },
     });
 
-    expect(result.isOk()).toBe(true);
-    expect(result.isOk() && result.value).toBe(
-      "pod_123/comments__list-comments"
-    );
+    expect(result.isErr()).toBe(true);
   });
 });
 
