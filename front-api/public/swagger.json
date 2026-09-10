@@ -133,7 +133,7 @@
     "/api/v1/w/{wId}/analytics/consumption/export": {
       "post": {
         "summary": "Export consumption analytics",
-        "description": "Export per-call consumption analytics for the workspace identified by {wId}.\nEach row represents one unit of billed credit consumption (an LLM call or a tool call).\nThe export can be filtered by various dimensions (agents, users, API keys, groups, models, tools, skills, sources, tags).\nThe export is limited to a maximum of 30 days per request.\n",
+        "description": "Export per-call consumption analytics for the workspace identified by {wId}.\nEach row represents one unit of billed credit consumption (an LLM call or a tool call).\nThe export can be filtered by various dimensions (agents, users, API keys, groups, models, tools, skills, sources, tags).\nThe export is limited to a maximum of 30 days per request and times out after 10 seconds: reduce the time range\nor apply filters to reduce the number of rows if you encounter a timeout.\nResults are streamed, if an error occurs, an error message is appended and the stream is closed.\n",
         "tags": [
           "Analytics"
         ],
