@@ -14,12 +14,10 @@ import {
   INPUT_BAR_COMPACT_PILL_CLASSES,
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import {
-  useAddDeleteConversationTool,
-  useConversationTools,
-} from "@app/hooks/conversations";
+import { useConversationTools } from "@app/hooks/conversations";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
+import { extractToolTags, getToolIdsToAttach } from "@app/lib/tools/format";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
@@ -258,32 +256,17 @@ export const InputBar = React.memo(function InputBar({
     !!conversation &&
     getConversationGeneratingMessages(conversation.sId).length > 0;
 
-  // Tools selection
-
   const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
     MCPServerViewLightType[]
   >([]);
   const [selectedSpacesState, setSelectedSpacesState] =
     useState<SelectedSpacesState | null>(null);
 
-  const { conversationTools } = useConversationTools({
+  const { conversationTools, mutateConversationTools } = useConversationTools({
     conversationId: conversation?.sId,
     workspaceId: owner.sId,
   });
 
-  // The truth is in the conversationTools, we need to update the selectedMCPServerViewIds when the conversationTools change.
-  useEffect(() => {
-    setSelectedMCPServerViews(conversationTools);
-  }, [conversationTools]);
-
-  const { addTool, deleteTool } = useAddDeleteConversationTool({
-    conversationId: conversation?.sId,
-    workspaceId: owner.sId,
-  });
-  const selectedMCPServerViewIds = useMemo(
-    () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
-    [selectedMCPServerViews]
-  );
   const spacesSelectionKey = conversation?.sId ?? `draft:${draftKey}`;
   const draftSelectedSpaceIds = useMemo(
     () => getDraft()?.selectedSpaceIds ?? [],
@@ -410,45 +393,28 @@ export const InputBar = React.memo(function InputBar({
 
   const handleMCPServerViewSelect = useCallback(
     (serverView: MCPServerViewLightType) => {
-      if (selectedMCPServerViewIds.has(serverView.sId)) {
-        return;
-      }
-
       setSelectedMCPServerViews((prev) =>
         prev.some((sv) => sv.sId === serverView.sId)
           ? prev
           : [...prev, serverView]
       );
-      void addTool(serverView.sId);
     },
-    [addTool, selectedMCPServerViewIds]
+    []
   );
 
   const handleMCPServerViewDeselect = useCallback(
     (serverView: MCPServerViewLightType) => {
-      if (!selectedMCPServerViewIds.has(serverView.sId)) {
-        return;
-      }
-
       setSelectedMCPServerViews((prev) =>
         prev.filter((sv) => sv.sId !== serverView.sId)
       );
-      void deleteTool(serverView.sId);
     },
-    [deleteTool, selectedMCPServerViewIds]
+    []
   );
 
   const clearSideChannelSelections = useCallback(async () => {
-    const serverViewIds = selectedMCPServerViews.map(
-      (serverView) => serverView.sId
-    );
     setSelectedMCPServerViews([]);
     setAttachedNodes([]);
-
-    await Promise.all(
-      serverViewIds.map((serverViewId) => deleteTool(serverViewId))
-    );
-  }, [deleteTool, selectedMCPServerViews]);
+  }, []);
 
   const handleSelectedSpaceIdsChange = useCallback(
     async (spaceIds: string[]): Promise<string[] | null> => {
@@ -549,6 +515,12 @@ export const InputBar = React.memo(function InputBar({
       mentions.some((m) => m.id === a.sId && m.type === "agent")
     );
 
+    const messageTools = extractToolTags(markdown);
+    const toolIdsToAttach = getToolIdsToAttach(
+      messageTools,
+      new Set(conversationTools.map((serverView) => serverView.sId))
+    );
+
     trackEvent({
       area: TRACKING_AREAS.CONVERSATION,
       object: "message_send",
@@ -556,7 +528,7 @@ export const InputBar = React.memo(function InputBar({
       extra: {
         conversation_id: conversation?.sId ?? "new",
         has_attachments: attachedNodes.length > 0 || uploadedFiles.length > 0,
-        has_tools: selectedMCPServerViews.length > 0,
+        has_tools: messageTools.length > 0,
         has_agents: mentionedAgents.length > 0,
         has_default_agent: mentionedAgents.some((a) => isGlobalAgentId(a.sId)),
         has_custom_agent: mentionedAgents.some((a) => !isGlobalAgentId(a.sId)),
@@ -564,8 +536,8 @@ export const InputBar = React.memo(function InputBar({
         agent_count: mentions.length,
         agent_ids: mentionedAgents.map((a) => a.sId).join(","),
         attachment_count: attachedNodes.length + uploadedFiles.length,
-        tool_count: selectedMCPServerViews.length,
-        tool_names: selectedMCPServerViews.map((t) => t.server.name).join(","),
+        tool_count: messageTools.length,
+        tool_names: messageTools.map((t) => t.name).join(","),
         message_length: markdown.length,
       },
     });
@@ -591,9 +563,7 @@ export const InputBar = React.memo(function InputBar({
             }),
             contentNodes: attachedNodes,
           },
-          // Only send the selectedMCPServerViewIds if we are creating a new conversation.
-          // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-          selectedMCPServerViews.map((sv) => sv.sId),
+          toolIdsToAttach,
           selectedSpaceIds,
           modelSelectionRef.current
         );
@@ -602,6 +572,7 @@ export const InputBar = React.memo(function InputBar({
           clearDraft();
           resetEditorText();
           fileUploaderService.resetUpload();
+          setSelectedMCPServerViews([]);
           setSelectedSpacesState({
             key: spacesSelectionKey,
             spaceIds: [],
@@ -629,9 +600,7 @@ export const InputBar = React.memo(function InputBar({
             }),
             contentNodes: attachedNodes,
           },
-          // Existing conversation: MCP server views are synced via the
-          // conversationTools hook.
-          undefined,
+          toolIdsToAttach.length > 0 ? toolIdsToAttach : undefined,
           selectedSpaceIds,
           modelSelectionRef.current
         );
@@ -641,8 +610,14 @@ export const InputBar = React.memo(function InputBar({
         clearDraft();
         fileUploaderService.resetUpload();
         setAttachedNodes([]);
+        setSelectedMCPServerViews([]);
 
-        await submitPromise;
+        const r = await submitPromise;
+        if (r.isOk() && toolIdsToAttach.length > 0) {
+          // Newly attached tools are now part of the conversation's server-side set; refresh it
+          // so the next submit's diff doesn't re-send them.
+          void mutateConversationTools();
+        }
       } finally {
         setIsLocalSubmitting(false);
       }
@@ -663,10 +638,7 @@ export const InputBar = React.memo(function InputBar({
   };
 
   const handleResetMCPServerViews = () => {
-    setSelectedMCPServerViews((prev) => {
-      prev.forEach((sv) => void deleteTool(sv.sId));
-      return [];
-    });
+    setSelectedMCPServerViews([]);
   };
 
   const handleShake = useCallback(() => {
