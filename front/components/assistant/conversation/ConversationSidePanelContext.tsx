@@ -1,22 +1,129 @@
 import { getDefaultRightPanelSize } from "@app/components/assistant/conversation/constant";
-import type { OpenPanelParams } from "@app/components/assistant/conversation/side_panel_params";
-import {
-  panelDataKey,
-  panelHistoryEntry,
-  panelIdentityKey,
-  panelParamsFromHash,
-} from "@app/components/assistant/conversation/side_panel_params";
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useHashParam } from "@app/hooks/useHashParams";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
+  AGENT_ACTIONS_SIDE_PANEL_TYPE,
+  CREDITS_SIDE_PANEL_TYPE,
+  FILE_PREVIEW_SIDE_PANEL_TYPE,
+  FILES_SIDE_PANEL_TYPE,
   FULL_SCREEN_HASH_PARAM,
+  INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
+  PLAN_SIDE_PANEL_TYPE,
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
+  SKILL_SIDE_PANEL_TYPE,
 } from "@app/types/conversation_side_panel";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
+
+type OpenPanelParams =
+  | {
+      type: "actions";
+      messageId: string;
+      actionId?: string;
+    }
+  | {
+      type: "interactive_content";
+      fileId: string;
+      timestamp?: string;
+    }
+  | {
+      type: "file_preview";
+      filePath: string;
+    }
+  | {
+      type: "files";
+    }
+  | {
+      type: "credits";
+    }
+  | {
+      type: "plan";
+    }
+  | {
+      type: "skill";
+      skillId: string;
+    };
+
+// The `spid` hash value for a panel. Two panels are the same when type and key match.
+function panelDataKey(params: OpenPanelParams): string {
+  switch (params.type) {
+    case AGENT_ACTIONS_SIDE_PANEL_TYPE:
+      return params.actionId
+        ? `${params.messageId}@${params.actionId}`
+        : params.messageId;
+    case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
+      return params.timestamp
+        ? `${params.fileId}@${params.timestamp}`
+        : params.fileId;
+    case FILE_PREVIEW_SIDE_PANEL_TYPE:
+      return params.filePath;
+    case FILES_SIDE_PANEL_TYPE:
+    case CREDITS_SIDE_PANEL_TYPE:
+    case PLAN_SIDE_PANEL_TYPE:
+      return params.type;
+    case SKILL_SIDE_PANEL_TYPE:
+      return params.skillId;
+    default:
+      return assertNever(params);
+  }
+}
+
+// What makes two panels "the same view" for history purposes. Unlike the hash key, a Frame's
+// timestamp is ignored: streaming refreshes the same Frame with a new timestamp, and that must
+// update the shown panel rather than stack a copy of it.
+function panelIdentityKey(params: OpenPanelParams): string {
+  if (params.type === INTERACTIVE_CONTENT_SIDE_PANEL_TYPE) {
+    return `${params.type}:${params.fileId}`;
+  }
+  return `${params.type}:${panelDataKey(params)}`;
+}
+
+// What goes in the history for a panel: a Frame is stored without its timestamp so going back
+// loads its latest version rather than a streaming-era snapshot.
+function panelHistoryEntry(params: OpenPanelParams): OpenPanelParams {
+  if (params.type === INTERACTIVE_CONTENT_SIDE_PANEL_TYPE) {
+    return { type: params.type, fileId: params.fileId };
+  }
+  return params;
+}
+
+// Inverse of panelDataKey, for panels restored from the URL hash (deep links, back/forward).
+function panelParamsFromHash(
+  type: ConversationSidePanelType,
+  data: string | undefined
+): OpenPanelParams | null {
+  if (!type || !data) {
+    return null;
+  }
+  switch (type) {
+    case AGENT_ACTIONS_SIDE_PANEL_TYPE: {
+      const [messageId, actionId] = data.split("@");
+      return { type, messageId, actionId };
+    }
+    case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE: {
+      const [fileId, timestamp] = data.split("@");
+      return { type, fileId, timestamp };
+    }
+    case FILE_PREVIEW_SIDE_PANEL_TYPE:
+      return { type, filePath: data };
+    case FILES_SIDE_PANEL_TYPE:
+    case CREDITS_SIDE_PANEL_TYPE:
+    case PLAN_SIDE_PANEL_TYPE:
+      return { type };
+    case SKILL_SIDE_PANEL_TYPE:
+      return { type, skillId: data };
+    default:
+      assertNeverAndIgnore(type);
+      return null;
+  }
+}
 
 const isSupportedPanelType = (
   type: string | undefined

@@ -204,3 +204,36 @@ describe("ConversationSidePanelProvider and the URL hash", () => {
     expect(result.current.currentPanel).toBeUndefined();
   });
 });
+
+describe("ConversationSidePanelProvider hash encoding", () => {
+  it.each([
+    [{ type: "actions", messageId: "msg_1" }, "msg_1"],
+    [{ type: "actions", messageId: "msg_1", actionId: "act_2" }, "msg_1@act_2"],
+    [{ type: "interactive_content", fileId: "fil_1" }, "fil_1"],
+    [
+      { type: "interactive_content", fileId: "fil_1", timestamp: "123" },
+      "fil_1@123",
+    ],
+    [
+      { type: "file_preview", filePath: "conversation-abc/plan.md" },
+      "conversation-abc/plan.md",
+    ],
+    [{ type: "files" }, "files"],
+    [{ type: "credits" }, "credits"],
+    [{ type: "plan" }, "plan"],
+    [{ type: "skill", skillId: "skl_1" }, "skl_1"],
+  ] as const)("writes %j as %s and reads it back", (params, spid) => {
+    const { result } = renderSidePanel();
+    act(() => result.current.openPanel(params));
+    expect(result.current.currentPanel).toBe(params.type);
+    expect(result.current.data).toBe(spid);
+
+    // Restored from the hash, the same panel toggles closed rather than reopening.
+    hash.reset();
+    const restored = renderSidePanel();
+    hash.set({ spid, spt: params.type });
+    restored.rerender();
+    act(() => restored.result.current.togglePanel(params));
+    expect(restored.result.current.currentPanel).toBeUndefined();
+  });
+});
