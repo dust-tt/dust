@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
@@ -12,7 +11,6 @@ import {
 } from "@app/lib/api/sandbox_functions/staging_integrity";
 import type { Authenticator } from "@app/lib/auth";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { SANDBOX_DATABASE_NAME_REGEX } from "@app/types/api/sandbox_functions";
 import {
@@ -332,24 +330,6 @@ export async function listDatabasesOnReadySandbox(
     );
   }
   return new Err(dbErrorToSandboxFunctionError(null, envelope, "internal"));
-}
-
-/** `dsbx db list`: enumerate the live `{db}.db` files with their sizes (WAL included). */
-export async function listDatabasesOnSandbox(
-  auth: Authenticator,
-  { space }: { space: SpaceResource }
-): Promise<Result<LiveDatabaseEntry[], SandboxFunctionError>> {
-  const ensureResult = await ensurePodSandboxReady(auth, space);
-  if (ensureResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError(
-        "sandbox_unavailable",
-        ensureResult.error.message
-      )
-    );
-  }
-
-  return listDatabasesOnReadySandbox(auth, ensureResult.value.sandbox);
 }
 
 // `dsbx db schema` writes the regenerated file and prints only `{ok}`.
