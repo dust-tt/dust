@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
@@ -8,8 +9,13 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import {
+  getFrameBasePath,
+  getFramePublicationUiBundlePath,
+} from "@app/types/api/frame_storage";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
+import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,6 +33,33 @@ vi.mock("@app/lib/api/files/processing", async (importOriginal) => {
 
 function fileUrl(workspace: { sId: string }, fileId: string, query = "") {
   return `/api/w/${workspace.sId}/files/${fileId}${query}`;
+}
+
+async function createConversationFrame(
+  auth: Authenticator,
+  directoryName: string
+) {
+  const owner = auth.getNonNullableWorkspace();
+  const conversation = await ConversationFactory.create(auth, {
+    agentConfigurationId: "test-agent",
+    messagesCreatedAt: [],
+  });
+  const sourceDirectoryPath = `${getConversationFilesBasePath({
+    workspaceId: owner.sId,
+    conversationId: conversation.sId,
+  })}${directoryName}`;
+  const frame = await FileFactory.create(auth, null, {
+    contentType: frameV2ContentType,
+    fileName: FRAME_MANIFEST_FILE,
+    fileSize: 128,
+    status: "created",
+    useCase: "conversation",
+    useCaseMetadata: { conversationId: conversation.sId },
+    mountFilePath: `${sourceDirectoryPath}/${FRAME_MANIFEST_FILE}`,
+  });
+  await frame.markFrameV2AsReadyFromMount(auth);
+
+  return { conversationId: conversation.sId, frame, sourceDirectoryPath };
 }
 
 describe("GET /api/w/:wId/files/:fileId", () => {
@@ -315,6 +348,7 @@ describe("GET /api/w/:wId/files/:fileId", () => {
 describe("DELETE /api/w/:wId/files/:fileId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    fileStorageMock.reset();
   });
 
   it("should allow manager to delete any file", async () => {
@@ -340,6 +374,72 @@ describe("DELETE /api/w/:wId/files/:fileId", () => {
     });
 
     expect(response.status).toBe(204);
+  });
+
+  it("deletes a Frames v2 package", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "manager",
+    });
+    const { frame, sourceDirectoryPath } = await createConversationFrame(
+      auth,
+      "Status"
+    );
+    const deletedPrefixes: string[] = [];
+    fileStorageMock.setFileExists((path) => path.endsWith("/"));
+    fileStorageMock.setOnDeleteByPrefix((prefix) =>
+      deletedPrefixes.push(prefix)
+    );
+
+    const response = await honoApp.request(fileUrl(workspace, frame.sId), {
+      method: "DELETE",
+    });
+
+    expect(response.status).toBe(204);
+    await expect(FileResource.fetchById(auth, frame.sId)).resolves.toBeNull();
+    expect(deletedPrefixes).toContain(`${sourceDirectoryPath}/`);
+    expect(deletedPrefixes).toContain(
+      getFrameBasePath({ workspaceId: workspace.sId, frameId: frame.sId })
+    );
+  });
+
+  it("rejects a Frame package containing another registered Frame", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "manager",
+    });
+    const {
+      conversationId,
+      frame: parent,
+      sourceDirectoryPath,
+    } = await createConversationFrame(auth, "Parent");
+    const child = await FileFactory.create(auth, null, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: 128,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId },
+      mountFilePath: `${sourceDirectoryPath}/Child/${FRAME_MANIFEST_FILE}`,
+    });
+    await child.markFrameV2AsReadyFromMount(auth);
+    const deletedPrefixes: string[] = [];
+    fileStorageMock.setOnDeleteByPrefix((prefix) =>
+      deletedPrefixes.push(prefix)
+    );
+
+    const response = await honoApp.request(fileUrl(workspace, parent.sId), {
+      method: "DELETE",
+    });
+
+    expect(response.status).toBe(400);
+    await expect(
+      FileResource.fetchById(auth, parent.sId)
+    ).resolves.not.toBeNull();
+    await expect(
+      FileResource.fetchById(auth, child.sId)
+    ).resolves.not.toBeNull();
+    expect(deletedPrefixes).toEqual([]);
   });
 
   it("should allow file author with admin role to delete upload files", async () => {
