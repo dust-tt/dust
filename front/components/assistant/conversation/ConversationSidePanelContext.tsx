@@ -367,7 +367,12 @@ export function ConversationSidePanelProvider({
           fromHash &&
           (!current || panelIdentityKey(current) !== panelIdentityKey(fromHash))
         ) {
+          // The shown panel never stays in the history, same as when we open it ourselves.
+          const shownKey = panelIdentityKey(fromHash);
           currentParamsRef.current = fromHash;
+          panelHistoryRef.current = panelHistoryRef.current.filter(
+            (entry) => panelIdentityKey(entry) !== shownKey
+          );
         }
       }
     } else if (!data) {

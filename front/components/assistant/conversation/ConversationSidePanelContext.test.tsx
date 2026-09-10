@@ -193,6 +193,18 @@ describe("ConversationSidePanelProvider and the URL hash", () => {
     expect(result.current.currentPanel).toBeUndefined();
   });
 
+  it("does not keep a panel in the history once navigation shows it", () => {
+    const { result } = renderSidePanel();
+    act(() => result.current.openPanel({ type: "files" }));
+    act(() => result.current.openPanel({ type: "credits" }));
+
+    act(() => hash.set({ spid: "files", spt: "files" }));
+    expect(result.current.currentPanel).toBe("files");
+
+    act(() => result.current.closePanel());
+    expect(result.current.currentPanel).toBeUndefined();
+  });
+
   it("follows browser navigation so the shown panel can be toggled closed", () => {
     const { result } = renderSidePanel();
     act(() => result.current.openPanel({ type: "files" }));
