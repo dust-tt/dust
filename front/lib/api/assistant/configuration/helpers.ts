@@ -325,6 +325,11 @@ export function redactPrivateAgentConfigurationFields(
   };
 }
 
+// Identifies one agent configuration: an agent id alone spans every version of that agent.
+const configurationKey = (
+  agent: Pick<LightAgentConfigurationType, "sId" | "version">
+): string => `${agent.sId}-${agent.version}`;
+
 /**
  * @cc [owner:fabiencelier,label:security] no-skills-for-redacted-agents
  * An agent whose details were redacted (`canRead === false`) MUST get an empty `skills` array:
@@ -360,21 +365,23 @@ export async function serializeAgentConfigurationsWithSkills<
     ),
   ]);
 
-  const skillsByAgentSId: Record<string, SkillResource[]> = {};
+  // Keyed per configuration, not per agent: an agent has one row per version and callers can
+  // pass several of them. `version` is unique within an agent id, and the
+  // version is a number, so the two parts cannot run together ambiguously.
+  const skillsByConfiguration: Record<string, SkillResource[]> = {};
   for (const { agentConfiguration, skill } of workspaceAgentSkills) {
-    skillsByAgentSId[agentConfiguration.sId] = [
-      ...(skillsByAgentSId[agentConfiguration.sId] ?? []),
-      skill,
-    ];
+    (skillsByConfiguration[configurationKey(agentConfiguration)] ??= []).push(
+      skill
+    );
   }
 
-  const codeDefinedSkillBySId = new Map(
+  const codeDefinedSkillById = new Map(
     codeDefinedSkills.map((skill) => [skill.sId, skill])
   );
   for (const agent of globalAgents) {
-    skillsByAgentSId[agent.sId] = removeNulls(
+    skillsByConfiguration[configurationKey(agent)] = removeNulls(
       (agent.codeDefinedSkillIds ?? []).map(
-        (skillId) => codeDefinedSkillBySId.get(skillId) ?? null
+        (skillId) => codeDefinedSkillById.get(skillId) ?? null
       )
     );
   }
@@ -383,9 +390,11 @@ export async function serializeAgentConfigurationsWithSkills<
   return agents.map(
     ({ codeDefinedSkillIds: _codeDefinedSkillIds, ...agent }) => ({
       ...agent,
-      skills: (skillsByAgentSId[agent.sId] ?? []).map((skill) =>
-        skill.toAgentSkillJSON()
-      ),
+      skills: agent.canRead
+        ? (skillsByConfiguration[configurationKey(agent)] ?? []).map((skill) =>
+            skill.toAgentSkillJSON()
+          )
+        : [],
     })
   );
 }

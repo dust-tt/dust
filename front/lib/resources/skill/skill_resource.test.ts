@@ -1915,19 +1915,21 @@ describe("SkillResource", () => {
         [firstAgent, secondAgent, skillLessAgent]
       );
 
-      const skillIdsByAgentSId = new Map<string, number[]>();
+      const skillModelIdsByAgentId = new Map<string, number[]>();
       for (const { agentConfiguration, skill } of pairs) {
-        skillIdsByAgentSId.set(agentConfiguration.sId, [
-          ...(skillIdsByAgentSId.get(agentConfiguration.sId) ?? []),
-          skill.id,
-        ]);
+        const skillModelIds =
+          skillModelIdsByAgentId.get(agentConfiguration.sId) ?? [];
+        skillModelIds.push(skill.id);
+        skillModelIdsByAgentId.set(agentConfiguration.sId, skillModelIds);
       }
 
-      expect(skillIdsByAgentSId.get(firstAgent.sId)?.sort()).toEqual(
+      expect(skillModelIdsByAgentId.get(firstAgent.sId)?.sort()).toEqual(
         [firstSkill.id, sharedSkill.id].sort()
       );
-      expect(skillIdsByAgentSId.get(secondAgent.sId)).toEqual([sharedSkill.id]);
-      expect(skillIdsByAgentSId.has(skillLessAgent.sId)).toBe(false);
+      expect(skillModelIdsByAgentId.get(secondAgent.sId)).toEqual([
+        sharedSkill.id,
+      ]);
+      expect(skillModelIdsByAgentId.has(skillLessAgent.sId)).toBe(false);
     });
 
     it("resolves global skills attached to a workspace agent", async () => {
