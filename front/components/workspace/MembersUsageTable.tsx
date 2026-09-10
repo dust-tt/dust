@@ -70,7 +70,7 @@ import type {
   RowSelectionState,
   SortingState,
 } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 const EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID: Record<
   string,
@@ -893,127 +893,134 @@ function buildFairUseCreditsColumn(
   };
 }
 
-const offPaceColumn: ColumnDef<RowData, string> = {
-  id: "overallUsageTarget" as const,
-  header: "",
-  enableSorting: false,
-  accessorFn: (row) => row.overallUsageTarget ?? "",
-  cell: (info: Info) => {
-    const {
-      overallUsageTarget,
-      isSpendCapped,
-      canUpgradeSeat,
-      seatType,
-      onOpenChangeSeatRecap,
-      onOpenSpendLimitRecap,
-    } = info.row.original;
+// Icon-wide until an "Unblock" button has shown up, button-wide from then on.
+function buildOffPaceColumn(
+  showUnblockWidth: boolean
+): ColumnDef<RowData, string> {
+  return {
+    id: "overallUsageTarget" as const,
+    header: "",
+    enableSorting: false,
+    accessorFn: (row) => row.overallUsageTarget ?? "",
+    cell: (info: Info) => {
+      const {
+        overallUsageTarget,
+        isSpendCapped,
+        canUpgradeSeat,
+        seatType,
+        onOpenChangeSeatRecap,
+        onOpenSpendLimitRecap,
+      } = info.row.original;
 
-    if (isSpendCapped) {
-      // Free seats have no pool credits to raise (their cap is just the
-      // seat's built-in allowance), so seat upgrade is the only unblock path.
-      const isFreeSeat = seatType === "free";
+      if (isSpendCapped) {
+        // Free seats have no pool credits to raise (their cap is just the
+        // seat's built-in allowance), so seat upgrade is the only unblock path.
+        const isFreeSeat = seatType === "free";
 
-      if (isFreeSeat) {
-        return (
-          <DataTable.CellContent className="justify-center">
-            <div
-              onClick={(event) => event.stopPropagation()}
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              <Button
-                variant="highlight"
-                size="xs"
-                label="Unblock"
-                disabled={!canUpgradeSeat}
-                onClick={onOpenChangeSeatRecap}
-              />
-            </div>
-          </DataTable.CellContent>
-        );
-      }
-
-      if (!canUpgradeSeat) {
-        return (
-          <DataTable.CellContent className="justify-center">
-            <div
-              onClick={(event) => event.stopPropagation()}
-              onPointerDown={(event) => event.stopPropagation()}
-            >
-              <Button
-                variant="highlight"
-                size="xs"
-                label="Unblock"
-                onClick={onOpenSpendLimitRecap}
-              />
-            </div>
-          </DataTable.CellContent>
-        );
-      }
-      return (
-        <DataTable.CellContent className="justify-center">
-          <div
-            onClick={(event) => event.stopPropagation()}
-            onPointerDown={(event) => event.stopPropagation()}
-          >
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
+        if (isFreeSeat) {
+          return (
+            <DataTable.CellContent className="justify-center">
+              <div
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+              >
                 <Button
                   variant="highlight"
                   size="xs"
                   label="Unblock"
-                  isSelect
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  label="Upgrade seat"
+                  disabled={!canUpgradeSeat}
                   onClick={onOpenChangeSeatRecap}
                 />
-                <DropdownMenuItem
-                  label="Edit spend limit"
+              </div>
+            </DataTable.CellContent>
+          );
+        }
+
+        if (!canUpgradeSeat) {
+          return (
+            <DataTable.CellContent className="justify-center">
+              <div
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                <Button
+                  variant="highlight"
+                  size="xs"
+                  label="Unblock"
                   onClick={onOpenSpendLimitRecap}
                 />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+              </div>
+            </DataTable.CellContent>
+          );
+        }
+        return (
+          <DataTable.CellContent className="justify-center">
+            <div
+              onClick={(event) => event.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="highlight"
+                    size="xs"
+                    label="Unblock"
+                    isSelect
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    label="Upgrade seat"
+                    onClick={onOpenChangeSeatRecap}
+                  />
+                  <DropdownMenuItem
+                    label="Edit spend limit"
+                    onClick={onOpenSpendLimitRecap}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </DataTable.CellContent>
+        );
+      }
+
+      if (
+        overallUsageTarget !== "elevated" &&
+        overallUsageTarget !== "critical"
+      ) {
+        return <DataTable.CellContent className="justify-center" />;
+      }
+      const isCritical = overallUsageTarget === "critical";
+      return (
+        <DataTable.CellContent className="justify-center">
+          <Tooltip
+            tooltipTriggerAsChild
+            label={
+              isCritical
+                ? "At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets."
+                : "Consuming credits ahead of the billing cycle's pace"
+            }
+            trigger={
+              <span className="flex cursor-default items-center justify-center">
+                <Icon
+                  visual={AlertCircle}
+                  size="sm"
+                  className={isCritical ? "text-red-500" : "text-warning-500"}
+                />
+              </span>
+            }
+          />
         </DataTable.CellContent>
       );
-    }
-
-    if (
-      overallUsageTarget !== "elevated" &&
-      overallUsageTarget !== "critical"
-    ) {
-      return <DataTable.CellContent className="justify-center" />;
-    }
-    const isCritical = overallUsageTarget === "critical";
-    return (
-      <DataTable.CellContent className="justify-center">
-        <Tooltip
-          tooltipTriggerAsChild
-          label={
-            isCritical
-              ? "At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets."
-              : "Consuming credits ahead of the billing cycle's pace"
-          }
-          trigger={
-            <span className="flex cursor-default items-center justify-center">
-              <Icon
-                visual={AlertCircle}
-                size="sm"
-                className={isCritical ? "text-red-500" : "text-warning-500"}
-              />
-            </span>
-          }
-        />
-      </DataTable.CellContent>
-    );
-  },
-  meta: {
-    className: "hidden @4xl:table-cell @4xl:w-28",
-    headerAlign: "center",
-  },
-};
+    },
+    meta: {
+      className: showUnblockWidth
+        ? "hidden @4xl:table-cell @4xl:w-28"
+        : "hidden @4xl:table-cell @4xl:w-12",
+      headerAlign: "center",
+    },
+  };
+}
 
 function buildModelTiersColumn(
   variant: MembersUsageTableVariant
@@ -1091,6 +1098,7 @@ function buildCreditPlanColumns({
   showPremiumMessageUsage,
   premiumMessageWindowDays,
   fairUseWindowDays,
+  showUnblockWidth,
 }: {
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
@@ -1098,6 +1106,7 @@ function buildCreditPlanColumns({
   showPremiumMessageUsage: boolean;
   premiumMessageWindowDays: number;
   fairUseWindowDays: number | null;
+  showUnblockWidth: boolean;
 }): ColumnDef<RowData, string>[] {
   return [
     // Premium message plans have no seats: every member is billed per
@@ -1127,7 +1136,7 @@ function buildCreditPlanColumns({
       ? [buildFairUseCreditsColumn(fairUseWindowDays)]
       : []),
     ...(variant === "compact" && !showPremiumMessageUsage
-      ? [offPaceColumn]
+      ? [buildOffPaceColumn(showUnblockWidth)]
       : []),
   ];
 }
@@ -1143,6 +1152,7 @@ function buildColumns({
   showPremiumMessageUsage,
   premiumMessageWindowDays,
   fairUseWindowDays,
+  showUnblockWidth,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
@@ -1154,6 +1164,7 @@ function buildColumns({
   showPremiumMessageUsage: boolean;
   premiumMessageWindowDays: number;
   fairUseWindowDays: number | null;
+  showUnblockWidth: boolean;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
@@ -1168,6 +1179,7 @@ function buildColumns({
           showPremiumMessageUsage,
           premiumMessageWindowDays,
           fairUseWindowDays,
+          showUnblockWidth,
         })
       : []),
     // Every row action belongs to one of these two groups.
@@ -1440,6 +1452,16 @@ export function MembersUsageTable({
   const fairUseWindowDays =
     members.find((m) => m.fairUse)?.fairUse?.windowDays ?? null;
 
+  // Whether a member is blocked is only known page by page, so the off-pace
+  // column latches onto the button width the first time one shows up and
+  // keeps it: widening once beats resizing on every page change.
+  const [hasSeenSpendCappedRow, setHasSeenSpendCappedRow] = useState(false);
+  const showUnblockWidth =
+    hasSeenSpendCappedRow || members.some((m) => m.isSpendCapped);
+  if (showUnblockWidth && !hasSeenSpendCappedRow) {
+    setHasSeenSpendCappedRow(true);
+  }
+
   const columns = useMemo(
     () =>
       buildColumns({
@@ -1453,6 +1475,7 @@ export function MembersUsageTable({
         showPremiumMessageUsage,
         premiumMessageWindowDays,
         fairUseWindowDays,
+        showUnblockWidth,
       }),
     [
       enableSelection,
@@ -1465,6 +1488,7 @@ export function MembersUsageTable({
       premiumMessageWindowDays,
       showPremiumMessageUsage,
       fairUseWindowDays,
+      showUnblockWidth,
     ]
   );
 
