@@ -166,7 +166,8 @@ export async function publishFrame(
         }
       }
 
-      // 2. Validate Pod function calls before writing.
+      // 2. Validate Pod function calls before writing. `callFunction` failures block; hook-based
+      //    (`usePodFunction`/`usePodFunctionMutation`) failures come back as warnings for now.
       const podFunctionValidation = await validateFramePodFunctionReferences(
         auth,
         {
@@ -182,6 +183,7 @@ export async function publishFrame(
           )
         );
       }
+      warnings.push(...podFunctionValidation.value.warnings);
 
       // 3. Refresh the canonical source from the entry so MCP retrieve and the render fallback
       //    stay in sync with what was published (the entry is always read during the build).

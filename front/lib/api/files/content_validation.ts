@@ -4,7 +4,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import * as ts from "typescript";
 
 export interface ValidationWarning {
-  type: "tailwind" | "typescript";
+  type: "pod_function" | "tailwind" | "typescript";
   message: string;
   oldString?: string;
   suggestion?: string;

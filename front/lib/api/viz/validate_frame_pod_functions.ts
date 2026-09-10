@@ -1,4 +1,5 @@
 import path from "node:path";
+import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import type { Authenticator } from "@app/lib/auth";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
@@ -26,6 +27,30 @@ const CALL_DIAGNOSTIC_CODES = new Set([
   2769, // No overload accepts the provided arguments.
 ]);
 
+// Names exported by the virtual @dust/react-hooks declaration that take a Pod function reference
+// as their first argument. `callFunction` failures block publishing; hook failures are surfaced
+// as warnings for now (see validateFramePodFunctionReferences) and will start blocking in an
+// upcoming release.
+const CALL_FUNCTION_NAME = "callFunction";
+const POD_FUNCTION_CALLER_NAMES = new Set([
+  CALL_FUNCTION_NAME,
+  "usePodFunction",
+  "usePodFunctionMutation",
+]);
+
+type PodFunctionCallOrigin = "call_function" | "hook";
+
+// Appended to every hook-side warning while the rollout lasts.
+const HOOK_BLOCKING_NOTICE =
+  "this check will start blocking publishing in an upcoming release";
+// Cap on the diagnostics reported per publish, for errors and warnings alike.
+const MAX_REPORTED_DIAGNOSTICS = 5;
+
+interface PodFunctionCall {
+  call: ts.CallExpression;
+  origin: PodFunctionCallOrigin;
+}
+
 type FramePodFunctionValidationErrorCode =
   | "invalid_pod_function_input"
   | "pod_function_not_found"
@@ -46,7 +71,12 @@ function isSourceFile(relPath: string): boolean {
   return SOURCE_EXTENSIONS.some((extension) => relPath.endsWith(extension));
 }
 
-function sourceMayCallPodFunction(relPath: string, code: string): boolean {
+// Collects which of the Pod-function-calling exports (`callFunction` and the hooks) a source
+// references, through named imports or namespace access on a `* as` import.
+function collectPodFunctionCallerNames(
+  relPath: string,
+  code: string
+): Set<string> {
   const sourceFile = ts.createSourceFile(
     relPath,
     code,
@@ -54,6 +84,7 @@ function sourceMayCallPodFunction(relPath: string, code: string): boolean {
     false,
     relPath.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS
   );
+  const referencedNames = new Set<string>();
   const namespaceImports = new Set<string>();
 
   for (const statement of sourceFile.statements) {
@@ -67,13 +98,11 @@ function sourceMayCallPodFunction(relPath: string, code: string): boolean {
 
     const bindings = statement.importClause?.namedBindings;
     if (bindings && ts.isNamedImports(bindings)) {
-      if (
-        bindings.elements.some(
-          (element) =>
-            (element.propertyName?.text ?? element.name.text) === "callFunction"
-        )
-      ) {
-        return true;
+      for (const element of bindings.elements) {
+        const importedName = element.propertyName?.text ?? element.name.text;
+        if (POD_FUNCTION_CALLER_NAMES.has(importedName)) {
+          referencedNames.add(importedName);
+        }
       }
     } else if (bindings && ts.isNamespaceImport(bindings)) {
       namespaceImports.add(bindings.name.text);
@@ -81,26 +110,24 @@ function sourceMayCallPodFunction(relPath: string, code: string): boolean {
   }
 
   if (namespaceImports.size === 0) {
-    return false;
+    return referencedNames;
   }
 
-  let found = false;
   const visit = (node: ts.Node): void => {
     if (
       ts.isPropertyAccessExpression(node) &&
       ts.isIdentifier(node.expression) &&
       namespaceImports.has(node.expression.text) &&
-      node.name.text === "callFunction"
+      POD_FUNCTION_CALLER_NAMES.has(node.name.text)
     ) {
-      found = true;
-      return;
+      referencedNames.add(node.name.text);
     }
 
     ts.forEachChild(node, visit);
   };
   visit(sourceFile);
 
-  return found;
+  return referencedNames;
 }
 
 function extensionForPath(filePath: string): ts.Extension {
@@ -184,7 +211,12 @@ async function buildDustReactHooksDeclaration(
     );
   }
 
-  // Return values stay permissive because this pass only validates calls.
+  // Return values stay permissive because this pass only validates calls. The hooks accept a
+  // null reference (the runtime's "disabled" pattern); with a literal null first argument
+  // TypeScript cannot infer TFunction and checks the input against the union of every function's
+  // input type, so a disabled call whose input matches no published function reports an input
+  // mismatch. The realistic disabled pattern (a conditional reference with the real input)
+  // infers and checks cleanly.
   return new Ok(`${declarations.join("\n")}
 export interface PodFunctionMap {
 ${entries.join("\n")}
@@ -194,17 +226,30 @@ export declare function callFunction<TFunction extends keyof PodFunctionMap>(
   functionId: TFunction,
   input: PodFunctionMap[TFunction]
 ): any;
+
+export declare function usePodFunction<TFunction extends keyof PodFunctionMap>(
+  slug: TFunction | null,
+  input: PodFunctionMap[TFunction]
+): any;
+
+export declare function usePodFunctionMutation<TFunction extends keyof PodFunctionMap>(
+  slug: TFunction | null
+): any;
 `);
 }
 
 type ClassifiedDiagnostic = {
   diagnostic: ts.Diagnostic;
+  origin: PodFunctionCallOrigin;
   type: "input" | "reference";
 };
 
+// The first-argument handling applies to every caller shape alike: the Pod function reference is
+// argument 0 for `callFunction(functionId, input)`, `usePodFunction(slug, input)` and
+// `usePodFunctionMutation(slug)`, and the input — when the caller takes one — is argument 1.
 function classifyDiagnostic(
   diagnostic: ts.Diagnostic,
-  call: ts.CallExpression
+  { call, origin }: PodFunctionCall
 ): ClassifiedDiagnostic | undefined {
   if (diagnostic.start === undefined) {
     return undefined;
@@ -217,7 +262,7 @@ function classifyDiagnostic(
     diagnostic.start >= functionArgument.getStart() &&
     diagnostic.start < functionArgument.getEnd()
   ) {
-    return { diagnostic, type: "reference" };
+    return { diagnostic, origin, type: "reference" };
   }
 
   const inputArgument = call.arguments[1];
@@ -227,12 +272,13 @@ function classifyDiagnostic(
     diagnostic.start >= inputArgument.getStart() &&
     diagnostic.start < inputArgument.getEnd()
   ) {
-    return { diagnostic, type: "input" };
+    return { diagnostic, origin, type: "input" };
   }
 
   if (CALL_DIAGNOSTIC_CODES.has(diagnostic.code)) {
     return {
       diagnostic,
+      origin,
       type: functionArgument ? "input" : "reference",
     };
   }
@@ -241,12 +287,13 @@ function classifyDiagnostic(
 }
 
 function classifyDiagnostics(
-  calls: readonly ts.CallExpression[],
+  calls: readonly PodFunctionCall[],
   diagnostics: readonly ts.Diagnostic[]
 ): ClassifiedDiagnostic[] {
   const sortedCalls = [...calls].sort(
     (left, right) =>
-      left.getStart() - right.getStart() || right.getEnd() - left.getEnd()
+      left.call.getStart() - right.call.getStart() ||
+      right.call.getEnd() - left.call.getEnd()
   );
   const sortedDiagnostics = diagnostics
     .filter(
@@ -254,7 +301,7 @@ function classifyDiagnostics(
         diagnostic.start !== undefined
     )
     .sort((left, right) => left.start - right.start);
-  const activeCalls: ts.CallExpression[] = [];
+  const activeCalls: PodFunctionCall[] = [];
   const classified: ClassifiedDiagnostic[] = [];
   let callIndex = 0;
 
@@ -262,12 +309,13 @@ function classifyDiagnostics(
   for (const diagnostic of sortedDiagnostics) {
     while (
       callIndex < sortedCalls.length &&
-      sortedCalls[callIndex].getStart() <= diagnostic.start
+      sortedCalls[callIndex].call.getStart() <= diagnostic.start
     ) {
       const call = sortedCalls[callIndex];
       while (
         activeCalls.length > 0 &&
-        activeCalls[activeCalls.length - 1].getEnd() <= call.getStart()
+        activeCalls[activeCalls.length - 1].call.getEnd() <=
+          call.call.getStart()
       ) {
         activeCalls.pop();
       }
@@ -277,7 +325,7 @@ function classifyDiagnostics(
 
     while (
       activeCalls.length > 0 &&
-      activeCalls[activeCalls.length - 1].getEnd() <= diagnostic.start
+      activeCalls[activeCalls.length - 1].call.getEnd() <= diagnostic.start
     ) {
       activeCalls.pop();
     }
@@ -337,13 +385,58 @@ function resolveRelativeModule(
   };
 }
 
+// Resolves the declared name behind a call whose signature comes from the virtual
+// @dust/react-hooks declaration, so diagnostics can be attributed to `callFunction` (blocking)
+// or to the hooks (warnings for now).
+function podFunctionCallOrigin(
+  signatures: readonly ts.Signature[]
+): PodFunctionCallOrigin | undefined {
+  for (const signature of signatures) {
+    const declaration = signature.declaration;
+    if (
+      !declaration ||
+      declaration.getSourceFile().fileName !== VIRTUAL_DUST_REACT_HOOKS_PATH ||
+      !ts.isFunctionDeclaration(declaration)
+    ) {
+      continue;
+    }
+
+    const declaredName = declaration.name?.text;
+    if (
+      declaredName !== undefined &&
+      POD_FUNCTION_CALLER_NAMES.has(declaredName)
+    ) {
+      return declaredName === CALL_FUNCTION_NAME ? "call_function" : "hook";
+    }
+  }
+
+  return undefined;
+}
+
+function hookDiagnosticWarning({
+  diagnostic,
+  type,
+}: ClassifiedDiagnostic): ValidationWarning {
+  const headline =
+    type === "reference"
+      ? "Frame references a Pod function that is not available in its Pod"
+      : "Frame passes input that does not match the Pod function contract";
+
+  return {
+    type: "pod_function",
+    message: `${headline} (${HOOK_BLOCKING_NOTICE}): ${formatDiagnostic(diagnostic)}`,
+  };
+}
+
 async function validateCallFunctionTypes({
   functionContracts,
   sources,
 }: {
   functionContracts: readonly PodFunctionContract[];
   sources: ReadonlyMap<string, string>;
-}): Promise<Result<undefined, FramePodFunctionValidationError>> {
+}): Promise<
+  Result<{ warnings: ValidationWarning[] }, FramePodFunctionValidationError>
+> {
   const virtualSources = new Map<string, string>();
   for (const [relPath, code] of sources) {
     if (isSourceFile(relPath)) {
@@ -413,10 +506,7 @@ async function validateCallFunctionTypes({
     host,
   });
   const checker = program.getTypeChecker();
-  const callFunctionCallsBySource = new Map<
-    ts.SourceFile,
-    ts.CallExpression[]
-  >();
+  const podFunctionCallsBySource = new Map<ts.SourceFile, PodFunctionCall[]>();
 
   for (const sourceFile of program.getSourceFiles()) {
     if (sourceFile.fileName === VIRTUAL_DUST_REACT_HOOKS_PATH) {
@@ -428,16 +518,11 @@ async function validateCallFunctionTypes({
         const signatures = checker
           .getTypeAtLocation(node.expression)
           .getCallSignatures();
-        if (
-          signatures.some(
-            (signature) =>
-              signature.declaration?.getSourceFile().fileName ===
-              VIRTUAL_DUST_REACT_HOOKS_PATH
-          )
-        ) {
-          const calls = callFunctionCallsBySource.get(sourceFile) ?? [];
-          calls.push(node);
-          callFunctionCallsBySource.set(sourceFile, calls);
+        const origin = podFunctionCallOrigin(signatures);
+        if (origin !== undefined) {
+          const calls = podFunctionCallsBySource.get(sourceFile) ?? [];
+          calls.push({ call: node, origin });
+          podFunctionCallsBySource.set(sourceFile, calls);
         }
       }
 
@@ -448,7 +533,7 @@ async function validateCallFunctionTypes({
 
   const diagnosticsBySource = new Map<ts.SourceFile, ts.Diagnostic[]>();
   for (const diagnostic of program.getSemanticDiagnostics()) {
-    if (!diagnostic.file || !callFunctionCallsBySource.has(diagnostic.file)) {
+    if (!diagnostic.file || !podFunctionCallsBySource.has(diagnostic.file)) {
       continue;
     }
 
@@ -457,13 +542,22 @@ async function validateCallFunctionTypes({
     diagnosticsBySource.set(diagnostic.file, diagnostics);
   }
 
-  const diagnostics = Array.from(callFunctionCallsBySource).flatMap(
+  const classified = Array.from(podFunctionCallsBySource).flatMap(
     ([sourceFile, calls]) =>
       classifyDiagnostics(calls, diagnosticsBySource.get(sourceFile) ?? [])
   );
 
-  if (diagnostics.length > 0) {
-    const hasInvalidReference = diagnostics.some(
+  // Rollout: hook-based calls were unchecked until now, so their failures surface as warnings
+  // for one release instead of blocking a republish of an existing frame. Flipping hooks to
+  // blocking means folding the "hook" origin into this blocking set (and dropping the hook-only
+  // downgrade in validateFramePodFunctionReferences).
+  const blockingDiagnostics = classified.filter(
+    ({ origin }) => origin === "call_function"
+  );
+  const hookDiagnostics = classified.filter(({ origin }) => origin === "hook");
+
+  if (blockingDiagnostics.length > 0) {
+    const hasInvalidReference = blockingDiagnostics.some(
       ({ type }) => type === "reference"
     );
     return new Err(
@@ -475,22 +569,33 @@ async function validateCallFunctionTypes({
           hasInvalidReference
             ? "Frame references a Pod function that is not available in its Pod"
             : "Frame passes input that does not match the Pod function contract"
-        }:\n${diagnostics
-          .slice(0, 5)
+        }:\n${blockingDiagnostics
+          .slice(0, MAX_REPORTED_DIAGNOSTICS)
           .map(({ diagnostic }) => formatDiagnostic(diagnostic))
           .join("\n")}`
       )
     );
   }
 
-  return new Ok(undefined);
+  return new Ok({
+    warnings: hookDiagnostics
+      .slice(0, MAX_REPORTED_DIAGNOSTICS)
+      .map(hookDiagnosticWarning),
+  });
 }
 
 /**
- * Statically checks Pod function references and the structure of their inputs.
+ * Statically checks Pod function references and the structure of their inputs, for `callFunction`
+ * and the `usePodFunction`/`usePodFunctionMutation` hooks.
  * Pod contracts are authored in Zod, but this check uses their extracted JSON Schema. Runtime-only
  * refinements and value constraints are not always expressible as TypeScript types, so an input can
  * pass here and still fail the authoritative Zod validation when the function runs.
+ *
+ * Rollout: `callFunction` failures block publishing as before. Hook failures — including
+ * frame-level failures (missing Pod scope, schema conversion) of frames that only reach Pod
+ * functions through the hooks — are returned as warnings for one release, because hook-based
+ * frames were previously unchecked and a dangling reference must not hard-fail their next
+ * publish. The blocking flip is a tracked follow-up.
  */
 export async function validateFramePodFunctionReferences(
   auth: Authenticator,
@@ -501,18 +606,45 @@ export async function validateFramePodFunctionReferences(
     file: FileResource;
     sources: ReadonlyMap<string, string>;
   }
-): Promise<Result<undefined, FramePodFunctionValidationError>> {
-  const mayCallPodFunction = Array.from(sources).some(
-    ([relPath, code]) =>
-      isSourceFile(relPath) && sourceMayCallPodFunction(relPath, code)
-  );
-  if (!mayCallPodFunction) {
-    return new Ok(undefined);
+): Promise<
+  Result<{ warnings: ValidationWarning[] }, FramePodFunctionValidationError>
+> {
+  const referencedCallerNames = new Set<string>();
+  for (const [relPath, code] of sources) {
+    if (!isSourceFile(relPath)) {
+      continue;
+    }
+
+    for (const name of collectPodFunctionCallerNames(relPath, code)) {
+      referencedCallerNames.add(name);
+    }
   }
+  if (referencedCallerNames.size === 0) {
+    return new Ok({ warnings: [] });
+  }
+
+  // Hook-only frames get the warning treatment on failures that would otherwise block.
+  const blockOnFailure = referencedCallerNames.has(CALL_FUNCTION_NAME);
+  const frameFailure = (
+    error: FramePodFunctionValidationError
+  ): Result<
+    { warnings: ValidationWarning[] },
+    FramePodFunctionValidationError
+  > =>
+    blockOnFailure
+      ? new Err(error)
+      : new Ok({
+          warnings: [
+            {
+              type: "pod_function",
+              message: `${error.message} (${HOOK_BLOCKING_NOTICE})`,
+            },
+          ],
+        });
 
   const { spaceId } = await file.resolveFrameScopedPathContext(auth);
   if (!spaceId) {
-    return new Err(
+    return frameFailure(
       new FramePodFunctionValidationError(
         "pod_scope_not_found",
         "Frame uses Pod functions but is not scoped to a Pod."
@@ -522,7 +654,7 @@ export async function validateFramePodFunctionReferences(
 
   const space = await SpaceResource.fetchById(auth, spaceId);
   if (!space || !space.isProject()) {
-    return new Err(
+    return frameFailure(
       new FramePodFunctionValidationError(
         "pod_scope_not_found",
         "The Frame's Pod is not accessible."
@@ -542,5 +674,13 @@ export async function validateFramePodFunctionReferences(
     inputSchema: sandboxFunction.inputSchema,
   }));
 
-  return validateCallFunctionTypes({ functionContracts, sources });
+  const validation = await validateCallFunctionTypes({
+    functionContracts,
+    sources,
+  });
+  if (validation.isErr()) {
+    return frameFailure(validation.error);
+  }
+
+  return validation;
 }
