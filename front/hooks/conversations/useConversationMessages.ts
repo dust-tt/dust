@@ -15,11 +15,13 @@ export function useConversationMessages({
   conversationId,
   workspaceId,
   limit,
+  disabled = false,
 }: {
   conversationId?: string | null;
   workspaceId: string;
   limit: number;
   startAtRank?: number;
+  disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const messagesFetcher: Fetcher<FetchConversationMessagesResponse> = fetcher;
@@ -27,7 +29,7 @@ export function useConversationMessages({
   const { data, error, mutate, size, setSize, isLoading, isValidating } =
     useSWRInfiniteWithDefaults(
       (pageIndex: number, previousPageData) => {
-        if (!conversationId) {
+        if (disabled || !conversationId) {
           return null;
         }
 

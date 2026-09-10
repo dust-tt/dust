@@ -125,6 +125,8 @@ interface ConversationViewerProps {
   owner: WorkspaceType;
   user: UserType;
   clientSideMCPServerIds?: string[];
+  /** Set while the viewer is mounted but not shown, to skip its fetches. */
+  disabled?: boolean;
 }
 
 function easeOutQuint(x: number): number {
@@ -257,6 +259,7 @@ export const ConversationViewer = ({
   setLimitReachedCode,
   limitReachedCode,
   clientSideMCPServerIds,
+  disabled = false,
 }: ConversationViewerProps) => {
   const virtuosoMessageListRef =
     useRef<
@@ -282,6 +285,7 @@ export const ConversationViewer = ({
     conversationId,
     workspaceId: owner.sId,
     options: {
+      disabled,
       refreshInterval: (data) =>
         data?.conversation.forkingData?.forkedFrom?.fileCopyStatus === "pending"
           ? FORK_PREPARATION_POLL_INTERVAL_MS
@@ -340,6 +344,7 @@ export const ConversationViewer = ({
     conversationId,
     workspaceId: owner.sId,
     limit: DEFAULT_PAGE_LIMIT,
+    disabled,
   });
 
   const { mutateConversationParticipants } = useConversationParticipants({

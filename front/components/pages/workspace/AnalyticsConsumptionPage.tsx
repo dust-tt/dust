@@ -266,7 +266,7 @@ export function AnalyticsConsumptionPage() {
               owner={owner}
               user={user}
               onClose={closePanel}
-              disabled={!isOpen}
+              isOpen={isOpen}
             />
           }
         >
