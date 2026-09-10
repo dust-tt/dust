@@ -2,7 +2,6 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
-import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import type { ConversationError } from "@app/types/assistant/conversation";
 import type {
   PokeAgentMessageType,
@@ -10,7 +9,6 @@ import type {
 } from "@app/types/poke";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
-import groupBy from "lodash/groupBy";
 
 export async function getPokeConversation(
   auth: Authenticator,
@@ -34,27 +32,16 @@ export async function getPokeConversation(
     const agentMessages = pokeConversation.content
       .flat()
       .filter((m): m is PokeAgentMessageType => m.type === "agent_message");
-    const agentMessageIds = [
-      ...new Set(agentMessages.map((m) => m.agentMessageId)),
-    ];
 
     const agentMessagesWithRunIds = await AgentMessageModel.findAll({
       where: {
-        id: agentMessageIds,
+        id: [...new Set(agentMessages.map((m) => m.agentMessageId))],
         workspaceId: owner.id,
       },
       attributes: ["id", "runIds"],
     });
     const runIdsByAgentMessageId = new Map(
       agentMessagesWithRunIds.map((m) => [m.id, m.runIds])
-    );
-    const stepContents = await AgentStepContentResource.fetchByAgentMessages(
-      auth,
-      { agentMessageIds }
-    );
-    const stepContentsByAgentMessageId = groupBy(
-      stepContents,
-      "agentMessageId"
     );
 
     // Cycle through the messages and actions and enrich them with runId(s) and timestamps.
@@ -64,9 +51,6 @@ export async function getPokeConversation(
           const runIds = runIdsByAgentMessageId.get(m.agentMessageId) ?? null;
 
           m.runIds = runIds;
-          m.contents = (stepContentsByAgentMessageId[m.agentMessageId] ?? [])
-            .toSorted((a, b) => a.step - b.step || a.index - b.index)
-            .map((sc) => sc.toPokeJSON());
 
           // Generate URLs for runIds.
           if (runIds) {

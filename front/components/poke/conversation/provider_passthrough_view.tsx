@@ -11,7 +11,6 @@ import {
 
 interface ProviderPassthroughEntry {
   block: unknown;
-  createdAt?: number;
   key: string;
   provider: string;
   step: number;
@@ -25,14 +24,13 @@ export function getProviderPassthroughEntries(
   contents: PokeAgentMessageType["contents"]
 ): ProviderPassthroughEntry[] {
   return removeNulls(
-    contents.map(({ content, createdAt, step }, contentIndex) => {
+    contents.map(({ content, step }, contentIndex) => {
       if (content.type !== "provider_passthrough") {
         return null;
       }
 
       return {
         block: content.value.block,
-        createdAt,
         key: `${step}-${contentIndex}`,
         provider: content.value.provider,
         step,
@@ -168,11 +166,7 @@ export function ProviderPassthroughView({
           </span>
         </span>
         <span className="flex min-w-0 flex-1 items-center gap-3">
-          <span className="w-24 shrink-0 text-sm tabular-nums text-muted-foreground">
-            {entry.createdAt !== undefined
-              ? new Date(entry.createdAt).toLocaleTimeString()
-              : "—"}
-          </span>
+          <span className="w-24 shrink-0" />
           <Chip label={`Step ${entry.step}`} />
           <span
             className="min-w-0 truncate text-sm font-medium text-foreground"
