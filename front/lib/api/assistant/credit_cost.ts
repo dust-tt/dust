@@ -280,8 +280,10 @@ export async function computeAndStoreAgentMessageCredits(
       }
     }
 
-    // Per-API-key cap, for calls authenticated with an API key.
-    const apiKey = auth.key();
+    // Per-API-key cap, charged to the attributed key: the originating key for
+    // internal system-key flows (run_agent sub-agents), the request's own key
+    // otherwise.
+    const apiKey = auth.keyForUsageAttribution();
     if (apiKey) {
       await recordApiKeySpendLimitUsage(auth, {
         keyModelId: apiKey.id,

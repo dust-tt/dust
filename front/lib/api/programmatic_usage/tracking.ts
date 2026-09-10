@@ -407,7 +407,7 @@ export async function trackProgrammaticCost(
       localLogger
     );
 
-  const keyAuth = auth.key();
+  const keyAuth = auth.keyForUsageAttribution();
   if (keyAuth) {
     await incrementRedisKeyUsageMicroUsd(keyAuth.id, costWithMarkupMicroUsd);
   }
