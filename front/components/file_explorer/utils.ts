@@ -10,6 +10,7 @@ import {
   stripMimeParameters,
 } from "@app/types/files";
 import { TOOL_OUTPUTS_FOLDER_NAME } from "@app/types/mount_path";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const VIEWER_CONTENT_TYPES = new Set<string>([
   "application/msword",
@@ -728,4 +729,22 @@ export function getChildrenAtFolderPath(
 
   const folder = findTreeNodeByPath(tree, folderPath);
   return folder?.isDirectory ? folder.children : [];
+}
+
+export type FileExplorerPreferencesScope =
+  | { kind: "pod"; podId: string }
+  | { kind: "conversation"; workspaceId: string };
+
+/** Storage key for the explorer's persisted layout and sort preferences. */
+export function getFileExplorerPreferencesKey(
+  scope: FileExplorerPreferencesScope
+): string {
+  switch (scope.kind) {
+    case "pod":
+      return `pod:${scope.podId}`;
+    case "conversation":
+      return `conversation:${scope.workspaceId}`;
+    default:
+      assertNever(scope);
+  }
 }

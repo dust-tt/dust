@@ -9,7 +9,10 @@ import type {
   FileExplorerVirtualScopeRoot,
 } from "@app/components/file_explorer/types";
 import { useFileExplorerDownload } from "@app/components/file_explorer/useFileExplorerDownload";
-import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
+import {
+  getFileExplorerPreferencesKey,
+  withVirtualExplorerPath,
+} from "@app/components/file_explorer/utils";
 import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
@@ -282,9 +285,11 @@ export function ConversationFileExplorer({
           onOpenInteractive={onOpenInteractive}
           onOpenInPanel={onOpenInPanel}
           owner={owner}
-          preferencesResourceId={
-            isPod ? `pod:${conversation.spaceId}` : `conversation:${owner.sId}`
-          }
+          preferencesKey={getFileExplorerPreferencesKey(
+            isPod
+              ? { kind: "pod", podId: conversation.spaceId }
+              : { kind: "conversation", workspaceId: owner.sId }
+          )}
           virtualScopeRoots={virtualScopeRoots}
         />
       </div>

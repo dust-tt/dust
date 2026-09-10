@@ -373,7 +373,7 @@ describe("FileExplorer preferences", () => {
     lastModifiedMs: 1,
   });
 
-  function renderExplorer(preferencesResourceId?: string) {
+  function renderExplorer(preferencesKey?: string) {
     return render(
       <ControlledFileExplorer
         defaultViewMode="grid"
@@ -381,23 +381,21 @@ describe("FileExplorer preferences", () => {
         getFileUrl={(path) => `/files/${path}`}
         isLoading={false}
         onDownload={vi.fn().mockResolvedValue(undefined)}
-        preferencesResourceId={preferencesResourceId}
+        preferencesKey={preferencesKey}
       />
     );
   }
 
   function isListLayout() {
-    return screen.getByText("notes.txt").closest(".grid-cols-2") === null;
+    const layout = screen
+      .getByText("notes.txt")
+      .closest("[data-layout]")
+      ?.getAttribute("data-layout");
+    return layout === "list";
   }
 
-  // The view toggle is icon-only; it sits right before the sort dropdown.
   async function pickListLayout(user: ReturnType<typeof userEvent.setup>) {
-    const sortButton = screen.getByRole("button", { name: /Last modified|Name/ });
-    const viewToggle = sortButton.previousElementSibling;
-    if (!(viewToggle instanceof HTMLElement)) {
-      throw new Error("View toggle not found.");
-    }
-    await user.click(viewToggle);
+    await user.click(screen.getByRole("button", { name: "Layout" }));
     await user.click(await screen.findByText("List"));
   }
 
@@ -423,7 +421,7 @@ describe("FileExplorer preferences", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps the default when no resource id is given", async () => {
+  it("keeps the default when no preferences key is given", async () => {
     const user = userEvent.setup();
     const { unmount } = renderExplorer();
 
