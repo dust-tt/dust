@@ -27,7 +27,10 @@ function Consumer() {
   );
 }
 
-function withSidePanel(children: ReactNode) {
+function withSidePanel(
+  children: ReactNode,
+  { hasConversation = true }: { hasConversation?: boolean } = {}
+) {
   const openPanel = vi.fn();
   return {
     openPanel,
@@ -35,6 +38,7 @@ function withSidePanel(children: ReactNode) {
       <ConversationSidePanelContext.Provider
         value={{
           currentPanel: undefined,
+          hasConversation,
           isPanelClosing: false,
           openPanel,
           togglePanel: vi.fn(),
@@ -82,5 +86,24 @@ describe("useFilePreviewContext", () => {
       type: "file_preview",
       filePath: "conversation-c1/report.pdf",
     });
+  });
+
+  it("downloads instead of previewing when there is no conversation", () => {
+    const windowOpen = vi.spyOn(window, "open").mockImplementation(() => null);
+
+    const { openPanel, ui } = withSidePanel(
+      <FilePreviewProvider owner={mockOwner}>
+        <Consumer />
+      </FilePreviewProvider>,
+      { hasConversation: false }
+    );
+    render(ui);
+
+    fireEvent.click(screen.getByRole("button", { name: "open" }));
+
+    expect(openPanel).not.toHaveBeenCalled();
+    expect(windowOpen).toHaveBeenCalled();
+
+    windowOpen.mockRestore();
   });
 });

@@ -17,6 +17,7 @@ interface PreviewableFile {
 }
 
 type FilePreviewContextType = {
+  canPreview: boolean;
   openFilePreview: (file: PreviewableFile) => void;
   openFramePreview: (
     frame: Omit<PreviewableFile, "contentType">
@@ -34,12 +35,12 @@ export function FilePreviewProvider({
   owner,
   children,
 }: FilePreviewProviderProps) {
-  const { openPanel } = useConversationSidePanelContext();
+  const { hasConversation, openPanel } = useConversationSidePanelContext();
   const sendNotification = useSendNotification();
 
   const openFilePreview = useCallback(
     (file: PreviewableFile) => {
-      if (isFilePreviewableContentType(file.contentType)) {
+      if (isFilePreviewableContentType(file.contentType) && hasConversation) {
         if (file.filePath) {
           openPanel({ type: "file_preview", filePath: file.filePath });
           return;
@@ -60,7 +61,7 @@ export function FilePreviewProvider({
         window.open(downloadUrl, "_blank");
       }
     },
-    [openPanel, owner]
+    [hasConversation, openPanel, owner]
   );
 
   const openFramePreview = useCallback(
@@ -84,8 +85,8 @@ export function FilePreviewProvider({
   );
 
   const contextValue = useMemo(
-    () => ({ openFilePreview, openFramePreview }),
-    [openFilePreview, openFramePreview]
+    () => ({ canPreview: hasConversation, openFilePreview, openFramePreview }),
+    [hasConversation, openFilePreview, openFramePreview]
   );
 
   return (

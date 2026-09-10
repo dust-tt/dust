@@ -20,6 +20,7 @@ function renderWithPreviewProviders(children: React.ReactNode) {
       <ConversationSidePanelContext.Provider
         value={{
           currentPanel: undefined,
+          hasConversation: true,
           isPanelClosing: false,
           openPanel,
           togglePanel: vi.fn(),

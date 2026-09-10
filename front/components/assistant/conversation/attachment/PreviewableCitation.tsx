@@ -55,7 +55,9 @@ export function PreviewableCitation({
   tooltipLabel,
   variant = "card",
 }: PreviewableCitationProps) {
-  const { openFilePreview, openFramePreview } = useFilePreviewContext();
+  // Previews render in the side panel, so without one the citation is static.
+  const { canPreview, openFilePreview, openFramePreview } =
+    useFilePreviewContext();
 
   const handleClick = async () => {
     if (isFrameContentType(contentType)) {
@@ -79,24 +81,32 @@ export function PreviewableCitation({
         title
       ));
 
+    const inlineContent = (
+      <>
+        <Icon visual={FileIcon} size="xs" className="shrink-0 self-center" />
+        <span className="truncate">{title}</span>
+      </>
+    );
+    const inlineClassName =
+      "inline-flex max-w-full items-baseline gap-1 align-baseline";
+
     return (
       <Tooltip
         tooltipTriggerAsChild
         trigger={
-          <Hoverable variant="highlight" asChild>
-            <button
-              type="button"
-              onClick={handleClick}
-              className="inline-flex max-w-full items-baseline gap-1 align-baseline"
-            >
-              <Icon
-                visual={FileIcon}
-                size="xs"
-                className="shrink-0 self-center"
-              />
-              <span className="truncate">{title}</span>
-            </button>
-          </Hoverable>
+          canPreview ? (
+            <Hoverable variant="highlight" asChild>
+              <button
+                type="button"
+                onClick={handleClick}
+                className={inlineClassName}
+              >
+                {inlineContent}
+              </button>
+            </Hoverable>
+          ) : (
+            <span className={inlineClassName}>{inlineContent}</span>
+          )
         }
         label={inlineTooltipLabel}
       />
@@ -118,7 +128,7 @@ export function PreviewableCitation({
               title={title}
               isLoading={isLoading}
               onClose={onRemove}
-              onClick={handleClick}
+              onClick={canPreview ? handleClick : undefined}
             />
           </Citation>
         }
@@ -128,17 +138,20 @@ export function PreviewableCitation({
   }
 
   const FileIcon = getFileTypeIcon(contentType, title);
-  return (
-    <FileCitationCard
-      icon={icon ?? FileIcon}
-      title={title}
-      description={description}
-      size={size}
-      isLoading={isLoading}
-      loadingLabel={loadingLabel}
-      onClick={handleClick}
-      onRemove={onRemove}
-      tooltipLabel={tooltipLabel ?? title}
-    />
+  const cardProps = {
+    icon: icon ?? FileIcon,
+    title,
+    description,
+    size,
+    isLoading,
+    loadingLabel,
+    onRemove,
+    tooltipLabel: tooltipLabel ?? title,
+  };
+
+  return canPreview ? (
+    <FileCitationCard {...cardProps} onClick={handleClick} />
+  ) : (
+    <FileCitationCard {...cardProps} />
   );
 }
