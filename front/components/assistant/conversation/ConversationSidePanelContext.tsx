@@ -2,6 +2,7 @@ import { getDefaultRightPanelSize } from "@app/components/assistant/conversation
 import type { OpenPanelParams } from "@app/components/assistant/conversation/side_panel_params";
 import {
   panelDataKey,
+  panelIdentityKey,
   panelParamsFromHash,
 } from "@app/components/assistant/conversation/side_panel_params";
 import type { AgentMessageWithStreaming } from "@app/components/assistant/conversation/types";
@@ -165,8 +166,7 @@ export function ConversationSidePanelProvider({
       const current = isPanelClosing ? null : currentParamsRef.current;
       const isShown =
         current !== null &&
-        current.type === params.type &&
-        panelDataKey(current) === panelDataKey(params);
+        panelIdentityKey(current) === panelIdentityKey(params);
 
       if (isShown) {
         if (toggle) {

@@ -66,6 +66,16 @@ export function panelDataKey(params: OpenPanelParams): string {
   }
 }
 
+// What makes two panels "the same view" for history purposes. Unlike the hash key, a Frame's
+// timestamp is ignored: streaming refreshes the same Frame with a new timestamp, and that must
+// update the shown panel rather than stack a copy of it.
+export function panelIdentityKey(params: OpenPanelParams): string {
+  if (params.type === INTERACTIVE_CONTENT_SIDE_PANEL_TYPE) {
+    return `${params.type}:${params.fileId}`;
+  }
+  return `${params.type}:${panelDataKey(params)}`;
+}
+
 // Inverse of panelDataKey, for panels restored from the URL hash (deep links, back/forward).
 export function panelParamsFromHash(
   type: ConversationSidePanelType,
