@@ -5,6 +5,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import * as capNotification from "@app/lib/notifications/workflows/programmatic-cap-reached";
+import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
@@ -161,6 +162,24 @@ describe("notifyAdminsTriggerBlockedByProgrammaticCap", () => {
     expect(notify().mock.calls[1][1].idempotencyKey).not.toBe(
       notify().mock.calls[0][1].idempotencyKey
     );
+  });
+
+  it("does not re-arm on an unrelated usage-configuration change", async () => {
+    const { auth, trigger } = await setup();
+    await syncProgrammaticUsageLimit({ auth, monthlyCapCredits: 0 });
+
+    await notifyAdminsTriggerBlockedByProgrammaticCap(auth, { trigger });
+    expect(notify()).toHaveBeenCalledTimes(1);
+
+    const configuration =
+      await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+    await configuration?.updateConfiguration(auth, {
+      defaultDiscountPercent: 10,
+    });
+    advanceClockPastThrottleWindow();
+    await notifyAdminsTriggerBlockedByProgrammaticCap(auth, { trigger });
+
+    expect(notify()).toHaveBeenCalledTimes(1);
   });
 
   it("keys a positive cap on the billing cycle", async () => {

@@ -41,7 +41,7 @@ describe("buildProgrammaticCapReachedEmailCopy", () => {
       "[Dust] Your programmatic triggers are paused in Acme"
     );
     expect(content).toContain(
-      'A scheduled trigger in your Dust workspace "Acme" could not run because the workspace\'s monthly programmatic usage limit is set to 0 credits.'
+      'A programmatic trigger in your Dust workspace "Acme" could not run because the workspace\'s monthly programmatic usage limit is set to 0 credits.'
     );
     expect(content).toContain(
       "Programmatic triggers will remain blocked until you set a positive limit in workspace usage settings."

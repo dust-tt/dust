@@ -21,8 +21,8 @@ const ALERT_REDIS_ORIGIN = "programmatic_cap_trigger_alert" as const;
 // the database, one cheap Redis claim per workspace throttles the check itself.
 const ALERT_CHECK_THROTTLE_SECONDS = 60;
 
-// The sent marker is keyed on the cap state (configuration row version, billing
-// cycle), so a state change always allows a new email. When a marker expires
+// The sent marker is keyed on the cap state (cap value, billing cycle), so a
+// cap change always allows a new email. When a marker expires
 // while the workspace is still blocked, the next run sends one reminder.
 // A 0 cap has no cycle to roll over on: one reminder per quarter at most.
 const DISABLED_CAP_ALERT_TTL_SECONDS = 90 * 24 * 60 * 60; // 90 days.
@@ -76,8 +76,8 @@ async function markAlertSent(
  * The reason distinguishes a cap set to 0 (`programmatic_cap_disabled`, nothing
  * was consumed) from a positive cap that was used up
  * (`programmatic_cap_exhausted`). The idempotency key covers workspace, reason,
- * the usage-configuration row version (any write to that row, not only the cap,
- * re-arms the email) and, for a positive cap, the billing cycle. A sent marker
+ * the cap value and, for a positive cap, the billing cycle, so unrelated
+ * usage-configuration edits never re-arm the email. A sent marker
  * in Redis keeps repeated runs from calling Novu again; it is only written after
  * a successful send, and the Novu `transactionId` on the same key absorbs the
  * race between two concurrent runs.
@@ -103,16 +103,14 @@ export async function notifyAdminsTriggerBlockedByProgrammaticCap(
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
   const monthlyCapCredits =
     configuration?.programmaticMonthlyCapAwuCredits ?? 0;
-  const configurationVersion = configuration
-    ? `config-${configuration.updatedAt.getTime()}`
-    : "config-none";
+  const capVersion = `cap-${monthlyCapCredits}`;
 
   let reason: ProgrammaticCapBlockReason;
   let idempotencyKey: string;
   let ttlSeconds: number;
   if (monthlyCapCredits <= 0) {
     reason = "programmatic_cap_disabled";
-    idempotencyKey = `${workspace.sId}-${reason}-${configurationVersion}`;
+    idempotencyKey = `${workspace.sId}-${reason}-${capVersion}`;
     ttlSeconds = DISABLED_CAP_ALERT_TTL_SECONDS;
   } else {
     // A positive cap can only be reached over a resolved billing cycle; without
@@ -122,7 +120,7 @@ export async function notifyAdminsTriggerBlockedByProgrammaticCap(
       return new Ok(undefined);
     }
     reason = "programmatic_cap_exhausted";
-    idempotencyKey = `${workspace.sId}-${reason}-${bounds.label}-${configurationVersion}`;
+    idempotencyKey = `${workspace.sId}-${reason}-${bounds.label}-${capVersion}`;
     ttlSeconds = EXHAUSTED_CAP_ALERT_TTL_SECONDS;
   }
 
