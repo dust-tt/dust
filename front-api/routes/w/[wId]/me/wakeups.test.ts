@@ -60,6 +60,9 @@ describe("GET /api/w/:wId/me/wakeups", () => {
         timezone: "Europe/Paris",
       },
     });
+    // Numeric database identifiers must not reach browser clients, and the owner is the caller.
+    expect(data.wakeUps[0].wakeUp).not.toHaveProperty("id");
+    expect(data.wakeUps[0].wakeUp).not.toHaveProperty("user");
     expect(data.wakeUps[0].conversation).toEqual({
       sId: conversation.sId,
       title: "Test Conversation",

@@ -2,12 +2,15 @@ import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import type { ConversationRefType } from "@app/types/assistant/conversation";
-import type { WakeUpStatus, WakeUpType } from "@app/types/assistant/wakeups";
+import type {
+  UserWakeUpType,
+  WakeUpStatus,
+} from "@app/types/assistant/wakeups";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 export interface UserWakeUpWithConversation {
   conversation: ConversationRefType;
-  wakeUp: WakeUpType;
+  wakeUp: UserWakeUpType;
 }
 
 export interface UserWakeUps {
@@ -72,7 +75,9 @@ export async function listUserWakeUps(
           ? refByConversationId.get(conversationId)
           : undefined;
 
-        return conversation ? { conversation, wakeUp: wakeUp.toJSON() } : null;
+        return conversation
+          ? { conversation, wakeUp: wakeUp.toUserListJSON() }
+          : null;
       })
     ),
   };

@@ -6,7 +6,7 @@ import {
   describeWakeUpSchedule,
   getNextWakeUpFireAtFromScheduleConfig,
 } from "@app/lib/utils/wakeup_description";
-import type { WakeUpType } from "@app/types/assistant/wakeups";
+import type { UserWakeUpType } from "@app/types/assistant/wakeups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { DataTable, Spinner, Tooltip } from "@dust-tt/sparkle";
@@ -15,8 +15,7 @@ import { useMemo, useState } from "react";
 
 const WAKE_UPS_PAGE_SIZE = 10;
 
-
-function formatSchedule(wakeUp: WakeUpType): string {
+function formatSchedule(wakeUp: UserWakeUpType): string {
   switch (wakeUp.scheduleConfig.type) {
     case "one_shot":
       // `describeWakeUpSchedule` renders a one-shot as its time of day alone ("at 11:06"), which cannot
@@ -97,11 +96,11 @@ const COLUMNS: ColumnDef<WakeUpRowData>[] = [
         <DataTable.CellContent className="w-full justify-start text-left">
           <span className="truncate text-sm tabular-nums text-muted-foreground">
             {nextFireAt !== null
-            ? new Date(nextFireAt).toLocaleString(undefined, {
-                dateStyle: "short",
-                timeStyle: "short",
-              })
-            : "—"}
+              ? new Date(nextFireAt).toLocaleString(undefined, {
+                  dateStyle: "short",
+                  timeStyle: "short",
+                })
+              : "—"}
           </span>
         </DataTable.CellContent>
       );

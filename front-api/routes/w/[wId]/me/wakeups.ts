@@ -27,7 +27,9 @@ app.get(
     const auth = ctx.get("auth");
     const { limit, offset, status } = ctx.req.valid("query");
 
-    return ctx.json(await listUserWakeUps(auth, { limit, offset, status }));
+    const wakeUps = await listUserWakeUps(auth, { limit, offset, status });
+
+    return ctx.json(wakeUps);
   }
 );
 

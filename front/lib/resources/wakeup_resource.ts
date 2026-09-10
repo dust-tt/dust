@@ -23,6 +23,7 @@ import {
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type {
+  UserWakeUpType,
   WakeUpScheduleConfig,
   WakeUpStatus,
   WakeUpType,
@@ -834,6 +835,39 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
       fireCount: this.fireCount,
       maxFires: this.maxFires(),
       user: this.user.toJSON(),
+    };
+  }
+
+  /**
+   * @cc [owner:fabiencelier,label:security] no-model-ids-for-owner
+   * The returned object MUST NOT carry any numeric database identifier, neither the wake-up's own
+   * `id` nor one nested in a serialized user: it is served to browser clients, which address
+   * wake-ups by `sId` only.
+   */
+  toUserListJSON(): UserWakeUpType {
+    // Listing a user their own wake-ups: `user` would repeat the caller on every row, and `id` is
+    // a ModelId that must not leave the server. Fields are picked explicitly so adding one to
+    // `WakeUpType` is a deliberate decision here too.
+    const {
+      sId,
+      createdAt,
+      agentConfigurationId,
+      scheduleConfig,
+      reason,
+      status,
+      fireCount,
+      maxFires,
+    } = this.toJSON();
+
+    return {
+      sId,
+      createdAt,
+      agentConfigurationId,
+      scheduleConfig,
+      reason,
+      status,
+      fireCount,
+      maxFires,
     };
   }
 
