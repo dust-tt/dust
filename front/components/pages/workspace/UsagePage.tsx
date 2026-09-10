@@ -503,12 +503,6 @@ export function UsagePage() {
     }
   }, [isCreditPriced, openChangeMySeatParam, myUsage]);
 
-  // CreditPoolCards (rendered below, on the new page) fetches this same
-  // endpoint with the same key — SWR dedupes the two calls into one request,
-  // so this doesn't add a second one. Reading it here too (rather than the
-  // separate awu-pool-summary endpoint, which just recomputes the same
-  // current-cycle figures) is what lets the legacy pool section and the
-  // top-up dialog share that single fetch instead of triggering their own.
   const {
     awuPoolCurrentCycle,
     isAwuPoolCurrentCycleLoading,
