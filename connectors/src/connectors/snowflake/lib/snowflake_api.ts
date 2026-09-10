@@ -631,14 +631,6 @@ async function _checkRoleGrants(
   for (const g of [...currentGrantsRes.value, ...futureGrantsRes.value]) {
     const grantOn = "granted_on" in g ? g.granted_on : g.grant_on;
 
-    // Workspaces contain editor files; these grants do not allow modifying table data.
-    if (
-      grantOn === "WORKSPACE" ||
-      (grantOn === "SCHEMA" && g.privilege === "CREATE WORKSPACE")
-    ) {
-      continue;
-    }
-
     if (
       [
         "TABLE",
@@ -661,7 +653,7 @@ async function _checkRoleGrants(
           )
         );
       }
-    } else if (grantOn === "WAREHOUSE") {
+    } else if (["WAREHOUSE", "DATABASE"].includes(grantOn)) {
       if (!["USAGE", "READ", "MONITOR"].includes(g.privilege)) {
         return new Err(
           new TestConnectionError(
@@ -670,12 +662,25 @@ async function _checkRoleGrants(
           )
         );
       }
-    } else if (["SCHEMA", "DATABASE"].includes(grantOn)) {
-      if (!["USAGE", "READ", "MONITOR"].includes(g.privilege)) {
+    } else if (grantOn === "SCHEMA") {
+      // CREATE WORKSPACE creates editor files without granting table write access.
+      if (
+        !["USAGE", "READ", "MONITOR", "CREATE WORKSPACE"].includes(g.privilege)
+      ) {
         return new Err(
           new TestConnectionError(
             "NOT_READONLY",
-            `Non-usage, read, or monitor grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+            `Non-usage, read, monitor, or create workspace grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+          )
+        );
+      }
+    } else if (grantOn === "WORKSPACE") {
+      // These privileges manage editor files; queries still use the role's data privileges.
+      if (!["READ", "WRITE", "OWNERSHIP"].includes(g.privilege)) {
+        return new Err(
+          new TestConnectionError(
+            "NOT_READONLY",
+            `Unsupported grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
           )
         );
       }
