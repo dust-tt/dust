@@ -12,9 +12,8 @@ import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
-import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { useInputBarOverlayTracker } from "@app/components/assistant/conversation/input_bar/useInputBarOverlayTracker";
-import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
+import { EditorFormattingToolbar } from "@app/components/editor/EditorFormattingToolbar";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { getAvailableInputBarSlashCommands } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { SKILL_NODE_TYPE } from "@app/components/editor/extensions/input_bar/SkillNode";
@@ -96,7 +95,6 @@ import {
   FilePlus03,
   Globe01,
   Plus,
-  Toolbar,
   TooltipContent,
   TooltipProvider,
   TooltipRoot,
@@ -1697,13 +1695,9 @@ const InputBarContainer = ({
               )}
             />
           </div>
-          <EditorSelectionToolbar editor={editor} disabled={isMobile}>
-            {editor && (
-              <Toolbar className="inline-flex">
-                <ToolBarContent editor={editor} />
-              </Toolbar>
-            )}
-          </EditorSelectionToolbar>
+          {editor && (
+            <EditorFormattingToolbar editor={editor} disabled={isMobile} />
+          )}
           <div
             className={cn("mt-auto flex w-full flex-col", "pt-2 pb-3")}
             style={{

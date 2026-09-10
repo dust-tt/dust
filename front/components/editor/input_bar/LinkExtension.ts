@@ -1,13 +1,38 @@
+import type { Editor } from "@tiptap/core";
 import Link from "@tiptap/extension-link";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+
+export const OPEN_LINK_DIALOG_EVENT = "dust:openLinkDialog";
+
+export type OpenLinkDialogEvent = CustomEvent<{ editor: Editor }>;
+
+export function isOpenLinkDialogEventFor(
+  event: Event,
+  editor: Editor
+): boolean {
+  if (!(event instanceof CustomEvent)) {
+    return false;
+  }
+  const { detail } = event;
+  return (
+    typeof detail === "object" &&
+    detail !== null &&
+    "editor" in detail &&
+    detail.editor === editor
+  );
+}
 
 export const LinkExtension = Link.extend({
   addKeyboardShortcuts() {
     return {
       ...this.parent?.(),
       "Mod-Shift-u": () => {
-        // This event is caught by the toolbar content to open the link dialog.
-        const event = new CustomEvent("dust:openLinkDialog");
+        // Caught by the editor's link dialog, which carries the editor so that only the one the
+        // shortcut was pressed in reacts.
+        const event: OpenLinkDialogEvent = new CustomEvent(
+          OPEN_LINK_DIALOG_EVENT,
+          { detail: { editor: this.editor } }
+        );
         window.dispatchEvent(event);
         return true;
       },

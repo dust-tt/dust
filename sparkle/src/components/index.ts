@@ -302,11 +302,18 @@ export type {
   ToolbarContentGroup,
   ToolbarContentProps,
   ToolbarIconProps,
+  ToolbarLinkDialogProps,
   ToolbarLinkProps,
   ToolbarProps,
   ToolbarVariant,
 } from "./Toolbar";
-export { Toolbar, ToolbarContent, ToolbarIcon, ToolbarLink } from "./Toolbar";
+export {
+  Toolbar,
+  ToolbarContent,
+  ToolbarIcon,
+  ToolbarLink,
+  ToolbarLinkDialog,
+} from "./Toolbar";
 export {
   Tooltip,
   TooltipContent,

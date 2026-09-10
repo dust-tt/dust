@@ -1,9 +1,8 @@
-import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
-import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
+import { EditorFormattingToolbar } from "@app/components/editor/EditorFormattingToolbar";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { buildMarkdownEditorExtensions } from "@app/lib/editor/build_markdown_editor_extensions";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
-import { cn, Toolbar } from "@dust-tt/sparkle";
+import { cn } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
 import type { Editor, EditorOptions } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -302,12 +301,11 @@ export function MarkdownEditor({
       <div className="relative">
         <EditorContent editor={editor} />
         {shouldShowFormattingMenu && editor ? (
-          <EditorSelectionToolbar editor={editor} disabled={isMobile}>
-            <Toolbar className="inline-flex">
-              <ToolBarContent editor={editor} />
-              {toolbarExtra}
-            </Toolbar>
-          </EditorSelectionToolbar>
+          <EditorFormattingToolbar
+            editor={editor}
+            disabled={isMobile}
+            extraActions={toolbarExtra}
+          />
         ) : null}
       </div>
       {shouldShowCharacterCount && editor ? (

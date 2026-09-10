@@ -15,6 +15,7 @@ import {
   ToolbarContent,
   ToolbarIcon,
   ToolbarLink,
+  ToolbarLinkDialog,
 } from "../index_with_tw_base";
 
 const TOOLBAR_VARIANTS = ["inline", "overlay"] as const;
@@ -85,14 +86,7 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
       items: [
         <ToolbarLink
           key="link"
-          isOpen={isLinkDialogOpen}
-          onOpenChange={handleLinkDialogOpenChange}
-          onOpenDialog={handleLinkDialogOpen}
-          onSubmit={handleLinkSubmit}
-          linkText={linkText}
-          linkUrl={linkUrl}
-          onLinkTextChange={handleLinkTextChange}
-          onLinkUrlChange={handleLinkUrlChange}
+          onClick={handleLinkDialogOpen}
           active={isLinkDialogOpen}
           tooltip="Link"
           size={buttonSize}
@@ -146,6 +140,18 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
     },
   ];
 
+  const linkDialog = (
+    <ToolbarLinkDialog
+      isOpen={isLinkDialogOpen}
+      onOpenChange={handleLinkDialogOpenChange}
+      onSubmit={handleLinkSubmit}
+      linkText={linkText}
+      linkUrl={linkUrl}
+      onLinkTextChange={handleLinkTextChange}
+      onLinkUrlChange={handleLinkUrlChange}
+    />
+  );
+
   const toolbar = (
     <Toolbar variant={variant} scroll={scroll} onClose={onClose}>
       <ToolbarContent groups={groups} />
@@ -154,13 +160,21 @@ function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
 
   if (isOverlay) {
     return (
-      <div className="relative h-14 w-full max-w-[520px] rounded-xl border border-border/70 bg-background p-2">
-        {toolbar}
-      </div>
+      <>
+        <div className="relative h-14 w-full max-w-[520px] rounded-xl border border-border/70 bg-background p-2">
+          {toolbar}
+        </div>
+        {linkDialog}
+      </>
     );
   }
 
-  return toolbar;
+  return (
+    <>
+      {toolbar}
+      {linkDialog}
+    </>
+  );
 }
 
 function renderToolbarStory({ variant, scroll, onClose }: ToolbarProps) {
@@ -178,7 +192,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `A formatting toolbar for rich-text editing, typically driving a text editor's commands. Use **variant** \`inline\` to sit within the editor flow or \`overlay\` for a floating bubble menu, with an optional \`onClose\` and a **scroll** flag for horizontally scrollable actions. **ToolbarContent** lays out actions as **groups** with separators; **ToolbarIcon** renders an icon button (with \`active\`, \`tooltip\`, \`size\`) and **ToolbarLink** provides a link-insertion control with its own dialog state.
+        component: `A formatting toolbar for rich-text editing, typically driving a text editor's commands. Use **variant** \`inline\` to sit within the editor flow or \`overlay\` for a floating bubble menu, with an optional \`onClose\` and a **scroll** flag for horizontally scrollable actions. **ToolbarContent** lays out actions as **groups** with separators; **ToolbarIcon** renders an icon button (with \`active\`, \`tooltip\`, \`size\`) and **ToolbarLink** renders the link button that opens a **ToolbarLinkDialog**.
 
 **When to use**
 - To present text-formatting controls (bold, italic, lists, code, links) for an editor.
@@ -186,6 +200,7 @@ const meta = {
 **Guidelines**
 - Group related actions in **ToolbarContent**'s \`groups\` so separators fall in sensible places.
 - Set the \`active\` prop on **ToolbarIcon** to reflect the formatting applied at the current selection.
+- Render **ToolbarLinkDialog** outside the toolbar: opening it moves focus out of the editor, which unmounts a toolbar that only shows while the editor is focused.
 - For general page-level actions rather than text formatting, use a **Bar** or **HoveringBar**.`,
       },
     },

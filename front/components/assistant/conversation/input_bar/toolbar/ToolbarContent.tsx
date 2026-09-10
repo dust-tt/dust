@@ -1,4 +1,3 @@
-import { calculateLinkTextAndPosition } from "@app/components/assistant/conversation/input_bar/toolbar/helpers";
 import { useKeyboardShortcutLabel } from "@app/hooks/useKeyboardShortcutLabel";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -15,18 +14,16 @@ import {
   ToolbarLink,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
-import { useEffect, useRef, useState } from "react";
 
 interface ToolBarContentProps {
   editor: Editor;
+  onOpenLinkDialog: () => void;
 }
 
-interface LinkPosition {
-  from: number;
-  to: number;
-}
-
-export function ToolBarContent({ editor }: ToolBarContentProps) {
+export function ToolBarContent({
+  editor,
+  onOpenLinkDialog,
+}: ToolBarContentProps) {
   const isMobile = useIsMobile();
   const buttonSize = isMobile ? "xs" : "sm";
   const headingShortcutLabel = useKeyboardShortcutLabel("Mod+Alt+1");
@@ -38,15 +35,6 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
   const blockquoteShortcutLabel = useKeyboardShortcutLabel("Mod+Shift+9");
   const inlineCodeShortcutLabel = useKeyboardShortcutLabel("Mod+E");
   const codeBlockShortcutLabel = useKeyboardShortcutLabel("Mod+Alt+C");
-  const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
-  const [linkText, setLinkText] = useState("");
-  const [linkUrl, setLinkUrl] = useState("");
-  const [linkPos, setLinkPos] = useState<LinkPosition>({ from: 0, to: 0 });
-  const editorRef = useRef(editor);
-
-  useEffect(() => {
-    editorRef.current = editor;
-  }, [editor]);
 
   function getTooltipText(label: string, shortcutLabel: string): string {
     if (isMobile) {
@@ -56,76 +44,6 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
       return `${label} (${shortcutLabel})`;
     }
     return label;
-  }
-
-  function openLinkDialog(editorInstance: Editor): void {
-    const { linkUrl, linkText, linkPos } = calculateLinkTextAndPosition({
-      editor: editorInstance,
-    });
-    setLinkUrl(linkUrl);
-    setLinkText(linkText);
-    setLinkPos(linkPos);
-    setIsLinkDialogOpen(true);
-  }
-
-  function handleLinkDialogOpen(): void {
-    openLinkDialog(editor);
-  }
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  useEffect(() => {
-    function handleOpenDialog(event: Event): void {
-      // Prevent other toolbar instances from handling the same event.
-      event.stopImmediatePropagation();
-
-      openLinkDialog(editorRef.current);
-    }
-
-    window.addEventListener("dust:openLinkDialog", handleOpenDialog);
-    return () => {
-      window.removeEventListener("dust:openLinkDialog", handleOpenDialog);
-    };
-  }, []);
-
-  function handleLinkSubmit(): void {
-    let finalText = linkText;
-    const urlWithProtocol =
-      linkUrl.startsWith("http://") || linkUrl.startsWith("https://")
-        ? linkUrl
-        : `https://${linkUrl}`;
-
-    if (!finalText) {
-      finalText = linkUrl;
-    }
-
-    editor
-      .chain()
-      .focus()
-      .deleteRange(linkPos)
-      .insertContent(
-        {
-          type: "text",
-          text: finalText,
-          marks: linkUrl
-            ? [{ type: "link", attrs: { href: urlWithProtocol } }]
-            : [],
-        },
-        { updateSelection: true }
-      )
-      .insertContent(linkUrl ? " " : "")
-      .focus()
-      .run();
-
-    setLinkText("");
-    setLinkUrl("");
-    setIsLinkDialogOpen(false);
-  }
-
-  function handleLinkDialogOpenChange(open: boolean): void {
-    if (!open) {
-      editor.chain().focus().run();
-    }
-    setIsLinkDialogOpen(open);
   }
 
   const groups = [
@@ -165,14 +83,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
       items: [
         <ToolbarLink
           key="link"
-          isOpen={isLinkDialogOpen}
-          onOpenChange={handleLinkDialogOpenChange}
-          onOpenDialog={handleLinkDialogOpen}
-          onSubmit={handleLinkSubmit}
-          linkText={linkText}
-          linkUrl={linkUrl}
-          onLinkTextChange={setLinkText}
-          onLinkUrlChange={setLinkUrl}
+          onClick={onOpenLinkDialog}
           active={editor.isActive("link")}
           tooltip={getTooltipText("Link", linkShortcutLabel)}
           size={buttonSize}

@@ -84,8 +84,9 @@ export interface ToolbarProps {
  * A formatting toolbar for rich-text editing, typically driving a text editor's commands.
  * Use `variant` "inline" to sit within the editor flow or "overlay" for a floating bubble
  * menu, laying out actions with `ToolbarContent` groups, `ToolbarIcon` buttons, and
- * `ToolbarLink`. Use it to present text-formatting controls (bold, italic, lists, code,
- * links); for general page-level actions, use a `Bar` or `HoveringBar` instead.
+ * `ToolbarLink` (whose `ToolbarLinkDialog` is rendered outside the toolbar). Use it to
+ * present text-formatting controls (bold, italic, lists, code, links); for general
+ * page-level actions, use a `Bar` or `HoveringBar` instead.
  *
  * @summary Rich-text formatting toolbar.
  */
@@ -258,12 +259,36 @@ function ToolbarIcon({
 }
 
 export interface ToolbarLinkProps {
+  onClick: () => void;
+  size: ToolbarButtonSize;
+  active?: boolean;
+  tooltip?: string;
+}
+
+/**
+ * The link button of a toolbar, opening the link-insertion dialog. Render its
+ * `ToolbarLinkDialog` separately: the dialog takes focus away from the editor when it opens, so a
+ * toolbar that hides on blur would unmount the dialog with itself.
+ *
+ * @summary Toolbar link button.
+ */
+function ToolbarLink({ onClick, size, active, tooltip }: ToolbarLinkProps) {
+  return (
+    <ToolbarIcon
+      icon={Link01}
+      onClick={onClick}
+      active={active}
+      tooltip={tooltip}
+      size={size}
+    />
+  );
+}
+
+export interface ToolbarLinkDialogProps {
   /** Controls whether the link-insertion dialog is open. */
   isOpen: boolean;
   /** Called when the dialog requests to open or close. */
   onOpenChange: (open: boolean) => void;
-  /** Called when the link toolbar button is clicked, to open the dialog. */
-  onOpenDialog: () => void;
   /** Called when the dialog's Save button is clicked. */
   onSubmit: () => void;
   linkText: string;
@@ -272,32 +297,28 @@ export interface ToolbarLinkProps {
   onLinkTextChange: (value: string) => void;
   /** Called with the new value when the link URL input changes. */
   onLinkUrlChange: (value: string) => void;
-  size: ToolbarButtonSize;
-  /** Whether a link is applied at the current selection. */
-  active?: boolean;
-  tooltip?: string;
 }
 
 /**
- * A link-insertion control for the toolbar: a link icon button paired with a controlled
- * dialog collecting the link text and URL. Own the dialog state via `isOpen` /
- * `onOpenChange` and apply the link in `onSubmit`.
+ * The dialog collecting the text and URL of the link inserted from a `ToolbarLink`. Own its state
+ * via `isOpen` / `onOpenChange` and apply the link in `onSubmit`.
  *
- * @summary Toolbar link-insertion control.
+ * @cc [owner:rfrenoy,label:react] dialog-outlives-toolbar
+ * The dialog MUST be rendered outside of any toolbar that unmounts when the editor loses focus.
+ * Opening it moves focus into the dialog, so rendering it within such a toolbar unmounts it
+ * before it is painted.
+ *
+ * @summary Toolbar link-insertion dialog.
  */
-function ToolbarLink({
+function ToolbarLinkDialog({
   isOpen,
   onOpenChange,
-  onOpenDialog,
   onSubmit,
   linkText,
   linkUrl,
   onLinkTextChange,
   onLinkUrlChange,
-  size,
-  active,
-  tooltip,
-}: ToolbarLinkProps) {
+}: ToolbarLinkDialogProps) {
   function handleDialogClick(event: React.MouseEvent<HTMLDivElement>): void {
     event.stopPropagation();
   }
@@ -308,13 +329,6 @@ function ToolbarLink({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <ToolbarIcon
-        icon={Link01}
-        onClick={onOpenDialog}
-        active={active}
-        tooltip={tooltip}
-        size={size}
-      />
       <DialogContent onClick={handleDialogClick}>
         <DialogHeader>
           <DialogTitle>Insert Link</DialogTitle>
@@ -356,4 +370,4 @@ function ToolbarLink({
   );
 }
 
-export { Toolbar, ToolbarContent, ToolbarIcon, ToolbarLink };
+export { Toolbar, ToolbarContent, ToolbarIcon, ToolbarLink, ToolbarLinkDialog };
