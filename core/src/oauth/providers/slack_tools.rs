@@ -62,7 +62,7 @@ impl Provider for SlackToolsConnectionProvider {
 
         let req = self
             .reqwest_client()
-            .post("https://slack.com/api/oauth.v2.access")
+            .post("https://slack.com/api/oauth.v2.user.access")
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header("Authorization", format!("Basic {}", self.basic_auth()))
             // Very important, this will *not* work with JSON body.
@@ -79,26 +79,15 @@ impl Provider for SlackToolsConnectionProvider {
             )));
         }
 
-        let (team_id, team_name) = match raw_json["team"].is_object() {
-            true => (
-                raw_json["team"]["id"]
-                    .as_str()
-                    .ok_or_else(|| anyhow!("Missing `team_id` in response from Slack"))?,
-                raw_json["team"]["name"]
-                    .as_str()
-                    .ok_or_else(|| anyhow!("Missing `team_name` in response from Slack"))?,
-            ),
-            false => {
-                return Err(ProviderError::UnknownError(format!(
-                    "Missing `team` in response from Slack"
-                )))
-            }
+        let team_id = raw_json["team"]["id"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing `team_id` in response from Slack"))?;
+        let team_name = match raw_json["team"]["name"].as_str() {
+            Some(name) => name,
+            None => team_id,
         };
 
-        // For both `platform_actions and `personal_actions we receive a user token.
-        // `platform_actions` are used to setup the MCP server while `personal_actions` are used by
-        // users at time of use.
-        let access_token = raw_json["authed_user"]["access_token"]
+        let access_token = raw_json["access_token"]
             .as_str()
             .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?;
 
