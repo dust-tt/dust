@@ -1,4 +1,3 @@
-import type { GenerateImageInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import type { Base64ImageData } from "@app/lib/api/actions/servers/image_generation/helpers";
 import { ImageGenerationError } from "@app/lib/api/actions/servers/image_generation/helpers";
 import type {
@@ -8,6 +7,7 @@ import type {
   TokenCountDetails,
 } from "@app/lib/api/actions/servers/image_generation/imageGeneration";
 import { ImageGenerationLLM } from "@app/lib/api/actions/servers/image_generation/imageGeneration";
+import { CONVERSATION_IMG_MAX_SIZE_PIXELS } from "@app/lib/api/files/processing/images";
 import type { Authenticator } from "@app/lib/auth";
 import { trustedFetch } from "@app/lib/egress/server";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
@@ -23,35 +23,45 @@ import { Err, Ok } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import assert from "assert";
 import { OpenAI, toFile } from "openai";
-import type {
-  ImageGenerateParamsBase,
-  ImagesResponse,
-} from "openai/resources/images";
+import type { ImagesResponse } from "openai/resources/images";
 
-const SQUARE = "1024x1024";
-const LANDSCAPE = "1536x1024";
-const PORTRAIT = "1024x1536";
+// GPT image models accept arbitrary `WIDTHxHEIGHT` sizes, not only the three documented presets.
+// See https://developers.openai.com/api/docs/guides/image-generation.
+const SIZE_MULTIPLE = 16;
 
-type SupportedImageSize = Extract<
-  ImageGenerateParamsBase["size"],
-  typeof SQUARE | typeof LANDSCAPE | typeof PORTRAIT
->;
+const MAX_EDGE = CONVERSATION_IMG_MAX_SIZE_PIXELS;
 
-const ASPECT_RATIO_TO_IMAGE_SIZE: Record<
-  GenerateImageInputType["aspectRatio"],
-  SupportedImageSize
-> = {
-  "1:1": SQUARE,
-  "3:2": LANDSCAPE,
-  "4:3": LANDSCAPE,
-  "5:4": LANDSCAPE,
-  "16:9": LANDSCAPE,
-  "21:9": LANDSCAPE,
-  "2:3": PORTRAIT,
-  "3:4": PORTRAIT,
-  "4:5": PORTRAIT,
-  "9:16": PORTRAIT,
-};
+const QUALITY_TO_PIXEL_BUDGET: Record<ImageGenerationInput["quality"], number> =
+  {
+    low: 1024 * 1024,
+    medium: 2048 * 2048,
+  };
+
+/**
+ * @cc [owner:pmilliotte,label:product] openai-image-size-limits
+ * The returned size MUST have the exact requested aspect ratio, both edges multiples of 16, and a
+ * total pixel count within [655360, 8294400] — the limits gpt-image models enforce on arbitrary
+ * sizes. Sizes outside those limits are rejected by the API.
+ */
+export function toImageSize({
+  aspectRatio,
+  quality,
+}: Pick<ImageGenerationInput, "aspectRatio" | "quality">): string {
+  const [width, height] = aspectRatio.split(":").map(Number);
+
+  // Scale the ratio by the largest factor `k` that keeps both edges multiples of 16 and within the
+  // quality's pixel budget and the model's max edge, so the ratio is honored exactly.
+  const k = Math.min(
+    Math.floor(
+      Math.sqrt(
+        QUALITY_TO_PIXEL_BUDGET[quality] / (SIZE_MULTIPLE ** 2 * width * height)
+      )
+    ),
+    Math.floor(MAX_EDGE / (SIZE_MULTIPLE * Math.max(width, height)))
+  );
+
+  return `${SIZE_MULTIPLE * width * k}x${SIZE_MULTIPLE * height * k}`;
+}
 
 function isSafetyBlockError(
   error: unknown
@@ -95,7 +105,7 @@ export class ImageGenerationOpenAILLM extends ImageGenerationLLM {
   ): Promise<Result<ImageGenerationOutput, ImageGenerationError>> {
     const { prompt, aspectRatio, referenceFiles, quality } = params;
 
-    const size = ASPECT_RATIO_TO_IMAGE_SIZE[aspectRatio];
+    const size = toImageSize({ aspectRatio, quality });
 
     let response: ImagesResponse;
     try {
@@ -206,7 +216,7 @@ export class ImageGenerationOpenAILLM extends ImageGenerationLLM {
   }: ImageGenerationInput): Record<string, string | number> {
     return {
       aspectRatio,
-      imageSize: ASPECT_RATIO_TO_IMAGE_SIZE[aspectRatio],
+      imageSize: toImageSize({ aspectRatio, quality }),
       quality,
     };
   }
