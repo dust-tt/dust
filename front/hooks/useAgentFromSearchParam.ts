@@ -15,49 +15,85 @@ export function useAgentFromSearchParam(workspaceId: string) {
   const agent = useSearchParam("agent");
   const activeConversationId = useActiveConversationId();
   const { selectedSingleAgent, setSelectedAgent } = useContext(InputBarContext);
-  const syncedParamRef = useRef<string | null>(null);
+  // Last ?agent= value whose selection we have observed in the composer (isSynced).
+  // Intentionally not set when we merely call setSelectedAgent — that would let a
+  // still-stale selection be mirrored into the URL as a fake picker change.
+  const appliedParamRef = useRef<string | null>(null);
+  const prevConversationIdRef = useRef(activeConversationId);
+  // Bumped when entering /conversation/new so the URL→composer effect re-runs after
+  // appliedParamRef is cleared (refs alone do not invalidate effects).
+  const newConversationVisitRef = useRef(0);
+
+  // Entering /conversation/new from an existing conversation remounts the homepage
+  // InputBar. Clear the applied marker so we re-push ?agent= through setSelectedAgent;
+  // otherwise an already-matching selection looks "synced" without that push and can
+  // lose to the @dust default, which then gets mirrored back into the URL.
+  if (prevConversationIdRef.current !== activeConversationId) {
+    const enteredNewConversation =
+      activeConversationId === null && prevConversationIdRef.current !== null;
+    prevConversationIdRef.current = activeConversationId;
+    if (enteredNewConversation) {
+      appliedParamRef.current = null;
+      newConversationVisitRef.current += 1;
+    }
+  }
+  const newConversationVisit = newConversationVisitRef.current;
 
   const isSynced = !!agent && selectedSingleAgent?.id === agent;
+  const isUrlAgentPending = !!agent && appliedParamRef.current !== agent;
 
   const { agentConfiguration, isAgentConfigurationError } =
     useAgentConfiguration({
       workspaceId,
       agentConfigurationId: agent,
-      disabled: !agent || isSynced,
+      disabled: !isUrlAgentPending,
     });
 
-  // URL to composer. When url param "agent" names an agent other than the selected one, fetch it
-  // and select it. syncedParamRef tracks the last param the selection has matched, so a
-  // param that is still being applied is not mistaken for a picker change by the effect
-  // below.
+  // URL to composer. When url param "agent" is not yet reflected in the composer,
+  // push it via setSelectedAgent. Re-push even when selection already matches so a
+  // remounted InputBar can mark it as an external/URL selection.
   useEffect(() => {
-    if (!agent || !agentConfiguration || syncedParamRef.current === agent) {
+    // Read the visit counter so entering /conversation/new re-runs this effect after
+    // appliedParamRef is cleared.
+    void newConversationVisit;
+
+    if (!agent || appliedParamRef.current === agent) {
+      return;
+    }
+
+    if (selectedSingleAgent?.id === agent) {
+      setSelectedAgent(selectedSingleAgent);
+      return;
+    }
+
+    if (!agentConfiguration) {
       return;
     }
 
     setSelectedAgent(toRichAgentMentionType(agentConfiguration));
-  }, [agent, agentConfiguration, setSelectedAgent]);
+  }, [
+    agent,
+    agentConfiguration,
+    newConversationVisit,
+    selectedSingleAgent,
+    setSelectedAgent,
+  ]);
 
   // Composer to URL. On a new conversation, once the URL agent has been applied, a picker
   // change is mirrored into the url param "agent" so the address bar always reflects the selected agent.
   useEffect(() => {
     if (isSynced) {
-      syncedParamRef.current = agent;
+      appliedParamRef.current = agent;
     }
 
     const isNewConversation = activeConversationId === null;
     const isUrlAgentNotFound =
       isAgentConfigurationError?.error?.type ===
       "agent_configuration_not_found";
-    const isUrlAgentPending =
-      !!agent && syncedParamRef.current !== agent && !isUrlAgentNotFound;
+    const isPending =
+      !!agent && appliedParamRef.current !== agent && !isUrlAgentNotFound;
 
-    if (
-      isSynced ||
-      !isNewConversation ||
-      !selectedSingleAgent ||
-      isUrlAgentPending
-    ) {
+    if (isSynced || !isNewConversation || !selectedSingleAgent || isPending) {
       return;
     }
 

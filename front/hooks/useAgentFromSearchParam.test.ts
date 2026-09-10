@@ -143,8 +143,10 @@ describe("useAgentFromSearchParam", () => {
     selectedSingleAgentHolder.current = makeMention("agent_1");
 
     const { rerender } = renderHook(() => useAgentFromSearchParam("w_1"));
+    await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
     expect(replaceMock).not.toHaveBeenCalled();
 
+    setSelectedAgent.mockClear();
     selectedSingleAgentHolder.current = makeMention("agent_2");
     rerender();
 
@@ -161,7 +163,9 @@ describe("useAgentFromSearchParam", () => {
     selectedSingleAgentHolder.current = makeMention("agent_1");
 
     const { rerender } = renderHook(() => useAgentFromSearchParam("w_1"));
+    await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
 
+    setSelectedAgent.mockClear();
     setUrl("?agent=agent_2");
     searchParamHolder.current = "agent_2";
     agentConfigurationHolder.current = makeAgentConfiguration("agent_2");
@@ -219,6 +223,51 @@ describe("useAgentFromSearchParam", () => {
 
     renderHook(() => useAgentFromSearchParam("w_1"));
 
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("re-pushes a matching URL agent when entering a new conversation", async () => {
+    activeConversationIdHolder.current = "conv_1";
+    setUrl("?agent=agent_1");
+    searchParamHolder.current = "agent_1";
+    selectedSingleAgentHolder.current = makeMention("agent_1");
+
+    const { rerender } = renderHook(() => useAgentFromSearchParam("w_1"));
+    await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
+    setSelectedAgent.mockClear();
+
+    // Navigate to /conversation/new with the same custom agent still selected.
+    activeConversationIdHolder.current = null;
+    rerender();
+
+    await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
+    expect(setSelectedAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "agent_1" })
+    );
+    expect(replaceMock).not.toHaveBeenCalled();
+  });
+
+  it("does not mirror a default overwrite while the URL agent is pending after entering new", async () => {
+    activeConversationIdHolder.current = "conv_1";
+    setUrl("?agent=agent_1");
+    searchParamHolder.current = "agent_1";
+    selectedSingleAgentHolder.current = makeMention("agent_1");
+
+    const { rerender } = renderHook(() => useAgentFromSearchParam("w_1"));
+    await waitFor(() => expect(setSelectedAgent).toHaveBeenCalledTimes(1));
+    setSelectedAgent.mockClear();
+
+    // Enter new conversation, then simulate the homepage default winning the race
+    // before the URL agent is re-applied.
+    activeConversationIdHolder.current = null;
+    selectedSingleAgentHolder.current = makeMention("dust");
+    agentConfigurationHolder.current = makeAgentConfiguration("agent_1");
+    rerender();
+
+    await waitFor(() => expect(setSelectedAgent).toHaveBeenCalled());
+    expect(setSelectedAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "agent_1" })
+    );
     expect(replaceMock).not.toHaveBeenCalled();
   });
 });

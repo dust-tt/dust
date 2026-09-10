@@ -267,7 +267,6 @@ export function AgentDetailsSheet({
             owner={owner}
             agentConfiguration={agentConfiguration}
             isAgentConfigurationValidating={isAgentConfigurationValidating}
-            onClose={onClose}
           />
         )}
 
