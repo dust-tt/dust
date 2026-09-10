@@ -19,11 +19,12 @@ import { GLOBAL } from "@app/lib/model_constructors/types/regions";
 export class AnthropicClaudeOpusFiveGlobalBedrockStream extends WithAnthropicClaudeOpusFiveConfig(
   BedrockStream
 ) {
-  // AWS bills Claude through the Marketplace and publishes no per-model table
-  // we can read, so these mirror Anthropic's list prices, which the global
-  // Bedrock endpoint matches (no premium, see the region note above).
-  // https://platform.claude.com/docs/en/about-claude/pricing
-  // TODO(bedrock): confirm against an actual Bedrock invoice before shipping.
+  // Verified 2026-09-10 against the model's AWS Marketplace rate card
+  // (`bedrock:ListFoundationModelAgreementOffers` →
+  // `termDetails.usageBasedPricingTerm`), on the `*_global_standard`
+  // dimensions. They match Anthropic's own list prices; the in-region
+  // dimensions are 10% higher (5.5 / 27.5 / 0.55 / 6.875 / 11), which is the
+  // premium the region note above refers to.
   static readonly tokenPricing = {
     cacheCreated: 6.25,
     // 5m cache write = 1.25x base input; 1h cache write = 2x base input.
