@@ -14,7 +14,7 @@ import type { DataSourceConfig } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 import { describe, expect, it, vi } from "vitest";
 
-import { sync } from "./activities";
+import { hasSelectedRemoteDatabasePermissions, sync } from "./activities";
 
 // Mock the data_sources module to spy on upsertTable
 vi.mock(import("@connectors/lib/data_sources"), async (importOriginal) => {
@@ -671,5 +671,95 @@ describe("sync remote databases", async () => {
       mimeType: INTERNAL_MIME_TYPES.BIGQUERY.TABLE,
       tags: ["my-test-tag"],
     });
+  });
+});
+
+describe("hasSelectedRemoteDatabasePermissions", async () => {
+  const makeConnector = (suffix = "") =>
+    ConnectorResource.makeNew(
+      "bigquery",
+      {
+        connectionId: `test-connection-id${suffix}`,
+        workspaceId: `test-workspace-id${suffix}`,
+        dataSourceId: `test-data-source-id${suffix}`,
+        workspaceAPIKey: "test-workspace-api-key",
+      },
+      {
+        useMetadataForDBML: false,
+      }
+    );
+
+  it("returns false when the connector has no rows", async () => {
+    const connector = await makeConnector();
+
+    expect(await hasSelectedRemoteDatabasePermissions(connector.id)).toBe(
+      false
+    );
+  });
+
+  it("returns false when no row is selected", async () => {
+    const connector = await makeConnector();
+
+    await RemoteDatabaseModel.create({
+      internalId: "db",
+      name: "db",
+      permission: "inherited",
+      connectorId: connector.id,
+    });
+    await RemoteSchemaModel.create({
+      internalId: "db.schema",
+      name: "schema",
+      databaseName: "db",
+      permission: "unselected",
+      connectorId: connector.id,
+    });
+
+    expect(await hasSelectedRemoteDatabasePermissions(connector.id)).toBe(
+      false
+    );
+  });
+
+  it("returns true when a database is selected", async () => {
+    const connector = await makeConnector();
+
+    await RemoteDatabaseModel.create({
+      internalId: "db",
+      name: "db",
+      permission: "selected",
+      connectorId: connector.id,
+    });
+
+    expect(await hasSelectedRemoteDatabasePermissions(connector.id)).toBe(true);
+  });
+
+  it("returns true when a table is selected", async () => {
+    const connector = await makeConnector();
+
+    await RemoteTableModel.create({
+      internalId: "db.schema.table",
+      name: "table",
+      databaseName: "db",
+      schemaName: "schema",
+      permission: "selected",
+      connectorId: connector.id,
+    });
+
+    expect(await hasSelectedRemoteDatabasePermissions(connector.id)).toBe(true);
+  });
+
+  it("scopes the check to the given connector", async () => {
+    const connectorA = await makeConnector("-a");
+    const connectorB = await makeConnector("-b");
+
+    await RemoteDatabaseModel.create({
+      internalId: "db",
+      name: "db",
+      permission: "selected",
+      connectorId: connectorA.id,
+    });
+
+    expect(await hasSelectedRemoteDatabasePermissions(connectorB.id)).toBe(
+      false
+    );
   });
 });

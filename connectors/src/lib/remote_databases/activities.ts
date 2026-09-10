@@ -19,7 +19,11 @@ import { buildInternalId } from "@connectors/lib/remote_databases/utils";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig, INTERNAL_MIME_TYPES } from "@connectors/types";
+import type {
+  DataSourceConfig,
+  INTERNAL_MIME_TYPES,
+  ModelId,
+} from "@connectors/types";
 
 type RemoteDatabaseHierarchyModel =
   | RemoteDatabaseModel
@@ -368,6 +372,33 @@ async function cleanupUnusedRemoteDatabaseHierarchyModel({
   } else {
     await model.destroy();
   }
+}
+
+// @cc [label:performance] remote-databases-skip-enumeration-when-nothing-selected
+// A read-granted internal id is a database/schema/table row with permission "selected".
+// `sync` only creates read-granted nodes and then removes every existing row that was not
+// (re)used, so when nothing is selected the remote tree is irrelevant: sync creates nothing and
+// cleans everything up regardless of the tree passed in. Callers MUST check this before running
+// the (potentially multi-hour) remote enumeration and skip it — passing an empty tree to `sync`
+// still performs the correct cleanup. Keep the "selected" filter identical to the one `sync` uses
+// to build `readGrantedInternalIds` below.
+export async function hasSelectedRemoteDatabasePermissions(
+  connectorId: ModelId
+): Promise<boolean> {
+  const [selectedDatabases, selectedSchemas, selectedTables] =
+    await Promise.all([
+      RemoteDatabaseModel.count({
+        where: { connectorId, permission: "selected" },
+      }),
+      RemoteSchemaModel.count({
+        where: { connectorId, permission: "selected" },
+      }),
+      RemoteTableModel.count({
+        where: { connectorId, permission: "selected" },
+      }),
+    ]);
+
+  return selectedDatabases + selectedSchemas + selectedTables > 0;
 }
 
 export async function sync({

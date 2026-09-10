@@ -3,7 +3,11 @@ import {
   isConnectionReadonly,
 } from "@connectors/connectors/bigquery/lib/bigquery_api";
 import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
-import { sync } from "@connectors/lib/remote_databases/activities";
+import {
+  hasSelectedRemoteDatabasePermissions,
+  sync,
+} from "@connectors/lib/remote_databases/activities";
+import type { RemoteDBTree } from "@connectors/lib/remote_databases/utils";
 import { getConnectorAndCredentials } from "@connectors/lib/remote_databases/utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger, { getActivityLogger } from "@connectors/logger/logger";
@@ -49,15 +53,27 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
 
   const activityLogger = getActivityLogger(connector);
 
-  const treeRes = await fetchTree({
-    credentials,
-    fetchTablesDescription: useMetadataForDBML,
-    logger: activityLogger,
-  });
-  if (treeRes.isErr()) {
-    throw treeRes.error;
+  // Enumerating a BigQuery project's datasets and tables can take hours on large warehouses
+  // (observed 14h on a 100k+ table project). When nothing is selected there is nothing to sync,
+  // so skip the enumeration entirely and let `sync` run its cleanup with an empty tree. See the
+  // `remote-databases-skip-enumeration-when-nothing-selected` contract in remote_databases.
+  let tree: RemoteDBTree | undefined;
+  if (await hasSelectedRemoteDatabasePermissions(connector.id)) {
+    const treeRes = await fetchTree({
+      credentials,
+      fetchTablesDescription: useMetadataForDBML,
+      logger: activityLogger,
+    });
+    if (treeRes.isErr()) {
+      throw treeRes.error;
+    }
+    tree = treeRes.value;
+  } else {
+    activityLogger.info(
+      { connectorId },
+      "[BigQuery] No selected permissions, skipping remote tree enumeration."
+    );
   }
-  const tree = treeRes.value;
 
   await sync({
     remoteDBTree: tree,
