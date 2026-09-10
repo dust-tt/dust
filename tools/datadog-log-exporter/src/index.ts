@@ -99,8 +99,15 @@ async function writeCsvHeader(
   const header = columns.join(",") + "\n";
   try {
     await fsp.writeFile(outPath, header, { flag: "wx" });
-  } catch (e: any) {
-    if (e && e.code === "EEXIST") return;
+  } catch (e) {
+    if (
+      typeof e === "object" &&
+      e !== null &&
+      "code" in e &&
+      e.code === "EEXIST"
+    ) {
+      return;
+    }
     throw e;
   }
 }

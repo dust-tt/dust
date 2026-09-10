@@ -17,7 +17,12 @@ export const fileSystem: FileSystem = {
     try {
       return await fs.readFile(filePath, "utf8");
     } catch (err) {
-      if ((err as { code?: string }).code === "ENOENT") {
+      if (
+        typeof err === "object" &&
+        err !== null &&
+        "code" in err &&
+        err.code === "ENOENT"
+      ) {
         console.debug("File not found:", filePath);
         return null;
       }
