@@ -1,9 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
-import {
-  resetAwuPostPurchaseRefreshCount,
-  useAwuPoolSummary,
-  useAwuPurchaseInfo,
-} from "@app/lib/swr/credits";
+import { useAwuPoolSummary, useAwuPurchaseInfo } from "@app/lib/swr/credits";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { useCallback, useSyncExternalStore } from "react";
 
@@ -75,7 +71,6 @@ export function useAwuPurchase({ workspaceId }: { workspaceId: string }) {
         await response.json();
 
         void mutateAwuPurchaseInfo();
-        resetAwuPostPurchaseRefreshCount(workspaceId);
         void mutateAwuPoolSummary();
 
         return { status: "success" };
