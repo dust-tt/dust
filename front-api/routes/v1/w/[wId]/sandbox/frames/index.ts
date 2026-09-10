@@ -114,6 +114,7 @@ app.post(
             frameId: publication.value.frameId,
             manifestPath: publication.value.sourcePath,
             publicationId: publication.value.publicationId,
+            warnings: publication.value.warnings,
           },
           200
         );

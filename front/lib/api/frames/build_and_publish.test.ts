@@ -4,14 +4,20 @@ import {
   buildAndPublishFramePublication,
   validateFramePublication,
 } from "@app/lib/api/frames/build_and_publish";
+import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
 import {
   computeFrameSourcePathSetSha256,
   FRAME_SOURCE_STAGING_ROOT,
 } from "@app/lib/api/frames/source_staging";
+import {
+  ensureFrameRuntimeTypesInstalled,
+  typeCheckFrameUiOnSandbox,
+} from "@app/lib/api/frames/ui_type_check";
 import { ensureConversationSandboxReadyWithScope } from "@app/lib/api/sandbox/lifecycle";
 import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import { getFrameRuntimeTypesArtifact } from "@app/lib/api/viz/frame_runtime_types";
 import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -48,6 +54,30 @@ vi.mock(
     return { ...actual, buildSandboxFunctionOnReadySandbox: vi.fn() };
   }
 );
+
+vi.mock("@app/lib/api/frames/ui_type_check", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/frames/ui_type_check")>();
+  return {
+    ...actual,
+    ensureFrameRuntimeTypesInstalled: vi.fn(),
+    typeCheckFrameUiOnSandbox: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/api/viz/frame_runtime_types", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@app/lib/api/viz/frame_runtime_types")
+    >();
+  return { ...actual, getFrameRuntimeTypesArtifact: vi.fn() };
+});
+
+const runtimeTypesArtifact = {
+  id: "a".repeat(64),
+  tarball: Buffer.from("tarball"),
+  tarballSha256: "b".repeat(64),
+};
 
 const manifest = FrameManifestSchema.parse({
   version: 1,
@@ -161,6 +191,13 @@ async function setup(): Promise<{
 beforeEach(() => {
   vi.clearAllMocks();
   fileStorageMock.reset();
+  vi.mocked(getFrameRuntimeTypesArtifact).mockResolvedValue(null);
+  vi.mocked(ensureFrameRuntimeTypesInstalled).mockResolvedValue(
+    new Ok(`/var/lib/dust/frame-runtime/${runtimeTypesArtifact.id}`)
+  );
+  vi.mocked(typeCheckFrameUiOnSandbox).mockResolvedValue(
+    new Ok({ warnings: [] })
+  );
 });
 
 describe("buildAndPublishFramePublication", () => {
@@ -216,7 +253,7 @@ describe("buildAndPublishFramePublication", () => {
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
-  it("builds and publishes the UI without starting a sandbox", async () => {
+  it("builds and publishes the UI without a sandbox when runtime types are unavailable", async () => {
     const { auth, conversation, frame } = await setup();
 
     const result = await buildAndPublishFramePublication(auth, {
@@ -239,6 +276,142 @@ describe("buildAndPublishFramePublication", () => {
     expect(fileStorageMock.getObject(uiBundlePath)).toContain(
       'data-source="index.tsx:'
     );
+  });
+
+  it("type-checks the UI in the sandbox against the runtime types before publishing", async () => {
+    const { auth, conversation, frame, sandbox } = await setup();
+    vi.mocked(getFrameRuntimeTypesArtifact).mockResolvedValue(
+      runtimeTypesArtifact
+    );
+    vi.mocked(typeCheckFrameUiOnSandbox).mockResolvedValue(
+      new Ok({
+        warnings: [
+          {
+            type: "typescript",
+            message:
+              "index.tsx:1:7: error TS2322: Type 'string' is not assignable to type 'number'.",
+          },
+        ],
+      })
+    );
+
+    const result = await buildAndPublishFramePublication(auth, {
+      conversation,
+      frame,
+      manifest: uiOnlyManifest,
+      sourceFiles,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(ensureFrameRuntimeTypesInstalled).toHaveBeenCalledWith(auth, {
+      sandbox,
+      artifact: runtimeTypesArtifact,
+    });
+    expect(typeCheckFrameUiOnSandbox).toHaveBeenCalledWith(auth, {
+      sandbox,
+      runtimeDirectory: `/var/lib/dust/frame-runtime/${runtimeTypesArtifact.id}`,
+      stagingDirectory: expect.stringMatching(
+        new RegExp(`^${FRAME_SOURCE_STAGING_ROOT}/[^/]+$`)
+      ),
+      entryRelPath: "index.tsx",
+    });
+    expect(sandbox.writeFile).toHaveBeenCalledTimes(sourceFiles.length);
+    expect(result.value.warnings).toEqual([
+      {
+        type: "typescript",
+        message:
+          "index.tsx:1:7: error TS2322: Type 'string' is not assignable to type 'number'.",
+      },
+    ]);
+    expect(fileStorageMock.saveFileCalls.length).toBeGreaterThan(0);
+  });
+
+  it("keeps the active publication when the UI fails type checking", async () => {
+    const { auth, conversation, frame } = await setup();
+    const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
+    await frame.setActiveFramePublication({
+      publicationId: activePublicationId,
+      name: "Task List",
+      description: "Track tasks.",
+    });
+    vi.mocked(getFrameRuntimeTypesArtifact).mockResolvedValue(
+      runtimeTypesArtifact
+    );
+    vi.mocked(typeCheckFrameUiOnSandbox).mockResolvedValue(
+      new Err(
+        new FramePublicationError(
+          "ui_build_failed",
+          "Frame UI imports do not resolve against the Frame runtime:\nindex.tsx:1:10: error TS2305: Module '\"shadcn\"' has no exported member 'Nope'."
+        )
+      )
+    );
+
+    const result = await buildAndPublishFramePublication(auth, {
+      conversation,
+      frame,
+      manifest: uiOnlyManifest,
+      sourceFiles,
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "ui_build_failed",
+      message: expect.stringContaining("has no exported member 'Nope'"),
+    });
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    expect(
+      (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
+        ?.activePublicationId
+    ).toBe(activePublicationId);
+  });
+
+  it("publishes the UI without type checking when the sandbox is unavailable", async () => {
+    const { auth, conversation, frame } = await setup();
+    vi.mocked(getFrameRuntimeTypesArtifact).mockResolvedValue(
+      runtimeTypesArtifact
+    );
+    vi.mocked(ensureConversationSandboxReadyWithScope).mockResolvedValue(
+      new Err(new Error("provider down"))
+    );
+
+    const result = await buildAndPublishFramePublication(auth, {
+      conversation,
+      frame,
+      manifest: uiOnlyManifest,
+      sourceFiles: sourceFiles.slice(0, 1),
+    });
+
+    expect(result.isOk()).toBe(true);
+    expect(typeCheckFrameUiOnSandbox).not.toHaveBeenCalled();
+  });
+
+  it("rejects imports the Frame runtime cannot provide at bundle time", async () => {
+    const { auth, conversation, frame } = await setup();
+
+    const result = await buildAndPublishFramePublication(auth, {
+      conversation,
+      frame,
+      manifest: uiOnlyManifest,
+      sourceFiles: [
+        {
+          ...sourceFiles[0],
+          content: Buffer.from(
+            'import { Avatar } from "@/components/ui/avatar";\nexport default function App() { return <Avatar />; }'
+          ),
+        },
+      ],
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "ui_build_failed",
+      message: expect.stringContaining(
+        'Unsupported import "@/components/ui/avatar"'
+      ),
+    });
+    expect(ensureConversationSandboxReadyWithScope).not.toHaveBeenCalled();
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
   it("builds every declared function before publishing", async () => {

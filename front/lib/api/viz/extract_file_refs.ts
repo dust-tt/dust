@@ -9,6 +9,15 @@ export type FileRef =
   | { type: "fileId"; fileId: string }
   | { type: "path"; scopedPath: string };
 
+function isFileIdReference(value: string): boolean {
+  return /^fil_[a-zA-Z0-9]{10,}$/.test(value);
+}
+
+/** Whether a string is a Dust file reference a Frame may import or pass to `useFile`. */
+export function isFrameFileReference(value: string): boolean {
+  return isFileIdReference(value) || isAgentScopedPath(value);
+}
+
 export function extractFileRefs(code: string): FileRef[] {
   const refs = new Map<string, FileRef>();
 
@@ -17,7 +26,7 @@ export function extractFileRefs(code: string): FileRef[] {
       return;
     }
 
-    if (/^fil_[a-zA-Z0-9]{10,}$/.test(value)) {
+    if (isFileIdReference(value)) {
       refs.set(value, { type: "fileId", fileId: value });
     } else if (isAgentScopedPath(value)) {
       refs.set(value, { type: "path", scopedPath: value });

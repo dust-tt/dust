@@ -5,6 +5,8 @@ import type {
 } from "@app/lib/api/bundler/bundle_module";
 import { bundleModule } from "@app/lib/api/bundler/bundle_module";
 import type { DustFileSystem } from "@app/lib/api/file_system";
+import { isFrameFileReference } from "@app/lib/api/viz/extract_file_refs";
+import { FRAME_RUNTIME_IMPORT_NAMES } from "@app/lib/api/viz/frame_runtime_imports";
 import { injectSourceLocationTags } from "@app/lib/api/viz/source_location_tags";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -22,11 +24,32 @@ const FRAME_ESBUILD_OPTIONS: BundleEsbuildOptions = {
   minify: false,
 };
 
+const FRAME_RUNTIME_IMPORT_NAME_SET = new Set<string>(
+  FRAME_RUNTIME_IMPORT_NAMES
+);
+
+// The renderer resolves bare specifiers from a fixed import map plus Dust file references; anything
+// else throws when the bundle is imported, so it is rejected at build time with a fixable message.
+function unsupportedFrameImportMessage(specifier: string): string | null {
+  if (
+    FRAME_RUNTIME_IMPORT_NAME_SET.has(specifier) ||
+    isFrameFileReference(specifier)
+  ) {
+    return null;
+  }
+
+  return (
+    `Unsupported import "${specifier}". Frames can only import ` +
+    `${FRAME_RUNTIME_IMPORT_NAMES.map((name) => `"${name}"`).join(", ")}, ` +
+    "relative source files, or Dust file references."
+  );
+}
+
 /**
  * Bundle a multi-file frame into a single self-contained module. Thin wrapper over
- * {@link bundleModule} supplying the viz esbuild options and the JSX source-location transform, so
- * live edits on the rendered bundle route back to the correct source file. All graph-walking lives
- * in the generic engine.
+ * {@link bundleModule} supplying the viz esbuild options, the JSX source-location transform (so
+ * live edits on the rendered bundle route back to the correct source file) and the runtime import
+ * gate. All graph-walking lives in the generic engine.
  */
 export async function buildFrameBundle({
   entryRelPath,
@@ -42,6 +65,7 @@ export async function buildFrameBundle({
     // Stamp each source file with `data-source` tags before inlining so the rendered bundle keeps
     // the origin of every JSX element for live edits.
     transform: injectSourceLocationTags,
+    unsupportedExternalMessage: unsupportedFrameImportMessage,
   });
 }
 

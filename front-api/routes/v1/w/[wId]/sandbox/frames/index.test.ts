@@ -19,6 +19,18 @@ import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Frame UI type checking needs a sandbox and the Viz runtime types artifact; neither exists here.
+vi.mock("@app/lib/api/viz/frame_runtime_types", async (importOriginal) => {
+  const actual =
+    await importOriginal<
+      typeof import("@app/lib/api/viz/frame_runtime_types")
+    >();
+  return {
+    ...actual,
+    getFrameRuntimeTypesArtifact: vi.fn().mockResolvedValue(null),
+  };
+});
+
 vi.mock("@app/lib/lock", async (importActual) => {
   const actual = await importActual<typeof import("@app/lib/lock")>();
   return {

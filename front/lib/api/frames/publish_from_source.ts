@@ -71,6 +71,7 @@ export type PublishFrameFromSourceResult =
       frameId: string;
       sourcePath: string;
       publicationId: string;
+      warnings: ValidationWarning[];
     };
 
 export type ValidateFrameFromSourceResult = {
@@ -167,6 +168,7 @@ export async function publishFrameFromSource(
       frameId: frame.sId,
       sourcePath: normalizedPath,
       publicationId: publication.value.publicationId,
+      warnings: publication.value.warnings,
     });
   }
 
@@ -438,7 +440,7 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
   }
 ): Promise<
   Result<
-    { publicationId: string },
+    { publicationId: string; warnings: ValidationWarning[] },
     FramePublicationError | SandboxFunctionError
   >
 > {
@@ -470,7 +472,7 @@ export async function publishFrameV2FromSource(
   }
 ): Promise<
   Result<
-    { publicationId: string },
+    { publicationId: string; warnings: ValidationWarning[] },
     FramePublicationError | SandboxFunctionError
   >
 > {
