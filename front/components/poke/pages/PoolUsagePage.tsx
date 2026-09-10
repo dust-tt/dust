@@ -106,11 +106,12 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
         isAwuPoolCycleHistoryLoading,
         !!isAwuPoolCycleHistoryError
       )}
-      hasMoreCycleHistory={hasMoreCycleHistory}
-      onLoadMoreCycleHistory={onLoadMoreCycleHistory}
-      isLoadingMoreCycleHistory={
-        isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading
-      }
+      cycleHistoryLoadMore={{
+        hasMore: hasMoreCycleHistory,
+        isLoading:
+          isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading,
+        onLoadMore: onLoadMoreCycleHistory,
+      }}
     />
   );
 }
