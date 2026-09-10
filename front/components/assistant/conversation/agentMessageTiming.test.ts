@@ -74,7 +74,6 @@ describe("getAgentMessageHeaderTimestampMs", () => {
       getAgentMessageHeaderTimestampMs({
         ...parent,
         parentAgentVisible: false,
-        hasHandedOver: false,
         messages: [],
       })
     ).toBe(PARENT_COMPLETED);
@@ -87,7 +86,6 @@ describe("getAgentMessageHeaderTimestampMs", () => {
         completedTs: CHILD_COMPLETED,
         messageId: "child",
         parentAgentVisible: true,
-        hasHandedOver: false,
         messages: [],
       })
     ).toBeUndefined();
@@ -98,7 +96,6 @@ describe("getAgentMessageHeaderTimestampMs", () => {
       getAgentMessageHeaderTimestampMs({
         ...parent,
         parentAgentVisible: false,
-        hasHandedOver: true,
         messages: [
           {
             sId: "child",
@@ -115,7 +112,6 @@ describe("getAgentMessageHeaderTimestampMs", () => {
       getAgentMessageHeaderTimestampMs({
         ...parent,
         parentAgentVisible: false,
-        hasHandedOver: true,
         messages: [
           {
             sId: "child",

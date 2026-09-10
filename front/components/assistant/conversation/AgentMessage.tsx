@@ -1081,7 +1081,6 @@ export function AgentMessage({
     completedTs: agentMessage.completedTs,
     messageId: agentMessage.sId,
     parentAgentVisible: !!parentAgent,
-    hasHandedOver: isAgentMessageHandingOver,
     messages: methods.data
       .get()
       .filter(isAgentMessageWithStreaming)

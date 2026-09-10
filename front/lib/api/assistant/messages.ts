@@ -67,79 +67,15 @@ function isNestedAgentAction(
   );
 }
 
-type TimeRange = { start: number; end: number };
-
-function mergeTimeRanges(ranges: TimeRange[]): TimeRange[] {
-  if (ranges.length === 0) {
-    return [];
-  }
-
-  const sorted = [...ranges].sort((a, b) => a.start - b.start);
-  const merged: TimeRange[] = [{ ...sorted[0] }];
-
-  for (let i = 1; i < sorted.length; i++) {
-    const last = merged[merged.length - 1];
-    const range = sorted[i];
-    if (range.start <= last.end) {
-      last.end = Math.max(last.end, range.end);
-    } else {
-      merged.push({ ...range });
-    }
-  }
-
-  return merged;
-}
-
-function subtractTimeRanges(
-  waitRanges: TimeRange[],
-  occupiedRanges: TimeRange[]
-): TimeRange[] {
-  if (occupiedRanges.length === 0) {
-    return waitRanges;
-  }
-
-  const remaining: TimeRange[] = [];
-  for (const wait of waitRanges) {
-    let cursor = wait.start;
-    for (const occupied of occupiedRanges) {
-      if (occupied.end <= cursor) {
-        continue;
-      }
-      if (occupied.start >= wait.end) {
-        break;
-      }
-      if (occupied.start > cursor) {
-        remaining.push({
-          start: cursor,
-          end: Math.min(occupied.start, wait.end),
-        });
-      }
-      cursor = Math.max(cursor, occupied.end);
-      if (cursor >= wait.end) {
-        break;
-      }
-    }
-    if (cursor < wait.end) {
-      remaining.push({ start: cursor, end: wait.end });
-    }
-  }
-
-  return remaining.filter((range) => range.end > range.start);
-}
-
 /**
- * @cc [owner:frankaloia,label:product] exclude-tool-approval-wait
- * For ordinary (non-nested-agent) actions, the duration MUST subtract wait
- * between `createdAt` and execution start (`updatedAt - executionDurationMs`),
- * except any portion that overlaps a nested-agent action's `createdAt`→`updatedAt`
- * span. Overlapping wait is parallel to nested work and MUST NOT reduce duration.
- */
-/**
- * @cc [owner:frankaloia,label:product] nested-agent-time-counts
- * The returned duration MUST include each nested agent action's full
- * `createdAt`→`updatedAt` span (`run_agent`, `agent_delegation`). Ordinary-tool
- * wait that overlaps those spans MUST NOT be subtracted. `executionDurationMs`
- * on nested agents MUST NOT be used to classify their gaps as wait.
+ * @cc [owner:frankaloia,label:product] completion-duration-excludes-idle-wait
+ * Completion duration is `completedTs - created` minus idle wait. Idle wait is
+ * time during which an ordinary tool is waiting to execute (between `createdAt`
+ * and `updatedAt - executionDurationMs`) AND no nested agent is running. Nested
+ * agents (`run_agent`, `agent_delegation`) count their full `createdAt`→`updatedAt`
+ * span as productive; their `executionDurationMs` (last attempt only) MUST NOT be
+ * treated as wait, and ordinary-tool wait overlapping their span runs in parallel
+ * to the child so it MUST NOT be subtracted.
  */
 export function getCompletionDuration(
   created: number,
@@ -152,33 +88,49 @@ export function getCompletionDuration(
 
   // Ordinary tools: [createdAt] ----wait---- [executionStart] ----execute---- [updatedAt]
   // Nested agents:  [createdAt] ----------------child work---------------- [updatedAt]
-  // Wait overlapping nested occupancy is parallel to child work, so it is not subtracted.
+  //
+  // Sweep the wait/busy boundaries once: a slice of time is idle (subtracted)
+  // only while at least one ordinary tool is waiting and no nested agent is busy.
+  const boundaries: Array<{ t: number; waitDelta: number; busyDelta: number }> =
+    [];
+  for (const action of actions) {
+    if (isNestedAgentAction(action)) {
+      if (action.updatedAt > action.createdAt) {
+        boundaries.push({ t: action.createdAt, waitDelta: 0, busyDelta: 1 });
+        boundaries.push({ t: action.updatedAt, waitDelta: 0, busyDelta: -1 });
+      }
+      continue;
+    }
+    if (action.executionDurationMs === null) {
+      continue;
+    }
+    const executionStart = action.updatedAt - action.executionDurationMs;
+    if (executionStart > action.createdAt) {
+      boundaries.push({ t: action.createdAt, waitDelta: 1, busyDelta: 0 });
+      boundaries.push({ t: executionStart, waitDelta: -1, busyDelta: 0 });
+    }
+  }
 
-  const nestedOccupancy = mergeTimeRanges(
-    actions
-      .filter((a) => isNestedAgentAction(a))
-      .map((a) => ({ start: a.createdAt, end: a.updatedAt }))
-      .filter((r) => r.end > r.start)
-  );
+  if (boundaries.length === 0) {
+    return completedTs - created;
+  }
 
-  const waitRanges = mergeTimeRanges(
-    actions
-      .filter((a) => a.executionDurationMs !== null)
-      .filter((a) => !isNestedAgentAction(a))
-      .map((a) => ({
-        start: a.createdAt,
-        end: a.updatedAt - a.executionDurationMs!,
-      }))
-      .filter((r) => r.end > r.start)
-  );
+  boundaries.sort((a, b) => a.t - b.t);
 
-  const subtractableWait = subtractTimeRanges(waitRanges, nestedOccupancy);
-  const totalWaitTimeMs = subtractableWait.reduce(
-    (sum, range) => sum + (range.end - range.start),
-    0
-  );
+  let waitCount = 0;
+  let busyCount = 0;
+  let idleWaitMs = 0;
+  let prevT = boundaries[0].t;
+  for (const boundary of boundaries) {
+    if (boundary.t > prevT && waitCount > 0 && busyCount === 0) {
+      idleWaitMs += boundary.t - prevT;
+    }
+    waitCount += boundary.waitDelta;
+    busyCount += boundary.busyDelta;
+    prevT = boundary.t;
+  }
 
-  return completedTs - created - totalWaitTimeMs;
+  return completedTs - created - idleWaitMs;
 }
 
 export function getRichMentionsWithStatusForMessage(

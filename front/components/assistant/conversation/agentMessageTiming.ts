@@ -58,6 +58,9 @@ export function getLatestHandoffDescendantCompletedTs(
  * handoff descendant's `completedTs` once that child has finished. Showing the
  * parent's own completion time MUST NOT happen after a descendant has completed,
  * because that is the first loop, not when the user-visible answer arrived.
+ * `parentAgentMessageId` is set only for handoffs, so the descendant walk both
+ * detects the handoff and returns the child time; a message with no handoff
+ * descendant falls back to its own `completedTs`.
  * Handoff children whose parent is visible MUST NOT show their own header timestamp.
  */
 export function getAgentMessageHeaderTimestampMs({
@@ -65,27 +68,21 @@ export function getAgentMessageHeaderTimestampMs({
   completedTs,
   messageId,
   parentAgentVisible,
-  hasHandedOver,
   messages,
 }: {
   created: number;
   completedTs: number | null;
   messageId: string;
   parentAgentVisible: boolean;
-  hasHandedOver: boolean;
   messages: HandoffTimingMessage[];
 }): number | undefined {
   if (parentAgentVisible) {
     return undefined;
   }
 
-  if (hasHandedOver) {
-    return (
-      getLatestHandoffDescendantCompletedTs(messageId, messages) ??
-      completedTs ??
-      created
-    );
-  }
-
-  return completedTs ?? created;
+  return (
+    getLatestHandoffDescendantCompletedTs(messageId, messages) ??
+    completedTs ??
+    created
+  );
 }
