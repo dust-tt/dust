@@ -47,6 +47,7 @@ import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/end
 import type { Host } from "@app/lib/model_constructors/types/hosts";
 import {
   AGENT_PLATFORM_HOST,
+  BEDROCK_HOST,
   OPENAI_RESPONSES_HOST,
   XAI_HOST,
 } from "@app/lib/model_constructors/types/hosts";
@@ -872,9 +873,11 @@ export class StreamEndpointTransition extends BaseTransition {
     metadata?: LLMStreamMetadata
   ) {
     const { host: api } = this.model.metadata();
-    // Agent-platform (Vertex) has no request-level automatic cache_control, so it
-    // needs an explicit breakpoint on the conversation tail (legacy's isLast).
-    const explicitTailBreakpoint = api === AGENT_PLATFORM_HOST;
+    // Agent-platform (Vertex) and Bedrock have no request-level automatic
+    // cache_control, so they need an explicit breakpoint on the conversation
+    // tail (legacy's isLast).
+    const explicitTailBreakpoint =
+      api === AGENT_PLATFORM_HOST || api === BEDROCK_HOST;
     // OpenAI-compatible Responses hosts consume `prompt_cache_key`. Use the
     // workspace and agent configuration so requests can reuse cached prefixes
     // across conversations. xAI recommends always setting it to route stable

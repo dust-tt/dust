@@ -42,6 +42,8 @@ function dustManagedOtherProviderKeys() {
     DEEPSEEK_API_KEY: env("DUST_MANAGED_DEEPSEEK_API_KEY"),
     FIREWORKS_API_KEY: env("DUST_MANAGED_FIREWORKS_API_KEY"),
     XAI_API_KEY: env("DUST_MANAGED_XAI_API_KEY"),
+    // AWS-standard env var name, so the same token works with AWS tooling.
+    AWS_BEARER_TOKEN_BEDROCK: env("AWS_BEARER_TOKEN_BEDROCK"),
   };
 }
 

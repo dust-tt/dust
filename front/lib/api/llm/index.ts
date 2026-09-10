@@ -20,6 +20,7 @@ import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/providers/fi
 import type { Host } from "@app/lib/model_constructors/types/hosts";
 import {
   AGENT_PLATFORM_HOST,
+  BEDROCK_HOST,
   GOOGLE_AI_STUDIO_HOST,
 } from "@app/lib/model_constructors/types/hosts";
 import type { Lab } from "@app/lib/model_constructors/types/labs";
@@ -134,7 +135,8 @@ function getLabAndHostFilter(
  * @cc [owner:pmilliotte,label:security;product] byok-never-routes-to-dust-hosted-inference
  * A workspace on a BYOK plan (`plan.isByok`) must only reach endpoints served by the model lab's
  * own API, using the credentials the workspace provided. Endpoints hosted on Dust's infrastructure
- * — `agent-platform` (Vertex, keyed by `AGENT_PLATFORM_PROJECT_ID`) today — must be filtered out
+ * — `agent-platform` (Vertex, keyed by `AGENT_PLATFORM_PROJECT_ID`) and `bedrock` (keyed by
+ * `AWS_BEARER_TOKEN_BEDROCK`) today — must be filtered out
  * here, not merely made unreachable by an endpoint's `endpointFilter`: plan and feature-flag
  * conditions can change, the BYOK guarantee cannot.
  *
@@ -150,7 +152,7 @@ export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
     region: getRegionFilter(auth),
     // Conversely we route all non-byok gemini requests to agent platform.
     ...(byok
-      ? { not: { host: { eq: AGENT_PLATFORM_HOST } } }
+      ? { not: { host: { in: [AGENT_PLATFORM_HOST, BEDROCK_HOST] } } }
       : { not: { host: { eq: GOOGLE_AI_STUDIO_HOST } } }),
   };
 }

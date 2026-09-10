@@ -22,6 +22,9 @@ export type LLMCredentialsType = {
   AI21_API_KEY?: string;
   FIREWORKS_API_KEY?: string;
   AGENT_PLATFORM_PROJECT_ID?: string;
+  // Bedrock API key, minted per the AWS-standard env var name so the value can
+  // be reused as-is by AWS tooling. Dust-hosted only: never workspace-provided.
+  AWS_BEARER_TOKEN_BEDROCK?: string;
 };
 
 export type ProviderCredentialType = {
