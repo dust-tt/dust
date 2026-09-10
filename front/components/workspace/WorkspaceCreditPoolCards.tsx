@@ -22,8 +22,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useCallback, useState } from "react";
 import type { ReactNode } from "react";
+import { useCallback, useState } from "react";
 
 export type CreditPoolFetchStatus = "loading" | "error" | "ready";
 
