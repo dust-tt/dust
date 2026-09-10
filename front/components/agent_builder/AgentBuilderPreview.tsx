@@ -7,7 +7,10 @@ import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPan
 import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import {
+  useConversationSidePanelContext,
+  useRegisterSidePanelConversation,
+} from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -90,6 +93,8 @@ function PreviewContent({
   isTrialPlan,
   isAdmin,
 }: PreviewContentProps) {
+  useRegisterSidePanelConversation(!!conversation);
+
   const stickyMentions = useMemo<RichMention[]>(
     () => (draftAgent ? [toRichAgentMentionType(draftAgent)] : []),
     [draftAgent]

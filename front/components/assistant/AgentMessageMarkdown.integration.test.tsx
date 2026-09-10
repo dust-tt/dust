@@ -120,6 +120,7 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
             canGoBack: false,
             goBack: vi.fn(),
             currentPanel: undefined,
+            hasConversation: true,
             isPanelClosing: false,
             openPanel,
             togglePanel: vi.fn(),
