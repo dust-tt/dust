@@ -1340,8 +1340,9 @@ export function UsagePage() {
                   : "members"
               )
             }
+            className="flex flex-col gap-4"
           >
-            <TabsList className="mb-4">
+            <TabsList>
               <TabsTrigger value="members" label="Members" />
               <TabsTrigger value="groups" label="Groups" />
               {isWorkspaceAdmin && isCreditPriced && (
@@ -1353,7 +1354,7 @@ export function UsagePage() {
             </TabsList>
 
             <TabsContent value="members" className={TAB_CONTENT_CLASS}>
-              <Page.Vertical gap="sm" align="stretch">
+              <div className="flex flex-col items-stretch gap-4">
                 {searchRow}
                 <div className="flex flex-col gap-2">
                   <div className="flex flex-row items-center justify-between gap-2">
@@ -1412,7 +1413,7 @@ export function UsagePage() {
                     )}
                   </div>
                 </div>
-              </Page.Vertical>
+              </div>
             </TabsContent>
             <TabsContent value="groups" className={TAB_CONTENT_CLASS}>
               <GroupsUsageTable
