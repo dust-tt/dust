@@ -3,13 +3,10 @@ import {
   MAX_CSV_ROWS,
   useFilePreviewContent,
 } from "@app/components/file_explorer/FilePreviewContent";
-import type { MarkdownFilePreviewViewMode } from "@app/components/file_explorer/MarkdownFilePreview";
 import { MarkdownFilePreviewViewModeSwitch } from "@app/components/file_explorer/MarkdownFilePreview";
 import type { FileEntry } from "@app/components/file_explorer/types";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { useMarkdownFileEditor } from "@app/components/file_explorer/useMarkdownFileEditor";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
-import { writeFileContentByPath } from "@app/lib/swr/files";
-import { parseCanonicalScopedPath } from "@app/types/mount_path";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -24,8 +21,7 @@ import {
   Download01,
   Icon,
 } from "@dust-tt/sparkle";
-import { useEffect, useRef, useState } from "react";
-import { useSWRConfig } from "swr";
+import { useEffect, useState } from "react";
 
 interface FilePreviewDialogProps {
   entry: FileEntry | null;
@@ -49,22 +45,6 @@ export function FilePreviewDialog({
   owner,
 }: FilePreviewDialogProps) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const [markdownViewMode, setMarkdownViewMode] =
-    useState<MarkdownFilePreviewViewMode>("preview");
-  const [markdownDraft, setMarkdownDraft] = useState("");
-  const [markdownSavedContent, setMarkdownSavedContent] = useState("");
-  const [markdownSourcePath, setMarkdownSourcePath] = useState<string | null>(
-    null
-  );
-  const [isMarkdownSaving, setIsMarkdownSaving] = useState(false);
-  const [markdownDialogKey, setMarkdownDialogKey] = useState({
-    isOpen,
-    path: entry?.path,
-  });
-  const markdownInitKeyRef = useRef<string | null>(null);
-
-  const sendNotification = useSendNotification();
-  const { mutate } = useSWRConfig();
 
   const handleDownload = async () => {
     if (!entry) {
@@ -116,103 +96,15 @@ export function FilePreviewDialog({
     ? getFileTypeIcon(entry.contentType, entry.fileName)
     : null;
 
-  const editableMarkdownFilePath =
-    entry && owner && parseCanonicalScopedPath(entry.path) ? entry.path : null;
-  const canEditMarkdown = category === "markdown" && !!editableMarkdownFilePath;
-
-  if (
-    isOpen !== markdownDialogKey.isOpen ||
-    entry?.path !== markdownDialogKey.path
-  ) {
-    setMarkdownDialogKey({ isOpen, path: entry?.path });
-    setMarkdownViewMode("preview");
-    setMarkdownSourcePath(null);
-    setMarkdownDraft("");
-    setMarkdownSavedContent("");
-    markdownInitKeyRef.current = null;
-  }
-
-  const isMarkdownDirty = markdownDraft !== markdownSavedContent;
-
-  useEffect(() => {
-    if (
-      !isOpen ||
-      !canEditMarkdown ||
-      !entry?.path ||
-      isContentLoading ||
-      !processedContent
-    ) {
-      return;
-    }
-
-    const initKey = `${entry.path}:${processedContent.text}`;
-    if (markdownInitKeyRef.current === initKey) {
-      return;
-    }
-
-    const hadInitializedForPath = markdownInitKeyRef.current?.startsWith(
-      `${entry.path}:`
-    );
-    if (hadInitializedForPath && isMarkdownDirty) {
-      return;
-    }
-
-    setMarkdownSourcePath(entry.path);
-    setMarkdownDraft(processedContent.text);
-    setMarkdownSavedContent(processedContent.text);
-    markdownInitKeyRef.current = initKey;
-  }, [
-    canEditMarkdown,
-    entry?.path,
+  const markdown = useMarkdownFileEditor({
+    category,
+    entryPath: entry?.path,
+    fileUrl,
+    isActive: isOpen,
     isContentLoading,
-    isMarkdownDirty,
-    isOpen,
-    processedContent?.text,
+    owner,
     processedContent,
-  ]);
-
-  const handleMarkdownSave = async () => {
-    if (
-      !owner ||
-      !editableMarkdownFilePath ||
-      !isMarkdownDirty ||
-      isMarkdownSaving
-    ) {
-      return;
-    }
-
-    setIsMarkdownSaving(true);
-    try {
-      await writeFileContentByPath({
-        owner,
-        canonicalPath: editableMarkdownFilePath,
-        content: markdownDraft,
-        contentType: "text/markdown",
-      });
-      await mutate(
-        fileUrl,
-        { kind: "loaded", content: markdownDraft },
-        { revalidate: false }
-      );
-      setMarkdownSavedContent(markdownDraft);
-      if (entry?.path) {
-        markdownInitKeyRef.current = `${entry.path}:${markdownDraft}`;
-      }
-      sendNotification({ type: "success", title: "File saved" });
-    } catch (e) {
-      sendNotification({
-        type: "error",
-        title: "Failed to save file",
-        description: e instanceof Error ? e.message : "Unknown error",
-      });
-    } finally {
-      setIsMarkdownSaving(false);
-    }
-  };
-
-  const handleMarkdownRevert = () => {
-    setMarkdownDraft(markdownSavedContent);
-  };
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -246,12 +138,12 @@ export function FilePreviewDialog({
             )}
           </div>
         </DialogHeader>
-        {canEditMarkdown && (
+        {markdown.canEdit && (
           <div className="flex shrink-0 justify-end px-4">
             <MarkdownFilePreviewViewModeSwitch
               key={`${entry?.path ?? "none"}:${isOpen}`}
-              viewMode={markdownViewMode}
-              onViewModeChange={setMarkdownViewMode}
+              viewMode={markdown.viewMode}
+              onViewModeChange={markdown.setViewMode}
             />
           </div>
         )}
@@ -270,22 +162,14 @@ export function FilePreviewDialog({
                 fileContent={truncatedContent}
                 fileUrl={fileUrl ?? ""}
                 isContentLoading={isContentLoading}
-                markdownCanEdit={canEditMarkdown}
-                markdownContent={
-                  canEditMarkdown
-                    ? markdownSourcePath === entry.path
-                      ? markdownDraft
-                      : processedContent?.text
-                    : processedContent?.text
-                }
-                markdownViewMode={
-                  canEditMarkdown ? markdownViewMode : "preview"
-                }
+                markdownCanEdit={markdown.canEdit}
+                markdownContent={markdown.content}
+                markdownViewMode={markdown.viewMode}
                 onMarkdownContentChange={
-                  canEditMarkdown ? setMarkdownDraft : undefined
+                  markdown.canEdit ? markdown.setDraft : undefined
                 }
                 onMarkdownViewModeChange={
-                  canEditMarkdown ? setMarkdownViewMode : undefined
+                  markdown.canEdit ? markdown.setViewMode : undefined
                 }
                 owner={owner}
                 processedContent={processedContent}
@@ -308,22 +192,14 @@ export function FilePreviewDialog({
                 fileContent={truncatedContent}
                 fileUrl={fileUrl ?? ""}
                 isContentLoading={isContentLoading}
-                markdownCanEdit={canEditMarkdown}
-                markdownContent={
-                  canEditMarkdown
-                    ? markdownSourcePath === entry.path
-                      ? markdownDraft
-                      : processedContent?.text
-                    : processedContent?.text
-                }
-                markdownViewMode={
-                  canEditMarkdown ? markdownViewMode : "preview"
-                }
+                markdownCanEdit={markdown.canEdit}
+                markdownContent={markdown.content}
+                markdownViewMode={markdown.viewMode}
                 onMarkdownContentChange={
-                  canEditMarkdown ? setMarkdownDraft : undefined
+                  markdown.canEdit ? markdown.setDraft : undefined
                 }
                 onMarkdownViewModeChange={
-                  canEditMarkdown ? setMarkdownViewMode : undefined
+                  markdown.canEdit ? markdown.setViewMode : undefined
                 }
                 owner={owner}
                 processedContent={processedContent}
@@ -351,22 +227,22 @@ export function FilePreviewDialog({
                 tooltip="Next"
               />
             </div>
-            {canEditMarkdown ? (
+            {markdown.canEdit ? (
               <div className="flex items-center gap-2">
                 <Button
                   label="Save"
                   variant="highlight"
                   size="sm"
-                  isLoading={isMarkdownSaving}
-                  disabled={!isMarkdownDirty || isMarkdownSaving}
-                  onClick={() => void handleMarkdownSave()}
+                  isLoading={markdown.isSaving}
+                  disabled={!markdown.isDirty || markdown.isSaving}
+                  onClick={() => void markdown.save()}
                 />
                 <Button
                   label="Revert"
                   variant="outline"
                   size="sm"
-                  disabled={!isMarkdownDirty || isMarkdownSaving}
-                  onClick={handleMarkdownRevert}
+                  disabled={!markdown.isDirty || markdown.isSaving}
+                  onClick={markdown.revert}
                 />
                 <Button
                   variant="outline"
@@ -374,7 +250,7 @@ export function FilePreviewDialog({
                   icon={Download01}
                   label={isDownloading ? "Downloading…" : "Download"}
                   onClick={handleDownload}
-                  disabled={!entry || isDownloading || isMarkdownDirty}
+                  disabled={!entry || isDownloading || markdown.isDirty}
                 />
               </div>
             ) : (
