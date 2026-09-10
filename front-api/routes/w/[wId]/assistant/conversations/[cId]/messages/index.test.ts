@@ -13,6 +13,11 @@ vi.mock("@app/lib/api/programmatic_usage/tracking", () => ({
   checkProgrammaticUsageLimits: vi.fn(),
 }));
 
+vi.mock("@app/temporal/agent_loop/client", () => ({
+  launchAgentLoopWorkflow: vi.fn(),
+  launchCompactionWorkflow: vi.fn(),
+}));
+
 async function setupTest(role: MembershipRoleType = "admin") {
   const { workspace, auth, globalSpace, user } =
     await createPrivateApiMockRequest({ role, method: "POST" });
@@ -92,6 +97,84 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages", () => {
     expect(relationships).toHaveLength(1);
     expect(relationships[0].enabled).toBe(true);
     expect(relationships[0].mcpServerViewId).toBe(mcpServerView.id);
+  });
+
+  it("promotes a hidden Analytics-panel conversation to the user's history", async () => {
+    const { workspace, auth, user } = await setupTest("admin");
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [],
+      visibility: "test",
+    });
+
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "<dust_system>Opening message</dust_system>",
+      origin: "analytics_panel",
+      rank: 0,
+    });
+
+    const response = await postMessage(workspace, conversation.sId, {
+      content: "Which agents are used the most?",
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+      context: {
+        timezone: "Europe/Paris",
+        profilePictureUrl: user.imageUrl ?? null,
+      },
+      skipToolsValidation: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    await vi.waitFor(async () => {
+      const promoted = await ConversationResource.fetchById(
+        auth,
+        conversation.sId
+      );
+      assert(promoted, "Conversation not found after posting");
+      expect(promoted.visibility).toBe("unlisted");
+    });
+  });
+
+  it("leaves a test conversation the Analytics panel did not open hidden", async () => {
+    const { workspace, auth, user } = await setupTest("admin");
+
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+      messagesCreatedAt: [],
+      visibility: "test",
+    });
+
+    await ConversationFactory.createUserMessage({
+      auth,
+      workspace,
+      conversation,
+      content: "Hello",
+      origin: "web",
+      rank: 0,
+    });
+
+    const response = await postMessage(workspace, conversation.sId, {
+      content: "Hello",
+      mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+      context: {
+        timezone: "Europe/Paris",
+        profilePictureUrl: user.imageUrl ?? null,
+      },
+      skipToolsValidation: true,
+    });
+
+    expect(response.status).toBe(200);
+
+    const unchanged = await ConversationResource.fetchById(
+      auth,
+      conversation.sId
+    );
+    assert(unchanged, "Conversation not found after posting");
+    expect(unchanged.visibility).toBe("test");
   });
 
   it("returns 404 when conversation doesn't exist", async () => {
