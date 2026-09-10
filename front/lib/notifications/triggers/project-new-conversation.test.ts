@@ -118,6 +118,26 @@ describe("filterMembersByNotifyCondition", () => {
     expect(result).toHaveLength(0);
   });
 
+  test("should read the user-scoped preference and ignore workspace-scoped rows", async () => {
+    await user1.setMetadata(
+      CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+      "never"
+    );
+    await user1.setMetadata(
+      CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+      "all_messages",
+      workspace.id
+    );
+
+    const result = await filterMembersByNotifyCondition(
+      auth,
+      [user1],
+      space.id
+    );
+
+    expect(result).toHaveLength(0);
+  });
+
   test("should exclude user with 'never' preference", async () => {
     const preference: NotificationCondition = "never";
     await user1.setMetadata(
