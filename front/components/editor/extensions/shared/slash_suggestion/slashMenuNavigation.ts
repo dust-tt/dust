@@ -1,10 +1,6 @@
 import { isInsertKnowledgeSlashCommand } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { isPickModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
-import {
-  matchesSearchWords,
-  splitSearchWords,
-} from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import type { Editor, Range } from "@tiptap/core";
 
 export const ATTACH_CONTEXT_SUB_MENU_ID = "attach-context";
@@ -68,9 +64,9 @@ export interface ResolvedSlashSubMenu {
 /**
  * @cc [owner:PopDaph,label:product] space-enters-first-sub-menu-command
  * A query containing a space resolves to the sub-menu of the first item of `commandItems` whose
- * label matches (`matchesSearchWords`) the text before the first space, with the remainder as
- * the sub-menu query. It resolves to `null` when that text has no search word, no label matches,
- * or the first match is not a sub-menu command.
+ * label has a word (split on whitespace and hyphens) starting, case-insensitively, with the text
+ * before the first space, with the remainder as the sub-menu query. It resolves to `null` when
+ * that text is empty, no label matches, or the first match is not a sub-menu command.
  */
 export function resolveSlashSubMenuFromQuery({
   commandItems,
@@ -80,18 +76,16 @@ export function resolveSlashSubMenuFromQuery({
   query: string;
 }): ResolvedSlashSubMenu | null {
   const spaceIndex = query.indexOf(" ");
-  if (spaceIndex === -1) {
+  if (spaceIndex <= 0) {
     return null;
   }
 
-  // A head without words (e.g. "-") would match every label.
-  const head = query.slice(0, spaceIndex);
-  if (splitSearchWords(head).length === 0) {
-    return null;
-  }
-
+  const head = query.slice(0, spaceIndex).toLowerCase();
   const command = commandItems.find((item) =>
-    matchesSearchWords(item.label, head)
+    item.label
+      .toLowerCase()
+      .split(/[\s-]+/)
+      .some((word) => word.startsWith(head))
   );
   const subMenuId = command ? getSlashCommandSubMenuId(command) : null;
   if (!command || !subMenuId) {
