@@ -288,8 +288,6 @@ export function WorkspaceCreditPoolSection({
     return null;
   }
 
-  // Matches the gap the usage page keeps between this section and the tabs
-  // below it, so cards, cycle history and member table are evenly spaced.
   return (
     <div className="flex flex-col items-stretch gap-10">
       {cardsStatus === "error" ? (
