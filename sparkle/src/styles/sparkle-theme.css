@@ -17,6 +17,7 @@
   --animate-background-position-spin: background-position-spin 2000ms infinite
     alternate;
   --animate-rainbow: rainbow var(--speed, 16s) infinite linear;
+  --animate-loading-dot: loading-dot 1.2s infinite;
   --animate-collapse-down: collapse-down 150ms ease-out;
   --animate-collapse-up: collapse-up 150ms ease-out;
 }
@@ -88,6 +89,16 @@
   }
   50% {
     opacity: 0.5;
+  }
+}
+@keyframes loading-dot {
+  0%,
+  20% {
+    opacity: 0;
+  }
+  40%,
+  100% {
+    opacity: 1;
   }
 }
 @keyframes background-position-spin {
