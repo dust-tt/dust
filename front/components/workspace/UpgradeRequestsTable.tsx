@@ -1,4 +1,5 @@
 import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
+import { UsageTableSkeleton } from "@app/components/workspace/usage/UsageTableSkeleton";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { timeAgoFrom } from "@app/lib/utils";
 import type {
@@ -158,6 +159,7 @@ function buildActionsColumn({
 interface UpgradeRequestsTableProps {
   requests: MembershipUpgradeRequestType[];
   isLoading: boolean;
+  useLoadingSkeleton?: boolean;
   seatPlans: SeatPlanResponseBody;
   pendingRequestIds: ReadonlySet<string>;
   onUpgradePlan: (request: MembershipUpgradeRequestType) => void;
@@ -168,6 +170,7 @@ interface UpgradeRequestsTableProps {
 export function UpgradeRequestsTable({
   requests,
   isLoading,
+  useLoadingSkeleton = false,
   seatPlans,
   pendingRequestIds,
   onUpgradePlan,
@@ -204,6 +207,38 @@ export function UpgradeRequestsTable({
   );
 
   if (isLoading) {
+    if (useLoadingSkeleton) {
+      return (
+        <UsageTableSkeleton
+          columns={columns}
+          label="Loading upgrade requests"
+          renderCell={(columnId) => {
+            switch (columnId) {
+              case "name":
+                return (
+                  <div className="flex min-w-0 items-center gap-2">
+                    <LoadingBlock className="h-7 w-7 shrink-0 rounded-full" />
+                    <div className="flex min-w-0 flex-col gap-1">
+                      <LoadingBlock className="h-4 w-32 max-w-full" />
+                      <LoadingBlock className="h-3 w-44 max-w-full" />
+                    </div>
+                  </div>
+                );
+              case "actions":
+                return (
+                  <div className="flex w-full justify-end gap-2">
+                    <LoadingBlock className="h-8 w-20" />
+                    <LoadingBlock className="h-8 w-32" />
+                    <LoadingBlock className="h-8 w-20" />
+                  </div>
+                );
+              default:
+                return <LoadingBlock className="h-4 w-28 max-w-full" />;
+            }
+          }}
+        />
+      );
+    }
     return (
       <div className="flex w-full flex-col space-y-2">
         <LoadingBlock className="h-8 w-full rounded-xl" />

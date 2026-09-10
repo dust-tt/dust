@@ -1017,6 +1017,7 @@ export function UsagePage() {
       members={membersUsage}
       creditsResetAt={creditsResetAt}
       isLoading={isMembersUsageLoading}
+      useLoadingSkeleton={isNewUsagePage}
       isRefreshing={isMembersUsageRefreshing}
       showSeatAndCredits={isCreditPriced}
       seatActionsDisabled={isSubscriptionCancelled}
@@ -1402,6 +1403,7 @@ export function UsagePage() {
                       <UpgradeRequestsTable
                         requests={filteredUpgradeRequests}
                         isLoading={isUpgradeRequestsLoading}
+                        useLoadingSkeleton={isNewUsagePage}
                         seatPlans={seatPlans}
                         pendingRequestIds={resolvingRequestIds}
                         onUpgradePlan={handleUpgradePlanRequest}
@@ -1418,12 +1420,16 @@ export function UsagePage() {
                 owner={owner}
                 showSpendLimitColumn={isCreditPriced}
                 showModelTiersColumn={isWorkspaceAdmin}
+                useLoadingSkeleton={isNewUsagePage}
               />
             </TabsContent>
 
             {isWorkspaceAdmin && isCreditPriced && (
               <TabsContent value="top-ups" className={TAB_CONTENT_CLASS}>
-                <TopUpsHistoryTable owner={owner} />
+                <TopUpsHistoryTable
+                  owner={owner}
+                  useLoadingSkeleton={isNewUsagePage}
+                />
               </TabsContent>
             )}
 

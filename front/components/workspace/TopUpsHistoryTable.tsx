@@ -1,3 +1,4 @@
+import { UsageTableSkeleton } from "@app/components/workspace/usage/UsageTableSkeleton";
 import { formatCredits } from "@app/lib/client/credits";
 import { useAwuTopUpsHistory } from "@app/lib/swr/credits";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -6,6 +7,7 @@ import {
   AlertCircle,
   ContentMessage,
   DataTable,
+  LoadingBlock,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -13,6 +15,7 @@ import { useMemo } from "react";
 
 interface TopUpsHistoryTableProps {
   owner: LightWorkspaceType;
+  useLoadingSkeleton?: boolean;
 }
 
 type TopUpRowData = {
@@ -60,7 +63,10 @@ const COLUMNS: ColumnDef<TopUpRowData, string>[] = [
   },
 ];
 
-export function TopUpsHistoryTable({ owner }: TopUpsHistoryTableProps) {
+export function TopUpsHistoryTable({
+  owner,
+  useLoadingSkeleton = false,
+}: TopUpsHistoryTableProps) {
   const { topUps, isTopUpsHistoryLoading, isTopUpsHistoryError } =
     useAwuTopUpsHistory({ workspaceId: owner.sId });
 
@@ -91,6 +97,23 @@ export function TopUpsHistoryTable({ owner }: TopUpsHistoryTableProps) {
   }
 
   if (isTopUpsHistoryLoading) {
+    if (useLoadingSkeleton) {
+      return (
+        <UsageTableSkeleton
+          columns={COLUMNS}
+          label="Loading top-ups history"
+          renderCell={(columnId) => (
+            <LoadingBlock
+              className={
+                columnId === "name"
+                  ? "h-4 w-40 max-w-full"
+                  : "h-4 w-24 max-w-full"
+              }
+            />
+          )}
+        />
+      );
+    }
     return (
       <div className="flex justify-center py-8">
         <Spinner />

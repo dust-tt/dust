@@ -1,10 +1,11 @@
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupSpendLimitCell } from "@app/components/workspace/GroupSpendLimitCell";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
+import { UsageTableSkeleton } from "@app/components/workspace/usage/UsageTableSkeleton";
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
-import { DataTable, Spinner, Users01 } from "@dust-tt/sparkle";
+import { DataTable, LoadingBlock, Spinner, Users01 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -12,6 +13,7 @@ interface GroupsUsageTableProps {
   owner: LightWorkspaceType;
   showSpendLimitColumn?: boolean;
   showModelTiersColumn?: boolean;
+  useLoadingSkeleton?: boolean;
 }
 
 type GroupRowData = {
@@ -28,6 +30,7 @@ export function GroupsUsageTable({
   owner,
   showSpendLimitColumn = true,
   showModelTiersColumn = false,
+  useLoadingSkeleton = false,
 }: GroupsUsageTableProps) {
   const { groups, isGroupsLoading } = useGroups({
     owner,
@@ -120,7 +123,7 @@ export function GroupsUsageTable({
     [owner, showSpendLimitColumn, showModelTiersColumn, doUpdateGroupSpendLimit]
   );
 
-  if (isGroupsLoading) {
+  if (isGroupsLoading && !useLoadingSkeleton) {
     return (
       <div className="flex items-center justify-center py-8">
         <Spinner size="lg" />
@@ -136,7 +139,28 @@ export function GroupsUsageTable({
           member belongs to several groups, the highest limit is used.
         </span>
       )}
-      <DataTable filterColumn="name" data={rows} columns={columns} />
+      {isGroupsLoading ? (
+        <UsageTableSkeleton
+          columns={columns}
+          label="Loading groups"
+          renderCell={(columnId) =>
+            columnId === "name" ? (
+              <div className="flex items-center gap-2">
+                <LoadingBlock className="h-5 w-5" />
+                <LoadingBlock className="h-4 w-32" />
+              </div>
+            ) : columnId === "memberCount" ? (
+              <div className="flex h-12 items-center">
+                <LoadingBlock className="h-4 w-8" />
+              </div>
+            ) : (
+              <LoadingBlock className="h-4 w-24" />
+            )
+          }
+        />
+      ) : (
+        <DataTable filterColumn="name" data={rows} columns={columns} />
+      )}
     </div>
   );
 }

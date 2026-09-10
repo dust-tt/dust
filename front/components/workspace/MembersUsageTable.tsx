@@ -13,6 +13,7 @@ import {
   OVER_POOL_LIMIT_BAR_CLASSES,
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
+import { UsageTableSkeleton } from "@app/components/workspace/usage/UsageTableSkeleton";
 import type { PremiumModelMessageUsage } from "@app/lib/api/assistant/rate_limits";
 import type {
   MemberFairUseUsage,
@@ -1196,12 +1197,62 @@ function buildColumns({
 // keeps the customer-facing usage page unchanged.
 export type MembersUsageTableVariant = "legacy" | "compact";
 
+function renderMemberUsageSkeletonCell(columnId: string, rowIndex: number) {
+  switch (columnId) {
+    case "select":
+      return <LoadingBlock className="h-4 w-4 rounded-sm" />;
+    case "name":
+      return (
+        <div className="flex min-w-0 items-center gap-2">
+          <LoadingBlock className="h-7 w-7 shrink-0 rounded-full" />
+          <div className="flex min-w-0 flex-col">
+            <div className="flex h-5 items-center">
+              <LoadingBlock
+                className={
+                  rowIndex % 2 === 0
+                    ? "h-3 w-32 max-w-full"
+                    : "h-3 w-40 max-w-full"
+                }
+              />
+            </div>
+            <div className="flex h-4 items-center">
+              <LoadingBlock className="h-3 w-44 max-w-full" />
+            </div>
+          </div>
+        </div>
+      );
+    case "seatsIcon":
+      return <LoadingBlock className="h-5 w-12 rounded-md" />;
+    case "seatUsage":
+      return <LoadingBlock className="h-3 w-8" />;
+    case "consumedFromPoolAwuCredits":
+      return (
+        <div className="flex w-full flex-col gap-1 pr-3">
+          <div className="flex h-4 items-center justify-between">
+            <LoadingBlock className="h-3 w-8" />
+            <LoadingBlock className="h-3 w-12" />
+          </div>
+          <div className="flex h-3 items-center">
+            <LoadingBlock className="h-1 w-full rounded-full" />
+          </div>
+        </div>
+      );
+    case "overallUsageTarget":
+      return <LoadingBlock className="h-5 w-16 rounded-md" />;
+    case "actions":
+      return <LoadingBlock className="mx-auto h-4 w-4" />;
+    default:
+      return <LoadingBlock className="h-4 w-24 max-w-full" />;
+  }
+}
+
 interface MembersUsageTableProps {
   members: MemberUsageType[];
   // End of the current billing period (workspace-level, from the members-usage
   // response) shown under the credits column header. Null hides the line.
   creditsResetAt: string | null;
   isLoading: boolean;
+  useLoadingSkeleton?: boolean;
   isRefreshing?: boolean;
   totalAllowedUsagePendingMemberIds: ReadonlySet<string>;
   seatChangePendingMemberIds: ReadonlySet<string>;
@@ -1255,6 +1306,7 @@ export function MembersUsageTable({
   members,
   creditsResetAt,
   isLoading,
+  useLoadingSkeleton = false,
   isRefreshing = false,
   totalAllowedUsagePendingMemberIds,
   seatChangePendingMemberIds,
@@ -1494,6 +1546,25 @@ export function MembersUsageTable({
       showUnblockWidth,
     ]
   );
+
+  if (useLoadingSkeleton && (isLoading || isRefreshing)) {
+    const remainingRowCount =
+      totalRowCount - pagination.pageIndex * pagination.pageSize;
+    return (
+      <UsageTableSkeleton
+        columns={columns}
+        label="Loading members"
+        rowCount={
+          remainingRowCount > 0
+            ? Math.min(pagination.pageSize, remainingRowCount)
+            : pagination.pageSize
+        }
+        sorting={sorting}
+        showPagination
+        renderCell={renderMemberUsageSkeletonCell}
+      />
+    );
+  }
 
   if (isLoading) {
     return (
