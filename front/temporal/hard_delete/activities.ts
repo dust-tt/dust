@@ -24,7 +24,7 @@ import type { Sequelize } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
 
 const BATCH_SIZE = 100;
-const WORKSPACE_CONCURRENCY = 32;
+const WORKSPACE_CONCURRENCY = 10;
 
 export async function purgeExpiredRunExecutionsActivity() {
   const coreSequelize = getCorePrimaryDbConnection();
