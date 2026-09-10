@@ -241,7 +241,7 @@ export function InputBarPlusMenu({
               )}
               {!hideAttachments && (
                 <DropdownMenuItem
-                  label="Attach knowledge"
+                  label="Attach"
                   icon={Attachment01}
                   disabled={disabled}
                   onClick={() => openPicker("attachments")}

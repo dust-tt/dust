@@ -11,7 +11,7 @@ export function createAttachKnowledgeSlashCommand(): SlashCommand {
     description: "Search knowledge and reference conversation or pod files",
     icon: getSlashCommandAvatarIcon(Attachment01),
     id: "attach-knowledge",
-    label: "Attach knowledge",
+    label: "Attach",
     tooltip: {
       description: "Use company knowledge or reference files for context.",
       media: (

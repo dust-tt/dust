@@ -1839,7 +1839,7 @@ const InputBarContainer = ({
                             {actions.includes("attachment") && (
                               <DropdownMenuItem
                                 icon={Attachment01}
-                                label="Attach knowledge"
+                                label="Attach"
                                 onClick={() => {
                                   setIsCaptureDropdownOpen(false);
                                   setShowKnowledgePicker(true);
