@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import type { PaidSeatType } from "./memberships";
+import { PAID_SEAT_TYPES } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
 import { isRoleType } from "./user";
@@ -92,6 +94,25 @@ export function isGroupGrantableRole(
   return GROUP_GRANTABLE_ROLES.includes(value as GroupGrantableRole);
 }
 
+// A group can grant a billable seat type to its active members: any paid seat
+// (`workspace`/`pro`/`max`, monthly or `_yearly`). The stored value is a full
+// seat type *including cadence*, so monthly and annual of the same tier are
+// distinct grants; the UI only offers the seats the workspace contract actually
+// bills. `free`/`none` are not grantable. A group with a null `grantedSeatType`
+// grants no seat. When a user belongs to several seat-granting groups, the
+// highest seat wins (per `SEAT_TYPE_ORDER`); ties within a tier prefer the
+// annual (`_yearly`) variant. See `GroupResource.computeUserSeatFromGroups`.
+export const GROUP_GRANTABLE_SEAT_TYPES = PAID_SEAT_TYPES;
+export type GroupGrantableSeatType = PaidSeatType;
+
+export function isGroupGrantableSeatType(
+  value: unknown
+): value is GroupGrantableSeatType {
+  return (GROUP_GRANTABLE_SEAT_TYPES as readonly string[]).includes(
+    value as string
+  );
+}
+
 export function isGroupKind(value: unknown): value is GroupKind {
   return GROUP_KINDS.includes(value as GroupKind);
 }
@@ -123,6 +144,10 @@ export type GroupType = {
   // Workspace role granted to this group's active members (admin or manager),
   // or null when the group grants no role.
   grantedRole: GroupGrantableRole | null;
+  // Billable seat type granted to this group's active members — a full paid seat
+  // type including cadence (e.g. `pro` or `pro_yearly`), or null when the group
+  // grants no seat.
+  grantedSeatType: GroupGrantableSeatType | null;
   // Member sIds, only populated when explicitly requested
   memberIds?: string[];
 };

@@ -1,5 +1,12 @@
+import { applyMembershipSeatChange } from "@app/lib/api/membership_seats";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { getActiveContract } from "@app/lib/metronome/plan_type";
+import {
+  getProductSeatTypes,
+  getSeatSubscriptionsFromContract,
+} from "@app/lib/metronome/seat_types";
+import { hasContractSeatSubscription } from "@app/lib/metronome/seats";
 import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -21,12 +28,14 @@ import {
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
+import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type {
   GroupGrantableRole,
+  GroupGrantableSeatType,
   GroupKind,
   GroupType,
   UserVisibleGroupKind,
@@ -41,7 +50,11 @@ import {
   isRegularManualGroupKind,
   USER_VISIBLE_GROUP_KINDS,
 } from "@app/types/groups";
-import type { MembershipRoleType } from "@app/types/memberships";
+import type {
+  MembershipRoleType,
+  MembershipSeatType,
+} from "@app/types/memberships";
+import { SEAT_TYPE_ORDER } from "@app/types/memberships";
 import type { AccessControlList } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -77,6 +90,7 @@ type CachedGroup = {
   workOSGroupId: string | null;
   poolCapAwuCredits: number | null;
   grantedRole: GroupGrantableRole | null;
+  grantedSeatType: GroupGrantableSeatType | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -128,6 +142,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       workOSGroupId: g.workOSGroupId,
       poolCapAwuCredits: g.poolCapAwuCredits,
       grantedRole: g.grantedRole,
+      grantedSeatType: g.grantedSeatType,
       createdAt: g.createdAt.getTime(),
       updatedAt: g.updatedAt.getTime(),
     }));
@@ -169,6 +184,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       workOSGroupId: data.workOSGroupId,
       poolCapAwuCredits: data.poolCapAwuCredits,
       grantedRole: data.grantedRole,
+      grantedSeatType: data.grantedSeatType,
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
     });
@@ -1771,6 +1787,16 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
+    // Joining a seat-granting group may upgrade the members' seat (deferred to
+    // after commit; downgrades to period end).
+    if (this.grantedSeatType !== null) {
+      await GroupResource.recomputeAndSyncWorkspaceSeatsForUsers(
+        auth,
+        userResources,
+        { transaction }
+      );
+    }
+
     return new Ok(undefined);
   }
 
@@ -1932,6 +1958,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     // (unless another role-granting group still grants it).
     if (this.grantedRole !== null) {
       await GroupResource.recomputeAndSyncWorkspaceRolesForUsers(
+        auth,
+        userResources,
+        { transaction }
+      );
+    }
+
+    // Leaving a seat-granting group may downgrade or remove the members' seat
+    // (deferred to period end, unless another seat-granting group still grants a
+    // seat).
+    if (this.grantedSeatType !== null) {
+      await GroupResource.recomputeAndSyncWorkspaceSeatsForUsers(
         auth,
         userResources,
         { transaction }
@@ -3056,6 +3093,326 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Set(removeNulls(groups.map((g) => g.grantedRole)));
   }
 
+  // ---------------------------------------------------------------------------
+  // Group-to-seat mapping (SCIM-driven seat provisioning).
+  //
+  // A group can grant a base billable seat type (workspace/pro/max) to its
+  // active members. A member's seat is the highest seat granted across their
+  // groups. Upgrades apply immediately; downgrades and removals are deferred to
+  // the end of the current period, via the shared `applyMembershipSeatChange`
+  // timing core. The mapping is authoritative for members of seat-granting
+  // groups (manual seat editing is locked for them in the UI).
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Lists the groups that grant a seat type to their members (non-null
+   * `grantedSeatType`). When any exist, seats are (partly) managed through group
+   * membership, so the members UI restricts manual seat editing for affected
+   * members.
+   */
+  static async listSeatGrantingGroupsForWorkspace(
+    auth: Authenticator
+  ): Promise<GroupResource[]> {
+    const groups = await this.baseFetch(auth, {
+      where: {
+        grantedSeatType: {
+          [Op.ne]: null,
+        },
+      },
+    });
+
+    return groups.filter((group) => group.canRead(auth));
+  }
+
+  // The seat type granted by a set of seat-granting groups: the highest tier per
+  // `SEAT_TYPE_ORDER`, ties within a tier broken toward the annual (`_yearly`)
+  // variant. Returns null when the set is empty. Cadence-mixing across a user's
+  // groups is unusual; the tie-break just makes the outcome deterministic.
+  private static seatFromGrantedSeats(
+    grantedSeats: GroupGrantableSeatType[]
+  ): GroupGrantableSeatType | null {
+    if (grantedSeats.length === 0) {
+      return null;
+    }
+    return grantedSeats.reduce((best, seat) => {
+      if (SEAT_TYPE_ORDER[seat] > SEAT_TYPE_ORDER[best]) {
+        return seat;
+      }
+      if (
+        SEAT_TYPE_ORDER[seat] === SEAT_TYPE_ORDER[best] &&
+        seat.endsWith("_yearly") &&
+        !best.endsWith("_yearly")
+      ) {
+        return seat;
+      }
+      return best;
+    });
+  }
+
+  /**
+   * @cc [owner:tdraier,label:product] max-granted-seat
+   * The returned seat MUST be the highest seat granted by any group the user is
+   * an active member of (highest tier per `SEAT_TYPE_ORDER`, ties within a tier
+   * resolving to the annual `_yearly` variant), considering every group kind
+   * except `system`, and null when no group grants a seat. A group grants a seat
+   * iff its `grantedSeatType` is non-null. The returned value is a full seat type
+   * including cadence.
+   */
+  static async computeUserSeatFromGroups(
+    auth: Authenticator,
+    user: UserResource,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<GroupGrantableSeatType | null> {
+    const userGroups = await this.dangerouslyListAllUserGroupsInWorkspace({
+      auth,
+      user,
+      groupKinds: GROUP_KINDS.filter(
+        (k): k is Exclude<GroupKind, "system"> => k !== "system"
+      ),
+      transaction,
+    });
+
+    return this.seatFromGrantedSeats(
+      removeNulls(userGroups.map((group) => group.grantedSeatType))
+    );
+  }
+
+  // Builds `userModelId -> granted base seats` for the whole workspace by loading
+  // the seat-granting groups (non-null `grantedSeatType`) and their active
+  // memberships once. No `canRead` filtering: seat provisioning must consider
+  // every seat-granting group regardless of the caller's read access.
+  private static async listGrantedSeatsByUserInWorkspace(
+    auth: Authenticator
+  ): Promise<Map<ModelId, GroupGrantableSeatType[]>> {
+    const seatGrantingGroups = await this.baseFetch(auth, {
+      where: { grantedSeatType: { [Op.ne]: null } },
+    });
+
+    const membershipsByGroup = await this.getActiveMembershipsForGroups(
+      auth,
+      seatGrantingGroups
+    );
+
+    const grantedSeatsByUser = new Map<ModelId, GroupGrantableSeatType[]>();
+    for (const group of seatGrantingGroups) {
+      const grantedSeatType = group.grantedSeatType;
+      if (!grantedSeatType) {
+        continue;
+      }
+      for (const userModelId of membershipsByGroup[group.id] ?? []) {
+        const seats = grantedSeatsByUser.get(userModelId);
+        if (seats) {
+          seats.push(grantedSeatType);
+        } else {
+          grantedSeatsByUser.set(userModelId, [grantedSeatType]);
+        }
+      }
+    }
+
+    return grantedSeatsByUser;
+  }
+
+  /**
+   * @cc [owner:tdraier,label:product] seat-sync-after-commit
+   * Group-driven seat changes reconcile Metronome and run the seat-change timing
+   * core, so they MUST NOT execute inside the member-mutation transaction: when a
+   * `transaction` is provided the sync is deferred to after commit (so the
+   * membership change is committed/visible and no external calls happen
+   * mid-transaction). Without a transaction it runs inline. A failing sync never
+   * rolls back the membership change — it is logged, and seats reconcile on the
+   * next mutation.
+   *
+   * Recomputes each given user's seat from their seat-granting group memberships
+   * and applies it through `applyMembershipSeatChange` (immediate on upgrade,
+   * deferred on downgrade/removal). A user in no seat-granting group has their
+   * seat removed (deferred): the mapping is authoritative for members of
+   * seat-granting groups.
+   */
+  static async recomputeAndSyncWorkspaceSeatsForUsers(
+    auth: Authenticator,
+    users: UserResource[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (users.length === 0) {
+      return;
+    }
+    if (transaction) {
+      const workspaceId = auth.getNonNullableWorkspace().sId;
+      transaction.afterCommit(() =>
+        GroupResource._recomputeAndSyncWorkspaceSeats(auth, users).catch(
+          (err) =>
+            logger.error(
+              { err, workspaceId },
+              "Failed to sync group-driven seats after commit"
+            )
+        )
+      );
+      return;
+    }
+    await GroupResource._recomputeAndSyncWorkspaceSeats(auth, users);
+  }
+
+  private static async _recomputeAndSyncWorkspaceSeats(
+    auth: Authenticator,
+    users: UserResource[]
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    const author = auth.user()?.toJSON() ?? "no-author";
+
+    // Group-driven seats only apply to Metronome seat-billed workspaces (mirrors
+    // the manual seat-change guard). Non-Metronome workspaces have no contract to
+    // resolve the billed cadence from.
+    if (!workspace.metronomeCustomerId) {
+      return;
+    }
+    const contract = await getActiveContract(workspace.sId);
+    if (!contract || !(await hasContractSeatSubscription(contract))) {
+      return;
+    }
+
+    const productSeatTypes = await getProductSeatTypes();
+    // The full seat types the contract actually bills. A granted seat that isn't
+    // billed (e.g. after a contract cadence switch stranded an old mapping) can't
+    // be assigned, so it's filtered out before picking the target.
+    const billedSeats = new Set<MembershipSeatType>(
+      getSeatSubscriptionsFromContract(contract, productSeatTypes).keys()
+    );
+
+    const grantedSeatsByUser =
+      await this.listGrantedSeatsByUserInWorkspace(auth);
+
+    let anyChange = false;
+    for (const user of users) {
+      const grantedSeats = grantedSeatsByUser.get(user.id) ?? [];
+
+      let targetSeatType: MembershipSeatType;
+      if (grantedSeats.length === 0) {
+        // No seat-granting group: the seat is removed (deferred). The mapping is
+        // authoritative for members of seat-granting groups.
+        targetSeatType = "none";
+      } else {
+        const target = this.seatFromGrantedSeats(
+          grantedSeats.filter((s) => billedSeats.has(s))
+        );
+        if (target === null) {
+          // The user is in seat-granting groups, but none of the granted seats
+          // are currently billed by the contract — leave their seat untouched
+          // rather than removing it over a transient contract/mapping mismatch.
+          logger.warn(
+            { workspaceId: workspace.sId, userId: user.sId, grantedSeats },
+            "Group grants only seat types the contract does not bill; skipping"
+          );
+          continue;
+        }
+        targetSeatType = target;
+      }
+
+      try {
+        const res = await applyMembershipSeatChange({
+          user,
+          workspace,
+          newSeatType: targetSeatType,
+          author,
+        });
+        if (res.isErr()) {
+          logger.warn(
+            {
+              workspaceId: workspace.sId,
+              userId: user.sId,
+              targetSeatType,
+              error: res.error.type,
+            },
+            "Failed to apply group-driven seat change"
+          );
+          continue;
+        }
+        if (res.value.metronomeBilled && res.value.seatChanged) {
+          anyChange = true;
+          logger.info(
+            {
+              workspaceId: workspace.sId,
+              userId: user.sId,
+              previousSeatType: res.value.previousSeatType,
+              newSeatType: res.value.resultingActiveSeatType,
+              scheduledSeatChangeAt:
+                res.value.scheduledSeatChangeAt?.toISOString(),
+            },
+            "Synced seat from group membership"
+          );
+        }
+      } catch (err) {
+        logger.error(
+          { err, workspaceId: workspace.sId, userId: user.sId },
+          "Error applying group-driven seat change"
+        );
+      }
+    }
+
+    // Reconcile Metronome once for the whole batch (the timing core does not
+    // launch it — it is a workspace-level, debounced reconcile).
+    if (anyChange) {
+      const syncResult = await launchMetronomeSeatCountSyncWorkflow({
+        workspaceId: workspace.sId,
+      });
+      if (syncResult.isErr()) {
+        logger.error(
+          { workspaceId: workspace.sId, error: syncResult.error },
+          "Failed to launch Metronome seat count sync after group seat provisioning"
+        );
+      }
+    }
+  }
+
+  /**
+   * @cc [owner:tdraier,label:product] sync-seat-on-mapping-change
+   * On any change to `grantedSeatType` (set or clear), every current active
+   * member's seat MUST be recomputed (upgrades immediate, downgrades/removals
+   * deferred to period end). Only manageable group kinds (provisioned,
+   * regular_manual) may carry a granted seat, and only workspace admins may
+   * change it.
+   *
+   * Sets (or clears, with null) the base seat type this group grants to its
+   * members, then re-syncs their seats.
+   */
+  async setGrantedSeatType(
+    auth: Authenticator,
+    grantedSeatType: GroupGrantableSeatType | null
+  ): Promise<
+    Result<undefined, DustError<"unauthorized" | "invalid_group_kind">>
+  > {
+    if (!auth.isAdmin()) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Only workspace admins can map a group to a seat type."
+        )
+      );
+    }
+
+    if (!isManageableGroupKind(this.kind)) {
+      return new Err(
+        new DustError(
+          "invalid_group_kind",
+          "Only provisioned and manually-managed groups can be mapped to a seat type."
+        )
+      );
+    }
+
+    if (this.grantedSeatType === grantedSeatType) {
+      return new Ok(undefined);
+    }
+
+    await this.update({ grantedSeatType });
+    await GroupResource.invalidateWorkspaceGroupsFromSystemKeyCache(
+      this.workspaceId
+    );
+
+    const members = await this.getActiveMembers(auth);
+    await GroupResource.recomputeAndSyncWorkspaceSeatsForUsers(auth, members);
+
+    return new Ok(undefined);
+  }
+
   /**
    * Associates a group with an agent configuration.
    */
@@ -3111,6 +3468,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       memberCount: 0, // Default value, use toJSONWithMemberCount for actual count
       poolCapAwuCredits: this.poolCapAwuCredits,
       grantedRole: this.grantedRole,
+      grantedSeatType: this.grantedSeatType,
     };
   }
 
@@ -3125,6 +3483,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       memberCount,
       poolCapAwuCredits: this.poolCapAwuCredits,
       grantedRole: this.grantedRole,
+      grantedSeatType: this.grantedSeatType,
     };
   }
 

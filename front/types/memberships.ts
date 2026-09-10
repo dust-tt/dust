@@ -65,6 +65,31 @@ export const SEAT_TYPE_ORDER: Record<MembershipSeatType, number> = {
   workspace_yearly: 4,
 };
 
+/**
+ * The higher-tier of two seat types per `SEAT_TYPE_ORDER` (ties keep the first
+ * argument). Used to fold a set of group-granted seats down to the single seat a
+ * user should hold. Yearly and monthly variants share a tier, so ties there
+ * preserve whichever seat was folded first.
+ */
+export function highestSeatType(
+  a: MembershipSeatType,
+  b: MembershipSeatType
+): MembershipSeatType {
+  return SEAT_TYPE_ORDER[a] >= SEAT_TYPE_ORDER[b] ? a : b;
+}
+
+/**
+ * Whether `a` is a strictly higher seat tier than `b` per `SEAT_TYPE_ORDER`
+ * (i.e. moving from `b` to `a` is an upgrade). Yearly/monthly variants of the
+ * same tier are not strictly higher than one another.
+ */
+export function isHigherSeatTier(
+  a: MembershipSeatType,
+  b: MembershipSeatType
+): boolean {
+  return SEAT_TYPE_ORDER[a] > SEAT_TYPE_ORDER[b];
+}
+
 // Normalized seat types for pool credit limits. Monthly and yearly variants
 // share a single pool limit. Free seats are excluded (lifetime allocation,
 // no pool access).

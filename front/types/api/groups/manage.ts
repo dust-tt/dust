@@ -1,5 +1,8 @@
 import type { GroupType } from "@app/types/groups";
-import { GROUP_GRANTABLE_ROLES } from "@app/types/groups";
+import {
+  GROUP_GRANTABLE_ROLES,
+  GROUP_GRANTABLE_SEAT_TYPES,
+} from "@app/types/groups";
 import type { UserType } from "@app/types/user";
 import { z } from "zod";
 
@@ -37,6 +40,15 @@ export const PutGroupGrantedRoleBodySchema = z.object({
 });
 
 export type PutGroupGrantedRoleResponseBody = {
+  group: GroupType;
+};
+
+// `grantedSeatType: null` clears the group-to-seat mapping.
+export const PutGroupGrantedSeatTypeBodySchema = z.object({
+  grantedSeatType: z.enum(GROUP_GRANTABLE_SEAT_TYPES).nullable(),
+});
+
+export type PutGroupGrantedSeatTypeResponseBody = {
   group: GroupType;
 };
 
