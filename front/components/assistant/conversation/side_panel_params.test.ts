@@ -1,6 +1,5 @@
 import type { OpenPanelParams } from "@app/components/assistant/conversation/side_panel_params";
 import {
-  panelBackLabel,
   panelDataKey,
   panelHistoryEntry,
   panelIdentityKey,
@@ -72,21 +71,5 @@ describe("panelHistoryEntry", () => {
       type: "skill",
       skillId: "skl_1",
     });
-  });
-});
-
-describe("panelBackLabel", () => {
-  it("names every panel type", () => {
-    expect(PANELS.map(panelBackLabel)).toEqual([
-      "Actions",
-      "Actions",
-      "Frame",
-      "Frame",
-      "File",
-      "Files",
-      "Credit usage",
-      "Plan",
-      "Skill",
-    ]);
   });
 });

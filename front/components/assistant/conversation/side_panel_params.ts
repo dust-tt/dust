@@ -85,28 +85,6 @@ export function panelHistoryEntry(params: OpenPanelParams): OpenPanelParams {
   return params;
 }
 
-// Name of a panel, for the close button tooltip ("Back to Files").
-export function panelBackLabel(params: OpenPanelParams): string {
-  switch (params.type) {
-    case AGENT_ACTIONS_SIDE_PANEL_TYPE:
-      return "Actions";
-    case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
-      return "Frame";
-    case FILE_PREVIEW_SIDE_PANEL_TYPE:
-      return "File";
-    case FILES_SIDE_PANEL_TYPE:
-      return "Files";
-    case CREDITS_SIDE_PANEL_TYPE:
-      return "Credit usage";
-    case PLAN_SIDE_PANEL_TYPE:
-      return "Plan";
-    case SKILL_SIDE_PANEL_TYPE:
-      return "Skill";
-    default:
-      return assertNever(params);
-  }
-}
-
 // Inverse of panelDataKey, for panels restored from the URL hash (deep links, back/forward).
 export function panelParamsFromHash(
   type: ConversationSidePanelType,

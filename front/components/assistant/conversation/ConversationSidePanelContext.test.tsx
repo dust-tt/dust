@@ -78,11 +78,9 @@ describe("ConversationSidePanelProvider history", () => {
     act(() => result.current.openPanel({ type: "files" }));
     act(() => result.current.openPanel({ type: "credits" }));
     expect(result.current.currentPanel).toBe("credits");
-    expect(result.current.previousPanel).toEqual({ type: "files" });
 
     act(() => result.current.closePanel());
     expect(result.current.currentPanel).toBe("files");
-    expect(result.current.previousPanel).toBeNull();
 
     act(() => result.current.closePanel());
     expect(result.current.currentPanel).toBeUndefined();
@@ -101,7 +99,6 @@ describe("ConversationSidePanelProvider history", () => {
     act(() => result.current.openPanel({ type: "files" }));
     act(() => result.current.openPanel({ type: "actions", messageId: "m1" }));
     act(() => result.current.openPanel({ type: "actions", messageId: "m2" }));
-    expect(result.current.previousPanel).toEqual({ type: "files" });
 
     act(() => result.current.closePanel());
     expect(result.current.currentPanel).toBe("files");
@@ -124,7 +121,9 @@ describe("ConversationSidePanelProvider history", () => {
       })
     );
     expect(result.current.data).toBe("fil_1@2");
-    expect(result.current.previousPanel).toBeNull();
+
+    act(() => result.current.closePanel());
+    expect(result.current.currentPanel).toBeUndefined();
   });
 
   it("remembers a Frame without its timestamp", () => {
@@ -137,12 +136,9 @@ describe("ConversationSidePanelProvider history", () => {
       })
     );
     act(() => result.current.openPanel({ type: "files" }));
-    expect(result.current.previousPanel).toEqual({
-      type: "interactive_content",
-      fileId: "fil_1",
-    });
 
     act(() => result.current.closePanel());
+    expect(result.current.currentPanel).toBe("interactive_content");
     expect(result.current.data).toBe("fil_1");
   });
 
@@ -151,7 +147,6 @@ describe("ConversationSidePanelProvider history", () => {
     act(() => result.current.openPanel({ type: "files" }));
     act(() => result.current.openPanel({ type: "credits" }));
     act(() => result.current.openPanel({ type: "files" }));
-    expect(result.current.previousPanel).toEqual({ type: "credits" });
 
     act(() => result.current.closePanel());
     expect(result.current.currentPanel).toBe("credits");
@@ -164,7 +159,6 @@ describe("ConversationSidePanelProvider history", () => {
     act(() => result.current.openPanel({ type: "plan" }));
     act(() => result.current.openPanel({ type: "files" }));
     act(() => result.current.forgetPanels("plan"));
-    expect(result.current.previousPanel).toBeNull();
 
     act(() => result.current.closePanel());
     expect(result.current.currentPanel).toBeUndefined();
@@ -178,7 +172,10 @@ describe("ConversationSidePanelProvider history", () => {
     activeConversation.id = "conv_2";
     rerender();
     expect(result.current.currentPanel).toBeUndefined();
-    expect(result.current.previousPanel).toBeNull();
+
+    act(() => result.current.openPanel({ type: "files" }));
+    act(() => result.current.closePanel());
+    expect(result.current.currentPanel).toBeUndefined();
   });
 });
 
@@ -189,7 +186,6 @@ describe("ConversationSidePanelProvider and the URL hash", () => {
     expect(result.current.currentPanel).toBe("files");
 
     act(() => result.current.openPanel({ type: "credits" }));
-    expect(result.current.previousPanel).toEqual({ type: "files" });
 
     act(() => result.current.closePanel());
     expect(result.current.currentPanel).toBe("files");

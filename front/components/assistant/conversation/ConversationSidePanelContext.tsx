@@ -37,8 +37,6 @@ interface ConversationSidePanelContextType {
   isPanelClosing: boolean;
   openPanel: (params: OpenPanelParams) => void;
   togglePanel: (params: OpenPanelParams) => void;
-  // Panel that closePanel would go back to, null when it would collapse.
-  previousPanel: OpenPanelParams | null;
   // Pops back to the previous panel in the history, or collapses when the history is empty.
   closePanel: () => void;
   // Removes panels of that type from the history, for content that no longer exists.
@@ -113,16 +111,10 @@ export function ConversationSidePanelProvider({
 
   // Panels shown before the current one and not closed since, most recent last. Closing pops
   // from here; opening a panel of another type pushes the current one (same-type panels replace
-  // each other, so browsing tool steps or Frames does not pile up). The ref is read synchronously
-  // in callbacks; `previousPanel` mirrors its top so consumers re-render.
+  // each other, so browsing tool steps or Frames does not pile up). Nothing renders from it, so a
+  // ref is enough.
   const panelHistoryRef = React.useRef<OpenPanelParams[]>([]);
-  const [previousPanel, setPreviousPanel] =
-    React.useState<OpenPanelParams | null>(null);
   const currentParamsRef = React.useRef<OpenPanelParams | null>(null);
-  const setHistory = useCallback((history: OpenPanelParams[]) => {
-    panelHistoryRef.current = history;
-    setPreviousPanel(history[history.length - 1] ?? null);
-  }, []);
 
   // This should be called once the closing animation is done (onTransitionEnd)
   // so you won't have content flickering. The whole side panel is gone at this point (X with
@@ -130,10 +122,10 @@ export function ConversationSidePanelProvider({
   const onPanelClosed = useCallback(() => {
     setIsPanelClosing(false);
     currentParamsRef.current = null;
-    setHistory([]);
+    panelHistoryRef.current = [];
     setData(undefined);
     setCurrentPanel(undefined);
-  }, [setData, setCurrentPanel, setHistory]);
+  }, [setData, setCurrentPanel]);
 
   // Collapse without touching the history.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -170,22 +162,19 @@ export function ConversationSidePanelProvider({
     const history = panelHistoryRef.current;
     const previous = history[history.length - 1];
     if (previous) {
-      setHistory(history.slice(0, -1));
+      panelHistoryRef.current = history.slice(0, -1);
       showPanel(previous);
       return;
     }
     collapsePanel();
-  }, [showPanel, collapsePanel, setHistory]);
+  }, [showPanel, collapsePanel]);
 
-  const forgetPanels = useCallback(
-    (type: ConversationSidePanelType) => {
-      const history = panelHistoryRef.current;
-      if (history.some((entry) => entry.type === type)) {
-        setHistory(history.filter((entry) => entry.type !== type));
-      }
-    },
-    [setHistory]
-  );
+  const forgetPanels = useCallback((type: ConversationSidePanelType) => {
+    const history = panelHistoryRef.current;
+    if (history.some((entry) => entry.type === type)) {
+      panelHistoryRef.current = history.filter((entry) => entry.type !== type);
+    }
+  }, []);
 
   // Shared selection; `toggle` decides whether re-selecting the shown panel closes it. A panel
   // that is already closing reads as unselected, so re-selecting it reopens instead.
@@ -219,10 +208,10 @@ export function ConversationSidePanelProvider({
           entry,
         ].slice(-MAX_PANEL_HISTORY);
       }
-      setHistory(history);
+      panelHistoryRef.current = history;
       showPanel(params);
     },
-    [isPanelClosing, closePanel, showPanel, setHistory]
+    [isPanelClosing, closePanel, showPanel]
   );
 
   // Idempotent open for programmatic callers: a toggle could mis-close during a close→reopen
@@ -285,7 +274,6 @@ export function ConversationSidePanelProvider({
         ? currentPanel
         : undefined,
       isPanelClosing,
-      previousPanel,
       openPanel,
       togglePanel,
       closePanel,
@@ -300,7 +288,6 @@ export function ConversationSidePanelProvider({
     [
       currentPanel,
       isPanelClosing,
-      previousPanel,
       openPanel,
       togglePanel,
       closePanel,

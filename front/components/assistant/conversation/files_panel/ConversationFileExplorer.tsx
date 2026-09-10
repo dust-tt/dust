@@ -1,5 +1,4 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { SidePanelCloseButton } from "@app/components/assistant/conversation/SidePanelCloseButton";
 import { ConfirmContext } from "@app/components/Confirm";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import type {
@@ -35,7 +34,7 @@ import {
   podFileTabBasename,
 } from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
-import { LayoutAlt02, Pin02 } from "@dust-tt/sparkle";
+import { Button, LayoutAlt02, Pin02, XClose } from "@dust-tt/sparkle";
 import { useCallback, useContext, useMemo, useState } from "react";
 
 function isFramePackageEntry(entry: FileExplorerEntry): boolean {
@@ -51,7 +50,7 @@ export function ConversationFileExplorer({
   conversation,
   owner,
 }: ConversationFileExplorerProps) {
-  const { openPanel } = useConversationSidePanelContext();
+  const { closePanel, openPanel } = useConversationSidePanelContext();
   const { hasFeature } = useFeatureFlags();
   const confirm = useContext(ConfirmContext);
   const isPod = isPodConversation(conversation);
@@ -253,7 +252,12 @@ export function ConversationFileExplorer({
           <span className="text-sm text-foreground">
             {isPod ? "Files" : "Conversation files"}
           </span>
-          <SidePanelCloseButton />
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={XClose}
+            onClick={closePanel}
+          />
         </div>
       </AppLayoutTitle>
 
