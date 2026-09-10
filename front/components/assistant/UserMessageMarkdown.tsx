@@ -1,5 +1,6 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { getToolIcon } from "@app/components/editor/extensions/skill_builder/ToolChip";
+import type { AttachmentChipDirectiveProps } from "@app/components/markdown/AttachmentChipDirective";
 import {
   AttachmentChipDirectiveBlock,
   createAttachmentChipDirective,
@@ -47,37 +48,9 @@ interface UserMessageMarkdownProps {
   isLastMessage: boolean;
 }
 
-interface SkillDirectiveProps {
-  skillId: string;
-  skillIcon: string | null;
-  skillName: string;
-}
+const skillDirective = createAttachmentChipDirective("skill");
 
-interface ToolDirectiveProps {
-  toolId: string;
-  toolIcon: string | null;
-  toolName: string;
-}
-
-const skillDirective = createAttachmentChipDirective({
-  directiveName: "skill",
-  hName: "skill",
-  getHProperties: (node) => ({
-    skillId: node.attributes.sId,
-    skillIcon: node.attributes.icon,
-    skillName: node.children[0].value,
-  }),
-});
-
-const toolDirective = createAttachmentChipDirective({
-  directiveName: "tool",
-  hName: "tool",
-  getHProperties: (node) => ({
-    toolId: node.attributes.sId,
-    toolIcon: node.attributes.icon,
-    toolName: node.children[0].value,
-  }),
-});
+const toolDirective = createAttachmentChipDirective("tool");
 
 export const UserMessageMarkdown = ({
   owner,
@@ -95,22 +68,22 @@ export const UserMessageMarkdown = ({
       content_node_mention: ContentNodeMentionBlock,
       pasted_attachment: PastedAttachmentBlock,
       file_preview: getFilePreviewPlugin(),
-      skill: ({ skillId, skillIcon, skillName }: SkillDirectiveProps) => {
+      skill: ({ id, icon, name }: AttachmentChipDirectiveProps) => {
         return (
           <AttachmentChipDirectiveBlock
-            label={skillName}
-            icon={skillIcon ?? null}
+            label={name}
+            icon={icon ?? null}
             getIcon={getSkillIcon}
             onClick={() =>
-              togglePanel({ type: SKILL_SIDE_PANEL_TYPE, skillId })
+              togglePanel({ type: SKILL_SIDE_PANEL_TYPE, skillId: id })
             }
           />
         );
       },
-      tool: ({ toolIcon, toolName }: ToolDirectiveProps) => (
+      tool: ({ icon, name }: AttachmentChipDirectiveProps) => (
         <AttachmentChipDirectiveBlock
-          label={toolName}
-          icon={toolIcon ?? null}
+          label={name}
+          icon={icon ?? null}
           getIcon={getToolIcon}
         />
       ),

@@ -26,17 +26,17 @@ export function AttachmentChipDirectiveBlock({
   );
 }
 
-interface CreateAttachmentChipDirectiveOptions {
-  directiveName: string;
-  hName: string;
-  getHProperties: (node: any) => Record<string, unknown>;
+export interface AttachmentChipDirectiveProps {
+  id: string;
+  icon: string | null;
+  name: string;
 }
 
-export function createAttachmentChipDirective({
-  directiveName,
-  hName,
-  getHProperties,
-}: CreateAttachmentChipDirectiveOptions) {
+export type AttachmentChipDirectiveName = "skill" | "tool";
+
+export function createAttachmentChipDirective(
+  directiveName: AttachmentChipDirectiveName
+) {
   return function directive() {
     return (tree: any) => {
       visit(tree, ["textDirective"], (node) => {
@@ -45,8 +45,12 @@ export function createAttachmentChipDirective({
           // `unist-util-visit` directive transforms are expected to annotate the
           // current node in place so mdast-util-to-hast can consume `node.data`.
           node.data = data;
-          data.hName = hName;
-          data.hProperties = getHProperties(node);
+          data.hName = directiveName;
+          data.hProperties = {
+            id: node.attributes.sId,
+            icon: node.attributes.icon,
+            name: node.children[0].value,
+          };
         }
       });
     };
