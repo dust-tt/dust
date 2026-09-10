@@ -214,6 +214,11 @@ function CreditPoolProgressBar({
 
 const DEFAULT_PAGE_SIZE = 25;
 
+// Keep every tab panel at least as tall as the scrolling panel so switching to a
+// shorter (or still loading) tab never shrinks the page and clamps the scroll offset.
+// Sparkle renders TabsContent as `contents`, so `block` is required for the min-height to apply.
+const TAB_CONTENT_CLASS = "block min-h-panel";
+
 export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
@@ -1332,7 +1337,7 @@ export function UsagePage() {
               )}
             </TabsList>
 
-            <TabsContent value="members">
+            <TabsContent value="members" className={TAB_CONTENT_CLASS}>
               <Page.Vertical gap="sm" align="stretch">
                 {searchRow}
                 <div className="flex flex-col gap-2">
@@ -1394,7 +1399,7 @@ export function UsagePage() {
                 </div>
               </Page.Vertical>
             </TabsContent>
-            <TabsContent value="groups">
+            <TabsContent value="groups" className={TAB_CONTENT_CLASS}>
               <GroupsUsageTable
                 owner={owner}
                 showSpendLimitColumn={isCreditPriced}
@@ -1403,13 +1408,13 @@ export function UsagePage() {
             </TabsContent>
 
             {isWorkspaceAdmin && isCreditPriced && (
-              <TabsContent value="top-ups">
+              <TabsContent value="top-ups" className={TAB_CONTENT_CLASS}>
                 <TopUpsHistoryTable owner={owner} />
               </TabsContent>
             )}
 
             {isWorkspaceAdmin && (
-              <TabsContent value="settings">
+              <TabsContent value="settings" className={TAB_CONTENT_CLASS}>
                 <div className="flex flex-col gap-10">
                   {isCreditPriced && (
                     <UsageSettingsCard
