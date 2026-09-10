@@ -14,6 +14,20 @@ const localLogger = logger.child({ module: "hubspot_client" });
 const HUBSPOT_API_BASE = "https://api.hubapi.com";
 
 /**
+ * @cc [owner:spolu,label:error-handling] hubspot-not-found-error-shapes
+ * Not-found detection MUST accept numeric `code: 404` on SDK errors and plain provider payloads.
+ * Other values, including string codes, MUST NOT trigger the not-found fallback.
+ */
+function isHubspotNotFoundError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === 404
+  );
+}
+
+/**
  * Shared helper for raw HubSpot REST API calls (for endpoints not covered by the SDK).
  */
 async function hubspotApiFetch<T>({
@@ -1059,8 +1073,8 @@ export const getMeeting = async (
         : defaultProperties
     );
     return meeting;
-  } catch (error: any) {
-    if (error.code === 404) {
+  } catch (error) {
+    if (isHubspotNotFoundError(error)) {
       return null;
     }
     localLogger.error(
@@ -1102,8 +1116,8 @@ export const getFilePublicUrl = async (
     } else {
       return null;
     }
-  } catch (error: any) {
-    if (error.code === 404) {
+  } catch (error) {
+    if (isHubspotNotFoundError(error)) {
       localLogger.warn({ fileId }, `File ${fileId} not found.`);
       return null;
     }
@@ -1151,8 +1165,8 @@ export const getAssociatedMeetings = async (
       }
     }
     return associatedMeetingDetails;
-  } catch (error: any) {
-    if (error.code === 404) {
+  } catch (error) {
+    if (isHubspotNotFoundError(error)) {
       localLogger.warn(
         { fromObjectType, fromObjectId },
         `Error 404 when fetching associated meetings for ${fromObjectType}/${fromObjectId} to ${toObjectType}. This might mean the object does not exist or no such associations exist.`
@@ -1325,8 +1339,8 @@ export const searchCrmObjects = async ({
       results: searchResponse.results,
       paging: searchResponse.paging,
     };
-  } catch (error: any) {
-    if (error.code === 404) {
+  } catch (error) {
+    if (isHubspotNotFoundError(error)) {
       localLogger.warn(
         { objectType, filters, query },
         `Error 404 when searching ${objectType}. Returning empty results.`

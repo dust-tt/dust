@@ -8,6 +8,7 @@ import {
   upsertNotionDatabaseInConnectorsDb,
   upsertNotionPageInConnectorsDb,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
+import { isUnhealthyNotionError } from "@connectors/connectors/notion/lib/errors";
 import {
   getBlockParentMemoized,
   getPageOrBlockParent,
@@ -861,6 +862,12 @@ export async function deleteDatabase({
 //   - query notion API and check if we can access the resource
 //   - if the resource is not accessible, delete it from the database (and from the data source if it's a page)
 // - update the lastGarbageCollectionFinishTime
+/**
+ * @cc [owner:spolu,label:product;error-handling] garbage-collection-preserves-unchecked-resources
+ * If an accessibility check fails with an unhealthy Notion error at or beyond the skip threshold,
+ * garbage collection MUST retain the resource. Before that threshold, or for unrecognized failures,
+ * the activity MUST rethrow the failure instead of treating the resource as inaccessible.
+ */
 export async function garbageCollectBatch({
   connectorId,
   batchIndex,
@@ -890,13 +897,6 @@ export async function garbageCollectBatch({
     throw new Error("Could not find notionConnectorState");
   }
   const notionAccessToken = await getNotionAccessToken(connector.id);
-
-  const NOTION_UNHEALTHY_ERROR_CODES = [
-    "internal_server_error",
-    "notionhq_client_request_timeout",
-    "service_unavailable",
-    "notionhq_client_response_error",
-  ];
 
   let deletedPagesCount = 0;
   let deletedDatabasesCount = 0;
@@ -944,23 +944,11 @@ export async function garbageCollectBatch({
         accessibilityCheckRetryOptions
       );
     } catch (e) {
-      // Sometimes a request will consistently fail with a 500 We don't want to delete the page in
-      // that case, so we just log the error and move on.
-      const potentialNotionError = e as {
-        body: unknown;
-        code: string;
-        status: number;
-      };
-      if (
-        (NOTION_UNHEALTHY_ERROR_CODES.includes(potentialNotionError.code) ||
-          (typeof potentialNotionError.status === "number" &&
-            potentialNotionError.status >= 500 &&
-            potentialNotionError.status < 600)) &&
-        shouldSkipUnhealthyNotionResource
-      ) {
+      // Preserve resources when persistent upstream failures prevent checking accessibility.
+      if (isUnhealthyNotionError(e) && shouldSkipUnhealthyNotionResource) {
         iterationLogger.error(
           {
-            error: potentialNotionError,
+            error: e,
             attempt: Context.current().info.attempt,
           },
           "Failed to check if notion resource is accessible. Giving up and moving on"
