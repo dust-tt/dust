@@ -220,7 +220,11 @@ async function repairEditorGroup(
   });
 }
 
-async function repairBatch(editors: EditorGroup[], execute: boolean) {
+async function repairBatch(
+  editors: EditorGroup[],
+  execute: boolean,
+  logger: Logger
+) {
   const auths = new Map<string, Authenticator>();
   for (const workspaceId of new Set(
     editors.map((editor) => editor.workspaceId)
@@ -235,7 +239,12 @@ async function repairBatch(editors: EditorGroup[], execute: boolean) {
     async (editor) => {
       const auth = auths.get(editor.workspaceId);
       assert(auth);
-      return repairEditorGroup(auth, editor, execute);
+      const counts = await repairEditorGroup(auth, editor, execute);
+      logger.info(
+        { execute, ...editor, ...counts },
+        "Agent editor memberships checked"
+      );
+      return counts;
     },
     { concurrency: CONCURRENCY }
   );
@@ -260,7 +269,7 @@ export async function repairEditorMemberships({
       return totals;
     }
     const editors = await fetchEditorGroups(groups.map(({ id }) => id));
-    const counts = await repairBatch(editors, execute);
+    const counts = await repairBatch(editors, execute, logger);
     for (const count of counts) {
       totals.ended += count.ended;
       totals.active += count.active;
