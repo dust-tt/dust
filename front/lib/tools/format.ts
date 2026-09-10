@@ -68,6 +68,15 @@ function serializeToolTagAttributes({ icon, id, name }: ToolReference): string {
   return `id="${escapeXml(id)}" name="${escapeXml(name)}"${iconAttribute}`;
 }
 
+export function getToolIdsToAttach(
+  messageTools: ToolReference[],
+  attachedToolIds: Set<string>
+): string[] {
+  return [...new Set(messageTools.map((messageTool) => messageTool.id))].filter(
+    (id) => !attachedToolIds.has(id)
+  );
+}
+
 export function stripToolTagPresentationAttributes(content: string): string {
   return content
     .replace(TOOL_ELEMENT_REGEX, (tag, attributes: string) => {
