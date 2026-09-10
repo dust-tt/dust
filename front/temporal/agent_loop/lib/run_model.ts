@@ -1129,8 +1129,7 @@ export async function runModel(
       status: "succeeded",
       completionDurationMs: getCompletionDuration(
         agentMessage.created,
-        completedTs,
-        agentMessage.actions
+        completedTs
       ),
       prunedContext: agentMessage.prunedContext ?? false,
     } satisfies AgentMessageType;

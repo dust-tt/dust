@@ -1,5 +1,3 @@
-import { AGENT_DELEGATION_SERVER_NAME } from "@app/lib/api/actions/servers/agent_delegation/metadata";
-import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
 import {
   batchRenderMessages,
   getCompletionDuration,
@@ -22,7 +20,6 @@ import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
@@ -35,94 +32,15 @@ import {
 import { Op } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const FOUR_MIN_54_SEC_MS = (4 * 60 + 54) * 1000;
 const FIFTEEN_MIN_MS = 15 * 60 * 1000;
 
-function makeDurationAction(
-  overrides: Partial<AgentMCPActionWithOutputType>
-): AgentMCPActionWithOutputType {
-  return {
-    id: 1,
-    sId: "act_1",
-    createdAt: 0,
-    updatedAt: FIFTEEN_MIN_MS,
-    agentMessageId: 1,
-    internalMCPServerName: null,
-    toolName: "websearch",
-    mcpServerId: null,
-    functionCallName: "websearch",
-    functionCallId: "call_1",
-    params: {},
-    citationsAllocated: 0,
-    status: "succeeded",
-    step: 0,
-    executionDurationMs: FOUR_MIN_54_SEC_MS,
-    displayLabels: null,
-    generatedFiles: [],
-    output: null,
-    citations: null,
-    ...overrides,
-  };
-}
-
 describe("getCompletionDuration", () => {
-  it("returns wall-clock time when there are no actions", () => {
-    expect(getCompletionDuration(0, FIFTEEN_MIN_MS, [])).toBe(FIFTEEN_MIN_MS);
+  it("returns wall-clock time from created to completedTs", () => {
+    expect(getCompletionDuration(0, FIFTEEN_MIN_MS)).toBe(FIFTEEN_MIN_MS);
   });
 
   it("returns null when the message is not completed", () => {
-    expect(getCompletionDuration(0, null, [])).toBeNull();
-  });
-
-  it("subtracts queue/approval wait for ordinary tools", () => {
-    expect(
-      getCompletionDuration(0, FIFTEEN_MIN_MS, [makeDurationAction({})])
-    ).toBe(FOUR_MIN_54_SEC_MS);
-  });
-
-  it("includes nested run_agent time even when executionDurationMs is only the last attempt", () => {
-    expect(
-      getCompletionDuration(0, FIFTEEN_MIN_MS, [
-        makeDurationAction({
-          internalMCPServerName: RUN_AGENT_SERVER_NAME,
-          toolName: "run_agent",
-        }),
-      ])
-    ).toBe(FIFTEEN_MIN_MS);
-  });
-
-  it("includes agent_delegation time the same way as run_agent", () => {
-    expect(
-      getCompletionDuration(0, FIFTEEN_MIN_MS, [
-        makeDurationAction({
-          internalMCPServerName: AGENT_DELEGATION_SERVER_NAME,
-          toolName: "agent_delegation",
-        }),
-      ])
-    ).toBe(FIFTEEN_MIN_MS);
-  });
-
-  it("still subtracts wait from non-nested tools alongside a nested agent", () => {
-    const webSearchWaitMs = 30_000;
-    expect(
-      getCompletionDuration(0, FIFTEEN_MIN_MS, [
-        makeDurationAction({
-          createdAt: 0,
-          updatedAt: 60_000,
-          executionDurationMs: 60_000 - webSearchWaitMs,
-          toolName: "websearch",
-        }),
-        makeDurationAction({
-          id: 2,
-          sId: "act_2",
-          internalMCPServerName: RUN_AGENT_SERVER_NAME,
-          toolName: "run_agent",
-          createdAt: 60_000,
-          updatedAt: FIFTEEN_MIN_MS,
-          executionDurationMs: FOUR_MIN_54_SEC_MS,
-        }),
-      ])
-    ).toBe(FIFTEEN_MIN_MS - webSearchWaitMs);
+    expect(getCompletionDuration(0, null)).toBeNull();
   });
 });
 

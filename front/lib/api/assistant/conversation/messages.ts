@@ -652,8 +652,7 @@ export const createAgentMessages = async (
               agentMessageRow.modelInteractionDurationMs,
             completionDurationMs: getCompletionDuration(
               agentMessageRow.createdAt.getTime(),
-              agentMessageRow.completedAt?.getTime() ?? null,
-              []
+              agentMessageRow.completedAt?.getTime() ?? null
             ),
             richMentions: [],
             reactions: [],

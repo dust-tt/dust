@@ -216,8 +216,7 @@ async function publishSuccessAndFinish(
     status: "succeeded",
     completionDurationMs: getCompletionDuration(
       agentMessage.created,
-      completedTs,
-      agentMessage.actions
+      completedTs
     ),
     prunedContext: agentMessage.prunedContext ?? false,
   } satisfies AgentMessageType;
