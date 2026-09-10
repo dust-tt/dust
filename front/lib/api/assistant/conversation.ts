@@ -70,6 +70,7 @@ import {
   isPoolDepleted,
   isProgrammaticApiBlocked,
   isUserBlocked,
+  PROGRAMMATIC_CAP_REACHED_MESSAGE,
 } from "@app/lib/api/credits/access_control";
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { getProgrammaticRateLimiterCreditState } from "@app/lib/api/credits/programmatic_usage_limit";
@@ -2659,8 +2660,7 @@ export async function checkMessagesLimit(
           status_code: 429,
           api_error: {
             type: "rate_limit_error",
-            message:
-              "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.",
+            message: PROGRAMMATIC_CAP_REACHED_MESSAGE,
           },
         });
       }
