@@ -354,7 +354,7 @@ const InputBarContainer = ({
   );
   const { subscription } = useAuth();
   const { featureFlags } = useFeatureFlags();
-  const hasInlineToolChips = featureFlags.includes("inline_tool_chips");
+  const IsInlineReferenceEnabled = featureFlags.includes("inline_tool_knowledge_reference");
   const isMobile = useIsMobile();
   const clientType = useClientType();
   const {
@@ -418,10 +418,10 @@ const InputBarContainer = ({
   attachedNodesRef.current = attachedNodes;
   const selectedMCPServerViewIds = useMemo(
     () =>
-      hasInlineToolChips
+      IsInlineReferenceEnabled
         ? new Set<string>()
         : new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
-    [hasInlineToolChips, selectedMCPServerViews]
+    [IsInlineReferenceEnabled, selectedMCPServerViews]
   );
   const selectedMCPServerViewIdsRef = useRef(selectedMCPServerViewIds);
   selectedMCPServerViewIdsRef.current = selectedMCPServerViewIds;
@@ -708,7 +708,7 @@ const InputBarContainer = ({
     debugger;
     onMCPServerViewSelect(view);
 
-    if (!hasInlineToolChips) {
+    if (!IsInlineReferenceEnabled) {
       return;
     }
 
@@ -1787,7 +1787,7 @@ const InputBarContainer = ({
             }}
           >
             <div className="mb-1 flex flex-wrap items-center px-3">
-              {!hasInlineToolChips &&
+              {!IsInlineReferenceEnabled &&
                 selectedMCPServerViews.map((msv) => (
                   <Fragment key={msv.sId}>
                     {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
