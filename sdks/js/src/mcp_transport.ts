@@ -3,6 +3,7 @@ import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types";
 import { EventSourcePolyfill } from "event-source-polyfill";
 
 import type { DustAPI } from ".";
+import { normalizeError } from "./error_utils";
 
 const logger = console;
 
@@ -110,7 +111,7 @@ export class DustMcpServerTransport implements Transport {
       this.logInfo("MCP transport started successfully");
     } catch (error) {
       this.logError("Failed to start MCP transport:", error);
-      this.onerror?.(error instanceof Error ? error : new Error(String(error)));
+      this.onerror?.(normalizeError(error));
       throw error;
     }
   }

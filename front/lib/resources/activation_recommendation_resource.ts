@@ -9,6 +9,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type {
   Attributes,
   CreationAttributes,
@@ -296,7 +297,7 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       });
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err instanceof Error ? err : new Error(String(err)));
+      return new Err(normalizeError(err));
     }
   }
 

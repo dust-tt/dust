@@ -13,6 +13,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -210,7 +211,7 @@ export class ActivationWorkAreaResource extends BaseResource<ActivationWorkAreaM
       });
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err instanceof Error ? err : new Error(String(err)));
+      return new Err(normalizeError(err));
     }
   }
 

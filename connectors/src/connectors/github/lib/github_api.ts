@@ -31,7 +31,7 @@ import {
   getOAuthConnectionAccessToken,
 } from "@connectors/types";
 import type { Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+import { Err, normalizeError, Ok } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
 import { rm } from "fs/promises";
 import * as reporter from "io-ts-reporters";
@@ -598,10 +598,7 @@ export async function getDiscussion(
       }
     );
   } catch (err) {
-    if (err instanceof Error) {
-      return new Err(err);
-    }
-    return new Err(new Error(String(err)));
+    return new Err(normalizeError(err));
   }
 
   const errorPayloadValidation = ErrorPayloadSchema.decode(d);
