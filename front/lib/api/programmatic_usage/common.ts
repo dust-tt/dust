@@ -35,6 +35,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   zendesk: "user",
   onboarding_conversation: "user",
   agent_sidekick: "user",
+  analytics_panel: "user",
   project_kickoff: "user",
   reinforced_skill_notification: "user",
   reinforcement: "programmatic",

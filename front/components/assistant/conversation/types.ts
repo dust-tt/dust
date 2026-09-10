@@ -175,7 +175,7 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   return (
     (isUserMessage(message) &&
       (isHiddenMessageOrigin(message.context.origin) ||
-        isSidekickBootstrapMessage(message))) ||
+        isBootstrapMessage(message))) ||
     isHandoverUserMessage(message)
   );
 };
@@ -281,10 +281,18 @@ export const isAtInitialStreamState = (
   );
 };
 
-const isSidekickBootstrapMessage = (
+const BOOTSTRAP_MESSAGE_ORIGINS: UserMessageOrigin[] = [
+  "agent_sidekick",
+  "analytics_panel",
+];
+
+const isBootstrapMessage = (
   message: UserMessageTypeWithContentFragments
 ): boolean => {
-  return message.context.origin === "agent_sidekick" && message.rank === 0;
+  return (
+    message.rank === 0 &&
+    BOOTSTRAP_MESSAGE_ORIGINS.includes(message.context.origin)
+  );
 };
 
 export const convertLightMessageTypeToVirtuosoMessages = (
