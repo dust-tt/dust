@@ -7,8 +7,6 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 const QuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(100).optional().default(25),
-  offset: z.coerce.number().int().min(0).optional().default(0),
   // Only the still-pending wake-ups are of interest by default; terminal ones are history.
   status: WakeUpStatusSchema.optional().default("scheduled"),
 });
@@ -25,9 +23,9 @@ app.get(
   validate("query", QuerySchema),
   async (ctx): HandlerResult<GetUserWakeUpsResponseBody> => {
     const auth = ctx.get("auth");
-    const { limit, offset, status } = ctx.req.valid("query");
+    const { status } = ctx.req.valid("query");
 
-    const wakeUps = await listUserWakeUps(auth, { limit, offset, status });
+    const wakeUps = await listUserWakeUps(auth, { status });
 
     return ctx.json(wakeUps);
   }

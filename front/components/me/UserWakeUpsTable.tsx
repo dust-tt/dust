@@ -122,12 +122,9 @@ export function UserWakeUpsTable({ owner, onNavigate }: UserWakeUpsTableProps) {
     pageSize: WAKE_UPS_PAGE_SIZE,
   });
 
-  const { wakeUps, totalCount, isWakeUpsLoading, isWakeUpsError } =
-    useUserWakeUps({
-      owner,
-      limit: pagination.pageSize,
-      offset: pagination.pageIndex * pagination.pageSize,
-    });
+  const { wakeUps, isWakeUpsLoading, isWakeUpsError } = useUserWakeUps({
+    owner,
+  });
 
   const rows: WakeUpRowData[] = useMemo(
     () =>
@@ -170,10 +167,10 @@ export function UserWakeUpsTable({ owner, onNavigate }: UserWakeUpsTableProps) {
 
   return (
     <div className="overflow-x-auto">
+      {/* The endpoint returns the caller's whole list, so the table paginates client-side. */}
       <DataTable
         data={rows}
         columns={COLUMNS}
-        totalRowCount={totalCount}
         pagination={pagination}
         setPagination={setPagination}
       />

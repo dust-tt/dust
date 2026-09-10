@@ -109,27 +109,22 @@ export function useCancelWakeUp({
 
 export function useUserWakeUps({
   owner,
-  limit,
-  offset,
   disabled,
 }: {
   owner: LightWorkspaceType;
-  limit: number;
-  offset: number;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const userWakeUpsFetcher: Fetcher<UserWakeUps> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/me/wakeups?limit=${limit}&offset=${offset}`,
+    `/api/w/${owner.sId}/me/wakeups`,
     userWakeUpsFetcher,
     { disabled }
   );
 
   return {
     wakeUps: data?.wakeUps ?? emptyArray<UserWakeUpWithConversation>(),
-    totalCount: data?.totalCount ?? 0,
     isWakeUpsLoading: !error && !data && !disabled,
     isWakeUpsError: !!error,
     mutateWakeUps: mutate,

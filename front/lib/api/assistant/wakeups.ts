@@ -14,7 +14,6 @@ export interface UserWakeUpWithConversation {
 }
 
 export interface UserWakeUps {
-  totalCount: number;
   wakeUps: UserWakeUpWithConversation[];
 }
 
@@ -26,25 +25,22 @@ export interface UserWakeUps {
 /**
  * @cc [owner:fabiencelier,label:product] drop-unreachable-conversations
  * A wake-up whose conversation the caller cannot read (deleted conversation, revoked space access)
- * MUST be omitted from `wakeUps` rather than returned without its conversation. `totalCount` still
- * counts it, so it can exceed the number of returned rows.
+ * MUST be omitted from `wakeUps` rather than returned without its conversation.
  */
 export async function listUserWakeUps(
   auth: Authenticator,
-  {
-    limit,
-    offset,
-    status,
-  }: { limit: number; offset: number; status: WakeUpStatus }
+  { status }: { status: WakeUpStatus }
 ): Promise<UserWakeUps> {
-  const { wakeUps, totalCount } = await WakeUpResource.listByUserWithTotalCount(
+  // The whole list is returned in one go: a user has few wake-ups in a given status, and paginating
+  // here would advertise a count the permission filtering below can contradict.
+  const wakeUps = await WakeUpResource.listByUser(
     auth,
     auth.getNonNullableUser(),
-    { limit, offset, status }
+    { status }
   );
 
   if (wakeUps.length === 0) {
-    return { totalCount, wakeUps: [] };
+    return { wakeUps: [] };
   }
 
   // `fetchByModelIds` resolves the conversation string ids without permission filtering, so those
@@ -65,7 +61,6 @@ export async function listUserWakeUps(
   );
 
   return {
-    totalCount,
     wakeUps: removeNulls(
       wakeUps.map((wakeUp) => {
         const conversationId = conversationIdByModelId.get(

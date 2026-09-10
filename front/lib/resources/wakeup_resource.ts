@@ -343,43 +343,24 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
 
   /**
    * @cc [owner:fabiencelier,label:backend] user-owned-wake-ups-only
-   * The returned wake-ups and `totalCount` MUST only cover wake-ups owned by `user` in the current
-   * workspace and, when `status` is given, in one of those statuses. `totalCount` MUST count every
-   * matching wake-up, independent of `limit` and `offset`.
+   * The returned wake-ups MUST only be the ones owned by `user` in the current workspace and, when
+   * `status` is given, in one of those statuses.
    */
-  static async listByUserWithTotalCount(
+  static async listByUser(
     auth: Authenticator,
     user: UserResource | UserType,
-    {
-      limit,
-      offset,
-      status,
-    }: { limit: number; offset: number; status?: WakeUpStatus | WakeUpStatus[] }
-  ): Promise<{ wakeUps: WakeUpResource[]; totalCount: number }> {
-    const where = {
-      userId: user.id,
-      ...(status !== undefined ? { status } : {}),
-    };
-
-    const [wakeUps, totalCount] = await Promise.all([
-      this.baseFetch(auth, {
-        where,
-        order: [
-          ["createdAt", "DESC"],
-          ["id", "DESC"],
-        ],
-        limit,
-        offset,
-      }),
-      this.model.count({
-        where: {
-          ...where,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        } as WhereOptions<WakeUpModel>,
-      }),
-    ]);
-
-    return { wakeUps, totalCount };
+    { status }: { status?: WakeUpStatus | WakeUpStatus[] } = {}
+  ): Promise<WakeUpResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        userId: user.id,
+        ...(status !== undefined ? { status } : {}),
+      },
+      order: [
+        ["createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
+    });
   }
 
   static async listByAgentConfigurationId(

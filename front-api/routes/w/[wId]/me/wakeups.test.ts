@@ -48,7 +48,6 @@ describe("GET /api/w/:wId/me/wakeups", () => {
     expect(response.status).toBe(200);
 
     const data = await response.json();
-    expect(data.totalCount).toBe(1);
     expect(data.wakeUps).toHaveLength(1);
     expect(data.wakeUps[0].wakeUp).toMatchObject({
       sId: wakeUp.sId,
@@ -98,7 +97,6 @@ describe("GET /api/w/:wId/me/wakeups", () => {
     expect(response.status).toBe(200);
 
     const data = await response.json();
-    expect(data.totalCount).toBe(0);
     expect(data.wakeUps).toEqual([]);
   });
 
@@ -126,7 +124,6 @@ describe("GET /api/w/:wId/me/wakeups", () => {
     expect(response.status).toBe(200);
 
     const data = await response.json();
-    expect(data.totalCount).toBe(1);
     expect(data.wakeUps).toHaveLength(1);
     expect(data.wakeUps[0].wakeUp.sId).toBe(cancelledWakeUp.sId);
   });
@@ -169,12 +166,11 @@ describe("GET /api/w/:wId/me/wakeups", () => {
     expect(response.status).toBe(200);
 
     const data = await response.json();
-    expect(data.totalCount).toBe(1);
     expect(data.wakeUps).toHaveLength(1);
     expect(data.wakeUps[0].wakeUp.sId).toBe(scheduledWakeUp.sId);
   });
 
-  it("paginates through the caller's wake-ups", async () => {
+  it("returns the caller's whole list, without pagination", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "user",
     });
@@ -193,20 +189,11 @@ describe("GET /api/w/:wId/me/wakeups", () => {
       reason: "second",
     });
 
-    const firstPage = await getUserWakeUps(workspace.sId, "?limit=1&offset=0");
-    expect(firstPage.status).toBe(200);
-    const firstPageData = await firstPage.json();
-    expect(firstPageData.totalCount).toBe(2);
-    expect(firstPageData.wakeUps).toHaveLength(1);
+    const response = await getUserWakeUps(workspace.sId);
+    expect(response.status).toBe(200);
 
-    const secondPage = await getUserWakeUps(workspace.sId, "?limit=1&offset=1");
-    expect(secondPage.status).toBe(200);
-    const secondPageData = await secondPage.json();
-    expect(secondPageData.totalCount).toBe(2);
-    expect(secondPageData.wakeUps).toHaveLength(1);
-    expect(secondPageData.wakeUps[0].wakeUp.sId).not.toBe(
-      firstPageData.wakeUps[0].wakeUp.sId
-    );
+    const data = await response.json();
+    expect(data.wakeUps).toHaveLength(2);
   });
 
   it("returns an empty list when the caller has no wake-up", async () => {
@@ -216,6 +203,6 @@ describe("GET /api/w/:wId/me/wakeups", () => {
     expect(response.status).toBe(200);
 
     const data = await response.json();
-    expect(data).toEqual({ totalCount: 0, wakeUps: [] });
+    expect(data).toEqual({ wakeUps: [] });
   });
 });
