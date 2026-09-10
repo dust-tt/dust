@@ -103,26 +103,37 @@ jobs:
     needs: [prepare]
     runs-on: ubuntu-latest
     outputs:
-      thread_ts: ${{ steps.build_message.outputs.thread_ts }}
+      thread_ts: ${{ steps.card.outputs.thread_ts }}
+      card: ${{ steps.card.outputs.card }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           sparse-checkout: |
             /.authors
-            /.github/actions/slack-notify/
+            /.github/actions/deploy-card/
             /.github/actions/slack-check-deployment-blocked/
           sparse-checkout-cone-mode: false
 
-      - name: Notify Build And Deploy Start
-        id: build_message
-        uses: ./.github/actions/slack-notify
+      # Reads dust-infra's versions files for what each cell runs today.
+      - name: Generate infra token
+        id: infra-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         with:
-          step: "start"
-          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          client-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: dust-infra
+
+      - name: Post the deployment card
+        id: card
+        uses: ./.github/actions/deploy-card
+        with:
           component: ${{ inputs.component }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.cells }}
+          cells: ${{ inputs.cells }}
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          infra_token: ${{ steps.infra-token.outputs.token }}
 
       - name: Slack Check Deployment Blocked
         if: ${{ inputs.check_deployment_blocked == 'check' }}
@@ -185,20 +196,6 @@ jobs:
           contentful_access_token: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
 
-      - name: Notify build success
-        uses: ./.github/actions/slack-notify
-        with:
-          step: "build_success"
-          channel: ${{ secrets.SLACK_CHANNEL_ID }}
-          thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
-          component: ${{ inputs.component }}
-          image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.cells }}
-          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          current_version: ${{ steps.build.outputs.current_version }}
-          commit_diff: ${{ steps.build.outputs.commit_diff }}
-          commit_count: ${{ steps.build.outputs.commit_count }}
-
       - name: Notify Failure
         if: failure()
         uses: ./.github/actions/slack-notify
@@ -258,20 +255,6 @@ jobs:
           contentful_access_token: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
 
-      - name: Notify build success
-        uses: ./.github/actions/slack-notify
-        with:
-          step: "build_success"
-          channel: ${{ secrets.SLACK_CHANNEL_ID }}
-          thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
-          component: ${{ inputs.component }}
-          image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ matrix.region }}
-          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          current_version: ${{ steps.build.outputs.current_version }}
-          commit_diff: ${{ steps.build.outputs.commit_diff }}
-          commit_count: ${{ steps.build.outputs.commit_count }}
-
       - name: Notify Failure
         if: failure()
         uses: ./.github/actions/slack-notify
@@ -320,6 +303,7 @@ jobs:
           IMAGE_TAG: ${{ needs.prepare.outputs.short_sha }}
           SLACK_THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
+          CARD: ${{ needs.notify-start.outputs.card }}
           DEPLOY_SPA_APP: ${{ inputs.deploy_spa_app }}
           DEPLOY_SPA_POKE: ${{ inputs.deploy_spa_poke }}
           SPA_APP_VERSION_ID: ${{ needs.deploy-app.outputs.version_id }}
@@ -340,6 +324,7 @@ jobs:
               image_tag: process.env.IMAGE_TAG,
               slack_thread_ts: process.env.SLACK_THREAD_TS,
               slack_channel: process.env.SLACK_CHANNEL,
+              card: process.env.CARD,
               playwright_sha: process.env.PLAYWRIGHT_SHA,
             };
 
