@@ -140,12 +140,15 @@ function useLazyLoadAllNodes({
     if (!triggered) {
       return;
     }
-    if (nodesError) {
-      // Don't spin forever if the fetch failed.
-      setTriggered(false);
+    if (isLoadingMore) {
+      // A request is in flight: ignore a stale `nodesError` left over from a
+      // previous failed attempt (SWR keeps it cached until this one settles),
+      // otherwise a retry gets aborted before it can complete.
       return;
     }
-    if (isLoadingMore) {
+    if (nodesError) {
+      // The active request (not a stale one) failed: don't spin forever.
+      setTriggered(false);
       return;
     }
     if (hasNextPage) {
