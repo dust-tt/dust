@@ -1,6 +1,10 @@
+import type { DimensionLabel } from "@app/lib/api/analytics/consumption/labels";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionScopeFilter,
+  ConsumptionTopDimension,
+} from "@app/lib/api/analytics/consumption/scope";
 import { buildConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/scope";
 import {
   roundToTwoDecimals,
@@ -114,6 +118,38 @@ const ES_SORT: estypes.Sort = [
   { consumption_key: "asc" },
 ];
 
+type DimensionLabelCache = Map<
+  ConsumptionTopDimension,
+  Map<string, DimensionLabel>
+>;
+
+function newDimensionLabelCache(): DimensionLabelCache {
+  return new Map();
+}
+
+async function resolveAndCache(
+  auth: Authenticator,
+  cache: DimensionLabelCache,
+  dimension: ConsumptionTopDimension,
+  keys: string[]
+): Promise<Map<string, DimensionLabel>> {
+  let cached = cache.get(dimension);
+  if (!cached) {
+    cached = new Map();
+    cache.set(dimension, cached);
+  }
+
+  const uncached = keys.filter((k) => !cached.has(k));
+  if (uncached.length > 0) {
+    const resolved = await resolveDimensionLabels(auth, dimension, uncached);
+    for (const [k, v] of resolved) {
+      cached.set(k, v);
+    }
+  }
+
+  return cached;
+}
+
 // One document per unit of billed credit consumption
 async function fetchAllConsumptionDocuments(
   query: estypes.QueryDslQueryContainer
@@ -153,8 +189,15 @@ async function fetchAllConsumptionDocuments(
 
 async function buildConsumptionLineExportRows(
   auth: Authenticator,
-  docs: AgentMessageConsumptionAnalyticsData[]
+  docs: AgentMessageConsumptionAnalyticsData[],
+  labelCache?: DimensionLabelCache
 ): Promise<ConsumptionLineExportRow[]> {
+  const resolve = labelCache
+    ? (dimension: ConsumptionTopDimension, keys: string[]) =>
+        resolveAndCache(auth, labelCache, dimension, keys)
+    : (dimension: ConsumptionTopDimension, keys: string[]) =>
+        resolveDimensionLabels(auth, dimension, keys);
+
   const [
     agentLabels,
     userLabels,
@@ -164,25 +207,21 @@ async function buildConsumptionLineExportRows(
     groupLabels,
     sourceLabels,
   ] = await Promise.all([
-    resolveDimensionLabels(auth, "agent", [
-      ...new Set(docs.map((doc) => doc.agent.attributed_id)),
-    ]),
-    resolveDimensionLabels(auth, "user", [
-      ...new Set(removeNulls(docs.map((doc) => doc.user?.id))),
-    ]),
-    resolveDimensionLabels(auth, "model", [
+    resolve("agent", [...new Set(docs.map((doc) => doc.agent.attributed_id))]),
+    resolve("user", [...new Set(removeNulls(docs.map((doc) => doc.user?.id)))]),
+    resolve("model", [
       ...new Set(removeNulls(docs.map((doc) => doc.model?.model_id))),
     ]),
-    resolveDimensionLabels(auth, "tool", [
+    resolve("tool", [
       ...new Set(removeNulls(docs.map((doc) => doc.tool?.server_name))),
     ]),
-    resolveDimensionLabels(auth, "skill", [
+    resolve("skill", [
       ...new Set(docs.flatMap((doc) => doc.tool?.attributed_skill_ids ?? [])),
     ]),
-    resolveDimensionLabels(auth, "group", [
+    resolve("group", [
       ...new Set(docs.flatMap((doc) => doc.user?.group_ids ?? [])),
     ]),
-    resolveDimensionLabels(auth, "source", [
+    resolve("source", [
       ...new Set(removeNulls(docs.map((doc) => doc.context_origin))),
     ]),
   ]);
@@ -374,6 +413,8 @@ export async function streamConsumptionExport(
 
   async function* pages(): AsyncGenerator<Uint8Array> {
     // Yield the first (already-fetched) page, then continue paginating.
+    // Labels resolved on earlier pages are cached and reused.
+    const labelCache = newDimensionLabelCache();
     let currentHits = firstPageHits;
     let isFirst = true;
 
@@ -385,7 +426,7 @@ export async function streamConsumptionExport(
         }
       }
 
-      const rows = await buildConsumptionLineExportRows(auth, docs);
+      const rows = await buildConsumptionLineExportRows(auth, docs, labelCache);
 
       const chunk =
         format === "csv"
