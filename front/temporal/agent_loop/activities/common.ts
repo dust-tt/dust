@@ -626,7 +626,8 @@ export async function notifyWorkflowError(
       messageRow.agentMessage.modelInteractionDurationMs,
     completionDurationMs: getCompletionDuration(
       messageRow.agentMessage.createdAt.getTime(),
-      messageRow.agentMessage.completedAt?.getTime() ?? null
+      messageRow.agentMessage.completedAt?.getTime() ?? null,
+      []
     ),
     richMentions: [],
     reactions: [],

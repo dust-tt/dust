@@ -1,3 +1,5 @@
+import { AGENT_DELEGATION_SERVER_NAME } from "@app/lib/api/actions/servers/agent_delegation/metadata";
+import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
@@ -56,22 +58,81 @@ import assert from "assert";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+function isNestedAgentAction(
+  action: Pick<AgentMCPActionWithOutputType, "internalMCPServerName">
+): boolean {
+  return (
+    action.internalMCPServerName === RUN_AGENT_SERVER_NAME ||
+    action.internalMCPServerName === AGENT_DELEGATION_SERVER_NAME
+  );
+}
+
 /**
- * @cc [owner:frankaloia,label:product] completion-duration-is-wall-clock
- * The returned duration MUST be `completedTs - created`: the elapsed time from
- * agent-message creation until the message is marked complete. It MUST NOT
- * subtract action wait, queue, approval, or nested-agent gaps. Those heuristics
- * undercount when a sub-agent pauses or resumes.
+ * @cc [owner:frankaloia,label:product] nested-agent-time-counts
+ * The returned duration MUST include time spent in nested agent actions
+ * (`run_agent`, `agent_delegation`). Those actions often pause or resume across
+ * the 10-minute tool activity timeout, so `executionDurationMs` only covers the
+ * last attempt and MUST NOT be used to classify the rest as wait.
  */
 export function getCompletionDuration(
   created: number,
-  completedTs: number | null
+  completedTs: number | null,
+  actions: AgentMCPActionWithOutputType[]
 ) {
   if (!completedTs) {
     return null;
   }
 
-  return completedTs - created;
+  // Assumption: Each action has two phases: wait period, then execution period
+  // Action timeline: [createdAt] ----wait---- [executionStart] ----execute---- [updatedAt]
+  // Where executionStart = updatedAt - executionDurationMs
+  //
+  // Message timeline: [created] ---blank---[action 1] --- blank --- [action 2] --- blank --- [completedTs]
+  //
+  // Nested agent actions are excluded: their pause/resume gaps are child-agent
+  // work, not queue or approval wait.
+
+  const waitRanges: Array<{ start: number; end: number }> = actions
+    .filter((a) => a.executionDurationMs !== null)
+    .filter((a) => !isNestedAgentAction(a))
+    .map((a) => ({
+      start: a.createdAt,
+      end: a.updatedAt - a.executionDurationMs!,
+    }))
+    .filter((r) => r.end > r.start) // Filter out actions with no wait time
+    .sort((a, b) => a.start - b.start);
+
+  if (waitRanges.length === 0) {
+    return completedTs - created;
+  }
+
+  // Merge overlapping wait periods
+  const mergedWaitRanges: Array<{ start: number; end: number }> = [];
+  let currentRange = waitRanges[0];
+
+  for (let i = 1; i < waitRanges.length; i++) {
+    const range = waitRanges[i];
+    if (range.start <= currentRange.end) {
+      // Overlapping or adjacent - merge by extending the end
+      currentRange = {
+        start: currentRange.start,
+        end: Math.max(currentRange.end, range.end),
+      };
+    } else {
+      // Non-overlapping - save current and start new range
+      mergedWaitRanges.push(currentRange);
+      currentRange = range;
+    }
+  }
+  mergedWaitRanges.push(currentRange);
+
+  // Calculate total wait time
+  const totalWaitTimeMs = mergedWaitRanges.reduce(
+    (sum, range) => sum + (range.end - range.start),
+    0
+  );
+
+  return completedTs - created - totalWaitTimeMs;
 }
 
 export function getRichMentionsWithStatusForMessage(
@@ -879,7 +940,7 @@ async function renderSingleAgentMessage(
     skipToolsValidation: agentMessage.skipToolsValidation,
     modelInteractionDurationMs: agentMessage.modelInteractionDurationMs,
     richMentions,
-    completionDurationMs: getCompletionDuration(created, completedTs),
+    completionDurationMs: getCompletionDuration(created, completedTs, actions),
     reactions: reactionsByMessageId[message.id] ?? [],
     prunedContext: agentMessage.prunedContext ?? false,
     costCredits: agentMessage.costCredits ?? null,
