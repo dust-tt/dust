@@ -60,6 +60,8 @@ vi.mock(
   async (importOriginal) => ({
     ...(await importOriginal()),
     useConversationSidePanelContext: () => ({
+      canGoBack: false,
+      goBack: vi.fn(),
       currentPanel: undefined,
       isPanelClosing: false,
       openPanel: vi.fn(),

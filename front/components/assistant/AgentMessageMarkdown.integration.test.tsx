@@ -117,6 +117,8 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
       const { container } = render(
         <ConversationSidePanelContext.Provider
           value={{
+            canGoBack: false,
+            goBack: vi.fn(),
             currentPanel: undefined,
             isPanelClosing: false,
             openPanel,
