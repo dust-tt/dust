@@ -1,5 +1,5 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
-import { UsageTableSkeleton } from "@app/components/workspace/usage/UsageTableSkeleton";
+import { UsageTableSkeleton } from "@app/components/workspace/MembersUsageTable";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";

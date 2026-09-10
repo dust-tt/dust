@@ -1,7 +1,7 @@
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupSpendLimitCell } from "@app/components/workspace/GroupSpendLimitCell";
+import { UsageTableSkeleton } from "@app/components/workspace/MembersUsageTable";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
-import { UsageTableSkeleton } from "@app/components/workspace/usage/UsageTableSkeleton";
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
