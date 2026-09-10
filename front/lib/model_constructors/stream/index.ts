@@ -54,6 +54,7 @@ import { OpenAIGptFiveDotOneGlobalOpenAIResponsesStream } from "@app/lib/model_c
 import { OpenAIGptFiveDotSixLunaEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_luna_eu_openai_responses";
 import { OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_luna_global_openai_responses";
 import { OpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_sol_eu_openai_responses";
+import { OpenAIGptFiveDotSixSolGlobalBedrockStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_sol_global_bedrock";
 import { OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_sol_global_openai_responses";
 import { OpenAIGptFiveDotSixTerraEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_terra_eu_openai_responses";
 import { OpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_six_terra_global_openai_responses";
@@ -206,6 +207,8 @@ export const STREAM_ENDPOINTS = {
     OpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream,
   [OpenAIGptSixAstraGlobalOpenAIResponsesStream.id]:
     OpenAIGptSixAstraGlobalOpenAIResponsesStream,
+  [OpenAIGptFiveDotSixSolGlobalBedrockStream.id]:
+    OpenAIGptFiveDotSixSolGlobalBedrockStream,
   [OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream.id]:
     OpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream,
   [OpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream.id]:

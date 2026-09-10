@@ -54,6 +54,7 @@ import { DustOpenAIGptFiveDotOneGlobalOpenAIResponsesStream } from "@app/lib/llm
 import { DustOpenAIGptFiveDotSixLunaEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_luna_eu_openai_responses";
 import { DustOpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_luna_global_openai_responses";
 import { DustOpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_sol_eu_openai_responses";
+import { DustOpenAIGptFiveDotSixSolGlobalBedrockStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_sol_global_bedrock";
 import { DustOpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_sol_global_openai_responses";
 import { DustOpenAIGptFiveDotSixTerraEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_terra_eu_openai_responses";
 import { DustOpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_terra_global_openai_responses";
@@ -225,6 +226,10 @@ export const DUST_STREAM_ENDPOINTS = {
     DustOpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream,
   [DustOpenAIGptSixAstraGlobalOpenAIResponsesStream.id]:
     DustOpenAIGptSixAstraGlobalOpenAIResponsesStream,
+  // Before the direct OpenAI endpoint: both are `global`, so registration
+  // order decides which one wins (see the Opus 5 Bedrock note above).
+  [DustOpenAIGptFiveDotSixSolGlobalBedrockStream.id]:
+    DustOpenAIGptFiveDotSixSolGlobalBedrockStream,
   [DustOpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream.id]:
     DustOpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream,
   [DustOpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream.id]:
