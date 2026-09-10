@@ -3,6 +3,7 @@ import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { deletePodStatePrefix } from "@app/lib/api/sandbox/db";
+import { deleteLegacyPodOwnedSandbox } from "@app/lib/api/sandbox/legacy_pod_sandbox";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
@@ -50,7 +51,6 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
-import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
@@ -170,21 +170,15 @@ export async function scrubSpaceActivity({
   assert(space.isDeletable(), "Space cannot be deleted.");
 
   if (space.isProject()) {
-    // Destroy the pod sandbox at the provider and drop its ownership row. The
-    // FK from sandbox_owners to spaces is `onDelete: "RESTRICT"`, so the row
-    // must be gone before the space can be hard-deleted. Runs before the pod
-    // state prefix is wiped: a live sandbox keeps replicating into it.
-    // Skipped when the pod never booted one, so pods stay scrubbable in
-    // deployments with no sandbox provider configured.
-    const sandbox = await PodSandboxAdapter.fetchSandbox(auth, space);
-    if (sandbox) {
-      const deleteSandboxResult = await PodSandboxAdapter.deleteSandbox(
-        auth,
-        space
-      );
-      if (deleteSandboxResult.isErr()) {
-        throw deleteSandboxResult.error;
-      }
+    // Legacy pod-owned sandboxes (see deleteLegacyPodOwnedSandbox). Runs
+    // before the pod state prefix is wiped: a live sandbox keeps replicating
+    // into it.
+    const deleteLegacySandboxResult = await deleteLegacyPodOwnedSandbox(
+      auth,
+      space
+    );
+    if (deleteLegacySandboxResult.isErr()) {
+      throw deleteLegacySandboxResult.error;
     }
 
     // Same for the pod-scoped env vars.

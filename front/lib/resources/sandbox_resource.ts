@@ -149,7 +149,6 @@ const WORKSPACE_SCRUB_PROVIDER_CONCURRENCY = 16;
 const SANDBOX_OWNER_ENV_VAR_CONTRACT_NAMES = new Set([
   "CONVERSATION_ID",
   "FRAME_ID",
-  "SPACE_ID",
 ]);
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
