@@ -282,7 +282,6 @@ export function ConversationFileExplorer({
           onOpenInteractive={onOpenInteractive}
           onOpenInPanel={onOpenInPanel}
           owner={owner}
-          preferencesKey={owner.sId}
           virtualScopeRoots={virtualScopeRoots}
         />
       </div>

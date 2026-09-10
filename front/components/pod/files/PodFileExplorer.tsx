@@ -885,7 +885,6 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         toolbarExtraActions={addButton}
         isLoading={isLoading}
         owner={owner}
-        preferencesKey={owner.sId}
       />
     </>
   );

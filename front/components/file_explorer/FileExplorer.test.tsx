@@ -1,4 +1,5 @@
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import { frameV2ContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
@@ -367,13 +368,14 @@ describe("FileExplorer Frame packages", () => {
 });
 
 describe("FileExplorer preferences", () => {
+  const owner = LightWorkspaceFactory.build();
   const file = makeFile({
     contentType: "text/plain",
     fileName: "notes.txt",
     lastModifiedMs: 1,
   });
 
-  function renderExplorer(preferencesKey?: string) {
+  function renderExplorer(withOwner = false) {
     return render(
       <ControlledFileExplorer
         defaultViewMode="grid"
@@ -381,7 +383,7 @@ describe("FileExplorer preferences", () => {
         getFileUrl={(path) => `/files/${path}`}
         isLoading={false}
         onDownload={vi.fn().mockResolvedValue(undefined)}
-        preferencesKey={preferencesKey}
+        owner={withOwner ? owner : undefined}
       />
     );
   }
@@ -405,7 +407,7 @@ describe("FileExplorer preferences", () => {
 
   it("restores view and sort mode after a remount", async () => {
     const user = userEvent.setup();
-    const { unmount } = renderExplorer("w1");
+    const { unmount } = renderExplorer(true);
     expect(isListLayout()).toBe(false);
 
     await pickListLayout(user);
@@ -414,14 +416,14 @@ describe("FileExplorer preferences", () => {
     expect(isListLayout()).toBe(true);
     unmount();
 
-    renderExplorer("w1");
+    renderExplorer(true);
     expect(isListLayout()).toBe(true);
     expect(
       screen.getByRole("button", { name: "Name Z → A" })
     ).toBeInTheDocument();
   });
 
-  it("keeps the default when no preferences key is given", async () => {
+  it("keeps the default when no owner is given", async () => {
     const user = userEvent.setup();
     const { unmount } = renderExplorer();
 

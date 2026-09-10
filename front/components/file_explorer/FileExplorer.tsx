@@ -64,8 +64,6 @@ interface FileExplorerProps {
   onOpenInPanel?: (entry: FileEntry) => boolean;
   onRename?: (entry: FileEntry | FolderEntry) => void;
   owner?: LightWorkspaceType;
-  /** Persists view and sort mode in localStorage under this key (one per workspace); in-memory only when unset. */
-  preferencesKey?: string;
   getExtraFileMenuItems?: (
     entry: FileExplorerEntry
   ) => FileExplorerMenuAction[];
@@ -94,7 +92,6 @@ export function FileExplorer({
   onOpenInPanel,
   onRename,
   owner,
-  preferencesKey,
   getExtraFileMenuItems,
   virtualScopeRoots,
 }: FileExplorerProps) {
@@ -105,7 +102,8 @@ export function FileExplorer({
   const { value: preferences, setValue: setPreferences } =
     useScopedPodUiPreferences({
       scope: "fileExplorer",
-      resourceId: preferencesKey ?? null,
+      // View and sort mode persist per workspace; in-memory only when `owner` is unset.
+      resourceId: owner?.sId ?? null,
       defaultValue: defaultPreferences,
     });
   const { viewMode, sortMode } = preferences;
