@@ -70,7 +70,7 @@ import type {
   RowSelectionState,
   SortingState,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID: Record<
   string,
@@ -1456,11 +1456,13 @@ export function MembersUsageTable({
   // column latches onto the button width the first time one shows up and
   // keeps it: widening once beats resizing on every page change.
   const [hasSeenSpendCappedRow, setHasSeenSpendCappedRow] = useState(false);
-  const showUnblockWidth =
-    hasSeenSpendCappedRow || members.some((m) => m.isSpendCapped);
-  if (showUnblockWidth && !hasSeenSpendCappedRow) {
-    setHasSeenSpendCappedRow(true);
-  }
+  const hasSpendCappedRow = members.some((m) => m.isSpendCapped);
+  const showUnblockWidth = hasSeenSpendCappedRow || hasSpendCappedRow;
+  useEffect(() => {
+    if (hasSpendCappedRow) {
+      setHasSeenSpendCappedRow(true);
+    }
+  }, [hasSpendCappedRow]);
 
   const columns = useMemo(
     () =>
