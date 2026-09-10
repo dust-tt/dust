@@ -8,25 +8,10 @@ import {
   REQUEST_OUTCOME_LABELS,
   REQUEST_TYPE_LABELS,
 } from "../data/requests";
+import { formatRowTime } from "../data/time";
 import type { AdminRequest } from "../data/types";
 import { getUserById } from "../data/users";
 import { AvatarCounter } from "./AvatarCounter";
-
-export function formatCompactAge(date: Date): string {
-  const minutes = Math.round((Date.now() - date.getTime()) / (60 * 1000));
-  if (minutes < 60) {
-    return `${Math.max(1, minutes)}m`;
-  }
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) {
-    return `${hours}h`;
-  }
-  return `${Math.round(hours / 24)}d`;
-}
-
-export function formatShortDate(date: Date): string {
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
 
 /**
  * Pending is ordered by when a request was asked, History by when it was
@@ -167,7 +152,7 @@ export function RequestListItem({
         ) : undefined
       }
       unread={isPending}
-      time={isHistory ? formatShortDate(date) : formatCompactAge(date)}
+      time={formatRowTime(date)}
       className={cn(
         "px-3 rounded-2xl border-transparent!",
         isSelected && "bg-highlight-50"

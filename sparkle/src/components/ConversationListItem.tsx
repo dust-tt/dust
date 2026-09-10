@@ -90,7 +90,7 @@ export function ReplySection({
 }
 
 export interface ConversationListItemProps {
-  /** Marks the row as unread: shows a highlight dot and colors the timestamp. */
+  /** Marks the row as unread: shows a highlight dot after the timestamp. */
   unread: boolean;
   /** The conversation to summarise (title, optional description, last update). */
   conversation: {
@@ -232,16 +232,10 @@ export function ConversationListItem({
             )}
           </div>
           <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+            <span className="font-mono font-normal">{time}</span>
             {unread && (
-              <div
-                className={cn(
-                  "heading-xs flex flex-shrink-0 items-center justify-center rounded-full h-2 w-2 m-1 bg-highlight-500"
-                )}
-              />
+              <div className="h-2 w-2 flex-shrink-0 rounded-full bg-highlight-500" />
             )}
-            <span className={cn("font-normal", unread && "text-highlight")}>
-              {time}
-            </span>
           </div>
         </div>
         {conversation.description && (

@@ -13,6 +13,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
+import { formatRowTime } from "../data/time";
 import type { Agent, Conversation, User } from "../data/types";
 import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
@@ -257,14 +258,7 @@ export function PersonAgentView({
                         <ListItemSection>{bucketKey}</ListItemSection>
                         <ListGroup>
                           {bucketConversations.map((conversation) => {
-                            // Format time from updatedAt
-                            const time = conversation.updatedAt
-                              .toLocaleTimeString("en-US", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: false,
-                              })
-                              .replace("24:", "00:");
+                            const time = formatRowTime(conversation.updatedAt);
 
                             // Generate random message count (1-3)
                             const messageCount = Math.floor(
@@ -314,6 +308,7 @@ export function PersonAgentView({
                                     : collaboratorAvatar
                                 }
                                 time={time}
+                                unread={bucketKey === "Today"}
                                 replySection={
                                   <ReplySection
                                     replyCount={replyCount}

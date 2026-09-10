@@ -23,6 +23,7 @@ import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { getAgentById } from "../data/agents";
 import { getRandomInboxGreetingForName } from "../data/greetings";
 import { isTriggeredConversation } from "../data/myPod";
+import { formatRowTime } from "../data/time";
 import type {
   AdminRequest,
   Agent,
@@ -173,13 +174,7 @@ function participantsToAvatarProps(
 }
 
 function getConversationListItemMeta(conversation: Conversation) {
-  const time = conversation.updatedAt
-    .toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    })
-    .replace("24:", "00:");
+  const time = formatRowTime(conversation.updatedAt);
 
   const replyCount = Math.floor(Math.random() * 8 + 1);
   const messageCount = Math.floor(Math.random() * replyCount + 1);
@@ -582,6 +577,8 @@ export function InboxView({
           isSelected && "bg-highlight-50"
         )}
         time={time}
+        // Everything the Inbox lists is waiting to be read.
+        unread={messageCount > 0}
         replySection={
           <ReplySection
             replyCount={replyCount}
