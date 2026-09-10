@@ -3277,7 +3277,7 @@ export const PostConsumptionExportRequestSchema = z
     endDate: IsoDateTimeSchema,
     format: z.enum(["csv", "ndjson"]).optional(),
     filter: z
-      .record(ConsumptionExportFilterKeySchema, z.string().array())
+      .record(ConsumptionExportFilterKeySchema, z.string().max(256).array())
       .optional(),
   })
   .refine(
@@ -3291,6 +3291,20 @@ export const PostConsumptionExportRequestSchema = z
       return diffMs <= 30 * 24 * 60 * 60 * 1000;
     },
     { message: "Time range must not exceed 30 days" }
+  )
+  .refine(
+    (d) => {
+      if (!d.filter) {
+        return true;
+      }
+      const total = Object.values(d.filter).reduce(
+        (sum, arr) => sum + arr.length,
+        0
+      );
+      // Aligned with CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION in front.
+      return total <= 500;
+    },
+    { message: "Filter must not exceed 500 values total across all dimensions" }
   );
 
 export type PostConsumptionExportRequestType = z.infer<

@@ -10,6 +10,7 @@ import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
+import logger from "@app/logger/logger";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -106,6 +107,12 @@ const CONSUMPTION_LINE_EXPORT_HEADERS: (keyof ConsumptionLineExportRow)[] = [
   "executionTimeMs",
 ];
 
+const ES_SORT: estypes.Sort = [
+  { completed_at: "asc" },
+  { agent_message_id: "asc" },
+  { consumption_key: "asc" },
+];
+
 // One document per unit of billed credit consumption
 async function fetchAllConsumptionDocuments(
   query: estypes.QueryDslQueryContainer
@@ -120,11 +127,7 @@ async function fetchAllConsumptionDocuments(
         query,
         {
           size: EXPORT_PAGE_SIZE,
-          sort: [
-            { completed_at: "asc" },
-            { agent_message_id: "asc" },
-            { consumption_key: "asc" },
-          ],
+          sort: ES_SORT,
           search_after: searchAfter,
         }
       );
@@ -325,4 +328,115 @@ export function rowsToNdjson(rows: ConsumptionLineExportRow[]): string {
 
 export function rowsToCsvString(rows: ConsumptionLineExportRow[]): string {
   return rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows);
+}
+
+export function streamConsumptionExport(
+  auth: Authenticator,
+  opts: {
+    period: ConsumptionPeriod;
+    filter?: ConsumptionScopeFilter;
+    format: "csv" | "ndjson";
+    signal?: AbortSignal;
+  }
+): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  const { period, filter, format, signal } = opts;
+
+  const query = buildConsumptionScopeQuery({
+    auth,
+    startDate: period.startDate,
+    endDate: period.endDate,
+    filter,
+  });
+
+  let cancelled = false;
+
+  async function* pages(): AsyncGenerator<Uint8Array> {
+    let searchAfter: estypes.SortResults | undefined;
+    let pageSize: number;
+    let isFirst = true;
+
+    do {
+      if (cancelled) {
+        // Cancelled by the client, stop streaming.
+        return;
+      }
+      if (signal?.aborted) {
+        yield encoder.encode("ERROR: Export timed out.");
+        return;
+      }
+
+      const result =
+        await searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>(
+          query,
+          {
+            size: EXPORT_PAGE_SIZE,
+            sort: ES_SORT,
+            search_after: searchAfter,
+          }
+        );
+
+      if (result.isErr()) {
+        logger.error(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            startDate: period.startDate,
+            endDate: period.endDate,
+            filter,
+            error: result.error.message,
+          },
+          "[Consumption Export] Failed to stream consumption lines"
+        );
+        yield encoder.encode("ERROR: Internal server error.");
+        return;
+      }
+
+      const { hits } = result.value.hits;
+      const docs: AgentMessageConsumptionAnalyticsData[] = [];
+      // Accumulate hits to call buildConsumptionLineExportRows once per page,
+      // since it needs to resolve labels.
+      for (const hit of hits) {
+        if (hit._source) {
+          docs.push(hit._source);
+        }
+      }
+
+      const rows = await buildConsumptionLineExportRows(auth, docs);
+
+      const chunk =
+        format === "csv"
+          ? rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows, {
+              includeHeader: isFirst,
+            })
+          : rowsToNdjson(rows);
+
+      isFirst = false;
+      yield encoder.encode(chunk);
+
+      pageSize = hits.length;
+      searchAfter = hits[hits.length - 1]?.sort;
+    } while (pageSize === EXPORT_PAGE_SIZE);
+  }
+
+  const gen = pages();
+  return new ReadableStream({
+    async pull(controller) {
+      try {
+        const { value, done } = await gen.next();
+        if (done) {
+          controller.close();
+        } else {
+          controller.enqueue(value);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          logger.error({ err }, "[Consumption Export] Unexpected stream error");
+        }
+        controller.close();
+      }
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
 }

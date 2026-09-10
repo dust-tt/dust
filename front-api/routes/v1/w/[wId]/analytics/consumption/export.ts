@@ -1,14 +1,12 @@
-import {
-  fetchConsumptionExportRows,
-  rowsToCsvString,
-  rowsToNdjson,
-} from "@app/lib/api/analytics/consumption/export_lines";
+import { streamConsumptionExport } from "@app/lib/api/analytics/consumption/export_lines";
 import logger from "@app/logger/logger";
 import { PostConsumptionExportRequestSchema } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+
+const EXPORT_TIMEOUT_MS = 10_000;
 
 // Mounted at /api/v1/w/:wId/analytics/consumption/export.
 const app = publicApiApp();
@@ -22,7 +20,9 @@ const app = publicApiApp();
  *       Export per-call consumption analytics for the workspace identified by {wId}.
  *       Each row represents one unit of billed credit consumption (an LLM call or a tool call).
  *       The export can be filtered by various dimensions (agents, users, API keys, groups, models, tools, skills, sources, tags).
- *       The export is limited to a maximum of 30 days per request.
+ *       The export is limited to a maximum of 30 days per request and times out after 10 seconds: reduce the time range
+ *       or apply filters to reduce the number of rows if you encounter a timeout.
+ *       Results are streamed, if an error occurs, an error message is appended and the stream is closed.
  *     tags:
  *       - Analytics
  *     security:
@@ -143,6 +143,17 @@ app.post(
       });
     }
 
+    if (!auth.isKey()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message:
+            "Workspace analytics export requires API key authentication.",
+        },
+      });
+    }
+
     const body = ctx.req.valid("json");
     const format = body.format ?? "csv";
 
@@ -162,36 +173,26 @@ app.post(
       "Consumption export requested."
     );
 
-    const result = await fetchConsumptionExportRows(auth, {
+    const abortController = new AbortController();
+    setTimeout(() => abortController.abort(), EXPORT_TIMEOUT_MS);
+
+    const stream = streamConsumptionExport(auth, {
       period: { startDate, endDate },
       filter: body.filter,
+      format,
+      signal: abortController.signal,
     });
 
-    if (result.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: result.error.message,
-        },
-      });
-    }
+    const contentType =
+      format === "ndjson" ? "application/x-ndjson" : "text/csv";
+    const ext = format === "ndjson" ? "ndjson" : "csv";
 
-    if (format === "ndjson") {
-      ctx.header("Content-Type", "application/x-ndjson");
-      ctx.header(
-        "Content-Disposition",
-        `attachment; filename="dust_consumption_${body.startDate}_${body.endDate}.ndjson"`
-      );
-      return ctx.body(rowsToNdjson(result.value));
-    }
-
-    ctx.header("Content-Type", "text/csv");
+    ctx.header("Content-Type", contentType);
     ctx.header(
       "Content-Disposition",
-      `attachment; filename="dust_consumption_${body.startDate}_${body.endDate}.csv"`
+      `attachment; filename="dust_consumption_${body.startDate}_${body.endDate}.${ext}"`
     );
-    return ctx.body(rowsToCsvString(result.value));
+    return ctx.body(stream);
   }
 );
 

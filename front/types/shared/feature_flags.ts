@@ -434,7 +434,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   consumption_export_api: {
     description:
       "Enable the public API endpoint for raw consumption analytics export (POST /api/v1/w/:wId/analytics/consumption/export).",
-    stage: "dust_only",
+    stage: "ask_owner",
     owner: "sylvain",
   },
 } as const satisfies Record<string, FeatureFlag>;
