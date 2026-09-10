@@ -68,6 +68,12 @@ function isNestedAgentAction(
 }
 
 /**
+ * @cc [owner:frankaloia,label:product] exclude-tool-approval-wait
+ * For ordinary (non-nested-agent) actions, the duration MUST subtract the gap
+ * between `createdAt` and execution start (`updatedAt - executionDurationMs`).
+ * That gap is tool-approval / queue wait and MUST NOT count as generation time.
+ */
+/**
  * @cc [owner:frankaloia,label:product] nested-agent-time-counts
  * The returned duration MUST include time spent in nested agent actions
  * (`run_agent`, `agent_delegation`). Those actions often pause or resume across
