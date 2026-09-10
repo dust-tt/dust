@@ -1,9 +1,8 @@
 import {
-  CARDINALITY_PRECISION_THRESHOLD,
+  AGENT_MESSAGE_ID_FIELD,
   COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
   CONVERSATION_ID_FIELD,
-  uniqueMessagesCardinalityAgg,
 } from "@app/lib/api/analytics/consumption/scope";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
@@ -23,6 +22,10 @@ import type { RedisClientType } from "redis";
 // Ranking of agents is done over a 30 days period.
 const RANKING_USAGE_DAYS = 30;
 const RANKING_TIMEFRAME_SEC = 60 * 60 * 24 * RANKING_USAGE_DAYS;
+
+// Popularity ranking can use Elasticsearch's default precision instead of the
+// higher precision used by consumption analytics, reducing per-agent memory.
+const RANKING_CARDINALITY_PRECISION_THRESHOLD = 3_000;
 
 const MENTION_COUNT_TTL = 60 * 60 * 24 * 7; // 7 days
 
@@ -161,6 +164,9 @@ export async function agentMentionsCount(
   const filters: estypes.QueryDslQueryContainer[] = [
     { term: { workspace_id: workspaceId } },
     { terms: { context_origin: USER_USAGE_ORIGINS } },
+    // Every indexed message has LLM documents with the same agent, conversation,
+    // and user as its tool documents. Exclude tools, but still dedupe LLM steps.
+    { term: { consumption_type: "llm" } },
     { exists: { field: CONSUMPTION_DIMENSION_FIELDS.agent } },
     {
       range: {
@@ -192,17 +198,22 @@ export async function agentMentionsCount(
           order: { message_count: "desc" },
         },
         aggs: {
-          message_count: uniqueMessagesCardinalityAgg(),
+          message_count: {
+            cardinality: {
+              field: AGENT_MESSAGE_ID_FIELD,
+              precision_threshold: RANKING_CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
           conversation_count: {
             cardinality: {
               field: CONVERSATION_ID_FIELD,
-              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+              precision_threshold: RANKING_CARDINALITY_PRECISION_THRESHOLD,
             },
           },
           user_count: {
             cardinality: {
               field: CONSUMPTION_DIMENSION_FIELDS.user,
-              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+              precision_threshold: RANKING_CARDINALITY_PRECISION_THRESHOLD,
             },
           },
         },
