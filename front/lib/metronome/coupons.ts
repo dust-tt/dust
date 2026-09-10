@@ -39,6 +39,7 @@ import { isSupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { addMonths } from "date-fns";
 
 async function getCreditTypeFromRateCardId(
@@ -329,8 +330,8 @@ export async function redeemPoolTopupCoupon(
   }
 
   await redemption.markActive(creditResult.value);
-  await invalidateAwuPoolCaches(auth);
 
+  // The redemption is complete at this point: audit it before anything that can still fail.
   void emitAuditLogEvent({
     auth,
     action: "coupon.redeemed",
@@ -341,6 +342,20 @@ export async function redeemPoolTopupCoupon(
       amount: String(coupon.amount),
     },
   });
+
+  // A cache failure must not turn a completed redemption into an error the user would retry.
+  try {
+    await invalidateAwuPoolCaches(auth);
+  } catch (err) {
+    logger.warn(
+      {
+        err: normalizeError(err),
+        couponId: coupon.sId,
+        workspaceId: workspace.sId,
+      },
+      "[Metronome] Failed to invalidate pool caches after coupon redemption"
+    );
+  }
 
   return new Ok(redemption);
 }
