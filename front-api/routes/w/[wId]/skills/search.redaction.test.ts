@@ -132,7 +132,7 @@ describe("GET /api/w/:wId/skills/search redaction integration", () => {
       expect(hit).not.toHaveProperty("instructionsHtml");
       expect(hit).not.toHaveProperty("tools");
       expect(hit).not.toHaveProperty("fileAttachments");
-      expect(hit).not.toHaveProperty("editor_user_ids");
+      expect(hit).not.toHaveProperty("editors");
     }
 
     const request: estypes.SearchRequest = mockSearch.mock.lastCall![0];

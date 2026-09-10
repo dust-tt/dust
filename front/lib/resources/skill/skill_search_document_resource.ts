@@ -83,8 +83,8 @@ export class SkillSearchDocumentResource {
       return (
         user !== null &&
         (canEditAllSkills ||
-          (Array.isArray(candidate.editor_user_ids) &&
-            candidate.editor_user_ids.includes(user.id)) ||
+          (Array.isArray(candidate.editors) &&
+            candidate.editors.includes(user.id)) ||
           (Array.isArray(candidate.editor_group_ids) &&
             candidate.editor_group_ids.some((id) => callerGroups.has(id)))) &&
         parsed !== null &&
@@ -317,8 +317,7 @@ export class SkillSearchDocumentResource {
             description: skill.userFacingDescription,
             icon: skill.icon,
             edited_by: skill.editedBy,
-            editor_user_ids:
-              editorGrantsBySkillModelId.get(skill.id)?.userIds ?? [],
+            editors: editorGrantsBySkillModelId.get(skill.id)?.userIds ?? [],
             editor_group_ids:
               editorGrantsBySkillModelId.get(skill.id)?.groupIds ?? [],
             requested_space_ids: requestedSpaceIds,
@@ -421,10 +420,10 @@ export class SkillSearchDocumentResource {
               .includes("read")
           );
         }) &&
-        Array.isArray(document.editor_user_ids) &&
+        Array.isArray(document.editors) &&
         isEqual(
-          [...document.editor_user_ids].sort((a, b) => a - b),
-          [...currentDocument.editor_user_ids].sort((a, b) => a - b)
+          [...document.editors].sort((a, b) => a - b),
+          [...currentDocument.editors].sort((a, b) => a - b)
         ) &&
         // Old documents can still match individual editors during the additive backfill.
         (document.editor_group_ids === undefined ||

@@ -31,7 +31,7 @@ export const INDEX_REGISTRY: Record<
     directory: "lib/analytics/indices",
     version: 1,
   },
-  skills: { directory: "lib/skill_search/indices", version: 1 },
+  skills: { directory: "lib/skill_search/indices", version: 2 },
   user_search: { directory: "lib/user_search/indices", version: 1 },
 };
 

@@ -83,7 +83,7 @@ function buildEditorFilter(
   return {
     bool: {
       should: [
-        { term: { editor_user_ids: user.id } },
+        { term: { editors: user.id } },
         { terms: { editor_group_ids: [...new Set(auth.groupModelIds())] } },
       ],
       minimum_should_match: 1,

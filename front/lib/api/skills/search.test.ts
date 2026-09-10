@@ -303,6 +303,39 @@ describe("searchSkillsForCommandMenu pagination", () => {
     expect(mockSearch).toHaveBeenCalledOnce();
   });
 
+  it("paginates word-prefix matches without losing custom hits displaced by globals", async () => {
+    const { auth } = await createPrivateApiMockRequest({ role: "user" });
+    const exact = await createDocument(auth, "Deep");
+    const prefix = await createDocument(auth, "DeepBuilder");
+    const wordPrefix = await createDocument(auth, "WeeklyDeepReport");
+    const notAMatch = await createDocument(
+      auth,
+      "DeveloperExperienceExpertPlanner"
+    );
+    serveDocuments([wordPrefix, notAMatch, prefix, exact], "deep");
+
+    let cursor: string | undefined;
+    const ids: string[] = [];
+    for (let pageNumber = 0; pageNumber < 4; pageNumber++) {
+      const page = await searchSkillsForCommandMenu(auth, {
+        searchTerm: "deep",
+        limit: 1,
+        cursor,
+      });
+      assert(page.isOk());
+      expect(page.value.skills).toHaveLength(1);
+      ids.push(...page.value.skills.map((skill) => skill.sId));
+      cursor = page.value.nextCursor ?? undefined;
+    }
+    expect(ids).toEqual([
+      exact.skill_id,
+      prefix.skill_id,
+      "go-deep",
+      wordPrefix.skill_id,
+    ]);
+    expect(cursor).toBeUndefined();
+  });
+
   it("matches global aliases and does not return restricted globals", async () => {
     const { auth } = await createPrivateApiMockRequest({ role: "user" });
     serveDocuments([], "Deep Dive");

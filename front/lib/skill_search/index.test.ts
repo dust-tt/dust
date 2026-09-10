@@ -40,7 +40,7 @@ const document: SkillSearchDocument = {
   description: "Description",
   icon: null,
   edited_by: null,
-  editor_user_ids: [1],
+  editors: [1],
   requested_space_ids: [],
   tools: [],
   active_users: 0,

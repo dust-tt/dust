@@ -30,7 +30,7 @@ export interface SkillSearchDocument extends ElasticsearchBaseDocument {
   description: string | null;
   icon: string | null;
   edited_by: number | null;
-  editor_user_ids: ModelId[];
+  editors: ModelId[];
   // Optional while existing documents receive the additive editor-group backfill.
   editor_group_ids?: ModelId[];
   requested_space_ids: string[];

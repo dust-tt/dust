@@ -62,9 +62,7 @@ describe("SkillSearchDocumentResource", () => {
     expect(documents[1]).toMatchObject({
       workspace_id: testContext.workspace.sId,
       status: "active",
-      editor_user_ids: [testContext.user.id, additionalEditor.id].sort(
-        (a, b) => a - b
-      ),
+      editors: [testContext.user.id, additionalEditor.id].sort((a, b) => a - b),
       requested_space_ids: [regularSpace.sId, pod.sId],
       tools: [],
       active_users: 0,
@@ -216,10 +214,10 @@ describe("SkillSearchDocumentResource", () => {
     const staleDocuments = [
       { ...document, availability: "workspace_users" as const },
       { ...document, requested_space_ids: [] },
-      { ...document, editor_user_ids: [999_999_999] },
+      { ...document, editors: [999_999_999] },
       {
         ...document,
-        editor_user_ids: 999_999_999 as unknown as number[],
+        editors: 999_999_999 as unknown as number[],
       },
       {
         ...document,
