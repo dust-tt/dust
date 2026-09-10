@@ -136,13 +136,16 @@ export function MCPToolValidationRequired({
     canCurrentUserRespond &&
     isToolApprovedForConversation({ mcpServerName, toolName });
 
+  // Keep a ref to the latest `handleValidation` so the one-shot auto-approve
+  // effect never fires with a stale closure while depending only on the trigger.
+  const handleValidationRef = useRef(handleValidation);
+  handleValidationRef.current = handleValidation;
+
   const hasAutoApprovedRef = useRef(false);
-  // `handleValidation` is recreated each render; the ref guard makes this fire once.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: handleValidation is intentionally excluded; the ref guard prevents re-firing
   useEffect(() => {
     if (isAutoApproved && !hasAutoApprovedRef.current) {
       hasAutoApprovedRef.current = true;
-      void handleValidation("approved");
+      void handleValidationRef.current("approved");
     }
   }, [isAutoApproved]);
 
