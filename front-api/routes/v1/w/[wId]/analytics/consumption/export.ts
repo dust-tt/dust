@@ -60,52 +60,63 @@ const app = publicApiApp();
  *                 description: Output format (defaults to csv)
  *               filter:
  *                 type: object
- *                 description: Optional dimension filters. Each key maps to an array of string identifiers to include.
+ *                 description: |
+ *                   Optional dimension filters. Each key maps to an array of string identifiers to include.
+ *                   Each value must be at most 256 characters. The total number of values across all dimensions must not exceed 500.
  *                 properties:
  *                   agents:
  *                     type: array
  *                     items:
  *                       type: string
+ *                       maxLength: 256
  *                     description: Agent sIds to filter on
  *                   users:
  *                     type: array
  *                     items:
  *                       type: string
+ *                       maxLength: 256
  *                     description: User IDs to filter on
  *                   api_keys:
  *                     type: array
  *                     items:
  *                       type: string
+ *                       maxLength: 256
  *                     description: API key names to filter on
  *                   groups:
  *                     type: array
  *                     items:
  *                       type: string
+ *                       maxLength: 256
  *                     description: Group IDs to filter on
  *                   models:
  *                     type: array
  *                     items:
  *                       type: string
+ *                       maxLength: 256
  *                     description: Model IDs to filter on
  *                   tools:
  *                     type: array
  *                     items:
  *                       type: string
+ *                       maxLength: 256
  *                     description: Tool server names to filter on
  *                   skills:
  *                     type: array
  *                     items:
  *                       type: string
+ *                       maxLength: 256
  *                     description: Skill IDs to filter on
  *                   sources:
  *                     type: array
  *                     items:
  *                       type: string
+ *                       maxLength: 256
  *                     description: Context origins to filter on (e.g. "web", "slack", "api")
  *                   tags:
  *                     type: array
  *                     items:
  *                       type: string
+ *                       maxLength: 256
  *                     description: Agent tag IDs to filter on
  *     responses:
  *       200:
@@ -132,17 +143,6 @@ app.post(
   async (ctx) => {
     const auth = ctx.get("auth");
 
-    if (!(await auth.hasFeatureFlag("consumption_export_api"))) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message:
-            "The workspace does not have access to the consumption export API.",
-        },
-      });
-    }
-
     if (!auth.isKey()) {
       return apiError(ctx, {
         status_code: 403,
@@ -150,6 +150,17 @@ app.post(
           type: "workspace_auth_error",
           message:
             "Workspace analytics export requires API key authentication.",
+        },
+      });
+    }
+
+    if (!(await auth.hasFeatureFlag("consumption_export_api"))) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "feature_flag_not_found",
+          message:
+            "The workspace does not have access to the consumption export API.",
         },
       });
     }
@@ -174,14 +185,38 @@ app.post(
     );
 
     const abortController = new AbortController();
-    setTimeout(() => abortController.abort(), EXPORT_TIMEOUT_MS);
+    const timer = setTimeout(() => abortController.abort(), EXPORT_TIMEOUT_MS);
 
-    const stream = streamConsumptionExport(auth, {
+    const result = await streamConsumptionExport(auth, {
       period: { startDate, endDate },
       filter: body.filter,
       format,
       signal: abortController.signal,
     });
+
+    if (result.isErr()) {
+      clearTimeout(timer);
+      return apiError(
+        ctx,
+        {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Failed to export consumption analytics.",
+          },
+        },
+        result.error
+      );
+    }
+
+    const stream = result.value;
+    const monitored = stream.pipeThrough(
+      new TransformStream({
+        flush() {
+          clearTimeout(timer);
+        },
+      })
+    );
 
     const contentType =
       format === "ndjson" ? "application/x-ndjson" : "text/csv";
@@ -190,9 +225,9 @@ app.post(
     ctx.header("Content-Type", contentType);
     ctx.header(
       "Content-Disposition",
-      `attachment; filename="dust_consumption_${body.startDate}_${body.endDate}.${ext}"`
+      `attachment; filename="dust_consumption_${startDate}_${endDate}.${ext}"`
     );
-    return ctx.body(stream);
+    return ctx.body(monitored);
   }
 );
 

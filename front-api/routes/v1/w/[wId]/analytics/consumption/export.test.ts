@@ -153,7 +153,7 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("text/csv");
     expect(response.headers.get("Content-Disposition")).toContain(
-      "dust_consumption_2024-06-01T00:00:00Z_2024-06-15T00:00:00Z.csv"
+      "dust_consumption_2024-06-01T00:00:00.000Z_2024-06-15T00:00:00.000Z.csv"
     );
     const csv = await response.text();
     expect(csv).toContain("completedAt");
@@ -202,7 +202,7 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: {
-        type: "workspace_auth_error",
+        type: "feature_flag_not_found",
         message:
           "The workspace does not have access to the consumption export API.",
       },
@@ -249,6 +249,9 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     });
 
     expect(response.status).toBe(400);
+    const json = await response.json();
+    expect(json.error.type).toBe("invalid_request_error");
+    expect(json.error.message).toContain("Time range must not exceed 30 days");
   });
 
   it("returns 400 when startDate is after endDate", async () => {
@@ -267,6 +270,11 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     });
 
     expect(response.status).toBe(400);
+    const json = await response.json();
+    expect(json.error.type).toBe("invalid_request_error");
+    expect(json.error.message).toContain(
+      "startDate must be strictly before endDate"
+    );
   });
 
   it("returns 400 for missing required fields", async () => {
@@ -282,6 +290,9 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     });
 
     expect(response.status).toBe(400);
+    const json = await response.json();
+    expect(json.error.type).toBe("invalid_request_error");
+    expect(json.error.message).toContain("startDate");
   });
 
   it("returns 405 for GET", async () => {
@@ -297,6 +308,12 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     });
 
     expect(response.status).toBe(405);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "method_not_supported_error",
+        message: "The method passed is not supported, POST is expected.",
+      },
+    });
   });
 
   it("accepts optional filter parameter", async () => {
@@ -319,7 +336,7 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     expect(response.status).toBe(200);
   });
 
-  it("returns 400 when total filter values exceed 500", async () => {
+  it("returns 400 when filter values exceed 500 dimensions", async () => {
     enableFeatureFlag();
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
@@ -338,6 +355,38 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     });
 
     expect(response.status).toBe(400);
+    const json = await response.json();
+    expect(json.error.type).toBe("invalid_request_error");
+    expect(json.error.message).toContain(
+      "Filter must not exceed 500 values total"
+    );
+  });
+
+  it("returns 400 when filter values exceed 500 across all dimensions", async () => {
+    enableFeatureFlag();
+    const { workspace, key } = await createPublicApiMockRequest({
+      role: "admin",
+    });
+
+    const response = await consumptionExportRequest({
+      workspace,
+      key,
+      body: {
+        startDate: "2024-06-01T00:00:00Z",
+        endDate: "2024-06-15T00:00:00Z",
+        filter: {
+          agents: Array.from({ length: 250 }, (_, i) => `agent-${i}`),
+          tags: Array.from({ length: 251 }, (_, i) => `tag-${i}`),
+        },
+      },
+    });
+
+    expect(response.status).toBe(400);
+    const json = await response.json();
+    expect(json.error.type).toBe("invalid_request_error");
+    expect(json.error.message).toContain(
+      "Filter must not exceed 500 values total"
+    );
   });
 
   it("returns 400 when a filter value exceeds 256 characters", async () => {
@@ -357,9 +406,12 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     });
 
     expect(response.status).toBe(400);
+    const json = await response.json();
+    expect(json.error.type).toBe("invalid_request_error");
+    expect(json.error.message).toContain("256");
   });
 
-  it("appends error to stream body on ES failure", async () => {
+  it("returns 500 with API error on ES failure", async () => {
     enableFeatureFlag();
     mockedSearchConsumptionAnalytics.mockResolvedValueOnce(
       new Err(new ElasticsearchError("query_error", "shard failure"))
@@ -377,8 +429,12 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
       },
     });
 
-    expect(response.status).toBe(200);
-    const body = await response.text();
-    expect(body).toBe("ERROR: Internal server error.");
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "internal_server_error",
+        message: "Failed to export consumption analytics.",
+      },
+    });
   });
 });

@@ -13,7 +13,8 @@ import { microCreditsToCredits } from "@app/lib/credits/units";
 import logger from "@app/logger/logger";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
 
@@ -293,7 +294,7 @@ export function buildConsumptionLineExportCsvHeader(): string {
   return rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, []);
 }
 
-export async function fetchConsumptionExportRows(
+async function fetchConsumptionExportRows(
   auth: Authenticator,
   {
     period,
@@ -330,7 +331,14 @@ export function rowsToCsvString(rows: ConsumptionLineExportRow[]): string {
   return rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows);
 }
 
-export function streamConsumptionExport(
+/**
+ * Streams consumption export data page by page. The first ES page is fetched
+ * eagerly: if it fails, an Err is returned so the caller can respond with a
+ * proper API error. Once streaming has started (Ok), mid-stream failures are
+ * appended as a raw error line (intentionally not valid CSV/NDJSON so parsers
+ * break loudly) and the stream is closed.
+ */
+export async function streamConsumptionExport(
   auth: Authenticator,
   opts: {
     period: ConsumptionPeriod;
@@ -338,7 +346,7 @@ export function streamConsumptionExport(
     format: "csv" | "ndjson";
     signal?: AbortSignal;
   }
-): ReadableStream<Uint8Array> {
+): Promise<Result<ReadableStream<Uint8Array>, ElasticsearchError>> {
   const encoder = new TextEncoder();
   const { period, filter, format, signal } = opts;
 
@@ -349,16 +357,51 @@ export function streamConsumptionExport(
     filter,
   });
 
+  // Fetch the first page eagerly so failures surface as a Result before
+  // the caller commits to a streaming 200 response.
+  const firstResult =
+    await searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>(
+      query,
+      { size: EXPORT_PAGE_SIZE, sort: ES_SORT }
+    );
+
+  if (firstResult.isErr()) {
+    return new Err(firstResult.error);
+  }
+
+  const firstPageHits = firstResult.value.hits.hits;
   let cancelled = false;
 
   async function* pages(): AsyncGenerator<Uint8Array> {
-    let searchAfter: estypes.SortResults | undefined;
-    let pageSize: number;
+    // Yield the first (already-fetched) page, then continue paginating.
+    let currentHits = firstPageHits;
     let isFirst = true;
 
-    do {
+    while (true) {
+      const docs: AgentMessageConsumptionAnalyticsData[] = [];
+      for (const hit of currentHits) {
+        if (hit._source) {
+          docs.push(hit._source);
+        }
+      }
+
+      const rows = await buildConsumptionLineExportRows(auth, docs);
+
+      const chunk =
+        format === "csv"
+          ? rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows, {
+              includeHeader: isFirst,
+            })
+          : rowsToNdjson(rows);
+
+      isFirst = false;
+      yield encoder.encode(chunk);
+
+      if (currentHits.length < EXPORT_PAGE_SIZE) {
+        break;
+      }
+
       if (cancelled) {
-        // Cancelled by the client, stop streaming.
         return;
       }
       if (signal?.aborted) {
@@ -366,6 +409,7 @@ export function streamConsumptionExport(
         return;
       }
 
+      const searchAfter = currentHits[currentHits.length - 1]?.sort;
       const result =
         await searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>(
           query,
@@ -391,35 +435,12 @@ export function streamConsumptionExport(
         return;
       }
 
-      const { hits } = result.value.hits;
-      const docs: AgentMessageConsumptionAnalyticsData[] = [];
-      // Accumulate hits to call buildConsumptionLineExportRows once per page,
-      // since it needs to resolve labels.
-      for (const hit of hits) {
-        if (hit._source) {
-          docs.push(hit._source);
-        }
-      }
-
-      const rows = await buildConsumptionLineExportRows(auth, docs);
-
-      const chunk =
-        format === "csv"
-          ? rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows, {
-              includeHeader: isFirst,
-            })
-          : rowsToNdjson(rows);
-
-      isFirst = false;
-      yield encoder.encode(chunk);
-
-      pageSize = hits.length;
-      searchAfter = hits[hits.length - 1]?.sort;
-    } while (pageSize === EXPORT_PAGE_SIZE);
+      currentHits = result.value.hits.hits;
+    }
   }
 
   const gen = pages();
-  return new ReadableStream({
+  const stream = new ReadableStream<Uint8Array>({
     async pull(controller) {
       try {
         const { value, done } = await gen.next();
@@ -431,12 +452,16 @@ export function streamConsumptionExport(
       } catch (err) {
         if (!cancelled) {
           logger.error({ err }, "[Consumption Export] Unexpected stream error");
+          controller.error(normalizeError(err));
+        } else {
+          controller.close();
         }
-        controller.close();
       }
     },
     cancel() {
       cancelled = true;
     },
   });
+
+  return new Ok(stream);
 }
