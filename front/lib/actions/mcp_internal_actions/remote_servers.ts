@@ -2316,7 +2316,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     url: "",
     icon: "DatabricksLogo",
     documentationUrl:
-      "https://docs.databricks.com/aws/en/agents/mcp-tools/connect-clients",
+      "https://docs.dust.tt/docs/user-documentation/agents/tools/databricks",
     connectionInstructions:
       "Enter your Databricks workspace host URL and the client ID/secret of a Databricks OAuth " +
       "app. The MCP URL and the OAuth authorization/token endpoints are derived automatically.",
@@ -2346,7 +2346,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     url: "",
     icon: "DatabricksLogo",
     documentationUrl:
-      "https://docs.databricks.com/aws/en/agents/mcp-tools/connect-clients",
+      "https://docs.dust.tt/docs/user-documentation/agents/tools/databricks",
     connectionInstructions:
       "Enter your Databricks workspace host URL and the client ID/secret of a Databricks OAuth " +
       "app. The MCP URL and the OAuth authorization/token endpoints are derived automatically.",
