@@ -53,6 +53,8 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { useSearchParam } from "@app/lib/platform";
 import {
+  useAwuPoolCurrentCycle,
+  useAwuPoolCycleHistory,
   useAwuPoolSummary,
   useAwuPurchaseInfo,
   useMyUsage,
@@ -506,6 +508,18 @@ export function UsagePage() {
   } = useAwuPoolSummary({
     workspaceId: owner.sId,
     disabled: !isCreditPriced,
+  });
+
+  // The new usage page cards read the pool from the cycle endpoints, so a
+  // purchase must revalidate those too. Disabled here: the cards own the
+  // fetch, we only borrow the mutate functions.
+  const { mutateAwuPoolCurrentCycle } = useAwuPoolCurrentCycle({
+    workspaceId: owner.sId,
+    disabled: true,
+  });
+  const { mutateAwuPoolCycleHistory } = useAwuPoolCycleHistory({
+    workspaceId: owner.sId,
+    disabled: true,
   });
 
   // TODO(2026-08-24): add back logic to show consumption here.
@@ -1064,6 +1078,10 @@ export function UsagePage() {
           onClose={() => setShowBuyCreditDialog(false)}
           onPurchaseSuccess={() => {
             void mutateAwuPoolSummary();
+            if (isNewUsagePage) {
+              void mutateAwuPoolCurrentCycle();
+              void mutateAwuPoolCycleHistory();
+            }
           }}
           workspaceId={owner.sId}
           awuPurchaseInfo={awuPurchaseInfo}
