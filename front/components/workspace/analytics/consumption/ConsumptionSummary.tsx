@@ -1,4 +1,3 @@
-import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
@@ -7,7 +6,13 @@ import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/cons
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { formatCredits } from "@app/lib/client/credits";
 import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
-import { ArrowUpRight, Button, Chip, LoadingBlock } from "@dust-tt/sparkle";
+import {
+  ArrowUpRight,
+  Button,
+  Chip,
+  LoadingBlock,
+  ValueCard,
+} from "@dust-tt/sparkle";
 
 const TARGET_CHIP: Record<
   CreditUsageTarget,
@@ -165,22 +170,28 @@ export function ConsumptionSummaryView({
             : "flex items-stretch gap-6"
         }
       >
-        <SummaryCard
-          label="Used this period"
-          value={`${formatCredits(totalCredits)} credits`}
-          hint={
+        <ValueCard
+          size="sm"
+          className="h-24"
+          title="Used this period"
+          content={
+            <span className="truncate">{`${formatCredits(totalCredits)} credits`}</span>
+          }
+          footer={
             creditUsage
               ? `${creditUsage.status.usedPercentage}% of ${formatCredits(creditUsage.capCredits)} cap`
-              : null
+              : undefined
           }
         />
-        <SummaryCard
-          label="Top agent"
-          value={topAgent?.name ?? "—"}
-          hint={
+        <ValueCard
+          size="sm"
+          className="h-24"
+          title="Top agent"
+          content={<span className="truncate">{topAgent?.name ?? "—"}</span>}
+          footer={
             topAgent && totalCredits > 0
               ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total consumption`
-              : null
+              : undefined
           }
         />
       </div>
@@ -253,17 +264,25 @@ function AgentConsumptionSummaryView({
             : "flex items-stretch gap-6"
         }
       >
-        <SummaryCard
+        <ValueCard
+          size="sm"
           className="h-20"
-          label="Active Users"
-          value={overview.members.active.toLocaleString()}
-          hint={null}
+          title="Active Users"
+          content={
+            <span className="truncate">
+              {overview.members.active.toLocaleString()}
+            </span>
+          }
         />
-        <SummaryCard
+        <ValueCard
+          size="sm"
           className="h-20"
-          label="Messages / active user"
-          value={messagesPerActiveUser?.toLocaleString() ?? "—"}
-          hint={null}
+          title="Messages / active user"
+          content={
+            <span className="truncate">
+              {messagesPerActiveUser?.toLocaleString() ?? "—"}
+            </span>
+          }
         />
       </div>
       <div
@@ -273,21 +292,27 @@ function AgentConsumptionSummaryView({
             : "flex items-stretch gap-6"
         }
       >
-        <SummaryCard
+        <ValueCard
+          size="sm"
           className="h-20"
-          label="Total cost"
-          value={`${formatCredits(overview.totalCredits)} credits`}
-          hint={null}
-        />
-        <SummaryCard
-          className="h-20"
-          label="Avg. cost/msg"
-          value={
-            averageCostPerMessage === null
-              ? "—"
-              : `${formatCredits(averageCostPerMessage)} credits`
+          title="Total cost"
+          content={
+            <span className="truncate">
+              {`${formatCredits(overview.totalCredits)} credits`}
+            </span>
           }
-          hint={null}
+        />
+        <ValueCard
+          size="sm"
+          className="h-20"
+          title="Avg. cost/msg"
+          content={
+            <span className="truncate">
+              {averageCostPerMessage === null
+                ? "—"
+                : `${formatCredits(averageCostPerMessage)} credits`}
+            </span>
+          }
         />
       </div>
     </div>

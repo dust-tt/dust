@@ -64,11 +64,11 @@ describe("ConsumptionSummary", () => {
     expect(screen.getByText("0.2 credits")).toBeInTheDocument();
     const activeUsersCard = screen
       .getByText("Active Users")
-      .closest(".bg-panel-background");
+      .closest(".bg-muted-background");
     expect(activeUsersCard).toHaveClass("h-20");
     expect(activeUsersCard).not.toHaveClass("h-24");
     expect(
-      screen.getByText("Messages / active user").closest(".bg-panel-background")
+      screen.getByText("Messages / active user").closest(".bg-muted-background")
     ).toBeInTheDocument();
     expect(container.firstElementChild).toHaveClass("gap-6");
     expect(screen.queryByText("Top agent")).not.toBeInTheDocument();
@@ -102,7 +102,7 @@ describe("ConsumptionSummary", () => {
     expect(screen.getByText("Top agent")).toBeInTheDocument();
     expect(screen.getByText("Research agent")).toBeInTheDocument();
     expect(
-      screen.getByText("Top agent").closest(".bg-panel-background")
+      screen.getByText("Top agent").closest(".bg-muted-background")
     ).toHaveClass("h-24");
     expect(container.firstElementChild).toHaveClass("gap-4");
     expect(screen.queryByText("Active Users")).not.toBeInTheDocument();

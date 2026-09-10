@@ -15,7 +15,7 @@ const meta: Meta<typeof ValueCard> = {
     layout: "padded",
     docs: {
       description: {
-        component: `A compact metric card surfacing a single value with a **title**, optional **subtitle**, and a **content** slot for the figure (number, icon, trend). Supports an **isLoading** state that shows a spinner. For bespoke layouts, compose the parts directly with **ComposableCard** (Header, Title, Subtitle, Content).
+        component: `A compact metric card surfacing a single value with a **title**, optional **subtitle**, and a **content** slot for the figure (number, icon, trend). Supports an **isLoading** state that swaps the figure for a skeleton block, and a dense **size="sm"** variant for rows of several metrics. For bespoke layouts, compose the parts directly with **ComposableCard** (Header, Title, Subtitle, Content).
 
 **When to use**
 - On dashboards and overviews to highlight a key metric or KPI.
@@ -57,12 +57,41 @@ export const Basic: Story = {
 
 /**
  * While the metric is being fetched, **isLoading** replaces the content with
- * a spinner so the card keeps its footprint.
- * @summary Loading state with spinner.
+ * a skeleton block so the card keeps its footprint and the title stays
+ * readable.
+ * @summary Loading state with skeleton.
  */
 export const Loading: Story = {
   args: {
     ...Basic.args,
+    isLoading: true,
+  },
+};
+
+/**
+ * The dense **size="sm"** variant: a muted label, a base-size figure and a
+ * small **footer** hint, meant to sit in a row or grid of several metrics.
+ * @summary Dense summary card with a hint.
+ */
+export const Compact: Story = {
+  args: {
+    size: "sm",
+    title: "Used this period",
+    className: "h-24 w-64",
+    content: <span className="truncate">1,240 credits</span>,
+    footer: "62% of 2,000 cap",
+  },
+};
+
+/**
+ * The dense variant while loading: the label is known up front, so only the
+ * figure is replaced by a skeleton block.
+ * @summary Dense card loading state.
+ */
+export const CompactLoading: Story = {
+  args: {
+    ...Compact.args,
+    footer: undefined,
     isLoading: true,
   },
 };

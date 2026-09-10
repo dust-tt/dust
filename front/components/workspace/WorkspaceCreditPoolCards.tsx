@@ -1,7 +1,3 @@
-import {
-  SummaryCard,
-  SummaryCardSkeleton,
-} from "@app/components/workspace/analytics/SummaryCard";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
@@ -24,6 +20,7 @@ import {
   DataTableLoadingSkeleton,
   LoadingBlock,
   Page,
+  ValueCard,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
@@ -101,54 +98,61 @@ export function WorkspaceCreditUsageValueCards({
     currentCycleStartMs,
     currentCycleEndMs
   );
-  const gridClassName = cn(
-    "grid gap-4",
-    showPoolCard ? "grid-cols-3" : "grid-cols-2"
-  );
-
-  if (isLoading) {
-    return (
-      <div
-        aria-label="Loading credit consumption"
-        className={gridClassName}
-        role="status"
-      >
-        {showPoolCard && <SummaryCardSkeleton />}
-        <SummaryCardSkeleton />
-        <SummaryCardSkeleton />
-      </div>
-    );
-  }
-
+  // Labels are known up front, so the loading state keeps them and only
+  // swaps the figures for skeleton blocks.
   return (
-    <div className={gridClassName}>
+    <div
+      aria-label={isLoading ? "Loading credit consumption" : undefined}
+      className={cn("grid gap-4", showPoolCard ? "grid-cols-3" : "grid-cols-2")}
+      role={isLoading ? "status" : undefined}
+    >
       {showPoolCard && (
-        <SummaryCard
-          label="Remaining credits in the pool"
-          value={formatCredits(totalRemainingCredits)}
-          hint={null}
+        <ValueCard
+          size="sm"
+          className="h-24"
+          title="Remaining credits in the pool"
+          content={
+            <span className="truncate">
+              {formatCredits(totalRemainingCredits)}
+            </span>
+          }
+          isLoading={isLoading}
         />
       )}
-      <SummaryCard
-        label="Used this cycle"
-        value={
-          typeof consumedCredits === "number"
-            ? formatCredits(consumedCredits)
-            : "—"
+      <ValueCard
+        size="sm"
+        className="h-24"
+        title="Used this cycle"
+        content={
+          <span className="truncate">
+            {typeof consumedCredits === "number"
+              ? formatCredits(consumedCredits)
+              : "—"}
+          </span>
         }
-        hint={cycleDayLabel}
+        footer={isLoading ? undefined : cycleDayLabel}
+        isLoading={isLoading}
       />
-      <SummaryCard
-        label="Programmatic usage this cycle"
-        value={
-          typeof programmaticConsumedCredits === "number"
-            ? formatCredits(programmaticConsumedCredits)
-            : "—"
+      <ValueCard
+        size="sm"
+        className="h-24"
+        title="Programmatic usage this cycle"
+        content={
+          <span className="truncate">
+            {typeof programmaticConsumedCredits === "number"
+              ? formatCredits(programmaticConsumedCredits)
+              : "—"}
+          </span>
         }
-        hint={formatProgrammaticUsageShare(
-          programmaticConsumedCredits,
-          consumedCredits
-        )}
+        footer={
+          isLoading
+            ? undefined
+            : formatProgrammaticUsageShare(
+                programmaticConsumedCredits,
+                consumedCredits
+              )
+        }
+        isLoading={isLoading}
       />
     </div>
   );

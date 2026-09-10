@@ -1,6 +1,5 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { AllowSlackWorkflowDialog } from "@app/components/workspace/analytics/automations/AllowSlackWorkflowDialog";
-import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useSlackWorkflowsOverview } from "@app/hooks/useSlackWorkflowsOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
@@ -21,6 +20,7 @@ import {
   SearchInput,
   Tooltip,
   Trash01,
+  ValueCard,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, PaginationState } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo, useState } from "react";
@@ -91,19 +91,28 @@ function SlackWorkflowsOverview({
 
   return (
     <div className="flex items-stretch gap-6">
-      <SummaryCard
-        label="Credits"
-        value={formatCredits(slackWorkflowCredits)}
-        hint={
+      <ValueCard
+        size="sm"
+        className="h-24 flex-1"
+        title="Credits"
+        content={
+          <span className="truncate">
+            {formatCredits(slackWorkflowCredits)}
+          </span>
+        }
+        footer={
           workspaceTotalCredits > 0
             ? `${Math.round((slackWorkflowCredits / workspaceTotalCredits) * 100)}% of workspace consumption`
-            : null
+            : undefined
         }
       />
-      <SummaryCard
-        label="Workflows allowed"
-        value={workflowCount.toLocaleString()}
-        hint={null}
+      <ValueCard
+        size="sm"
+        className="h-24 flex-1"
+        title="Workflows allowed"
+        content={
+          <span className="truncate">{workflowCount.toLocaleString()}</span>
+        }
       />
     </div>
   );

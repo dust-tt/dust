@@ -1,9 +1,8 @@
-import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useAutomationsOverview } from "@app/hooks/useAutomationsOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import type { LightWorkspaceType } from "@app/types/user";
-import { LoadingBlock } from "@dust-tt/sparkle";
+import { LoadingBlock, ValueCard } from "@dust-tt/sparkle";
 
 interface AutomationsOverviewProps {
   owner: LightWorkspaceType;
@@ -31,24 +30,38 @@ export function AutomationsOverview({
 
   return (
     <div className="flex items-stretch gap-6">
-      <SummaryCard
-        label="Credits"
-        value={formatCredits(automationCredits)}
-        hint={
+      <ValueCard
+        size="sm"
+        className="h-24 flex-1"
+        title="Credits"
+        content={
+          <span className="truncate">{formatCredits(automationCredits)}</span>
+        }
+        footer={
           workspaceTotalCredits > 0
             ? `${Math.round((automationCredits / workspaceTotalCredits) * 100)}% of workspace consumption`
-            : null
+            : undefined
         }
       />
-      <SummaryCard
-        label="Triggers enabled"
-        value={`${triggers.enabled.toLocaleString()} / ${triggers.total.toLocaleString()}`}
-        hint={disabledCount > 0 ? `${disabledCount} disabled` : null}
+      <ValueCard
+        size="sm"
+        className="h-24 flex-1"
+        title="Triggers enabled"
+        content={
+          <span className="truncate">{`${triggers.enabled.toLocaleString()} / ${triggers.total.toLocaleString()}`}</span>
+        }
+        footer={disabledCount > 0 ? `${disabledCount} disabled` : undefined}
       />
-      <SummaryCard
-        label="Workspace pool"
-        value={`${triggers.workspacePool.toLocaleString()} / ${triggers.total.toLocaleString()}`}
-        hint={memberPoolCount > 0 ? `${memberPoolCount} on member pool` : null}
+      <ValueCard
+        size="sm"
+        className="h-24 flex-1"
+        title="Workspace pool"
+        content={
+          <span className="truncate">{`${triggers.workspacePool.toLocaleString()} / ${triggers.total.toLocaleString()}`}</span>
+        }
+        footer={
+          memberPoolCount > 0 ? `${memberPoolCount} on member pool` : undefined
+        }
       />
     </div>
   );

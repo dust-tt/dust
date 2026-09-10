@@ -1,6 +1,5 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
-import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
 import { APIKeysTable } from "@app/components/workspace/api-keys/APIKeysTable";
 import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapDialog";
@@ -22,7 +21,13 @@ import type { KeyType } from "@app/types/key";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
-import { BookOpen01, Button, LoadingBlock, Page } from "@dust-tt/sparkle";
+import {
+  BookOpen01,
+  Button,
+  LoadingBlock,
+  Page,
+  ValueCard,
+} from "@dust-tt/sparkle";
 import get from "lodash/get";
 import { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -88,10 +93,16 @@ function APIKeysOverview({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <SummaryCard
-        label="Credits"
-        value={consumptionError ? "—" : formatCredits(totalCredits)}
-        hint={
+      <ValueCard
+        size="sm"
+        className="h-24"
+        title="Credits"
+        content={
+          <span className="truncate">
+            {consumptionError ? "—" : formatCredits(totalCredits)}
+          </span>
+        }
+        footer={
           consumptionError
             ? "Credit consumption is temporarily unavailable"
             : consumingKeyCount > 0
@@ -99,15 +110,19 @@ function APIKeysOverview({
               : "No API key consumption this period"
         }
       />
-      <SummaryCard
-        label="Keys active"
-        value={`${activeKeyCount.toLocaleString()} / ${keys.length.toLocaleString()}`}
-        hint={
+      <ValueCard
+        size="sm"
+        className="h-24"
+        title="Keys active"
+        content={
+          <span className="truncate">{`${activeKeyCount.toLocaleString()} / ${keys.length.toLocaleString()}`}</span>
+        }
+        footer={
           cappedKeyCount > 0
             ? `${cappedKeyCount.toLocaleString()} at the monthly cap`
             : revokedKeyCount > 0
               ? `${revokedKeyCount.toLocaleString()} revoked`
-              : null
+              : undefined
         }
       />
     </div>
