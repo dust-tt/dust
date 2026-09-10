@@ -199,4 +199,4 @@ runs:
           }
 
           core.setOutput('thread_ts', posted.ts);
-          core.setOutput('card', JSON.stringify({ component, target, authors_line: authorsLine, footer, cells }));
+          core.setOutput('card', JSON.stringify({ component, target, authors_line: authorsLine, footer, cells, revert }));

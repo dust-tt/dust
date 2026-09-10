@@ -26,6 +26,7 @@ on:
           - core
           - front
           - front-edge
+          - front-sse
           - oauth
           - prodbox
           - viz
@@ -106,7 +107,7 @@ jobs:
         run: |
           # The front releases run the front-api images.
           case "${{ inputs.component }}" in
-            front) IMAGE="front-api" ;;
+            front|front-sse) IMAGE="front-api" ;;
             front-edge) IMAGE="front-api-edge" ;;
             *) IMAGE="${{ inputs.component }}" ;;
           esac
