@@ -1,6 +1,5 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
-import { ONE_DAY_MS } from "@app/lib/api/analytics/time_utils";
 import { formatCredits } from "@app/lib/client/credits";
 import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
 import {
@@ -12,6 +11,7 @@ import type {
   AwuPoolCycleBreakdown,
 } from "@app/types/api/credits/awu_pool_summary";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AlertCircle,
@@ -142,7 +142,7 @@ export interface CycleHistoryLoadMore {
 
 interface WorkspaceCreditPoolCycleHistoryTableProps {
   cycleBreakdown: AwuPoolCycleBreakdown[];
-  loadMore: CycleHistoryLoadMore;
+  cycleHistoryLoadMore: CycleHistoryLoadMore;
 }
 
 type CycleHistoryRowData = {
@@ -178,7 +178,7 @@ export const CYCLE_HISTORY_LOAD_MORE_COUNT = 5;
 
 export function WorkspaceCreditPoolCycleHistoryTable({
   cycleBreakdown,
-  loadMore,
+  cycleHistoryLoadMore,
 }: WorkspaceCreditPoolCycleHistoryTableProps) {
   if (cycleBreakdown.length === 0) {
     return null;
@@ -200,9 +200,11 @@ export function WorkspaceCreditPoolCycleHistoryTable({
         columns={CYCLE_HISTORY_COLUMNS}
         // The true total is unknown while more cycles remain; once everything
         // is loaded, the total lets the footer hide its control.
-        totalRowCount={loadMore.hasMore ? undefined : cycleBreakdown.length}
-        onLoadMore={loadMore.onLoadMore}
-        isLoadingMore={loadMore.isLoading}
+        totalRowCount={
+          cycleHistoryLoadMore.hasMore ? undefined : cycleBreakdown.length
+        }
+        onLoadMore={cycleHistoryLoadMore.onLoadMore}
+        isLoadingMore={cycleHistoryLoadMore.isLoading}
       />
     </>
   );
@@ -211,7 +213,7 @@ export function WorkspaceCreditPoolCycleHistoryTable({
 interface WorkspaceCreditPoolHistoryProps {
   tableStatus: CreditPoolFetchStatus;
   cycleBreakdown: AwuPoolCycleBreakdown[];
-  loadMore: CycleHistoryLoadMore;
+  cycleHistoryLoadMore: CycleHistoryLoadMore;
 }
 
 // Table area rendered under the value cards. Kept separate so a slow cycle
@@ -219,7 +221,7 @@ interface WorkspaceCreditPoolHistoryProps {
 function WorkspaceCreditPoolHistory({
   tableStatus,
   cycleBreakdown,
-  loadMore,
+  cycleHistoryLoadMore,
 }: WorkspaceCreditPoolHistoryProps) {
   switch (tableStatus) {
     case "error":
@@ -242,7 +244,7 @@ function WorkspaceCreditPoolHistory({
       return (
         <WorkspaceCreditPoolCycleHistoryTable
           cycleBreakdown={cycleBreakdown}
-          loadMore={loadMore}
+          cycleHistoryLoadMore={cycleHistoryLoadMore}
         />
       );
     default:
@@ -312,7 +314,7 @@ export function WorkspaceCreditPoolSection({
           <WorkspaceCreditPoolHistory
             tableStatus={tableStatus}
             cycleBreakdown={cycleBreakdown}
-            loadMore={cycleHistoryLoadMore}
+            cycleHistoryLoadMore={cycleHistoryLoadMore}
           />
         </>
       )}
