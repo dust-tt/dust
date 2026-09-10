@@ -3,7 +3,7 @@ import {
   useConversationSidePanelContext,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const activeConversation = vi.hoisted(() => ({ id: "conv_1" }));
 
@@ -11,14 +11,51 @@ vi.mock("@app/hooks/useActiveConversationId", () => ({
   useActiveConversationId: () => activeConversation.id,
 }));
 
-// The provider only needs a value/setter pair per hash key; plain state stands in for the URL.
+// In-memory stand-in for the URL hash: one store shared by every useHashParam call, so tests can
+// also write it from outside like a deep link or browser navigation would.
+const hash = vi.hoisted(() => {
+  const values: Record<string, string | undefined> = {};
+  const listeners = new Set<() => void>();
+  return {
+    values,
+    listeners,
+    set(next: Record<string, string | undefined>) {
+      Object.assign(values, next);
+      for (const listener of listeners) {
+        listener();
+      }
+    },
+    reset() {
+      for (const key of Object.keys(values)) {
+        delete values[key];
+      }
+    },
+  };
+});
+
 vi.mock("@app/hooks/useHashParams", async () => {
   const React = await import("react");
   return {
-    useHashParam: () => {
-      const [value, setValue] = React.useState<string | undefined>(undefined);
-      const setter = (next?: string | ((prev?: string) => string)) =>
-        setValue((prev) => (typeof next === "function" ? next(prev) : next));
+    useHashParam: (key: string) => {
+      // Like the real hook: stable setter, re-render only when this key's value changes.
+      const [value, setValue] = React.useState<string | undefined>(
+        hash.values[key]
+      );
+      React.useEffect(() => {
+        const listener = () => setValue(hash.values[key]);
+        hash.listeners.add(listener);
+        return () => {
+          hash.listeners.delete(listener);
+        };
+      }, [key]);
+      const setter = React.useCallback(
+        (next?: string | ((prev?: string) => string)) => {
+          hash.set({
+            [key]: typeof next === "function" ? next(hash.values[key]) : next,
+          });
+        },
+        [key]
+      );
       return [value, setter];
     },
   };
@@ -29,6 +66,11 @@ function renderSidePanel() {
     wrapper: ConversationSidePanelProvider,
   });
 }
+
+beforeEach(() => {
+  hash.reset();
+  activeConversation.id = "conv_1";
+});
 
 describe("ConversationSidePanelProvider history", () => {
   it("stacks panels of different types and closing goes back", () => {
@@ -137,5 +179,32 @@ describe("ConversationSidePanelProvider history", () => {
     rerender();
     expect(result.current.currentPanel).toBeUndefined();
     expect(result.current.previousPanel).toBeNull();
+  });
+});
+
+describe("ConversationSidePanelProvider and the URL hash", () => {
+  it("adopts a deep-linked panel as the bottom of the stack", () => {
+    hash.set({ spid: "files", spt: "files" });
+    const { result } = renderSidePanel();
+    expect(result.current.currentPanel).toBe("files");
+
+    act(() => result.current.openPanel({ type: "credits" }));
+    expect(result.current.previousPanel).toEqual({ type: "files" });
+
+    act(() => result.current.closePanel());
+    expect(result.current.currentPanel).toBe("files");
+    act(() => result.current.closePanel());
+    expect(result.current.currentPanel).toBeUndefined();
+  });
+
+  it("follows browser navigation so the shown panel can be toggled closed", () => {
+    const { result } = renderSidePanel();
+    act(() => result.current.openPanel({ type: "files" }));
+
+    act(() => hash.set({ spid: "credits", spt: "credits" }));
+    expect(result.current.currentPanel).toBe("credits");
+
+    act(() => result.current.togglePanel({ type: "credits" }));
+    expect(result.current.currentPanel).toBeUndefined();
   });
 });

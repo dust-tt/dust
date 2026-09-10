@@ -51,6 +51,8 @@ interface ConversationSidePanelContextType {
   data: string | undefined;
 }
 
+// Defensive only: same-type panels replace each other and a panel appears once, so the history
+// is bounded by the number of panel types.
 const MAX_PANEL_HISTORY = 20;
 
 export const ConversationSidePanelContext = React.createContext<
