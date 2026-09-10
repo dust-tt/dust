@@ -112,18 +112,6 @@ export async function authorizeSandboxFunctionInvocation(
             "This Frame function requires a logged-in workspace member in a live Dust session."
           );
     }
-    case "pod_member_required": {
-      // Membership means belonging to any of the pod's groups (member or editor — a user is never
-      // in both): the people who hold write on the pod. Workspace admins outside those groups
-      // cannot write to the pod, so they are deliberately not authorized. `canRead` would not do
-      // either: open pods grant read to the whole workspace, so it cannot separate members from
-      // bystanders.
-      return pod?.isMember(auth) === true
-        ? { authorized: true, user, runtimeSpaceId, pod }
-        : authorizationError(
-            "This Frame function requires a member of its Pod."
-          );
-    }
     case "frame_author_required": {
       return (await canWriteFrameV2Source(auth, frame))
         ? { authorized: true, user, runtimeSpaceId, pod }
@@ -134,7 +122,7 @@ export async function authorizeSandboxFunctionInvocation(
     default:
       // The policy is persisted as a plain string, so the store can hold a value this revision
       // does not know: one from a newer revision in a mixed-version deploy, or a retired policy
-      // (e.g. `pod_editor_required`) that predates its removal. Deny rather than throw so both
+      // (e.g. `pod_member_required`) that predates its removal. Deny rather than throw so both
       // fail closed; a retired policy is repaired by republishing with a supported one.
       // `assertNeverAndIgnore` (not `assertNever`) is deliberate although this is server code:
       // the value is cross-revision data, not internal control flow, and throwing would turn
