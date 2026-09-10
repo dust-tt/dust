@@ -3,7 +3,7 @@ import { formatDurationMs } from "@app/components/poke/conversation/message_meta
 import type { PokeAgentMessageType } from "@app/types/poke";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
-  Button,
+  buttonVariants,
   Check,
   ChevronDown,
   Chip,
@@ -46,17 +46,16 @@ function getActionStatus(
   }
 }
 
-interface ToolActionViewProps {
+interface ToolActionContentProps {
   action: PokeAgentMessageType["actions"][number];
   isExpanded: boolean;
+}
+
+interface ToolActionViewProps extends ToolActionContentProps {
   onToggle: () => void;
 }
 
-function ToolActionContent({
-  action,
-  isExpanded,
-  onToggle,
-}: ToolActionViewProps) {
+function ToolActionContent({ action, isExpanded }: ToolActionContentProps) {
   const actionStatus = getActionStatus(action.status);
   const ActionIcon = action.status === "errored" ? XClose : Check;
   const actionLabel = getActionLabel(action);
@@ -70,23 +69,22 @@ function ToolActionContent({
     <>
       <span className="shrink-0">
         {action.mcpIO ? (
-          <Button
-            variant="outline"
-            size="icon"
-            icon={
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 transition-transform",
-                  !isExpanded ? "-rotate-90" : null
-                )}
-              />
-            }
-            onClick={onToggle}
-            aria-expanded={isExpanded}
-            aria-label={
-              isExpanded ? "Collapse tool details" : "Expand tool details"
-            }
-          />
+          <span
+            aria-hidden="true"
+            className={buttonVariants({
+              variant: "outline",
+              size: "sm",
+              isIconOnly: true,
+              press: false,
+            })}
+          >
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform motion-reduce:transition-none",
+                !isExpanded ? "-rotate-90" : null
+              )}
+            />
+          </span>
         ) : (
           <span
             className={cn(
@@ -130,19 +128,7 @@ function ToolActionContent({
       <span className="w-16 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
         {duration}
       </span>
-      <span className="w-8 shrink-0 text-right">
-        {action.runId && (
-          <a
-            href={`/w/${action.appWorkspaceId}/spaces/${action.appSpaceId}/apps/${action.appId}/runs/${action.runId}`}
-            title={action.runId}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-highlight hover:underline"
-          >
-            Run
-          </a>
-        )}
-      </span>
+      <span className="w-8 shrink-0" />
     </>
   );
 }
@@ -152,21 +138,50 @@ export function ToolActionView({
   isExpanded,
   onToggle,
 }: ToolActionViewProps) {
+  const Row = action.mcpIO ? "button" : "div";
+
   return (
     <div>
-      <div
-        className={cn(
-          "mt-2 flex w-full items-center gap-2 rounded-md border border-separator bg-muted-background p-2 text-left",
-          action.status === "errored"
-            ? "border-border-warning bg-background"
-            : null
+      <div className="relative mt-2">
+        <Row
+          type={action.mcpIO ? "button" : undefined}
+          onClick={action.mcpIO ? onToggle : undefined}
+          aria-expanded={action.mcpIO ? isExpanded : undefined}
+          aria-label={
+            action.mcpIO
+              ? `${isExpanded ? "Collapse" : "Expand"} ${getActionLabel(action)} details`
+              : undefined
+          }
+          className={cn(
+            "flex w-full items-center gap-2 rounded-md border",
+            "border-separator bg-muted-background p-2 text-left",
+            action.status === "errored"
+              ? "border-border-warning bg-background"
+              : null,
+            action.mcpIO &&
+              cn(
+                "cursor-pointer transition-colors hover:bg-background",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                "motion-reduce:transition-none"
+              )
+          )}
+        >
+          <ToolActionContent action={action} isExpanded={isExpanded} />
+        </Row>
+        {action.runId && (
+          <a
+            href={`/w/${action.appWorkspaceId}/spaces/${action.appSpaceId}/apps/${action.appId}/runs/${action.runId}`}
+            title={action.runId}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "absolute right-2 top-1/2 -translate-y-1/2",
+              "text-sm text-highlight hover:underline"
+            )}
+          >
+            Run
+          </a>
         )}
-      >
-        <ToolActionContent
-          action={action}
-          isExpanded={isExpanded}
-          onToggle={onToggle}
-        />
       </div>
       {action.mcpIO && isExpanded && (
         <div className="ml-9 mt-2 overflow-hidden rounded-md border border-separator bg-background">

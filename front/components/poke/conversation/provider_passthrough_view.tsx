@@ -1,7 +1,13 @@
 import type { PokeAgentMessageType } from "@app/types/poke";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import { Button, ChevronDown, Chip, CodeBlock, cn } from "@dust-tt/sparkle";
+import {
+  buttonVariants,
+  ChevronDown,
+  Chip,
+  CodeBlock,
+  cn,
+} from "@dust-tt/sparkle";
 
 interface ProviderPassthroughEntry {
   block: unknown;
@@ -128,33 +134,36 @@ export function ProviderPassthroughView({
 
   return (
     <div>
-      <div
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isExpanded}
+        aria-label={`${isExpanded ? "Collapse" : "Expand"} ${title} details`}
         className={cn(
           "mt-2 flex w-full items-center gap-2",
           "rounded-md border border-separator bg-muted-background",
-          "p-2 text-left"
+          "cursor-pointer p-2 text-left transition-colors hover:bg-background",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "motion-reduce:transition-none"
         )}
       >
         <span className="shrink-0">
-          <Button
-            variant="outline"
-            size="icon"
-            icon={
-              <ChevronDown
-                className={cn(
-                  "h-4 w-4 transition-transform",
-                  !isExpanded ? "-rotate-90" : null
-                )}
-              />
-            }
-            onClick={onToggle}
-            aria-expanded={isExpanded}
-            aria-label={
-              isExpanded
-                ? "Collapse provider passthrough details"
-                : "Expand provider passthrough details"
-            }
-          />
+          <span
+            aria-hidden="true"
+            className={buttonVariants({
+              variant: "outline",
+              size: "sm",
+              isIconOnly: true,
+              press: false,
+            })}
+          >
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform motion-reduce:transition-none",
+                !isExpanded ? "-rotate-90" : null
+              )}
+            />
+          </span>
         </span>
         <span className="flex min-w-0 flex-1 items-center gap-3">
           <span className="w-24 shrink-0 text-sm tabular-nums text-muted-foreground">
@@ -173,7 +182,7 @@ export function ProviderPassthroughView({
             size="xs"
           />
         </span>
-      </div>
+      </button>
       {isExpanded && (
         <div className="ml-9 mt-2 overflow-hidden rounded-md border border-separator bg-background">
           <CodeBlock wrapLongLines className="language-json">
