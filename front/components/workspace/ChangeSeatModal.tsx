@@ -86,6 +86,10 @@ interface ChangeSeatModalProps {
   // Fired once the seat change has been persisted successfully (not on cancel
   // or a no-op close). Used to resolve a linked upgrade request as approved.
   onSaved?: () => void;
+  // When true, this member's seat is driven by their group membership (a
+  // seat-granting group). Manual changes are locked: the picker is read-only and
+  // Validate is disabled, because the change would be reverted by the group sync.
+  seatManagedByGroup?: boolean;
 }
 
 export function ChangeSeatModal({
@@ -98,6 +102,7 @@ export function ChangeSeatModal({
   isSeatPlanError = false,
   onSavingChange,
   onSaved,
+  seatManagedByGroup = false,
 }: ChangeSeatModalProps) {
   const { subscription } = useAuth();
   const router = useAppRouter();
@@ -451,6 +456,18 @@ export function ChangeSeatModal({
             </ContentMessage>
           ) : (
             <div className="flex flex-col gap-3">
+              {seatManagedByGroup && (
+                <ContentMessage
+                  title="Seat managed by group"
+                  icon={AlertCircle}
+                  variant="info"
+                >
+                  <p>
+                    This member&apos;s seat is set by their group membership.
+                    Change it from the group-seat mapping in Usage settings.
+                  </p>
+                </ContentMessage>
+              )}
               {availableFrequencies.length > 1 && (
                 <div className="mb-1 self-start">
                   {/* Remount per member so the uncontrolled switch picks up the
@@ -544,6 +561,7 @@ export function ChangeSeatModal({
             disabled:
               isSeatPlanLoading ||
               isSeatPlanError ||
+              seatManagedByGroup ||
               (useCheckoutPath
                 ? !selectedSeat || !toCheckoutParams(selectedSeat)
                 : isSaving ||
