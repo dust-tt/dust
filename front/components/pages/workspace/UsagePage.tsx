@@ -9,6 +9,7 @@ import {
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
+import type { DefaultUserSpendLimitState } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
@@ -77,7 +78,10 @@ import {
   useResolveUpgradeRequest,
   useUpgradeRequests,
 } from "@app/lib/swr/upgrade_requests";
-import { useUsageSettings } from "@app/lib/swr/usage_settings";
+import {
+  useDefaultUserSpendLimit,
+  useUsageSettings,
+} from "@app/lib/swr/usage_settings";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type {
@@ -93,6 +97,7 @@ import {
 import {
   isCreditPricedPlan,
   isSubscriptionCancellationScheduled,
+  isSubscriptionMetronomeBilled,
 } from "@app/types/plan";
 import { isAdmin, isManager } from "@app/types/user";
 import {
@@ -310,6 +315,23 @@ export function UsagePage() {
     useState<MemberUsageType | null>(null);
   const [spendLimitRecapMember, setSpendLimitRecapMember] =
     useState<MemberUsageType | null>(null);
+  const hasMetronomeContract = isSubscriptionMetronomeBilled(subscription);
+  const { defaultUserSpendLimit, isDefaultUserSpendLimitError } =
+    useDefaultUserSpendLimit({
+      workspaceId: owner.sId,
+      disabled: spendLimitRecapMember === null || !hasMetronomeContract,
+    });
+  // Same availability rule as the workspace read endpoint and poke's
+  // PoolUsagePage: the default pool limit only exists for Metronome-billed
+  // workspaces.
+  const defaultUserSpendLimitState: DefaultUserSpendLimitState =
+    !hasMetronomeContract
+      ? { status: "unavailable" }
+      : defaultUserSpendLimit
+        ? { status: "ready", awuCredits: defaultUserSpendLimit.awuCredits }
+        : isDefaultUserSpendLimitError
+          ? { status: "error" }
+          : { status: "loading" };
   const [
     totalAllowedUsagePendingMemberIds,
     setTotalAllowedUsagePendingMemberIds,
@@ -1444,6 +1466,8 @@ export function UsagePage() {
           owner={owner}
           groups={groups}
           readOnly={!isManager(owner)}
+          canEditDefaultLimit={isWorkspaceAdmin}
+          defaultUserSpendLimit={defaultUserSpendLimitState}
         />
 
         <BulkEditSpendLimitModal

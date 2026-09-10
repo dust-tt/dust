@@ -4,6 +4,7 @@ import {
   SEAT_TYPE_ICONS,
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
+import type { DefaultUserSpendLimitState } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
@@ -162,10 +163,23 @@ export function PoolUsagePage() {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, []);
 
-  const { data: workspaceInfo } = usePokeWorkspaceInfo({ owner });
+  const { data: workspaceInfo, isError: isWorkspaceInfoError } =
+    usePokeWorkspaceInfo({ owner });
   const activeSubscription = workspaceInfo?.activeSubscription;
   const hasMetronomeContract =
     !!activeSubscription && isSubscriptionMetronomeBilled(activeSubscription);
+  // Same availability rule as the workspace read endpoint: the default pool
+  // limit only exists for Metronome-only billed workspaces. The value itself
+  // is already part of workspace-info, so no dedicated fetch is needed.
+  const defaultUserSpendLimit: DefaultUserSpendLimitState = !workspaceInfo
+    ? { status: isWorkspaceInfoError ? "error" : "loading" }
+    : hasMetronomeContract
+      ? {
+          status: "ready",
+          awuCredits:
+            workspaceInfo.creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
+        }
+      : { status: "unavailable" };
   const isLegacyPremiumMessagePlan =
     !!activeSubscription && !isCreditPricedPlan(activeSubscription.plan);
   const isLegacyWithoutPoolOrMetronome =
@@ -453,6 +467,7 @@ export function PoolUsagePage() {
         owner={owner}
         groups={groups}
         readOnly
+        defaultUserSpendLimit={defaultUserSpendLimit}
         onClose={() => setSpendLimitRecapMember(null)}
       />
     </main>

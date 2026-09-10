@@ -1,4 +1,4 @@
-import { Chip, Input, Page } from "@dust-tt/sparkle";
+import { Chip, Input, Page, Tooltip } from "@dust-tt/sparkle";
 
 interface CreditLimitNumberInputProps {
   value: string;
@@ -40,6 +40,8 @@ interface CreditLimitInputProps {
   label: string;
   value: string;
   readOnly: boolean;
+  // Shown on hover when the field is read-only, to say why it is locked.
+  readOnlyTooltip?: string;
   isHighest: boolean;
   validationMessage: string | null;
   onChange: (cleaned: string) => void;
@@ -49,22 +51,35 @@ export function CreditLimitInput({
   label,
   value,
   readOnly,
+  readOnlyTooltip,
   isHighest,
   validationMessage,
   onChange,
 }: CreditLimitInputProps) {
+  const input = (
+    <CreditLimitNumberInput
+      value={value}
+      readOnly={readOnly}
+      validationMessage={validationMessage}
+      onChange={onChange}
+    />
+  );
   return (
     <Page.Vertical gap="xs" align="stretch">
       <div className="flex items-center gap-2">
         <span className="text-sm font-medium text-foreground">{label}</span>
         {isHighest && <Chip size="mini" color="highlight" label="Highest" />}
       </div>
-      <CreditLimitNumberInput
-        value={value}
-        readOnly={readOnly}
-        validationMessage={validationMessage}
-        onChange={onChange}
-      />
+      {readOnly && readOnlyTooltip ? (
+        <Tooltip
+          tooltipTriggerAsChild
+          label={readOnlyTooltip}
+          // Disabled inputs swallow hover events, so the trigger is a wrapper.
+          trigger={<div>{input}</div>}
+        />
+      ) : (
+        input
+      )}
     </Page.Vertical>
   );
 }
