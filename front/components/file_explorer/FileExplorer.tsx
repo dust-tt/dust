@@ -63,7 +63,7 @@ interface FileExplorerProps {
   onOpenInteractive?: (entry: FileEntryWithId | FramePackageEntry) => void;
   onOpenInPanel?: (entry: FileEntry) => boolean;
   onRename?: (entry: FileEntry | FolderEntry) => void;
-  owner: LightWorkspaceType;
+  owner?: LightWorkspaceType;
   getExtraFileMenuItems?: (
     entry: FileExplorerEntry
   ) => FileExplorerMenuAction[];

@@ -1,5 +1,4 @@
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
-import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import { frameV2ContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
@@ -49,11 +48,9 @@ function makeFile({
   };
 }
 
-const owner = LightWorkspaceFactory.build();
-
 type ControlledFileExplorerProps = Omit<
   ComponentProps<typeof FileExplorer>,
-  "currentFolderPath" | "onCurrentFolderChange" | "owner"
+  "currentFolderPath" | "onCurrentFolderChange"
 >;
 
 // `FileExplorer` is a controlled component: folder navigation lives in the
@@ -66,12 +63,11 @@ function ControlledFileExplorer(props: ControlledFileExplorerProps) {
       {...props}
       currentFolderPath={currentFolderPath}
       onCurrentFolderChange={setCurrentFolderPath}
-      owner={owner}
     />
   );
 }
 
-// Layout and sort preferences persist in localStorage per workspace.
+// Layout and sort preferences persist in localStorage.
 beforeEach(() => {
   localStorage.clear();
 });
