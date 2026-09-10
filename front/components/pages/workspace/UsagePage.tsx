@@ -97,6 +97,7 @@ import {
 import {
   isCreditPricedPlan,
   isSubscriptionCancellationScheduled,
+  isSubscriptionMetronomeBilled,
 } from "@app/types/plan";
 import { isAdmin, isManager } from "@app/types/user";
 import {
@@ -314,17 +315,23 @@ export function UsagePage() {
     useState<MemberUsageType | null>(null);
   const [spendLimitRecapMember, setSpendLimitRecapMember] =
     useState<MemberUsageType | null>(null);
+  const hasMetronomeContract = isSubscriptionMetronomeBilled(subscription);
   const { defaultUserSpendLimit, isDefaultUserSpendLimitError } =
     useDefaultUserSpendLimit({
       workspaceId: owner.sId,
-      disabled: spendLimitRecapMember === null,
+      disabled: spendLimitRecapMember === null || !hasMetronomeContract,
     });
+  // Same availability rule as the workspace read endpoint and poke's
+  // PoolUsagePage: the default pool limit only exists for Metronome-billed
+  // workspaces.
   const defaultUserSpendLimitState: DefaultUserSpendLimitState =
-    defaultUserSpendLimit
-      ? { status: "ready", awuCredits: defaultUserSpendLimit.awuCredits }
-      : isDefaultUserSpendLimitError
-        ? { status: "error" }
-        : { status: "loading" };
+    !hasMetronomeContract
+      ? { status: "unavailable" }
+      : defaultUserSpendLimit
+        ? { status: "ready", awuCredits: defaultUserSpendLimit.awuCredits }
+        : isDefaultUserSpendLimitError
+          ? { status: "error" }
+          : { status: "loading" };
   const [
     totalAllowedUsagePendingMemberIds,
     setTotalAllowedUsagePendingMemberIds,
