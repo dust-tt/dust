@@ -43,9 +43,57 @@ describe("conversationToContents — provider_passthrough", () => {
     const contents = await conversationToContents(conversation, converters);
 
     // The two text turns merge into one model Content; the passthrough produces
-    // no part (no empty `{ text: "" }` slips in).
+    // no part (no empty `{ text: "" }` slips in). The trailing model turn is
+    // closed by the synthetic user turn.
     expect(contents).toEqual([
       { role: "model", parts: [{ text: "before" }, { text: "after" }] },
+      { role: "user", parts: [{ text: "." }] },
     ]);
+  });
+});
+
+describe("conversationToContents — trailing model turn", () => {
+  it("appends a user turn when the conversation ends on an assistant turn", async () => {
+    const conversation: BaseConversation = {
+      system: [],
+      messages: [
+        { role: "user", type: "text", content: { value: "hello" } },
+        { role: "assistant", type: "text", content: { value: "hi" } },
+      ],
+    };
+
+    const contents = await conversationToContents(conversation, converters);
+
+    expect(contents).toEqual([
+      { role: "user", parts: [{ text: "hello" }] },
+      { role: "model", parts: [{ text: "hi" }] },
+      { role: "user", parts: [{ text: "." }] },
+    ]);
+  });
+
+  it("leaves a conversation already ending on a user turn untouched", async () => {
+    const conversation: BaseConversation = {
+      system: [],
+      messages: [
+        { role: "assistant", type: "text", content: { value: "hi" } },
+        { role: "user", type: "text", content: { value: "hello" } },
+      ],
+    };
+
+    const contents = await conversationToContents(conversation, converters);
+
+    expect(contents).toEqual([
+      { role: "model", parts: [{ text: "hi" }] },
+      { role: "user", parts: [{ text: "hello" }] },
+    ]);
+  });
+
+  it("returns no contents for an empty conversation", async () => {
+    const contents = await conversationToContents(
+      { system: [], messages: [] },
+      converters
+    );
+
+    expect(contents).toEqual([]);
   });
 });

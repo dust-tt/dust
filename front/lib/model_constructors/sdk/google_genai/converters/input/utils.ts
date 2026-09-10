@@ -17,6 +17,7 @@ import type {
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isRecord, removeNulls } from "@app/types/shared/utils/general";
 import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
@@ -45,6 +46,11 @@ const UNSUPPORTED_MIME_TYPE_MESSAGE = "Image mime type is not supported.";
 
 // Conversion fans out to external image fetches; bound the concurrency.
 const MESSAGE_CONVERSION_CONCURRENCY = 10;
+
+// Closes a conversation that would otherwise end on a model turn. Kept to a
+// single character to steer the next generation as little as possible; an empty
+// text part is rejected too.
+const MODEL_TURN_CLOSER = ".";
 
 // Fetches an image URL and returns a Gemini inline-data part, degrading to a
 // text note when the image cannot be fetched or its MIME type is unsupported
@@ -259,6 +265,18 @@ function assistantMessageToContent(
   }
 }
 
+// Part kinds only ("text", "functionCall", ...) — never the values, which carry
+// conversation content ([no-sensitive-data-logging]).
+function partKinds(content: Content): string[] {
+  return (content.parts ?? []).flatMap((part) => Object.keys(part));
+}
+
+/**
+ * @cc [owner:frankaloia,label:backend] no-trailing-model-turn
+ * The returned contents MUST NOT end with a `model` Content. When the conversation ends on an
+ * assistant turn, a non-empty synthetic `user` Content is appended; Gemini rejects both a
+ * trailing model turn and an empty text part.
+ */
 export async function conversationToContents(
   conversation: BaseConversation,
   converters: ContentBlockConverters
@@ -296,7 +314,7 @@ export async function conversationToContents(
   //   rejected as corrupted.
   // Consecutive same-role Contents only arise from one logical turn being split:
   // distinct assistant turns are always separated by a tool-result/user turn.
-  return contents.reduce<Content[]>((merged, content) => {
+  const mergedContents = contents.reduce<Content[]>((merged, content) => {
     const previous = merged[merged.length - 1];
     if (previous && previous.role === content.role) {
       return [
@@ -309,6 +327,32 @@ export async function conversationToContents(
     }
     return [...merged, content];
   }, []);
+
+  // Gemini rejects a request whose last Content is a model turn (verified
+  // against gemini-3.8-flash: HTTP 400 "Requests ending with a model turn are
+  // not supported."). The agent loop is supposed to always end its payload on a
+  // user or tool-result turn, so reaching this branch means an upstream
+  // invariant broke; close the conversation rather than fail the whole request,
+  // and log enough to identify the producer.
+  const lastContent = mergedContents[mergedContents.length - 1];
+  if (lastContent?.role === "model") {
+    logger.warn(
+      {
+        contentCount: mergedContents.length,
+        lastContentPartKinds: partKinds(lastContent),
+        // `removeNulls` above only drops provider_passthrough messages, so any
+        // shortfall is the count of blocks owned by another provider.
+        droppedPassthroughCount: conversation.messages.length - contents.length,
+      },
+      "Gemini conversation ends on a model turn; appending a synthetic user turn."
+    );
+    return [
+      ...mergedContents,
+      { role: "user", parts: [{ text: MODEL_TURN_CLOSER }] },
+    ];
+  }
+
+  return mergedContents;
 }
 
 export function systemMessagesToSystemInstruction(
