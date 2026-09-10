@@ -17,7 +17,11 @@ import {
   AUTO_MODEL_ID,
 } from "@app/types/assistant/models/auto";
 import { GEMINI_3_1_FLASH_LITE_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
-import { GPT_4_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import {
+  GPT_4_1_MODEL_CONFIG,
+  GPT_5_6_LUNA_MODEL_CONFIG,
+  GPT_6_ASTRA_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { describe, expect, it } from "vitest";
 
@@ -111,24 +115,29 @@ describe("buildPickModelSlashCommandItems", () => {
     ]);
   });
 
-  it("matches every query word as a prefix of a label word", () => {
-    const models = [
-      asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
-      asSelectable(GPT_4_1_MODEL_CONFIG),
-    ];
+  it("matches the name as a subsequence and ranks tighter matches first", () => {
     const labelsFor = (query: string) =>
       buildPickModelSlashCommandItems({
         getModelIcon: () => Icon,
         lockPremiumEfforts: false,
-        models,
+        models: [
+          asSelectable(GPT_5_6_LUNA_MODEL_CONFIG),
+          asSelectable(GPT_6_ASTRA_MODEL_CONFIG),
+          asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
+        ],
         query,
         streams: null,
       }).map((item) => item.label);
 
-    expect(labelsFor("cl h")).toEqual([
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
+    // "gpt6" is a substring of "gpt6astra" and only a subsequence of "gpt5.6luna".
+    expect(labelsFor("gpt6")).toEqual([
+      `${GPT_6_ASTRA_MODEL_CONFIG.displayName} Light`,
+      `${GPT_6_ASTRA_MODEL_CONFIG.displayName} Medium`,
+      `${GPT_6_ASTRA_MODEL_CONFIG.displayName} High`,
+      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Light`,
+      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Medium`,
+      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} High`,
     ]);
-    // A word starting nothing falls back to a loose subsequence of the label.
     expect(labelsFor("laude")).toEqual([
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
@@ -138,40 +147,40 @@ describe("buildPickModelSlashCommandItems", () => {
     expect(labelsFor("anthropic")).toEqual([]);
   });
 
-  it("matches each query word against a distinct row word", () => {
+  it("selects the effort with a trailing word", () => {
     const labelsFor = (query: string) =>
       buildPickModelSlashCommandItems({
         getModelIcon: () => Icon,
         lockPremiumEfforts: false,
-        models: [asSelectable(CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG)],
+        models: [
+          asSelectable(CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG),
+          asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
+          asSelectable(GPT_5_6_LUNA_MODEL_CONFIG),
+        ],
         query,
         streams: null,
       }).map((item) => item.label);
 
-    // "h" must not be satisfied by "Haiku" again.
-    expect(labelsFor("haiku h")).toEqual([
-      `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} High`,
+    const haikuHigh = `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} High`;
+    expect(labelsFor("haiku h")).toEqual([haikuHigh]);
+    expect(labelsFor("claudehaiku h")).toEqual([haikuHigh]);
+    expect(labelsFor("HAIKU High")).toEqual([haikuHigh]);
+    expect(labelsFor("gptluna l")).toEqual([
+      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Light`,
     ]);
-    expect(labelsFor("HAIKU L")).toEqual([
-      `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} Light`,
+    expect(labelsFor("claude h")).toEqual([
+      haikuHigh,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
     ]);
-    expect(labelsFor("haiku haiku")).toEqual([]);
+    // An effort word alone keeps every row at that effort.
+    expect(labelsFor("me")).toEqual([
+      `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} Medium`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
+      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Medium`,
+    ]);
   });
 
-  it("does not match a provider through its prefix", () => {
-    // "op" must not list every OpenAI row.
-    expect(
-      buildPickModelSlashCommandItems({
-        getModelIcon: () => Icon,
-        lockPremiumEfforts: false,
-        models: [asSelectable(GPT_4_1_MODEL_CONFIG)],
-        query: "op",
-        streams: null,
-      })
-    ).toEqual([]);
-  });
-
-  it("matches tier rows on their name only", () => {
+  it("matches tier rows on their name and never on an effort", () => {
     const highResolution: ModelStreamResolutionType = {
       providerId: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.providerId,
       modelId: CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId,
@@ -191,7 +200,7 @@ describe("buildPickModelSlashCommandItems", () => {
         },
       });
 
-    // Every tier description now ends with "High".
+    // Every tier description ends with "High", none of it is searched.
     expect(itemsFor("").map((item) => item.description)).toContain(
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`
     );

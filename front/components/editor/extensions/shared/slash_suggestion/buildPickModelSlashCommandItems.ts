@@ -1,6 +1,5 @@
 import type { SelectModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import { SELECT_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
-import { filterBySearchWords } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type { Selection } from "@app/components/model_picker/modelPickerUtils";
 import {
@@ -13,7 +12,9 @@ import {
   getTierResolvedModelLabel,
   isPremiumModel,
   MODEL_TIERS,
+  SLIDER_EFFORTS,
 } from "@app/components/model_picker/modelPickerUtils";
+import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionsType,
@@ -46,6 +47,51 @@ export function getSelectableEffortsForSlashMenu(
   }
 
   return ["none"];
+}
+
+// Name searched for a row, without spaces or hyphens so "gpt6" and "glm3" reach "GPT 6" and
+// "GLM-5.3".
+function getCompactSearchName(item: SelectModelSlashCommand): string {
+  const { display } = item.data.selection;
+  const name = display.kind === "tier" ? item.label : display.model.displayName;
+
+  return name.toLowerCase().replace(/[\s-]+/g, "");
+}
+
+function filterAndRankByQuery(
+  items: SelectModelSlashCommand[],
+  query: string
+): SelectModelSlashCommand[] {
+  const queryWords = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((word) => word.length > 0);
+  const lastWord = queryWords.at(-1);
+  const effort =
+    lastWord === undefined
+      ? undefined
+      : SLIDER_EFFORTS.find((candidate) => candidate.startsWith(lastWord));
+  const nameQuery = (effort ? queryWords.slice(0, -1) : queryWords).join("");
+
+  const matching = items.filter((item) => {
+    const { display } = item.data.selection;
+    if (effort && (display.kind !== "model" || display.effort !== effort)) {
+      return false;
+    }
+
+    return subFilter(nameQuery, getCompactSearchName(item));
+  });
+  if (nameQuery.length === 0) {
+    return matching;
+  }
+
+  return matching.sort((a, b) =>
+    compareForFuzzySort(
+      nameQuery,
+      getCompactSearchName(a),
+      getCompactSearchName(b)
+    )
+  );
 }
 
 /**
@@ -112,9 +158,13 @@ function buildTierSlashCommandItems({
 }
 
 /**
- * @cc [owner:PopDaph,label:product] query-filters-rows-by-label
- * Rows are filtered with `filterBySearchWords` on their label only; descriptions (provider,
- * resolved tier model) are never searched.
+ * @cc [owner:PopDaph,label:product] query-selects-name-then-effort
+ * When the last word of `query` is a prefix of a slider effort (`light`, `medium`, `high`), only
+ * model rows at that effort are kept and the other words form the name query; otherwise every
+ * word does. A row is kept when the name query, joined, is an in-order subsequence (`subFilter`)
+ * of its name (tier name or model display name) without spaces or hyphens, and kept rows are
+ * ranked with `compareForFuzzySort`, ties keeping catalog order. Descriptions are never searched;
+ * an empty query keeps every row.
  */
 export function buildPickModelSlashCommandItems({
   getModelIcon,
@@ -166,5 +216,5 @@ export function buildPickModelSlashCommandItems({
     }
   }
 
-  return filterBySearchWords(items, query, (item) => item.label);
+  return filterAndRankByQuery(items, query);
 }
