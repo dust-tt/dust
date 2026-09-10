@@ -8,7 +8,6 @@ import { ActivationPodResource } from "@app/lib/resources/activation_pod_resourc
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
@@ -31,7 +30,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { Op } from "sequelize";
 
 const NOTIFICATION_DELAY_MS = 15_000; // 15 seconds
 
@@ -43,13 +41,11 @@ export const filterMembersByNotifyCondition = async (
   const userModelIds = members.map((p) => p.id);
 
   // Bulk query for general and project-level preferences.
-  const generalPreferences = await UserMetadataModel.findAll({
-    where: {
-      userId: { [Op.in]: userModelIds },
-      key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-    },
-    attributes: ["userId", "value"],
-  });
+  const generalPreferences =
+    await UserResource.fetchUserScopedMetadataValuesByUserModelIds(
+      CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+      userModelIds
+    );
 
   const projectPreferenceMap =
     await UserProjectPreferencesResource.fetchNotificationPreferenceMap(auth, {
@@ -58,9 +54,9 @@ export const filterMembersByNotifyCondition = async (
     });
 
   const generalPreferenceMap = new Map<number, NotificationCondition>();
-  for (const pref of generalPreferences) {
-    if (isNotificationCondition(pref.value)) {
-      generalPreferenceMap.set(pref.userId, pref.value);
+  for (const [userId, value] of generalPreferences) {
+    if (isNotificationCondition(value)) {
+      generalPreferenceMap.set(userId, value);
     }
   }
 
