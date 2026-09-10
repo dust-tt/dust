@@ -1502,6 +1502,56 @@ describe("GroupResource", () => {
         expect(await roleOf(member)).toBe("manager");
       });
 
+      it("does not downgrade an admin who removes themselves from the last admin group", async () => {
+        // `authenticator`/`user` is the acting admin and the only member of the
+        // only admin-granting group.
+        const adminGroup = await makeRoleGroup(
+          "g-admin",
+          "admin",
+          "regular_manual"
+        );
+        await adminGroup.dangerouslyAddMembers(authenticator, {
+          users: [user.toJSON()],
+        });
+        expect(await roleOf(user)).toBe("admin");
+
+        // Removing themselves must not strip their own admin (no self-lockout).
+        await adminGroup.dangerouslyRemoveMembers(authenticator, {
+          users: [user.toJSON()],
+        });
+        expect(await roleOf(user)).toBe("admin");
+      });
+
+      it("lets another admin downgrade an admin by removing them from the admin group", async () => {
+        const otherAdmin = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, otherAdmin, {
+          role: "admin",
+        });
+        const otherAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          otherAdmin.sId,
+          workspace.sId
+        );
+
+        const target = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, target, { role: "user" });
+
+        const adminGroup = await makeRoleGroup(
+          "g-admin",
+          "admin",
+          "regular_manual"
+        );
+        await adminGroup.dangerouslyAddMembers(otherAdminAuth, {
+          users: [target.toJSON()],
+        });
+        expect(await roleOf(target)).toBe("admin");
+
+        // Another admin removing `target` (not the acting user) downgrades them.
+        await adminGroup.dangerouslyRemoveMembers(otherAdminAuth, {
+          users: [target.toJSON()],
+        });
+        expect(await roleOf(target)).toBe("user");
+      });
+
       it("does not let a manager demote an admin via a manager-granting group", async () => {
         const manager = await UserFactory.basic();
         await MembershipFactory.associate(workspace, manager, {

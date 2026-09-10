@@ -2844,6 +2844,12 @@ export class GroupResource extends BaseResource<GroupModel> {
    * granting group membership change (add/remove on a manager-granting group,
    * which managers may edit) MUST NOT be able to demote an admin as a side
    * effect.
+   */
+  /**
+   * @cc [owner:tdraier,label:security] role-sync-no-self-downgrade
+   * This sync MUST NOT downgrade the acting user (`auth.user()`, when present):
+   * a user must not lose their own role through their own group action. Another
+   * admin, or SSO directory sync (which runs without an acting user), still can.
    *
    * Recomputes the workspace role of each given user from their role-granting
    * group memberships and persists it when it changed. `allowLastAdminRemoval`
@@ -2859,9 +2865,10 @@ export class GroupResource extends BaseResource<GroupModel> {
    * holders are recomputed normally (a member who is no longer in any granting
    * group is downgraded).
    *
-   * `protectUserModelIds` lists users who must never be downgraded by this sync.
-   * It is used when an admin sets a group's role so that configuring a mapping
-   * never strips the acting admin's own role as a side effect.
+   * The acting user (`auth.user()`, when present) is never downgraded by this
+   * sync: a user must not lose their own role through their own group action
+   * (another admin, or SSO directory sync — which runs without an acting user —
+   * still can). This is a self-lockout guard, not a general manual-role guard.
    *
    * `updateMembershipRole` records the change via the structured audit log; the
    * triggering action (group membership change, directory sync, or mapping edit)
@@ -2876,15 +2883,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       transaction,
       protectRoles,
-      protectUserModelIds,
     }: {
       transaction?: Transaction;
       protectRoles?: Set<MembershipRoleType>;
-      protectUserModelIds?: Set<ModelId>;
     } = {}
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
-    const author = auth.user()?.toJSON() ?? "no-author";
+    const actingUser = auth.user();
+    const author = actingUser?.toJSON() ?? "no-author";
 
     // Only admins (and Poke super users) may change the admin role — mirroring
     // the direct role-change guard. Without this, a manager could demote an
@@ -2927,13 +2933,14 @@ export class GroupResource extends BaseResource<GroupModel> {
         continue;
       }
 
-      // Never strip a protected role or a protected user: keep the current role
-      // when downgrading would remove a role that has no granting group left, or
-      // would downgrade a protected user (e.g. the admin configuring the mapping).
+      // Never strip a protected role, and never downgrade the acting user: keep
+      // the current role when downgrading would remove a role that has no
+      // granting group left, or would downgrade the user performing the action
+      // (no self-lockout by one's own group change).
       if (
         isMorePrivilegedRole(currentMembership.role, newRole) &&
         (protectRoles?.has(currentMembership.role) ||
-          protectUserModelIds?.has(user.id))
+          user.id === actingUser?.id)
       ) {
         continue;
       }
@@ -3030,17 +3037,11 @@ export class GroupResource extends BaseResource<GroupModel> {
       GROUP_GRANTABLE_ROLES.filter((role) => !grantedRolesLeft.has(role))
     );
 
-    // Never downgrade the admin performing the change: configuring a mapping
-    // must not strip the acting admin's own role as a side effect.
-    const actingUserModelId = auth.user()?.id;
-    const protectUserModelIds = actingUserModelId
-      ? new Set([actingUserModelId])
-      : undefined;
-
+    // The acting admin is never downgraded (self-lockout guard lives in the sync
+    // itself); configuring a mapping cannot strip the acting admin's own role.
     const members = await this.getActiveMembers(auth);
     await GroupResource.recomputeAndSyncWorkspaceRolesForUsers(auth, members, {
       protectRoles,
-      protectUserModelIds,
     });
 
     return new Ok(undefined);
