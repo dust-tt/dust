@@ -207,12 +207,15 @@ export function usePokeAwuPoolCycleHistory({
       cycleHistoryLimit ? `?cycleHistoryLimit=${cycleHistoryLimit}` : ""
     }`,
     fetcherFn,
-    { disabled }
+    // Keep rows on screen while a larger limit is fetched so "Load more"
+    // appends instead of swapping the table for a spinner.
+    { disabled, keepPreviousData: true }
   );
 
   return {
     cycleBreakdown: data?.cycleBreakdown ?? emptyArray(),
     excessCycleBreakdown: data?.excessCycleBreakdown ?? emptyArray(),
+    hasMoreCycleHistory: data?.hasMoreCycleHistory ?? false,
     isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
     isAwuPoolCycleHistoryError: error,
     isAwuPoolCycleHistoryValidating: isValidating,

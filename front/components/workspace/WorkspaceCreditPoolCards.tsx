@@ -195,8 +195,9 @@ export function WorkspaceCreditPoolCycleHistoryTable({
       <DataTable
         data={rows}
         columns={CYCLE_HISTORY_COLUMNS}
-        totalRowCount={cycleBreakdown.length}
-        rowCountIsCapped={hasMoreCycleHistory}
+        // The true total is unknown while more cycles remain; once everything
+        // is loaded, the total lets the footer hide its control.
+        totalRowCount={hasMoreCycleHistory ? undefined : cycleBreakdown.length}
         onLoadMore={onLoadMore}
         isLoadingMore={isLoadingMoreCycleHistory}
       />
@@ -346,26 +347,13 @@ export function useCycleHistoryLimit() {
   return { cycleHistoryLimit, onLoadMoreCycleHistory };
 }
 
-// A fetched count matching the requested limit means the backend may be
-// truncating rather than reporting the true total, so there could be more
-// left to reveal — unless the limit is already at the backend's own cap.
-export function computeHasMoreCycleHistory(
-  fetchedCount: number,
-  cycleHistoryLimit: number
-): boolean {
-  return (
-    fetchedCount === cycleHistoryLimit &&
-    cycleHistoryLimit < MAX_CYCLE_HISTORY_LIMIT
-  );
-}
-
 interface CreditPoolCardsFromCycleDataProps {
   awuPoolCurrentCycle: AwuPoolCurrentCycleResponseBody | null;
   cardsStatus: CreditPoolFetchStatus;
   poolCycleBreakdown: AwuPoolCycleBreakdown[];
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
   tableStatus: CreditPoolFetchStatus;
-  cycleHistoryLimit: number;
+  hasMoreCycleHistory: boolean;
   onLoadMoreCycleHistory: () => void;
   isLoadingMoreCycleHistory: boolean;
 }
@@ -375,7 +363,7 @@ export function CreditPoolCardsFromCycleData({
   poolCycleBreakdown,
   excessCycleBreakdown,
   tableStatus,
-  cycleHistoryLimit,
+  hasMoreCycleHistory,
   onLoadMoreCycleHistory,
   isLoadingMoreCycleHistory,
 }: CreditPoolCardsFromCycleDataProps) {
@@ -400,7 +388,6 @@ export function CreditPoolCardsFromCycleData({
   const hasPool = totalActiveCredits > 0;
   const hasExcessData =
     excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
-  const cycleBreakdown = hasPool ? poolCycleBreakdown : excessCycleBreakdown;
 
   return (
     <WorkspaceCreditPoolSection
@@ -414,13 +401,10 @@ export function CreditPoolCardsFromCycleData({
       }
       currentCycleStartMs={currentCycleStartMs}
       currentCycleEndMs={currentCycleEndMs}
-      cycleBreakdown={cycleBreakdown}
+      cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
       programmaticConsumedCredits={programmaticConsumedCredits}
       onLoadMoreCycleHistory={onLoadMoreCycleHistory}
-      hasMoreCycleHistory={computeHasMoreCycleHistory(
-        cycleBreakdown.length,
-        cycleHistoryLimit
-      )}
+      hasMoreCycleHistory={hasMoreCycleHistory}
       isLoadingMoreCycleHistory={isLoadingMoreCycleHistory}
     />
   );
@@ -440,6 +424,7 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
   const {
     cycleBreakdown: poolCycleBreakdown,
     excessCycleBreakdown,
+    hasMoreCycleHistory,
     isAwuPoolCycleHistoryLoading,
     isAwuPoolCycleHistoryError,
     isAwuPoolCycleHistoryValidating,
@@ -462,7 +447,7 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
         isAwuPoolCycleHistoryLoading,
         !!isAwuPoolCycleHistoryError
       )}
-      cycleHistoryLimit={cycleHistoryLimit}
+      hasMoreCycleHistory={hasMoreCycleHistory}
       onLoadMoreCycleHistory={onLoadMoreCycleHistory}
       isLoadingMoreCycleHistory={
         isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading

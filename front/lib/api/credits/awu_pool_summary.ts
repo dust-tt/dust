@@ -44,10 +44,10 @@ export const DEFAULT_CYCLE_HISTORY_LIMIT = 5;
 export const MAX_CYCLE_HISTORY_LIMIT = 24;
 
 /**
- * @cc [owner:arthurvervaet,label:api] cycle-history-limit-clamp
- * `cycleHistoryLimit` MUST be clamped to at most `MAX_CYCLE_HISTORY_LIMIT`: callers cannot
- * request more cycles than that, and an out-of-range value falls back to
- * `DEFAULT_CYCLE_HISTORY_LIMIT` rather than erroring.
+ * @cc [owner:arthurvervaet,label:api] cycle-history-limit-bounds
+ * A missing, non-integer, or out-of-range `cycleHistoryLimit` (below 1 or above
+ * `MAX_CYCLE_HISTORY_LIMIT`) MUST resolve to `DEFAULT_CYCLE_HISTORY_LIMIT` rather than being
+ * clamped or rejected, so no caller can ever obtain more than `MAX_CYCLE_HISTORY_LIMIT` cycles.
  */
 export const AwuPoolSummaryQuerySchema = z.object({
   cycleHistoryLimit: z.coerce
@@ -366,7 +366,7 @@ function cacheResolverKeyWithHistoryLimit(
   return `${workspaceId}-${cycleHistoryLimit}`;
 }
 
-const AWU_POOL_CYCLE_HISTORY_CACHE_ID = "awuPoolCycleHistory";
+const AWU_POOL_CYCLE_HISTORY_CACHE_ID = "awuPoolCycleHistoryV2";
 const AWU_POOL_CYCLE_HISTORY_CACHE_TTL_MS = 60 * 1000;
 
 const getCachedAwuPoolCycleHistoryOutcome = cacheWithRedis(
@@ -413,7 +413,7 @@ async function getAwuPoolCycleHistoryUncached(
   const [poolLedgerDataResult, finalizedInvoicesResult] = await Promise.all([
     getPoolLedgerData({ metronomeCustomerId, cycleHistoryLimit }),
     listMetronomeFinalizedInvoices(metronomeCustomerId, {
-      limit: cycleHistoryLimit,
+      limit: cycleHistoryLimit + 1,
     }),
   ]);
 
@@ -431,20 +431,35 @@ async function getAwuPoolCycleHistoryUncached(
       },
       "[AwuPoolSummary] Failed to compute cycle breakdown"
     );
-    return new Ok({ cycleBreakdown: [], excessCycleBreakdown: [] });
+    return new Ok({
+      cycleBreakdown: [],
+      excessCycleBreakdown: [],
+      hasMoreCycleHistory: false,
+    });
   }
 
+  // One invoice past the limit is fetched only to learn whether older cycles
+  // exist; it is never surfaced. Row counts cannot answer this because cycles
+  // without consumption are filtered out of the breakdowns.
+  const finalizedInvoices = finalizedInvoicesResult.value.slice(
+    0,
+    cycleHistoryLimit
+  );
+  const hasMoreCycleHistory =
+    finalizedInvoicesResult.value.length > cycleHistoryLimit &&
+    cycleHistoryLimit < MAX_CYCLE_HISTORY_LIMIT;
+
   const cycleBreakdown = computeCycleBreakdown({
-    finalizedInvoices: finalizedInvoicesResult.value,
+    finalizedInvoices,
     ledgerEntries: poolLedgerDataResult.value.ledgerEntries,
     cycleHistoryLimit,
   });
   const excessCycleBreakdown = computeExcessCycleBreakdown(
-    finalizedInvoicesResult.value,
+    finalizedInvoices,
     cycleHistoryLimit
   );
 
-  return new Ok({ cycleBreakdown, excessCycleBreakdown });
+  return new Ok({ cycleBreakdown, excessCycleBreakdown, hasMoreCycleHistory });
 }
 
 export async function getAwuPoolSummary(
