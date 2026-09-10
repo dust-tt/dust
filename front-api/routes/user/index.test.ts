@@ -1,6 +1,8 @@
 import { computeSubscriberHash } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
@@ -15,6 +17,63 @@ function patchUser(body: unknown) {
     body: JSON.stringify(body),
   });
 }
+
+describe("DELETE /api/user/metadata/:key", () => {
+  it("deletes a prefix only in the selected user's workspace", async () => {
+    const { user, workspace } = await createPrivateApiMockRequest();
+    const otherWorkspace = await WorkspaceFactory.basic();
+    const otherUser = await UserFactory.basic();
+    const key = "test-preference:first";
+    const secondKey = "test-preference:second";
+
+    await user.setMetadata(key, "workspace", workspace.id);
+    await user.setMetadata(secondKey, "workspace", workspace.id);
+    await user.setMetadata("keep", "workspace", workspace.id);
+    await user.setMetadata(key, "other-workspace", otherWorkspace.id);
+    await user.setMetadata(key, "global");
+    await otherUser.setMetadata(key, "other-user", workspace.id);
+
+    const response = await honoApp.request(
+      `/api/user/metadata/test-preference%3A?workspaceId=${workspace.sId}`,
+      { method: "DELETE" }
+    );
+
+    expect(response.status).toBe(200);
+    expect(await user.getMetadata(key, workspace.id)).toBeNull();
+    expect(await user.getMetadata(secondKey, workspace.id)).toBeNull();
+    expect((await user.getMetadata("keep", workspace.id))?.value).toBe(
+      "workspace"
+    );
+    expect((await user.getMetadata(key, otherWorkspace.id))?.value).toBe(
+      "other-workspace"
+    );
+    expect((await user.getMetadata(key))?.value).toBe("global");
+    expect((await otherUser.getMetadata(key, workspace.id))?.value).toBe(
+      "other-user"
+    );
+  });
+
+  it("deletes only global metadata when no workspace is selected", async () => {
+    const { user, workspace } = await createPrivateApiMockRequest();
+    const key = "test-preference:first";
+
+    await user.setMetadata(key, "global");
+    await user.setMetadata(key, "workspace", workspace.id);
+
+    const response = await honoApp.request(
+      "/api/user/metadata/test-preference%3A",
+      {
+        method: "DELETE",
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(await user.getMetadata(key)).toBeNull();
+    expect((await user.getMetadata(key, workspace.id))?.value).toBe(
+      "workspace"
+    );
+  });
+});
 
 describe("GET /api/user", () => {
   it("returns 200 when the user is authenticated", async () => {

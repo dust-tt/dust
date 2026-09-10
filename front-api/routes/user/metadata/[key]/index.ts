@@ -113,6 +113,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
 
   const { key } = ctx.req.valid("param");
   await r.u.deleteMetadata({
+    workspaceId: r.workspaceModelId ?? null,
     key: {
       [Op.like]: `${key}%`,
     },
