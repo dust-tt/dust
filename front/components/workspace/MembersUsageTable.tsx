@@ -1197,55 +1197,6 @@ function buildColumns({
 // keeps the customer-facing usage page unchanged.
 export type MembersUsageTableVariant = "legacy" | "compact";
 
-function renderMemberUsageSkeletonCell(columnId: string, rowIndex: number) {
-  switch (columnId) {
-    case "select":
-      return <LoadingBlock className="h-4 w-4 rounded-sm" />;
-    case "name":
-      return (
-        <div className="flex min-w-0 items-center gap-2">
-          <LoadingBlock className="h-7 w-7 shrink-0 rounded-full" />
-          <div className="flex min-w-0 flex-col">
-            <div className="flex h-5 items-center">
-              <LoadingBlock
-                className={
-                  rowIndex % 2 === 0
-                    ? "h-3 w-32 max-w-full"
-                    : "h-3 w-40 max-w-full"
-                }
-              />
-            </div>
-            <div className="flex h-4 items-center">
-              <LoadingBlock className="h-3 w-44 max-w-full" />
-            </div>
-          </div>
-        </div>
-      );
-    case "seatsIcon":
-      return <LoadingBlock className="h-5 w-12 rounded-md" />;
-    case "seatUsage":
-      return <LoadingBlock className="h-3 w-8" />;
-    case "consumedFromPoolAwuCredits":
-      return (
-        <div className="flex w-full flex-col gap-1 pr-3">
-          <div className="flex h-4 items-center justify-between">
-            <LoadingBlock className="h-3 w-8" />
-            <LoadingBlock className="h-3 w-12" />
-          </div>
-          <div className="flex h-3 items-center">
-            <LoadingBlock className="h-1 w-full rounded-full" />
-          </div>
-        </div>
-      );
-    case "overallUsageTarget":
-      return <LoadingBlock className="h-5 w-16 rounded-md" />;
-    case "actions":
-      return <LoadingBlock className="mx-auto h-4 w-4" />;
-    default:
-      return <LoadingBlock className="h-4 w-24 max-w-full" />;
-  }
-}
-
 interface MembersUsageTableProps {
   members: MemberUsageType[];
   // End of the current billing period (workspace-level, from the members-usage
@@ -1547,26 +1498,26 @@ export function MembersUsageTable({
     ]
   );
 
-  if (useLoadingSkeleton && (isLoading || isRefreshing)) {
-    const remainingRowCount =
-      totalRowCount - pagination.pageIndex * pagination.pageSize;
-    return (
-      <UsageTableSkeleton
-        columns={columns}
-        label="Loading members"
-        rowCount={
-          remainingRowCount > 0
-            ? Math.min(pagination.pageSize, remainingRowCount)
-            : pagination.pageSize
-        }
-        sorting={sorting}
-        showPagination
-        renderCell={renderMemberUsageSkeletonCell}
-      />
-    );
-  }
-
   if (isLoading) {
+    if (useLoadingSkeleton) {
+      const remainingRows =
+        totalRowCount - pagination.pageIndex * pagination.pageSize;
+      return (
+        <div className="flex flex-col gap-2">
+          <UsageTableSkeleton
+            columns={columns}
+            rowCount={
+              remainingRows > 0
+                ? Math.min(pagination.pageSize, remainingRows)
+                : pagination.pageSize
+            }
+          />
+          <div className="flex h-8 items-center justify-end px-1">
+            <LoadingBlock className="h-3 w-14" />
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="flex w-full flex-col space-y-2">
         <LoadingBlock className="h-8 w-full rounded-xl" />

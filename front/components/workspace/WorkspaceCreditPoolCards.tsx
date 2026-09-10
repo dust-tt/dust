@@ -20,7 +20,6 @@ import {
   cn,
   DataTable,
   LoadingBlock,
-  Page,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
@@ -101,56 +100,60 @@ export function WorkspaceCreditUsageValueCards({
   isLoading,
   isRefreshing,
 }: WorkspaceCreditUsageValueCardsProps) {
+  if (isLoading) {
+    return (
+      <div
+        className={cn(
+          "grid gap-4",
+          showPoolCard ? "grid-cols-3" : "grid-cols-2"
+        )}
+      >
+        {Array.from({ length: showPoolCard ? 3 : 2 }, (_, index) => (
+          <LoadingBlock key={index} className="h-24 rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
   const cycleDayLabel = formatCycleDayLabel(
     currentCycleStartMs,
     currentCycleEndMs
   );
   return (
     <div
-      role={isLoading ? "status" : undefined}
-      aria-label={isLoading ? "Loading credit consumption" : undefined}
-      aria-busy={isLoading || undefined}
       className={cn("grid gap-4", showPoolCard ? "grid-cols-3" : "grid-cols-2")}
     >
-      {isLoading ? (
-        Array.from({ length: showPoolCard ? 3 : 2 }, (_, index) => (
-          <LoadingBlock key={index} className="h-24 rounded-xl" />
-        ))
-      ) : (
-        <>
-          {showPoolCard && (
-            <SummaryCard
-              label="Remaining credits in the pool"
-              value={formatCredits(totalRemainingCredits)}
-              hint={null}
-              isRefreshing={isRefreshing}
-            />
-          )}
-          <SummaryCard
-            label="Used this cycle"
-            value={
-              typeof consumedCredits === "number"
-                ? formatCredits(consumedCredits)
-                : "—"
-            }
-            hint={cycleDayLabel}
-            isRefreshing={isRefreshing}
-          />
-          <SummaryCard
-            label="Programmatic usage this cycle"
-            value={
-              typeof programmaticConsumedCredits === "number"
-                ? formatCredits(programmaticConsumedCredits)
-                : "—"
-            }
-            hint={formatProgrammaticUsageShare(
-              programmaticConsumedCredits,
-              consumedCredits
-            )}
-            isRefreshing={isRefreshing}
-          />
-        </>
+      {showPoolCard && (
+        <SummaryCard
+          label="Remaining credits in the pool"
+          value={formatCredits(totalRemainingCredits)}
+          hint={null}
+          isRefreshing={isRefreshing}
+        />
       )}
+      <SummaryCard
+        label="Used this cycle"
+        value={
+          typeof consumedCredits === "number"
+            ? formatCredits(consumedCredits)
+            : "—"
+        }
+        hint={cycleDayLabel}
+        isRefreshing={isRefreshing}
+      />
+      <SummaryCard
+        label="Programmatic usage this cycle"
+        value={
+          typeof programmaticConsumedCredits === "number"
+            ? formatCredits(programmaticConsumedCredits)
+            : "—"
+        }
+        hint={formatProgrammaticUsageShare(
+          programmaticConsumedCredits,
+          consumedCredits
+        )}
+        isRefreshing={isRefreshing}
+      />
     </div>
   );
 }
@@ -257,22 +260,16 @@ function WorkspaceCreditPoolHistory({
       );
     case "loading":
       return (
-        <>
-          <Page.H variant="h5">Previous cycles</Page.H>
+        <div className="flex flex-col gap-2">
           <UsageTableSkeleton
             columns={CYCLE_HISTORY_COLUMNS}
-            label="Loading previous cycles"
             rowCount={INITIAL_CYCLE_HISTORY_ROW_COUNT}
-            showLoadMore
-            renderCell={(columnId) => (
-              <LoadingBlock
-                className={
-                  columnId === "cycle" ? "h-4 w-56 max-w-full" : "h-4 w-16"
-                }
-              />
-            )}
           />
-        </>
+          <div className="flex h-6 items-center justify-between px-1">
+            <LoadingBlock className="h-3 w-16" />
+            <LoadingBlock className="h-3 w-14" />
+          </div>
+        </div>
       );
     case "ready":
       return (

@@ -5,7 +5,7 @@ import { UsageTableSkeleton } from "@app/components/workspace/usage/UsageTableSk
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
-import { DataTable, LoadingBlock, Spinner, Users01 } from "@dust-tt/sparkle";
+import { DataTable, Spinner, Users01 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -140,24 +140,7 @@ export function GroupsUsageTable({
         </span>
       )}
       {isGroupsLoading ? (
-        <UsageTableSkeleton
-          columns={columns}
-          label="Loading groups"
-          renderCell={(columnId) =>
-            columnId === "name" ? (
-              <div className="flex items-center gap-2">
-                <LoadingBlock className="h-5 w-5" />
-                <LoadingBlock className="h-4 w-32" />
-              </div>
-            ) : columnId === "memberCount" ? (
-              <div className="flex h-12 items-center">
-                <LoadingBlock className="h-4 w-8" />
-              </div>
-            ) : (
-              <LoadingBlock className="h-4 w-24" />
-            )
-          }
-        />
+        <UsageTableSkeleton columns={columns} rowHeight={49} />
       ) : (
         <DataTable filterColumn="name" data={rows} columns={columns} />
       )}

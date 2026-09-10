@@ -1,101 +1,73 @@
-import { cn, DataTable, LoadingBlock } from "@dust-tt/sparkle";
-import type { ColumnDef, SortingState } from "@tanstack/react-table";
-import {
-  flexRender,
-  getCoreRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import type { ReactNode } from "react";
+import { cn, LoadingBlock } from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
 
 interface UsageTableSkeletonProps<TData> {
   columns: ColumnDef<TData, string>[];
-  label: string;
   rowCount?: number;
-  sorting?: SortingState;
-  showPagination?: boolean;
-  showLoadMore?: boolean;
-  renderCell: (columnId: string, rowIndex: number) => ReactNode;
-}
-
-interface SkeletonRow {
-  onClick?: () => void;
+  rowHeight?: number;
 }
 
 /**
  * @cc [owner:aubin-tchoi,label:react] usage-table-loading-geometry
- * Loading rows must retain the destination table's headers, column widths,
- * responsive visibility and row height. Placeholder rows must not be selectable.
+ * Skeleton cells must use the destination columns' width and responsive
+ * visibility classes. Placeholders must not be interactive.
  */
 export function UsageTableSkeleton<TData>({
   columns,
-  label,
   rowCount = 5,
-  sorting,
-  showPagination = false,
-  showLoadMore = false,
-  renderCell,
+  rowHeight = 48,
 }: UsageTableSkeletonProps<TData>) {
-  const table = useReactTable({
-    data: [],
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
-  const skeletonColumns: ColumnDef<SkeletonRow, string>[] = table
-    .getFlatHeaders()
-    .map((header) => ({
-      id: header.id,
-      meta: header.column.columnDef.meta,
-      header: () =>
-        header.id === "select" ? (
-          <LoadingBlock className="h-4 w-4 rounded-sm" />
-        ) : (
-          flexRender(header.column.columnDef.header, header.getContext())
-        ),
-      accessorFn: () => "",
-      enableSorting: header.column.getCanSort(),
-      cell: ({ row }) => (
-        <div
-          className={cn(
-            "flex items-center",
-            header.column.columnDef.meta?.headerAlign === "right" &&
-              "justify-end",
-            header.column.columnDef.meta?.headerAlign === "center" &&
-              "justify-center"
-          )}
-        >
-          {renderCell(header.id, row.index)}
-        </div>
-      ),
-    }));
-
   return (
-    <div role="status" aria-label={label} aria-busy="true">
-      <div
-        // React 18 does not type the native inert attribute yet.
-        {...{ inert: "" }}
-        aria-hidden="true"
-        className="pointer-events-none flex flex-col gap-2"
-      >
-        <DataTable
-          data={Array.from({ length: rowCount }, () => ({}))}
-          columns={skeletonColumns}
-          sorting={sorting}
-          isServerSideSorting
-        />
-        {(showPagination || showLoadMore) && (
-          <div className="p-1">
-            <div
-              className={cn(
-                "flex items-center",
-                showPagination ? "h-6" : "h-4",
-                showPagination ? "justify-end" : "justify-between"
-              )}
-            >
-              {showLoadMore && <LoadingBlock className="h-3 w-16" />}
-              <LoadingBlock className="h-3 w-14" />
-            </div>
-          </div>
-        )}
+    <div role="status" aria-label="Loading table" aria-busy="true">
+      <div aria-hidden="true" className="@container/table">
+        <table className="w-full table-fixed border-collapse">
+          <thead>
+            <tr className="border-b border-separator">
+              {columns.map((column, index) => (
+                <th
+                  key={index}
+                  className={cn("px-2 py-2", column.meta?.className)}
+                >
+                  <div
+                    className={cn(
+                      "flex items-center",
+                      column.id === "modelTiers" ? "h-6" : "h-4"
+                    )}
+                  >
+                    <LoadingBlock
+                      className={cn(
+                        "h-3 w-2/3 max-w-24",
+                        column.meta?.headerAlign === "right" && "ml-auto",
+                        column.meta?.headerAlign === "center" && "mx-auto"
+                      )}
+                    />
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: rowCount }, (_, rowIndex) => (
+              <tr key={rowIndex} className="border-b border-separator">
+                {columns.map((column, columnIndex) => (
+                  <td
+                    key={columnIndex}
+                    className={cn("px-2", column.meta?.className)}
+                    style={{ height: rowHeight }}
+                  >
+                    <LoadingBlock
+                      className={cn(
+                        "h-3 w-2/3 max-w-32",
+                        column.meta?.headerAlign === "right" && "ml-auto",
+                        column.meta?.headerAlign === "center" && "mx-auto"
+                      )}
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

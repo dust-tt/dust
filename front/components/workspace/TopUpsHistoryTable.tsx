@@ -7,7 +7,6 @@ import {
   AlertCircle,
   ContentMessage,
   DataTable,
-  LoadingBlock,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -98,21 +97,7 @@ export function TopUpsHistoryTable({
 
   if (isTopUpsHistoryLoading) {
     if (useLoadingSkeleton) {
-      return (
-        <UsageTableSkeleton
-          columns={COLUMNS}
-          label="Loading top-ups history"
-          renderCell={(columnId) => (
-            <LoadingBlock
-              className={
-                columnId === "name"
-                  ? "h-4 w-40 max-w-full"
-                  : "h-4 w-24 max-w-full"
-              }
-            />
-          )}
-        />
-      );
+      return <UsageTableSkeleton columns={COLUMNS} />;
     }
     return (
       <div className="flex justify-center py-8">
