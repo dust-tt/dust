@@ -11,6 +11,7 @@ import type {
 import type { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { ModelIdType } from "@app/types/assistant/models/types";
+import type { AgentSkillType } from "@app/types/assistant/skill_configuration";
 import { DbModelIdSchema } from "@app/types/shared/model_id";
 import type { TagType } from "@app/types/tag";
 import { TagSchema } from "@app/types/tag";
@@ -208,6 +209,15 @@ export const AgentConfigurationSchema = LightAgentConfigurationSchema.extend({
 });
 
 export type AgentConfigurationType = z.infer<typeof AgentConfigurationSchema>;
+
+/**
+ * An agent configuration with its attached skills resolved, which is what the API serializes.
+ * `codeDefinedSkillIds` is stripped on the way out: `skills` supersedes it, and the ids on their
+ * own are an internal detail of how global agents declare theirs.
+ */
+export type AgentConfigurationWithSkillsType = LightAgentConfigurationType & {
+  skills: AgentSkillType[];
+};
 
 export type AgentConfigurationWithoutModelType = Omit<
   AgentConfigurationType,

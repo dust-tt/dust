@@ -14603,6 +14603,47 @@
             "type": "array",
             "example": []
           },
+          "skills": {
+            "type": "array",
+            "description": "Skills attached to the agent. Returned by the agent GET endpoints (list and single-agent) whatever the requested variant. Empty both for an agent with no skill and for an agent whose details were redacted for the caller (canRead false).",
+            "items": {
+              "$ref": "#/components/schemas/AgentSkill"
+            }
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tags attached to the agent",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sId": {
+                  "type": "string",
+                  "example": "3f9d1c7a5b"
+                },
+                "name": {
+                  "type": "string",
+                  "example": "Support"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "standard",
+                    "protected"
+                  ]
+                }
+              }
+            }
+          },
+          "requestedSpaceIds": {
+            "type": "array",
+            "description": "Identifiers of the spaces the agent needs access to",
+            "items": {
+              "type": "string"
+            },
+            "example": [
+              "vlt_a1b2c3d4e5"
+            ]
+          },
           "maxStepsPerRun": {
             "type": "integer",
             "example": 10
@@ -14612,6 +14653,22 @@
             "nullable": true,
             "description": "ID of the template used for this configuration",
             "example": "b4e2f1a9c7"
+          }
+        }
+      },
+      "AgentSkill": {
+        "type": "object",
+        "description": "A skill attached to an agent configuration.",
+        "properties": {
+          "sId": {
+            "type": "string",
+            "description": "Unique string identifier for the skill",
+            "example": "skill_abc123"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of the skill",
+            "example": "Customer Support"
           }
         }
       },

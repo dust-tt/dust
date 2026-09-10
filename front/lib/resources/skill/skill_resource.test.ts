@@ -1879,6 +1879,116 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("listByAgentConfigurations", () => {
+    it("maps each agent to its own skills", async () => {
+      const [firstAgent, secondAgent, skillLessAgent] = await Promise.all([
+        AgentConfigurationFactory.createTestAgent(testContext.authenticator, {
+          name: "First Agent",
+        }),
+        AgentConfigurationFactory.createTestAgent(testContext.authenticator, {
+          name: "Second Agent",
+        }),
+        AgentConfigurationFactory.createTestAgent(testContext.authenticator, {
+          name: "Skill-less Agent",
+        }),
+      ]);
+
+      const [firstSkill, sharedSkill] = await Promise.all([
+        SkillFactory.create(testContext.authenticator, { name: "First Skill" }),
+        SkillFactory.create(testContext.authenticator, {
+          name: "Shared Skill",
+        }),
+      ]);
+      for (const [agent, skill] of [
+        [firstAgent, firstSkill],
+        [firstAgent, sharedSkill],
+        [secondAgent, sharedSkill],
+      ] as const) {
+        await SkillFactory.linkToAgent(testContext.authenticator, {
+          skillId: skill.id,
+          agentConfigurationId: agent.id,
+        });
+      }
+
+      const pairs = await SkillResource.listByAgentConfigurations(
+        testContext.authenticator,
+        [firstAgent, secondAgent, skillLessAgent]
+      );
+
+      const skillModelIdsByAgentId = new Map<string, number[]>();
+      for (const { agentConfiguration, skill } of pairs) {
+        const skillModelIds =
+          skillModelIdsByAgentId.get(agentConfiguration.sId) ?? [];
+        skillModelIds.push(skill.id);
+        skillModelIdsByAgentId.set(agentConfiguration.sId, skillModelIds);
+      }
+
+      expect(skillModelIdsByAgentId.get(firstAgent.sId)?.sort()).toEqual(
+        [firstSkill.id, sharedSkill.id].sort()
+      );
+      expect(skillModelIdsByAgentId.get(secondAgent.sId)).toEqual([
+        sharedSkill.id,
+      ]);
+      expect(skillModelIdsByAgentId.has(skillLessAgent.sId)).toBe(false);
+    });
+
+    it("resolves global skills attached to a workspace agent", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent With A Global Skill" }
+      );
+      await SkillFactory.linkGlobalSkillToAgent(testContext.authenticator, {
+        globalSkillId: "frames",
+        agentConfigurationId: agent.id,
+      });
+
+      const pairs = await SkillResource.listByAgentConfigurations(
+        testContext.authenticator,
+        [agent]
+      );
+
+      expect(pairs.map(({ skill }) => skill.sId)).toEqual(["frames"]);
+    });
+
+    it("returns nothing for no agents", async () => {
+      expect(
+        await SkillResource.listByAgentConfigurations(
+          testContext.authenticator,
+          []
+        )
+      ).toEqual([]);
+    });
+
+    it("does not return skills the caller cannot read", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent With A Restricted Skill" }
+      );
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Restricted Skill",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: agent.id,
+      });
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        testContext.workspace.sId
+      );
+
+      expect(
+        await SkillResource.listByAgentConfigurations(otherAuth, [agent])
+      ).toEqual([]);
+    });
+  });
+
   describe("listByMCPServerViewIds", () => {
     it("should return skills that use any of the given MCP server view IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
@@ -2336,6 +2446,28 @@ describe("SkillResource", () => {
       });
       expect(fetchedSkill.mcpServerViews).toEqual([]);
       expect(fetchByModelIdsSpy).not.toHaveBeenCalled();
+    });
+
+    it("skips the dynamic instructions of a code-defined skill", async () => {
+      const [full] = await SkillResource.fetchByIds(testContext.authenticator, [
+        "frames",
+      ]);
+      const [labelsOnly] = await SkillResource.fetchByIds(
+        testContext.authenticator,
+        ["frames"],
+        {
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+        }
+      );
+
+      // `frames` builds its instructions through a callback, and some of those callbacks write
+      // (`discover_tools` ensures the workspace's auto MCP server views exist), so a read path
+      // that only needs to name a skill must not run them.
+      expect(full.instructions).not.toBe("");
+      expect(labelsOnly.instructions).toBe("");
+      expect(labelsOnly.name).toBe(full.name);
     });
 
     it("filters code-defined skills disabled for the current agent loop", async () => {

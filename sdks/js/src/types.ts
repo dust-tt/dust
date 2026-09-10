@@ -1072,6 +1072,12 @@ const AgentModelConfigurationSchema = z.object({
   temperature: z.number(),
 });
 
+// A skill attached to an agent, as returned by the agent GET endpoints.
+const AgentSkillSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
+});
+
 const LightAgentConfigurationSchema = z.object({
   id: ModelIdSchema,
   versionCreatedAt: z.string().nullable(),
@@ -1095,6 +1101,9 @@ const LightAgentConfigurationSchema = z.object({
   groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())).optional(),
   requestedSpaceIds: z.array(z.string()).optional(),
+  // Only populated by the agent GET endpoints; empty for agents whose details were redacted
+  // (`canRead` false).
+  skills: z.array(AgentSkillSchema).optional(),
 });
 
 export type LightAgentConfigurationType = z.infer<

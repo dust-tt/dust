@@ -4,6 +4,7 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
@@ -129,6 +130,43 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     expect(response.status).toBe(200);
     expect(data.agentConfiguration.canEdit).toBe(true);
     expect(data.agentConfiguration.instructions).toBe("Updated instructions");
+  });
+
+  it("returns the skills attached to the agent", async () => {
+    const { workspace, key, agentConfig, auth } = await setupTest("admin");
+    const skill = await SkillFactory.create(auth, {
+      name: "Support Playbook",
+    });
+    await SkillFactory.linkToAgent(auth, {
+      skillId: skill.id,
+      agentConfigurationId: agentConfig.id,
+    });
+
+    const response = await getAgentConfiguration(
+      workspace,
+      key,
+      agentConfig.sId
+    );
+    const data = await response.json();
+
+    expect(response.status, JSON.stringify(data)).toBe(200);
+    expect(data.agentConfiguration.skills).toEqual([
+      { sId: skill.sId, name: "Support Playbook" },
+    ]);
+  });
+
+  it("returns an empty skills array for an agent without skills", async () => {
+    const { workspace, key, agentConfig } = await setupTest("admin");
+
+    const response = await getAgentConfiguration(
+      workspace,
+      key,
+      agentConfig.sId
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.agentConfiguration.skills).toEqual([]);
   });
 
   it.each([
