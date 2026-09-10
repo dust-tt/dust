@@ -1,4 +1,7 @@
-import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
+import {
+  SummaryCard,
+  SummaryCardSkeleton,
+} from "@app/components/workspace/analytics/SummaryCard";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
@@ -18,8 +21,9 @@ import {
   ContentMessage,
   cn,
   DataTable,
+  DataTableLoadingSkeleton,
+  LoadingBlock,
   Page,
-  Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
@@ -97,10 +101,27 @@ export function WorkspaceCreditUsageValueCards({
     currentCycleStartMs,
     currentCycleEndMs
   );
+  const gridClassName = cn(
+    "grid gap-4",
+    showPoolCard ? "grid-cols-3" : "grid-cols-2"
+  );
+
+  if (isLoading) {
+    return (
+      <div
+        aria-label="Loading credit consumption"
+        className={gridClassName}
+        role="status"
+      >
+        {showPoolCard && <SummaryCardSkeleton />}
+        <SummaryCardSkeleton />
+        <SummaryCardSkeleton />
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={cn("grid gap-4", showPoolCard ? "grid-cols-3" : "grid-cols-2")}
-    >
+    <div className={gridClassName}>
       {showPoolCard && (
         <SummaryCard
           label="Remaining credits in the pool"
@@ -236,8 +257,16 @@ function WorkspaceCreditPoolHistory({
       );
     case "loading":
       return (
-        <div className="flex justify-center py-4">
-          <Spinner />
+        <div
+          aria-label="Loading previous cycles"
+          className="flex flex-col gap-2"
+          role="status"
+        >
+          <LoadingBlock className="h-5 w-32" />
+          <DataTableLoadingSkeleton
+            rows={INITIAL_CYCLE_HISTORY_ROW_COUNT}
+            showSelectionColumn={false}
+          />
         </div>
       );
     case "ready":
@@ -297,9 +326,17 @@ export function WorkspaceCreditPoolSection({
           An error occurred while loading the workspace&apos;s credit pool data.
         </ContentMessage>
       ) : cardsStatus === "loading" ? (
-        <div className="flex justify-center py-8">
-          <Spinner />
-        </div>
+        // Whether the workspace has a pool is unknown until the data lands, so
+        // the placeholder assumes the fuller layout.
+        <WorkspaceCreditUsageValueCards
+          showPoolCard
+          totalRemainingCredits={0}
+          consumedCredits={null}
+          currentCycleStartMs={null}
+          currentCycleEndMs={null}
+          programmaticConsumedCredits={null}
+          isLoading
+        />
       ) : (
         <>
           <WorkspaceCreditUsageValueCards
