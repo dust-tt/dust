@@ -27,16 +27,18 @@ vi.mock("@app/logger/logger", () => ({
 }));
 
 import {
-  clearCloudflareAccessJwksCacheForTests,
   getCloudflareAccessConfig,
   resolveCloudflareAccessToken,
-  verifyCloudflareAccessJwt,
 } from "./cloudflare_access";
 
+let verifyCloudflareAccessJwt: typeof import("./cloudflare_access").verifyCloudflareAccessJwt;
+
 describe("cloudflare_access", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
-    clearCloudflareAccessJwksCacheForTests();
+    // Clear the cached JWKS between cases by loading a fresh module instance.
+    vi.resetModules();
+    ({ verifyCloudflareAccessJwt } = await import("./cloudflare_access"));
   });
 
   describe("getCloudflareAccessConfig", () => {

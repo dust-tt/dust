@@ -1,9 +1,10 @@
 import { Authenticator } from "@app/lib/auth";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
+import { listTriggersForMaintenance } from "@app/scripts/trigger_helpers";
 
 const OPERATIONS = ["stop", "refresh"] as const;
 type Operation = (typeof OPERATIONS)[number];
@@ -56,7 +57,7 @@ makeScript(
     }
 
     // List all triggers, optionally filtered by workspace.
-    const triggerResources = await TriggerResource.listAllForScript({
+    const triggerResources = await listTriggersForMaintenance({
       workspaceId: wid,
     });
     const activeTriggers = triggerResources.filter(

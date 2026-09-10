@@ -159,9 +159,3 @@ export async function getPokeRolesForUserViaCloudflareAccess(
     return [];
   }
 }
-
-/** Test-only helper to clear the cached JWKS between cases. */
-export function clearCloudflareAccessJwksCacheForTests(): void {
-  cachedJwks = null;
-  cachedJwksIssuer = null;
-}

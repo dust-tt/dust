@@ -484,33 +484,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }>;
   }
 
-  /**
-   * DANGEROUS: Lists triggers across workspaces for maintenance scripts.
-   * Should only be used in scripts, never in API routes or lib/api.
-   */
-  static async listAllForScript(options?: {
-    workspaceId?: ModelId;
-    status?: TriggerStatus;
-  }): Promise<TriggerResource[]> {
-    const where: {
-      workspaceId?: ModelId;
-      status?: TriggerStatus;
-    } = {};
-
-    if (options?.workspaceId) {
-      where.workspaceId = options.workspaceId;
-    }
-    if (options?.status) {
-      where.status = options.status;
-    }
-
-    const res = await this.model.findAll({
-      where,
-    });
-
-    return res.map((c) => new this(this.model, c.get()));
-  }
-
   static async update(
     auth: Authenticator,
     sId: string,
