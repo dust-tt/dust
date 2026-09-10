@@ -16,6 +16,11 @@ import {
 interface UsageSettingsCardProps {
   workspaceId: string;
   hasPool: boolean;
+  // Whether any seat on the workspace's contract carries a built-in credit
+  // allowance. When it doesn't (e.g. pooled plans with no per-seat allowance),
+  // the pool limit is the user's whole monthly budget rather than a top-up, so
+  // the description drops the "on top of the seat allowance" wording.
+  seatsHaveBuiltInAllowance: boolean;
 }
 
 function validateDefaultLimit(value: string) {
@@ -26,6 +31,7 @@ function validateDefaultLimit(value: string) {
 export function UsageSettingsCard({
   workspaceId,
   hasPool,
+  seatsHaveBuiltInAllowance,
 }: UsageSettingsCardProps) {
   const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
     useDefaultUserSpendLimit({ workspaceId });
@@ -76,13 +82,22 @@ export function UsageSettingsCard({
           <SettingsList.Row
             title="Default per-user workspace credit pool monthly limit"
             description={
-              <>
-                Define the workspace credit pool credit limit for users per
-                month in your workspace. This limit is added on top of each
-                seat&apos;s built-in allowance. Can be overridden per user in
-                the members table.{" "}
-                <strong>Set to 0 to remove pool access.</strong>
-              </>
+              seatsHaveBuiltInAllowance ? (
+                <>
+                  Define the workspace credit pool credit limit for users per
+                  month in your workspace. This limit is added on top of each
+                  seat&apos;s built-in allowance. Can be overridden per user in
+                  the members table.{" "}
+                  <strong>Set to 0 to remove pool access.</strong>
+                </>
+              ) : (
+                <>
+                  Define the total amount of credits each user can consume from
+                  the workspace credit pool per month. Can be overridden per
+                  user in the members table.{" "}
+                  <strong>Set to 0 to remove pool access.</strong>
+                </>
+              )
             }
             action={
               <div className="w-60">

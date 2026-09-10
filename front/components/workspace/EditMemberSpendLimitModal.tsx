@@ -191,9 +191,19 @@ function MemberSpendLimitForm({
           <div>
             <DialogTitle>Edit spend limit for {member?.name}</DialogTitle>
             <DialogDescription>
-              This user can currently consume{" "}
-              {formatCredits(seatAllowanceAwuCredits)} credits from their seat,
-              plus {formatCredits(extraAwuCredits)} on the&nbsp;pool.
+              {seatAllowanceAwuCredits > 0 ? (
+                <>
+                  This user can currently consume{" "}
+                  {formatCredits(seatAllowanceAwuCredits)} credits from their
+                  seat, plus {formatCredits(extraAwuCredits)} on the&nbsp;pool.
+                </>
+              ) : (
+                <>
+                  This user can currently consume{" "}
+                  {formatCredits(extraAwuCredits)} credits from the workspace
+                  credit&nbsp;pool.
+                </>
+              )}
             </DialogDescription>
           </div>
         </div>
