@@ -160,7 +160,13 @@ export async function getPokeRolesForUserViaCloudflareAccess(
   }
 }
 
-/** Test-only helper to clear the cached JWKS between cases. */
+/**
+ * @cc [owner:philipperolet,label:testing] jwks-cache-test-reset
+ * Test-only helper to clear the cached JWKS between cases.
+ * Exception to `non-runtime-code-stays-local`: resetting this private module state here keeps
+ * tests isolated with static imports, without `vi.resetModules()` and dynamic re-imports.
+ * This helper must only be called from tests.
+ */
 export function clearCloudflareAccessJwksCacheForTests(): void {
   cachedJwks = null;
   cachedJwksIssuer = null;

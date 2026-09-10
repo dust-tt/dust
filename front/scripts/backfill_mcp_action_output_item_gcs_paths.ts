@@ -1,11 +1,16 @@
 import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
-import { batchRewriteContentsToGcs } from "@app/lib/resources/agent_mcp_action/output_storage";
+import {
+  deleteContentsFromGcs,
+  MCP_OUTPUT_ITEMS_PREFIX,
+} from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { concurrentExecutor, withRetry } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WhereOptions } from "sequelize";
 import { Op } from "sequelize";
@@ -14,6 +19,37 @@ import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
 
 const BATCH_SIZE_DEFAULT = 200;
+
+/**
+ * Rewrites existing output items at deterministic paths so backfill retries are idempotent.
+ */
+async function rewriteContentToGcs(
+  auth: Authenticator,
+  action: AgentMCPActionResource,
+  item: Pick<AgentMCPActionOutputItemModel, "id" | "content">
+): Promise<Result<string, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+  const gcsPath = `w/${workspace.sId}/${MCP_OUTPUT_ITEMS_PREFIX}/${action.sId}/${item.id}.json`;
+  const result = await withRetry(() =>
+    getPrivateUploadBucket()
+      .file(gcsPath)
+      .save(Buffer.from(JSON.stringify(item.content), "utf-8"), {
+        contentType: "application/json",
+      })
+  );
+  if (result.isErr()) {
+    // A failed save may still have persisted its object before returning an error.
+    const cleanupResult = await deleteContentsFromGcs([gcsPath]);
+    if (cleanupResult.isErr()) {
+      logger.error(
+        { err: cleanupResult.error, actionId: action.sId },
+        "Failed to clean up partially written MCP output items"
+      );
+    }
+    return result;
+  }
+  return new Ok(gcsPath);
+}
 
 // New paths live under `w/<workspaceId>/...`. Anything else (`mcp_output_items/...`
 // or NULL) needs to be migrated.
@@ -144,11 +180,7 @@ makeScript(
               // Re-write content from DB to the new GCS path. The DB column is NOT NULL during the
               // migration period, so it's available even for items that already have a
               // (legacy-prefix) GCS object.
-              const writeResult = await batchRewriteContentsToGcs(
-                auth,
-                action,
-                [{ itemId: item.id, content: item.content }]
-              );
+              const writeResult = await rewriteContentToGcs(auth, action, item);
               if (writeResult.isErr()) {
                 scriptLogger.error(
                   {
@@ -162,18 +194,8 @@ makeScript(
                 return;
               }
 
-              const newPath = writeResult.value[0];
-              if (!newPath) {
-                scriptLogger.error(
-                  { workspaceId: workspaceId, itemId: item.id },
-                  "[Backfill MCP output GCS paths] GCS write returned no path; skipping"
-                );
-                errors += 1;
-                return;
-              }
-
               await AgentMCPActionOutputItemModel.update(
-                { contentGcsPath: newPath },
+                { contentGcsPath: writeResult.value },
                 {
                   where: { id: item.id, workspaceId: workspaceModelId },
                   silent: true,

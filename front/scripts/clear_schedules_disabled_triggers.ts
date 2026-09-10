@@ -1,7 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { makeScript } from "@app/scripts/helpers";
+import { listTriggersForMaintenance } from "@app/scripts/trigger_helpers";
 
 /**
  * This script removes temporal workflows for all disabled triggers across all workspaces.
@@ -10,7 +11,7 @@ import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   // List all disabled triggers.
-  const triggerResources = await TriggerResource.listAllForScript({
+  const triggerResources = await listTriggersForMaintenance({
     status: "disabled",
   });
 

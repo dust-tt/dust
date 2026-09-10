@@ -1606,14 +1606,6 @@ export class FileResource extends BaseResource<FileModel> {
     return result;
   }
 
-  /**
-   * Public entry point to trigger mount path resolution. Idempotent — no-ops when a path is
-   * already set or when the file's use case isn't mount-eligible. Used by backfill scripts.
-   */
-  async ensureMountFilePath(auth: Authenticator): Promise<void> {
-    await this.resolveAndSetMountFilePath(auth);
-  }
-
   // Mount file path logic.
   //
   // Files used in conversations or Pods are copied to a gcsfuse-mountable GCS path so
