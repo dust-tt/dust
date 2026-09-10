@@ -33,7 +33,10 @@ import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkil
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
+import {
+  useAreSkillSuggestionsEnabled,
+  useSkillSuggestions,
+} from "@app/hooks/useSkillSuggestions";
 import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { useAppRouter } from "@app/lib/platform";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
@@ -41,7 +44,6 @@ import {
   useSkillEditors,
   useUpdateSkillEditors,
 } from "@app/lib/swr/skill_editors";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
@@ -75,7 +77,6 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
   const [isAddingSelfAsEditor, setIsAddingSelfAsEditor] = useState(false);
-  const isMobile = useIsMobile();
 
   const { editors, isEditorsError, isEditorsLoading, mutateEditors } =
     useSkillEditors({
@@ -95,12 +96,13 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   });
 
   const hasSelfImprovingSkills = useIsSelfImprovementAvailable();
+  const areSuggestionsEnabled = useAreSkillSuggestionsEnabled();
 
   const { suggestions } = useSkillSuggestions({
     skillId: skill?.sId ?? null,
     states: ["pending"],
     workspaceId: owner.sId,
-    disabled: !skill || !hasSelfImprovingSkills,
+    disabled: !skill || !areSuggestionsEnabled,
   });
 
   const hasPendingSuggestions = suggestions.length > 0;
@@ -276,7 +278,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   };
 
   const showSuggestionsPanel =
-    skill && !isMobile && hasSelfImprovingSkills && hasPendingSuggestions;
+    skill && areSuggestionsEnabled && hasPendingSuggestions;
 
   const leftPanel = (
     <div className="flex h-full w-full flex-col">

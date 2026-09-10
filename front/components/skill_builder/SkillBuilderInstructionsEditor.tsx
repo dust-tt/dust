@@ -20,9 +20,11 @@ import type {
 import type { ReferenceSummaryItem } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { SkillBuilderInstructionsReferenceSummary } from "@app/components/skill_builder/SkillBuilderInstructionsReferenceSummary";
 import { useSkillVersionComparisonContext } from "@app/components/skill_builder/SkillBuilderVersionContext";
-import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
+import {
+  useAreSkillSuggestionsEnabled,
+  useSkillSuggestions,
+} from "@app/hooks/useSkillSuggestions";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import {
   postProcessMarkdown,
   preprocessMarkdownForEditor,
@@ -262,7 +264,7 @@ export function SkillBuilderInstructionsEditor({
   >(null);
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
     useState<MCPServerViewType | null>(null);
-  const hasSelfImprovement = useIsSelfImprovementAvailable();
+  const areSuggestionsEnabled = useAreSkillSuggestionsEnabled();
 
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
@@ -485,7 +487,7 @@ export function SkillBuilderInstructionsEditor({
     skillId,
     states: ["pending"],
     workspaceId: owner.sId,
-    disabled: !skillId || !hasSelfImprovement,
+    disabled: !skillId || !areSuggestionsEnabled,
   });
 
   const hasSuggestions = suggestions.length > 0;
