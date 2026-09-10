@@ -364,6 +364,7 @@ export function ConversationContainerVirtuoso({
                   ))}
                 </h3>
               }
+              description="with love from gabriel"
             />
           </div>
           <div
