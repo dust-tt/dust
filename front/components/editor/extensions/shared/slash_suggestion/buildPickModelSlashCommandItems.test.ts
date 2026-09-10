@@ -19,6 +19,7 @@ import {
 import { GEMINI_3_1_FLASH_LITE_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import {
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_4_MINI_MODEL_CONFIG,
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_6_ASTRA_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
@@ -156,6 +157,7 @@ describe("buildPickModelSlashCommandItems", () => {
           asSelectable(CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG),
           asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
           asSelectable(GPT_5_6_LUNA_MODEL_CONFIG),
+          asSelectable(GPT_5_4_MINI_MODEL_CONFIG),
         ],
         query,
         streams: null,
@@ -168,6 +170,10 @@ describe("buildPickModelSlashCommandItems", () => {
     expect(labelsFor("gptluna l")).toEqual([
       `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Light`,
     ]);
+    // A displayed name can be typed as is, hyphen included.
+    expect(labelsFor(`${GPT_5_4_MINI_MODEL_CONFIG.displayName} h`)).toEqual([
+      `${GPT_5_4_MINI_MODEL_CONFIG.displayName} High`,
+    ]);
     expect(labelsFor("claude h")).toEqual([
       haikuHigh,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
@@ -177,6 +183,7 @@ describe("buildPickModelSlashCommandItems", () => {
       `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} Medium`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
       `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Medium`,
+      `${GPT_5_4_MINI_MODEL_CONFIG.displayName} Medium`,
     ]);
   });
 

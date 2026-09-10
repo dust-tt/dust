@@ -62,9 +62,10 @@ function filterAndRankByQuery(
   items: SelectModelSlashCommand[],
   query: string
 ): SelectModelSlashCommand[] {
+  // Hyphens split like spaces so a displayed name such as "GPT-5.4 Mini" can be typed as is.
   const queryWords = query
     .toLowerCase()
-    .split(/\s+/)
+    .split(/[\s-]+/)
     .filter((word) => word.length > 0);
   const lastWord = queryWords.at(-1);
   const effort =
@@ -159,9 +160,9 @@ function buildTierSlashCommandItems({
 
 /**
  * @cc [owner:PopDaph,label:product] query-selects-name-then-effort
- * When the last word of `query` is a prefix of a slider effort (`light`, `medium`, `high`), only
- * model rows at that effort are kept and the other words form the name query; otherwise every
- * word does. A row is kept when the name query, joined, is an in-order subsequence (`subFilter`)
+ * `query` is split on whitespace and hyphens. When its last word is a prefix of a slider effort
+ * (`light`, `medium`, `high`), only model rows at that effort are kept and the other words form
+ * the name query; otherwise every word does. A row is kept when the name query, joined, is an in-order subsequence (`subFilter`)
  * of its name (tier name or model display name) without spaces or hyphens, and kept rows are
  * ranked with `compareForFuzzySort`, ties keeping catalog order. Descriptions are never searched;
  * an empty query keeps every row.
