@@ -66,6 +66,9 @@ import type {
 } from "sequelize";
 import { col, fn, Op, QueryTypes } from "sequelize";
 
+const LAST_GROUP_MEMBER_ERROR_MESSAGE =
+  "A group must always keep at least one member. To remove everyone, delete the group instead.";
+
 type CachedGroup = {
   id: ModelId;
   name: string;
@@ -2241,6 +2244,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  /**
+   * @cc [owner:fabiencelier,label:product] manual-group-never-emptied
+   * A `regular_manual` group MUST keep at least one active member: an empty `memberIds` list
+   * MUST fail with `last_group_member`.
+   */
   async updateRegularManualGroup(
     auth: Authenticator,
     { name, memberIds }: { name?: string; memberIds?: string[] }
@@ -2255,6 +2263,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         | "user_already_member"
         | "group_not_found"
         | "group_requirements_not_met"
+        | "last_group_member"
         | "system_or_global_group"
       >
     >
@@ -2285,6 +2294,13 @@ export class GroupResource extends BaseResource<GroupModel> {
           "unauthorized",
           "Only workspace admins can manage members of a group that grants the admin role."
         )
+      );
+    }
+
+    // Checked before any mutation so a rejected update leaves both name and members untouched.
+    if (memberIds !== undefined && memberIds.length === 0) {
+      return new Err(
+        new DustError("last_group_member", LAST_GROUP_MEMBER_ERROR_MESSAGE)
       );
     }
 
@@ -2332,7 +2348,43 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
+   * Whether applying `addUserIds` then `removeUserIds` could leave the group without any active
+   * member. `addUserIds` and `removeUserIds` must be deduplicated; a user in both lists ends up
+   * removed, since members are added first and removed second.
+   *
+   * Only reads the current members when the answer is not already settled by the two lists, so
+   * the common add-only and add-and-remove cases cost no query.
+   */
+  private async wouldBeEmptyAfterMemberChange(
+    auth: Authenticator,
+    {
+      addUserIds,
+      removeUserIds,
+    }: { addUserIds: string[]; removeUserIds: string[] }
+  ): Promise<boolean> {
+    // Removing nothing can only grow the group.
+    if (removeUserIds.length === 0) {
+      return false;
+    }
+
+    // Any added user that is not removed again survives the change.
+    const removedUserIds = new Set(removeUserIds);
+    if (addUserIds.some((userId) => !removedUserIds.has(userId))) {
+      return false;
+    }
+
+    const currentMembers = await this.getActiveMembers(auth);
+    return currentMembers.every((member) => removedUserIds.has(member.sId));
+  }
+
+  /**
    * Adds and/or removes members of a manually-managed group, leaving the other members untouched.
+   */
+  /**
+   * @cc [owner:fabiencelier,label:product] manual-group-never-emptied
+   * A `regular_manual` group MUST keep at least one active member: when the requested
+   * add/remove combination would leave the group with no active member, the whole update MUST
+   * fail with `last_group_member` and no membership change MUST be persisted.
    */
   async updateRegularManualGroupMembers(
     auth: Authenticator,
@@ -2350,6 +2402,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         | "user_not_member"
         | "user_already_member"
         | "group_requirements_not_met"
+        | "last_group_member"
         | "system_or_global_group"
       >
     >
@@ -2400,6 +2453,18 @@ export class GroupResource extends BaseResource<GroupModel> {
     ) {
       return new Err(
         new DustError("user_not_found", "Some users were not found.")
+      );
+    }
+
+    // Checked before any mutation so a rejected update leaves the members untouched.
+    if (
+      await this.wouldBeEmptyAfterMemberChange(auth, {
+        addUserIds: uniqueAddUserIds,
+        removeUserIds: uniqueRemoveUserIds,
+      })
+    ) {
+      return new Err(
+        new DustError("last_group_member", LAST_GROUP_MEMBER_ERROR_MESSAGE)
       );
     }
 

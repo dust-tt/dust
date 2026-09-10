@@ -11,6 +11,7 @@ type GroupMembershipErrorType =
   | "group_not_found"
   | "group_requirements_not_met"
   | "invalid_group_id"
+  | "last_group_member"
   | "system_or_global_group"
   | "unauthorized"
   | "user_already_member"

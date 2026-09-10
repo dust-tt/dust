@@ -469,7 +469,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     );
   });
 
-  it("clears all members with an empty array", async () => {
+  it("refuses to clear all members with an empty array", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
@@ -486,9 +486,12 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
       memberIds: [],
     });
 
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.members).toEqual([]);
+    expect(response.status).toBe(400);
+    const { error } = await response.json();
+    expect(error.type).toBe("invalid_request_error");
+
+    const members = await group.getActiveMembers(auth);
+    expect(members.map((m) => m.sId)).toEqual([user.sId]);
   });
 
   it("renames and sets members in a single request", async () => {
