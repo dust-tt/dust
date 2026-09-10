@@ -340,6 +340,47 @@ export class WakeUpResource extends BaseResource<WakeUpModel> {
     });
   }
 
+  /**
+   * @cc [owner:fabiencelier,label:backend] user-owned-wake-ups-only
+   * The returned wake-ups and `totalCount` MUST only cover wake-ups owned by `user` in the current
+   * workspace and, when `status` is given, in one of those statuses. `totalCount` MUST count every
+   * matching wake-up, independent of `limit` and `offset`.
+   */
+  static async listByUserWithTotalCount(
+    auth: Authenticator,
+    user: UserResource | UserType,
+    {
+      limit,
+      offset,
+      status,
+    }: { limit: number; offset: number; status?: WakeUpStatus | WakeUpStatus[] }
+  ): Promise<{ wakeUps: WakeUpResource[]; totalCount: number }> {
+    const where = {
+      userId: user.id,
+      ...(status !== undefined ? { status } : {}),
+    };
+
+    const [wakeUps, totalCount] = await Promise.all([
+      this.baseFetch(auth, {
+        where,
+        order: [
+          ["createdAt", "DESC"],
+          ["id", "DESC"],
+        ],
+        limit,
+        offset,
+      }),
+      this.model.count({
+        where: {
+          ...where,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        } as WhereOptions<WakeUpModel>,
+      }),
+    ]);
+
+    return { wakeUps, totalCount };
+  }
+
   static async listByAgentConfigurationId(
     auth: Authenticator,
     agentConfigurationId: string,

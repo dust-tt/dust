@@ -42,6 +42,7 @@ import type {
   ConversationListItemType,
   ConversationMCPServerViewType,
   ConversationMetadata,
+  ConversationRefType,
   ConversationUrlAccessMode,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -5403,6 +5404,21 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     return transferredCount;
+  }
+
+  /**
+   * Minimal serialization for listings that only need to name a conversation and link to it, such
+   * as the personal wake-ups list. Uses the same display title as `toListItem`.
+   */
+  toRefJSON(): ConversationRefType {
+    return {
+      sId: this.sId,
+      title: getConversationDisplayTitle({
+        created: this.createdAt.getTime(),
+        forkingData: this.forkingData,
+        title: this.title,
+      }),
+    };
   }
 
   toListItem(): ConversationListItemType {

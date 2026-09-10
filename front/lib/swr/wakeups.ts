@@ -1,5 +1,9 @@
 import { useConversations } from "@app/hooks/conversations/useConversations";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type {
+  UserWakeUps,
+  UserWakeUpWithConversation,
+} from "@app/lib/api/assistant/wakeups";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetConversationWakeUpsResponseBody } from "@app/types/api/assistant/conversation/wakeups";
@@ -101,4 +105,33 @@ export function useCancelWakeUp({
   );
 
   return { cancelWakeUp };
+}
+
+export function useUserWakeUps({
+  owner,
+  limit,
+  offset,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  limit: number;
+  offset: number;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const userWakeUpsFetcher: Fetcher<UserWakeUps> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/me/wakeups?limit=${limit}&offset=${offset}`,
+    userWakeUpsFetcher,
+    { disabled }
+  );
+
+  return {
+    wakeUps: data?.wakeUps ?? emptyArray<UserWakeUpWithConversation>(),
+    totalCount: data?.totalCount ?? 0,
+    isWakeUpsLoading: !error && !data && !disabled,
+    isWakeUpsError: !!error,
+    mutateWakeUps: mutate,
+  };
 }

@@ -583,6 +583,15 @@ export type ConversationForkedChildType = {
 };
 
 /**
+ * Minimal reference to a conversation: enough to name it and link to it. Used by listings of other
+ * resources that only need to point at their conversation.
+ */
+export type ConversationRefType = {
+  sId: string;
+  title: string | null;
+};
+
+/**
  * Fields needed to render a conversation row in the sidebar list. Served
  * directly from Elasticsearch. No DB hydration required.
  */
