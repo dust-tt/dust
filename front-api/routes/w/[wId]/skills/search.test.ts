@@ -43,6 +43,14 @@ describe("GET /api/w/:wId/skills/search", () => {
       limit: undefined,
       cursor: undefined,
       permissionFiltering: undefined,
+      mode: undefined,
+      filters: {
+        spaceIds: undefined,
+        toolIds: undefined,
+        availability: undefined,
+        isDefault: undefined,
+        editedByMe: undefined,
+      },
     });
     expect(await response.json()).toEqual({
       nextCursor: null,
@@ -74,6 +82,14 @@ describe("GET /api/w/:wId/skills/search", () => {
       limit: 10,
       cursor,
       permissionFiltering: undefined,
+      mode: undefined,
+      filters: {
+        spaceIds: undefined,
+        toolIds: undefined,
+        availability: undefined,
+        isDefault: undefined,
+        editedByMe: undefined,
+      },
     });
     const body = await response.json();
     expect(body).toEqual({ skills: [], nextCursor: cursor });
@@ -85,6 +101,11 @@ describe("GET /api/w/:wId/skills/search", () => {
     "limit=1.5",
     "cursor=invalid",
     "permissionFiltering=dangerously_skip",
+    "mode=unknown",
+    "isDefault=invalid",
+    "editedByMe=1",
+    "availability=unknown",
+    "toolIds=",
   ])("rejects invalid pagination: %s", async (query) => {
     const { workspace } = await createPrivateApiMockRequest();
     const response = await honoApp.request(
@@ -122,7 +143,39 @@ describe("GET /api/w/:wId/skills/search", () => {
       limit: undefined,
       cursor: undefined,
       permissionFiltering: "redact_unreadable",
+      mode: undefined,
+      filters: {
+        spaceIds: undefined,
+        toolIds: undefined,
+        availability: undefined,
+        isDefault: undefined,
+        editedByMe: undefined,
+      },
     });
+  });
+
+  it("accepts ranking modes and structured filters without treating false as true", async () => {
+    const { workspace } = await createPrivateApiMockRequest();
+    searchSkillsForCommandMenu.mockResolvedValue(
+      new Ok({ skills: [], nextCursor: null })
+    );
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/skills/search?mode=management&spaceIds=one,two&toolIds=tool&availability=editors,workspace_users&isDefault=false&editedByMe=true`
+    );
+    expect(response.status).toBe(200);
+    expect(searchSkillsForCommandMenu).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        mode: "management",
+        filters: {
+          spaceIds: ["one", "two"],
+          toolIds: ["tool"],
+          availability: ["editors", "workspace_users"],
+          isDefault: false,
+          editedByMe: true,
+        },
+      })
+    );
   });
 
   it.each([

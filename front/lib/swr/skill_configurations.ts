@@ -16,7 +16,9 @@ import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
   GetSkillWithRelationsResponseBody,
+  SearchMode,
   SearchSkillsResponseBody,
+  SkillSearchFilters,
   SkillSearchPermissionFiltering,
 } from "@app/types/api/skills";
 import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
@@ -169,6 +171,8 @@ export function useSearchSkills({
   cursor,
   limit,
   permissionFiltering,
+  mode,
+  filters,
   disabled,
   swrOptions,
 }: {
@@ -177,6 +181,8 @@ export function useSearchSkills({
   cursor?: string;
   limit?: number;
   permissionFiltering?: SkillSearchPermissionFiltering;
+  mode?: SearchMode;
+  filters?: SkillSearchFilters;
   disabled?: boolean;
   swrOptions?: SWRConfiguration;
 }) {
@@ -204,6 +210,20 @@ export function useSearchSkills({
   }
   if (permissionFiltering) {
     queryParams.set("permissionFiltering", permissionFiltering);
+  }
+  if (mode) {
+    queryParams.set("mode", mode);
+  }
+  for (const field of ["spaceIds", "toolIds", "availability"] as const) {
+    const values = filters?.[field];
+    if (values?.length) {
+      queryParams.set(field, [...new Set(values)].sort().join(","));
+    }
+  }
+  for (const field of ["isDefault", "editedByMe"] as const) {
+    if (filters?.[field] !== undefined) {
+      queryParams.set(field, String(filters[field]));
+    }
   }
   const skillsFetcher: Fetcher<SearchSkillsResponseBody> = fetcher;
   const { data, error, isValidating } = useSWRWithDefaults(

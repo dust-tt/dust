@@ -37,25 +37,37 @@ import { SkillSearchDocumentResource } from "@app/lib/resources/skill/skill_sear
 import { SkillSearchCursorError } from "@app/lib/skill_search/cursor";
 import {
   compareRankedSkills,
+  getSearchRankingScore,
   getSkillSearchScore,
 } from "@app/lib/skill_search/ranking";
+import { storeCodeDefinedSkillActiveUsers } from "@app/lib/skill_search/usage";
 import { GLOBAL_SKILL_SEARCH_ALIASES } from "@app/lib/skills/global_search_aliases";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import type { SearchMode } from "@app/types/api/skills";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
 
 // Only ES is mocked: the registries, Redis cursors and canonical DB/ACL checks run.
-function serveDocuments(documents: SkillSearchDocument[], searchTerm = "") {
+function serveDocuments(
+  documents: SkillSearchDocument[],
+  searchTerm = "",
+  mode: SearchMode = "autocomplete"
+) {
   const ordered = documents
     .map((document) => ({
       document,
-      score: getSkillSearchScore({
-        searchTerm,
-        name: document.name,
-        description: document.user_facing_description ?? "",
+      score: getSearchRankingScore({
+        mode,
+        activeUsers: document.active_users,
+        matchScore: getSkillSearchScore({
+          searchTerm,
+          name: document.name,
+          description: document.description ?? "",
+          mode,
+        }),
       }),
       name: document.name,
       sId: document.skill_id,
@@ -113,6 +125,89 @@ describe("searchSkillsForCommandMenu pagination", () => {
     mockSearch.mockReset();
     mockOpenPit.mockReset().mockResolvedValue({ id: "pit-initial" });
     mockClosePit.mockReset().mockResolvedValue({ succeeded: true });
+  });
+
+  it("paginates one usage-ranked stream of custom and code-defined skills", async () => {
+    const { auth, workspace } = await createPrivateApiMockRequest({
+      role: "user",
+    });
+    const firstDocument = await createDocument(auth, "AAA lower usage");
+    const lastDocument = await createDocument(auth, "ZZZ higher usage");
+    const first = {
+      ...firstDocument,
+      active_users: 4,
+    };
+    const last = {
+      ...lastDocument,
+      active_users: 20,
+    };
+    await storeCodeDefinedSkillActiveUsers(workspace.sId, { "go-deep": 10 });
+    serveDocuments([first, last], "", "management");
+    let cursor: string | undefined;
+    const ids: string[] = [];
+    for (let pageNumber = 0; pageNumber < 3; pageNumber++) {
+      const page = await searchSkillsForCommandMenu(auth, {
+        searchTerm: "",
+        mode: "management",
+        limit: 1,
+        cursor,
+      });
+      assert(page.isOk());
+      ids.push(...page.value.skills.map((skill) => skill.sId));
+      cursor = page.value.nextCursor ?? undefined;
+    }
+    expect(ids).toEqual([last.skill_id, "go-deep", first.skill_id]);
+    expect(
+      mockSearch.mock.calls[0][0].query.bool.must[0].script_score
+    ).toMatchObject({ script: { source: "1 + doc['active_users'].value" } });
+  });
+
+  it("binds cursors to ranking and selection filters", async () => {
+    const { auth } = await createPrivateApiMockRequest({ role: "user" });
+    serveDocuments([]);
+    const page = await searchSkillsForCommandMenu(auth, {
+      searchTerm: "",
+      limit: 1,
+    });
+    assert(page.isOk() && page.value.nextCursor);
+    for (const options of [
+      { mode: "management" as const },
+      { filters: { isDefault: true } },
+    ]) {
+      const changed = await searchSkillsForCommandMenu(auth, {
+        searchTerm: "",
+        cursor: page.value.nextCursor,
+        ...options,
+      });
+      assert(changed.isErr());
+      expect(changed.error).toBeInstanceOf(SkillSearchCursorError);
+    }
+  });
+
+  it("applies default, availability, and editor filters to code-defined skills too", async () => {
+    const { auth } = await createPrivateApiMockRequest({ role: "user" });
+    serveDocuments([]);
+    const defaults = await searchSkillsForCommandMenu(auth, {
+      searchTerm: "",
+      filters: { isDefault: true },
+    });
+    assert(defaults.isOk());
+    const globals = await GlobalSkillsRegistry.findAll(auth);
+    expect(defaults.value.skills.map((skill) => skill.sId).sort()).toEqual(
+      globals.map((skill) => skill.sId).sort()
+    );
+    const editors = await searchSkillsForCommandMenu(auth, {
+      searchTerm: "",
+      filters: { editedByMe: true },
+    });
+    assert(editors.isOk());
+    expect(editors.value.skills).toEqual([]);
+    const unpublished = await searchSkillsForCommandMenu(auth, {
+      searchTerm: "",
+      filters: { availability: ["editors"] },
+    });
+    assert(unpublished.isOk());
+    expect(unpublished.value.skills).toEqual([]);
   });
 
   it("refetches custom hits displaced by globals without skips or duplicates", async () => {
@@ -208,6 +303,39 @@ describe("searchSkillsForCommandMenu pagination", () => {
     expect(mockSearch).toHaveBeenCalledOnce();
   });
 
+  it("paginates word-prefix matches without losing custom hits displaced by globals", async () => {
+    const { auth } = await createPrivateApiMockRequest({ role: "user" });
+    const exact = await createDocument(auth, "Deep");
+    const prefix = await createDocument(auth, "DeepBuilder");
+    const wordPrefix = await createDocument(auth, "WeeklyDeepReport");
+    const notAMatch = await createDocument(
+      auth,
+      "DeveloperExperienceExpertPlanner"
+    );
+    serveDocuments([wordPrefix, notAMatch, prefix, exact], "deep");
+
+    let cursor: string | undefined;
+    const ids: string[] = [];
+    for (let pageNumber = 0; pageNumber < 4; pageNumber++) {
+      const page = await searchSkillsForCommandMenu(auth, {
+        searchTerm: "deep",
+        limit: 1,
+        cursor,
+      });
+      assert(page.isOk());
+      expect(page.value.skills).toHaveLength(1);
+      ids.push(...page.value.skills.map((skill) => skill.sId));
+      cursor = page.value.nextCursor ?? undefined;
+    }
+    expect(ids).toEqual([
+      exact.skill_id,
+      prefix.skill_id,
+      "go-deep",
+      wordPrefix.skill_id,
+    ]);
+    expect(cursor).toBeUndefined();
+  });
+
   it("matches global aliases and does not return restricted globals", async () => {
     const { auth } = await createPrivateApiMockRequest({ role: "user" });
     serveDocuments([], "Deep Dive");
@@ -264,7 +392,7 @@ describe("searchSkillsForCommandMenu pagination", () => {
     expect(mockOpenPit).toHaveBeenCalledOnce();
   });
 
-  it("rechecks pod access between pages and skips revoked candidates", async () => {
+  it("invalidates a strict cursor when pod read grants change", async () => {
     const { auth, workspace, user } = await createPrivateApiMockRequest({
       role: "user",
     });
@@ -286,8 +414,15 @@ describe("searchSkillsForCommandMenu pagination", () => {
       limit: 1,
       cursor: first.value.nextCursor,
     });
-    assert(next.isOk());
-    expect(next.value.skills.map((skill) => skill.sId)).toEqual([
+    assert(next.isErr());
+    expect(next.error).toBeInstanceOf(SkillSearchCursorError);
+    const restarted = await searchSkillsForCommandMenu(auth, {
+      searchTerm: "",
+      limit: 2,
+    });
+    assert(restarted.isOk());
+    expect(restarted.value.skills.map((skill) => skill.sId)).toEqual([
+      firstDoc.skill_id,
       lastDoc.skill_id,
     ]);
   });
@@ -472,7 +607,7 @@ describe("searchSkillsForCommandMenu pagination", () => {
     serveDocuments([
       {
         ...current,
-        user_facing_description: "Stale description",
+        description: "Stale description",
         instructions: "Never return this",
       },
       archived,
@@ -488,7 +623,9 @@ describe("searchSkillsForCommandMenu pagination", () => {
       skill.sId.startsWith("skl_")
     );
     expect(custom).toEqual([
-      SkillSearchDocumentResource.toSearchJSON(current, 1),
+      SkillResource.fromSearchDocument(auth, current, {
+        canRead: true,
+      }).toSearchJSON(auth, 1),
     ]);
     expect(JSON.stringify(result.value)).not.toContain("Never return this");
   });

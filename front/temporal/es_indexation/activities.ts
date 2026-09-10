@@ -7,7 +7,12 @@ import {
   deleteSkillDocument,
   deleteWorkspaceSkillDocuments,
   indexSkillDocument,
+  updateSkillSearchActiveUsers,
 } from "@app/lib/skill_search";
+import {
+  fetchSearchActiveUsers,
+  storeCodeDefinedSkillActiveUsers,
+} from "@app/lib/skill_search/usage";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -121,4 +126,52 @@ export async function deleteWorkspaceSkillSearchActivity({
   if (deleteResult.isErr()) {
     throw deleteResult.error;
   }
+}
+
+export async function listSearchUsageWorkspacesActivity(
+  afterWorkspaceModelId: number
+) {
+  return WorkspaceResource.unsafeListWorkspaceIdBatchAfterModelId({
+    lastWorkspaceModelId: afterWorkspaceModelId,
+    limit: 50,
+  });
+}
+
+export async function refreshWorkspaceSearchUsageActivity({
+  workspaceId,
+  evaluatedAtMs,
+}: {
+  workspaceId: string;
+  evaluatedAtMs: number;
+}): Promise<void> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const activeUsers = await fetchSearchActiveUsers({
+    workspaceId,
+    evaluatedAtMs,
+  });
+  if (activeUsers.isErr()) {
+    throw activeUsers.error;
+  }
+  let afterSkillModelId: number | null = null;
+  // Keyset pages, not one query per skill; missing usage resets to zero on every page.
+  while (true) {
+    const skills =
+      await SkillSearchDocumentResource.listActiveSearchIndexSkillIds(auth, {
+        afterSkillModelId,
+        limit: 500,
+      });
+    if (skills.length === 0) {
+      break;
+    }
+    const updated = await updateSkillSearchActiveUsers({
+      workspaceId,
+      skillIds: skills.map((skill) => skill.skillId),
+      activeUsers: activeUsers.value,
+    });
+    if (updated.isErr()) {
+      throw updated.error;
+    }
+    afterSkillModelId = skills[skills.length - 1].skillModelId;
+  }
+  await storeCodeDefinedSkillActiveUsers(workspaceId, activeUsers.value);
 }

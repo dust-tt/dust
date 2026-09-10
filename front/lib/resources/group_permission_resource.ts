@@ -27,6 +27,7 @@ import {
   isGroupPermissionResourceType,
   WHOLE_TYPE_RESOURCE_ID,
 } from "@app/types/group_permissions";
+import type { GroupKind } from "@app/types/groups";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -397,7 +398,34 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
       transaction?: Transaction;
     }
   ): Promise<Map<GrantKey, GroupResource>> {
+    const groupsByGrant = await this.listGroupsForGrants(auth, {
+      grants,
+      groupKinds: ["regular_auto"],
+      transaction,
+    });
     const result = new Map<GrantKey, GroupResource>();
+    for (const [key, groups] of groupsByGrant) {
+      const group = groups.at(-1);
+      assert(group);
+      result.set(key, group);
+    }
+    return result;
+  }
+
+  /** Lists groups holding each exact grant tuple, with no caller membership filtering. */
+  static async listGroupsForGrants(
+    auth: Authenticator,
+    {
+      grants,
+      groupKinds,
+      transaction,
+    }: {
+      grants: GrantSpec[];
+      groupKinds?: GroupKind[];
+      transaction?: Transaction;
+    }
+  ): Promise<Map<GrantKey, GroupResource[]>> {
+    const result = new Map<GrantKey, GroupResource[]>();
     if (grants.length === 0) {
       return result;
     }
@@ -418,27 +446,23 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
     }
 
     const groupIds = [...new Set(rows.map((row) => row.groupId))];
-    const autoGroups = await GroupResource.dangerouslyFetchByModelIds(
+    const groups = await GroupResource.dangerouslyFetchByModelIds(
       auth,
       groupIds,
       {
-        groupKinds: ["regular_auto"],
+        groupKinds,
         transaction,
       }
     );
-    const autoGroupById = new Map(autoGroups.map((group) => [group.id, group]));
+    const groupById = new Map(groups.map((group) => [group.id, group]));
 
     for (const row of rows) {
-      const group = autoGroupById.get(row.groupId);
+      const group = groupById.get(row.groupId);
       if (group) {
-        result.set(
-          grantKey({
-            grantType: row.grantType,
-            resourceType: row.resourceType,
-            resourceId: row.resourceId,
-          }),
-          group
-        );
+        const key = grantKey(row);
+        const heldGroups = result.get(key) ?? [];
+        heldGroups.push(group);
+        result.set(key, heldGroups);
       }
     }
 

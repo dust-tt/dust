@@ -14,7 +14,7 @@ export const CONSUMPTION_ANALYTICS_ALIAS_NAME =
 export const USER_SEARCH_ALIAS_NAME = "front.user_search";
 export const AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME = "front.agent_document_outputs";
 export const CONVERSATION_SEARCH_ALIAS_NAME = "front.conversation_search";
-export const SKILL_SEARCH_ALIAS_NAME = "front.skill_search";
+export const SKILL_SEARCH_ALIAS_NAME = "front.skills";
 
 /**
  * @cc [owner:aubin-tchoi,label:backend] registered-index-files
@@ -31,7 +31,7 @@ export const INDEX_REGISTRY: Record<
     directory: "lib/analytics/indices",
     version: 1,
   },
-  skill_search: { directory: "lib/skill_search/indices", version: 1 },
+  skills: { directory: "lib/skill_search/indices", version: 2 },
   user_search: { directory: "lib/user_search/indices", version: 1 },
 };
 

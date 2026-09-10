@@ -2,7 +2,7 @@ import { getRedisCacheClient } from "@app/lib/api/redis";
 import {
   SKILL_SEARCH_KEEP_ALIVE_SECONDS,
   SkillSearchSortSchema,
-} from "@app/lib/skill_search/search";
+} from "@app/lib/skill_search/query";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import { createHash, randomUUID } from "crypto";
 import { z } from "zod";
@@ -17,7 +17,7 @@ export type SkillSearchCursor = z.infer<typeof CursorSchema>;
 
 export class SkillSearchCursorError extends Error {
   constructor() {
-    super("Invalid or expired skill search cursor. Restart the search.");
+    super("Invalid or expired resource search cursor. Restart the search.");
   }
 }
 
