@@ -44,7 +44,7 @@ describe("resource-owned skill editor indexation", () => {
       auth,
       skill.sId
     );
-    expect(revoked).toMatchObject({ editor_user_ids: [] });
+    expect(revoked).toMatchObject({ editors: [] });
     expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledExactlyOnceWith({
       workspaceId: workspace.sId,
       skillId: skill.sId,
@@ -55,7 +55,7 @@ describe("resource-owned skill editor indexation", () => {
       auth,
       skill.sId
     );
-    expect(granted).toMatchObject({ editor_user_ids: [user.id] });
+    expect(granted).toMatchObject({ editors: [user.id] });
     vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
     const rollback = new Error("Roll back grant deletion");
     const deletion = withTransaction((parent) =>
@@ -73,7 +73,7 @@ describe("resource-owned skill editor indexation", () => {
       auth,
       skill.sId
     );
-    expect(unchanged).toMatchObject({ editor_user_ids: [user.id] });
+    expect(unchanged).toMatchObject({ editors: [user.id] });
     expect(launchIndexSkillSearchWorkflow).not.toHaveBeenCalled();
     await grant.delete(auth);
     expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledExactlyOnceWith({
@@ -94,7 +94,7 @@ describe("resource-owned skill editor indexation", () => {
       auth,
       skill.sId
     );
-    expect(granted?.editor_user_ids).toContain(editor.id);
+    expect(granted?.editors).toContain(editor.id);
     const removed = await group.dangerouslyRemoveMember(auth, {
       user: editor.toJSON(),
     });
@@ -103,7 +103,7 @@ describe("resource-owned skill editor indexation", () => {
       auth,
       skill.sId
     );
-    expect(revoked?.editor_user_ids).not.toContain(editor.id);
+    expect(revoked?.editors).not.toContain(editor.id);
     expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledTimes(2);
     expect(launchIndexSkillSearchWorkflow).toHaveBeenLastCalledWith({
       workspaceId: workspace.sId,
