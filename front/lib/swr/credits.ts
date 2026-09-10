@@ -323,8 +323,11 @@ export function useAwuPoolCycleHistory({
     excessCycleBreakdown: isUsable
       ? (data?.excessCycleBreakdown ?? emptyArray<AwuPoolCycleBreakdown>())
       : emptyArray<AwuPoolCycleBreakdown>(),
-    hasMoreCycleHistory: isUsable
-      ? (data?.hasMoreCycleHistory ?? false)
+    hasMoreCycleBreakdown: isUsable
+      ? (data?.hasMoreCycleBreakdown ?? false)
+      : false,
+    hasMoreExcessCycleBreakdown: isUsable
+      ? (data?.hasMoreExcessCycleBreakdown ?? false)
       : false,
     isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
     isAwuPoolCycleHistoryError: error,

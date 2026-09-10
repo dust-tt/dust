@@ -358,6 +358,17 @@ export function useCycleHistoryLimit() {
   };
 }
 
+// The backend tracks "more history" separately per breakdown since only one of the two is ever
+// rendered for a given workspace (see `hasPool` below); resolving `hasMore` happens here, once
+// that choice is made, rather than upstream where it isn't known yet.
+export type CycleHistoryLoadMoreByBreakdown = Omit<
+  CycleHistoryLoadMore,
+  "hasMore"
+> & {
+  hasMoreCycleBreakdown: boolean;
+  hasMoreExcessCycleBreakdown: boolean;
+};
+
 interface CreditPoolCardsFromCycleDataProps {
   awuPoolCurrentCycle: AwuPoolCurrentCycleResponseBody | null;
   cardsStatus: CreditPoolFetchStatus;
@@ -365,7 +376,7 @@ interface CreditPoolCardsFromCycleDataProps {
   poolCycleBreakdown: AwuPoolCycleBreakdown[];
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
   tableStatus: CreditPoolFetchStatus;
-  cycleHistoryLoadMore: CycleHistoryLoadMore;
+  cycleHistoryLoadMore: CycleHistoryLoadMoreByBreakdown;
 }
 export function CreditPoolCardsFromCycleData({
   awuPoolCurrentCycle,
@@ -398,6 +409,12 @@ export function CreditPoolCardsFromCycleData({
   const hasExcessData =
     excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
 
+  const {
+    hasMoreCycleBreakdown,
+    hasMoreExcessCycleBreakdown,
+    ...restCycleHistoryLoadMore
+  } = cycleHistoryLoadMore;
+
   return (
     <WorkspaceCreditPoolSection
       cardsStatus={cardsStatus}
@@ -413,7 +430,10 @@ export function CreditPoolCardsFromCycleData({
       currentCycleEndMs={currentCycleEndMs}
       cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
       programmaticConsumedCredits={programmaticConsumedCredits}
-      cycleHistoryLoadMore={cycleHistoryLoadMore}
+      cycleHistoryLoadMore={{
+        ...restCycleHistoryLoadMore,
+        hasMore: hasPool ? hasMoreCycleBreakdown : hasMoreExcessCycleBreakdown,
+      }}
     />
   );
 }
@@ -434,7 +454,8 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
   const {
     cycleBreakdown: poolCycleBreakdown,
     excessCycleBreakdown,
-    hasMoreCycleHistory,
+    hasMoreCycleBreakdown,
+    hasMoreExcessCycleBreakdown,
     isAwuPoolCycleHistoryLoading,
     isAwuPoolCycleHistoryError,
     isAwuPoolCycleHistoryValidating,
@@ -461,7 +482,8 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
         !!isAwuPoolCycleHistoryError
       )}
       cycleHistoryLoadMore={{
-        hasMore: hasMoreCycleHistory,
+        hasMoreCycleBreakdown,
+        hasMoreExcessCycleBreakdown,
         isLoading:
           isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading,
         onLoadMore: onLoadMoreCycleHistory,

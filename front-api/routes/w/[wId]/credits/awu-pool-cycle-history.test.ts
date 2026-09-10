@@ -1,4 +1,5 @@
 import * as metronomeClient from "@app/lib/metronome/client";
+import type { MetronomeBalance } from "@app/lib/metronome/types";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Ok } from "@app/types/shared/result";
@@ -61,6 +62,25 @@ function cycleIds(cycles: { cycleEndMs: number | null }[]): string[] {
   );
 }
 
+// A pool commit whose ledger deducts `consumedCredits` against `invoiceId`, making that invoice
+// a cycle with consumption in the pool (non-excess) breakdown.
+function poolBalanceWithDeduction(
+  invoiceId: string,
+  consumedCredits: number
+): MetronomeBalance {
+  return {
+    id: `commit-${invoiceId}`,
+    ledger: [
+      {
+        type: "PREPAID_COMMIT_AUTOMATED_INVOICE_DEDUCTION",
+        amount: -consumedCredits,
+        invoice_id: invoiceId,
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  } as unknown as MetronomeBalance;
+}
+
 async function requestAsManager(query = "") {
   const workspace = await WorkspaceFactory.creditPriced();
   await createPrivateApiMockRequest({
@@ -117,7 +137,8 @@ describe("GET /api/w/[wId]/credits/awu-pool-cycle-history", () => {
     expect(await response.json()).toEqual({
       cycleBreakdown: [],
       excessCycleBreakdown: [],
-      hasMoreCycleHistory: false,
+      hasMoreCycleBreakdown: false,
+      hasMoreExcessCycleBreakdown: false,
     });
     expect(metronomeClient.listMetronomeFinalizedInvoices).toHaveBeenCalled();
   });
@@ -148,7 +169,10 @@ describe("GET /api/w/[wId]/credits/awu-pool-cycle-history", () => {
 
     expect(response.status).toBe(200);
     expect(cycleIds(body.excessCycleBreakdown)).toEqual(["inv-0", "inv-3"]);
-    expect(body.hasMoreCycleHistory).toBe(true);
+    expect(body.hasMoreExcessCycleBreakdown).toBe(true);
+    // No pool ledger data was mocked, so the pool breakdown stays empty and must not
+    // borrow "more" from the unrelated excess breakdown.
+    expect(body.hasMoreCycleBreakdown).toBe(false);
   });
 
   it("reports no more history when the remaining invoices have no consumption", async () => {
@@ -165,7 +189,7 @@ describe("GET /api/w/[wId]/credits/awu-pool-cycle-history", () => {
     const body = await response.json();
 
     expect(cycleIds(body.excessCycleBreakdown)).toEqual(["inv-0", "inv-1"]);
-    expect(body.hasMoreCycleHistory).toBe(false);
+    expect(body.hasMoreExcessCycleBreakdown).toBe(false);
   });
 
   it("reports no more history at the 24 cycle cap even when more exist", async () => {
@@ -178,7 +202,7 @@ describe("GET /api/w/[wId]/credits/awu-pool-cycle-history", () => {
 
     expect(response.status).toBe(200);
     expect(body.excessCycleBreakdown).toHaveLength(24);
-    expect(body.hasMoreCycleHistory).toBe(false);
+    expect(body.hasMoreExcessCycleBreakdown).toBe(false);
   });
 
   it("falls back to the default limit when the requested one is out of range", async () => {
@@ -191,6 +215,29 @@ describe("GET /api/w/[wId]/credits/awu-pool-cycle-history", () => {
 
     expect(response.status).toBe(200);
     expect(body.excessCycleBreakdown).toHaveLength(5);
-    expect(body.hasMoreCycleHistory).toBe(true);
+    expect(body.hasMoreExcessCycleBreakdown).toBe(true);
+  });
+
+  it("does not borrow 'more history' from the excess breakdown for the pool breakdown", async () => {
+    // Invoices 0 and 1 have pool consumption (via the ledger deduction below) and no overage,
+    // so the excess breakdown stays empty while the pool breakdown overflows the limit.
+    vi.mocked(metronomeClient.listMetronomeFinalizedInvoices).mockResolvedValue(
+      new Ok([finalizedInvoice(0), finalizedInvoice(1)])
+    );
+    vi.mocked(metronomeClient.listMetronomeBalances).mockResolvedValue(
+      new Ok([
+        poolBalanceWithDeduction("inv-0", 5),
+        poolBalanceWithDeduction("inv-1", 5),
+      ])
+    );
+
+    const response = await requestAsManager("?cycleHistoryLimit=1");
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(cycleIds(body.cycleBreakdown)).toEqual(["inv-0"]);
+    expect(body.excessCycleBreakdown).toEqual([]);
+    expect(body.hasMoreCycleBreakdown).toBe(true);
+    expect(body.hasMoreExcessCycleBreakdown).toBe(false);
   });
 });
