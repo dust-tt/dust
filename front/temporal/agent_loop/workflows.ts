@@ -140,6 +140,17 @@ const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
   },
 });
 
+// No retries: this is a fail-open check, so a
+// failure should resolve immediately rather than delaying the step with retries.
+const { checkCreditSpendCheckpointActivity } = proxyActivities<
+  typeof creditCheckActivities
+>({
+  startToCloseTimeout: "15 seconds",
+  retry: {
+    maximumAttempts: 1,
+  },
+});
+
 const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
 
 const { ensureConversationTitleActivity } = proxyActivities<
@@ -171,6 +182,7 @@ const {
   finalizeSuccessfulAgentLoopActivity,
   finalizeGracefullyStoppedAgentLoopActivity,
   finalizeCreditStoppedAgentLoopActivity,
+  finalizePausedAgentLoopActivity,
   finalizeCancelledAgentLoopActivity,
   finalizeInterruptedAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
@@ -270,6 +282,12 @@ export async function agentLoopWorkflow({
   // Credit stop: the per-step gate found the workspace pool exhausted.
   let creditStopRequested = false;
 
+  let creditSpendCheckpointPauseRequested = false;
+
+  // Cached per execution: once the activity says to skip, nothing within this execution can
+  // bring the check back (see checkCreditSpendCheckpointActivity).
+  let skipCreditSpendCheckpointChecks = false;
+
   const runIds: string[] = [];
 
   try {
@@ -362,6 +380,31 @@ export async function agentLoopWorkflow({
           creditStopRequested = true;
           break;
         }
+
+        if (!skipCreditSpendCheckpointChecks) {
+          try {
+            const checkpointResult = await checkCreditSpendCheckpointActivity(
+              authType,
+              {
+                agentLoopArgs: {
+                  ...agentLoopArgs,
+                  initialStartTime,
+                },
+              }
+            );
+            if (checkpointResult.skipRemainingChecks) {
+              skipCreditSpendCheckpointChecks = true;
+            } else if (checkpointResult.crossed) {
+              creditSpendCheckpointPauseRequested = true;
+            }
+          } catch {
+            // Non-critical: fails open, must never fail the agent loop.
+          }
+        }
+
+        if (creditSpendCheckpointPauseRequested) {
+          break;
+        }
       }
 
       const stepsCompleted = currentStep - startStep;
@@ -396,6 +439,8 @@ export async function agentLoopWorkflow({
             authType,
             argsWithRunIds
           );
+        } else if (creditSpendCheckpointPauseRequested) {
+          await finalizePausedAgentLoopActivity(authType, argsWithRunIds);
         } else {
           await finalizeSuccessfulAgentLoopActivity(authType, argsWithRunIds);
         }
