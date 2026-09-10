@@ -1,14 +1,19 @@
 import { listAddablePodTabFiles } from "@app/components/pod/files/addablePodTabFiles";
+import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
 import type { AddablePodTabFile } from "@app/components/pod/settings/AddPodFileMenu";
 import { AddPodFileMenu } from "@app/components/pod/settings/AddPodFileMenu";
-import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { usePodFiles } from "@app/lib/swr/pods";
 import type { PodFileTab } from "@app/types/pod_file_tab";
-import { MAX_POD_FILE_TABS } from "@app/types/pod_file_tab";
+import {
+  DEFAULT_POD_FILE_TAB_ICON,
+  MAX_POD_FILE_TAB_TITLE_LENGTH,
+  MAX_POD_FILE_TABS,
+  podFileTabBasename,
+} from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Button, cn, Plus } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 interface PodNavAddFileTabButtonProps {
   owner: LightWorkspaceType;
@@ -29,14 +34,8 @@ export function PodNavAddFileTabButton({
 }: PodNavAddFileTabButtonProps) {
   const { hasFeature } = useFeatureFlags();
   const displayFramePackages = hasFeature("frames_v2");
-
-  const { addFileTab } = usePodFileTabs({
-    owner,
-    podId,
-    fileTabs,
-    tabsOrder,
-    isEditor: true,
-  });
+  const [createFileTabDraft, setCreateFileTabDraft] =
+    useState<PodFileTab | null>(null);
 
   const { files: podFiles } = usePodFiles({
     owner,
@@ -61,9 +60,13 @@ export function PodNavAddFileTabButton({
   const atTabLimit = fileTabs.length >= MAX_POD_FILE_TABS;
 
   const handleAddFile = (file: AddablePodTabFile) => {
-    void addFileTab(file.path, {
-      fileName: file.fileName,
-      skipConfirm: true,
+    setCreateFileTabDraft({
+      path: file.path,
+      title: podFileTabBasename(file.fileName).slice(
+        0,
+        MAX_POD_FILE_TAB_TITLE_LENGTH
+      ),
+      icon: DEFAULT_POD_FILE_TAB_ICON,
     });
   };
 
@@ -93,6 +96,20 @@ export function PodNavAddFileTabButton({
           />
         }
       />
+      {createFileTabDraft && (
+        <EditPodFileTabDialog
+          key={createFileTabDraft.path}
+          owner={owner}
+          podId={podId}
+          fileTabs={fileTabs}
+          tabsOrder={tabsOrder}
+          isEditor
+          tab={createFileTabDraft}
+          mode="create"
+          isOpen
+          onClose={() => setCreateFileTabDraft(null)}
+        />
+      )}
     </div>
   );
 }
