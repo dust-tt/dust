@@ -51,11 +51,6 @@ describe("getFunctionSchema", () => {
     await expect(getFunctionSchema(fx("nope.ts"))).rejects.toThrow();
   });
 
-  test("accepts the pod_member_required user identity policy", async () => {
-    const s = await getFunctionSchema(fx("pod-member.ts"));
-    expect(s.userIdentity).toBe("pod_member_required");
-  });
-
   test("accepts the frame_author_required user identity policy", async () => {
     const s = await getFunctionSchema(fx("frame-author.ts"));
     expect(s.userIdentity).toBe("frame_author_required");

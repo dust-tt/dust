@@ -276,8 +276,6 @@ The \`schema.userIdentity\` policy decides whether the function may run:
 - \`frame_author_required\` requires the caller to be able to modify the Frame v2 source files. In a
   standalone conversation this follows conversation access; in a Pod it follows write access to the
   Pod. Use this for author-only or admin functions.
-- \`pod_member_required\` remains available for legacy Pod-specific functions. Do not use it for new
-  Frame v2 author controls.
 
 Frame UI calls are available only to authenticated members of the owning workspace; guest or link
 viewers must get a typed authorization error. A function policy can impose a stricter requirement.
