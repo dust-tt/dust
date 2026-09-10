@@ -569,11 +569,7 @@ export const useWarehouse = async ({
  * Fetch the grants available for the Snowflake role,
  * including future grants, then check if the connection is read-only.
  */
-/**
- * @cc [owner:aubin-tchoi,label:security] workspace-grants-allow-readonly-data-access
- * Grants on WORKSPACE objects and CREATE WORKSPACE on SCHEMA must not prevent
- * an otherwise read-only connection from passing validation.
- */
+
 export async function isConnectionReadonly({
   credentials,
   connection,
