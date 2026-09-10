@@ -48,6 +48,7 @@ function toApiError(
       };
     case "group_requirements_not_met":
     case "invalid_group_id":
+    case "last_group_member":
     case "system_or_global_group":
     case "user_already_member":
     case "user_not_member":

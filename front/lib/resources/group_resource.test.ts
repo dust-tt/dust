@@ -491,6 +491,90 @@ describe("GroupResource", () => {
     });
   });
 
+  describe("manual groups keep at least one member", () => {
+    async function makeManualGroup(members: UserResource[]) {
+      const group = await GroupResource.makeNew({
+        name: "Last Member Test Group",
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+      await group.dangerouslyAddMembers(authenticator, {
+        users: members.map((m) => m.toJSON()),
+      });
+      return group;
+    }
+
+    it("refuses to remove the last member", async () => {
+      const group = await makeManualGroup([user]);
+
+      const res = await group.updateRegularManualGroupMembers(authenticator, {
+        addUserIds: [],
+        removeUserIds: [user.sId],
+      });
+
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("last_group_member");
+      }
+      expect(
+        (await group.getActiveMembers(authenticator)).map((m) => m.sId)
+      ).toEqual([user.sId]);
+    });
+
+    it("allows removing a member when others remain", async () => {
+      const other = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, other, { role: "user" });
+      const group = await makeManualGroup([user, other]);
+
+      const res = await group.updateRegularManualGroupMembers(authenticator, {
+        addUserIds: [],
+        removeUserIds: [user.sId],
+      });
+
+      expect(res.isOk()).toBe(true);
+      expect(
+        (await group.getActiveMembers(authenticator)).map((m) => m.sId)
+      ).toEqual([other.sId]);
+    });
+
+    it("allows swapping the last member out for a new one", async () => {
+      const other = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, other, { role: "user" });
+      const group = await makeManualGroup([user]);
+
+      const res = await group.updateRegularManualGroupMembers(authenticator, {
+        addUserIds: [other.sId],
+        removeUserIds: [user.sId],
+      });
+
+      expect(res.isOk()).toBe(true);
+      expect(
+        (await group.getActiveMembers(authenticator)).map((m) => m.sId)
+      ).toEqual([other.sId]);
+    });
+
+    it("refuses an empty memberIds list", async () => {
+      const group = await makeManualGroup([user]);
+
+      const res = await group.updateRegularManualGroup(authenticator, {
+        memberIds: [],
+      });
+
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("last_group_member");
+      }
+
+      const refetched = await GroupResource.fetchById(authenticator, group.sId);
+      if (refetched.isErr()) {
+        throw refetched.error;
+      }
+      expect(
+        (await group.getActiveMembers(authenticator)).map((m) => m.sId)
+      ).toEqual([user.sId]);
+    });
+  });
+
   // Nothing suspends memberships any more, so the tests below suspend the row by hand.
   async function suspendMemberships(group: GroupResource) {
     await GroupMembershipModel.update(
