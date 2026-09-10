@@ -24,7 +24,11 @@ import {
   getProductSeatTypes,
   getSeatTypesByProductIdFromContract,
 } from "@app/lib/metronome/seat_types";
-import { cacheWithRedis } from "@app/lib/utils/cache";
+import {
+  batchInvalidateCacheWithRedis,
+  cacheWithRedis,
+  invalidateCacheWithRedis,
+} from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type {
   AwuPoolCurrentCycleResponseBody,
@@ -381,6 +385,42 @@ const getCachedAwuPoolCycleHistoryOutcome = cacheWithRedis(
     ttlMs: AWU_POOL_CYCLE_HISTORY_CACHE_TTL_MS,
   }
 );
+
+const invalidateCachedAwuPoolCurrentCycleOutcome = invalidateCacheWithRedis(
+  computeAwuPoolCurrentCycleOutcome,
+  (auth) => auth.getNonNullableWorkspace().sId,
+  { cacheId: AWU_POOL_CURRENT_CYCLE_CACHE_ID }
+);
+
+const batchInvalidateCachedAwuPoolCycleHistoryOutcome =
+  batchInvalidateCacheWithRedis(
+    computeAwuPoolCycleHistoryOutcome,
+    (auth, cycleHistoryLimit) =>
+      cacheResolverKeyWithHistoryLimit(
+        auth.getNonNullableWorkspace().sId,
+        cycleHistoryLimit
+      ),
+    { cacheId: AWU_POOL_CYCLE_HISTORY_CACHE_ID }
+  );
+
+/**
+ * @cc [owner:arthurvervaet,label:product;performance] pool-cache-dropped-after-grant
+ * After this resolves, no cached current-cycle or cycle-history entry for the workspace remains,
+ * for any `cycleHistoryLimit` in `[1, MAX_CYCLE_HISTORY_LIMIT]`. Any code path that changes the
+ * workspace's pool balance outside a cycle rollover (credit purchase settlement, coupon redemption)
+ * MUST call it once the grant is effective, so the next read reflects the new balance instead of
+ * waiting for the cache TTL.
+ */
+export async function invalidateAwuPoolCaches(
+  auth: Authenticator
+): Promise<void> {
+  await Promise.all([
+    invalidateCachedAwuPoolCurrentCycleOutcome(auth),
+    batchInvalidateCachedAwuPoolCycleHistoryOutcome(
+      Array.from({ length: MAX_CYCLE_HISTORY_LIMIT }, (_, i) => [auth, i + 1])
+    ),
+  ]);
+}
 
 export async function getAwuPoolCycleHistory(
   auth: Authenticator,

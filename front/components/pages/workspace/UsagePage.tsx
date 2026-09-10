@@ -511,9 +511,9 @@ export function UsagePage() {
     disabled: !isCreditPriced,
   });
 
-  // The new usage page cards read the pool from the cycle endpoints, so a
-  // purchase must revalidate those too. Disabled here: the cards own the
-  // fetch, we only borrow the mutate functions.
+  // The pool cards read the cycle endpoints, so a purchase must revalidate
+  // those too. Disabled here: the cards own the fetch, we only borrow the
+  // mutate functions.
   const { mutateAwuPoolCurrentCycle } = useAwuPoolCurrentCycle({
     workspaceId: owner.sId,
     disabled: true,
@@ -1079,10 +1079,8 @@ export function UsagePage() {
           onClose={() => setShowBuyCreditDialog(false)}
           onPurchaseSuccess={() => {
             void mutateAwuPoolSummary();
-            if (isNewUsagePage) {
-              void mutateAwuPoolCurrentCycle();
-              void mutateAwuPoolCycleHistory();
-            }
+            void mutateAwuPoolCurrentCycle();
+            void mutateAwuPoolCycleHistory();
           }}
           workspaceId={owner.sId}
           awuPurchaseInfo={awuPurchaseInfo}
@@ -1269,10 +1267,8 @@ export function UsagePage() {
 
           {isNewUsagePage && isCreditPriced ? (
             <div className="flex flex-col items-stretch gap-4">
+              <div className="flex justify-end">{topUpButton}</div>
               <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
-              {usageSettings.topUpEnabled && (
-                <div className="flex justify-end">{topUpButton}</div>
-              )}
             </div>
           ) : null}
 

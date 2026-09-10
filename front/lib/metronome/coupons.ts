@@ -2,6 +2,7 @@ import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import { invalidateAwuPoolCaches } from "@app/lib/api/credits/awu_pool_summary";
 import type { Authenticator } from "@app/lib/auth";
 import { metronomeAmount } from "@app/lib/metronome/amounts";
 import {
@@ -328,6 +329,7 @@ export async function redeemPoolTopupCoupon(
   }
 
   await redemption.markActive(creditResult.value);
+  await invalidateAwuPoolCaches(auth);
 
   void emitAuditLogEvent({
     auth,
