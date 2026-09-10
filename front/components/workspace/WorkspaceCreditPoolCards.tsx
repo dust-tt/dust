@@ -140,6 +140,8 @@ export interface CycleHistoryLoadMore {
   hasMore: boolean;
   isLoading: boolean;
   onLoadMore: () => void;
+  // Absent while only the initial rows are shown.
+  onShowLess?: () => void;
 }
 
 interface WorkspaceCreditPoolCycleHistoryTableProps {
@@ -205,6 +207,7 @@ export function WorkspaceCreditPoolCycleHistoryTable({
           cycleHistoryLoadMore.hasMore ? undefined : cycleBreakdown.length
         }
         onLoadMore={cycleHistoryLoadMore.onLoadMore}
+        onShowLess={cycleHistoryLoadMore.onShowLess}
         isLoadingMore={cycleHistoryLoadMore.isLoading}
       />
     </>
@@ -327,7 +330,8 @@ export function WorkspaceCreditPoolSection({
 // Reveals cycle history a page at a time, re-fetching a growing
 // `cycleHistoryLimit` from the backend rather than paginating client-side,
 // since the backend itself caps how many cycles it will ever return
-// (`MAX_CYCLE_HISTORY_LIMIT`).
+// (`MAX_CYCLE_HISTORY_LIMIT`). The limit counts cycles with consumption, so
+// each step reveals a full page of rows whenever that many exist.
 export function useCycleHistoryLimit() {
   const [cycleHistoryLimit, setCycleHistoryLimit] = useState(
     INITIAL_CYCLE_HISTORY_ROW_COUNT
@@ -339,7 +343,19 @@ export function useCycleHistoryLimit() {
     );
   }, []);
 
-  return { cycleHistoryLimit, onLoadMoreCycleHistory };
+  const onShowLessCycleHistory = useCallback(() => {
+    setCycleHistoryLimit(INITIAL_CYCLE_HISTORY_ROW_COUNT);
+  }, []);
+
+  return {
+    cycleHistoryLimit,
+    onLoadMoreCycleHistory,
+    // Collapsing back is only offered once extra rows have been revealed.
+    onShowLessCycleHistory:
+      cycleHistoryLimit > INITIAL_CYCLE_HISTORY_ROW_COUNT
+        ? onShowLessCycleHistory
+        : undefined,
+  };
 }
 
 interface CreditPoolCardsFromCycleDataProps {
@@ -407,7 +423,8 @@ interface CreditPoolCardsProps {
   disabled: boolean;
 }
 export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
-  const { cycleHistoryLimit, onLoadMoreCycleHistory } = useCycleHistoryLimit();
+  const { cycleHistoryLimit, onLoadMoreCycleHistory, onShowLessCycleHistory } =
+    useCycleHistoryLimit();
   const {
     awuPoolCurrentCycle,
     isAwuPoolCurrentCycleLoading,
@@ -448,6 +465,7 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
         isLoading:
           isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading,
         onLoadMore: onLoadMoreCycleHistory,
+        onShowLess: onShowLessCycleHistory,
       }}
     />
   );

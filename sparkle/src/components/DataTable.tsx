@@ -116,6 +116,8 @@ interface DataTableProps<TData extends TBaseData> {
   onLoadMore?: () => void;
   /** Swaps the "Load more" label for an animated "Loading" and disables it. */
   isLoadingMore?: boolean;
+  /** Adds a "Show less" control next to "Load more"; pass it only once extra rows are revealed. */
+  onShowLess?: () => void;
   /** Minimum breakpoint per column id below which the column is hidden. */
   columnsBreakpoints?: ColumnBreakpoint;
   /** Controlled sorting state. */
@@ -256,6 +258,7 @@ export function DataTable<TData extends TBaseData>({
   setPagination,
   onLoadMore,
   isLoadingMore = false,
+  onShowLess,
   sorting,
   setSorting,
   isServerSideSorting = false,
@@ -482,6 +485,7 @@ export function DataTable<TData extends TBaseData>({
         <div className="p-1">
           <LoadMore
             onLoadMore={onLoadMore}
+            onShowLess={onShowLess}
             isLoading={isLoadingMore}
             rowCount={data.length}
             totalRowCount={totalRowCount}

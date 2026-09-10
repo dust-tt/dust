@@ -3,6 +3,12 @@ import React from "react";
 
 const LOADING_DOT_DELAYS = ["0ms", "250ms", "500ms"];
 
+const CONTROL_CLASS_NAME = cn(
+  "text-xs font-medium",
+  "transition-colors duration-200",
+  "text-primary-400 hover:text-foreground disabled:hover:text-primary-400"
+);
+
 interface LoadMoreProps {
   showDetails?: boolean;
   /** Number of rows currently loaded. */
@@ -12,8 +18,11 @@ interface LoadMoreProps {
   totalRowCountIsCapped?: boolean;
   isLoading?: boolean;
   onLoadMore: () => void;
+  /** Renders a "Show less" control; pass it only once extra rows are revealed. */
+  onShowLess?: () => void;
   label?: string;
   loadingLabel?: string;
+  showLessLabel?: string;
 }
 
 export function LoadMore({
@@ -23,51 +32,55 @@ export function LoadMore({
   totalRowCountIsCapped = false,
   isLoading = false,
   onLoadMore,
+  onShowLess,
   label = "Load more",
   loadingLabel = "Loading",
+  showLessLabel = "Show less",
 }: LoadMoreProps) {
   // When the total is known and everything is loaded, there is nothing left to
   // fetch: keep the details, hide the control (same behavior as Pagination).
-  const controlIsHidden =
+  const loadMoreIsHidden =
     totalRowCount !== undefined &&
     !totalRowCountIsCapped &&
     rowCount >= totalRowCount;
 
   return (
-    <div
-      className={cn(
-        "flex w-full items-center",
-        controlIsHidden ? "justify-end" : "justify-between"
-      )}
-    >
-      <button
-        type="button"
-        className={cn(
-          "text-xs font-medium",
-          "transition-colors duration-200",
-          "text-primary-400 hover:text-foreground disabled:hover:text-primary-400",
-          controlIsHidden ? "invisible" : "visible"
+    <div className="flex w-full items-center justify-between">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          className={cn(CONTROL_CLASS_NAME, loadMoreIsHidden && "hidden")}
+          onClick={onLoadMore}
+          disabled={isLoading || loadMoreIsHidden}
+        >
+          {isLoading ? (
+            <span>
+              {loadingLabel}
+              {LOADING_DOT_DELAYS.map((delay) => (
+                <span
+                  key={delay}
+                  className="animate-loading-dot opacity-100 motion-reduce:animate-none"
+                  style={{ animationDelay: delay }}
+                >
+                  .
+                </span>
+              ))}
+            </span>
+          ) : (
+            label
+          )}
+        </button>
+        {onShowLess && (
+          <button
+            type="button"
+            className={CONTROL_CLASS_NAME}
+            onClick={onShowLess}
+            disabled={isLoading}
+          >
+            {showLessLabel}
+          </button>
         )}
-        onClick={onLoadMore}
-        disabled={isLoading || controlIsHidden}
-      >
-        {isLoading ? (
-          <span>
-            {loadingLabel}
-            {LOADING_DOT_DELAYS.map((delay) => (
-              <span
-                key={delay}
-                className="animate-loading-dot opacity-100 motion-reduce:animate-none"
-                style={{ animationDelay: delay }}
-              >
-                .
-              </span>
-            ))}
-          </span>
-        ) : (
-          label
-        )}
-      </button>
+      </div>
 
       <span
         className={cn(

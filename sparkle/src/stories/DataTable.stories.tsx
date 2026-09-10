@@ -614,8 +614,18 @@ export const ServerSidePagination = () => {
   );
 };
 
+const INITIAL_LOAD_MORE_ROW_COUNT = 2;
+
+/**
+ * "Load more" footer as an alternative to pagination: each click appends a
+ * page after a simulated delay. Once extra rows are revealed, `onShowLess`
+ * adds a "Show less" control that collapses back to the initial rows.
+ * @summary Load more footer with show less.
+ */
 export const DataTableLoadMoreExample = () => {
-  const [visibleCount, setVisibleCount] = React.useState(2);
+  const [visibleCount, setVisibleCount] = React.useState(
+    INITIAL_LOAD_MORE_ROW_COUNT
+  );
   const [isLoadingMore, setIsLoadingMore] = React.useState(false);
   const [filter, setFilter] = React.useState<string>("");
 
@@ -628,6 +638,10 @@ export const DataTableLoadMoreExample = () => {
       setVisibleCount((count) => Math.min(count + 2, data.length));
       setIsLoadingMore(false);
     }, 600);
+  };
+
+  const handleShowLess = () => {
+    setVisibleCount(INITIAL_LOAD_MORE_ROW_COUNT);
   };
 
   return (
@@ -645,6 +659,11 @@ export const DataTableLoadMoreExample = () => {
         filter={filter}
         filterColumn="name"
         onLoadMore={handleLoadMore}
+        onShowLess={
+          visibleCount > INITIAL_LOAD_MORE_ROW_COUNT
+            ? handleShowLess
+            : undefined
+        }
         isLoadingMore={isLoadingMore}
         columns={columns}
         columnsBreakpoints={{ lastUpdated: "sm" }}

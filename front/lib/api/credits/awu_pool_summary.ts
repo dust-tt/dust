@@ -44,6 +44,10 @@ import { z } from "zod";
 
 export const DEFAULT_CYCLE_HISTORY_LIMIT = 5;
 
+// Upper bound on finalized invoices inspected per request while looking for
+// cycles with consumption. Sized for a few years of monthly invoices.
+export const CYCLE_HISTORY_INVOICE_SCAN_LIMIT = 48;
+
 /**
  * @cc [owner:arthurvervaet,label:api] cycle-history-limit-bounds
  * A missing, non-integer, or out-of-range `cycleHistoryLimit` (below 1 or above
@@ -79,16 +83,16 @@ type PoolLedgerData = {
 
 const APPROX_CYCLE_LENGTH_DAYS = 31;
 
-// Balance listing bounded to the history the caller can actually surface
+// Balance listing bounded to the cycles the caller will actually inspect
 async function getPoolLedgerData({
   metronomeCustomerId,
-  cycleHistoryLimit,
+  lookbackCycles,
 }: {
   metronomeCustomerId: string;
-  cycleHistoryLimit: number;
+  lookbackCycles: number;
 }): Promise<Result<PoolLedgerData, Error>> {
   const startingAt = new Date(
-    Date.now() - cycleHistoryLimit * APPROX_CYCLE_LENGTH_DAYS * ONE_DAY_MS
+    Date.now() - lookbackCycles * APPROX_CYCLE_LENGTH_DAYS * ONE_DAY_MS
   );
   const balancesResult = await listMetronomeBalances(metronomeCustomerId, {
     coveringDate: null,
@@ -132,14 +136,13 @@ function sumPoolLedgerEntriesForInvoice(
     .reduce((sum, entry) => sum + Math.abs(entry.amountCredits), 0);
 }
 
+// Cycles with no pool consumption are dropped rather than surfaced as zero rows
 function computeCycleBreakdown({
   finalizedInvoices,
   ledgerEntries,
-  cycleHistoryLimit,
 }: {
   finalizedInvoices: Invoice[];
   ledgerEntries: PoolLedgerEntry[];
-  cycleHistoryLimit: number;
 }): AwuPoolCycleBreakdown[] {
   return finalizedInvoices
     .map((invoice) => ({
@@ -154,8 +157,7 @@ function computeCycleBreakdown({
         invoice.id
       ),
     }))
-    .filter((cycle) => cycle.consumedCredits > 0)
-    .slice(0, cycleHistoryLimit);
+    .filter((cycle) => cycle.consumedCredits > 0);
 }
 
 type MetronomeContext = {
@@ -230,8 +232,7 @@ function extractOverageFromInvoice(invoice: Invoice): {
 
 // Fallback cycle history for workspaces with no credit pool
 function computeExcessCycleBreakdown(
-  finalizedInvoices: Invoice[],
-  cycleHistoryLimit: number
+  finalizedInvoices: Invoice[]
 ): AwuPoolCycleBreakdown[] {
   return finalizedInvoices
     .map((invoice) => ({
@@ -243,8 +244,7 @@ function computeExcessCycleBreakdown(
         : null,
       consumedCredits: extractOverageFromInvoice(invoice).overageCredits ?? 0,
     }))
-    .filter((cycle) => cycle.consumedCredits > 0)
-    .slice(0, cycleHistoryLimit);
+    .filter((cycle) => cycle.consumedCredits > 0);
 }
 
 // Programmatic AWU spend against the pool, read straight from the current
@@ -429,6 +429,20 @@ export async function getAwuPoolCycleHistory(
   return new Ok(outcome.body);
 }
 
+/**
+ * @cc [owner:avervaet,label:product] cycle-history-limit-counts-consumed-cycles
+ * `cycleHistoryLimit` bounds the number of returned cycles that have consumption, not the
+ * number of invoices inspected: an invoice without consumption MUST NOT count toward the limit
+ * nor appear in either breakdown. Inspection MUST stop after
+ * `CYCLE_HISTORY_INVOICE_SCAN_LIMIT` invoices, so a returned breakdown may hold fewer than
+ * `cycleHistoryLimit` cycles even when older invoices exist.
+ */
+/**
+ * @cc [owner:avervaet,label:product] has-more-means-another-consumed-cycle
+ * `hasMoreCycleHistory` MUST be `true` only when `cycleHistoryLimit` is below
+ * `MAX_CYCLE_HISTORY_LIMIT` and at least one more cycle with consumption, in either breakdown,
+ * was found beyond the returned ones. It MUST NOT be `true` merely because older invoices exist.
+ */
 async function getAwuPoolCycleHistoryUncached(
   auth: Authenticator,
   { cycleHistoryLimit }: { cycleHistoryLimit: number }
@@ -440,9 +454,12 @@ async function getAwuPoolCycleHistoryUncached(
   const { metronomeCustomerId, metronomeContractId } = contextResult.value;
 
   const [poolLedgerDataResult, finalizedInvoicesResult] = await Promise.all([
-    getPoolLedgerData({ metronomeCustomerId, cycleHistoryLimit }),
+    getPoolLedgerData({
+      metronomeCustomerId,
+      lookbackCycles: CYCLE_HISTORY_INVOICE_SCAN_LIMIT,
+    }),
     listMetronomeFinalizedInvoices(metronomeCustomerId, {
-      limit: cycleHistoryLimit + 1,
+      limit: CYCLE_HISTORY_INVOICE_SCAN_LIMIT,
     }),
   ]);
 
@@ -467,28 +484,26 @@ async function getAwuPoolCycleHistoryUncached(
     });
   }
 
-  // One invoice past the limit is fetched only to learn whether older cycles
-  // exist; it is never surfaced. Row counts cannot answer this because cycles
-  // without consumption are filtered out of the breakdowns.
-  const finalizedInvoices = finalizedInvoicesResult.value.slice(
-    0,
-    cycleHistoryLimit
+  // Every scanned invoice is reduced before slicing so that "load more" always
+  // reveals cycles with consumption, and the footer only offers it when at
+  // least one such cycle is left.
+  const consumedCycles = computeCycleBreakdown({
+    finalizedInvoices: finalizedInvoicesResult.value,
+    ledgerEntries: poolLedgerDataResult.value.ledgerEntries,
+  });
+  const excessCycles = computeExcessCycleBreakdown(
+    finalizedInvoicesResult.value
   );
   const hasMoreCycleHistory =
-    finalizedInvoicesResult.value.length > cycleHistoryLimit &&
-    cycleHistoryLimit < MAX_CYCLE_HISTORY_LIMIT;
+    cycleHistoryLimit < MAX_CYCLE_HISTORY_LIMIT &&
+    (consumedCycles.length > cycleHistoryLimit ||
+      excessCycles.length > cycleHistoryLimit);
 
-  const cycleBreakdown = computeCycleBreakdown({
-    finalizedInvoices,
-    ledgerEntries: poolLedgerDataResult.value.ledgerEntries,
-    cycleHistoryLimit,
+  return new Ok({
+    cycleBreakdown: consumedCycles.slice(0, cycleHistoryLimit),
+    excessCycleBreakdown: excessCycles.slice(0, cycleHistoryLimit),
+    hasMoreCycleHistory,
   });
-  const excessCycleBreakdown = computeExcessCycleBreakdown(
-    finalizedInvoices,
-    cycleHistoryLimit
-  );
-
-  return new Ok({ cycleBreakdown, excessCycleBreakdown, hasMoreCycleHistory });
 }
 
 export async function getAwuPoolSummary(
@@ -530,7 +545,7 @@ async function getAwuPoolCurrentCycleUncached(
     await Promise.all([
       listMetronomeBalances(metronomeCustomerId),
       listMetronomeDraftInvoices(metronomeCustomerId),
-      getPoolLedgerData({ metronomeCustomerId, cycleHistoryLimit: 1 }),
+      getPoolLedgerData({ metronomeCustomerId, lookbackCycles: 1 }),
     ]);
 
   if (balancesResult.isErr()) {

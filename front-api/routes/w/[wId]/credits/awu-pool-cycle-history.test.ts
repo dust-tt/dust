@@ -22,19 +22,43 @@ function awuPoolCycleHistoryUrl(wId: string, query = "") {
   return `/api/w/${wId}/credits/awu-pool-cycle-history${query}`;
 }
 
-function finalizedInvoice(index: number): Invoice {
+const USD_CREDIT_TYPE = {
+  id: "2714e483-4ff1-48e4-9e25-ac732e8f24f2",
+  name: "USD",
+};
+
+// `overageCredits` makes the invoice a cycle with consumption in the excess breakdown.
+function finalizedInvoice(index: number, overageCredits = 0): Invoice {
   const end = Date.UTC(2026, 0, 1) - index * 31 * 24 * 60 * 60 * 1000;
   return {
     id: `inv-${index}`,
     customer_id: "m-customer",
     status: "FINALIZED",
     type: "USAGE",
-    total: 0,
+    total: overageCredits,
     start_timestamp: new Date(end - 31 * 24 * 60 * 60 * 1000).toISOString(),
     end_timestamp: new Date(end).toISOString(),
-    credit_type: { id: "2714e483-4ff1-48e4-9e25-ac732e8f24f2", name: "USD" },
-    line_items: [],
+    credit_type: USD_CREDIT_TYPE,
+    line_items:
+      overageCredits > 0
+        ? [
+            {
+              type: "cpu_conversion",
+              name: "Overage",
+              quantity: overageCredits,
+              total: overageCredits,
+              credit_type: USD_CREDIT_TYPE,
+            },
+          ]
+        : [],
   };
+}
+
+function cycleIds(cycles: { cycleEndMs: number | null }[]): string[] {
+  return cycles.map(
+    (cycle) =>
+      `inv-${Math.round((Date.UTC(2026, 0, 1) - (cycle.cycleEndMs ?? 0)) / (31 * 24 * 60 * 60 * 1000))}`
+  );
 }
 
 async function requestAsManager(query = "") {
@@ -98,48 +122,75 @@ describe("GET /api/w/[wId]/credits/awu-pool-cycle-history", () => {
     expect(metronomeClient.listMetronomeFinalizedInvoices).toHaveBeenCalled();
   });
 
-  it("fetches one invoice past the limit to detect older cycles", async () => {
-    vi.mocked(metronomeClient.listMetronomeFinalizedInvoices).mockResolvedValue(
-      new Ok([finalizedInvoice(0), finalizedInvoice(1), finalizedInvoice(2)])
-    );
-
+  it("scans a fixed window of invoices regardless of the limit", async () => {
     const response = await requestAsManager("?cycleHistoryLimit=2");
 
     expect(response.status).toBe(200);
-    expect((await response.json()).hasMoreCycleHistory).toBe(true);
     expect(metronomeClient.listMetronomeFinalizedInvoices).toHaveBeenCalledWith(
       expect.any(String),
-      { limit: 3 }
+      { limit: 48 }
     );
   });
 
-  it("reports no more history when the invoices run out", async () => {
+  it("skips invoices without consumption when filling the limit", async () => {
     vi.mocked(metronomeClient.listMetronomeFinalizedInvoices).mockResolvedValue(
-      new Ok([finalizedInvoice(0), finalizedInvoice(1)])
+      new Ok([
+        finalizedInvoice(0, 10),
+        finalizedInvoice(1),
+        finalizedInvoice(2),
+        finalizedInvoice(3, 20),
+        finalizedInvoice(4, 30),
+      ])
     );
 
     const response = await requestAsManager("?cycleHistoryLimit=2");
+    const body = await response.json();
 
-    expect((await response.json()).hasMoreCycleHistory).toBe(false);
+    expect(response.status).toBe(200);
+    expect(cycleIds(body.excessCycleBreakdown)).toEqual(["inv-0", "inv-3"]);
+    expect(body.hasMoreCycleHistory).toBe(true);
   });
 
-  it("caps the limit at 24 cycles", async () => {
+  it("reports no more history when the remaining invoices have no consumption", async () => {
+    vi.mocked(metronomeClient.listMetronomeFinalizedInvoices).mockResolvedValue(
+      new Ok([
+        finalizedInvoice(0, 10),
+        finalizedInvoice(1, 20),
+        finalizedInvoice(2),
+        finalizedInvoice(3),
+      ])
+    );
+
+    const response = await requestAsManager("?cycleHistoryLimit=2");
+    const body = await response.json();
+
+    expect(cycleIds(body.excessCycleBreakdown)).toEqual(["inv-0", "inv-1"]);
+    expect(body.hasMoreCycleHistory).toBe(false);
+  });
+
+  it("reports no more history at the 24 cycle cap even when more exist", async () => {
+    vi.mocked(metronomeClient.listMetronomeFinalizedInvoices).mockResolvedValue(
+      new Ok(Array.from({ length: 30 }, (_, i) => finalizedInvoice(i, 10)))
+    );
+
     const response = await requestAsManager("?cycleHistoryLimit=24");
+    const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(metronomeClient.listMetronomeFinalizedInvoices).toHaveBeenCalledWith(
-      expect.any(String),
-      { limit: 25 }
-    );
+    expect(body.excessCycleBreakdown).toHaveLength(24);
+    expect(body.hasMoreCycleHistory).toBe(false);
   });
 
   it("falls back to the default limit when the requested one is out of range", async () => {
+    vi.mocked(metronomeClient.listMetronomeFinalizedInvoices).mockResolvedValue(
+      new Ok(Array.from({ length: 8 }, (_, i) => finalizedInvoice(i, 10)))
+    );
+
     const response = await requestAsManager("?cycleHistoryLimit=25");
+    const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(metronomeClient.listMetronomeFinalizedInvoices).toHaveBeenCalledWith(
-      expect.any(String),
-      { limit: 6 }
-    );
+    expect(body.excessCycleBreakdown).toHaveLength(5);
+    expect(body.hasMoreCycleHistory).toBe(true);
   });
 });
