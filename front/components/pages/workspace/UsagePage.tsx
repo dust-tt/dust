@@ -246,9 +246,12 @@ export function UsagePage() {
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
-  const [sorting, setSorting] = useState<SortingState>([
-    { id: "name", desc: false },
-  ]);
+  // Under the new usage page, defer to the same empty-sorting + fallback
+  // pattern as Poke's PoolUsagePage so the initial sort (pool usage,
+  // descending) matches until the user picks a column explicitly.
+  const [sorting, setSorting] = useState<SortingState>(
+    isNewUsagePage ? [] : [{ id: "name", desc: false }]
+  );
 
   // Members are sorted server-side; reset to the first page when the sort
   // changes so the user lands on the start of the new ordering.
@@ -279,7 +282,11 @@ export function UsagePage() {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, []);
 
-  const sort = sorting[0];
+  const effectiveSorting: SortingState =
+    isNewUsagePage && sorting.length === 0
+      ? [{ id: "consumedFromPoolAwuCredits", desc: true }]
+      : sorting;
+  const sort = effectiveSorting[0];
   // The legacy table's pool-usage cell displays total consumption
   // (consumedAwuCredits), not the pool-only amount, so its "column" of the
   // same id must sort by the total. Only the compact/Poke variant, which
@@ -290,7 +297,9 @@ export function UsagePage() {
     sort?.id === "email" || sort?.id === "seatUsage"
       ? sort.id
       : sort?.id === "consumedFromPoolAwuCredits"
-        ? "consumedAwuCredits"
+        ? isNewUsagePage
+          ? "consumedFromPoolAwuCredits"
+          : "consumedAwuCredits"
         : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
@@ -1041,7 +1050,7 @@ export function UsagePage() {
       pagination={pagination}
       setPagination={setPagination}
       totalRowCount={totalMembersUsage}
-      sorting={sorting}
+      sorting={effectiveSorting}
       setSorting={handleSetSorting}
       showGroupsColumn={groups.length > 0}
       enableSelection={isCreditPriced}
