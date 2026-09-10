@@ -111,10 +111,12 @@ export function ConversationSidePanelProvider({
   const currentParamsRef = React.useRef<OpenPanelParams | null>(null);
 
   // This should be called once the closing animation is done (onTransitionEnd)
-  // so you won't have content flickering
+  // so you won't have content flickering. The whole side panel is gone at this point (X with
+  // nothing underneath, divider drag, conversation switch), so the history goes with it.
   const onPanelClosed = useCallback(() => {
     setIsPanelClosing(false);
     currentParamsRef.current = null;
+    panelHistoryRef.current = [];
     setData(undefined);
     setCurrentPanel(undefined);
   }, [setData, setCurrentPanel]);
@@ -223,10 +225,18 @@ export function ConversationSidePanelProvider({
   useEffect(() => {
     if (data && currentPanel) {
       setCurrentPanel(currentPanel);
-      // Deep link or browser navigation: adopt the panel from the hash so closing it later
-      // behaves like one we opened.
-      if (!currentParamsRef.current && isSupportedPanelType(currentPanel)) {
-        currentParamsRef.current = panelParamsFromHash(currentPanel, data);
+      // Deep link or browser navigation: adopt the panel from the hash so it is the one we
+      // consider shown. Our own opens already match, so the ref (and its Frame timestamp) is
+      // kept in that case.
+      if (isSupportedPanelType(currentPanel)) {
+        const fromHash = panelParamsFromHash(currentPanel, data);
+        const current = currentParamsRef.current;
+        if (
+          fromHash &&
+          (!current || panelIdentityKey(current) !== panelIdentityKey(fromHash))
+        ) {
+          currentParamsRef.current = fromHash;
+        }
       }
     } else if (!data) {
       collapsePanel();
