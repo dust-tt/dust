@@ -1452,7 +1452,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     const subscription = await SubscriptionResource.model.findOne({
       where: { id: subscriptionModelId },
       include: [WorkspaceModel],
-      // subscription ID is already trusted.
+      // WORKSPACE_ISOLATION_BYPASS: Billing flows supply a trusted subscription ID before its
+      // workspace is resolved by this query.
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });

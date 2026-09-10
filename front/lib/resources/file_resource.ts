@@ -224,7 +224,9 @@ export class FileResource extends BaseResource<FileModel> {
     }
 
     const frames = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified: the sandbox reaper operates across workspaces and the ids come from workspace-scoped owner links.
+      // WORKSPACE_ISOLATION_BYPASS: The sandbox reaper operates across workspaces; these IDs come
+      // from workspace-scoped sandbox ownership rows.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         contentType: frameV2ContentType,
