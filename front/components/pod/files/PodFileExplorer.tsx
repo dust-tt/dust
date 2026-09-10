@@ -885,6 +885,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         toolbarExtraActions={addButton}
         isLoading={isLoading}
         owner={owner}
+        preferencesResourceId={`pod:${pod.sId}`}
       />
     </>
   );

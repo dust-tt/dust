@@ -282,6 +282,9 @@ export function ConversationFileExplorer({
           onOpenInteractive={onOpenInteractive}
           onOpenInPanel={onOpenInPanel}
           owner={owner}
+          preferencesResourceId={
+            isPod ? `pod:${conversation.spaceId}` : `conversation:${owner.sId}`
+          }
           virtualScopeRoots={virtualScopeRoots}
         />
       </div>

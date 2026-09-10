@@ -365,3 +365,73 @@ describe("FileExplorer Frame packages", () => {
     expect(await screen.findByText("preview content")).toBeInTheDocument();
   });
 });
+
+describe("FileExplorer preferences", () => {
+  const file = makeFile({
+    contentType: "text/plain",
+    fileName: "notes.txt",
+    lastModifiedMs: 1,
+  });
+
+  function renderExplorer(preferencesResourceId?: string) {
+    return render(
+      <ControlledFileExplorer
+        defaultViewMode="grid"
+        files={[file]}
+        getFileUrl={(path) => `/files/${path}`}
+        isLoading={false}
+        onDownload={vi.fn().mockResolvedValue(undefined)}
+        preferencesResourceId={preferencesResourceId}
+      />
+    );
+  }
+
+  function isListLayout() {
+    return screen.getByText("notes.txt").closest(".grid-cols-2") === null;
+  }
+
+  // The view toggle is icon-only; it sits right before the sort dropdown.
+  async function pickListLayout(user: ReturnType<typeof userEvent.setup>) {
+    const sortButton = screen.getByRole("button", { name: /Last modified|Name/ });
+    const viewToggle = sortButton.previousElementSibling;
+    if (!(viewToggle instanceof HTMLElement)) {
+      throw new Error("View toggle not found.");
+    }
+    await user.click(viewToggle);
+    await user.click(await screen.findByText("List"));
+  }
+
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it("restores view and sort mode after a remount", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderExplorer("pod:p1");
+    expect(isListLayout()).toBe(false);
+
+    await pickListLayout(user);
+    await user.click(screen.getByRole("button", { name: "Last modified" }));
+    await user.click(await screen.findByText("Name Z → A"));
+    expect(isListLayout()).toBe(true);
+    unmount();
+
+    renderExplorer("pod:p1");
+    expect(isListLayout()).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "Name Z → A" })
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the default when no resource id is given", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderExplorer();
+
+    await pickListLayout(user);
+    expect(isListLayout()).toBe(true);
+    unmount();
+
+    renderExplorer();
+    expect(isListLayout()).toBe(false);
+  });
+});

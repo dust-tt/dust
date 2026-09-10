@@ -8,6 +8,7 @@ import type {
   ContentNodeEntry,
   FileEntry,
   FileExplorerMenuAction,
+  FileExplorerViewMode,
   FileSystemTreeNode,
   FramePackageEntry,
 } from "@app/components/file_explorer/types";
@@ -40,7 +41,7 @@ import { intlFormatDistance } from "date-fns";
 import type React from "react";
 import { useState } from "react";
 
-export type ViewMode = "grid" | "list";
+export type ViewMode = FileExplorerViewMode;
 
 type FileExplorerItemProps = {
   /** Merged onto the interactive surface (e.g. grab cursor while dragging). */

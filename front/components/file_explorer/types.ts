@@ -123,4 +123,14 @@ export type FileExplorerBucket =
 
 export type FileExplorerFilter = "all" | FileExplorerBucket;
 
-export type FileExplorerSortMode = "last-modified" | "name-asc" | "name-desc";
+export const FILE_EXPLORER_SORT_MODES = [
+  "last-modified",
+  "name-asc",
+  "name-desc",
+] as const;
+
+export type FileExplorerSortMode = (typeof FILE_EXPLORER_SORT_MODES)[number];
+
+export const FILE_EXPLORER_VIEW_MODES = ["grid", "list"] as const;
+
+export type FileExplorerViewMode = (typeof FILE_EXPLORER_VIEW_MODES)[number];
