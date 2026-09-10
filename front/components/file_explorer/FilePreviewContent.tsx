@@ -177,7 +177,18 @@ interface UseFilePreviewContentParams {
   enabled: boolean;
 }
 
-interface FilePreviewContentData {
+export function formatRecordCounts({
+  displayed,
+  total,
+}: {
+  displayed: number;
+  total: number;
+}): string {
+  const suffix = total > MAX_CSV_ROWS ? " (truncated)" : "";
+  return `Showing ${displayed} of ${total} records${suffix}`;
+}
+
+export interface FilePreviewContentData {
   category: FilePreviewCategory;
   mimeType: string;
   truncatedContent: string | null;

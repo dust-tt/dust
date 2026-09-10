@@ -259,6 +259,7 @@ describe("ConversationSidePanelProvider hash encoding", () => {
       { type: "file_preview", filePath: "conversation-abc/plan.md" },
       "conversation-abc/plan.md",
     ],
+    [{ type: "file_preview", fileId: "fil_1" }, "id:fil_1"],
     [{ type: "files" }, "files"],
     [{ type: "credits" }, "credits"],
     [{ type: "plan" }, "plan"],

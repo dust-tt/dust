@@ -19,7 +19,7 @@ interface UseMarkdownFileEditorParams {
   processedContent: ProcessedContent | null;
 }
 
-interface MarkdownFileEditor {
+export interface MarkdownFileEditor {
   canEdit: boolean;
   content: string | undefined;
   isDirty: boolean;
