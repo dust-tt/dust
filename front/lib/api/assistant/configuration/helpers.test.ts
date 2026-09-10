@@ -1,6 +1,6 @@
 import {
   redactPrivateAgentConfigurationFields,
-  serializeAgentConfigurationsWithSkills,
+  toAgentConfigurationsWithSkills,
 } from "@app/lib/api/assistant/configuration/helpers";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -8,7 +8,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { describe, expect, it } from "vitest";
 
-describe("serializeAgentConfigurationsWithSkills", () => {
+describe("toAgentConfigurationsWithSkills", () => {
   it("serializes the skills attached to each agent", async () => {
     const { authenticator } = await createResourceTest({ role: "builder" });
 
@@ -29,7 +29,7 @@ describe("serializeAgentConfigurationsWithSkills", () => {
     });
 
     const [serializedWithSkill, serializedWithoutSkill] =
-      await serializeAgentConfigurationsWithSkills(authenticator, [
+      await toAgentConfigurationsWithSkills(authenticator, [
         withSkill,
         withoutSkill,
       ]);
@@ -51,16 +51,13 @@ describe("serializeAgentConfigurationsWithSkills", () => {
       { name: "Stands in for a global agent" }
     );
 
-    const [serialized] = await serializeAgentConfigurationsWithSkills(
-      authenticator,
-      [
-        {
-          ...agent,
-          sId: GLOBAL_AGENTS_SID.DUST,
-          codeDefinedSkillIds: ["frames"],
-        },
-      ]
-    );
+    const [serialized] = await toAgentConfigurationsWithSkills(authenticator, [
+      {
+        ...agent,
+        sId: GLOBAL_AGENTS_SID.DUST,
+        codeDefinedSkillIds: ["frames"],
+      },
+    ]);
 
     expect(serialized.skills.map((skill) => skill.sId)).toEqual(["frames"]);
     // The raw ids are an internal detail, superseded by `skills`.
@@ -80,10 +77,9 @@ describe("serializeAgentConfigurationsWithSkills", () => {
       agentConfigurationId: agent.id,
     });
 
-    const [serialized] = await serializeAgentConfigurationsWithSkills(
-      authenticator,
-      [redactPrivateAgentConfigurationFields(agent)]
-    );
+    const [serialized] = await toAgentConfigurationsWithSkills(authenticator, [
+      redactPrivateAgentConfigurationFields(agent),
+    ]);
 
     expect(serialized.skills).toEqual([]);
   });

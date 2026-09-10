@@ -1436,11 +1436,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   /**
    * Batched version of listByAgentConfiguration. Performs 2 SQL queries.
    * Does not support global agents as we rely on the ID for mapping: they all share the same
-   * model id and hold no `AgentSkillModel` row. Use `listByCodeDefinedSkillIds` for those.
+   * model id and hold no `AgentSkillModel` row. Their skills are code-defined, so resolve them
+   * with `fetchByIds` on the ids their configuration declares.
    */
-  static async listByAgentConfigurations<
-    T extends Pick<LightAgentConfigurationType, "id" | "sId">,
-  >(
+  static async listByAgentConfigurations<T extends LightAgentConfigurationType>(
     auth: Authenticator,
     agentConfigurations: T[],
     fetchOptions?: SkillHydrationOptions
@@ -1508,31 +1507,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           }
         });
       })
-    );
-  }
-
-  /**
-   * Resolves the code-defined skills a global agent declares, in one SQL query. Global agents
-   * hold no `AgentSkillModel` row, so they cannot go through `listByAgentConfigurations`.
-   * Skills the caller cannot access are filtered out, so the result can be shorter than the
-   * requested ids.
-   */
-  static async listByCodeDefinedSkillIds(
-    auth: Authenticator,
-    codeDefinedSkillIds: string[],
-    fetchOptions?: SkillHydrationOptions
-  ): Promise<SkillResource[]> {
-    if (codeDefinedSkillIds.length === 0) {
-      return [];
-    }
-
-    return this.fetchBySkillReferences(
-      auth,
-      codeDefinedSkillIds.map((globalSkillId) => ({
-        customSkillId: null,
-        globalSkillId,
-      })),
-      fetchOptions
     );
   }
 

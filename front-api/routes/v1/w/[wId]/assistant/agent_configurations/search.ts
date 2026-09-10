@@ -1,5 +1,5 @@
 import { searchAgentConfigurationsByName } from "@app/lib/api/assistant/configuration/agent";
-import { serializeAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
+import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { addBackwardCompatibleAgentConfigurationFields } from "@app/lib/api/v1/backward_compatibility";
 import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
 import { publicApiApp } from "@front-api/middlewares/ctx";
@@ -67,7 +67,7 @@ app.get(
     const { q } = ctx.req.valid("query");
 
     const agentConfigurations = await searchAgentConfigurationsByName(auth, q);
-    const serialized = await serializeAgentConfigurationsWithSkills(
+    const serialized = await toAgentConfigurationsWithSkills(
       auth,
       agentConfigurations
     );

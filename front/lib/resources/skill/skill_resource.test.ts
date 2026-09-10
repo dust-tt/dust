@@ -1989,35 +1989,6 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("listByCodeDefinedSkillIds", () => {
-    it("resolves the skills the given code-defined ids point to", async () => {
-      const skills = await SkillResource.listByCodeDefinedSkillIds(
-        testContext.authenticator,
-        ["frames"]
-      );
-
-      expect(skills.map((skill) => skill.sId)).toEqual(["frames"]);
-    });
-
-    it("returns nothing for no ids", async () => {
-      expect(
-        await SkillResource.listByCodeDefinedSkillIds(
-          testContext.authenticator,
-          []
-        )
-      ).toEqual([]);
-    });
-
-    it("skips ids that match no code-defined skill", async () => {
-      expect(
-        await SkillResource.listByCodeDefinedSkillIds(
-          testContext.authenticator,
-          ["not-a-code-defined-skill"]
-        )
-      ).toEqual([]);
-    });
-  });
-
   describe("listByMCPServerViewIds", () => {
     it("should return skills that use any of the given MCP server view IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
@@ -2475,6 +2446,28 @@ describe("SkillResource", () => {
       });
       expect(fetchedSkill.mcpServerViews).toEqual([]);
       expect(fetchByModelIdsSpy).not.toHaveBeenCalled();
+    });
+
+    it("skips the dynamic instructions of a code-defined skill", async () => {
+      const [full] = await SkillResource.fetchByIds(testContext.authenticator, [
+        "frames",
+      ]);
+      const [labelsOnly] = await SkillResource.fetchByIds(
+        testContext.authenticator,
+        ["frames"],
+        {
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+        }
+      );
+
+      // `frames` builds its instructions through a callback, and some of those callbacks write
+      // (`discover_tools` ensures the workspace's auto MCP server views exist), so a read path
+      // that only needs to name a skill must not run them.
+      expect(full.instructions).not.toBe("");
+      expect(labelsOnly.instructions).toBe("");
+      expect(labelsOnly.name).toBe(full.name);
     });
 
     it("filters code-defined skills disabled for the current agent loop", async () => {

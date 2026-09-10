@@ -2,7 +2,7 @@ import {
   archiveAgentConfiguration,
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
-import { serializeAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
+import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
@@ -314,7 +314,7 @@ app.get(
       });
     }
 
-    const [serialized] = await serializeAgentConfigurationsWithSkills(auth, [
+    const [serialized] = await toAgentConfigurationsWithSkills(auth, [
       agentConfiguration,
     ]);
 
@@ -382,7 +382,7 @@ app.patch(
         return apiError(ctx, patchResult.error);
       }
 
-      const [patched] = await serializeAgentConfigurationsWithSkills(auth, [
+      const [patched] = await toAgentConfigurationsWithSkills(auth, [
         patchResult.value.agentConfiguration,
       ]);
 
@@ -392,7 +392,7 @@ app.patch(
       });
     }
 
-    const [serialized] = await serializeAgentConfigurationsWithSkills(auth, [
+    const [serialized] = await toAgentConfigurationsWithSkills(auth, [
       agentConfiguration,
     ]);
 

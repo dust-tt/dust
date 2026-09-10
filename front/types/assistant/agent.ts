@@ -212,13 +212,12 @@ export type AgentConfigurationType = z.infer<typeof AgentConfigurationSchema>;
 
 /**
  * An agent configuration with its attached skills resolved, which is what the API serializes.
- * `codeDefinedSkillIds` is dropped: `skills` supersedes it, and the ids on their own are an
- * internal detail of how global agents declare theirs. Generic so a full configuration keeps
- * the fields a light one does not carry.
+ * `codeDefinedSkillIds` is stripped on the way out: `skills` supersedes it, and the ids on their
+ * own are an internal detail of how global agents declare theirs.
  */
-export type AgentConfigurationWithSkillsType<
-  T extends LightAgentConfigurationType = LightAgentConfigurationType,
-> = Omit<T, "codeDefinedSkillIds"> & { skills: AgentSkillType[] };
+export type AgentConfigurationWithSkillsType = LightAgentConfigurationType & {
+  skills: AgentSkillType[];
+};
 
 export type AgentConfigurationWithoutModelType = Omit<
   AgentConfigurationType,

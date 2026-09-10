@@ -335,14 +335,12 @@ const configurationKey = (
  * An agent whose details were redacted (`canRead === false`) MUST get an empty `skills` array:
  * its skills are private, consistently with `redactPrivateAgentConfigurationFields`.
  */
-export async function serializeAgentConfigurationsWithSkills<
+export async function toAgentConfigurationsWithSkills(
+  auth: Authenticator,
   // `codeDefinedSkillIds` is declared on the full configuration schema, but `getGlobalAgents`
   // puts it on global agents in every variant, so light configurations carry it too.
-  T extends LightAgentConfigurationType & { codeDefinedSkillIds?: string[] },
->(
-  auth: Authenticator,
-  agents: T[]
-): Promise<AgentConfigurationWithSkillsType<T>[]> {
+  agents: (LightAgentConfigurationType & { codeDefinedSkillIds?: string[] })[]
+): Promise<AgentConfigurationWithSkillsType[]> {
   const readableAgents = agents.filter((agent) => agent.canRead);
 
   // Workspace agents hold `AgentSkillModel` rows; global agents declare their skills in code.
@@ -358,7 +356,7 @@ export async function serializeAgentConfigurationsWithSkills<
       workspaceAgents,
       LABELS_ONLY_FETCH_OPTIONS
     ),
-    SkillResource.listByCodeDefinedSkillIds(
+    SkillResource.fetchByIds(
       auth,
       uniq(globalAgents.flatMap((agent) => agent.codeDefinedSkillIds ?? [])),
       LABELS_ONLY_FETCH_OPTIONS
