@@ -58,6 +58,7 @@ import {
   getNewRateCards,
   NEW_METRICS,
 } from "@app/lib/metronome/setup_new_pricing";
+import { ConflictError } from "@metronome/sdk";
 
 if (!process.env.METRONOME_API_KEY) {
   console.error("METRONOME_API_KEY env var required");
@@ -1842,8 +1843,7 @@ async function syncAlerts(): Promise<void> {
       // alert is NOT updated — its custom_field_filters stay whatever they were
       // at creation. To apply changed filters, archive the alert first (for the
       // pool defaults: re-run with --recreate-pool-defaults).
-      const status = (err as { status?: number })?.status;
-      if (status === 409) {
+      if (err instanceof ConflictError) {
         console.log(
           `  ✓ ${desired.name} — already exists (uniqueness_key="${desired.uniqueness_key}"), NOT updated (existing filters kept). ` +
             `Re-run with --recreate-pool-defaults --execute to apply current filters to pool defaults.`
