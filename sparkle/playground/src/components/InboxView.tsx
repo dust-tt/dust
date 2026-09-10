@@ -2,7 +2,6 @@ import {
   Avatar,
   Button,
   Check,
-  ClipboardCheck,
   Collapsible,
   CollapsibleContent,
   ConversationListItem,
@@ -12,6 +11,7 @@ import {
   Inbox01,
   ListGroup,
   MessageChatSquare,
+  MessageQuestionCircle,
   ReplySection,
   SearchInputWithPopover,
   UniversalSearchItem,
@@ -741,7 +741,7 @@ export function InboxView({
             <div className="flex flex-col gap-1">
               {renderInboxSectionHeader({
                 label: "Requests",
-                icon: ClipboardCheck,
+                icon: MessageQuestionCircle,
                 onHeaderClick: onRequestsClick,
               })}
               <ListGroup className="border-transparent! gap-0.5">

@@ -7,7 +7,6 @@ import {
   Button,
   CheckDone01,
   ChevronDown,
-  ClipboardCheck,
   Cube01,
   CubeOutline,
   Dialog,
@@ -39,7 +38,9 @@ import {
   MagicWand02,
   MessageChatSquare,
   MessageCircle01,
+  MessageLightning01,
   MessagePlusCircle,
+  MessageQuestionCircle,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListItem,
@@ -1587,7 +1588,7 @@ function Inbox() {
     if (p2View.kind === "requests")
       return (
         <Breadcrumbs
-          items={[{ label: "Requests", icon: ClipboardCheck }]}
+          items={[{ label: "Requests", icon: MessageQuestionCircle }]}
           size="sm"
           hasLighterFont
         />
@@ -1611,7 +1612,7 @@ function Inbox() {
           <NavTabPillList>
             <NavTabPillTrigger
               value="conversations"
-              icon={MessageChatSquare}
+              icon={MessageLightning01}
               aria-label="Conversations"
             >
               Conversations
@@ -1842,7 +1843,7 @@ function Inbox() {
               />
               <NavigationListItem
                 label="Requests"
-                icon={ClipboardCheck}
+                icon={MessageQuestionCircle}
                 selected={p2View.kind === "requests"}
                 count={
                   pendingRequestCount > 0 ? pendingRequestCount : undefined

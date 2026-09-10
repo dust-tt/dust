@@ -4,7 +4,6 @@ import {
   ButtonsSwitch,
   ButtonsSwitchList,
   CheckDouble,
-  ClipboardCheck,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -18,6 +17,7 @@ import {
   FilterLines,
   ListGroup,
   ListItemSection,
+  MessageQuestionCircle,
   XClose,
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
@@ -250,7 +250,7 @@ export function RequestsView({
     if (tabRequests.length === 0) {
       return (
         <EmptyState
-          icon={ClipboardCheck}
+          icon={MessageQuestionCircle}
           title={isHistory ? "Nothing handled yet" : "No pending requests"}
           description={
             isHistory
