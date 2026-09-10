@@ -379,10 +379,10 @@ function ToolActionContent({
         )}
       </span>
       <span className="flex min-w-0 flex-1 items-center gap-3">
-        <span className="w-24 shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
+        <span className="w-24 shrink-0 text-sm tabular-nums text-muted-foreground">
           {action.created ? new Date(action.created).toLocaleTimeString() : "—"}
         </span>
-        <span className="shrink-0 rounded-md border border-separator bg-background px-1.5 py-0.5 font-mono text-sm tabular-nums text-muted-foreground">
+        <span className="shrink-0 rounded-md border border-separator bg-background px-1.5 py-0.5 text-sm tabular-nums text-muted-foreground">
           Step {action.step}
         </span>
         <span className="flex min-w-0 flex-col">
@@ -409,7 +409,7 @@ function ToolActionContent({
           />
         )}
       </span>
-      <span className="w-16 shrink-0 text-right font-mono text-sm tabular-nums text-muted-foreground">
+      <span className="w-16 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
         {duration}
       </span>
       <span className="w-8 shrink-0 text-right">
@@ -504,10 +504,10 @@ function ProviderPassthroughView({
           />
         </span>
         <span className="flex min-w-0 flex-1 items-center gap-3">
-          <span className="w-24 shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
+          <span className="w-24 shrink-0 text-sm tabular-nums text-muted-foreground">
             —
           </span>
-          <span className="shrink-0 rounded-md border border-separator bg-background px-1.5 py-0.5 font-mono text-sm tabular-nums text-muted-foreground">
+          <span className="shrink-0 rounded-md border border-separator bg-background px-1.5 py-0.5 text-sm tabular-nums text-muted-foreground">
             Step {entry.step}
           </span>
           <span
@@ -1323,7 +1323,7 @@ export function ConversationPage() {
                       <span className="sr-only">Active messages</span>
                       {pendingUserCount > 0 && (
                         <span className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-md border border-separator bg-background px-2 text-sm text-foreground">
-                          <span className="font-mono tabular-nums">
+                          <span className="tabular-nums">
                             {pendingUserCount}
                           </span>
                           user message
@@ -1333,7 +1333,7 @@ export function ConversationPage() {
                       {createdAgentCount > 0 && (
                         <span className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-md border border-separator bg-background px-2 text-sm text-foreground">
                           <Spinner size="xs" />
-                          <span className="font-mono tabular-nums">
+                          <span className="tabular-nums">
                             {createdAgentCount}
                           </span>
                           agent message
