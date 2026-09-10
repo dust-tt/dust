@@ -1,7 +1,10 @@
 // @vitest-environment node
 
 import { AnthropicClaudeOpusFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_five_eu_agent_platform";
-import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
+import {
+  INPUT_CONFIGURATION_ERROR,
+  REFUSAL_ERROR,
+} from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
@@ -70,7 +73,10 @@ export const AnthropicClaudeOpusFiveEuropeAgentPlatformStreamSetup: StreamSetup 
 
       "following/no-tools/t-default/r-default": null,
 
-      "cache/no-tools/t-default/r-default": null,
+      // The cache filler ("Guideline N: Always be helpful, harmless, and
+      // honest…" ×200) reads as a system-prompt extraction attempt to this
+      // endpoint, which ends the turn with stop_reason "refusal".
+      "cache/no-tools/t-default/r-default": [REFUSAL_ERROR],
     },
   };
 
