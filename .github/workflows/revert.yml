@@ -55,21 +55,31 @@ jobs:
   notify-start:
     runs-on: ubuntu-latest
     outputs:
-      thread_ts: ${{ steps.build_message.outputs.thread_ts }}
+      thread_ts: ${{ steps.card.outputs.thread_ts }}
+      card: ${{ steps.card.outputs.card }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Notify Start
-        id: build_message
-        uses: ./.github/actions/slack-notify
+      - name: Generate infra token
+        id: infra-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         with:
-          step: "start"
-          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          client-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: dust-infra
+
+      - name: Post the deployment card
+        id: card
+        uses: ./.github/actions/deploy-card
+        with:
           component: ${{ inputs.component }}
           image_tag: ${{ inputs.image_tag }}
-          region: ${{ inputs.cells }}
+          cells: ${{ inputs.cells }}
+          is_revert: "true"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          is_revert: true
+          infra_token: ${{ steps.infra-token.outputs.token }}
 
   # Images are built once into the global registry, so one check covers every region.
   validate-image:
@@ -158,6 +168,7 @@ jobs:
                 component: '${{ inputs.component }}',
                 image_tag: '${{ inputs.image_tag }}',
                 slack_thread_ts: "${{ needs.notify-start.outputs.thread_ts }}",
+                card: ${{ toJSON(needs.notify-start.outputs.card) }},
                 slack_channel: '${{ secrets.SLACK_CHANNEL_ID }}',
                 run_playwright: false,
               }
