@@ -27,6 +27,7 @@ import {
   assertNeverAndIgnore,
 } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -160,7 +161,7 @@ function getToolSearchResultSummary(content: unknown): string | null {
       return "0 tools found";
     }
 
-    return `${toolNames.length} tool${toolNames.length > 1 ? "s" : ""} found: ${toolNames.join(", ")}`;
+    return `${toolNames.length} tool${pluralize(toolNames.length)} found: ${toolNames.join(", ")}`;
   }
 
   if (
@@ -253,11 +254,11 @@ interface AgentTraceLinksProps {
 
 function AgentTraceLinks({ runUrls, langfuseUiBaseUrl }: AgentTraceLinksProps) {
   return (
-    <span className="flex min-w-full flex-wrap items-center gap-x-2 gap-y-1">
+    <span className="flex min-w-full flex-wrap items-center gap-2">
       <span className="shrink-0 text-sm text-muted-foreground">
-        {runUrls.length > 1 ? "traces" : "trace"}
+        trace{pluralize(runUrls.length)}
       </span>
-      <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+      <span className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
         {runUrls.map(({ runId, url, isLLM }, index) => {
           const traceLabelSuffix = runUrls.length > 1 ? ` ${index + 1}` : "";
 
@@ -373,7 +374,12 @@ function ToolActionContent({
             }
           />
         ) : (
-          <span className="flex h-7 w-7 items-center justify-center rounded-md border border-separator bg-background">
+          <span
+            className={cn(
+              "flex h-7 w-7 items-center justify-center",
+              "rounded-md border border-separator bg-background"
+            )}
+          >
             <ActionIcon className="h-4 w-4 text-muted-foreground" />
           </span>
         )}
@@ -382,9 +388,7 @@ function ToolActionContent({
         <span className="w-24 shrink-0 text-sm tabular-nums text-muted-foreground">
           {action.created ? new Date(action.created).toLocaleTimeString() : "—"}
         </span>
-        <span className="shrink-0 rounded-md border border-separator bg-background px-1.5 py-0.5 text-sm tabular-nums text-muted-foreground">
-          Step {action.step}
-        </span>
+        <Chip label={`Step ${action.step}`} />
         <span className="flex min-w-0 flex-col">
           <span
             className="truncate text-sm font-medium text-foreground"
@@ -434,7 +438,7 @@ function ToolActionView({ action, isExpanded, onToggle }: ToolActionViewProps) {
     <div>
       <div
         className={cn(
-          "mt-2 flex w-full items-center gap-2 rounded-md border border-separator bg-muted-background px-2 py-1.5 text-left",
+          "mt-2 flex w-full items-center gap-2 rounded-md border border-separator bg-muted-background p-2 text-left",
           action.status === "errored"
             ? "border-border-warning bg-background"
             : null
@@ -481,7 +485,13 @@ function ProviderPassthroughView({
 
   return (
     <div>
-      <div className="mt-2 flex w-full items-center gap-2 rounded-md border border-separator bg-muted-background px-2 py-1.5 text-left">
+      <div
+        className={cn(
+          "mt-2 flex w-full items-center gap-2",
+          "rounded-md border border-separator bg-muted-background",
+          "p-2 text-left"
+        )}
+      >
         <span className="shrink-0">
           <Button
             variant="outline"
@@ -507,9 +517,7 @@ function ProviderPassthroughView({
           <span className="w-24 shrink-0 text-sm tabular-nums text-muted-foreground">
             —
           </span>
-          <span className="shrink-0 rounded-md border border-separator bg-background px-1.5 py-0.5 text-sm tabular-nums text-muted-foreground">
-            Step {entry.step}
-          </span>
+          <Chip label={`Step ${entry.step}`} />
           <span
             className="min-w-0 truncate text-sm font-medium text-foreground"
             title={title}
@@ -544,7 +552,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
   const [isExpanded, setIsExpanded] = useState(!hasDustSystemTag);
 
   return (
-    <div className="flex flex-grow flex-col">
+    <div className="flex grow flex-col">
       <div className="max-w-full self-end">
         <ConversationMessage
           pictureUrl={message.user?.image}
@@ -554,7 +562,10 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
           {hasDustSystemTag && !isExpanded ? (
             <button
               onClick={() => setIsExpanded(true)}
-              className="flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground"
+              className={cn(
+                "flex cursor-pointer items-center gap-1",
+                "text-sm italic text-muted-foreground hover:text-foreground"
+              )}
             >
               <ChevronDown className="h-4 w-4" />
               <span>Hidden System Message (click to expand)</span>
@@ -564,7 +575,10 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
               {hasDustSystemTag && (
                 <button
                   onClick={() => setIsExpanded(false)}
-                  className="mb-2 flex cursor-pointer items-center gap-1 text-sm italic text-muted-foreground hover:text-foreground"
+                  className={cn(
+                    "mb-2 flex cursor-pointer items-center gap-1",
+                    "text-sm italic text-muted-foreground hover:text-foreground"
+                  )}
                 >
                   <XClose className="h-4 w-4" />
                   <span>Hide System Message</span>
@@ -587,7 +601,7 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
             <span>{new Date(message.created).toLocaleString()}</span>
             {message.context.origin === "wakeup" && (
               <StatusBadge label="wake-up" color="highlight" />
-            )}  
+            )}
           </div>
         </ConversationMessage>
       </div>
@@ -691,32 +705,35 @@ const AgentMessageView = ({
             <div className="whitespace-pre-wrap">{message.content}</div>
           ))}
         {message.error && (
-          <div className="my-3 rounded-md border border-border-warning bg-background px-3 py-2 text-sm font-medium text-warning">
+          <div
+            className={cn(
+              "my-3 rounded-md border border-border-warning bg-background",
+              "p-2 text-sm font-medium text-warning"
+            )}
+          >
             {message.error.message}
           </div>
         )}
-        <div className="mt-3 rounded-md border border-separator bg-muted-background px-3 py-2">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className="mt-3 rounded-md border border-separator bg-muted-background p-2">
+          <div className="flex flex-wrap items-center gap-4">
             <StatusBadge
               label={AGENT_STATUS[message.status]?.label ?? message.status}
               color={AGENT_STATUS[message.status]?.color ?? "primary"}
             />
-            <MetadataItem label="date" mono>
+            <MetadataItem label="date">
               {new Date(message.created).toLocaleString()}
             </MetadataItem>
-            <MetadataItem label="version" mono>
-              {message.version}
-            </MetadataItem>
+            <MetadataItem label="version">{message.version}</MetadataItem>
             <MetadataItem label="message" mono>
               {message.sId}
             </MetadataItem>
             {message.modelInteractionDurationMs != null && (
-              <MetadataItem label="LLM" mono>
+              <MetadataItem label="LLM">
                 {formatDurationMs(message.modelInteractionDurationMs)}
               </MetadataItem>
             )}
             {message.completionDurationMs != null && (
-              <MetadataItem label="total" mono>
+              <MetadataItem label="total">
                 {formatDurationMs(message.completionDurationMs)}
               </MetadataItem>
             )}
@@ -1024,7 +1041,7 @@ export function ConversationPage() {
     conversation && (
       <div
         className={cn(
-          "mx-auto grid w-full max-w-5xl grid-cols-1 gap-6 xl:max-w-[123rem]",
+          "mx-auto grid w-full max-w-5xl grid-cols-1 gap-6 xl:max-w-492",
           "2xl:grid-cols-[minmax(16rem,1fr)_minmax(0,93.5rem)]"
         )}
       >
@@ -1322,22 +1339,34 @@ export function ConversationPage() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="sr-only">Active messages</span>
                       {pendingUserCount > 0 && (
-                        <span className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-md border border-separator bg-background px-2 text-sm text-foreground">
+                        <span
+                          className={cn(
+                            "inline-flex h-7 items-center gap-2 whitespace-nowrap",
+                            "rounded-md border border-separator bg-background",
+                            "px-2 text-sm text-foreground"
+                          )}
+                        >
                           <span className="tabular-nums">
                             {pendingUserCount}
                           </span>
                           user message
-                          {pendingUserCount > 1 ? "s" : ""} queued
+                          {pluralize(pendingUserCount)} queued
                         </span>
                       )}
                       {createdAgentCount > 0 && (
-                        <span className="inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-md border border-separator bg-background px-2 text-sm text-foreground">
+                        <span
+                          className={cn(
+                            "inline-flex h-7 items-center gap-2 whitespace-nowrap",
+                            "rounded-md border border-separator bg-background",
+                            "px-2 text-sm text-foreground"
+                          )}
+                        >
                           <Spinner size="xs" />
                           <span className="tabular-nums">
                             {createdAgentCount}
                           </span>
                           agent message
-                          {createdAgentCount > 1 ? "s" : ""} generating
+                          {pluralize(createdAgentCount)} generating
                         </span>
                       )}
                     </div>
