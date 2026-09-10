@@ -1,3 +1,4 @@
+import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import type { TaskOwnerFilter } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { PodConversationsTab } from "@app/components/pod/conversation/PodConversationsTab";
@@ -193,25 +194,27 @@ export function PodPageContent({
         {isGoalPod && podInfo.isEditor ? (
           <GoalPodOverview owner={owner} user={user} podId={podInfo.sId} />
         ) : (
-          <PodConversationsTab
-            owner={owner}
-            user={user}
-            conversations={conversations}
-            isConversationsLoading={isConversationsLoading}
-            hasMore={hasMore}
-            loadMore={loadMore}
-            isLoadingMore={isLoadingMore}
-            podInfo={podInfo}
-            isPodEmpty={isPodEmpty}
-            conversationFilter={conversationFilter}
-            onConversationFilterChange={handleConversationFilterChange}
-            hideTriggeredConversations={hideTriggeredConversations}
-            onHideTriggeredConversationsChange={
-              handleHideTriggeredConversationsChange
-            }
-            onSubmit={handleConversationCreation}
-            onNavigateToTasks={() => onTabChange("tasks")}
-          />
+          <FilePreviewProvider owner={owner}>
+            <PodConversationsTab
+              owner={owner}
+              user={user}
+              conversations={conversations}
+              isConversationsLoading={isConversationsLoading}
+              hasMore={hasMore}
+              loadMore={loadMore}
+              isLoadingMore={isLoadingMore}
+              podInfo={podInfo}
+              isPodEmpty={isPodEmpty}
+              conversationFilter={conversationFilter}
+              onConversationFilterChange={handleConversationFilterChange}
+              hideTriggeredConversations={hideTriggeredConversations}
+              onHideTriggeredConversationsChange={
+                handleHideTriggeredConversationsChange
+              }
+              onSubmit={handleConversationCreation}
+              onNavigateToTasks={() => onTabChange("tasks")}
+            />
+          </FilePreviewProvider>
         )}
       </NavTabPillContent>
       <NavTabPillContent value="files">

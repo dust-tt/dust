@@ -1,39 +1,29 @@
-import { FilePreviewDialog } from "@app/components/file_explorer/FilePreviewDialog";
-import type { FileEntry } from "@app/components/file_explorer/types";
+import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { isFilePreviewableContentType } from "@app/components/file_explorer/utils";
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
   fetchFileIdFromPath,
   getFileDownloadUrl,
   getFilePathDownloadUrl,
-  getFilePathViewUrl,
-  getFileViewUrl,
 } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useCallback, useContext, useMemo } from "react";
 
 interface PreviewableFile {
   fileId?: string | null;
   filePath?: string;
-  title: string;
   contentType: string;
 }
 
 type FilePreviewContextType = {
   openFilePreview: (file: PreviewableFile) => void;
-  resolveFileIdFromPath: (filePath: string) => Promise<string | null>;
+  openFramePreview: (
+    frame: Omit<PreviewableFile, "contentType">
+  ) => Promise<void>;
 };
 
-const FilePreviewContext = createContext<FilePreviewContextType>({
-  openFilePreview: () => {},
-  resolveFileIdFromPath: () => Promise.resolve(null),
-});
+const FilePreviewContext = createContext<FilePreviewContextType | null>(null);
 
 interface FilePreviewProviderProps {
   owner: LightWorkspaceType;
@@ -44,19 +34,21 @@ export function FilePreviewProvider({
   owner,
   children,
 }: FilePreviewProviderProps) {
-  const [previewState, setPreviewState] = useState<{
-    entry: FileEntry;
-    fileUrl: string;
-    downloadUrl: string;
-  } | null>(null);
+  const { openPanel } = useConversationSidePanelContext();
+  const sendNotification = useSendNotification();
 
   const openFilePreview = useCallback(
     (file: PreviewableFile) => {
-      const fileUrl = file.filePath
-        ? getFilePathViewUrl(owner, file.filePath)
-        : file.fileId
-          ? getFileViewUrl(owner, file.fileId)
-          : null;
+      if (isFilePreviewableContentType(file.contentType)) {
+        if (file.filePath) {
+          openPanel({ type: "file_preview", filePath: file.filePath });
+          return;
+        }
+        if (file.fileId) {
+          openPanel({ type: "file_preview", fileId: file.fileId });
+          return;
+        }
+      }
 
       const downloadUrl = file.filePath
         ? getFilePathDownloadUrl(owner, file.filePath)
@@ -64,71 +56,51 @@ export function FilePreviewProvider({
           ? getFileDownloadUrl(owner, file.fileId)
           : null;
 
-      if (!fileUrl || !downloadUrl) {
-        return;
-      }
-
-      if (!isFilePreviewableContentType(file.contentType)) {
+      if (downloadUrl) {
         window.open(downloadUrl, "_blank");
+      }
+    },
+    [openPanel, owner]
+  );
+
+  const openFramePreview = useCallback(
+    async ({ fileId, filePath }: Omit<PreviewableFile, "contentType">) => {
+      const resolvedFileId =
+        fileId ??
+        (filePath ? await fetchFileIdFromPath({ owner, filePath }) : null);
+
+      if (!resolvedFileId) {
+        sendNotification({
+          type: "error",
+          title: "Failed to open Frame",
+          description: "No linked file was found for this Frame.",
+        });
         return;
       }
 
-      setPreviewState({
-        entry: {
-          kind: "file",
-          isDirectory: false,
-          fileName: file.title,
-          path: file.filePath ?? file.title,
-          contentType: file.contentType,
-          fileId: file.fileId ?? null,
-          thumbnailUrl: null,
-          sizeBytes: 0,
-          // No mtime here: stands in to cache-bust the per-URL cached PDF
-          // conversion, so an edited file stops rendering its stale one.
-          lastModifiedMs: Date.now(),
-        },
-        fileUrl,
-        downloadUrl,
-      });
+      openPanel({ type: "interactive_content", fileId: resolvedFileId });
     },
-    [owner]
+    [openPanel, owner, sendNotification]
   );
-
-  const resolveFileIdFromPath = useCallback(
-    (filePath: string) => fetchFileIdFromPath({ owner, filePath }),
-    [owner]
-  );
-
-  const handleDownload = useCallback(async () => {
-    if (previewState?.downloadUrl) {
-      window.open(previewState.downloadUrl, "_blank");
-    }
-  }, [previewState?.downloadUrl]);
 
   const contextValue = useMemo(
-    () => ({ openFilePreview, resolveFileIdFromPath }),
-    [openFilePreview, resolveFileIdFromPath]
+    () => ({ openFilePreview, openFramePreview }),
+    [openFilePreview, openFramePreview]
   );
 
   return (
     <FilePreviewContext.Provider value={contextValue}>
       {children}
-      <FilePreviewDialog
-        entry={previewState?.entry ?? null}
-        fileUrl={previewState?.fileUrl ?? null}
-        isOpen={!!previewState}
-        onOpenChange={(open) => {
-          if (!open) {
-            setPreviewState(null);
-          }
-        }}
-        onDownload={handleDownload}
-        owner={owner}
-      />
     </FilePreviewContext.Provider>
   );
 }
 
 export function useFilePreviewContext() {
-  return useContext(FilePreviewContext);
+  const context = useContext(FilePreviewContext);
+  if (!context) {
+    throw new Error(
+      "useFilePreviewContext must be used within a FilePreviewProvider"
+    );
+  }
+  return context;
 }
