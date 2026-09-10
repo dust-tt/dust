@@ -1,3 +1,5 @@
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -20,7 +22,11 @@ async function seedRevokedEditor() {
     workspace,
     user,
   } = await createResourceTest({ role: "admin" });
-  const agent = await AgentConfigurationFactory.createTestAgent(auth);
+  const original = await AgentConfigurationFactory.createTestAgent(auth);
+  const agent = await AgentConfigurationFactory.updateTestAgent(
+    auth,
+    original.sId
+  );
   const legacy = await GroupResource.findEditorGroupForAgent(auth, agent);
   assert(legacy.isOk());
   const resource = await AgentResource.fetchByAgentConfiguration(auth, agent);
@@ -56,6 +62,7 @@ async function seedRevokedEditor() {
   assert(revoked.isOk());
   vi.setSystemTime(new Date("2026-09-07T12:00:00Z"));
   return {
+    agent,
     auth,
     workspace,
     user,
@@ -68,6 +75,31 @@ async function seedRevokedEditor() {
 
 describe("repairEditorMemberships", () => {
   afterEach(() => vi.useRealTimers());
+
+  it("uses the latest non-draft configuration's editor group", async () => {
+    const { auth, workspace, agent, target } = await seedRevokedEditor();
+    assert((await target.delete(auth)).isOk());
+    await GroupAgentModel.destroy({
+      where: { workspaceId: workspace.id, agentConfigurationId: agent.id },
+    });
+    const spec = {
+      wId: workspace.sId,
+      logger: logger.child({}, { level: "silent" }),
+      execute: false,
+    };
+    await expect(repairEditorMemberships(spec)).resolves.toEqual({
+      ended: 0,
+      active: 0,
+    });
+    await AgentConfigurationModel.update(
+      { status: "draft" },
+      { where: { workspaceId: workspace.id, id: agent.id } }
+    );
+    await expect(repairEditorMemberships(spec)).resolves.toEqual({
+      ended: 1,
+      active: 0,
+    });
+  });
 
   it.each([
     false,

@@ -26,41 +26,39 @@ type MembershipToCopy = Pick<GroupMembershipModel, "id" | "userId"> & {
 };
 type Counts = { ended: number; active: number };
 
-async function fetchHistoryGroups(afterGroupId: ModelId, wId?: string) {
+/**
+ * @cc [owner:philipperolet,label:migration] latest-editor-groups
+ * Only groups linked to an agent's latest non-draft configuration are eligible.
+ */
+async function fetchEditorGroups(afterGroupId: ModelId, wId?: string) {
   // Walk group IDs, not workspaces. Membership probes use (workspaceId, groupId, status, startAt).
-  return frontSequelize.query<{ id: ModelId }>(
-    `SELECT g.id FROM groups g
+  // Each editor group belongs to one agent; (agentId, version) supports the latest-version check.
+  return frontSequelize.query<EditorGroup>(
+    `SELECT DISTINCT g.id AS "groupModelId", c."agentId" AS "agentModelId", w."sId" AS "workspaceId"
+     FROM groups g
      JOIN workspaces w ON w.id = g."workspaceId"
+     JOIN group_agents ga ON ga."groupId" = g.id AND ga."workspaceId" = g."workspaceId"
+     JOIN agent_configurations c ON c.id = ga."agentConfigurationId"
+       AND c."workspaceId" = ga."workspaceId"
      WHERE g.kind = 'agent_editors' AND g.id > :afterGroupId
        AND (:wId IS NULL OR w."sId" = :wId)
+       AND c.status <> 'draft'
        AND EXISTS (
          SELECT 1 FROM group_memberships m
          WHERE m."workspaceId" = g."workspaceId" AND m."groupId" = g.id
            AND m.status = 'active' AND m."endAt" <= NOW()
+       )
+       -- Versions share their editor group; retain only the latest non-draft link.
+       AND NOT EXISTS (
+         SELECT 1 FROM agent_configurations newer
+         WHERE newer."agentId" = c."agentId" AND newer."workspaceId" = c."workspaceId"
+           AND newer.status <> 'draft' AND newer.version > c.version
        )
      ORDER BY g.id LIMIT :limit`,
     {
       replacements: { afterGroupId, wId: wId ?? null, limit: BATCH_SIZE },
       type: QueryTypes.SELECT,
     }
-  );
-}
-
-async function fetchEditorGroups(groupIds: ModelId[]) {
-  // Resolve only this batch's links; (agentId, version) supports the latest-version check.
-  return frontSequelize.query<EditorGroup>(
-    `SELECT DISTINCT ga."groupId" AS "groupModelId", c."agentId" AS "agentModelId", w."sId" AS "workspaceId"
-     FROM group_agents ga
-     JOIN agent_configurations c ON c.id = ga."agentConfigurationId"
-       AND c."workspaceId" = ga."workspaceId"
-     JOIN workspaces w ON w.id = ga."workspaceId"
-     WHERE ga."groupId" IN (:groupIds) AND c.status <> 'draft'
-       AND NOT EXISTS (
-         SELECT 1 FROM agent_configurations newer
-         WHERE newer."agentId" = c."agentId" AND newer."workspaceId" = c."workspaceId"
-           AND newer.status <> 'draft' AND newer.version > c.version
-       )`,
-    { replacements: { groupIds }, type: QueryTypes.SELECT }
   );
 }
 
@@ -72,26 +70,34 @@ async function fetchMissingMemberships(
 ): Promise<MembershipToCopy[]> {
   // Only history-bearing users can contribute active rows; no workspace-wide editor comparison.
   return frontSequelize.query<MembershipToCopy>(
-    `SELECT DISTINCT ON (m."userId", CASE WHEN m."endAt" <= :now THEN m."endAt" END)
+    `-- Keep one row per user/end time for history, or one row per user for current access.
+     -- Current rows share a NULL deduplication key, even if their future end times differ.
+     SELECT DISTINCT ON (m."userId", CASE WHEN m."endAt" <= :now THEN m."endAt" END)
        m.id, m."userId",
        (m."endAt" IS NULL OR m."endAt" > :now) AS active
      FROM group_memberships m
      WHERE m."workspaceId" = :workspaceId AND m."groupId" = :sourceGroupModelId
        AND m.status = 'active' AND m."startAt" <= :now
-       AND (m."endAt" <= :now OR (
-         EXISTS (SELECT 1 FROM group_memberships history
-           WHERE history."workspaceId" = m."workspaceId" AND history."groupId" = m."groupId"
-             AND history."userId" = m."userId" AND history.status = 'active'
-             AND history."endAt" <= :now)
-         AND EXISTS (SELECT 1 FROM memberships wm
-           WHERE wm."workspaceId" = m."workspaceId" AND wm."userId" = m."userId"
-             AND wm."startAt" <= :now AND (wm."endAt" IS NULL OR wm."endAt" > :now))
+       AND (
+         -- Preserve ended rows for future restoration, even while the user is revoked.
+         m."endAt" <= :now OR (
+           -- Also repair current access for users with history who have already rejoined.
+           EXISTS (SELECT 1 FROM group_memberships history
+             WHERE history."workspaceId" = m."workspaceId" AND history."groupId" = m."groupId"
+               AND history."userId" = m."userId" AND history.status = 'active'
+               AND history."endAt" <= :now)
+           -- Legacy group membership alone is insufficient: workspace membership must be current too.
+           AND EXISTS (SELECT 1 FROM memberships wm
+             WHERE wm."workspaceId" = m."workspaceId" AND wm."userId" = m."userId"
+               AND wm."startAt" <= :now AND (wm."endAt" IS NULL OR wm."endAt" > :now))
        ))
+       -- A matching end time means history was copied; any current target row covers current access.
        AND NOT EXISTS (SELECT 1 FROM group_memberships target
          WHERE target."workspaceId" = m."workspaceId" AND target."groupId" = :targetGroupModelId
            AND target."userId" = m."userId" AND target.status = 'active'
            AND CASE WHEN m."endAt" <= :now THEN target."endAt" = m."endAt"
              ELSE target."startAt" <= :now AND (target."endAt" IS NULL OR target."endAt" > :now) END)
+     -- When source rows have the same deduplication key, preserve the earliest start time.
      ORDER BY m."userId", CASE WHEN m."endAt" <= :now THEN m."endAt" END, m."startAt"`,
     {
       replacements: {
@@ -264,17 +270,16 @@ export async function repairEditorMemberships({
   let cursor = afterGroupId;
   const totals = { ended: 0, active: 0 };
   for (;;) {
-    const groups = await fetchHistoryGroups(cursor, wId);
-    if (groups.length === 0) {
+    const editors = await fetchEditorGroups(cursor, wId);
+    if (editors.length === 0) {
       return totals;
     }
-    const editors = await fetchEditorGroups(groups.map(({ id }) => id));
     const counts = await repairBatch(editors, execute, logger);
     for (const count of counts) {
       totals.ended += count.ended;
       totals.active += count.active;
     }
-    cursor = groups[groups.length - 1].id;
+    cursor = editors[editors.length - 1].groupModelId;
     logger.info(
       { execute, afterGroupId: cursor, groups: editors.length, ...totals },
       "Agent editor repair batch completed"
