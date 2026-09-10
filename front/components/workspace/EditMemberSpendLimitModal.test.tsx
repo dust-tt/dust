@@ -1,7 +1,7 @@
+import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { makeMemberUsage } from "@app/tests/utils/MemberUsageFactory";
 import type { GroupType } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
-import type { LightWorkspaceType } from "@app/types/user";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -21,7 +21,7 @@ vi.mock("@app/lib/swr/groups", () => ({
   useUpdateGroupSpendLimit: () => ({ doUpdateGroupSpendLimit: vi.fn() }),
 }));
 
-const owner = { sId: "wId_1" } as LightWorkspaceType;
+const owner = LightWorkspaceFactory.build({ sId: "wId_1" });
 const groups: GroupType[] = [];
 
 function makeMember(

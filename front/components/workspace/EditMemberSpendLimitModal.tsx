@@ -13,7 +13,10 @@ import { useUpdateUserSpendLimit } from "@app/lib/swr/memberships";
 import { useUpdateDefaultUserSpendLimit } from "@app/lib/swr/usage_settings";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { GroupType } from "@app/types/groups";
-import { normalizeToPoolLimitSeatType } from "@app/types/memberships";
+import {
+  isMembershipSeatType,
+  normalizeToPoolLimitSeatType,
+} from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -85,9 +88,13 @@ function MemberSpendLimitForm({
   });
   // The "default" source also labels free and none seats, whose cap is the
   // seat allowance (or 0) rather than the workspace pool default. Only
-  // pool-bearing seats are actually capped by the workspace default.
+  // pool-bearing seats are actually capped by the workspace default. The
+  // server may have introduced a seat type the client hasn't refreshed to
+  // know about yet, so unrecognized values are treated as non-pool rather
+  // than passed to the exhaustive normalizer.
   const isDefaultHighest =
     member?.spendLimitSource === "default" &&
+    isMembershipSeatType(member.seatType) &&
     normalizeToPoolLimitSeatType(member.seatType) !== null;
   const showDefaultLimit =
     isDefaultHighest && defaultUserSpendLimit.status !== "unavailable";
