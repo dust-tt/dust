@@ -13,7 +13,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { statsDMetrics } from "@app/lib/utils/statsd";
-import logger from "@app/logger/logger";
 import { InternalPostMessagesRequestBodySchema } from "@app/types/api/assistant";
 import type { PostMessagesResponseBody } from "@app/types/api/assistant/messages";
 import type {
@@ -408,12 +407,7 @@ app.post(
     // so it must not fail a message that was already posted.
     void promoteAnalyticsPanelConversation(auth, {
       conversation: conversationResource,
-    }).catch((err) =>
-      logger.error(
-        { err, conversationId: conversation.sId },
-        "Failed to promote Analytics-panel conversation"
-      )
-    );
+    });
 
     const contentFragments = await fetchPrecedingContentFragments(auth, {
       conversationResource,
