@@ -1,5 +1,5 @@
-import { UsageTableSkeleton } from "@app/components/workspace/MembersUsageTable";
 import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
+import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { timeAgoFrom } from "@app/lib/utils";
 import type {

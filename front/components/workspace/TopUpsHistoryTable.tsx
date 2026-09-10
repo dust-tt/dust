@@ -1,4 +1,4 @@
-import { UsageTableSkeleton } from "@app/components/workspace/MembersUsageTable";
+import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import { formatCredits } from "@app/lib/client/credits";
 import { useAwuTopUpsHistory } from "@app/lib/swr/credits";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
