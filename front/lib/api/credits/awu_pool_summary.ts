@@ -40,9 +40,15 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 import { z } from "zod";
 
-const DEFAULT_CYCLE_HISTORY_LIMIT = 5;
-const MAX_CYCLE_HISTORY_LIMIT = 24;
+export const DEFAULT_CYCLE_HISTORY_LIMIT = 5;
+export const MAX_CYCLE_HISTORY_LIMIT = 24;
 
+/**
+ * @cc [owner:arthurvervaet,label:api] cycle-history-limit-clamp
+ * `cycleHistoryLimit` MUST be clamped to at most `MAX_CYCLE_HISTORY_LIMIT`: callers cannot
+ * request more cycles than that, and an out-of-range value falls back to
+ * `DEFAULT_CYCLE_HISTORY_LIMIT` rather than erroring.
+ */
 export const AwuPoolSummaryQuerySchema = z.object({
   cycleHistoryLimit: z.coerce
     .number()

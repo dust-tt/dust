@@ -292,16 +292,20 @@ export function useAwuPoolCurrentCycle({
 
 export function useAwuPoolCycleHistory({
   workspaceId,
+  cycleHistoryLimit,
   disabled,
 }: {
   workspaceId: string;
+  cycleHistoryLimit?: number;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const awuFetcher: Fetcher<AwuPoolCycleHistoryResponseBody> = fetcher;
 
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/credits/awu-pool-cycle-history`,
+    `/api/w/${workspaceId}/credits/awu-pool-cycle-history${
+      cycleHistoryLimit ? `?cycleHistoryLimit=${cycleHistoryLimit}` : ""
+    }`,
     awuFetcher,
     { disabled }
   );

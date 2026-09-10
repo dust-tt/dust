@@ -196,13 +196,16 @@ export function usePokeAwuPoolCurrentCycle({
 
 export function usePokeAwuPoolCycleHistory({
   owner,
+  cycleHistoryLimit,
   disabled,
-}: PokeConditionalFetchProps) {
+}: PokeConditionalFetchProps & { cycleHistoryLimit?: number }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<AwuPoolCycleHistoryResponseBody> = fetcher;
 
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/credits/awu-pool-cycle-history`,
+    `/api/poke/workspaces/${owner.sId}/credits/awu-pool-cycle-history${
+      cycleHistoryLimit ? `?cycleHistoryLimit=${cycleHistoryLimit}` : ""
+    }`,
     fetcherFn,
     { disabled }
   );
