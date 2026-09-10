@@ -1,35 +1,38 @@
 // @vitest-environment node
 
-import { AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_four_dot_eight_eu_agent_platform";
-import { INPUT_CONFIGURATION_ERROR } from "@app/lib/model_constructors/test/cases";
+import { AnthropicClaudeOpusFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_five_eu_agent_platform";
+import {
+  INPUT_CONFIGURATION_ERROR,
+  REFUSAL_ERROR,
+} from "@app/lib/model_constructors/test/cases";
 import { runStreamEndpointTests } from "@app/lib/model_constructors/test/runner";
 import type { StreamSetup } from "@app/lib/model_constructors/test/setup";
 
-export const AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStreamSetup: StreamSetup =
+export const AnthropicClaudeOpusFiveEuropeAgentPlatformStreamSetup: StreamSetup =
   {
     createInstance: () =>
-      new AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream({
+      new AnthropicClaudeOpusFiveEuropeAgentPlatformStream({
         AGENT_PLATFORM_PROJECT_ID: process.env.VERTEX_AI_PROJECT_ID ?? "",
       }),
     // `null` runs the case with its default checkers; a checker array overrides
     // them. Every case always runs.
+    //
+    // Same `configSchema` as the global/Anthropic Opus 5 endpoint (both mix in
+    // `WithAnthropicClaudeOpusFiveConfig`), so the rejected cases are identical:
+    // any `temperature` other than `1`, and effort "minimal". Forcing a tool is
+    // accepted at any effort.
     tests: {
-      // Minimal reasoning effort is not supported by the model.
-      "simple/no-tools/t-default/r-minimal": [INPUT_CONFIGURATION_ERROR],
-      "simple/no-tools/t-0/r-minimal": [INPUT_CONFIGURATION_ERROR],
-      "simple/no-tools/t-0.1/r-minimal": [INPUT_CONFIGURATION_ERROR],
-      "simple/no-tools/t-1/r-minimal": [INPUT_CONFIGURATION_ERROR],
-
       "simple/no-tools/t-default/r-default": null,
       "simple/no-tools/t-default/r-none": null,
+      "simple/no-tools/t-default/r-minimal": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-default/r-low": null,
       "simple/no-tools/t-default/r-medium": null,
       "simple/no-tools/t-default/r-high": null,
       "simple/no-tools/t-default/r-xhigh": null,
       "simple/no-tools/t-default/r-maximal": null,
-      // Opus 4.7+ rejects any temperature other than `1`.
       "simple/no-tools/t-0/r-default": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-0/r-none": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0/r-minimal": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-0/r-low": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-0/r-medium": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-0/r-high": [INPUT_CONFIGURATION_ERROR],
@@ -37,14 +40,15 @@ export const AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStreamSetup: Stre
       "simple/no-tools/t-0/r-maximal": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-0.1/r-default": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-0.1/r-none": [INPUT_CONFIGURATION_ERROR],
+      "simple/no-tools/t-0.1/r-minimal": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-0.1/r-low": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-0.1/r-medium": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-0.1/r-high": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-0.1/r-xhigh": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-0.1/r-maximal": [INPUT_CONFIGURATION_ERROR],
-      // `1` is the default temperature, so it is still accepted.
       "simple/no-tools/t-1/r-default": null,
       "simple/no-tools/t-1/r-none": null,
+      "simple/no-tools/t-1/r-minimal": [INPUT_CONFIGURATION_ERROR],
       "simple/no-tools/t-1/r-low": null,
       "simple/no-tools/t-1/r-medium": null,
       "simple/no-tools/t-1/r-high": null,
@@ -69,12 +73,15 @@ export const AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStreamSetup: Stre
 
       "following/no-tools/t-default/r-default": null,
 
-      "cache/no-tools/t-default/r-default": null,
+      // The cache filler ("Guideline N: Always be helpful, harmless, and
+      // honest…" ×200) reads as a system-prompt extraction attempt to this
+      // endpoint, which ends the turn with stop_reason "refusal".
+      "cache/no-tools/t-default/r-default": [REFUSAL_ERROR],
     },
   };
 
-// NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/anthropic_claude_opus_four_dot_eight_eu_agent_platform.test.ts
+// NODE_ENV=test RUN_LLM_TEST=true npm run test -- --config lib/model_constructors/test/vite.config.js --bail 1 lib/model_constructors/test/endpoints/anthropic_claude_opus_five_eu_agent_platform.test.ts
 runStreamEndpointTests(
-  AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream,
-  AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStreamSetup
+  AnthropicClaudeOpusFiveEuropeAgentPlatformStream,
+  AnthropicClaudeOpusFiveEuropeAgentPlatformStreamSetup
 );
