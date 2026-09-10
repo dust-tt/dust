@@ -34,6 +34,10 @@ const EMPTY_POOL_SUMMARY = {
   excessConsumedCredits: null,
   excessCycleBreakdown: [],
   hasMoreCycleHistory: false,
+  hasMoreCycleHistoryByBreakdown: {
+    cycleBreakdown: false,
+    excessCycleBreakdown: false,
+  },
   programmaticConsumedCredits: null,
 };
 

@@ -14,6 +14,7 @@ import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type {
   AwuPoolCurrentCycleResponseBody,
   AwuPoolCycleBreakdown,
+  AwuPoolCycleHistoryOverflow,
   AwuPoolCycleHistoryResponseBody,
   AwuPoolSummaryResponseBody,
 } from "@app/types/api/credits/awu_pool_summary";
@@ -29,6 +30,10 @@ export type PokeCreditsData = {
   rows: PokeListCreditsResponseBody["rows"];
   excessCreditsLast30DaysMicroUsd: number;
 };
+
+const EMPTY_HAS_MORE_CYCLE_HISTORY: AwuPoolCycleHistoryOverflow = Object.freeze(
+  { cycleBreakdown: false, excessCycleBreakdown: false }
+);
 
 export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
   const { fetcher } = useFetcher();
@@ -222,9 +227,9 @@ export function usePokeAwuPoolCycleHistory({
     excessCycleBreakdown: isUsable
       ? (data?.excessCycleBreakdown ?? emptyArray<AwuPoolCycleBreakdown>())
       : emptyArray<AwuPoolCycleBreakdown>(),
-    hasMoreCycleHistory: isUsable
-      ? (data?.hasMoreCycleHistory ?? false)
-      : false,
+    hasMoreCycleHistoryByBreakdown: isUsable
+      ? (data?.hasMoreCycleHistoryByBreakdown ?? EMPTY_HAS_MORE_CYCLE_HISTORY)
+      : EMPTY_HAS_MORE_CYCLE_HISTORY,
     isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
     isAwuPoolCycleHistoryError: error,
     isAwuPoolCycleHistoryValidating: isValidating,

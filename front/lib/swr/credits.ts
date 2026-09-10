@@ -8,6 +8,7 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   AwuPoolCurrentCycleResponseBody,
   AwuPoolCycleBreakdown,
+  AwuPoolCycleHistoryOverflow,
   AwuPoolCycleHistoryResponseBody,
   AwuPoolSummaryResponseBody,
 } from "@app/types/api/credits/awu_pool_summary";
@@ -23,6 +24,10 @@ import type { Fetcher } from "swr";
 
 // Global state for tracking purchase loading status per workspace
 const purchaseLoadingState = new Map<string, boolean>();
+
+const EMPTY_HAS_MORE_CYCLE_HISTORY: AwuPoolCycleHistoryOverflow = Object.freeze(
+  { cycleBreakdown: false, excessCycleBreakdown: false }
+);
 const purchaseLoadingListeners = new Set<() => void>();
 
 function setPurchaseLoading(workspaceId: string, loading: boolean) {
@@ -323,9 +328,9 @@ export function useAwuPoolCycleHistory({
     excessCycleBreakdown: isUsable
       ? (data?.excessCycleBreakdown ?? emptyArray<AwuPoolCycleBreakdown>())
       : emptyArray<AwuPoolCycleBreakdown>(),
-    hasMoreCycleHistory: isUsable
-      ? (data?.hasMoreCycleHistory ?? false)
-      : false,
+    hasMoreCycleHistoryByBreakdown: isUsable
+      ? (data?.hasMoreCycleHistoryByBreakdown ?? EMPTY_HAS_MORE_CYCLE_HISTORY)
+      : EMPTY_HAS_MORE_CYCLE_HISTORY,
     isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
     isAwuPoolCycleHistoryError: error,
     isAwuPoolCycleHistoryValidating: isValidating,

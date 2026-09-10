@@ -79,7 +79,8 @@ interface PoolCreditCardProps {
 }
 
 function PoolCreditCard({ owner }: PoolCreditCardProps) {
-  const { cycleHistoryLimit, onLoadMoreCycleHistory } = useCycleHistoryLimit();
+  const { cycleHistoryLimit, onLoadMoreCycleHistory, onShowLessCycleHistory } =
+    useCycleHistoryLimit();
   const {
     awuPoolCurrentCycle,
     isAwuPoolCurrentCycleLoading,
@@ -88,7 +89,7 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
   const {
     cycleBreakdown: poolCycleBreakdown,
     excessCycleBreakdown,
-    hasMoreCycleHistory,
+    hasMoreCycleHistoryByBreakdown: hasMoreCycleHistory,
     isAwuPoolCycleHistoryLoading,
     isAwuPoolCycleHistoryError,
     isAwuPoolCycleHistoryValidating,
@@ -108,10 +109,11 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
         !!isAwuPoolCycleHistoryError
       )}
       cycleHistoryLoadMore={{
-        hasMore: hasMoreCycleHistory,
+        hasMoreCycleHistory,
         isLoading:
           isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading,
         onLoadMore: onLoadMoreCycleHistory,
+        onShowLess: onShowLessCycleHistory,
       }}
     />
   );
