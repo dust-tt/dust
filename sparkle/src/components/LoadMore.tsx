@@ -41,6 +41,7 @@ export function LoadMore({
       )}
     >
       <button
+        type="button"
         className={cn(
           "text-xs font-medium",
           "transition-colors duration-200",
