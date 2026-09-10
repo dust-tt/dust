@@ -21,6 +21,8 @@ import {
   serializeMention,
 } from "@app/lib/mentions/format";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
+import { stripSkillTagPresentationAttributes } from "@app/lib/skills/format";
+import { stripToolTagPresentationAttributes } from "@app/lib/tools/format";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
@@ -461,7 +463,9 @@ export function renderUserMessage(
   conversation: ConversationWithoutContentType,
   m: UserMessageType
 ): UserMessageTypeModel {
-  const content = replaceMentionsWithAt(m.content);
+  const content = stripSkillTagPresentationAttributes(
+    stripToolTagPresentationAttributes(replaceMentionsWithAt(m.content))
+  );
 
   const metadataItems: string[] = [];
   let additionalInstructions = "";
