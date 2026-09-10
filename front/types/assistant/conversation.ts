@@ -356,6 +356,9 @@ export type BaseAgentMessageType = {
   completionDurationMs: number | null;
   reactions: MessageReactionType[];
   prunedContext?: boolean;
+  // Set while the loop waits for the user to continue past the credit spend checkpoint. The
+  // threshold is only known from the live stream event; it is null when rendered from the DB.
+  pausedAtCreditSpendCheckpoint?: { thresholdAwuCredits: number | null } | null;
   costCredits: number | null;
   // Aggregated credit cost of all sub-agents (run_agent / agent_handover) spawned
   // (recursively) by this message, separate from `costCredits` (this message's own

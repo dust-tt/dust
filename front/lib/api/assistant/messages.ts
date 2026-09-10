@@ -941,6 +941,10 @@ async function renderSingleAgentMessage(
     completionDurationMs: getCompletionDuration(created, completedTs, actions),
     reactions: reactionsByMessageId[message.id] ?? [],
     prunedContext: agentMessage.prunedContext ?? false,
+    pausedAtCreditSpendCheckpoint:
+      agentMessage.creditSpendCheckpointStatus === "paused"
+        ? { thresholdAwuCredits: null }
+        : null,
     costCredits: agentMessage.costCredits ?? null,
     // Aggregated only when rendering a single agent message (see
     // batchRenderAgentMessages), so it is `null` for bulk conversation rendering.
