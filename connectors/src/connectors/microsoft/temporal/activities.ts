@@ -52,7 +52,10 @@ import {
   updateDescendantsParentsInCore,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/file";
-import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
+import {
+  getMimeTypesToSync,
+  resolveMicrosoftMimeType,
+} from "@connectors/connectors/microsoft/temporal/mime_types";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
@@ -748,10 +751,10 @@ export async function syncFiles({
       pdfEnabled: providerConfig.pdfEnabled || false,
       csvEnabled: providerConfig.csvEnabled || false,
     });
-    const filesToSync = children.filter(
-      (item) =>
-        item.file?.mimeType && mimeTypesToSync.includes(item.file.mimeType)
-    );
+    const filesToSync = children.filter((item) => {
+      const mimeType = resolveMicrosoftMimeType(item);
+      return mimeType != null && mimeTypesToSync.includes(mimeType);
+    });
 
     const concurrency = getAdaptiveConcurrency(
       filesToSync,
