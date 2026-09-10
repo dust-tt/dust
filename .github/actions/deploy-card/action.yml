@@ -56,11 +56,15 @@ runs:
           const tag = process.env.IMAGE_TAG;
           const revert = process.env.IS_REVERT === 'true';
           const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          // Slack's read methods, users.lookupByEmail among them, refuse JSON bodies: those go
+          // as query strings, the write methods as JSON.
           const slack = async (method, body) => {
-            const res = await fetch(`https://slack.com/api/${method}`, {
-              method: 'POST',
-              headers: { Authorization: `Bearer ${process.env.SLACK_TOKEN}`, 'Content-Type': 'application/json; charset=utf-8' },
-              body: JSON.stringify(body),
+            const read = method.startsWith('users.') || method.startsWith('conversations.');
+            const url = `https://slack.com/api/${method}${read ? `?${new URLSearchParams(body)}` : ''}`;
+            const res = await fetch(url, {
+              method: read ? 'GET' : 'POST',
+              headers: { Authorization: `Bearer ${process.env.SLACK_TOKEN}`, ...(read ? {} : { 'Content-Type': 'application/json; charset=utf-8' }) },
+              ...(read ? {} : { body: JSON.stringify(body) }),
             }).then((r) => r.json()).catch((e) => ({ ok: false, error: String(e) }));
             if (!res.ok) core.warning(`${method}: ${res.error}`);
             return res;
@@ -189,7 +193,7 @@ runs:
 
           if (shipping.commits.length > 0) {
             const newest = shipping.commits.slice(-20).reverse();
-            const lines = newest.map((c) => `• <${c.html_url}|${esc(c.commit.message.split('\n')[0])}> (${esc(c.commit.author.name)})`);
+            const lines = newest.map((c) => `• <${c.html_url}|${esc(c.commit.message.split('\n')[0])}> by ${authors.get((c.author && c.author.login) || c.commit.author.name)}`);
             if (shipping.total > newest.length) lines.push(`… and ${shipping.total - newest.length} more`);
             await slack('chat.postMessage', { channel: process.env.CHANNEL, thread_ts: posted.ts, text: `📝 ${revert ? 'What is being rolled back' : 'What is shipping'}\n${lines.join('\n')}` });
           }
