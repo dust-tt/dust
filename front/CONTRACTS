@@ -18,10 +18,18 @@ function doWorkspace({ workspace }: { workspace: WorkspaceType }) { }
 ```
 
 @cc [owner:flvndvd,label:backend] models-behind-resources
-Sequelize models must not be used directly outside Resources.
+Runtime application code must access Sequelize models through Resources. This includes API
+handlers, application services, and background workers.
 
-Any new model should be abstracted to the rest of the codebase through a pre-existing or new
+Non-runtime code (tests, test factories, one-off scripts and backfills) should reuse existing
+Resource APIs when their semantics fit, but may access Sequelize models directly when they do not.
+
+Any new model used by runtime application code should be exposed through a pre-existing or new
 `Resource`.
+
+@cc [owner:philipperolet,label:architecture] non-runtime-code-stays-local
+Keep code used only by tests, test factories, or one-off scripts and backfills in those contexts.
+Do not add runtime APIs or abstractions solely to support non-runtime code.
 
 @cc [owner:flvndvd,label:backend] resource-interfaces-hide-models
 Resource interfaces must not expose Sequelize model objects; accept Resources or Types instead.
@@ -501,6 +509,9 @@ possible.
 @cc [owner:flvndvd,label:testing] tests-use-resources
 Direct use of Sequelize models in tests should be avoided in favor of Resources. This includes test
 setup and assertions.
+
+When existing Resource APIs cannot express a required fixture or assertion, direct model access
+is allowed under the `models-behind-resources` contract; do not add test-only Resource APIs.
 
 @cc [label:react] component-props-interfaces
 Components props should always be typed using an `interface`.
