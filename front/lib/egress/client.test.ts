@@ -69,7 +69,13 @@ function installFakeXhr(behavior: (xhr: FakeXhr) => void) {
       this.headers[k] = v;
     }
     send() {
-      behavior(this as unknown as FakeXhr);
+      setTimeout(() => {
+        try {
+          behavior(this as unknown as FakeXhr);
+        } catch {
+          // Swallowed the way the browser swallows a throwing event handler.
+        }
+      }, 0);
     }
   }
   vi.stubGlobal("XMLHttpRequest", function () {
@@ -161,6 +167,20 @@ describe("clientUpload", () => {
     await clientUpload("/api/w/w1/files/fil_1", new FormData());
 
     expect(last.withCredentials).toBe(true);
+  });
+
+  it("rejects instead of hanging when the response cannot be represented", async () => {
+    // `Response` throws on a status outside [200, 599]. Thrown from `onload`, that error escapes
+    // the promise, so without an explicit guard the upload would stay pending forever.
+    installFakeXhr((xhr) => {
+      xhr.status = 700;
+      xhr.responseText = "boom";
+      xhr.onload?.();
+    });
+
+    await expect(clientUpload("/x", new FormData())).rejects.toThrow(
+      "Upload returned a malformed response (status 700)"
+    );
   });
 
   it("resolves error statuses and rejects transport failures", async () => {

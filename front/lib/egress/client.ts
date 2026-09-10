@@ -1,4 +1,5 @@
 import { getBaseUrl, getDefaultInit } from "@app/lib/api/config";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
 import type { EventSourcePolyfillInit } from "event-source-polyfill";
 import { EventSourcePolyfill } from "event-source-polyfill";
@@ -112,9 +113,18 @@ export async function clientEventSource(
  * @cc [owner:Nils-Fedrigo,label:error-handling] upload-rejects-like-fetch
  * `clientUpload` MUST mirror `fetch` failure semantics: it rejects with an `Error` on transport
  * failure (network error, timeout, abort) and resolves with a `Response` carrying whatever HTTP
- * status the server returned, error statuses included. This is an explicit exception to
- * `no-catching-own-errors`, limited to those transport failures: callers MUST catch the rejection,
- * as they already do around `clientFetch`.
+ * status the server returned, error statuses included. A response the platform cannot represent as
+ * a `Response` (a status outside `[200, 599]`, a `statusText` it refuses) MUST reject rather than
+ * resolve. This is an explicit exception to `no-catching-own-errors`, limited to those transport
+ * failures: callers MUST catch the rejection, as they already do around `clientFetch`.
+ */
+/**
+ * @cc [owner:Nils-Fedrigo,label:error-handling] upload-promise-always-settles
+ * The promise returned by `clientUpload` MUST settle for every outcome of the underlying
+ * `XMLHttpRequest`. Its event handlers are dispatched by the event loop, outside the promise
+ * executor, so anything they throw escapes the promise instead of rejecting it: every handler MUST
+ * therefore be total. A promise that neither resolves nor rejects strands the caller's upload state
+ * for good: the attachment card spins forever and no error is ever surfaced.
  */
 /**
  * @cc [owner:Nils-Fedrigo,label:coding] upload-progress-is-bytes-sent
@@ -135,7 +145,9 @@ export async function clientUpload(
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
 
-    // We never set `Content-Type`: the browser derives it from the `FormData` boundary.
+    // No `Content-Type` is set here, and `default-init-carries-no-content-type` keeps the
+    // resolved defaults from carrying one, so the browser derives it from the `FormData`
+    // boundary.
     headers.forEach((value, name) => {
       xhr.setRequestHeader(name, value);
     });
@@ -149,19 +161,34 @@ export async function clientUpload(
     };
 
     xhr.onload = () => {
-      // `Response` rejects statuses below 200 and a body on the no-content statuses.
-      if (xhr.status < 200) {
-        reject(new Error(`Upload failed with status ${xhr.status}.`));
-        return;
-      }
+      // `Response` throws on a status outside [200, 599] and on a `statusText` it refuses, both of
+      // which are server-controlled. Thrown here the error would escape the promise and leave it
+      // pending, so the whole handler is guarded.
+      try {
+        // `Response` rejects statuses below 200 and a body on the no-content statuses.
+        if (xhr.status < 200) {
+          reject(new Error(`Upload failed with status ${xhr.status}.`));
+          return;
+        }
 
-      const hasBody = ![204, 205, 304].includes(xhr.status);
-      resolve(
-        new Response(hasBody ? xhr.responseText : null, {
-          status: xhr.status,
-          statusText: xhr.statusText,
-        })
-      );
+        // The synthesized `Response` carries no headers: no caller needs them today. Copy them
+        // over from `xhr.getAllResponseHeaders()` if one ever does, since until then
+        // `response.headers.get(...)` silently returns `null` rather than the server's value.
+        const hasBody = ![204, 205, 304].includes(xhr.status);
+        resolve(
+          new Response(hasBody ? xhr.responseText : null, {
+            status: xhr.status,
+            statusText: xhr.statusText,
+          })
+        );
+      } catch (err) {
+        reject(
+          new Error(
+            `Upload returned a malformed response (status ${xhr.status}): ` +
+              normalizeError(err).message
+          )
+        );
+      }
     };
     xhr.onerror = () => reject(new Error("Network error while uploading."));
     xhr.ontimeout = () => reject(new Error("Timed out while uploading."));

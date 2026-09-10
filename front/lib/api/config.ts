@@ -29,6 +29,15 @@ export function getBaseUrl(): string {
 // The resolver may be async (e.g. to call getAccessToken() which refreshes expired tokens).
 let defaultInitResolver: (() => Promise<RequestInit>) | null = null;
 
+/**
+ * @cc [owner:Nils-Fedrigo,label:coding] default-init-carries-no-content-type
+ * The `RequestInit` returned by the registered resolver MUST NOT set a `Content-Type` header. Every
+ * client transport in `@app/lib/egress/client` applies these headers verbatim, `clientUpload`
+ * included, and that one sends `FormData`: it relies on the browser deriving `multipart/form-data`
+ * together with the boundary it generated. A default `Content-Type` would replace that header,
+ * leaving the server unable to parse the body of any file upload. Per-request `Content-Type`
+ * headers passed by callers are unaffected.
+ */
 export function setDefaultInitResolver(
   fn: (() => Promise<RequestInit>) | null
 ): void {
