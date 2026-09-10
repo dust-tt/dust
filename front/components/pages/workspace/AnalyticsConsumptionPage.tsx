@@ -66,7 +66,7 @@ import {
   safeLazy,
 } from "@dust-tt/sparkle";
 import { domMax, LazyMotion, m, useReducedMotion } from "framer-motion";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const canReload = () => !isNavigationLocked();
@@ -219,19 +219,21 @@ export function AnalyticsConsumptionPage() {
   }, [isNavigationBarOpen]);
 
   const content = (
-    <AdminPageContainer className="relative">
-      {analyticsAssistantEnabled && !isOpen && (
-        <Button
-          variant="outline"
-          icon={Robot}
-          label="Ask @analyst"
-          className="absolute right-4 top-4 z-10 sm:right-10 sm:top-8"
-          onClick={() => setIsOpen(true)}
-        />
-      )}
+    <AdminPageContainer>
       <AnalyticsConsumptionContent
         owner={owner}
         state={{ ...state, filter }}
+        headerActions={
+          analyticsAssistantEnabled &&
+          !isOpen && (
+            <Button
+              variant="primary"
+              icon={Robot}
+              label="Ask @analyst"
+              onClick={() => setIsOpen(true)}
+            />
+          )
+        }
         onAgentClick={setAgentDetailsId}
         onSkillClick={setSkillDetailsId}
       />
@@ -280,6 +282,7 @@ export function AnalyticsConsumptionPage() {
 interface AnalyticsConsumptionContentProps {
   components?: AnalyticsConsumptionComponents;
   embedded?: boolean;
+  headerActions?: ReactNode;
   owner: LightWorkspaceType;
   onAgentClick?: (agentId: string) => void;
   onSkillClick?: (skillId: string) => void;
@@ -295,6 +298,7 @@ interface AnalyticsConsumptionContentProps {
 export function AnalyticsConsumptionContent({
   components = WORKSPACE_CONSUMPTION_COMPONENTS,
   embedded = false,
+  headerActions,
   owner,
   onAgentClick,
   onSkillClick,
@@ -358,6 +362,7 @@ export function AnalyticsConsumptionContent({
         granularity={granularity}
         onGranularityChange={handleGranularityChange}
       />
+      {headerActions}
     </div>
   );
 
