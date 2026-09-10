@@ -87,10 +87,16 @@ type PokeAgentActionType = AgentMessageType["actions"][number] & {
   };
 };
 
-export type PokeAgentMessageType = Omit<AgentMessageType, "actions"> & {
+export type PokeAgentMessageType = Omit<
+  AgentMessageType,
+  "actions" | "contents"
+> & {
   runIds?: string[] | null;
   runUrls?: { runId: string; url: string; isLLM: boolean }[] | null;
   actions: PokeAgentActionType[];
+  contents: Array<
+    AgentMessageType["contents"][number] & { createdAt?: number }
+  >;
 };
 
 export type PokeConversationType = Omit<ConversationType, "content"> & {

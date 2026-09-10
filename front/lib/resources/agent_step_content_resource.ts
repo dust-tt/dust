@@ -20,6 +20,7 @@ import type {
   AgentStepContentType,
 } from "@app/types/assistant/agent_message_content";
 import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
+import type { PokeAgentMessageType } from "@app/types/poke";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -517,6 +518,14 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
         agentMessageId: { [Op.in]: agentMessageIds },
       },
     });
+  }
+
+  toPokeJSON(): PokeAgentMessageType["contents"][number] {
+    return {
+      step: this.step,
+      content: this.value,
+      createdAt: this.createdAt.getTime(),
+    };
   }
 
   toJSON(): AgentStepContentType {
