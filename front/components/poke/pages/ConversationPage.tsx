@@ -31,6 +31,8 @@ import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
+  ButtonGroup,
+  buttonVariants,
   Check,
   ChevronDown,
   Chip,
@@ -254,47 +256,41 @@ interface AgentTraceLinksProps {
 
 function AgentTraceLinks({ runUrls, langfuseUiBaseUrl }: AgentTraceLinksProps) {
   return (
-    <span className="flex min-w-full flex-wrap items-center gap-2">
+    <div className="flex min-w-full flex-wrap items-center gap-2">
       <span className="shrink-0 text-sm text-muted-foreground">
         trace{pluralize(runUrls.length)}
       </span>
-      <span className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         {runUrls.map(({ runId, url, isLLM }, index) => {
           const traceLabelSuffix = runUrls.length > 1 ? ` ${index + 1}` : "";
 
           return (
-            <span
-              key={runId}
-              className="inline-flex items-center gap-1 whitespace-nowrap"
-            >
+            <ButtonGroup key={runId}>
               <a
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
                 title={runId}
-                className="text-highlight hover:underline"
+                className={buttonVariants({ variant: "outline", size: "xs" })}
               >
                 Poke{traceLabelSuffix}
               </a>
               {isLLM && langfuseUiBaseUrl && (
-                <>
-                  <span className="text-muted-foreground">·</span>
-                  <a
-                    href={getLangfuseTraceUrl(langfuseUiBaseUrl, runId)}
-                    title={`Open ${runId} in Langfuse`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-highlight hover:underline"
-                  >
-                    Langfuse{traceLabelSuffix}
-                  </a>
-                </>
+                <a
+                  href={getLangfuseTraceUrl(langfuseUiBaseUrl, runId)}
+                  title={`Open ${runId} in Langfuse`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={buttonVariants({ variant: "outline", size: "xs" })}
+                >
+                  Langfuse{traceLabelSuffix}
+                </a>
               )}
-            </span>
+            </ButtonGroup>
           );
         })}
-      </span>
-    </span>
+      </div>
+    </div>
   );
 }
 
