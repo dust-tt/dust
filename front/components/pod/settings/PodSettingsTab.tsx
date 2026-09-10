@@ -24,14 +24,12 @@ import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useCheckPodName,
   usePodMetadata,
-  usePodRestrictionImpact,
   useUpdatePodMetadata,
 } from "@app/lib/swr/pods";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
-import { POD_RESTRICTION_IMPACT_WINDOW_DAYS } from "@app/types/api/projects/restriction_impact";
 import type {
   PatchPodMetadataBodyType,
   RichSpaceType,
@@ -127,17 +125,6 @@ export function PodSettingsTab({
     owner,
     podId: pod.sId,
   });
-
-  // Pod function callers who would lose access if the Pod were restricted. Only fetched on the
-  // path where it can be acted on: an editor looking at a Pod that is still open.
-  const { restrictionImpact, mutateRestrictionImpact } =
-    usePodRestrictionImpact({
-      workspaceId: owner.sId,
-      podId: pod.sId,
-      disabled: !isPodEditor || isRestricted,
-    });
-  const [isCheckingRestrictionImpact, setIsCheckingRestrictionImpact] =
-    useState(false);
 
   // Default agent for new conversations started in this pod. Stored on pod metadata
   // (shared across pod members). Resolved downstream in `useHandleMentions`, falling
@@ -425,40 +412,9 @@ export function PodSettingsTab({
     const newIsOpen = !isOpen;
     const title = newIsOpen ? "Switch to open?" : "Switch to restricted?";
 
-    // Restricting can break non-members who drive this Pod's functions from their own Frames, so
-    // warn with the count before it happens. Read fresh at the decision point, and awaited when
-    // the background fetch has not landed yet, so the dialog never silently omits the warning.
-    let impact = restrictionImpact;
-    if (!newIsOpen && !impact) {
-      setIsCheckingRestrictionImpact(true);
-      try {
-        const refreshed = await mutateRestrictionImpact();
-        impact = refreshed?.restrictionImpact ?? null;
-      } finally {
-        setIsCheckingRestrictionImpact(false);
-      }
-    }
-    const breakingImpact =
-      !newIsOpen && impact && impact.brokenUserCount > 0 ? impact : null;
-
-    const message = newIsOpen ? (
-      "All workspace members will be able to join and see everything in the Pod — including existing conversations and files."
-    ) : (
-      <>
-        <div>Access will be limited to invited members only.</div>
-        {breakingImpact && (
-          <div>
-            {breakingImpact.brokenInvocationCount} Pod function{" "}
-            {breakingImpact.brokenInvocationCount === 1 ? "call" : "calls"} in
-            the last {POD_RESTRICTION_IMPACT_WINDOW_DAYS} days came from{" "}
-            {breakingImpact.brokenUserCount}{" "}
-            {breakingImpact.brokenUserCount === 1 ? "person" : "people"} who{" "}
-            {breakingImpact.brokenUserCount === 1 ? "is" : "are"} not a member
-            of this Pod. Those calls will stop working.
-          </div>
-        )}
-      </>
-    );
+    const message = newIsOpen
+      ? "All workspace members will be able to join and see everything in the Pod — including existing conversations and files."
+      : "Access will be limited to invited members only.";
 
     const confirmed = await confirm({
       title,
@@ -486,15 +442,7 @@ export function PodSettingsTab({
     if (updated) {
       await mutatePodInfo();
     }
-  }, [
-    confirm,
-    doUpdate,
-    isOpen,
-    mutateRestrictionImpact,
-    pod,
-    mutatePodInfo,
-    restrictionImpact,
-  ]);
+  }, [confirm, doUpdate, isOpen, pod, mutatePodInfo]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
@@ -771,9 +719,7 @@ export function PodSettingsTab({
                   <SliderToggle
                     selected={isOpen}
                     onClick={handleVisibilityToggle}
-                    disabled={
-                      isVisibilityToggleDisabled || isCheckingRestrictionImpact
-                    }
+                    disabled={isVisibilityToggleDisabled}
                   />
                 )}
               </div>

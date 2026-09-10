@@ -1,9 +1,6 @@
 import { generateSandboxFunctionInvocationToken } from "@app/lib/api/sandbox/access_tokens";
 import { SandboxNotRunningError } from "@app/lib/api/sandbox/errors";
-import {
-  ensureFrameSandboxReady,
-  ensurePodSandboxReady,
-} from "@app/lib/api/sandbox/lifecycle";
+import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import type {
   NormalizedSandboxFunctionOutcome,
@@ -13,7 +10,10 @@ import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
+import {
+  computeSandboxFunctionBundleSha256,
+  SandboxFunctionResource,
+} from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -21,6 +21,7 @@ import logger from "@app/logger/logger";
 import { launchSandboxFunctionInvocationWorkflow } from "@app/temporal/sandbox_functions/client";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
@@ -31,10 +32,7 @@ import type {
   SandboxFunctionInvocationOrigin,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import {
-  frameV2ContentType,
-  sandboxFunctionContentType,
-} from "@app/types/files";
+import { frameV2ContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -76,7 +74,6 @@ vi.mock("@app/logger/tracer", async (importOriginal) => {
 
 vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
   ensureFrameSandboxReady: vi.fn(),
-  ensurePodSandboxReady: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/sandbox/access_tokens", async (importOriginal) => {
@@ -131,7 +128,9 @@ const outputSchema: JSONSchema = {
 };
 
 // Stamped on the function at creation and expected back on every exec envelope.
-const TEST_BUNDLE_SHA256 = "a".repeat(64);
+const FRAME_BUNDLE_CODE = "export default () => 'ok';";
+const TEST_BUNDLE_SHA256 =
+  computeSandboxFunctionBundleSha256(FRAME_BUNDLE_CODE);
 
 // dsbx always delivers the result on the exec's own stdout, as a protocol v3 envelope. The
 // outcome is either inline or, for an oversized result, a spill pointer to a sandbox file.
@@ -159,60 +158,26 @@ async function setupExecutionTest(
   executionMode: SandboxFunctionExecutionMode = "durable",
   slug: string = "add-comment"
 ) {
-  const { authenticator, workspace } = await createResourceTest({
-    role: "admin",
-  });
-  const space = await SpaceFactory.project(workspace);
-  const file = await FileFactory.create(authenticator, null, {
-    contentType: sandboxFunctionContentType,
-    fileName: "comments.ts",
-    fileSize: 100,
-    status: "created",
-    useCase: "project_context",
-    useCaseMetadata: { spaceId: space.sId },
-  });
-  const sandboxFunction = await SandboxFunctionResource.makeNew(authenticator, {
-    space,
-    file,
-    slug,
-    description: "Add a comment.",
+  return setupFrameExecutionTest({
     userIdentity,
+    origin,
     executionMode,
-    bundleSha256: TEST_BUNDLE_SHA256,
-    inputSchema,
-    outputSchema,
+    slug,
   });
-  const sandbox = await SandboxResource.makeNew(authenticator, {
-    providerId: "test-provider-id",
-    status: "running",
-    baseImage: "dust-base",
-    version: "0.0.0-test",
-  });
-  vi.mocked(ensurePodSandboxReady).mockResolvedValue(
-    new Ok({ sandbox, freshlyCreated: false })
-  );
-  vi.mocked(generateSandboxFunctionInvocationToken).mockResolvedValue(
-    "sbt-function-token"
-  );
-  const invocation = await SandboxFunctionInvocationResource.makeNew(
-    authenticator,
-    { sandboxFunction, input: { message: "hello" }, origin }
-  );
-
-  return {
-    authenticator,
-    workspace,
-    space,
-    sandboxFunction,
-    sandbox,
-    invocation,
-  };
 }
 
 async function setupFrameExecutionTest({
   standalone = false,
+  userIdentity = "optional",
+  origin = "delegated",
+  executionMode = "durable",
+  slug = "add-task",
 }: {
   standalone?: boolean;
+  userIdentity?: SandboxFunctionUserIdentityPolicy;
+  origin?: SandboxFunctionInvocationOrigin;
+  executionMode?: SandboxFunctionExecutionMode;
+  slug?: string;
 } = {}) {
   const { authenticator, globalSpace, workspace } = await createResourceTest({
     role: "admin",
@@ -246,12 +211,12 @@ async function setupFrameExecutionTest({
         publicationId,
         functions: [
           {
-            name: "add-task",
+            name: slug,
             description: "Add a task.",
-            userIdentity: "optional",
-            executionMode: "durable",
+            userIdentity,
+            executionMode,
             defaultStake: "low",
-            bundleCode: "export default () => 'ok';",
+            bundleCode: FRAME_BUNDLE_CODE,
             inputSchema,
             outputSchema,
           },
@@ -263,7 +228,7 @@ async function setupFrameExecutionTest({
   const sandboxFunction =
     await SandboxFunctionResource.fetchByFramePublicationAndSlug(
       authenticator,
-      { frame, publicationId, slug: "add-task" }
+      { frame, publicationId, slug }
     );
   if (!sandboxFunction) {
     throw new Error("Expected the Frame function to exist.");
@@ -286,7 +251,7 @@ async function setupFrameExecutionTest({
   );
   const invocation = await SandboxFunctionInvocationResource.makeNew(
     authenticator,
-    { sandboxFunction, input: { message: "hello" } }
+    { sandboxFunction, input: { message: "hello" }, origin }
   );
 
   return {
@@ -320,22 +285,16 @@ describe("SandboxFunctionInvocationResource", () => {
     );
     await thirdInvocation.succeed({ commentId: "comment-3" });
 
-    const otherFile = await FileFactory.create(authenticator, null, {
-      contentType: sandboxFunctionContentType,
-      fileName: "other.ts",
-      fileSize: 100,
-      status: "created",
-      useCase: "project_context",
-      useCaseMetadata: { spaceId: space.sId },
-    });
-    const otherFunction = await SandboxFunctionResource.makeNew(authenticator, {
-      space,
-      file: otherFile,
-      slug: "other-function",
-      description: "Run another function.",
-      inputSchema,
-      outputSchema,
-    });
+    const { sandboxFunction: otherFunction } = await createTestFrameFunction(
+      authenticator,
+      {
+        space,
+        slug: "other-function",
+        description: "Run another function.",
+        inputSchema,
+        outputSchema,
+      }
+    );
     await SandboxFunctionInvocationResource.makeNew(authenticator, {
       sandboxFunction: otherFunction,
       input: { message: "other" },
@@ -378,7 +337,7 @@ describe("SandboxFunctionInvocationResource", () => {
     );
   });
 
-  it("shows readers only their invocations while Pod administrators see all", async () => {
+  it("shows every reader only their own invocations", async () => {
     const { authenticator, workspace, space, sandboxFunction, invocation } =
       await setupExecutionTest();
     const reader = await UserFactory.basic();
@@ -414,18 +373,15 @@ describe("SandboxFunctionInvocationResource", () => {
       })
     ).resolves.toBeNull();
 
-    const administratorInvocations =
-      await SandboxFunctionInvocationResource.listRecent(authenticator, {
-        sandboxFunction,
-        limit: 10,
-      });
-    expect(administratorInvocations.map(({ sId }) => sId)).toEqual([
-      readerInvocation.sId,
-      invocation.sId,
-    ]);
+    // The workspace admin who created `invocation` sees that one and not the reader's.
+    const adminInvocations = await SandboxFunctionInvocationResource.listRecent(
+      authenticator,
+      { sandboxFunction, limit: 10 }
+    );
+    expect(adminInvocations.map(({ sId }) => sId)).toEqual([invocation.sId]);
   });
 
-  it("hides userless invocations from readers but allows administrator and system reads", async () => {
+  it("hides userless invocations from every viewer but allows system reads", async () => {
     const { authenticator, workspace, sandboxFunction } =
       await setupExecutionTest();
     const userlessAuth = await Authenticator.internalAdminForWorkspace(
@@ -456,7 +412,7 @@ describe("SandboxFunctionInvocationResource", () => {
         sandboxFunction,
         invocationId: userlessInvocation.sId,
       })
-    ).resolves.toMatchObject({ sId: userlessInvocation.sId });
+    ).resolves.toBeNull();
     await expect(
       SandboxFunctionInvocationResource.fetchById(userlessAuth, {
         sandboxFunction,
@@ -467,11 +423,11 @@ describe("SandboxFunctionInvocationResource", () => {
   });
 
   it("stores and reloads its input from GCS", async () => {
-    const { authenticator, sandboxFunction, invocation } =
+    const { authenticator, frame, invocation, sandboxFunction } =
       await setupExecutionTest();
 
     expect(invocation.gcsPath).toBe(
-      `w/${authenticator.getNonNullableWorkspace().sId}/sandbox_functions/${sandboxFunction.sId}/invocations/${invocation.sId}`
+      `w/${authenticator.getNonNullableWorkspace().sId}/frames/${frame.sId}/invocations/${invocation.sId}`
     );
     expect(invocation.input).toEqual({ message: "hello" });
     expect(invocation.result).toBeUndefined();
@@ -799,139 +755,6 @@ describe("SandboxFunctionInvocationResource", () => {
     expect(refetched?.input).toBeUndefined();
   });
 
-  it("executes an invocation on the pod sandbox", async () => {
-    const { authenticator, space, sandboxFunction, sandbox, invocation } =
-      await setupExecutionTest();
-    const updateLastActivityAtSpy = vi.spyOn(sandbox, "updateLastActivityAt");
-    const loggerInfoSpy = vi
-      .spyOn(logger, "info")
-      .mockImplementation(() => undefined);
-    const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
-      new Ok({
-        exitCode: 0,
-        stdout: SUCCEEDED_STDOUT,
-        stderr: "",
-      })
-    );
-
-    expect(invocation.toJSON()).toMatchObject({
-      functionId: sandboxFunction.sId,
-      status: "created",
-    });
-    expect(invocation.sId).toMatch(/^sfi_/);
-    expect(Date.parse(invocation.toJSON().createdAt)).not.toBeNaN();
-
-    const executionResult = await invocation.execute(authenticator);
-    if (executionResult.isErr()) {
-      throw executionResult.error;
-    }
-
-    const refetchedInvocation =
-      await SandboxFunctionInvocationResource.fetchById(authenticator, {
-        sandboxFunction,
-        invocationId: invocation.sId,
-      });
-    expect(refetchedInvocation?.status).toBe("succeeded");
-    // The terminal blob records which publish served the invocation, and inspect_invocations
-    // reports it so a caller can match invocations to the hash publish/get echo.
-    expect(refetchedInvocation?.bundleSha256).toBe(TEST_BUNDLE_SHA256);
-    expect(refetchedInvocation?.toJSONForLLM()).toMatchObject({
-      bundleSha256: TEST_BUNDLE_SHA256,
-    });
-    // execute() itself never touches lastActivityAt: ensurePodSandboxReady's
-    // ensureActive already writes it under the lifecycle lock, and a second
-    // write per invocation was pure hot-row churn on the sandbox row.
-    expect(updateLastActivityAtSpy).not.toHaveBeenCalled();
-    expect(ensurePodSandboxReady).toHaveBeenCalledWith(authenticator, space, {
-      requireRunning: false,
-    });
-    expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
-      authenticator,
-      {
-        sandbox,
-        sandboxFunction,
-        owner: { kind: "pod", spaceId: space.sId },
-        invocationId: invocation.sId,
-        execId: expect.any(String),
-        noTools: false,
-      }
-    );
-    expect(execSpy).toHaveBeenCalledTimes(1);
-    expect(tracerMocks.trace).toHaveBeenCalledWith(
-      "sandbox.function.execute",
-      { resource: "pod" },
-      expect.any(Function)
-    );
-    expect(tracerMocks.setTag).toHaveBeenCalledWith(
-      "function.owner_kind",
-      "pod"
-    );
-    expect(tracerMocks.setTag).toHaveBeenCalledWith("pod.space_id", space.sId);
-    expect(loggerInfoSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        functionOwnerKind: "pod",
-        functionName: sandboxFunction.slug,
-        invocationId: invocation.sId,
-        spaceId: space.sId,
-      }),
-      "Sandbox function stdout result delivery"
-    );
-
-    const execCall = execSpy.mock.calls[0];
-    expect(execCall).toBeDefined();
-    if (!execCall) {
-      return;
-    }
-    const [, command, opts] = execCall;
-    // The bundle is read from the read-only mount, so the command is just the run, no staging write.
-    expect(command).toBe(
-      "/opt/bin/dsbx function run --result-delivery stdout -- 'add-comment'"
-    );
-    expect(opts?.envVars).toMatchObject({
-      DUST_FUNCTIONS_DIR: `/sandbox-functions/pods/${space.sId}`,
-      DUST_POD_DATABASES_DIR: "/sandbox-state/databases",
-      DUST_POD_DATABASE_MAX_SIZE_BYTES: "1073741824",
-      // Published outside an app folder, so its databases are unprefixed.
-      DUST_POD_DATABASE_PREFIX: "",
-      DUST_SANDBOX_TOKEN: "sbt-function-token",
-      DUST_FUNCTION_WARM_ENABLED: "0",
-    });
-    expect(opts?.envVars).not.toHaveProperty(
-      "DUST_FRAME_PUBLICATION_DESCRIPTOR_PATH"
-    );
-    expect(
-      JSON.parse(opts?.envVars?.DUST_POD_USER_IDENTITY ?? "")
-    ).toMatchObject({
-      workspaceId: authenticator.getNonNullableWorkspace().sId,
-      // The executor is a workspace admin: an editor of every pod, a member of none.
-      isPodEditor: true,
-      isPodMember: false,
-      user: {
-        sId: authenticator.getNonNullableUser().sId,
-        fullName: authenticator.getNonNullableUser().fullName(),
-      },
-    });
-    expect(opts?.user).toBe("agent-proxied");
-    expect(opts?.workingDirectory).toBe("/home/agent");
-    expect(typeof opts?.stdin).toBe("string");
-    if (typeof opts?.stdin !== "string") {
-      return;
-    }
-    const inputEnvelope = JSON.parse(opts.stdin);
-    expect(inputEnvelope).toMatchObject({
-      method: "POST",
-      url: `https://dust.local/sandbox-functions/${sandboxFunction.sId}/invocations/${invocation.sId}`,
-      headers: {
-        "content-type": "application/json",
-        "x-dust-sandbox-function-id": sandboxFunction.sId,
-        "x-dust-sandbox-function-invocation-id": invocation.sId,
-      },
-      body: JSON.stringify({ message: "hello" }),
-      encoding: "utf8",
-      bundleSha256: TEST_BUNDLE_SHA256,
-    });
-  });
-
   it("executes a Frame function from its exact immutable publication", async () => {
     const {
       authenticator,
@@ -951,13 +774,18 @@ describe("SandboxFunctionInvocationResource", () => {
       .spyOn(logger, "info")
       .mockImplementation(() => undefined);
 
+    const updateLastActivityAtSpy = vi.spyOn(sandbox, "updateLastActivityAt");
+
     const result = await invocation.execute(authenticator);
 
     expect(result.isOk()).toBe(true);
+    // execute() itself never touches lastActivityAt: ensureFrameSandboxReady's
+    // ensureActive already writes it under the lifecycle lock, and a second
+    // write per invocation was pure hot-row churn on the sandbox row.
+    expect(updateLastActivityAtSpy).not.toHaveBeenCalled();
     expect(ensureFrameSandboxReady).toHaveBeenCalledWith(authenticator, frame, {
       requireRunning: false,
     });
-    expect(ensurePodSandboxReady).not.toHaveBeenCalled();
     expect(generateSandboxFunctionInvocationToken).toHaveBeenCalledWith(
       authenticator,
       expect.objectContaining({
@@ -1012,6 +840,18 @@ describe("SandboxFunctionInvocationResource", () => {
       }),
       "Sandbox function stdout result delivery"
     );
+    // The terminal blob records which publish served the invocation, and inspect_invocations
+    // reports it so a caller can match invocations to the hash publish/get echo.
+    const refetchedInvocation =
+      await SandboxFunctionInvocationResource.fetchById(authenticator, {
+        sandboxFunction,
+        invocationId: invocation.sId,
+      });
+    expect(refetchedInvocation?.status).toBe("succeeded");
+    expect(refetchedInvocation?.bundleSha256).toBe(TEST_BUNDLE_SHA256);
+    expect(refetchedInvocation?.toJSONForLLM()).toMatchObject({
+      bundleSha256: TEST_BUNDLE_SHA256,
+    });
   });
 
   it("uses the lifecycle-locked Frame location for authorization and token scope", async () => {
@@ -1168,34 +1008,6 @@ describe("SandboxFunctionInvocationResource", () => {
     });
   });
 
-  it("passes the app's database prefix, derived from the function slug", async () => {
-    // This is what lets the bundle's `db("chat")` resolve to the app's own database without the
-    // app name appearing anywhere in the function's source.
-    const { authenticator, sandbox, invocation } = await setupExecutionTest(
-      "optional",
-      "delegated",
-      "durable",
-      "task-list__add-comment"
-    );
-    const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
-      new Ok({
-        exitCode: 0,
-        stdout: "hello world\n",
-        stderr: "",
-      })
-    );
-
-    const executionResult = await invocation.execute(authenticator);
-    if (executionResult.isErr()) {
-      throw executionResult.error;
-    }
-
-    const opts = execSpy.mock.calls[0]?.[2];
-    expect(opts?.envVars).toMatchObject({
-      DUST_POD_DATABASE_PREFIX: "task_list__",
-    });
-  });
-
   it.each([
     "errored",
     "succeeded",
@@ -1212,32 +1024,8 @@ describe("SandboxFunctionInvocationResource", () => {
     const result = await invocation.execute(authenticator);
 
     expect(result.isOk()).toBe(true);
-    expect(ensurePodSandboxReady).not.toHaveBeenCalled();
     expect(generateSandboxFunctionInvocationToken).not.toHaveBeenCalled();
     expect(execSpy).not.toHaveBeenCalled();
-  });
-
-  it("clears user identity for a userless invocation", async () => {
-    const { authenticator, sandbox, invocation } = await setupExecutionTest();
-    const userlessAuth = await Authenticator.internalAdminForWorkspace(
-      authenticator.getNonNullableWorkspace().sId
-    );
-    const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
-      new Ok({
-        exitCode: 0,
-        stdout: SUCCEEDED_STDOUT,
-        stderr: "",
-      })
-    );
-
-    const executionResult = await invocation.execute(userlessAuth);
-    if (executionResult.isErr()) {
-      throw executionResult.error;
-    }
-
-    expect(execSpy.mock.calls[0]?.[2]?.envVars).toMatchObject({
-      DUST_POD_USER_IDENTITY: "",
-    });
   });
 
   it("clears user identity when the executor differs from the invocation user", async () => {
@@ -1257,30 +1045,6 @@ describe("SandboxFunctionInvocationResource", () => {
     );
 
     const executionResult = await invocation.execute(otherUserAuth);
-    if (executionResult.isErr()) {
-      throw executionResult.error;
-    }
-
-    expect(execSpy.mock.calls[0]?.[2]?.envVars).toMatchObject({
-      DUST_POD_USER_IDENTITY: "",
-    });
-  });
-
-  it("clears user identity when the invocation user is no longer a member", async () => {
-    const { authenticator, sandbox, invocation } = await setupExecutionTest();
-    vi.spyOn(
-      MembershipResource,
-      "getActiveRoleForUserInWorkspace"
-    ).mockResolvedValueOnce("none");
-    const execSpy = vi.spyOn(sandbox, "exec").mockResolvedValue(
-      new Ok({
-        exitCode: 0,
-        stdout: SUCCEEDED_STDOUT,
-        stderr: "",
-      })
-    );
-
-    const executionResult = await invocation.execute(authenticator);
     if (executionResult.isErr()) {
       throw executionResult.error;
     }
@@ -1324,7 +1088,7 @@ describe("SandboxFunctionInvocationResource", () => {
       return;
     }
     expect(executionResult.error.message).toBe(
-      "This Pod Function belongs to another workspace."
+      "This Frame function belongs to another workspace."
     );
     expect(execSpy).not.toHaveBeenCalled();
   });
@@ -1507,12 +1271,16 @@ describe("SandboxFunctionInvocationResource.createAndStartExecution", () => {
     );
     // Stand in for the lifecycle, which refuses rather than creating, waking, or recreating a
     // sandbox when the caller cannot wait for one.
-    vi.mocked(ensurePodSandboxReady).mockImplementation(
-      async (_auth, _pod, opts) => {
+    vi.mocked(ensureFrameSandboxReady).mockImplementation(
+      async (_auth, _frame, opts) => {
         if (opts?.requireRunning && setup.sandbox.status !== "running") {
           return new Err(new SandboxNotRunningError());
         }
-        return new Ok({ sandbox: setup.sandbox, freshlyCreated: false });
+        return new Ok({
+          sandbox: setup.sandbox,
+          freshlyCreated: false,
+          scope: { spaceId: setup.space.sId },
+        });
       }
     );
     const execSpy = vi.spyOn(setup.sandbox, "exec").mockResolvedValue(

@@ -1,5 +1,6 @@
 import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
 import { Authenticator } from "@app/lib/auth";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
@@ -55,17 +56,30 @@ async function addToSpaceGroup(
   expect(addMemberResult.isOk()).toBe(true);
 }
 
+async function createFrame(adminAuth: Authenticator, space: SpaceResource) {
+  return FileFactory.create(adminAuth, null, {
+    contentType: frameV2ContentType,
+    fileName: "tasks.frame.json",
+    fileSize: 10,
+    status: "ready",
+    useCase: "conversation",
+    useCaseMetadata: { spaceId: space.sId },
+  });
+}
+
 async function authorizePodMemberRequired(
   auth: Authenticator,
-  space: SpaceResource
+  frame: FileResource
 ) {
   return authorizeSandboxFunctionInvocation(auth, {
     userIdentity: "pod_member_required",
     origin: "interactive_session",
-    owner: { kind: "pod", space },
+    owner: { kind: "frame", frame },
   });
 }
 
+// `pod_member_required` gates on the Pod a Frame runs in, so every case here drives it through a
+// Frame scoped to that Pod.
 describe("authorizeSandboxFunctionInvocation with pod_member_required", () => {
   it("authorizes a member of the pod member group", async () => {
     const { workspace, adminAuth, space } = await setup();
@@ -75,8 +89,9 @@ describe("authorizeSandboxFunctionInvocation with pod_member_required", () => {
       member.sId,
       workspace.sId
     );
+    const frame = await createFrame(adminAuth, space);
 
-    const authorization = await authorizePodMemberRequired(memberAuth, space);
+    const authorization = await authorizePodMemberRequired(memberAuth, frame);
 
     expect(authorization.authorized).toBe(true);
     if (authorization.authorized) {
@@ -92,21 +107,23 @@ describe("authorizeSandboxFunctionInvocation with pod_member_required", () => {
       editor.sId,
       workspace.sId
     );
+    const frame = await createFrame(adminAuth, space);
 
-    const authorization = await authorizePodMemberRequired(editorAuth, space);
+    const authorization = await authorizePodMemberRequired(editorAuth, frame);
 
     expect(authorization.authorized).toBe(true);
   });
 
   it("denies a workspace member outside the pod", async () => {
-    const { workspace, space } = await setup();
+    const { workspace, adminAuth, space } = await setup();
     const outsider = await makeWorkspaceMember(workspace);
     const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
       outsider.sId,
       workspace.sId
     );
+    const frame = await createFrame(adminAuth, space);
 
-    const authorization = await authorizePodMemberRequired(outsiderAuth, space);
+    const authorization = await authorizePodMemberRequired(outsiderAuth, frame);
 
     expect(authorization.authorized).toBe(false);
     if (!authorization.authorized) {
@@ -115,39 +132,29 @@ describe("authorizeSandboxFunctionInvocation with pod_member_required", () => {
   });
 
   it("denies a workspace admin outside the pod", async () => {
-    // Admins hold `admin` on pods but not `write`, so they cannot publish pod functions and are
-    // not treated as members either.
+    // Admins hold `admin` on pods but not `write`, so they are not treated as members.
     const { adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
 
-    const authorization = await authorizePodMemberRequired(adminAuth, space);
+    const authorization = await authorizePodMemberRequired(adminAuth, frame);
 
     expect(authorization.authorized).toBe(false);
   });
 
   it("denies a userless caller", async () => {
-    const { workspace, space } = await setup();
+    const { workspace, adminAuth, space } = await setup();
     const userlessAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
+    const frame = await createFrame(adminAuth, space);
 
-    const authorization = await authorizePodMemberRequired(userlessAuth, space);
+    const authorization = await authorizePodMemberRequired(userlessAuth, frame);
 
     expect(authorization.authorized).toBe(false);
   });
 });
 
 describe("authorizeSandboxFunctionInvocation for Frames", () => {
-  async function createFrame(adminAuth: Authenticator, space: SpaceResource) {
-    return FileFactory.create(adminAuth, null, {
-      contentType: frameV2ContentType,
-      fileName: "tasks.frame.json",
-      fileSize: 10,
-      status: "ready",
-      useCase: "conversation",
-      useCaseMetadata: { spaceId: space.sId },
-    });
-  }
-
   it("requires a workspace member even when identity is optional", async () => {
     const { workspace, adminAuth, space } = await setup();
     const frame = await createFrame(adminAuth, space);
@@ -332,30 +339,19 @@ describe("authorizeSandboxFunctionInvocation for Frames", () => {
 
     expect(authorization.authorized).toBe(false);
   });
-
-  it("denies frame_author_required for legacy Pod Functions", async () => {
-    const { adminAuth, space } = await setup();
-
-    const authorization = await authorizeSandboxFunctionInvocation(adminAuth, {
-      userIdentity: "frame_author_required",
-      origin: "interactive_session",
-      owner: { kind: "pod", space },
-    });
-
-    expect(authorization.authorized).toBe(false);
-  });
 });
 
 describe("authorizeSandboxFunctionInvocation across server revisions", () => {
   it("fails closed for a policy persisted by a newer server revision", async () => {
     const { adminAuth, space } = await setup();
+    const frame = await createFrame(adminAuth, space);
     const persistedPolicy =
       "future_policy" as SandboxFunctionUserIdentityPolicy;
 
     const authorization = await authorizeSandboxFunctionInvocation(adminAuth, {
       userIdentity: persistedPolicy,
       origin: "interactive_session",
-      owner: { kind: "pod", space },
+      owner: { kind: "frame", frame },
     });
 
     expect(authorization.authorized).toBe(false);

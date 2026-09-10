@@ -3,10 +3,8 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
-import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import type { SandboxTimestampCursor } from "@app/lib/resources/sandbox_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -50,7 +48,7 @@ export interface ReapSandboxPhaseActivityResult {
 }
 
 type ReaperSandboxLifecycleOwner = {
-  kind: "conversation" | "frame" | "pod";
+  kind: "conversation" | "frame";
   modelId: ModelId;
   workspaceModelId: ModelId;
   dangerouslyDestroySandboxIfKillRequested(
@@ -80,13 +78,12 @@ type SandboxOwnerMaps = {
 type ReaperAuthMaps = {
   conversation: Map<ModelId, Authenticator>;
   frame: Map<ModelId, Authenticator>;
-  pod: Map<ModelId, Authenticator>;
 };
 
 /**
  * Build workspace-scoped authenticators for each owner kind touched by the
  * batch. Conversation lifecycle calls use a plain user auth (global group
- * only). Pod lifecycle calls need the workspace's project groups so their
+ * only). Frame lifecycle calls need the workspace's project groups so their
  * pre-sleep filesystem flush can access restricted projects.
  */
 async function fetchAuthMaps(
@@ -96,7 +93,6 @@ async function fetchAuthMaps(
   const workspaceModelIdsByOwnerKind = {
     conversation: new Set<ModelId>(),
     frame: new Set<ModelId>(),
-    pod: new Set<ModelId>(),
   };
 
   for (const sandbox of sandboxes) {
@@ -110,7 +106,6 @@ async function fetchAuthMaps(
     ...new Set([
       ...workspaceModelIdsByOwnerKind.conversation,
       ...workspaceModelIdsByOwnerKind.frame,
-      ...workspaceModelIdsByOwnerKind.pod,
     ]),
   ];
 
@@ -118,7 +113,7 @@ async function fetchAuthMaps(
     uniqueWorkspaceModelIds
   );
 
-  const [conversationEntries, frameEntries, podEntries] = await Promise.all([
+  const [conversationEntries, frameEntries] = await Promise.all([
     concurrentExecutor(
       workspaces.filter((workspace) =>
         workspaceModelIdsByOwnerKind.conversation.has(workspace.id)
@@ -146,27 +141,11 @@ async function fetchAuthMaps(
       },
       { concurrency: REAPER_CONCURRENCY }
     ),
-    concurrentExecutor(
-      workspaces.filter((workspace) =>
-        workspaceModelIdsByOwnerKind.pod.has(workspace.id)
-      ),
-      async (workspace) => {
-        const authenticator = await Authenticator.internalAdminForWorkspace(
-          workspace.sId,
-          {
-            dangerouslyRequestAllGroups: true,
-          }
-        );
-        return [workspace.id, authenticator] as const;
-      },
-      { concurrency: REAPER_CONCURRENCY }
-    ),
   ]);
 
   return {
     conversation: new Map(conversationEntries),
     frame: new Map(frameEntries),
-    pod: new Map(podEntries),
   };
 }
 
@@ -182,8 +161,6 @@ async function fetchSandboxOwnerMaps(
     await ConversationSandboxAdapter.dangerouslyFetchConversationModelIdsBySandboxes(
       sandboxes
     );
-  const podModelIdsBySandboxModelId =
-    await PodSandboxAdapter.dangerouslyFetchPodModelIdsBySandboxes(sandboxes);
   const frameModelIdsBySandboxModelId =
     await FrameSandboxAdapter.dangerouslyFetchFrameModelIdsBySandboxes(
       sandboxes
@@ -192,19 +169,14 @@ async function fetchSandboxOwnerMaps(
   const conversationModelIds = [
     ...new Set(conversationModelIdsBySandboxModelId.values()),
   ];
-  const podModelIds = [...new Set(podModelIdsBySandboxModelId.values())];
   const frameModelIds = [...new Set(frameModelIdsBySandboxModelId.values())];
 
   const conversations =
     await ConversationResource.dangerouslyFetchByModelIds(conversationModelIds);
-  const pods = await SpaceResource.dangerouslyFetchByModelIds(podModelIds);
   const frames =
     await FileResource.dangerouslyFetchFrameV2ByModelIds(frameModelIds);
 
   const conversationsById = new Map(conversations.map((c) => [c.id, c]));
-  const podsById = new Map(
-    pods.filter((p) => p.isProject()).map((p) => [p.id, p])
-  );
   const framesById = new Map(frames.map((frame) => [frame.id, frame]));
 
   const ownerRefsBySandboxModelId = new Map<ModelId, SandboxOwnerRef>();
@@ -286,34 +258,6 @@ async function fetchSandboxOwnerMaps(
             FrameSandboxAdapter.dangerouslySleepSandboxIfRunning(auth, frame),
         });
       }
-      continue;
-    }
-
-    const podModelId = podModelIdsBySandboxModelId.get(sandbox.id);
-    if (!podModelId) {
-      continue;
-    }
-
-    ownerRefsBySandboxModelId.set(sandbox.id, {
-      kind: "pod",
-      modelId: podModelId,
-    });
-
-    const pod = podsById.get(podModelId);
-    if (pod) {
-      ownersBySandboxModelId.set(sandbox.id, {
-        kind: "pod",
-        modelId: pod.id,
-        workspaceModelId: pod.workspaceId,
-        dangerouslyDestroySandboxIfKillRequested: (auth) =>
-          PodSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(auth, pod),
-        dangerouslyDestroySandboxIfSleeping: (auth) =>
-          PodSandboxAdapter.dangerouslyDestroySandboxIfSleeping(auth, pod),
-        dangerouslySleepSandboxIfPendingApproval: (auth) =>
-          PodSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(auth, pod),
-        dangerouslySleepSandboxIfRunning: (auth) =>
-          PodSandboxAdapter.dangerouslySleepSandboxIfRunning(auth, pod),
-      });
     }
   }
 

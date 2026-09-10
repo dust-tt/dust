@@ -3,7 +3,6 @@ import type {
   PokeFrameFunctionDetails,
 } from "@app/lib/api/poke/frames";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
-import { appPrefixFromSlug } from "@app/lib/api/sandbox_functions/slug";
 import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
@@ -11,7 +10,6 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
@@ -36,7 +34,6 @@ import {
   DEFAULT_SANDBOX_FUNCTION_STAKE,
   isValidSandboxFunctionSlug,
 } from "@app/types/api/sandbox_functions";
-import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -133,23 +130,15 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   static model: ModelStaticWorkspaceAware<SandboxFunctionModel> =
     SandboxFunctionModel;
 
-  private readonly ownerSpace: SpaceResource | null;
   file: FileResource;
 
   constructor(
     model: ModelStaticWorkspaceAware<SandboxFunctionModel>,
     blob: Attributes<SandboxFunctionModel>,
-    space: SpaceResource | null,
     file: FileResource
   ) {
     super(model, blob);
-    this.ownerSpace = space;
     this.file = file;
-  }
-
-  get space(): SpaceResource {
-    assert(this.ownerSpace, "Frame functions do not belong to a Pod space.");
-    return this.ownerSpace;
   }
 
   get frame(): FileResource | null {
@@ -173,79 +162,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     workspaceId: ModelId;
   }): string {
     return makeSId("sandbox_function", { id, workspaceId });
-  }
-
-  static async makeNew(
-    auth: Authenticator,
-    {
-      space,
-      file,
-      slug,
-      description,
-      userIdentity = "optional",
-      executionMode = DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
-      defaultStake = DEFAULT_SANDBOX_FUNCTION_STAKE,
-      bundleSha256 = null,
-      inputSchema,
-      outputSchema,
-    }: {
-      space: SpaceResource;
-      file: FileResource;
-      slug: string;
-      description: string;
-      userIdentity?: SandboxFunctionUserIdentityPolicy;
-      executionMode?: SandboxFunctionExecutionMode;
-      defaultStake?: SandboxFunctionStake;
-      bundleSha256?: string | null;
-      inputSchema: JSONSchema;
-      outputSchema: JSONSchema;
-    },
-    transaction?: Transaction
-  ): Promise<SandboxFunctionResource> {
-    assert(space.isProject(), "Sandbox functions can only belong to pods.");
-    assert(
-      isValidSandboxFunctionSlug(slug),
-      "The slug must be lowercase alphanumeric with single hyphen separators."
-    );
-    assert(
-      space.workspaceId === auth.getNonNullableWorkspace().id,
-      "The space must belong to the authenticated workspace."
-    );
-    assert(
-      file.workspaceId === auth.getNonNullableWorkspace().id,
-      "The file must belong to the authenticated workspace."
-    );
-    assert(
-      file.contentType === sandboxFunctionContentType,
-      `The file must use the ${sandboxFunctionContentType} content type.`
-    );
-    assert(
-      file.useCase === "project_context",
-      "The file must use the project_context use case."
-    );
-    assert(
-      file.useCaseMetadata?.spaceId === space.sId,
-      "The file must belong to the same pod as the sandbox function."
-    );
-
-    const sandboxFunction = await this.model.create(
-      {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        spaceId: space.id,
-        fileId: file.id,
-        slug,
-        description,
-        userIdentity,
-        executionMode,
-        defaultStake,
-        bundleSha256,
-        inputSchema,
-        outputSchema,
-      },
-      { transaction }
-    );
-
-    return new this(this.model, sandboxFunction.get(), space, file);
   }
 
   static async createForFramePublication(
@@ -393,19 +309,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   // resolves to no space and is silently dropped here.
   private static async baseFetch(
     auth: Authenticator,
-    {
-      includeDeletedSpace,
-      includeFrameFunctions = false,
-      dangerouslyBypassSpacePermissionFilter = false,
-      ...options
-    }: ResourceFindOptions<SandboxFunctionModel> & {
-      includeDeletedSpace?: boolean;
-      includeFrameFunctions?: boolean;
-      // Reserved for resolution paths whose authorization is established before the fetch:
-      // fetchByIdForExecution and the tool workflow (an invocation row), and fetchInAppFolder
-      // (a validated frame share capability, enforced by its own query constraints).
-      dangerouslyBypassSpacePermissionFilter?: boolean;
-    } = {}
+    options: ResourceFindOptions<SandboxFunctionModel> = {}
   ): Promise<SandboxFunctionResource[]> {
     const { where, ...rest } = options;
     const sandboxFunctions = await this.model.findAll({
@@ -415,28 +319,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       },
       ...rest,
     });
-
-    const spaces = await SpaceResource.fetchByModelIds(
-      auth,
-      Array.from(
-        new Set(
-          sandboxFunctions.flatMap((sandboxFunction) => {
-            const { spaceId } = sandboxFunction.get();
-            return spaceId === null ? [] : [spaceId];
-          })
-        )
-      ),
-      { includeDeleted: includeDeletedSpace }
-    );
-    const accessibleSpacesById = new Map(
-      spaces
-        .filter(
-          (space) =>
-            space.isProject() &&
-            (auth.can("read", space) || auth.can("admin", space))
-        )
-        .map((space) => [space.id, space])
-    );
 
     const files = await FileResource.fetchByModelIdsWithAuth(
       auth,
@@ -450,33 +332,16 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     );
     const filesById = new Map(files.map((file) => [file.id, file]));
 
-    const spacesById = dangerouslyBypassSpacePermissionFilter
-      ? new Map(spaces.map((space) => [space.id, space]))
-      : null;
-
+    // A row we cannot hydrate into a served Frame function is dropped: a legacy Pod function
+    // (no publication), or one whose Frame the caller cannot read.
     return sandboxFunctions.flatMap((sandboxFunction) => {
       const blob = sandboxFunction.get();
-      if (blob.spaceId === null) {
-        const file = filesById.get(blob.fileId);
-        if (
-          !includeFrameFunctions ||
-          blob.publicationId === null ||
-          !file?.isFrameV2
-        ) {
-          return [];
-        }
-
-        return [new this(this.model, blob, null, file)];
-      }
-
-      const space =
-        accessibleSpacesById.get(blob.spaceId) ?? spacesById?.get(blob.spaceId);
       const file = filesById.get(blob.fileId);
-      if (!space || !file) {
+      if (blob.publicationId === null || !file?.isFrameV2) {
         return [];
       }
 
-      return [new this(this.model, blob, space, file)];
+      return [new this(this.model, blob, file)];
     });
   }
 
@@ -519,7 +384,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { id: sandboxFunctionModelId },
-      includeFrameFunctions: true,
     });
     return sandboxFunction ?? null;
   }
@@ -546,8 +410,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { id: sandboxFunctionModelId },
-      includeFrameFunctions: true,
-      dangerouslyBypassSpacePermissionFilter: true,
     });
     if (!sandboxFunction) {
       return null;
@@ -585,8 +447,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     // cannot be reconstructed from the serialized auth.
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { id: invocation.sandboxFunctionId },
-      includeFrameFunctions: true,
-      dangerouslyBypassSpacePermissionFilter: true,
     });
     if (!sandboxFunction) {
       return null;
@@ -644,7 +504,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         id: invocation.sandboxFunctionId,
         fileId: frame.id,
       },
-      includeFrameFunctions: true,
     });
     if (!sandboxFunction) {
       return null;
@@ -654,17 +513,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       sandboxFunction,
       invocationId,
     });
-  }
-
-  static async listBySpace(
-    auth: Authenticator,
-    space: SpaceResource
-  ): Promise<SandboxFunctionResource[]> {
-    if (!space.isProject()) {
-      return [];
-    }
-
-    return this.baseFetch(auth, { where: { spaceId: space.id } });
   }
 
   static async listByFramePublication(
@@ -677,7 +525,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     return this.baseFetch(auth, {
       where: { fileId: frame.id, publicationId },
-      includeFrameFunctions: true,
     });
   }
 
@@ -759,7 +606,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { id: sandboxFunctionModelId, fileId: frame.id },
-      includeFrameFunctions: true,
     });
 
     return sandboxFunction ?? null;
@@ -779,151 +625,9 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
 
     const [sandboxFunction] = await this.baseFetch(auth, {
       where: { fileId: frame.id, publicationId, slug },
-      includeFrameFunctions: true,
     });
 
     return sandboxFunction ?? null;
-  }
-
-  static async fetchBySpaceAndSlug(
-    auth: Authenticator,
-    space: SpaceResource,
-    slug: string
-  ): Promise<SandboxFunctionResource | null> {
-    if (!space.isProject()) {
-      return null;
-    }
-
-    const [sandboxFunction] = await this.baseFetch(auth, {
-      where: { spaceId: space.id, slug },
-    });
-
-    return sandboxFunction ?? null;
-  }
-
-  static async fetchByIdOrSlug(
-    auth: Authenticator,
-    functionIdOrSlug: string
-  ): Promise<SandboxFunctionResource | null> {
-    const sandboxFunction = await this.fetchById(auth, functionIdOrSlug);
-    if (sandboxFunction) {
-      return sandboxFunction;
-    }
-
-    const [podId, slug, ...rest] = functionIdOrSlug.split("/");
-    if (!podId || !slug || rest.length > 0) {
-      return null;
-    }
-    if (!isResourceSId("space", podId) || !isValidSandboxFunctionSlug(slug)) {
-      return null;
-    }
-
-    const space = await SpaceResource.fetchById(auth, podId);
-    if (!space) {
-      return null;
-    }
-
-    return this.fetchBySpaceAndSlug(auth, space, slug);
-  }
-
-  /**
-   * Resolve a function through a frame share capability: returned iff it lives in the given
-   * pod's app folder, regardless of the caller's standing in the pod — the (podId, appPrefix)
-   * pair comes from a validated share token, and constraining the lookup to it IS the
-   * authorization. Accepts the same identifier forms as fetchByIdOrSlug; a slug form naming
-   * another pod misses, since the lookup only ever queries `podId`.
-   */
-  static async fetchInAppFolder(
-    auth: Authenticator,
-    {
-      podId,
-      appPrefix,
-      idOrSlug,
-    }: { podId: string; appPrefix: string; idOrSlug: string }
-  ): Promise<SandboxFunctionResource | null> {
-    const space = await SpaceResource.fetchById(auth, podId);
-    if (!space || !space.isProject()) {
-      return null;
-    }
-
-    let where:
-      | { id: ModelId; spaceId: ModelId }
-      | { spaceId: ModelId; slug: string };
-    if (isResourceSId("sandbox_function", idOrSlug)) {
-      // sId form, e.g. `sfn_x7GhK2p`.
-      const sandboxFunctionModelId = getResourceIdFromSId(idOrSlug);
-      if (sandboxFunctionModelId === null) {
-        return null;
-      }
-      where = { id: sandboxFunctionModelId, spaceId: space.id };
-    } else {
-      // Pod-qualified slug form, e.g. `spc_9fJq3Lm/tasklist__add-task`.
-      const [slugPodId, slug, ...rest] = idOrSlug.split("/");
-      if (
-        !slugPodId ||
-        !slug ||
-        rest.length > 0 ||
-        slugPodId !== podId ||
-        !isValidSandboxFunctionSlug(slug)
-      ) {
-        return null;
-      }
-      where = { spaceId: space.id, slug };
-    }
-
-    const [sandboxFunction] = await this.baseFetch(auth, {
-      where,
-      dangerouslyBypassSpacePermissionFilter: true,
-    });
-    if (!sandboxFunction) {
-      return null;
-    }
-
-    return appPrefixFromSlug(sandboxFunction.slug) === appPrefix
-      ? sandboxFunction
-      : null;
-  }
-
-  static async deleteAllForSpace(
-    auth: Authenticator,
-    space: SpaceResource
-  ): Promise<Result<number, Error>> {
-    assert(space.isProject(), "Sandbox functions can only belong to pods.");
-
-    // The pod is already soft-deleted when the scrub runs, hence `includeDeletedSpace`.
-    const sandboxFunctions = await this.baseFetch(auth, {
-      where: { spaceId: space.id },
-      includeDeletedSpace: true,
-    });
-    for (const sandboxFunction of sandboxFunctions) {
-      // TODO(spolu): potentially optimize as this may be quite slow (each delete calls file delete
-      // which deletes a whole bunch of records).
-      const result = await sandboxFunction.delete(auth);
-      if (result.isErr()) {
-        return new Err(result.error);
-      }
-    }
-
-    // `baseFetch` drops rows it cannot fully hydrate, so a partial list would leave rows behind and
-    // surface much later as a foreign key violation on the pod hard delete. Fail here instead, with
-    // the ids an operator needs to unblock the scrub.
-    const remaining = await this.model.findAll({
-      attributes: ["id"],
-      where: {
-        spaceId: space.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-    if (remaining.length > 0) {
-      return new Err(
-        new Error(
-          `Sandbox function(s) of pod ${space.sId} could not be deleted: ` +
-            `${remaining.map(({ id }) => id).join(", ")}.`
-        )
-      );
-    }
-
-    return new Ok(sandboxFunctions.length);
   }
 
   /**
@@ -974,17 +678,23 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
         new SandboxFunctionInvocationError(
-          `This ${this.frame ? "Frame function" : "Pod Function"} belongs to another workspace.`
+          "This Frame function belongs to another workspace."
         )
       );
     }
     const frame = this.frame;
+    if (!frame) {
+      return new Err(
+        new SandboxFunctionInvocationError(
+          "This function is not owned by a Frame: legacy Pod functions can no longer be run.",
+          "frame_runtime_unavailable"
+        )
+      );
+    }
     const authorization = await authorizeSandboxFunctionInvocation(auth, {
       userIdentity: this.userIdentity,
       origin,
-      owner: frame
-        ? { kind: "frame", frame }
-        : { kind: "pod", space: this.space },
+      owner: { kind: "frame", frame },
     });
     if (!authorization.authorized) {
       return new Err(
@@ -1003,10 +713,9 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   }
 
   /**
-   * Poke's listing shape for a Frame function. Deliberately not `toPokeJSON`: a Pod function's
-   * `fileId` is the published bundle, while a Frame function's is the Frame manifest, so surfacing
-   * it here would mislead. `publicationId` is what identifies a Frame function's artifact instead,
-   * and `name` is the key its bundle is stored under.
+   * Poke's listing shape for a Frame function. A Frame function's `fileId` is the Frame manifest,
+   * so `publicationId` is what identifies its artifact, and `name` is the key its bundle is
+   * stored under.
    */
   toPokeFrameJSON(): PokeFrameFunction {
     return {
@@ -1036,24 +745,16 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     };
   }
 
-  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
-    try {
-      if (!auth.can("read", this.space) && !auth.can("admin", this.space)) {
-        return new Err(new Error("Sandbox function space is not accessible."));
-      }
-
-      await SandboxFunctionInvocationResource.deleteAllForSandboxFunction(this);
-
-      await this.model.destroy({
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-      });
-
-      return this.file.delete(auth);
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
+  /**
+   * A Frame function row belongs to its Frame's publication history, not to itself: the Frame file
+   * owns the whole set and deletes it through `deleteFrameFunctionModelIds`. Deleting one on its
+   * own would leave a publication serving a function that no longer exists.
+   */
+  async delete(): Promise<Result<undefined, Error>> {
+    return new Err(
+      new Error(
+        "A Frame function cannot be deleted on its own: delete its Frame instead."
+      )
+    );
   }
 }

@@ -329,7 +329,7 @@ describe("egress secrets per-owner build", () => {
 
     const entriesResult = await buildEgressSecretFileEntriesForOwner(
       authenticator,
-      { kind: "pod", spaceId: pod.sId }
+      { kind: "conversation", conversationId: "conv_test", spaceId: pod.sId }
     );
     expect(entriesResult.isOk()).toBe(true);
     if (entriesResult.isErr()) {
@@ -380,7 +380,7 @@ describe("egress secrets per-owner build", () => {
     const entriesResult = await buildPodEgressSecretEntries(
       authenticator,
       pod,
-      { kind: "pod", spaceId: pod.sId }
+      { kind: "conversation", conversationId: "conv_test", spaceId: pod.sId }
     );
     expect(entriesResult.isOk()).toBe(true);
     if (entriesResult.isErr()) {

@@ -176,8 +176,11 @@ export async function getPod(
     }
 
     if (isSandboxFunctionRunContext(toolContext.runContext)) {
-      const space = toolContext.runContext.invocation.sandboxFunction.space;
-      return new Ok({ pod: space });
+      const { pod } = toolContext.runContext;
+      if (!pod) {
+        return new Err(new MCPError("Pod not found", { tracked: false }));
+      }
+      return new Ok({ pod });
     }
   }
 

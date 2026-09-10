@@ -164,9 +164,6 @@ describe("FrameSandboxAdapter", () => {
       }),
       { workspaceId: workspace.sId }
     );
-    expect(mockProviderCreate.mock.calls[0]?.[0].envVars).not.toHaveProperty(
-      "SPACE_ID"
-    );
     expect(await FrameSandboxAdapter.fetchSandbox(auth, frame)).not.toBeNull();
   });
 

@@ -217,7 +217,7 @@ describe("sandbox access tokens", () => {
       sandboxFunction: {
         sId: "sfn_test",
       },
-      owner: { kind: "pod", spaceId: pod.sId },
+      owner: { kind: "frame", frameId: "fil_test", spaceId: pod.sId },
       conversationId: "conv_test",
       invocationId: "test-invocation-id",
       execId: "test-exec-id",
@@ -237,7 +237,7 @@ describe("sandbox access tokens", () => {
     expect(payload.sbId).toBe(sandbox.sId);
     expect(payload.execId).toBe("test-exec-id");
     expect(payload.spaceId).toBe(pod.sId);
-    expect(payload.frameId).toBeUndefined();
+    expect(payload.frameId).toBe("fil_test");
     expect(payload.sandboxFunctionId).toBe("sfn_test");
     expect(payload.invocationId).toBe("test-invocation-id");
   });

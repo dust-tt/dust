@@ -73,7 +73,8 @@ describe("startTelemetry", () => {
     const execRoot = vi.spyOn(sandbox, "execRoot");
 
     const result = await startTelemetry(auth, sandbox, {
-      kind: "pod",
+      kind: "frame",
+      frameId: "fil_telemetry_test",
       spaceId: "space_telemetry_test",
     });
 
@@ -91,7 +92,8 @@ describe("startTelemetry", () => {
     const execRoot = vi.spyOn(sandbox, "execRoot");
 
     const result = await startTelemetry(auth, sandbox, {
-      kind: "pod",
+      kind: "frame",
+      frameId: "fil_telemetry_test",
       spaceId: "space_telemetry_test",
     });
 
@@ -112,7 +114,8 @@ describe("startTelemetry", () => {
     );
 
     const result = await startTelemetry(auth, sandbox, {
-      kind: "pod",
+      kind: "frame",
+      frameId: "fil_telemetry_test",
       spaceId: "space_telemetry_test",
     });
 

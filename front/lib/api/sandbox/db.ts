@@ -35,12 +35,12 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  * by database FILENAME: /sandbox-state/replica/{db}.db/ltx/...
  *
  * Lifecycle:
- *  - Cold start (`setupPodStateOnColdStart`, after the gcsfuse mounts): restore
+ *  - Cold start (`setupSandboxStateOnColdStart`, after the gcsfuse mounts): restore
  *    each replicated database (temp file + PRAGMA quick_check + atomic rename),
  *    then start the litestream systemd unit — strictly in that order, so the
  *    watcher never manages files mid-restore or writes to an unmounted
  *    replica dir.
- *  - Pre-sleep (`ensurePodStateHealthOnSleep`, before the provider pause):
+ *  - Pre-sleep (`ensureSandboxStateHealthOnSleep`, before the provider pause):
  *    verify the replica mount is a live FUSE mount and the daemon is active,
  *    then `litestream sync -wait` each database so every committed WAL frame
  *    is in GCS before the VM can be destroyed. On failure the sandbox is NOT
@@ -182,10 +182,10 @@ function execFailure(
  * Cold-start bring-up, called from the freshlyCreated lifecycle branch AFTER
  * the gcsfuse mounts are up (the restore reads through the replica mount).
  * Failures block sandbox readiness on purpose: `invoke` awaits
- * `ensurePodSandboxReady`, which is what guarantees no function ever runs
+ * `ensureFrameSandboxReady`, which is what guarantees no function ever runs
  * against a half-restored database.
  */
-export async function setupPodStateOnColdStart(
+export async function setupSandboxStateOnColdStart(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<void, Error>> {
@@ -261,10 +261,6 @@ export async function setupPodStateOnColdStart(
     return new Ok(undefined);
   });
 }
-
-// Pods and Frames use the same isolated SQLite/Litestream runtime. Keep the Pod-named export for
-// existing callers while owner-neutral lifecycle code uses this name.
-export const setupSandboxStateOnColdStart = setupPodStateOnColdStart;
 
 async function listReplicaDatabases(
   auth: Authenticator,
@@ -469,7 +465,7 @@ export async function restartLitestreamDaemon(
  * the sandbox is already gone, there is nothing left to sync, and exec already
  * marked the row deleted.
  */
-export async function ensurePodStateHealthOnSleep(
+export async function ensureSandboxStateHealthOnSleep(
   auth: Authenticator,
   sandbox: SandboxResource,
   opts: {
@@ -606,8 +602,6 @@ export async function ensurePodStateHealthOnSleep(
 
   return new Ok(undefined);
 }
-
-export const ensureSandboxStateHealthOnSleep = ensurePodStateHealthOnSleep;
 
 export async function checkReplicaMountLiveness(
   auth: Authenticator,
@@ -800,57 +794,6 @@ export async function deletePodStatePrefix(
         podId: space.sId,
       })
     );
-    return new Ok(undefined);
-  } catch (err) {
-    return new Err(normalizeError(err));
-  }
-}
-
-/**
- * Delete ONE database's litestream replica: the GCS prefix the directory watcher keys on that
- * database's filename.
- *
- * The replica is the durable copy of a pod database, and `setupPodStateOnColdStart` restores every
- * replica it finds. So a replica that survives resurrects a database whose live files were deleted —
- * which makes this the step that actually makes a database deletion stick.
- *
- * Call it AFTER the live files are gone AND the daemon has been restarted (`restartLitestreamDaemon`):
- * a running litestream keeps replicating a database it can still see, and removing the files does not
- * make it let go — the directory watcher only enumerates at start, so until the restart the daemon
- * still holds the database and recreates the prefix this wipes. The delete is verified by re-listing,
- * because a silently-surviving replica is indistinguishable from success until the pod next boots.
- */
-export async function deletePodDatabaseReplica(
-  auth: Authenticator,
-  space: SpaceResource,
-  { database }: { database: string }
-): Promise<Result<void, Error>> {
-  if (!isValidPodDatabaseName(database)) {
-    return new Err(new Error(`Invalid pod database name: '${database}'.`));
-  }
-
-  const statePrefix = getPodStateBasePath({
-    workspaceId: auth.getNonNullableWorkspace().sId,
-    podId: space.sId,
-  });
-  const replicaDirName = `${database}.db`;
-
-  try {
-    const bucket = getPrivateUploadBucket();
-    await bucket.deleteByPrefix(`${statePrefix}${replicaDirName}/`);
-
-    const remaining = await bucket.listSubdirectoryNames({
-      prefix: statePrefix,
-    });
-    if (remaining.includes(replicaDirName)) {
-      return new Err(
-        new Error(
-          `Replica of pod database '${database}' still present after deletion; ` +
-            "the database would be restored on the pod's next cold start."
-        )
-      );
-    }
-
     return new Ok(undefined);
   } catch (err) {
     return new Err(normalizeError(err));
