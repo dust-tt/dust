@@ -70,7 +70,7 @@ import type {
   RowSelectionState,
   SortingState,
 } from "@tanstack/react-table";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef } from "react";
 
 const EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID: Record<
   string,
@@ -893,134 +893,127 @@ function buildFairUseCreditsColumn(
   };
 }
 
-// Icon-wide until an "Unblock" button has shown up, button-wide from then on.
-function buildOffPaceColumn(
-  showUnblockWidth: boolean
-): ColumnDef<RowData, string> {
-  return {
-    id: "overallUsageTarget" as const,
-    header: "",
-    enableSorting: false,
-    accessorFn: (row) => row.overallUsageTarget ?? "",
-    cell: (info: Info) => {
-      const {
-        overallUsageTarget,
-        isSpendCapped,
-        canUpgradeSeat,
-        seatType,
-        onOpenChangeSeatRecap,
-        onOpenSpendLimitRecap,
-      } = info.row.original;
+const offPaceColumn: ColumnDef<RowData, string> = {
+  id: "overallUsageTarget" as const,
+  header: "",
+  enableSorting: false,
+  accessorFn: (row) => row.overallUsageTarget ?? "",
+  cell: (info: Info) => {
+    const {
+      overallUsageTarget,
+      isSpendCapped,
+      canUpgradeSeat,
+      seatType,
+      onOpenChangeSeatRecap,
+      onOpenSpendLimitRecap,
+    } = info.row.original;
 
-      if (isSpendCapped) {
-        // Free seats have no pool credits to raise (their cap is just the
-        // seat's built-in allowance), so seat upgrade is the only unblock path.
-        const isFreeSeat = seatType === "free";
+    if (isSpendCapped) {
+      // Free seats have no pool credits to raise (their cap is just the
+      // seat's built-in allowance), so seat upgrade is the only unblock path.
+      const isFreeSeat = seatType === "free";
 
-        if (isFreeSeat) {
-          return (
-            <DataTable.CellContent className="justify-center">
-              <div
-                onClick={(event) => event.stopPropagation()}
-                onPointerDown={(event) => event.stopPropagation()}
-              >
-                <Button
-                  variant="highlight"
-                  size="xs"
-                  label="Unblock"
-                  disabled={!canUpgradeSeat}
-                  onClick={onOpenChangeSeatRecap}
-                />
-              </div>
-            </DataTable.CellContent>
-          );
-        }
-
-        if (!canUpgradeSeat) {
-          return (
-            <DataTable.CellContent className="justify-center">
-              <div
-                onClick={(event) => event.stopPropagation()}
-                onPointerDown={(event) => event.stopPropagation()}
-              >
-                <Button
-                  variant="highlight"
-                  size="xs"
-                  label="Unblock"
-                  onClick={onOpenSpendLimitRecap}
-                />
-              </div>
-            </DataTable.CellContent>
-          );
-        }
+      if (isFreeSeat) {
         return (
           <DataTable.CellContent className="justify-center">
             <div
               onClick={(event) => event.stopPropagation()}
               onPointerDown={(event) => event.stopPropagation()}
             >
-              <DropdownMenu modal={false}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="highlight"
-                    size="xs"
-                    label="Unblock"
-                    isSelect
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    label="Upgrade seat"
-                    onClick={onOpenChangeSeatRecap}
-                  />
-                  <DropdownMenuItem
-                    label="Edit spend limit"
-                    onClick={onOpenSpendLimitRecap}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button
+                variant="highlight"
+                size="xs"
+                label="Unblock"
+                disabled={!canUpgradeSeat}
+                onClick={onOpenChangeSeatRecap}
+              />
             </div>
           </DataTable.CellContent>
         );
       }
 
-      if (
-        overallUsageTarget !== "elevated" &&
-        overallUsageTarget !== "critical"
-      ) {
-        return <DataTable.CellContent className="justify-center" />;
+      if (!canUpgradeSeat) {
+        return (
+          <DataTable.CellContent className="justify-center">
+            <div
+              onClick={(event) => event.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <Button
+                variant="highlight"
+                size="xs"
+                label="Unblock"
+                onClick={onOpenSpendLimitRecap}
+              />
+            </div>
+          </DataTable.CellContent>
+        );
       }
-      const isCritical = overallUsageTarget === "critical";
       return (
         <DataTable.CellContent className="justify-center">
-          <Tooltip
-            tooltipTriggerAsChild
-            label={
-              isCritical
-                ? "At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets."
-                : "Consuming credits ahead of the billing cycle's pace"
-            }
-            trigger={
-              <span className="flex cursor-default items-center justify-center">
-                <Icon
-                  visual={AlertCircle}
-                  size="sm"
-                  className={isCritical ? "text-red-500" : "text-warning-500"}
+          <div
+            onClick={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="highlight"
+                  size="xs"
+                  label="Unblock"
+                  isSelect
                 />
-              </span>
-            }
-          />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  label="Upgrade seat"
+                  onClick={onOpenChangeSeatRecap}
+                />
+                <DropdownMenuItem
+                  label="Edit spend limit"
+                  onClick={onOpenSpendLimitRecap}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </DataTable.CellContent>
       );
-    },
-    meta: {
-      className: showUnblockWidth
-        ? "hidden @4xl:table-cell @4xl:w-28"
-        : "hidden @4xl:table-cell @4xl:w-12",
-      headerAlign: "center",
-    },
-  };
-}
+    }
+
+    if (
+      overallUsageTarget !== "elevated" &&
+      overallUsageTarget !== "critical"
+    ) {
+      return <DataTable.CellContent className="justify-center" />;
+    }
+    const isCritical = overallUsageTarget === "critical";
+    return (
+      <DataTable.CellContent className="justify-center">
+        <Tooltip
+          tooltipTriggerAsChild
+          label={
+            isCritical
+              ? "At this rate, this user will reach their limit before the cycle ends and lose access to Dust until it resets."
+              : "Consuming credits ahead of the billing cycle's pace"
+          }
+          trigger={
+            <span className="flex cursor-default items-center justify-center">
+              <Icon
+                visual={AlertCircle}
+                size="sm"
+                className={isCritical ? "text-red-500" : "text-warning-500"}
+              />
+            </span>
+          }
+        />
+      </DataTable.CellContent>
+    );
+  },
+  meta: {
+    className: "hidden @4xl:table-cell @4xl:w-28",
+    headerAlign: "center",
+  },
+};
 
 function buildModelTiersColumn(
   variant: MembersUsageTableVariant
@@ -1135,8 +1128,19 @@ function buildCreditPlanColumns({
     ...(showPremiumMessageUsage && fairUseWindowDays !== null
       ? [buildFairUseCreditsColumn(fairUseWindowDays)]
       : []),
+    // Icon-wide until an "Unblock" button has shown up, button-wide from then on.
     ...(variant === "compact" && !showPremiumMessageUsage
-      ? [buildOffPaceColumn(showUnblockWidth)]
+      ? [
+          showUnblockWidth
+            ? offPaceColumn
+            : {
+                ...offPaceColumn,
+                meta: {
+                  ...offPaceColumn.meta,
+                  className: "hidden @4xl:table-cell @4xl:w-12",
+                },
+              },
+        ]
       : []),
   ];
 }
@@ -1455,14 +1459,11 @@ export function MembersUsageTable({
   // Whether a member is blocked is only known page by page, so the off-pace
   // column latches onto the button width the first time one shows up and
   // keeps it: widening once beats resizing on every page change.
-  const [hasSeenSpendCappedRow, setHasSeenSpendCappedRow] = useState(false);
-  const hasSpendCappedRow = members.some((m) => m.isSpendCapped);
-  const showUnblockWidth = hasSeenSpendCappedRow || hasSpendCappedRow;
-  useEffect(() => {
-    if (hasSpendCappedRow) {
-      setHasSeenSpendCappedRow(true);
-    }
-  }, [hasSpendCappedRow]);
+  const hasSeenSpendCappedRowRef = useRef(false);
+  if (members.some((m) => m.isSpendCapped)) {
+    hasSeenSpendCappedRowRef.current = true;
+  }
+  const showUnblockWidth = hasSeenSpendCappedRowRef.current;
 
   const columns = useMemo(
     () =>
