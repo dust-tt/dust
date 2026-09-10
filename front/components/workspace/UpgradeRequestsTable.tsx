@@ -1,4 +1,8 @@
-import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
+import {
+  buildMemberNameColumn,
+  MemberNameSkeleton,
+} from "@app/components/workspace/member_name_column";
+import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
 import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { timeAgoFrom } from "@app/lib/utils";
@@ -6,7 +10,14 @@ import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
-import { Button, Check, DataTable, Spinner, XClose } from "@dust-tt/sparkle";
+import {
+  Button,
+  Check,
+  DataTable,
+  LoadingBlock,
+  Spinner,
+  XClose,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -24,6 +35,30 @@ type RowData = {
 };
 
 type Info = CellContext<RowData, string>;
+
+function UpgradeRequestSkeletonCell({
+  columnId,
+  rowIndex,
+}: UsageTableSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return <MemberNameSkeleton rowIndex={rowIndex} />;
+    case "reason":
+      return <LoadingBlock className="h-3 w-40 max-w-full" />;
+    case "requested":
+      return <LoadingBlock className="h-3 w-20" />;
+    case "actions":
+      return (
+        <div className="flex items-center justify-end gap-2">
+          <LoadingBlock className="h-8 w-20 rounded-xl" />
+          <LoadingBlock className="h-8 w-32 rounded-xl" />
+          <LoadingBlock className="h-8 w-24 rounded-xl" />
+        </div>
+      );
+    default:
+      return null;
+  }
+}
 
 const nameColumn = buildMemberNameColumn<RowData>();
 
@@ -198,7 +233,12 @@ export function UpgradeRequestsTable({
   );
 
   if (isLoading) {
-    return <UsageTableSkeleton columns={columns} />;
+    return (
+      <UsageTableSkeleton
+        columns={columns}
+        SkeletonCell={UpgradeRequestSkeletonCell}
+      />
+    );
   }
 
   if (rows.length === 0) {

@@ -1,9 +1,15 @@
+import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
 import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import { formatCredits } from "@app/lib/client/credits";
 import { useAwuTopUpsHistory } from "@app/lib/swr/credits";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { AlertCircle, ContentMessage, DataTable } from "@dust-tt/sparkle";
+import {
+  AlertCircle,
+  ContentMessage,
+  DataTable,
+  LoadingBlock,
+} from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -18,6 +24,21 @@ type TopUpRowData = {
   expiration: string;
   onClick?: () => void;
 };
+
+function TopUpHistorySkeletonCell({ columnId }: UsageTableSkeletonCellProps) {
+  switch (columnId) {
+    case "date":
+      return <LoadingBlock className="h-3 w-24 max-w-full" />;
+    case "name":
+      return <LoadingBlock className="h-3 w-40 max-w-full" />;
+    case "credits":
+      return <LoadingBlock className="ml-auto h-3 w-16 max-w-full" />;
+    case "expiration":
+      return <LoadingBlock className="ml-auto h-3 w-24 max-w-full" />;
+    default:
+      return null;
+  }
+}
 
 const COLUMNS: ColumnDef<TopUpRowData, string>[] = [
   {
@@ -87,7 +108,12 @@ export function TopUpsHistoryTable({ owner }: TopUpsHistoryTableProps) {
   }
 
   if (isTopUpsHistoryLoading) {
-    return <UsageTableSkeleton columns={COLUMNS} />;
+    return (
+      <UsageTableSkeleton
+        columns={COLUMNS}
+        SkeletonCell={TopUpHistorySkeletonCell}
+      />
+    );
   }
 
   if (rows.length === 0) {

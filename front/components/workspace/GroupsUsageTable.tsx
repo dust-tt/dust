@@ -1,11 +1,12 @@
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupSpendLimitCell } from "@app/components/workspace/GroupSpendLimitCell";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
+import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
 import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
-import { DataTable, Users01 } from "@dust-tt/sparkle";
+import { DataTable, LoadingBlock, Users01 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -24,6 +25,26 @@ type GroupRowData = {
 };
 
 type GroupInfo = CellContext<GroupRowData, string>;
+
+function GroupUsageSkeletonCell({ columnId }: UsageTableSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return (
+        <div className="flex items-center gap-2">
+          <LoadingBlock className="h-5 w-5 shrink-0" />
+          <LoadingBlock className="h-3 w-28 max-w-full" />
+        </div>
+      );
+    case "memberCount":
+      return <LoadingBlock className="h-3 w-8" />;
+    case "cap":
+      return <LoadingBlock className="h-8 w-60 rounded-xl" />;
+    case "modelTiers":
+      return <LoadingBlock className="h-8 w-48 rounded-xl" />;
+    default:
+      return null;
+  }
+}
 
 export function GroupsUsageTable({
   owner,
@@ -130,7 +151,11 @@ export function GroupsUsageTable({
         </span>
       )}
       {isGroupsLoading ? (
-        <UsageTableSkeleton columns={columns} rowHeight={49} />
+        <UsageTableSkeleton
+          columns={columns}
+          SkeletonCell={GroupUsageSkeletonCell}
+          rowHeight={49}
+        />
       ) : (
         <DataTable filterColumn="name" data={rows} columns={columns} />
       )}

@@ -1,29 +1,27 @@
-import {
-  ChevronSelectorVertical,
-  cn,
-  Icon,
-  LoadingBlock,
-} from "@dust-tt/sparkle";
+import { ChevronSelectorVertical, cn, Icon } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import type { ComponentType } from "react";
+
+export interface UsageTableSkeletonCellProps {
+  columnId: string;
+  rowIndex: number;
+}
 
 interface UsageTableSkeletonProps<TData> {
   columns: ColumnDef<TData, string>[];
+  SkeletonCell: ComponentType<UsageTableSkeletonCellProps>;
   rowCount?: number;
   rowHeight?: number;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:react] usage-table-loading-geometry
- * Skeleton cells must use the destination columns' width and responsive
- * visibility classes. Placeholders must not be interactive.
- */
 export function UsageTableSkeleton<TData>({
   columns,
+  SkeletonCell,
   rowCount = 5,
   rowHeight = 48,
 }: UsageTableSkeletonProps<TData>) {
@@ -78,19 +76,13 @@ export function UsageTableSkeleton<TData>({
         <tbody aria-hidden="true">
           {Array.from({ length: rowCount }, (_, rowIndex) => (
             <tr key={rowIndex} className="border-b border-separator">
-              {columns.map((column, columnIndex) => (
+              {table.getAllLeafColumns().map((column) => (
                 <td
-                  key={columnIndex}
-                  className={cn("px-2", column.meta?.className)}
+                  key={column.id}
+                  className={cn("px-2", column.columnDef.meta?.className)}
                   style={{ height: rowHeight }}
                 >
-                  <LoadingBlock
-                    className={cn(
-                      "h-3 w-2/3 max-w-32",
-                      column.meta?.headerAlign === "right" && "ml-auto",
-                      column.meta?.headerAlign === "center" && "mx-auto"
-                    )}
-                  />
+                  <SkeletonCell columnId={column.id} rowIndex={rowIndex} />
                 </td>
               ))}
             </tr>

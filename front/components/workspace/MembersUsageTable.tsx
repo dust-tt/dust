@@ -4,7 +4,10 @@ import {
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
-import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
+import {
+  buildMemberNameColumn,
+  MemberNameSkeleton,
+} from "@app/components/workspace/member_name_column";
 import {
   AT_POOL_LIMIT_BAR_CLASSES,
   getSeatBarClasses,
@@ -13,6 +16,7 @@ import {
   OVER_POOL_LIMIT_BAR_CLASSES,
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
+import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
 import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import type { PremiumModelMessageUsage } from "@app/lib/api/assistant/rate_limits";
 import type {
@@ -126,6 +130,61 @@ type RowData = {
 };
 
 type Info = CellContext<RowData, string>;
+
+function MemberUsageSkeletonCell({
+  columnId,
+  rowIndex,
+}: UsageTableSkeletonCellProps) {
+  switch (columnId) {
+    case "select":
+      return <LoadingBlock className="h-4 w-4 rounded" />;
+    case "name":
+      return <MemberNameSkeleton rowIndex={rowIndex} />;
+    case "groups":
+    case "modelTiers":
+      return <LoadingBlock className="h-3 w-28 max-w-full" />;
+    case "seatType":
+      return (
+        <div className="flex items-center gap-1.5">
+          <LoadingBlock className="h-5 w-5" />
+          <LoadingBlock className="h-3 w-12" />
+        </div>
+      );
+    case "seatsIcon":
+      return <LoadingBlock className="mx-auto h-5 w-8 rounded-lg" />;
+    case "overallUsageTarget":
+      return <LoadingBlock className="mx-auto h-5 w-5" />;
+    case "seatUsage":
+      return <LoadingBlock className="mx-auto h-3 w-8" />;
+    case "consumedFromPoolAwuCredits":
+    case "premiumMessageUsage":
+      return (
+        <div className="flex flex-col gap-1 pr-3">
+          <div className="flex h-4 items-center justify-between">
+            <LoadingBlock className="h-3 w-10" />
+            <LoadingBlock className="h-3 w-10" />
+          </div>
+          <div className="flex h-3 items-center">
+            <LoadingBlock className="h-1 w-full rounded-full" />
+          </div>
+        </div>
+      );
+    case "fairUse":
+      return (
+        <div className="flex flex-col gap-1">
+          <div className="flex h-4 items-center justify-between">
+            <LoadingBlock className="h-3 w-10" />
+            <LoadingBlock className="h-3 w-10" />
+          </div>
+          <LoadingBlock className="h-3 w-full rounded-full" />
+        </div>
+      );
+    case "actions":
+      return <LoadingBlock className="h-8 w-8 rounded-xl" />;
+    default:
+      return null;
+  }
+}
 
 // Builds the tooltip explaining a scheduled seat change, e.g.
 // "This user will be downgraded to Free at the end of the billing period (July 1)".
@@ -1503,6 +1562,7 @@ export function MembersUsageTable({
       <div className="flex flex-col gap-2">
         <UsageTableSkeleton
           columns={columns}
+          SkeletonCell={MemberUsageSkeletonCell}
           rowCount={
             remainingRows > 0
               ? Math.min(pagination.pageSize, remainingRows)

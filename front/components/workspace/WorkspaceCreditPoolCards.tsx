@@ -1,4 +1,5 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
+import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
 import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
@@ -85,11 +86,6 @@ interface WorkspaceCreditUsageValueCardsProps {
   isRefreshing: boolean;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:react] credit-card-loading-geometry
- * Loading cards must use the same grid, card count and height as the loaded
- * cards for the given showPoolCard value.
- */
 export function WorkspaceCreditUsageValueCards({
   showPoolCard,
   totalRemainingCredits,
@@ -201,6 +197,17 @@ const CYCLE_HISTORY_COLUMNS: ColumnDef<CycleHistoryRowData, string>[] = [
 export const INITIAL_CYCLE_HISTORY_ROW_COUNT = 2;
 export const CYCLE_HISTORY_LOAD_MORE_COUNT = 5;
 
+function CycleHistorySkeletonCell({ columnId }: UsageTableSkeletonCellProps) {
+  switch (columnId) {
+    case "cycle":
+      return <LoadingBlock className="h-3 w-56 max-w-full" />;
+    case "consumedCredits":
+      return <LoadingBlock className="ml-auto h-3 w-16" />;
+    default:
+      return null;
+  }
+}
+
 export function WorkspaceCreditPoolCycleHistoryTable({
   cycleBreakdown,
   cycleHistoryLoadMore,
@@ -263,6 +270,7 @@ function WorkspaceCreditPoolHistory({
         <div className="flex flex-col gap-2">
           <UsageTableSkeleton
             columns={CYCLE_HISTORY_COLUMNS}
+            SkeletonCell={CycleHistorySkeletonCell}
             rowCount={INITIAL_CYCLE_HISTORY_ROW_COUNT}
           />
           <div className="flex h-6 items-center justify-between px-1">
