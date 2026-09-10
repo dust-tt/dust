@@ -1,4 +1,6 @@
 import { createConversation } from "@app/lib/api/assistant/conversation";
+import * as capTriggerAlert from "@app/lib/api/credits/programmatic_cap_trigger_alert";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WakeUpModel } from "@app/lib/resources/storage/models/wakeup";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
@@ -10,7 +12,7 @@ import {
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockIsProgrammaticApiBlocked, mockPostUserMessage } = vi.hoisted(
@@ -47,6 +49,16 @@ vi.mock("@app/lib/temporal", async (importOriginal) => ({
   }),
 }));
 
+vi.mock(
+  "@app/lib/api/credits/programmatic_cap_trigger_alert",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@app/lib/api/credits/programmatic_cap_trigger_alert")
+    >()),
+    notifyAdminsTriggerBlockedByProgrammaticCap: vi.fn(),
+  })
+);
+
 const MISSING_WAKE_UP_MODEL_ID = 9_000_000_000;
 const MISSING_TRIGGER_MODEL_ID = 9_000_000_000;
 
@@ -67,7 +79,7 @@ async function createProgrammaticScheduleTrigger() {
     executionMode: "workspace_pool",
   });
 
-  return { user, workspace, trigger };
+  return { authenticator, user, workspace, trigger };
 }
 
 describe("runTriggeredAgentsActivity", () => {
@@ -75,6 +87,9 @@ describe("runTriggeredAgentsActivity", () => {
     vi.clearAllMocks();
     mockIsProgrammaticApiBlocked.mockResolvedValue(false);
     mockPostUserMessage.mockResolvedValue(new Ok(undefined));
+    vi.mocked(
+      capTriggerAlert.notifyAdminsTriggerBlockedByProgrammaticCap
+    ).mockResolvedValue(new Ok(undefined));
   });
 
   it("skips missing triggers without failing the activity", async () => {
@@ -111,7 +126,7 @@ describe("runTriggeredAgentsActivity", () => {
 
   it("stops workspace_pool runs without retrying when the programmatic monthly cap is reached", async () => {
     mockIsProgrammaticApiBlocked.mockResolvedValue(true);
-    const { user, workspace, trigger } =
+    const { authenticator, user, workspace, trigger } =
       await createProgrammaticScheduleTrigger();
 
     await expect(
@@ -122,6 +137,40 @@ describe("runTriggeredAgentsActivity", () => {
       })
     ).resolves.toBeUndefined();
     expect(mockPostUserMessage).not.toHaveBeenCalled();
+    expect(await ConversationResource.listAll(authenticator)).toHaveLength(0);
+    expect(
+      capTriggerAlert.notifyAdminsTriggerBlockedByProgrammaticCap
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      capTriggerAlert.notifyAdminsTriggerBlockedByProgrammaticCap
+    ).toHaveBeenCalledWith(expect.anything(), {
+      trigger: expect.objectContaining({ sId: trigger.sId }),
+    });
+  });
+
+  it("does not use the programmatic-cap notification when the workspace pool is depleted", async () => {
+    mockPostUserMessage.mockResolvedValue(
+      new Err({
+        status_code: 403,
+        api_error: {
+          type: "credits_exhausted",
+          message: "Your workspace has run out of credits.",
+        },
+      })
+    );
+    const { user, workspace, trigger } =
+      await createProgrammaticScheduleTrigger();
+
+    await expect(
+      runTriggeredAgentsActivity({
+        userId: user.sId,
+        workspaceId: workspace.sId,
+        triggerId: trigger.sId,
+      })
+    ).resolves.toBeUndefined();
+    expect(
+      capTriggerAlert.notifyAdminsTriggerBlockedByProgrammaticCap
+    ).not.toHaveBeenCalled();
   });
 
   it("posts the triggered message when the programmatic monthly cap is not reached", async () => {
