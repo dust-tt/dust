@@ -36,7 +36,8 @@ let verifyCloudflareAccessJwt: typeof import("./cloudflare_access").verifyCloudf
 describe("cloudflare_access", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    // Clear the cached JWKS between cases by loading a fresh module instance.
+    // Vitest exception to prefer-static-imports: resetModules cannot re-evaluate static imports.
+    // Re-import to clear the cached JWKS between cases without a test-only runtime reset API.
     vi.resetModules();
     ({ verifyCloudflareAccessJwt } = await import("./cloudflare_access"));
   });
