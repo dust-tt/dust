@@ -1,4 +1,5 @@
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -6,6 +7,7 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type {
   GetSkillSuggestionsQuery,
   GetSkillSuggestionsResponseBody,
@@ -14,6 +16,13 @@ import type {
 } from "@app/types/api/assistant/skills/suggestions";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
+
+export function useAreSkillSuggestionsEnabled(): boolean {
+  const isSelfImprovementAvailable = useIsSelfImprovementAvailable();
+  const isMobile = useIsMobile();
+
+  return isSelfImprovementAvailable && !isMobile;
+}
 
 interface UseSkillSuggestionsParams {
   skillId: string | null;
