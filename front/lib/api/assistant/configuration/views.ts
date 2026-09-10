@@ -192,7 +192,6 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       ? { attributes: { exclude: [...new Set(attributesToExclude)] } }
       : {};
 
-  // A unique order keeps legacy and grant queries on the same page despite different query plans.
   const order: Order | undefined =
     limit === undefined
       ? sortStrategy?.dbOrder
