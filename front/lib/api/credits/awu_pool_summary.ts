@@ -429,22 +429,6 @@ export async function getAwuPoolCycleHistory(
   return new Ok(outcome.body);
 }
 
-/**
- * @cc [owner:avervaet,label:product] cycle-history-limit-counts-consumed-cycles
- * `cycleHistoryLimit` bounds the number of returned cycles that have consumption, not the
- * number of invoices inspected: an invoice without consumption MUST NOT count toward the limit
- * nor appear in either breakdown. Inspection MUST stop after
- * `CYCLE_HISTORY_INVOICE_SCAN_LIMIT` invoices, so a returned breakdown may hold fewer than
- * `cycleHistoryLimit` cycles even when older invoices exist.
- */
-/**
- * @cc [owner:avervaet,label:product] has-more-is-per-breakdown
- * Each field of `hasMoreCycleHistory` MUST be `true` only when `cycleHistoryLimit` is below
- * `MAX_CYCLE_HISTORY_LIMIT` and at least one more cycle with consumption was found beyond the
- * returned ones in that specific breakdown. Neither field MUST be `true` merely because older
- * invoices exist, or because the *other* breakdown has more — callers only ever render one of
- * the two breakdowns for a given workspace.
- */
 async function getAwuPoolCycleHistoryUncached(
   auth: Authenticator,
   { cycleHistoryLimit }: { cycleHistoryLimit: number }
