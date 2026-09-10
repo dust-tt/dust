@@ -1,33 +1,37 @@
-import { deletePodStatePrefix } from "@app/lib/api/sandbox/db";
 import { deleteLegacyPodOwnedSandbox } from "@app/lib/api/sandbox/legacy_pod_sandbox";
 import { Authenticator } from "@app/lib/auth";
-import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { FileResource } from "@app/lib/resources/file_resource";
-import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { FileModel } from "@app/lib/resources/storage/models/files";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
-import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
+import {
+  SandboxFunctionInvocationModel,
+  SandboxFunctionModel,
+} from "@app/lib/resources/storage/models/sandbox_function";
+import { SandboxFunctionMCPActionModel } from "@app/lib/resources/storage/models/sandbox_function_mcp_action";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import { getPodSandboxFunctionsBasePath } from "@app/types/mount_path";
 import type { ModelId } from "@app/types/shared/model_id";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { Op } from "sequelize";
 
-// Scrubs everything left behind by Pod functions and pod-owned sandboxes, both of which no longer
-// exist in code. Nothing creates these rows any more, so a clean run leaves the workspace with no
-// `spaceId` on `sandbox_functions` or `sandbox_owners`.
+// Scrubs the database rows left behind by Pod functions and pod-owned sandboxes, both of which no
+// longer exist in code. Nothing creates these rows any more, so a clean run leaves the workspace
+// with no `spaceId` on `sandbox_functions` or `sandbox_owners`.
 //
 // Per workspace, in this order:
 //
 //  1. Pod-owned sandboxes: destroy at the provider, then drop the `sandbox_owners` row and the
-//     `sandboxes` row. First, because a running sandbox keeps replicating into the pod state
-//     prefix wiped in step 3.
-//  2. Pod functions: their MCP actions and invocations (rows + GCS blobs), then the function rows,
-//     then the published bundle files each one owns.
-//  3. The pod GCS prefixes those two leave behind: the litestream state replica and the read-only
-//     published-bundle mount.
+//     `sandboxes` row.
+//  2. Pod functions: their MCP action rows, then their invocation rows, then the function rows,
+//     then the published bundle `files` rows each one owns. That order is the FK order — every
+//     link in the chain is `onDelete: "RESTRICT"`.
+//
+// DELIBERATELY NOT GCS. This only deletes rows. The objects those rows pointed at stay where they
+// are: invocation payload blobs, MCP action outputs, published function bundles, the pod
+// litestream state replica and the read-only bundle mount. They become unreferenced, and reclaiming
+// them is a separate job. The provider (E2B) sandbox in step 1 IS destroyed — that is a running VM,
+// not storage, and nothing else can reach it once its owner link is gone.
 //
 // Run it as soon as this ships. Until it does, a pod that booted a sandbox before the owner kind
 // was removed keeps that sandbox running at the provider forever: the reaper has no owner adapter
@@ -43,16 +47,16 @@ type WorkspaceOutcome = {
   deletedSandboxes: number;
   deletedFunctions: number;
   deletedInvocations: number;
+  deletedMcpActions: number;
   deletedFiles: number;
-  wipedPrefixes: number;
 };
 
 const EMPTY_OUTCOME: WorkspaceOutcome = {
   deletedSandboxes: 0,
   deletedFunctions: 0,
   deletedInvocations: 0,
+  deletedMcpActions: 0,
   deletedFiles: 0,
-  wipedPrefixes: 0,
 };
 
 /** The pods this workspace still has pod-scoped sandbox or function rows for. */
@@ -104,103 +108,102 @@ async function destroyPodOwnedSandbox(
 }
 
 /**
- * Delete every function row scoped to `pod`, its execution history and the bundle files it owns.
+ * Delete every row scoped to `pod`: its function rows, their execution history, and the bundle
+ * `files` rows the functions own. Their GCS objects are left behind (see the module comment).
  *
- * Read straight off the model rather than through `SandboxFunctionResource`, whose fetch path
- * only hydrates Frame functions now — a pod function would come back as nothing.
+ * Read straight off the models rather than through the resources, whose fetch paths only hydrate
+ * Frame functions now — a pod function would come back as nothing, and the resource deletes reach
+ * into GCS.
  */
-async function deletePodFunctions(
+async function deletePodFunctionRows(
   auth: Authenticator,
   pod: SpaceResource,
   { execute, logger }: { execute: boolean; logger: Logger }
-): Promise<
-  Pick<
-    WorkspaceOutcome,
-    "deletedFunctions" | "deletedInvocations" | "deletedFiles"
-  >
-> {
+): Promise<Omit<WorkspaceOutcome, "deletedSandboxes">> {
   const workspaceModelId = auth.getNonNullableWorkspace().id;
-  const rows = await SandboxFunctionModel.findAll({
+  const functions = await SandboxFunctionModel.findAll({
     attributes: ["id", "fileId", "slug"],
     where: { workspaceId: workspaceModelId, spaceId: pod.id },
   });
-  if (rows.length === 0) {
-    return { deletedFunctions: 0, deletedInvocations: 0, deletedFiles: 0 };
+  if (functions.length === 0) {
+    return {
+      deletedFunctions: 0,
+      deletedInvocations: 0,
+      deletedMcpActions: 0,
+      deletedFiles: 0,
+    };
   }
 
-  const sandboxFunctionModelIds = rows.map(({ id }) => id);
+  const sandboxFunctionModelIds = functions.map(({ id }) => id);
+  const fileModelIds = [...new Set(functions.map(({ fileId }) => fileId))];
+  const invocations = await SandboxFunctionInvocationModel.findAll({
+    attributes: ["id"],
+    where: {
+      workspaceId: workspaceModelId,
+      sandboxFunctionId: sandboxFunctionModelIds,
+    },
+  });
+  const invocationModelIds = invocations.map(({ id }) => id);
+
   if (!execute) {
     logger.info(
-      { functionCount: rows.length, slugs: rows.map(({ slug }) => slug) },
-      "[DRY RUN] Would delete pod functions, their invocations and their bundle files"
+      {
+        functionCount: functions.length,
+        invocationCount: invocationModelIds.length,
+        fileCount: fileModelIds.length,
+        slugs: functions.map(({ slug }) => slug),
+      },
+      "[DRY RUN] Would delete pod function rows, their history and their bundle file rows"
     );
-    return { deletedFunctions: 0, deletedInvocations: 0, deletedFiles: 0 };
+    return {
+      deletedFunctions: 0,
+      deletedInvocations: 0,
+      deletedMcpActions: 0,
+      deletedFiles: 0,
+    };
   }
 
-  // MCP actions FK invocations with RESTRICT, and invocations FK functions with RESTRICT, so the
-  // history goes first. This also removes the invocation and action GCS blobs.
-  const deletedInvocations =
-    await SandboxFunctionInvocationResource.deleteAllForSandboxFunctionModelIds(
-      { workspaceModelId, sandboxFunctionModelIds }
-    );
+  // FK order: actions reference invocations, invocations reference functions, and functions
+  // reference their bundle file — all with RESTRICT, so each set has to go before the next.
+  const deletedMcpActions =
+    invocationModelIds.length === 0
+      ? 0
+      : await SandboxFunctionMCPActionModel.destroy({
+          where: {
+            workspaceId: workspaceModelId,
+            sandboxFunctionInvocationId: invocationModelIds,
+          },
+        });
+
+  const deletedInvocations = await SandboxFunctionInvocationModel.destroy({
+    where: {
+      workspaceId: workspaceModelId,
+      sandboxFunctionId: sandboxFunctionModelIds,
+    },
+  });
 
   const deletedFunctions = await SandboxFunctionModel.destroy({
     where: { id: sandboxFunctionModelIds, workspaceId: workspaceModelId },
   });
 
-  // Each pod function owned one published bundle file, and referenced it with RESTRICT — so the
-  // files can only go once the function rows are gone.
-  const files = await FileResource.fetchByModelIdsWithAuth(auth, [
-    ...new Set(rows.map(({ fileId }) => fileId)),
-  ]);
-  let deletedFiles = 0;
-  for (const file of files) {
-    const result = await file.delete(auth);
-    if (result.isErr()) {
-      throw result.error;
-    }
-    deletedFiles++;
-  }
-
-  logger.info(
-    { deletedFunctions, deletedInvocations, deletedFiles },
-    "Deleted pod functions"
-  );
-
-  return { deletedFunctions, deletedInvocations, deletedFiles };
-}
-
-/**
- * Wipe the two GCS prefixes only pod sandboxes and pod functions ever wrote: the litestream state
- * replica and the read-only published-bundle mount. Unlike the rows above these leave no trace to
- * key on, so they are wiped for every pod that had either.
- */
-async function wipePodPrefixes(
-  auth: Authenticator,
-  pod: SpaceResource,
-  { execute, logger }: { execute: boolean; logger: Logger }
-): Promise<number> {
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-  const functionsPrefix = getPodSandboxFunctionsBasePath({
-    workspaceId,
-    podId: pod.sId,
+  // A published bundle is the only thing that ever referenced these files. Anything else pointing
+  // at one (a share, a skill attachment) also FKs with RESTRICT, so an unexpected reference fails
+  // this workspace loudly rather than orphaning the row.
+  const deletedFiles = await FileModel.destroy({
+    where: { id: fileModelIds, workspaceId: workspaceModelId },
   });
 
-  if (!execute) {
-    logger.info(
-      { functionsPrefix },
-      "[DRY RUN] Would wipe the pod state and sandbox-functions prefixes"
-    );
-    return 0;
-  }
+  logger.info(
+    { deletedFunctions, deletedInvocations, deletedMcpActions, deletedFiles },
+    "Deleted pod function rows"
+  );
 
-  const stateResult = await deletePodStatePrefix(auth, pod);
-  if (stateResult.isErr()) {
-    throw stateResult.error;
-  }
-  await getPrivateUploadBucket().deleteByPrefix(functionsPrefix);
-
-  return 2;
+  return {
+    deletedFunctions,
+    deletedInvocations,
+    deletedMcpActions,
+    deletedFiles,
+  };
 }
 
 async function cleanupWorkspace(
@@ -249,19 +252,15 @@ async function cleanupWorkspace(
     }
 
     if (functionPodModelIds.includes(podModelId)) {
-      const functions = await deletePodFunctions(auth, pod, {
+      const functions = await deletePodFunctionRows(auth, pod, {
         execute,
         logger: podLogger,
       });
       outcome.deletedFunctions += functions.deletedFunctions;
       outcome.deletedInvocations += functions.deletedInvocations;
+      outcome.deletedMcpActions += functions.deletedMcpActions;
       outcome.deletedFiles += functions.deletedFiles;
     }
-
-    outcome.wipedPrefixes += await wipePodPrefixes(auth, pod, {
-      execute,
-      logger: podLogger,
-    });
   }
 
   return outcome;
@@ -293,8 +292,8 @@ makeScript(
           total.deletedSandboxes += outcome.deletedSandboxes;
           total.deletedFunctions += outcome.deletedFunctions;
           total.deletedInvocations += outcome.deletedInvocations;
+          total.deletedMcpActions += outcome.deletedMcpActions;
           total.deletedFiles += outcome.deletedFiles;
-          total.wipedPrefixes += outcome.wipedPrefixes;
         } catch (err) {
           // One workspace failing must not strand the rest: the run is resumable, so record it
           // and keep going.
