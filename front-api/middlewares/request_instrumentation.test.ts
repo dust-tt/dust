@@ -1,4 +1,5 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import logger from "@app/logger/logger";
 import {
   getRequestContext,
   RequestCachedQuery,
@@ -11,11 +12,15 @@ import {
 } from "@front-api/lib/request_context";
 import { contextStorage } from "hono/context-storage";
 import { QueryTypes } from "sequelize";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { requestInstrumentation } from "./request_instrumentation";
 
 describe("requestInstrumentation", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("owns the query cache on the Hono context for one request", async () => {
     const app = createHono<RequestStorageEnv>();
     const query = new RequestCachedQuery<"key", number>();
@@ -84,5 +89,34 @@ describe("requestInstrumentation", () => {
         "SELECT current_query() AS \"query\" /*route='%2Fworkspaces%2F%3AworkspaceId'*/",
       route: "/workspaces/:workspaceId",
     });
+  });
+
+  it("logs the peak number of concurrent queries for the request", async () => {
+    const app = createHono<RequestStorageEnv>();
+    const infoSpy = vi
+      .spyOn(logger, "info")
+      .mockImplementation(() => undefined);
+
+    configureHonoRequestStorage();
+    app.use(contextStorage());
+    app.use("*", requestInstrumentation);
+    app.get("/", async (c) => {
+      await Promise.all([
+        // biome-ignore lint/plugin/noRawSql: exercises query concurrency instrumentation
+        frontSequelize.query("SELECT 1"),
+        // biome-ignore lint/plugin/noRawSql: exercises query concurrency instrumentation
+        frontSequelize.query("SELECT 1"),
+      ]);
+
+      return c.body(null);
+    });
+
+    const response = await app.request("/");
+
+    expect(response.status).toBe(200);
+    expect(infoSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ peakConcurrentQueries: 2 }),
+      "Processed request"
+    );
   });
 });
