@@ -2,6 +2,7 @@ import {
   ExternalOAuthTokenError,
   ThirdPartyConfigurationError,
 } from "@connectors/lib/error";
+import { normalizeError } from "@dust-tt/client";
 import type {
   ActivityExecuteInput,
   ActivityInboundCallsInterceptor,
@@ -74,74 +75,43 @@ function isSnowflakeIncorrectCredentialsError(
   );
 }
 
-interface SnowflakeRoleNotFoundError extends Error {
-  name: "OperationFailedError";
-  data: {
-    errorCode: "390189";
-    nextAction: "RETRY_LOGIN";
-  };
-}
-
-function isSnowflakeRoleNotFoundError(
-  err: unknown
-): err is SnowflakeRoleNotFoundError {
-  const maybeRoleError = err as {
-    name: "OperationFailedError";
-    code: "390189" | "390186";
-  };
+function isSnowflakeRoleNotFoundError(err: unknown): boolean {
   return (
-    "name" in maybeRoleError &&
-    maybeRoleError.name === "OperationFailedError" &&
-    "code" in maybeRoleError &&
-    ["390189", "390186"].includes(`${maybeRoleError.code}`)
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    err.name === "OperationFailedError" &&
+    "code" in err &&
+    (typeof err.code === "string" || typeof err.code === "number") &&
+    ["390189", "390186"].includes(`${err.code}`)
   );
 }
 
-interface SnowflakeSuspendedError extends Error {
-  name: "OperationFailedError";
-}
-
-function isSnowflakeSuspendedError(
-  err: unknown
-): err is SnowflakeSuspendedError {
-  const maybeSuspendedError = err as {
-    name: "OperationFailedError";
-    message: string;
-  };
+function isSnowflakeSuspendedError(err: unknown): boolean {
   return (
-    "name" in maybeSuspendedError &&
-    maybeSuspendedError.name === "OperationFailedError" &&
-    "message" in maybeSuspendedError &&
-    maybeSuspendedError.message.includes("suspended")
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    err.name === "OperationFailedError" &&
+    "message" in err &&
+    typeof err.message === "string" &&
+    err.message.includes("suspended")
   );
 }
 
-interface SnowflakeUserAccessDisabledError extends Error {
-  name: "OperationFailedError";
-}
-
-function isSnowflakeUserAccessDisabledError(
-  err: unknown
-): err is SnowflakeUserAccessDisabledError {
-  const userDisabledError = err as {
-    name: "OperationFailedError";
-    message: string;
-  };
+function isSnowflakeUserAccessDisabledError(err: unknown): boolean {
   return (
-    "name" in userDisabledError &&
-    userDisabledError.name === "OperationFailedError" &&
-    "message" in userDisabledError &&
-    userDisabledError.message.includes("User access disabled")
+    typeof err === "object" &&
+    err !== null &&
+    "name" in err &&
+    err.name === "OperationFailedError" &&
+    "message" in err &&
+    typeof err.message === "string" &&
+    err.message.includes("User access disabled")
   );
 }
 
-interface SnowflakeInsufficientPrivilegesError extends Error {
-  name: "OperationFailedError";
-}
-
-function isSnowflakeInsufficientPrivilegesError(
-  err: unknown
-): err is SnowflakeInsufficientPrivilegesError {
+function isSnowflakeInsufficientPrivilegesError(err: unknown): boolean {
   return (
     typeof err === "object" &&
     err !== null &&
@@ -153,13 +123,7 @@ function isSnowflakeInsufficientPrivilegesError(
   );
 }
 
-interface SnowflakeInvalidJwtError extends Error {
-  name: "OperationFailedError";
-}
-
-function isSnowflakeInvalidJwtError(
-  err: unknown
-): err is SnowflakeInvalidJwtError {
+function isSnowflakeInvalidJwtError(err: unknown): boolean {
   return (
     typeof err === "object" &&
     err !== null &&
@@ -202,7 +166,7 @@ export class SnowflakeCastKnownErrorsInterceptor
         isSnowflakeInsufficientPrivilegesError(err) ||
         isSnowflakeInvalidJwtError(err)
       ) {
-        throw new ExternalOAuthTokenError(err);
+        throw new ExternalOAuthTokenError(normalizeError(err));
       }
       if (isSnowflakeListingTrialExpiredError(err)) {
         throw new ThirdPartyConfigurationError(err);
