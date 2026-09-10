@@ -71,7 +71,7 @@ async function resolveRequest<T extends RequestInfo | URL>(
 
   return {
     url: resolveUrl(input, baseUrl),
-    init: defaults ? { ...defaults, ...init, headers } : init,
+    init: defaults ? { ...defaults, ...init, credentials, headers } : init,
     headers,
     withCredentials:
       credentials === undefined ? undefined : credentials === "include",
@@ -120,11 +120,9 @@ export async function clientEventSource(
  */
 /**
  * @cc [owner:Nils-Fedrigo,label:error-handling] upload-promise-always-settles
- * The promise returned by `clientUpload` MUST settle for every outcome of the underlying
- * `XMLHttpRequest`. Its event handlers are dispatched by the event loop, outside the promise
- * executor, so anything they throw escapes the promise instead of rejecting it: every handler MUST
- * therefore be total. A promise that neither resolves nor rejects strands the caller's upload state
- * for good: the attachment card spins forever and no error is ever surfaced.
+ * `clientUpload`'s promise MUST settle for every `XMLHttpRequest` outcome. Handlers run outside the
+ * promise executor, so a throw escapes instead of rejecting: those that settle (`onload`,
+ * `onerror`, `ontimeout`, `onabort`) MUST be total, or the upload state is stranded for good.
  */
 /**
  * @cc [owner:Nils-Fedrigo,label:coding] upload-progress-is-bytes-sent
