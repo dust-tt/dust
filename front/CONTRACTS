@@ -511,7 +511,7 @@ Direct use of Sequelize models in tests should be avoided in favor of Resources.
 setup and assertions.
 
 When existing Resource APIs cannot express a required fixture or assertion, direct model access
-is allowed under [models-behind-resources]; do not add test-only Resource APIs.
+is allowed under the `models-behind-resources` contract; do not add test-only Resource APIs.
 
 @cc [label:react] component-props-interfaces
 Components props should always be typed using an `interface`.
