@@ -54,6 +54,7 @@ interface SkillDirectiveProps {
 }
 
 interface ToolDirectiveProps {
+  toolId: string;
   toolIcon: string | null;
   toolName: string;
 }
@@ -72,6 +73,7 @@ const toolDirective = createAttachmentChipDirective({
   directiveName: "tool",
   hName: "tool",
   getHProperties: (node) => ({
+    toolId: node.attributes.sId,
     toolIcon: node.attributes.icon,
     toolName: node.children[0].value,
   }),
@@ -151,9 +153,9 @@ export const UserMessageMarkdown = ({
             return match;
           }
 
-          return tool.icon
-            ? `:tool[${tool.name}]{icon=${tool.icon}}`
-            : `:tool[${tool.name}]`;
+          const iconAttribute = tool.icon ? ` icon=${tool.icon}` : "";
+
+          return `:tool[${tool.name}]{sId=${tool.id}${iconAttribute}}`;
         }),
     [message.content]
   );
