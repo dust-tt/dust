@@ -448,15 +448,6 @@ schema file, re-register with WorkOS after merge and before deploy:
 `npx tsx front/admin/register_audit_log_schemas.ts --execute --changed`. The CI test enforces
 that the `AuditAction` union and schema files stay consistent.
 
-@cc [label:error-handling] single-terminal-model-response-event
-A streamed `ModelResponseEvent` sequence must end with exactly one terminal event — either
-`success` or `error`, never both — and every `token_usage` event must be emitted before it.
-
-Consumers (`LLM.streamWithTracing`, `completeStream`) stop at the first terminal event: anything
-yielded after it is dropped, and a `success` following an `error` double-counts the call as both a
-failure and a success in telemetry. When a provider stop/finish reason maps to an error, hold the
-error back until the usage has been yielded, then yield the error and end the stream.
-
 @cc [label:mcp] internal-mcp-server-structure
 Internal MCP servers must live in `lib/api/actions/servers/<server_name>/` and separate metadata,
 tool implementation, and server wiring:
