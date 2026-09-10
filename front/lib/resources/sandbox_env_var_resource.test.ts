@@ -451,7 +451,7 @@ describe("SandboxEnvVarResource pod scope", () => {
     const envResult = await SandboxEnvVarResource.loadEnv(
       authenticator,
       podScope(pod),
-      { kind: "pod", spaceId: pod.sId }
+      { kind: "conversation", conversationId: "conv_test", spaceId: pod.sId }
     );
     expect(envResult.isOk()).toBe(true);
     if (envResult.isErr()) {
@@ -481,7 +481,7 @@ describe("SandboxEnvVarResource pod scope", () => {
     const envResult = await SandboxEnvVarResource.loadHttpsSecretPlaceholderEnv(
       authenticator,
       podScope(pod),
-      { kind: "pod", spaceId: pod.sId }
+      { kind: "conversation", conversationId: "conv_test", spaceId: pod.sId }
     );
     expect(envResult.isOk()).toBe(true);
     if (envResult.isErr()) {
@@ -560,7 +560,7 @@ describe("SandboxEnvVarResource pod scope", () => {
     const podEnv = await SandboxEnvVarResource.loadEnv(
       authenticator,
       podScope(pod),
-      { kind: "pod", spaceId: pod.sId }
+      { kind: "conversation", conversationId: "conv_test", spaceId: pod.sId }
     );
     expect(podEnv.isOk()).toBe(true);
     if (podEnv.isErr()) {
@@ -611,7 +611,7 @@ describe("SandboxEnvVarResource pod scope", () => {
     const envResult = await SandboxEnvVarResource.loadEnv(
       authenticator,
       podScope(pod),
-      { kind: "pod", spaceId: pod.sId }
+      { kind: "conversation", conversationId: "conv_test", spaceId: pod.sId }
     );
     expect(envResult.isOk()).toBe(true);
     if (envResult.isErr()) {
@@ -700,7 +700,8 @@ describe("SandboxEnvVarResource pod scope", () => {
 
     await expect(
       SandboxEnvVarResource.loadEnv(authenticator, podScope(pod), {
-        kind: "pod",
+        kind: "conversation",
+        conversationId: "conv_test",
         spaceId: otherPod.sId,
       })
     ).rejects.toThrow(

@@ -90,15 +90,6 @@ export function getPodSandboxFunctionsBasePath({
 }
 
 /**
- * Absolute in-sandbox path the pod's published bundles are mounted at. Pod-scoped like the
- * `/files/pod-<id>` files mount, so one sandbox could carry several pods' functions without
- * collision.
- */
-export function getPodSandboxFunctionsMountPoint(podId: string): string {
-  return `/sandbox-functions/pods/${podId}`;
-}
-
-/**
  * Read-only root containing every immutable publication of one Frame. The stable Frame identity
  * keeps the mount unchanged when a new publication activates; each invocation selects its exact
  * publication below this root.

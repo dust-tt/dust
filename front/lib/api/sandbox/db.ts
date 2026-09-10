@@ -40,12 +40,12 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  * by database FILENAME: /sandbox-state/replica/{db}.db/ltx/...
  *
  * Lifecycle:
- *  - Cold start (`setupPodStateOnColdStart`, after the gcsfuse mounts): restore
+ *  - Cold start (`setupSandboxStateOnColdStart`, after the gcsfuse mounts): restore
  *    each replicated database (temp file + PRAGMA quick_check + atomic rename),
  *    then start the litestream systemd unit — strictly in that order, so the
  *    watcher never manages files mid-restore or writes to an unmounted
  *    replica dir.
- *  - Pre-sleep (`ensurePodStateHealthOnSleep`, before the provider pause):
+ *  - Pre-sleep (`ensureSandboxStateHealthOnSleep`, before the provider pause):
  *    verify the replica mount is a live FUSE mount and the daemon is active,
  *    then `litestream sync -wait` each database so every committed WAL frame
  *    is in GCS before the VM can be destroyed. On failure the sandbox is NOT
@@ -187,10 +187,10 @@ function execFailure(
  * Cold-start bring-up, called from the freshlyCreated lifecycle branch AFTER
  * the gcsfuse mounts are up (the restore reads through the replica mount).
  * Failures block sandbox readiness on purpose: `invoke` awaits
- * `ensurePodSandboxReady`, which is what guarantees no function ever runs
+ * `ensureFrameSandboxReady`, which is what guarantees no function ever runs
  * against a half-restored database.
  */
-export async function setupPodStateOnColdStart(
+export async function setupSandboxStateOnColdStart(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<void, Error>> {
@@ -266,10 +266,6 @@ export async function setupPodStateOnColdStart(
     return new Ok(undefined);
   });
 }
-
-// Pods and Frames use the same isolated SQLite/Litestream runtime. Keep the Pod-named export for
-// existing callers while owner-neutral lifecycle code uses this name.
-export const setupSandboxStateOnColdStart = setupPodStateOnColdStart;
 
 async function listReplicaDatabases(
   auth: Authenticator,
@@ -474,7 +470,7 @@ export async function restartLitestreamDaemon(
  * the sandbox is already gone, there is nothing left to sync, and exec already
  * marked the row deleted.
  */
-export async function ensurePodStateHealthOnSleep(
+export async function ensureSandboxStateHealthOnSleep(
   auth: Authenticator,
   sandbox: SandboxResource,
   opts: {
@@ -611,8 +607,6 @@ export async function ensurePodStateHealthOnSleep(
 
   return new Ok(undefined);
 }
-
-export const ensureSandboxStateHealthOnSleep = ensurePodStateHealthOnSleep;
 
 export async function checkReplicaMountLiveness(
   auth: Authenticator,
