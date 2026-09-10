@@ -165,7 +165,10 @@ export function useFileUploaderService({
   const uploadFiles = useCallback(
     async (
       newFileBlobs: FileBlob[],
-      options?: { useCaseMetadata?: FileUseCaseMetadata }
+      options?: {
+        useCaseMetadata?: FileUseCaseMetadata;
+        onFileSettled?: (result: Result<FileBlob, FileBlobUploadError>) => void;
+      }
     ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
       const effectiveUseCaseMetadata =
         options?.useCaseMetadata ?? useCaseMetadata;
@@ -284,7 +287,7 @@ export function useFileUploaderService({
             path: fileUploaded.path,
           });
         },
-        { concurrency: 4 }
+        { concurrency: 4, onResult: options?.onFileSettled }
       );
     },
     [owner.sId, useCase, useCaseMetadata]
@@ -377,8 +380,16 @@ export function useFileUploaderService({
       const previewResults = processSelectedFiles(files);
       const newFileBlobs = processResults(previewResults, true);
 
-      const uploadResults = await uploadFiles(newFileBlobs, options);
-      const finalFileBlobs = processResults(uploadResults);
+      // Commit each file as its own upload settles. Processing only the finished batch would
+      // hold a file that is already uploaded at `uploadProgress: 100`, and a failed one at
+      // `isUploading: true`, until the slowest upload of the batch finishes.
+      const uploadResults = await uploadFiles(newFileBlobs, {
+        ...options,
+        onFileSettled: (result) => processResults([result]),
+      });
+      const finalFileBlobs = uploadResults.flatMap((result) =>
+        result.isOk() ? [result.value] : []
+      );
 
       setNumFilesProcessing((prev) => prev - files.length);
 

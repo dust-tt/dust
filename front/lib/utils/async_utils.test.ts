@@ -1,4 +1,7 @@
-import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
+import {
+  concurrentExecutor,
+  withPeriodicHeartbeat,
+} from "@app/lib/utils/async_utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 describe("withPeriodicHeartbeat", () => {
@@ -54,5 +57,35 @@ describe("withPeriodicHeartbeat", () => {
     await expect(promise).rejects.toThrow("boom");
     await vi.advanceTimersByTimeAsync(60_000);
     expect(heartbeatFn).not.toHaveBeenCalled();
+  });
+});
+
+describe("concurrentExecutor", () => {
+  it("reports each result as it resolves, not at the end of the batch", async () => {
+    const reported: string[] = [];
+    let releaseSlow: () => void = () => {};
+    const slow = new Promise<void>((resolve) => {
+      releaseSlow = resolve;
+    });
+
+    const promise = concurrentExecutor(
+      ["slow", "fast"],
+      async (item) => {
+        if (item === "slow") {
+          await slow;
+        }
+        return item.toUpperCase();
+      },
+      { concurrency: 2, onResult: (result) => reported.push(result) }
+    );
+
+    // "fast" has resolved while "slow" is still pending, so it must already be reported.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(reported).toEqual(["FAST"]);
+
+    releaseSlow();
+    // Results keep input order even though they were reported out of order.
+    await expect(promise).resolves.toEqual(["SLOW", "FAST"]);
+    expect(reported).toEqual(["FAST", "SLOW"]);
   });
 });
