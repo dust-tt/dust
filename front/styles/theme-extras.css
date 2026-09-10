@@ -14,6 +14,9 @@
 @utility h-panel {
   height: var(--panel-height); /* defined in global.css */
 }
+@utility min-h-panel {
+  min-height: var(--panel-height);
+}
 
 /* The expanded input bar paints its own surface color rather than one of the
    shared background tokens (see InputBar.tsx). Defined here, in the one entry
