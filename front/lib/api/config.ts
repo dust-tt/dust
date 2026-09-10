@@ -1,3 +1,4 @@
+import { DEFAULT_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { DEFAULT_PRESTOP_DRAIN_DURATION_MS } from "@app/lib/constants/timeouts";
 import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
@@ -56,6 +57,27 @@ const config = {
     }
 
     return durationSeconds * 1_000;
+  },
+
+  getCreditSpendCheckpointThresholdAwuCredits: (): number => {
+    const value = EnvironmentConfig.getOptionalEnvVariable(
+      "CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS"
+    );
+    if (!value) {
+      return DEFAULT_CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS;
+    }
+
+    const thresholdAwuCredits = Number(value);
+    if (
+      !Number.isSafeInteger(thresholdAwuCredits) ||
+      thresholdAwuCredits <= 0
+    ) {
+      throw new Error(
+        "CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS must be a positive integer"
+      );
+    }
+
+    return thresholdAwuCredits;
   },
 
   // Dynamic API base URL: uses a custom resolver when set (SPA region switching),
