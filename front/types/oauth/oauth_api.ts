@@ -1,4 +1,5 @@
 import { internalFetch } from "@app/lib/api/internal_fetch";
+import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import type {
@@ -122,17 +123,16 @@ export class OAuthAPI {
 
   async finalizeConnection({
     provider,
-    connectionId,
+    connection,
     code,
-    redirectUri,
   }: {
     provider: OAuthProvider;
-    connectionId: string;
+    connection: OAuthConnectionType;
     code: string;
-    redirectUri: string;
   }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
+    const redirectUri = finalizeUriForProvider({ provider, connection });
     const response = await this._fetchWithError(
-      `${this._url}/connections/${connectionId}/finalize`,
+      `${this._url}/connections/${connection.connection_id}/finalize`,
       {
         method: "POST",
         headers: {

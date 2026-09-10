@@ -22,7 +22,10 @@ export class GithubOAuthProvider implements BaseOAuthStrategyProvider {
     if (useCase === "personal_actions") {
       // OAuth flow for personal connections (user access tokens)
       const clientId = config.getOAuthGithubAppPersonalActions();
-      const redirectUri = finalizeUriForProvider("github");
+      const redirectUri = finalizeUriForProvider({
+        provider: "github",
+        connection,
+      });
       const url =
         `https://github.com/login/oauth/authorize?` +
         `client_id=${clientId}` +
@@ -36,7 +39,10 @@ export class GithubOAuthProvider implements BaseOAuthStrategyProvider {
     if (useCase === "webhooks") {
       // OAuth flow for webhook management
       const clientId = config.getOAuthGithubAppWebhooks();
-      const redirectUri = finalizeUriForProvider("github");
+      const redirectUri = finalizeUriForProvider({
+        provider: "github",
+        connection,
+      });
       const url =
         `https://github.com/login/oauth/authorize?` +
         `client_id=${clientId}` +

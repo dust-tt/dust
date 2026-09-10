@@ -50,7 +50,7 @@ export class JiraOAuthProvider implements BaseOAuthStrategyProvider {
       `https://auth.atlassian.com/authorize?audience=api.atlassian.com` +
       `&client_id=${config.getOAuthJiraClientId()}` +
       `&scope=${encodeURIComponent(scopes.join(" "))}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("jira"))}` +
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "jira", connection }))}` +
       `&state=${connection.connection_id}` +
       `&response_type=code&prompt=consent`
     );

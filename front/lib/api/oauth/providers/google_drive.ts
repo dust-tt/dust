@@ -38,7 +38,10 @@ export class GoogleDriveOAuthProvider implements BaseOAuthStrategyProvider {
       response_type: "code",
       client_id: config.getOAuthGoogleDriveClientId(),
       state: connection.connection_id,
-      redirect_uri: finalizeUriForProvider("google_drive"),
+      redirect_uri: finalizeUriForProvider({
+        provider: "google_drive",
+        connection,
+      }),
       scope: extraConfig?.scope ?? scopes.join(" "),
       access_type: "offline",
       prompt: "consent",

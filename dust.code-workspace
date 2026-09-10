@@ -33,7 +33,7 @@
       "preview-proxy": true,
       "prodbox": true,
       "sandbox": true,
-      "scripts": true,
+      "scripts": false,
       "temporal": true,
       "tools": true,
       "x": true

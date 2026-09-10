@@ -37,7 +37,6 @@ import { SnowflakeOAuthProvider } from "@app/lib/api/oauth/providers/snowflake";
 import { UkgReadyOAuthProvider } from "@app/lib/api/oauth/providers/ukg_ready";
 import { VantaOAuthProvider } from "@app/lib/api/oauth/providers/vanta";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
-import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import logger from "@app/logger/logger";
@@ -339,11 +338,28 @@ export async function finalizeConnection(
 
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
 
+  // Fetching the connection metadata is necessary to build the redirect URI.
+  const connectionRes = await api.getConnectionMetadata({
+    connectionId,
+  });
+
+  if (connectionRes.isErr()) {
+    logger.error(
+      { connectionId, step: "connection_metadata_retrieval" },
+      "OAuth: Failed to retrieve connection metadata"
+    );
+    return new Err({
+      code: "connection_finalization_failed",
+      message: `Failed to finalize ${provider} connection: failed to retrieve connection metadata`,
+    });
+  }
+
+  const connection = connectionRes.value.connection;
+
   const cRes = await api.finalizeConnection({
     provider,
-    connectionId,
+    connection,
     code,
-    redirectUri: finalizeUriForProvider(provider),
   });
 
   if (cRes.isErr()) {

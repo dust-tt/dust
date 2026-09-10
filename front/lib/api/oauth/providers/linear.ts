@@ -27,7 +27,7 @@ export class LinearOAuthProvider implements BaseOAuthStrategyProvider {
     return (
       `https://linear.app/oauth/authorize` +
       `?client_id=${encodeURIComponent(config.getOAuthLinearClientId())}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("linear"))}` +
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "linear", connection }))}` +
       `&scope=${encodeURIComponent(scopes.join(","))}` +
       `&state=${encodeURIComponent(connection.connection_id)}` +
       `&response_type=code`

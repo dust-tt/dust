@@ -1,4 +1,4 @@
-import config from "@app/lib/api/config";
+import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
 import {
   Collapsible,
@@ -17,7 +17,10 @@ export function SnowflakeSetupInstructions({
 }: SnowflakeSetupInstructionsProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const redirectUri = `${config.getApiBaseUrl()}/oauth/snowflake/finalize`;
+  const redirectUri = finalizeUriForProvider({
+    provider: "snowflake",
+    connection: null,
+  });
 
   return (
     <div className="w-full pt-4">

@@ -51,7 +51,7 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
       `&response_type=code` +
       `&client_id=${clientId}` +
       `&state=${connection.connection_id}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("notion"))}`
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "notion", connection }))}`
     );
   }
 

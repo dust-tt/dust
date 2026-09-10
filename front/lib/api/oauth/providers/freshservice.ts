@@ -85,7 +85,7 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
       `&client_id=${config.getOAuthFreshserviceClientId()}` +
       `&state=${connection.connection_id}` +
       `&scope=${encodeURIComponent(scopes.join(" "))}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("freshservice"))}`
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "freshservice", connection }))}`
     );
   }
 
