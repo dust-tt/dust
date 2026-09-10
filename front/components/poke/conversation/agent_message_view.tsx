@@ -39,7 +39,13 @@ const AGENT_STATUS: Record<
   },
 };
 
-function getLangfuseTraceUrl(langfuseUiBaseUrl: string, runId: string) {
+function getLangfuseTraceUrl({
+  langfuseUiBaseUrl,
+  runId,
+}: {
+  langfuseUiBaseUrl: string;
+  runId: string;
+}) {
   return `${langfuseUiBaseUrl}/traces?filter=metadata%3BstringObject%3BdustTraceId%3B%3D%3B${encodeURIComponent(runId)}`;
 }
 
@@ -68,7 +74,7 @@ function AgentTraceLinks({ runUrls, langfuseUiBaseUrl }: AgentTraceLinksProps) {
               </a>
               {isLLM && langfuseUiBaseUrl && (
                 <a
-                  href={getLangfuseTraceUrl(langfuseUiBaseUrl, runId)}
+                  href={getLangfuseTraceUrl({ langfuseUiBaseUrl, runId })}
                   title={`Open ${runId} in Langfuse`}
                   target="_blank"
                   rel="noopener noreferrer"
