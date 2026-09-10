@@ -1,8 +1,8 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { ONE_DAY_MS } from "@app/lib/api/analytics/time_utils";
-import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/api/credits/awu_pool_summary";
 import { formatCredits } from "@app/lib/client/credits";
+import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
 import {
   useAwuPoolCurrentCycle,
   useAwuPoolCycleHistory,

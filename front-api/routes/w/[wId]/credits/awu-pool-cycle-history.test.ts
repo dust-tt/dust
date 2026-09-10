@@ -22,16 +22,19 @@ function awuPoolCycleHistoryUrl(wId: string, query = "") {
   return `/api/w/${wId}/credits/awu-pool-cycle-history${query}`;
 }
 
-// Only the fields the breakdown reads; the SDK type is far larger.
 function finalizedInvoice(index: number): Invoice {
   const end = Date.UTC(2026, 0, 1) - index * 31 * 24 * 60 * 60 * 1000;
   return {
     id: `inv-${index}`,
+    customer_id: "m-customer",
+    status: "FINALIZED",
+    type: "USAGE",
+    total: 0,
     start_timestamp: new Date(end - 31 * 24 * 60 * 60 * 1000).toISOString(),
     end_timestamp: new Date(end).toISOString(),
     credit_type: { id: "2714e483-4ff1-48e4-9e25-ac732e8f24f2", name: "USD" },
     line_items: [],
-  } as unknown as Invoice;
+  };
 }
 
 async function requestAsManager(query = "") {

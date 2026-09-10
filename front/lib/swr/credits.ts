@@ -7,6 +7,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   AwuPoolCurrentCycleResponseBody,
+  AwuPoolCycleBreakdown,
   AwuPoolCycleHistoryResponseBody,
   AwuPoolSummaryResponseBody,
 } from "@app/types/api/credits/awu_pool_summary";
@@ -312,10 +313,18 @@ export function useAwuPoolCycleHistory({
     { disabled, keepPreviousData: true }
   );
 
+  const isUsable = !error && !disabled;
+
   return {
-    cycleBreakdown: data?.cycleBreakdown ?? emptyArray(),
-    excessCycleBreakdown: data?.excessCycleBreakdown ?? emptyArray(),
-    hasMoreCycleHistory: data?.hasMoreCycleHistory ?? false,
+    cycleBreakdown: isUsable
+      ? (data?.cycleBreakdown ?? emptyArray<AwuPoolCycleBreakdown>())
+      : emptyArray<AwuPoolCycleBreakdown>(),
+    excessCycleBreakdown: isUsable
+      ? (data?.excessCycleBreakdown ?? emptyArray<AwuPoolCycleBreakdown>())
+      : emptyArray<AwuPoolCycleBreakdown>(),
+    hasMoreCycleHistory: isUsable
+      ? (data?.hasMoreCycleHistory ?? false)
+      : false,
     isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
     isAwuPoolCycleHistoryError: error,
     isAwuPoolCycleHistoryValidating: isValidating,

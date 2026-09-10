@@ -6,3 +6,5 @@ export const MIN_AWU_PURCHASE_CREDITS = 100;
 // own economics (sold at a fixed per-credit rate), so the programmatic
 // `MAX_DISCOUNT_PERCENT` (derived from token-pricing markup) does not apply.
 export const MAX_AWU_DISCOUNT_PERCENT = 15;
+
+export const MAX_CYCLE_HISTORY_LIMIT = 24;

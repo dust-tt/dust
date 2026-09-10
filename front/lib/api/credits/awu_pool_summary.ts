@@ -3,6 +3,7 @@ import {
   resolveMetronomeCycle,
 } from "@app/lib/api/credits/members_usage";
 import type { Authenticator } from "@app/lib/auth";
+import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
 import { amountCents } from "@app/lib/metronome/amounts";
 import {
   listMetronomeBalances,
@@ -41,7 +42,6 @@ import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 import { z } from "zod";
 
 export const DEFAULT_CYCLE_HISTORY_LIMIT = 5;
-export const MAX_CYCLE_HISTORY_LIMIT = 24;
 
 /**
  * @cc [owner:arthurvervaet,label:api] cycle-history-limit-bounds
