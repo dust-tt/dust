@@ -244,7 +244,7 @@ RUN set -eu \
   && chmod 0755 /usr/local/bin/stripe \
   && stripe version
 
-# Google Cloud SDK — gcloud + GKE plugin + kubectl (dust-us / dust-eu aliases)
+# Google Cloud SDK — gcloud + GKE plugin + kubectl
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \

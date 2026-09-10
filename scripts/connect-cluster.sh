@@ -1,25 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Point kubectl at a Dust production cluster (eu or us).
+# Point kubectl at a Dust production cell.
 #
-# Updates your default kubeconfig (KUBECONFIG, or ~/.kube/config) and switches
-# the current context to the chosen cluster, so subsequent `kubectl` commands
-# target it. Handles gcloud auth automatically.
+# Switches gcloud and kubectl via dust-cell. Requires setup_infra.sh.
 #
-# Usage: connect-cluster.sh <eu|us>
+# Usage: connect-cluster.sh <eu|us|cell-*>
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/gcp.sh
-source "${SCRIPT_DIR}/lib/gcp.sh"
+# shellcheck source=lib/prodbox.sh
+source "${SCRIPT_DIR}/lib/prodbox.sh"
 
-ALIAS="${1:?Usage: connect-cluster.sh <eu|us>}"
+ALIAS="${1:?Usage: connect-cluster.sh <eu|us|cell-*>}"
 
-require_commands gcloud kubectl
+require_dust_cell
 
-REGION="$(gcp_region_for_alias "$ALIAS")"
+CELL="$(cell_for_alias "$ALIAS")"
+dust-cell "$CELL"
 
-ensure_gcloud_auth
-connect_cluster "$REGION" "${KUBECONFIG:-$HOME/.kube/config}"
-
-echo "✅ kubectl is now pointed at ${REGION} (dust-kube)."
+echo "✅ kubectl is now pointed at ${CELL}."
