@@ -18,7 +18,10 @@ import type {
 } from "@app/lib/llms/types/filter";
 import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/providers/fireworks/constants";
 import type { Host } from "@app/lib/model_constructors/types/hosts";
-import { GOOGLE_AI_STUDIO_HOST } from "@app/lib/model_constructors/types/hosts";
+import {
+  AGENT_PLATFORM_HOST,
+  GOOGLE_AI_STUDIO_HOST,
+} from "@app/lib/model_constructors/types/hosts";
 import type { Lab } from "@app/lib/model_constructors/types/labs";
 import type { Model } from "@app/lib/model_constructors/types/models";
 import { isModel, NOOP_MODEL } from "@app/lib/model_constructors/types/models";
@@ -134,8 +137,13 @@ export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
   return {
     ...getLabAndHostFilter(providerIds),
     region: getRegionFilter(auth),
-    // We route all non-byok gemini requests to agent platform.
-    ...(byok ? {} : { not: { host: { eq: GOOGLE_AI_STUDIO_HOST } } }),
+    // Agent-platform endpoints run on Dust's own Vertex project and ignore the
+    // workspace credentials, so a byok workspace must never reach one: its
+    // inference has to go through the key it provided, on the lab's own API.
+    // Conversely we route all non-byok gemini requests to agent platform.
+    ...(byok
+      ? { not: { host: { eq: AGENT_PLATFORM_HOST } } }
+      : { not: { host: { eq: GOOGLE_AI_STUDIO_HOST } } }),
   };
 }
 
