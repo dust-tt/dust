@@ -140,7 +140,7 @@ export function AgentPicker({
                   isSelected ? "bg-primary-100" : ""
                 }`}
                 endComponent={
-                  <div className="z-10 flex items-center gap-1">
+                  <div className="flex items-center gap-1">
                     {isSelected && (
                       // Show a tick by default; on hover swap it for an X to
                       // signal that clicking will deselect the agent.
