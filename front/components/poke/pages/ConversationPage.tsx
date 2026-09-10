@@ -578,16 +578,16 @@ const UserMessageView = ({ message, useMarkdown }: UserMessageViewProps) => {
             </>
           )}
           <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <span>date: {new Date(message.created).toLocaleString()}</span>
-            {message.context.origin === "wakeup" && (
-              <StatusBadge label="wake-up" color="highlight" />
-            )}
             <StatusBadge
               label={
                 USER_VISIBILITY[message.visibility]?.label ?? message.visibility
               }
               color={USER_VISIBILITY[message.visibility]?.color ?? "primary"}
             />
+            <span>{new Date(message.created).toLocaleString()}</span>
+            {message.context.origin === "wakeup" && (
+              <StatusBadge label="wake-up" color="highlight" />
+            )}  
           </div>
         </ConversationMessage>
       </div>
