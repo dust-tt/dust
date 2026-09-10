@@ -98,15 +98,3 @@ export function filterInputBarSlashCommandItems(
     matchesInputBarSlashCommandItem(item, normalizedQuery)
   );
 }
-
-export function buildInputBarSlashCommandItems({
-  query,
-  ...options
-}: Parameters<typeof getInputBarSlashCommandItems>[0] & {
-  query: string;
-}): SlashCommand[] {
-  return filterInputBarSlashCommandItems(
-    getInputBarSlashCommandItems(options),
-    query
-  );
-}

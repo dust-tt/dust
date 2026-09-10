@@ -1,7 +1,4 @@
-import {
-  buildPickModelSlashCommandItems,
-  getDefaultPickModelSlashCommandItemId,
-} from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
+import { buildPickModelSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionType,
@@ -130,19 +127,34 @@ describe("buildPickModelSlashCommandItems", () => {
         streams: null,
       }).map((item) => item.label);
 
-    // "gpt6" is a substring of "gpt6astra" and only a subsequence of "gpt5.6luna".
+    // "gpt6" is a substring of "gpt6astra" and only a subsequence of "gpt5.6luna". Within a
+    // model, the default effort (medium for both) comes first so Enter picks it.
     expect(labelsFor("gpt6")).toEqual([
-      `${GPT_6_ASTRA_MODEL_CONFIG.displayName} Light`,
       `${GPT_6_ASTRA_MODEL_CONFIG.displayName} Medium`,
+      `${GPT_6_ASTRA_MODEL_CONFIG.displayName} Light`,
       `${GPT_6_ASTRA_MODEL_CONFIG.displayName} High`,
-      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Light`,
       `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Medium`,
+      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Light`,
       `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} High`,
     ]);
     expect(labelsFor("laude")).toEqual([
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
+    ]);
+    // Haiku defaults to light, so its browse order is already the search order.
+    expect(
+      buildPickModelSlashCommandItems({
+        getModelIcon: () => Icon,
+        lockPremiumEfforts: false,
+        models: [asSelectable(CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG)],
+        query: "haiku",
+        streams: null,
+      }).map((item) => item.label)
+    ).toEqual([
+      `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} Light`,
+      `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} Medium`,
+      `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} High`,
     ]);
     // Provider names are never searched.
     expect(labelsFor("anthropic")).toEqual([]);
@@ -251,42 +263,5 @@ describe("buildPickModelSlashCommandItems", () => {
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
     ]);
-  });
-});
-
-describe("getDefaultPickModelSlashCommandItemId", () => {
-  const itemsFor = (query: string) =>
-    buildPickModelSlashCommandItems({
-      getModelIcon: () => Icon,
-      lockPremiumEfforts: false,
-      models: [asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)],
-      query,
-      streams: null,
-    });
-
-  it("points at the first model's default effort row", () => {
-    expect(
-      getDefaultPickModelSlashCommandItemId(itemsFor("claude"), {
-        lockPremiumEfforts: false,
-      })
-    ).toBe(
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.providerId}/${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId}/${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.defaultReasoningEffort}`
-    );
-  });
-
-  it("returns null when the default effort row was filtered out", () => {
-    expect(
-      getDefaultPickModelSlashCommandItemId(itemsFor("claude h"), {
-        lockPremiumEfforts: false,
-      })
-    ).toBeNull();
-  });
-
-  it("returns null when the list starts with a tier row", () => {
-    expect(
-      getDefaultPickModelSlashCommandItemId(itemsFor(""), {
-        lockPremiumEfforts: false,
-      })
-    ).toBeNull();
   });
 });

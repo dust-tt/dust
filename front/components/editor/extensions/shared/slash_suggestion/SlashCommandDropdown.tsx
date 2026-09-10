@@ -78,8 +78,6 @@ interface SlashCommandSubMenuNavigation {
 
 export interface SlashCommandDropdownProps
   extends Pick<SuggestionProps<SlashCommand>, "clientRect" | "command"> {
-  // Row highlighted when the list (re)renders; falls back to the first item.
-  defaultSelectedItemId?: string | null;
   emptyMessage?: string;
   header?: string;
   isLoading?: boolean;
@@ -101,26 +99,11 @@ const SUB_MENU_BACK_ITEM_ID = "slash-sub-menu-back";
 
 function getDefaultSelectedIndex(
   hasSubMenuNavigation: boolean,
-  items: SlashCommand[],
-  defaultSelectedItemId: string | null | undefined
+  itemCount: number
 ): number {
-  const offset = hasSubMenuNavigation ? 1 : 0;
-  const defaultIndex = defaultSelectedItemId
-    ? items.findIndex((item) => item.id === defaultSelectedItemId)
-    : -1;
-  if (defaultIndex >= 0) {
-    return defaultIndex + offset;
-  }
-
-  return hasSubMenuNavigation && items.length > 0 ? 1 : 0;
+  return hasSubMenuNavigation && itemCount > 0 ? 1 : 0;
 }
 
-/**
- * @cc [owner:PopDaph,label:react] default-selected-item
- * Whenever the item list or `defaultSelectedItemId` changes, the highlighted row is the item
- * whose id equals `defaultSelectedItemId` when present in the list, otherwise the first item
- * (after the sub-menu "Back" row when there is one).
- */
 export const SlashCommandDropdown = forwardRef<
   SlashCommandDropdownRef,
   SlashCommandDropdownProps
@@ -131,7 +114,6 @@ export const SlashCommandDropdown = forwardRef<
       sections,
       command,
       clientRect,
-      defaultSelectedItemId,
       emptyMessage = DEFAULT_EMPTY_MESSAGE,
       header,
       isLoading = false,
@@ -152,12 +134,10 @@ export const SlashCommandDropdown = forwardRef<
     const selectableCount = items.length + (subMenuNavigation ? 1 : 0);
     const itemIdsKey = useMemo(
       () =>
-        [
-          subMenuNavigation?.label ?? "",
-          defaultSelectedItemId ?? "",
-          ...items.map((item) => item.id),
-        ].join("\0"),
-      [defaultSelectedItemId, items, subMenuNavigation?.label]
+        [subMenuNavigation?.label ?? "", ...items.map((item) => item.id)].join(
+          "\0"
+        ),
+      [items, subMenuNavigation?.label]
     );
     const capabilitiesSectionHasItems =
       sections?.some(
@@ -170,7 +150,7 @@ export const SlashCommandDropdown = forwardRef<
       selectableCount > 0 || showLoadingPlaceholder || !!subMenuNavigation;
 
     const [selectedIndex, setSelectedIndex] = useState(() =>
-      getDefaultSelectedIndex(!!subMenuNavigation, items, defaultSelectedItemId)
+      getDefaultSelectedIndex(!!subMenuNavigation, items.length)
     );
     const [showSkillNameTooltips, setShowSkillNameTooltips] = useState(true);
     const listRef = useRef<HTMLDivElement>(null);
@@ -273,11 +253,7 @@ export const SlashCommandDropdown = forwardRef<
     // biome-ignore lint/correctness/useExhaustiveDependencies: itemIdsKey is intentional trigger
     useEffect(() => {
       setSelectedIndex(
-        getDefaultSelectedIndex(
-          !!subMenuNavigation,
-          items,
-          defaultSelectedItemId
-        )
+        getDefaultSelectedIndex(!!subMenuNavigation, items.length)
       );
     }, [itemIdsKey]);
 

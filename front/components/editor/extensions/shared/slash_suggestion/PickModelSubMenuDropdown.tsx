@@ -1,7 +1,4 @@
-import {
-  buildPickModelSlashCommandItems,
-  getDefaultPickModelSlashCommandItemId,
-} from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
+import { buildPickModelSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
 import { isSelectModelSlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
 import { SlashCommandDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
@@ -68,13 +65,6 @@ export const PickModelSubMenuDropdown = forwardRef<
       [getModelIcon, lockPremiumEfforts, models, query, streams]
     );
 
-    // Enter picks the first model at its default effort, like the model picker does.
-    const defaultSelectedItemId = useMemo(
-      () =>
-        getDefaultPickModelSlashCommandItemId(items, { lockPremiumEfforts }),
-      [items, lockPremiumEfforts]
-    );
-
     const handleSelect = (item: SlashCommand) => {
       if (isSelectModelSlashCommand(item)) {
         onSelect(item.data.selection);
@@ -102,7 +92,6 @@ export const PickModelSubMenuDropdown = forwardRef<
         ref={dropdownRef}
         clientRect={clientRect}
         command={handleSelect}
-        defaultSelectedItemId={defaultSelectedItemId}
         emptyMessage="No models found"
         isLoading={isModelsLoading}
         loadingMessage="Loading models…"

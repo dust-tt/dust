@@ -11,7 +11,10 @@ import {
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { describe, expect, it } from "vitest";
 
-import { buildInputBarSlashCommandItems } from "./InputBarSlashSuggestionItems";
+import {
+  filterInputBarSlashCommandItems,
+  getInputBarSlashCommandItems,
+} from "./InputBarSlashSuggestionItems";
 import type { InputBarSlashCommand } from "./InputBarSlashSuggestionTypes";
 import {
   getAvailableInputBarSlashCommands,
@@ -22,6 +25,18 @@ const ALL_COMMANDS = getAvailableInputBarSlashCommands({
   hasAttachment: true,
   hasConversation: true,
 });
+
+function buildInputBarSlashCommandItems({
+  query,
+  ...options
+}: Parameters<typeof getInputBarSlashCommandItems>[0] & {
+  query: string;
+}): SlashCommand[] {
+  return filterInputBarSlashCommandItems(
+    getInputBarSlashCommandItems(options),
+    query
+  );
+}
 
 function getInputBarSlashCommandItemId(item: SlashCommand): string {
   if (isRunCommandSlashCommand<InputBarSlashCommand>(item)) {
