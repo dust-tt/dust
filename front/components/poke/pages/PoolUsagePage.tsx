@@ -10,6 +10,7 @@ import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import {
   CreditPoolCardsFromCycleData,
   toCreditPoolFetchStatus,
+  useCycleHistoryLimit,
 } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -77,6 +78,7 @@ interface PoolCreditCardProps {
 }
 
 function PoolCreditCard({ owner }: PoolCreditCardProps) {
+  const { cycleHistoryLimit, onLoadMoreCycleHistory } = useCycleHistoryLimit();
   const {
     awuPoolCurrentCycle,
     isAwuPoolCurrentCycleLoading,
@@ -85,9 +87,11 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
   const {
     cycleBreakdown: poolCycleBreakdown,
     excessCycleBreakdown,
+    hasMoreCycleHistory,
     isAwuPoolCycleHistoryLoading,
     isAwuPoolCycleHistoryError,
-  } = usePokeAwuPoolCycleHistory({ owner });
+    isAwuPoolCycleHistoryValidating,
+  } = usePokeAwuPoolCycleHistory({ owner, cycleHistoryLimit });
 
   return (
     <CreditPoolCardsFromCycleData
@@ -102,6 +106,12 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
         isAwuPoolCycleHistoryLoading,
         !!isAwuPoolCycleHistoryError
       )}
+      cycleHistoryLoadMore={{
+        hasMore: hasMoreCycleHistory,
+        isLoading:
+          isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading,
+        onLoadMore: onLoadMoreCycleHistory,
+      }}
     />
   );
 }

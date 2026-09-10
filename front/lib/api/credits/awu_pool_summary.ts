@@ -3,6 +3,7 @@ import {
   resolveMetronomeCycle,
 } from "@app/lib/api/credits/members_usage";
 import type { Authenticator } from "@app/lib/auth";
+import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
 import { amountCents } from "@app/lib/metronome/amounts";
 import {
   listMetronomeBalances,
@@ -40,9 +41,14 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { Invoice } from "@metronome/sdk/resources/v1/customers";
 import { z } from "zod";
 
-const DEFAULT_CYCLE_HISTORY_LIMIT = 5;
-const MAX_CYCLE_HISTORY_LIMIT = 24;
+export const DEFAULT_CYCLE_HISTORY_LIMIT = 5;
 
+/**
+ * @cc [owner:arthurvervaet,label:api] cycle-history-limit-bounds
+ * A missing, non-integer, or out-of-range `cycleHistoryLimit` (below 1 or above
+ * `MAX_CYCLE_HISTORY_LIMIT`) MUST resolve to `DEFAULT_CYCLE_HISTORY_LIMIT` rather than being
+ * clamped or rejected, so no caller can ever obtain more than `MAX_CYCLE_HISTORY_LIMIT` cycles.
+ */
 export const AwuPoolSummaryQuerySchema = z.object({
   cycleHistoryLimit: z.coerce
     .number()
@@ -360,7 +366,7 @@ function cacheResolverKeyWithHistoryLimit(
   return `${workspaceId}-${cycleHistoryLimit}`;
 }
 
-const AWU_POOL_CYCLE_HISTORY_CACHE_ID = "awuPoolCycleHistory";
+const AWU_POOL_CYCLE_HISTORY_CACHE_ID = "awuPoolCycleHistoryV2";
 const AWU_POOL_CYCLE_HISTORY_CACHE_TTL_MS = 60 * 1000;
 
 const getCachedAwuPoolCycleHistoryOutcome = cacheWithRedis(
@@ -407,7 +413,7 @@ async function getAwuPoolCycleHistoryUncached(
   const [poolLedgerDataResult, finalizedInvoicesResult] = await Promise.all([
     getPoolLedgerData({ metronomeCustomerId, cycleHistoryLimit }),
     listMetronomeFinalizedInvoices(metronomeCustomerId, {
-      limit: cycleHistoryLimit,
+      limit: cycleHistoryLimit + 1,
     }),
   ]);
 
@@ -425,20 +431,35 @@ async function getAwuPoolCycleHistoryUncached(
       },
       "[AwuPoolSummary] Failed to compute cycle breakdown"
     );
-    return new Ok({ cycleBreakdown: [], excessCycleBreakdown: [] });
+    return new Ok({
+      cycleBreakdown: [],
+      excessCycleBreakdown: [],
+      hasMoreCycleHistory: false,
+    });
   }
 
+  // One invoice past the limit is fetched only to learn whether older cycles
+  // exist; it is never surfaced. Row counts cannot answer this because cycles
+  // without consumption are filtered out of the breakdowns.
+  const finalizedInvoices = finalizedInvoicesResult.value.slice(
+    0,
+    cycleHistoryLimit
+  );
+  const hasMoreCycleHistory =
+    finalizedInvoicesResult.value.length > cycleHistoryLimit &&
+    cycleHistoryLimit < MAX_CYCLE_HISTORY_LIMIT;
+
   const cycleBreakdown = computeCycleBreakdown({
-    finalizedInvoices: finalizedInvoicesResult.value,
+    finalizedInvoices,
     ledgerEntries: poolLedgerDataResult.value.ledgerEntries,
     cycleHistoryLimit,
   });
   const excessCycleBreakdown = computeExcessCycleBreakdown(
-    finalizedInvoicesResult.value,
+    finalizedInvoices,
     cycleHistoryLimit
   );
 
-  return new Ok({ cycleBreakdown, excessCycleBreakdown });
+  return new Ok({ cycleBreakdown, excessCycleBreakdown, hasMoreCycleHistory });
 }
 
 export async function getAwuPoolSummary(

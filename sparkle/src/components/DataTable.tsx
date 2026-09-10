@@ -148,14 +148,6 @@ interface DataTableProps<TData extends TBaseData> {
   disableRowClickSelection?: boolean;
 }
 
-/**
- * A tabular data display built on TanStack Table, with text filtering, client-
- * or server-side sorting, pagination, and row selection, rendered with the
- * DataTable.* cell helpers. Use it to list structured records (data sources,
- * members, files); for very long or infinite server-side datasets, prefer
- * ScrollableDataTable, which virtualizes rows and supports onLoadMore.
- * @summary Sortable, filterable, paginated data table.
- */
 const ROW_REVEAL_DURATION_MS = 300;
 
 /**
@@ -241,6 +233,15 @@ function useRowRevealAnimation(rowCount: number, enabled: boolean) {
   return ref;
 }
 
+/**
+ * A tabular data display built on TanStack Table, with text filtering, client-
+ * or server-side sorting, pagination or a "Load more" footer, and row
+ * selection, rendered with the DataTable.* cell helpers. Use it to list
+ * structured records (data sources, members, files); for very long or infinite
+ * server-side datasets, prefer ScrollableDataTable, which virtualizes rows and
+ * loads more on scroll.
+ * @summary Sortable, filterable, paginated data table.
+ */
 export function DataTable<TData extends TBaseData>({
   data,
   totalRowCount,

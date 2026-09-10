@@ -33,6 +33,8 @@ export type AwuPoolCycleHistoryResponseBody = {
   // Per-cycle pool consumption, most recent first
   cycleBreakdown: AwuPoolCycleBreakdown[];
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
+  // Whether older cycles exist beyond the requested limit
+  hasMoreCycleHistory: boolean;
 };
 
 export type AwuPoolSummaryResponseBody = AwuPoolCurrentCycleResponseBody &

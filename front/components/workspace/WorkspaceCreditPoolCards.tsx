@@ -1,7 +1,7 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
-import { ONE_DAY_MS } from "@app/lib/api/analytics/time_utils";
 import { formatCredits } from "@app/lib/client/credits";
+import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
 import {
   useAwuPoolCurrentCycle,
   useAwuPoolCycleHistory,
@@ -11,6 +11,7 @@ import type {
   AwuPoolCycleBreakdown,
 } from "@app/types/api/credits/awu_pool_summary";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   AlertCircle,
@@ -21,6 +22,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useCallback, useState } from "react";
 
 export type CreditPoolFetchStatus = "loading" | "error" | "ready";
 
@@ -131,8 +133,16 @@ export function WorkspaceCreditUsageValueCards({
   );
 }
 
+// Travels untouched from the data hooks down to the table.
+export interface CycleHistoryLoadMore {
+  hasMore: boolean;
+  isLoading: boolean;
+  onLoadMore: () => void;
+}
+
 interface WorkspaceCreditPoolCycleHistoryTableProps {
   cycleBreakdown: AwuPoolCycleBreakdown[];
+  cycleHistoryLoadMore: CycleHistoryLoadMore;
 }
 
 type CycleHistoryRowData = {
@@ -163,12 +173,17 @@ const CYCLE_HISTORY_COLUMNS: ColumnDef<CycleHistoryRowData, string>[] = [
   },
 ];
 
+export const INITIAL_CYCLE_HISTORY_ROW_COUNT = 2;
+export const CYCLE_HISTORY_LOAD_MORE_COUNT = 5;
+
 export function WorkspaceCreditPoolCycleHistoryTable({
   cycleBreakdown,
+  cycleHistoryLoadMore,
 }: WorkspaceCreditPoolCycleHistoryTableProps) {
   if (cycleBreakdown.length === 0) {
     return null;
   }
+
   const rows: CycleHistoryRowData[] = cycleBreakdown.map((cycle) => ({
     cycle:
       cycle.cycleStartMs && cycle.cycleEndMs
@@ -176,10 +191,21 @@ export function WorkspaceCreditPoolCycleHistoryTable({
         : "Unknown cycle",
     consumedCredits: formatCredits(Math.round(cycle.consumedCredits)),
   }));
+
   return (
     <>
       <Page.H variant="h5">Previous cycles</Page.H>
-      <DataTable data={rows} columns={CYCLE_HISTORY_COLUMNS} />
+      <DataTable
+        data={rows}
+        columns={CYCLE_HISTORY_COLUMNS}
+        // The true total is unknown while more cycles remain; once everything
+        // is loaded, the total lets the footer hide its control.
+        totalRowCount={
+          cycleHistoryLoadMore.hasMore ? undefined : cycleBreakdown.length
+        }
+        onLoadMore={cycleHistoryLoadMore.onLoadMore}
+        isLoadingMore={cycleHistoryLoadMore.isLoading}
+      />
     </>
   );
 }
@@ -187,6 +213,7 @@ export function WorkspaceCreditPoolCycleHistoryTable({
 interface WorkspaceCreditPoolHistoryProps {
   tableStatus: CreditPoolFetchStatus;
   cycleBreakdown: AwuPoolCycleBreakdown[];
+  cycleHistoryLoadMore: CycleHistoryLoadMore;
 }
 
 // Table area rendered under the value cards. Kept separate so a slow cycle
@@ -194,6 +221,7 @@ interface WorkspaceCreditPoolHistoryProps {
 function WorkspaceCreditPoolHistory({
   tableStatus,
   cycleBreakdown,
+  cycleHistoryLoadMore,
 }: WorkspaceCreditPoolHistoryProps) {
   switch (tableStatus) {
     case "error":
@@ -214,7 +242,10 @@ function WorkspaceCreditPoolHistory({
       );
     case "ready":
       return (
-        <WorkspaceCreditPoolCycleHistoryTable cycleBreakdown={cycleBreakdown} />
+        <WorkspaceCreditPoolCycleHistoryTable
+          cycleBreakdown={cycleBreakdown}
+          cycleHistoryLoadMore={cycleHistoryLoadMore}
+        />
       );
     default:
       assertNeverAndIgnore(tableStatus);
@@ -233,6 +264,7 @@ interface WorkspaceCreditPoolSectionProps {
   currentCycleEndMs: number | null;
   cycleBreakdown: AwuPoolCycleBreakdown[];
   programmaticConsumedCredits: number | null;
+  cycleHistoryLoadMore: CycleHistoryLoadMore;
 }
 
 export function WorkspaceCreditPoolSection({
@@ -246,6 +278,7 @@ export function WorkspaceCreditPoolSection({
   currentCycleEndMs,
   cycleBreakdown,
   programmaticConsumedCredits,
+  cycleHistoryLoadMore,
 }: WorkspaceCreditPoolSectionProps) {
   if (cardsStatus === "ready" && !isVisible) {
     return null;
@@ -281,11 +314,30 @@ export function WorkspaceCreditPoolSection({
           <WorkspaceCreditPoolHistory
             tableStatus={tableStatus}
             cycleBreakdown={cycleBreakdown}
+            cycleHistoryLoadMore={cycleHistoryLoadMore}
           />
         </>
       )}
     </Page.Vertical>
   );
+}
+
+// Reveals cycle history a page at a time, re-fetching a growing
+// `cycleHistoryLimit` from the backend rather than paginating client-side,
+// since the backend itself caps how many cycles it will ever return
+// (`MAX_CYCLE_HISTORY_LIMIT`).
+export function useCycleHistoryLimit() {
+  const [cycleHistoryLimit, setCycleHistoryLimit] = useState(
+    INITIAL_CYCLE_HISTORY_ROW_COUNT
+  );
+
+  const onLoadMoreCycleHistory = useCallback(() => {
+    setCycleHistoryLimit((limit) =>
+      Math.min(MAX_CYCLE_HISTORY_LIMIT, limit + CYCLE_HISTORY_LOAD_MORE_COUNT)
+    );
+  }, []);
+
+  return { cycleHistoryLimit, onLoadMoreCycleHistory };
 }
 
 interface CreditPoolCardsFromCycleDataProps {
@@ -294,6 +346,7 @@ interface CreditPoolCardsFromCycleDataProps {
   poolCycleBreakdown: AwuPoolCycleBreakdown[];
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
   tableStatus: CreditPoolFetchStatus;
+  cycleHistoryLoadMore: CycleHistoryLoadMore;
 }
 export function CreditPoolCardsFromCycleData({
   awuPoolCurrentCycle,
@@ -301,6 +354,7 @@ export function CreditPoolCardsFromCycleData({
   poolCycleBreakdown,
   excessCycleBreakdown,
   tableStatus,
+  cycleHistoryLoadMore,
 }: CreditPoolCardsFromCycleDataProps) {
   const {
     totalRemainingCredits,
@@ -338,6 +392,7 @@ export function CreditPoolCardsFromCycleData({
       currentCycleEndMs={currentCycleEndMs}
       cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
       programmaticConsumedCredits={programmaticConsumedCredits}
+      cycleHistoryLoadMore={cycleHistoryLoadMore}
     />
   );
 }
@@ -347,6 +402,7 @@ interface CreditPoolCardsProps {
   disabled: boolean;
 }
 export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
+  const { cycleHistoryLimit, onLoadMoreCycleHistory } = useCycleHistoryLimit();
   const {
     awuPoolCurrentCycle,
     isAwuPoolCurrentCycleLoading,
@@ -355,9 +411,15 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
   const {
     cycleBreakdown: poolCycleBreakdown,
     excessCycleBreakdown,
+    hasMoreCycleHistory,
     isAwuPoolCycleHistoryLoading,
     isAwuPoolCycleHistoryError,
-  } = useAwuPoolCycleHistory({ workspaceId: owner.sId, disabled });
+    isAwuPoolCycleHistoryValidating,
+  } = useAwuPoolCycleHistory({
+    workspaceId: owner.sId,
+    cycleHistoryLimit,
+    disabled,
+  });
 
   return (
     <CreditPoolCardsFromCycleData
@@ -372,6 +434,12 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
         isAwuPoolCycleHistoryLoading,
         !!isAwuPoolCycleHistoryError
       )}
+      cycleHistoryLoadMore={{
+        hasMore: hasMoreCycleHistory,
+        isLoading:
+          isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading,
+        onLoadMore: onLoadMoreCycleHistory,
+      }}
     />
   );
 }

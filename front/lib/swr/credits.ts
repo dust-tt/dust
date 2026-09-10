@@ -7,6 +7,7 @@ import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   AwuPoolCurrentCycleResponseBody,
+  AwuPoolCycleBreakdown,
   AwuPoolCycleHistoryResponseBody,
   AwuPoolSummaryResponseBody,
 } from "@app/types/api/credits/awu_pool_summary";
@@ -292,23 +293,38 @@ export function useAwuPoolCurrentCycle({
 
 export function useAwuPoolCycleHistory({
   workspaceId,
+  cycleHistoryLimit,
   disabled,
 }: {
   workspaceId: string;
+  cycleHistoryLimit?: number;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const awuFetcher: Fetcher<AwuPoolCycleHistoryResponseBody> = fetcher;
 
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/credits/awu-pool-cycle-history`,
+    `/api/w/${workspaceId}/credits/awu-pool-cycle-history${
+      cycleHistoryLimit ? `?cycleHistoryLimit=${cycleHistoryLimit}` : ""
+    }`,
     awuFetcher,
-    { disabled }
+    // Keep rows on screen while a larger limit is fetched so "Load more"
+    // appends instead of swapping the table for a spinner.
+    { disabled, keepPreviousData: true }
   );
 
+  const isUsable = !error && !disabled;
+
   return {
-    cycleBreakdown: data?.cycleBreakdown ?? emptyArray(),
-    excessCycleBreakdown: data?.excessCycleBreakdown ?? emptyArray(),
+    cycleBreakdown: isUsable
+      ? (data?.cycleBreakdown ?? emptyArray<AwuPoolCycleBreakdown>())
+      : emptyArray<AwuPoolCycleBreakdown>(),
+    excessCycleBreakdown: isUsable
+      ? (data?.excessCycleBreakdown ?? emptyArray<AwuPoolCycleBreakdown>())
+      : emptyArray<AwuPoolCycleBreakdown>(),
+    hasMoreCycleHistory: isUsable
+      ? (data?.hasMoreCycleHistory ?? false)
+      : false,
     isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
     isAwuPoolCycleHistoryError: error,
     isAwuPoolCycleHistoryValidating: isValidating,
