@@ -47,6 +47,8 @@ export function useSkill(options: {
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
+  // Also refreshes the other variants of the skill fetch (with/without relations).
+  mutateSkillRegardlessOfQueryParams: () => void;
 };
 export function useSkill(options: {
   workspaceId: string;
@@ -58,6 +60,8 @@ export function useSkill(options: {
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
+  // Also refreshes the other variants of the skill fetch (with/without relations).
+  mutateSkillRegardlessOfQueryParams: () => void;
 };
 export function useSkill({
   workspaceId,
@@ -74,6 +78,8 @@ export function useSkill({
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
+  // Also refreshes the other variants of the skill fetch (with/without relations).
+  mutateSkillRegardlessOfQueryParams: () => void;
 } {
   const { fetcher } = useFetcher();
   const skillFetcher: Fetcher<
@@ -84,17 +90,15 @@ export function useSkill({
     ? `/api/w/${workspaceId}/skills/${skillId}${withRelations ? "?withRelations=true" : ""}`
     : null;
 
-  const { data, error, isLoading, mutate } = useSWRWithDefaults(
-    url,
-    skillFetcher,
-    { disabled }
-  );
+  const { data, error, isLoading, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(url, skillFetcher, { disabled });
 
   return {
     skill: data?.skill ?? null,
     isSkillLoading: isLoading,
     isSkillError: !!error,
     mutateSkill: mutate,
+    mutateSkillRegardlessOfQueryParams: mutateRegardlessOfQueryParams,
   };
 }
 
