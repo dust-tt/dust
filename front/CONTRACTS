@@ -1,3 +1,11 @@
+@cc [owner:spolu,notify:spolu;flvndvd,label:security;backend] workspace-isolation
+Code MUST NOT allow a workspace to read or modify another workspace's data.
+
+@cc [owner:spolu,notify:spolu;flvndvd,label:security;backend] workspace-aware-models
+Models storing workspace-specific data MUST inherit from `WorkspaceAwareModel`.
+Every use of `dangerouslyBypassWorkspaceIsolationSecurity` MUST have a preceding
+`WORKSPACE_ISOLATION_BYPASS:` comment explaining why the bypass is necessary.
+
 @cc [owner:flvndvd,label:backend] api-routes-use-resources
 API routes must not interact with Sequelize models directly. Use `lib/api/*` interfaces (creating
 them if missing). Direct Resource interactions are acceptable.
