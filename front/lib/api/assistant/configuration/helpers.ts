@@ -307,7 +307,7 @@ export function redactPrivateAgentConfigurationFields(
     instructions: null,
     instructionsHtml: null,
     actions: [],
-    skills: [],
+    codeDefinedSkillIds: [],
     canRead: false,
   };
 }

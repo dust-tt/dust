@@ -204,9 +204,7 @@ export default function ChapterPage({
         </div>
       )}
       <Head>
-        <title>
-          {chapter.title} | {courseTitle} | Dust Academy
-        </title>
+        <title>{`${chapter.title} | ${courseTitle} | Dust Academy`}</title>
         {preview && <meta name="robots" content="noindex, nofollow" />}
         {chapter.description && (
           <meta name="description" content={chapter.description} />

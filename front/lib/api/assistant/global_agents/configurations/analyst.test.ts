@@ -54,8 +54,8 @@ describe("analyst global agent visibility", () => {
     expect(agents).toHaveLength(1);
     expect(agents[0].sId).toBe(GLOBAL_AGENTS_SID.ANALYST);
     expect(agents[0].name).toBe("analyst");
-    expect(agents[0].skills).toContain("workspace-analytics");
-    expect(agents[0].skills).toContain("frames");
+    expect(agents[0].codeDefinedSkillIds).toContain("workspace-analytics");
+    expect(agents[0].codeDefinedSkillIds).toContain("frames");
   });
 
   it("is available to managers by default", async () => {

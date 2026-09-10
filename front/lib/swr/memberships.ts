@@ -461,7 +461,8 @@ export function useMembersUsage({
     | "name"
     | "email"
     | "consumedAwuCredits"
-    | "consumedFromPoolAwuCredits";
+    | "consumedFromPoolAwuCredits"
+    | "seatUsage";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType | "none";
   groupId?: string;

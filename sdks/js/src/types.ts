@@ -179,7 +179,7 @@ const ConnectorsAPIErrorSchema = z.object({
 
 export type ConnectorsAPIError = z.infer<typeof ConnectorsAPIErrorSchema>;
 
-const ModelIdSchema = z.number();
+export const ModelIdSchema = z.number();
 
 export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
@@ -344,7 +344,7 @@ export const WebhookConfigSchema = z.object({
 });
 
 const TriggerBaseSchema = z.object({
-  id: z.number(),
+  id: ModelIdSchema,
   sId: z.string(),
   name: z.string(),
   agentConfigurationId: z.string(),
@@ -1315,8 +1315,8 @@ export function isAgentMessage(
 
 const AgentMessageFeedbackSchema = z.object({
   messageId: z.string(),
-  agentMessageId: z.number(),
-  userId: z.number(),
+  agentMessageId: ModelIdSchema,
+  userId: ModelIdSchema,
   thumbDirection: z.union([z.literal("up"), z.literal("down")]),
   content: z.string().nullable(),
   createdAt: z.number(),
@@ -3743,7 +3743,7 @@ const MCPServerTypeSchema = z.object({
 });
 
 const MCPServerViewTypeSchema = z.object({
-  id: z.number(),
+  id: ModelIdSchema,
   sId: z.string(),
   name: z.string().nullable(),
   description: z.string().nullable(),

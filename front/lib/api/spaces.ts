@@ -606,7 +606,7 @@ export async function createSpaceAndGroup(
     name: string;
     isRestricted: boolean;
     spaceKind: "regular" | "project";
-  } & Pick<SpaceMembershipUpdate, "memberIds" | "groupIds" | "managementMode">,
+  } & Pick<SpaceMembershipUpdate, "memberIds" | "groupIds">,
   {
     ignoreWorkspaceLimit = false,
   }: {
@@ -639,8 +639,6 @@ export async function createSpaceAndGroup(
   const plan = auth.getNonNullablePlan();
   const { name: rawName, isRestricted, spaceKind } = params;
   const name = rawName.trim();
-  // A new space starts empty, so a client that still sends `managementMode` gets what it expects
-  // without the field being read: the dimension its mode does not cover is simply not seeded.
   const { memberIds = [], groupIds = [] } = params;
 
   if (
@@ -738,9 +736,6 @@ export async function createSpaceAndGroup(
       {
         name,
         kind: spaceKind,
-        // `managementMode` no longer drives anything: it is kept up to date only so that clients
-        // that still read it see something coherent, and goes away with the field.
-        managementMode: groupIds.length > 0 ? "group" : "manual",
         workspaceId: owner.id,
       },
       { members: [membersGroup], editors: editorGroups },

@@ -3,6 +3,7 @@ import type {
   ToolHandlerResult,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getAgentConfigurationForDetails } from "@app/lib/api/assistant/configuration/agent";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Ok } from "@app/types/shared/result";
 
 export async function getAgentDetails(
@@ -44,7 +45,9 @@ export async function getAgentDetails(
   }
 
   const toolNames = agent.actions.map((action) => action.name).join(", ");
-  const skillNames = (agent.skills ?? []).join(", ");
+  // Only reached for an agent the caller can read, so its skills are not private.
+  const skills = await SkillResource.listByAgentConfiguration(auth, agent);
+  const skillNames = skills.map((skill) => skill.name).join(", ");
 
   return new Ok([
     {

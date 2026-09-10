@@ -1988,71 +1988,6 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Ends all active memberships of this group, exactly as removing every member would.
-   * Returns array of affected user ModelIds.
-   *
-   * Only regular_auto groups: it is how a space clears its manual members when it switches to
-   * group management mode. Memberships used to be suspended (kept on record but inert) so that
-   * the switch could be undone; they are now ended, so the manual member list does not come back
-   * when the space switches back to manual mode.
-   *
-   * Dangerous: no permission check — the owning space authorizes the
-   * management-mode switch.
-   */
-  async dangerouslyEndAllMemberships(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<ModelId[]> {
-    assert(
-      this.isRegularAuto(),
-      `You can't end the memberships of ${this.kind} groups.`
-    );
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const affectedMemberships = await GroupMembershipModel.findAll({
-      where: {
-        groupId: this.id,
-        workspaceId,
-        status: "active",
-        startAt: { [Op.lte]: new Date() },
-        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-      },
-      attributes: ["userId"],
-      transaction,
-    });
-    const affectedUserIds = [
-      ...new Set(affectedMemberships.map((m) => m.userId)),
-    ];
-
-    // Same mutation as `dangerouslyRemoveMembers`: `endAt` set in the past, `status` untouched.
-    await GroupMembershipModel.update(
-      { endAt: new Date() },
-      {
-        where: {
-          groupId: this.id,
-          workspaceId,
-          status: "active",
-          startAt: { [Op.lte]: new Date() },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-        },
-        transaction,
-      }
-    );
-
-    if (affectedUserIds.length > 0) {
-      invalidateCacheAfterCommit(transaction, async () => {
-        await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-          affectedUserIds.map((userId) => [
-            { user: { id: userId }, workspace: { id: workspaceId } },
-          ])
-        );
-      });
-    }
-
-    return affectedUserIds;
-  }
-
-  /**
    * Restores group memberships for a user that were ended at approximately the
    * same time as a workspace membership revocation. Called when a user rejoins
    * a workspace to preserve their previously-held group memberships (e.g. agent
@@ -2171,11 +2106,9 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Restores all suspended members of this group.
    * Returns array of affected user ModelIds.
    *
-   * Transitional: nothing suspends memberships any more (a space switching to group management
-   * mode ends them, see `dangerouslyEndAllMemberships`), so this only reactivates the rows left
-   * suspended by the previous behaviour. It becomes a no-op once the backfill
-   * (`20260904_end_suspended_group_memberships`) has run, and is removed with the `status`
-   * column.
+   * Transitional: nothing suspends memberships any more, so this only reactivates the rows left
+   * suspended by the former behaviours (see `20260904_end_suspended_group_memberships` and
+   * `20260828_restore_skill_editor_memberships`). Removed with the `status` column.
    *
    * regular_auto only, and dangerous for the same reason as its former counterpart: no
    * permission check, the owning space authorizes the switch.

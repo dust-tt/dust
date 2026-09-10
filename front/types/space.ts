@@ -21,18 +21,12 @@ type UniqueSpaceKind = (typeof UNIQUE_SPACE_KINDS)[number];
  *
  * - `memberIds` / `editorIds`: the space's manual member and editor lists (editors are Pod-only).
  * - `groupIds` / `editorGroupIds`: the groups given member and editor access to the space.
- *
- * `managementMode` is legacy and ignored. The two used to be exclusive — a space was managed
- * either by a manual member list or by groups — and clients that still send the field get the
- * behaviour they expect for free: the dimension their mode does not cover is one they do not
- * send, and so is emptied. Dropped once no client sends it.
  */
 export type SpaceMembershipUpdate = {
   memberIds?: string[];
   editorIds?: string[];
   groupIds?: string[];
   editorGroupIds?: string[];
-  managementMode?: "manual" | "group";
 };
 
 /**
@@ -41,7 +35,6 @@ export type SpaceMembershipUpdate = {
 export type SpaceType = {
   createdAt: number;
   kind: SpaceKind;
-  managementMode: "manual" | "group";
   name: string;
   sId: string;
   updatedAt: number;

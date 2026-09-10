@@ -10592,14 +10592,6 @@
                       "type": "string"
                     },
                     "description": "The groups given access to the space. Omitted or empty means no group has access to it."
-                  },
-                  "managementMode": {
-                    "type": "string",
-                    "enum": [
-                      "manual",
-                      "group"
-                    ],
-                    "description": "Deprecated and ignored. A space's members are its manual member list plus the members of the groups given access to it."
                   }
                 }
               }
@@ -12438,8 +12430,7 @@
         "required": [
           "sId",
           "name",
-          "kind",
-          "managementMode"
+          "kind"
         ],
         "properties": {
           "sId": {
@@ -12457,14 +12448,6 @@
               "regular",
               "project"
             ]
-          },
-          "managementMode": {
-            "type": "string",
-            "enum": [
-              "manual",
-              "group"
-            ],
-            "description": "Deprecated. Derived from whether any group has access to the space; a space's members are its manual member list plus the members of those groups."
           },
           "createdAt": {
             "type": "integer"

@@ -24,36 +24,13 @@ makeScript(
       type: "string",
       demandOption: true,
     },
-    managementMode: {
-      alias: "m",
-      describe: "Management mode for the restricted space: 'manual' or 'group'",
-      type: "string",
-      choices: ["manual", "group"],
-      default: "manual",
-    },
     groupIds: {
       alias: "g",
-      describe:
-        "Comma-separated group sIds to add as members (for group management mode)",
+      describe: "Comma-separated group sIds to give access to the space",
       type: "string",
     },
   },
-  async (
-    { managementMode, groupIds, workspaceId, spaceName, execute },
-    scriptLogger
-  ) => {
-    if (managementMode !== "manual" && managementMode !== "group") {
-      throw new Error(
-        `Invalid managementMode: ${managementMode}. Must be 'manual' or 'group'.`
-      );
-    }
-
-    if (managementMode === "group" && !groupIds) {
-      throw new Error(
-        "When using group management mode, --groupIds is required."
-      );
-    }
-
+  async ({ groupIds, workspaceId, spaceName, execute }, scriptLogger) => {
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
     const workspace = auth.getNonNullableWorkspace();
 
@@ -111,7 +88,7 @@ makeScript(
       {
         dataSourceViewCount,
         globalGroupId: globalGroup.sId,
-        managementMode,
+        groupIds,
       },
       "Pre-flight summary"
     );
@@ -127,11 +104,8 @@ makeScript(
               ? `Rename member group "${existingAutoGroups[0].name}" to "${SPACE_GROUP_PREFIX} ${spaceName}"`
               : `Create member group "${SPACE_GROUP_PREFIX} ${spaceName}"`,
             `Link member group to the space`,
-            ...(managementMode === "group" && groupIds
-              ? [
-                  `Link provisioned groups [${groupIds}] to the space`,
-                  `Set managementMode to "group"`,
-                ]
+            ...(groupIds
+              ? [`Link provisioned groups [${groupIds}] to the space`]
               : []),
             `Create new empty global space "${GLOBAL_SPACE_NAME}" with its member group "${SPACE_GROUP_PREFIX} ${GLOBAL_SPACE_NAME}"`,
           ],
@@ -194,8 +168,8 @@ makeScript(
 
       const memberGroups: GroupResource[] = [memberGroup];
 
-      // If group management mode, also attach the selected provisioned groups.
-      if (managementMode === "group" && groupIds) {
+      // Attach the selected provisioned groups alongside the member group.
+      if (groupIds) {
         const groupIdsArray = groupIds.split(",").map((id) => id.trim());
         const groupsRes = await GroupResource.fetchByIds(auth, groupIdsArray);
         if (groupsRes.isErr()) {
@@ -204,18 +178,6 @@ makeScript(
           );
         }
         memberGroups.push(...groupsRes.value);
-      }
-
-      // Update management mode if needed.
-      if (managementMode === "group") {
-        await SpaceModel.update(
-          { managementMode: "group" },
-          {
-            where: { id: globalSpace.id, workspaceId: workspace.id },
-            transaction: t,
-          }
-        );
-        scriptLogger.info("Set managementMode to 'group'");
       }
 
       // Rewrite the space's group_permissions for restricted access: drop the global group's grant
