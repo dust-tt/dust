@@ -9,6 +9,10 @@ import {
   makeSpendLimitCycleWindowBounds,
   makeSpendLimitLifetimeWindowBounds,
 } from "@app/lib/api/assistant/rate_limits";
+import {
+  computeSeatUsage,
+  splitConsumedAwuCredits,
+} from "@app/lib/api/credits/seat_usage";
 import { computeCreditUsageStatus } from "@app/lib/api/credits/usage_status";
 import {
   bucketsToArray,
@@ -99,6 +103,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isNumber } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 import { z } from "zod";
@@ -1510,12 +1515,11 @@ export async function getMemberUsage({
   }
   const effectiveAllocationAwu = freeSeatAllowanceAwu ?? awuAllocation;
 
-  const consumedFromAllowanceAwuCredits = Math.min(
-    totalConsumedCredits,
-    effectiveAllocationAwu
-  );
-  const consumedFromPoolAwuCredits =
-    totalConsumedCredits - consumedFromAllowanceAwuCredits;
+  const { consumedFromAllowanceAwuCredits, consumedFromPoolAwuCredits } =
+    splitConsumedAwuCredits({
+      totalConsumedAwuCredits: totalConsumedCredits,
+      allowanceAwuCredits: effectiveAllocationAwu,
+    });
 
   const normalizedSeatType = normalizeToPoolLimitSeatType(membership.seatType);
   const defaultAwuCredits = normalizedSeatType
@@ -1777,6 +1781,64 @@ export async function resolveMatchingMemberUserIds({
 // for those columns. Every other column is not indexed, so to sort by it we
 // fetch the full matching set with Elasticsearch `search_after`, rank it by
 // the relevant signal, sort in-app, then slice the requested page.
+// Per-user rank for one in-app sort column. A `null` key means the user has no
+// comparable value. Tiebreaks are generic: one follows the requested direction,
+// the other is always descending.
+export type MembersUsageSortMeta = {
+  sortKey: number | string | null;
+  directionalTiebreak?: number;
+  descendingTiebreak?: number;
+};
+
+// Rows without a comparable key group last regardless of direction, then the
+// two tiebreaks apply, then a stable name/id order so pages don't reshuffle.
+export function makeMembersUsageComparator({
+  sortMetaByUserId,
+  displayNameByUserId,
+  orderDirection,
+}: {
+  sortMetaByUserId: ReadonlyMap<string, MembersUsageSortMeta>;
+  displayNameByUserId: ReadonlyMap<string, string>;
+  orderDirection: "asc" | "desc";
+}): (a: { sId: string }, b: { sId: string }) => number {
+  const directionFactor = orderDirection === "asc" ? 1 : -1;
+  return (a, b) => {
+    const metaA = sortMetaByUserId.get(a.sId);
+    const metaB = sortMetaByUserId.get(b.sId);
+
+    const keyA = metaA?.sortKey ?? null;
+    const keyB = metaB?.sortKey ?? null;
+    if ((keyA === null) !== (keyB === null)) {
+      return keyA === null ? 1 : -1;
+    }
+    if (keyA !== null && keyB !== null) {
+      const cmp =
+        isNumber(keyA) && isNumber(keyB)
+          ? keyA - keyB
+          : String(keyA).localeCompare(String(keyB));
+      if (cmp !== 0) {
+        return cmp * directionFactor;
+      }
+    }
+    const directionalA = metaA?.directionalTiebreak ?? 0;
+    const directionalB = metaB?.directionalTiebreak ?? 0;
+    if (directionalA !== directionalB) {
+      return (directionalA - directionalB) * directionFactor;
+    }
+    const descendingA = metaA?.descendingTiebreak ?? 0;
+    const descendingB = metaB?.descendingTiebreak ?? 0;
+    if (descendingA !== descendingB) {
+      return descendingB - descendingA;
+    }
+    const nameA = (displayNameByUserId.get(a.sId) ?? "").toLowerCase();
+    const nameB = (displayNameByUserId.get(b.sId) ?? "").toLowerCase();
+    if (nameA !== nameB) {
+      return nameA < nameB ? -1 : 1;
+    }
+    return a.sId < b.sId ? -1 : a.sId > b.sId ? 1 : 0;
+  };
+}
+
 /**
  * @cc [owner:avervaet,label:product] sort-keys-match-rendered-source
  * Every in-app sort key must be derived from the same data source as the response field it
@@ -1835,8 +1897,7 @@ async function resolveMembersUsagePageUsers({
     memberships.map((m) => [m.userId, m])
   );
 
-  const sortKeyByUserId = new Map<string, number | string>();
-  const overageLimitByUserId = new Map<string, number>();
+  const sortMetaByUserId = new Map<string, MembersUsageSortMeta>();
   switch (orderColumn) {
     case "consumedAwuCredits": {
       // Split consumed credits on seat type so free-seat users sort by their
@@ -1851,7 +1912,9 @@ async function resolveMembersUsagePageUsers({
         cycle: spendLimitCycleOverrideForAuth(auth),
       });
       for (const u of allUsers) {
-        sortKeyByUserId.set(u.sId, creditsByUserId.get(u.sId) ?? 0);
+        sortMetaByUserId.set(u.sId, {
+          sortKey: creditsByUserId.get(u.sId) ?? 0,
+        });
       }
       break;
     }
@@ -1864,6 +1927,7 @@ async function resolveMembersUsagePageUsers({
       const [
         consumedByUserId,
         { defaultCapAwuCreditsBySeatType, seatAllowanceBySeatType },
+        seatDataByUserId,
         freeSeatCredits,
       ] = await Promise.all([
         fetchConsumedAwuCreditsByUserId({
@@ -1878,6 +1942,10 @@ async function resolveMembersUsagePageUsers({
           defaultPoolCapAwuCredits:
             creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
           includeAlertLinks: false,
+        }),
+        fetchSeatDataForMembersTable({
+          metronomeCustomerId: workspace.metronomeCustomerId,
+          metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
         }),
         freeSeatUserIds.length > 0
           ? fetchFreeSeatCreditsForMembersTable({
@@ -1906,13 +1974,14 @@ async function resolveMembersUsagePageUsers({
           seatType === "free"
             ? (freeStartingByUserId.get(u.sId) ?? null)
             : null;
-        const effectiveAllocationAwu = freeStartingBalanceAwu ?? seatAllowance;
-        const consumedFromPoolAwuCredits = Math.max(
-          0,
-          totalConsumed - effectiveAllocationAwu
-        );
-        sortKeyByUserId.set(u.sId, consumedFromPoolAwuCredits);
-
+        // Same per-user allocation the response builder splits on, so the
+        // in-app sort key agrees with the pool figure it renders.
+        const awuAllocation = seatDataByUserId.get(u.sId)?.awuAllocation ?? 0;
+        const effectiveAllocationAwu = freeStartingBalanceAwu ?? awuAllocation;
+        const { consumedFromPoolAwuCredits } = splitConsumedAwuCredits({
+          totalConsumedAwuCredits: totalConsumed,
+          allowanceAwuCredits: effectiveAllocationAwu,
+        });
         const overrideAwuCredits =
           membership?.poolCapOverrideAwuCredits !== null &&
           membership?.poolCapOverrideAwuCredits !== undefined &&
@@ -1933,29 +2002,27 @@ async function resolveMembersUsagePageUsers({
             groupCapAwuCredits,
             defaultAwuCredits,
           });
-        overageLimitByUserId.set(
-          u.sId,
-          effectiveSpendLimitAwuCredits - seatAllowance
-        );
+        sortMetaByUserId.set(u.sId, {
+          sortKey: consumedFromPoolAwuCredits,
+          descendingTiebreak: effectiveSpendLimitAwuCredits - seatAllowance,
+        });
       }
       break;
     }
     case "seatType": {
       for (const u of allUsers) {
-        sortKeyByUserId.set(
-          u.sId,
-          membershipByUserModelId.get(u.id)?.seatType ?? "none"
-        );
+        sortMetaByUserId.set(u.sId, {
+          sortKey: membershipByUserModelId.get(u.id)?.seatType ?? "none",
+        });
       }
       break;
     }
     case "creditState": {
       for (const u of allUsers) {
         const creditState = membershipByUserModelId.get(u.id)?.creditState;
-        sortKeyByUserId.set(
-          u.sId,
-          creditState ? normalizeUserCreditState(creditState) : ""
-        );
+        sortMetaByUserId.set(u.sId, {
+          sortKey: creditState ? normalizeUserCreditState(creditState) : "",
+        });
       }
       break;
     }
@@ -1994,24 +2061,27 @@ async function resolveMembersUsagePageUsers({
             ? (freeStartingByUserId.get(u.sId) ?? null)
             : null;
         const effectiveAllocationAwu = freeStartingBalanceAwu ?? awuAllocation;
-        const consumed =
-          seatType === "free"
-            ? Math.max(
-                0,
-                effectiveAllocationAwu - (freeBalanceByUserId.get(u.sId) ?? 0)
-              )
-            : Math.min(
-                consumedByUserId.get(u.sId) ?? 0,
-                effectiveAllocationAwu
-              );
-        sortKeyByUserId.set(
-          u.sId,
-          effectiveAllocationAwu > 0
-            ? Math.min(100, (consumed / effectiveAllocationAwu) * 100)
-            : consumed > 0
-              ? 100
-              : 0
-        );
+        // Same arithmetic the response builder applies to this row; the pool
+        // share is only needed as the tiebreak.
+        const { consumedFromAllowanceAwuCredits, consumedFromPoolAwuCredits } =
+          splitConsumedAwuCredits({
+            totalConsumedAwuCredits: consumedByUserId.get(u.sId) ?? 0,
+            allowanceAwuCredits: effectiveAllocationAwu,
+          });
+        const { percent } = computeSeatUsage({
+          seatType,
+          memberUsageLimit:
+            effectiveAllocationAwu > 0 ? effectiveAllocationAwu : null,
+          seatBalanceAwu:
+            seatType === "free"
+              ? (freeBalanceByUserId.get(u.sId) ?? null)
+              : null,
+          consumedFromAllowanceAwuCredits,
+        });
+        sortMetaByUserId.set(u.sId, {
+          sortKey: percent,
+          directionalTiebreak: consumedFromPoolAwuCredits,
+        });
       }
       break;
     }
@@ -2022,7 +2092,9 @@ async function resolveMembersUsagePageUsers({
         users: allUsers.map((u) => ({ id: u.id, sId: u.sId })),
       });
       for (const u of allUsers) {
-        sortKeyByUserId.set(u.sId, usedCountByUserId.get(u.sId) ?? 0);
+        sortMetaByUserId.set(u.sId, {
+          sortKey: usedCountByUserId.get(u.sId) ?? 0,
+        });
       }
       break;
     }
@@ -2034,7 +2106,9 @@ async function resolveMembersUsagePageUsers({
         plan: auth.plan(),
       });
       for (const u of allUsers) {
-        sortKeyByUserId.set(u.sId, usedCreditsByUserId.get(u.sId) ?? 0);
+        sortMetaByUserId.set(u.sId, {
+          sortKey: usedCreditsByUserId.get(u.sId) ?? 0,
+        });
       }
       break;
     }
@@ -2042,31 +2116,16 @@ async function resolveMembersUsagePageUsers({
       assertNever(orderColumn);
   }
 
-  const directionFactor = orderDirection === "asc" ? 1 : -1;
-  const sortedUsers = [...allUsers].sort((a, b) => {
-    const keyA = sortKeyByUserId.get(a.sId) ?? 0;
-    const keyB = sortKeyByUserId.get(b.sId) ?? 0;
-    const cmp =
-      typeof keyA === "number" && typeof keyB === "number"
-        ? keyA - keyB
-        : String(keyA).localeCompare(String(keyB));
-    if (cmp !== 0) {
-      return cmp * directionFactor;
-    }
-    // Tiebreak on the highest overage limit, always descending
-    const overageLimitA = overageLimitByUserId.get(a.sId) ?? 0;
-    const overageLimitB = overageLimitByUserId.get(b.sId) ?? 0;
-    if (overageLimitA !== overageLimitB) {
-      return overageLimitB - overageLimitA;
-    }
-    // Stable, direction-independent tiebreaker so pages don't reshuffle.
-    const nameA = (a.fullName() || a.name).toLowerCase();
-    const nameB = (b.fullName() || b.name).toLowerCase();
-    if (nameA !== nameB) {
-      return nameA < nameB ? -1 : 1;
-    }
-    return a.sId < b.sId ? -1 : a.sId > b.sId ? 1 : 0;
-  });
+  const displayNameByUserId = new Map(
+    allUsers.map((u) => [u.sId, u.fullName() || u.name])
+  );
+  const sortedUsers = [...allUsers].sort(
+    makeMembersUsageComparator({
+      sortMetaByUserId,
+      displayNameByUserId,
+      orderDirection,
+    })
+  );
 
   return new Ok({
     users: sortedUsers.slice(offset, offset + limit),
@@ -2437,15 +2496,12 @@ export async function getMembersUsage({
         : null;
     const effectiveAllocationAwu = freeStartingBalanceAwu ?? awuAllocation;
 
-    // Credits drain seat-allowance-first, then the workspace pool, so the
-    // allowance covers up to the user's seat allocation and the remainder
-    // overflows to the pool.
-    const consumedFromAllowanceAwuCredits = Math.min(
-      totalConsumedCredits,
-      effectiveAllocationAwu
-    );
-    const consumedFromPoolAwuCredits =
-      totalConsumedCredits - consumedFromAllowanceAwuCredits;
+    // Credits drain seat-allowance-first, then the workspace pool.
+    const { consumedFromAllowanceAwuCredits, consumedFromPoolAwuCredits } =
+      splitConsumedAwuCredits({
+        totalConsumedAwuCredits: totalConsumedCredits,
+        allowanceAwuCredits: effectiveAllocationAwu,
+      });
 
     // Resolve the default cap for this member's seat type, and the user's
     // override if any. Both thresholds are derived from pool-only DB values

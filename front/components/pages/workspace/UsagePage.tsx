@@ -274,7 +274,7 @@ export function UsagePage() {
   // TODO(avervaet, 2026-09-02): remove once the app page and Poke page usage
   // tables are uniformized.
   const membersOrderColumn =
-    sort?.id === "email"
+    sort?.id === "email" || sort?.id === "seatUsage"
       ? sort.id
       : sort?.id === "consumedFromPoolAwuCredits"
         ? "consumedAwuCredits"

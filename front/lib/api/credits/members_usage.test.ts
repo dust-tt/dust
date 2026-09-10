@@ -1,7 +1,9 @@
+import type { MembersUsageSortMeta } from "@app/lib/api/credits/members_usage";
 import {
   fetchConsumedAwuCreditsByApiKeyName,
   fetchSeatDataForMembersTable,
   getEsConsumedProgrammaticAwuCredits,
+  makeMembersUsageComparator,
 } from "@app/lib/api/credits/members_usage";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
@@ -199,5 +201,116 @@ describe("fetchSeatDataForMembersTable", () => {
       billingFrequency: "MONTHLY",
       nextCreditResetAt: "2026-09-01T00:00:00.000Z",
     });
+  });
+});
+
+describe("makeMembersUsageComparator", () => {
+  function sortIds({
+    meta,
+    orderDirection,
+    names = {},
+  }: {
+    meta: Record<string, MembersUsageSortMeta>;
+    orderDirection: "asc" | "desc";
+    names?: Record<string, string>;
+  }): string[] {
+    const ids = Object.keys(meta);
+    const compare = makeMembersUsageComparator({
+      sortMetaByUserId: new Map(Object.entries(meta)),
+      displayNameByUserId: new Map(
+        ids.map((id) => [id, names[id] ?? `user ${id}`])
+      ),
+      orderDirection,
+    });
+    return ids
+      .map((sId) => ({ sId }))
+      .sort(compare)
+      .map((u) => u.sId);
+  }
+
+  it("orders numeric keys in the requested direction", () => {
+    const meta = {
+      a: { sortKey: 10 },
+      b: { sortKey: 30 },
+      c: { sortKey: 20 },
+    };
+    expect(sortIds({ meta, orderDirection: "asc" })).toEqual(["a", "c", "b"]);
+    expect(sortIds({ meta, orderDirection: "desc" })).toEqual(["b", "c", "a"]);
+  });
+
+  it("groups rows without a comparable key last regardless of direction", () => {
+    const meta = {
+      none: { sortKey: null },
+      low: { sortKey: 5 },
+      high: { sortKey: 95 },
+      missing: { sortKey: null },
+    };
+    expect(sortIds({ meta, orderDirection: "asc" })).toEqual([
+      "low",
+      "high",
+      "missing",
+      "none",
+    ]);
+    expect(sortIds({ meta, orderDirection: "desc" })).toEqual([
+      "high",
+      "low",
+      "missing",
+      "none",
+    ]);
+  });
+
+  it("treats users with no computed key as incomparable", () => {
+    const compare = makeMembersUsageComparator({
+      sortMetaByUserId: new Map([["ranked", { sortKey: 0 }]]),
+      displayNameByUserId: new Map([
+        ["ranked", "Zed"],
+        ["unranked", "Amy"],
+      ]),
+      orderDirection: "asc",
+    });
+    expect(compare({ sId: "unranked" }, { sId: "ranked" })).toBeGreaterThan(0);
+    expect(compare({ sId: "ranked" }, { sId: "unranked" })).toBeLessThan(0);
+  });
+
+  it("breaks ties on the directional tiebreak, then the always-descending one", () => {
+    const meta = {
+      a: { sortKey: 50, directionalTiebreak: 1 },
+      b: { sortKey: 50, directionalTiebreak: 3 },
+      c: { sortKey: 50, directionalTiebreak: 3, descendingTiebreak: 10 },
+    };
+    // Same key everywhere: directional tiebreak follows the direction, and the
+    // descending tiebreak puts the larger value first either way.
+    expect(sortIds({ meta, orderDirection: "asc" })).toEqual(["a", "c", "b"]);
+    expect(sortIds({ meta, orderDirection: "desc" })).toEqual(["c", "b", "a"]);
+  });
+
+  it("does not let a NaN sort key produce a NaN comparison", () => {
+    const compare = makeMembersUsageComparator({
+      sortMetaByUserId: new Map([
+        ["a", { sortKey: NaN }],
+        ["b", { sortKey: 50 }],
+      ]),
+      displayNameByUserId: new Map([
+        ["a", "user a"],
+        ["b", "user b"],
+      ]),
+      orderDirection: "asc",
+    });
+    expect(Number.isFinite(compare({ sId: "a" }, { sId: "b" }))).toBe(true);
+  });
+
+  it("falls back to a case-insensitive name order, then id", () => {
+    const meta = {
+      z: { sortKey: 1 },
+      y: { sortKey: 1 },
+      x: { sortKey: 1 },
+    };
+    expect(
+      sortIds({
+        meta,
+        orderDirection: "desc",
+        names: { z: "bob", y: "Alice", x: "alice" },
+      })
+    ).toEqual(["x", "y", "z"]);
   });
 });
