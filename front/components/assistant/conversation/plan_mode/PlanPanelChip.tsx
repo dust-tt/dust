@@ -35,7 +35,7 @@ export function PlanPanelChip({
     openPanel,
     togglePanel,
     closePanel,
-    forgetPanels,
+    removeFromPanelHistory,
   } = useConversationSidePanelContext();
   const isMobile = useIsMobile();
   const isPlanPanelOpen = currentPanel === PLAN_SIDE_PANEL_TYPE;
@@ -64,7 +64,7 @@ export function PlanPanelChip({
     }
     // An archived plan must not come back through the side panel history either.
     if (next === "empty") {
-      forgetPanels(PLAN_SIDE_PANEL_TYPE);
+      removeFromPanelHistory(PLAN_SIDE_PANEL_TYPE);
     }
   }, [
     content,
@@ -73,7 +73,7 @@ export function PlanPanelChip({
     isPlanPanelOpen,
     openPanel,
     closePanel,
-    forgetPanels,
+    removeFromPanelHistory,
   ]);
 
   const progress = useMemo(() => countProgress(content), [content]);

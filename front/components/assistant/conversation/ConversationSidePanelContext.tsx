@@ -147,7 +147,7 @@ interface ConversationSidePanelContextType {
   // Pops back to the previous panel in the history, or collapses when the history is empty.
   closePanel: () => void;
   // Removes panels of that type from the history, for content that no longer exists.
-  forgetPanels: (type: ConversationSidePanelType) => void;
+  removeFromPanelHistory: (type: ConversationSidePanelType) => void;
   onPanelClosed: () => void;
   setPanelRef: (ref: ImperativePanelHandle | null) => void;
   panelRef: React.MutableRefObject<ImperativePanelHandle | null>;
@@ -156,9 +156,9 @@ interface ConversationSidePanelContextType {
   data: string | undefined;
 }
 
-// Defensive only: same-type panels replace each other and a panel appears once, so the history
-// is bounded by the number of panel types.
-const MAX_PANEL_HISTORY = 20;
+// Past a few levels, going back one panel at a time stops matching what the user remembers, so
+// the oldest entries are dropped.
+const MAX_PANEL_HISTORY = 3;
 
 export const ConversationSidePanelContext = React.createContext<
   ConversationSidePanelContextType | undefined
@@ -276,12 +276,17 @@ export function ConversationSidePanelProvider({
     collapsePanel();
   }, [showPanel, collapsePanel]);
 
-  const forgetPanels = useCallback((type: ConversationSidePanelType) => {
-    const history = panelHistoryRef.current;
-    if (history.some((entry) => entry.type === type)) {
-      panelHistoryRef.current = history.filter((entry) => entry.type !== type);
-    }
-  }, []);
+  const removeFromPanelHistory = useCallback(
+    (type: ConversationSidePanelType) => {
+      const history = panelHistoryRef.current;
+      if (history.some((entry) => entry.type === type)) {
+        panelHistoryRef.current = history.filter(
+          (entry) => entry.type !== type
+        );
+      }
+    },
+    []
+  );
 
   // Shared selection; `toggle` decides whether re-selecting the shown panel closes it. A panel
   // that is already closing reads as unselected, so re-selecting it reopens instead.
@@ -389,7 +394,7 @@ export function ConversationSidePanelProvider({
       openPanel,
       togglePanel,
       closePanel,
-      forgetPanels,
+      removeFromPanelHistory,
       onPanelClosed,
       setPanelRef,
       panelRef,
@@ -403,7 +408,7 @@ export function ConversationSidePanelProvider({
       openPanel,
       togglePanel,
       closePanel,
-      forgetPanels,
+      removeFromPanelHistory,
       onPanelClosed,
       setPanelRef,
       virtuosoMsg,

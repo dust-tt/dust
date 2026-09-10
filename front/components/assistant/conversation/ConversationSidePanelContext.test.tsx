@@ -48,11 +48,10 @@ vi.mock("@app/hooks/useHashParams", async () => {
           hash.listeners.delete(listener);
         };
       }, [key]);
+      // The provider only ever sets plain values, never updater functions.
       const setter = React.useCallback(
-        (next?: string | ((prev?: string) => string)) => {
-          hash.set({
-            [key]: typeof next === "function" ? next(hash.values[key]) : next,
-          });
+        (next?: string) => {
+          hash.set({ [key]: next });
         },
         [key]
       );
@@ -158,7 +157,7 @@ describe("ConversationSidePanelProvider history", () => {
     const { result } = renderSidePanel();
     act(() => result.current.openPanel({ type: "plan" }));
     act(() => result.current.openPanel({ type: "files" }));
-    act(() => result.current.forgetPanels("plan"));
+    act(() => result.current.removeFromPanelHistory("plan"));
 
     act(() => result.current.closePanel());
     expect(result.current.currentPanel).toBeUndefined();
