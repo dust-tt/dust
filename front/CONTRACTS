@@ -3,6 +3,12 @@ Code MUST NOT allow a workspace to read or modify another workspace's data.
 
 @cc [owner:spolu,notify:spolu;flvndvd,label:security;backend] workspace-aware-models
 Models storing workspace-specific data MUST inherit from `WorkspaceAwareModel`.
+
+Inheritance exceptions (workspace isolation still applies): `WorkspaceModel`, `UserModel`,
+`UserMetadataModel`, `PluginRunModel`, `PlanModel`, `TemplateModel`, `CouponModel`,
+`GlobalFeatureFlagModel`, `KillSwitchModel`, `ModelDegradationModel`, `AcademyChapterVisitModel`,
+and `AcademyQuizAttemptModel`.
+
 Every use of `dangerouslyBypassWorkspaceIsolationSecurity` MUST have a preceding
 `WORKSPACE_ISOLATION_BYPASS:` comment explaining why the bypass is necessary.
 
