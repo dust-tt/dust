@@ -1,5 +1,6 @@
 import { getScopedRelativePath } from "@app/components/file_explorer/utils";
 import { listAddablePodTabFiles } from "@app/components/pod/files/addablePodTabFiles";
+import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
 import type { AddablePodTabFile } from "@app/components/pod/settings/AddPodFileMenu";
 import { AddPodFileMenu } from "@app/components/pod/settings/AddPodFileMenu";
 import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
@@ -12,6 +13,7 @@ import {
   DEFAULT_POD_FILE_TAB_ICON,
   MAX_POD_FILE_TAB_TITLE_LENGTH,
   MAX_POD_FILE_TABS,
+  podFileTabBasename,
 } from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -59,19 +61,14 @@ export function PodTabsCustomizationSection({
   const { hasFeature } = useFeatureFlags();
   const displayFramePackages = hasFeature("frames_v2");
 
-  const {
-    orderedFileTabs,
-    updateFileTab,
-    removeFileTab,
-    reorderFileTab,
-    addFileTab,
-  } = usePodFileTabs({
-    owner,
-    podId,
-    fileTabs,
-    tabsOrder,
-    isEditor,
-  });
+  const { orderedFileTabs, updateFileTab, removeFileTab, reorderFileTab } =
+    usePodFileTabs({
+      owner,
+      podId,
+      fileTabs,
+      tabsOrder,
+      isEditor,
+    });
 
   const { files: podFiles, isPodFilesLoading } = usePodFiles({
     owner,
@@ -106,6 +103,8 @@ export function PodTabsCustomizationSection({
   const [iconPickerPath, setIconPickerPath] = useState<string | null>(null);
   const [editingTitlePath, setEditingTitlePath] = useState<string | null>(null);
   const [editingTitleValue, setEditingTitleValue] = useState("");
+  const [createFileTabDraft, setCreateFileTabDraft] =
+    useState<PodFileTab | null>(null);
 
   const atTabLimit = orderedFileTabs.length >= MAX_POD_FILE_TABS;
 
@@ -166,9 +165,13 @@ export function PodTabsCustomizationSection({
   };
 
   const handleAddFile = (file: AddablePodTabFile) => {
-    void addFileTab(file.path, {
-      fileName: file.fileName,
-      skipConfirm: true,
+    setCreateFileTabDraft({
+      path: file.path,
+      title: podFileTabBasename(file.fileName).slice(
+        0,
+        MAX_POD_FILE_TAB_TITLE_LENGTH
+      ),
+      icon: DEFAULT_POD_FILE_TAB_ICON,
     });
   };
 
@@ -390,6 +393,20 @@ export function PodTabsCustomizationSection({
           </ListGroup>
         )}
       </div>
+      {createFileTabDraft && (
+        <EditPodFileTabDialog
+          key={createFileTabDraft.path}
+          owner={owner}
+          podId={podId}
+          fileTabs={fileTabs}
+          tabsOrder={tabsOrder}
+          isEditor={isEditor}
+          tab={createFileTabDraft}
+          mode="create"
+          isOpen
+          onClose={() => setCreateFileTabDraft(null)}
+        />
+      )}
     </div>
   );
 }

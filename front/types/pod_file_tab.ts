@@ -5,7 +5,7 @@ import { z } from "zod";
 export const MAX_POD_FILE_TABS = 8;
 export const MAX_POD_FILE_TAB_TITLE_LENGTH = 64;
 export const DEFAULT_POD_FILE_TAB_ICON =
-  "ActionDashboardIcon" satisfies CustomResourceIconType;
+  "ActionDocumentIcon" satisfies CustomResourceIconType;
 
 /** System tabs that participate in ordering (Settings is always last and excluded). */
 export const POD_NAV_SYSTEM_TABS_BEFORE_SETTINGS = [
