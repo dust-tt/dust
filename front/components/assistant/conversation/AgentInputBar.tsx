@@ -712,6 +712,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
                 user={context.user}
                 onSubmit={context.handleSubmit}
                 stickyMentions={autoMentions}
+                stickyMentionsSourceId={lastUserMessage?.sId ?? null}
                 lastRequestedModel={lastRequestedModel}
                 conversation={context.conversation}
                 draftKey={context.draftKey}

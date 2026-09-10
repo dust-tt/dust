@@ -253,6 +253,17 @@ export interface InputBarContainerProps {
   isSelectableSpacesLoading?: boolean;
   onSelectedSpaceIdsChange?: (spaceIds: string[]) => Promise<string[] | null>;
   stickyMentions?: RichMention[];
+  /**
+   * @cc [owner:frankaloia,label:react] sticky-human-mentions-prefill-once-per-source
+   * Sticky human mentions MUST be prefilled into the composer at most once per
+   * (conversation, source message). `stickyMentionsSourceId` identifies that source — the sId of
+   * the current user's last message the mentions derive from. Callers MUST set it so the prefill
+   * re-arms only when the user sends a new message (new source id) or switches conversation, not
+   * on unrelated conversation updates (streaming, other participants' messages). Re-inserting on
+   * every update re-adds the mention to the empty composer and prevents the user from dismissing
+   * it (#10353).
+   */
+  stickyMentionsSourceId?: string | null;
   user: UserType | null;
 }
 
@@ -278,6 +289,7 @@ const InputBarContainer = ({
   selectedAgent,
   pendingInputText,
   stickyMentions,
+  stickyMentionsSourceId,
   actions,
   disableAutoFocus,
   disableUserMentions,
@@ -853,6 +865,11 @@ const InputBarContainer = ({
   selectedSingleAgentRef.current = selectedSingleAgent;
   // Skip auto-save (especially clearDraft on empty) until initial content is restored.
   const hasCompletedInitialContentRestoreRef = useRef(false);
+  // Tracks the (conversation, source message) for which sticky human mentions were last
+  // prefilled, so we insert them once per source rather than on every re-render. Without this,
+  // streaming updates and other participants' messages would keep re-inserting the mention into
+  // the empty composer, and the user could not dismiss it (see #10353).
+  const appliedStickyMentionKeyRef = useRef<string | null>(null);
 
   const saveCurrentDraftWithSelectedSpaces = useCallback(
     (spaceIds: string[]) => {
@@ -1387,7 +1404,6 @@ const InputBarContainer = ({
 
   // Restore draft text when switching conversations (including new conversations).
   // Agent selection is handled by useHandleMention.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   useEffect(() => {
     hasCompletedInitialContentRestoreRef.current = false;
 
@@ -1421,10 +1437,19 @@ const InputBarContainer = ({
       return;
     }
 
-    // No draft — insert sticky user mentions into the editor
+    // No draft — insert sticky user mentions into the editor, but only once per source message.
+    // The effect re-runs on every conversation update (streaming, other participants' messages),
+    // so without this key it would keep re-inserting the mention into the empty composer and the
+    // user could never dismiss it (#10353). The key changes when the current user sends a new
+    // message (new source id) or switches conversation, which is exactly when we want to re-prefill.
     const stickyUserMentions = stickyMentions?.filter(isRichUserMention) ?? [];
-    if (stickyUserMentions.length > 0) {
+    const stickyMentionKey = `${conversation?.sId ?? "new"}::${stickyMentionsSourceId ?? ""}`;
+    if (
+      stickyUserMentions.length > 0 &&
+      appliedStickyMentionKeyRef.current !== stickyMentionKey
+    ) {
       editorService.resetWithMentions(stickyUserMentions, disableAutoFocus);
+      appliedStickyMentionKeyRef.current = stickyMentionKey;
     }
 
     hasCompletedInitialContentRestoreRef.current = true;
@@ -1436,6 +1461,7 @@ const InputBarContainer = ({
     editorService,
     getDraft,
     stickyMentions,
+    stickyMentionsSourceId,
     disableAutoFocus,
   ]);
 
