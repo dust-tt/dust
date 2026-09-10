@@ -439,11 +439,11 @@ export async function getAwuPoolCycleHistory(
  */
 /**
  * @cc [owner:avervaet,label:product] has-more-is-per-breakdown
- * `hasMoreCycleBreakdown` and `hasMoreExcessCycleBreakdown` MUST each be `true` only when
- * `cycleHistoryLimit` is below `MAX_CYCLE_HISTORY_LIMIT` and at least one more cycle with
- * consumption was found beyond the returned ones in that specific breakdown. Neither MUST be
- * `true` merely because older invoices exist, or because the *other* breakdown has more —
- * callers only ever render one of the two breakdowns for a given workspace.
+ * Each field of `hasMoreCycleHistory` MUST be `true` only when `cycleHistoryLimit` is below
+ * `MAX_CYCLE_HISTORY_LIMIT` and at least one more cycle with consumption was found beyond the
+ * returned ones in that specific breakdown. Neither field MUST be `true` merely because older
+ * invoices exist, or because the *other* breakdown has more — callers only ever render one of
+ * the two breakdowns for a given workspace.
  */
 async function getAwuPoolCycleHistoryUncached(
   auth: Authenticator,
@@ -482,8 +482,10 @@ async function getAwuPoolCycleHistoryUncached(
     return new Ok({
       cycleBreakdown: [],
       excessCycleBreakdown: [],
-      hasMoreCycleBreakdown: false,
-      hasMoreExcessCycleBreakdown: false,
+      hasMoreCycleHistory: {
+        cycleBreakdown: false,
+        excessCycleBreakdown: false,
+      },
     });
   }
 
@@ -502,10 +504,12 @@ async function getAwuPoolCycleHistoryUncached(
   return new Ok({
     cycleBreakdown: consumedCycles.slice(0, cycleHistoryLimit),
     excessCycleBreakdown: excessCycles.slice(0, cycleHistoryLimit),
-    hasMoreCycleBreakdown:
-      belowMaxLimit && consumedCycles.length > cycleHistoryLimit,
-    hasMoreExcessCycleBreakdown:
-      belowMaxLimit && excessCycles.length > cycleHistoryLimit,
+    hasMoreCycleHistory: {
+      cycleBreakdown:
+        belowMaxLimit && consumedCycles.length > cycleHistoryLimit,
+      excessCycleBreakdown:
+        belowMaxLimit && excessCycles.length > cycleHistoryLimit,
+    },
   });
 }
 

@@ -9,6 +9,7 @@ import {
 import type {
   AwuPoolCurrentCycleResponseBody,
   AwuPoolCycleBreakdown,
+  AwuPoolCycleHistoryOverflow,
 } from "@app/types/api/credits/awu_pool_summary";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
@@ -365,8 +366,7 @@ export type CycleHistoryLoadMoreByBreakdown = Omit<
   CycleHistoryLoadMore,
   "hasMore"
 > & {
-  hasMoreCycleBreakdown: boolean;
-  hasMoreExcessCycleBreakdown: boolean;
+  hasMoreCycleHistory: AwuPoolCycleHistoryOverflow;
 };
 
 interface CreditPoolCardsFromCycleDataProps {
@@ -409,11 +409,8 @@ export function CreditPoolCardsFromCycleData({
   const hasExcessData =
     excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
 
-  const {
-    hasMoreCycleBreakdown,
-    hasMoreExcessCycleBreakdown,
-    ...restCycleHistoryLoadMore
-  } = cycleHistoryLoadMore;
+  const { hasMoreCycleHistory, ...restCycleHistoryLoadMore } =
+    cycleHistoryLoadMore;
 
   return (
     <WorkspaceCreditPoolSection
@@ -432,7 +429,9 @@ export function CreditPoolCardsFromCycleData({
       programmaticConsumedCredits={programmaticConsumedCredits}
       cycleHistoryLoadMore={{
         ...restCycleHistoryLoadMore,
-        hasMore: hasPool ? hasMoreCycleBreakdown : hasMoreExcessCycleBreakdown,
+        hasMore: hasPool
+          ? hasMoreCycleHistory.cycleBreakdown
+          : hasMoreCycleHistory.excessCycleBreakdown,
       }}
     />
   );
@@ -454,8 +453,7 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
   const {
     cycleBreakdown: poolCycleBreakdown,
     excessCycleBreakdown,
-    hasMoreCycleBreakdown,
-    hasMoreExcessCycleBreakdown,
+    hasMoreCycleHistory,
     isAwuPoolCycleHistoryLoading,
     isAwuPoolCycleHistoryError,
     isAwuPoolCycleHistoryValidating,
@@ -482,8 +480,7 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
         !!isAwuPoolCycleHistoryError
       )}
       cycleHistoryLoadMore={{
-        hasMoreCycleBreakdown,
-        hasMoreExcessCycleBreakdown,
+        hasMoreCycleHistory,
         isLoading:
           isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading,
         onLoadMore: onLoadMoreCycleHistory,

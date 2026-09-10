@@ -89,8 +89,7 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
   const {
     cycleBreakdown: poolCycleBreakdown,
     excessCycleBreakdown,
-    hasMoreCycleBreakdown,
-    hasMoreExcessCycleBreakdown,
+    hasMoreCycleHistory,
     isAwuPoolCycleHistoryLoading,
     isAwuPoolCycleHistoryError,
     isAwuPoolCycleHistoryValidating,
@@ -110,8 +109,7 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
         !!isAwuPoolCycleHistoryError
       )}
       cycleHistoryLoadMore={{
-        hasMoreCycleBreakdown,
-        hasMoreExcessCycleBreakdown,
+        hasMoreCycleHistory,
         isLoading:
           isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading,
         onLoadMore: onLoadMoreCycleHistory,
