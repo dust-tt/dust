@@ -22,7 +22,7 @@ inputs:
     description: "Slack bot token"
     required: true
   infra_token:
-    description: "Token that reads dust-infra, for the tags currently deployed"
+    description: "Token that reads dust-infra, for the cells and the tags currently deployed"
     required: true
 
 outputs:
@@ -50,6 +50,12 @@ runs:
       with:
         script: |
           const fs = require('fs');
+          const owner = context.repo.owner;
+          const repo = context.repo.repo;
+          const component = process.env.COMPONENT;
+          const tag = process.env.IMAGE_TAG;
+          const revert = process.env.IS_REVERT === 'true';
+          const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           const slack = async (method, body) => {
             const res = await fetch(`https://slack.com/api/${method}`, {
               method: 'POST',
@@ -59,97 +65,133 @@ runs:
             if (!res.ok) core.warning(`${method}: ${res.error}`);
             return res;
           };
-          const infra = github.getOctokit(process.env.INFRA_TOKEN);
-          const owner = context.repo.owner;
-          const component = process.env.COMPONENT;
-          const sha = context.sha;
-          const revert = process.env.IS_REVERT === 'true';
+          const infra = getOctokit(process.env.INFRA_TOKEN);
+          const infraFile = async (path) => {
+            const { data } = await infra.rest.repos.getContent({ owner, repo: 'dust-infra', path, ref: 'main' });
+            return Buffer.from(data.content, 'base64').toString();
+          };
+          const infraDir = async (path) => {
+            const { data } = await infra.rest.repos.getContent({ owner, repo: 'dust-infra', path, ref: 'main' });
+            return data.map((f) => f.name);
+          };
 
-          // Which cells, and what each of them runs today. The legacy clusters are
-          // cell-00000 and cell-00001, everything else is a descriptor cell with a versions
-          // file of its own name.
-          const legacy = { 'cell-00000': 'dust-kube-us-central1', 'cell-00001': 'dust-kube-europe-west1' };
+          // The cells, the same way dust-infra resolves them: the legacy clusters are the
+          // Novu cells without a descriptor, a descriptor cell is in only if it lists the
+          // component (egress-proxy goes by its feature flag).
+          const legacyOf = { 'cell-00000': 'dust-kube-us-central1', 'cell-00001': 'dust-kube-europe-west1' };
+          const described = {};
+          try {
+            for (const name of (await infraDir('cells')).filter((n) => n.endsWith('.yaml'))) {
+              const text = await infraFile(`cells/${name}`);
+              const cell = (text.match(/^cell:\s*(\S+)/m) || [])[1];
+              if (!cell) continue;
+              const apps = [...(text.match(/^applications:\n((?:\s+-\s+\S+\n)+)/m) || ['', ''])[1].matchAll(/-\s+(\S+)/g)].map((m) => m[1]);
+              const egress = /^\s+egress_proxy:\s*true/m.test(text);
+              described[cell] = apps.includes(component) || (component === 'egress-proxy' && egress);
+            }
+          } catch (e) { core.warning(`could not read the cell descriptors: ${e.message}`); }
+          let legacyCells = Object.keys(legacyOf);
+          try {
+            const novu = JSON.parse(await infraFile('.github/configs/novu-cells.json'));
+            legacyCells = Object.keys(novu).filter((c) => !(c in described));
+          } catch (e) { core.warning(`could not read the Novu cells: ${e.message}`); }
+
           let cells;
           if (process.env.CELLS === 'all') {
-            const { data } = await infra.rest.repos.getContent({ owner, repo: 'dust-infra', path: 'versions', ref: 'main' });
-            const files = data.map((f) => f.name.replace(/\.yaml$/, '')).filter((n) => !n.includes('private'));
-            cells = [...Object.keys(legacy), ...files.filter((n) => n.startsWith('cell-'))].sort();
+            cells = [...legacyCells, ...Object.keys(described).filter((c) => described[c])].sort();
           } else {
             cells = process.env.CELLS.split(',').map((c) => c.trim()).filter(Boolean);
           }
           const target = process.env.CELLS === 'all' ? 'all cells' : cells.join(', ');
 
+          // What each cell runs today, from the versions files dust-infra keeps on main.
           const currentTags = new Set();
           for (const cell of cells) {
-            const file = `versions/${legacy[cell] || cell}.yaml`;
+            const file = `versions/${legacyOf[cell] || cell}.yaml`;
             try {
-              const { data } = await infra.rest.repos.getContent({ owner, repo: 'dust-infra', path: file, ref: 'main' });
-              const text = Buffer.from(data.content, 'base64').toString();
-              const m = text.match(new RegExp(`^${component}:\\s*"?([0-9a-f]+)"?\\s*$`, 'm'));
+              const m = (await infraFile(file)).match(new RegExp(`^${component}:\\s*"?([0-9a-f]+)"?\\s*$`, 'm'));
               if (m) currentTags.add(m[1]);
             } catch (e) { core.warning(`no versions file for ${cell}: ${e.message}`); }
           }
 
-          // The changelog is the widest range among the cells: whoever has a commit landing
-          // on any of them is mentioned.
-          let commits = [];
-          for (const tag of currentTags) {
+          // The changelog is the widest range among the cells, so whoever has a commit landing
+          // on any of them is on the card. A revert lists what is being rolled back.
+          const compare = async (base, head) => {
+            const commits = [];
+            let total = 0;
+            for (let page = 1; page <= 5; page++) {
+              const { data } = await github.rest.repos.compareCommitsWithBasehead({ owner, repo, basehead: `${base}...${head}`, per_page: 100, page });
+              total = data.total_commits;
+              commits.push(...data.commits);
+              if (commits.length >= total || data.commits.length === 0) break;
+            }
+            return { commits, total };
+          };
+          let shipping = { commits: [], total: 0 };
+          for (const current of currentTags) {
+            if (current === tag) continue;
             try {
-              const { data } = await github.rest.repos.compareCommitsWithBasehead({ owner, repo: context.repo.repo, basehead: `${tag}...${sha}`, per_page: 250 });
-              if (data.commits.length > commits.length) commits = data.commits;
-            } catch (e) { core.warning(`cannot compare ${tag}...${sha}: ${e.message}`); }
+              const range = revert ? await compare(tag, current) : await compare(current, tag);
+              if (range.total > shipping.total) shipping = range;
+            } catch (e) { core.warning(`cannot compare ${current} and ${tag}: ${e.message}`); }
           }
 
-          // GitHub login -> email through .authors, email -> Slack id. Unknown authors keep
+          // GitHub login to email through .authors, email to Slack id. Unknown authors keep
           // their name.
-          const authorsFile = fs.existsSync('.authors') ? fs.readFileSync('.authors', 'utf8') : '';
-          const emailOf = (login) => { const m = authorsFile.match(new RegExp(`^${login}: (\\S+)`, 'm')); return m ? m[1] : null; };
+          const emails = new Map();
+          if (fs.existsSync('.authors')) {
+            for (const line of fs.readFileSync('.authors', 'utf8').split('\n')) {
+              const [login, email] = line.split(': ');
+              if (login && email) emails.set(login.trim().toLowerCase(), email.trim());
+            }
+          }
           const mention = async (login, name) => {
-            const email = login && emailOf(login);
+            const email = login && emails.get(login.toLowerCase());
             if (email) {
               const res = await slack('users.lookupByEmail', { email });
               if (res.ok) return `<@${res.user.id}>`;
             }
-            return name || login || 'someone';
+            return esc(name || login || 'someone');
           };
           const authors = new Map();
-          for (const c of commits) {
+          for (const c of shipping.commits) {
             const login = c.author && c.author.login;
             const key = login || c.commit.author.name;
             if (!authors.has(key)) authors.set(key, await mention(login, c.commit.author.name));
           }
           const starter = await mention(context.actor, context.actor);
           const list = [...authors.values()];
-          const people = list.length === 0 ? starter
-            : list.length === 1 ? list[0]
-            : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
-          const authorsLine = commits.length > 0
-            ? `${commits.length} commit${commits.length === 1 ? '' : 's'} by ${people}`
-            : `Redeploying \`${process.env.IMAGE_TAG}\`, no new commit`;
+          const people = list.length === 1 ? list[0] : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
+          const count = `${shipping.total} commit${shipping.total === 1 ? '' : 's'}`;
+          const authorsLine = shipping.total > 0
+            ? (revert ? `Rolling back ${count} by ${people}` : `${count} by ${people}`)
+            : currentTags.size === 0 ? `Previous version unknown, started by ${starter}`
+            : `Same version as today, started by ${starter}`;
 
-          const runUrl = `${context.serverUrl}/${owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-          const commitUrl = `${context.serverUrl}/${owner}/${context.repo.repo}/commit/${sha}`;
-          const when = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
-          const footer = `started by ${starter} at ${when} · <${commitUrl}|${process.env.IMAGE_TAG}> · <${runUrl}|run>`;
+          const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
+          const commitUrl = `${context.serverUrl}/${owner}/${repo}/commit/${tag}`;
+          const now = Math.floor(Date.now() / 1000);
+          const footer = `started by ${starter} at <!date^${now}^{time}|${new Date(now * 1000).toISOString().slice(11, 16)} UTC> · <${commitUrl}|${tag}> · <${runUrl}|run>`;
           const title = revert ? `⏮️ ${component} is being reverted on ${target}` : `🚀 ${component} is going live on ${target}`;
+          const short = (text) => (text.length > 150 ? `${text.slice(0, 147)}…` : text);
 
           const posted = await slack('chat.postMessage', {
             channel: process.env.CHANNEL,
-            text: title,
+            text: short(title),
             blocks: [
-              { type: 'header', text: { type: 'plain_text', text: title, emoji: true } },
+              { type: 'header', text: { type: 'plain_text', text: short(title), emoji: true } },
               { type: 'section', text: { type: 'mrkdwn', text: authorsLine } },
               { type: 'section', text: { type: 'mrkdwn', text: cells.map((c) => `⏳ ${c}  waiting`).join('\n') } },
               { type: 'context', elements: [{ type: 'mrkdwn', text: footer }] },
             ],
           });
-          if (!posted.ok) core.setFailed('could not post the deployment card');
+          if (!posted.ok) { core.setFailed('could not post the deployment card'); return; }
 
-          if (commits.length > 0) {
-            const shown = commits.slice(-20).reverse();
-            const lines = shown.map((c) => `• <${c.html_url}|${c.commit.message.split('\n')[0]}> (${c.commit.author.name})`);
-            if (commits.length > shown.length) lines.push(`… and ${commits.length - shown.length} more`);
-            await slack('chat.postMessage', { channel: process.env.CHANNEL, thread_ts: posted.ts, text: `📝 What is shipping\n${lines.join('\n')}` });
+          if (shipping.commits.length > 0) {
+            const newest = shipping.commits.slice(-20).reverse();
+            const lines = newest.map((c) => `• <${c.html_url}|${esc(c.commit.message.split('\n')[0])}> (${esc(c.commit.author.name)})`);
+            if (shipping.total > newest.length) lines.push(`… and ${shipping.total - newest.length} more`);
+            await slack('chat.postMessage', { channel: process.env.CHANNEL, thread_ts: posted.ts, text: `📝 ${revert ? 'What is being rolled back' : 'What is shipping'}\n${lines.join('\n')}` });
           }
 
           core.setOutput('thread_ts', posted.ts);
