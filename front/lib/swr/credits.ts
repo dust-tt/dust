@@ -329,8 +329,6 @@ export function useAwuPoolCycleHistory({
     isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
     isAwuPoolCycleHistoryError: error,
     isAwuPoolCycleHistoryValidating: isValidating,
-    // The key carries the current "Load more" limit, so revalidate every
-    // cached page rather than only the default one.
     mutateAwuPoolCycleHistory: mutateRegardlessOfQueryParams,
   };
 }

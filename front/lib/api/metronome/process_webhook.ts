@@ -2,6 +2,7 @@ import {
   handleSubscriptionActivationFailure,
   handleSubscriptionActivationSuccess,
 } from "@app/lib/api/checkout/business_activation";
+import { invalidateAwuPoolCaches } from "@app/lib/api/credits/awu_pool_summary";
 import {
   maybeClearAdminsBalanceThresholdReached,
   maybeNotifyAdminsBalanceThresholdReached,
@@ -948,6 +949,12 @@ export async function processMetronomeWebhook({
             paymentStatus,
           },
           "[Metronome Webhook] Payment-gated commit paid"
+        );
+        // Metronome has already activated the commit, so the cached pool
+        // reads are stale. Drop them before the UI learns the purchase
+        // succeeded and refetches.
+        await invalidateAwuPoolCaches(
+          await Authenticator.internalAdminForWorkspace(workspace.sId)
         );
         // Resolve the AWU purchase attempt the UI is polling for. The
         // store ignores the call if no attempt is pending on this
