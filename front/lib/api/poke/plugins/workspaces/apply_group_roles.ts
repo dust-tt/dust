@@ -3,6 +3,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 export const applyGroupRoles = createPlugin({
   manifest: {
@@ -38,7 +39,7 @@ export const applyGroupRoles = createPlugin({
     try {
       await GroupResource.recomputeAndSyncWorkspaceRolesForUsers(auth, users);
     } catch (error) {
-      return new Err(error instanceof Error ? error : new Error(String(error)));
+      return new Err(normalizeError(error));
     }
 
     const groupSummary = roleGrantingGroups

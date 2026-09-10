@@ -7,7 +7,7 @@ import type { BillingInvoice } from "@app/types/api/billing/invoices";
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { errorToString } from "@app/types/shared/utils/error_utils";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type Stripe from "stripe";
 
@@ -107,6 +107,6 @@ export async function listRecentBillingInvoices(
         .map(serializeInvoice)
     );
   } catch (error) {
-    return new Err(new Error(errorToString(error)));
+    return new Err(normalizeError(error));
   }
 }

@@ -11,7 +11,7 @@ import type {
 import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { errorToString } from "@app/types/shared/utils/error_utils";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type Stripe from "stripe";
 
 function serializeAddress(
@@ -188,6 +188,6 @@ export async function getWorkspaceBillingInfo(
       }),
     });
   } catch (error) {
-    return new Err(new Error(errorToString(error)));
+    return new Err(normalizeError(error));
   }
 }
