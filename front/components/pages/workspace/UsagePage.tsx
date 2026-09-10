@@ -118,6 +118,7 @@ import {
   LinkExternal01,
   LoadingBlock,
   Page,
+  Plus,
   ProgressBar,
   SearchInput,
   Spinner,
@@ -919,7 +920,7 @@ export function UsagePage() {
   const topUpButton = isWorkspaceAdmin ? (
     <Button
       label={isNewUsagePage ? "Add credits" : "Top up"}
-      icon={ArrowUp}
+      icon={isNewUsagePage ? Plus : ArrowUp}
       size="sm"
       variant="outline"
       disabled={!isCreditPriced || !usageSettings.topUpEnabled}
@@ -1267,11 +1268,12 @@ export function UsagePage() {
           ) : null}
 
           {isNewUsagePage && isCreditPriced ? (
-            <CreditPoolCards
-              owner={owner}
-              disabled={!isCreditPriced}
-              headerAction={usageSettings.topUpEnabled ? topUpButton : null}
-            />
+            <div className="flex flex-col items-stretch gap-4">
+              <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
+              {usageSettings.topUpEnabled && (
+                <div className="flex justify-end">{topUpButton}</div>
+              )}
+            </div>
           ) : null}
 
           {!isNewUsagePage &&
