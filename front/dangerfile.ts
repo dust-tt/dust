@@ -282,6 +282,50 @@ async function checkRawSqlRegistry(filePaths: string[]) {
 }
 
 /**
+ * MOMENT-BAN: delete this function and its call site, plus the lefthook hook,
+ * check script, and CONTRACTS entry (grep the repo for "MOMENT-BAN"), once no
+ * file imports `moment` anymore.
+ *
+ * Fail on files that start importing `moment` where they didn't before.
+ * See https://github.com/dust-tt/decisions/issues/1009: `moment` is being
+ * phased out in favor of `date-fns`; existing usage is migrated
+ * opportunistically, so only newly-introduced imports are blocked here.
+ */
+async function checkNoNewMomentUsage(filePaths: string[]) {
+  const momentImportPattern =
+    /((?:import|from)\s+["']moment(-timezone)?(\/[^"']*)?["']|require\(["']moment(-timezone)?(\/[^"']*)?["']\))/;
+
+  const filesWithNewMoment: string[] = [];
+
+  await Promise.all(
+    filePaths.map(async (file) => {
+      try {
+        const content = await danger.git.diffForFile(file);
+        if (
+          content !== null &&
+          momentImportPattern.test(content.after) &&
+          !momentImportPattern.test(content.before ?? "")
+        ) {
+          filesWithNewMoment.push(file);
+        }
+      } catch (error) {
+        console.error(`Error checking file ${file}:`, error);
+      }
+    })
+  );
+
+  if (filesWithNewMoment.length > 0) {
+    fail(
+      "`moment` is being phased out in favor of `date-fns` " +
+        "(see `front/lib/utils/timestamps.ts` and " +
+        "https://github.com/dust-tt/decisions/issues/1009). " +
+        "The following files newly import `moment`, please use `date-fns` instead:\n" +
+        filesWithNewMoment.map((f) => `- ${f}`).join("\n")
+    );
+  }
+}
+
+/**
  * Check if added lines contain new WorkspaceAwareModel definitions
  */
 async function checkWorkspaceAwareModels(filePaths: string[]) {
@@ -536,6 +580,14 @@ async function checkDiffFiles() {
   });
   if (modifiedFrontFiles.length > 0) {
     await checkRawSqlRegistry(modifiedFrontFiles);
+  }
+
+  // MOMENT-BAN: remove once no file imports `moment` anymore.
+  const modifiedFrontSourceFiles = diffFiles.filter((path) => {
+    return path.startsWith("front/") && /\.(ts|tsx|js|jsx)$/.test(path);
+  });
+  if (modifiedFrontSourceFiles.length > 0) {
+    await checkNoNewMomentUsage(modifiedFrontSourceFiles);
   }
 
   // Sparkle version consistency check
