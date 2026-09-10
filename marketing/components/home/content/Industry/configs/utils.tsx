@@ -1,3 +1,4 @@
+import type { TrustedByLogoSet } from "@marketing/lib/logo_bars";
 import type { ReactNode } from "react";
 
 // SEO config type
@@ -65,7 +66,9 @@ export interface AIAgentsSectionConfig {
 // Trusted By Section Config
 export interface TrustedBySectionConfig {
   title: string;
-  logoSet: string;
+  // Union rather than `string`: the value is half of the Contentful `barSlug`
+  // a bar resolves against, so a typo would silently render an empty bar.
+  logoSet: TrustedByLogoSet;
 }
 
 // Pain Points Section Config

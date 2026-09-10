@@ -631,3 +631,56 @@ export interface ConversationDraft {
   prompt: string;
   attachments: ConversationDraftAttachment[];
 }
+
+// Logo bars ("Trusted by ..." sections)
+//
+// Two Contentful content types back the customer logo bars on the marketing
+// pages, so GTM can reorder / add / retire logos without a deploy:
+//
+//   `customerLogo` — one entry per company. Unpublishing an entry removes the
+//     logo from every bar it appears in (this replaces commenting a line out).
+//   `logoBar` — one entry per bar *variant*, identified by `barSlug` (see
+//     LOGO_BAR_SLUGS in lib/logo_bars.ts). Holds an ordered reference list of
+//     `customerLogo` entries; drag-to-reorder in Contentful is the display
+//     order on the site.
+//
+// A bar with no published `logoBar` entry falls back to the hardcoded list in
+// lib/logo_bars.ts, so this can be rolled out one bar at a time.
+export interface CustomerLogoFields {
+  companyName: string;
+  logo?: Asset;
+  // Preferred way to link a case study: reference the `customerStory` entry
+  // and we derive the URL from its slug, so the link can't drift.
+  caseStudy?: Entry<CustomerStorySkeleton>;
+  // Escape hatch for logos whose story doesn't live in Contentful yet.
+  caseStudyUrl?: string;
+}
+
+export type CustomerLogoSkeleton = EntrySkeletonType<
+  CustomerLogoFields,
+  "customerLogo"
+>;
+
+export interface LogoBarFields {
+  barSlug: string;
+  // Editor-facing label only; never rendered on the site.
+  name?: string;
+  logos?: Entry<CustomerLogoSkeleton>[];
+}
+
+export type LogoBarSkeleton = EntrySkeletonType<LogoBarFields, "logoBar">;
+
+// `width`/`height` are nullable on purpose: Contentful does not report
+// `details.image` for SVG uploads, and SVG is the format most brand kits
+// ship. The logo bars size by a fixed-height box + `w-auto`, so intrinsic
+// dimensions are only a hint for next/image.
+export interface LogoBarLogo {
+  name: string;
+  src: string;
+  width: number | null;
+  height: number | null;
+  caseStudyUrl: string | null;
+}
+
+// Keyed by `barSlug`. A missing key means "no CMS entry for this bar".
+export type LogoBarMap = Record<string, LogoBarLogo[]>;

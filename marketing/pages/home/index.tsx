@@ -4,6 +4,7 @@ import LandingLayout from "@marketing/components/home/LandingLayout";
 import { PageMetadata } from "@marketing/components/home/PageMetadata";
 import type { NewsItem } from "@marketing/lib/homepage_news";
 import { fetchHomepageNews } from "@marketing/lib/homepage_news";
+import { fetchLogoBars } from "@marketing/lib/logo_bars_server";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
@@ -11,16 +12,20 @@ interface HomeProps {
   news?: NewsItem[];
 }
 
-// Revalidate the homepage every 5 minutes so news edits in the Google
-// Sheet propagate without a deploy. First request after staleness gets
+// Revalidate the homepage every 5 minutes so news and logo-bar edits in
+// Contentful propagate without a deploy. First request after staleness gets
 // the cached version while a fresh one is generated in the background.
 export async function getStaticProps() {
-  const news = await fetchHomepageNews();
+  const [news, logoBars] = await Promise.all([
+    fetchHomepageNews(),
+    fetchLogoBars(),
+  ]);
   return {
     props: {
       shape: 0,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       news,
+      logoBars,
     },
     revalidate: 300,
   };

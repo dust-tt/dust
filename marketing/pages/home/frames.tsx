@@ -1,3 +1,5 @@
+import { CONTENTFUL_REVALIDATE_SECONDS } from "@marketing/lib/contentful/client";
+import { fetchLogoBars } from "@marketing/lib/logo_bars_server";
 import {
   Grid,
   H1,
@@ -44,7 +46,11 @@ export async function getStaticProps() {
   return {
     props: {
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
+      logoBars: await fetchLogoBars(),
     },
+    // The logo bar is editor-managed in Contentful, so the page has to
+    // revalidate for a GTM change to go live without a deploy.
+    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 }
 

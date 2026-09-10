@@ -1,100 +1,27 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
+import { LogoBarImage } from "@marketing/components/home/LogoBarImage";
+import { useLogoBar } from "@marketing/components/home/LogoBarsContext";
+import type { HomeTrustedGeo, LogoBarLogo } from "@marketing/lib/logo_bars";
+import { homeTrustedBarSlug } from "@marketing/lib/logo_bars";
 import { useGeolocation } from "@marketing/lib/swr/geo";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/router";
 
-// Exact copy of CASE_STUDIES from TrustedBy.tsx — keys are lowercase with no
-// spaces (e.g. "backmarket", "payfit"). Lookup strips spaces from logo.name.
-const CASE_STUDIES: Record<string, string> = {
-  alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
-  assembled: "/customers/part-1-assembled-ai-operating-system",
-  backmarket:
-    "/customers/back-markets-fraud-team-builds-ai-detection-system-in-one-week-contributing",
-  blueground: "/customers/customer-support-blueground",
-  clay: "/customers/clay-scaling-gtme-team",
-  doctolib:
-    "/customers/why-doctolib-made-company-wide-enterprise-ai-a-national-cause",
-  fleet: "/customers/how-valentine-head-of-marketing-at-fleet-uses-dust",
-  kyriba: "/customers/kyriba-accelerating-innovation-with-dust",
-  malt: "/customers/malt-customer-support",
-  mirakl: "/customers/why-mirakl-chose-dust-as-its-go-to-agentic-solution",
-  payfit: "/customers/dust-ai-payfit-efficiency",
-  pennylane: "/customers/pennylane-dust-customer-support-journey",
-  persona: "/customers/how-persona-hit-80-ai-agent-adoption-with-dust",
-  profound: "/customers/profound-post-sales-team-reclaimed-1800-hours",
-  qonto: "/customers/qonto-dust-ai-partnership",
-  spendesk:
-    "/customers/how-spendesk-achieved-90-ai-adoption-in-6-months-with-dust",
-  wakam:
-    "/customers/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust",
-  watershed:
-    "/customers/how-watershed-got-90-of-its-team-to-leverage-dust-agents",
-  vanta:
-    "/customers/how-vantas-gtm-team-saves-thousands-of-hours-annually-with-dust",
-};
+// Logo lineups live in Contentful (`logoBar` entries keyed by `barSlug`), with
+// the hardcoded lists in lib/logo_bars.ts as the fallback. Case-study links
+// come from the same entries, so they can no longer drift from TrustedBy's.
+function toHomeTrustedGeo(countryCode: string | undefined): HomeTrustedGeo {
+  if (countryCode === "FR") {
+    return "fr";
+  }
+  if (countryCode === "GB") {
+    return "gb";
+  }
+  return "default";
+}
 
-const LOGO_SETS = {
-  // 🇺🇸 US & rest of world (default)
-  default: [
-    { name: "Datadog", src: "/static/landing/logos/gray/datadog.svg" },
-    { name: "Clay", src: "/static/landing/logos/gray/clay.svg" },
-    { name: "Cursor", src: "/static/landing/logos/gray/cursor.svg" },
-    { name: "Assembled", src: "/static/landing/logos/gray/assembled.svg" },
-    { name: "Decagon", src: "/static/landing/logos/gray/decagon.svg" },
-    { name: "EvenUp", src: "/static/landing/logos/gray/evenup.svg" },
-    { name: "Persona", src: "/static/landing/logos/gray/persona.svg" },
-    { name: "1Password", src: "/static/landing/logos/gray/1password.svg" },
-    { name: "Vanta", src: "/static/landing/logos/gray/vanta.svg" },
-    { name: "Watershed", src: "/static/landing/logos/gray/watershed.svg" },
-    { name: "Whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
-    { name: "Profound", src: "/static/landing/logos/gray/profound.svg" },
-  ],
-  // 🇬🇧 UK — UK HQ/office + high ARR + brand recognition
-  gb: [
-    { name: "Paddle", src: "/static/landing/logos/gray/paddle.svg" },
-    { name: "Vanta", src: "/static/landing/logos/gray/vanta.svg" },
-    { name: "Cursor", src: "/static/landing/logos/gray/cursor.svg" },
-    { name: "Kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
-    { name: "TrueLayer", src: "/static/landing/logos/gray/truelayer.svg" },
-    {
-      name: "Contentsquare",
-      src: "/static/landing/logos/gray/contentsquare.svg",
-    },
-    { name: "Datadog", src: "/static/landing/logos/gray/datadog.svg" },
-    { name: "Spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
-    { name: "Back Market", src: "/static/landing/logos/gray/backmarket.svg" },
-    { name: "Causaly", src: "/static/landing/logos/gray/causaly.svg" },
-    { name: "Clay", src: "/static/landing/logos/gray/clay.svg" },
-    { name: "1Password", src: "/static/landing/logos/gray/1password.svg" },
-    { name: "Watershed", src: "/static/landing/logos/gray/watershed.svg" },
-  ],
-  // 🇫🇷 FR — French-native companies, most with customer stories
-  fr: [
-    { name: "Doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
-    { name: "Alan", src: "/static/landing/logos/gray/alan.svg" },
-    { name: "Qonto", src: "/static/landing/logos/gray/qonto.svg" },
-    { name: "Pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
-    { name: "PayFit", src: "/static/landing/logos/gray/payfit.svg" },
-    { name: "Malt", src: "/static/landing/logos/gray/malt.svg" },
-    { name: "Mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
-    {
-      name: "Contentsquare",
-      src: "/static/landing/logos/gray/contentsquare.svg",
-    },
-    { name: "Spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
-    {
-      name: "Welcome to the Jungle",
-      src: "/static/landing/logos/gray/welcometothejungle.svg",
-    },
-    { name: "Cursor", src: "/static/landing/logos/gray/cursor.svg" },
-    { name: "Kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
-    { name: "Didomi", src: "/static/landing/logos/gray/didomi.svg" },
-  ],
-} as const;
-
-function useLogoSet() {
+function useHomeTrustedLogos(): LogoBarLogo[] {
   const { query } = useRouter();
   const { geoData } = useGeolocation();
 
@@ -103,13 +30,9 @@ function useLogoSet() {
     typeof query.geo === "string" ? query.geo.toUpperCase() : undefined;
   const countryCode = geoParam ?? geoData?.countryCode;
 
-  if (countryCode === "FR") {
-    return LOGO_SETS.fr;
-  }
-  if (countryCode === "GB") {
-    return LOGO_SETS.gb;
-  }
-  return LOGO_SETS.default;
+  const geo: HomeTrustedGeo = toHomeTrustedGeo(countryCode);
+
+  return useLogoBar(homeTrustedBarSlug(geo));
 }
 
 const MARQUEE_CSS = `
@@ -180,7 +103,7 @@ function MarqueeMaskWrap({ children }: { children: React.ReactNode }) {
  * rolling logos inline (e.g. embedded in a landing page column).
  */
 export function HomeTrustedMarqueeCompact() {
-  const logos = useLogoSet();
+  const logos = useHomeTrustedLogos();
   const marqueeLogos = [...logos, ...logos];
   return (
     <div className="w-full">
@@ -193,12 +116,12 @@ export function HomeTrustedMarqueeCompact() {
               className="flex h-12 flex-shrink-0 items-center justify-center opacity-60"
               aria-hidden={idx >= logos.length}
             >
-              <Image
+              <LogoBarImage
+                logo={logo}
                 alt={idx >= logos.length ? "" : logo.name}
-                src={logo.src}
                 width={180}
                 height={48}
-                className="h-auto max-h-10 w-auto object-contain"
+                className="max-h-10"
               />
             </div>
           ))}
@@ -209,7 +132,7 @@ export function HomeTrustedMarqueeCompact() {
 }
 
 export function HomeTrustedSection() {
-  const logos = useLogoSet();
+  const logos = useHomeTrustedLogos();
   const marqueeLogos = [...logos, ...logos];
   return (
     <section className="flex w-full items-center justify-center bg-background pb-20 pt-12">
@@ -227,19 +150,17 @@ export function HomeTrustedSection() {
           <MarqueeMaskWrap>
             <div className="home-trusted-track flex w-max items-end gap-x-16 sm:gap-x-20 lg:gap-x-24">
               {marqueeLogos.map((logo, idx) => {
-                const caseStudyUrl =
-                  CASE_STUDIES[logo.name.toLowerCase().replace(/\s+/g, "")];
                 const itemClassName =
                   "home-trusted-item flex flex-shrink-0 flex-col items-center gap-1";
                 const inner = (
                   <>
                     <div className="flex h-14 items-center justify-center opacity-70 transition-opacity duration-150 ease-in-out [.home-trusted-item:hover_&]:opacity-100 md:h-16">
-                      <Image
+                      <LogoBarImage
+                        logo={logo}
                         alt={idx >= logos.length ? "" : logo.name}
-                        src={logo.src}
                         width={220}
                         height={64}
-                        className="h-auto max-h-14 w-auto object-contain md:max-h-16"
+                        className="max-h-14 md:max-h-16"
                       />
                     </div>
                     {/* Reserve a fixed-height slot so items with and without a
@@ -247,7 +168,7 @@ export function HomeTrustedSection() {
                       so it sits snug under the logo rather than floating in
                       the middle of an over-tall line box. */}
                     <div className="flex h-4 items-center justify-center">
-                      {caseStudyUrl && (
+                      {logo.caseStudyUrl && (
                         <span className="home-trusted-chip inline-flex items-center gap-1 text-[11px] font-medium leading-none text-foreground/40 [.home-trusted-item:hover_&]:text-foreground/80">
                           Case study
                           <ExternalArrowIcon />
@@ -256,10 +177,10 @@ export function HomeTrustedSection() {
                     </div>
                   </>
                 );
-                return caseStudyUrl ? (
+                return logo.caseStudyUrl ? (
                   <Link
                     key={`${logo.name}-${idx}`}
-                    href={caseStudyUrl}
+                    href={logo.caseStudyUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     tabIndex={idx >= logos.length ? -1 : undefined}

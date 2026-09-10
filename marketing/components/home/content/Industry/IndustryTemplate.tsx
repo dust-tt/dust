@@ -467,10 +467,7 @@ export default function IndustryTemplate({
 
       case "trustedBy":
         return config.trustedBy ? (
-          <TrustedBy
-            key="trustedBy"
-            logoSet={config.trustedBy.logoSet as any}
-          />
+          <TrustedBy key="trustedBy" logoSet={config.trustedBy.logoSet} />
         ) : null;
 
       case "painPoints":
@@ -512,7 +509,7 @@ export default function IndustryTemplate({
         return config.trustedBySecond ? (
           <TrustedBy
             key="trustedBySecond"
-            logoSet={config.trustedBySecond.logoSet as any}
+            logoSet={config.trustedBySecond.logoSet}
           />
         ) : null;
 

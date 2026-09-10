@@ -23,7 +23,11 @@ import type {
   CustomerStoryFilters,
   CustomerStorySkeleton,
   CustomerStorySummary,
+  CustomerLogoSkeleton,
   HomepageNewsItemSkeleton,
+  LogoBarLogo,
+  LogoBarMap,
+  LogoBarSkeleton,
   Lesson,
   LessonSkeleton,
   NewsItem,
@@ -496,7 +500,7 @@ function isResolvedEntry(
   );
 }
 
-function isContentfulAsset(value: MaybeUnresolved<Asset>): value is Asset {
+function isContentfulAsset(value: unknown): value is Asset {
   return isResolvedEntry(value);
 }
 
@@ -1968,6 +1972,134 @@ export async function getConversationDraftBySlug(
       { error, slug },
       "[Contentful] Failed to get conversation draft by slug"
     );
+    return new Err(normalizeError(error));
+  }
+}
+
+// Logo bars
+//
+// Editors manage the customer logo bars as `logoBar` entries (one per bar
+// variant, keyed by `barSlug`) holding an ordered list of `customerLogo`
+// references. See lib/logo_bars.ts for the slug list and the hardcoded
+// fallback used when a bar has no published entry.
+
+function contentfulAssetToLogoSrc(
+  asset: Asset | undefined
+): Pick<LogoBarLogo, "src" | "width" | "height"> | null {
+  const file = asset?.fields?.file;
+  if (!file || !isString(file.url)) {
+    return null;
+  }
+
+  const imageDetails =
+    file.details && "image" in file.details ? file.details.image : undefined;
+
+  return {
+    src: file.url.startsWith("//") ? `https:${file.url}` : file.url,
+    width: imageDetails?.width ?? null,
+    height: imageDetails?.height ?? null,
+  };
+}
+
+// A reference field comes back as an unresolved stub (or undefined) when the
+// target is unpublished or sits beyond the `include` depth. Both mean "skip
+// this item" rather than "fail the whole bar".
+function isCustomerStoryEntry(
+  value: unknown
+): value is Entry<CustomerStorySkeleton> {
+  return isResolvedEntry(value);
+}
+
+function isCustomerLogoEntry(
+  value: unknown
+): value is Entry<CustomerLogoSkeleton> {
+  return isResolvedEntry(value);
+}
+
+function contentfulEntryToLogoBarLogo(
+  entry: Entry<CustomerLogoSkeleton>
+): LogoBarLogo | null {
+  const fields = entry.fields;
+
+  const companyNameField: unknown = fields.companyName;
+  const companyName = isString(companyNameField) ? companyNameField.trim() : "";
+  if (companyName.length === 0) {
+    return null;
+  }
+
+  const logoField: unknown = fields.logo;
+  const logo = isContentfulAsset(logoField)
+    ? contentfulAssetToLogoSrc(logoField)
+    : null;
+  // A logo entry with no usable image would render as a hole in the bar.
+  if (!logo) {
+    return null;
+  }
+
+  // Prefer the referenced customerStory's slug so the link tracks the story;
+  // fall back to the manual URL for companies with no story entry yet.
+  const caseStudyField: unknown = fields.caseStudy;
+  const story = isCustomerStoryEntry(caseStudyField) ? caseStudyField : null;
+  const storySlugField: unknown = story?.fields.slug;
+  const storySlug = isString(storySlugField) ? storySlugField : null;
+
+  const caseStudyUrlField: unknown = fields.caseStudyUrl;
+  const manualUrl =
+    isString(caseStudyUrlField) && caseStudyUrlField.trim().length > 0
+      ? caseStudyUrlField.trim()
+      : null;
+
+  return {
+    name: companyName,
+    ...logo,
+    caseStudyUrl: storySlug ? `/customers/${storySlug}` : manualUrl,
+  };
+}
+
+export async function getAllLogoBars(
+  resolvedUrl: string = ""
+): Promise<Result<LogoBarMap, Error>> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+    const response = await contentfulClient.getEntries<LogoBarSkeleton>({
+      content_type: "logoBar",
+      limit: 50,
+      // logoBar -> customerLogo -> customerStory / logo asset.
+      include: 2,
+    });
+
+    const bars: LogoBarMap = {};
+    for (const entry of response.items) {
+      // Read fields into `unknown` locals before narrowing: Contentful's
+      // field-type resolution collapses to `never` for skeletons that hold
+      // nested `Entry[]` references (same reason `chaptersField` above needs
+      // a hand), which would make the guards below vacuous.
+      const barSlugField: unknown = entry.fields.barSlug;
+      const barSlug = isString(barSlugField) ? barSlugField.trim() : "";
+      if (barSlug.length === 0) {
+        continue;
+      }
+
+      const logosField: unknown = entry.fields.logos;
+      if (!Array.isArray(logosField)) {
+        continue;
+      }
+
+      const logos = logosField
+        .filter(isCustomerLogoEntry)
+        .map(contentfulEntryToLogoBarLogo)
+        .filter(isNonNull);
+
+      // An entry that resolves to nothing usable is treated as absent so the
+      // page renders its hardcoded fallback instead of an empty bar.
+      if (logos.length > 0) {
+        bars[barSlug] = logos;
+      }
+    }
+
+    return new Ok(bars);
+  } catch (error) {
+    logger.error({ error }, "[Contentful] Failed to fetch logo bars");
     return new Err(normalizeError(error));
   }
 }

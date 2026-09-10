@@ -71,7 +71,7 @@ export const b2bSaasConfig: IndustryPageConfig = {
   },
   trustedBy: {
     title: "Trusted by SaaS leaders",
-    logoSet: "b2bSaas",
+    logoSet: "b2b-saas",
   },
   painPoints: {
     title: "Transform how you work",

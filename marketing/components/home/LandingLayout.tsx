@@ -4,6 +4,7 @@ import {
   BANNER_VISIBLE_AFTER_MS,
 } from "@marketing/components/home/AnnouncementBanner";
 import { A } from "@marketing/components/home/ContentComponents";
+import { LogoBarsProvider } from "@marketing/components/home/LogoBarsContext";
 import { FooterNavigation } from "@marketing/components/home/menu/FooterNavigation";
 import { MainNavigation } from "@marketing/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@marketing/components/home/menu/MobileNavigation";
@@ -21,6 +22,7 @@ import {
   hasSessionIndicator,
   shouldCheckGeolocation,
 } from "@marketing/lib/cookies";
+import type { LogoBarMap } from "@marketing/lib/logo_bars";
 import { useGeolocation } from "@marketing/lib/swr/geo";
 import { useLandingAuthContext } from "@marketing/lib/swr/website";
 import { TRACKING_AREAS, withTracking } from "@marketing/lib/tracking";
@@ -41,6 +43,10 @@ export interface LandingLayoutProps {
   gtmTrackingId?: string;
   hideNavigation?: boolean;
   fullWidth?: boolean;
+  // Editor-managed customer logo bars from Contentful, fetched in the page's
+  // `getStaticProps`. Absent on pages that render no logo bar; the bars fall
+  // back to their hardcoded lineup when it's missing.
+  logoBars?: LogoBarMap;
 }
 
 export default function LandingLayout({
@@ -55,6 +61,7 @@ export default function LandingLayout({
     gtmTrackingId,
     hideNavigation,
     fullWidth,
+    logoBars,
   } = pageProps;
 
   const { openSignUpModal } = useSignUpModal();
@@ -148,7 +155,7 @@ export default function LandingLayout({
   }, [geoData, isGeoDataLoading, cookieValue]);
 
   return (
-    <>
+    <LogoBarsProvider logoBars={logoBars}>
       <Header />
       {hideNavigation ? (
         <div className="flex w-full justify-center pt-12 pb-2">
@@ -270,7 +277,7 @@ export default function LandingLayout({
         )}
         {!hideNavigation && <FooterNavigation />}
       </main>
-    </>
+    </LogoBarsProvider>
   );
 }
 
