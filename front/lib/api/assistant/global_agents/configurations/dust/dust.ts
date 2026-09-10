@@ -59,7 +59,7 @@ import {
 import {
   GEMINI_3_1_FLASH_LITE_MODEL_CONFIG,
   GEMINI_3_1_PRO_MODEL_CONFIG,
-  GEMINI_3_5_FLASH_MODEL_CONFIG,
+  GEMINI_3_8_FLASH_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_MEDIUM_3_5_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
@@ -838,7 +838,7 @@ export function _getDustGoogGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG,
     name: "dust-goog",
-    preferredModelConfiguration: GEMINI_3_5_FLASH_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_8_FLASH_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -850,7 +850,7 @@ export function _getDustGoogMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
     name: "dust-goog-medium",
-    preferredModelConfiguration: GEMINI_3_5_FLASH_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_8_FLASH_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -862,7 +862,7 @@ export function _getDustGoogHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG_HIGH,
     name: "dust-goog-high",
-    preferredModelConfiguration: GEMINI_3_5_FLASH_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_8_FLASH_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }
@@ -1041,7 +1041,7 @@ export function _getDustQuickGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_QUICK,
     name: "dust-quick",
-    preferredModelConfiguration: GEMINI_3_5_FLASH_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_8_FLASH_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -1053,7 +1053,7 @@ export function _getDustQuickMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
     name: "dust-quick-medium",
-    preferredModelConfiguration: GEMINI_3_5_FLASH_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_8_FLASH_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
