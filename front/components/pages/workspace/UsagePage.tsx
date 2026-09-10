@@ -246,9 +246,6 @@ export function UsagePage() {
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
-  // Under the new usage page, defer to the same empty-sorting + fallback
-  // pattern as Poke's PoolUsagePage so the initial sort (pool usage,
-  // descending) matches until the user picks a column explicitly.
   const [sorting, setSorting] = useState<SortingState>(
     isNewUsagePage ? [] : [{ id: "name", desc: false }]
   );
