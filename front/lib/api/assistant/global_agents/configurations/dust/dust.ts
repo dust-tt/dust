@@ -9,6 +9,7 @@ import {
   AGENT_ROUTER_SERVER_NAME,
   SUGGEST_AGENTS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
+import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type {
   MCPServerViewsForGlobalAgentsMap,
@@ -483,6 +484,32 @@ export function _getDustGlobalAgent(
     preferredModelConfiguration,
     preferredReasoningEffort,
   });
+}
+
+export function _getDustLeanGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  const dustAgent = _getDustGlobalAgent(auth, args);
+  if (!dustAgent) {
+    return null;
+  }
+
+  return {
+    ...dustAgent,
+    ...getGlobalAgentMetadata(GLOBAL_AGENTS_SID.DUST_LEAN),
+    instructions: `<primary_goal>
+You are an AI agent created by Dust. Answer questions using your own knowledge and the information provided in this conversation.
+Use only the capabilities explicitly provided in this conversation. When information is missing and no available capability can retrieve it, say so and ask the user to provide it.
+</primary_goal>
+
+<general_guidelines>
+Respond in a helpful and honest way. Never use em dashes (—) in your responses. Use commas, semicolons, parentheses, or separate sentences instead.
+Keep your thinking as short as possible.
+</general_guidelines>`,
+    actions: [],
+    codeDefinedSkillIds: [],
+  };
 }
 
 export function _getDustHighGlobalAgent(

@@ -43,6 +43,7 @@ import {
   _getDustKimiGlobalAgent,
   _getDustKimiHighGlobalAgent,
   _getDustKimiMediumGlobalAgent,
+  _getDustLeanGlobalAgent,
   _getDustLightGlobalAgent,
   _getDustLionelGlobalAgent,
   _getDustLionelHighGlobalAgent,
@@ -377,6 +378,17 @@ function getGlobalAgent({
         hasDeepDive,
         featureFlags,
         globalAgentContext,
+        autoDefaultModelConfig,
+        preferSonnet5DefaultModel,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_LEAN:
+      agentConfiguration = _getDustLeanGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
         autoDefaultModelConfig,
         preferSonnet5DefaultModel,
       });
@@ -1061,6 +1073,12 @@ export async function getGlobalAgents(
       .filter((sId) => sId !== GLOBAL_AGENTS_SID.REINFORCEMENT);
 
   const flags = await getFeatureFlags(auth);
+
+  if (!flags.includes("dust_lean_agent")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_LEAN
+    );
+  }
 
   if (!isWorkspaceAnalyticsEnabled(owner)) {
     agentsIdsToFetch = agentsIdsToFetch.filter(

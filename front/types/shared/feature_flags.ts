@@ -1,4 +1,10 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  dust_lean_agent: {
+    description:
+      "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
+    stage: "dust_only",
+    owner: "aubin-tchoi",
+  },
   stateful_conversation_window: {
     description:
       "Restore agent-loop context windows from the previous model step checkpoint",
