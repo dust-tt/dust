@@ -234,12 +234,6 @@ export const FIREWORKS_KIMI_K3_MODEL_CONFIG: ModelConfigurationType = {
   useNativeLightReasoning: true,
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  // Gated like the rest of the Fireworks fleet, and like the K2.6 it replaces:
-  // at $3.75/$18.75 per 1M it sits in the `premium` tier at medium/high, so it
-  // is opened per workspace rather than to everyone.
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,
