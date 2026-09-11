@@ -66,7 +66,7 @@ preserves the human requester's identity and request across dispatches and retri
 rechecks that person's access before reviewing.
 
 Inline comments and review summaries invoke the action directly in their request workflow because
- the imported action does not yet accept these events as delegated requests. They still publish a
+the imported action does not yet accept these events as delegated requests. They still publish a
 review and progress status on the captured PR head.
 
 Each review run reports a distinct `Review Code Contracts (<run-id>)` commit status linked to the
