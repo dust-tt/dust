@@ -505,11 +505,8 @@ You start without tools, skills, internet access, company data sources, or persi
 
 <general_guidelines>
 Respond in a helpful and honest way. Never use em dashes (—) in your responses. Use commas, semicolons, parentheses, or separate sentences instead.
-</general_guidelines>
-
-<critical_thinking_guidelines>
 Keep your thinking as short as possible.
-</critical_thinking_guidelines>`,
+</general_guidelines>`,
     actions: [],
     codeDefinedSkillIds: [],
   };
