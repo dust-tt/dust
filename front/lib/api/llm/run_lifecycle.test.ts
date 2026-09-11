@@ -603,6 +603,9 @@ describe("LLM stream telemetry", () => {
         "requested_reasoning_effort:none",
       ])
     );
+    expect(durationTags).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/^service_tier:/)])
+    );
 
     expect(info).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -844,6 +847,85 @@ describe("LLM stream telemetry", () => {
     expect(callsNamed(increment, "llm_success.count")).toHaveLength(0);
     expect(callsNamed(increment, "llm_error.count")).toHaveLength(0);
     expect(callsNamed(distribution, "llm_duration_ms")).toHaveLength(0);
+  });
+});
+
+describe("LLM served service tier telemetry", () => {
+  class FlexServedNoopStream extends DustNoopNoopGlobalNoopStream {
+    override async *rawStreamOutputToEvents(
+      raw: AsyncGenerator<string>
+    ): AsyncGenerator<ModelResponseEvent> {
+      for await (const event of super.rawStreamOutputToEvents(raw)) {
+        if (event.type === "success") {
+          yield {
+            type: "token_usage",
+            content: {
+              longCacheCreated: 0,
+              shortCacheCreated: 0,
+              cacheCreated: 0,
+              cacheHit: 0,
+              standardInput: 90,
+              totalOutput: 25,
+              serviceTier: "flex",
+            },
+            metadata: event.metadata,
+          };
+        }
+        yield event;
+      }
+    }
+  }
+
+  it("tags latency and usage with the tier the provider served on", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const { increment, distribution, info } = spyTelemetry();
+    const llm = makeNoopLLM(auth, FlexServedNoopStream, makeTraceContext(auth));
+
+    await consumeStream(llm);
+
+    for (const metric of [
+      "llm_duration_ms",
+      "llm_time_to_first_event_ms",
+      "llm_time_to_first_token_ms",
+      "llm_usage.output_tokens",
+    ]) {
+      expect(callsNamed(distribution, metric)).toHaveLength(1);
+      expect(tagsOf(callsNamed(distribution, metric)[0])).toEqual(
+        expect.arrayContaining(["service_tier:flex"])
+      );
+    }
+
+    expect(tagsOf(callsNamed(increment, "llm_success.count")[0])).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/^service_tier:/)])
+    );
+
+    expect(info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        llmEventType: "success",
+        serviceTier: "flex",
+      }),
+      "LLM Success"
+    );
+  });
+
+  it("leaves the tier off when the attempt fails before reporting usage", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const { distribution, error } = spyTelemetry();
+    const llm = makeNoopLLM(
+      auth,
+      ImmediateProviderErrorStream,
+      makeTraceContext(auth)
+    );
+
+    await consumeStream(llm);
+
+    expect(tagsOf(callsNamed(distribution, "llm_duration_ms")[0])).not.toEqual(
+      expect.arrayContaining([expect.stringMatching(/^service_tier:/)])
+    );
+    const errorPayload = error.mock.calls.find(
+      ([, message]) => message === "LLM Error"
+    )?.[0];
+    expect(errorPayload).not.toHaveProperty("serviceTier");
   });
 });
 
