@@ -172,7 +172,7 @@ export function getToolExtraFields(
     permission: MCPToolStakeLevelType;
     enabled: boolean;
   }[],
-  remoteServerUrl?: string
+  remoteServerUrl: string | null
 ) {
   let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
   let serverTimeoutMs: number | undefined;
@@ -767,6 +767,7 @@ function makeServerSideMCPConnectionParams(
     mcpServerId: mcpServerView.mcpServerId,
     oAuthUseCase: mcpServerView.oAuthUseCase,
     oauthScope: mcpServerView.oauthScope,
+    remoteMCPServerUrl: mcpServerView.remoteMCPServerUrl,
   };
 }
 
@@ -1424,29 +1425,33 @@ export async function listToolsForServerSideMCPServer(
     auth,
     connectionParams.mcpServerId,
     config,
-    allToolsRaw
+    allToolsRaw,
+    connectionParams.remoteMCPServerUrl
   );
 }
 
+/**
+ * @cc [owner:rfrenoy,label:performance] remote-url-supplied-by-caller
+ * `remoteMCPServerUrl` MUST be supplied by the caller from an already-fetched
+ * `MCPServerViewResource` or connection params. This function MUST NOT fetch the remote server to
+ * resolve it: it runs once per server configuration under `tryListMCPTools`' `concurrentExecutor`,
+ * so a fetch here is one SQL query per configured server (see `batch-database-queries`). Pass
+ * `null` for internal servers and when no remote server URL is known; preset tool stakes are then
+ * not applied.
+ */
 export async function buildToolConfigurationsFromRawTools(
   auth: Authenticator,
   mcpServerId: string,
   config: ServerSideMCPServerConfigurationType,
-  allToolsRaw: MCPToolType[]
+  allToolsRaw: MCPToolType[],
+  remoteMCPServerUrl: string | null
 ): Promise<Result<ServerSideMCPToolConfigurationType[], Error>> {
-  const { serverType } = getServerTypeAndIdFromSId(mcpServerId);
-  const [metadata, remoteServer] = await Promise.all([
-    RemoteMCPServerToolMetadataResource.fetchByServerId(auth, mcpServerId),
-    serverType === "remote"
-      ? RemoteMCPServerResource.fetchById(auth, mcpServerId)
-      : null,
-  ]);
-
-  const r = getToolExtraFields(
-    mcpServerId,
-    metadata,
-    remoteServer?.url || undefined
+  const metadata = await RemoteMCPServerToolMetadataResource.fetchByServerId(
+    auth,
+    mcpServerId
   );
+
+  const r = getToolExtraFields(mcpServerId, metadata, remoteMCPServerUrl);
   if (r.isErr()) {
     return r;
   }
@@ -1555,7 +1560,8 @@ async function listMCPServerToolsAndServerInstructions(
               auth,
               connectionParams.mcpServerId,
               config,
-              cachedTools
+              cachedTools,
+              connectionParams.remoteMCPServerUrl
             );
             if (cachedToolsRes.isOk()) {
               return new Ok({

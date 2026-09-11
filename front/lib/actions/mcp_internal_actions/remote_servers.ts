@@ -2376,7 +2376,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
 ];
 
 export const getDefaultRemoteMCPServerByURL = (
-  url: string | undefined
+  url: string | null | undefined
 ): DefaultRemoteMCPServerConfig | null => {
   return (
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

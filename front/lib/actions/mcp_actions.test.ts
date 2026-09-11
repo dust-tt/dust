@@ -207,6 +207,7 @@ async function setupTest(
     type: "mcpServerId",
     mcpServerId: internalMCPServer.id,
     oAuthUseCase: null,
+    remoteMCPServerUrl: null,
   };
 
   const r = await connectToMCPServer(auth, {
@@ -401,7 +402,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
       workspaceId: 1,
       prefix: 0,
     });
-    const result = getToolExtraFields(sid, metadata);
+    const result = getToolExtraFields(sid, metadata, null);
     assert(result.isOk());
     expect(result.value).toEqual({
       toolsEnabled: {
@@ -450,7 +451,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
       },
     ];
 
-    const result = getToolExtraFields("rms_DzP3svIoVg", metadata);
+    const result = getToolExtraFields("rms_DzP3svIoVg", metadata, null);
     assert(result.isOk());
     expect(result.value).toEqual({
       toolsEnabled: {
@@ -509,7 +510,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
   });
 
   it("should not match a preset when the remote server has no url", () => {
-    const result = getToolExtraFields("rms_DzP3svIoVg", [], undefined);
+    const result = getToolExtraFields("rms_DzP3svIoVg", [], null);
     assert(result.isOk());
     expect(result.value.toolsStakes).toEqual({});
   });
@@ -519,7 +520,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
     const metadata: RemoteMCPServerToolMetadataResource[] = [];
 
     expect(() => {
-      getToolExtraFields("invalid_server_id", metadata);
+      getToolExtraFields("invalid_server_id", metadata, null);
     }).toThrow("Invalid MCP server ID: invalid_server_id");
   });
 });
