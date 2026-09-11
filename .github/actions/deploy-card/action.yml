@@ -118,6 +118,25 @@ runs:
             } catch (e) { core.warning(`no versions file for ${cell}: ${e.message}`); }
           }
 
+          // A deploy of this component still in flight has not pinned the versions files
+          // yet, so the files still hold what IT is replacing: diffing against them would
+          // announce its commits a second time. Baseline on what the in-flight run ships
+          // (its head sha) instead. Not run for reverts, a revert must diff against the
+          // file to show what is being rolled back.
+          const inflightTags = new Set();
+          if (!revert) {
+            try {
+              const { data } = await github.rest.actions.listWorkflowRuns({ owner, repo, workflow_id: 'deploy.yml', per_page: 30 });
+              for (const r of data.workflow_runs) {
+                if (r.id === context.runId) continue;
+                if (!['queued', 'waiting', 'pending', 'in_progress'].includes(r.status)) continue;
+                if (!(r.display_title || '').startsWith(`Deploy ${component} `)) continue;
+                inflightTags.add(r.head_sha.slice(0, tag.length));
+              }
+            } catch (e) { core.warning(`could not list in-flight deploys: ${e.message}`); }
+          }
+          const baselines = inflightTags.size > 0 ? inflightTags : currentTags;
+
           // The changelog is the widest range among the cells, so whoever has a commit landing
           // on any of them is on the card. A revert lists what is being rolled back.
           const compare = async (base, head) => {
@@ -132,7 +151,7 @@ runs:
             return { commits, total };
           };
           let shipping = { commits: [], total: 0 };
-          for (const current of currentTags) {
+          for (const current of baselines) {
             if (current === tag) continue;
             try {
               const range = revert ? await compare(tag, current) : await compare(current, tag);
@@ -169,7 +188,8 @@ runs:
           const count = `${shipping.total} commit${shipping.total === 1 ? '' : 's'}`;
           const authorsLine = shipping.total > 0
             ? (revert ? `Rolling back ${count} by ${people}` : `${count} by ${people}`)
-            : currentTags.size === 0 ? `Previous version unknown, started by ${starter}`
+            : baselines.size === 0 ? `Previous version unknown, started by ${starter}`
+            : inflightTags.size > 0 ? `Nothing new over the deploy already in flight, started by ${starter}`
             : `Same version as today, started by ${starter}`;
 
           const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
