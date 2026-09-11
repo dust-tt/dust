@@ -107,6 +107,7 @@ export function PodFrameSheet({
                   fileId={fileId}
                   fileContent={fileContent ?? null}
                   fileName={fileMetadata?.fileName}
+                  contentType={fileMetadata?.contentType}
                 />
                 <ShareFrameSheet fileId={fileId} owner={owner} />
                 <PinPodBannerButton

@@ -72,7 +72,7 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  * /api/w/{wId}/files/{fileId}:
  *   get:
  *     summary: Get or download a file
- *     description: View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download).
+ *     description: View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download). Downloading a Frames v2 file redirects to its source folder as a ZIP archive.
  *     tags:
  *       - Private Files
  *     parameters:
@@ -113,7 +113,7 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  *               type: string
  *               format: binary
  *       302:
- *         description: Redirect to signed download URL
+ *         description: Redirect to a signed download URL, or to the source folder ZIP archive for a Frames v2 file
  *       404:
  *         description: File not found
  *   post:
@@ -254,6 +254,10 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       status: 200,
       headers: { "Content-Type": file.contentType },
     });
+  }
+
+  if (file.isFrameV2) {
+    return redirectToFrameSourceArchive(ctx, file);
   }
 
   // Redirect to a signed URL.
@@ -465,6 +469,40 @@ app.route("/rename", rename);
 app.route("/save-in-project", saveInProject);
 app.route("/share", shareApp);
 app.route("/signed-url", signedUrl);
+
+/**
+ * @cc [owner:davidebbo,label:product] frame-v2-downloads-its-sources
+ * Downloading a Frames v2 file must serve its whole source folder as a ZIP archive, never a
+ * canonical stored object: a Frame registered from its mount path has none. It must fail with a
+ * 404 when the Frame has no source folder.
+ */
+function redirectToFrameSourceArchive(
+  ctx: Context<WorkspaceAwareCtx & { Bindings: HttpBindings }>,
+  file: FileResource
+) {
+  const auth = ctx.get("auth");
+  const sourceDirectory = file.getFrameV2SourceDirectoryPath(auth);
+  if (!sourceDirectory) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "Frame source folder not found.",
+      },
+    });
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+  const encodedPath = sourceDirectory
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+
+  // The Location is relative on purpose, for the reasons `redirectToSse` documents.
+  return ctx.redirect(
+    `/api/w/${owner.sId}/files/path/${encodedPath}?archive=zip`
+  );
+}
 
 async function canWriteSkillFile(
   auth: Authenticator,

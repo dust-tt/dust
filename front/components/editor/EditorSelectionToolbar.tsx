@@ -94,21 +94,19 @@ export function EditorSelectionToolbar({
     return () => cancelAnimationFrame(frame);
   }, [position]);
 
-  if (!position) {
-    return null;
-  }
-
+  // if there is no position we hide it but keep the component mounted
   return createPortal(
     <div
       className={cn(
         "fixed -translate-x-1/2 -translate-y-full",
         "origin-bottom transition-[opacity,scale] duration-100 ease-out-quart",
         "motion-reduce:transition-none",
-        hasEntered ? "scale-100 opacity-100" : "scale-[0.98] opacity-0"
+        hasEntered ? "scale-100 opacity-100" : "scale-[0.98] opacity-0",
+        !position && "invisible"
       )}
       style={{
-        top: position.top,
-        left: position.left,
+        top: position?.top ?? 0,
+        left: position?.left ?? 0,
         zIndex: TOOLBAR_Z_INDEX,
       }}
       onMouseDown={(event) => event.preventDefault()}

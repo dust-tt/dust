@@ -16,7 +16,7 @@ import type {
 import { formatCredits, formatCreditsPrecise } from "@app/lib/client/credits";
 import type { DefaultMetronomeAlerts } from "@app/lib/metronome/alerts/default_alerts";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
-import { usePokeAwuPoolSummary } from "@app/poke/swr/credits";
+import { usePokeAwuPoolCurrentCycle } from "@app/poke/swr/credits";
 import type {
   WorkspacePoolCreditState,
   WorkspaceProgrammaticCreditState,
@@ -301,10 +301,13 @@ interface PokeCreditPoolCardProps {
 }
 
 function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
-  const { awuPoolSummary, isAwuPoolSummaryLoading, isAwuPoolSummaryError } =
-    usePokeAwuPoolSummary({ owner });
+  const {
+    awuPoolCurrentCycle,
+    isAwuPoolCurrentCycleLoading,
+    isAwuPoolCurrentCycleError,
+  } = usePokeAwuPoolCurrentCycle({ owner });
 
-  if (isAwuPoolSummaryLoading) {
+  if (isAwuPoolCurrentCycleLoading) {
     return (
       <div className="flex justify-center py-8">
         <Spinner />
@@ -312,7 +315,7 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
     );
   }
 
-  if (isAwuPoolSummaryError || !awuPoolSummary) {
+  if (isAwuPoolCurrentCycleError || !awuPoolCurrentCycle) {
     return (
       <ContentMessage
         title="Failed to load Workspace Credits Pool"
@@ -325,7 +328,7 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
   }
 
   const { totalActiveCredits, totalRemainingCredits, overageCredits } =
-    awuPoolSummary;
+    awuPoolCurrentCycle;
   const consumed = Math.max(0, totalActiveCredits - totalRemainingCredits);
   const consumedPct =
     totalActiveCredits > 0

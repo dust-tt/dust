@@ -33,6 +33,39 @@ async function listAgentIdsForAnalytics(auth: Authenticator) {
 
 const REPORTING_ROLES = ["admin", "manager"] as const;
 
+describe("getAgentConfigurationsForView, default ordering", () => {
+  it.each([
+    undefined,
+    2,
+  ])("defaults to alphabetical ordering with limit=%s", async (limit) => {
+    const { authenticator } = await createResourceTest({});
+    const agentC = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Ordering C" }
+    );
+    const agentB = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Ordering B" }
+    );
+    const agentA = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Ordering A" }
+    );
+
+    const agents = await getAgentConfigurationsForView({
+      auth: authenticator,
+      agentsGetView: "list",
+      variant: "light",
+      agentPrefix: "Ordering",
+      limit,
+    });
+
+    expect(agents.map((agent) => agent.sId)).toEqual(
+      [agentA.sId, agentB.sId, agentC.sId].slice(0, limit)
+    );
+  });
+});
+
 describe("getAgentConfigurationsForView, 'analytics' view", () => {
   it.each(
     REPORTING_ROLES

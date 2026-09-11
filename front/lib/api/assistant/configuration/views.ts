@@ -151,6 +151,10 @@ async function fetchGlobalAgentConfigurationForView(
   return matchingGlobalAgents.filter((a) => a.status === "active");
 }
 
+/**
+ * @cc [owner:philipperolet,label:backend] default-agent-query-order
+ * Active-agent queries MUST default to name order when no sort is requested.
+ */
 async function fetchWorkspaceAgentConfigurationsWithoutActions(
   auth: Authenticator,
   {
@@ -171,7 +175,9 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     omitHeavyAttributes?: boolean;
   }
 ): Promise<AgentConfigurationModel[]> {
-  const sortStrategy = sort && sortStrategies[sort];
+  // Active names are unique per workspace; their (workspaceId, name) index can supply this
+  // default order without a separate sort or an ID tie-breaker.
+  const sortStrategy = sortStrategies[sort ?? "alphabetical"];
 
   const baseWhereConditions = {
     workspaceId: owner.id,
@@ -189,7 +195,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
 
   const baseAgentsSequelizeQuery = {
     limit,
-    order: sortStrategy?.dbOrder,
+    order: sortStrategy.dbOrder,
     ...excludeAttributesFromSelect,
   };
 

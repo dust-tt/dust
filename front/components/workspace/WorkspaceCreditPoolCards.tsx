@@ -22,6 +22,7 @@ import {
   DataTable,
   DataTableSkeleton,
   LoadingBlock,
+  Page,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
@@ -331,7 +332,7 @@ export function WorkspaceCreditPoolSection({
   }
 
   return (
-    <div className="flex flex-col items-stretch gap-10">
+    <Page.Vertical align="stretch" gap="xl">
       {cardsStatus === "error" ? (
         <ContentMessage
           title="Failed to load Workspace Credits Pool"
@@ -359,7 +360,7 @@ export function WorkspaceCreditPoolSection({
           />
         </>
       )}
-    </div>
+    </Page.Vertical>
   );
 }
 

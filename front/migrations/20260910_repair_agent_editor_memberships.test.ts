@@ -78,6 +78,98 @@ async function seedRevokedEditor() {
 describe("repairEditorMemberships", () => {
   afterEach(() => vi.useRealTimers());
 
+  it("rebuilds orphans from all current legacy editors and legacy history", async () => {
+    const {
+      auth,
+      workspace,
+      user,
+      unrelated: currentEditor,
+      grant,
+      target,
+      legacy,
+    } = await seedRevokedEditor();
+    await GroupPermissionResource.revoke(auth, { ...grant, group: target });
+    const staleEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, staleEditor, { role: "user" });
+    assert(
+      (
+        await target.dangerouslyAddMember(auth, { user: staleEditor.toJSON() })
+      ).isOk()
+    );
+    // Legacy can retain an unended group row for a revoked workspace member.
+    await GroupMembershipModel.create({
+      workspaceId: workspace.id,
+      groupId: legacy.id,
+      userId: user.id,
+      status: "active",
+      startAt: REVOKED_AT,
+    });
+    const spec = {
+      wId: workspace.sId,
+      logger: logger.child({}, { level: "silent" }),
+    };
+    await expect(
+      repairEditorMemberships({ ...spec, execute: false })
+    ).resolves.toEqual({ ended: 1, active: 1 });
+    expect(await target.isMember(staleEditor)).toBe(true);
+    expect(
+      await GroupPermissionResource.findRegularAutoGroupForGrant(auth, grant)
+    ).toBeNull();
+
+    await expect(
+      repairEditorMemberships({ ...spec, execute: true })
+    ).resolves.toEqual({ ended: 1, active: 1 });
+    const rebuilt = await GroupPermissionResource.findRegularAutoGroupForGrant(
+      auth,
+      grant
+    );
+    assert(rebuilt);
+    expect(rebuilt.id).not.toBe(target.id);
+    expect(
+      await GroupResource.dangerouslyFetchByModelIds(auth, [target.id])
+    ).toHaveLength(0);
+    expect((await rebuilt.getActiveMembers(auth)).map(({ id }) => id)).toEqual([
+      currentEditor.id,
+    ]);
+    expect(await rebuilt.isMember(user)).toBe(false);
+    const history = await GroupMembershipModel.findOne({
+      where: {
+        workspaceId: workspace.id,
+        groupId: rebuilt.id,
+        userId: user.id,
+        endAt: REVOKED_AT,
+      },
+    });
+    assert(history);
+    expect(history.startAt.getTime()).toBeLessThan(REVOKED_AT.getTime());
+    await expect(
+      repairEditorMemberships({ ...spec, execute: true })
+    ).resolves.toEqual({ ended: 0, active: 0 });
+  });
+
+  it("refuses to delete a colliding group that still has a grant", async () => {
+    const { auth, workspace, grant, target } = await seedRevokedEditor();
+    await GroupPermissionResource.revoke(auth, { ...grant, group: target });
+    await GroupPermissionResource.grantTypeWide(auth, {
+      group: target,
+      grantType: "create",
+      resourceType: "agent",
+    });
+    await expect(
+      repairEditorMemberships({
+        wId: workspace.sId,
+        logger: logger.child({}, { level: "silent" }),
+        execute: true,
+      })
+    ).rejects.toThrow("Colliding group still has grants.");
+    expect(
+      await GroupResource.dangerouslyFetchByModelIds(auth, [target.id])
+    ).toHaveLength(1);
+    expect(
+      await GroupPermissionResource.listForGroup(auth, target)
+    ).toHaveLength(1);
+  });
+
   it("compares exact end timestamps and copies the earliest duplicate only once", async () => {
     const { workspace, user, legacy, target } = await seedRevokedEditor();
     const where = {

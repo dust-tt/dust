@@ -15,7 +15,10 @@ import {
   SIDE_PANEL_TYPE_HASH_PARAM,
   SKILL_SIDE_PANEL_TYPE,
 } from "@app/types/conversation_side_panel";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  assertNeverAndIgnore,
+} from "@app/types/shared/utils/assert_never";
 import React, { useCallback, useEffect, useMemo } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
@@ -48,6 +51,80 @@ type OpenPanelParams =
       skillId: string;
     };
 
+// The `spid` hash value for a panel. Two panels are the same when type and key match.
+function panelDataKey(params: OpenPanelParams): string {
+  switch (params.type) {
+    case AGENT_ACTIONS_SIDE_PANEL_TYPE:
+      return params.actionId
+        ? `${params.messageId}@${params.actionId}`
+        : params.messageId;
+    case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
+      return params.timestamp
+        ? `${params.fileId}@${params.timestamp}`
+        : params.fileId;
+    case FILE_PREVIEW_SIDE_PANEL_TYPE:
+      return params.filePath;
+    case FILES_SIDE_PANEL_TYPE:
+    case CREDITS_SIDE_PANEL_TYPE:
+    case PLAN_SIDE_PANEL_TYPE:
+      return params.type;
+    case SKILL_SIDE_PANEL_TYPE:
+      return params.skillId;
+    default:
+      return assertNever(params);
+  }
+}
+
+// What makes two panels "the same view" for history purposes. Unlike the hash key, a Frame's
+// timestamp is ignored: streaming refreshes the same Frame with a new timestamp, and that must
+// update the shown panel rather than stack a copy of it.
+function panelIdentityKey(params: OpenPanelParams): string {
+  if (params.type === INTERACTIVE_CONTENT_SIDE_PANEL_TYPE) {
+    return `${params.type}:${params.fileId}`;
+  }
+  return `${params.type}:${panelDataKey(params)}`;
+}
+
+// What goes in the history for a panel: a Frame is stored without its timestamp so going back
+// loads its latest version rather than a streaming-era snapshot.
+function panelHistoryEntry(params: OpenPanelParams): OpenPanelParams {
+  if (params.type === INTERACTIVE_CONTENT_SIDE_PANEL_TYPE) {
+    return { type: params.type, fileId: params.fileId };
+  }
+  return params;
+}
+
+// Inverse of panelDataKey, for panels restored from the URL hash (deep links, back/forward).
+function panelParamsFromHash(
+  type: ConversationSidePanelType,
+  data: string | undefined
+): OpenPanelParams | null {
+  if (!type || !data) {
+    return null;
+  }
+  switch (type) {
+    case AGENT_ACTIONS_SIDE_PANEL_TYPE: {
+      const [messageId, actionId] = data.split("@");
+      return { type, messageId, actionId };
+    }
+    case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE: {
+      const [fileId, timestamp] = data.split("@");
+      return { type, fileId, timestamp };
+    }
+    case FILE_PREVIEW_SIDE_PANEL_TYPE:
+      return { type, filePath: data };
+    case FILES_SIDE_PANEL_TYPE:
+    case CREDITS_SIDE_PANEL_TYPE:
+    case PLAN_SIDE_PANEL_TYPE:
+      return { type };
+    case SKILL_SIDE_PANEL_TYPE:
+      return { type, skillId: data };
+    default:
+      assertNeverAndIgnore(type);
+      return null;
+  }
+}
+
 const isSupportedPanelType = (
   type: string | undefined
 ): type is ConversationSidePanelType =>
@@ -67,7 +144,10 @@ interface ConversationSidePanelContextType {
   isPanelClosing: boolean;
   openPanel: (params: OpenPanelParams) => void;
   togglePanel: (params: OpenPanelParams) => void;
+  // Pops back to the previous panel in the history, or collapses when the history is empty.
   closePanel: () => void;
+  // Removes panels of that type from the history, for content that no longer exists.
+  removeFromPanelHistory: (type: ConversationSidePanelType) => void;
   onPanelClosed: () => void;
   setPanelRef: (ref: ImperativePanelHandle | null) => void;
   panelRef: React.MutableRefObject<ImperativePanelHandle | null>;
@@ -75,6 +155,10 @@ interface ConversationSidePanelContextType {
   virtuosoMsg: AgentMessageWithStreaming | null;
   data: string | undefined;
 }
+
+// Past a few levels, going back one panel at a time stops matching what the user remembers, so
+// the oldest entries are dropped.
+const MAX_PANEL_HISTORY = 3;
 
 export const ConversationSidePanelContext = React.createContext<
   ConversationSidePanelContextType | undefined
@@ -132,16 +216,28 @@ export function ConversationSidePanelProvider({
     [panelRef]
   );
 
+  // Panels shown before the current one and not closed since, most recent last. Closing pops
+  // from here; opening a panel of another type pushes the current one (same-type panels replace
+  // each other, so browsing tool steps or Frames does not pile up). Nothing renders from it, so a
+  // ref is enough.
+  const panelHistoryRef = React.useRef<OpenPanelParams[]>([]);
+  const currentParamsRef = React.useRef<OpenPanelParams | null>(null);
+
   // This should be called once the closing animation is done (onTransitionEnd)
-  // so you won't have content flickering
+  // so you won't have content flickering. The whole side panel is gone at this point (X with
+  // nothing underneath, divider drag, conversation switch), so the history goes with it.
   const onPanelClosed = useCallback(() => {
     setIsPanelClosing(false);
+    currentParamsRef.current = null;
+    panelHistoryRef.current = [];
     setData(undefined);
     setCurrentPanel(undefined);
   }, [setData, setCurrentPanel]);
 
+  // Collapse without touching the history.
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
-  const closePanel = useCallback(() => {
+  const collapsePanel = useCallback(() => {
+    currentParamsRef.current = null;
     if (panelRef && panelRef.current) {
       // Only flag a real collapse: on an already collapsed panel no transition runs, so
       // onPanelClosed would never clear the flag.
@@ -155,83 +251,79 @@ export function ConversationSidePanelProvider({
     }
   }, [panelRef, onPanelClosed]);
 
+  // Show a panel without touching the history: write the hash and expand. Re-expanding
+  // imperatively covers a close→reopen race where `currentPanel` keeps the same value and the
+  // container's expand effect would not re-run. No-op on mobile.
+  const showPanel = useCallback(
+    (params: OpenPanelParams) => {
+      setIsPanelClosing(false);
+      currentParamsRef.current = params;
+      setCurrentPanel(params.type);
+      setData(panelDataKey(params));
+      panelRef.current?.expand(getDefaultRightPanelSize(params.type));
+    },
+    [setCurrentPanel, setData]
+  );
+
+  const closePanel = useCallback(() => {
+    const history = panelHistoryRef.current;
+    const previous = history[history.length - 1];
+    if (previous) {
+      panelHistoryRef.current = history.slice(0, -1);
+      showPanel(previous);
+      return;
+    }
+    collapsePanel();
+  }, [showPanel, collapsePanel]);
+
+  const removeFromPanelHistory = useCallback(
+    (type: ConversationSidePanelType) => {
+      const history = panelHistoryRef.current;
+      if (history.some((entry) => entry.type === type)) {
+        panelHistoryRef.current = history.filter(
+          (entry) => entry.type !== type
+        );
+      }
+    },
+    []
+  );
+
   // Shared selection; `toggle` decides whether re-selecting the shown panel closes it. A panel
   // that is already closing reads as unselected, so re-selecting it reopens instead.
   const applyPanel = useCallback(
     (params: OpenPanelParams, { toggle }: { toggle: boolean }) => {
-      const closeOnReselect = toggle && !isPanelClosing;
-      setIsPanelClosing(false);
-      setCurrentPanel(params.type);
+      const current = isPanelClosing ? null : currentParamsRef.current;
+      const isShown =
+        current !== null &&
+        panelIdentityKey(current) === panelIdentityKey(params);
 
-      switch (params.type) {
-        case AGENT_ACTIONS_SIDE_PANEL_TYPE: {
-          const newData = params.actionId
-            ? `${params.messageId}@${params.actionId}`
-            : params.messageId;
-
-          // A different message/action switches content; only the same data toggles closed.
-          if (closeOnReselect && newData === data) {
-            closePanel();
-            return;
-          }
-
-          setData(newData);
-          break;
+      if (isShown) {
+        if (toggle) {
+          closePanel();
+        } else {
+          showPanel(params);
         }
-
-        case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
-          // eslint-disable-next-line no-unused-expressions
-          params.timestamp
-            ? setData(`${params.fileId}@${params.timestamp}`)
-            : setData(params.fileId);
-          break;
-
-        case FILE_PREVIEW_SIDE_PANEL_TYPE:
-          setData(params.filePath);
-          break;
-
-        case FILES_SIDE_PANEL_TYPE:
-          if (closeOnReselect && currentPanel === FILES_SIDE_PANEL_TYPE) {
-            closePanel();
-            return;
-          }
-          setData("files");
-          break;
-
-        case CREDITS_SIDE_PANEL_TYPE:
-          if (closeOnReselect && currentPanel === CREDITS_SIDE_PANEL_TYPE) {
-            closePanel();
-            return;
-          }
-          setData("credits");
-          break;
-
-        case PLAN_SIDE_PANEL_TYPE:
-          if (closeOnReselect && currentPanel === PLAN_SIDE_PANEL_TYPE) {
-            closePanel();
-            return;
-          }
-          setData("plan");
-          break;
-
-        case SKILL_SIDE_PANEL_TYPE:
-          // A different skill switches content; only the same skill toggles closed.
-          if (closeOnReselect && params.skillId === data) {
-            closePanel();
-            return;
-          }
-          setData(params.skillId);
-          break;
-
-        default:
-          assertNever(params);
+        return;
       }
 
-      // Re-expand imperatively: the container's expand effect only fires when `currentPanel`
-      // changes, so a close→reopen race (same value) wouldn't re-run it. No-op on mobile.
-      panelRef.current?.expand(getDefaultRightPanelSize(params.type));
+      // The panel being shown never stays in the history, and only a change of panel type
+      // stacks the current one.
+      const targetKey = panelIdentityKey(params);
+      let history = panelHistoryRef.current.filter(
+        (entry) => panelIdentityKey(entry) !== targetKey
+      );
+      if (current && current.type !== params.type) {
+        const entry = panelHistoryEntry(current);
+        const entryKey = panelIdentityKey(entry);
+        history = [
+          ...history.filter((e) => panelIdentityKey(e) !== entryKey),
+          entry,
+        ].slice(-MAX_PANEL_HISTORY);
+      }
+      panelHistoryRef.current = history;
+      showPanel(params);
     },
-    [setCurrentPanel, setData, data, closePanel, currentPanel, isPanelClosing]
+    [isPanelClosing, closePanel, showPanel]
   );
 
   // Idempotent open for programmatic callers: a toggle could mis-close during a close→reopen
@@ -261,18 +353,37 @@ export function ConversationSidePanelProvider({
     ) {
       // Exit full screen too, mirroring FrameRenderer's close button.
       setFullScreenHash(undefined);
-      closePanel();
+      panelHistoryRef.current = [];
+      collapsePanel();
     }
-  }, [activeConversationId, closePanel, setFullScreenHash]);
+  }, [activeConversationId, collapsePanel, setFullScreenHash]);
 
   // Initialize panel state from URL hash parameters
   useEffect(() => {
     if (data && currentPanel) {
       setCurrentPanel(currentPanel);
+      // Deep link or browser navigation: adopt the panel from the hash so it is the one we
+      // consider shown. Our own opens already match, so the ref (and its Frame timestamp) is
+      // kept in that case.
+      if (isSupportedPanelType(currentPanel)) {
+        const fromHash = panelParamsFromHash(currentPanel, data);
+        const current = currentParamsRef.current;
+        if (
+          fromHash &&
+          (!current || panelIdentityKey(current) !== panelIdentityKey(fromHash))
+        ) {
+          // The shown panel never stays in the history, same as when we open it ourselves.
+          const shownKey = panelIdentityKey(fromHash);
+          currentParamsRef.current = fromHash;
+          panelHistoryRef.current = panelHistoryRef.current.filter(
+            (entry) => panelIdentityKey(entry) !== shownKey
+          );
+        }
+      }
     } else if (!data) {
-      closePanel();
+      collapsePanel();
     }
-  }, [data, currentPanel, setCurrentPanel, closePanel]);
+  }, [data, currentPanel, setCurrentPanel, collapsePanel]);
 
   const value = useMemo(
     () => ({
@@ -283,6 +394,7 @@ export function ConversationSidePanelProvider({
       openPanel,
       togglePanel,
       closePanel,
+      removeFromPanelHistory,
       onPanelClosed,
       setPanelRef,
       panelRef,
@@ -296,6 +408,7 @@ export function ConversationSidePanelProvider({
       openPanel,
       togglePanel,
       closePanel,
+      removeFromPanelHistory,
       onPanelClosed,
       setPanelRef,
       virtuosoMsg,

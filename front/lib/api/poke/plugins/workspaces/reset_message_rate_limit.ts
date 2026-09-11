@@ -1,8 +1,10 @@
 import {
   resetFairUseAwuCreditsRateLimitForUser,
   resetMessageRateLimitForWorkspace,
+  resetPremiumModelMessageRateLimitForUser,
 } from "@app/lib/api/assistant/rate_limits";
 import { createPlugin } from "@app/lib/api/poke/types";
+import type { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { mapToEnumValues } from "@app/types/poke/plugins";
@@ -10,7 +12,16 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { z } from "zod";
 
-const RESET_TARGETS = ["workspace_rate_limit", "user_awu_fair_use"] as const;
+const RESET_TARGETS = [
+  "workspace_rate_limit",
+  "user_awu_fair_use",
+  "user_premium_model_limit",
+] as const;
+
+const USER_SCOPED_RESET_TARGETS = [
+  "user_awu_fair_use",
+  "user_premium_model_limit",
+] as const;
 
 const ResetMessageRateLimitArgsSchema = z
   .object({
@@ -19,20 +30,53 @@ const ResetMessageRateLimitArgsSchema = z
   })
   .refine(
     (args) =>
-      args.resetTarget[0] !== "user_awu_fair_use" ||
+      !USER_SCOPED_RESET_TARGETS.includes(
+        args.resetTarget[0] as (typeof USER_SCOPED_RESET_TARGETS)[number]
+      ) ||
       (args.userEmail !== undefined && args.userEmail.length > 0),
     {
-      message: "User email is required to reset fair-use AWU credits.",
+      message: "User email is required to reset a per-user limit.",
       path: ["userEmail"],
     }
   );
+
+async function resolveActiveWorkspaceUser(
+  auth: Authenticator,
+  userEmail: string | undefined
+) {
+  if (!userEmail) {
+    return new Err(new Error("User email is required."));
+  }
+
+  const user = await UserResource.fetchByEmail(userEmail);
+  if (!user) {
+    return new Err(new Error(`Could not find user with email ${userEmail}.`));
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const membership =
+    await MembershipResource.getActiveMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  if (!membership) {
+    return new Err(
+      new Error(
+        `User ${user.email} is not an active member of workspace ${workspace.sId}.`
+      )
+    );
+  }
+
+  return new Ok(user);
+}
 
 export const resetMessageRateLimitPlugin = createPlugin({
   manifest: {
     id: "reset-message-rate-limit",
     name: "Reset Message Rate Limits",
     description:
-      "Reset the workspace message rate limit or a user's AWU fair-use limit.",
+      "Reset the workspace message rate limit, a user's AWU fair-use limit, " +
+      "or a user's premium-model weekly message limit.",
     resourceTypes: ["workspaces"],
     args: {
       resetTarget: {
@@ -50,8 +94,8 @@ export const resetMessageRateLimitPlugin = createPlugin({
         type: "string",
         label: "User Email",
         description:
-          "Email of the workspace user whose AWU fair-use counter should be reset.",
-        dependsOn: { field: "resetTarget", value: "user_awu_fair_use" },
+          "Email of the workspace user whose counter should be reset. " +
+          "Required for the AWU fair-use and premium-model resets.",
       },
     },
     requiredRoles: ["support"],
@@ -91,31 +135,14 @@ export const resetMessageRateLimitPlugin = createPlugin({
       }
 
       case "user_awu_fair_use": {
-        const { userEmail } = parseResult.data;
-        if (!userEmail) {
-          return new Err(new Error("User email is required."));
+        const userResult = await resolveActiveWorkspaceUser(
+          auth,
+          parseResult.data.userEmail
+        );
+        if (userResult.isErr()) {
+          return userResult;
         }
-
-        const user = await UserResource.fetchByEmail(userEmail);
-        if (!user) {
-          return new Err(
-            new Error(`Could not find user with email ${userEmail}.`)
-          );
-        }
-
-        const workspace = auth.getNonNullableWorkspace();
-        const membership =
-          await MembershipResource.getActiveMembershipOfUserInWorkspace({
-            user,
-            workspace,
-          });
-        if (!membership) {
-          return new Err(
-            new Error(
-              `User ${user.email} is not an active member of workspace ${workspace.sId}.`
-            )
-          );
-        }
+        const user = userResult.value;
 
         const resetResult = await resetFairUseAwuCreditsRateLimitForUser({
           auth,
@@ -131,6 +158,33 @@ export const resetMessageRateLimitPlugin = createPlugin({
         return new Ok({
           display: "text",
           value: `AWU fair-use limit reset for ${user.email} (${keyStatus}; limit ${resetResult.value.limit} credits per ${resetResult.value.timeframe}).`,
+        });
+      }
+
+      case "user_premium_model_limit": {
+        const userResult = await resolveActiveWorkspaceUser(
+          auth,
+          parseResult.data.userEmail
+        );
+        if (userResult.isErr()) {
+          return userResult;
+        }
+        const user = userResult.value;
+
+        const resetResult = await resetPremiumModelMessageRateLimitForUser({
+          auth,
+          user: user.toJSON(),
+        });
+        if (resetResult.isErr()) {
+          return resetResult;
+        }
+
+        const keyStatus = resetResult.value.didResetExistingKey
+          ? "existing counter cleared"
+          : "no existing counter found";
+        return new Ok({
+          display: "text",
+          value: `Premium-model message limit reset for ${user.email} (${keyStatus}; limit ${resetResult.value.limit} messages per week).`,
         });
       }
 

@@ -60,6 +60,7 @@ on:
         type: boolean
 
 permissions:
+  actions: read # the deploy card lists in-flight deploy runs
   contents: read
   pull-requests: write
 

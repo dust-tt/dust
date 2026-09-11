@@ -16,7 +16,6 @@ import type {
   FileExplorerFilter,
   FileExplorerMenuAction,
   FileExplorerPathEntry,
-  FileExplorerSortMode,
   FileExplorerVirtualScopeRoot,
   FileSystemTreeNode,
   FolderEntry,
@@ -30,6 +29,8 @@ import {
   isFileExplorerMovableFile,
   isFilePreviewableContentType,
 } from "@app/components/file_explorer/utils";
+import type { FileExplorerScopedPreferences } from "@app/hooks/useScopedUIPreferences";
+import { useScopedPodUiPreferences } from "@app/hooks/useScopedUIPreferences";
 import { isInteractiveContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
@@ -94,12 +95,30 @@ export function FileExplorer({
   getExtraFileMenuItems,
   virtualScopeRoots,
 }: FileExplorerProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>(defaultViewMode);
+  const defaultPreferences = useMemo<FileExplorerScopedPreferences>(
+    () => ({ viewMode: defaultViewMode, sortMode: "last-modified" }),
+    [defaultViewMode]
+  );
+  const { value: preferences, setValue: setPreferences } =
+    useScopedPodUiPreferences({
+      scope: "fileExplorer",
+      // One layout and sort preference for the whole app, not per workspace or pod.
+      resourceId: "global",
+      defaultValue: defaultPreferences,
+    });
+  const { viewMode, sortMode } = preferences;
+  const setViewMode = useCallback(
+    (viewMode: ViewMode) => setPreferences({ ...preferences, viewMode }),
+    [preferences, setPreferences]
+  );
+  const setSortMode = useCallback(
+    (sortMode: FileExplorerScopedPreferences["sortMode"]) =>
+      setPreferences({ ...preferences, sortMode }),
+    [preferences, setPreferences]
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const searchFolderPath = searchQuery.trim() ? currentFolderPath : undefined;
   const [activeFilter, setActiveFilter] = useState<FileExplorerFilter>("all");
-  const [sortMode, setSortMode] =
-    useState<FileExplorerSortMode>("last-modified");
   const [previewFile, setPreviewFile] = useState<FileEntry | null>(null);
   const [showPreviewSheet, setShowPreviewSheet] = useState(false);
   const [fileToMove, setFileToMove] = useState<FileEntry | null>(null);

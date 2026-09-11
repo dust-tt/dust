@@ -2,7 +2,6 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { ApiKeyCreditState } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { RoleType } from "@app/types/user";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
@@ -25,12 +24,11 @@ export class KeyModel extends WorkspaceAwareModel<KeyModel> {
   declare monthlyCapMicroUsd: number | null;
   // Admin-set cap on workspace-pool AWU consumption, in AWU credits. NULL means
   // no cap (unlimited). On credit-priced plans this is the enforcement source:
-  // a Metronome `spend_threshold_reached` alert (group key `api_key_name`,
-  // threshold = this value) drives `creditState`. Key names are NOT unique, and
-  // Metronome aggregates spend by name — so the cap is effectively per-name:
-  // all active keys sharing a name share the limit and are blocked together.
+  // the Redis fixed-window rate-limiter counter is compared against this value
+  // at message-send time. Key names are NOT unique, and the counter aggregates
+  // spend by name — so the cap is effectively per-name: all active keys sharing
+  // a name share the limit and are blocked together.
   declare monthlyCapAwuCredits: number | null;
-  declare creditState: CreationOptional<ApiKeyCreditState>;
   declare user: NonAttribute<UserModel>;
 }
 KeyModel.init(
@@ -78,11 +76,6 @@ KeyModel.init(
     monthlyCapAwuCredits: {
       type: DataTypes.INTEGER,
       allowNull: true,
-    },
-    creditState: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "on_pool",
     },
     groupIds: {
       type: DataTypes.ARRAY(DataTypes.BIGINT),

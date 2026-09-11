@@ -16,7 +16,6 @@ import type {
   AwuPoolCycleBreakdown,
   AwuPoolCycleHistoryOverflow,
   AwuPoolCycleHistoryResponseBody,
-  AwuPoolSummaryResponseBody,
 } from "@app/types/api/credits/awu_pool_summary";
 import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
 import type { PokeListCreditsResponseBody } from "@app/types/api/poke/credits";
@@ -153,28 +152,6 @@ export function usePokeAwuUsageFromAnalytics({
     isAwuUsageLoading: !error && !data && !disabled,
     isAwuUsageError: error,
     isAwuUsageValidating: isValidating,
-  };
-}
-
-export function usePokeAwuPoolSummary({
-  owner,
-  disabled,
-}: PokeConditionalFetchProps) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<AwuPoolSummaryResponseBody> = fetcher;
-
-  const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/credits/awu-pool-summary`,
-    fetcherFn,
-    { disabled }
-  );
-
-  return {
-    awuPoolSummary: data ?? null,
-    isAwuPoolSummaryLoading: !error && !data && !disabled,
-    isAwuPoolSummaryError: error,
-    isAwuPoolSummaryValidating: isValidating,
-    mutateAwuPoolSummary: mutate,
   };
 }
 

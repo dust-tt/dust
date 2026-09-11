@@ -6,7 +6,6 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import apiKeysUsage from "./api-keys-usage";
 import awuPoolCurrentCycle from "./awu-pool-current-cycle";
 import awuPoolCycleHistory from "./awu-pool-cycle-history";
-import awuPoolSummary from "./awu-pool-summary";
 import consumptionExport from "./consumption-export";
 import membersUsage from "./members-usage";
 import seatsPlan from "./seats-plan";
@@ -40,7 +39,6 @@ app.get("/", async (ctx): HandlerResult<PokeListCreditsResponseBody> => {
 });
 
 app.route("/api-keys-usage", apiKeysUsage);
-app.route("/awu-pool-summary", awuPoolSummary);
 app.route("/awu-pool-current-cycle", awuPoolCurrentCycle);
 app.route("/awu-pool-cycle-history", awuPoolCycleHistory);
 app.route("/consumption-export", consumptionExport);
