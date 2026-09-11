@@ -20,10 +20,9 @@
 // typo'd region silently detaches the entry and reverts that audience to the
 // hardcoded fallback, which is invisible in the editor.
 //
-// `WW` is the catch-all — every country not claimed by one of the others — and
-// also acts as the default for any audience with no list of its own, so it is
-// the one to publish last.
-const REGIONS = ["WW", "US", "EU", "UK", "FR"];
+// `US` is the catch-all — the United States plus every country not claimed by
+// one of the others, which is how the site already routes today.
+const REGIONS = ["US", "EU", "UK", "FR"];
 
 module.exports = function (migration) {
   const customerLogo = migration
@@ -117,7 +116,7 @@ module.exports = function (migration) {
   });
   logoList.changeFieldControl("region", "builtin", "dropdown", {
     helpText:
-      "Who sees this list. FR = France, UK = the United Kingdom, EU = the 27 EU countries (not the UK, Switzerland or Norway), US = the United States, WW = everywhere else. WW also covers any audience with no list of its own, so publish it last. Each audience can only have one list.",
+      "Who sees this list. FR = France, UK = the United Kingdom, EU = the 27 EU countries (not the UK, Switzerland or Norway), US = the United States and everywhere else. Each audience can only have one list.",
   });
   logoList.changeFieldControl("logos", "builtin", "entryLinksEditor", {
     bulkEditing: false,

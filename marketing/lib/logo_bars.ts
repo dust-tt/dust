@@ -139,10 +139,11 @@ export function homeTrustedBarSlug(geo: HomeTrustedGeo): string {
 // pick in Contentful. One published list supplies every bar on every marketing
 // page for that audience, so a French visitor sees the same lineup throughout.
 //
-// `WW` is the catch-all: every country not claimed by a more specific region.
-// `US` is separate from it, so the United States and the rest of the world can
-// carry different lineups. Ordering matters in `toLogoListRegion` — the first
-// match wins, so the UK check has to precede the EU one.
+// `US` is the catch-all: the United States plus every country not claimed by a
+// more specific region — which is exactly how the site routes today, so a
+// visitor from Japan or Switzerland keeps landing where they already land.
+// Ordering matters in `toLogoListRegion` — the first match wins, so the UK
+// check has to precede the EU one.
 //
 // This list is deliberately code-owned rather than editor-owned. A visitor's
 // country arrives as an ISO code and has to be *mapped* to an audience, and
@@ -162,13 +163,13 @@ export function homeTrustedBarSlug(geo: HomeTrustedGeo): string {
 //   4. add the value to the `region` dropdown in Contentful (see
 //      contentful-migrations/README.md).
 // Marketing then creates and fills the list, and never needs you again.
-export const LOGO_LIST_REGIONS = ["WW", "US", "EU", "UK", "FR"] as const;
+export const LOGO_LIST_REGIONS = ["US", "EU", "UK", "FR"] as const;
 
 export function toLogoListRegion(
   countryCode: string | null | undefined
 ): LogoListRegion {
   if (!countryCode) {
-    return "WW";
+    return "US";
   }
   const code = countryCode.toUpperCase();
   if (code === "FR") {
@@ -182,10 +183,7 @@ export function toLogoListRegion(
   if (isEUCountry(code)) {
     return "EU";
   }
-  if (code === "US") {
-    return "US";
-  }
-  return "WW";
+  return "US";
 }
 
 // Which hardcoded bar an audience falls back to when its region has no

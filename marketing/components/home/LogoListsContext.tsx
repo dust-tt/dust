@@ -32,22 +32,16 @@ export function LogoListsProvider({
 /**
  * Resolves the logos for one bar.
  *
- * Precedence: the published list for the visitor's own region, then the `WW`
- * list, then the hardcoded lineup for `fallbackSlug`.
- *
- * `WW` sits in the middle because that is what "worldwide" reads as to an
- * editor: publish it and every audience without its own list follows it. That
- * does mean publishing `WW` moves several regions at once, so it is the one to
- * publish last — until then, rollout stays per-region, and publishing the FR
- * list changes French visitors and nobody else.
- *
- * A page that doesn't fetch logo lists still renders the hardcoded lineup, so
- * adding a bar to a new page can't produce an empty section.
+ * Precedence: the published Contentful list for the visitor's region, then the
+ * hardcoded lineup for `fallbackSlug`. Marketing takes over one region at a
+ * time — publishing the FR list changes French visitors and nobody else — and
+ * a page that doesn't fetch logo lists still renders the fallback, so adding a
+ * bar to a new page can't produce an empty section.
  */
 export function useLogoBar(
   region: LogoListRegion,
   fallbackSlug: string
 ): LogoBarLogo[] {
   const lists = useContext(LogoListsContext);
-  return lists[region] ?? lists.WW ?? FALLBACK_LOGO_BARS[fallbackSlug] ?? [];
+  return lists[region] ?? FALLBACK_LOGO_BARS[fallbackSlug] ?? [];
 }

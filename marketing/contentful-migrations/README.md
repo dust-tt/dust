@@ -86,12 +86,10 @@ reverted by unpublishing.
 | `FR` | France |
 | `UK` | The United Kingdom |
 | `EU` | The 27 EU countries — **not** the UK, Switzerland or Norway |
-| `US` | The United States |
-| `WW` | Everywhere else — **and** any audience above with no list of its own |
+| `US` | The United States and everywhere else |
 
-`WW` doubles as the default, so publishing it moves every region that has no
-list of its own at the same time. Publish it last; until then each region goes
-live on its own.
+A region with no published list falls back to the hardcoded lineup, not to
+`US` — so each region goes live entirely on its own.
 
 ### Who owns what
 
