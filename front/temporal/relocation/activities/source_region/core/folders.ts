@@ -6,27 +6,27 @@ import type {
 } from "@app/temporal/relocation/activities/types";
 import { CORE_API_LIST_NODES_BATCH_SIZE } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type { CellType } from "@app/types/cell";
 import type {
   CoreAPINodesSearchFilter,
   CoreAPISearchCursorRequest,
 } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { RegionType } from "@app/types/region";
 
 export async function getDataSourceFolders({
   dataSourceCoreIds,
   pageCursor,
-  sourceRegion,
+  sourceCell,
   workspaceId,
 }: {
   dataSourceCoreIds: DataSourceCoreIds;
   pageCursor: string | null;
-  sourceRegion: RegionType;
+  sourceCell: CellType;
   workspaceId: string;
 }) {
   const localLogger = logger.child({
     dataSourceCoreIds,
-    sourceRegion,
+    sourceCell,
   });
 
   localLogger.info("[Core] Retrieving data source folders");

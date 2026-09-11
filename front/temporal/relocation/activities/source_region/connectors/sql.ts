@@ -71,18 +71,18 @@ export async function getTablesWithConnectorIdOrder() {
 
 export async function readConnectorsTableChunk({
   connectorId,
-  destRegion,
+  destCell,
   lastId,
   limit,
-  sourceRegion,
+  sourceCell,
   tableName,
   workspaceId,
 }: ReadTableChunkParams & { connectorId: ModelId }) {
   const localLogger = logger.child({
     connectorId,
-    destRegion,
+    destCell,
     lastId,
-    sourceRegion,
+    sourceCell,
     tableName,
     workspaceId,
   });

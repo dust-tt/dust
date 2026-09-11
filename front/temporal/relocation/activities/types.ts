@@ -1,10 +1,10 @@
+import type { CellType } from "@app/types/cell";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type { CoreAPIDataset } from "@app/types/core/core_api";
 import type {
   CoreAPIDocumentBlob,
   CoreAPITableBlob,
 } from "@app/types/core/data_source";
-import type { RegionType } from "@app/types/region";
 import type { ModelId } from "@app/types/shared/model_id";
 import isPlainObject from "lodash/isPlainObject";
 
@@ -24,10 +24,10 @@ export type CoreEntitiesRelocationBlob = RelocationBlob<
 >;
 
 export interface ReadTableChunkParams {
-  destRegion: RegionType;
+  destCell: CellType;
   lastId?: ModelId;
   limit: number;
-  sourceRegion: RegionType;
+  sourceCell: CellType;
   tableName: string;
   workspaceId: string;
   fileName?: string;

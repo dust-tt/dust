@@ -4,8 +4,12 @@ const config = {
   getGcsRelocationBucket: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_RELOCATION_BUCKET");
   },
-  getGcsSourceProjectId: (): string => {
-    return EnvironmentConfig.getEnvVariable("GCP_PROJECT_ID");
+  // The project that runs the Storage Transfer jobs, dust-infra. One transfer agent
+  // that every cell grants on its buckets, instead of every cell granting every other.
+  getGcsTransferProjectId: (): string => {
+    return EnvironmentConfig.getEnvVariable(
+      "DUST_RELOCATION_TRANSFER_PROJECT_ID"
+    );
   },
 };
 

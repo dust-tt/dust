@@ -13,8 +13,8 @@ import {
   CORE_API_LIST_NODES_BATCH_SIZE,
   CORE_API_LIST_TABLES_BATCH_SIZE,
 } from "@app/temporal/relocation/activities/types";
-import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
-import type { RegionType } from "@app/types/region";
+import { RELOCATION_QUEUES_PER_CELL } from "@app/temporal/relocation/config";
+import type { CellType } from "@app/types/cell";
 import type { ModelId } from "@app/types/shared/model_id";
 import {
   continueAsNew,
@@ -32,14 +32,14 @@ const INITIAL_BACKOFF_DELAY_MS = 1000;
 const MAX_BACKOFF_DELAY_MS = 60_000;
 
 interface RelocationWorkflowBase {
-  sourceRegion: RegionType;
-  destRegion: RegionType;
+  sourceCell: CellType;
+  destCell: CellType;
   workspaceId: string;
 }
 
 export async function workspaceRelocationWorkflow({
-  sourceRegion,
-  destRegion,
+  sourceCell,
+  destCell,
   workspaceId,
 }: RelocationWorkflowBase) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
@@ -62,29 +62,29 @@ export async function workspaceRelocationWorkflow({
       await executeChild(w.workflow, {
         workflowId: `${w.name}-${workspaceId}`,
         searchAttributes: parentSearchAttributes,
-        args: [{ sourceRegion, destRegion, workspaceId }],
+        args: [{ sourceCell, destCell, workspaceId }],
         memo,
       });
     },
     { concurrency: 2 }
   );
 
-  // 3) Relocate the core data source documents to the destination region.
+  // 3) Relocate the core data source documents to the destination cell.
   await executeChild(workspaceRelocateCoreWorkflow, {
     workflowId: `workspaceRelocateCoreWorkflow-${workspaceId}`,
     searchAttributes: parentSearchAttributes,
-    args: [{ sourceRegion, destRegion, workspaceId }],
+    args: [{ sourceCell, destCell, workspaceId }],
   });
 
-  // 4) Relocate the apps to the destination region.
+  // 4) Relocate the apps to the destination cell.
   await executeChild(workspaceRelocateAppsWorkflow, {
     workflowId: `workspaceRelocateAppsWorkflow-${workspaceId}`,
     searchAttributes: parentSearchAttributes,
     args: [
       {
         workspaceId,
-        sourceRegion,
-        destRegion,
+        sourceCell,
+        destCell,
       },
     ],
     memo,
@@ -95,61 +95,60 @@ export async function workspaceRelocationWorkflow({
  * Front relocation workflows.
  */
 
-const getFrontSourceRegionActivities = (region: RegionType) => {
+const getFrontSourceCellActivities = (cell: CellType) => {
   return proxyActivities<typeof frontSourceActivities>({
     startToCloseTimeout: "10 minutes",
-    taskQueue: RELOCATION_QUEUES_PER_REGION[region],
+    taskQueue: RELOCATION_QUEUES_PER_CELL[cell],
   });
 };
 
-const getFrontDestinationRegionActivities = (region: RegionType) => {
+const getFrontDestinationCellActivities = (cell: CellType) => {
   return proxyActivities<typeof frontDestinationActivities>({
     startToCloseTimeout: "10 minutes",
-    taskQueue: RELOCATION_QUEUES_PER_REGION[region],
+    taskQueue: RELOCATION_QUEUES_PER_CELL[cell],
   });
 };
 
 export async function workspaceRelocateFrontWorkflow({
-  sourceRegion,
-  destRegion,
+  sourceCell,
+  destCell,
   workspaceId,
 }: RelocationWorkflowBase) {
-  const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
-  const destinationRegionActivities =
-    getFrontDestinationRegionActivities(destRegion);
+  const sourceCellActivities = getFrontSourceCellActivities(sourceCell);
+  const destinationCellActivities = getFrontDestinationCellActivities(destCell);
 
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  // 1) Relocate the workspace, users and plan in the destination region.
+  // 1) Relocate the workspace, users and plan in the destination cell.
   const coreEntitiesDataPath =
-    await sourceRegionActivities.readCoreEntitiesFromSourceRegion({
-      destRegion,
-      sourceRegion,
+    await sourceCellActivities.readCoreEntitiesFromSourceRegion({
+      destCell,
+      sourceCell,
       workspaceId,
     });
 
-  await destinationRegionActivities.writeCoreEntitiesToDestinationRegionWithIdNormalization(
+  await destinationCellActivities.writeCoreEntitiesToDestinationRegionWithIdNormalization(
     {
       dataPath: coreEntitiesDataPath,
-      destRegion,
-      sourceRegion,
+      destCell,
+      sourceCell,
       workspaceId,
     }
   );
 
   const tablesOrder =
-    await sourceRegionActivities.getTablesWithWorkspaceIdOrder();
+    await sourceCellActivities.getTablesWithWorkspaceIdOrder();
 
-  // 2) Relocate front tables to the destination region.
+  // 2) Relocate front tables to the destination cell.
   for (const tableName of tablesOrder) {
     await executeChild(workspaceRelocateFrontTableWorkflow, {
       workflowId: `workspaceRelocateFrontTableWorkflow-${workspaceId}-${tableName}`,
       searchAttributes: parentSearchAttributes,
       args: [
         {
-          sourceRegion,
+          sourceCell,
           tableName,
-          destRegion,
+          destCell,
           workspaceId,
         },
       ],
@@ -157,27 +156,27 @@ export async function workspaceRelocateFrontWorkflow({
     });
   }
 
-  // 3) Relocate the associated files from the file storage to the destination region.
+  // 3) Relocate the associated files from the file storage to the destination cell.
   await executeChild(workspaceRelocateFrontFileStorageWorkflow, {
     workflowId: `workspaceRelocateFrontFileStorageWorkflow-${workspaceId}`,
     searchAttributes: parentSearchAttributes,
     args: [
       {
-        sourceRegion,
-        destRegion,
+        sourceCell,
+        destCell,
         workspaceId,
       },
     ],
   });
 
-  // 4) Recreate Elasticsearch indices in the destination region.
+  // 4) Recreate Elasticsearch indices in the destination cell.
   await executeChild(workspaceRelocateFrontEsIndexationWorkflow, {
     workflowId: `workspaceRelocateFrontEsIndexationWorkflow-${workspaceId}`,
     searchAttributes: parentSearchAttributes,
     args: [
       {
-        sourceRegion,
-        destRegion,
+        sourceCell,
+        destCell,
         workspaceId,
       },
     ],
@@ -187,18 +186,17 @@ export async function workspaceRelocateFrontWorkflow({
 
 export async function workspaceRelocateFrontTableWorkflow({
   lastProcessedId,
-  sourceRegion,
+  sourceCell,
   tableName,
-  destRegion,
+  destCell,
   workspaceId,
 }: RelocationWorkflowBase & {
   tableName: string;
   lastProcessedId?: ModelId;
 }) {
   // Create activity proxies with dynamic task queues.
-  const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
-  const destinationRegionActivities =
-    getFrontDestinationRegionActivities(destRegion);
+  const sourceCellActivities = getFrontSourceCellActivities(sourceCell);
+  const destinationCellActivities = getFrontDestinationCellActivities(destCell);
 
   let hasMoreRows = true;
   let currentId: ModelId | undefined = lastProcessedId;
@@ -207,8 +205,8 @@ export async function workspaceRelocateFrontTableWorkflow({
   do {
     if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
       await continueAsNew<typeof workspaceRelocateFrontTableWorkflow>({
-        sourceRegion,
-        destRegion,
+        sourceCell,
+        destCell,
         workspaceId,
         tableName,
         lastProcessedId: currentId,
@@ -221,22 +219,22 @@ export async function workspaceRelocateFrontTableWorkflow({
       lastId,
       nextLimit,
     }: Awaited<ReturnType<typeof frontSourceActivities.readFrontTableChunk>> =
-      await sourceRegionActivities.readFrontTableChunk({
+      await sourceCellActivities.readFrontTableChunk({
         lastId: currentId,
         workspaceId,
         tableName,
-        sourceRegion,
-        destRegion,
+        sourceCell,
+        destCell,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CHUNK_SIZE,
       });
 
     if (dataPath) {
-      await destinationRegionActivities.processFrontTableChunkWithIdNormalization(
+      await destinationCellActivities.processFrontTableChunkWithIdNormalization(
         {
           dataPath,
-          destRegion,
-          sourceRegion,
+          destCell,
+          sourceCell,
           tableName,
           workspaceId,
         }
@@ -250,23 +248,22 @@ export async function workspaceRelocateFrontTableWorkflow({
 }
 
 export async function workspaceRelocateFrontFileStorageWorkflow({
-  sourceRegion,
-  destRegion,
+  sourceCell,
+  destCell,
   workspaceId,
 }: RelocationWorkflowBase) {
-  const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
-  const destinationRegionActivities =
-    getFrontDestinationRegionActivities(destRegion);
+  const sourceCellActivities = getFrontSourceCellActivities(sourceCell);
+  const destinationCellActivities = getFrontDestinationCellActivities(destCell);
 
   // 1) Relocate public files.
   const destPublicBucket =
-    await destinationRegionActivities.getDestinationPublicBucket();
+    await destinationCellActivities.getDestinationPublicBucket();
 
   const publicFilesJobName =
-    await sourceRegionActivities.startTransferFrontPublicFiles({
+    await sourceCellActivities.startTransferFrontPublicFiles({
       destBucket: destPublicBucket,
-      destRegion,
-      sourceRegion,
+      destCell,
+      sourceCell,
       workspaceId,
     });
 
@@ -274,7 +271,7 @@ export async function workspaceRelocateFrontFileStorageWorkflow({
   let isPublicFilesTransferComplete = false;
   while (!isPublicFilesTransferComplete) {
     isPublicFilesTransferComplete =
-      await sourceRegionActivities.isFileStorageTransferComplete({
+      await sourceCellActivities.isFileStorageTransferComplete({
         jobName: publicFilesJobName,
       });
 
@@ -286,13 +283,13 @@ export async function workspaceRelocateFrontFileStorageWorkflow({
 
   // 2) Relocate private files.
   const destPrivateBucket =
-    await destinationRegionActivities.getDestinationPrivateBucket();
+    await destinationCellActivities.getDestinationPrivateBucket();
 
   const privateFilesJobName =
-    await sourceRegionActivities.startTransferFrontPrivateFiles({
+    await sourceCellActivities.startTransferFrontPrivateFiles({
       destBucket: destPrivateBucket,
-      destRegion,
-      sourceRegion,
+      destCell,
+      sourceCell,
       workspaceId,
     });
 
@@ -300,7 +297,7 @@ export async function workspaceRelocateFrontFileStorageWorkflow({
   let isPrivateFilesTransferComplete = false;
   while (!isPrivateFilesTransferComplete) {
     isPrivateFilesTransferComplete =
-      await sourceRegionActivities.isFileStorageTransferComplete({
+      await sourceCellActivities.isFileStorageTransferComplete({
         jobName: privateFilesJobName,
       });
 
@@ -312,62 +309,60 @@ export async function workspaceRelocateFrontFileStorageWorkflow({
 }
 
 export async function workspaceRelocateFrontEsIndexationWorkflow({
-  destRegion,
+  destCell,
   workspaceId,
 }: RelocationWorkflowBase) {
-  const destinationRegionActivities =
-    getFrontDestinationRegionActivities(destRegion);
+  const destinationCellActivities = getFrontDestinationCellActivities(destCell);
 
   // Recreate user search index.
-  await destinationRegionActivities.recreateUserSearchIndex({ workspaceId });
+  await destinationCellActivities.recreateUserSearchIndex({ workspaceId });
 }
 
 /**
  * Connectors relocation workflows.
  */
 
-const getConnectorsSourceRegionActivities = (region: RegionType) => {
+const getConnectorsSourceCellActivities = (cell: CellType) => {
   return proxyActivities<typeof connectorsSourceActivities>({
     startToCloseTimeout: "10 minutes",
-    taskQueue: RELOCATION_QUEUES_PER_REGION[region],
+    taskQueue: RELOCATION_QUEUES_PER_CELL[cell],
   });
 };
 
-const getConnectorsDestinationRegionActivities = (region: RegionType) => {
+const getConnectorsDestinationCellActivities = (cell: CellType) => {
   return proxyActivities<typeof connectorsDestinationActivities>({
     startToCloseTimeout: "10 minutes",
-    taskQueue: RELOCATION_QUEUES_PER_REGION[region],
+    taskQueue: RELOCATION_QUEUES_PER_CELL[cell],
   });
 };
 
 export async function workspaceRelocateConnectorsWorkflow({
-  sourceRegion,
-  destRegion,
+  sourceCell,
+  destCell,
   workspaceId,
 }: RelocationWorkflowBase) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  const sourceRegionActivities =
-    getConnectorsSourceRegionActivities(sourceRegion);
-  const destinationRegionActivities =
-    getConnectorsDestinationRegionActivities(destRegion);
+  const sourceCellActivities = getConnectorsSourceCellActivities(sourceCell);
+  const destinationCellActivities =
+    getConnectorsDestinationCellActivities(destCell);
 
   // 1) List all connectors in the workspace.
   const { connectors, dataPath } =
-    await sourceRegionActivities.getAllConnectorsForWorkspace({
+    await sourceCellActivities.getAllConnectorsForWorkspace({
       workspaceId,
     });
 
-  // 2) Relocate connectors entries to the destination region.
-  await destinationRegionActivities.processConnectorsTableChunk({
+  // 2) Relocate connectors entries to the destination cell.
+  await destinationCellActivities.processConnectorsTableChunk({
     dataPath,
-    destRegion,
-    sourceRegion,
+    destCell,
+    sourceCell,
     tableName: "connectors",
     workspaceId,
   });
 
-  // 3) Relocate connectors tables to the destination region for each connector.
+  // 3) Relocate connectors tables to the destination cell for each connector.
   for (const c of connectors) {
     await executeChild(workspaceRelocateConnectorWorkflow, {
       workflowId: `workspaceRelocateConnectorWorkflow-${workspaceId}-${c.id}`,
@@ -375,8 +370,8 @@ export async function workspaceRelocateConnectorsWorkflow({
       args: [
         {
           connectorId: c.id,
-          destRegion,
-          sourceRegion,
+          destCell,
+          sourceCell,
           workspaceId,
         },
       ],
@@ -387,17 +382,16 @@ export async function workspaceRelocateConnectorsWorkflow({
 
 export async function workspaceRelocateConnectorWorkflow({
   connectorId,
-  sourceRegion,
-  destRegion,
+  sourceCell,
+  destCell,
   workspaceId,
 }: RelocationWorkflowBase & { connectorId: ModelId }) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  const sourceRegionActivities =
-    getConnectorsSourceRegionActivities(sourceRegion);
+  const sourceCellActivities = getConnectorsSourceCellActivities(sourceCell);
 
   const tablesOrder =
-    await sourceRegionActivities.getTablesWithConnectorIdOrder();
+    await sourceCellActivities.getTablesWithConnectorIdOrder();
 
   for (const tableName of tablesOrder) {
     await executeChild(workspaceRelocateConnectorsTableWorkflow, {
@@ -406,8 +400,8 @@ export async function workspaceRelocateConnectorWorkflow({
       args: [
         {
           connectorId,
-          destRegion,
-          sourceRegion,
+          destCell,
+          sourceCell,
           tableName,
           workspaceId,
         },
@@ -420,19 +414,18 @@ export async function workspaceRelocateConnectorWorkflow({
 export async function workspaceRelocateConnectorsTableWorkflow({
   connectorId,
   lastProcessedId,
-  sourceRegion,
+  sourceCell,
   tableName,
-  destRegion,
+  destCell,
   workspaceId,
 }: RelocationWorkflowBase & {
   connectorId: ModelId;
   tableName: string;
   lastProcessedId?: ModelId;
 }) {
-  const sourceRegionActivities =
-    getConnectorsSourceRegionActivities(sourceRegion);
-  const destinationRegionActivities =
-    getConnectorsDestinationRegionActivities(destRegion);
+  const sourceCellActivities = getConnectorsSourceCellActivities(sourceCell);
+  const destinationCellActivities =
+    getConnectorsDestinationCellActivities(destCell);
 
   let hasMoreRows = true;
   let currentId: ModelId | undefined = lastProcessedId;
@@ -441,8 +434,8 @@ export async function workspaceRelocateConnectorsTableWorkflow({
     if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
       await continueAsNew<typeof workspaceRelocateConnectorsTableWorkflow>({
         connectorId,
-        sourceRegion,
-        destRegion,
+        sourceCell,
+        destCell,
         workspaceId,
         tableName,
         lastProcessedId: currentId,
@@ -450,14 +443,14 @@ export async function workspaceRelocateConnectorsTableWorkflow({
     }
 
     const { dataPath, hasMore, lastId } =
-      await sourceRegionActivities.readConnectorsTableChunk({
+      await sourceCellActivities.readConnectorsTableChunk({
         connectorId,
         lastId: currentId,
         limit: CHUNK_SIZE,
         workspaceId,
         tableName,
-        sourceRegion,
-        destRegion,
+        sourceCell,
+        destCell,
       });
 
     hasMoreRows = hasMore;
@@ -468,11 +461,11 @@ export async function workspaceRelocateConnectorsTableWorkflow({
       continue;
     }
 
-    await destinationRegionActivities.processConnectorsTableChunk({
+    await destinationCellActivities.processConnectorsTableChunk({
       connectorId,
       dataPath,
-      destRegion,
-      sourceRegion,
+      destCell,
+      sourceCell,
       tableName,
       workspaceId,
     });
@@ -483,29 +476,29 @@ export async function workspaceRelocateConnectorsTableWorkflow({
  * Core relocation workflows.
  */
 
-const getCoreSourceRegionActivities = (region: RegionType) => {
+const getCoreSourceCellActivities = (cell: CellType) => {
   return proxyActivities<typeof coreSourceActivities>({
     startToCloseTimeout: "10 minutes",
-    taskQueue: RELOCATION_QUEUES_PER_REGION[region],
+    taskQueue: RELOCATION_QUEUES_PER_CELL[cell],
   });
 };
 
-const getCoreDestinationRegionActivities = (region: RegionType) => {
+const getCoreDestinationCellActivities = (cell: CellType) => {
   return proxyActivities<typeof coreDestinationActivities>({
     startToCloseTimeout: "10 minutes",
-    taskQueue: RELOCATION_QUEUES_PER_REGION[region],
+    taskQueue: RELOCATION_QUEUES_PER_CELL[cell],
   });
 };
 
 export async function workspaceRelocateCoreWorkflow({
-  destRegion,
+  destCell,
   lastProcessedId,
-  sourceRegion,
+  sourceCell,
   workspaceId,
 }: RelocationWorkflowBase & { lastProcessedId?: ModelId }) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
+  const sourceCellActivities = getCoreSourceCellActivities(sourceCell);
 
   let hasMoreRows = true;
   let currentId: ModelId | undefined = lastProcessedId;
@@ -513,15 +506,15 @@ export async function workspaceRelocateCoreWorkflow({
   do {
     if (workflowInfo().historyLength > TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH) {
       await continueAsNew<typeof workspaceRelocateCoreWorkflow>({
-        destRegion,
+        destCell,
         lastProcessedId: currentId,
-        sourceRegion,
+        sourceCell,
         workspaceId,
       });
     }
 
     const { dataSourceCoreIds, hasMore, lastId } =
-      await sourceRegionActivities.retrieveDataSourceCoreIdsBatch({
+      await sourceCellActivities.retrieveDataSourceCoreIdsBatch({
         lastId: currentId,
         workspaceId,
       });
@@ -538,8 +531,8 @@ export async function workspaceRelocateCoreWorkflow({
           args: [
             {
               dataSourceCoreIds: dsc,
-              destRegion,
-              sourceRegion,
+              destCell,
+              sourceCell,
               workspaceId,
             },
           ],
@@ -550,35 +543,33 @@ export async function workspaceRelocateCoreWorkflow({
   } while (hasMoreRows);
 }
 
-// TODO: Below is not idempotent, we need to handle the case where the data source is already created in the destination region.
+// TODO: Below is not idempotent, we need to handle the case where the data source is already created in the destination cell.
 export async function workspaceRelocateDataSourceCoreWorkflow({
   dataSourceCoreIds,
-  destRegion,
-  sourceRegion,
+  destCell,
+  sourceCell,
   workspaceId,
 }: RelocationWorkflowBase & { dataSourceCoreIds: DataSourceCoreIds }) {
   const { searchAttributes: parentSearchAttributes, memo } = workflowInfo();
 
-  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
-  const destinationRegionActivities =
-    getCoreDestinationRegionActivities(destRegion);
+  const sourceCellActivities = getCoreSourceCellActivities(sourceCell);
+  const destinationCellActivities = getCoreDestinationCellActivities(destCell);
 
-  // 1) Get the data source from the source region.
-  const sourceRegionCoreDataSource =
-    await sourceRegionActivities.getCoreDataSource({
-      dataSourceCoreIds,
-      workspaceId,
-    });
-
-  // 2) Create the project and data source in the destination region.
-  const destIds = await destinationRegionActivities.createDataSourceProject({
-    destRegion,
-    sourceRegionCoreDataSource,
+  // 1) Get the data source from the source cell.
+  const sourceCoreDataSource = await sourceCellActivities.getCoreDataSource({
+    dataSourceCoreIds,
     workspaceId,
   });
 
-  // 3) Update the data source in the destination region with the new core ids.
-  await destinationRegionActivities.updateDataSourceCoreIds({
+  // 2) Create the project and data source in the destination cell.
+  const destIds = await destinationCellActivities.createDataSourceProject({
+    destCell,
+    sourceCoreDataSource,
+    workspaceId,
+  });
+
+  // 3) Update the data source in the destination cell with the new core ids.
+  await destinationCellActivities.updateDataSourceCoreIds({
     dataSourceCoreIds,
     destIds,
     workspaceId,
@@ -591,9 +582,9 @@ export async function workspaceRelocateDataSourceCoreWorkflow({
       {
         dataSourceCoreIds,
         destIds,
-        destRegion,
+        destCell,
         pageCursor: null,
-        sourceRegion,
+        sourceCell,
         workspaceId,
       },
     ],
@@ -604,9 +595,9 @@ export async function workspaceRelocateDataSourceCoreWorkflow({
 export async function workspaceRelocateCoreDataSourceResourcesWorkflow({
   dataSourceCoreIds,
   destIds,
-  destRegion,
+  destCell,
   pageCursor,
-  sourceRegion,
+  sourceCell,
   workspaceId,
 }: RelocationWorkflowBase & {
   destIds: CreateDataSourceProjectResult;
@@ -644,9 +635,9 @@ export async function workspaceRelocateCoreDataSourceResourcesWorkflow({
           {
             dataSourceCoreIds,
             destIds,
-            destRegion,
+            destCell,
             pageCursor,
-            sourceRegion,
+            sourceCell,
             workspaceId,
           },
         ],
@@ -660,18 +651,17 @@ export async function workspaceRelocateCoreDataSourceResourcesWorkflow({
 export async function workspaceRelocateDataSourceDocumentsWorkflow({
   dataSourceCoreIds,
   destIds,
-  destRegion,
+  destCell,
   pageCursor: initialPageCursor,
-  sourceRegion,
+  sourceCell,
   workspaceId,
 }: RelocationWorkflowBase & {
   destIds: CreateDataSourceProjectResult;
   dataSourceCoreIds: DataSourceCoreIds;
   pageCursor: string | null;
 }) {
-  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
-  const destinationRegionActivities =
-    getCoreDestinationRegionActivities(destRegion);
+  const sourceCellActivities = getCoreSourceCellActivities(sourceCell);
+  const destinationCellActivities = getCoreDestinationCellActivities(destCell);
 
   let pageCursor: string | null = initialPageCursor;
   let limit: number | null = null;
@@ -680,9 +670,9 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
       await continueAsNew<typeof workspaceRelocateDataSourceDocumentsWorkflow>({
         dataSourceCoreIds,
         destIds,
-        destRegion,
+        destCell,
         pageCursor,
-        sourceRegion,
+        sourceCell,
         workspaceId,
       });
     }
@@ -692,25 +682,24 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
       nextPageCursor,
       nextLimit,
     }: Awaited<ReturnType<typeof coreSourceActivities.getDataSourceDocuments>> =
-      await sourceRegionActivities.getDataSourceDocuments({
+      await sourceCellActivities.getDataSourceDocuments({
         pageCursor,
         dataSourceCoreIds,
-        sourceRegion,
+        sourceCell,
         workspaceId,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CORE_API_LIST_NODES_BATCH_SIZE,
       });
 
     if (dataPath) {
-      const sourceRegionApiBaseUrl =
-        await sourceRegionActivities.getRegionApiBaseUrl();
+      const sourceApiBaseUrl = await sourceCellActivities.getRegionApiBaseUrl();
 
-      await destinationRegionActivities.processDataSourceDocuments({
+      await destinationCellActivities.processDataSourceDocuments({
         destIds,
         dataPath,
-        destRegion,
-        sourceRegion,
-        sourceRegionApiBaseUrl,
+        destCell,
+        sourceCell,
+        sourceApiBaseUrl,
         workspaceId,
       });
     }
@@ -723,18 +712,17 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
 export async function workspaceRelocateDataSourceFoldersWorkflow({
   dataSourceCoreIds,
   destIds,
-  destRegion,
+  destCell,
   pageCursor: initialPageCursor,
-  sourceRegion,
+  sourceCell,
   workspaceId,
 }: RelocationWorkflowBase & {
   destIds: CreateDataSourceProjectResult;
   dataSourceCoreIds: DataSourceCoreIds;
   pageCursor: string | null;
 }) {
-  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
-  const destinationRegionActivities =
-    getCoreDestinationRegionActivities(destRegion);
+  const sourceCellActivities = getCoreSourceCellActivities(sourceCell);
+  const destinationCellActivities = getCoreDestinationCellActivities(destCell);
 
   let pageCursor: string | null = initialPageCursor;
 
@@ -743,30 +731,29 @@ export async function workspaceRelocateDataSourceFoldersWorkflow({
       await continueAsNew<typeof workspaceRelocateDataSourceFoldersWorkflow>({
         dataSourceCoreIds,
         destIds,
-        destRegion,
+        destCell,
         pageCursor,
-        sourceRegion,
+        sourceCell,
         workspaceId,
       });
     }
 
     const { dataPath, nextPageCursor } =
-      await sourceRegionActivities.getDataSourceFolders({
+      await sourceCellActivities.getDataSourceFolders({
         pageCursor,
         dataSourceCoreIds,
-        sourceRegion,
+        sourceCell,
         workspaceId,
       });
 
-    const sourceRegionApiBaseUrl =
-      await sourceRegionActivities.getRegionApiBaseUrl();
+    const sourceApiBaseUrl = await sourceCellActivities.getRegionApiBaseUrl();
 
-    await destinationRegionActivities.processDataSourceFolders({
+    await destinationCellActivities.processDataSourceFolders({
       destIds,
       dataPath,
-      destRegion,
-      sourceRegion,
-      sourceRegionApiBaseUrl,
+      destCell,
+      sourceCell,
+      sourceApiBaseUrl,
       workspaceId,
     });
 
@@ -777,18 +764,17 @@ export async function workspaceRelocateDataSourceFoldersWorkflow({
 export async function workspaceRelocateDataSourceTablesWorkflow({
   dataSourceCoreIds,
   destIds,
-  destRegion,
+  destCell,
   pageCursor: initialPageCursor,
-  sourceRegion,
+  sourceCell,
   workspaceId,
 }: RelocationWorkflowBase & {
   destIds: CreateDataSourceProjectResult;
   dataSourceCoreIds: DataSourceCoreIds;
   pageCursor: string | null;
 }) {
-  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
-  const destinationRegionActivities =
-    getCoreDestinationRegionActivities(destRegion);
+  const sourceCellActivities = getCoreSourceCellActivities(sourceCell);
+  const destinationCellActivities = getCoreDestinationCellActivities(destCell);
 
   let pageCursor: string | null = initialPageCursor;
   let limit: number | null = null;
@@ -797,9 +783,9 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
       await continueAsNew<typeof workspaceRelocateDataSourceTablesWorkflow>({
         dataSourceCoreIds,
         destIds,
-        destRegion,
+        destCell,
         pageCursor,
-        sourceRegion,
+        sourceCell,
         workspaceId,
       });
     }
@@ -809,24 +795,23 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
       nextPageCursor,
       nextLimit,
     }: Awaited<ReturnType<typeof coreSourceActivities.getDataSourceTables>> =
-      await sourceRegionActivities.getDataSourceTables({
+      await sourceCellActivities.getDataSourceTables({
         pageCursor,
         dataSourceCoreIds,
-        sourceRegion,
+        sourceCell,
         workspaceId,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CORE_API_LIST_TABLES_BATCH_SIZE,
       });
     if (dataPath) {
-      const sourceRegionApiBaseUrl =
-        await sourceRegionActivities.getRegionApiBaseUrl();
+      const sourceApiBaseUrl = await sourceCellActivities.getRegionApiBaseUrl();
 
-      await destinationRegionActivities.processDataSourceTables({
+      await destinationCellActivities.processDataSourceTables({
         destIds,
         dataPath,
-        destRegion,
-        sourceRegion,
-        sourceRegionApiBaseUrl,
+        destCell,
+        sourceCell,
+        sourceApiBaseUrl,
         workspaceId,
       });
     }
@@ -839,28 +824,27 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
 export async function workspaceRelocateTableStorageWorkflow({
   dataSourceCoreIds,
   destIds,
-  destRegion,
-  sourceRegion,
+  destCell,
+  sourceCell,
   workspaceId,
 }: RelocationWorkflowBase & {
   dataSourceCoreIds: DataSourceCoreIds;
   destIds: CreateDataSourceProjectResult;
 }) {
-  const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
-  const destinationRegionActivities =
-    getFrontDestinationRegionActivities(destRegion);
+  const sourceCellActivities = getFrontSourceCellActivities(sourceCell);
+  const destinationCellActivities = getFrontDestinationCellActivities(destCell);
 
   // 1) Relocate tables files.
   const destTablesBucket =
-    await destinationRegionActivities.getDestinationTablesBucket();
+    await destinationCellActivities.getDestinationTablesBucket();
 
   const tableFilesJobName =
-    await sourceRegionActivities.startTransferCoreTableFiles({
+    await sourceCellActivities.startTransferCoreTableFiles({
       dataSourceCoreIds,
       destBucket: destTablesBucket,
       destIds,
-      destRegion,
-      sourceRegion,
+      destCell,
+      sourceCell,
       workspaceId,
     });
 
@@ -869,7 +853,7 @@ export async function workspaceRelocateTableStorageWorkflow({
   let backoffDelayMs = INITIAL_BACKOFF_DELAY_MS;
   while (!isTableFilesTransferComplete) {
     isTableFilesTransferComplete =
-      await sourceRegionActivities.isFileStorageTransferComplete({
+      await sourceCellActivities.isFileStorageTransferComplete({
         jobName: tableFilesJobName,
       });
 
@@ -883,19 +867,18 @@ export async function workspaceRelocateTableStorageWorkflow({
 export async function workspaceRelocateAppsWorkflow({
   workspaceId,
   lastProcessedId,
-  sourceRegion,
-  destRegion,
+  sourceCell,
+  destCell,
 }: RelocationWorkflowBase & { lastProcessedId?: ModelId }) {
-  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
-  const destinationRegionActivities =
-    getCoreDestinationRegionActivities(destRegion);
+  const sourceCellActivities = getCoreSourceCellActivities(sourceCell);
+  const destinationCellActivities = getCoreDestinationCellActivities(destCell);
 
   let hasMoreRows = true;
   let currentId: ModelId | undefined = lastProcessedId;
 
   do {
     const { dustAPIProjectIds, hasMore, lastId } =
-      await sourceRegionActivities.retrieveAppsCoreIdsBatch({
+      await sourceCellActivities.retrieveAppsCoreIdsBatch({
         lastId: currentId,
         workspaceId,
       });
@@ -904,17 +887,17 @@ export async function workspaceRelocateAppsWorkflow({
     currentId = lastId;
 
     for (const dustAPIProjectId of dustAPIProjectIds) {
-      const { dataPath } = await sourceRegionActivities.getApp({
+      const { dataPath } = await sourceCellActivities.getApp({
         dustAPIProjectId,
         workspaceId,
-        sourceRegion,
+        sourceCell,
       });
 
-      await destinationRegionActivities.processApp({
+      await destinationCellActivities.processApp({
         dustAPIProjectId,
         dataPath,
-        destRegion,
-        sourceRegion,
+        destCell,
+        sourceCell,
         workspaceId,
       });
     }
@@ -923,25 +906,24 @@ export async function workspaceRelocateAppsWorkflow({
 
 export async function workspaceRelocateAppWorkflow({
   workspaceId,
-  sourceRegion,
-  destRegion,
+  sourceCell,
+  destCell,
   dustAPIProjectId,
 }: RelocationWorkflowBase & { dustAPIProjectId: string }) {
-  const sourceRegionActivities = getCoreSourceRegionActivities(sourceRegion);
-  const destinationRegionActivities =
-    getCoreDestinationRegionActivities(destRegion);
+  const sourceCellActivities = getCoreSourceCellActivities(sourceCell);
+  const destinationCellActivities = getCoreDestinationCellActivities(destCell);
 
-  const { dataPath } = await sourceRegionActivities.getApp({
+  const { dataPath } = await sourceCellActivities.getApp({
     dustAPIProjectId,
     workspaceId,
-    sourceRegion,
+    sourceCell,
   });
 
-  await destinationRegionActivities.processApp({
+  await destinationCellActivities.processApp({
     dustAPIProjectId,
     dataPath,
-    destRegion,
-    sourceRegion,
+    destCell,
+    sourceCell,
     workspaceId,
   });
 }

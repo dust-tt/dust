@@ -5,9 +5,9 @@ import type { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import logger from "@app/logger/logger";
 import type { CoreAppAPIRelocationBlob } from "@app/temporal/relocation/activities/types";
 import { writeToRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type { CellType } from "@app/types/cell";
 import type { CoreAPIDataset } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { RegionType } from "@app/types/region";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import type { WhereOptions } from "sequelize";
@@ -64,17 +64,17 @@ export async function retrieveAppsCoreIdsBatch({
 export async function getApp({
   dustAPIProjectId,
   workspaceId,
-  sourceRegion,
+  sourceCell,
 }: {
   dustAPIProjectId: string;
   workspaceId: string;
-  sourceRegion: RegionType;
+  sourceCell: CellType;
 }): Promise<{
   dataPath: string;
 }> {
   const localLogger = logger.child({
     dustAPIProjectId,
-    sourceRegion,
+    sourceCell,
   });
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);

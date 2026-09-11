@@ -4,25 +4,25 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { CoreAppAPIRelocationBlob } from "@app/temporal/relocation/activities/types";
 import { readFromRelocationStorage } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type { CellType } from "@app/types/cell";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { RegionType } from "@app/types/region";
 
 export async function processApp({
   dustAPIProjectId,
   dataPath,
-  destRegion,
-  sourceRegion,
+  destCell,
+  sourceCell,
   workspaceId,
 }: {
   dustAPIProjectId: string;
   dataPath: string;
-  destRegion: RegionType;
-  sourceRegion: RegionType;
+  destCell: CellType;
+  sourceCell: CellType;
   workspaceId: string;
 }) {
   const localLogger = logger.child({
-    destRegion,
-    sourceRegion,
+    destCell,
+    sourceCell,
     workspaceId,
     dustAPIProjectId,
   });

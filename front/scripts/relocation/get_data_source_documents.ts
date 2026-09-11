@@ -1,7 +1,7 @@
 import { makeScript } from "@app/scripts/helpers";
 import { getDataSourceDocuments } from "@app/temporal/relocation/activities/source_region/core";
 import { CORE_API_LIST_NODES_BATCH_SIZE } from "@app/temporal/relocation/activities/types";
-import { isRegionType, SUPPORTED_REGIONS } from "@app/types/region";
+import { isCellType, SUPPORTED_CELLS } from "@app/types/cell";
 
 makeScript(
   {
@@ -24,9 +24,9 @@ makeScript(
       description: "The workspace ID",
       required: true,
     },
-    sourceRegion: {
+    sourceCell: {
       type: "string",
-      choices: SUPPORTED_REGIONS,
+      choices: SUPPORTED_CELLS,
       required: true,
     },
     pageCursor: {
@@ -45,7 +45,7 @@ makeScript(
       dataSourceId,
       projectId,
       workspaceId,
-      sourceRegion,
+      sourceCell,
       pageCursor,
       fileName,
       limit,
@@ -53,8 +53,8 @@ makeScript(
     },
     logger
   ) => {
-    if (!isRegionType(sourceRegion)) {
-      logger.error("Invalid region.");
+    if (!isCellType(sourceCell)) {
+      logger.error("Invalid cell.");
       return;
     }
 
@@ -70,7 +70,7 @@ makeScript(
         dustAPIProjectId: projectId,
       },
       pageCursor,
-      sourceRegion,
+      sourceCell,
       workspaceId,
       fileName,
       limit: limit ?? CORE_API_LIST_NODES_BATCH_SIZE,
