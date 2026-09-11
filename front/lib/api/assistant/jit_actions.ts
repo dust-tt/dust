@@ -190,7 +190,12 @@ export async function getJITServers(
   }
 ): Promise<ServerSideMCPServerConfigurationType[]> {
   if (agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_RAW) {
-    return [];
+    const conversationServers = await getConversationMCPServers(
+      auth,
+      conversation,
+      agentConfiguration.sId
+    );
+    return conversationServers;
   }
 
   const mcpServersToFetch = new Set<AutoInternalMCPServerNameType>(

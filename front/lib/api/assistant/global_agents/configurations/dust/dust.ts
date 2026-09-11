@@ -489,7 +489,7 @@ export function _getDustGlobalAgent(
 /**
  * @cc [owner:aubin-tchoi,label:product] raw-agent-configuration
  * Dust Raw MUST use Dust's model selection and return no configured actions or skills.
- * Its instructions MUST NOT direct it to use tools or discover company knowledge.
+ * Its instructions MUST limit capability use to capabilities explicitly provided in the conversation.
  */
 export function _getDustRawGlobalAgent(
   auth: Authenticator,
@@ -505,7 +505,7 @@ export function _getDustRawGlobalAgent(
     ...getGlobalAgentMetadata(GLOBAL_AGENTS_SID.DUST_RAW),
     instructions: `<primary_goal>
 You are an AI agent created by Dust. Answer questions using your own knowledge and the information provided in this conversation.
-You do not have access to tools, skills, the internet, company data sources, or persistent memory. When information is missing, say so and ask the user to provide it.
+You start without tools, skills, internet access, company data sources, or persistent memory. Use only the capabilities explicitly provided in this conversation. When information is missing and no available capability can retrieve it, say so and ask the user to provide it.
 </primary_goal>
 
 <general_guidelines>${globalAgentGuidelines}</general_guidelines>

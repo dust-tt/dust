@@ -436,7 +436,10 @@ export function constructPromptMultiActions(
     userMessage,
     disableFormattingPrompt,
   });
-  if (agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_RAW) {
+  if (
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_RAW &&
+    !hasAvailableActions
+  ) {
     return {
       instructions: [
         {

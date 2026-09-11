@@ -1,4 +1,3 @@
-import { buildServerSideMCPServerConfiguration } from "@app/lib/actions/configuration/helpers";
 import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import {
@@ -88,7 +87,7 @@ describe("Dust Raw", () => {
     expect(disabled.codeDefinedSkillIds).toEqual([]);
   });
 
-  it("does not inherit skills or tools from a Pod, conversation, or client", async () => {
+  it("starts empty and allows explicitly added conversation tools and skills", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",
     });
@@ -99,9 +98,19 @@ describe("Dust Raw", () => {
       GLOBAL_AGENTS_SID.DUST_RAW,
     ]);
 
+    const autoViews =
+      await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
+        authenticator,
+        ["common_utilities"]
+      );
+    const view = autoViews.get("common_utilities");
+    if (!view) {
+      throw new Error("Expected common utilities server view.");
+    }
     const pod = await SpaceFactory.project(workspace, user.id);
     const skill = await SkillFactory.create(authenticator, {
       name: "Pod skill",
+      mcpServerViews: [view],
     });
     const metadata = await ProjectMetadataResource.makeNew(authenticator, pod, {
       description: "Private Pod context",
@@ -112,21 +121,31 @@ describe("Dust Raw", () => {
       messagesCreatedAt: [],
       spaceId: pod.id,
     });
+    const initialSkills = await SkillResource.listForAgentLoop(authenticator, {
+      agentConfiguration: raw,
+      conversation,
+    });
+    expect(initialSkills).toEqual({
+      effectiveSpaceIds: [],
+      hasSelectedSpacesOutsideAgentScope: false,
+      enabledSkills: [],
+      systemSkills: [],
+      equippedSkills: [],
+      favoriteSkills: [],
+    });
+    const initialJitServers = await getJITServers(authenticator, {
+      agentConfiguration: raw,
+      conversation,
+      attachments: [],
+    });
+    expect(initialJitServers).toEqual([]);
+
     const enabled = await skill.upsertToConversation(authenticator, {
       conversationId: conversation.id,
       enabled: true,
     });
     expect(enabled.isOk()).toBe(true);
 
-    const autoViews =
-      await MCPServerViewResource.getMCPServerViewsForAutoInternalToolsAsMap(
-        authenticator,
-        ["common_utilities"]
-      );
-    const view = autoViews.get("common_utilities");
-    if (!view) {
-      throw new Error("Expected common utilities server view.");
-    }
     const attached = await ConversationResource.upsertMCPServerViews(
       authenticator,
       {
@@ -143,25 +162,26 @@ describe("Dust Raw", () => {
       agentConfiguration: raw,
       conversation,
     });
-    expect(skills).toEqual({
-      effectiveSpaceIds: [],
-      hasSelectedSpacesOutsideAgentScope: false,
-      enabledSkills: [],
-      systemSkills: [],
-      equippedSkills: [],
-      favoriteSkills: [],
-    });
-    const skillServers = await resolveSkillMCPServers(authenticator, {
-      agentConfiguration: raw,
-      conversation,
-    });
-    expect(skillServers).toEqual({ skillServers: [], systemSkillServers: [] });
+    expect(skills.enabledSkills.map((s) => s.sId)).toEqual([skill.sId]);
+    expect(skills.systemSkills).toEqual([]);
+    expect(skills.equippedSkills).toEqual([]);
+    expect(skills.favoriteSkills).toEqual([]);
+    const { skillServers, systemSkillServers } = await resolveSkillMCPServers(
+      authenticator,
+      { agentConfiguration: raw, conversation }
+    );
+    expect(skillServers).toEqual([
+      expect.objectContaining({ mcpServerViewId: view.sId }),
+    ]);
+    expect(systemSkillServers).toEqual([]);
     const jitServers = await getJITServers(authenticator, {
       agentConfiguration: raw,
       conversation,
       attachments: [],
     });
-    expect(jitServers).toEqual([]);
+    expect(jitServers).toEqual([
+      expect.objectContaining({ mcpServerViewId: view.sId }),
+    ]);
 
     const { agentMessage } = await ConversationFactory.createAgentMessage(
       authenticator,
@@ -174,9 +194,6 @@ describe("Dust Raw", () => {
       content: "Hello",
       rank: 1,
     });
-    const server = buildServerSideMCPServerConfiguration({
-      mcpServerView: view,
-    });
     const tools = await tryListMCPTools(
       authenticator,
       {
@@ -184,24 +201,15 @@ describe("Dust Raw", () => {
         conversation,
         agentMessage,
         userMessage,
-        clientSideActionConfigurations: [
-          {
-            id: -1,
-            sId: "client-side-server",
-            type: "mcp_server_configuration",
-            name: "browser",
-            description: "Browser tools",
-            clientSideMcpServerId: "browser",
-          },
-        ],
+        clientSideActionConfigurations: [],
       },
       {
-        jitServers: [server],
-        skillServers: [server],
-        systemSkillServers: [server],
+        jitServers,
+        skillServers,
+        systemSkillServers,
       }
     );
-    expect(tools).toEqual([]);
+    expect(tools.flatMap((s) => s.tools)).not.toHaveLength(0);
 
     const prompt = constructPromptMultiActions(authenticator, {
       agentConfiguration: raw,
@@ -218,10 +226,28 @@ describe("Dust Raw", () => {
       hasSandboxTools: true,
     });
     const promptText = systemPromptToText(prompt);
-    expect(promptText).toContain("You do not have access to tools");
+    expect(promptText).toContain("You start without tools");
     expect(promptText).not.toContain("Private Pod context");
     expect(promptText).not.toContain("# TOOLS");
     expect(promptText).not.toContain("# FILES");
     expect(promptText).not.toContain("enable_skill");
+
+    const promptWithTools = constructPromptMultiActions(authenticator, {
+      agentConfiguration: raw,
+      userMessage,
+      modelInfo: {
+        endpoint: getTestStreamEndpoint("gpt-5"),
+        temperature: raw.model.temperature,
+      },
+      conversation,
+      hasAvailableActions: true,
+      serverToolsAndInstructions: tools,
+      systemSkills: skills.systemSkills,
+    });
+    const promptWithToolsText = systemPromptToText(promptWithTools);
+    expect(promptWithToolsText).toContain("# TOOLS");
+    expect(promptWithToolsText).toContain(
+      "Use only the capabilities explicitly provided in this conversation"
+    );
   });
 });

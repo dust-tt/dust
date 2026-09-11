@@ -1892,8 +1892,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * @cc [owner:aubin-tchoi,label:product] raw-agent-no-skills
-   * Dust Raw MUST receive no skills or effective Spaces, including auto-enabled
-   * skills and skills attached to its conversation or Pod.
+   * Dust Raw MUST start without auto-enabled, auto-equipped, favorite, or Pod-default
+   * skills. Explicitly enabled conversation skills and selected Spaces MUST remain available.
    */
   static async listForAgentLoop(
     auth: Authenticator,
@@ -1913,17 +1913,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     favoriteSkills: SkillResource[];
   }> {
     const { agentConfiguration, conversation } = params;
-    if (agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_RAW) {
-      return {
-        effectiveSpaceIds: [],
-        hasSelectedSpacesOutsideAgentScope: false,
-        enabledSkills: [],
-        systemSkills: [],
-        equippedSkills: [],
-        favoriteSkills: [],
-      };
-    }
-
     // Light type-guard to check whether we have a full AgentLoopExecutionData.
     const agentLoopData = "userMessage" in params ? params : undefined;
     const effectiveSpaceIds = await getEffectiveSpaceIdsForAgentRun(auth, {
@@ -1944,6 +1933,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         effectiveSpaceIds,
       }
     );
+
+    if (agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_RAW) {
+      return {
+        effectiveSpaceIds,
+        hasSelectedSpacesOutsideAgentScope,
+        enabledSkills: conversationEnabledSkills.sort((a, b) =>
+          a.name.localeCompare(b.name)
+        ),
+        systemSkills: [],
+        equippedSkills: [],
+        favoriteSkills: [],
+      };
+    }
 
     const podDefaultSkills = await this.listPodDefaultSkillsForConversation(
       auth,

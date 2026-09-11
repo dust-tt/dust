@@ -1,7 +1,7 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
   dust_raw_agent: {
     description:
-      "Enable @dust-raw, a Dust agent without tools, skills, or company knowledge access",
+      "Enable @dust-raw, a Dust agent that starts without tools, skills, or company knowledge",
     stage: "dust_only",
     owner: "aubin-tchoi",
   },

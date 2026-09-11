@@ -104,7 +104,6 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import {
   ACTIVATION_NUDGE_ORIGIN,
   isUserMessageWithoutConcreteUser,
@@ -1066,11 +1065,6 @@ export function deduplicateMCPServerConfigurations({
  * Returns tools from MCP servers that listed successfully. Listing failures are
  * logged and omitted from the returned tools.
  */
-/**
- * @cc [owner:aubin-tchoi,label:product] raw-agent-no-tools
- * Dust Raw MUST receive no tools or server instructions, including tools supplied
- * by the conversation, skills, or client-side MCP servers.
- */
 export async function tryListMCPTools(
   auth: Authenticator,
   agentLoopListToolsContext: AgentLoopListToolsContextWithoutConfigurationType,
@@ -1084,13 +1078,6 @@ export async function tryListMCPTools(
     systemSkillServers: MCPServerConfigurationType[];
   }
 ): Promise<ServerToolsAndInstructions[]> {
-  if (
-    agentLoopListToolsContext.agentConfiguration.sId ===
-    GLOBAL_AGENTS_SID.DUST_RAW
-  ) {
-    return [];
-  }
-
   const owner = auth.getNonNullableWorkspace();
 
   const deduplicatedConfigs = deduplicateMCPServerConfigurations({
