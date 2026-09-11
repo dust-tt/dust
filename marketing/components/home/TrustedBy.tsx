@@ -110,21 +110,28 @@ export default function TrustedBy({
                   : "w-36 sm:w-48 lg:w-44 xl:w-40"
               )}
             >
+              {/* Height is the fixed dimension and width follows the logo's
+                  own ratio, so every logo renders the same height whatever
+                  canvas it was exported on. Previously the image was allowed a
+                  `max-h` taller than this box and had no width bound, so wide
+                  wordmarks were limited by the column (~64px) while squarer
+                  logos ran up to the ceiling (96px) and towered over them.
+                  `max-w-full` catches anything wider than the column, letting
+                  it shrink proportionally rather than overflow. */}
               <div
                 className={cn(
-                  "flex items-center justify-center",
-                  isLarge ? "h-14 sm:h-16" : "h-12 sm:h-14"
+                  "flex w-full items-center justify-center",
+                  isLarge ? "h-16 sm:h-20" : "h-14 sm:h-16"
                 )}
               >
                 <LogoBarImage
                   logo={logo}
                   width={200}
                   height={80}
-                  className={
-                    isLarge
-                      ? "max-h-20 sm:max-h-24 lg:max-h-28"
-                      : "max-h-16 sm:max-h-20 lg:max-h-24"
-                  }
+                  className={cn(
+                    "w-auto max-w-full",
+                    isLarge ? "h-16 sm:h-20" : "h-14 sm:h-16"
+                  )}
                 />
               </div>
               {logo.caseStudyUrl ? (
