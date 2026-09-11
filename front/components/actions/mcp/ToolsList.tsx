@@ -27,7 +27,7 @@ import {
   DropdownMenuTrigger,
   InfoCircle,
 } from "@dust-tt/sparkle";
-import { memo } from "react";
+import { memo, useCallback } from "react";
 import { Controller, useFormContext } from "react-hook-form";
 
 interface ToolsListProps {
@@ -70,13 +70,6 @@ function ToolItem({
     });
   };
 
-  const toolPermissionLabel: Record<MCPToolStakeLevelType, string> = {
-    high: "High (always ask for confirmation)",
-    medium: "Medium (allows input-scoped confirmation save)",
-    low: "Low (allows user-global confirmation save)",
-    never_ask: "Never ask (automatic execution)",
-  };
-
   return (
     <div className="flex flex-col gap-1 pb-2">
       <div className="flex items-center gap-2">
@@ -108,7 +101,7 @@ function ToolItem({
               >
                 <Button
                   variant="outline"
-                  label={toolPermissionLabel[toolPermission]}
+                  label={STAKE_LEVEL_LABELS[toolPermission]}
                   isSelect
                 />
               </DropdownMenuTrigger>
@@ -117,7 +110,7 @@ function ToolItem({
                   <DropdownMenuItem
                     key={permission}
                     onClick={() => handlePermissionChange(permission)}
-                    label={toolPermissionLabel[permission]}
+                    label={STAKE_LEVEL_LABELS[permission]}
                     disabled={!toolEnabled}
                   />
                 ))}
@@ -153,6 +146,20 @@ function getDefaultToolSettings({
 
 const noop = () => {};
 
+const STAKE_LEVEL_LABELS: Record<MCPToolStakeLevelType, string> = {
+  high: "High (always ask for confirmation)",
+  medium: "Medium (allows input-scoped confirmation save)",
+  low: "Low (allows user-global confirmation save)",
+  never_ask: "Never ask (automatic execution)",
+};
+
+const STAKE_LEVEL_SHORT_LABELS: Record<MCPToolStakeLevelType, string> = {
+  high: "High",
+  medium: "Medium",
+  low: "Low",
+  never_ask: "Never ask",
+};
+
 // We disable buttons for agent builder view because it would feel like
 // you can configure per agent
 export const ToolsList = memo(
@@ -172,9 +179,79 @@ export const ToolsList = memo(
       )
     );
 
+    // Handler to set all tools to a specific stake level.
+    const handleSetAllStakeLevel = useCallback(
+      (permission: MCPToolStakeLevelType) => {
+        if (!tools || disableUpdates) {
+          return;
+        }
+        for (const tool of tools) {
+          const fieldName =
+            `toolSettings.${encodeMCPToolNameForForm(tool.name)}` as const;
+          const currentSettings = formContext.getValues(fieldName);
+          const defaultSettings = getDefaultToolSettings({
+            tool,
+            toolMetadataByName,
+            mcpServerView,
+          });
+          const settings = currentSettings ?? defaultSettings;
+          // Only update if the tool supports this stake level.
+          const supportsLevel =
+            permission !== "medium" ||
+            canToolUseMediumStakeLevel(mcpServerView.server, tool.name);
+          if (supportsLevel) {
+            formContext.setValue(
+              fieldName,
+              { ...settings, permission },
+              { shouldDirty: true }
+            );
+          }
+        }
+      },
+      [tools, disableUpdates, formContext, toolMetadataByName, mcpServerView]
+    );
+
+    // Handler to enable/disable all tools at once.
+    const handleSetAllEnabled = useCallback(
+      (enabled: boolean) => {
+        if (!tools || disableUpdates) {
+          return;
+        }
+        for (const tool of tools) {
+          const fieldName =
+            `toolSettings.${encodeMCPToolNameForForm(tool.name)}` as const;
+          const currentSettings = formContext.getValues(fieldName);
+          const defaultSettings = getDefaultToolSettings({
+            tool,
+            toolMetadataByName,
+            mcpServerView,
+          });
+          const settings = currentSettings ?? defaultSettings;
+          formContext.setValue(
+            fieldName,
+            { ...settings, enabled },
+            { shouldDirty: true }
+          );
+        }
+      },
+      [tools, disableUpdates, formContext, toolMetadataByName, mcpServerView]
+    );
+
     if (!tools || tools.length === 0) {
       return null;
     }
+
+    // Only show batch controls when there are multiple tools.
+    const showBatchControls = mayUpdate && tools.length > 1;
+
+    // Available stake levels for batch update (exclude medium if no tool supports it).
+    const batchStakeLevels = MCP_TOOL_STAKE_LEVELS.filter(
+      (stakeLevel) =>
+        stakeLevel !== "medium" ||
+        tools.some((tool) =>
+          canToolUseMediumStakeLevel(mcpServerView.server, tool.name)
+        )
+    );
 
     return (
       <Collapsible defaultOpen={tools.length <= 5}>
@@ -207,6 +284,53 @@ export const ToolsList = memo(
                 </li>
               </ul>
             </ContentMessage>
+
+            {showBatchControls && (
+              <div className="mb-4 flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  Batch actions:
+                </span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      label="Set all stakes to..."
+                      isSelect
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {batchStakeLevels.map((level) => (
+                      <DropdownMenuItem
+                        key={level}
+                        onClick={() => handleSetAllStakeLevel(level)}
+                        label={STAKE_LEVEL_SHORT_LABELS[level]}
+                      />
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      label="Toggle all..."
+                      isSelect
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem
+                      onClick={() => handleSetAllEnabled(true)}
+                      label="Enable all"
+                    />
+                    <DropdownMenuItem
+                      onClick={() => handleSetAllEnabled(false)}
+                      label="Disable all"
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
 
             <div className="flex flex-col gap-4">
               {tools.map((tool) => {

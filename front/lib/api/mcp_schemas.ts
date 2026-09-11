@@ -125,3 +125,17 @@ export const UpdateMCPToolSettingsBodySchema = z
       message: "At least one of 'permission' or 'enabled' must be provided.",
     }
   );
+
+// Schema for individual tool settings in batch update.
+const BatchToolSettingSchema = z.object({
+  toolName: z.string().min(1, "Tool name is required."),
+  permission: z.enum(MCP_TOOL_STAKE_LEVELS),
+  enabled: z.boolean(),
+});
+
+// Schema for batch updating multiple tool settings at once.
+export const BatchUpdateMCPToolSettingsBodySchema = z.object({
+  tools: z
+    .array(BatchToolSettingSchema)
+    .min(1, "At least one tool is required."),
+});

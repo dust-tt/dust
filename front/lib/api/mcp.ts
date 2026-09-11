@@ -19,6 +19,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import type { MCPServersUsage } from "@app/lib/api/agent_actions";
 import type {
+  BatchUpdateMCPToolSettingsBodySchema,
   PatchMCPServerBodySchema,
   PostRequestActionsAccessBodySchema,
   UpdateMCPToolSettingsBodySchema,
@@ -286,6 +287,15 @@ export type PatchMCPServerToolsPermissionsResponseBody = {
   success: boolean;
 };
 
+export type BatchUpdateMCPToolSettingsResponseBody = {
+  success: boolean;
+  updatedCount: number;
+};
+
 export type UpdateMCPToolSettingsBodyType = z.infer<
   typeof UpdateMCPToolSettingsBodySchema
+>;
+
+export type BatchUpdateMCPToolSettingsBodyType = z.infer<
+  typeof BatchUpdateMCPToolSettingsBodySchema
 >;
