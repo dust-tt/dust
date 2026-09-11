@@ -17,7 +17,6 @@ import type {
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { isRecord, removeNulls } from "@app/types/shared/utils/general";
 import { trustedFetchImageBase64 } from "@app/types/shared/utils/image_utils";
@@ -46,11 +45,6 @@ const UNSUPPORTED_MIME_TYPE_MESSAGE = "Image mime type is not supported.";
 
 // Conversion fans out to external image fetches; bound the concurrency.
 const MESSAGE_CONVERSION_CONCURRENCY = 10;
-
-// Closes a conversation that would otherwise end on a model turn. Kept to a
-// single character to steer the next generation as little as possible; an empty
-// text part is rejected too.
-const MODEL_TURN_CLOSER = ".";
 
 // Fetches an image URL and returns a Gemini inline-data part, degrading to a
 // text note when the image cannot be fetched or its MIME type is unsupported
@@ -265,19 +259,33 @@ function assistantMessageToContent(
   }
 }
 
-// Part kinds only ("text", "functionCall", ...) — never the values, which carry
-// conversation content ([no-sensitive-data-logging]).
-function partKinds(content: Content): string[] {
-  return (content.parts ?? []).flatMap((part) => Object.keys(part));
+function hasFunctionResponse(content: Content): boolean {
+  return (
+    content.parts?.some((part) => part.functionResponse !== undefined) ?? false
+  );
+}
+
+function canMergeContents(previous: Content, content: Content): boolean {
+  if (previous.role !== content.role) {
+    return false;
+  }
+
+  if (previous.role === "model") {
+    return true;
+  }
+
+  // A function-response turn must remain distinct from a following user
+  // message. This matters for enable_skill: its result is immediately followed
+  // by a user message containing the enabled skill's instructions.
+  return hasFunctionResponse(previous) === hasFunctionResponse(content);
 }
 
 /**
- * @cc [owner:frankaloia,label:backend] no-trailing-model-turn
- * The returned contents MUST NOT end with a `model` Content: when the converted contents would,
- * a `user` Content with a non-empty text part is appended, since Gemini rejects a trailing model
- * turn and an empty text part alike. The requirement is about the returned contents, not the
- * input: a conversation whose messages all convert to nothing yields an empty array, and nothing
- * is appended to it.
+ * @cc [owner:frankaloia,label:backend] preserve-function-response-boundary
+ * A Gemini `user` Content containing a functionResponse MUST NOT be merged with an adjacent user
+ * Content that does not contain one. Adjacent functionResponse Contents still merge so their count
+ * matches the preceding functionCall count, and adjacent model Contents still merge so replayed
+ * thought signatures remain attached to their logical model turn.
  */
 export async function conversationToContents(
   conversation: BaseConversation,
@@ -304,8 +312,7 @@ export async function conversationToContents(
     )
   );
 
-  // Merge consecutive same-role turns into a single Content. This serves two
-  // purposes:
+  // Merge compatible consecutive same-role Contents. This serves two purposes:
   // - Function-response turns: Gemini requires the functionResponse part count
   //   to match the functionCall count of the preceding model turn.
   // - Model turns: a single assistant turn is split into one BaseMessage per
@@ -314,11 +321,13 @@ export async function conversationToContents(
   //   over the whole turn (e.g. reasoning followed by the functionCall), so the
   //   parts must be replayed together in one Content or the signature is
   //   rejected as corrupted.
-  // Consecutive same-role Contents only arise from one logical turn being split:
-  // distinct assistant turns are always separated by a tool-result/user turn.
-  const mergedContents = contents.reduce<Content[]>((merged, content) => {
+  // Keep a function-response Content separate from adjacent ordinary user
+  // content. In particular, enable_skill emits its result followed by a user
+  // message carrying the skill instructions; mixing those parts makes the
+  // function-response boundary ambiguous to Gemini.
+  return contents.reduce<Content[]>((merged, content) => {
     const previous = merged[merged.length - 1];
-    if (previous && previous.role === content.role) {
+    if (previous && canMergeContents(previous, content)) {
       return [
         ...merged.slice(0, -1),
         {
@@ -329,32 +338,6 @@ export async function conversationToContents(
     }
     return [...merged, content];
   }, []);
-
-  // Gemini rejects a request whose last Content is a model turn (verified
-  // against gemini-3.8-flash: HTTP 400 "Requests ending with a model turn are
-  // not supported."). The agent loop is supposed to always end its payload on a
-  // user or tool-result turn, so reaching this branch means an upstream
-  // invariant broke; close the conversation rather than fail the whole request,
-  // and log enough to identify the producer.
-  const lastContent = mergedContents[mergedContents.length - 1];
-  if (lastContent?.role === "model") {
-    logger.warn(
-      {
-        contentCount: mergedContents.length,
-        lastContentPartKinds: partKinds(lastContent),
-        // `removeNulls` above only drops provider_passthrough messages, so any
-        // shortfall is the count of blocks owned by another provider.
-        droppedPassthroughCount: conversation.messages.length - contents.length,
-      },
-      "Gemini conversation ends on a model turn; appending a synthetic user turn."
-    );
-    return [
-      ...mergedContents,
-      { role: "user", parts: [{ text: MODEL_TURN_CLOSER }] },
-    ];
-  }
-
-  return mergedContents;
 }
 
 export function systemMessagesToSystemInstruction(

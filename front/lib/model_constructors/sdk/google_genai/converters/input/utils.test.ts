@@ -43,73 +43,109 @@ describe("conversationToContents — provider_passthrough", () => {
     const contents = await conversationToContents(conversation, converters);
 
     // The two text turns merge into one model Content; the passthrough produces
-    // no part (no empty `{ text: "" }` slips in). The trailing model turn is
-    // closed by the synthetic user turn.
+    // no part (no empty `{ text: "" }` slips in).
     expect(contents).toEqual([
       { role: "model", parts: [{ text: "before" }, { text: "after" }] },
-      { role: "user", parts: [{ text: "." }] },
     ]);
   });
 });
 
-describe("conversationToContents — trailing model turn", () => {
-  it("appends a user turn when the conversation ends on an assistant turn", async () => {
-    const conversation: BaseConversation = {
-      system: [],
-      messages: [
-        { role: "user", type: "text", content: { value: "hello" } },
-        { role: "assistant", type: "text", content: { value: "hi" } },
-      ],
-    };
-
-    const contents = await conversationToContents(conversation, converters);
-
-    expect(contents).toEqual([
-      { role: "user", parts: [{ text: "hello" }] },
-      { role: "model", parts: [{ text: "hi" }] },
-      { role: "user", parts: [{ text: "." }] },
-    ]);
-  });
-
-  it("leaves a conversation already ending on a user turn untouched", async () => {
-    const conversation: BaseConversation = {
-      system: [],
-      messages: [
-        { role: "assistant", type: "text", content: { value: "hi" } },
-        { role: "user", type: "text", content: { value: "hello" } },
-      ],
-    };
-
-    const contents = await conversationToContents(conversation, converters);
-
-    expect(contents).toEqual([
-      { role: "model", parts: [{ text: "hi" }] },
-      { role: "user", parts: [{ text: "hello" }] },
-    ]);
-  });
-
-  it("returns no contents for an empty conversation", async () => {
-    const contents = await conversationToContents(
-      { system: [], messages: [] },
-      converters
-    );
-
-    expect(contents).toEqual([]);
-  });
-
-  it("appends nothing when every message converts to nothing", async () => {
-    // A passthrough-only conversation converts to no Contents at all. There is
-    // no trailing model turn to close, so the guard stays out of it rather than
-    // inventing a user turn for a request that has nothing to answer.
+describe("conversationToContents — function responses", () => {
+  it("keeps a function response separate from following user text", async () => {
     const conversation: BaseConversation = {
       system: [],
       messages: [
         {
           role: "assistant",
-          type: "provider_passthrough",
+          type: "reasoning",
+          content: { value: "I should enable the skill." },
+        },
+        {
+          role: "assistant",
+          type: "tool_call_request",
           content: {
-            provider: "anthropic",
-            block: { type: "server_tool_use", id: "x", name: "y", input: {} },
+            callId: "call-1",
+            toolName: "skill_management__enable_skill",
+            arguments: '{"skill_id":"skill-1"}',
+          },
+          signature: "thought-signature",
+        },
+        {
+          role: "user",
+          type: "tool_call_result",
+          content: {
+            callId: "call-1",
+            toolName: "skill_management__enable_skill",
+            parts: [{ type: "text", text: "Skill enabled." }],
+            isError: false,
+          },
+        },
+        {
+          role: "user",
+          type: "text",
+          content: { value: "<dust_system>Skill instructions.</dust_system>" },
+        },
+      ],
+    };
+
+    const contents = await conversationToContents(conversation, converters);
+
+    expect(contents).toEqual([
+      {
+        role: "model",
+        parts: [
+          { text: "I should enable the skill.", thought: true },
+          {
+            functionCall: {
+              id: "call-1",
+              name: "skill_management__enable_skill",
+              args: { skill_id: "skill-1" },
+            },
+            thoughtSignature: "thought-signature",
+          },
+        ],
+      },
+      {
+        role: "user",
+        parts: [
+          {
+            functionResponse: {
+              id: "call-1",
+              name: "skill_management__enable_skill",
+              response: { output: "Skill enabled." },
+            },
+          },
+        ],
+      },
+      {
+        role: "user",
+        parts: [{ text: "<dust_system>Skill instructions.</dust_system>" }],
+      },
+    ]);
+  });
+
+  it("still merges adjacent function responses into one user turn", async () => {
+    const conversation: BaseConversation = {
+      system: [],
+      messages: [
+        {
+          role: "user",
+          type: "tool_call_result",
+          content: {
+            callId: "call-1",
+            toolName: "tool-1",
+            parts: [{ type: "text", text: "result-1" }],
+            isError: false,
+          },
+        },
+        {
+          role: "user",
+          type: "tool_call_result",
+          content: {
+            callId: "call-2",
+            toolName: "tool-2",
+            parts: [{ type: "text", text: "result-2" }],
+            isError: false,
           },
         },
       ],
@@ -117,6 +153,50 @@ describe("conversationToContents — trailing model turn", () => {
 
     const contents = await conversationToContents(conversation, converters);
 
-    expect(contents).toEqual([]);
+    expect(contents).toEqual([
+      {
+        role: "user",
+        parts: [
+          {
+            functionResponse: {
+              id: "call-1",
+              name: "tool-1",
+              response: { output: "result-1" },
+            },
+          },
+          {
+            functionResponse: {
+              id: "call-2",
+              name: "tool-2",
+              response: { output: "result-2" },
+            },
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("still merges adjacent plain user messages", async () => {
+    const conversation: BaseConversation = {
+      system: [],
+      messages: [
+        {
+          role: "user",
+          type: "text",
+          content: { value: "first" },
+        },
+        {
+          role: "user",
+          type: "text",
+          content: { value: "second" },
+        },
+      ],
+    };
+
+    const contents = await conversationToContents(conversation, converters);
+
+    expect(contents).toEqual([
+      { role: "user", parts: [{ text: "first" }, { text: "second" }] },
+    ]);
   });
 });
