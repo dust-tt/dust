@@ -45,16 +45,7 @@ export type RunModelAndCreateActionsResult = {
   // The model returned nothing at all: the loop should run one more step with
   // tool use disabled to force a final answer.
   retryWithoutTools?: boolean;
-  // False for sub-agent messages, which are exempt from the credit spend checkpoint: nothing
-  // renders a pause for them and the parent message runs its own check. Undefined when the step
-  // returned before loading the message.
   isRootAgentMessage?: boolean;
-  // This root message's whole-subagent-tree cost through the end of the *previous* step (the
-  // hard-cap guardrail's own reading, from before this step's model ran). One step stale relative
-  // to this step's actual spend — a cheap lower bound the workflow can use to skip scheduling the
-  // credit spend checkpoint activity when clearly irrelevant, mirroring the hard-cap check's own
-  // accepted staleness ("can miss thresholds crossed on the final step"). Undefined when the step
-  // returned before the guardrail check ran.
   preStepTotalCostMicroUsd?: number;
 };
 
@@ -88,7 +79,7 @@ export async function runModelAndCreateActionsActivity({
   runIds,
   step,
   forceDisableToolUse = false,
-  cachedDescendantData = null,
+  descendantData = null,
 }: {
   authType: AuthenticatorType;
   checkForResume?: boolean;
@@ -98,7 +89,7 @@ export async function runModelAndCreateActionsActivity({
   forceDisableToolUse?: boolean;
   // Descendant walk cached from the previous step's credit spend checkpoint check (see
   // `checkCreditSpendCheckpointActivity`), so the guardrail check below doesn't repeat it.
-  cachedDescendantData?: DescendantRunData | null;
+  descendantData?: DescendantRunData | null;
 }): Promise<RunModelAndCreateActionsResult | null> {
   // The pre-stream setup (agent data loading, MCP tools listing, conversation rendering) can
   // stall past the heartbeat timeout, e.g. on a hung MCP server's tools/list call: heartbeat
@@ -115,7 +106,7 @@ export async function runModelAndCreateActionsActivity({
           runIds,
           step,
           forceDisableToolUse,
-          cachedDescendantData,
+          descendantData,
         })
       ),
     {
@@ -132,7 +123,7 @@ async function _runModelAndCreateActionsActivity({
   runIds,
   step,
   forceDisableToolUse,
-  cachedDescendantData,
+  descendantData,
 }: {
   authType: AuthenticatorType;
   checkForResume: boolean;
@@ -140,7 +131,7 @@ async function _runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
   forceDisableToolUse: boolean;
-  cachedDescendantData: DescendantRunData | null;
+  descendantData: DescendantRunData | null;
 }): Promise<RunModelAndCreateActionsResult | null> {
   const activityTimeoutDeadlineMs = getActivityTimeoutDeadlineMs();
   const durationRecorder = DurationRecorder.create([]);
@@ -193,7 +184,7 @@ async function _runModelAndCreateActionsActivity({
         conversationId: runAgentArgs.conversationId,
         step,
       },
-      cachedDescendantData,
+      descendantData,
     });
   } catch (error) {
     logger.warn(

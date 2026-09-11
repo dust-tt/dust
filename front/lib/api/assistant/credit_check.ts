@@ -56,8 +56,6 @@ export async function checkPoolCreditGate(
 }
 
 export type CreditSpendCheckpointCheckResult =
-  // `exempt` means the check does not apply to this execution at all (no plan resolved, no human
-  // user), as opposed to merely not having crossed the threshold yet.
   | { crossed: false; exempt: boolean }
   | { crossed: true; thresholdAwuCredits: number };
 
@@ -70,20 +68,6 @@ const EXEMPT: CreditSpendCheckpointCheckResult = {
   exempt: true,
 };
 
-/**
- * Determines whether a single agent message's own spend has reached the checkpoint at which the
- * loop pauses and asks the user whether to continue. Unlike the pool gate above, this applies to
- * every plan (credit-priced or not, with or without a Metronome customer) — it's a runaway-loop
- * safeguard for the human on the other end, not a billing enforcement — and only when a human
- * user is there to answer.
- */
-/**
- * @cc [owner:avervaet,label:product] checkpoint-applies-regardless-of-plan
- * This gate MUST NOT key exemption off `isCreditPricedPlan` or the presence of a
- * `metronomeCustomerId`: it applies to every plan, including legacy Stripe-billed and
- * non-Metronome workspaces, since it protects the human from a runaway loop rather than
- * enforcing billing. Only a missing `plan` or a missing human `user()` exempts an execution.
- */
 export async function checkCreditSpendCheckpointGate(
   auth: Authenticator,
   { consumedAwuCredits }: { consumedAwuCredits: number }

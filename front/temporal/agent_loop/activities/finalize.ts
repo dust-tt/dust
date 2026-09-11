@@ -175,11 +175,6 @@ export async function finalizeCreditStoppedAgentLoopActivity(
   ]);
 }
 
-/**
- * Credit spend checkpoint pause mirrors the graceful stop: the content so far is valid and the
- * usual side-effects run, but the work is not finished (the user may continue it), so no email
- * reply nor project-related signals.
- */
 export async function finalizeCreditSpendCheckpointPausedAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs,

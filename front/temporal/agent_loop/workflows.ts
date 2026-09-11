@@ -303,10 +303,7 @@ export async function agentLoopWorkflow({
   // it back (see checkCreditSpendCheckpointActivity).
   let skipCreditSpendCheckpointChecks = false;
 
-  // The credit spend checkpoint's descendant walk, valid only for the very next step: nothing
-  // that creates a run happens between that check and the next step's own guardrail check, so it
-  // can reuse this instead of repeating the walk. Cleared after being passed through once.
-  let cachedDescendantData: DescendantRunData | null = null;
+  let descendantData: DescendantRunData | null = null;
 
   const runIds: string[] = [];
 
@@ -337,8 +334,8 @@ export async function agentLoopWorkflow({
 
         // Valid only for this one call: consume it now regardless of outcome, and let the
         // checkpoint check below repopulate it for the next step if it runs again.
-        const descendantDataForThisStep = cachedDescendantData;
-        cachedDescendantData = null;
+        const stepDescendantData = descendantData;
+        descendantData = null;
 
         const {
           runId,
@@ -356,7 +353,7 @@ export async function agentLoopWorkflow({
           runIds,
           startStep,
           forceDisableToolUse,
-          cachedDescendantData: descendantDataForThisStep,
+          descendantData: stepDescendantData,
         });
 
         forceDisableToolUse = retryWithoutTools ?? false;
@@ -412,19 +409,11 @@ export async function agentLoopWorkflow({
           break;
         }
 
-        // Sub-agent messages are exempt: nothing renders a pause for them and the parent
-        // message runs its own check.
         if (isRootAgentMessage === false) {
           skipCreditSpendCheckpointChecks = true;
         }
 
-        // Cheap, no-activity-call lower bound on this step's spend, one step stale relative to
-        // the checkpoint's own (fresh) reading — same staleness the hard-cap check itself accepts
-        // ("can miss thresholds crossed on the final step"). Skips scheduling the checkpoint
-        // activity when clearly irrelevant; never skips when the bound is unknown.
-        // Inlined `awuFromMicroUsd` rather than importing it: that module pulls in the MCP
-        // internal action registry (and transitively the `@dust-tt/client` SDK, which needs
-        // `Buffer`), none of which the sandboxed workflow bundle can load.
+        // Check here to avoid unecessary activity call
         const isClearlyBelowCheckpointFloor =
           preStepTotalCostMicroUsd !== undefined &&
           Math.ceil(
@@ -455,10 +444,8 @@ export async function agentLoopWorkflow({
             if (checkpointResult.skipRemainingChecks) {
               skipCreditSpendCheckpointChecks = true;
             }
-            cachedDescendantData = checkpointResult.descendantData ?? null;
+            descendantData = checkpointResult.descendantData ?? null;
           } catch (err) {
-            // Fails open: an activity failure must never fail the agent loop. Cancellation is
-            // not a check failure and keeps propagating.
             if (!(err instanceof ActivityFailure) || isCancellation(err)) {
               throw err;
             }
@@ -568,7 +555,7 @@ async function executeStepIteration({
   runIds,
   startStep,
   forceDisableToolUse,
-  cachedDescendantData,
+  descendantData,
 }: {
   authType: AuthenticatorType;
   currentStep: number;
@@ -576,7 +563,7 @@ async function executeStepIteration({
   runIds: string[];
   startStep: number;
   forceDisableToolUse: boolean;
-  cachedDescendantData: DescendantRunData | null;
+  descendantData: DescendantRunData | null;
 }): Promise<{
   runId: string | null;
   shouldContinue: boolean;
@@ -596,7 +583,7 @@ async function executeStepIteration({
     runIds,
     step: currentStep,
     forceDisableToolUse,
-    cachedDescendantData,
+    descendantData,
   });
 
   if (!result) {

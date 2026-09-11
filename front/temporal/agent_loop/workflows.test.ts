@@ -399,15 +399,12 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
       runModelAndCreateActionsActivityWithExplicitCancellation
     ).toHaveBeenNthCalledWith(
       1,
-      expect.objectContaining({ cachedDescendantData: null })
+      expect.objectContaining({ descendantData: null })
     );
     // Second step reuses what the first step's checkpoint check just walked.
     expect(
       runModelAndCreateActionsActivityWithExplicitCancellation
-    ).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ cachedDescendantData: descendantData })
-    );
+    ).toHaveBeenNthCalledWith(2, expect.objectContaining({ descendantData }));
   });
 
   it("breaks out of the loop and finalizes as paused when the checkpoint is crossed", async () => {
