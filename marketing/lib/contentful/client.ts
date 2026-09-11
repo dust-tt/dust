@@ -1,5 +1,10 @@
 import config from "@marketing/lib/api/config";
 import {
+  isLiveLogoListRegion,
+  LIVE_LOGO_LIST_REGIONS,
+  LOGO_LIST_REGIONS,
+} from "@marketing/lib/logo_bars";
+import {
   extractSearchableSections,
   extractTableOfContents,
 } from "@marketing/lib/contentful/tableOfContents";
@@ -23,7 +28,12 @@ import type {
   CustomerStoryFilters,
   CustomerStorySkeleton,
   CustomerStorySummary,
+  CustomerLogoSkeleton,
   HomepageNewsItemSkeleton,
+  LogoBarLogo,
+  LogoListMap,
+  LogoListRegion,
+  LogoListSkeleton,
   Lesson,
   LessonSkeleton,
   NewsItem,
@@ -496,7 +506,7 @@ function isResolvedEntry(
   );
 }
 
-function isContentfulAsset(value: MaybeUnresolved<Asset>): value is Asset {
+function isContentfulAsset(value: unknown): value is Asset {
   return isResolvedEntry(value);
 }
 
@@ -1968,6 +1978,192 @@ export async function getConversationDraftBySlug(
       { error, slug },
       "[Contentful] Failed to get conversation draft by slug"
     );
+    return new Err(normalizeError(error));
+  }
+}
+
+// Logo bars
+//
+// Editors manage the customer logo bars as `logoBar` entries (one per bar
+// variant, keyed by `barSlug`) holding an ordered list of `customerLogo`
+// references. See lib/logo_bars.ts for the slug list and the hardcoded
+// fallback used when a bar has no published entry.
+
+function contentfulAssetToLogoSrc(
+  asset: Asset | undefined
+): Pick<LogoBarLogo, "src" | "width" | "height"> | null {
+  const file = asset?.fields?.file;
+  if (!file || !isString(file.url)) {
+    return null;
+  }
+
+  const imageDetails =
+    file.details && "image" in file.details ? file.details.image : undefined;
+
+  return {
+    src: file.url.startsWith("//") ? `https:${file.url}` : file.url,
+    width: imageDetails?.width ?? null,
+    height: imageDetails?.height ?? null,
+  };
+}
+
+// A reference field comes back as an unresolved stub (or undefined) when the
+// target is unpublished or sits beyond the `include` depth. Both mean "skip
+// this item" rather than "fail the whole bar".
+function isCustomerStoryEntry(
+  value: unknown
+): value is Entry<CustomerStorySkeleton> {
+  return isResolvedEntry(value);
+}
+
+function isCustomerLogoEntry(
+  value: unknown
+): value is Entry<CustomerLogoSkeleton> {
+  return isResolvedEntry(value);
+}
+
+function contentfulEntryToLogoBarLogo(
+  entry: Entry<CustomerLogoSkeleton>
+): LogoBarLogo | null {
+  const fields = entry.fields;
+
+  const companyNameField: unknown = fields.name;
+  const companyName = isString(companyNameField) ? companyNameField.trim() : "";
+  if (companyName.length === 0) {
+    return null;
+  }
+
+  const logoField: unknown = fields.logo;
+  const logo = isContentfulAsset(logoField)
+    ? contentfulAssetToLogoSrc(logoField)
+    : null;
+  // A logo entry with no usable image would render as a hole in the bar.
+  if (!logo) {
+    return null;
+  }
+
+  // The link is derived from the referenced customerStory's slug, so it tracks
+  // the story rather than drifting. No story reference means no link.
+  const caseStudyField: unknown = fields.caseStudy;
+  const story = isCustomerStoryEntry(caseStudyField) ? caseStudyField : null;
+  const storySlugField: unknown = story?.fields.slug;
+  const storySlug = isString(storySlugField) ? storySlugField : null;
+
+  return {
+    name: companyName,
+    ...logo,
+    caseStudyUrl: storySlug ? `/customers/${storySlug}` : null,
+  };
+}
+
+function isLogoListRegion(value: string): value is LogoListRegion {
+  return (LOGO_LIST_REGIONS as readonly string[]).includes(value);
+}
+
+export async function getAllLogoLists(
+  resolvedUrl: string = ""
+): Promise<Result<LogoListMap, Error>> {
+  try {
+    const contentfulClient = getContentfulClient(resolvedUrl);
+    const response = await contentfulClient.getEntries<LogoListSkeleton>({
+      content_type: "logoList",
+      limit: 50,
+      // logoList -> customerLogo -> customerStory / logo asset.
+      include: 2,
+    });
+
+    const lists: LogoListMap = {};
+    logger.info(
+      { count: response.items.length },
+      "[Contentful] Fetched logoList entries"
+    );
+    for (const entry of response.items) {
+      // Read fields into `unknown` locals before narrowing: Contentful's
+      // field-type resolution collapses to `never` for skeletons that hold
+      // nested `Entry[]` references (same reason `chaptersField` above needs
+      // a hand), which would make the guards below vacuous.
+      const regionField: unknown = entry.fields.country;
+      const region = isString(regionField) ? regionField.trim() : "";
+      // An unrecognised region is a typo or a value retired from the code;
+      // either way the audience it was meant for is better served by the
+      // fallback than by nothing.
+      if (!isLogoListRegion(region)) {
+        // Naming the fields we *did* get: the usual cause of an empty country
+        // is a field whose id isn't `country` (Contentful shows editors the
+        // label, and the two drift apart easily), and the entry then vanishes
+        // with nothing to explain why the bar still shows its old lineup.
+        logger.warn(
+          {
+            region,
+            entryId: entry.sys.id,
+            fieldIds: Object.keys(entry.fields),
+            expected: LOGO_LIST_REGIONS,
+          },
+          "[Contentful] Skipping logoList entry: `country` missing or unrecognised"
+        );
+        continue;
+      }
+
+      // A region that exists but isn't live yet: marketing may be building or
+      // reviewing this list, and it must not reach visitors until someone
+      // ships it. Logged at info, not warn — this is the expected state for a
+      // market in preparation, not a fault.
+      if (!isLiveLogoListRegion(region)) {
+        logger.info(
+          { region, entryId: entry.sys.id, live: LIVE_LOGO_LIST_REGIONS },
+          "[Contentful] Ignoring logoList entry: region is not live yet"
+        );
+        continue;
+      }
+
+      const logosField: unknown = entry.fields.customerLogo;
+      if (!Array.isArray(logosField)) {
+        logger.warn(
+          {
+            region,
+            entryId: entry.sys.id,
+            fieldIds: Object.keys(entry.fields),
+          },
+          "[Contentful] Skipping logoList entry: no `customerLogo` array"
+        );
+        continue;
+      }
+
+      const logos = logosField
+        .filter(isCustomerLogoEntry)
+        .map(contentfulEntryToLogoBarLogo)
+        .filter(isNonNull);
+
+      // An entry that resolves to nothing usable is treated as absent so the
+      // page renders its hardcoded fallback instead of an empty bar. Worth a
+      // warning even so: from the editor's side this looks identical to the
+      // entry not existing, and the usual cause is a referenced customerLogo
+      // — or its image asset — still sitting in draft.
+      if (logos.length === 0) {
+        logger.warn(
+          { region, entryId: entry.sys.id, referenced: logosField.length },
+          "[Contentful] Skipping logoList entry: no usable logos (unpublished entry or asset?)"
+        );
+        continue;
+      }
+
+      // `region` is unique in the content model, so a duplicate means someone
+      // published a second entry for the same audience. Keep the first and say
+      // so, rather than letting response order decide silently.
+      if (lists[region]) {
+        logger.warn(
+          { region, entryId: entry.sys.id },
+          "[Contentful] Duplicate logoList entry for region; keeping the first"
+        );
+        continue;
+      }
+
+      lists[region] = logos;
+    }
+
+    return new Ok(lists);
+  } catch (error) {
+    logger.error({ error }, "[Contentful] Failed to fetch logo lists");
     return new Err(normalizeError(error));
   }
 }

@@ -631,3 +631,75 @@ export interface ConversationDraft {
   prompt: string;
   attachments: ConversationDraftAttachment[];
 }
+
+// Logo bars ("Trusted by ..." sections)
+//
+// Two Contentful content types back the customer logo bars on the marketing
+// pages, so GTM can reorder / add / retire logos without a deploy:
+//
+//   `customerLogo` — one entry per company. Unpublishing an entry removes the
+//     logo from every list it appears in (this replaces commenting a line out).
+//   `logoList` — one entry per *audience*, identified by `region`. Holds an
+//     ordered reference list of `customerLogo` entries; drag-to-reorder in
+//     Contentful is the display order on the site.
+//
+// One list per region, shared by every bar on the marketing pages: a French
+// visitor sees the same lineup on /home as on /home/solutions/sales. That is
+// deliberate — the previous per-surface split was an artifact nobody had
+// chosen, and marketing asked for one list per country.
+//
+// A region with no published `logoList` entry falls back to the hardcoded
+// per-bar lineups in lib/logo_bars.ts, which reproduce today's behaviour
+// exactly. So this rolls out one country at a time: publish the France list
+// and only French visitors change.
+// Field ids as built in Contentful: the company name lives in `name` (the
+// display field). There is deliberately no free-text URL field — a case study
+// is linked by referencing the `customerStory` entry, so the URL is derived
+// from its slug and can't drift. A logo whose story isn't in Contentful simply
+// renders without a link.
+export interface CustomerLogoFields {
+  name: string;
+  logo?: Asset;
+  caseStudy?: Entry<CustomerStorySkeleton>;
+}
+
+export type CustomerLogoSkeleton = EntrySkeletonType<
+  CustomerLogoFields,
+  "customerLogo"
+>;
+
+// Must match LOGO_LIST_REGIONS in lib/logo_bars.ts — these strings are the
+// `country` values editors pick in Contentful, so renaming one silently
+// detaches its entry and reverts that audience to the hardcoded fallback.
+export type LogoListRegion = "US" | "EU" | "UK" | "FR";
+
+// Field ids match the content type as built in Contentful: `country`, not
+// `region`, and `customerLogo` for the ordered list. Contentful field ids are
+// immutable once created, so the code conforms to them rather than the other
+// way round. `country` is also the display field, so there is no separate
+// label field.
+export interface LogoListFields {
+  country: string;
+  customerLogo?: Entry<CustomerLogoSkeleton>[];
+}
+
+export type LogoListSkeleton = EntrySkeletonType<LogoListFields, "logoList">;
+
+// `width`/`height` are nullable on purpose: Contentful does not report
+// `details.image` for SVG uploads, and SVG is the format most brand kits
+// ship. The logo bars size by a fixed-height box + `w-auto`, so intrinsic
+// dimensions are only a hint for next/image.
+export interface LogoBarLogo {
+  name: string;
+  src: string;
+  width: number | null;
+  height: number | null;
+  caseStudyUrl: string | null;
+}
+
+// Keyed by `barSlug`, for the hardcoded fallback lineups only.
+export type LogoBarMap = Record<string, LogoBarLogo[]>;
+
+// Keyed by `region`. A missing key means "no CMS entry for this audience",
+// which is the signal to fall back to the per-bar lineup.
+export type LogoListMap = Partial<Record<LogoListRegion, LogoBarLogo[]>>;
