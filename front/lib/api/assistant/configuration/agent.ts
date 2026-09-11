@@ -1014,6 +1014,7 @@ export async function createAgentConfiguration(
       id: agent.id,
       sId: agent.sId,
       versionCreatedAt: agent.createdAt.toISOString(),
+      updatedAt: agent.updatedAt.toISOString(),
       version: agent.version,
       versionAuthorId: agent.authorId,
       scope: agent.scope,
@@ -1148,6 +1149,12 @@ type ArchiveAgentConfigurationOptions = {
   dangerouslySkipPermissionFiltering?: boolean;
 };
 
+/**
+ * @cc [owner:achilleburah,label:product;backend] archival-bumps-updated-at
+ * Archiving MUST update `AgentConfigurationModel.updatedAt`, since the Archived Agents view uses
+ * it as a stand-in for `archivedAt` (there is no dedicated column). Do not pass `{ silent: true }`
+ * or otherwise suppress the timestamp on the archival update.
+ */
 export async function archiveAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string,
