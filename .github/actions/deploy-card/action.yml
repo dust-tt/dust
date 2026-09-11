@@ -132,7 +132,7 @@ runs:
           const inflightTags = new Set();
           if (!revert) {
             const collect = async (client, repository, workflowFile) => {
-              for (const status of ['in_progress', 'queued']) {
+              for (const status of ['in_progress', 'queued', 'pending']) {
                 const { data } = await client.rest.actions.listWorkflowRuns({ owner, repo: repository, workflow_id: workflowFile, status, per_page: 50 });
                 for (const r of data.workflow_runs) {
                   if (!(r.display_title || '').startsWith(`Deploy ${component} `)) continue;
