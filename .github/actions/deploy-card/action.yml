@@ -118,22 +118,36 @@ runs:
             } catch (e) { core.warning(`no versions file for ${cell}: ${e.message}`); }
           }
 
-          // A deploy of this component still in flight has not pinned the versions files
-          // yet, so the files still hold what IT is replacing: diffing against them would
-          // announce its commits a second time. Baseline on what the in-flight run ships
-          // (its head sha) instead. Not run for reverts, a revert must diff against the
-          // file to show what is being rolled back.
+          // A deploy of this component still rolling out has not pinned the versions
+          // files yet, so they still hold what IT is replacing: diffing against them
+          // would announce and ping its commits a second time. The rollout lives in
+          // dust-infra (the dust-side run ends at the dispatch), its runs are named
+          // "Deploy <component> <tag> to <cells>", so the tag comes from the titles of
+          // its queued and running runs. The dust-side check covers the parallel edge
+          // components, restricted to runs started before this one so a deploy queued
+          // behind us cannot steal our baseline. Reverts are exempt, a revert diffs
+          // against the file to show what it rolls back. When an in-flight rollout
+          // exists the versions baselines are dropped entirely: not re-pinging wins
+          // over changelog width across cells.
           const inflightTags = new Set();
           if (!revert) {
-            try {
-              const { data } = await github.rest.actions.listWorkflowRuns({ owner, repo, workflow_id: 'deploy.yml', per_page: 30 });
-              for (const r of data.workflow_runs) {
-                if (r.id === context.runId) continue;
-                if (!['queued', 'waiting', 'pending', 'in_progress'].includes(r.status)) continue;
-                if (!(r.display_title || '').startsWith(`Deploy ${component} `)) continue;
-                inflightTags.add(r.head_sha.slice(0, tag.length));
+            const collect = async (client, repository, workflowFile) => {
+              for (const status of ['in_progress', 'queued']) {
+                const { data } = await client.rest.actions.listWorkflowRuns({ owner, repo: repository, workflow_id: workflowFile, status, per_page: 50 });
+                for (const r of data.workflow_runs) {
+                  if (!(r.display_title || '').startsWith(`Deploy ${component} `)) continue;
+                  if (repository === repo) {
+                    if (r.id === context.runId || r.run_number >= context.runNumber) continue;
+                    inflightTags.add(r.head_sha.slice(0, tag.length));
+                  } else {
+                    const t = (r.display_title || '').split(' ')[2] || '';
+                    if (/^[0-9a-f]{7,40}$/.test(t)) inflightTags.add(t.slice(0, tag.length));
+                  }
+                }
               }
-            } catch (e) { core.warning(`could not list in-flight deploys: ${e.message}`); }
+            };
+            try { await collect(github, repo, 'deploy.yml'); } catch (e) { core.warning(`in-flight dust deploys: ${e.message}`); }
+            try { await collect(infra, 'dust-infra', 'deploy.yaml'); } catch (e) { core.warning(`in-flight dust-infra rollouts: ${e.message}`); }
           }
           const baselines = inflightTags.size > 0 ? inflightTags : currentTags;
 
