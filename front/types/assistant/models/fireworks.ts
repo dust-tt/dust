@@ -302,7 +302,10 @@ export const FIREWORKS_KIMI_K2P6_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Moonshot AI's K2.6 agentic model with 262k context and vision support (served via Fireworks).",
   shortDescription: "Kimi K2.6 with vision support.",
-  isLegacy: false,
+  // Superseded by Kimi K3. Fireworks decommissions its serverless endpoint on
+  // 2026-09-25 (announced by email), so dropped from the model picker; agents
+  // still pinned to it must be repointed to Kimi K3 or GLM-5.3 before then.
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 2048,
   supportsVision: true,
@@ -412,8 +415,10 @@ export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
   description:
     "Z.ai's GLM-5.2 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context, served via Fireworks).",
   shortDescription: "GLM-5.2 for coding and agentic tasks.",
-  isLegacy: false,
-  // Superseded by GLM-5.3, but kept pickable as the family's previous version.
+  // Superseded by GLM-5.3. Fireworks decommissions its serverless endpoint on
+  // 2026-09-25 (announced by email), so dropped from the model picker; agents
+  // still pinned to it must be repointed to GLM-5.3 before then.
+  isLegacy: true,
   isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: false,
