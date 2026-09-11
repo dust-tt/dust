@@ -11,10 +11,7 @@ import {
   publishFramePublication,
 } from "@app/lib/api/frames/publication_storage";
 import { withStagedFrameSource } from "@app/lib/api/frames/source_staging";
-import {
-  collectFrameFunctionWarnings,
-  validateFrameFunctionReferences,
-} from "@app/lib/api/frames/validate_frame_functions";
+import { validateFrameFunctionReferences } from "@app/lib/api/frames/validate_frame_functions";
 import { ensureConversationSandboxReadyWithScope } from "@app/lib/api/sandbox/lifecycle";
 import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
@@ -228,17 +225,7 @@ export async function validateFramePublication(
     return contracts;
   }
 
-  const functionWarnings = await collectFrameFunctionWarnings({
-    functions: contracts.value.functions,
-    sourceFiles,
-  });
-
-  return new Ok({
-    warnings: [
-      ...collectFrameTailwindWarnings(sourceFiles),
-      ...functionWarnings,
-    ],
-  });
+  return new Ok({ warnings: collectFrameTailwindWarnings(sourceFiles) });
 }
 
 /**
