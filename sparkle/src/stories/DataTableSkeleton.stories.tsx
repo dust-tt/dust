@@ -8,7 +8,6 @@ import {
   TextCellSkeleton,
 } from "@sparkle/components";
 import type { DataTableSkeletonCellProps } from "@sparkle/components";
-import { assertNever } from "@sparkle/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ColumnDef } from "@tanstack/react-table";
 import React from "react";
@@ -38,9 +37,8 @@ const members: MemberRow[] = [
   { member: "Sam Lee", email: "sam@example.com", role: "User", usage: "16" },
 ];
 
-const columns = [
+const columns: ColumnDef<MemberRow, string>[] = [
   {
-    id: "member" as const,
     accessorKey: "member",
     header: "Member",
     meta: { className: "w-1/2" },
@@ -57,7 +55,6 @@ const columns = [
     ),
   },
   {
-    id: "role" as const,
     accessorKey: "role",
     header: "Role",
     enableSorting: false,
@@ -71,7 +68,6 @@ const columns = [
     ),
   },
   {
-    id: "usage" as const,
     accessorKey: "usage",
     header: "Usage",
     meta: { className: "w-1/4", headerAlign: "right" },
@@ -79,14 +75,12 @@ const columns = [
       <div className="text-right text-sm">{row.original.usage}</div>
     ),
   },
-] satisfies ColumnDef<MemberRow, string>[];
-
-type MemberColumnId = (typeof columns)[number]["id"];
+];
 
 function MemberSkeletonCell({
   columnId,
   rowIndex,
-}: DataTableSkeletonCellProps<MemberColumnId>) {
+}: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "member":
       return (
@@ -102,32 +96,31 @@ function MemberSkeletonCell({
     case "usage":
       return <TextCellSkeleton className="ml-auto w-12" />;
     default:
-      return assertNever(columnId);
+      return null;
   }
 }
 
-const meta: Meta<typeof DataTableSkeleton<MemberRow, string, MemberColumnId>> =
-  {
-    title: "Feedback & Status/DataTableSkeleton",
-    component: DataTableSkeleton,
-    args: {
-      columns,
-      SkeletonCell: MemberSkeletonCell,
-      rowCount: 5,
-      rowHeight: 48,
-    },
-    argTypes: {
-      columns: { control: false },
-      SkeletonCell: { control: false },
-      rowCount: { control: { type: "number", min: 1, max: 10 } },
-      rowHeight: { control: { type: "number", min: 48, max: 96 } },
-    },
-    render: (args) => (
-      <div className="w-full max-w-2xl">
-        <DataTableSkeleton {...args} />
-      </div>
-    ),
-  };
+const meta = {
+  title: "Feedback & Status/DataTableSkeleton",
+  component: DataTableSkeleton,
+  args: {
+    columns,
+    SkeletonCell: MemberSkeletonCell,
+    rowCount: 5,
+    rowHeight: 48,
+  },
+  argTypes: {
+    columns: { control: false },
+    SkeletonCell: { control: false },
+    rowCount: { control: { type: "number", min: 1, max: 10 } },
+    rowHeight: { control: { type: "number", min: 48, max: 96 } },
+  },
+  render: (args) => (
+    <div className="w-full max-w-2xl">
+      <DataTableSkeleton {...args} />
+    </div>
+  ),
+} satisfies Meta<typeof DataTableSkeleton<MemberRow>>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -136,8 +129,6 @@ type Story = StoryObj<typeof meta>;
  * Reuse the loaded table columns and provide a cell renderer for their contents:
  * circular avatars and two text lines for members, chip-shaped roles, and
  * right-aligned usage values. Vary text widths with rowIndex for a natural layout.
- * Derive the column-id union from the columns and use assertNever so adding a
- * column requires updating its skeleton.
  * @summary Custom cell placeholders matching avatars, badges, and text.
  */
 export const CustomCells: Story = {};
