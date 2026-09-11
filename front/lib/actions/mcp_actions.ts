@@ -43,6 +43,7 @@ import {
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import {
   makeMCPToolExit,
   makePersonalAuthenticationError,
@@ -170,7 +171,8 @@ export function getToolExtraFields(
     toolName: string;
     permission: MCPToolStakeLevelType;
     enabled: boolean;
-  }[]
+  }[],
+  remoteServerUrl?: string
 ) {
   let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
   let serverTimeoutMs: number | undefined;
@@ -200,6 +202,10 @@ export function getToolExtraFields(
       ({ toolName, permission }) => (toolsStakes[toolName] = permission)
     );
   } else {
+    toolsStakes = {
+      ...getDefaultRemoteMCPServerByURL(remoteServerUrl)?.toolStakes,
+    };
+
     metadata.forEach(
       ({ toolName, permission }) => (toolsStakes[toolName] = permission)
     );
@@ -1428,12 +1434,19 @@ export async function buildToolConfigurationsFromRawTools(
   config: ServerSideMCPServerConfigurationType,
   allToolsRaw: MCPToolType[]
 ): Promise<Result<ServerSideMCPToolConfigurationType[], Error>> {
-  const metadata = await RemoteMCPServerToolMetadataResource.fetchByServerId(
-    auth,
-    mcpServerId
-  );
+  const { serverType } = getServerTypeAndIdFromSId(mcpServerId);
+  const [metadata, remoteServer] = await Promise.all([
+    RemoteMCPServerToolMetadataResource.fetchByServerId(auth, mcpServerId),
+    serverType === "remote"
+      ? RemoteMCPServerResource.fetchById(auth, mcpServerId)
+      : null,
+  ]);
 
-  const r = getToolExtraFields(mcpServerId, metadata);
+  const r = getToolExtraFields(
+    mcpServerId,
+    metadata,
+    remoteServer?.url || undefined
+  );
   if (r.isErr()) {
     return r;
   }

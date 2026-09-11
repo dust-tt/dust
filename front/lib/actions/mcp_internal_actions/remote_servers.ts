@@ -1065,6 +1065,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     authMethod: "oauth-dynamic",
     toolStakes: {
       "notion-search": "never_ask",
+      "notion-ai-search": "never_ask",
       "notion-fetch": "never_ask",
       "notion-get-comments": "never_ask",
       "notion-get-teams": "never_ask",
@@ -1085,6 +1086,10 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
     toolDisplayLabels: {
       "notion-search": {
+        running: "Searching in Notion",
+        done: "Searched in Notion",
+      },
+      "notion-ai-search": {
         running: "Searching in Notion",
         done: "Searched in Notion",
       },
