@@ -87,7 +87,7 @@ describe("Dust Lean", () => {
     expect(disabled.codeDefinedSkillIds).toEqual([]);
   });
 
-  it("starts empty and allows explicitly added conversation tools and skills", async () => {
+  it("inherits default skills and allows explicitly added conversation tools and skills", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",
     });
@@ -129,8 +129,12 @@ describe("Dust Lean", () => {
       effectiveSpaceIds: [],
       hasSelectedSpacesOutsideAgentScope: false,
       enabledSkills: [],
-      systemSkills: [],
-      equippedSkills: [],
+      systemSkills: expect.arrayContaining([
+        expect.objectContaining({ sId: "projects" }),
+      ]),
+      equippedSkills: expect.arrayContaining([
+        expect.objectContaining({ sId: skill.sId }),
+      ]),
       favoriteSkills: [],
     });
     const initialJitServers = await getJITServers(authenticator, {
@@ -163,8 +167,8 @@ describe("Dust Lean", () => {
       conversation,
     });
     expect(skills.enabledSkills.map((s) => s.sId)).toEqual([skill.sId]);
-    expect(skills.systemSkills).toEqual([]);
-    expect(skills.equippedSkills).toEqual([]);
+    expect(skills.systemSkills.map((s) => s.sId)).toContain("projects");
+    expect(skills.equippedSkills.map((s) => s.sId)).toContain(skill.sId);
     expect(skills.favoriteSkills).toEqual([]);
     const { skillServers, systemSkillServers } = await resolveSkillMCPServers(
       authenticator,
@@ -173,7 +177,7 @@ describe("Dust Lean", () => {
     expect(skillServers).toEqual([
       expect.objectContaining({ mcpServerViewId: view.sId }),
     ]);
-    expect(systemSkillServers).toEqual([]);
+    expect(systemSkillServers).not.toHaveLength(0);
     const jitServers = await getJITServers(authenticator, {
       agentConfiguration: lean,
       conversation,

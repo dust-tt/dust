@@ -74,10 +74,7 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import {
-  GLOBAL_AGENTS_SID,
-  isGlobalAgentId,
-} from "@app/types/assistant/assistant";
+import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type {
   ConversationType,
   ConversationWithoutContentType,
@@ -1928,19 +1925,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         effectiveSpaceIds,
       }
     );
-
-    if (agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_LEAN) {
-      return {
-        effectiveSpaceIds,
-        hasSelectedSpacesOutsideAgentScope,
-        enabledSkills: conversationEnabledSkills.sort((a, b) =>
-          a.name.localeCompare(b.name)
-        ),
-        systemSkills: [],
-        equippedSkills: [],
-        favoriteSkills: [],
-      };
-    }
 
     const podDefaultSkills = await this.listPodDefaultSkillsForConversation(
       auth,
