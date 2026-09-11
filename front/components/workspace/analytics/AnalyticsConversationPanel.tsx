@@ -174,8 +174,12 @@ export function AnalyticsConversationPanel({
 
   const handleRetry = useCallback(() => {
     resetConversation();
-    void startConversation();
-  }, [resetConversation, startConversation]);
+    // Same gate as the effect above; when names are still resolving the effect starts the
+    // conversation as soon as they land.
+    if (!isFacetsLoading) {
+      void startConversation();
+    }
+  }, [isFacetsLoading, resetConversation, startConversation]);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
