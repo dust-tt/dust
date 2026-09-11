@@ -52,12 +52,12 @@ interface PendingPluginAction {
 }
 
 interface DeployToCellsState {
-  onDeploy: (flagName: string, cells: CellType[]) => void;
+  onDeploy: (flagName: string, cells: Set<CellType>) => void;
   confirmFlag: string | null;
   setConfirmFlag: (flagName: string | null) => void;
   deployingFlags: Set<string>;
-  targetCells: CellType[];
-  setTargetCells: (cells: CellType[]) => void;
+  targetCells: Set<CellType>;
+  setTargetCells: (cells: Set<CellType>) => void;
 }
 
 interface MakeColumnsParams {
@@ -223,7 +223,7 @@ function makeColumns({
                   deployToCells.setConfirmFlag(open ? name : null);
                   if (open) {
                     deployToCells.setTargetCells(
-                      byCell.map((stat) => stat.cell)
+                      new Set(byCell.map((stat) => stat.cell))
                     );
                   }
                 }}
@@ -252,18 +252,18 @@ function makeColumns({
                             name: stat.cell,
                             region: stat.region,
                           })}
-                          checked={deployToCells.targetCells.includes(
-                            stat.cell
-                          )}
-                          onCheckedChange={(checked) =>
-                            deployToCells.setTargetCells(
-                              checked === true
-                                ? [...deployToCells.targetCells, stat.cell]
-                                : deployToCells.targetCells.filter(
-                                    (cell) => cell !== stat.cell
-                                  )
-                            )
-                          }
+                          checked={deployToCells.targetCells.has(stat.cell)}
+                          onCheckedChange={(checked) => {
+                            const targetCells = new Set(
+                              deployToCells.targetCells
+                            );
+                            if (checked === true) {
+                              targetCells.add(stat.cell);
+                            } else {
+                              targetCells.delete(stat.cell);
+                            }
+                            deployToCells.setTargetCells(targetCells);
+                          }}
                         />
                       ))}
                     </div>
@@ -280,7 +280,7 @@ function makeColumns({
                         size="xs"
                         icon={Rocket02}
                         label="Yes"
-                        disabled={deployToCells.targetCells.length === 0}
+                        disabled={deployToCells.targetCells.size === 0}
                         isLoading={deployToCells.deployingFlags.has(name)}
                         onClick={() =>
                           deployToCells.onDeploy(
@@ -379,8 +379,12 @@ export function FeatureFlagsPage() {
   const [deployState, setDeployState] = useState<{
     confirmFlag: string | null;
     deployingFlags: Set<string>;
-    targetCells: CellType[];
-  }>({ confirmFlag: null, deployingFlags: new Set(), targetCells: [] });
+    targetCells: Set<CellType>;
+  }>({
+    confirmFlag: null,
+    deployingFlags: new Set(),
+    targetCells: new Set(),
+  });
 
   const switchToCell = useCallback(
     (cell: CellType) => {
@@ -422,7 +426,7 @@ export function FeatureFlagsPage() {
   }, [mutate]);
 
   const onDeployToCells = useCallback(
-    async (flagName: string, targetCells: CellType[]) => {
+    async (flagName: string, targetCells: Set<CellType>) => {
       setDeployState((s) => ({
         ...s,
         confirmFlag: null,
@@ -431,7 +435,7 @@ export function FeatureFlagsPage() {
 
       try {
         const results = await fetchPokeFromAllCells<PokeRunPluginResponseBody>({
-          cells: cells.filter((cell) => targetCells.includes(cell.name)),
+          cells: cells.filter((cell) => targetCells.has(cell.name)),
           path: `/api/poke/plugins/${TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID}/run?resourceType=global`,
           init: {
             method: "POST",
@@ -463,7 +467,7 @@ export function FeatureFlagsPage() {
         } else {
           sendNotification({
             title: "Deployed",
-            description: `"${flagName}" is now enabled for every workspace on ${targetCells.length} cell(s).`,
+            description: `"${flagName}" is now enabled for every workspace on ${targetCells.size} cell(s).`,
             type: "success",
           });
         }
