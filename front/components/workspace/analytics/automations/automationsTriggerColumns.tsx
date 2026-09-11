@@ -298,7 +298,7 @@ export function poolColumn<
     id: "pool",
     header: "Pool",
     enableSorting: false,
-    meta: { className: "w-28" },
+    meta: { className: "w-32" },
     cell: (info) => (
       <DataTable.CellContent className="w-full justify-start">
         <PoolCell row={info.row.original} />
