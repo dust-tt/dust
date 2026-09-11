@@ -38,11 +38,14 @@ function resolveUrl<T extends RequestInfo | URL>(
 
 /**
  * @cc [owner:Nils-Fedrigo,label:security] single-request-resolution-point
- * `resolveRequest` MUST be the only place resolving a client request's target and auth context. It
- * MUST rewrite the URL through `resolveUrl`, merge the caller's `init` over the context defaults
- * with the caller's headers winning per header name, and expose that same auth context in all
- * three shapes it returns, so no transport can observe a different URL, header set or credentials
- * mode than another. A transport MAY drop a header the body it sends is incompatible with (see
+ * `resolveRequest` MUST be the only place resolving a client request's target and auth context: no
+ * transport helper may call `getBaseUrl` or `getDefaultInit` itself, nor re-derive any part of that
+ * resolution. It MUST rewrite the URL through `resolveUrl`, merge the caller's `init` over the
+ * context defaults with the caller's headers winning per header name, and expose that same auth
+ * context in all three shapes it returns, so no transport can observe a different URL, header set
+ * or credentials mode than another — one that resolved its own would drift as soon as another
+ * changes, and silently lose the caller's credentials (Bearer token in the browser extension,
+ * cookies in the SPA). A transport MAY drop a header the body it sends is incompatible with (see
  * `Content-Type` in `clientUpload`), but MUST NOT add or rewrite one.
  */
 async function resolveRequest<T extends RequestInfo | URL>(

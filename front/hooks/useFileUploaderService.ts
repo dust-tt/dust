@@ -27,21 +27,27 @@ import type { ChangeEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 
 /**
- * @cc [owner:Nils-Fedrigo,label:react] upload-progress-is-not-a-completion-signal
- * While `isUploading` is `true`, `uploadProgress` MUST be `null` until the file's bytes start
- * moving and the integer percentage of bytes sent afterwards. `100` MUST mean the bytes are all
- * sent while the server is still processing the file, and MUST NOT be used to signal that the
- * upload is done: completion is signalled by `isUploading` becoming `false`, at which point
- * `uploadProgress` MUST be `null` again.
+ * Upload state of a `FileBlob`, as a union rather than two free-standing fields so that the
+ * incoherent combination — a progress percentage on a file that is not uploading — cannot be
+ * built. `uploadProgress` is `null` until the file's bytes start moving.
  */
-export interface FileBlob {
+type FileBlobUploadState =
+  | { isUploading: false; uploadProgress: null }
+  | { isUploading: true; uploadProgress: number | null };
+
+/**
+ * @cc [owner:Nils-Fedrigo,label:react] upload-progress-is-not-a-completion-signal
+ * `uploadProgress` MUST be the integer percentage of the file's bytes already sent, and `100` MUST
+ * mean they are all sent while the server is still processing the file. It MUST NOT be used to
+ * signal that the upload is done: completion is signalled by `isUploading` becoming `false`.
+ * `FileBlobUploadState` enforces the rest of the pair's coherence.
+ */
+export type FileBlob = FileBlobUploadState & {
   contentType: SupportedFileContentType;
   file: File;
   filename: string;
   id: string;
   fileId: string | null;
-  isUploading: boolean;
-  uploadProgress: number | null;
   sourceUrl?: string;
   size: number;
   publicUrl?: string;
@@ -49,7 +55,7 @@ export interface FileBlob {
   provider?: string;
   /** Scoped mount path from upload (same as `GCSMountEntryBase.path`). */
   path?: string | null;
-}
+};
 export type FileBlobWithFileId = FileBlob & { fileId: string };
 
 class FileBlobUploadError extends Error {
@@ -238,7 +244,9 @@ export function useFileUploaderService({
 
             setFileBlobs((prevFiles) =>
               prevFiles.map((f) =>
-                f.id === fileBlob.id ? { ...f, uploadProgress: percentSent } : f
+                f.id === fileBlob.id
+                  ? { ...f, isUploading: true, uploadProgress: percentSent }
+                  : f
               )
             );
           };
