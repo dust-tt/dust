@@ -41,11 +41,7 @@ import {
   DEFAULT_CONSUMPTION_GRANULARITY,
   DEFAULT_CONSUMPTION_PERIOD,
 } from "@app/lib/analytics/consumption_period";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isNavigationLocked } from "@app/lib/navigation-lock";
 import type { TrackingExtra } from "@app/lib/tracking";
 import {
@@ -179,10 +175,7 @@ export function AnalyticsConsumptionPage() {
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const { hasFeature } = useFeatureFlags();
-  const analyticsAssistantEnabled =
-    hasFeature("analytics_conversation_panel") &&
-    isWorkspaceAnalyticsEnabled(owner);
+  const analyticsAssistantEnabled = isWorkspaceAnalyticsEnabled(owner);
 
   useEffect(() => {
     trackEvent({
