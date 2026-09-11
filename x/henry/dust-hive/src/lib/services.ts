@@ -17,6 +17,7 @@ export const ALL_SERVICES = [
   "front-spa-app",
   "viz",
   "storybook",
+  "sqlite-worker",
 ] as const;
 
 // Services that run in "cold" state (build watchers)
