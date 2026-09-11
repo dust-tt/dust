@@ -232,7 +232,6 @@ describe("Dust Lean", () => {
       hasSandboxTools: true,
     });
     const promptText = systemPromptToText(prompt);
-    expect(promptText).toContain("You start without tools");
     expect(promptText).toContain("Private Pod context");
     expect(promptText).toContain("# TOOLS");
     expect(promptText).toContain("# FILES");

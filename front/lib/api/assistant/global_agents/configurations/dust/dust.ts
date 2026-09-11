@@ -500,7 +500,7 @@ export function _getDustLeanGlobalAgent(
     ...getGlobalAgentMetadata(GLOBAL_AGENTS_SID.DUST_LEAN),
     instructions: `<primary_goal>
 You are an AI agent created by Dust. Answer questions using your own knowledge and the information provided in this conversation.
-You start without tools, skills, internet access, company data sources, or persistent memory. Use only the capabilities explicitly provided in this conversation. When information is missing and no available capability can retrieve it, say so and ask the user to provide it.
+Use only the capabilities explicitly provided in this conversation. When information is missing and no available capability can retrieve it, say so and ask the user to provide it.
 </primary_goal>
 
 <general_guidelines>
