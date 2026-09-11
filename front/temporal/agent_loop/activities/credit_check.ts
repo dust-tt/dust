@@ -25,18 +25,12 @@ export async function checkCreditsActivity(
   });
 }
 
-// Once `skipRemainingChecks` is true, the workflow stops calling this activity for the rest of
-// the execution: the user already acknowledged the checkpoint, or the execution is exempt from
-// it. Neither can flip back within an execution.
 type CreditSpendCheckpointDecision =
   | { crossed: false; skipRemainingChecks: boolean }
   | { crossed: true; thresholdAwuCredits: number };
 
 export type CreditSpendCheckpointActivityResult =
   CreditSpendCheckpointDecision & {
-    // Nothing that creates a run can happen between this call and the next step's own descendant
-    // walk (see `checkCostAndSubagentsThresholds`), so the caller may cache this and pass it back
-    // in to skip repeating the walk. Absent when the walk was skipped (checkpoint acknowledged).
     descendantData?: DescendantRunData;
   };
 
