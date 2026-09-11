@@ -9,6 +9,7 @@ import {
   AGENT_ROUTER_SERVER_NAME,
   SUGGEST_AGENTS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
+import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type {
   MCPServerViewsForGlobalAgentsMap,
@@ -483,6 +484,38 @@ export function _getDustGlobalAgent(
     preferredModelConfiguration,
     preferredReasoningEffort,
   });
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:product] raw-agent-configuration
+ * Dust Raw MUST use Dust's model selection and return no configured actions or skills.
+ * Its instructions MUST NOT direct it to use tools or discover company knowledge.
+ */
+export function _getDustRawGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  const dustAgent = _getDustGlobalAgent(auth, args);
+  if (!dustAgent) {
+    return null;
+  }
+
+  return {
+    ...dustAgent,
+    ...getGlobalAgentMetadata(GLOBAL_AGENTS_SID.DUST_RAW),
+    instructions: `<primary_goal>
+You are an AI agent created by Dust. Answer questions using your own knowledge and the information provided in this conversation.
+You do not have access to tools, skills, the internet, company data sources, or persistent memory. When information is missing, say so and ask the user to provide it.
+</primary_goal>
+
+<general_guidelines>${globalAgentGuidelines}</general_guidelines>
+
+<critical_thinking_guidelines>
+Keep your thinking as short as possible.
+</critical_thinking_guidelines>`,
+    actions: [],
+    codeDefinedSkillIds: [],
+  };
 }
 
 export function _getDustHighGlobalAgent(

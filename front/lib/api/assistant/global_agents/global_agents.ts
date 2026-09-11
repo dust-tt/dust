@@ -68,6 +68,7 @@ import {
   _getDustPistacheMediumGlobalAgent,
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
+  _getDustRawGlobalAgent,
   _getRetiredDustLikeGlobalAgent,
   getCustomModelDustGlobalAgentIndex,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
@@ -377,6 +378,17 @@ function getGlobalAgent({
         hasDeepDive,
         featureFlags,
         globalAgentContext,
+        autoDefaultModelConfig,
+        preferSonnet5DefaultModel,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_RAW:
+      agentConfiguration = _getDustRawGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
         autoDefaultModelConfig,
         preferSonnet5DefaultModel,
       });
@@ -1061,6 +1073,12 @@ export async function getGlobalAgents(
       .filter((sId) => sId !== GLOBAL_AGENTS_SID.REINFORCEMENT);
 
   const flags = await getFeatureFlags(auth);
+
+  if (!flags.includes("dust_raw_agent")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_RAW
+    );
+  }
 
   if (!isWorkspaceAnalyticsEnabled(owner)) {
     agentsIdsToFetch = agentsIdsToFetch.filter(

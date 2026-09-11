@@ -74,7 +74,10 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import { isGlobalAgentId } from "@app/types/assistant/assistant";
+import {
+  GLOBAL_AGENTS_SID,
+  isGlobalAgentId,
+} from "@app/types/assistant/assistant";
 import type {
   ConversationType,
   ConversationWithoutContentType,
@@ -1887,6 +1890,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
+  /**
+   * @cc [owner:aubin-tchoi,label:product] raw-agent-no-skills
+   * Dust Raw MUST receive no skills or effective Spaces, including auto-enabled
+   * skills and skills attached to its conversation or Pod.
+   */
   static async listForAgentLoop(
     auth: Authenticator,
     params:
@@ -1905,6 +1913,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     favoriteSkills: SkillResource[];
   }> {
     const { agentConfiguration, conversation } = params;
+    if (agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_RAW) {
+      return {
+        effectiveSpaceIds: [],
+        hasSelectedSpacesOutsideAgentScope: false,
+        enabledSkills: [],
+        systemSkills: [],
+        equippedSkills: [],
+        favoriteSkills: [],
+      };
+    }
+
     // Light type-guard to check whether we have a full AgentLoopExecutionData.
     const agentLoopData = "userMessage" in params ? params : undefined;
     const effectiveSpaceIds = await getEffectiveSpaceIdsForAgentRun(auth, {

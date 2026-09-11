@@ -741,6 +741,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "An agent with context on your company data.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_RAW:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_RAW,
+        name: "dust-raw",
+        description: "Dust without tools, skills, or company knowledge access.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST_HIGH:
       return {
         sId: GLOBAL_AGENTS_SID.DUST_HIGH,

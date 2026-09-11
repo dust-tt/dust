@@ -24,6 +24,11 @@ const GLOBAL_AGENT_PROMPT_CONTEXT: Record<
     injectsUserContext: false,
     injectsWorkspaceContext: false,
   },
+  [GLOBAL_AGENTS_SID.DUST_RAW]: {
+    injectsToolsets: false,
+    injectsUserContext: false,
+    injectsWorkspaceContext: false,
+  },
   [GLOBAL_AGENTS_SID.DUST_HIGH]: {
     injectsToolsets: true,
     injectsUserContext: false,

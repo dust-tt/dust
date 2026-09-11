@@ -436,6 +436,22 @@ export function constructPromptMultiActions(
     userMessage,
     disableFormattingPrompt,
   });
+  if (agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_RAW) {
+    return {
+      instructions: [
+        {
+          role: "instruction",
+          content: [
+            instructionsContent,
+            constructGuidelinesSection({ agentConfiguration }),
+          ].join("\n"),
+        },
+      ],
+      sharedContext: [{ role: "context", content: contextSection }],
+      ephemeralContext: [],
+    };
+  }
+
   const branchContextSection = constructBranchContextSection({ conversation });
   const platformSpecificContextSection =
     constructPlatformSpecificContextSection();
