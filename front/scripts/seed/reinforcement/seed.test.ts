@@ -193,12 +193,11 @@ describe("reinforcement seed script integration test", () => {
       (s) => s.name === "SearchInfoContactWithSuggestion"
     );
     expect(contactSkill).toBeDefined();
-    const withInlineSkillReference = skillSuggestions.find((s) => {
-      const json = s.toJSON();
-      return json.suggestion.instructionEdits?.some((edit) =>
+    const withInlineSkillReference = skillSuggestions.find((s) =>
+      instructionEditsOf(s)?.some((edit) =>
         edit.content.includes(`<skill id="${contactSkill!.sId}"`)
-      );
-    });
+      )
+    );
     expect(withInlineSkillReference).toBeDefined();
 
     // Verify idempotency
