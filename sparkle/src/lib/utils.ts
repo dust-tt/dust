@@ -6,6 +6,10 @@ export function assertNever(x: never): never {
   throw new Error(`${x} is not of type never. This should never happen.`);
 }
 
+export function assertNeverAndIgnore(_x: never): void {
+  // Intentionally empty.
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

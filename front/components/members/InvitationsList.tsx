@@ -8,6 +8,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
@@ -21,7 +22,7 @@ import {
   Page,
   TextCellSkeleton,
 } from "@dust-tt/sparkle";
-import type { CellContext } from "@tanstack/react-table";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type React from "react";
 import { useMemo, useState } from "react";
 
@@ -29,65 +30,20 @@ type RowData = MembershipInvitationType & {
   onClick: () => void;
 };
 
-function InvitationSkeletonCell({
-  columnId,
-  rowIndex,
-}: DataTableSkeletonCellProps) {
-  switch (columnId) {
-    case "inviteEmail":
-      return (
-        <TextCellSkeleton className={["w-48", "w-56", "w-40"][rowIndex % 3]} />
-      );
-    case "initialRole":
-      return <ChipCellSkeleton />;
-    default:
-      return null;
-  }
-}
-
-export function InvitationsList({
+function getColumns({
   owner,
-  searchText,
+  sendNotification,
 }: {
   owner: WorkspaceType;
-  searchText?: string;
+  sendNotification: ReturnType<typeof useSendNotification>;
 }) {
-  const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner, {
-    includeExpired: true,
-  });
-  const [selectedInvite, setSelectedInvite] =
-    useState<MembershipInvitationType | null>(null);
-  const sendNotification = useSendNotification();
-
   // Managers cannot resend invitations targeting the admin role (matches the
   // server-side escalation guard); only admins can.
   const canManageAdminRole = isAdmin(owner);
 
-  const filteredInvitations = useMemo(
-    () =>
-      invitations
-        .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
-        .filter((i) => i.status === "pending")
-        .filter(
-          (i) =>
-            !searchText ||
-            i.inviteEmail.toLowerCase().includes(searchText.toLowerCase())
-        ),
-    [invitations, searchText]
-  );
-
-  const rows = useMemo(
-    () =>
-      filteredInvitations.map((invitation) => ({
-        ...invitation,
-        onClick: () => setSelectedInvite(invitation),
-      })),
-    [filteredInvitations]
-  );
-
-  const columns = [
+  return [
     {
-      id: "inviteEmail",
+      id: "inviteEmail" as const,
       header: "Invitation Email",
       accessorKey: "inviteEmail",
       cell: (info: CellContext<RowData, string>) => {
@@ -127,7 +83,7 @@ export function InvitationsList({
       },
     },
     {
-      id: "initialRole",
+      id: "initialRole" as const,
       header: "Role",
       accessorFn: (row: RowData) => row.initialRole,
       cell: (info: CellContext<RowData, string>) => {
@@ -151,7 +107,65 @@ export function InvitationsList({
         className: "w-32",
       },
     },
-  ];
+  ] satisfies ColumnDef<RowData, string>[];
+}
+
+type InvitationColumnId = ReturnType<typeof getColumns>[number]["id"];
+
+function InvitationSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps<InvitationColumnId>) {
+  switch (columnId) {
+    case "inviteEmail":
+      return (
+        <TextCellSkeleton className={["w-48", "w-56", "w-40"][rowIndex % 3]} />
+      );
+    case "initialRole":
+      return <ChipCellSkeleton />;
+    default:
+      assertNeverAndIgnore(columnId);
+      return null;
+  }
+}
+
+export function InvitationsList({
+  owner,
+  searchText,
+}: {
+  owner: WorkspaceType;
+  searchText?: string;
+}) {
+  const { invitations, isInvitationsLoading } = useWorkspaceInvitations(owner, {
+    includeExpired: true,
+  });
+  const [selectedInvite, setSelectedInvite] =
+    useState<MembershipInvitationType | null>(null);
+  const sendNotification = useSendNotification();
+
+  const filteredInvitations = useMemo(
+    () =>
+      invitations
+        .sort((a, b) => a.inviteEmail.localeCompare(b.inviteEmail))
+        .filter((i) => i.status === "pending")
+        .filter(
+          (i) =>
+            !searchText ||
+            i.inviteEmail.toLowerCase().includes(searchText.toLowerCase())
+        ),
+    [invitations, searchText]
+  );
+
+  const rows = useMemo(
+    () =>
+      filteredInvitations.map((invitation) => ({
+        ...invitation,
+        onClick: () => setSelectedInvite(invitation),
+      })),
+    [filteredInvitations]
+  );
+
+  const columns = getColumns({ owner, sendNotification });
 
   return (
     <>
