@@ -7,6 +7,7 @@ export class BigQueryConfigurationModel extends ConnectorBaseModel<BigQueryConfi
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare useMetadataForDBML: boolean;
+  declare maximumBytesBilled: number | null;
 }
 BigQueryConfigurationModel.init(
   {
@@ -24,6 +25,11 @@ BigQueryConfigurationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    maximumBytesBilled: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      defaultValue: null,
     },
   },
   {
