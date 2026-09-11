@@ -77,8 +77,11 @@ export const DataSourceLinkExtension = Node.create({
   renderMarkdown: (node) => {
     const title = node.attrs?.title ?? "";
     const url = node.attrs?.url;
-    return url
-      ? `:content_node_mention[${title}]{url="${url}"}`
-      : `:content_node_mention[${title}]`;
+    if (!url) {
+      return `:content_node_mention[${title}]`;
+    }
+    // A double quote would close the attribute value early.
+    const escapedUrl = url.replaceAll('"', "%22");
+    return `:content_node_mention[${title}]{url="${escapedUrl}"}`;
   },
 });

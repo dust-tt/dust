@@ -321,8 +321,7 @@ Quote text
     });
 
     it("renders content node mentions with a query string url as a link", () => {
-      const url =
-        "https://docs.google.com/spreadsheets/d/1/edit?gid=0#gid=0";
+      const url = "https://docs.google.com/spreadsheets/d/1/edit?gid=0#gid=0";
       const content = `see :content_node_mention[Goodies Stock]{url="${url}"} please`;
       const message = { ...mockMessage, content };
       const { container } = render(

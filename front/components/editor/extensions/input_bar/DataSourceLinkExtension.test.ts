@@ -118,10 +118,51 @@ describe("DataSourceLinkExtension", () => {
       ':content_node_mention[Goodies Stock]{url="https://docs.google.com/spreadsheets/d/1/edit?gid=0#gid=0"}';
     editor.commands.setContent(markdown, { contentType: "markdown" });
 
-    const node = editor.getJSON().content?.[0]?.content?.[0];
-    expect(node?.attrs?.url).toBe(
-      "https://docs.google.com/spreadsheets/d/1/edit?gid=0#gid=0"
+    expect(editor.getJSON().content).toEqual([
+      {
+        content: [
+          {
+            attrs: {
+              nodeId: null,
+              provider: null,
+              spaceId: null,
+              title: "Goodies Stock",
+              url: "https://docs.google.com/spreadsheets/d/1/edit?gid=0#gid=0",
+            },
+            type: "dataSourceLink",
+          },
+        ],
+        type: "paragraph",
+      },
+    ]);
+    expect(editor.getMarkdown()).toBe(markdown);
+  });
+
+  it("should escape double quotes in the url", () => {
+    editor.commands.setContent({
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "dataSourceLink",
+              attrs: {
+                title: "Search",
+                url: 'https://example.com/search?q="hello"',
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    const markdown = editor.getMarkdown();
+    expect(markdown).toBe(
+      ':content_node_mention[Search]{url="https://example.com/search?q=%22hello%22"}'
     );
+
+    editor.commands.setContent(markdown, { contentType: "markdown" });
     expect(editor.getMarkdown()).toBe(markdown);
   });
 });
