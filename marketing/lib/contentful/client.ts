@@ -1,4 +1,5 @@
 import config from "@marketing/lib/api/config";
+import { LOGO_LIST_REGIONS } from "@marketing/lib/logo_bars";
 import {
   extractSearchableSections,
   extractTableOfContents,
@@ -26,8 +27,9 @@ import type {
   CustomerLogoSkeleton,
   HomepageNewsItemSkeleton,
   LogoBarLogo,
-  LogoBarMap,
-  LogoBarSkeleton,
+  LogoListMap,
+  LogoListRegion,
+  LogoListSkeleton,
   Lesson,
   LessonSkeleton,
   NewsItem,
@@ -2056,27 +2058,40 @@ function contentfulEntryToLogoBarLogo(
   };
 }
 
-export async function getAllLogoBars(
+function isLogoListRegion(value: string): value is LogoListRegion {
+  return (LOGO_LIST_REGIONS as readonly string[]).includes(value);
+}
+
+export async function getAllLogoLists(
   resolvedUrl: string = ""
-): Promise<Result<LogoBarMap, Error>> {
+): Promise<Result<LogoListMap, Error>> {
   try {
     const contentfulClient = getContentfulClient(resolvedUrl);
-    const response = await contentfulClient.getEntries<LogoBarSkeleton>({
-      content_type: "logoBar",
+    const response = await contentfulClient.getEntries<LogoListSkeleton>({
+      content_type: "logoList",
       limit: 50,
-      // logoBar -> customerLogo -> customerStory / logo asset.
+      // logoList -> customerLogo -> customerStory / logo asset.
       include: 2,
     });
 
-    const bars: LogoBarMap = {};
+    const lists: LogoListMap = {};
     for (const entry of response.items) {
       // Read fields into `unknown` locals before narrowing: Contentful's
       // field-type resolution collapses to `never` for skeletons that hold
       // nested `Entry[]` references (same reason `chaptersField` above needs
       // a hand), which would make the guards below vacuous.
-      const barSlugField: unknown = entry.fields.barSlug;
-      const barSlug = isString(barSlugField) ? barSlugField.trim() : "";
-      if (barSlug.length === 0) {
+      const regionField: unknown = entry.fields.region;
+      const region = isString(regionField) ? regionField.trim() : "";
+      // An unrecognised region is a typo or a value retired from the code;
+      // either way the audience it was meant for is better served by the
+      // fallback than by nothing.
+      if (!isLogoListRegion(region)) {
+        if (region.length > 0) {
+          logger.warn(
+            { region, entryId: entry.sys.id },
+            "[Contentful] Ignoring logoList entry with unknown region"
+          );
+        }
         continue;
       }
 
@@ -2092,14 +2107,27 @@ export async function getAllLogoBars(
 
       // An entry that resolves to nothing usable is treated as absent so the
       // page renders its hardcoded fallback instead of an empty bar.
-      if (logos.length > 0) {
-        bars[barSlug] = logos;
+      if (logos.length === 0) {
+        continue;
       }
+
+      // `region` is unique in the content model, so a duplicate means someone
+      // published a second entry for the same audience. Keep the first and say
+      // so, rather than letting response order decide silently.
+      if (lists[region]) {
+        logger.warn(
+          { region, entryId: entry.sys.id },
+          "[Contentful] Duplicate logoList entry for region; keeping the first"
+        );
+        continue;
+      }
+
+      lists[region] = logos;
     }
 
-    return new Ok(bars);
+    return new Ok(lists);
   } catch (error) {
-    logger.error({ error }, "[Contentful] Failed to fetch logo bars");
+    logger.error({ error }, "[Contentful] Failed to fetch logo lists");
     return new Err(normalizeError(error));
   }
 }

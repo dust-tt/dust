@@ -1,11 +1,14 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H4 } from "@marketing/components/home/ContentComponents";
 import { LogoBarImage } from "@marketing/components/home/LogoBarImage";
-import { useLogoBar } from "@marketing/components/home/LogoBarsContext";
+import { useLogoBar } from "@marketing/components/home/LogoListsContext";
 import { cn } from "@marketing/components/poke/shadcn/lib/utils";
-import { isEUCountry } from "@marketing/lib/geo/eu-detection";
 import type { TrustedByLogoSet } from "@marketing/lib/logo_bars";
-import { trustedByBarSlug } from "@marketing/lib/logo_bars";
+import {
+  fallbackTrustedByRegion,
+  toLogoListRegion,
+  trustedByBarSlug,
+} from "@marketing/lib/logo_bars";
 import { useGeolocation } from "@marketing/lib/swr/geo";
 import { TRACKING_AREAS, trackEvent } from "@marketing/lib/tracking";
 import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
@@ -40,17 +43,36 @@ export default function TrustedBy({
     return () => cancelAnimationFrame(frameId);
   }, []);
 
+  // `?geo=FR` overrides the detected country; `?region=us|eu` is the older,
+  // coarser override and is kept so existing preview links still work. Both
+  // matter to marketing, who cannot otherwise see a bar for a country they are
+  // not sitting in.
+  const geoParam = searchParams?.get("geo");
   const regionParam = searchParams?.get("region");
-  const region =
+  const countryCode = mounted ? geoData?.countryCode : undefined;
+
+  const listRegion = geoParam
+    ? toLogoListRegion(geoParam)
+    : regionParam === "eu"
+      ? "european-union"
+      : regionParam === "us"
+        ? "worldwide"
+        : toLogoListRegion(countryCode);
+
+  // Which hardcoded bar to show until this region has a published list. An
+  // explicit `?region=` still wins here so the old preview links keep showing
+  // what they always showed.
+  const fallbackRegion =
     regionParam === "us" || regionParam === "eu"
       ? regionParam
-      : mounted && geoData?.countryCode && isEUCountry(geoData.countryCode)
-        ? "eu"
-        : "us";
+      : fallbackTrustedByRegion(listRegion);
 
-  // Contentful-managed if a `logoBar` entry exists for this slug, else the
+  // Contentful-managed if a `logoList` entry exists for this region, else the
   // hardcoded lineup in lib/logo_bars.ts.
-  const logos = useLogoBar(trustedByBarSlug(logoSet, region));
+  const logos = useLogoBar(
+    listRegion,
+    trustedByBarSlug(logoSet, fallbackRegion)
+  );
 
   const isLarge = size === "large";
 

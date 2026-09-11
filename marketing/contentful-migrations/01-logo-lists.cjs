@@ -2,34 +2,31 @@
 // 3,000+ organizations") so GTM can reorder / add / retire logos without a
 // deploy.
 //
+// One `logoList` per audience, shared by every bar on every marketing page.
+// Publishing a list takes that audience over; every other audience keeps the
+// hardcoded lineup, so this rolls out one country at a time.
+//
 // Run with:
 //   npm run contentful:migrate -- --environment-id master
 // (see contentful-migrations/README.md for the token setup)
 //
-// The shapes here must stay in sync with `CustomerLogoFields` / `LogoBarFields`
-// in lib/contentful/types.ts — the site reads these exact field ids.
+// The shapes here must stay in sync with `CustomerLogoFields` /
+// `LogoListFields` in lib/contentful/types.ts — the site reads these exact
+// field ids.
 
-// Mirrors LOGO_BAR_SLUGS in lib/logo_bars.ts: `trusted-by-<set>-<region>` for
-// every set/region pair, plus the three home hero variants. Kept as an `in`
-// validation so editors pick from a dropdown instead of typing: a typo'd slug
-// silently detaches the entry and reverts that bar to its hardcoded fallback.
-const TRUSTED_BY_LOGO_SETS = [
-  "default",
-  "landing",
-  "b2b-saas",
-  "marketplace",
-  "finance",
-  "insurance",
-  "retail",
-];
-const TRUSTED_BY_REGIONS = ["us", "eu"];
-const HOME_TRUSTED_GEOS = ["default", "gb", "fr"];
-
-const BAR_SLUGS = [
-  ...TRUSTED_BY_LOGO_SETS.flatMap((set) =>
-    TRUSTED_BY_REGIONS.map((region) => `trusted-by-${set}-${region}`)
-  ),
-  ...HOME_TRUSTED_GEOS.map((geo) => `home-trusted-${geo}`),
+// Mirrors LOGO_LIST_REGIONS in lib/logo_bars.ts. One entry per audience; the
+// list it holds supplies every logo bar on every marketing page for that
+// audience. Kept as an `in` validation so editors pick from a dropdown: a
+// typo'd region silently detaches the entry and reverts that audience to the
+// hardcoded fallback, which is invisible in the editor.
+//
+// `worldwide` is the catch-all — the United States plus every country not
+// claimed by one of the others.
+const REGIONS = [
+  "worldwide",
+  "european-union",
+  "united-kingdom",
+  "france",
 ];
 
 module.exports = function (migration) {
@@ -37,7 +34,7 @@ module.exports = function (migration) {
     .createContentType("customerLogo")
     .name("Customer logo")
     .description(
-      "One company logo, reusable across logo bars. Unpublish an entry to pull the logo from every bar it appears in."
+      "One company logo, reusable across audiences. Unpublish an entry to pull the logo from every list it appears in."
     )
     .displayField("companyName");
 
@@ -90,28 +87,24 @@ module.exports = function (migration) {
       "Only for logos whose story isn't a Customer story entry yet. Ignored when Case study is set.",
   });
 
-  const logoBar = migration
-    .createContentType("logoBar")
-    .name("Logo bar")
+  const logoList = migration
+    .createContentType("logoList")
+    .name("Logo list")
     .description(
-      "One 'Trusted by' bar. The logos below are shown in this order; a bar with no published entry falls back to the list hardcoded in the site."
+      "The customer logos shown to one audience, in order, across every marketing page. An audience with no published list keeps the lineup hardcoded in the site."
     )
     .displayField("name");
 
-  logoBar
-    .createField("name")
-    .name("Name")
-    .type("Symbol")
-    .required(true);
+  logoList.createField("name").name("Name").type("Symbol").required(true);
 
-  logoBar
-    .createField("barSlug")
-    .name("Bar slug")
+  logoList
+    .createField("region")
+    .name("Audience")
     .type("Symbol")
     .required(true)
-    .validations([{ unique: true }, { in: BAR_SLUGS }]);
+    .validations([{ unique: true }, { in: REGIONS }]);
 
-  logoBar
+  logoList
     .createField("logos")
     .name("Logos")
     .type("Array")
@@ -123,14 +116,14 @@ module.exports = function (migration) {
     })
     .validations([{ size: { min: 1 } }]);
 
-  logoBar.changeFieldControl("name", "builtin", "singleLine", {
+  logoList.changeFieldControl("name", "builtin", "singleLine", {
     helpText: "Internal label only — never shown on the site.",
   });
-  logoBar.changeFieldControl("barSlug", "builtin", "dropdown", {
+  logoList.changeFieldControl("region", "builtin", "dropdown", {
     helpText:
-      "Which bar on the site this fills. Each slug can only be used once.",
+      "Who sees this list. france = France, united-kingdom = the UK, european-union = the 27 EU countries (not the UK, Switzerland or Norway), worldwide = the United States and everywhere else. Each audience can only have one list.",
   });
-  logoBar.changeFieldControl("logos", "builtin", "entryLinksEditor", {
+  logoList.changeFieldControl("logos", "builtin", "entryLinksEditor", {
     bulkEditing: false,
     helpText: "Drag to reorder — this is the left-to-right order on the site.",
   });

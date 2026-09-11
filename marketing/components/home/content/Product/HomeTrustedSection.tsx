@@ -1,26 +1,20 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
 import { LogoBarImage } from "@marketing/components/home/LogoBarImage";
-import { useLogoBar } from "@marketing/components/home/LogoBarsContext";
-import type { HomeTrustedGeo, LogoBarLogo } from "@marketing/lib/logo_bars";
-import { homeTrustedBarSlug } from "@marketing/lib/logo_bars";
+import { useLogoBar } from "@marketing/components/home/LogoListsContext";
+import type { LogoBarLogo } from "@marketing/lib/logo_bars";
+import {
+  fallbackHomeTrustedGeo,
+  homeTrustedBarSlug,
+  toLogoListRegion,
+} from "@marketing/lib/logo_bars";
 import { useGeolocation } from "@marketing/lib/swr/geo";
 import Link from "next/link";
 import { useRouter } from "next/router";
 
-// Logo lineups live in Contentful (`logoBar` entries keyed by `barSlug`), with
+// Logo lineups live in Contentful (`logoList` entries, one per region), with
 // the hardcoded lists in lib/logo_bars.ts as the fallback. Case-study links
 // come from the same entries, so they can no longer drift from TrustedBy's.
-function toHomeTrustedGeo(countryCode: string | undefined): HomeTrustedGeo {
-  if (countryCode === "FR") {
-    return "fr";
-  }
-  if (countryCode === "GB") {
-    return "gb";
-  }
-  return "default";
-}
-
 function useHomeTrustedLogos(): LogoBarLogo[] {
   const { query } = useRouter();
   const { geoData } = useGeolocation();
@@ -30,9 +24,9 @@ function useHomeTrustedLogos(): LogoBarLogo[] {
     typeof query.geo === "string" ? query.geo.toUpperCase() : undefined;
   const countryCode = geoParam ?? geoData?.countryCode;
 
-  const geo: HomeTrustedGeo = toHomeTrustedGeo(countryCode);
+  const region = toLogoListRegion(countryCode);
 
-  return useLogoBar(homeTrustedBarSlug(geo));
+  return useLogoBar(region, homeTrustedBarSlug(fallbackHomeTrustedGeo(region)));
 }
 
 const MARQUEE_CSS = `

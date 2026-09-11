@@ -1,6 +1,12 @@
-import type { LogoBarLogo, LogoBarMap } from "@marketing/lib/contentful/types";
+import type {
+  LogoBarLogo,
+  LogoBarMap,
+  LogoListMap,
+  LogoListRegion,
+} from "@marketing/lib/contentful/types";
+import { isEUCountry } from "@marketing/lib/geo/eu-detection";
 
-export type { LogoBarLogo, LogoBarMap };
+export type { LogoBarLogo, LogoBarMap, LogoListMap, LogoListRegion };
 
 // Customer logo bars ("Trusted by 3,000+ organizations").
 //
@@ -127,6 +133,60 @@ export function trustedByBarSlug(
 
 export function homeTrustedBarSlug(geo: HomeTrustedGeo): string {
   return `home-trusted-${geo}`;
+}
+
+// The audiences a `logoList` entry can target, and the `region` values editors
+// pick in Contentful. One published list supplies every bar on every marketing
+// page for that audience, so a French visitor sees the same lineup throughout.
+//
+// `worldwide` is the catch-all: the United States plus every country not
+// claimed by a more specific region below. Ordering matters in
+// `toLogoListRegion` — the first match wins.
+export const LOGO_LIST_REGIONS = [
+  "worldwide",
+  "european-union",
+  "united-kingdom",
+  "france",
+] as const;
+
+export function toLogoListRegion(
+  countryCode: string | null | undefined
+): LogoListRegion {
+  if (!countryCode) {
+    return "worldwide";
+  }
+  const code = countryCode.toUpperCase();
+  if (code === "FR") {
+    return "france";
+  }
+  if (code === "GB") {
+    return "united-kingdom";
+  }
+  if (isEUCountry(code)) {
+    return "european-union";
+  }
+  return "worldwide";
+}
+
+// Which hardcoded bar an audience falls back to when its region has no
+// published `logoList`. This reproduces today's routing exactly: France is
+// served by the EU bar on the solutions pages, and the UK by the US one,
+// because `isEUCountry` excludes the UK. Changing these changes what visitors
+// see *before* marketing takes a region over, so they should stay as-is.
+export function fallbackTrustedByRegion(
+  region: LogoListRegion
+): TrustedByRegion {
+  return region === "european-union" || region === "france" ? "eu" : "us";
+}
+
+export function fallbackHomeTrustedGeo(region: LogoListRegion): HomeTrustedGeo {
+  if (region === "france") {
+    return "fr";
+  }
+  if (region === "united-kingdom") {
+    return "gb";
+  }
+  return "default";
 }
 
 // Cursor is temporarily withheld from most bars; it stays in `LOGOS` so it can

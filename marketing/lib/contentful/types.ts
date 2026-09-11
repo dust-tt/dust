@@ -638,14 +638,20 @@ export interface ConversationDraft {
 // pages, so GTM can reorder / add / retire logos without a deploy:
 //
 //   `customerLogo` — one entry per company. Unpublishing an entry removes the
-//     logo from every bar it appears in (this replaces commenting a line out).
-//   `logoBar` — one entry per bar *variant*, identified by `barSlug` (see
-//     LOGO_BAR_SLUGS in lib/logo_bars.ts). Holds an ordered reference list of
-//     `customerLogo` entries; drag-to-reorder in Contentful is the display
-//     order on the site.
+//     logo from every list it appears in (this replaces commenting a line out).
+//   `logoList` — one entry per *audience*, identified by `region`. Holds an
+//     ordered reference list of `customerLogo` entries; drag-to-reorder in
+//     Contentful is the display order on the site.
 //
-// A bar with no published `logoBar` entry falls back to the hardcoded list in
-// lib/logo_bars.ts, so this can be rolled out one bar at a time.
+// One list per region, shared by every bar on the marketing pages: a French
+// visitor sees the same lineup on /home as on /home/solutions/sales. That is
+// deliberate — the previous per-surface split was an artifact nobody had
+// chosen, and marketing asked for one list per country.
+//
+// A region with no published `logoList` entry falls back to the hardcoded
+// per-bar lineups in lib/logo_bars.ts, which reproduce today's behaviour
+// exactly. So this rolls out one country at a time: publish the France list
+// and only French visitors change.
 export interface CustomerLogoFields {
   companyName: string;
   logo?: Asset;
@@ -661,14 +667,23 @@ export type CustomerLogoSkeleton = EntrySkeletonType<
   "customerLogo"
 >;
 
-export interface LogoBarFields {
-  barSlug: string;
+// Must match LOGO_LIST_REGIONS in lib/logo_bars.ts — these strings are the
+// `region` values editors pick in Contentful, so renaming one silently
+// detaches its entry and reverts that audience to the hardcoded fallback.
+export type LogoListRegion =
+  | "worldwide"
+  | "european-union"
+  | "united-kingdom"
+  | "france";
+
+export interface LogoListFields {
+  region: string;
   // Editor-facing label only; never rendered on the site.
   name?: string;
   logos?: Entry<CustomerLogoSkeleton>[];
 }
 
-export type LogoBarSkeleton = EntrySkeletonType<LogoBarFields, "logoBar">;
+export type LogoListSkeleton = EntrySkeletonType<LogoListFields, "logoList">;
 
 // `width`/`height` are nullable on purpose: Contentful does not report
 // `details.image` for SVG uploads, and SVG is the format most brand kits
@@ -682,5 +697,9 @@ export interface LogoBarLogo {
   caseStudyUrl: string | null;
 }
 
-// Keyed by `barSlug`. A missing key means "no CMS entry for this bar".
+// Keyed by `barSlug`, for the hardcoded fallback lineups only.
 export type LogoBarMap = Record<string, LogoBarLogo[]>;
+
+// Keyed by `region`. A missing key means "no CMS entry for this audience",
+// which is the signal to fall back to the per-bar lineup.
+export type LogoListMap = Partial<Record<LogoListRegion, LogoBarLogo[]>>;
