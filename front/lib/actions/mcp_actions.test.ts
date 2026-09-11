@@ -469,6 +469,51 @@ describe("makeToolsWithStakesAndTimeout", () => {
     });
   });
 
+  it("should apply preset stakes to remote MCP server tools without metadata", () => {
+    const result = getToolExtraFields(
+      "rms_DzP3svIoVg",
+      [],
+      "https://mcp.notion.com/mcp"
+    );
+    assert(result.isOk());
+    expect(result.value.toolsStakes["notion-ai-search"]).toBe("never_ask");
+    expect(result.value.toolsStakes["notion-create-pages"]).toBe("low");
+  });
+
+  it("should let tool metadata override preset stakes", () => {
+    const result = getToolExtraFields(
+      "rms_DzP3svIoVg",
+      [
+        {
+          toolName: "notion-ai-search",
+          permission: "high",
+          enabled: true,
+        },
+      ],
+      "https://mcp.notion.com/mcp"
+    );
+    assert(result.isOk());
+    expect(result.value.toolsStakes["notion-ai-search"]).toBe("high");
+  });
+
+  it("should leave tools outside the preset without a stake", () => {
+    const result = getToolExtraFields(
+      "rms_DzP3svIoVg",
+      [],
+      "https://mcp.notion.com/mcp"
+    );
+    assert(result.isOk());
+    expect(result.value.toolsStakes["notion-unknown-future-tool"]).toBe(
+      undefined
+    );
+  });
+
+  it("should not match a preset when the remote server has no url", () => {
+    const result = getToolExtraFields("rms_DzP3svIoVg", [], undefined);
+    assert(result.isOk());
+    expect(result.value.toolsStakes).toEqual({});
+  });
+
   it("should handle errors from invalid server ID format", () => {
     // Use an invalid server ID format that will cause an error to be thrown
     const metadata: RemoteMCPServerToolMetadataResource[] = [];

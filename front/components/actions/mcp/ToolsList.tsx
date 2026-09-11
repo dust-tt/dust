@@ -5,7 +5,7 @@ import type {
 import {
   canToolUseMediumStakeLevel,
   encodeMCPToolNameForForm,
-  getDefaultInternalToolStakeLevel,
+  getDefaultToolStakeLevel,
 } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
@@ -140,7 +140,7 @@ function getDefaultToolSettings({
   mcpServerView: MCPServerViewType;
 }): ToolSettings {
   const metadata = toolMetadataByName[tool.name];
-  const defaultPermission = getDefaultInternalToolStakeLevel(
+  const defaultPermission = getDefaultToolStakeLevel(
     mcpServerView.server,
     tool.name
   );
