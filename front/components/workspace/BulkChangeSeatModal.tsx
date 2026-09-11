@@ -32,8 +32,9 @@ import {
   DialogHeader,
   DialogTitle,
   Icon,
+  Spinner,
 } from "@dust-tt/sparkle";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 const MAX_HEADER_AVATARS = 3;
 
@@ -53,6 +54,12 @@ interface BulkChangeSeatModalProps {
     seatName: string;
     hasDeferredChanges: boolean;
   }) => Promise<boolean>;
+  // When set, the seat is fixed by the caller: the pick step is skipped and the
+  // review loads straight away for this seat. Used to reuse this modal as a
+  // scoped review (e.g. mapping a group to a seat).
+  presetSeatType?: PaidSeatType;
+  // Optional header title override (defaults to "Change seat for N members").
+  title?: string;
 }
 
 export function BulkChangeSeatModal({
@@ -63,6 +70,8 @@ export function BulkChangeSeatModal({
   seatPlans,
   onFetchPreview,
   onValidate,
+  presetSeatType,
+  title,
 }: BulkChangeSeatModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -78,6 +87,8 @@ export function BulkChangeSeatModal({
             seatPlans={seatPlans}
             onFetchPreview={onFetchPreview}
             onValidate={onValidate}
+            presetSeatType={presetSeatType}
+            title={title}
           />
         )}
       </DialogContent>
@@ -98,6 +109,8 @@ interface BulkChangeSeatFormProps {
     seatName: string;
     hasDeferredChanges: boolean;
   }) => Promise<boolean>;
+  presetSeatType?: PaidSeatType;
+  title?: string;
 }
 
 const FREQUENCY_LABELS: Record<SeatBillingFrequency, string> = {
@@ -295,13 +308,15 @@ interface BulkChangeSeatModalHeaderProps {
   // Selected members visible on the current page, for the avatar row.
   selectedMembers: MemberUsageType[];
   memberCount: number;
-  step: BulkChangeSeatStep;
+  title: string;
+  subtitle: string;
 }
 
 function BulkChangeSeatModalHeader({
   selectedMembers,
   memberCount,
-  step,
+  title,
+  subtitle,
 }: BulkChangeSeatModalHeaderProps) {
   return (
     <DialogHeader>
@@ -327,14 +342,8 @@ function BulkChangeSeatModalHeader({
           </div>
         )}
         <div className="flex flex-col gap-1">
-          <DialogTitle>
-            Change seat for {memberCount.toLocaleString("en-US")} members
-          </DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            {step === "pick"
-              ? "Choose a new seat to continue"
-              : "Review the changes before applying"}
-          </p>
+          <DialogTitle>{title}</DialogTitle>
+          <p className="text-sm text-muted-foreground">{subtitle}</p>
         </div>
       </div>
     </DialogHeader>
@@ -493,6 +502,8 @@ function BulkChangeSeatForm({
   seatPlans,
   onFetchPreview,
   onValidate,
+  presetSeatType,
+  title,
 }: BulkChangeSeatFormProps) {
   const { subscription } = useAuth();
   // A cancelled subscription already has its end date scheduled with
@@ -501,14 +512,20 @@ function BulkChangeSeatForm({
   // reactivated or has fully ended.
   const isSubscriptionCancelled =
     isSubscriptionCancellationScheduled(subscription);
-  const [selectedSeat, setSelectedSeat] = useState<PaidSeatType | null>(null);
+  const hasPresetSeat = presetSeatType != null;
+  const [selectedSeat, setSelectedSeat] = useState<PaidSeatType | null>(
+    presetSeatType ?? null
+  );
   const [preview, setPreview] = useState<BulkSeatChangePreviewBody | null>(
     null
   );
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const step: BulkChangeSeatStep = preview === null ? "pick" : "confirm";
+  // With a preset seat the pick step is skipped, so the form is always on the
+  // review; while its preview loads there is nothing to pick.
+  const step: BulkChangeSeatStep =
+    preview === null && !hasPresetSeat ? "pick" : "confirm";
 
   async function handleNext() {
     if (!selectedSeat) {
@@ -524,6 +541,32 @@ function BulkChangeSeatForm({
       setIsLoadingPreview(false);
     }
   }
+
+  // Preset-seat flow: skip the pick step and load the review once when the modal
+  // mounts. The ref guard makes the fetch fire exactly once; it reads the preset
+  // seat straight from props, so there is no stale-closure risk and no dependency
+  // change can re-trigger it.
+  const autoFetchedRef = useRef(false);
+  useEffect(() => {
+    if (
+      autoFetchedRef.current ||
+      presetSeatType == null ||
+      isSubscriptionCancelled
+    ) {
+      return;
+    }
+    autoFetchedRef.current = true;
+    setIsLoadingPreview(true);
+    void onFetchPreview(presetSeatType)
+      .then((fetched) => {
+        if (fetched) {
+          setPreview(fetched);
+        }
+      })
+      .finally(() => {
+        setIsLoadingPreview(false);
+      });
+  }, [presetSeatType, isSubscriptionCancelled, onFetchPreview]);
 
   async function handleValidate() {
     if (!selectedSeat || !preview) {
@@ -544,12 +587,21 @@ function BulkChangeSeatForm({
     }
   }
 
+  const subtitle =
+    step === "pick"
+      ? "Choose a new seat to continue"
+      : "Review the changes before applying";
+
   return (
     <>
       <BulkChangeSeatModalHeader
         selectedMembers={selectedMembers}
         memberCount={preview?.memberCount ?? memberCount}
-        step={step}
+        title={
+          title ??
+          `Change seat for ${(preview?.memberCount ?? memberCount).toLocaleString("en-US")} members`
+        }
+        subtitle={subtitle}
       />
       <DialogContainer>
         {isSubscriptionCancelled && (
@@ -564,13 +616,16 @@ function BulkChangeSeatForm({
             selectedSeat={selectedSeat}
             onSelectSeat={setSelectedSeat}
           />
+        ) : preview ? (
+          <BulkChangeSeatModalPreviewDialogContent
+            preview={preview}
+            seatPlans={seatPlans}
+          />
         ) : (
-          preview && (
-            <BulkChangeSeatModalPreviewDialogContent
-              preview={preview}
-              seatPlans={seatPlans}
-            />
-          )
+          // Preset-seat flow, preview still loading.
+          <div className="flex justify-center py-6">
+            <Spinner />
+          </div>
         )}
       </DialogContainer>
       {/* Plain buttons instead of DialogFooter's button props: those are
@@ -578,9 +633,13 @@ function BulkChangeSeatForm({
           "Back" instead of switching steps. */}
       <DialogFooter>
         <Button
-          label={step === "pick" ? "Cancel" : "Back"}
+          // With a preset seat there is no pick step to go back to, so the left
+          // button always cancels.
+          label={step === "pick" || hasPresetSeat ? "Cancel" : "Back"}
           variant="outline"
-          onClick={step === "pick" ? onClose : () => setPreview(null)}
+          onClick={
+            step === "pick" || hasPresetSeat ? onClose : () => setPreview(null)
+          }
           disabled={isSaving}
         />
         {step === "pick" ? (
@@ -597,8 +656,13 @@ function BulkChangeSeatForm({
           <Button
             label="Validate"
             variant="primary"
-            disabled={isSaving || isSubscriptionCancelled}
-            isLoading={isSaving}
+            disabled={
+              !preview ||
+              isLoadingPreview ||
+              isSaving ||
+              isSubscriptionCancelled
+            }
+            isLoading={isLoadingPreview || isSaving}
             onClick={handleValidate}
           />
         )}
