@@ -32,7 +32,7 @@ vi.mock("@app/lib/api/programmatic_usage/tracking", () => ({
 
 vi.mock("@app/types/plan", () => ({
   isCreditPricedPlan: (plan: { code: string }) =>
-    plan.code.startsWith("ENT_NEW"),
+    plan.code.startsWith("ENT_NEW") || plan.code.startsWith("CP_"),
 }));
 
 vi.mock("@app/lib/api/config", () => ({
@@ -178,12 +178,29 @@ describe("checkCreditSpendCheckpointGate", () => {
     mockGetCreditSpendCheckpointAwuCredits.mockReturnValue(1000);
   });
 
-  it("does not notify when there is no user", async () => {
+  it("is exempt for non-credit-priced plans, like the pool gate", async () => {
+    const auth = makeAuth({ isCreditPriced: false });
+    const result = await checkCreditSpendCheckpointGate(auth, {
+      consumedAwuCredits: 5000,
+    });
+    expect(result).toEqual({ crossed: false, exempt: true });
+    expect(mockGetCreditSpendCheckpointAwuCredits).not.toHaveBeenCalled();
+  });
+
+  it("is exempt when metronomeCustomerId is null, like the pool gate", async () => {
+    const auth = makeAuth({ metronomeCustomerId: null });
+    const result = await checkCreditSpendCheckpointGate(auth, {
+      consumedAwuCredits: 5000,
+    });
+    expect(result).toEqual({ crossed: false, exempt: true });
+  });
+
+  it("is exempt when there is no user to answer the pause", async () => {
     const auth = makeAuth({ hasUser: false });
     const result = await checkCreditSpendCheckpointGate(auth, {
       consumedAwuCredits: 5000,
     });
-    expect(result).toEqual({ crossed: false });
+    expect(result).toEqual({ crossed: false, exempt: true });
   });
 
   it("does not notify when this message's consumed credits are below the threshold", async () => {
@@ -191,25 +208,25 @@ describe("checkCreditSpendCheckpointGate", () => {
     const result = await checkCreditSpendCheckpointGate(auth, {
       consumedAwuCredits: 999,
     });
-    expect(result).toEqual({ crossed: false });
+    expect(result).toEqual({ crossed: false, exempt: false });
   });
 
   it("notifies with the fixed threshold once this message's consumed credits reach it", async () => {
-    const auth = makeAuth({ hasUser: true, planCode: "CP_BUSINESS_PLAN" });
+    const auth = makeAuth({ hasUser: true, planCode: "ENT_NEW_BUSINESS" });
     const result = await checkCreditSpendCheckpointGate(auth, {
       consumedAwuCredits: 1000,
     });
     expect(result).toEqual({ crossed: true, thresholdAwuCredits: 1000 });
     expect(mockGetCreditSpendCheckpointAwuCredits).toHaveBeenCalledWith({
-      isEnterprisePlan: false,
+      isEnterprisePlan: true,
     });
   });
 
-  it("requests the enterprise threshold for an enterprise plan", async () => {
-    const auth = makeAuth({ hasUser: true, planCode: "CP_ENT_DEFAULT_PLAN" });
+  it("requests the default threshold for a non-enterprise credit-priced plan", async () => {
+    const auth = makeAuth({ hasUser: true, planCode: "CP_BUSINESS_PLAN" });
     await checkCreditSpendCheckpointGate(auth, { consumedAwuCredits: 1000 });
     expect(mockGetCreditSpendCheckpointAwuCredits).toHaveBeenCalledWith({
-      isEnterprisePlan: true,
+      isEnterprisePlan: false,
     });
   });
 });
