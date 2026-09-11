@@ -89,6 +89,7 @@ export { default as SlabLogo } from "./Slab";
 export { default as SlackLogo } from "./Slack";
 export { default as SlideLogo } from "./Slide";
 export { default as SnowflakeLogo } from "./Snowflake";
+export { default as StackOneLogo } from "./StackOne";
 export { default as StatuspageLogo } from "./Statuspage";
 export { default as StripeLogo } from "./Stripe";
 export { default as SupabaseLogo } from "./Supabase";

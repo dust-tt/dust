@@ -90,6 +90,7 @@ import SlabLogo from "./Slab";
 import SlackLogo from "./Slack";
 import SlideLogo from "./Slide";
 import SnowflakeLogo from "./Snowflake";
+import StackOneLogo from "./StackOne";
 import StatuspageLogo from "./Statuspage";
 import StripeLogo from "./Stripe";
 import SupabaseLogo from "./Supabase";
@@ -204,6 +205,7 @@ export const PLATFORM_LOGOS = {
   SlackLogo,
   SlideLogo,
   SnowflakeLogo,
+  StackOneLogo,
   StatuspageLogo,
   StripeLogo,
   SupabaseLogo,
