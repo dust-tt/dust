@@ -121,6 +121,7 @@ import {
   Plus,
   ProgressBar,
   SearchInput,
+  Separator,
   Spinner,
   Tabs,
   TabsContent,
@@ -1093,13 +1094,7 @@ export function UsagePage() {
           currentTotalPoolCredits={totalActiveCredits}
         />
 
-        <div
-          className={
-            showConsumptionAnalytics
-              ? "flex flex-col items-stretch gap-8 pb-20"
-              : "flex flex-col items-stretch gap-10 pb-20"
-          }
-        >
+        <Page.Vertical align="stretch" gap="xl">
           {showConsumptionAnalytics ? (
             <Page.Header
               title={
@@ -1161,9 +1156,9 @@ export function UsagePage() {
           )}
 
           {isCreditPriced && showConsumptionAnalytics ? (
-            <Page.Vertical gap="none" align="stretch">
+            <div className="flex flex-col gap-4">
               <h2 className="heading-sm text-foreground">Credit Pool</h2>
-              <div className="flex flex-col gap-2 pt-4">
+              <div className="flex flex-col gap-2">
                 {isOverviewLoading ? (
                   <div
                     aria-label="Loading Credit Pool"
@@ -1234,39 +1229,40 @@ export function UsagePage() {
                     </div>
                   </>
                 ) : null}
-                <div className="mt-2 flex flex-col justify-between gap-4 border-t border-border pt-4 sm:flex-row sm:items-center">
-                  <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm text-foreground">
-                    {!isOverviewError &&
-                      consumptionOverview !== null &&
-                      (creditUsage !== null || hasPool) && (
-                        <>
-                          {creditUsageDisplayTarget === "on_target" ? (
-                            <span>
-                              At your current rate, you have enough credits to
-                              finish the cycle.
-                            </span>
-                          ) : resetAt ? (
-                            <span>
-                              At this rate, you&apos;re expected to consume your
-                              full credits by{" "}
-                              <span className="font-semibold">
-                                {formatConsumptionDate(resetAt)}
-                              </span>
-                              .
-                            </span>
-                          ) : null}
-                          {overageCredits !== null && overageCredits > 0 && (
-                            <span className="text-muted-foreground">
-                              {formatCredits(overageCredits)} overage credits
-                            </span>
-                          )}
-                        </>
-                      )}
-                  </div>
-                  {topUpButton}
-                </div>
               </div>
-            </Page.Vertical>
+              <Separator />
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                <div className="flex min-w-0 flex-1 flex-col gap-1 text-sm text-foreground">
+                  {!isOverviewError &&
+                    consumptionOverview !== null &&
+                    (creditUsage !== null || hasPool) && (
+                      <>
+                        {creditUsageDisplayTarget === "on_target" ? (
+                          <span>
+                            At your current rate, you have enough credits to
+                            finish the cycle.
+                          </span>
+                        ) : resetAt ? (
+                          <span>
+                            At this rate, you&apos;re expected to consume your
+                            full credits by{" "}
+                            <span className="font-semibold">
+                              {formatConsumptionDate(resetAt)}
+                            </span>
+                            .
+                          </span>
+                        ) : null}
+                        {overageCredits !== null && overageCredits > 0 && (
+                          <span className="text-muted-foreground">
+                            {formatCredits(overageCredits)} overage credits
+                          </span>
+                        )}
+                      </>
+                    )}
+                </div>
+                {topUpButton}
+              </div>
+            </div>
           ) : null}
 
           {isNewUsagePage && isCreditPriced ? (
@@ -1360,7 +1356,7 @@ export function UsagePage() {
             <TabsContent value="members" className={TAB_CONTENT_CLASS}>
               <div className="flex flex-col items-stretch gap-4">
                 {searchRow}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-4">
                   <div className="flex flex-row items-center justify-between gap-2">
                     {isCreditPriced && (
                       <ButtonsSwitchList
@@ -1398,24 +1394,22 @@ export function UsagePage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex flex-col gap-2 pt-2">
-                    {membersTab === "members" ? (
-                      <>
-                        {membersTable}
-                        {selectionBanner}
-                      </>
-                    ) : (
-                      <UpgradeRequestsTable
-                        requests={filteredUpgradeRequests}
-                        isLoading={isUpgradeRequestsLoading}
-                        seatPlans={seatPlans}
-                        pendingRequestIds={resolvingRequestIds}
-                        onUpgradePlan={handleUpgradePlanRequest}
-                        onEditLimit={handleEditLimitRequest}
-                        onDeny={handleDenyRequest}
-                      />
-                    )}
-                  </div>
+                  {membersTab === "members" ? (
+                    <div className="flex flex-col gap-2">
+                      {membersTable}
+                      {selectionBanner}
+                    </div>
+                  ) : (
+                    <UpgradeRequestsTable
+                      requests={filteredUpgradeRequests}
+                      isLoading={isUpgradeRequestsLoading}
+                      seatPlans={seatPlans}
+                      pendingRequestIds={resolvingRequestIds}
+                      onUpgradePlan={handleUpgradePlanRequest}
+                      onEditLimit={handleEditLimitRequest}
+                      onDeny={handleDenyRequest}
+                    />
+                  )}
                 </div>
               </div>
             </TabsContent>
@@ -1435,7 +1429,7 @@ export function UsagePage() {
 
             {isWorkspaceAdmin && (
               <TabsContent value="settings" className={TAB_CONTENT_CLASS}>
-                <div className="flex flex-col gap-10">
+                <Page.Vertical align="stretch" gap="xl">
                   {isCreditPriced && (
                     <UsageSettingsCard
                       workspaceId={owner.sId}
@@ -1447,17 +1441,17 @@ export function UsagePage() {
                   {isCreditPriced && (
                     <LockedSection
                       locked={!isAwuPoolSummaryLoading && !hasPool}
-                      className="flex flex-col gap-10"
+                      className="flex flex-col gap-8"
                     >
                       <UsageProgrammaticLimitCard workspaceId={owner.sId} />
                       <UsageNotificationsCard workspaceId={owner.sId} />
                     </LockedSection>
                   )}
-                </div>
+                </Page.Vertical>
               </TabsContent>
             )}
           </Tabs>
-        </div>
+        </Page.Vertical>
 
         <ChangeSeatModal
           isOpen={changeSeatMember !== null}
