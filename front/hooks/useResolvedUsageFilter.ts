@@ -16,6 +16,11 @@ interface UseResolvedUsageFilterParams {
   analyticsScope?: ConsumptionAnalyticsScope;
 }
 
+interface UseResolvedUsageFilterResult {
+  filter: UsageFilter;
+  isFacetsLoading: boolean;
+}
+
 // A filter hydrated from the query string only carries ids, so its options
 // start with the id as display name and without a picture. The facets already
 // fetched by the filter panel carry the real labels.
@@ -24,8 +29,8 @@ export function useResolvedUsageFilter({
   period,
   filter,
   analyticsScope,
-}: UseResolvedUsageFilterParams): UsageFilter {
-  const { options: facetOptions } = useConsumptionFacets({
+}: UseResolvedUsageFilterParams): UseResolvedUsageFilterResult {
+  const { options: facetOptions, isFacetsLoading } = useConsumptionFacets({
     workspaceId,
     period,
     filter: toConsumptionScopeFilter(filter),
@@ -33,8 +38,10 @@ export function useResolvedUsageFilter({
     disabled: !hasUnresolvedUsageFilterNames(filter),
   });
 
-  return useMemo(
+  const resolved = useMemo(
     () => resolveUsageFilter(filter, facetOptions),
     [filter, facetOptions]
   );
+
+  return { filter: resolved, isFacetsLoading };
 }
