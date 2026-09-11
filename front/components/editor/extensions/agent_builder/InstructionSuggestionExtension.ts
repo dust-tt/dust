@@ -4,6 +4,11 @@ import {
   parseHTMLToBlocks,
   replaceBlock,
 } from "@app/lib/editor/instruction_blocks";
+import {
+  SKILL_TAG_NAME,
+  UNAVAILABLE_SKILL_LABEL,
+  UNAVAILABLE_SKILL_TAG_NAME,
+} from "@app/lib/skills/format";
 import { Extension } from "@tiptap/core";
 import type { Node as PMNode, Schema, Slice } from "@tiptap/pm/model";
 import {
@@ -57,6 +62,45 @@ const CLASSES = {
     "suggestion-addition rounded bg-highlight-50 text-muted-foreground cursor-default",
   blockHighlightDimmed: "suggestion-highlight rounded bg-muted cursor-default",
 };
+
+// Inline <skill> references serialize as an EMPTY paired tag (see SkillNode's
+// renderHTML: the stored instructionsHtml must stay childless for the skill
+// reference reconciliation to match it). Addition widgets are built from that
+// serialization rather than from the React node view, so a suggested skill
+// reference would render as an invisible gap. Label it here, where the markup is
+// throwaway, instead of in the node's renderHTML, which feeds persisted HTML.
+// <tool> and <knowledge> need none of this: they carry their own chip markup.
+const SKILL_CHIP_CLASS =
+  "inline-flex items-center gap-0.5 border border-current/40 rounded px-0.5 text-xs leading-tight";
+const SKILL_LABEL_PREFIX = "Skill";
+
+export function labelSkillReferences(container: HTMLElement): void {
+  const references = container.querySelectorAll(
+    `${SKILL_TAG_NAME}, ${UNAVAILABLE_SKILL_TAG_NAME}`
+  );
+
+  for (const reference of references) {
+    // SkillNode's renderHTML emits an empty text child to force the paired tag
+    // form, so emptiness is "renders nothing", not "has no child nodes".
+    if (reference.textContent) {
+      continue;
+    }
+
+    const isUnavailable =
+      reference.tagName.toLowerCase() === UNAVAILABLE_SKILL_TAG_NAME;
+    const name = reference.getAttribute("name");
+    if (!isUnavailable && !name) {
+      continue;
+    }
+
+    const chip = document.createElement("span");
+    chip.className = SKILL_CHIP_CLASS;
+    chip.textContent = isUnavailable
+      ? UNAVAILABLE_SKILL_LABEL
+      : `${SKILL_LABEL_PREFIX} ${name}`;
+    reference.appendChild(chip);
+  }
+}
 
 export function diffBlockContent(
   oldNode: PMNode,
@@ -234,6 +278,8 @@ function buildBlockDecorations({
               serializer.serializeFragment(insertedContent, {}, span);
             }
 
+            labelSkillReferences(span);
+
             // Apply styling to all child elements to ensure visibility in nested structures (e.g., list items)
             const className = isHighlighted ? CLASSES.add : CLASSES.addDimmed;
             span.querySelectorAll("*").forEach((el) => {
@@ -274,6 +320,8 @@ function addBlockAdditionWidget(
 
         const serializer = DOMSerializer.fromSchema(schema);
         serializer.serializeFragment(Fragment.from(newChild), {}, div);
+
+        labelSkillReferences(div);
 
         div.querySelectorAll("*").forEach((el) => {
           if (el instanceof HTMLElement) {
