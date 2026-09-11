@@ -35,11 +35,9 @@ vi.mock("@app/types/plan", () => ({
     plan.code.startsWith("ENT_NEW") || plan.code.startsWith("CP_"),
 }));
 
-vi.mock("@app/lib/api/config", () => ({
-  default: {
-    getCreditSpendCheckpointThresholdAwuCredits:
-      mockGetCreditSpendCheckpointAwuCredits,
-  },
+vi.mock("@app/lib/constants/credits", () => ({
+  getCreditSpendCheckpointThresholdAwuCredits:
+    mockGetCreditSpendCheckpointAwuCredits,
 }));
 
 // Minimal stand-in for the Authenticator class exposing only the members the gate reads. A class

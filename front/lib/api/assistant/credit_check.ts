@@ -1,4 +1,3 @@
-import config from "@app/lib/api/config";
 import {
   isPoolDepleted,
   isProgrammaticApiBlocked,
@@ -6,6 +5,7 @@ import {
 } from "@app/lib/api/credits/access_control";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
+import { getCreditSpendCheckpointThresholdAwuCredits } from "@app/lib/constants/credits";
 import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
@@ -93,10 +93,9 @@ export async function checkCreditSpendCheckpointGate(
     return EXEMPT;
   }
 
-  const thresholdAwuCredits =
-    config.getCreditSpendCheckpointThresholdAwuCredits({
-      isEnterprisePlan: isEnterprisePlanPrefix(plan.code),
-    });
+  const thresholdAwuCredits = getCreditSpendCheckpointThresholdAwuCredits({
+    isEnterprisePlan: isEnterprisePlanPrefix(plan.code),
+  });
 
   return consumedAwuCredits >= thresholdAwuCredits
     ? { crossed: true, thresholdAwuCredits }
