@@ -287,6 +287,20 @@ export function getUsageFilterSummaries(
   });
 }
 
+export function describeUsageFilter(filter: UsageFilter): string {
+  const summaries = getUsageFilterSummaries(filter);
+  if (summaries.length === 0) {
+    return "none";
+  }
+
+  return summaries
+    .map(
+      ({ categoryLabel, options }) =>
+        `${categoryLabel}: ${options.map(({ name }) => name).join(", ")}`
+    )
+    .join("; ");
+}
+
 export function usageFilterSelectionCount(filter: UsageFilter): number {
   return USAGE_FILTER_CATEGORIES.reduce(
     (count, category) => count + (filter[category]?.length ?? 0),
