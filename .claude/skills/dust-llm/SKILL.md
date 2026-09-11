@@ -71,7 +71,7 @@ Pick the newest sibling (e.g. for "Gemini 3.6 Flash" the sibling is "Gemini 3.5 
 
 | File | What to add |
 |------|-------------|
-| `front/types/assistant/models/{provider}.ts` | `X_MODEL_ID` const + `X_MODEL_CONFIG`. **Set `isLatest: false` on the previous model in the same family** and drop "latest" from its description. |
+| `front/types/assistant/models/{provider}.ts` | `X_MODEL_ID` const + `X_MODEL_CONFIG`. **Set `isLatest: false` on the previous model in the same family** and drop "latest" from its description. **Carry over the predecessor's `availableIfOneOf` / `unavailableIfOneOf`** (see below). |
 | `front/types/assistant/models/models.ts` | Add id to `STATIC_MODEL_IDS` and config to `SUPPORTED_MODEL_CONFIGS` (imports in both alpha blocks). |
 | `front/types/assistant/models/auto.ts` | If the model should participate in `auto`/`auto_fast`/`auto_complex` routing, add a `ModelStreamCandidate`. |
 | `front/lib/model_constructors/types/models.ts` | Add `export const X = "model-id"` and include it in the `MODELS` array (this is the `model_constructors` id type). |
@@ -85,6 +85,22 @@ Adding the id to `STATIC_MODEL_IDS` makes these fail to compile until updated:
 | `front/lib/api/assistant/token_pricing/global.ts` | `CURRENT_MODEL_PRICING` entry (input/output/`cache_read_input_tokens` per 1M) + doc URL comment. |
 | `front/types/assistant/models/static_model_reasoning_efforts.ts` | `{ none, light, medium, high }` support map (`satisfies Record<StaticModelIdType, ReasoningEffortSupport>`). **Must match the config's `supportedReasoningEfforts`** (enforced by `model_tiers.test.ts`). |
 | `front/types/assistant/models/model_tiers.ts` | `STATIC_MODEL_TIERS` entry mapping each supported effort → tier name. |
+
+> **Gating is inherited, and lives in two unlinked places.** A new version of a gated model
+> stays gated — being newer is not a reason to release it. Copy the predecessor's
+> `availableIfOneOf` / `unavailableIfOneOf` onto the new `X_MODEL_CONFIG` (gates the picker,
+> via `isModelAvailable`) **and** declare the same flag on every endpoint you add (gates the
+> router, via `isEndpointAvailable`):
+>
+> ```ts
+> static readonly endpointFilter = {
+>   featureFlags: { contains: "fireworks_new_model_feature" as const },
+> };
+> ```
+>
+> Half-gating fails silently either way: hidden but reachable, or pickable but unroutable —
+> and `resolveModel` swaps in a fallback model instead of erroring. Releasing a gated family
+> is a separate, deliberate change.
 
 ### C. `model_constructors` — the endpoint classes (stream)
 
