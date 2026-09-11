@@ -49,6 +49,13 @@ export type RunModelAndCreateActionsResult = {
   // renders a pause for them and the parent message runs its own check. Undefined when the step
   // returned before loading the message.
   isRootAgentMessage?: boolean;
+  // This root message's whole-subagent-tree cost through the end of the *previous* step (the
+  // hard-cap guardrail's own reading, from before this step's model ran). One step stale relative
+  // to this step's actual spend — a cheap lower bound the workflow can use to skip scheduling the
+  // credit spend checkpoint activity when clearly irrelevant, mirroring the hard-cap check's own
+  // accepted staleness ("can miss thresholds crossed on the final step"). Undefined when the step
+  // returned before the guardrail check ran.
+  preStepTotalCostMicroUsd?: number;
 };
 
 const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
@@ -278,6 +285,7 @@ async function _runModelAndCreateActionsActivity({
         actionBlobs: existingData.actionBlobs,
         runId: null,
         isRootAgentMessage,
+        preStepTotalCostMicroUsd: hardCapCheckResult?.totalCostMicroUsd,
       };
     }
   }
@@ -313,7 +321,13 @@ async function _runModelAndCreateActionsActivity({
   // Generation completed (text response, no tool calls) — runModel returns
   // { actions: [], runId } so we still capture the runId for tracking.
   if (actions.length === 0) {
-    return { runId, actionBlobs: [], retryWithoutTools, isRootAgentMessage };
+    return {
+      runId,
+      actionBlobs: [],
+      retryWithoutTools,
+      isRootAgentMessage,
+      preStepTotalCostMicroUsd: hardCapCheckResult?.totalCostMicroUsd,
+    };
   }
 
   // Enforce a limit on actions per step, reducing by depth (8/8/4/2)
@@ -354,6 +368,7 @@ async function _runModelAndCreateActionsActivity({
     runId,
     actionBlobs: createResult.actionBlobs,
     isRootAgentMessage,
+    preStepTotalCostMicroUsd: hardCapCheckResult?.totalCostMicroUsd,
   };
 }
 

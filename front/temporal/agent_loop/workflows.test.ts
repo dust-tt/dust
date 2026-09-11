@@ -343,6 +343,37 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
     );
   });
 
+  it("skips scheduling the checkpoint activity when this step's spend is clearly below the threshold", async () => {
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
+      actionBlobs: [
+        {
+          actionId: "action-1",
+          needsApproval: false,
+          retryPolicy: "no_retry",
+        },
+      ],
+      runId: "run-1",
+      isRootAgentMessage: true,
+      // 0 AWU credits: nowhere near the fixed 300 AWU threshold.
+      preStepTotalCostMicroUsd: 0,
+    });
+    checkCreditsActivity
+      .mockResolvedValueOnce({ shouldStop: false, reason: null })
+      .mockResolvedValue({ shouldStop: true, reason: "credits_exhausted" });
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).toHaveBeenCalledTimes(2);
+    expect(checkCreditSpendCheckpointActivity).not.toHaveBeenCalled();
+  });
+
   it("passes the checkpoint's descendant walk into the next step's activity call", async () => {
     const descendantData = { dustRunIds: ["run-a", "run-b"] };
     checkCreditSpendCheckpointActivity
