@@ -115,6 +115,7 @@ export function getDefaultPickModelSlashCommandItemId(
     const candidate = item.data.selection.display;
     return (
       candidate.kind === "model" &&
+      candidate.model.providerId === display.model.providerId &&
       candidate.model.modelId === display.model.modelId &&
       candidate.effort === effort
     );
@@ -161,10 +162,11 @@ function buildTierSlashCommandItems({
  * @cc [owner:PopDaph,label:product] query-selects-name-then-effort
  * `query` is split on whitespace and hyphens. When its last word is a prefix of a slider effort
  * (`light`, `medium`, `high`), only model rows at that effort are kept and the other words form
- * the name query; otherwise every word does. A row is kept when the name query, joined, is an in-order subsequence (`subFilter`)
- * of its name (tier name or model display name) without spaces or hyphens. Kept rows are ranked
- * with `compareForFuzzySort`, ties keeping catalog order so a model's efforts stay light, medium,
- * high. Descriptions are never searched; an empty query keeps every row.
+ * the name query; otherwise every word does. A row is kept when the name query, joined, is an
+ * in-order subsequence (`subFilter`) of its name (tier name or model display name) without
+ * spaces or hyphens. Kept rows are ranked with `compareForFuzzySort`, ties keeping catalog order
+ * so a model's efforts stay light, medium, high. Descriptions are never searched; an empty query
+ * keeps every row.
  */
 export function buildPickModelSlashCommandItems({
   getModelIcon,
