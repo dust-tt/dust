@@ -833,7 +833,6 @@ describe("SandboxFunctionInvocationResource", () => {
         frameId: frame.sId,
         frameSourceScope: "pod",
         frameSourceScopeId: space.sId,
-        functionOwnerKind: "frame",
         functionName: sandboxFunction.slug,
         invocationId: invocation.sId,
         publicationId,

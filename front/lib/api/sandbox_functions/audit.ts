@@ -10,8 +10,7 @@ export function buildSandboxFunctionAuditMetadata(
   invocation: SandboxFunctionInvocationResource
 ): Record<string, string> {
   const { sandboxFunction } = invocation;
-  const frame = sandboxFunction.frame;
-  assert(frame, "Only Frame functions can be invoked.");
+  const { frame } = sandboxFunction;
   assert(
     sandboxFunction.publicationId !== null,
     "Frame functions must belong to a publication."

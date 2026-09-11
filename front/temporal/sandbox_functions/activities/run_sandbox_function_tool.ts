@@ -61,10 +61,8 @@ export async function runSandboxFunctionToolActivity(
 
   // Where files this tool persists belong: the Pod the invoked Frame runs in. Resolved here, once,
   // so the tool paths below stay synchronous.
-  const frame = invocation.sandboxFunction.frame;
-  const frameContext = frame
-    ? await frame.resolveFrameScopedPathContext(auth)
-    : null;
+  const { frame } = invocation.sandboxFunction;
+  const frameContext = await frame.resolveFrameScopedPathContext(auth);
   const pod = frameContext?.spaceId
     ? await SpaceResource.fetchById(auth, frameContext.spaceId)
     : null;
