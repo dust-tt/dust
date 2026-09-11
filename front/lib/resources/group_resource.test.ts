@@ -1594,4 +1594,134 @@ describe("GroupResource", () => {
       });
     });
   });
+
+  describe("seat-granting groups", () => {
+    async function makeSeatGroup(
+      name: string,
+      grantedSeatType: "workspace" | "pro" | "max" | null,
+      kind: "provisioned" | "regular_manual" = "provisioned"
+    ) {
+      return GroupResource.makeNew({
+        name,
+        workspaceId: workspace.id,
+        kind,
+        ...(kind === "provisioned" ? { workOSGroupId: `workos-${name}` } : {}),
+        grantedSeatType,
+      });
+    }
+
+    describe("computeUserSeatFromGroups", () => {
+      let member: UserResource;
+
+      beforeEach(async () => {
+        member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+      });
+
+      it("returns null when in no seat-granting group", async () => {
+        expect(
+          await GroupResource.computeUserSeatFromGroups(authenticator, member)
+        ).toBeNull();
+      });
+
+      it("grants 'pro' from a pro-granting group", async () => {
+        const group = await makeSeatGroup("g-pro", "pro");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+
+        expect(
+          await GroupResource.computeUserSeatFromGroups(authenticator, member)
+        ).toBe("pro");
+      });
+
+      it("prefers the highest seat across groups (max over pro)", async () => {
+        const proGroup = await makeSeatGroup("g-pro", "pro");
+        const maxGroup = await makeSeatGroup("g-max", "max");
+        await proGroup.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+        await maxGroup.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+
+        expect(
+          await GroupResource.computeUserSeatFromGroups(authenticator, member)
+        ).toBe("max");
+      });
+
+      it("prefers 'workspace' over 'max'", async () => {
+        const maxGroup = await makeSeatGroup("g-max", "max");
+        const workspaceGroup = await makeSeatGroup("g-workspace", "workspace");
+        await maxGroup.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+        await workspaceGroup.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+
+        expect(
+          await GroupResource.computeUserSeatFromGroups(authenticator, member)
+        ).toBe("workspace");
+      });
+    });
+
+    describe("listSeatGrantingGroupsForWorkspace", () => {
+      it("returns only groups with a non-null grantedSeatType", async () => {
+        await makeSeatGroup("g-none", null, "regular_manual");
+        await makeSeatGroup("g-pro", "pro");
+
+        const groups =
+          await GroupResource.listSeatGrantingGroupsForWorkspace(authenticator);
+
+        expect(groups.map((g) => g.name).sort()).toEqual(["g-pro"]);
+      });
+    });
+
+    describe("setGrantedSeatType", () => {
+      it("sets the mapping (admin)", async () => {
+        const group = await makeSeatGroup("g-manual", null, "regular_manual");
+
+        const setRes = await group.setGrantedSeatType(authenticator, "pro");
+        expect(setRes.isOk()).toBe(true);
+
+        const refetched = await GroupResource.fetchById(
+          authenticator,
+          group.sId
+        );
+        expect(refetched.isOk()).toBe(true);
+        if (refetched.isOk()) {
+          expect(refetched.value.grantedSeatType).toBe("pro");
+        }
+      });
+
+      it("clears the mapping with null", async () => {
+        const group = await makeSeatGroup("g-manual", "pro", "regular_manual");
+
+        const clearRes = await group.setGrantedSeatType(authenticator, null);
+        expect(clearRes.isOk()).toBe(true);
+
+        const refetched = await GroupResource.fetchById(
+          authenticator,
+          group.sId
+        );
+        if (refetched.isOk()) {
+          expect(refetched.value.grantedSeatType).toBeNull();
+        }
+      });
+
+      it("rejects a non-manageable group kind", async () => {
+        const res = await globalGroup.setGrantedSeatType(authenticator, "pro");
+        expect(res.isErr()).toBe(true);
+        if (res.isErr()) {
+          expect(res.error.code).toBe("invalid_group_kind");
+        }
+      });
+    });
+  });
 });
