@@ -63,6 +63,16 @@ describe("formatAgentMarkdownForSlack", () => {
     );
   });
 
+  it("turns content node mentions into Slack links, quoted or not", () => {
+    expect(
+      formatAgentMarkdownForSlack(
+        'See :content_node_mention[Sheet]{url="https://docs.google.com/spreadsheets/d/1/edit?gid=0"} and :content_node_mention[Doc]{url=https://example.com/doc}'
+      )
+    ).toBe(
+      "See <https://docs.google.com/spreadsheets/d/1/edit?gid=0|Sheet> and <https://example.com/doc|Doc>"
+    );
+  });
+
   it("does not log unsupported directives when option is off", () => {
     const spy = vi.spyOn(logger, "warn").mockImplementation(() => {});
     formatAgentMarkdownForSlack(":unknownDirective[hi]{x=1}", {

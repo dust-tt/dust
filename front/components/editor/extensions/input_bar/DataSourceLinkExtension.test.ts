@@ -43,7 +43,7 @@ describe("DataSourceLinkExtension", () => {
 
     const result = editor.getMarkdown();
     expect(result).toBe(
-      ":content_node_mention[Project Documentation]{url=https://example.com/docs}"
+      ':content_node_mention[Project Documentation]{url="https://example.com/docs"}'
     );
   });
 
@@ -76,7 +76,7 @@ describe("DataSourceLinkExtension", () => {
 
     const result = editor.getMarkdown();
     expect(result).toBe(
-      ":content_node_mention[My Document (v2.0) - Final.pdf]{url=https://example.com/docs/My%20Document%20(v2.0)%20-%20Final.pdf}"
+      ':content_node_mention[My Document (v2.0) - Final.pdf]{url="https://example.com/docs/My%20Document%20(v2.0)%20-%20Final.pdf"}'
     );
   });
 
@@ -109,7 +109,19 @@ describe("DataSourceLinkExtension", () => {
 
     const result = editor.getMarkdown();
     expect(result).toBe(
-      ":content_node_mention[Goodies Stock]{url=https://docs.google.com/spreadsheets/d/1fiWXOaCHIVybS1ZD9ODeVt2EvNPyESwRZe0bET47-h0/edit?gid=0#gid=0}"
+      ':content_node_mention[Goodies Stock]{url="https://docs.google.com/spreadsheets/d/1fiWXOaCHIVybS1ZD9ODeVt2EvNPyESwRZe0bET47-h0/edit?gid=0#gid=0"}'
     );
+  });
+
+  it("should parse a quoted url and round-trip it", () => {
+    const markdown =
+      ':content_node_mention[Goodies Stock]{url="https://docs.google.com/spreadsheets/d/1/edit?gid=0#gid=0"}';
+    editor.commands.setContent(markdown, { contentType: "markdown" });
+
+    const node = editor.getJSON().content?.[0]?.content?.[0];
+    expect(node?.attrs?.url).toBe(
+      "https://docs.google.com/spreadsheets/d/1/edit?gid=0#gid=0"
+    );
+    expect(editor.getMarkdown()).toBe(markdown);
   });
 });
