@@ -120,33 +120,35 @@ describe("MCPOAuthProvider.setupUri", () => {
       provider: new MCPOAuthStaticOAuthProvider(),
       expectedProvider: "mcp_static",
     },
-  ])(
-    "uses the $expectedProvider callback path",
-    ({ provider, expectedProvider }) => {
-      const connection = makeConnection({
-        client_id: "test-client",
-        authorization_endpoint: "https://example.com/authorize",
-        code_challenge: "test-challenge",
-        scope: "sql offline_access",
-      });
-      connection.provider = provider.provider;
+  ])("uses the $expectedProvider callback path", ({
+    provider,
+    expectedProvider,
+  }) => {
+    const connection = makeConnection({
+      client_id: "test-client",
+      authorization_endpoint: "https://example.com/authorize",
+      code_challenge: "test-challenge",
+      scope: "sql offline_access",
+    });
+    connection.provider = provider.provider;
 
-      const authorizationUrl = new URL(
-        provider.setupUri({ connection, useCase: "platform_actions" })
-      );
-      const redirectUri = authorizationUrl.searchParams.get("redirect_uri");
+    const authorizationUrl = new URL(
+      provider.setupUri({ connection, useCase: "platform_actions" })
+    );
+    const redirectUri = authorizationUrl.searchParams.get("redirect_uri");
 
-      expect(redirectUri).not.toBeNull();
-      expect(new URL(redirectUri ?? "").pathname).toBe(
-        `/oauth/${expectedProvider}/finalize`
-      );
-      expect(authorizationUrl.searchParams.get("state")).toBe(
-        connection.connection_id
-      );
-      expect(authorizationUrl.searchParams.get("code_challenge")).toBe(
-        "test-challenge"
-      );
-      expect(authorizationUrl.searchParams.get("scope")).toBe("sql offline_access");
-    }
-  );
+    expect(redirectUri).not.toBeNull();
+    expect(new URL(redirectUri ?? "").pathname).toBe(
+      `/oauth/${expectedProvider}/finalize`
+    );
+    expect(authorizationUrl.searchParams.get("state")).toBe(
+      connection.connection_id
+    );
+    expect(authorizationUrl.searchParams.get("code_challenge")).toBe(
+      "test-challenge"
+    );
+    expect(authorizationUrl.searchParams.get("scope")).toBe(
+      "sql offline_access"
+    );
+  });
 });
