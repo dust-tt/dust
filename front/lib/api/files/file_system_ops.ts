@@ -4,7 +4,7 @@
  * files MCP tools.
  */
 
-import type { DustFileSystem } from "@app/lib/api/file_system";
+import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
 import { decodeBuffer } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -26,7 +26,9 @@ import {
 import { DocumentRenderer } from "@app/types/shared/document_renderer";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import path from "path";
+import { UniqueConstraintError } from "sequelize";
 import type { Readable } from "stream";
 
 // ---------------------------------------------------------------------------
@@ -276,9 +278,151 @@ function inferDestMountInfo(
   return null;
 }
 
+function destinationOccupiedError(dest: string): DustFileSystemError {
+  return new DustFileSystemError(
+    "already_exists",
+    `A file already exists at the destination: \`${dest}\`.`
+  );
+}
+
+/**
+ * Undo a completed `dustFs.move({ src, dest })`. When the backend reported that the source
+ * deletion failed, the source is still in place and only the destination copy is removed. A
+ * move back that leaves a copy at `dest` is reported as a failure.
+ */
+async function revertMove(
+  dustFs: DustFileSystem,
+  {
+    src,
+    dest,
+    sourceDeletionFailed,
+  }: { src: string; dest: string; sourceDeletionFailed: boolean }
+): Promise<Result<void, DustFileSystemError>> {
+  if (sourceDeletionFailed) {
+    return dustFs.delete(dest);
+  }
+
+  const moveBack = await dustFs.move({ src: dest, dest: src });
+  if (moveBack.isErr()) {
+    return moveBack;
+  }
+  if (moveBack.value.sourceDeletionFailed) {
+    return new Err(
+      new DustFileSystemError(
+        "internal",
+        `The file was restored at \`${src}\` but a copy remains at \`${dest}\`.`
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
+
+/**
+ * @cc [owner:smb2268,label:product;backend] occupied-destination-rejected-before-mutation
+ * When a FileResource other than the one linked to `src` owns the mount path of `dest`, the
+ * operation MUST return `Err("already_exists")` naming `dest` and MUST NOT mutate the file system
+ * or the `files` table. This applies even when the file system has no entry at `dest`.
+ */
+/**
+ * @cc [owner:smb2268,label:backend] no-success-on-partial-sync
+ * If the file system move succeeds and the linked FileResource update then fails, the operation
+ * MUST attempt to restore the file at `src` and MUST return `Err`; it MUST NOT return `Ok` while
+ * the file system and the linked FileResource disagree on the file's location. A
+ * `UniqueConstraintError` with a successful restore maps to `Err("already_exists")`; any other
+ * failure maps to `Err("internal")`.
+ */
+async function moveWithLinkedFileResource(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  {
+    src,
+    dest,
+    destFileName,
+  }: { src: string; dest: string; destFileName: string }
+): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
+  const srcGcsPath = dustFs.toMountFilePath(src);
+  const destGcsPath = dustFs.toMountFilePath(dest);
+  const destInfo = inferDestMountInfo(dest);
+
+  // Resolve the records owning both paths in one query, before the bytes move.
+  const owners = await FileResource.fetchByMountFilePaths(
+    auth,
+    [srcGcsPath, destGcsPath].filter((p): p is string => p !== null)
+  );
+  const linkedFileResource = owners.find(
+    (f) => srcGcsPath !== null && f.mountFilePath === srcGcsPath
+  );
+  const occupant = owners.find(
+    (f) => destGcsPath !== null && f.mountFilePath === destGcsPath
+  );
+
+  // The backends reject a destination that exists in the file system, but a FileResource can
+  // still own the destination mount path after the file was removed or replaced outside this
+  // layer (sandbox rename/remove). Reject before mutating anything.
+  if (occupant && occupant.id !== linkedFileResource?.id) {
+    return new Err(destinationOccupiedError(dest));
+  }
+
+  const moveResult = await dustFs.move({ src, dest });
+  if (moveResult.isErr()) {
+    return moveResult;
+  }
+
+  if (!linkedFileResource || !destGcsPath || !destInfo) {
+    return moveResult;
+  }
+
+  try {
+    await linkedFileResource.updateMount({
+      destFileName,
+      destMountFilePath: destGcsPath,
+      destUseCase: destInfo.useCase,
+      destUseCaseMetadata: destInfo.useCaseMetadata,
+    });
+  } catch (err) {
+    // The preflight is not atomic with the update: a destination claimed in between surfaces
+    // here as a unique violation. The bytes already moved, so restore them before reporting.
+    const isConflict = err instanceof UniqueConstraintError;
+    const reverted = await revertMove(dustFs, {
+      src,
+      dest,
+      sourceDeletionFailed: moveResult.value.sourceDeletionFailed,
+    });
+    logger.error(
+      {
+        err: normalizeError(err),
+        fileId: linkedFileResource.sId,
+        src,
+        dest,
+        isConflict,
+        reverted: reverted.isOk(),
+        revertError: reverted.isErr() ? reverted.error.message : undefined,
+      },
+      "Failed to sync FileResource after file system move"
+    );
+
+    if (isConflict && reverted.isOk()) {
+      return new Err(destinationOccupiedError(dest));
+    }
+
+    return new Err(
+      new DustFileSystemError(
+        "internal",
+        reverted.isOk()
+          ? `Failed to update the file record while moving \`${src}\` to \`${dest}\`; the move was reverted.`
+          : `Failed to update the file record after moving \`${src}\` to \`${dest}\`, and the move could not be reverted.`
+      )
+    );
+  }
+
+  return moveResult;
+}
+
 /**
  * Rename a file at `scopedPath` to `newFileName` (same directory) and sync the
- * linked FileResource record if one exists.
+ * linked FileResource record if one exists. See `moveWithLinkedFileResource`
+ * for the occupied-destination and partial-failure guarantees.
  *
  * Returns the same result shape as `DustFileSystem.rename()`.
  */
@@ -290,38 +434,36 @@ export async function renameCanonicalFile(
 ): Promise<
   Result<{ dest: string; sourceDeletionFailed: boolean }, DustFileSystemError>
 > {
-  const linkedFileResource = await fetchLinkedFileResource(
-    auth,
-    dustFs,
-    scopedPath
+  const destResult = DustFileSystem.resolveRenameDestination(
+    scopedPath,
+    newFileName
   );
+  if (destResult.isErr()) {
+    return destResult;
+  }
+  const dest = destResult.value;
 
-  const renameResult = await dustFs.rename(scopedPath, newFileName);
-  if (renameResult.isErr()) {
-    return renameResult;
+  if (dest === scopedPath) {
+    return new Ok({ dest, sourceDeletionFailed: false });
   }
 
-  if (linkedFileResource) {
-    const { dest } = renameResult.value;
-    const destGcsPath = dustFs.toMountFilePath(dest);
-    const destInfo = inferDestMountInfo(dest);
-
-    if (destGcsPath && destInfo) {
-      await linkedFileResource.updateMount({
-        destFileName: newFileName,
-        destMountFilePath: destGcsPath,
-        destUseCase: destInfo.useCase,
-        destUseCaseMetadata: destInfo.useCaseMetadata,
-      });
-    }
+  const moveResult = await moveWithLinkedFileResource(auth, dustFs, {
+    src: scopedPath,
+    dest,
+    destFileName: newFileName,
+  });
+  if (moveResult.isErr()) {
+    return moveResult;
   }
 
-  return renameResult;
+  return new Ok({ dest, ...moveResult.value });
 }
 
 /**
  * Move a file from `src` to `dest` and sync the linked FileResource record
  * (if any) to reflect the new path, filename, use-case, and use-case metadata.
+ * See `moveWithLinkedFileResource` for the occupied-destination and
+ * partial-failure guarantees.
  *
  * Returns the same result shape as `DustFileSystem.move()`.
  */
@@ -331,31 +473,11 @@ export async function moveCanonicalFile(
   src: string,
   dest: string
 ): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
-  // Look up the linked FileResource before the bytes move.
-  const linkedFileResource = await fetchLinkedFileResource(auth, dustFs, src);
-
-  const moveResult = await dustFs.move({ src, dest });
-  if (moveResult.isErr()) {
-    return moveResult;
-  }
-
-  // Update the FileResource to point to the new location.
-  if (linkedFileResource) {
-    const destGcsPath = dustFs.toMountFilePath(dest);
-    const destInfo = inferDestMountInfo(dest);
-
-    if (destGcsPath && destInfo) {
-      const destFileName = dest.split("/").pop() ?? dest;
-      await linkedFileResource.updateMount({
-        destFileName,
-        destMountFilePath: destGcsPath,
-        destUseCase: destInfo.useCase,
-        destUseCaseMetadata: destInfo.useCaseMetadata,
-      });
-    }
-  }
-
-  return moveResult;
+  return moveWithLinkedFileResource(auth, dustFs, {
+    src,
+    dest,
+    destFileName: path.posix.basename(dest),
+  });
 }
 
 // ---------------------------------------------------------------------------
