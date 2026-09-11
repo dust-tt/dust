@@ -77,7 +77,17 @@ const NOT_CROSSED: CreditSpendCheckpointActivityResult = {
  */
 export async function checkCreditSpendCheckpointActivity(
   authType: AuthenticatorType,
-  { agentLoopArgs }: { agentLoopArgs: AgentLoopArgsWithTiming }
+  {
+    agentLoopArgs,
+    precomputedOwnCostMicroUsd,
+  }: {
+    agentLoopArgs: AgentLoopArgsWithTiming;
+    // This step's own-message cost, already computed by this step's guardrail check
+    // (see checkCostAndSubagentsThresholds). Reusing it avoids a second RunResource query for
+    // the same figure. Null when the caller had none available (e.g. the guardrail check didn't
+    // run for this step), in which case this activity queries it itself.
+    precomputedOwnCostMicroUsd?: number | null;
+  }
 ): Promise<CreditSpendCheckpointActivityResult> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
@@ -90,9 +100,10 @@ export async function checkCreditSpendCheckpointActivity(
     return { crossed: false, skipRemainingChecks: true };
   }
 
-  const consumedAwuCredits = await getConsumedAwuCredits(auth, {
-    runIds: state?.runIds ?? [],
-  });
+  const consumedAwuCredits =
+    precomputedOwnCostMicroUsd != null
+      ? awuFromMicroUsd(precomputedOwnCostMicroUsd)
+      : await getConsumedAwuCredits(auth, { runIds: state?.runIds ?? [] });
 
   const result = await checkCreditSpendCheckpointGate(auth, {
     consumedAwuCredits,
@@ -127,6 +138,14 @@ export async function checkCreditSpendCheckpointActivity(
   await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(auth, {
     agentMessageModelId: agentMessage.agentMessageId,
   });
+
+  logger.info(
+    {
+      conversationId: agentLoopArgs.conversationId,
+      agentMessageId: agentLoopArgs.agentMessageId,
+    },
+    "Agent loop paused at credit spend checkpoint"
+  );
 
   try {
     await ConversationResource.markAsActionRequired(auth, { conversation });
