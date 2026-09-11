@@ -836,6 +836,53 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  static async fetchCreditSpendCheckpointStateForAgentMessage(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<{
+    status: AgentMessageModel["creditSpendCheckpointStatus"];
+  } | null> {
+    const messageRow = await MessageModel.findOne({
+      where: {
+        sId: agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: ["id"],
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["creditSpendCheckpointStatus"],
+        },
+      ],
+    });
+
+    const agentMessage = messageRow?.agentMessage;
+    if (!agentMessage) {
+      return null;
+    }
+
+    return {
+      status: agentMessage.creditSpendCheckpointStatus,
+    };
+  }
+
+  static async markAgentMessageCreditSpendCheckpointPaused(
+    auth: Authenticator,
+    { agentMessageModelId }: { agentMessageModelId: ModelId }
+  ): Promise<void> {
+    await AgentMessageModel.update(
+      { creditSpendCheckpointStatus: "paused" },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
   /**
    * Loads the message graph needed to build consumption analytics without exposing Sequelize rows
    * outside the Resource layer.

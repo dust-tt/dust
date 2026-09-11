@@ -1,5 +1,9 @@
-import { checkPoolCreditGate } from "@app/lib/api/assistant/credit_check";
+import {
+  checkCreditSpendCheckpointGate,
+  checkPoolCreditGate,
+} from "@app/lib/api/assistant/credit_check";
 import type { Authenticator } from "@app/lib/auth";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,7 +31,7 @@ vi.mock("@app/lib/api/programmatic_usage/tracking", () => ({
 
 vi.mock("@app/types/plan", () => ({
   isCreditPricedPlan: (plan: { code: string }) =>
-    plan.code.startsWith("ENT_NEW"),
+    plan.code.startsWith("ENT_NEW") || plan.code.startsWith("CP_"),
 }));
 
 // Minimal stand-in for the Authenticator class exposing only the members the gate reads. A class
@@ -37,19 +41,23 @@ function makeAuth({
   isCreditPriced = true,
   metronomeCustomerId = "metro_123",
   hasUser = true,
+  planCode,
 }: {
   isCreditPriced?: boolean;
   metronomeCustomerId?: string | null;
   hasUser?: boolean;
+  planCode?: string;
 } = {}): Authenticator {
-  const plan = isCreditPriced
-    ? { code: "ENT_NEW_CREDIT", limits: {} }
-    : { code: "LEGACY_PRO", limits: {} };
+  const plan = planCode
+    ? { code: planCode, limits: {} }
+    : isCreditPriced
+      ? { code: "ENT_NEW_CREDIT", limits: {} }
+      : { code: "LEGACY_PRO", limits: {} };
 
   return {
     getNonNullableWorkspace: () => ({ sId: "ws_test", metronomeCustomerId }),
     subscription: () => ({ plan }),
-    user: () => (hasUser ? { sId: "user_test" } : null),
+    user: () => (hasUser ? { id: 42, sId: "user_test" } : null),
   } as unknown as Authenticator;
 }
 
@@ -153,5 +161,60 @@ describe("checkPoolCreditGate", () => {
     mockIsUserBlocked.mockRejectedValue(new Error("redis unavailable"));
     const auth = makeAuth();
     await expect(callGate(auth)).rejects.toThrow("redis unavailable");
+  });
+});
+
+describe("checkCreditSpendCheckpointGate", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("applies to non-credit-priced plans too, unlike the pool gate", async () => {
+    const auth = makeAuth({ isCreditPriced: false, hasUser: true });
+    const result = await checkCreditSpendCheckpointGate(auth, {
+      consumedAwuCredits: 5000,
+    });
+    expect(result).toEqual({
+      crossed: true,
+      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+    });
+  });
+
+  it("applies even when metronomeCustomerId is null, unlike the pool gate", async () => {
+    const auth = makeAuth({ metronomeCustomerId: null, hasUser: true });
+    const result = await checkCreditSpendCheckpointGate(auth, {
+      consumedAwuCredits: 5000,
+    });
+    expect(result).toEqual({
+      crossed: true,
+      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+    });
+  });
+
+  it("is exempt when there is no user to answer the pause", async () => {
+    const auth = makeAuth({ hasUser: false });
+    const result = await checkCreditSpendCheckpointGate(auth, {
+      consumedAwuCredits: 5000,
+    });
+    expect(result).toEqual({ crossed: false, exempt: true });
+  });
+
+  it("does not notify when this message's consumed credits are below the threshold", async () => {
+    const auth = makeAuth({ hasUser: true });
+    const result = await checkCreditSpendCheckpointGate(auth, {
+      consumedAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS - 1,
+    });
+    expect(result).toEqual({ crossed: false, exempt: false });
+  });
+
+  it("notifies with the fixed threshold once this message's consumed credits reach it", async () => {
+    const auth = makeAuth({ hasUser: true });
+    const result = await checkCreditSpendCheckpointGate(auth, {
+      consumedAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+    });
+    expect(result).toEqual({
+      crossed: true,
+      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+    });
   });
 });

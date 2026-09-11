@@ -14,6 +14,7 @@ import {
   finalizeUnavailableAgentLoop,
   updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
+import type { DescendantRunData } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import {
   AGENT_LOOP_COST_HARD_CAP_USD,
   AGENT_LOOP_SUBAGENT_HARD_CAP,
@@ -44,6 +45,8 @@ export type RunModelAndCreateActionsResult = {
   // The model returned nothing at all: the loop should run one more step with
   // tool use disabled to force a final answer.
   retryWithoutTools?: boolean;
+  isRootAgentMessage?: boolean;
+  preStepTotalCostMicroUsd?: number;
 };
 
 const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
@@ -76,6 +79,7 @@ export async function runModelAndCreateActionsActivity({
   runIds,
   step,
   forceDisableToolUse = false,
+  descendantData = null,
 }: {
   authType: AuthenticatorType;
   checkForResume?: boolean;
@@ -83,6 +87,9 @@ export async function runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
   forceDisableToolUse?: boolean;
+  // Descendant walk cached from the previous step's credit spend checkpoint check (see
+  // `checkCreditSpendCheckpointActivity`), so the guardrail check below doesn't repeat it.
+  descendantData?: DescendantRunData | null;
 }): Promise<RunModelAndCreateActionsResult | null> {
   // The pre-stream setup (agent data loading, MCP tools listing, conversation rendering) can
   // stall past the heartbeat timeout, e.g. on a hung MCP server's tools/list call: heartbeat
@@ -99,6 +106,7 @@ export async function runModelAndCreateActionsActivity({
           runIds,
           step,
           forceDisableToolUse,
+          descendantData,
         })
       ),
     {
@@ -115,6 +123,7 @@ async function _runModelAndCreateActionsActivity({
   runIds,
   step,
   forceDisableToolUse,
+  descendantData,
 }: {
   authType: AuthenticatorType;
   checkForResume: boolean;
@@ -122,6 +131,7 @@ async function _runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
   forceDisableToolUse: boolean;
+  descendantData: DescendantRunData | null;
 }): Promise<RunModelAndCreateActionsResult | null> {
   const activityTimeoutDeadlineMs = getActivityTimeoutDeadlineMs();
   const durationRecorder = DurationRecorder.create([]);
@@ -174,6 +184,7 @@ async function _runModelAndCreateActionsActivity({
         conversationId: runAgentArgs.conversationId,
         step,
       },
+      descendantData,
     });
   } catch (error) {
     logger.warn(
@@ -264,6 +275,8 @@ async function _runModelAndCreateActionsActivity({
       return {
         actionBlobs: existingData.actionBlobs,
         runId: null,
+        isRootAgentMessage,
+        preStepTotalCostMicroUsd: hardCapCheckResult?.totalCostMicroUsd,
       };
     }
   }
@@ -299,7 +312,13 @@ async function _runModelAndCreateActionsActivity({
   // Generation completed (text response, no tool calls) — runModel returns
   // { actions: [], runId } so we still capture the runId for tracking.
   if (actions.length === 0) {
-    return { runId, actionBlobs: [], retryWithoutTools };
+    return {
+      runId,
+      actionBlobs: [],
+      retryWithoutTools,
+      isRootAgentMessage,
+      preStepTotalCostMicroUsd: hardCapCheckResult?.totalCostMicroUsd,
+    };
   }
 
   // Enforce a limit on actions per step, reducing by depth (8/8/4/2)
@@ -339,6 +358,8 @@ async function _runModelAndCreateActionsActivity({
   return {
     runId,
     actionBlobs: createResult.actionBlobs,
+    isRootAgentMessage,
+    preStepTotalCostMicroUsd: hardCapCheckResult?.totalCostMicroUsd,
   };
 }
 

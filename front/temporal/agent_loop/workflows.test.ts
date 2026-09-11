@@ -10,6 +10,8 @@ const {
   deprecatePatch,
   patched,
   checkCreditsActivity,
+  checkCreditSpendCheckpointActivity,
+  finalizeCreditSpendCheckpointPausedAgentLoopActivity,
   finalizeErroredSandboxChildToolActivity,
   finalizeSuccessfulAgentLoopActivity,
   runToolActivity,
@@ -24,6 +26,8 @@ const {
   deprecatePatch: vi.fn(),
   patched: vi.fn(),
   checkCreditsActivity: vi.fn(),
+  checkCreditSpendCheckpointActivity: vi.fn(),
+  finalizeCreditSpendCheckpointPausedAgentLoopActivity: vi.fn(),
   finalizeErroredSandboxChildToolActivity: vi.fn(),
   finalizeSuccessfulAgentLoopActivity: vi.fn(),
   runToolActivity: vi.fn(),
@@ -56,6 +60,7 @@ vi.mock("@temporalio/workflow", () => {
     },
     defineSignal: (name: string) => name,
     deprecatePatch,
+    isCancellation: () => false,
     log: {
       error: workflowLogError,
     },
@@ -65,10 +70,12 @@ vi.mock("@temporalio/workflow", () => {
       retry?: { maximumAttempts?: number };
     }) => ({
       checkCreditsActivity,
+      checkCreditSpendCheckpointActivity,
       compactionActivity: unusedActivity,
       compactionCleanupActivity: unusedActivity,
       ensureConversationTitleActivity: unusedActivity,
       finalizeCancelledAgentLoopActivity: unusedActivity,
+      finalizeCreditSpendCheckpointPausedAgentLoopActivity,
       finalizeCreditStoppedAgentLoopActivity: unusedActivity,
       finalizeErroredAgentLoopActivity: unusedActivity,
       finalizeErroredSandboxChildToolActivity,
@@ -308,5 +315,199 @@ describe("agentLoopWorkflow activity cancellation patches", () => {
     expect(deprecatePatch).toHaveBeenCalledWith(
       "wait-for-all-tool-activities-before-finalization"
     );
+  });
+});
+
+describe("agentLoopWorkflow credit spend checkpoint", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    patched.mockReturnValue(true);
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
+      actionBlobs: [
+        {
+          actionId: "action-1",
+          needsApproval: false,
+          retryPolicy: "no_retry",
+        },
+      ],
+      runId: "run-1",
+      isRootAgentMessage: true,
+    });
+    runToolActivityWithExplicitCancellation.mockResolvedValue({
+      deferredEvents: [],
+    });
+    checkCreditsActivity.mockResolvedValue({ shouldStop: false, reason: null });
+    finalizeSuccessfulAgentLoopActivity.mockResolvedValue(undefined);
+    finalizeCreditSpendCheckpointPausedAgentLoopActivity.mockResolvedValue(
+      undefined
+    );
+  });
+
+  it("skips scheduling the checkpoint activity when this step's spend is clearly below the threshold", async () => {
+    runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
+      actionBlobs: [
+        {
+          actionId: "action-1",
+          needsApproval: false,
+          retryPolicy: "no_retry",
+        },
+      ],
+      runId: "run-1",
+      isRootAgentMessage: true,
+      // 0 AWU credits: nowhere near the fixed checkpoint threshold.
+      preStepTotalCostMicroUsd: 0,
+    });
+    checkCreditsActivity
+      .mockResolvedValueOnce({ shouldStop: false, reason: null })
+      .mockResolvedValue({ shouldStop: true, reason: "credits_exhausted" });
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).toHaveBeenCalledTimes(2);
+    expect(checkCreditSpendCheckpointActivity).not.toHaveBeenCalled();
+  });
+
+  it("passes the checkpoint's descendant walk into the next step's activity call", async () => {
+    const descendantData = { dustRunIds: ["run-a", "run-b"] };
+    checkCreditSpendCheckpointActivity
+      .mockResolvedValueOnce({
+        crossed: false,
+        skipRemainingChecks: false,
+        descendantData,
+      })
+      .mockResolvedValueOnce({ crossed: true, thresholdAwuCredits: 500 });
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).toHaveBeenCalledTimes(2);
+    // First step has nothing cached yet.
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ descendantData: null })
+    );
+    // Second step reuses what the first step's checkpoint check just walked.
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).toHaveBeenNthCalledWith(2, expect.objectContaining({ descendantData }));
+  });
+
+  it("breaks out of the loop and finalizes as paused when the checkpoint is crossed", async () => {
+    checkCreditSpendCheckpointActivity.mockResolvedValue({
+      crossed: true,
+      thresholdAwuCredits: 500,
+    });
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(
+      runModelAndCreateActionsActivityWithExplicitCancellation
+    ).toHaveBeenCalledOnce();
+    expect(
+      finalizeCreditSpendCheckpointPausedAgentLoopActivity
+    ).toHaveBeenCalledWith(
+      authType,
+      expect.objectContaining({ agentMessageId: "am123" }),
+      { thresholdAwuCredits: 500 }
+    );
+    expect(finalizeSuccessfulAgentLoopActivity).not.toHaveBeenCalled();
+  });
+
+  it("rethrows a check failure that is not a Temporal activity failure", async () => {
+    checkCreditSpendCheckpointActivity.mockRejectedValueOnce(new Error("boom"));
+    runModelAndCreateActionsActivityWithExplicitCancellation
+      .mockResolvedValueOnce({
+        actionBlobs: [
+          {
+            actionId: "action-1",
+            needsApproval: false,
+            retryPolicy: "no_retry",
+          },
+        ],
+        runId: "run-1",
+        isRootAgentMessage: true,
+      })
+      .mockResolvedValue({ actionBlobs: [], runId: "run-2" });
+
+    await expect(
+      agentLoopWorkflow({
+        agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+        authType,
+        initialStartTime: 0,
+        startStep: 0,
+      })
+    ).rejects.toThrow("boom");
+  });
+
+  it("never schedules the check for sub-agent messages", async () => {
+    runModelAndCreateActionsActivityWithExplicitCancellation
+      .mockResolvedValueOnce({
+        actionBlobs: [
+          {
+            actionId: "action-1",
+            needsApproval: false,
+            retryPolicy: "no_retry",
+          },
+        ],
+        runId: "run-1",
+        isRootAgentMessage: false,
+      })
+      .mockResolvedValue({ actionBlobs: [], runId: "run-2" });
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(checkCreditSpendCheckpointActivity).not.toHaveBeenCalled();
+    expect(finalizeSuccessfulAgentLoopActivity).toHaveBeenCalledOnce();
+  });
+
+  it("does not schedule the check when replaying without the patch marker", async () => {
+    patched.mockReturnValue(false);
+    runModelAndCreateActionsActivityWithExplicitCancellation
+      .mockResolvedValueOnce({
+        actionBlobs: [
+          {
+            actionId: "action-1",
+            needsApproval: false,
+            retryPolicy: "no_retry",
+          },
+        ],
+        runId: "run-1",
+        isRootAgentMessage: true,
+      })
+      .mockResolvedValue({ actionBlobs: [], runId: "run-2" });
+
+    await agentLoopWorkflow({
+      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
+      authType,
+      initialStartTime: 0,
+      startStep: 0,
+    });
+
+    expect(checkCreditSpendCheckpointActivity).not.toHaveBeenCalled();
   });
 });

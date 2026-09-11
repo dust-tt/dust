@@ -14,6 +14,7 @@ import {
 import {
   creditsExhaustedMessage,
   finalizeCancellation,
+  finalizeCreditSpendCheckpointPause,
   finalizeCreditStop,
   finalizeGracefulStop,
   finalizeInterruption,
@@ -171,6 +172,30 @@ export async function finalizeCreditStoppedAgentLoopActivity(
     launchTrackProgrammaticUsage(auth, agentLoopArgs),
     launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
     sendEmailReplyOnError(auth, agentLoopArgs, creditsExhaustedMessage(auth)),
+  ]);
+}
+
+export async function finalizeCreditSpendCheckpointPausedAgentLoopActivity(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs,
+  { thresholdAwuCredits }: { thresholdAwuCredits: number }
+): Promise<void> {
+  await finalizeCreditSpendCheckpointPause(authType, agentLoopArgs, {
+    thresholdAwuCredits,
+  });
+
+  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+  await Promise.all([
+    launchAgentMessageAnalytics(auth, agentLoopArgs),
+    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
+      auth,
+      agentLoopArgs
+    ),
+    launchTrackProgrammaticUsage(auth, agentLoopArgs),
+    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
+    conversationUnreadNotification(auth, agentLoopArgs),
+    handleMentions(auth, agentLoopArgs),
   ]);
 }
 

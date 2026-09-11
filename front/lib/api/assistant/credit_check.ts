@@ -5,6 +5,7 @@ import {
 } from "@app/lib/api/credits/access_control";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 
@@ -52,4 +53,34 @@ export async function checkPoolCreditGate(
   }
 
   return DO_NOT_STOP;
+}
+
+export type CreditSpendCheckpointCheckResult =
+  | { crossed: false; exempt: boolean }
+  | { crossed: true; thresholdAwuCredits: number };
+
+const NOT_CROSSED: CreditSpendCheckpointCheckResult = {
+  crossed: false,
+  exempt: false,
+};
+const EXEMPT: CreditSpendCheckpointCheckResult = {
+  crossed: false,
+  exempt: true,
+};
+
+export async function checkCreditSpendCheckpointGate(
+  auth: Authenticator,
+  { consumedAwuCredits }: { consumedAwuCredits: number }
+): Promise<CreditSpendCheckpointCheckResult> {
+  const plan = auth.subscription()?.plan;
+
+  if (!plan || !auth.user()) {
+    return EXEMPT;
+  }
+
+  const thresholdAwuCredits = CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS;
+
+  return consumedAwuCredits >= thresholdAwuCredits
+    ? { crossed: true, thresholdAwuCredits }
+    : NOT_CROSSED;
 }

@@ -26,14 +26,27 @@ interface CostThresholdEventData {
   step: number;
 }
 
+export interface DescendantRunData {
+  dustRunIds: string[];
+  descendantAgenticUserMessageCount: number;
+}
+
+/**
+ * @cc [owner:avervaet,label:concurrency] descendant-data-cache-freshness
+ * `descendantData`, when passed, MUST come from a descendant walk with no run-creating
+ * activity between that walk and this call. Passing a walk result from further back yields cost
+ * and subagent counts computed from an incomplete run set.
+ */
 export async function checkCostAndSubagentsThresholds({
   auth,
   isRootAgentMessage,
   eventData,
+  descendantData,
 }: {
   auth: Authenticator;
   isRootAgentMessage: boolean;
   eventData: CostThresholdEventData;
+  descendantData?: DescendantRunData | null;
 }): Promise<{
   totalCostMicroUsd: number;
   hardCapExceeded: boolean;
@@ -51,9 +64,10 @@ export async function checkCostAndSubagentsThresholds({
   }
 
   const { dustRunIds, descendantAgenticUserMessageCount } =
-    await collectDescendantData(auth, {
+    descendantData ??
+    (await collectDescendantData(auth, {
       rootAgentMessageId: eventData.agentMessageId,
-    });
+    }));
 
   const totalCostMicroUsd = await getCumulativeCostMicroUsd(auth, {
     dustRunIds,
@@ -107,7 +121,7 @@ export async function checkCostAndSubagentsThresholds({
   };
 }
 
-async function getCumulativeCostMicroUsd(
+export async function getCumulativeCostMicroUsd(
   auth: Authenticator,
   { dustRunIds }: { dustRunIds: string[] }
 ): Promise<number> {
@@ -131,7 +145,7 @@ async function getCumulativeCostMicroUsd(
  * - Queries fetch only IDs/runIds and rely on
  *   `user_messages_workspace_agentic_origin_idx` for fast descendant lookup.
  */
-async function collectDescendantData(
+export async function collectDescendantData(
   auth: Authenticator,
   { rootAgentMessageId }: { rootAgentMessageId: string }
 ): Promise<{

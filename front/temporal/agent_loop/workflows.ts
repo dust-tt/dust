@@ -5,7 +5,10 @@ import {
 } from "@app/lib/actions/constants";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
+import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
+import type { DescendantRunData } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
@@ -38,7 +41,10 @@ import type {
 import type { CompactionSourceConversation } from "@app/types/assistant/compaction";
 import type { SupportedModel } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { WorkflowExecutionAlreadyStartedError } from "@temporalio/common";
+import {
+  ActivityFailure,
+  WorkflowExecutionAlreadyStartedError,
+} from "@temporalio/common";
 import type {
   ChildWorkflowHandle,
   WorkflowInterceptorsFactory,
@@ -47,6 +53,7 @@ import {
   ActivityCancellationType,
   CancellationScope,
   deprecatePatch,
+  isCancellation,
   log,
   patched,
   proxyActivities,
@@ -140,6 +147,17 @@ const { checkCreditsActivity } = proxyActivities<typeof creditCheckActivities>({
   },
 });
 
+// No retries: this is a fail-open check, so a failure should resolve immediately rather than
+// delaying the step with retries.
+const { checkCreditSpendCheckpointActivity } = proxyActivities<
+  typeof creditCheckActivities
+>({
+  startToCloseTimeout: "15 seconds",
+  retry: {
+    maximumAttempts: 1,
+  },
+});
+
 const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
 
 const { ensureConversationTitleActivity } = proxyActivities<
@@ -174,6 +192,7 @@ const {
   finalizeCancelledAgentLoopActivity,
   finalizeInterruptedAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
+  finalizeCreditSpendCheckpointPausedAgentLoopActivity,
 } = proxyActivities<typeof finalizeActivities>({
   startToCloseTimeout: "1 minute",
 });
@@ -228,6 +247,12 @@ export async function compactionWorkflow({
   }
 }
 
+/**
+ * @cc [owner:avervaet,label:performance] checkpoint-fails-open
+ * A failure of the credit spend checkpoint check activity MUST NOT fail or stop the agent loop:
+ * the step continues as if the threshold had not been crossed. Only cancellation and non-activity
+ * failures propagate.
+ */
 export async function agentLoopWorkflow({
   authType,
   initialStartTime,
@@ -270,6 +295,16 @@ export async function agentLoopWorkflow({
   // Credit stop: the per-step gate found the workspace pool exhausted.
   let creditStopRequested = false;
 
+  // Credit spend checkpoint pause: this message's own spend reached the threshold at which we
+  // ask the user whether to continue.
+  let creditSpendCheckpointPause: { thresholdAwuCredits: number } | null = null;
+
+  // Cached per execution: once the check says to skip, nothing within this execution can bring
+  // it back (see checkCreditSpendCheckpointActivity).
+  let skipCreditSpendCheckpointChecks = false;
+
+  let descendantData: DescendantRunData | null = null;
+
   const runIds: string[] = [];
 
   try {
@@ -297,18 +332,29 @@ export async function agentLoopWorkflow({
 
         const stepStartTime = Date.now();
 
-        const { runId, shouldContinue, retryWithoutTools } =
-          await executeStepIteration({
-            authType,
-            agentLoopArgs: {
-              ...agentLoopArgs,
-              initialStartTime,
-            },
-            currentStep,
-            runIds,
-            startStep,
-            forceDisableToolUse,
-          });
+        // Valid only for this one call: consume it now regardless of outcome, and let the
+        // checkpoint check below repopulate it for the next step if it runs again.
+        const stepDescendantData = descendantData;
+        descendantData = null;
+
+        const {
+          runId,
+          shouldContinue,
+          retryWithoutTools,
+          isRootAgentMessage,
+          preStepTotalCostMicroUsd,
+        } = await executeStepIteration({
+          authType,
+          agentLoopArgs: {
+            ...agentLoopArgs,
+            initialStartTime,
+          },
+          currentStep,
+          runIds,
+          startStep,
+          forceDisableToolUse,
+          descendantData: stepDescendantData,
+        });
 
         forceDisableToolUse = retryWithoutTools ?? false;
 
@@ -362,6 +408,49 @@ export async function agentLoopWorkflow({
           creditStopRequested = true;
           break;
         }
+
+        if (isRootAgentMessage === false) {
+          skipCreditSpendCheckpointChecks = true;
+        }
+
+        // Check here to avoid unecessary activity call
+        const isClearlyBelowCheckpointFloor =
+          preStepTotalCostMicroUsd !== undefined &&
+          Math.ceil(
+            preStepTotalCostMicroUsd / MODEL_COST_MICRO_USD_PER_AWU_CREDIT
+          ) < CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS;
+
+        if (
+          patched("credit-spend-checkpoint-gate") &&
+          !skipCreditSpendCheckpointChecks &&
+          !isClearlyBelowCheckpointFloor
+        ) {
+          try {
+            const checkpointResult = await checkCreditSpendCheckpointActivity(
+              authType,
+              {
+                agentLoopArgs: {
+                  ...agentLoopArgs,
+                  initialStartTime,
+                },
+              }
+            );
+            if (checkpointResult.crossed) {
+              creditSpendCheckpointPause = {
+                thresholdAwuCredits: checkpointResult.thresholdAwuCredits,
+              };
+              break;
+            }
+            if (checkpointResult.skipRemainingChecks) {
+              skipCreditSpendCheckpointChecks = true;
+            }
+            descendantData = checkpointResult.descendantData ?? null;
+          } catch (err) {
+            if (!(err instanceof ActivityFailure) || isCancellation(err)) {
+              throw err;
+            }
+          }
+        }
       }
 
       const stepsCompleted = currentStep - startStep;
@@ -395,6 +484,12 @@ export async function agentLoopWorkflow({
           await finalizeCreditStoppedAgentLoopActivity(
             authType,
             argsWithRunIds
+          );
+        } else if (creditSpendCheckpointPause) {
+          await finalizeCreditSpendCheckpointPausedAgentLoopActivity(
+            authType,
+            argsWithRunIds,
+            creditSpendCheckpointPause
           );
         } else {
           await finalizeSuccessfulAgentLoopActivity(authType, argsWithRunIds);
@@ -460,6 +555,7 @@ async function executeStepIteration({
   runIds,
   startStep,
   forceDisableToolUse,
+  descendantData,
 }: {
   authType: AuthenticatorType;
   currentStep: number;
@@ -467,10 +563,16 @@ async function executeStepIteration({
   runIds: string[];
   startStep: number;
   forceDisableToolUse: boolean;
+  descendantData: DescendantRunData | null;
 }): Promise<{
   runId: string | null;
   shouldContinue: boolean;
   retryWithoutTools?: boolean;
+  // Passed through so the caller can skip the credit spend checkpoint for sub-agent messages.
+  isRootAgentMessage?: boolean;
+  // Passed through so the caller can cheaply decide whether the credit spend checkpoint activity
+  // is even worth scheduling (see `RunModelAndCreateActionsResult.preStepTotalCostMicroUsd`).
+  preStepTotalCostMicroUsd?: number;
 }> {
   deprecatePatch("wait-for-model-activity-before-finalization");
 
@@ -481,6 +583,7 @@ async function executeStepIteration({
     runIds,
     step: currentStep,
     forceDisableToolUse,
+    descendantData,
   });
 
   if (!result) {
@@ -491,7 +594,13 @@ async function executeStepIteration({
     };
   }
 
-  const { runId, actionBlobs, retryWithoutTools = false } = result;
+  const {
+    runId,
+    actionBlobs,
+    retryWithoutTools = false,
+    isRootAgentMessage,
+    preStepTotalCostMicroUsd,
+  } = result;
 
   // Generation completed or the loop unpaused and no new tools were generated.
   if (actionBlobs.length === 0) {
@@ -503,6 +612,8 @@ async function executeStepIteration({
       // disabled to force a final answer.
       shouldContinue: runId === null || retryWithoutTools,
       retryWithoutTools,
+      isRootAgentMessage,
+      preStepTotalCostMicroUsd,
     };
   }
 
@@ -513,6 +624,8 @@ async function executeStepIteration({
     return {
       runId,
       shouldContinue: false,
+      isRootAgentMessage,
+      preStepTotalCostMicroUsd,
     };
   }
 
@@ -551,6 +664,8 @@ async function executeStepIteration({
       return {
         runId,
         shouldContinue: false,
+        isRootAgentMessage,
+        preStepTotalCostMicroUsd,
       };
     }
   }
@@ -558,6 +673,8 @@ async function executeStepIteration({
   return {
     runId,
     shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
+    isRootAgentMessage,
+    preStepTotalCostMicroUsd,
   };
 }
 
