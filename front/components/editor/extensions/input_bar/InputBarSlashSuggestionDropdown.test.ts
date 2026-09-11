@@ -4,9 +4,17 @@ import {
 } from "@app/components/editor/extensions/shared/SlashCommandCapabilitiesItems";
 import { PICK_MODEL_SLASH_COMMAND_ACTION } from "@app/components/editor/extensions/shared/slash_suggestion/pickModelSlashCommand";
 import type { SlashCommand } from "@app/components/editor/extensions/shared/slash_suggestion/SlashCommandDropdown";
+import {
+  ATTACH_CONTEXT_SUB_MENU_ID,
+  PICK_MODEL_SUB_MENU_ID,
+  resolveSlashSubMenuFromQuery,
+} from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { describe, expect, it } from "vitest";
 
-import { buildInputBarSlashCommandItems } from "./InputBarSlashSuggestionItems";
+import {
+  filterInputBarSlashCommandItems,
+  getInputBarSlashCommandItems,
+} from "./InputBarSlashSuggestionItems";
 import type { InputBarSlashCommand } from "./InputBarSlashSuggestionTypes";
 import {
   getAvailableInputBarSlashCommands,
@@ -17,6 +25,18 @@ const ALL_COMMANDS = getAvailableInputBarSlashCommands({
   hasAttachment: true,
   hasConversation: true,
 });
+
+function buildInputBarSlashCommandItems({
+  query,
+  ...options
+}: Parameters<typeof getInputBarSlashCommandItems>[0] & {
+  query: string;
+}): SlashCommand[] {
+  return filterInputBarSlashCommandItems(
+    getInputBarSlashCommandItems(options),
+    query
+  );
+}
 
 function getInputBarSlashCommandItemId(item: SlashCommand): string {
   if (isRunCommandSlashCommand<InputBarSlashCommand>(item)) {
@@ -168,5 +188,84 @@ describe("buildInputBarSlashCommandItems", () => {
         query: "zzz",
       })
     ).toEqual([]);
+  });
+});
+
+describe("resolveSlashSubMenuFromQuery", () => {
+  const commandItems = buildInputBarSlashCommandItems({
+    commands: ALL_COMMANDS,
+    includeAttachKnowledge: true,
+    includePickModel: true,
+    query: "",
+  });
+
+  it("enters the first matching sub-menu command with the remainder as query", () => {
+    const resolved = resolveSlashSubMenuFromQuery({
+      commandItems,
+      query: "model fab high",
+    });
+
+    expect(resolved?.frame.subMenuId).toBe(PICK_MODEL_SUB_MENU_ID);
+    expect(resolved?.frame.command.action).toBe(
+      PICK_MODEL_SLASH_COMMAND_ACTION
+    );
+    expect(resolved?.query).toBe("fab high");
+
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "mo " })
+    ).toMatchObject({
+      frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
+      query: "",
+    });
+
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "att report" })
+    ).toMatchObject({
+      frame: { subMenuId: ATTACH_CONTEXT_SUB_MENU_ID },
+      query: "report",
+    });
+  });
+
+  it("lets the full label be typed before the sub-menu query", () => {
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "pick model" })
+    ).toMatchObject({
+      frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
+      query: "",
+    });
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "Pick model gpt6 h" })
+    ).toMatchObject({
+      frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
+      query: "gpt6 h",
+    });
+    // Only complete label words are consumed, so "m" still means the medium effort.
+    for (const query of ["pick m", "pick m ", "pick m h", "pick mo fa"]) {
+      expect(
+        resolveSlashSubMenuFromQuery({ commandItems, query })
+      ).toMatchObject({
+        frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
+        query: query.slice("pick ".length),
+      });
+    }
+  });
+
+  it("matches the head against command labels only", () => {
+    // "or" and "the" appear in command descriptions, not labels.
+    for (const query of ["or x", "the x", "s x", "odel x", "- x", " x"]) {
+      expect(resolveSlashSubMenuFromQuery({ commandItems, query })).toBeNull();
+    }
+  });
+
+  it("returns null without a space, without a match, or for a run command", () => {
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "model" })
+    ).toBeNull();
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "zzz fab" })
+    ).toBeNull();
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "compact fab" })
+    ).toBeNull();
   });
 });

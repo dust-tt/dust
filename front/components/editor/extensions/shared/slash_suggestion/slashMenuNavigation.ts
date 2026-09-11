@@ -54,6 +54,71 @@ function getSlashCommandSubMenuId(item: SlashCommand): SlashSubMenuId | null {
   return null;
 }
 
+// Number of leading query words that spell the label from `start`: the first word prefixes the
+// label word at `start`, each following word equals the next label word ("pick model gpt6").
+// Anything shorter stays part of the query, so "pick m" keeps "m" for the medium effort.
+function countLabelWords(
+  queryWords: string[],
+  labelWords: string[],
+  start: number
+): number {
+  let count = 1;
+  while (
+    count < queryWords.length &&
+    start + count < labelWords.length &&
+    queryWords[count] === labelWords[start + count]
+  ) {
+    count++;
+  }
+
+  return count;
+}
+
+/**
+ * @cc [owner:PopDaph,label:product] space-enters-first-sub-menu-command
+ * A query containing a space resolves to the sub-menu of the first item of `commandItems` whose
+ * label has a word (labels split on whitespace and hyphens) starting, case-insensitively, with
+ * the text before the first space. Following query words belong to the command while they equal
+ * the next label words exactly; the remaining text is the sub-menu query. It resolves to `null`
+ * when the first text is empty, no label matches, or the first match is not a sub-menu command.
+ */
+export function resolveSlashSubMenuFromQuery({
+  commandItems,
+  query,
+}: {
+  commandItems: SlashCommand[];
+  query: string;
+}): { frame: SlashMenuStackFrame; query: string } | null {
+  if (query.indexOf(" ") <= 0) {
+    return null;
+  }
+
+  const rawWords = query.split(" ");
+  const queryWords = rawWords.map((word) => word.toLowerCase());
+  for (const command of commandItems) {
+    const labelWords = command.label.toLowerCase().split(/[\s-]+/);
+    const start = labelWords.findIndex((word) =>
+      word.startsWith(queryWords[0])
+    );
+    if (start === -1) {
+      continue;
+    }
+
+    const subMenuId = getSlashCommandSubMenuId(command);
+    if (!subMenuId) {
+      return null;
+    }
+
+    const consumed = countLabelWords(queryWords, labelWords, start);
+    return {
+      frame: { command, subMenuId },
+      query: rawWords.slice(consumed).join(" "),
+    };
+  }
+
+  return null;
+}
+
 export function getActiveSlashSubMenuFrame(
   storage: SlashMenuNavigationStorage
 ): SlashMenuStackFrame | null {
