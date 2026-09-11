@@ -28,7 +28,6 @@ describe("GET /api/marketing/model-credits", () => {
 
     // Entirely feature-flagged providers (no GA model yet).
     expect(modelIds).not.toContain("deepseek-chat");
-    expect(modelIds).not.toContain("grok-4.5");
     expect(modelIds).not.toContain("o1");
     // Gated by featureFlag even though plansWithAdvancedModels is also set.
     expect(modelIds).not.toContain("claude-opus-4-6");
@@ -42,5 +41,6 @@ describe("GET /api/marketing/model-credits", () => {
     );
 
     expect(modelIds).not.toContain("claude-3-opus-20240229");
+    expect(modelIds).not.toContain("grok-4.5");
   });
 });

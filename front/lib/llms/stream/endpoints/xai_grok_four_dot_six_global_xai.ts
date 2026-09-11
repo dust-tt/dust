@@ -5,9 +5,7 @@ import { XaiGrokFourDotSixGlobalXaiStream } from "@app/lib/model_constructors/st
 export class DustXaiGrokFourDotSixGlobalXaiStream extends WithDustGrok46Config(
   XaiGrokFourDotSixGlobalXaiStream
 ) {
-  static readonly endpointFilter = {
-    featureFlags: { contains: "xai_feature" as const },
-  };
+  static readonly endpointFilter = {};
 }
 
 defineDustStreamEndpoint(DustXaiGrokFourDotSixGlobalXaiStream);
