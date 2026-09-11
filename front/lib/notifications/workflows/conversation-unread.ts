@@ -20,8 +20,8 @@ import {
 } from "@app/lib/notifications/helpers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { UserMetadataModel } from "@app/lib/resources/storage/models/user";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -49,7 +49,6 @@ import type { UserType } from "@app/types/user";
 import { areConversationExternalNotificationsEnabled } from "@app/types/user";
 import { workflow } from "@novu/framework";
 import assert from "assert";
-import { Op } from "sequelize";
 import z from "zod";
 
 // The unread workflow operates on the shared conversation-details payload.
@@ -664,18 +663,16 @@ export const filterParticipantsByNotifyCondition = async ({
 }): Promise<(UserType & { lastReadAt: Date | null })[]> => {
   const userModelIds = participants.map((p) => p.id);
 
-  const generalPreferences = await UserMetadataModel.findAll({
-    where: {
-      userId: { [Op.in]: userModelIds },
-      key: CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
-    },
-    attributes: ["userId", "value"],
-  });
+  const generalPreferences =
+    await UserResource.fetchUserScopedMetadataValuesByUserModelIds(
+      CONVERSATION_NOTIFICATION_METADATA_KEYS.notifyCondition,
+      userModelIds
+    );
 
   const generalPreferenceMap = new Map<number, NotificationCondition>();
-  for (const pref of generalPreferences) {
-    if (isNotificationCondition(pref.value)) {
-      generalPreferenceMap.set(pref.userId, pref.value);
+  for (const [userId, value] of generalPreferences) {
+    if (isNotificationCondition(value)) {
+      generalPreferenceMap.set(userId, value);
     }
   }
 

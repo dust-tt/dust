@@ -111,6 +111,13 @@ UserModel.init(
   }
 );
 
+/**
+ * @cc [owner:smb2268,label:performance] reads-constrain-workspace-id
+ * The only indexes on this table are partial on `workspaceId IS NULL` and
+ * `workspaceId IS NOT NULL`. Every read MUST constrain `workspaceId` (to null or a specific
+ * id) alongside `userId`; a read filtering on `userId`/`key` alone cannot use either index
+ * and scans the table. Deletes that scrub a whole user or workspace are exempt.
+ */
 export class UserMetadataModel extends BaseModel<UserMetadataModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
