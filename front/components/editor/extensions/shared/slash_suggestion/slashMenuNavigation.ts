@@ -54,12 +54,33 @@ function getSlashCommandSubMenuId(item: SlashCommand): SlashSubMenuId | null {
   return null;
 }
 
+// Number of leading query words that spell the label from `start`: the first word prefixes the
+// label word at `start`, each following word prefixes the next label word ("pick model").
+function countLabelWords(
+  queryWords: string[],
+  labelWords: string[],
+  start: number
+): number {
+  let count = 0;
+  while (
+    count < queryWords.length &&
+    start + count < labelWords.length &&
+    queryWords[count].length > 0 &&
+    labelWords[start + count].startsWith(queryWords[count])
+  ) {
+    count++;
+  }
+
+  return count;
+}
+
 /**
  * @cc [owner:PopDaph,label:product] space-enters-first-sub-menu-command
  * A query containing a space resolves to the sub-menu of the first item of `commandItems` whose
- * label has a word (split on whitespace and hyphens) starting, case-insensitively, with the text
- * before the first space, with the remainder as the sub-menu query. It resolves to `null` when
- * that text is empty, no label matches, or the first match is not a sub-menu command.
+ * label has a word (labels split on whitespace and hyphens) starting, case-insensitively, with
+ * the text before the first space. Following query words that continue the label's words in
+ * order belong to the command; the remaining text is the sub-menu query. It resolves to `null`
+ * when the first text is empty, no label matches, or the first match is not a sub-menu command.
  */
 export function resolveSlashSubMenuFromQuery({
   commandItems,
@@ -68,27 +89,34 @@ export function resolveSlashSubMenuFromQuery({
   commandItems: SlashCommand[];
   query: string;
 }): { frame: SlashMenuStackFrame; query: string } | null {
-  const spaceIndex = query.indexOf(" ");
-  if (spaceIndex <= 0) {
+  if (query.indexOf(" ") <= 0) {
     return null;
   }
 
-  const head = query.slice(0, spaceIndex).toLowerCase();
-  const command = commandItems.find((item) =>
-    item.label
-      .toLowerCase()
-      .split(/[\s-]+/)
-      .some((word) => word.startsWith(head))
-  );
-  const subMenuId = command ? getSlashCommandSubMenuId(command) : null;
-  if (!command || !subMenuId) {
-    return null;
+  const rawWords = query.split(" ");
+  const queryWords = rawWords.map((word) => word.toLowerCase());
+  for (const command of commandItems) {
+    const labelWords = command.label.toLowerCase().split(/[\s-]+/);
+    const start = labelWords.findIndex((word) =>
+      word.startsWith(queryWords[0])
+    );
+    if (start === -1) {
+      continue;
+    }
+
+    const subMenuId = getSlashCommandSubMenuId(command);
+    if (!subMenuId) {
+      return null;
+    }
+
+    const consumed = countLabelWords(queryWords, labelWords, start);
+    return {
+      frame: { command, subMenuId },
+      query: rawWords.slice(consumed).join(" "),
+    };
   }
 
-  return {
-    frame: { command, subMenuId },
-    query: query.slice(spaceIndex + 1),
-  };
+  return null;
 }
 
 export function getActiveSlashSubMenuFrame(

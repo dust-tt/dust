@@ -226,6 +226,27 @@ describe("resolveSlashSubMenuFromQuery", () => {
     });
   });
 
+  it("lets the full label be typed before the sub-menu query", () => {
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "pick model" })
+    ).toMatchObject({
+      frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
+      query: "",
+    });
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "Pick model gpt6 h" })
+    ).toMatchObject({
+      frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
+      query: "gpt6 h",
+    });
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "pick mo fa" })
+    ).toMatchObject({
+      frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
+      query: "fa",
+    });
+  });
+
   it("matches the head against command labels only", () => {
     // "or" and "the" appear in command descriptions, not labels.
     for (const query of ["or x", "the x", "s x", "odel x", "- x", " x"]) {
