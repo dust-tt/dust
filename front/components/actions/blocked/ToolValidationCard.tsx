@@ -142,6 +142,16 @@ function ToolValidationDetailsDialog({
   );
 }
 
+/**
+ * @cc [owner:tdraier,label:react;product] conversation-approval-medium-only
+ * The "Allow all in this conversation" button MUST be offered only when
+ * `onApproveForConversation` is provided AND the tool is `medium` stake AND it
+ * declares a non-empty `argumentsRequiringApproval`. That is the only case where
+ * "Always allow" keeps re-prompting (per input value); at other stakes the button
+ * is redundant (`never_ask`/`low`) or contradicts the "never savable" intent
+ * (`high`), and a medium tool with no approval args is already covered
+ * permanently by "Always allow".
+ */
 export function ToolValidationCard({
   validationRequest,
   approvalProgress,
@@ -207,6 +217,15 @@ export function ToolValidationCard({
   const canAlwaysAllow = ["low", "medium"].includes(
     validationRequest.stake ?? ""
   );
+
+  // "Allow all in this conversation" only adds value for a medium-stake tool
+  // that re-prompts per input value. At other stakes it is redundant
+  // (never_ask/low) or contradicts "never savable" (high), and a medium tool
+  // with no approval args is already covered permanently by "Always allow".
+  const canApproveForConversation =
+    Boolean(onApproveForConversation) &&
+    validationRequest.stake === "medium" &&
+    (validationRequest.argumentsRequiringApproval?.length ?? 0) > 0;
   const approveLabel = toolOverride?.approveLabel ?? "Allow";
 
   return (
@@ -290,7 +309,7 @@ export function ToolValidationCard({
               onClick={() => void handleValidation("always_approved")}
             />
           )}
-          {onApproveForConversation && canAlwaysAllow && (
+          {canApproveForConversation && (
             <Button
               label="Allow all in this conversation"
               variant="outline"
