@@ -33,6 +33,7 @@ interface LLMTraceContextBase {
     | "skill_builder_description_suggestion"
     | "skill_builder_icon_suggestion"
     | "skills_similarity_checker"
+    | "smooth_shutdown_summary"
     | "trigger_cron_timezone_generator"
     | "trigger_webhook_filter_generator"
     | "voice_agent_finder"

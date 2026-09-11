@@ -883,6 +883,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
   }
 
+  // Conditional so concurrent resolutions of the same pause cannot both apply.
+  static async transitionAgentMessageCreditSpendCheckpointStatus(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      from,
+      to,
+    }: {
+      agentMessageModelId: ModelId;
+      from: NonNullable<AgentMessageModel["creditSpendCheckpointStatus"]>;
+      to: AgentMessageModel["creditSpendCheckpointStatus"];
+    }
+  ): Promise<{ applied: boolean }> {
+    const [updatedCount] = await AgentMessageModel.update(
+      { creditSpendCheckpointStatus: to },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          creditSpendCheckpointStatus: from,
+        },
+      }
+    );
+
+    return { applied: updatedCount > 0 };
+  }
+
   /**
    * Loads the message graph needed to build consumption analytics without exposing Sequelize rows
    * outside the Resource layer.
