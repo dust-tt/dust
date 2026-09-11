@@ -6,7 +6,7 @@ import {
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
-import { awuFromMicroUsd } from "@app/lib/credits/agent_message_billing";
+import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
 import type { DescendantRunData } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
@@ -422,10 +422,14 @@ export async function agentLoopWorkflow({
         // the checkpoint's own (fresh) reading — same staleness the hard-cap check itself accepts
         // ("can miss thresholds crossed on the final step"). Skips scheduling the checkpoint
         // activity when clearly irrelevant; never skips when the bound is unknown.
+        // Inlined `awuFromMicroUsd` rather than importing it: that module pulls in the MCP
+        // internal action registry (and transitively the `@dust-tt/client` SDK, which needs
+        // `Buffer`), none of which the sandboxed workflow bundle can load.
         const isClearlyBelowCheckpointFloor =
           preStepTotalCostMicroUsd !== undefined &&
-          awuFromMicroUsd(preStepTotalCostMicroUsd) <
-            CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS;
+          Math.ceil(
+            preStepTotalCostMicroUsd / MODEL_COST_MICRO_USD_PER_AWU_CREDIT
+          ) < CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS;
 
         if (
           patched("credit-spend-checkpoint-gate") &&
