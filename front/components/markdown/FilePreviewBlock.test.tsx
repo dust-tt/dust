@@ -127,7 +127,8 @@ describe("getFilePreviewDirectivePaths", () => {
 });
 
 function renderWithSidePanel(
-  ui: React.ReactNode
+  ui: React.ReactNode,
+  { hasConversation = true }: { hasConversation?: boolean } = {}
 ): { openPanel: ReturnType<typeof vi.fn> } & ReturnType<typeof render> {
   const openPanel = vi.fn();
   return {
@@ -138,6 +139,7 @@ function renderWithSidePanel(
           canGoBack: false,
           goBack: vi.fn(),
           currentPanel: undefined,
+          hasConversation,
           isPanelClosing: false,
           openPanel,
           togglePanel: vi.fn(),
@@ -183,6 +185,26 @@ describe("getFilePreviewPlugin", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  it("renders a static citation when there is no conversation", () => {
+    const FilePreview = getFilePreviewPlugin();
+
+    const { openPanel } = renderWithSidePanel(
+      <FilePreview
+        path="conversation-c1/reports/report final.pdf"
+        title="report final.pdf"
+        contentType="application/pdf"
+      />,
+      { hasConversation: false }
+    );
+
+    expect(screen.getByText("report final.pdf")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "report final.pdf" })
+    ).not.toBeInTheDocument();
+    expect(openPanel).not.toHaveBeenCalled();
+    expect(mockWindowOpen).not.toHaveBeenCalled();
+  });
+
   it("downloads binary files without opening a preview", () => {
     const FilePreview = getFilePreviewPlugin();
 
@@ -220,6 +242,7 @@ describe("getFilePreviewPlugin", () => {
           canGoBack: false,
           goBack: vi.fn(),
           currentPanel: undefined,
+          hasConversation: true,
           isPanelClosing: false,
           openPanel,
           togglePanel: vi.fn(),

@@ -1,5 +1,8 @@
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
-import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import {
+  useConversationSidePanelContext,
+  useRegisterSidePanelConversation,
+} from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import {
   DEFAULT_RIGHT_PANEL_SIZE,
   getDefaultRightPanelSize,
@@ -28,12 +31,14 @@ export default function ConversationSidePanelContainer({
 }: ConversationSidePanelContainerProps) {
   const { currentPanel, setPanelRef, onPanelClosed } =
     useConversationSidePanelContext();
+  useRegisterSidePanelConversation(!!conversation);
   const panelRef = useRef<ImperativePanelHandle | null>(null);
   const [fullScreenHash] = useHashParam(FULL_SCREEN_HASH_PARAM);
   const isFullScreen = fullScreenHash === "true";
 
   const isMobile = useIsMobile();
-  const isMobilePanelOpen = isMobile && !!currentPanel;
+  const isPanelOpen = !!currentPanel && !!conversation;
+  const isMobilePanelOpen = isMobile && isPanelOpen;
 
   useLockDocumentScroll(isMobilePanelOpen);
 
@@ -50,7 +55,7 @@ export default function ConversationSidePanelContainer({
     return (
       <div className="relative flex w-full flex-col">
         {children}
-        {currentPanel && conversation && (
+        {isPanelOpen && (
           <div className="fixed inset-0 z-50 flex flex-col overflow-hidden overscroll-none bg-panel-background">
             <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
               <ConversationSidePanelContent
@@ -68,7 +73,7 @@ export default function ConversationSidePanelContainer({
   return (
     <ResizableSidePanel
       ref={panelRef}
-      isOpen={!!currentPanel}
+      isOpen={isPanelOpen}
       defaultSize={
         currentPanel
           ? getDefaultRightPanelSize(currentPanel)
@@ -78,8 +83,8 @@ export default function ConversationSidePanelContainer({
       isResizable={!isFullScreen}
       onCollapse={onPanelClosed}
       panel={
-        currentPanel &&
-        conversation && (
+        isPanelOpen &&
+        currentPanel && (
           <ConversationSidePanelContent
             conversation={conversation}
             owner={owner}

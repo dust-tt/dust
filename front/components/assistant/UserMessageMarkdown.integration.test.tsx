@@ -63,6 +63,7 @@ vi.mock(
       canGoBack: false,
       goBack: vi.fn(),
       currentPanel: undefined,
+      hasConversation: true,
       isPanelClosing: false,
       openPanel: vi.fn(),
       togglePanel: togglePanelMock,

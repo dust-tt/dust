@@ -3,6 +3,7 @@ import ConversationSidePanelContent from "@app/components/assistant/conversation
 import {
   ConversationSidePanelProvider,
   useConversationSidePanelContext,
+  useRegisterSidePanelConversation,
 } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
@@ -60,6 +61,7 @@ function AnalyticsConversationPanelBody({
   resetConversation,
 }: AnalyticsConversationPanelBodyProps) {
   const { currentPanel } = useConversationSidePanelContext();
+  useRegisterSidePanelConversation(!!conversation);
 
   // Stub reuse of ConversationViewer's agentBuilderContext slot, whose only
   // fields we need are disableAgentMentions/actionsToShow.
