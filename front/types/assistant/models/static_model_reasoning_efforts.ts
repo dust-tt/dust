@@ -412,12 +412,6 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: true,
     high: true,
   },
-  "accounts/fireworks/models/kimi-k2p6": {
-    none: true,
-    light: true,
-    medium: true,
-    high: true,
-  },
   "accounts/fireworks/models/kimi-k3": {
     none: false,
     light: true,
@@ -434,12 +428,6 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     none: false,
     light: true,
     medium: true,
-    high: true,
-  },
-  "accounts/fireworks/models/glm-5p2": {
-    none: false,
-    light: false,
-    medium: false,
     high: true,
   },
   "accounts/fireworks/models/glm-5p3": {

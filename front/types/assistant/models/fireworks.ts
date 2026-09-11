@@ -10,16 +10,12 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
   "accounts/fireworks/models/kimi-k2-instruct-0905" as const;
 export const FIREWORKS_KIMI_K2P5_MODEL_ID =
   "accounts/fireworks/models/kimi-k2p5" as const;
-export const FIREWORKS_KIMI_K2P6_MODEL_ID =
-  "accounts/fireworks/models/kimi-k2p6" as const;
 export const FIREWORKS_KIMI_K3_MODEL_ID =
   "accounts/fireworks/models/kimi-k3" as const;
 export const FIREWORKS_MINIMAX_M2P5_MODEL_ID =
   "accounts/fireworks/models/minimax-m2p5" as const;
 export const FIREWORKS_GLM_5_MODEL_ID =
   "accounts/fireworks/models/glm-5" as const;
-export const FIREWORKS_GLM_5P2_MODEL_ID =
-  "accounts/fireworks/models/glm-5p2" as const;
 export const FIREWORKS_GLM_5P3_MODEL_ID =
   "accounts/fireworks/models/glm-5p3" as const;
 export const FIREWORKS_GLM_5P3_FLASH_MODEL_ID =
@@ -200,43 +196,6 @@ export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
     "europe-west1": false,
   },
 };
-// https://fireworks.ai/models/fireworks/kimi-k2p6
-export const FIREWORKS_KIMI_K2P6_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "fireworks",
-  modelMaker: "moonshot",
-  modelId: FIREWORKS_KIMI_K2P6_MODEL_ID,
-  displayName: "Kimi K2.6",
-  contextSize: 262_000,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 64,
-  largeModel: true,
-  description:
-    "Moonshot AI's K2.6 agentic model with 262k context and vision support (served via Fireworks).",
-  shortDescription: "Kimi K2.6 with vision support.",
-  // Superseded by Kimi K3. Fireworks decommissions its serverless endpoint on
-  // 2026-09-25 (announced by email), so dropped from the model picker; agents
-  // still pinned to it must be repointed to Kimi K3 or GLM-5.3 before then.
-  isLegacy: true,
-  isLatest: false,
-  generationTokensCount: 2048,
-  supportsVision: true,
-  supportedReasoningEfforts: {
-    none: true,
-    light: true,
-    medium: true,
-    high: true,
-  },
-  defaultReasoningEffort: "light",
-  supportsResponseFormat: true,
-  tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
-  regionalAvailability: {
-    "us-central1": true,
-    "europe-west1": false,
-  },
-};
 // Specs and pricing verified 2026-07-27 against
 // https://fireworks.ai/models/fireworks/kimi-k3 (1040k context, function
 // calling, image input) and https://platform.kimi.ai/docs/guide/kimi-k3-quickstart
@@ -314,40 +273,6 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG: ModelConfigurationType = {
   availableIfOneOf: {
     featureFlag: "fireworks_new_model_feature",
   },
-  regionalAvailability: {
-    "us-central1": true,
-    "europe-west1": false,
-  },
-};
-// https://fireworks.ai/models/fireworks/glm-5p2
-export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "fireworks",
-  modelMaker: "zai",
-  modelId: FIREWORKS_GLM_5P2_MODEL_ID,
-  displayName: "GLM-5.2",
-  contextSize: 1_000_000,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 64,
-  largeModel: true,
-  description:
-    "Z.ai's GLM-5.2 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context, served via Fireworks).",
-  shortDescription: "GLM-5.2 for coding and agentic tasks.",
-  // Superseded by GLM-5.3. Fireworks decommissions its serverless endpoint on
-  // 2026-09-25 (announced by email), so dropped from the model picker; agents
-  // still pinned to it must be repointed to GLM-5.3 before then.
-  isLegacy: true,
-  isLatest: false,
-  generationTokensCount: 64_000,
-  supportsVision: false,
-  supportedReasoningEfforts: {
-    none: false,
-    light: false,
-    medium: false,
-    high: true,
-  },
-  defaultReasoningEffort: "high",
-  supportsResponseFormat: true,
-  tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,

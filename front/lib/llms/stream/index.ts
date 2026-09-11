@@ -37,7 +37,6 @@ import { DustMistralCodestralEuropeMistralStream } from "@app/lib/llms/stream/en
 import { DustMistralMistralLargeEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { DustMistralMistralMedium35EuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
 import { DustMistralMistralSmallEuropeMistralStream } from "@app/lib/llms/stream/endpoints/mistral_mistral_small_eu_mistral";
-import { DustMoonshotAiKimiK2Dot6GlobalFireworksStream } from "@app/lib/llms/stream/endpoints/moonshot_ai_kimi_k2_dot_six_global_fireworks";
 import { DustMoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/llms/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
 import { DustNoopNoopGlobalNoopStream } from "@app/lib/llms/stream/endpoints/noop_noop_global_noop";
 import { DustOpenAIGptFiveDotFiveEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
@@ -73,7 +72,6 @@ import { DustXaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/llms/stream/endp
 import { DustXaiGrokFourDotSixGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_six_global_xai";
 import { DustZAiGlmFiveDotThreeFlashGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks";
 import { DustZAiGlmFiveDotThreeGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/z_ai_glm_five_dot_three_global_fireworks";
-import { DustZAiGlmFiveDotTwoGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/z_ai_glm_five_dot_two_global_fireworks";
 import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
 import type {
   EndpointConfig,
@@ -140,15 +138,11 @@ export const DUST_STREAM_ENDPOINTS = {
   [DustDeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream.id]:
     DustDeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream,
 
-  [DustZAiGlmFiveDotTwoGlobalFireworksStream.id]:
-    DustZAiGlmFiveDotTwoGlobalFireworksStream,
   [DustZAiGlmFiveDotThreeGlobalFireworksStream.id]:
     DustZAiGlmFiveDotThreeGlobalFireworksStream,
   [DustZAiGlmFiveDotThreeFlashGlobalFireworksStream.id]:
     DustZAiGlmFiveDotThreeFlashGlobalFireworksStream,
 
-  [DustMoonshotAiKimiK2Dot6GlobalFireworksStream.id]:
-    DustMoonshotAiKimiK2Dot6GlobalFireworksStream,
   [DustMoonshotAiKimiK3GlobalFireworksStream.id]:
     DustMoonshotAiKimiK3GlobalFireworksStream,
 

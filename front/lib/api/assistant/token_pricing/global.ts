@@ -477,12 +477,6 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 3.0,
     cache_read_input_tokens: 0.1,
   },
-  // https://fireworks.ai/models/fireworks/kimi-k2p6
-  "accounts/fireworks/models/kimi-k2p6": {
-    input: 0.95,
-    output: 4.0,
-    cache_read_input_tokens: 0.16,
-  },
   // https://docs.fireworks.ai/serverless/pricing
   "accounts/fireworks/models/kimi-k3": {
     input: 3.75,
@@ -500,12 +494,6 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0.01,
     output: 0.2,
     cache_read_input_tokens: 0.002,
-  },
-  // https://fireworks.ai/models/fireworks/glm-5p2
-  "accounts/fireworks/models/glm-5p2": {
-    input: 1.4,
-    output: 4.4,
-    cache_read_input_tokens: 0.26,
   },
   // Verified 2026-09-11: https://fireworks.ai/models/fireworks/glm-5p3
   "accounts/fireworks/models/glm-5p3": {
@@ -632,6 +620,20 @@ const IMAGE_MODEL_PRICING: Record<string, PricingEntry> = {
 // Pricing for legacy/deprecated models that are no longer in BaseModelIdType.
 // These are kept to ensure we can still compute token usage for historical runs.
 const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
+  // Decommissioned, superseded by GLM-5.3. Kept so historical token
+  // accounting stays exact.
+  "accounts/fireworks/models/kimi-k2p6": {
+    input: 0.95,
+    output: 4.0,
+    cache_read_input_tokens: 0.16,
+  },
+  // Fireworks decommissioned the glm-5p2 serverless endpoint on 2026-09-25;
+  // superseded by GLM-5.3. Kept so historical token accounting stays exact.
+  "accounts/fireworks/models/glm-5p2": {
+    input: 1.4,
+    output: 4.4,
+    cache_read_input_tokens: 0.26,
+  },
   // Decommissioned by Fireworks, superseded by DeepSeek V4.1 Flash.
   "accounts/fireworks/models/deepseek-v4-flash-0731": {
     input: 0.14,

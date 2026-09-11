@@ -393,12 +393,6 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     medium: "balanced",
     high: "balanced",
   },
-  "accounts/fireworks/models/kimi-k2p6": {
-    none: "balanced",
-    light: "balanced",
-    medium: "balanced",
-    high: "balanced",
-  },
   "accounts/fireworks/models/kimi-k3": {
     light: "balanced",
     medium: "premium",
@@ -413,9 +407,6 @@ export const STATIC_MODEL_TIERS: StaticModelTiersLookup = {
     light: "cost_efficient",
     medium: "cost_efficient",
     high: "cost_efficient",
-  },
-  "accounts/fireworks/models/glm-5p2": {
-    high: "balanced",
   },
   "accounts/fireworks/models/glm-5p3": {
     light: "balanced",
