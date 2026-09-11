@@ -246,6 +246,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "SlabLogo",
   "SlackLogo",
   "SnowflakeLogo",
+  "StackOneLogo",
   "StatuspageLogo",
   "StripeLogo",
   "SupabaseLogo",
