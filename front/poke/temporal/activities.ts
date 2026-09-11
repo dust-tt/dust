@@ -3,7 +3,6 @@ import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { deletePodStatePrefix } from "@app/lib/api/sandbox/db";
-import { deleteLegacyPodOwnedSandbox } from "@app/lib/api/sandbox/legacy_pod_sandbox";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
@@ -170,18 +169,7 @@ export async function scrubSpaceActivity({
   assert(space.isDeletable(), "Space cannot be deleted.");
 
   if (space.isProject()) {
-    // Legacy pod-owned sandboxes (see deleteLegacyPodOwnedSandbox). Runs
-    // before the pod state prefix is wiped: a live sandbox keeps replicating
-    // into it.
-    const deleteLegacySandboxResult = await deleteLegacyPodOwnedSandbox(
-      auth,
-      space
-    );
-    if (deleteLegacySandboxResult.isErr()) {
-      throw deleteLegacySandboxResult.error;
-    }
-
-    // Same for the pod-scoped env vars.
+    // Pod-scoped env vars.
     await SandboxEnvVarResource.deleteAllForPod(auth, space);
 
     // Pod state (litestream replica) objects are never FileResources, so the

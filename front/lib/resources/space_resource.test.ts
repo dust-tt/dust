@@ -2281,8 +2281,6 @@ const KNOWN_SPACE_RELATED_MODELS = [
   "data_source_view",
   "mcp_server_view",
   "workspace_sandbox_env_var",
-  "sandbox_function",
-  "sandbox_owner",
   "project_metadata",
   "project_todo",
   "project_todo_state",

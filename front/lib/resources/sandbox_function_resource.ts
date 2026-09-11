@@ -183,7 +183,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     await this.model.bulkCreate(
       functions.map((fn) => ({
         workspaceId: owner.id,
-        spaceId: null,
         fileId: frame.id,
         publicationId,
         slug: fn.name,
@@ -300,9 +299,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
   }
 
-  // `includeDeletedSpace` refers to the pod, not to the functions themselves: pods are
-  // soft-deleted before being scrubbed, and without it every function of a pod being deleted
-  // resolves to no space and is silently dropped here.
   private static async baseFetch(
     auth: Authenticator,
     options: ResourceFindOptions<SandboxFunctionModel> = {}
