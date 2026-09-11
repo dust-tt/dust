@@ -95,8 +95,8 @@ const ConversationLayoutContent = ({
 
   return (
     <AssistantLayout owner={owner} user={user} conversation={conversation}>
-      <FilePreviewProvider owner={owner}>
-        <ConversationSidePanelProvider>
+      <ConversationSidePanelProvider>
+        <FilePreviewProvider owner={owner}>
           <ConversationInnerLayout
             activeConversationId={activeConversationId}
             conversation={conversation}
@@ -105,8 +105,8 @@ const ConversationLayoutContent = ({
           >
             {children}
           </ConversationInnerLayout>
-        </ConversationSidePanelProvider>
-      </FilePreviewProvider>
+        </FilePreviewProvider>
+      </ConversationSidePanelProvider>
       {shouldDisplayWelcomeTourGuide && (
         <WelcomeTourGuide
           owner={owner}

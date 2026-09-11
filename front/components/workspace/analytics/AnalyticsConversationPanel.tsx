@@ -177,8 +177,8 @@ export function AnalyticsConversationPanel({
         <AnalyticsConversationPanelHeader onClose={onClose} />
       </div>
       <div className="min-h-0 flex-1 overflow-hidden">
-        <FilePreviewProvider owner={owner}>
-          <ConversationSidePanelProvider>
+        <ConversationSidePanelProvider>
+          <FilePreviewProvider owner={owner}>
             <BlockedActionsProvider
               owner={owner}
               conversation={conversation ?? undefined}
@@ -196,8 +196,8 @@ export function AnalyticsConversationPanel({
                 />
               </GenerationContextProvider>
             </BlockedActionsProvider>
-          </ConversationSidePanelProvider>
-        </FilePreviewProvider>
+          </FilePreviewProvider>
+        </ConversationSidePanelProvider>
       </div>
     </div>
   );
