@@ -1,46 +1,24 @@
 // @vitest-environment node
 
-import { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing";
 import { DustZAiGlmFiveDotThreeFlashGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks";
+import { mapReasoningEffortToLowHighMax } from "@app/lib/llms/stream/types/configuration";
 import { ZAiGlmFiveDotThreeFlashGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks";
-import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
+import { itKeepsLimitsAndPricingConsistent } from "@app/lib/model_constructors/test/model_limits";
 import {
   FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG,
   FIREWORKS_GLM_5P3_FLASH_MODEL_ID,
 } from "@app/types/assistant/models/fireworks";
 import { describe, expect, it } from "vitest";
 
-const NATIVE_CONTEXT_SIZE = 1_048_576;
-const NATIVE_MAX_OUTPUT_TOKENS = 131_072;
-const DUST_CONTEXT_SIZE = 256_000;
-const DUST_MAX_OUTPUT_TOKENS = 64_000;
-
 describe("GLM-5.3 Flash model configuration", () => {
-  it("keeps the native limits on the model_constructors endpoint", () => {
-    expect(ZAiGlmFiveDotThreeFlashGlobalFireworksStream.contextSize).toBe(
-      NATIVE_CONTEXT_SIZE
-    );
-    expect(ZAiGlmFiveDotThreeFlashGlobalFireworksStream.maxOutputTokens).toBe(
-      NATIVE_MAX_OUTPUT_TOKENS
-    );
+  itKeepsLimitsAndPricingConsistent({
+    streamEndpoint: ZAiGlmFiveDotThreeFlashGlobalFireworksStream,
+    dustStreamEndpoint: DustZAiGlmFiveDotThreeFlashGlobalFireworksStream,
+    modelConfig: FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG,
+    native: { contextSize: 1_048_576, maxOutputTokens: 131_072 },
+    dust: { contextSize: 256_000, maxOutputTokens: 64_000 },
   });
-
-  it("caps context and output in the Dust layer", () => {
-    expect(DustZAiGlmFiveDotThreeFlashGlobalFireworksStream.contextSize).toBe(
-      DUST_CONTEXT_SIZE
-    );
-    expect(
-      DustZAiGlmFiveDotThreeFlashGlobalFireworksStream.maxOutputTokens
-    ).toBe(DUST_MAX_OUTPUT_TOKENS);
-    expect(FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG.contextSize).toBe(
-      DUST_CONTEXT_SIZE
-    );
-    expect(FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG.generationTokensCount).toBe(
-      DUST_MAX_OUTPUT_TOKENS
-    );
-  });
-
-  it("uses the Fireworks model path and published pricing", () => {
+  it("uses the Fireworks model path and the documented reasoning default", () => {
     const endpoint = new ZAiGlmFiveDotThreeFlashGlobalFireworksStream({
       FIREWORKS_API_KEY: "test",
     });
@@ -52,34 +30,12 @@ describe("GLM-5.3 Flash model configuration", () => {
     expect(payload.model).toBe(FIREWORKS_GLM_5P3_FLASH_MODEL_ID);
     expect(payload.reasoning).toEqual({ effort: "max", summary: "auto" });
     expect(payload.tool_choice).toBe("auto");
-    expect(ZAiGlmFiveDotThreeFlashGlobalFireworksStream.tokenPricing).toEqual({
-      cacheHit: 0.029,
-      standardInput: 0.15,
-      standardOutput: 0.5,
-    });
-    expect(MODEL_PRICING[FIREWORKS_GLM_5P3_FLASH_MODEL_ID]).toEqual({
-      input: 0.15,
-      output: 0.5,
-      cache_read_input_tokens: 0.029,
-    });
   });
 
-  it("maps Dust's reasoning ladder onto low, high, and max", () => {
-    const parseConfig = (config: InputConfig) =>
-      DustZAiGlmFiveDotThreeFlashGlobalFireworksStream.configParsers.reduce(
-        (currentConfig, parser) => parser(currentConfig),
-        config
-      );
-
-    expect(parseConfig({ reasoning: { effort: "low" } }).reasoning).toEqual({
-      effort: "low",
-    });
-    expect(parseConfig({ reasoning: { effort: "medium" } }).reasoning).toEqual({
-      effort: "high",
-    });
-    expect(parseConfig({ reasoning: { effort: "high" } }).reasoning).toEqual({
-      effort: "maximal",
-    });
+  it("folds Dust's reasoning ladder onto the native efforts", () => {
+    expect(
+      DustZAiGlmFiveDotThreeFlashGlobalFireworksStream.configParsers
+    ).toEqual([mapReasoningEffortToLowHighMax]);
   });
 
   it("exposes always-on reasoning and automatic tool choice only", () => {
