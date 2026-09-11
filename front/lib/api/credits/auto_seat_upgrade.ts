@@ -1,6 +1,7 @@
 import {
   buildAuditLogTarget,
-  emitAuditLogEventDirect,
+  emitAuditLogEvent,
+  getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { updateMembershipSeatAndTrack } from "@app/lib/api/membership";
 import { isUserSpendLimitRateCapReached } from "@app/lib/api/users/spend_limit";
@@ -163,21 +164,29 @@ export async function isEligibleForAutoSeatUpgrade(
 export async function maybeAutoUpgradeSeat({
   workspaceId,
   userId,
+  auth,
 }: {
   workspaceId: string;
   userId: string;
+  // The initiating request's authenticator. Used solely to attribute the seat
+  // change to the real human actor and preserve the request's client IP in the
+  // audit trail (audit-human-actors / audit-request-context); the workspace
+  // reads + seat mutation run under the internal auth below.
+  auth: Authenticator;
 }): Promise<Result<{ upgraded: boolean }, Error>> {
-  // The caller's auth can't mutate seats (member, or no user at all). This only
-  // reads workspace data, so a plain user auth is sufficient.
-  const auth = await Authenticator.internalUserForWorkspace(workspaceId);
+  // The initiating member's auth can't mutate seats. Workspace reads and the
+  // seat mutation run under an internal workspace auth; `auth` above is only for
+  // audit attribution.
+  const workspaceAuth =
+    await Authenticator.internalUserForWorkspace(workspaceId);
 
   const config =
-    await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+    await CreditUsageConfigurationResource.fetchByWorkspaceId(workspaceAuth);
   if (!config?.autoSeatUpgradeEnabled) {
     return new Ok({ upgraded: false });
   }
 
-  const subscription = auth.subscriptionResource();
+  const subscription = workspaceAuth.subscriptionResource();
   if (!subscription || !passesBillingGate(subscription)) {
     return new Ok({ upgraded: false });
   }
@@ -187,7 +196,7 @@ export async function maybeAutoUpgradeSeat({
     return new Ok({ upgraded: false });
   }
 
-  const lightWorkspace = auth.getNonNullableWorkspace();
+  const lightWorkspace = workspaceAuth.getNonNullableWorkspace();
   const membership =
     await MembershipResource.getActiveMembershipOfUserInWorkspace({
       user,
@@ -209,7 +218,10 @@ export async function maybeAutoUpgradeSeat({
     user,
     workspace: lightWorkspace,
     newSeatType,
-    author: "no-author",
+    // Attribute the seat change to the human who triggered it (the request
+    // initiator), falling back to system only when there's no user on the auth
+    // (e.g. an API-key-only request).
+    author: auth.user()?.toJSON() ?? "no-author",
     // Unblock the member immediately rather than waiting on the debounced
     // seat-count sync: push the seat count now and reconcile just this user.
     isDirectSync: true,
@@ -243,10 +255,9 @@ export async function maybeAutoUpgradeSeat({
     "[AutoSeatUpgrade] Upgraded member seat after credit limit hit"
   );
 
-  void emitAuditLogEventDirect({
-    workspace: lightWorkspace,
+  void emitAuditLogEvent({
+    auth,
     action: "membership.seat_auto_upgraded",
-    actor: { type: "system", id: "auto-seat-upgrade", name: "Dust" },
     targets: [
       buildAuditLogTarget("workspace", lightWorkspace),
       buildAuditLogTarget("user", {
@@ -254,7 +265,7 @@ export async function maybeAutoUpgradeSeat({
         name: user.fullName() || "unknown",
       }),
     ],
-    context: { location: "internal" },
+    context: getAuditLogContext(auth),
     metadata: {
       previous_seat_type: previousSeatType,
       new_seat_type: appliedSeatType,
@@ -262,7 +273,7 @@ export async function maybeAutoUpgradeSeat({
   });
 
   void notifyAdmins({
-    auth,
+    auth: workspaceAuth,
     workspace: lightWorkspace,
     member: {
       sId: user.sId,
@@ -304,6 +315,7 @@ export async function maybeProactivelyAutoUpgradeSeatOnCapReached(
       return;
     }
     await maybeAutoUpgradeSeat({
+      auth,
       workspaceId: workspace.sId,
       userId: user.sId,
     });

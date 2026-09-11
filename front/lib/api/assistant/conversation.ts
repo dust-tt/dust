@@ -2575,6 +2575,7 @@ export async function checkMessagesLimit(
       // message we just unblocked.
       if (user) {
         const upgrade = await maybeAutoUpgradeSeat({
+          auth,
           workspaceId: owner.sId,
           userId: user.sId,
         });
@@ -2607,6 +2608,7 @@ export async function checkMessagesLimit(
         // the pool.
         if (user) {
           const upgrade = await maybeAutoUpgradeSeat({
+            auth,
             workspaceId: owner.sId,
             userId: user.sId,
           });
