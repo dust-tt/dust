@@ -37,8 +37,6 @@ export const MISTRAL_CODESTRAL = "codestral-latest" as const;
 
 export const DEEPSEEK_V3P2 = "deepseek-v3p2" as const;
 export const DEEPSEEK_V4_PRO = "deepseek-v4-pro" as const;
-export const DEEPSEEK_V4_PRO_0813 = "deepseek-v4-pro-0813" as const;
-export const DEEPSEEK_V4_FLASH_0731 = "deepseek-v4-flash-0731" as const;
 export const DEEPSEEK_V4P1_FLASH = "deepseek-v4p1-flash" as const;
 export const KIMI_K2_INSTRUCT = "kimi-k2-instruct-0905" as const;
 export const KIMI_K2P5 = "kimi-k2p5" as const;
@@ -95,8 +93,6 @@ export const MODELS = [
   MISTRAL_CODESTRAL,
   DEEPSEEK_V3P2,
   DEEPSEEK_V4_PRO,
-  DEEPSEEK_V4_PRO_0813,
-  DEEPSEEK_V4_FLASH_0731,
   DEEPSEEK_V4P1_FLASH,
   KIMI_K2_INSTRUCT,
   KIMI_K2P5,

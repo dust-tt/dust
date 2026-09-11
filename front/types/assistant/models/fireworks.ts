@@ -2,14 +2,10 @@ import type { ModelConfigurationType } from "./types";
 
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_ID =
   "accounts/fireworks/models/deepseek-v3p2" as const;
-export const FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_ID =
-  "accounts/fireworks/models/deepseek-v4-flash-0731" as const;
 export const FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_ID =
   "accounts/fireworks/models/deepseek-v4p1-flash" as const;
 export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID =
   "accounts/fireworks/models/deepseek-v4-pro" as const;
-export const FIREWORKS_DEEPSEEK_V4_PRO_0813_MODEL_ID =
-  "accounts/fireworks/models/deepseek-v4-pro-0813" as const;
 export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
   "accounts/fireworks/models/kimi-k2-instruct-0905" as const;
 export const FIREWORKS_KIMI_K2P5_MODEL_ID =
@@ -65,44 +61,6 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
     "europe-west1": false,
   },
 };
-// Verified 2026-08-01: https://fireworks.ai/models/deepseek-ai/deepseek-v4-flash-0731
-// Native 1040k/384k, capped to 256k/64k here (see Kimi K3).
-export const FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_CONFIG: ModelConfigurationType =
-  {
-    providerId: "fireworks",
-    modelMaker: "deepseek",
-    modelId: FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_ID,
-    displayName: "DeepSeek V4 Flash",
-    contextSize: 256_000,
-    recommendedTopK: 32,
-    recommendedExhaustiveTopK: 64,
-    largeModel: true,
-    description:
-      "DeepSeek's V4 Flash Mixture-of-Experts model (284B total / 13B active) tuned for fast, cost-efficient reasoning, coding and agentic work, with 256k context (served via Fireworks).",
-    shortDescription: "DeepSeek's V4 Flash model.",
-    // Superseded by V4.1 Flash. Still served by Fireworks until 2026-09-25,
-    // so agents already pinned to it keep working; dropped from the model picker.
-    isLegacy: true,
-    isLatest: false,
-    generationTokensCount: 64_000,
-    supportsVision: false,
-    // No native `medium`; `mapReasoningEffortToLowHighMax` folds our ladder on.
-    supportedReasoningEfforts: {
-      none: true,
-      light: true,
-      medium: true,
-      high: true,
-    },
-    defaultReasoningEffort: "light",
-    // Native thinking at `light`, so no chain-of-thought meta prompt.
-    useNativeLightReasoning: true,
-    supportsResponseFormat: true,
-    tokenizer: { type: "tiktoken", base: "o200k_base" },
-    regionalAvailability: {
-      "us-central1": true,
-      "europe-west1": false,
-    },
-  };
 // Specs, pricing, and availability verified 2026-09-11 against
 // https://fireworks.ai/models/deepseek-ai/deepseek-v4p1-flash (serverless,
 // 1040k context, function calling, native image input, $0.22/$0.66/$0.007 per
@@ -149,8 +107,8 @@ export const FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_CONFIG: ModelConfigurationType 
 // serverless (https://fireworks.ai/models/fireworks/deepseek-v4-pro now offers
 // on-demand dedicated deployment only), so every request against it fails.
 // Kept in the registry and priced so historical token accounting stays intact,
-// but dropped from the model picker; `20260907_migrate_deepseek_v4_pro_0813`
-// repoints active agents onto the 0813 release.
+// but dropped from the model picker; `20260911_migrate_deepseek_v4_to_v4p1_flash`
+// repoints agents onto DeepSeek V4.1 Flash.
 export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "deepseek",
@@ -181,53 +139,6 @@ export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
     "europe-west1": false,
   },
 };
-// Superseded by DeepSeek V4.1 Flash, which DeepSeek reports surpasses V4 Pro
-// on performance, cost and speed;
-// Droppêd on 2026-09-25
-// Specs, pricing, and availability verified 2026-09-07 against
-// https://fireworks.ai/models/deepseek-ai/deepseek-v4-pro-0813 (serverless,
-// 1040k context, function calling, no image input, $1.32/$3.96/$0.044 per 1M)
-// and https://api-docs.deepseek.com/quick_start/pricing (1M context, 384k max
-// output). Fireworks caps a single response at 131,072 tokens; Dust exposes
-// the same 1M context / 64k generation budget the preview had, so migrated
-// agents keep their prompt budget.
-export const FIREWORKS_DEEPSEEK_V4_PRO_0813_MODEL_CONFIG: ModelConfigurationType =
-  {
-    providerId: "fireworks",
-    modelMaker: "deepseek",
-    modelId: FIREWORKS_DEEPSEEK_V4_PRO_0813_MODEL_ID,
-    displayName: "DeepSeek V4 Pro",
-    contextSize: 1_000_000,
-    recommendedTopK: 32,
-    recommendedExhaustiveTopK: 64,
-    largeModel: true,
-    description:
-      "DeepSeek's V4 Pro Mixture-of-Experts model with advanced reasoning, coding, and 1M context (served via Fireworks).",
-    shortDescription: "DeepSeek's V4 Pro model.",
-    isLegacy: true,
-    isLatest: false,
-    generationTokensCount: 64_000,
-    supportsVision: false,
-    // DeepSeek documents low/high/max for Pro, identically to V4 Flash
-    // (https://api-docs.deepseek.com/guides/thinking_mode/); all three
-    // confirmed live on 2026-09-07. `mapReasoningEffortToLowHighMax` folds our
-    // ladder on. No `none` rung, as on Kimi K3 and GLM-5.3 Flash.
-    supportedReasoningEfforts: {
-      none: false,
-      light: true,
-      medium: true,
-      high: true,
-    },
-    defaultReasoningEffort: "light",
-    // Native thinking at `light`, so no chain-of-thought meta prompt.
-    useNativeLightReasoning: true,
-    supportsResponseFormat: true,
-    tokenizer: { type: "tiktoken", base: "o200k_base" },
-    regionalAvailability: {
-      "us-central1": true,
-      "europe-west1": false,
-    },
-  };
 export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "moonshot",
