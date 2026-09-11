@@ -1,6 +1,6 @@
 /**
- * One-off cleanup: archive the Metronome spend-cap alerts that are no longer
- * used for enforcement.
+ * One-off cleanup: archive the Metronome alerts that Dust no longer uses —
+ * the retired spend-cap alerts and the free-seat per-user credit-balance alerts.
  *
  * Per-user, per-API-key and programmatic spend caps are now enforced from Redis
  * fixed-window rate-limiter counters compared against DB-persisted cap values
@@ -17,9 +17,9 @@
  * which is still in use.
  *
  * Usage:
- *   npx tsx scripts/archive_unused_spend_cap_alerts.ts            # dry run
- *   npx tsx scripts/archive_unused_spend_cap_alerts.ts --execute  # apply
- *   npx tsx scripts/archive_unused_spend_cap_alerts.ts --execute --workspaceId <sId>
+ *   npx tsx scripts/archive_unused_metronome_alerts.ts            # dry run
+ *   npx tsx scripts/archive_unused_metronome_alerts.ts --execute  # apply
+ *   npx tsx scripts/archive_unused_metronome_alerts.ts --execute --workspaceId <sId>
  */
 import { baseUniquenessKey } from "@app/lib/metronome/alerts";
 import { programmaticCapUniquenessKeys } from "@app/lib/metronome/alerts/programmatic_cap";
@@ -108,7 +108,7 @@ makeScript(
       } catch (err) {
         logger.error(
           { workspaceId: workspace.sId, err: normalizeError(err) },
-          "[ArchiveSpendCapAlerts] Failed to list alerts; skipping workspace"
+          "[ArchiveMetronomeAlerts] Failed to list alerts; skipping workspace"
         );
         totalFailed++;
         return;
@@ -117,7 +117,7 @@ makeScript(
       if (toArchive.length === 0) {
         logger.info(
           { workspaceId: workspace.sId },
-          "[ArchiveSpendCapAlerts] No unused spend-cap alerts to archive"
+          "[ArchiveMetronomeAlerts] No unused Metronome alerts to archive"
         );
         return;
       }
@@ -128,7 +128,7 @@ makeScript(
         if (!execute) {
           logger.info(
             { workspaceId: workspace.sId, alertId: id, uniquenessKey },
-            "[ArchiveSpendCapAlerts] Would archive unused spend-cap alert (dry run)"
+            "[ArchiveMetronomeAlerts] Would archive unused Metronome alert (dry run)"
           );
           continue;
         }
@@ -137,7 +137,7 @@ makeScript(
           archived++;
           logger.info(
             { workspaceId: workspace.sId, alertId: id, uniquenessKey },
-            "[ArchiveSpendCapAlerts] Archived unused spend-cap alert"
+            "[ArchiveMetronomeAlerts] Archived unused Metronome alert"
           );
         } catch (err) {
           failed++;
@@ -148,7 +148,7 @@ makeScript(
               uniquenessKey,
               err: normalizeError(err),
             },
-            "[ArchiveSpendCapAlerts] Failed to archive alert"
+            "[ArchiveMetronomeAlerts] Failed to archive alert"
           );
         }
       }
@@ -163,7 +163,7 @@ makeScript(
           failed,
           dryRun: !execute,
         },
-        "[ArchiveSpendCapAlerts] Workspace summary"
+        "[ArchiveMetronomeAlerts] Workspace summary"
       );
     }
 
@@ -177,7 +177,7 @@ makeScript(
         totalFailed,
         dryRun: !execute,
       },
-      "[ArchiveSpendCapAlerts] Done"
+      "[ArchiveMetronomeAlerts] Done"
     );
   }
 );
