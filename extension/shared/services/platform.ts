@@ -28,7 +28,7 @@ export type UseCaptureActionsHook = (
   savePageToPodActions?: SavePageToPodActions | null
 ) => CaptureActions | undefined;
 
-const PLATFORM_TYPES = ["chrome", "front", "firefox"] as const;
+const PLATFORM_TYPES = ["chrome", "excel", "front", "firefox"] as const;
 export type PlatformType = (typeof PLATFORM_TYPES)[number];
 
 export interface BrowserMessagingService {

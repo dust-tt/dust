@@ -1,7 +1,11 @@
 import type { CellInfo } from "@app/types/cell";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { DUST_US_URL, FRONT_EXTENSION_URL } from "@extension/shared/lib/config";
+import {
+  isOfficeDialogAvailable,
+  openOfficeDialog,
+} from "@extension/platforms/excel/services/office_dialog";
+import { DUST_US_URL, EXCEL_EXTENSION_URL } from "@extension/shared/lib/config";
 import { generatePKCE } from "@extension/shared/lib/utils";
 import type { StoredTokens } from "@extension/shared/services/auth";
 import {
@@ -16,22 +20,68 @@ import {
 import type { StorageService } from "@extension/shared/services/storage";
 import { jwtDecode } from "jwt-decode";
 
-export class FrontAuthService extends AuthService {
+/**
+ * OAuth `redirect_uri` for the Excel add-in, and the page the sign-in dialog
+ * is pointed at.
+ */
+/**
+ * @cc [owner:Nils-Fedrigo,label:security] auth-relay-is-same-origin-and-registered
+ * `EXCEL_AUTH_RELAY_URL` must resolve to a page served from the add-in's own
+ * origin (`EXCEL_EXTENSION_URL`) and must be registered as an allowed redirect
+ * URI on the WorkOS client: an Office dialog can only return the authorization
+ * code to the task pane from a same-origin page.
+ */
+export const EXCEL_AUTH_RELAY_URL = `${EXCEL_EXTENSION_URL}/auth.html`;
+
+export class ExcelAuthService extends AuthService {
   constructor(storage: StorageService, cells?: CellInfo[]) {
     super(storage, cells);
   }
 
-  private async openAuthPopup(
+  /**
+   * Runs the interactive part of the OAuth flow and returns the resulting code.
+   *
+   * Inside Excel this goes through the Office Dialog API; when the task pane is
+   * opened directly in a browser (the usual local development setup) it falls
+   * back to a polled popup, the way the Front plugin does.
+   */
+  /**
+   * @cc [owner:Nils-Fedrigo,label:coding] taskpane-must-outlive-its-dialog
+   * Nothing may reload the task pane while a dialog is open: the dialog holds
+   * the promise this method awaits, and a reload destroys the context that
+   * would settle it, leaving the dialog orphaned and the host reporting it as
+   * unloadable. In development that means the dev server must not live-reload
+   * on writes to its own output directory — see `devServer.static.watch`.
+   */
+  /**
+   * @cc [owner:Nils-Fedrigo,label:security] auth-dialog-navigates-over-https-only
+   * Every URL the sign-in dialog loads — the relay, the login endpoint it
+   * forwards to, and the identity provider — must be HTTPS. An Office dialog
+   * rejects an HTTP page with error 12003 and replaces itself with the host's
+   * generic "we can't load the add-in" screen, so a plain-HTTP local Dust URL
+   * has to be reached through the dev server's same-origin HTTPS proxy rather
+   * than directly.
+   */
+  private async getAuthorizationCode(
     options: Record<string, string>
   ): Promise<{ code: string }> {
     const queryString = new URLSearchParams(options).toString();
+
+    // In development `DUST_US_URL` is the add-in's own HTTPS origin, whose dev
+    // server proxies `/api` to the local Dust — the only way to reach a
+    // plain-HTTP local Dust from inside a dialog, per the contract above.
     const authUrl = `${DUST_US_URL}/api/workos/login?${queryString}`;
 
-    const result = await openAndWaitForPopup(
-      authUrl,
-      "Authentication",
-      checkForOAuthCode
-    );
+    // Opened directly on the login endpoint rather than routed through the
+    // relay: a dialog refuses to *navigate* from a loaded page on the add-in's
+    // own domain to one that redirects off it (error 12002, observed on Excel
+    // for Mac with both a scripted and a user-initiated navigation), while the
+    // redirects an initial load follows are its own. The relay is still the
+    // `redirect_uri`, so the flow ends on our origin where `messageParent`
+    // works.
+    const result = isOfficeDialogAvailable()
+      ? await openOfficeDialog<{ code: string }>(authUrl)
+      : await openAndWaitForPopup(authUrl, "Authentication", checkForOAuthCode);
 
     if (result.error) {
       throw result.error;
@@ -62,14 +112,14 @@ export class FrontAuthService extends AuthService {
 
     try {
       const options: Record<string, string> = {
-        redirect_uri: FRONT_EXTENSION_URL,
+        redirect_uri: EXCEL_AUTH_RELAY_URL,
         code_challenge_method: "S256",
         code_challenge: codeChallenge,
         connection: forcedConnection ?? "",
         ...(organizationId ? { organizationId } : {}),
       };
 
-      const result = await this.openAuthPopup(options);
+      const result = await this.getAuthorizationCode(options);
 
       // Get the stored code verifier
       const storedCodeVerifier =
@@ -88,7 +138,7 @@ export class FrontAuthService extends AuthService {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
-          Origin: FRONT_EXTENSION_URL,
+          Origin: EXCEL_EXTENSION_URL,
         },
         credentials: "include",
         body: tokenParams,

@@ -19,7 +19,7 @@
     "strictNullChecks": true,
     "importHelpers": true,
     "noImplicitAny": true,
-    "types": ["chrome", "react", "react-dom"],
+    "types": ["chrome", "office-js", "react", "react-dom"],
     "paths": {
       "@extension/*": ["./*"],
       "@app/*": ["../front/*"]

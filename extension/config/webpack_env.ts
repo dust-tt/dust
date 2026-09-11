@@ -1,6 +1,24 @@
 import dotenv from "dotenv";
 import fs from "fs";
 
+/** Parses a `.env` file, tolerating its absence. */
+export function parseEnvFile(envPath: string): Record<string, string> {
+  return fs.existsSync(envPath)
+    ? dotenv.parse(fs.readFileSync(envPath, "utf8"))
+    : {};
+}
+
+/**
+ * Reads `key` from the given `.env` file, falling back to the ambient
+ * environment and then to an empty string.
+ */
+export function resolveEnvVar(
+  fileVars: Record<string, string>,
+  key: string
+): string {
+  return fileVars[key] ?? process.env[key] ?? "";
+}
+
 // The shared `front` `CellContext` resolves the API base URL from
 // `import.meta.env.VITE_DUST_API_URL*`. Vite injects those in the SPA build, but
 // the extension is built with webpack, which only exposes `process.env.*`. As a
@@ -14,12 +32,17 @@ import fs from "fs";
 // .env.{development,production}), so `import.meta.env` resolves the same way it
 // does in the SPA.
 export function getImportMetaEnv(envPath: string): Record<string, string> {
-  const fileVars = fs.existsSync(envPath)
-    ? dotenv.parse(fs.readFileSync(envPath, "utf8"))
-    : {};
+  return getImportMetaEnvFromVars(parseEnvFile(envPath));
+}
 
-  const resolve = (key: string): string =>
-    fileVars[key] ?? process.env[key] ?? "";
+/**
+ * As `getImportMetaEnv`, for callers that have already resolved their variables
+ * (e.g. layered a platform-specific override over the base `.env` file).
+ */
+export function getImportMetaEnvFromVars(
+  fileVars: Record<string, string>
+): Record<string, string> {
+  const resolve = (key: string): string => resolveEnvVar(fileVars, key);
 
   const usUrl = resolve("DUST_API_URL_US");
   const euUrl = resolve("DUST_API_URL_EU");

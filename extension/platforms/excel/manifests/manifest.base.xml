@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Office add-in manifest for the Dust Excel task pane.
+
+  The `__PLACEHOLDER__` tokens are substituted at build time by
+  platforms/excel/webpack.config.ts, from manifests/manifest.<env>.json and the
+  matching .env.<env> file. Do not hand-edit the generated build/manifest.xml.
+-->
+<OfficeApp
+  xmlns="http://schemas.microsoft.com/office/appforoffice/1.1"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0"
+  xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+  xsi:type="TaskPaneApp">
+
+  <Id>__ADDIN_ID__</Id>
+  <Version>__ADDIN_VERSION__</Version>
+  <ProviderName>Dust</ProviderName>
+  <DefaultLocale>en-US</DefaultLocale>
+  <DisplayName DefaultValue="__ADDIN_DISPLAY_NAME__" />
+  <Description DefaultValue="Chat with your Dust agents from Excel. They can read your selection, explore the workbook, and write results back into it." />
+  <IconUrl DefaultValue="__ADDIN_URL__/images/dust32.png" />
+  <HighResolutionIconUrl DefaultValue="__ADDIN_URL__/images/dust128.png" />
+  <SupportUrl DefaultValue="https://docs.dust.tt" />
+
+  <!--
+    Domains the task pane and its dialogs are allowed to navigate to. The
+    sign-in dialog leaves our origin for the identity provider, so every host
+    involved in that flow has to be listed here.
+  -->
+  <AppDomains>
+__APP_DOMAINS__
+  </AppDomains>
+
+  <Hosts>
+    <Host Name="Workbook" />
+  </Hosts>
+
+  <Requirements>
+    <Sets DefaultMinVersion="1.1">
+      <!-- 1.4 covers the range/worksheet APIs used by the workbook tools. -->
+      <Set Name="ExcelApi" MinVersion="1.4" />
+    </Sets>
+  </Requirements>
+
+  <DefaultSettings>
+    <SourceLocation DefaultValue="__ADDIN_URL__/taskpane.html" />
+  </DefaultSettings>
+
+  <!-- The workbook tools both read cells and write them back. -->
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <VersionOverrides
+    xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
+    xsi:type="VersionOverridesV1_0">
+    <Hosts>
+      <Host xsi:type="Workbook">
+        <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="Dust.GetStarted.Title" />
+            <Description resid="Dust.GetStarted.Description" />
+            <LearnMoreUrl resid="Dust.GetStarted.LearnMoreUrl" />
+          </GetStarted>
+
+          <ExtensionPoint xsi:type="PrimaryCommandSurface">
+            <OfficeTab id="TabHome">
+              <Group id="Dust.Group">
+                <Label resid="Dust.Group.Label" />
+                <Icon>
+                  <bt:Image size="16" resid="Dust.Icon.16" />
+                  <bt:Image size="32" resid="Dust.Icon.32" />
+                  <bt:Image size="80" resid="Dust.Icon.80" />
+                </Icon>
+                <Control xsi:type="Button" id="Dust.TaskpaneButton">
+                  <Label resid="Dust.TaskpaneButton.Label" />
+                  <Supertip>
+                    <Title resid="Dust.TaskpaneButton.Label" />
+                    <Description resid="Dust.TaskpaneButton.Tooltip" />
+                  </Supertip>
+                  <Icon>
+                    <bt:Image size="16" resid="Dust.Icon.16" />
+                    <bt:Image size="32" resid="Dust.Icon.32" />
+                    <bt:Image size="80" resid="Dust.Icon.80" />
+                  </Icon>
+                  <Action xsi:type="ShowTaskpane">
+                    <TaskpaneId>Dust.Taskpane</TaskpaneId>
+                    <SourceLocation resid="Dust.Taskpane.Url" />
+                  </Action>
+                </Control>
+              </Group>
+            </OfficeTab>
+          </ExtensionPoint>
+        </DesktopFormFactor>
+      </Host>
+    </Hosts>
+
+    <Resources>
+      <bt:Images>
+        <bt:Image id="Dust.Icon.16" DefaultValue="__ADDIN_URL__/images/dust16.png" />
+        <bt:Image id="Dust.Icon.32" DefaultValue="__ADDIN_URL__/images/dust32.png" />
+        <bt:Image id="Dust.Icon.80" DefaultValue="__ADDIN_URL__/images/dust128.png" />
+      </bt:Images>
+      <bt:Urls>
+        <bt:Url id="Dust.Taskpane.Url" DefaultValue="__ADDIN_URL__/taskpane.html" />
+        <bt:Url id="Dust.GetStarted.LearnMoreUrl" DefaultValue="https://docs.dust.tt" />
+      </bt:Urls>
+      <bt:ShortStrings>
+        <bt:String id="Dust.Group.Label" DefaultValue="Dust" />
+        <bt:String id="Dust.TaskpaneButton.Label" DefaultValue="Ask Dust" />
+        <bt:String id="Dust.GetStarted.Title" DefaultValue="Dust is ready." />
+      </bt:ShortStrings>
+      <bt:LongStrings>
+        <bt:String id="Dust.TaskpaneButton.Tooltip" DefaultValue="Open Dust to ask an agent about this workbook." />
+        <bt:String id="Dust.GetStarted.Description" DefaultValue="Open the Dust task pane from the Home tab to ask an agent about your data." />
+      </bt:LongStrings>
+    </Resources>
+  </VersionOverrides>
+</OfficeApp>
