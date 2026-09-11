@@ -29,12 +29,9 @@ export async function resolveSandboxFunctionWithCapability(
         auth,
         functionIdOrSlug
       );
-    if (sandboxFunction?.frame) {
-      return resolveFrameV2FunctionAccess(auth, sandboxFunction, {
-        allowInactivePublication: allowInactiveFramePublication,
-      });
-    }
-    return null;
+    return resolveFrameV2FunctionAccess(auth, sandboxFunction, {
+      allowInactivePublication: allowInactiveFramePublication,
+    });
   }
 
   return resolveFrameV2FunctionReference(auth, functionIdOrSlug);
@@ -104,12 +101,11 @@ async function resolveFrameV2FunctionAccess(
   sandboxFunction: SandboxFunctionResource | null,
   { allowInactivePublication }: { allowInactivePublication: boolean }
 ): Promise<SandboxFunctionResource | null> {
-  const frame = sandboxFunction?.frame;
-  if (
-    !sandboxFunction ||
-    !frame ||
-    !(await frame.canCurrentUserUseFrame(auth))
-  ) {
+  if (!sandboxFunction) {
+    return null;
+  }
+  const { frame } = sandboxFunction;
+  if (!(await frame.canCurrentUserUseFrame(auth))) {
     return null;
   }
   if (

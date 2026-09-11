@@ -341,41 +341,35 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
   }
 
   private buildGcsPath(auth: Authenticator): string {
-    const frame = this.sandboxFunction.frame;
-    if (frame) {
-      return `w/${auth.getNonNullableWorkspace().sId}/frames/${frame.sId}/invocations/${this.sId}`;
-    }
-    return `w/${auth.getNonNullableWorkspace().sId}/sandbox_functions/${this.sandboxFunction.sId}/invocations/${this.sId}`;
+    const { frame } = this.sandboxFunction;
+    return `w/${auth.getNonNullableWorkspace().sId}/frames/${frame.sId}/invocations/${this.sId}`;
   }
 
   private observabilityContext(auth?: Authenticator) {
-    const frame = this.sandboxFunction.frame;
-    const sourceConversationId = frame?.useCaseMetadata?.conversationId;
-    const sourceSpaceId = frame?.useCaseMetadata?.spaceId;
+    const { frame } = this.sandboxFunction;
+    const sourceConversationId = frame.useCaseMetadata?.conversationId;
+    const sourceSpaceId = frame.useCaseMetadata?.spaceId;
 
     return {
       ...(auth
         ? { workspaceId: auth.getNonNullableWorkspace().sId }
         : { workspaceModelId: this.workspaceId }),
-      functionOwnerKind: frame ? "frame" : "pod",
       sandboxFunctionId: this.sandboxFunction.sId,
       functionName: this.sandboxFunction.slug,
       invocationId: this.sId,
-      ...(frame
-        ? {
-            frameId: frame.sId,
-            ...(this.sandboxFunction.publicationId
-              ? { publicationId: this.sandboxFunction.publicationId }
-              : {}),
-            frameSourceScope: sourceSpaceId
-              ? "pod"
-              : sourceConversationId
-                ? "conversation"
-                : "unknown",
-            ...(sourceSpaceId || sourceConversationId
-              ? { frameSourceScopeId: sourceSpaceId ?? sourceConversationId }
-              : {}),
-          }
+      frameId: frame.sId,
+      ...(this.sandboxFunction.publicationId
+        ? { publicationId: this.sandboxFunction.publicationId }
+        : {}),
+      // Where the Frame itself lives, not who owns the function: a Frame is created either in a
+      // Pod or from a conversation.
+      frameSourceScope: sourceSpaceId
+        ? "pod"
+        : sourceConversationId
+          ? "conversation"
+          : "unknown",
+      ...(sourceSpaceId || sourceConversationId
+        ? { frameSourceScopeId: sourceSpaceId ?? sourceConversationId }
         : {}),
     };
   }
@@ -620,16 +614,8 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
 
     try {
       const { sandboxFunction } = this;
-      const frame = sandboxFunction.frame;
+      const { frame } = sandboxFunction;
       const publicationId = sandboxFunction.publicationId;
-      if (!frame) {
-        return new Err(
-          new SandboxFunctionInvocationError(
-            "This function is not owned by a Frame: legacy Pod functions can no longer be run.",
-            "frame_runtime_unavailable"
-          )
-        );
-      }
       if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
         return new Err(
           new SandboxFunctionInvocationError(
