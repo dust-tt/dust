@@ -192,7 +192,7 @@ export async function incrementRedisKeyUsageMicroUsd(
 export async function hasKeyReachedUsageCap(
   auth: Authenticator
 ): Promise<boolean> {
-  const keyAuth = auth.key();
+  const keyAuth = auth.keyForUsageAttribution();
 
   if (!keyAuth) {
     return false;
@@ -251,7 +251,7 @@ export async function hasKeyReachedUsageCap(
 export async function getRemainingKeyCapMicroUsd(
   auth: Authenticator
 ): Promise<number | null> {
-  const keyAuth = auth.key();
+  const keyAuth = auth.keyForUsageAttribution();
 
   if (!keyAuth) {
     return null;

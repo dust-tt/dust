@@ -184,7 +184,10 @@ app.post(
               },
             });
           }
-          const key = auth.key();
+          // Same key as the authoritative gate in `postUserMessage`, or this
+          // precheck would let through a message that gate rejects — persisting
+          // the empty conversation it exists to avoid.
+          const key = auth.keyForUsageAttribution();
           if (key && (await isApiKeyBlocked(auth, { keyModelId: key.id }))) {
             return apiError(ctx, {
               status_code: 429,
