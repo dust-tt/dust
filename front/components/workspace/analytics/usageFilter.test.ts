@@ -1,6 +1,7 @@
 import type { UsageFilter } from "@app/components/workspace/analytics/usageFilter";
 import {
   addUsageFilterFromAttributionRow,
+  describeUsageFilter,
   EMPTY_FACET_OPTIONS,
   getUsageFilterCategories,
   getUsageFilterSummaries,
@@ -415,5 +416,40 @@ describe("resolveUsageFilter", () => {
         group: filter.group ?? [],
       })
     ).toBe(filter);
+  });
+});
+
+describe("describeUsageFilter", () => {
+  function agentFilter(names: string[]): UsageFilter {
+    return {
+      agent: names.map((name) => ({
+        kind: "agent",
+        id: `id-${name}`,
+        name,
+        disabled: false,
+        image: null,
+      })),
+    };
+  }
+
+  it("reports an empty filter as none", () => {
+    expect(describeUsageFilter({})).toBe("none");
+  });
+
+  it("names selected options and orders categories as the filter panel does", () => {
+    expect(
+      describeUsageFilter({
+        model: [
+          {
+            kind: "model",
+            id: "claude-sonnet-4-5",
+            name: "Claude Sonnet 4.5",
+            disabled: false,
+            tier: undefined,
+          },
+        ],
+        ...agentFilter(["Dust", "Support Bot"]),
+      })
+    ).toBe("Agent: Dust, Support Bot; Model: Claude Sonnet 4.5");
   });
 });
