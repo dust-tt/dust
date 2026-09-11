@@ -1,32 +1,28 @@
 /**
- * Revoke stray free-seat credits (and clear their alerts): users who
- * currently hold a Metronome `free_seat` per-user credit but whose DB
- * membership seat type isn't (or is no longer) `free`.
+ * Revoke stray free-seat credits: users who currently hold a Metronome
+ * `free_seat` per-user credit but whose DB membership seat type isn't (or is
+ * no longer) `free`.
  *
  * Written for legacy-contract workspaces where a bug in `syncSeatCount`
  * (fixed separately) wrongly treated every member as "currently free" and
- * granted a `free-<sId>` credit + alerts for all of them. On a legacy
- * contract no membership should ever have `seatType === "free"`, so every
- * credit found there is stray — but the script still cross-checks against
- * current DB membership state rather than assuming that, so it's safe to
- * run against any workspace with stray free-seat credits, legacy or not.
+ * granted a `free-<sId>` credit for all of them. On a legacy contract no
+ * membership should ever have `seatType === "free"`, so every credit found
+ * there is stray — but the script still cross-checks against current DB
+ * membership state rather than assuming that, so it's safe to run against any
+ * workspace with stray free-seat credits, legacy or not.
  *
  * Iterates every workspace with a metronomeCustomerId by default; pass
  * --workspaceId to scope to just one. Dry-run by default; pass --execute to
- * actually revoke/clear.
+ * actually revoke.
  *
  *   npx tsx scripts/revoke_stray_free_seat_credits.ts
  *   npx tsx scripts/revoke_stray_free_seat_credits.ts --workspaceId <wId> --execute
  */
-import { clearPerUserCreditBalanceAlerts } from "@app/lib/metronome/alerts/per_user_credit_balance";
 import {
   listCustomerPerUserCreditIds,
   revokePerUserCustomerCredit,
 } from "@app/lib/metronome/client";
-import {
-  CONTRACT_CREDIT_TYPE_FREE_SEAT,
-  toFreeMetronomeUserId,
-} from "@app/lib/metronome/constants";
+import { CONTRACT_CREDIT_TYPE_FREE_SEAT } from "@app/lib/metronome/constants";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
@@ -118,16 +114,18 @@ async function revokeStrayFreeSeatCreditsForWorkspace(
       if (!execute) {
         logger.info(
           { workspaceId: workspace.sId, userId, creditIds },
-          "[DRY RUN] Would revoke credit(s) and clear alerts"
+          "[DRY RUN] Would revoke credit(s)"
         );
         return;
       }
 
+      let allRevoked = true;
       for (const creditId of creditIds) {
         const revokeResult = await paceMetronome(() =>
           revokePerUserCustomerCredit({ metronomeCustomerId, creditId })
         );
         if (revokeResult.isErr()) {
+          allRevoked = false;
           logger.error(
             {
               workspaceId: workspace.sId,
@@ -140,26 +138,10 @@ async function revokeStrayFreeSeatCreditsForWorkspace(
         }
       }
 
-      // Alerts are created with the free-prefixed user id (see
-      // `grantFreeSeatCredits`'s `upsertPerUserCreditBalanceAlerts` call) —
-      // must clear with the same form or `clearMetronomeAlert` targets a
-      // uniqueness key that was never created.
-      const clearResult = await paceMetronome(() =>
-        clearPerUserCreditBalanceAlerts({
-          metronomeCustomerId,
-          workspaceId: workspace.sId,
-          userId: toFreeMetronomeUserId(userId),
-        })
-      );
-      if (clearResult.isErr()) {
-        logger.error(
-          { workspaceId: workspace.sId, userId, error: clearResult.error },
-          "Failed to clear stray free-seat credit alerts"
-        );
-      } else {
+      if (allRevoked) {
         logger.info(
           { workspaceId: workspace.sId, userId },
-          "Revoked credit and cleared alerts"
+          "Revoked stray free-seat credit(s)"
         );
       }
     },

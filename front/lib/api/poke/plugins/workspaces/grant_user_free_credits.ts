@@ -1,5 +1,4 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { upsertPerUserCreditBalanceAlerts } from "@app/lib/metronome/alerts/per_user_credit_balance";
 import {
   editCustomerCreditSegmentAmount,
   findPerUserCustomerCreditSegment,
@@ -38,8 +37,7 @@ export const grantUserFreeCreditsPlugin = createPlugin({
     description:
       "Grant additional free AWU credits to a specific workspace member on a " +
       "free seat. Raises the granted amount of the member's existing per-user " +
-      "free-seat credit (no invoice, no second credit) and refreshes their " +
-      "balance alerts.",
+      "free-seat credit (no invoice, no second credit).",
     resourceTypes: ["workspaces"],
     args: {
       userId: {
@@ -158,26 +156,6 @@ export const grantUserFreeCreditsPlugin = createPlugin({
         "[Poke Plugin] Failed to grant free credits to member"
       );
       return new Err(editResult.error);
-    }
-
-    // Best-effort: refresh the per-user balance alerts so the low-balance
-    // threshold tracks the new total allowance. A failure here does not undo the
-    // grant.
-    const alertResult = await upsertPerUserCreditBalanceAlerts({
-      metronomeCustomerId,
-      workspaceId: workspace.sId,
-      userId: metronomeUserId,
-      allowanceAwu: newAllowanceAwu,
-    });
-    if (alertResult.isErr()) {
-      logger.warn(
-        {
-          workspaceId: workspace.sId,
-          userId,
-          error: alertResult.error.message,
-        },
-        "[Poke Plugin] Granted free credits but failed to refresh balance alerts"
-      );
     }
 
     return new Ok({

@@ -158,8 +158,6 @@ function memberFromUpgradeRequest(
     spendLimitGroupName: null,
     spendLimitAlertId: null,
     spendLimitWarningAlertId: null,
-    freeCreditLowAlert: null,
-    freeCreditEmptyAlert: null,
     creditState: "on_pool",
     rateLimiterState: null,
     // Synthesized from a capped user's upgrade request.

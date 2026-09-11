@@ -1,4 +1,3 @@
-import { AlertChip } from "@app/components/poke/credits/AlertChip";
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
 import { GrantFreeCreditsButton } from "@app/components/poke/credits/GrantFreeCreditsButton";
 import { MemberConsumptionExportButton } from "@app/components/poke/credits/MemberConsumptionExportButton";
@@ -8,7 +7,6 @@ import { ResetFairUseButton } from "@app/components/poke/credits/ResetFairUseBut
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits, formatCreditsPrecise } from "@app/lib/client/credits";
-import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getMetronomeAlertUrl } from "@app/lib/metronome/urls";
 import { usePokeMembersUsage } from "@app/poke/swr/credits";
 import type {
@@ -130,32 +128,6 @@ const USER_CREDIT_STATE_CHIP_COLOR: Record<
   user_seat: "info",
   on_pool: "success",
 };
-
-// Free seats hold a per-user credit with two balance alerts: "low" (≤20%) and
-// "empty" (0). Both are shown beside the balance via the shared `AlertChip`,
-// colored by each alert's Metronome status (ok = green, in alarm = red) and
-// deep-linked. Other seat types draw from the pool and have no such alerts.
-interface FreeSeatBalanceBadgesProps {
-  seatType: MembershipSeatType | null;
-  lowAlert: MetronomeAlertRef | null;
-  emptyAlert: MetronomeAlertRef | null;
-}
-
-function FreeSeatBalanceBadges({
-  seatType,
-  lowAlert,
-  emptyAlert,
-}: FreeSeatBalanceBadgesProps) {
-  if (seatType !== "free") {
-    return null;
-  }
-  return (
-    <>
-      <AlertChip alert={lowAlert} label="low" />
-      <AlertChip alert={emptyAlert} label="empty" />
-    </>
-  );
-}
 
 interface PokeMembersUsageTableProps {
   owner: WorkspaceType;
@@ -345,13 +317,7 @@ function makeColumns({
       header: "Seat balance / allowance",
       enableSorting: false,
       cell: ({ row }) => {
-        const {
-          memberUsageLimit,
-          seatBalanceAwu,
-          seatType,
-          freeCreditLowAlert,
-          freeCreditEmptyAlert,
-        } = row.original;
+        const { memberUsageLimit, seatBalanceAwu } = row.original;
         if (memberUsageLimit === null) {
           return <span>-</span>;
         }
@@ -360,11 +326,6 @@ function makeColumns({
             {seatBalanceAwu !== null ? formatCredits(seatBalanceAwu) : "-"}
             {" / "}
             {formatCredits(memberUsageLimit)}
-            <FreeSeatBalanceBadges
-              seatType={seatType}
-              lowAlert={freeCreditLowAlert}
-              emptyAlert={freeCreditEmptyAlert}
-            />
           </span>
         );
       },
