@@ -2075,6 +2075,10 @@ export async function getAllLogoLists(
     });
 
     const lists: LogoListMap = {};
+    logger.info(
+      { count: response.items.length },
+      "[Contentful] Fetched logoList entries"
+    );
     for (const entry of response.items) {
       // Read fields into `unknown` locals before narrowing: Contentful's
       // field-type resolution collapses to `never` for skeletons that hold
@@ -2086,17 +2090,32 @@ export async function getAllLogoLists(
       // either way the audience it was meant for is better served by the
       // fallback than by nothing.
       if (!isLogoListRegion(region)) {
-        if (region.length > 0) {
-          logger.warn(
-            { region, entryId: entry.sys.id },
-            "[Contentful] Ignoring logoList entry with unknown region"
-          );
-        }
+        // Naming the fields we *did* get: the usual cause of an empty `region`
+        // is a field whose id isn't `region` (Contentful shows editors the
+        // label, and the two drift apart easily), and the entry then vanishes
+        // with nothing to explain why the bar still shows its old lineup.
+        logger.warn(
+          {
+            region,
+            entryId: entry.sys.id,
+            fieldIds: Object.keys(entry.fields),
+            expected: LOGO_LIST_REGIONS,
+          },
+          "[Contentful] Skipping logoList entry: `region` missing or unrecognised"
+        );
         continue;
       }
 
       const logosField: unknown = entry.fields.logos;
       if (!Array.isArray(logosField)) {
+        logger.warn(
+          {
+            region,
+            entryId: entry.sys.id,
+            fieldIds: Object.keys(entry.fields),
+          },
+          "[Contentful] Skipping logoList entry: no `logos` array"
+        );
         continue;
       }
 
@@ -2106,8 +2125,15 @@ export async function getAllLogoLists(
         .filter(isNonNull);
 
       // An entry that resolves to nothing usable is treated as absent so the
-      // page renders its hardcoded fallback instead of an empty bar.
+      // page renders its hardcoded fallback instead of an empty bar. Worth a
+      // warning even so: from the editor's side this looks identical to the
+      // entry not existing, and the usual cause is a referenced customerLogo
+      // — or its image asset — still sitting in draft.
       if (logos.length === 0) {
+        logger.warn(
+          { region, entryId: entry.sys.id, referenced: logosField.length },
+          "[Contentful] Skipping logoList entry: no usable logos (unpublished entry or asset?)"
+        );
         continue;
       }
 
