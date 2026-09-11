@@ -1,3 +1,4 @@
+import { emitConversationAccessedEvent } from "@app/lib/api/audit/conversation_access";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -9,7 +10,11 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { getConversationUrlAccessMode } from "@app/types/assistant/conversation";
 import { honoApp } from "@front-api/app";
-import { assert, describe, expect, it } from "vitest";
+import { assert, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/conversation_access", () => ({
+  emitConversationAccessedEvent: vi.fn(),
+}));
 
 async function setupUserRequestWithConversation({
   privateByDefaultEnabled,
@@ -68,6 +73,10 @@ function patchConversation(
 }
 
 describe("GET /api/w/:wId/assistant/conversations/:cId", () => {
+  beforeEach(() => {
+    vi.mocked(emitConversationAccessedEvent).mockClear();
+  });
+
   it("returns 200 for non-participants when private conversation URLs are disabled", async () => {
     const { workspace, conversation } = await setupUserRequestWithConversation({
       privateByDefaultEnabled: false,
@@ -76,6 +85,10 @@ describe("GET /api/w/:wId/assistant/conversations/:cId", () => {
     const response = await getConversation(workspace, conversation.sId);
 
     expect(response.status).toBe(200);
+    expect(emitConversationAccessedEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ sId: conversation.sId })
+    );
   });
 
   it("returns 404 conversation_not_found for non-participants when private conversation URLs are enabled", async () => {
@@ -87,6 +100,7 @@ describe("GET /api/w/:wId/assistant/conversations/:cId", () => {
 
     expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe("conversation_not_found");
+    expect(emitConversationAccessedEvent).not.toHaveBeenCalled();
   });
 
   it("returns 200 for participants when private conversation URLs are enabled", async () => {

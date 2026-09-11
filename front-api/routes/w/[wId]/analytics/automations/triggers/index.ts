@@ -8,6 +8,7 @@ import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/per
 import { toConsumptionPeriodInput } from "@app/lib/api/analytics/consumption/schema";
 import { CARDINALITY_PRECISION_THRESHOLD } from "@app/lib/api/analytics/consumption/scope";
 import { rowsToCsv } from "@app/lib/api/analytics/csv_utils";
+import { emitAnalyticsExportedEvent } from "@app/lib/api/audit/analytics_export";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -105,6 +106,14 @@ app.post(
         return ctx.json(result.value);
       case "csv": {
         const exportDate = new Date().toISOString().slice(0, 10);
+        void emitAnalyticsExportedEvent(auth, {
+          exportName: "automations",
+          format: "csv",
+          fileName: `dust_automations_${exportDate}.csv`,
+          rowCount: result.value.triggers.length,
+          period: { start: period.startDate, end: period.endDate },
+          query: { search },
+        });
         ctx.header("Content-Type", "text/csv");
         ctx.header(
           "Content-Disposition",

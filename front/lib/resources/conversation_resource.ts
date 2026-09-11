@@ -5217,6 +5217,25 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }));
   }
 
+  /**
+   * Returns the earliest participant's user model id (the conversation creator),
+   * or null when the conversation has no participants.
+   */
+  static async fetchFirstParticipantUserId(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType | ConversationResource
+  ): Promise<ModelId | null> {
+    const firstParticipant = await ConversationParticipantModel.findOne({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: ["userId"],
+      order: [["createdAt", "ASC"]],
+    });
+    return firstParticipant?.userId ?? null;
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}

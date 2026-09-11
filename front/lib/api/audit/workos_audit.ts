@@ -137,6 +137,8 @@ export const AUDIT_ACTIONS = [
   "tool.approval_requested",
   "tool.approval_resolved",
   "tool.executed",
+  // Analytics & Exports.
+  "analytics.exported",
   // Triggers.
   "trigger.created",
   "trigger.deleted",

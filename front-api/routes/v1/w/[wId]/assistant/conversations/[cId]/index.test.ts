@@ -1,4 +1,5 @@
 import type { ToolGeneratedFilePathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { emitConversationAccessedEvent } from "@app/lib/api/audit/conversation_access";
 import { Authenticator } from "@app/lib/auth";
 import { MessageModel } from "@app/lib/models/agent/conversation";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -11,7 +12,11 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { honoApp } from "@front-api/app";
-import { assert, describe, expect, it } from "vitest";
+import { assert, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/conversation_access", () => ({
+  emitConversationAccessedEvent: vi.fn(),
+}));
 
 async function setupGetRequest() {
   const { workspace, key } = await createPublicApiMockRequest({
@@ -66,6 +71,10 @@ function patchConversation(
 }
 
 describe("GET /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
+  beforeEach(() => {
+    vi.mocked(emitConversationAccessedEvent).mockClear();
+  });
+
   it("returns 200 when private conversation URLs are disabled", async () => {
     const { workspace, key, conversation } = await setupGetRequest();
 
@@ -77,6 +86,10 @@ describe("GET /api/v1/w/[wId]/assistant/conversations/[cId]", () => {
     const response = await getConversation(workspace, key, conversation.sId);
 
     expect(response.status).toBe(200);
+    expect(emitConversationAccessedEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ sId: conversation.sId })
+    );
   });
 
   it("returns 200 when private conversation URLs are enabled for API key auth", async () => {

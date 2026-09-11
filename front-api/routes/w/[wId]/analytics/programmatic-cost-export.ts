@@ -2,6 +2,7 @@ import {
   ExportQuerySchema,
   getProgrammaticCostExport,
 } from "@app/lib/api/analytics/programmatic_cost_export";
+import { emitAnalyticsExportedEvent } from "@app/lib/api/audit/analytics_export";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -24,6 +25,15 @@ app.get("/", validate("query", ExportQuerySchema), async (ctx) => {
   }
 
   const { csv, filename } = result.value;
+  void emitAnalyticsExportedEvent(auth, {
+    exportName: "programmatic_cost",
+    format: "csv",
+    fileName: filename,
+    query: {
+      selectedPeriod: query.selectedPeriod,
+      billingCycleStartDay: query.billingCycleStartDay,
+    },
+  });
   ctx.header("Content-Type", "text/csv");
   ctx.header("Content-Disposition", `attachment; filename=${filename}`);
   return ctx.body(csv);

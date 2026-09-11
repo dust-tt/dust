@@ -1,8 +1,19 @@
+import type * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@app/lib/api/audit/workos_audit", async () => {
+  const actual = await vi.importActual<typeof workosAudit>(
+    "@app/lib/api/audit/workos_audit"
+  );
+  return {
+    ...actual,
+    emitAuditLogEvent: vi.fn(),
+  };
+});
 
 vi.mock("@app/lib/api/analytics/usage_metrics_export", async () => ({
   fetchUsageMetricsExportRows: vi.fn(
@@ -159,6 +170,8 @@ vi.mock("@app/lib/api/analytics/feedback_export", async () => ({
   ),
 }));
 
+import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
+
 async function setupTest({
   table = "usage_metrics",
   startDate = "2024-06-01",
@@ -212,10 +225,25 @@ function exportRequest({
 }
 
 describe("GET /api/v1/w/[wId]/analytics/export", () => {
+  beforeEach(() => {
+    vi.mocked(emitAuditLogEvent).mockClear();
+    vi.mocked(emitAuditLogEvent).mockResolvedValue(undefined);
+  });
+
   it("returns 200 for admin API key", async () => {
     const { response } = await setupTest();
 
     expect(response.status).toBe(200);
+    expect(vi.mocked(emitAuditLogEvent)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "analytics.exported",
+        metadata: expect.objectContaining({
+          export_name: "analytics_table",
+          dataset: "usage_metrics",
+          format: "csv",
+        }),
+      })
+    );
   });
 
   it("returns 403 for read-only API key (insufficient scope)", async () => {
@@ -228,6 +256,7 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
         message: ENSURE_IS_ADMIN_ERROR_MESSAGE,
       },
     });
+    expect(vi.mocked(emitAuditLogEvent)).not.toHaveBeenCalled();
   });
 
   it("returns 400 for missing required query params", async () => {
