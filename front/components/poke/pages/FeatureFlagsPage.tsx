@@ -2,10 +2,13 @@ import { FeatureFlagStageChip } from "@app/components/poke/features/stage_chip";
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { PokeFeatureFlagUsageAllCells } from "@app/hooks/usePokeFeatureFlagUsage";
 import { usePokeFeatureFlagUsageAllCells } from "@app/hooks/usePokeFeatureFlagUsage";
+import type { PokeRunPluginResponseBody } from "@app/lib/api/poke/plugins/run";
 import { useCellContext } from "@app/lib/auth/CellContext";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
+import { fetchPokeFromAllCells } from "@app/poke/swr/cells";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
 import type { CellType } from "@app/types/cell";
@@ -16,7 +19,20 @@ import {
   isWhitelistableFeature,
   WHITELISTABLE_FEATURES_CONFIG,
 } from "@app/types/shared/feature_flags";
-import { Button, Chip, LinkWrapper, Pencil01, Trash01 } from "@dust-tt/sparkle";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import {
+  Button,
+  CheckboxWithText,
+  Chip,
+  LinkWrapper,
+  Pencil01,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  Rocket02,
+  Trash01,
+  XClose,
+} from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
@@ -35,15 +51,26 @@ interface PendingPluginAction {
   cell: CellType;
 }
 
+interface DeployToCellsState {
+  onDeploy: (flagName: string, cells: Set<CellType>) => void;
+  confirmFlag: string | null;
+  setConfirmFlag: (flagName: string | null) => void;
+  deployingFlags: Set<string>;
+  targetCells: Set<CellType>;
+  setTargetCells: (cells: Set<CellType>) => void;
+}
+
 interface MakeColumnsParams {
-  // Both are `null` when the current user cannot run the corresponding plugin.
+  // All `null` when the current user cannot run the corresponding plugin.
   onDeleteLegacyRows: ((flagName: string, cell: CellType) => void) | null;
   onEditGlobalRollout: ((flagName: string, cell: CellType) => void) | null;
+  deployToCells: DeployToCellsState | null;
 }
 
 function makeColumns({
   onDeleteLegacyRows,
   onEditGlobalRollout,
+  deployToCells,
 }: MakeColumnsParams): ColumnDef<PokeFeatureFlagUsageAllCells>[] {
   return [
     {
@@ -189,6 +216,84 @@ function makeColumns({
                 </div>
               );
             })}
+            {deployToCells && (
+              <PopoverRoot
+                open={deployToCells.confirmFlag === name}
+                onOpenChange={(open) => {
+                  deployToCells.setConfirmFlag(open ? name : null);
+                  if (open) {
+                    deployToCells.setTargetCells(
+                      new Set(byCell.map((stat) => stat.cell))
+                    );
+                  }
+                }}
+              >
+                <PopoverTrigger asChild className="self-start">
+                  <Button
+                    variant="highlight"
+                    size="xs"
+                    label="Deploy to everyone"
+                    tooltip="Set the rollout to 100% on every cell"
+                    isLoading={deployToCells.deployingFlags.has(name)}
+                  />
+                </PopoverTrigger>
+                <PopoverContent>
+                  <div className="flex flex-col gap-3">
+                    <p className="text-center text-sm text-foreground">
+                      This will enable &quot;{name}&quot; for every workspace on
+                      the selected cells. Are you sure?
+                    </p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {byCell.map((stat) => (
+                        <CheckboxWithText
+                          key={stat.cell}
+                          id={`deploy-cell-${name}-${stat.cell}`}
+                          text={getCellDisplay({
+                            name: stat.cell,
+                            region: stat.region,
+                          })}
+                          checked={deployToCells.targetCells.has(stat.cell)}
+                          onCheckedChange={(checked) => {
+                            const targetCells = new Set(
+                              deployToCells.targetCells
+                            );
+                            if (checked === true) {
+                              targetCells.add(stat.cell);
+                            } else {
+                              targetCells.delete(stat.cell);
+                            }
+                            deployToCells.setTargetCells(targetCells);
+                          }}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        icon={XClose}
+                        label="No"
+                        onClick={() => deployToCells.setConfirmFlag(null)}
+                      />
+                      <Button
+                        variant="warning"
+                        size="xs"
+                        icon={Rocket02}
+                        label="Yes"
+                        disabled={deployToCells.targetCells.size === 0}
+                        isLoading={deployToCells.deployingFlags.has(name)}
+                        onClick={() =>
+                          deployToCells.onDeploy(
+                            name,
+                            deployToCells.targetCells
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </PopoverRoot>
+            )}
           </div>
         );
       },
@@ -256,6 +361,7 @@ export function FeatureFlagsPage() {
 
   const { cells, cellInfo, setCellInfo } = useCellContext();
   const { featureFlags, isLoading, mutate } = usePokeFeatureFlagUsageAllCells();
+  const sendNotification = useSendNotification();
 
   const { plugins } = usePokeListPluginForResourceType({
     pluginResourceTarget: GLOBAL_PLUGIN_TARGET,
@@ -269,6 +375,16 @@ export function FeatureFlagsPage() {
 
   const [pendingAction, setPendingAction] =
     useState<PendingPluginAction | null>(null);
+
+  const [deployState, setDeployState] = useState<{
+    confirmFlag: string | null;
+    deployingFlags: Set<string>;
+    targetCells: Set<CellType>;
+  }>({
+    confirmFlag: null,
+    deployingFlags: new Set(),
+    targetCells: new Set(),
+  });
 
   const switchToCell = useCallback(
     (cell: CellType) => {
@@ -309,13 +425,92 @@ export function FeatureFlagsPage() {
     void mutate();
   }, [mutate]);
 
+  const onDeployToCells = useCallback(
+    async (flagName: string, targetCells: Set<CellType>) => {
+      setDeployState((s) => ({
+        ...s,
+        confirmFlag: null,
+        deployingFlags: new Set(s.deployingFlags).add(flagName),
+      }));
+
+      try {
+        const results = await fetchPokeFromAllCells<PokeRunPluginResponseBody>({
+          cells: cells.filter((cell) => targetCells.has(cell.name)),
+          path: `/api/poke/plugins/${TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID}/run?resourceType=global`,
+          init: {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              [FEATURE_FLAG_PLUGIN_ARG]: [flagName],
+              rolloutPercentage: 100,
+            }),
+          },
+        });
+
+        const succeeded = results.filter((result) => result.ok);
+        const failed = results.filter((result) => !result.ok);
+        if (failed.length > 0) {
+          sendNotification({
+            title:
+              succeeded.length > 0
+                ? "Deploy partially failed"
+                : "Deploy failed",
+            description: [
+              succeeded.length > 0 &&
+                `Enabled on ${succeeded.map((result) => getCellDisplay(result.cell)).join(", ")}.`,
+              `Failed on ${failed.map((result) => `${getCellDisplay(result.cell)} (${normalizeError(result.error).message})`).join(", ")}.`,
+            ]
+              .filter(Boolean)
+              .join(" "),
+            type: "error",
+          });
+        } else {
+          sendNotification({
+            title: "Deployed",
+            description: `"${flagName}" is now enabled for every workspace on ${targetCells.size} cell(s).`,
+            type: "success",
+          });
+        }
+
+        await mutate();
+      } finally {
+        setDeployState((s) => {
+          const deployingFlags = new Set(s.deployingFlags);
+          deployingFlags.delete(flagName);
+          return { ...s, deployingFlags };
+        });
+      }
+    },
+    [cells, mutate, sendNotification]
+  );
+
   const columns = useMemo(
     () =>
       makeColumns({
         onDeleteLegacyRows: deleteLegacyPlugin ? onDeleteLegacyRows : null,
         onEditGlobalRollout: rolloutPlugin ? onEditGlobalRollout : null,
+        deployToCells: rolloutPlugin
+          ? {
+              onDeploy: (flagName, targetCells) =>
+                void onDeployToCells(flagName, targetCells),
+              confirmFlag: deployState.confirmFlag,
+              setConfirmFlag: (confirmFlag) =>
+                setDeployState((s) => ({ ...s, confirmFlag })),
+              deployingFlags: deployState.deployingFlags,
+              targetCells: deployState.targetCells,
+              setTargetCells: (targetCells) =>
+                setDeployState((s) => ({ ...s, targetCells })),
+            }
+          : null,
       }),
-    [deleteLegacyPlugin, onDeleteLegacyRows, onEditGlobalRollout, rolloutPlugin]
+    [
+      deleteLegacyPlugin,
+      deployState,
+      onDeleteLegacyRows,
+      onDeployToCells,
+      onEditGlobalRollout,
+      rolloutPlugin,
+    ]
   );
 
   const pendingPlugin = pendingAction
