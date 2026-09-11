@@ -156,6 +156,23 @@ describe("clientUpload", () => {
     expect(last.headers["content-type"]).toBeUndefined();
   });
 
+  it("drops a Content-Type coming from the context defaults", async () => {
+    // The browser has to derive `multipart/form-data` and its boundary from the `FormData` body;
+    // an inherited `Content-Type` would replace it and break parsing server-side.
+    setDefaultInitResolver(async () => ({
+      headers: { "Content-Type": "application/json" },
+    }));
+    installFakeXhr((xhr) => {
+      xhr.status = 200;
+      xhr.responseText = "{}";
+      xhr.onload?.();
+    });
+
+    await clientUpload("/api/w/w1/files/fil_1", new FormData());
+
+    expect(last.headers["content-type"]).toBeUndefined();
+  });
+
   it("sends cookies when no default init resolver is set in the SPA", async () => {
     setBaseUrlResolver(() => "https://eu.dust.tt");
     installFakeXhr((xhr) => {

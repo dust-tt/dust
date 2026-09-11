@@ -42,7 +42,8 @@ function resolveUrl<T extends RequestInfo | URL>(
  * MUST rewrite the URL through `resolveUrl`, merge the caller's `init` over the context defaults
  * with the caller's headers winning per header name, and expose that same auth context in all
  * three shapes it returns, so no transport can observe a different URL, header set or credentials
- * mode than another.
+ * mode than another. A transport MAY drop a header the body it sends is incompatible with (see
+ * `Content-Type` in `clientUpload`), but MUST NOT add or rewrite one.
  */
 async function resolveRequest<T extends RequestInfo | URL>(
   input: T,
@@ -143,9 +144,10 @@ export async function clientUpload(
     const xhr = new XMLHttpRequest();
     xhr.open("POST", url);
 
-    // No `Content-Type` is set here, and `default-init-carries-no-content-type` keeps the
-    // resolved defaults from carrying one, so the browser derives it from the `FormData`
-    // boundary.
+    // The browser derives `multipart/form-data` and its boundary from the `FormData` body, so any
+    // `Content-Type` coming from the context defaults has to go: keeping it would replace that
+    // header and leave the server unable to parse the body.
+    headers.delete("content-type");
     headers.forEach((value, name) => {
       xhr.setRequestHeader(name, value);
     });

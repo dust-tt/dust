@@ -58,7 +58,8 @@ export interface FileAttachmentCitation extends BaseAttachmentCitation {
   fileId: string | null;
   filePath?: string;
   isUploading?: boolean;
-  uploadProgress?: number | null;
+  // Percentage of the file's bytes already sent, `null` when no upload is in flight.
+  uploadProgress: number | null;
   size?: number;
 }
 

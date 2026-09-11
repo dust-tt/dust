@@ -27,7 +27,7 @@ export function AttachmentCitation({
     attachmentCitation.type === "file" &&
     attachmentCitation.attachmentCitationType !== "mcp";
   const uploadProgress = isRegularFile
-    ? (attachmentCitation.uploadProgress ?? null)
+    ? attachmentCitation.uploadProgress
     : null;
   const audioSizeBytes = isRegularFile ? attachmentCitation.size : undefined;
 
