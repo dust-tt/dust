@@ -358,9 +358,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
       functionName: this.sandboxFunction.slug,
       invocationId: this.sId,
       frameId: frame.sId,
-      ...(this.sandboxFunction.publicationId
-        ? { publicationId: this.sandboxFunction.publicationId }
-        : {}),
+      publicationId: this.sandboxFunction.publicationId,
       // Where the Frame itself lives, not who owns the function: a Frame is created either in a
       // Pod or from a conversation.
       frameSourceScope: sourceSpaceId

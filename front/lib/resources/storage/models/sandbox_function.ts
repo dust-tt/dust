@@ -51,7 +51,7 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare updatedAt: CreationOptional<Date>;
 
   declare fileId: ForeignKey<FileModel["id"]>;
-  declare publicationId: string | null;
+  declare publicationId: string;
   declare slug: string;
   declare description: string;
   declare userIdentity: SandboxFunctionUserIdentityPolicy | null;
@@ -102,7 +102,7 @@ SandboxFunctionModel.init(
     },
     publicationId: {
       type: DataTypes.STRING(255),
-      allowNull: true,
+      allowNull: false,
     },
     slug: {
       type: DataTypes.STRING(255),
