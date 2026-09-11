@@ -55,7 +55,6 @@ import { useSearchParam } from "@app/lib/platform";
 import {
   useAwuPoolCurrentCycle,
   useAwuPoolCycleHistory,
-  useAwuPoolSummary,
   useAwuPurchaseInfo,
   useMyUsage,
   useSeatPlan,
@@ -505,24 +504,20 @@ export function UsagePage() {
   }, [isCreditPriced, openChangeMySeatParam, myUsage]);
 
   const {
-    totalRemainingCredits,
-    totalActiveCredits,
-    overageCredits,
-    isAwuPoolSummaryLoading,
-    isAwuPoolSummaryError,
-    mutateAwuPoolSummary,
-  } = useAwuPoolSummary({
+    awuPoolCurrentCycle,
+    isAwuPoolCurrentCycleLoading,
+    isAwuPoolCurrentCycleError,
+    mutateAwuPoolCurrentCycle,
+  } = useAwuPoolCurrentCycle({
     workspaceId: owner.sId,
     disabled: !isCreditPriced,
   });
+  const totalRemainingCredits = awuPoolCurrentCycle?.totalRemainingCredits ?? 0;
+  const totalActiveCredits = awuPoolCurrentCycle?.totalActiveCredits ?? 0;
+  const overageCredits = awuPoolCurrentCycle?.overageCredits ?? null;
 
-  // The pool cards read the cycle endpoints, so a purchase must revalidate
-  // those too. Disabled here: the cards own the fetch, we only borrow the
-  // mutate functions.
-  const { mutateAwuPoolCurrentCycle } = useAwuPoolCurrentCycle({
-    workspaceId: owner.sId,
-    disabled: true,
-  });
+  // Cycle history is only rendered by CreditPoolCards, which owns its own
+  // (paginated) fetch; borrow its mutate so a purchase revalidates it too.
   const { mutateAwuPoolCycleHistory } = useAwuPoolCycleHistory({
     workspaceId: owner.sId,
     disabled: true,
@@ -1083,7 +1078,6 @@ export function UsagePage() {
           isOpen={showBuyCreditDialog}
           onClose={() => setShowBuyCreditDialog(false)}
           onPurchaseSuccess={() => {
-            void mutateAwuPoolSummary();
             void mutateAwuPoolCurrentCycle();
             void mutateAwuPoolCycleHistory();
           }}
@@ -1275,12 +1269,13 @@ export function UsagePage() {
           {!isNewUsagePage &&
           isCreditPriced &&
           !showConsumptionAnalytics &&
-          !isAwuPoolSummaryLoading &&
-          (isAwuPoolSummaryError || hasPool) ? (
+          (isAwuPoolCurrentCycleLoading ||
+            isAwuPoolCurrentCycleError ||
+            hasPool) ? (
             <Page.Vertical gap="xs" align="stretch">
               <Page.H variant="h4">Workspace credit pool</Page.H>
 
-              {isAwuPoolSummaryError ? (
+              {isAwuPoolCurrentCycleError ? (
                 <ContentMessage
                   title="Failed to load Workspace Credits Pool"
                   icon={AlertCircle}
@@ -1290,7 +1285,7 @@ export function UsagePage() {
                   data. Please refresh the page or contact support if the issue
                   persists.
                 </ContentMessage>
-              ) : isAwuPoolSummaryLoading ? (
+              ) : isAwuPoolCurrentCycleLoading ? (
                 <div className="flex justify-center py-8">
                   <Spinner />
                 </div>
@@ -1440,7 +1435,7 @@ export function UsagePage() {
                   <ModelTiersSettingsCard owner={owner} />
                   {isCreditPriced && (
                     <LockedSection
-                      locked={!isAwuPoolSummaryLoading && !hasPool}
+                      locked={!isAwuPoolCurrentCycleLoading && !hasPool}
                       className="flex flex-col gap-8"
                     >
                       <UsageProgrammaticLimitCard workspaceId={owner.sId} />

@@ -212,26 +212,6 @@ export function useCreditPurchaseInfo({
   };
 }
 
-const awuPostPurchaseRefreshState = new Map<string, number>();
-const awuPostPurchaseRefreshListeners = new Set<() => void>();
-
-function getAwuPostPurchaseRefreshCount(workspaceId: string): number {
-  return awuPostPurchaseRefreshState.get(workspaceId) ?? Infinity;
-}
-
-function incrementAwuPostPurchaseRefreshCount(workspaceId: string): void {
-  const current = awuPostPurchaseRefreshState.get(workspaceId) ?? Infinity;
-  if (current < 5) {
-    awuPostPurchaseRefreshState.set(workspaceId, current + 1);
-    awuPostPurchaseRefreshListeners.forEach((listener) => listener());
-  }
-}
-
-export function resetAwuPostPurchaseRefreshCount(workspaceId: string): void {
-  awuPostPurchaseRefreshState.set(workspaceId, 0);
-  awuPostPurchaseRefreshListeners.forEach((listener) => listener());
-}
-
 export function useAwuPoolSummary({
   workspaceId,
   disabled,
@@ -245,17 +225,7 @@ export function useAwuPoolSummary({
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/credits/awu-pool-summary`,
     awuFetcher,
-    {
-      disabled,
-      refreshInterval: () => {
-        const count = getAwuPostPurchaseRefreshCount(workspaceId);
-        if (count < 5) {
-          incrementAwuPostPurchaseRefreshCount(workspaceId);
-          return 5000;
-        }
-        return 0;
-      },
-    }
+    { disabled }
   );
 
   return {
@@ -460,7 +430,6 @@ export function useRedeemPoolTopupCoupon({
           return { status: "error", message };
         }
 
-        resetAwuPostPurchaseRefreshCount(workspaceId);
         void mutateAwuPoolSummary();
 
         return { status: "success" };
