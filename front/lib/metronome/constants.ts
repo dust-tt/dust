@@ -170,17 +170,16 @@ export function oneYearAfter(start: Date): Date {
 }
 
 // Custom field stamped on a per-user (free) seat credit, carrying the seat's
-// user sId. Metronome alerts can filter on custom fields but not on a credit's
-// presentation specifier, so this is what lets a per-user
-// `low_remaining_contract_credit_balance_reached` alert fire as each free
-// user depletes their individual credit. The key must be registered with
+// user sId. Lets us list a customer's per-user credits keyed by user (see the
+// `listCustomerPerUserCredit*` readers in client.ts), since a credit's
+// presentation specifier can't be filtered on. The key must be registered with
 // Metronome (see `CUSTOM_FIELD_KEYS` in `scripts/metronome_setup.ts`) before it
 // can be stamped, or the create is rejected with "Invalid custom field keys".
 export const PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY =
   "DUST_PER_USER_CREDIT_USER";
 
 // Prefix applied to user sIds when emitting Metronome usage events for users on
-// a free seat, and when creating their per-user credits and alerts. This
+// a free seat, and when creating their per-user credits. This
 // decorrelates free-seat credit consumption from regular usage: the free credit
 // specifier filters on `presentation_group_values.user_id = "free-<sId>"`, so
 // it only drains against events emitted with that exact value.

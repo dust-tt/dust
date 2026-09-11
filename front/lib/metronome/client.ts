@@ -4214,4 +4214,3 @@ export async function* listMetronomeAlerts(
     yield entry;
   }
 }
-

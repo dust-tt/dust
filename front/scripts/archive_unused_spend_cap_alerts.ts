@@ -10,9 +10,11 @@
  * cap/warning, per-group cap/warning, and the four programmatic cap alerts — no
  * longer feed anything, so this archives them.
  *
- * It does NOT touch the free-seat per-user credit-balance alerts
- * (`per-user-credit-*`) or the workspace balance-threshold alert
- * (`workspace-balance-threshold-*`), which are still in use.
+ * It also archives the free-seat per-user credit-balance alerts
+ * (`per-user-credit-exhausted-*` / `per-user-credit-low-*`), retired now that
+ * free→pro auto-upgrade is driven reactively at message-send time. It does NOT
+ * touch the workspace balance-threshold alert (`workspace-balance-threshold-*`),
+ * which is still in use.
  *
  * Usage:
  *   npx tsx scripts/archive_unused_spend_cap_alerts.ts            # dry run
@@ -24,6 +26,7 @@ import { programmaticCapUniquenessKeys } from "@app/lib/metronome/alerts/program
 import { isUnusedSpendCapAlertUniquenessKey } from "@app/lib/metronome/alerts/spend_limits";
 import {
   archiveMetronomeAlert,
+  getMetronomeClient,
   listMetronomeAlerts,
 } from "@app/lib/metronome/client";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -31,6 +34,22 @@ import type { LightWorkspaceType } from "@app/types/user";
 
 import { makeScript } from "./helpers";
 import { runOnAllWorkspaces } from "./workspace_helpers";
+
+// The two per-user free-credit-balance alert uniqueness-key prefixes. Defined
+// inline because their former home
+// (`@app/lib/metronome/alerts/per_user_credit_balance`) was deleted with the
+// rest of that alert machinery. Kept in sync with what it used to produce:
+//   `per-user-credit-exhausted-<workspaceId>-<userId>`
+//   `per-user-credit-low-<workspaceId>-<userId>`
+function isPerUserCreditBalanceAlertKey(
+  baseKey: string,
+  workspaceId: string
+): boolean {
+  return (
+    baseKey.startsWith(`per-user-credit-exhausted-${workspaceId}-`) ||
+    baseKey.startsWith(`per-user-credit-low-${workspaceId}-`)
+  );
+}
 
 makeScript(
   {
@@ -41,6 +60,12 @@ makeScript(
     },
   },
   async ({ execute, workspaceId }, logger) => {
+    // Resolve the Metronome client up front so a misconfigured run (no
+    // METRONOME_API_KEY) throws here and propagates to the runtime handler,
+    // rather than having the per-workspace catch below swallow the same config
+    // error for every workspace and exit "successfully".
+    getMetronomeClient();
+
     let workspacesScanned = 0;
     let workspacesSkipped = 0;
     let totalArchived = 0;
@@ -74,7 +99,8 @@ makeScript(
           const baseKey = baseUniquenessKey(rawKey);
           const isUnused =
             isUnusedSpendCapAlertUniquenessKey(baseKey, workspace.sId) ||
-            programmaticKeys.has(baseKey);
+            programmaticKeys.has(baseKey) ||
+            isPerUserCreditBalanceAlertKey(baseKey, workspace.sId);
           if (isUnused) {
             toArchive.push({ id: entry.alert.id, uniquenessKey: baseKey });
           }

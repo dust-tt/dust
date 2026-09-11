@@ -761,9 +761,8 @@ async function grantFreeSeatCredits({
 
 // Revoke free-seat credits for users who once had one but are no longer on a
 // free seat (e.g. upgraded to pro): end the credit early so it stops drawing
-// against their usage, and drop its low/empty alerts. The grant's uniqueness key
-// is untouched so the user can never re-claim the same credit. Best-effort; runs
-// each sync.
+// against their usage. The grant's uniqueness key is untouched so the user can
+// never re-claim the same credit. Best-effort; runs each sync.
 async function revokeFreeSeatCreditsForExFreeUsers({
   metronomeCustomerId,
   workspaceId,
@@ -1968,14 +1967,14 @@ export async function syncSeatCount({
     // billed and may not be an entitled SEAT_BASED subscription on the
     // contract, so this runs independently of the seat-subscription loop
     // above. Best-effort and idempotent. Grant deduped by the grant's uniqueness
-    // key; revoke archives the credit + drops alerts for users who left the free
-    // seat (the uniqueness key stays claimed, so they can't re-claim).
+    // key; revoke archives the credit for users who left the free seat (the
+    // uniqueness key stays claimed, so they can't re-claim).
     //
     // Skipped entirely on a legacy contract: `free` is a CP/AWU-era seat type
     // that a legacy contract never entitles (see `canAssignFreeSeat`), and the
     // invariant that no membership on a legacy contract ever has
-    // `seatType === "free"` holds — so there is nothing to grant, alert, or
-    // revoke here, and no need to even compute `currentFreeUserIds`.
+    // `seatType === "free"` holds — so there is nothing to grant or revoke here,
+    // and no need to even compute `currentFreeUserIds`.
     const freeSeatStartedAt = Date.now();
     let currentFreeUserIds = new Set<string>();
     if (legacy) {
