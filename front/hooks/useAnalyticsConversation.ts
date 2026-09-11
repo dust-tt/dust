@@ -1,15 +1,25 @@
+import type { AnalyticsViewInput } from "@app/components/workspace/analytics/analyticsView";
+import { describeAnalyticsView } from "@app/components/workspace/analytics/analyticsView";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Hidden in the panel by its origin, so what the user sees first is @analyst's reply to it.
-const OPENING_MESSAGE = `<dust_system>
+function openingMessage(view: AnalyticsViewInput): string {
+  return `<dust_system>
 The user just opened the @analyst panel on the workspace Analytics page.
-Do NOT call any tools. Greet briefly and offer 2-3 example questions they could ask.
+
+What they have set up on the page right now:
+${describeAnalyticsView(view)}
+
+Do NOT call any tools. Greet briefly, naming the period they chose and, when they have any, each
+filter they applied by its name rather than as "the selected filters". Then offer 2-3 example
+questions that fit this exact setup.
 </dust_system>`;
+}
 
 /**
  * Creates and holds the single conversation for the Analytics conversation
@@ -21,12 +31,21 @@ Do NOT call any tools. Greet briefly and offer 2-3 example questions they could 
  * gate the first call on the panel being open, since it stays mounted while
  * closed.
  */
+/**
+ * @cc [owner:achilleburah,label:product] opening-message-snapshots-the-view
+ * The opening message embeds `view` as it stands when `startConversation` runs, and is never
+ * regenerated. Callers MUST NOT start while the filter's display names are still resolving,
+ * otherwise the greeting names raw identifiers for the whole life of the conversation. A later
+ * change to the view MUST reach the agent through a tool that reads it live.
+ */
 export function useAnalyticsConversation({
   owner,
   user,
+  view,
 }: {
   owner: WorkspaceType;
   user: UserType | null;
+  view: AnalyticsViewInput;
 }) {
   const sendNotification = useSendNotification();
 
@@ -36,6 +55,10 @@ export function useAnalyticsConversation({
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [creationFailed, setCreationFailed] = useState(false);
   const hasStartedRef = useRef(false);
+  const viewRef = useRef(view);
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
 
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner,
@@ -50,9 +73,11 @@ export function useAnalyticsConversation({
 
     setIsCreatingConversation(true);
 
+    const input = openingMessage(viewRef.current);
+
     const result = await createConversationWithMessage({
       messageData: {
-        input: OPENING_MESSAGE,
+        input,
         mentions: [{ configurationId: GLOBAL_AGENTS_SID.ANALYST }],
         contentFragments: { uploaded: [], contentNodes: [] },
         origin: "analytics_panel",
