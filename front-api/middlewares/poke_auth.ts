@@ -82,10 +82,10 @@ export const pokeAuth = createMiddleware<PokeCtx>(async (ctx, next) => {
     ctx.set("pokeRoles", pokeRoles);
     await next();
     return;
-  } else if (accessConfig && !accessToken) {
+  } else if (!accessToken) {
     if (!isDevelopment()) {
       logger.warn(
-        "[Poke Auth] Request missing Cloudflare Access token; rejececting request"
+        "[Poke Auth] Request missing Cloudflare Access token; rejecting request"
       );
     } else {
       logger.info(
