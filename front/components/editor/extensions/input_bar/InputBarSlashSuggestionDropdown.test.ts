@@ -245,6 +245,13 @@ describe("resolveSlashSubMenuFromQuery", () => {
       frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
       query: "fa",
     });
+    // A final word that only prefixes the label stays a query, so "m" still means medium.
+    expect(
+      resolveSlashSubMenuFromQuery({ commandItems, query: "pick m" })
+    ).toMatchObject({
+      frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
+      query: "m",
+    });
   });
 
   it("matches the head against command labels only", () => {

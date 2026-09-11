@@ -55,19 +55,25 @@ function getSlashCommandSubMenuId(item: SlashCommand): SlashSubMenuId | null {
 }
 
 // Number of leading query words that spell the label from `start`: the first word prefixes the
-// label word at `start`, each following word prefixes the next label word ("pick model").
+// label word at `start`; each following word must equal the next label word, or prefix it while
+// more words follow ("pick model gpt6", "pick mo fa"). A final "pick m" keeps "m" as the query.
 function countLabelWords(
   queryWords: string[],
   labelWords: string[],
   start: number
 ): number {
   let count = 0;
-  while (
-    count < queryWords.length &&
-    start + count < labelWords.length &&
-    queryWords[count].length > 0 &&
-    labelWords[start + count].startsWith(queryWords[count])
-  ) {
+  while (count < queryWords.length && start + count < labelWords.length) {
+    const queryWord = queryWords[count];
+    const labelWord = labelWords[start + count];
+    const isLastWord = count === queryWords.length - 1;
+    const matches =
+      count === 0 || !isLastWord
+        ? queryWord.length > 0 && labelWord.startsWith(queryWord)
+        : queryWord === labelWord;
+    if (!matches) {
+      break;
+    }
     count++;
   }
 
@@ -78,9 +84,10 @@ function countLabelWords(
  * @cc [owner:PopDaph,label:product] space-enters-first-sub-menu-command
  * A query containing a space resolves to the sub-menu of the first item of `commandItems` whose
  * label has a word (labels split on whitespace and hyphens) starting, case-insensitively, with
- * the text before the first space. Following query words that continue the label's words in
- * order belong to the command; the remaining text is the sub-menu query. It resolves to `null`
- * when the first text is empty, no label matches, or the first match is not a sub-menu command.
+ * the text before the first space. Following query words belong to the command while they spell
+ * the next label words exactly, or prefix them with more words after; the remaining text is the
+ * sub-menu query. It resolves to `null` when the first text is empty, no label matches, or the
+ * first match is not a sub-menu command.
  */
 export function resolveSlashSubMenuFromQuery({
   commandItems,
