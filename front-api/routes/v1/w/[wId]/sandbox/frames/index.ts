@@ -123,6 +123,9 @@ app.post(
   }
 );
 
-app.route("/:frameId{fil_[A-Za-z0-9]+}", frameById);
+// A plain param, not a regex-constrained one: Hono's RegExpRouter cannot merge `/:frameId{...}`
+// with the `/:frameId/call` sibling above and would silently downgrade the whole app to the trie
+// router. The id shape is validated in the sub-app instead.
+app.route("/:frameId", frameById);
 
 export default app;

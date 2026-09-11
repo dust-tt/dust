@@ -126,7 +126,7 @@ pub(crate) fn validate_frame_id(frame_id: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn print_response(response: &impl serde::Serialize) -> anyhow::Result<()> {
+pub(crate) fn print_response(response: &impl serde::Serialize) -> anyhow::Result<()> {
     println!("{}", serde_json::to_string(response)?);
     Ok(())
 }

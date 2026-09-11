@@ -189,9 +189,37 @@ describe("conversation sandbox Frame database access", () => {
         sandbox: context.sandbox,
         database: "tasks",
         sql: "UPDATE tasks SET done = 1 WHERE owner = 'me'",
-        resultMode: "inline_preview",
       }
     );
+  });
+
+  it("lets a userless conversation token reach its own conversation's Frame", async () => {
+    const context = await createSandboxTokenTestContext({
+      userlessToken: true,
+    });
+    await FeatureFlagFactory.basic(context.auth, "frames_v2");
+    const frame = await makeConversationFrame({
+      auth: context.auth,
+      workspaceId: context.workspace.sId,
+      conversationId: context.conversation.sId,
+    });
+    vi.mocked(ensureFrameSandboxReady).mockResolvedValue(
+      new Ok({
+        sandbox: context.sandbox,
+        freshlyCreated: false,
+        scope: { spaceId: null },
+      })
+    );
+    vi.mocked(listDatabasesOnReadySandbox).mockResolvedValue(new Ok([]));
+
+    const response = await requestFrameDatabases({
+      workspaceId: context.workspace.sId,
+      frameId: frame.sId,
+      token: context.token,
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ items: [] });
   });
 
   it("denies a same-workspace Frame whose source the caller cannot write", async () => {

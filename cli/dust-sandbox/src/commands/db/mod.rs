@@ -8,7 +8,6 @@
 //! root, NODE_PATH pointed at the image's global npm modules so `drizzle-kit`
 //! resolves at run time).
 
-use std::ffi::OsStr;
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
@@ -37,7 +36,7 @@ pub(crate) use super::function::emit_error;
 pub(crate) const POD_DATABASES_DIR_ENV: &str = "DUST_POD_DATABASES_DIR";
 pub(crate) const DEFAULT_POD_DATABASES_DIR: &str = "/sandbox-state/databases";
 const CONVERSATION_ID_ENV: &str = "CONVERSATION_ID";
-const FRAME_ID_ENV: &str = "FRAME_ID";
+const NO_LOCAL_DATABASES_MESSAGE: &str = "conversation sandboxes have no local databases";
 
 #[derive(Subcommand)]
 pub enum DbCommand {
@@ -77,70 +76,49 @@ pub(crate) enum DbExecutionTarget<'a> {
     RemoteFrame(&'a str),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum SandboxOwner {
-    Conversation,
-    Frame,
-    Unknown,
-    Invalid,
-}
-
-fn is_nonempty_marker(value: Option<&OsStr>) -> bool {
-    value.is_some_and(|value| !value.is_empty())
-}
-
-pub(crate) fn sandbox_owner_from_markers(
-    conversation_id: Option<&OsStr>,
-    frame_id: Option<&OsStr>,
-) -> SandboxOwner {
-    match (
-        is_nonempty_marker(conversation_id),
-        is_nonempty_marker(frame_id),
-    ) {
-        (true, false) => SandboxOwner::Conversation,
-        (false, true) => SandboxOwner::Frame,
-        (false, false) => SandboxOwner::Unknown,
-        (true, true) => SandboxOwner::Invalid,
-    }
-}
-
-fn current_sandbox_owner() -> SandboxOwner {
-    sandbox_owner_from_markers(
-        std::env::var_os(CONVERSATION_ID_ENV).as_deref(),
-        std::env::var_os(FRAME_ID_ENV).as_deref(),
-    )
+/// Front sets `CONVERSATION_ID` on conversation-owned sandboxes only (see
+/// `getSandboxOwnerEnvVars` in front/lib/api/sandbox/owner.ts).
+fn in_conversation_sandbox() -> bool {
+    std::env::var_os(CONVERSATION_ID_ENV).is_some_and(|value| !value.is_empty())
 }
 
 /**
  * @cc [owner:davidebbo,label:product] frame-target-only-from-conversation
- * `--frame` MUST be accepted only when `CONVERSATION_ID` is the sole sandbox owner marker. A
- * conversation sandbox without `--frame` MUST fail instead of inspecting its empty local database
- * directory, while a Frame sandbox without `--frame` MUST keep using its local databases.
+ * `--frame` MUST be accepted only in a conversation sandbox (`CONVERSATION_ID` set). A conversation
+ * sandbox without `--frame` MUST fail instead of inspecting its empty local database directory;
+ * any other sandbox MUST keep using its local databases.
  */
-pub(crate) fn resolve_execution_target<'a>(
-    requested_frame_id: Option<&'a str>,
-    sandbox_owner: SandboxOwner,
-) -> Result<DbExecutionTarget<'a>> {
-    match (requested_frame_id, sandbox_owner) {
-        (Some(frame_id), SandboxOwner::Conversation) => {
+pub(crate) fn resolve_execution_target(
+    requested_frame_id: Option<&str>,
+    in_conversation: bool,
+) -> Result<DbExecutionTarget<'_>> {
+    match (requested_frame_id, in_conversation) {
+        (Some(frame_id), true) => {
             validate_frame_id(frame_id)?;
             Ok(DbExecutionTarget::RemoteFrame(frame_id))
         }
-        (Some(_), SandboxOwner::Frame | SandboxOwner::Unknown | SandboxOwner::Invalid) => Err(
-            anyhow!("--frame can only be used from a conversation sandbox"),
-        ),
-        (None, SandboxOwner::Conversation) => Err(anyhow!(
-            "conversation sandboxes have no local Frame databases; pass --frame <frame-id>"
+        (Some(_), false) => Err(anyhow!(
+            "--frame can only be used from a conversation sandbox"
         )),
-        (None, SandboxOwner::Invalid) => Err(anyhow!(
-            "invalid sandbox environment: CONVERSATION_ID and FRAME_ID are both set"
+        (None, true) => Err(anyhow!(
+            "{NO_LOCAL_DATABASES_MESSAGE}; pass --frame <frame-id>"
         )),
-        (None, SandboxOwner::Frame | SandboxOwner::Unknown) => Ok(DbExecutionTarget::Local),
+        (None, false) => Ok(DbExecutionTarget::Local),
     }
 }
 
+/// Resolve where `db list` / `db query` run, emitting the stdout error envelope on failure.
 pub(crate) fn execution_target(frame_id: Option<&str>) -> Result<DbExecutionTarget<'_>> {
-    resolve_execution_target(frame_id, current_sandbox_owner())
+    resolve_execution_target(frame_id, in_conversation_sandbox()).map_err(emit_error)
+}
+
+/// Guard for the local-only subcommands (`reconcile`, `schema`): a conversation sandbox has no
+/// databases of its own, so creating one there would leave it invisible to `db list`.
+pub(crate) fn require_local_databases() -> Result<()> {
+    if in_conversation_sandbox() {
+        return Err(emit_error(anyhow!(NO_LOCAL_DATABASES_MESSAGE)));
+    }
+    Ok(())
 }
 
 /// The configured pod databases directory, falling back to the image constant.
@@ -247,49 +225,20 @@ mod tests {
     #[test]
     fn routes_frame_targets_only_from_conversation_sandboxes() {
         assert_eq!(
-            resolve_execution_target(Some("fil_abc123"), SandboxOwner::Conversation)
+            resolve_execution_target(Some("fil_abc123"), true)
                 .expect("conversation sandbox may target a Frame"),
             DbExecutionTarget::RemoteFrame("fil_abc123")
         );
-        assert!(resolve_execution_target(Some("fil_abc123"), SandboxOwner::Frame).is_err());
-        assert!(resolve_execution_target(Some("fil_abc123"), SandboxOwner::Unknown).is_err());
-        assert!(resolve_execution_target(Some("fil_abc123"), SandboxOwner::Invalid).is_err());
+        assert!(resolve_execution_target(Some("fil_abc123"), false).is_err());
+        assert!(resolve_execution_target(Some("not-a-frame"), true).is_err());
     }
 
     #[test]
     fn requires_frame_target_in_conversation_sandboxes() {
-        assert!(resolve_execution_target(None, SandboxOwner::Conversation).is_err());
+        assert!(resolve_execution_target(None, true).is_err());
         assert_eq!(
-            resolve_execution_target(None, SandboxOwner::Frame)
-                .expect("Frame sandbox uses its local databases"),
+            resolve_execution_target(None, false).expect("other sandboxes use local databases"),
             DbExecutionTarget::Local
-        );
-        assert_eq!(
-            resolve_execution_target(None, SandboxOwner::Unknown)
-                .expect("host invocation keeps local behavior"),
-            DbExecutionTarget::Local
-        );
-    }
-
-    #[test]
-    fn detects_reserved_sandbox_owner_markers() {
-        use std::ffi::OsStr;
-
-        assert_eq!(
-            sandbox_owner_from_markers(Some(OsStr::new("conv_123")), None),
-            SandboxOwner::Conversation
-        );
-        assert_eq!(
-            sandbox_owner_from_markers(None, Some(OsStr::new("fil_123"))),
-            SandboxOwner::Frame
-        );
-        assert_eq!(
-            sandbox_owner_from_markers(Some(OsStr::new("")), None),
-            SandboxOwner::Unknown
-        );
-        assert_eq!(
-            sandbox_owner_from_markers(Some(OsStr::new("conv_123")), Some(OsStr::new("fil_123"))),
-            SandboxOwner::Invalid
         );
     }
 }

@@ -194,41 +194,6 @@ describe("listDatabasesOnReadySandbox", () => {
 });
 
 describe("queryDatabaseOnReadySandbox", () => {
-  it("uses sandbox scratch space for large results by default", async () => {
-    const { authenticator, sandbox } = await setup();
-    vi.spyOn(sandbox, "exec").mockResolvedValue(
-      new Ok({
-        exitCode: 0,
-        stdout: JSON.stringify({
-          ok: true,
-          columns: ["id"],
-          rows: [{ id: 1 }],
-          row_count: 1,
-          changes: null,
-          results_file: null,
-          note: null,
-        }),
-        stderr: "",
-      })
-    );
-
-    await queryDatabaseOnReadySandbox(authenticator, {
-      sandbox,
-      database: "tasks",
-      sql: "SELECT id FROM tasks",
-    });
-
-    expect(sandbox.exec).toHaveBeenCalledWith(
-      authenticator,
-      expect.stringContaining("db query -- 'tasks'"),
-      expect.objectContaining({
-        envVars: expect.objectContaining({
-          DUST_POD_QUERY_SPILL_DIR: "/tmp/dust-sandbox-db-query-results",
-        }),
-      })
-    );
-  });
-
   it("runs a data-changing statement against the supplied owner sandbox", async () => {
     const { authenticator, sandbox } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
@@ -251,7 +216,6 @@ describe("queryDatabaseOnReadySandbox", () => {
       sandbox,
       database: "tasks",
       sql: "UPDATE tasks SET done = 1 WHERE owner = 'me'",
-      resultMode: "inline_preview",
     });
 
     expect(result.isOk() && result.value).toEqual({
@@ -266,7 +230,6 @@ describe("queryDatabaseOnReadySandbox", () => {
       authenticator,
       expect.stringContaining("db query -- 'tasks'"),
       expect.objectContaining({
-        envVars: expect.objectContaining({ DUST_DB_QUERY_INLINE_ONLY: "1" }),
         stdin: "UPDATE tasks SET done = 1 WHERE owner = 'me'",
         user: "agent-proxied",
       })

@@ -5,9 +5,7 @@ import {
   loadFramePublicationDescriptor,
   readFramePublicationFunctionBundle,
 } from "@app/lib/api/frames/publication_storage";
-import { ensureFrameSandboxReady } from "@app/lib/api/sandbox/lifecycle";
-import { listDatabasesOnReadySandbox } from "@app/lib/api/sandbox_functions/dsbx_db";
-import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
+import type { LiveDatabaseEntry } from "@app/lib/api/sandbox_functions/dsbx_db";
 import type { Authenticator } from "@app/lib/auth";
 import filestorageConfig from "@app/lib/file_storage/config";
 import { makeGcsConsoleUrl, makeGcsUri } from "@app/lib/poke/gcs";
@@ -29,7 +27,6 @@ import type {
 } from "@app/types/files";
 import type { PokeSandboxType } from "@app/types/poke";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
@@ -370,46 +367,8 @@ export async function getFrameFunctionSource(
 // Mirrors `LiveDatabaseEntry` from the sandbox-functions layer, but declared here so client code
 // (the SWR hook, the table component) never imports that server-internal module (see
 // `PokePodDatabase` in `lib/api/poke/projects.ts` for the same pattern on the pod side).
-export type PokeFrameDatabase = {
-  name: string;
-  sizeBytes: number;
-};
+export type PokeFrameDatabase = LiveDatabaseEntry;
 
 export type PokeListFrameDatabases = {
   items: PokeFrameDatabase[];
 };
-
-/**
- * There is no database-backed record of a Frame's databases: the only source of truth is the live
- * `{db}.db` files in the Frame sandbox, so this wakes (or cold starts) it. Poke fetches it on
- * explicit user action only.
- */
-export async function listFrameDatabases(
-  auth: Authenticator,
-  frame: FileResource
-): Promise<Result<PokeFrameDatabase[], SandboxFunctionError>> {
-  const ensureResult = await ensureFrameSandboxReady(auth, frame);
-  if (ensureResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError(
-        "sandbox_unavailable",
-        ensureResult.error.message
-      )
-    );
-  }
-
-  const databasesResult = await listDatabasesOnReadySandbox(
-    auth,
-    ensureResult.value.sandbox
-  );
-  if (databasesResult.isErr()) {
-    return databasesResult;
-  }
-
-  return new Ok(
-    databasesResult.value.map((entry) => ({
-      name: entry.name,
-      sizeBytes: entry.sizeBytes,
-    }))
-  );
-}

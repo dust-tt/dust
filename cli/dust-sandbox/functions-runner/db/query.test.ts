@@ -115,7 +115,7 @@ describe("db query", () => {
       db.close();
 
       const result = unwrap(
-        runQuery(dbPath, "SELECT label FROM notes ORDER BY id")
+        runQuery(dbPath, "SELECT label FROM notes ORDER BY id", undefined, dir)
       );
       expect(result.rows.length).toBe(QUERY_INLINE_ROW_CAP);
       expect(result.row_count).toBe(QUERY_INLINE_ROW_CAP + 1);
@@ -136,7 +136,7 @@ describe("db query", () => {
     });
   });
 
-  test("can return only a preview without creating an inaccessible spill file", async () => {
+  test("keeps only a preview when no spill directory is given", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "notes.db");
       unwrap(await reconcile(dbPath, fx("notes.db.ts")));
@@ -150,7 +150,7 @@ describe("db query", () => {
       db.close();
 
       const result = unwrap(
-        runQuery(dbPath, "SELECT label FROM notes ORDER BY id", undefined, null)
+        runQuery(dbPath, "SELECT label FROM notes ORDER BY id")
       );
       expect(result.rows.length).toBe(QUERY_INLINE_ROW_CAP);
       expect(result.row_count).toBe(QUERY_INLINE_ROW_CAP + 1);
@@ -159,7 +159,7 @@ describe("db query", () => {
     });
   });
 
-  test("remote previews never skip an oversized row and include later rows", async () => {
+  test("a preview never skips an oversized row to include later rows", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "notes.db");
       unwrap(await reconcile(dbPath, fx("notes.db.ts")));
@@ -171,7 +171,7 @@ describe("db query", () => {
       db.close();
 
       const result = unwrap(
-        runQuery(dbPath, "SELECT label FROM notes ORDER BY id", undefined, null)
+        runQuery(dbPath, "SELECT label FROM notes ORDER BY id")
       );
       expect(result.rows).toEqual([{ label: "first" }]);
       expect(result.row_count).toBe(3);
@@ -354,7 +354,7 @@ describe("db query", () => {
       db.close();
 
       const result = unwrap(
-        runQuery(dbPath, "SELECT label FROM notes ORDER BY id")
+        runQuery(dbPath, "SELECT label FROM notes ORDER BY id", undefined, dir)
       );
       expect(result.rows.length).toBe(1);
       expect(result.row_count).toBe(3);
@@ -467,7 +467,7 @@ describe("runner db-query envelope", () => {
     });
   });
 
-  test("db-query keeps large remote results inline as a preview", async () => {
+  test("db-query keeps large results inline as a preview without a spill dir", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "notes.db");
       await run(["db-reconcile", dbPath, fx("notes.db.ts")]);
@@ -482,8 +482,7 @@ describe("runner db-query envelope", () => {
 
       const { stdout, code } = await run(
         ["db-query", dbPath],
-        "SELECT label FROM notes ORDER BY id",
-        { DUST_DB_QUERY_INLINE_ONLY: "1" }
+        "SELECT label FROM notes ORDER BY id"
       );
 
       expect(code).toBe(0);
