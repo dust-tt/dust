@@ -1,8 +1,8 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { AllowSlackWorkflowDialog } from "@app/components/workspace/analytics/automations/AllowSlackWorkflowDialog";
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
-import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
-import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
+import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
+import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import { useSlackWorkflowsOverview } from "@app/hooks/useSlackWorkflowsOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
@@ -276,7 +276,7 @@ interface SlackWorkflowsTableBodyProps {
 function SlackWorkflowSkeletonCell({
   columnId,
   rowIndex,
-}: UsageTableSkeletonCellProps) {
+}: TableSkeletonCellProps) {
   switch (columnId) {
     case "botName":
       return (
@@ -319,7 +319,7 @@ function SlackWorkflowsTableBody({
   if (isLoading) {
     return (
       <div className="flex flex-col gap-2 overflow-x-auto">
-        <UsageTableSkeleton
+        <TableSkeleton
           columns={columns}
           SkeletonCell={SlackWorkflowSkeletonCell}
         />

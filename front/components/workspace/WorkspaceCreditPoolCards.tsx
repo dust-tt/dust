@@ -1,6 +1,6 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
-import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
-import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
+import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
+import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
@@ -200,7 +200,7 @@ const CYCLE_HISTORY_COLUMNS: ColumnDef<CycleHistoryRowData, string>[] = [
 export const INITIAL_CYCLE_HISTORY_ROW_COUNT = 2;
 export const CYCLE_HISTORY_LOAD_MORE_COUNT = 5;
 
-function CycleHistorySkeletonCell({ columnId }: UsageTableSkeletonCellProps) {
+function CycleHistorySkeletonCell({ columnId }: TableSkeletonCellProps) {
   switch (columnId) {
     case "cycle":
       return <LoadingBlock className="h-3 w-56 max-w-full" />;
@@ -272,7 +272,7 @@ function WorkspaceCreditPoolHistory({
     case "loading":
       return (
         <div className="flex flex-col gap-2">
-          <UsageTableSkeleton
+          <TableSkeleton
             columns={CYCLE_HISTORY_COLUMNS}
             SkeletonCell={CycleHistorySkeletonCell}
             rowCount={INITIAL_CYCLE_HISTORY_ROW_COUNT}

@@ -1,6 +1,6 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
-import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
-import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
+import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
+import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -340,10 +340,7 @@ interface SecretsTableProps {
   searchQuery: string;
 }
 
-function SecretSkeletonCell({
-  columnId,
-  rowIndex,
-}: UsageTableSkeletonCellProps) {
+function SecretSkeletonCell({ columnId, rowIndex }: TableSkeletonCellProps) {
   switch (columnId) {
     case "name":
       return (
@@ -373,7 +370,7 @@ function SecretsTable({
 }: SecretsTableProps) {
   if (isLoading) {
     return (
-      <UsageTableSkeleton columns={columns} SkeletonCell={SecretSkeletonCell} />
+      <TableSkeleton columns={columns} SkeletonCell={SecretSkeletonCell} />
     );
   }
 

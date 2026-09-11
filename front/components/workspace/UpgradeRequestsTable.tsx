@@ -2,8 +2,8 @@ import {
   buildMemberNameColumn,
   MemberNameSkeleton,
 } from "@app/components/workspace/member_name_column";
-import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
-import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
+import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
+import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { timeAgoFrom } from "@app/lib/utils";
 import type {
@@ -39,7 +39,7 @@ type Info = CellContext<RowData, string>;
 function UpgradeRequestSkeletonCell({
   columnId,
   rowIndex,
-}: UsageTableSkeletonCellProps) {
+}: TableSkeletonCellProps) {
   switch (columnId) {
     case "name":
       return <MemberNameSkeleton rowIndex={rowIndex} />;
@@ -234,7 +234,7 @@ export function UpgradeRequestsTable({
 
   if (isLoading) {
     return (
-      <UsageTableSkeleton
+      <TableSkeleton
         columns={columns}
         SkeletonCell={UpgradeRequestSkeletonCell}
       />

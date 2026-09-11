@@ -1,5 +1,5 @@
-import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
-import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
+import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
+import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
@@ -47,10 +47,7 @@ import { useMemo, useState } from "react";
 const API_KEYS_PAGE_SIZE = 10;
 const MAX_API_KEY_CONSUMPTION_ROWS = 100;
 
-function APIKeySkeletonCell({
-  columnId,
-  rowIndex,
-}: UsageTableSkeletonCellProps) {
+function APIKeySkeletonCell({ columnId, rowIndex }: TableSkeletonCellProps) {
   switch (columnId) {
     case "name":
       return (
@@ -750,7 +747,7 @@ export function APIKeysTable({
 
       {isLoading || isSpacesLoading ? (
         <>
-          <UsageTableSkeleton
+          <TableSkeleton
             columns={columns}
             SkeletonCell={APIKeySkeletonCell}
             rowHeight={64}

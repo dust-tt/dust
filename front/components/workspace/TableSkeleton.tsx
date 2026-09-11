@@ -7,24 +7,24 @@ import {
 } from "@tanstack/react-table";
 import type { ComponentType } from "react";
 
-export interface UsageTableSkeletonCellProps {
+export interface TableSkeletonCellProps {
   columnId: string;
   rowIndex: number;
 }
 
-interface UsageTableSkeletonProps<TData, TValue> {
+interface TableSkeletonProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
-  SkeletonCell: ComponentType<UsageTableSkeletonCellProps>;
+  SkeletonCell: ComponentType<TableSkeletonCellProps>;
   rowCount?: number;
   rowHeight?: number;
 }
 
-export function UsageTableSkeleton<TData, TValue = string>({
+export function TableSkeleton<TData, TValue = string>({
   columns,
   SkeletonCell,
   rowCount = 5,
   rowHeight = 48,
-}: UsageTableSkeletonProps<TData, TValue>) {
+}: TableSkeletonProps<TData, TValue>) {
   const table = useReactTable({
     data: [],
     columns,

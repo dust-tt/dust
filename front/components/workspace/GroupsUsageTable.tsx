@@ -1,8 +1,8 @@
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupSpendLimitCell } from "@app/components/workspace/GroupSpendLimitCell";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
-import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
-import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
+import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
+import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -26,7 +26,7 @@ type GroupRowData = {
 
 type GroupInfo = CellContext<GroupRowData, string>;
 
-function GroupUsageSkeletonCell({ columnId }: UsageTableSkeletonCellProps) {
+function GroupUsageSkeletonCell({ columnId }: TableSkeletonCellProps) {
   switch (columnId) {
     case "name":
       return (
@@ -151,7 +151,7 @@ export function GroupsUsageTable({
         </span>
       )}
       {isGroupsLoading ? (
-        <UsageTableSkeleton
+        <TableSkeleton
           columns={columns}
           SkeletonCell={GroupUsageSkeletonCell}
           rowHeight={49}

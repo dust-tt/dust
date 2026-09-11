@@ -4,8 +4,8 @@ import {
   normalizeDisplayRole,
   ROLES_DATA,
 } from "@app/components/members/Roles";
-import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
-import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
+import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
+import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
@@ -32,7 +32,7 @@ type RowData = MembershipInvitationType & {
 function InvitationSkeletonCell({
   columnId,
   rowIndex,
-}: UsageTableSkeletonCellProps) {
+}: TableSkeletonCellProps) {
   switch (columnId) {
     case "inviteEmail":
       return (
@@ -167,7 +167,7 @@ export function InvitationsList({
       />
       <div className="flex flex-col gap-1 pt-2">
         {isInvitationsLoading && (
-          <UsageTableSkeleton
+          <TableSkeleton
             columns={columns}
             SkeletonCell={InvitationSkeletonCell}
             rowCount={3}
