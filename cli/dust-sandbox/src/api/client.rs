@@ -246,8 +246,8 @@ impl DustApiClient {
         sql: &str,
     ) -> anyhow::Result<FrameDatabaseQueryResponse> {
         self.post_with_timeout(
-            &format!("sandbox/frames/{frame_id}/databases"),
-            &FrameDatabaseQueryRequest { database, sql },
+            &format!("sandbox/frames/{frame_id}/databases/{database}/query"),
+            &FrameDatabaseQueryRequest { sql },
             POLL_MAX_DURATION,
         )
         .await

@@ -20,7 +20,6 @@ pub struct FrameDatabaseListResponse {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FrameDatabaseQueryRequest<'a> {
-    pub database: &'a str,
     pub sql: &'a str,
 }
 
