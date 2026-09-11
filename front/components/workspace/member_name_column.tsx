@@ -1,5 +1,9 @@
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
-import { cn, DataTable, LoadingBlock } from "@dust-tt/sparkle";
+import {
+  AvatarCellSkeleton,
+  DataTable,
+  TextCellSkeleton,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
 // The minimal row shape the name column needs.
@@ -15,18 +19,12 @@ interface MemberNameSkeletonProps {
 
 export function MemberNameSkeleton({ rowIndex }: MemberNameSkeletonProps) {
   return (
-    <div className="flex h-9 min-w-0 items-center gap-2">
-      <LoadingBlock className="h-7 w-7 shrink-0 rounded-full" />
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <LoadingBlock
-          className={cn(
-            "h-3 max-w-full",
-            ["w-28", "w-36", "w-24", "w-40", "w-32"][rowIndex % 5]
-          )}
-        />
-        <LoadingBlock className="h-3 w-40 max-w-full" />
-      </div>
-    </div>
+    <AvatarCellSkeleton rounded className="h-9">
+      <TextCellSkeleton
+        className={["w-28", "w-36", "w-24", "w-40", "w-32"][rowIndex % 5]}
+      />
+      <TextCellSkeleton className="w-40" />
+    </AvatarCellSkeleton>
   );
 }
 

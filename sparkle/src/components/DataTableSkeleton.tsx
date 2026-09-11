@@ -19,7 +19,7 @@ export interface DataTableSkeletonCellProps {
 export interface DataTableSkeletonProps<TData, TValue = string> {
   /** Reuse the loaded table columns, including header alignment and width classes. */
   columns: ColumnDef<TData, TValue>[];
-  /** Required cell renderer: compose LoadingBlocks to match each column's content. */
+  /** Required cell renderer: compose cell skeleton primitives to match each column's content. */
   SkeletonCell: ComponentType<DataTableSkeletonCellProps>;
   /** Number of placeholder rows. Defaults to 5. */
   rowCount?: number;
@@ -29,8 +29,9 @@ export interface DataTableSkeletonProps<TData, TValue = string> {
 
 /**
  * A loading table that reuses the loaded table's column definitions and requires
- * a custom SkeletonCell renderer. Compose LoadingBlocks for each column to match
- * its real content, such as circular avatars, badges, or multiple text lines.
+ * a custom SkeletonCell renderer. Keep that renderer alongside the table's columns
+ * and compose TextCellSkeleton, AvatarCellSkeleton, or ChipCellSkeleton to match
+ * their contents. Use LoadingBlock for other shapes or more specialized layouts.
  */
 export function DataTableSkeleton<TData, TValue = string>({
   columns,
