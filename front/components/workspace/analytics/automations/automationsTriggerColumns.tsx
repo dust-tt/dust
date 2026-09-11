@@ -19,6 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  cn,
   DataTable,
   DropdownMenu,
   DropdownMenuContent,
@@ -106,9 +107,14 @@ export function nameColumn<T extends TriggerRowData>(): ColumnDef<T> {
 
 interface AgentCellProps {
   agent: AutomationTriggerRow["agent"];
+  onClick?: () => void;
 }
 
-function AgentCell({ agent }: AgentCellProps) {
+/**
+ * @cc [owner:aubin-tchoi,label:product] agent-click-does-not-expand-row
+ * When onClick is provided, activating the agent must invoke it without activating the table row.
+ */
+function AgentCell({ agent, onClick }: AgentCellProps) {
   const content = (
     <div className="min-w-0">
       <AvatarNameCell
@@ -119,8 +125,28 @@ function AgentCell({ agent }: AgentCellProps) {
     </div>
   );
 
+  const interactiveContent = onClick ? (
+    <button
+      type="button"
+      className={cn(
+        "inline-flex min-h-11 min-w-11 max-w-full cursor-pointer items-center rounded-sm text-left",
+        "outline-hidden ring-offset-background",
+        "pointer-fine:hover:underline",
+        "focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
+      )}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+    >
+      {content}
+    </button>
+  ) : (
+    content
+  );
+
   if (!agent.description) {
-    return content;
+    return interactiveContent;
   }
 
   return (
@@ -142,7 +168,7 @@ function AgentCell({ agent }: AgentCellProps) {
       }
       className="p-3"
       tooltipTriggerAsChild
-      trigger={content}
+      trigger={interactiveContent}
     />
   );
 }
@@ -155,7 +181,10 @@ export function agentColumn<T extends TriggerRowData>(): ColumnDef<T> {
     meta: { className: "w-44", headerAlign: "left" },
     cell: (info) => (
       <DataTable.CellContent className="w-full justify-start">
-        <AgentCell agent={info.row.original.agent} />
+        <AgentCell
+          agent={info.row.original.agent}
+          onClick={info.row.original.onAgentClick}
+        />
       </DataTable.CellContent>
     ),
   };

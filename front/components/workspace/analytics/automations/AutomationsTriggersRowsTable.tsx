@@ -29,6 +29,7 @@ const NO_ROW_SELECTION: RowSelectionState = {};
 
 export type TriggerRowData = AutomationTriggerRow & {
   onClick: () => void;
+  onAgentClick?: () => void;
 };
 
 interface TriggerSkeletonCellProps {
