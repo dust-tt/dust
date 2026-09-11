@@ -20,7 +20,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { describe, expect, it } from "vitest";
 
-describe("Dust Unplugged", () => {
+describe("Dust Lean", () => {
   it("requires its feature flag for listing and direct fetches", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const listedBefore = await getGlobalAgents(
@@ -29,24 +29,24 @@ describe("Dust Unplugged", () => {
       "light"
     );
     const fetchedBefore = await getGlobalAgents(authenticator, [
-      GLOBAL_AGENTS_SID.DUST_UNPLUGGED,
+      GLOBAL_AGENTS_SID.DUST_LEAN,
     ]);
     expect(listedBefore.map((agent) => agent.sId)).not.toContain(
-      GLOBAL_AGENTS_SID.DUST_UNPLUGGED
+      GLOBAL_AGENTS_SID.DUST_LEAN
     );
     expect(fetchedBefore).toEqual([]);
 
-    await FeatureFlagFactory.basic(authenticator, "dust_unplugged_agent");
+    await FeatureFlagFactory.basic(authenticator, "dust_lean_agent");
     const listedAfter = await getGlobalAgents(
       authenticator,
       undefined,
       "light"
     );
     const fetchedAfter = await getGlobalAgents(authenticator, [
-      GLOBAL_AGENTS_SID.DUST_UNPLUGGED,
+      GLOBAL_AGENTS_SID.DUST_LEAN,
     ]);
     expect(listedAfter.map((agent) => agent.sId)).toContain(
-      GLOBAL_AGENTS_SID.DUST_UNPLUGGED
+      GLOBAL_AGENTS_SID.DUST_LEAN
     );
     expect(fetchedAfter).toHaveLength(1);
   });
@@ -56,16 +56,16 @@ describe("Dust Unplugged", () => {
     "full",
   ] as const)("uses Dust's model with no configured capabilities (%s)", async (variant) => {
     const { authenticator } = await createResourceTest({ role: "admin" });
-    await FeatureFlagFactory.basic(authenticator, "dust_unplugged_agent");
-    const [dust, unplugged] = await getGlobalAgents(
+    await FeatureFlagFactory.basic(authenticator, "dust_lean_agent");
+    const [dust, lean] = await getGlobalAgents(
       authenticator,
-      [GLOBAL_AGENTS_SID.DUST, GLOBAL_AGENTS_SID.DUST_UNPLUGGED],
+      [GLOBAL_AGENTS_SID.DUST, GLOBAL_AGENTS_SID.DUST_LEAN],
       variant
     );
-    expect(unplugged.model).toEqual(dust.model);
-    expect(unplugged).toMatchObject({
-      sId: GLOBAL_AGENTS_SID.DUST_UNPLUGGED,
-      name: "dust-unplugged",
+    expect(lean.model).toEqual(dust.model);
+    expect(lean).toMatchObject({
+      sId: GLOBAL_AGENTS_SID.DUST_LEAN,
+      name: "dust-lean",
       status: "active",
       actions: [],
       codeDefinedSkillIds: [],
@@ -74,12 +74,12 @@ describe("Dust Unplugged", () => {
     });
 
     await upsertGlobalAgentSettings(authenticator, {
-      agentId: GLOBAL_AGENTS_SID.DUST_UNPLUGGED,
+      agentId: GLOBAL_AGENTS_SID.DUST_LEAN,
       status: "disabled_by_admin",
     });
     const [disabled] = await getGlobalAgents(
       authenticator,
-      [GLOBAL_AGENTS_SID.DUST_UNPLUGGED],
+      [GLOBAL_AGENTS_SID.DUST_LEAN],
       variant
     );
     expect(disabled.status).toBe("disabled_by_admin");
@@ -91,11 +91,11 @@ describe("Dust Unplugged", () => {
     const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",
     });
-    await FeatureFlagFactory.basic(authenticator, "dust_unplugged_agent");
+    await FeatureFlagFactory.basic(authenticator, "dust_lean_agent");
     await FeatureFlagFactory.basic(authenticator, "user_memory");
     await MCPServerViewResource.ensureAllAutoToolsAreCreated(authenticator);
-    const [unplugged] = await getGlobalAgents(authenticator, [
-      GLOBAL_AGENTS_SID.DUST_UNPLUGGED,
+    const [lean] = await getGlobalAgents(authenticator, [
+      GLOBAL_AGENTS_SID.DUST_LEAN,
     ]);
 
     const autoViews =
@@ -117,12 +117,12 @@ describe("Dust Unplugged", () => {
     });
     await metadata.setDefaultSkills([skill]);
     const conversation = await ConversationFactory.create(authenticator, {
-      agentConfigurationId: unplugged.sId,
+      agentConfigurationId: lean.sId,
       messagesCreatedAt: [],
       spaceId: pod.id,
     });
     const initialSkills = await SkillResource.listForAgentLoop(authenticator, {
-      agentConfiguration: unplugged,
+      agentConfiguration: lean,
       conversation,
     });
     expect(initialSkills).toEqual({
@@ -134,7 +134,7 @@ describe("Dust Unplugged", () => {
       favoriteSkills: [],
     });
     const initialJitServers = await getJITServers(authenticator, {
-      agentConfiguration: unplugged,
+      agentConfiguration: lean,
       conversation,
       attachments: [],
     });
@@ -159,7 +159,7 @@ describe("Dust Unplugged", () => {
     expect(attached.isOk()).toBe(true);
 
     const skills = await SkillResource.listForAgentLoop(authenticator, {
-      agentConfiguration: unplugged,
+      agentConfiguration: lean,
       conversation,
     });
     expect(skills.enabledSkills.map((s) => s.sId)).toEqual([skill.sId]);
@@ -168,14 +168,14 @@ describe("Dust Unplugged", () => {
     expect(skills.favoriteSkills).toEqual([]);
     const { skillServers, systemSkillServers } = await resolveSkillMCPServers(
       authenticator,
-      { agentConfiguration: unplugged, conversation }
+      { agentConfiguration: lean, conversation }
     );
     expect(skillServers).toEqual([
       expect.objectContaining({ mcpServerViewId: view.sId }),
     ]);
     expect(systemSkillServers).toEqual([]);
     const jitServers = await getJITServers(authenticator, {
-      agentConfiguration: unplugged,
+      agentConfiguration: lean,
       conversation,
       attachments: [],
     });
@@ -185,7 +185,7 @@ describe("Dust Unplugged", () => {
 
     const { agentMessage } = await ConversationFactory.createAgentMessage(
       authenticator,
-      { workspace, conversation, agentConfig: unplugged }
+      { workspace, conversation, agentConfig: lean }
     );
     const { userMessage } = await ConversationFactory.createUserMessage({
       auth: authenticator,
@@ -197,7 +197,7 @@ describe("Dust Unplugged", () => {
     const tools = await tryListMCPTools(
       authenticator,
       {
-        agentConfiguration: unplugged,
+        agentConfiguration: lean,
         conversation,
         agentMessage,
         userMessage,
@@ -212,11 +212,11 @@ describe("Dust Unplugged", () => {
     expect(tools.flatMap((s) => s.tools)).not.toHaveLength(0);
 
     const prompt = constructPromptMultiActions(authenticator, {
-      agentConfiguration: unplugged,
+      agentConfiguration: lean,
       userMessage,
       modelInfo: {
         endpoint: getTestStreamEndpoint("gpt-5"),
-        temperature: unplugged.model.temperature,
+        temperature: lean.model.temperature,
       },
       conversation,
       hasAvailableActions: false,
@@ -233,11 +233,11 @@ describe("Dust Unplugged", () => {
     expect(promptText).not.toContain("enable_skill");
 
     const promptWithTools = constructPromptMultiActions(authenticator, {
-      agentConfiguration: unplugged,
+      agentConfiguration: lean,
       userMessage,
       modelInfo: {
         endpoint: getTestStreamEndpoint("gpt-5"),
-        temperature: unplugged.model.temperature,
+        temperature: lean.model.temperature,
       },
       conversation,
       hasAvailableActions: true,

@@ -1,7 +1,7 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
-  dust_unplugged_agent: {
+  dust_lean_agent: {
     description:
-      "Enable @dust-unplugged, a Dust agent that starts without tools, skills, or company knowledge",
+      "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
     stage: "dust_only",
     owner: "aubin-tchoi",
   },

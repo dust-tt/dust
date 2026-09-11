@@ -43,6 +43,7 @@ import {
   _getDustKimiGlobalAgent,
   _getDustKimiHighGlobalAgent,
   _getDustKimiMediumGlobalAgent,
+  _getDustLeanGlobalAgent,
   _getDustLightGlobalAgent,
   _getDustLionelGlobalAgent,
   _getDustLionelHighGlobalAgent,
@@ -68,7 +69,6 @@ import {
   _getDustPistacheMediumGlobalAgent,
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
-  _getDustUnpluggedGlobalAgent,
   _getRetiredDustLikeGlobalAgent,
   getCustomModelDustGlobalAgentIndex,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
@@ -382,8 +382,8 @@ function getGlobalAgent({
         preferSonnet5DefaultModel,
       });
       break;
-    case GLOBAL_AGENTS_SID.DUST_UNPLUGGED:
-      agentConfiguration = _getDustUnpluggedGlobalAgent(auth, {
+    case GLOBAL_AGENTS_SID.DUST_LEAN:
+      agentConfiguration = _getDustLeanGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
         mcpServerViews,
@@ -1074,9 +1074,9 @@ export async function getGlobalAgents(
 
   const flags = await getFeatureFlags(auth);
 
-  if (!flags.includes("dust_unplugged_agent")) {
+  if (!flags.includes("dust_lean_agent")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_UNPLUGGED
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_LEAN
     );
   }
 

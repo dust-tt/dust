@@ -189,7 +189,7 @@ export async function getJITServers(
     attachments: ConversationAttachmentType[];
   }
 ): Promise<ServerSideMCPServerConfigurationType[]> {
-  if (agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_UNPLUGGED) {
+  if (agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_LEAN) {
     const conversationServers = await getConversationMCPServers(
       auth,
       conversation,

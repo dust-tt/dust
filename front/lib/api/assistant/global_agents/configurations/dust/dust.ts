@@ -487,11 +487,11 @@ export function _getDustGlobalAgent(
 }
 
 /**
- * @cc [owner:aubin-tchoi,label:product] unplugged-agent-configuration
- * Dust Unplugged MUST use Dust's model selection and return no configured actions or skills.
+ * @cc [owner:aubin-tchoi,label:product] lean-agent-configuration
+ * Dust Lean MUST use Dust's model selection and return no configured actions or skills.
  * Its instructions MUST limit capability use to capabilities explicitly provided in the conversation.
  */
-export function _getDustUnpluggedGlobalAgent(
+export function _getDustLeanGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
@@ -502,7 +502,7 @@ export function _getDustUnpluggedGlobalAgent(
 
   return {
     ...dustAgent,
-    ...getGlobalAgentMetadata(GLOBAL_AGENTS_SID.DUST_UNPLUGGED),
+    ...getGlobalAgentMetadata(GLOBAL_AGENTS_SID.DUST_LEAN),
     instructions: `<primary_goal>
 You are an AI agent created by Dust. Answer questions using your own knowledge and the information provided in this conversation.
 You start without tools, skills, internet access, company data sources, or persistent memory. Use only the capabilities explicitly provided in this conversation. When information is missing and no available capability can retrieve it, say so and ask the user to provide it.
