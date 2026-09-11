@@ -3,10 +3,11 @@ import type {
   SeatTypeInfo,
 } from "@app/lib/api/credits/seat_plan";
 import { getSeatPlan } from "@app/lib/api/credits/seat_plan";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
-import { UserResource } from "@app/lib/resources/user_resource";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -14,14 +15,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { computeBulkSeatChangePreview } from "./bulk_seat_change";
 
-function unwrap<T, E>(result: Result<T, E>): T {
-  if (result.isErr()) {
-    throw result.error;
-  }
-  return result.value;
-}
-
-// Keep a real `SeatPlanError` so the not-configured branch still constructs.
+// Only the Metronome boundary is stubbed: the seat plan (prices/caps/assigned
+// counts) and the current billing period. Users, memberships, and the
+// authenticator are real factory-backed resources so the preview walks the
+// same data the apply path would.
 vi.mock("@app/lib/api/credits/seat_plan", () => ({
   getSeatPlan: vi.fn(),
   SeatPlanError: class SeatPlanError extends Error {
@@ -36,9 +33,12 @@ vi.mock("@app/lib/metronome/contracts", async (importOriginal) => ({
   getCachedMetronomeCurrentBillingPeriod: vi.fn(),
 }));
 
-const auth = {
-  getNonNullableWorkspace: () => ({ sId: "w_test", id: 42 }),
-} as unknown as Authenticator;
+function unwrap<T, E>(result: Result<T, E>): T {
+  if (result.isErr()) {
+    throw result.error;
+  }
+  return result.value;
+}
 
 function seatInfo(overrides: Partial<SeatTypeInfo>): SeatTypeInfo {
   return {
@@ -56,20 +56,21 @@ function seatInfo(overrides: Partial<SeatTypeInfo>): SeatTypeInfo {
   };
 }
 
-// Wire the external reads: `userIds` become users, each mapped to the given
-// current seat type via an active membership.
-function mockMembers(seatByUserId: Record<number, MembershipSeatType>) {
-  const ids = Object.keys(seatByUserId).map(Number);
-  vi.spyOn(UserResource, "fetchByIds").mockResolvedValue(
-    ids.map((id) => ({ id })) as unknown as UserResource[]
-  );
-  vi.spyOn(MembershipResource, "getActiveMemberships").mockResolvedValue({
-    memberships: ids.map((id) => ({ userId: id, seatType: seatByUserId[id] })),
-    total: ids.length,
-    nextPageParams: undefined,
-  } as unknown as Awaited<
-    ReturnType<typeof MembershipResource.getActiveMemberships>
-  >);
+// Create a credit-priced workspace with one member per entry in `seatTypes`,
+// preserving order so `userIds` matches the apply order the preview mirrors.
+async function makeWorkspaceWithMembers(seatTypes: MembershipSeatType[]) {
+  const workspace = await WorkspaceFactory.creditPriced();
+  const userIds: string[] = [];
+  for (const seatType of seatTypes) {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, {
+      role: "user",
+      seatType,
+    });
+    userIds.push(user.sId);
+  }
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  return { auth, userIds };
 }
 
 function mockSeatPlan(seatPlans: SeatPlanResponseBody) {
@@ -77,9 +78,11 @@ function mockSeatPlan(seatPlans: SeatPlanResponseBody) {
 }
 
 beforeEach(() => {
-  vi.restoreAllMocks();
   vi.mocked(getCachedMetronomeCurrentBillingPeriod).mockResolvedValue(
-    new Ok({ cycleEnd: new Date("2026-10-01T00:00:00Z") } as never)
+    new Ok({
+      cycleStart: new Date("2026-09-01T00:00:00Z"),
+      cycleEnd: new Date("2026-10-01T00:00:00Z"),
+    })
   );
 });
 
@@ -95,14 +98,21 @@ describe("computeBulkSeatChangePreview — maxSeats cap", () => {
     });
     // 5 members with no seat all want Pro, but only 2 slots remain (cap 3,
     // one already assigned).
-    mockMembers({ 1: "none", 2: "none", 3: "none", 4: "none", 5: "none" });
+    const { auth, userIds } = await makeWorkspaceWithMembers([
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+    ]);
 
-    const result = await computeBulkSeatChangePreview(auth, {
-      userIds: ["1", "2", "3", "4", "5"],
-      targetSeatType: "pro",
-    });
+    const preview = unwrap(
+      await computeBulkSeatChangePreview(auth, {
+        userIds,
+        targetSeatType: "pro",
+      })
+    );
 
-    const preview = unwrap(result);
     expect(preview.targetMaxSeats).toBe(3);
     expect(preview.blockedByCapCount).toBe(3);
     expect(preview.memberCount).toBe(5);
@@ -125,21 +135,67 @@ describe("computeBulkSeatChangePreview — maxSeats cap", () => {
         assignedCount: 1,
       }),
     });
-    mockMembers({ 1: "none", 2: "none", 3: "none", 4: "none", 5: "none" });
+    const { auth, userIds } = await makeWorkspaceWithMembers([
+      "none",
+      "none",
+      "none",
+      "none",
+      "none",
+    ]);
 
-    const result = await computeBulkSeatChangePreview(auth, {
-      userIds: ["1", "2", "3", "4", "5"],
-      targetSeatType: "pro",
-    });
+    const preview = unwrap(
+      await computeBulkSeatChangePreview(auth, {
+        userIds,
+        targetSeatType: "pro",
+      })
+    );
 
-    const preview = unwrap(result);
     expect(preview.blockedByCapCount).toBe(0);
     expect(preview.targetMaxSeats).toBeNull();
     const immediate = preview.moves.filter((m) => m.kind === "immediate");
     expect(immediate[0].count).toBe(5);
   });
 
-  it("gives the limited capacity to immediate moves before deferred ones", async () => {
+  it("blocks members in apply order, not grouped by origin seat", async () => {
+    // Two Max slots and apply order [none, pro, none]: the first two members
+    // are accepted, the third (a `none`) is rejected — so the preview must
+    // show none×1 + pro×1, not none×2.
+    mockSeatPlan({
+      pro: seatInfo({ name: "Pro Seat", awuCredits: 100, assignedCount: 0 }),
+      max: seatInfo({
+        name: "Max Seat",
+        awuCredits: 200,
+        maxSeats: 2,
+        assignedCount: 0,
+      }),
+    });
+    const { auth, userIds } = await makeWorkspaceWithMembers([
+      "none",
+      "pro",
+      "none",
+    ]);
+
+    const preview = unwrap(
+      await computeBulkSeatChangePreview(auth, {
+        userIds,
+        targetSeatType: "max",
+      })
+    );
+
+    expect(preview.blockedByCapCount).toBe(1);
+    const immediate = preview.moves.filter((m) => m.kind === "immediate");
+    const fromNone = immediate.find((m) => m.fromSeatType === "none");
+    const fromPro = immediate.find((m) => m.fromSeatType === "pro");
+    expect(fromNone?.count).toBe(1);
+    expect(fromPro?.count).toBe(1);
+    const maxTotal = preview.seatTotals.find((t) => t.seatType === "max");
+    expect(maxTotal?.assignedAfter).toBe(2);
+  });
+
+  it("does not let deferred moves consume the cap (matching the apply path)", async () => {
+    // Pro cap of one, two Max members downgraded to Pro. Downgrades are
+    // deferred: they write future-dated rows without growing Pro's live active
+    // count, so the apply path accepts both — and so must the preview.
     mockSeatPlan({
       pro: seatInfo({
         name: "Pro Seat",
@@ -147,21 +203,20 @@ describe("computeBulkSeatChangePreview — maxSeats cap", () => {
         maxSeats: 1,
         assignedCount: 0,
       }),
-      max: seatInfo({ name: "Max Seat", awuCredits: 200, assignedCount: 1 }),
+      max: seatInfo({ name: "Max Seat", awuCredits: 200, assignedCount: 2 }),
     });
-    // One member joins Pro from no seat (immediate); one is downgraded from
-    // Max to Pro (deferred). Only 1 slot: the immediate move wins it.
-    mockMembers({ 1: "none", 2: "max" });
+    const { auth, userIds } = await makeWorkspaceWithMembers(["max", "max"]);
 
-    const result = await computeBulkSeatChangePreview(auth, {
-      userIds: ["1", "2"],
-      targetSeatType: "pro",
-    });
+    const preview = unwrap(
+      await computeBulkSeatChangePreview(auth, {
+        userIds,
+        targetSeatType: "pro",
+      })
+    );
 
-    const preview = unwrap(result);
-    expect(preview.blockedByCapCount).toBe(1);
-    expect(preview.moves.filter((m) => m.kind === "immediate")).toHaveLength(1);
-    // The deferred move was fully blocked, so it produces no row.
-    expect(preview.moves.filter((m) => m.kind === "deferred")).toHaveLength(0);
+    expect(preview.blockedByCapCount).toBe(0);
+    const deferred = preview.moves.filter((m) => m.kind === "deferred");
+    expect(deferred).toHaveLength(1);
+    expect(deferred[0].count).toBe(2);
   });
 });
