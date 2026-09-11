@@ -239,19 +239,15 @@ describe("resolveSlashSubMenuFromQuery", () => {
       frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
       query: "gpt6 h",
     });
-    expect(
-      resolveSlashSubMenuFromQuery({ commandItems, query: "pick mo fa" })
-    ).toMatchObject({
-      frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
-      query: "fa",
-    });
-    // A final word that only prefixes the label stays a query, so "m" still means medium.
-    expect(
-      resolveSlashSubMenuFromQuery({ commandItems, query: "pick m" })
-    ).toMatchObject({
-      frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
-      query: "m",
-    });
+    // Only complete label words are consumed, so "m" still means the medium effort.
+    for (const query of ["pick m", "pick m ", "pick m h", "pick mo fa"]) {
+      expect(
+        resolveSlashSubMenuFromQuery({ commandItems, query })
+      ).toMatchObject({
+        frame: { subMenuId: PICK_MODEL_SUB_MENU_ID },
+        query: query.slice("pick ".length),
+      });
+    }
   });
 
   it("matches the head against command labels only", () => {
