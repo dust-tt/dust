@@ -100,6 +100,15 @@ pre-commit:
       root: front/
       run: npm run tsgo
 
+    # i18n: extract UI strings from the staged components, fill missing translations and stage
+    # the catalogs, so a commit never lands with untranslated strings.
+    # (skip with LEFTHOOK_EXCLUDE=front-i18n-sync)
+    front-i18n-sync:
+      tags: front
+      glob: "front/{components,hooks,lib}/**/*.{ts,tsx}"
+      root: front/
+      run: npm run i18n:sync && git add locales
+
     # Front-api directory checks
     front-api-lint-swagger-annotations:
       tags: front-api

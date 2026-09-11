@@ -91,6 +91,7 @@ import {
   User01,
   UsersCheck,
 } from "@dust-tt/sparkle";
+import { useLingui } from "@lingui/react/macro";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 interface UserMenuProps {
@@ -121,6 +122,7 @@ export function UserMenu({
   showCreditUsageLearnMoreOnly = false,
 }: UserMenuProps) {
   const router = useAppRouter();
+  const { t } = useLingui();
   const { featureFlags } = useFeatureFlags();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -311,6 +313,10 @@ export function UserMenu({
     return hasMultipleOrgs || hasMultipleLocalWorkspaces;
   }, [user]);
 
+  const inviteUsersQuestion = t`How do I invite new users?`;
+  const slackWorkflowQuestion = t`How do I use agents in Slack workflow?`;
+  const billingQuestion = t`How do I manage billing?`;
+
   const handleCreditUsageLearnMore = () => {
     trackUserMenuEvent("credit_usage_learn_more");
     setUserMenuOpen(false);
@@ -347,7 +353,7 @@ export function UserMenu({
       <DropdownMenu open={userMenuOpen} onOpenChange={setUserMenuOpen}>
         <DropdownMenuTrigger className="hover:bg-hover data-[state=open]:bg-selected rounded-xl p-2 m-2">
           <div className="group flex cursor-pointer items-center justify-between gap-2">
-            <span className="sr-only">Open user menu</span>
+            <span className="sr-only">{t`Open user menu`}</span>
             <div className="flex gap-2 items-center">
               <Avatar
                 size="sm"
@@ -411,7 +417,7 @@ export function UserMenu({
 
           {hasMultipleWorkspaces && (
             <>
-              <DropdownMenuLabel label="Workspace" />
+              <DropdownMenuLabel label={t`Workspace`} />
               <WorkspacePickerRadioGroup user={user} workspace={owner} />
               <Separator className="my-1" />
             </>
@@ -424,12 +430,12 @@ export function UserMenu({
               }
             }}
           >
-            <DropdownMenuSubTrigger label="Help" icon={Heart} />
+            <DropdownMenuSubTrigger label={t`Help`} icon={Heart} />
             <DropdownMenuPortal>
               <DropdownMenuSubContent>
-                <DropdownMenuLabel label="Learn about Dust" />
+                <DropdownMenuLabel label={t`Learn about Dust`} />
                 <DropdownMenuItem
-                  label="Guides & Documentation"
+                  label={t`Guides & Documentation`}
                   icon={BookOpen01}
                   href="https://docs.dust.tt"
                   target="_blank"
@@ -438,15 +444,15 @@ export function UserMenu({
                   }
                 />
                 <DropdownMenuItem
-                  label="Join the Slack Community"
+                  label={t`Join the Slack Community`}
                   icon={SlackLogo}
                   href="https://dust-community.tightknit.community/join"
                   target="_blank"
                   onClick={() => trackUserMenuEvent("help_slack_community")}
                 />
-                <DropdownMenuLabel label="Ask questions" />
+                <DropdownMenuLabel label={t`Ask questions`} />
                 <DropdownMenuItem
-                  label="Ask @help"
+                  label={t`Ask @help`}
                   icon={MessageChatCircle}
                   onClick={() => {
                     trackUserMenuEvent("help_ask");
@@ -454,37 +460,34 @@ export function UserMenu({
                   }}
                 />
                 <DropdownMenuItem
-                  label="How do I invite new users?"
+                  label={inviteUsersQuestion}
                   icon={MessageTextCircle01}
                   onClick={() => {
                     trackUserMenuEvent("help_invite_users_question");
-                    void handleHelpSubmit("How do I invite new users?", []);
+                    void handleHelpSubmit(inviteUsersQuestion, []);
                   }}
                 />
                 <DropdownMenuItem
-                  label="How do I use agents in Slack workflow?"
+                  label={slackWorkflowQuestion}
                   icon={MessageTextCircle01}
                   onClick={() => {
                     trackUserMenuEvent("help_slack_workflow_question");
-                    void handleHelpSubmit(
-                      "How do I use agents in Slack workflow?",
-                      []
-                    );
+                    void handleHelpSubmit(slackWorkflowQuestion, []);
                   }}
                 />
                 <DropdownMenuItem
-                  label="How do I manage billing?"
+                  label={billingQuestion}
                   icon={MessageTextCircle01}
                   onClick={() => {
                     trackUserMenuEvent("help_billing_question");
-                    void handleHelpSubmit("How do I manage billing?", []);
+                    void handleHelpSubmit(billingQuestion, []);
                   }}
                 />
               </DropdownMenuSubContent>
             </DropdownMenuPortal>
           </DropdownMenuSub>
           <DropdownMenuItem
-            label="Dust Academy"
+            label={t`Dust Academy`}
             icon={BookOpen01}
             href="https://dust.tt/academy"
             target="_blank"
@@ -494,7 +497,7 @@ export function UserMenu({
           {showExtensionMenu &&
             (isFirefox ? (
               <DropdownMenuItem
-                label="Firefox extension"
+                label={t`Firefox extension`}
                 icon={FirefoxLogo}
                 href="https://addons.mozilla.org/firefox/addon/dust/"
                 target="_blank"
@@ -502,7 +505,7 @@ export function UserMenu({
               />
             ) : (
               <DropdownMenuItem
-                label="Chrome extension"
+                label={t`Chrome extension`}
                 icon={ChromeLogo}
                 href="https://chromewebstore.google.com/detail/dust/fnkfcndbgingjcbdhaofkcnhcjpljhdn"
                 target="_blank"
@@ -511,7 +514,7 @@ export function UserMenu({
             ))}
 
           <DropdownMenuItem
-            label="Changelog"
+            label={t`Changelog`}
             icon={Announcement01}
             href="https://docs.dust.tt/docs/changelog"
             target="_blank"
@@ -521,7 +524,7 @@ export function UserMenu({
           {subscription?.plan.limits.canUseProduct && (
             <>
               <DropdownMenuItem
-                label="Exploratory features"
+                label={t`Exploratory features`}
                 icon={Beaker02}
                 href={`/w/${owner.sId}/labs`}
                 onClick={() => trackUserMenuEvent("exploratory_features")}
@@ -530,11 +533,11 @@ export function UserMenu({
             </>
           )}
 
-          <DropdownMenuLabel label="Account" />
+          <DropdownMenuLabel label={t`Account`} />
           {subscription?.plan.limits.canUseProduct && (
             <>
               <DropdownMenuItem
-                label="Personal Settings"
+                label={t`Personal Settings`}
                 icon={User01}
                 onSelect={() => {
                   trackUserMenuEvent("personal_settings");
@@ -542,7 +545,7 @@ export function UserMenu({
                 }}
               />
               <DropdownMenuItem
-                label="Tools"
+                label={t`Tools`}
                 icon={ShapesPlus}
                 onSelect={() => {
                   trackUserMenuEvent("tools");
@@ -550,7 +553,7 @@ export function UserMenu({
                 }}
               />
               <DropdownMenuItem
-                label="Automations"
+                label={t`Automations`}
                 icon={Clock}
                 onSelect={() => {
                   trackUserMenuEvent("automations");
@@ -560,7 +563,7 @@ export function UserMenu({
               {/* The credit usage action is the analytics entry point when shown; keep exactly one. */}
               {!creditUsageState && !showCreditUsageLearnMoreOnly && (
                 <DropdownMenuItem
-                  label="Analytics"
+                  label={t`Analytics`}
                   icon={BarChart01}
                   onSelect={() => {
                     trackUserMenuEvent("analytics");
@@ -572,7 +575,7 @@ export function UserMenu({
           )}
 
           <DropdownMenuItem
-            label="Sign&nbsp;out"
+            label={t`Sign\u00a0out`}
             icon={LogOut01}
             onClick={() => {
               trackUserMenuEvent("sign_out");

@@ -1,9 +1,15 @@
+import { lingui } from "@lingui/vite-plugin";
 import react from "@vitejs/plugin-react";
 import path from "path";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    // Lingui macros (`t`, `<Trans>`, `msg`) are compiled by Babel; `.po` catalogs are compiled on
+    // import. See lib/i18n/README.md.
+    react({ babel: { plugins: ["@lingui/babel-plugin-lingui-macro"] } }),
+    lingui({ configPath: path.resolve(__dirname, "../lingui.config.ts") }),
+  ],
   test: {
     globals: true,
     environment: "jsdom",

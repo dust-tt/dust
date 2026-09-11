@@ -1,0 +1,165 @@
+msgid ""
+msgstr ""
+"POT-Creation-Date: 2026-09-11 21:37+0200\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: @lingui/cli\n"
+"Language: en\n"
+"Project-Id-Version: \n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Plural-Forms: \n"
+
+#: front/components/UserSettingsPopover.tsx
+#: front/components/UserSettingsPopover.tsx
+msgid "Light"
+msgstr "Light"
+
+#: front/components/UserMenu.tsx
+msgid "Ask @help"
+msgstr "Ask @help"
+
+#: front/components/UserMenu.tsx
+msgid "Dust Academy"
+msgstr "Dust Academy"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Show your agents on the home page"
+msgstr "Show your agents on the home page"
+
+#: front/components/UserMenu.tsx
+msgid "Account"
+msgstr "Account"
+
+#: front/components/UserMenu.tsx
+msgid "Help"
+msgstr "Help"
+
+#: front/components/UserMenu.tsx
+msgid "Changelog"
+msgstr "Changelog"
+
+#: front/components/UserSettingsPopover.tsx
+#: front/components/UserSettingsPopover.tsx
+msgid "System"
+msgstr "System"
+
+#: front/components/UserMenu.tsx
+msgid "Exploratory features"
+msgstr "Exploratory features"
+
+#: front/components/UserMenu.tsx
+msgid "Automations"
+msgstr "Automations"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Theme"
+msgstr "Theme"
+
+#: front/components/UserMenu.tsx
+msgid "Chrome extension"
+msgstr "Chrome extension"
+
+#: front/components/UserMenu.tsx
+msgid "How do I invite new users?"
+msgstr "How do I invite new users?"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Choose the language of the Dust interface"
+msgstr "Choose the language of the Dust interface"
+
+#: front/components/UserMenu.tsx
+msgid "Learn about Dust"
+msgstr "Learn about Dust"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Your language preference could not be saved. Please try again."
+msgstr "Your language preference could not be saved. Please try again."
+
+#: front/components/UserMenu.tsx
+msgid "Ask questions"
+msgstr "Ask questions"
+
+#: front/components/UserMenu.tsx
+msgid "How do I manage billing?"
+msgstr "How do I manage billing?"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Keyboard shortcut to send a message"
+msgstr "Keyboard shortcut to send a message"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Send message"
+msgstr "Send message"
+
+#: front/components/UserMenu.tsx
+msgid "Workspace"
+msgstr "Workspace"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Failed to update the language"
+msgstr "Failed to update the language"
+
+#: front/components/UserSettingsPopover.tsx
+#: front/components/UserSettingsPopover.tsx
+msgid "Dark"
+msgstr "Dark"
+
+#: front/components/UserMenu.tsx
+msgid "Open user menu"
+msgstr "Open user menu"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Customization"
+msgstr "Customization"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Access your favorite and most-used agents, or search for one from the home page."
+msgstr "Access your favorite and most-used agents, or search for one from the home page."
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Save"
+msgstr "Save"
+
+#: front/components/UserMenu.tsx
+msgid "Firefox extension"
+msgstr "Firefox extension"
+
+#: front/components/UserMenu.tsx
+msgid "How do I use agents in Slack workflow?"
+msgstr "How do I use agents in Slack workflow?"
+
+#: front/components/UserMenu.tsx
+msgid "Sign out"
+msgstr "Sign out"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Language"
+msgstr "Language"
+
+#: front/components/UserSettingsPopover.tsx
+msgid "Choose how Dust looks on this device"
+msgstr "Choose how Dust looks on this device"
+
+#: front/components/UserMenu.tsx
+msgid "Tools"
+msgstr "Tools"
+
+#: front/components/UserMenu.tsx
+msgid "Join the Slack Community"
+msgstr "Join the Slack Community"
+
+#: front/components/UserMenu.tsx
+msgid "Personal Settings"
+msgstr "Personal Settings"
+
+#: front/components/UserMenu.tsx
+msgid "Analytics"
+msgstr "Analytics"
+
+#: front/components/UserMenu.tsx
+msgid "Guides & Documentation"
+msgstr "Guides & Documentation"

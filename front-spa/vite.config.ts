@@ -1,3 +1,4 @@
+import { lingui } from "@lingui/vite-plugin";
 import react from "@vitejs/plugin-react";
 import { createRequire } from "module";
 import path from "path";
@@ -292,7 +293,10 @@ export default defineConfig(({ mode }) => {
       serveHtmlPlugin(appDefinition),
       organizeMultiEntryOutputPlugin(appDefinition),
       reactScanPlugin(enableReactScan),
-      react(),
+      // Lingui macros (`t`, `<Trans>`, `msg`) are compiled by Babel; `.po` catalogs are compiled
+      // on import. See front/lib/i18n/README.md.
+      react({ babel: { plugins: ["@lingui/babel-plugin-lingui-macro"] } }),
+      lingui({ configPath: path.resolve(__dirname, "../lingui.config.ts") }),
       enableAnalyzer &&
         visualizer({
           open: true,

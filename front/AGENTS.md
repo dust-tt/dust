@@ -44,6 +44,15 @@ API handlers are **not** here — they live in `front-api/routes/`, one file per
 - Use `npm run format:changed` (from the repo root) to format and lint changed files.
 - For changes related to Temporal, LLM, MCP servers, Elasticsearch, audit events, and webhook sources, and for testing, use the corresponding skills.
 
+# UI strings and localization
+
+- User-visible strings in `components/` go through Lingui macros with the English text as the
+  message: `<Trans>Save</Trans>`, `t`Save`` from `useLingui()`, `msg` for constants. No hand-written
+  ids. See `lib/i18n/README.md`.
+- Never wrap text sent to a model (`lib/actions`, skills, Zod `.describe()`) or coming from the
+  server.
+- Catalogs in `locales/` are generated: run `npm run i18n:sync` (the pre-commit hook does it).
+
 # Running tests
 - Use `npm run test -- filetotest` directly, it will automatically use a test environment (db, redis..)
 

@@ -2,6 +2,7 @@ import { PostHogTracker } from "@dust-tt/front/components/app/PostHogTracker";
 import { RootLayout } from "@dust-tt/front/components/app/RootLayout";
 import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBoundary";
 import { CellProvider } from "@dust-tt/front/lib/auth/CellContext";
+import { AppI18nProvider } from "@dust-tt/front/lib/i18n/I18nProvider";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import { SparkleContext } from "@dust-tt/sparkle";
@@ -26,15 +27,17 @@ export default function App() {
     <AppReadyProvider>
       <CellProvider>
         <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
-          <PostHogTracker authenticated>
-            <SparkleContext.Provider value={sparkleContextValue}>
-              <RootLayout>
-                <ErrorBoundary fallback={<GlobalErrorFallback />}>
-                  <RouterProvider router={router} />
-                </ErrorBoundary>
-              </RootLayout>
-            </SparkleContext.Provider>
-          </PostHogTracker>
+          <AppI18nProvider>
+            <PostHogTracker authenticated>
+              <SparkleContext.Provider value={sparkleContextValue}>
+                <RootLayout>
+                  <ErrorBoundary fallback={<GlobalErrorFallback />}>
+                    <RouterProvider router={router} />
+                  </ErrorBoundary>
+                </RootLayout>
+              </SparkleContext.Provider>
+            </PostHogTracker>
+          </AppI18nProvider>
         </FetcherProvider>
       </CellProvider>
     </AppReadyProvider>

@@ -15,6 +15,9 @@ import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import type { SupportedLocale } from "@app/lib/i18n/locales";
+import { LOCALE_LABELS, SUPPORTED_LOCALES } from "@app/lib/i18n/locales";
+import { useLocalePreference } from "@app/lib/i18n/useLocalePreference";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
 import { useActivationPod } from "@app/lib/swr/activation";
 import {
@@ -69,6 +72,7 @@ import {
   XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useLingui } from "@lingui/react/macro";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
@@ -283,7 +287,10 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 // ─── Customization ────────────────────────────────────────────────────────────
 
 function CustomizationSection() {
+  const { t } = useLingui();
   const { theme: currentTheme, setTheme } = useTheme();
+  const { locale, setLocale } = useLocalePreference();
+  const sendNotification = useSendNotification();
   const isMac = useIsMac();
   const { isAgentsSectionVisible, setAgentsSectionVisible } =
     useAgentsSectionVisibility();
@@ -309,6 +316,8 @@ function CustomizationSection() {
   );
 
   const [localTheme, setLocalTheme] = useState(currentTheme ?? "system");
+  // The metadata is already cached by AppI18nProvider when this section mounts.
+  const [localLocale, setLocalLocale] = useState<SupportedLocale>(locale);
   const [submitKey, setSubmitKey] = useState<"enter" | "cmd+enter">(() => {
     if (typeof window === "undefined") {
       return "enter";
@@ -322,33 +331,71 @@ function CustomizationSection() {
       (typeof window !== "undefined"
         ? (localStorage.getItem("submitMessageKey") ?? "enter")
         : "enter") ||
-    localAgentsSectionVisible !== isAgentsSectionVisible;
+    localAgentsSectionVisible !== isAgentsSectionVisible ||
+    localLocale !== locale;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setTheme(localTheme as "light" | "dark" | "system");
     if (typeof window !== "undefined") {
       localStorage.setItem("submitMessageKey", submitKey);
     }
     setAgentsSectionVisible(localAgentsSectionVisible);
+    if (localLocale !== locale) {
+      try {
+        await setLocale(localLocale);
+      } catch {
+        sendNotification({
+          type: "error",
+          title: t`Failed to update the language`,
+          description: t`Your language preference could not be saved. Please try again.`,
+        });
+      }
+    }
   };
 
   return (
     <SectionContent
-      title="Customization"
+      title={t`Customization`}
       footer={
         <Button
-          label="Save"
+          label={t`Save`}
           variant="primary"
           type="button"
-          onClick={handleSave}
+          onClick={() => void handleSave()}
           disabled={!isDirty}
         />
       }
     >
       <SettingsList>
         <SettingsList.Row
-          title="Theme"
-          description="Choose how Dust looks on this device"
+          title={t`Language`}
+          description={t`Choose the language of the Dust interface`}
+          action={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label={LOCALE_LABELS[localLocale]}
+                  isSelect
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent mountPortalContainer={portalContainer}>
+                {SUPPORTED_LOCALES.map((supportedLocale) => (
+                  <DropdownMenuItem
+                    key={supportedLocale}
+                    label={LOCALE_LABELS[supportedLocale]}
+                    onClick={() => setLocalLocale(supportedLocale)}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
+
+        <SettingsList.Row
+          title={t`Theme`}
+          description={t`Choose how Dust looks on this device`}
           action={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -364,10 +411,10 @@ function CustomizationSection() {
                   }
                   label={
                     localTheme === "light"
-                      ? "Light"
+                      ? t`Light`
                       : localTheme === "dark"
-                        ? "Dark"
-                        : "System"
+                        ? t`Dark`
+                        : t`System`
                   }
                   isSelect
                 />
@@ -375,17 +422,17 @@ function CustomizationSection() {
               <DropdownMenuContent mountPortalContainer={portalContainer}>
                 <DropdownMenuItem
                   icon={Sun}
-                  label="Light"
+                  label={t`Light`}
                   onClick={() => setLocalTheme("light")}
                 />
                 <DropdownMenuItem
                   icon={Moon01}
-                  label="Dark"
+                  label={t`Dark`}
                   onClick={() => setLocalTheme("dark")}
                 />
                 <DropdownMenuItem
                   icon={Sun}
-                  label="System"
+                  label={t`System`}
                   onClick={() => setLocalTheme("system")}
                 />
               </DropdownMenuContent>
@@ -394,8 +441,8 @@ function CustomizationSection() {
         />
 
         <SettingsList.Row
-          title="Send message"
-          description="Keyboard shortcut to send a message"
+          title={t`Send message`}
+          description={t`Keyboard shortcut to send a message`}
           action={
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -423,8 +470,8 @@ function CustomizationSection() {
         />
 
         <SettingsList.Row
-          title="Show your agents on the home page"
-          description="Access your favorite and most-used agents, or search for one from the home page."
+          title={t`Show your agents on the home page`}
+          description={t`Access your favorite and most-used agents, or search for one from the home page.`}
           action={
             <SliderToggle
               selected={localAgentsSectionVisible}
