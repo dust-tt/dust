@@ -212,15 +212,10 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
         )) ?? workspaceAuth;
     }
 
-    // x-dust-api-key-name: system-key-only usage attribution. Internal flows that
-    // re-authenticate with the workspace system key (run_agent sub-agents,
-    // agent_router, run_dust_app) forward the originating key's name so usage
-    // analytics and Metronome events stay attributed to it instead of collapsing
-    // into "Not API". Attribution only: `auth.key()` keeps pointing at the system
-    // key, so role, caps and system-key checks are unaffected.
-    //
-    // Must stay after the x-api-user-email exchange above: that exchange rebuilds
-    // the Authenticator and does not carry the attribution key over.
+    // x-dust-api-key-name: system-key-only usage attribution, see
+    // `Authenticator.keyForUsageAttribution`. Must stay after the
+    // x-api-user-email exchange above, which rebuilds the Authenticator without
+    // carrying the attribution key over.
     const apiKeyNameFromHeader = getApiKeyNameFromHeaders(headers);
     const key = workspaceAuth.key();
     if (apiKeyNameFromHeader && key && key.isSystem) {

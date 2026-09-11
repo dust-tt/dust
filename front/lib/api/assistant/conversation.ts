@@ -2638,8 +2638,6 @@ export async function checkMessagesLimit(
     if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
       // Per-API-key credit cap. `isApiKeyBlocked` is flag-aware (rate-limiter
       // counter when the flag is on, Metronome per-key credit state otherwise).
-      // Gated on the attributed key so it reads the counter the spend was
-      // charged to (see `keyForUsageAttribution`).
       const key = auth.keyForUsageAttribution();
       if (key) {
         if (await isApiKeyBlocked(auth, { keyModelId: key.id })) {
@@ -2975,7 +2973,7 @@ function getMessageRateLimitActor(auth: Authenticator):
     return { type: "user", id: user.id };
   }
 
-  const apiKey = auth.key();
+  const apiKey = auth.keyForUsageAttribution();
   if (apiKey) {
     return { type: "api_key", id: apiKey.id };
   }

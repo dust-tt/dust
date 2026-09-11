@@ -184,10 +184,9 @@ app.post(
               },
             });
           }
-          // Must resolve the same key as the authoritative gate in
-          // `postUserMessage`, or a capped originating key behind an uncapped
-          // system key would pass here and be rejected there — persisting the
-          // empty conversation this precheck exists to avoid.
+          // Same key as the authoritative gate in `postUserMessage`, or this
+          // precheck would let through a message that gate rejects — persisting
+          // the empty conversation it exists to avoid.
           const key = auth.keyForUsageAttribution();
           if (key && (await isApiKeyBlocked(auth, { keyModelId: key.id }))) {
             return apiError(ctx, {
