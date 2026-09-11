@@ -34,6 +34,7 @@ import {
   getCachedPerUserCapAlertIds,
   USER_AWU_WARNING_PERCENTAGE,
 } from "@app/lib/metronome/alerts/spend_limits";
+import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getCachedCustomerPerUserCreditBalances } from "@app/lib/metronome/client";
 import {
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
@@ -173,6 +174,12 @@ export type MemberUsageType = {
   // Id of the companion 80% warning alert for the effective cap. Null when
   // uncapped or no warning alert exists.
   spendLimitWarningAlertId: string | null;
+  // DEPRECATED: the per-user free-credit-balance alerts were retired (their poke
+  // consumer is gone), so these are always `null` now. Retained on the private
+  // API response for backward compatibility (api-backward-compatibility) until
+  // old clients cycle out; remove in a follow-up.
+  freeCreditLowAlert: MetronomeAlertRef | null;
+  freeCreditEmptyAlert: MetronomeAlertRef | null;
   // Per-user seat↔pool credit state (`user_seat` / `on_pool`) persisted on the
   // membership. Surfaced for debugging.
   creditState: UserCreditState;
@@ -1605,6 +1612,9 @@ export async function getMemberUsage({
         : null,
     spendLimitAlertId: null,
     spendLimitWarningAlertId: null,
+    // Deprecated compat fields, always null (see the type declaration).
+    freeCreditLowAlert: null,
+    freeCreditEmptyAlert: null,
     creditState: normalizeUserCreditState(membership.creditState),
     rateLimiterState: null,
     isSpendCapped,
@@ -2680,6 +2690,9 @@ export async function getMembersUsage({
             : null,
         spendLimitAlertId,
         spendLimitWarningAlertId,
+        // Deprecated compat fields, always null (see the type declaration).
+        freeCreditLowAlert: null,
+        freeCreditEmptyAlert: null,
         creditState: normalizeUserCreditState(membership.creditState),
         rateLimiterState,
         isSpendCapped,

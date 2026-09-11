@@ -13,6 +13,8 @@ export function makeMemberUsage(
     consumedFromPoolAwuCredits: 50,
     creditState: "on_pool",
     email: "member1@example.com",
+    freeCreditLowAlert: null,
+    freeCreditEmptyAlert: null,
     groups: [],
     image: null,
     memberUsageLimit: null,

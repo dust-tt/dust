@@ -19,6 +19,7 @@
 import { baseUniquenessKey } from "@app/lib/metronome/alerts";
 import {
   archiveMetronomeAlert,
+  getMetronomeClient,
   listMetronomeAlerts,
 } from "@app/lib/metronome/client";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -51,6 +52,12 @@ makeScript(
     },
   },
   async ({ execute, workspaceId }, logger) => {
+    // Resolve the Metronome client up front so a misconfigured run (no
+    // METRONOME_API_KEY) throws here and propagates to the runtime handler,
+    // rather than having the per-workspace catch below swallow the same config
+    // error for every workspace and exit "successfully" (no-catching-own-errors).
+    getMetronomeClient();
+
     let workspacesScanned = 0;
     let workspacesSkipped = 0;
     let totalArchived = 0;
