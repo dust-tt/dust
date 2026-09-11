@@ -15,6 +15,7 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import { isSiteNotFoundError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
+import { deleteList } from "@connectors/connectors/microsoft/temporal/lists";
 import {
   getMimeTypesToSync,
   resolveMicrosoftMimeType,
@@ -65,6 +66,7 @@ import {
   WithRetriesError,
 } from "@connectors/types";
 import type { Result } from "@dust-tt/client";
+import { assertNever } from "@dust-tt/client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import axios from "axios";
 
@@ -903,41 +905,61 @@ export async function recursiveNodeDeletion({
 
   const { nodeType } = typeAndPathFromInternalId(nodeId);
 
-  if (nodeType === "file") {
-    try {
-      await deleteFile({
+  switch (nodeType) {
+    case "file":
+      try {
+        await deleteFile({
+          connectorId,
+          dataSourceConfig,
+          internalId: node.internalId,
+          logger,
+        });
+        deletedFiles.push(node.internalId);
+      } catch (error) {
+        logger.error(
+          { connectorId, nodeId, error },
+          `Failed to delete document ${node.internalId} from core data source`
+        );
+      }
+      break;
+    case "list":
+      await deleteList(dataSourceConfig, connectorId, node.internalId);
+      await node.delete();
+      deletedFiles.push(node.internalId);
+      break;
+    case "folder":
+    case "drive": {
+      const children = await node.fetchChildren();
+      for (const child of children) {
+        const result = await recursiveNodeDeletion({
+          nodeId: child.internalId,
+          connectorId,
+          dataSourceConfig,
+          logger,
+          reason: "recursive_cleanup",
+        });
+        deletedFiles.push(...result);
+      }
+      await deleteFolder({
         connectorId,
         dataSourceConfig,
         internalId: node.internalId,
         logger,
+        reason,
       });
       deletedFiles.push(node.internalId);
-    } catch (error) {
-      logger.error(
-        { connectorId, nodeId, error },
-        `Failed to delete document ${node.internalId} from core data source`
-      );
+      break;
     }
-  } else if (nodeType === "folder" || nodeType === "drive") {
-    const children = await node.fetchChildren();
-    for (const child of children) {
-      const result = await recursiveNodeDeletion({
-        nodeId: child.internalId,
-        connectorId,
-        dataSourceConfig,
-        logger,
-        reason: "recursive_cleanup",
-      });
-      deletedFiles.push(...result);
-    }
-    await deleteFolder({
-      connectorId,
-      dataSourceConfig,
-      internalId: node.internalId,
-      logger,
-      reason,
-    });
-    deletedFiles.push(node.internalId);
+    // Worksheets are deleted with their parent spreadsheet; the remaining node
+    // types are never selected for sync and so never reach deletion.
+    case "worksheet":
+    case "sites-root":
+    case "site":
+    case "page":
+    case "message":
+      break;
+    default:
+      assertNever(nodeType);
   }
 
   return deletedFiles;

@@ -52,6 +52,7 @@ import {
   updateDescendantsParentsInCore,
   // biome-ignore lint/suspicious/noImportCycles: ignored using `--suppress`
 } from "@connectors/connectors/microsoft/temporal/file";
+import { syncOneList } from "@connectors/connectors/microsoft/temporal/lists";
 import {
   getMimeTypesToSync,
   resolveMicrosoftMimeType,
@@ -489,6 +490,60 @@ export async function getRootNodesToSyncFromResources(
   );
 
   return nodeResources.map((r) => r.internalId);
+}
+
+/**
+ * @cc [label:backend;architecture] microsoft-lists-synced-separately
+ * SharePoint lists (nodeType "list") live at the site level, parallel to drives,
+ * and have no `driveId`. They MUST NOT flow through the drive/folder delta
+ * pipeline: `getRootNodesToSync`, `groupRootItemsByDriveId` and `populateDeltas`
+ * only accept drive/folder nodes (`groupRootItemsByDriveId` derives a driveId and
+ * throws otherwise). List roots are therefore enumerated only here and synced as
+ * standalone tables via `syncOneListActivity`.
+ *
+ * Returns the internal ids of the SharePoint lists selected for sync.
+ */
+export async function getListNodesToSync(
+  connectorId: ModelId
+): Promise<string[]> {
+  const rootResources =
+    await MicrosoftRootResource.listRootsByConnectorId(connectorId);
+
+  return rootResources
+    .filter((resource) => resource.nodeType === "list")
+    .map((resource) => resource.internalId);
+}
+
+export async function syncOneListActivity({
+  connectorId,
+  listInternalId,
+  skipIfUnchanged,
+}: {
+  connectorId: ModelId;
+  listInternalId: string;
+  skipIfUnchanged: boolean;
+}): Promise<void> {
+  const connector = await ConnectorResource.fetchById(connectorId);
+  if (!connector) {
+    throw new Error(`Connector ${connectorId} not found`);
+  }
+  const logger = getActivityLogger(connector);
+  const client = await getMicrosoftClient(connector.connectionId);
+
+  const res = await syncOneList({
+    connectorId,
+    client,
+    listInternalId,
+    skipIfUnchanged,
+    localLogger: logger.child({ connectorId, listInternalId }),
+    heartbeat,
+  });
+
+  // Report the failure at the activity boundary so Temporal can retry, rather
+  // than returning it as data (see `temporal-activity-failure-boundary`).
+  if (res.isErr()) {
+    throw res.error;
+  }
 }
 
 export async function groupRootItemsByDriveId(nodeIds: string[]) {
