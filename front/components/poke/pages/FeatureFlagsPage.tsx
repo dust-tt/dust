@@ -22,6 +22,7 @@ import {
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   Button,
+  CheckboxWithText,
   Chip,
   LinkWrapper,
   Pencil01,
@@ -54,19 +55,23 @@ interface MakeColumnsParams {
   // All `null` when the current user cannot run the corresponding plugin.
   onDeleteLegacyRows: ((flagName: string, cell: CellType) => void) | null;
   onEditGlobalRollout: ((flagName: string, cell: CellType) => void) | null;
-  onDeployToAllCells: ((flagName: string) => void) | null;
+  onDeployToCells: ((flagName: string, cells: CellType[]) => void) | null;
   confirmDeployFlag: string | null;
   setConfirmDeployFlag: (flagName: string | null) => void;
   deployingFlag: string | null;
+  deployTargetCells: CellType[];
+  setDeployTargetCells: (cells: CellType[]) => void;
 }
 
 function makeColumns({
   onDeleteLegacyRows,
   onEditGlobalRollout,
-  onDeployToAllCells,
+  onDeployToCells,
   confirmDeployFlag,
   setConfirmDeployFlag,
   deployingFlag,
+  deployTargetCells,
+  setDeployTargetCells,
 }: MakeColumnsParams): ColumnDef<PokeFeatureFlagUsageAllCells>[] {
   return [
     {
@@ -212,18 +217,20 @@ function makeColumns({
                 </div>
               );
             })}
-            {onDeployToAllCells && (
+            {onDeployToCells && (
               <PopoverRoot
                 open={confirmDeployFlag === name}
-                onOpenChange={(open) =>
-                  setConfirmDeployFlag(open ? name : null)
-                }
+                onOpenChange={(open) => {
+                  setConfirmDeployFlag(open ? name : null);
+                  if (open) {
+                    setDeployTargetCells(byCell.map((stat) => stat.cell));
+                  }
+                }}
               >
-                <PopoverTrigger>
+                <PopoverTrigger className="self-start">
                   <Button
-                    variant="outline"
+                    variant="highlight"
                     size="xs"
-                    icon={Rocket02}
                     label="Deploy to everyone"
                     tooltip="Set the rollout to 100% on every cell"
                     isLoading={deployingFlag === name}
@@ -231,10 +238,32 @@ function makeColumns({
                 </PopoverTrigger>
                 <PopoverContent>
                   <div className="flex flex-col gap-3">
-                    <p className="text-sm text-foreground">
+                    <p className="text-center text-sm text-foreground">
                       This will enable &quot;{name}&quot; for every workspace on
-                      every cell. Are you sure?
+                      the selected cells. Are you sure?
                     </p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {byCell.map((stat) => (
+                        <CheckboxWithText
+                          key={stat.cell}
+                          id={`deploy-cell-${name}-${stat.cell}`}
+                          text={getCellDisplay({
+                            name: stat.cell,
+                            region: stat.region,
+                          })}
+                          checked={deployTargetCells.includes(stat.cell)}
+                          onCheckedChange={(checked) =>
+                            setDeployTargetCells(
+                              checked === true
+                                ? [...deployTargetCells, stat.cell]
+                                : deployTargetCells.filter(
+                                    (cell) => cell !== stat.cell
+                                  )
+                            )
+                          }
+                        />
+                      ))}
+                    </div>
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="outline"
@@ -248,8 +277,9 @@ function makeColumns({
                         size="xs"
                         icon={Rocket02}
                         label="Yes"
+                        disabled={deployTargetCells.length === 0}
                         isLoading={deployingFlag === name}
-                        onClick={() => onDeployToAllCells(name)}
+                        onClick={() => onDeployToCells(name, deployTargetCells)}
                       />
                     </div>
                   </div>
@@ -341,6 +371,7 @@ export function FeatureFlagsPage() {
     null
   );
   const [deployingFlag, setDeployingFlag] = useState<string | null>(null);
+  const [deployTargetCells, setDeployTargetCells] = useState<CellType[]>([]);
 
   const switchToCell = useCallback(
     (cell: CellType) => {
@@ -381,51 +412,53 @@ export function FeatureFlagsPage() {
     void mutate();
   }, [mutate]);
 
-  // Runs the global-rollout plugin against every cell directly (not through the current cell
-  // selection), so it does not depend on the client switching cells one at a time.
-  const onDeployToAllCells = useCallback(
-    async (flagName: string) => {
+  // Runs the global-rollout plugin against the selected cells directly (not through the
+  // current cell selection), so it does not depend on the client switching cells one at a time.
+  const onDeployToCells = useCallback(
+    async (flagName: string, targetCells: CellType[]) => {
       setConfirmDeployFlag(null);
       setDeployingFlag(flagName);
 
       try {
         const results = await Promise.all(
-          cells.map(async (cell) => {
-            try {
-              const res = await clientFetch(
-                `${cell.url}/api/poke/plugins/${TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID}/run?resourceType=global`,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    [FEATURE_FLAG_PLUGIN_ARG]: [flagName],
-                    rolloutPercentage: 100,
-                  }),
+          cells
+            .filter((cell) => targetCells.includes(cell.name))
+            .map(async (cell) => {
+              try {
+                const res = await clientFetch(
+                  `${cell.url}/api/poke/plugins/${TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID}/run?resourceType=global`,
+                  {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      [FEATURE_FLAG_PLUGIN_ARG]: [flagName],
+                      rolloutPercentage: 100,
+                    }),
+                  }
+                );
+                if (res.ok) {
+                  return { cell: cell.name, ok: true as const };
                 }
-              );
-              if (res.ok) {
-                return { cell: cell.name, ok: true as const };
+                const errorData = await getErrorFromResponse(res);
+                return {
+                  cell: cell.name,
+                  ok: false as const,
+                  message: errorData.message,
+                };
+              } catch (error) {
+                return {
+                  cell: cell.name,
+                  ok: false as const,
+                  message: normalizeError(error).message,
+                };
               }
-              const errorData = await getErrorFromResponse(res);
-              return {
-                cell: cell.name,
-                ok: false as const,
-                message: errorData.message,
-              };
-            } catch (error) {
-              return {
-                cell: cell.name,
-                ok: false as const,
-                message: normalizeError(error).message,
-              };
-            }
-          })
+            })
         );
 
         const failed = results.filter((result) => !result.ok);
         if (failed.length > 0) {
           sendNotification({
-            title: "Deploy to everyone failed",
+            title: "Deploy failed",
             description: failed
               .map((result) => `${result.cell}: ${result.message}`)
               .join(" "),
@@ -433,8 +466,8 @@ export function FeatureFlagsPage() {
           });
         } else {
           sendNotification({
-            title: "Deployed to everyone",
-            description: `"${flagName}" is now enabled for every workspace on every cell.`,
+            title: "Deployed",
+            description: `"${flagName}" is now enabled for every workspace on ${targetCells.length} cell(s).`,
             type: "success",
           });
         }
@@ -452,19 +485,23 @@ export function FeatureFlagsPage() {
       makeColumns({
         onDeleteLegacyRows: deleteLegacyPlugin ? onDeleteLegacyRows : null,
         onEditGlobalRollout: rolloutPlugin ? onEditGlobalRollout : null,
-        onDeployToAllCells: rolloutPlugin
-          ? (flagName) => void onDeployToAllCells(flagName)
+        onDeployToCells: rolloutPlugin
+          ? (flagName, targetCells) =>
+              void onDeployToCells(flagName, targetCells)
           : null,
         confirmDeployFlag,
         setConfirmDeployFlag,
         deployingFlag,
+        deployTargetCells,
+        setDeployTargetCells,
       }),
     [
       confirmDeployFlag,
       deleteLegacyPlugin,
       deployingFlag,
+      deployTargetCells,
       onDeleteLegacyRows,
-      onDeployToAllCells,
+      onDeployToCells,
       onEditGlobalRollout,
       rolloutPlugin,
     ]
