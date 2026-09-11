@@ -5,10 +5,10 @@ import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { PokeFeatureFlagUsageAllCells } from "@app/hooks/usePokeFeatureFlagUsage";
 import { usePokeFeatureFlagUsageAllCells } from "@app/hooks/usePokeFeatureFlagUsage";
+import type { PokeRunPluginResponseBody } from "@app/lib/api/poke/plugins/run";
 import { useCellContext } from "@app/lib/auth/CellContext";
-import { clientFetch } from "@app/lib/egress/client";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
+import { fetchPokeFromAllCells } from "@app/poke/swr/cells";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
 import type { CellType } from "@app/types/cell";
@@ -51,27 +51,26 @@ interface PendingPluginAction {
   cell: CellType;
 }
 
+interface DeployToCellsState {
+  onDeploy: (flagName: string, cells: CellType[]) => void;
+  confirmFlag: string | null;
+  setConfirmFlag: (flagName: string | null) => void;
+  deployingFlags: Set<string>;
+  targetCells: CellType[];
+  setTargetCells: (cells: CellType[]) => void;
+}
+
 interface MakeColumnsParams {
   // All `null` when the current user cannot run the corresponding plugin.
   onDeleteLegacyRows: ((flagName: string, cell: CellType) => void) | null;
   onEditGlobalRollout: ((flagName: string, cell: CellType) => void) | null;
-  onDeployToCells: ((flagName: string, cells: CellType[]) => void) | null;
-  confirmDeployFlag: string | null;
-  setConfirmDeployFlag: (flagName: string | null) => void;
-  deployingFlag: string | null;
-  deployTargetCells: CellType[];
-  setDeployTargetCells: (cells: CellType[]) => void;
+  deployToCells: DeployToCellsState | null;
 }
 
 function makeColumns({
   onDeleteLegacyRows,
   onEditGlobalRollout,
-  onDeployToCells,
-  confirmDeployFlag,
-  setConfirmDeployFlag,
-  deployingFlag,
-  deployTargetCells,
-  setDeployTargetCells,
+  deployToCells,
 }: MakeColumnsParams): ColumnDef<PokeFeatureFlagUsageAllCells>[] {
   return [
     {
@@ -217,13 +216,15 @@ function makeColumns({
                 </div>
               );
             })}
-            {onDeployToCells && (
+            {deployToCells && (
               <PopoverRoot
-                open={confirmDeployFlag === name}
+                open={deployToCells.confirmFlag === name}
                 onOpenChange={(open) => {
-                  setConfirmDeployFlag(open ? name : null);
+                  deployToCells.setConfirmFlag(open ? name : null);
                   if (open) {
-                    setDeployTargetCells(byCell.map((stat) => stat.cell));
+                    deployToCells.setTargetCells(
+                      byCell.map((stat) => stat.cell)
+                    );
                   }
                 }}
               >
@@ -233,7 +234,7 @@ function makeColumns({
                     size="xs"
                     label="Deploy to everyone"
                     tooltip="Set the rollout to 100% on every cell"
-                    isLoading={deployingFlag === name}
+                    isLoading={deployToCells.deployingFlags.has(name)}
                   />
                 </PopoverTrigger>
                 <PopoverContent>
@@ -251,12 +252,14 @@ function makeColumns({
                             name: stat.cell,
                             region: stat.region,
                           })}
-                          checked={deployTargetCells.includes(stat.cell)}
+                          checked={deployToCells.targetCells.includes(
+                            stat.cell
+                          )}
                           onCheckedChange={(checked) =>
-                            setDeployTargetCells(
+                            deployToCells.setTargetCells(
                               checked === true
-                                ? [...deployTargetCells, stat.cell]
-                                : deployTargetCells.filter(
+                                ? [...deployToCells.targetCells, stat.cell]
+                                : deployToCells.targetCells.filter(
                                     (cell) => cell !== stat.cell
                                   )
                             )
@@ -270,16 +273,21 @@ function makeColumns({
                         size="xs"
                         icon={XClose}
                         label="No"
-                        onClick={() => setConfirmDeployFlag(null)}
+                        onClick={() => deployToCells.setConfirmFlag(null)}
                       />
                       <Button
                         variant="warning"
                         size="xs"
                         icon={Rocket02}
                         label="Yes"
-                        disabled={deployTargetCells.length === 0}
-                        isLoading={deployingFlag === name}
-                        onClick={() => onDeployToCells(name, deployTargetCells)}
+                        disabled={deployToCells.targetCells.length === 0}
+                        isLoading={deployToCells.deployingFlags.has(name)}
+                        onClick={() =>
+                          deployToCells.onDeploy(
+                            name,
+                            deployToCells.targetCells
+                          )
+                        }
                       />
                     </div>
                   </div>
@@ -367,11 +375,12 @@ export function FeatureFlagsPage() {
 
   const [pendingAction, setPendingAction] =
     useState<PendingPluginAction | null>(null);
-  const [confirmDeployFlag, setConfirmDeployFlag] = useState<string | null>(
-    null
-  );
-  const [deployingFlag, setDeployingFlag] = useState<string | null>(null);
-  const [deployTargetCells, setDeployTargetCells] = useState<CellType[]>([]);
+
+  const [deployState, setDeployState] = useState<{
+    confirmFlag: string | null;
+    deployingFlags: Set<string>;
+    targetCells: CellType[];
+  }>({ confirmFlag: null, deployingFlags: new Set(), targetCells: [] });
 
   const switchToCell = useCallback(
     (cell: CellType) => {
@@ -416,51 +425,40 @@ export function FeatureFlagsPage() {
   // current cell selection), so it does not depend on the client switching cells one at a time.
   const onDeployToCells = useCallback(
     async (flagName: string, targetCells: CellType[]) => {
-      setConfirmDeployFlag(null);
-      setDeployingFlag(flagName);
+      setDeployState((s) => ({
+        ...s,
+        confirmFlag: null,
+        deployingFlags: new Set(s.deployingFlags).add(flagName),
+      }));
 
       try {
-        const results = await Promise.all(
-          cells
-            .filter((cell) => targetCells.includes(cell.name))
-            .map(async (cell) => {
-              try {
-                const res = await clientFetch(
-                  `${cell.url}/api/poke/plugins/${TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID}/run?resourceType=global`,
-                  {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      [FEATURE_FLAG_PLUGIN_ARG]: [flagName],
-                      rolloutPercentage: 100,
-                    }),
-                  }
-                );
-                if (res.ok) {
-                  return { cell: cell.name, ok: true as const };
-                }
-                const errorData = await getErrorFromResponse(res);
-                return {
-                  cell: cell.name,
-                  ok: false as const,
-                  message: errorData.message,
-                };
-              } catch (error) {
-                return {
-                  cell: cell.name,
-                  ok: false as const,
-                  message: normalizeError(error).message,
-                };
-              }
-            })
-        );
+        const results = await fetchPokeFromAllCells<PokeRunPluginResponseBody>({
+          cells: cells.filter((cell) => targetCells.includes(cell.name)),
+          path: `/api/poke/plugins/${TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID}/run?resourceType=global`,
+          init: {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              [FEATURE_FLAG_PLUGIN_ARG]: [flagName],
+              rolloutPercentage: 100,
+            }),
+          },
+        });
 
+        const succeeded = results.filter((result) => result.ok);
         const failed = results.filter((result) => !result.ok);
         if (failed.length > 0) {
           sendNotification({
-            title: "Deploy failed",
-            description: failed
-              .map((result) => `${result.cell}: ${result.message}`)
+            title:
+              succeeded.length > 0
+                ? "Deploy partially failed"
+                : "Deploy failed",
+            description: [
+              succeeded.length > 0 &&
+                `Enabled on ${succeeded.map((result) => getCellDisplay(result.cell)).join(", ")}.`,
+              `Failed on ${failed.map((result) => `${getCellDisplay(result.cell)} (${normalizeError(result.error).message})`).join(", ")}.`,
+            ]
+              .filter(Boolean)
               .join(" "),
             type: "error",
           });
@@ -474,7 +472,11 @@ export function FeatureFlagsPage() {
 
         await mutate();
       } finally {
-        setDeployingFlag(null);
+        setDeployState((s) => {
+          const deployingFlags = new Set(s.deployingFlags);
+          deployingFlags.delete(flagName);
+          return { ...s, deployingFlags };
+        });
       }
     },
     [cells, mutate, sendNotification]
@@ -485,21 +487,23 @@ export function FeatureFlagsPage() {
       makeColumns({
         onDeleteLegacyRows: deleteLegacyPlugin ? onDeleteLegacyRows : null,
         onEditGlobalRollout: rolloutPlugin ? onEditGlobalRollout : null,
-        onDeployToCells: rolloutPlugin
-          ? (flagName, targetCells) =>
-              void onDeployToCells(flagName, targetCells)
+        deployToCells: rolloutPlugin
+          ? {
+              onDeploy: (flagName, targetCells) =>
+                void onDeployToCells(flagName, targetCells),
+              confirmFlag: deployState.confirmFlag,
+              setConfirmFlag: (confirmFlag) =>
+                setDeployState((s) => ({ ...s, confirmFlag })),
+              deployingFlags: deployState.deployingFlags,
+              targetCells: deployState.targetCells,
+              setTargetCells: (targetCells) =>
+                setDeployState((s) => ({ ...s, targetCells })),
+            }
           : null,
-        confirmDeployFlag,
-        setConfirmDeployFlag,
-        deployingFlag,
-        deployTargetCells,
-        setDeployTargetCells,
       }),
     [
-      confirmDeployFlag,
       deleteLegacyPlugin,
-      deployingFlag,
-      deployTargetCells,
+      deployState,
       onDeleteLegacyRows,
       onDeployToCells,
       onEditGlobalRollout,
