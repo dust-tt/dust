@@ -1,4 +1,6 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
+import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -8,6 +10,7 @@ import type { DustAppSecretType } from "@app/types/dust_app_secret";
 import {
   BookOpen01,
   Button,
+  cn,
   DataTable,
   Dialog,
   DialogContainer,
@@ -17,10 +20,10 @@ import {
   DialogTitle,
   Edit04,
   Input,
+  LoadingBlock,
   Page,
   Plus,
   SearchInput,
-  Spinner,
   Trash01,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
@@ -337,6 +340,31 @@ interface SecretsTableProps {
   searchQuery: string;
 }
 
+function SecretSkeletonCell({
+  columnId,
+  rowIndex,
+}: UsageTableSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return (
+        <div className="flex items-center gap-2">
+          <LoadingBlock
+            className={cn(
+              "h-3 max-w-full",
+              ["w-56", "w-64", "w-48", "w-60", "w-52"][rowIndex % 5]
+            )}
+          />
+          <LoadingBlock className="h-6 w-6 shrink-0 rounded-lg" />
+        </div>
+      );
+    case "actions":
+      // Edit and delete only appear on hover in the loaded table.
+      return null;
+    default:
+      return null;
+  }
+}
+
 function SecretsTable({
   isLoading,
   isError,
@@ -345,9 +373,7 @@ function SecretsTable({
 }: SecretsTableProps) {
   if (isLoading) {
     return (
-      <div className="flex justify-center py-8">
-        <Spinner />
-      </div>
+      <UsageTableSkeleton columns={columns} SkeletonCell={SecretSkeletonCell} />
     );
   }
 

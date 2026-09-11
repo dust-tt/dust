@@ -1,6 +1,8 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { AllowSlackWorkflowDialog } from "@app/components/workspace/analytics/automations/AllowSlackWorkflowDialog";
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
+import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
+import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import { useSlackWorkflowsOverview } from "@app/hooks/useSlackWorkflowsOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
@@ -14,11 +16,11 @@ import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
+  cn,
   DataTable,
   LoadingBlock,
   Plus,
   SearchInput,
-  Spinner,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -271,6 +273,40 @@ interface SlackWorkflowsTableBodyProps {
   setPagination: (pagination: PaginationState) => void;
 }
 
+function SlackWorkflowSkeletonCell({
+  columnId,
+  rowIndex,
+}: UsageTableSkeletonCellProps) {
+  switch (columnId) {
+    case "botName":
+      return (
+        <LoadingBlock
+          className={cn(
+            "h-3 max-w-full",
+            ["w-36", "w-44", "w-32", "w-40", "w-48"][rowIndex % 5]
+          )}
+        />
+      );
+    case "spaceNames":
+      return (
+        <LoadingBlock
+          className={cn(
+            "h-3 max-w-full",
+            ["w-24", "w-40", "w-32", "w-48", "w-28"][rowIndex % 5]
+          )}
+        />
+      );
+    case "createdAt":
+      return <LoadingBlock className="h-3 w-20 max-w-full" />;
+    case "revoke":
+      return (
+        <LoadingBlock className="ml-auto h-6 w-6 rounded-lg pointer-fine:invisible" />
+      );
+    default:
+      return null;
+  }
+}
+
 function SlackWorkflowsTableBody({
   columns,
   rows,
@@ -282,8 +318,17 @@ function SlackWorkflowsTableBody({
 }: SlackWorkflowsTableBodyProps) {
   if (isLoading) {
     return (
-      <div className="flex justify-center py-8">
-        <Spinner />
+      <div className="flex flex-col gap-2 overflow-x-auto">
+        <UsageTableSkeleton
+          columns={columns}
+          SkeletonCell={SlackWorkflowSkeletonCell}
+        />
+        <div
+          aria-hidden="true"
+          className="flex h-8 items-center justify-end px-1"
+        >
+          <LoadingBlock className="h-3 w-14" />
+        </div>
       </div>
     );
   }

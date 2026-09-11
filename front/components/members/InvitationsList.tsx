@@ -4,6 +4,8 @@ import {
   normalizeDisplayRole,
   ROLES_DATA,
 } from "@app/components/members/Roles";
+import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
+import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
@@ -13,10 +15,11 @@ import { isAdmin } from "@app/types/user";
 import {
   Button,
   Chip,
+  cn,
   DataTable,
+  LoadingBlock,
   Mail01,
   Page,
-  Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type React from "react";
@@ -25,6 +28,27 @@ import { useMemo, useState } from "react";
 type RowData = MembershipInvitationType & {
   onClick: () => void;
 };
+
+function InvitationSkeletonCell({
+  columnId,
+  rowIndex,
+}: UsageTableSkeletonCellProps) {
+  switch (columnId) {
+    case "inviteEmail":
+      return (
+        <LoadingBlock
+          className={cn(
+            "h-3 max-w-full",
+            ["w-48", "w-56", "w-40"][rowIndex % 3]
+          )}
+        />
+      );
+    case "initialRole":
+      return <LoadingBlock className="h-6 w-16 rounded-[9px]" />;
+    default:
+      return null;
+  }
+}
 
 export function InvitationsList({
   owner,
@@ -143,9 +167,11 @@ export function InvitationsList({
       />
       <div className="flex flex-col gap-1 pt-2">
         {isInvitationsLoading && (
-          <div className="flex justify-center py-8">
-            <Spinner />
-          </div>
+          <UsageTableSkeleton
+            columns={columns}
+            SkeletonCell={InvitationSkeletonCell}
+            rowCount={3}
+          />
         )}
         {!isInvitationsLoading && invitations.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center">

@@ -1,3 +1,5 @@
+import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
+import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
@@ -16,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Chip,
+  cn,
   DataTable,
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -29,7 +32,6 @@ import {
   LoadingBlock,
   Lock01,
   SearchInput,
-  Spinner,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -44,6 +46,57 @@ import { useMemo, useState } from "react";
 
 const API_KEYS_PAGE_SIZE = 10;
 const MAX_API_KEY_CONSUMPTION_ROWS = 100;
+
+function APIKeySkeletonCell({
+  columnId,
+  rowIndex,
+}: UsageTableSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return (
+        <div className="flex flex-col justify-center">
+          <div className="flex h-5 items-center">
+            <LoadingBlock
+              className={cn(
+                "h-3 max-w-full",
+                ["w-24", "w-28", "w-20", "w-32", "w-24"][rowIndex % 5]
+              )}
+            />
+          </div>
+          <div className="flex h-4 items-center">
+            <LoadingBlock
+              className={cn(
+                "h-2.5 max-w-full",
+                ["w-20", "w-16", "w-24", "w-20", "w-28"][rowIndex % 5]
+              )}
+            />
+          </div>
+        </div>
+      );
+    case "scope":
+      return <LoadingBlock className="h-6 w-16 max-w-full rounded-[9px]" />;
+    case "key":
+      return <LoadingBlock className="h-3 w-24 max-w-full" />;
+    case "spaces":
+      return <LoadingBlock className="mx-auto h-5 w-5" />;
+    case "credits":
+      return <LoadingBlock className="h-3 w-24 max-w-full" />;
+    case "monthlyCap":
+      return <LoadingBlock className="h-3 w-16 max-w-full" />;
+    case "lastUsedAt":
+      return <LoadingBlock className="h-3 w-16 max-w-full" />;
+    case "status":
+      return <LoadingBlock className="h-6 w-14 max-w-full rounded-[9px]" />;
+    case "revoke":
+      return (
+        <LoadingBlock className="ml-auto h-8 w-8 rounded-xl pointer-fine:invisible" />
+      );
+    case "actions":
+      return <LoadingBlock className="ml-auto h-8 w-8 rounded-xl" />;
+    default:
+      return null;
+  }
+}
 
 type APIKeyStatus = "active" | "capped" | "revoked";
 
@@ -696,9 +749,23 @@ export function APIKeysTable({
       </div>
 
       {isLoading || isSpacesLoading ? (
-        <div className="flex justify-center py-8">
-          <Spinner />
-        </div>
+        <>
+          <UsageTableSkeleton
+            columns={columns}
+            SkeletonCell={APIKeySkeletonCell}
+            rowHeight={64}
+          />
+          <div aria-hidden="true" className="flex items-center justify-between">
+            <LoadingBlock className="h-4 w-20" />
+            <div className="flex items-center gap-3">
+              <LoadingBlock className="h-4 w-24" />
+              <div className="flex items-center gap-2">
+                <LoadingBlock className="h-8 w-8 rounded-xl" />
+                <LoadingBlock className="h-8 w-8 rounded-xl" />
+              </div>
+            </div>
+          </div>
+        </>
       ) : isError ? (
         <div className="py-8 text-center text-sm text-muted-foreground">
           Failed to load API keys.

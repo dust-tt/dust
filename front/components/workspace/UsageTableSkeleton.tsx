@@ -12,19 +12,25 @@ export interface UsageTableSkeletonCellProps {
   rowIndex: number;
 }
 
-interface UsageTableSkeletonProps<TData> {
-  columns: ColumnDef<TData, string>[];
+interface UsageTableSkeletonProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[];
   SkeletonCell: ComponentType<UsageTableSkeletonCellProps>;
   rowCount?: number;
   rowHeight?: number;
 }
 
-export function UsageTableSkeleton<TData>({
+/**
+ * @cc [owner:aubin-tchoi,label:react] content-specific-skeleton-cells
+ * Callers MUST reuse their loaded table's column definitions and provide a
+ * SkeletonCell that matches each column's content shape, including icons,
+ * avatars, text lines, and controls where present.
+ */
+export function UsageTableSkeleton<TData, TValue = string>({
   columns,
   SkeletonCell,
   rowCount = 5,
   rowHeight = 48,
-}: UsageTableSkeletonProps<TData>) {
+}: UsageTableSkeletonProps<TData, TValue>) {
   const table = useReactTable({
     data: [],
     columns,
