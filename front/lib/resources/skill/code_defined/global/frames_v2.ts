@@ -338,9 +338,14 @@ dsbx frame validate /files/<scope>/<frame-folder>/manifest.json
 
 This runs the manifest, UI, function-build, database-contract, Tailwind, and function-call checks
 without storing or activating a publication or reconciling Frame-owned databases. The function-call
-check reports UI code that calls a function this manifest does not declare, or that passes an input
-the function's \`schema.input\` rejects — both of which otherwise fail only once a viewer triggers
-the call. Fix every error and every warning before publishing.
+check covers UI code that calls a function this manifest does not declare, which is an error and
+also blocks \`publish\`, and UI code that passes an input the function's \`schema.input\` rejects,
+which is a warning. Both otherwise fail only once a viewer triggers the call. Fix every error and
+every warning before publishing.
+
+A function name passed to \`usePodFunction\` or \`usePodFunctionMutation\` as a literal must be a
+bare name declared in this manifest: publishing fails otherwise, listing the declared names. A name
+computed at run time is not checked.
 
 Use this command instead of \`bun build\` or an ad hoc regex scan: those do not use the Frame build
 context and report unrelated or noisy failures.

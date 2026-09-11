@@ -1,8 +1,11 @@
 import path from "node:path";
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
+import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
 import logger from "@app/logger/logger";
 import type { FramePublicationDescriptor } from "@app/types/api/frame_publication";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { JSONSchema4 } from "json-schema";
 import { compile } from "json-schema-to-typescript";
@@ -31,7 +34,7 @@ const PERMISSIVE_MODULE_EXPORTS = [
   "useUserIdentity",
 ] as const;
 
-const MAX_REPORTED_WARNINGS = 5;
+const MAX_REPORTED_PROBLEMS = 5;
 const MAX_LISTED_FUNCTION_NAMES = 12;
 
 const INPUT_DIAGNOSTIC_CODES = new Set([
@@ -46,6 +49,11 @@ const CALL_DIAGNOSTIC_CODES = new Set([
   2554, // Call has the wrong number of arguments.
   2769, // No overload accepts the provided arguments.
 ]);
+
+type FrameSourceInput = Pick<
+  FramePublicationSourceFile,
+  "content" | "relativePath"
+>;
 
 type FrameFunctionContract = Pick<
   FramePublicationDescriptor["functions"][number],
@@ -202,17 +210,12 @@ function describeDeclaredFunctions(declaredNames: readonly string[]): string {
   return `Declared functions: ${listed.map((name) => `'${name}'`).join(", ")}${suffix}.`;
 }
 
-/**
- * A Frames v2 UI addresses its own functions by bare manifest name; `resolveFrameFunctionReference`
- * rejects everything else. A reference that names nothing in the manifest fails only when a viewer
- * triggers the call, so report it here.
- */
-function collectReferenceWarnings(
+function collectReferenceProblems(
   hookCalls: readonly HookCall[],
   declaredNames: readonly string[]
-): ValidationWarning[] {
+): string[] {
   const declared = new Set(declaredNames);
-  const warnings: ValidationWarning[] = [];
+  const problems: string[] = [];
 
   for (const { hook, reference, sourceFile } of hookCalls) {
     // A computed reference cannot be checked statically.
@@ -224,30 +227,23 @@ function collectReferenceWarnings(
     const [, ...rest] = reference.text.split("/");
     const trailingSegment = rest.length > 0 ? rest.join("/") : null;
     if (trailingSegment !== null) {
-      warnings.push({
-        type: "frame_function",
-        message:
-          `${position}: ${hook}('${reference.text}') uses a '<podId>/<slug>' Pod function ` +
-          "reference. A Frames v2 UI calls its own functions by bare manifest name.",
-        oldString: reference.text,
-        suggestion: declared.has(trailingSegment)
-          ? `Use '${trailingSegment}'.`
-          : describeDeclaredFunctions(declaredNames),
-      });
+      const fix = declared.has(trailingSegment)
+        ? `Use '${trailingSegment}'.`
+        : describeDeclaredFunctions(declaredNames);
+      problems.push(
+        `${position}: ${hook}('${reference.text}') uses a '<podId>/<slug>' Pod function ` +
+          `reference. A Frames v2 UI calls its own functions by bare manifest name. ${fix}`
+      );
       continue;
     }
 
-    warnings.push({
-      type: "frame_function",
-      message:
-        `${position}: ${hook}('${reference.text}') names a function this Frame's manifest does ` +
-        "not declare. The call fails at run time, when a viewer triggers it.",
-      oldString: reference.text,
-      suggestion: describeDeclaredFunctions(declaredNames),
-    });
+    problems.push(
+      `${position}: ${hook}('${reference.text}') names a function this Frame's manifest does ` +
+        `not declare. ${describeDeclaredFunctions(declaredNames)}`
+    );
   }
 
-  return warnings;
+  return problems;
 }
 
 /**
@@ -546,32 +542,9 @@ async function collectInputWarnings({
   return warnings;
 }
 
-/**
- * Statically check how a Frame's UI calls the Frame's own functions: that every literal reference
- * names a declared function, and that the input it passes matches that function's contract. Both
- * only surface at run time otherwise, when a viewer triggers the call.
- *
- * Warnings, never errors: the UI source is not type-checked anywhere else (esbuild strips types
- * without checking them), so this pass reports on code that has never had to satisfy a compiler.
- */
-/**
- * @cc [owner:davidebbo,label:product;error-handling] frame-function-check-stays-advisory
- * This pass MUST only ever produce warnings, and MUST NOT throw. It type-checks UI source that no
- * other step compiles, against JSON Schema derived from Zod contracts whose runtime-only
- * refinements TypeScript cannot express — so it is heuristic in both directions, and every finding
- * is a lead rather than a verdict. Turning one into a `FramePublicationError`, or letting an
- * exception escape, would block publishing a Frame that works.
- */
-export async function collectFrameFunctionWarnings({
-  functions,
-  sourceFiles,
-}: {
-  functions: readonly FrameFunctionContract[];
-  sourceFiles: readonly Pick<
-    FramePublicationSourceFile,
-    "content" | "relativePath"
-  >[];
-}): Promise<ValidationWarning[]> {
+function readFrameSources(
+  sourceFiles: readonly FrameSourceInput[]
+): Map<string, string> {
   const sources = new Map<string, string>();
   for (const sourceFile of sourceFiles) {
     if (isSourceFile(sourceFile.relativePath)) {
@@ -579,41 +552,106 @@ export async function collectFrameFunctionWarnings({
     }
   }
 
-  const hookCalls = Array.from(sources).flatMap(([relativePath, code]) =>
+  return sources;
+}
+
+function collectFrameHookCalls(
+  sources: ReadonlyMap<string, string>
+): HookCall[] {
+  return Array.from(sources).flatMap(([relativePath, code]) =>
     collectHookCalls(parseSource(relativePath, code))
   );
+}
+
+/**
+ * Reject a Frame whose UI names a function its own manifest does not declare.
+ *
+ * This runs on the publish path, not only on validation, because unlike the input check below it is
+ * exact rather than heuristic: `resolveFrameFunctionReference` pins a v2 reference to
+ * `<frameId>/<name>`, so a literal that matches no declared name cannot resolve for any input or
+ * any viewer. Publishing it ships a Frame with a button that always fails. Computed references are
+ * skipped, so a UI that builds names at run time stays publishable.
+ */
+export function validateFrameFunctionReferences({
+  declaredFunctionNames,
+  sourceFiles,
+}: {
+  declaredFunctionNames: readonly string[];
+  sourceFiles: readonly FrameSourceInput[];
+}): Result<undefined, FramePublicationError> {
+  const hookCalls = collectFrameHookCalls(readFrameSources(sourceFiles));
   if (hookCalls.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const problems = collectReferenceProblems(hookCalls, declaredFunctionNames);
+  if (problems.length === 0) {
+    return new Ok(undefined);
+  }
+
+  const listed = problems.slice(0, MAX_REPORTED_PROBLEMS);
+  const remaining = problems.length - listed.length;
+
+  return new Err(
+    new FramePublicationError(
+      "invalid_function_reference",
+      `Frame UI calls a function that is not declared in its manifest:\n${listed.join("\n")}` +
+        (remaining > 0 ? `\n${remaining} more not shown.` : "")
+    )
+  );
+}
+
+/**
+ * Statically check the input a Frame's UI passes to its own functions. Mismatches otherwise surface
+ * only at run time, when a viewer triggers the call.
+ *
+ * @cc [owner:davidebbo,label:product;error-handling] frame-function-input-check-stays-advisory
+ * This check MUST only ever produce warnings, and MUST NOT throw. It type-checks UI source that no
+ * other step compiles, against JSON Schema derived from Zod contracts whose runtime-only
+ * refinements TypeScript cannot express — so it is heuristic in both directions, and every finding
+ * is a lead rather than a verdict. Turning one into a `FramePublicationError`, or letting an
+ * exception escape, would block publishing a Frame that works. This is the opposite of
+ * `validateFrameFunctionReferences`, which is exact and therefore does block.
+ */
+export async function collectFrameFunctionWarnings({
+  functions,
+  sourceFiles,
+}: {
+  functions: readonly FrameFunctionContract[];
+  sourceFiles: readonly FrameSourceInput[];
+}): Promise<ValidationWarning[]> {
+  // Nothing to check inputs against, and a `keyof` over an empty map would reject every call.
+  if (functions.length === 0) {
     return [];
   }
 
-  const declaredNames = functions.map((fn) => fn.name);
-  const warnings = collectReferenceWarnings(hookCalls, declaredNames);
-
-  // Nothing to check inputs against, and a `keyof` over an empty map would reject every call.
-  if (functions.length > 0) {
-    try {
-      warnings.push(
-        ...(await collectInputWarnings({ contracts: functions, sources }))
-      );
-    } catch (error) {
-      // This pass is advisory. A schema the converter cannot express, or a compiler failure, must
-      // not stand between an author and a publish.
-      logger.warn(
-        { error: normalizeError(error).message },
-        "Frame function input validation failed; skipping input warnings."
-      );
-    }
+  const sources = readFrameSources(sourceFiles);
+  if (collectFrameHookCalls(sources).length === 0) {
+    return [];
   }
 
-  if (warnings.length <= MAX_REPORTED_WARNINGS) {
+  let warnings: ValidationWarning[];
+  try {
+    warnings = await collectInputWarnings({ contracts: functions, sources });
+  } catch (error) {
+    // A schema the converter cannot express, or a compiler failure, must not stand between an
+    // author and a publish.
+    logger.warn(
+      { error: normalizeError(error).message },
+      "Frame function input validation failed; skipping input warnings."
+    );
+    return [];
+  }
+
+  if (warnings.length <= MAX_REPORTED_PROBLEMS) {
     return warnings;
   }
 
   return [
-    ...warnings.slice(0, MAX_REPORTED_WARNINGS),
+    ...warnings.slice(0, MAX_REPORTED_PROBLEMS),
     {
       type: "frame_function",
-      message: `${warnings.length - MAX_REPORTED_WARNINGS} more Frame function warning(s) not shown.`,
+      message: `${warnings.length - MAX_REPORTED_PROBLEMS} more Frame function warning(s) not shown.`,
     },
   ];
 }
