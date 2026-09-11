@@ -22,7 +22,7 @@
 //
 // `US` is the catch-all — the United States plus every country not claimed by
 // one of the others, which is how the site already routes today.
-const REGIONS = ["US", "EU", "UK", "FR"];
+const REGIONS = ["EU", "FR", "UK", "US"];
 
 module.exports = function (migration) {
   const customerLogo = migration
@@ -82,43 +82,48 @@ module.exports = function (migration) {
       "Only for logos whose story isn't a Customer story entry yet. Ignored when Case study is set.",
   });
 
+  // Field ids mirror the type already built by hand in the Contentful UI
+  // (`country`, `customerLogo`), which the site reads by id. Contentful field
+  // ids are immutable once created, so this migration exists to reproduce that
+  // shape in another environment — not to reshape the live one.
   const logoList = migration
     .createContentType("logoList")
     .name("Logo list")
     .description(
       "The customer logos shown to one audience, in order, across every marketing page. An audience with no published list keeps the lineup hardcoded in the site."
     )
-    .displayField("name");
-
-  logoList.createField("name").name("Name").type("Symbol").required(true);
+    .displayField("country");
 
   logoList
-    .createField("region")
-    .name("Audience")
+    .createField("country")
+    .name("Country")
     .type("Symbol")
     .required(true)
-    .validations([{ unique: true }, { in: REGIONS }]);
+    .validations([
+      { unique: true },
+      {
+        in: REGIONS,
+        message:
+          "For now, only the FR list is set up. To use another list or add another country, contact the eng team :)",
+      },
+    ]);
 
   logoList
-    .createField("logos")
-    .name("Logos")
+    .createField("customerLogo")
+    .name("Customer logo")
     .type("Array")
     .required(true)
     .items({
       type: "Link",
       linkType: "Entry",
       validations: [{ linkContentType: ["customerLogo"] }],
-    })
-    .validations([{ size: { min: 1 } }]);
+    });
 
-  logoList.changeFieldControl("name", "builtin", "singleLine", {
-    helpText: "Internal label only — never shown on the site.",
-  });
-  logoList.changeFieldControl("region", "builtin", "dropdown", {
+  logoList.changeFieldControl("country", "builtin", "dropdown", {
     helpText:
       "Who sees this list. FR = France, UK = the United Kingdom, EU = the 27 EU countries (not the UK, Switzerland or Norway), US = the United States and everywhere else. Each audience can only have one list.",
   });
-  logoList.changeFieldControl("logos", "builtin", "entryLinksEditor", {
+  logoList.changeFieldControl("customerLogo", "builtin", "entryLinksEditor", {
     bulkEditing: false,
     helpText: "Drag to reorder — this is the left-to-right order on the site.",
   });

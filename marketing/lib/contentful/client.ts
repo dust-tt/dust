@@ -2084,14 +2084,14 @@ export async function getAllLogoLists(
       // field-type resolution collapses to `never` for skeletons that hold
       // nested `Entry[]` references (same reason `chaptersField` above needs
       // a hand), which would make the guards below vacuous.
-      const regionField: unknown = entry.fields.region;
+      const regionField: unknown = entry.fields.country;
       const region = isString(regionField) ? regionField.trim() : "";
       // An unrecognised region is a typo or a value retired from the code;
       // either way the audience it was meant for is better served by the
       // fallback than by nothing.
       if (!isLogoListRegion(region)) {
-        // Naming the fields we *did* get: the usual cause of an empty `region`
-        // is a field whose id isn't `region` (Contentful shows editors the
+        // Naming the fields we *did* get: the usual cause of an empty country
+        // is a field whose id isn't `country` (Contentful shows editors the
         // label, and the two drift apart easily), and the entry then vanishes
         // with nothing to explain why the bar still shows its old lineup.
         logger.warn(
@@ -2101,12 +2101,12 @@ export async function getAllLogoLists(
             fieldIds: Object.keys(entry.fields),
             expected: LOGO_LIST_REGIONS,
           },
-          "[Contentful] Skipping logoList entry: `region` missing or unrecognised"
+          "[Contentful] Skipping logoList entry: `country` missing or unrecognised"
         );
         continue;
       }
 
-      const logosField: unknown = entry.fields.logos;
+      const logosField: unknown = entry.fields.customerLogo;
       if (!Array.isArray(logosField)) {
         logger.warn(
           {
@@ -2114,7 +2114,7 @@ export async function getAllLogoLists(
             entryId: entry.sys.id,
             fieldIds: Object.keys(entry.fields),
           },
-          "[Contentful] Skipping logoList entry: no `logos` array"
+          "[Contentful] Skipping logoList entry: no `customerLogo` array"
         );
         continue;
       }

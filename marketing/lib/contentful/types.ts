@@ -668,15 +668,18 @@ export type CustomerLogoSkeleton = EntrySkeletonType<
 >;
 
 // Must match LOGO_LIST_REGIONS in lib/logo_bars.ts — these strings are the
-// `region` values editors pick in Contentful, so renaming one silently
+// `country` values editors pick in Contentful, so renaming one silently
 // detaches its entry and reverts that audience to the hardcoded fallback.
 export type LogoListRegion = "US" | "EU" | "UK" | "FR";
 
+// Field ids match the content type as built in Contentful: `country`, not
+// `region`, and `customerLogo` for the ordered list. Contentful field ids are
+// immutable once created, so the code conforms to them rather than the other
+// way round. `country` is also the display field, so there is no separate
+// label field.
 export interface LogoListFields {
-  region: string;
-  // Editor-facing label only; never rendered on the site.
-  name?: string;
-  logos?: Entry<CustomerLogoSkeleton>[];
+  country: string;
+  customerLogo?: Entry<CustomerLogoSkeleton>[];
 }
 
 export type LogoListSkeleton = EntrySkeletonType<LogoListFields, "logoList">;

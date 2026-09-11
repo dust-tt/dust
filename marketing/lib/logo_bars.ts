@@ -136,7 +136,8 @@ export function homeTrustedBarSlug(geo: HomeTrustedGeo): string {
 }
 
 // The audiences a `logoList` entry can target, and the `region` values editors
-// pick in Contentful. One published list supplies every bar on every marketing
+// pick in Contentful (the `country` field). One published list supplies every
+// bar on every marketing
 // page for that audience, so a French visitor sees the same lineup throughout.
 //
 // `US` is the catch-all: the United States plus every country not claimed by a
@@ -160,7 +161,7 @@ export function homeTrustedBarSlug(geo: HomeTrustedGeo): string {
 //   3. pick the bar it falls back to until its list is published, in
 //      `fallbackTrustedByRegion` and `fallbackHomeTrustedGeo` — keep whatever
 //      that country sees today, so merging the PR changes nothing on its own;
-//   4. add the value to the `region` dropdown in Contentful (see
+//   4. add the value to the `country` dropdown in Contentful (see
 //      contentful-migrations/README.md).
 // Marketing then creates and fills the list, and never needs you again.
 export const LOGO_LIST_REGIONS = ["US", "EU", "UK", "FR"] as const;

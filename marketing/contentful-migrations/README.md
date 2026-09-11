@@ -55,9 +55,9 @@ Creates the two types behind the "Trusted by …" logo bars:
 - **Customer logo** (`customerLogo`) — one entry per company: name, logo asset,
   and an optional link to its case study. Unpublishing an entry removes that
   logo from every list it appears in.
-- **Logo list** (`logoList`) — one entry per *audience*, identified by `region`,
-  holding an ordered list of Customer logo references. Drag order in Contentful
-  is the display order on the site.
+- **Logo list** (`logoList`) — one entry per *audience*, identified by `country`,
+  holding an ordered list of Customer logo references in the `customerLogo`
+  field. Drag order in Contentful is the display order on the site.
 
 One list per audience, shared by every bar on every marketing page: a French
 visitor sees the same lineup on `/home` as on `/home/solutions/sales`.
@@ -74,14 +74,16 @@ behaviour exactly, region by region. To hand an audience over to GTM:
 
 1. Create a **Customer logo** entry per company (upload the logo in original
    brand colours; the site applies the gray treatment itself).
-2. Create a **Logo list** entry, pick its audience, add the logos in the order
-   they should appear, publish.
+2. Create a **Logo list** entry, pick its country, add the logos in the order
+   they should appear, publish. Publish the Customer logo entries **and their
+   image assets** too — assets publish separately, and a list whose logos are
+   all unresolved is treated as absent.
 
 That audience switches to Contentful on the next revalidation (15 min). Every
 other audience is untouched, so this rolls out one country at a time and is
 reverted by unpublishing.
 
-| Audience (`region`) | Who sees it |
+| Audience (`country`) | Who sees it |
 | --- | --- |
 | `FR` | France |
 | `UK` | The United Kingdom |
