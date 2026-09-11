@@ -1,4 +1,7 @@
-import { buildPickModelSlashCommandItems } from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
+import {
+  buildPickModelSlashCommandItems,
+  getDefaultPickModelSlashCommandItemId,
+} from "@app/components/editor/extensions/shared/slash_suggestion/buildPickModelSlashCommandItems";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionType,
@@ -249,5 +252,39 @@ describe("buildPickModelSlashCommandItems", () => {
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
     ]);
+  });
+});
+
+describe("getDefaultPickModelSlashCommandItemId", () => {
+  const itemsFor = (query: string) =>
+    buildPickModelSlashCommandItems({
+      getModelIcon: () => Icon,
+      lockPremiumEfforts: false,
+      models: [asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG)],
+      query,
+      streams: null,
+    });
+
+  it("points at the first model's initial effort row", () => {
+    expect(
+      getDefaultPickModelSlashCommandItemId(itemsFor("claude"), {
+        lockPremiumEfforts: false,
+      })
+    ).toBe(
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.providerId}/${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId}/${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.defaultReasoningEffort}`
+    );
+  });
+
+  it("returns null when the list starts with a tier or lacks that effort row", () => {
+    expect(
+      getDefaultPickModelSlashCommandItemId(itemsFor(""), {
+        lockPremiumEfforts: false,
+      })
+    ).toBeNull();
+    expect(
+      getDefaultPickModelSlashCommandItemId(itemsFor("claude h"), {
+        lockPremiumEfforts: false,
+      })
+    ).toBeNull();
   });
 });

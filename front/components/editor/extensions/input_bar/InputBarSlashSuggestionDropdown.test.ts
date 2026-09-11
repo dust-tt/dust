@@ -219,7 +219,7 @@ describe("resolveSlashSubMenuFromQuery", () => {
     });
 
     expect(
-      resolveSlashSubMenuFromQuery({ commandItems, query: "know report" })
+      resolveSlashSubMenuFromQuery({ commandItems, query: "att report" })
     ).toMatchObject({
       frame: { subMenuId: ATTACH_CONTEXT_SUB_MENU_ID },
       query: "report",

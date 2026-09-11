@@ -6,6 +6,7 @@ import {
   buildModelSelection,
   buildTierSelection,
   getEffortStops,
+  getInitialEffort,
   getModelWithReasoningEffortLabel,
   getTierLockReason,
   getTierResolvedModelLabel,
@@ -92,6 +93,34 @@ function filterAndRankByQuery(
       getCompactSearchName(b)
     )
   );
+}
+
+/**
+ * @cc [owner:PopDaph,label:product] default-row-is-model-initial-effort
+ * Returns the id of the row for the first model in `items` at its initial effort
+ * (`getInitialEffort`, the same rule as the model picker), or `null` when `items` does not start
+ * with a model row or holds no row for that model at that effort.
+ */
+export function getDefaultPickModelSlashCommandItemId(
+  items: SelectModelSlashCommand[],
+  { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
+): string | null {
+  const display = items[0]?.data.selection.display;
+  if (!display || display.kind !== "model") {
+    return null;
+  }
+
+  const effort = getInitialEffort(display.model, { lockPremiumEfforts });
+  const defaultItem = items.find((item) => {
+    const candidate = item.data.selection.display;
+    return (
+      candidate.kind === "model" &&
+      candidate.model.modelId === display.model.modelId &&
+      candidate.effort === effort
+    );
+  });
+
+  return defaultItem?.id ?? null;
 }
 
 function buildTierSlashCommandItems({
