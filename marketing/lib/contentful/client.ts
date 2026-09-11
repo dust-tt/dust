@@ -1,5 +1,9 @@
 import config from "@marketing/lib/api/config";
-import { LOGO_LIST_REGIONS } from "@marketing/lib/logo_bars";
+import {
+  isLiveLogoListRegion,
+  LIVE_LOGO_LIST_REGIONS,
+  LOGO_LIST_REGIONS,
+} from "@marketing/lib/logo_bars";
 import {
   extractSearchableSections,
   extractTableOfContents,
@@ -2096,6 +2100,18 @@ export async function getAllLogoLists(
             expected: LOGO_LIST_REGIONS,
           },
           "[Contentful] Skipping logoList entry: `country` missing or unrecognised"
+        );
+        continue;
+      }
+
+      // A region that exists but isn't live yet: marketing may be building or
+      // reviewing this list, and it must not reach visitors until someone
+      // ships it. Logged at info, not warn — this is the expected state for a
+      // market in preparation, not a fault.
+      if (!isLiveLogoListRegion(region)) {
+        logger.info(
+          { region, entryId: entry.sys.id, live: LIVE_LOGO_LIST_REGIONS },
+          "[Contentful] Ignoring logoList entry: region is not live yet"
         );
         continue;
       }

@@ -163,8 +163,27 @@ export function homeTrustedBarSlug(geo: HomeTrustedGeo): string {
 //      that country sees today, so merging the PR changes nothing on its own;
 //   4. add the value to the `country` dropdown in Contentful (see
 //      contentful-migrations/README.md).
-// Marketing then creates and fills the list, and never needs you again.
+// Marketing can then build that region's list. It stays invisible on the site
+// until the region is added to LIVE_LOGO_LIST_REGIONS below — deliberately two
+// steps, so a market can be prepared and reviewed before it goes live.
 export const LOGO_LIST_REGIONS = ["US", "EU", "UK", "FR"] as const;
+
+// The regions whose published list the site actually renders.
+//
+// A region can exist in the Contentful dropdown — so marketing can build a
+// list, review it, and show it around — without being live here. Publishing a
+// list for a region that isn't in this array changes nothing on the site.
+//
+// That separation is the point: going live with a market stays a deliberate,
+// reviewable code change, rather than something that happens the moment
+// somebody hits Publish on an entry they were only using to test. To launch a
+// market, add it here; to hand it back, remove it and that region falls
+// straight back to its hardcoded lineup.
+export const LIVE_LOGO_LIST_REGIONS: readonly LogoListRegion[] = ["FR"];
+
+export function isLiveLogoListRegion(region: LogoListRegion): boolean {
+  return LIVE_LOGO_LIST_REGIONS.includes(region);
+}
 
 export function toLogoListRegion(
   countryCode: string | null | undefined

@@ -109,7 +109,17 @@ So:
 | | Who | Deploy? |
 | --- | --- | --- |
 | Which markets exist | Engineering | Yes — a ~4-line PR |
+| Whether a market is **live** | Engineering | Yes — one line |
 | Logos in a market, their order, retiring one | Marketing | No |
+
+Those first two are separate on purpose. A region can be in the Contentful
+dropdown while `LIVE_LOGO_LIST_REGIONS` in `lib/logo_bars.ts` leaves it out, so
+marketing can build a list for a market, review it, and show it around without
+it reaching a single visitor. Publishing such an entry changes nothing on the
+site; the build logs that it skipped it. Launching the market is then a
+one-line change someone reviews.
+
+Today only `FR` is live.
 
 Adding a market is deliberately small. The steps are listed in the comment
 above `LOGO_LIST_REGIONS` in `lib/logo_bars.ts`; the important part is step 3,
