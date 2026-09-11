@@ -25,6 +25,7 @@ import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
 import type {
   GroupGrantableRole,
+  GroupGrantableSeatType,
   UserVisibleGroupKind,
 } from "@app/types/groups";
 import type {
@@ -822,6 +823,14 @@ export type GetWorkspaceGrantedRolesResponseBody = {
   // (partly) managed through group membership and manual role editing is
   // restricted.
   grantedRoles: GroupGrantableRole[];
+};
+
+export type GetWorkspaceGrantedSeatTypesResponseBody = {
+  // Distinct seat types granted by at least one group in the workspace (full
+  // paid seat types including cadence, e.g. `pro`/`pro_yearly`). A member of any
+  // seat-granting group has their seat managed through group membership, so
+  // manual seat editing is restricted for them.
+  grantedSeatTypes: GroupGrantableSeatType[];
 };
 
 export type GetWelcomeResponseBody = {
