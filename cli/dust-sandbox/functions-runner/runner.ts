@@ -123,8 +123,8 @@ async function dbSchemaHandler(args: string[]): Promise<number> {
 }
 
 async function dbQueryHandler(args: string[]): Promise<number> {
-  // spillDir is where an oversized result is written as a pod file; Rust passes the pod-files
-  // dir. Absent (a bare dbPath), runQuery falls back to a temp dir.
+  // spillDir is where an oversized result is written in full; Rust passes it only when the caller
+  // can read this sandbox's files. Absent, runQuery keeps just the inline preview.
   const [dbPath, spillDir] = args;
   if (!dbPath) {
     return emitDbBadArgs(

@@ -1,10 +1,10 @@
 use std::path::Path;
 
-use anyhow::{bail, Context};
+use anyhow::Context;
 
 use crate::api::DustApiClient;
 
-use super::{print_response, scoped_path};
+use super::{print_response, scoped_path, validate_frame_id};
 
 pub async fn run(target: &str, function_name: &str, input: Option<&str>) -> anyhow::Result<()> {
     let input = parse_input(input)?;
@@ -21,20 +21,6 @@ pub async fn run(target: &str, function_name: &str, input: Option<&str>) -> anyh
             .await?
     };
     print_response(&response)
-}
-
-fn validate_frame_id(frame_id: &str) -> anyhow::Result<()> {
-    let Some(encoded) = frame_id.strip_prefix("fil_") else {
-        bail!("invalid Frame ID: {frame_id}");
-    };
-    if encoded.is_empty()
-        || !encoded
-            .chars()
-            .all(|character| character.is_ascii_alphanumeric())
-    {
-        bail!("invalid Frame ID: {frame_id}");
-    }
-    Ok(())
 }
 
 fn parse_input(input: Option<&str>) -> anyhow::Result<Option<serde_json::Value>> {
