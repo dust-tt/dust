@@ -9,7 +9,7 @@ import type { KeyType } from "@app/types/key";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { RoleType, WorkspaceType } from "@app/types/user";
-import type { MenuItem, TableSkeletonCellProps } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps, MenuItem } from "@dust-tt/sparkle";
 import {
   Building04,
   Button,
@@ -18,6 +18,7 @@ import {
   Chip,
   cn,
   DataTable,
+  DataTableSkeleton,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -30,7 +31,6 @@ import {
   LoadingBlock,
   Lock01,
   SearchInput,
-  TableSkeleton,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -46,7 +46,10 @@ import { useMemo, useState } from "react";
 const API_KEYS_PAGE_SIZE = 10;
 const MAX_API_KEY_CONSUMPTION_ROWS = 100;
 
-function APIKeySkeletonCell({ columnId, rowIndex }: TableSkeletonCellProps) {
+function APIKeySkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "name":
       return (
@@ -746,7 +749,7 @@ export function APIKeysTable({
 
       {isLoading || isSpacesLoading ? (
         <>
-          <TableSkeleton
+          <DataTableSkeleton
             columns={columns}
             SkeletonCell={APIKeySkeletonCell}
             rowHeight={64}

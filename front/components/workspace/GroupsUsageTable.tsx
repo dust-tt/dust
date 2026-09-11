@@ -4,11 +4,11 @@ import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoMo
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { TableSkeletonCellProps } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   DataTable,
+  DataTableSkeleton,
   LoadingBlock,
-  TableSkeleton,
   Users01,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
@@ -30,7 +30,7 @@ type GroupRowData = {
 
 type GroupInfo = CellContext<GroupRowData, string>;
 
-function GroupUsageSkeletonCell({ columnId }: TableSkeletonCellProps) {
+function GroupUsageSkeletonCell({ columnId }: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "name":
       return (
@@ -155,7 +155,7 @@ export function GroupsUsageTable({
         </span>
       )}
       {isGroupsLoading ? (
-        <TableSkeleton
+        <DataTableSkeleton
           columns={columns}
           SkeletonCell={GroupUsageSkeletonCell}
           rowHeight={49}

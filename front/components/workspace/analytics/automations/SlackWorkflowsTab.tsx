@@ -12,15 +12,15 @@ import { timeAgoFrom } from "@app/lib/utils";
 import type { SlackWorkflowType } from "@app/types/api/slack/workflows";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { TableSkeletonCellProps } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   Button,
   cn,
   DataTable,
+  DataTableSkeleton,
   LoadingBlock,
   Plus,
   SearchInput,
-  TableSkeleton,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -276,7 +276,7 @@ interface SlackWorkflowsTableBodyProps {
 function SlackWorkflowSkeletonCell({
   columnId,
   rowIndex,
-}: TableSkeletonCellProps) {
+}: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "botName":
       return (
@@ -319,7 +319,7 @@ function SlackWorkflowsTableBody({
   if (isLoading) {
     return (
       <div className="flex flex-col gap-2 overflow-x-auto">
-        <TableSkeleton
+        <DataTableSkeleton
           columns={columns}
           SkeletonCell={SlackWorkflowSkeletonCell}
         />

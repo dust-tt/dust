@@ -100,6 +100,11 @@ export {
   DataTable,
   ScrollableDataTable,
 } from "./DataTable";
+export type {
+  DataTableSkeletonCellProps,
+  DataTableSkeletonProps,
+} from "./DataTableSkeleton";
+export { DataTableSkeleton } from "./DataTableSkeleton";
 export {
   Dialog,
   DialogClose,
@@ -294,11 +299,6 @@ export type { SpinnerBrandProps } from "./SpinnerBrand";
 export { SpinnerBrand } from "./SpinnerBrand";
 export type { FlexSplitButtonProps } from "./SplitButton";
 export { FlexSplitButton } from "./SplitButton";
-export type {
-  TableSkeletonCellProps,
-  TableSkeletonProps,
-} from "./TableSkeleton";
-export { TableSkeleton } from "./TableSkeleton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
 export { Timeline, TimelineItem } from "./Timeline";

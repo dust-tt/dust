@@ -9,18 +9,18 @@ import {
 } from "@tanstack/react-table";
 import React, { type ComponentType } from "react";
 
-export interface TableSkeletonCellProps {
+export interface DataTableSkeletonCellProps {
   /** The column id from the table definition. */
   columnId: string;
   /** Zero-based placeholder row index, for varying shapes across rows. */
   rowIndex: number;
 }
 
-export interface TableSkeletonProps<TData, TValue = string> {
+export interface DataTableSkeletonProps<TData, TValue = string> {
   /** Reuse the loaded table columns, including header alignment and width classes. */
   columns: ColumnDef<TData, TValue>[];
   /** Required cell renderer: compose LoadingBlocks to match each column's content. */
-  SkeletonCell: ComponentType<TableSkeletonCellProps>;
+  SkeletonCell: ComponentType<DataTableSkeletonCellProps>;
   /** Number of placeholder rows. Defaults to 5. */
   rowCount?: number;
   /** Row height in pixels; match the loaded table. Defaults to 48. */
@@ -32,12 +32,12 @@ export interface TableSkeletonProps<TData, TValue = string> {
  * a custom SkeletonCell renderer. Compose LoadingBlocks for each column to match
  * its real content, such as circular avatars, badges, or multiple text lines.
  */
-export function TableSkeleton<TData, TValue = string>({
+export function DataTableSkeleton<TData, TValue = string>({
   columns,
   SkeletonCell,
   rowCount = 5,
   rowHeight = 48,
-}: TableSkeletonProps<TData, TValue>) {
+}: DataTableSkeletonProps<TData, TValue>) {
   const table = useReactTable({
     data: [],
     columns,

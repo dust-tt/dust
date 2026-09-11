@@ -10,16 +10,16 @@ import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
-import type { TableSkeletonCellProps } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
   cn,
   DataTable,
+  DataTableSkeleton,
   LoadingBlock,
   Mail01,
   Page,
-  TableSkeleton,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type React from "react";
@@ -32,7 +32,7 @@ type RowData = MembershipInvitationType & {
 function InvitationSkeletonCell({
   columnId,
   rowIndex,
-}: TableSkeletonCellProps) {
+}: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "inviteEmail":
       return (
@@ -167,7 +167,7 @@ export function InvitationsList({
       />
       <div className="flex flex-col gap-1 pt-2">
         {isInvitationsLoading && (
-          <TableSkeleton
+          <DataTableSkeleton
             columns={columns}
             SkeletonCell={InvitationSkeletonCell}
             rowCount={3}

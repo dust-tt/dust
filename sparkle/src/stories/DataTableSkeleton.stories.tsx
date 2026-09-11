@@ -1,5 +1,5 @@
-import { LoadingBlock, TableSkeleton } from "@sparkle/components";
-import type { TableSkeletonCellProps } from "@sparkle/components";
+import { LoadingBlock, DataTableSkeleton } from "@sparkle/components";
+import type { DataTableSkeletonCellProps } from "@sparkle/components";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ColumnDef } from "@tanstack/react-table";
 import React from "react";
@@ -29,7 +29,10 @@ const columns = [
   },
 ] satisfies ColumnDef<MemberRow, string>[];
 
-function MemberSkeletonCell({ columnId, rowIndex }: TableSkeletonCellProps) {
+function MemberSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "member":
       return (
@@ -53,8 +56,8 @@ function MemberSkeletonCell({ columnId, rowIndex }: TableSkeletonCellProps) {
 }
 
 const meta = {
-  title: "Feedback & Status/TableSkeleton",
-  component: TableSkeleton,
+  title: "Feedback & Status/DataTableSkeleton",
+  component: DataTableSkeleton,
   args: {
     columns,
     SkeletonCell: MemberSkeletonCell,
@@ -69,10 +72,10 @@ const meta = {
   },
   render: (args) => (
     <div className="w-full max-w-2xl">
-      <TableSkeleton {...args} />
+      <DataTableSkeleton {...args} />
     </div>
   ),
-} satisfies Meta<typeof TableSkeleton>;
+} satisfies Meta<typeof DataTableSkeleton>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

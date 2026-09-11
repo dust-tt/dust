@@ -14,14 +14,14 @@ import type {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import type { TableSkeletonCellProps } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   AlertCircle,
   ContentMessage,
   cn,
   DataTable,
+  DataTableSkeleton,
   LoadingBlock,
-  TableSkeleton,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
@@ -200,7 +200,7 @@ const CYCLE_HISTORY_COLUMNS: ColumnDef<CycleHistoryRowData, string>[] = [
 export const INITIAL_CYCLE_HISTORY_ROW_COUNT = 2;
 export const CYCLE_HISTORY_LOAD_MORE_COUNT = 5;
 
-function CycleHistorySkeletonCell({ columnId }: TableSkeletonCellProps) {
+function CycleHistorySkeletonCell({ columnId }: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "cycle":
       return <LoadingBlock className="h-3 w-56 max-w-full" />;
@@ -272,7 +272,7 @@ function WorkspaceCreditPoolHistory({
     case "loading":
       return (
         <div className="flex flex-col gap-2">
-          <TableSkeleton
+          <DataTableSkeleton
             columns={CYCLE_HISTORY_COLUMNS}
             SkeletonCell={CycleHistorySkeletonCell}
             rowCount={INITIAL_CYCLE_HISTORY_ROW_COUNT}

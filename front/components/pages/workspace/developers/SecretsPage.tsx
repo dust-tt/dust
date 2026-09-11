@@ -5,12 +5,13 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
-import type { TableSkeletonCellProps } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   BookOpen01,
   Button,
   cn,
   DataTable,
+  DataTableSkeleton,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -23,7 +24,6 @@ import {
   Page,
   Plus,
   SearchInput,
-  TableSkeleton,
   Trash01,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
@@ -340,7 +340,10 @@ interface SecretsTableProps {
   searchQuery: string;
 }
 
-function SecretSkeletonCell({ columnId, rowIndex }: TableSkeletonCellProps) {
+function SecretSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "name":
       return (
@@ -370,7 +373,7 @@ function SecretsTable({
 }: SecretsTableProps) {
   if (isLoading) {
     return (
-      <TableSkeleton columns={columns} SkeletonCell={SecretSkeletonCell} />
+      <DataTableSkeleton columns={columns} SkeletonCell={SecretSkeletonCell} />
     );
   }
 

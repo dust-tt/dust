@@ -8,14 +8,14 @@ import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
-import type { TableSkeletonCellProps } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   Button,
   Check,
   DataTable,
+  DataTableSkeleton,
   LoadingBlock,
   Spinner,
-  TableSkeleton,
   XClose,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
@@ -39,7 +39,7 @@ type Info = CellContext<RowData, string>;
 function UpgradeRequestSkeletonCell({
   columnId,
   rowIndex,
-}: TableSkeletonCellProps) {
+}: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "name":
       return <MemberNameSkeleton rowIndex={rowIndex} />;
@@ -234,7 +234,7 @@ export function UpgradeRequestsTable({
 
   if (isLoading) {
     return (
-      <TableSkeleton
+      <DataTableSkeleton
         columns={columns}
         SkeletonCell={UpgradeRequestSkeletonCell}
       />

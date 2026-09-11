@@ -47,7 +47,7 @@ import {
   toBaseSeatType,
 } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { MenuItem, TableSkeletonCellProps } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps, MenuItem } from "@dust-tt/sparkle";
 import {
   AlertCircle,
   Button,
@@ -56,6 +56,7 @@ import {
   CoinsStacked03,
   createSelectionColumn,
   DataTable,
+  DataTableSkeleton,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -64,7 +65,6 @@ import {
   LoadingBlock,
   ProgressBar,
   Spinner,
-  TableSkeleton,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type {
@@ -133,7 +133,7 @@ type Info = CellContext<RowData, string>;
 function MemberUsageSkeletonCell({
   columnId,
   rowIndex,
-}: TableSkeletonCellProps) {
+}: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "select":
       return <LoadingBlock className="h-4 w-4 rounded" />;
@@ -1559,7 +1559,7 @@ export function MembersUsageTable({
       totalRowCount - pagination.pageIndex * pagination.pageSize;
     return (
       <div className="flex flex-col gap-2">
-        <TableSkeleton
+        <DataTableSkeleton
           columns={columns}
           SkeletonCell={MemberUsageSkeletonCell}
           rowCount={
