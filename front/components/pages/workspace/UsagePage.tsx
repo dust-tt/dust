@@ -1094,7 +1094,7 @@ export function UsagePage() {
           currentTotalPoolCredits={totalActiveCredits}
         />
 
-        <div className="flex flex-col gap-8">
+        <Page.Vertical align="stretch" gap="xl">
           {showConsumptionAnalytics ? (
             <Page.Header
               title={
@@ -1429,7 +1429,7 @@ export function UsagePage() {
 
             {isWorkspaceAdmin && (
               <TabsContent value="settings" className={TAB_CONTENT_CLASS}>
-                <div className="flex flex-col gap-8">
+                <Page.Vertical align="stretch" gap="xl">
                   {isCreditPriced && (
                     <UsageSettingsCard
                       workspaceId={owner.sId}
@@ -1447,11 +1447,11 @@ export function UsagePage() {
                       <UsageNotificationsCard workspaceId={owner.sId} />
                     </LockedSection>
                   )}
-                </div>
+                </Page.Vertical>
               </TabsContent>
             )}
           </Tabs>
-        </div>
+        </Page.Vertical>
 
         <ChangeSeatModal
           isOpen={changeSeatMember !== null}
