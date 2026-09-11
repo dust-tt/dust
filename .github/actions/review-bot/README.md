@@ -5,7 +5,7 @@ their reviews and a contract review. Use `r? cc` to request only a contract revi
 
 ```text
 r? @spolu @flvndvd
-r? @spolu please take a look
+r? please take a look at @spolu
 r? cc
 r? @spolu cc @flvndvd PMRR
 ```
@@ -16,10 +16,10 @@ reviewed. Opening a PR with a request also works. Title edits, pushes, and comme
 request reviews.
 
 The `r?` must start the line without indentation. Surrounding lines and trailing prose are allowed;
-only consecutive GitHub mentions and bare `cc` tokens immediately after `r?` are reviewers. `cc` is
-case-insensitive; `@cc` requests the GitHub user instead. Team mentions and tokens after trailing
-prose are ignored. Markdown filtering is best-effort: simple fenced blocks, HTML comments, and
-explicitly quoted lines are skipped. Inline code, nested blocks, lazy quote continuations, and
+all GitHub mentions anywhere after `r?` are reviewers. Bare `cc` tokens anywhere on the request line
+request a contract review. `cc` is case-insensitive; `@cc` requests the GitHub user instead. Team
+mentions are not supported. Markdown filtering is best-effort: simple fenced blocks, HTML comments,
+and explicitly quoted lines are skipped. Inline code, nested blocks, lazy quote continuations, and
 interactions between comments and fences may cause missed or extra requests.
 
 GitHub reviews, contract reviews, and Slack notifications require a human requester with repository
@@ -66,12 +66,13 @@ preserves the human requester's identity and request across dispatches and retri
 rechecks that person's access before reviewing.
 
 Inline comments and review summaries invoke the action directly in their request workflow because
-the imported action does not yet accept these events as delegated requests. They still publish a
+ the imported action does not yet accept these events as delegated requests. They still publish a
 review and progress status on the captured PR head.
 
 Each review run reports a distinct `Review Code Contracts (<run-id>)` commit status linked to the
 workflow, including progress, completion, failure, and cancellation. Success means the review
-completed; findings remain in the comment review. Concurrent runs cannot overwrite one another's status.
+completed; findings remain in the comment review. Concurrent runs cannot overwrite one another's
+status.
 
 The request job needs `actions: write` to dispatch. Review execution needs `contents: read`,
 `pull-requests: write`, `statuses: write`, and `actions: read` to resolve delegated requesters.

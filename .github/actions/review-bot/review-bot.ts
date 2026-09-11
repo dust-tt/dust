@@ -72,12 +72,12 @@ type ReviewBotOptions = {
 
 /**
  * @cc [label:product] review-request-syntax
- * Parse consecutive GitHub mentions and bare `cc` tokens after a column-zero `r?` followed by
+ * Parse GitHub mentions and bare `cc` tokens anywhere after a column-zero `r?` followed by
  * whitespace, retaining the request line for notifications. Bare `cc` requests a contract review
- * case-insensitively; `@cc` remains a GitHub mention. Trailing prose ends the list. Deduplicate
- * handles case-insensitively within each request. Markdown filtering is best-effort: skip simple
- * fenced blocks, HTML comments, and explicitly quoted lines. Inline code, nested blocks, lazy quote
- * continuations, and interactions between comments and fences may cause missed or extra requests.
+ * case-insensitively; `@cc` remains a GitHub mention. Deduplicate handles case-insensitively within
+ * each request. Markdown filtering is best-effort: skip simple fenced blocks, HTML comments, and
+ * explicitly quoted lines. Inline code, nested blocks, lazy quote continuations, and interactions
+ * between comments and fences may cause missed or extra requests.
  */
 export function parseReviewRequests(
   body: string | null | undefined
@@ -112,15 +112,15 @@ export function parseReviewRequests(
     }
     const reviewers = new Set<string>();
     let contractReview = false;
+    for (const match of request[1].matchAll(
+      /(?<![a-z\d_-])@[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?/gi
+    )) {
+      reviewers.add(match[0].slice(1).toLowerCase());
+    }
     for (const token of request[1].split(/[ \t]+/)) {
       if (token.toLowerCase() === "cc") {
         contractReview = true;
-        continue;
       }
-      if (!/^@[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(token)) {
-        break;
-      }
-      reviewers.add(token.slice(1).toLowerCase());
     }
     if (reviewers.size > 0 || contractReview) {
       requests.push({ line, reviewers: [...reviewers], contractReview });
@@ -374,9 +374,9 @@ function escapeSlackText(text: string): string {
 /**
  * @cc [label:product] review-request-slack-format
  * Format each eligible `r?` line with trailing prose preserved, prefixed by
- * `from: @requester` and followed by the PR URL and on the same line. Resolve
- * requester and reviewer mentions through `.authors` emails and Slack user
- * lookup; unresolved handles remain plain text.
+ * `from: @requester` and followed by the PR URL and requester on the same line. Resolve
+ * requester and reviewer mentions through `.authors` emails and Slack user lookup; unresolved
+ * handles remain plain text.
  */
 /**
  * @cc [label:error-handling] review-request-slack-delivery
@@ -464,7 +464,7 @@ export async function formatSlackNotification({
     escapeSlackText(`@${notification.requester}`);
   const lines = notification.requests.map(({ line }) =>
     escapeSlackText(line).replace(
-      /(?<!\S)@[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?(?=[ \t]|$)/gi,
+      /(?<![a-z\d_-])@[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?(?![a-z\d_-])/gi,
       (mention) => mentions.get(mention.slice(1).toLowerCase()) ?? mention
     )
   );
