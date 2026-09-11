@@ -69,6 +69,14 @@ function frameDatabasesUrl(workspaceId: string, frameId: string): string {
   return `/api/v1/w/${workspaceId}/sandbox/frames/${frameId}/databases`;
 }
 
+function frameDatabaseQueryUrl(
+  workspaceId: string,
+  frameId: string,
+  database: string
+): string {
+  return `${frameDatabasesUrl(workspaceId, frameId)}/${database}/query`;
+}
+
 function requestFrameDatabases({
   workspaceId,
   frameId,
@@ -80,13 +88,16 @@ function requestFrameDatabases({
   token: string;
   query?: { database: string; sql: string };
 }) {
-  return honoApp.request(frameDatabasesUrl(workspaceId, frameId), {
+  const url = query
+    ? frameDatabaseQueryUrl(workspaceId, frameId, query.database)
+    : frameDatabasesUrl(workspaceId, frameId);
+  return honoApp.request(url, {
     method: query ? "POST" : "GET",
     headers: {
       authorization: `Bearer ${token}`,
       ...(query ? { "content-type": "application/json" } : {}),
     },
-    body: query ? JSON.stringify(query) : undefined,
+    body: query ? JSON.stringify({ sql: query.sql }) : undefined,
   });
 }
 
