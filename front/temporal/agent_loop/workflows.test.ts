@@ -417,7 +417,7 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
       ],
       runId: "run-1",
       isRootAgentMessage: true,
-      // 0 AWU credits: nowhere near the fixed 300 AWU threshold.
+      // 0 AWU credits: nowhere near the fixed checkpoint threshold.
       preStepTotalCostMicroUsd: 0,
     });
     checkCreditsActivity
