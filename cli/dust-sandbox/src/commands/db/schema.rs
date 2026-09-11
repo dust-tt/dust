@@ -2,13 +2,14 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use super::{db_file_path, spawn_runner};
+use super::{db_file_path, require_local_databases, spawn_runner};
 
 /// Regenerate a drizzle `{db}.db.ts` schema file from the live pod database
 /// `name`, writing it to `out_schema` (file-output pattern: the file is the
 /// payload, stdout only carries the `{ok}` envelope). Column modes are not
 /// recoverable from SQLite — the regenerated file carries storage types only.
 pub async fn cmd_db_schema(name: &str, out_schema: &str) -> Result<()> {
+    require_local_databases()?;
     let db_path = db_file_path(name)?;
 
     let code = spawn_runner(

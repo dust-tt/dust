@@ -10,7 +10,8 @@ use super::error::DustApiError;
 use super::types::{
     parse_action_poll_response, ActionPollResponse, CallToolPostResponse, CallToolRequest,
     CallToolResponse, CallToolResult, FrameCallByIdRequest, FrameCallFromSourceRequest,
-    FrameCallResponse, FramePublishRequest, FramePublishResponse, FrameRegisterRequest,
+    FrameCallResponse, FrameDatabaseListResponse, FrameDatabaseQueryRequest,
+    FrameDatabaseQueryResponse, FramePublishRequest, FramePublishResponse, FrameRegisterRequest,
     FrameRegisterResponse, FrameShareLinkResponse, FrameValidateRequest, FrameValidateResponse,
     MCPServerView, SandboxServerViewsResponse,
 };
@@ -71,10 +72,21 @@ impl DustApiClient {
         path: &str,
         query: &[(&str, &str)],
     ) -> anyhow::Result<T> {
+        self.get_with_timeout(path, query, HTTP_REQUEST_TIMEOUT)
+            .await
+    }
+
+    async fn get_with_timeout<T: DeserializeOwned>(
+        &self,
+        path: &str,
+        query: &[(&str, &str)],
+        timeout: Duration,
+    ) -> anyhow::Result<T> {
         let url = self.url(path);
         let resp = self
             .client
             .get(&url)
+            .timeout(timeout)
             .query(query)
             .send()
             .await
@@ -211,6 +223,32 @@ impl DustApiClient {
         self.get(
             "sandbox/frames/share",
             &[("sourceDirectoryPath", source_directory_path)],
+        )
+        .await
+    }
+
+    pub async fn list_frame_databases(
+        &self,
+        frame_id: &str,
+    ) -> anyhow::Result<FrameDatabaseListResponse> {
+        self.get_with_timeout(
+            &format!("sandbox/frames/{frame_id}/databases"),
+            &[],
+            POLL_MAX_DURATION,
+        )
+        .await
+    }
+
+    pub async fn query_frame_database(
+        &self,
+        frame_id: &str,
+        database: &str,
+        sql: &str,
+    ) -> anyhow::Result<FrameDatabaseQueryResponse> {
+        self.post_with_timeout(
+            &format!("sandbox/frames/{frame_id}/databases/{database}/query"),
+            &FrameDatabaseQueryRequest { sql },
+            POLL_MAX_DURATION,
         )
         .await
     }
@@ -354,5 +392,51 @@ impl DustApiClient {
             self.post("sandbox/actions/call", &body).await?;
 
         self.poll_action_result(&action_id).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpListener;
+
+    use super::DustApiClient;
+
+    #[tokio::test]
+    async fn frame_database_list_survives_a_cold_start_beyond_the_default_timeout() {
+        let listener = TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind test server");
+        let address = listener.local_addr().expect("read test server address");
+        let server = tokio::spawn(async move {
+            let (mut stream, _) = listener.accept().await.expect("accept request");
+            let mut request = [0_u8; 1024];
+            let bytes_read = stream.read(&mut request).await.expect("read request");
+            assert!(bytes_read > 0, "request must contain bytes");
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            let _ = stream
+                .write_all(
+                    b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 12\r\nConnection: close\r\n\r\n{\"items\":[]}",
+                )
+                .await;
+        });
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_millis(20))
+            .build()
+            .expect("build test client");
+        let api = DustApiClient {
+            client,
+            base_url: format!("http://{address}"),
+        };
+
+        let response = api
+            .list_frame_databases("fil_abc123")
+            .await
+            .expect("Frame database listing should override the default request timeout");
+
+        assert!(response.items.is_empty());
+        server.await.expect("test server completes");
     }
 }
