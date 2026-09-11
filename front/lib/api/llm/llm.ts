@@ -15,6 +15,7 @@ import {
   emitLLMTimeToFirstTokenMs,
   llmAttemptLogFields,
   requestedReasoningEffortTag,
+  serviceTierTags,
 } from "@app/lib/api/llm/telemetry";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
@@ -48,6 +49,7 @@ import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
 import { getUsageType } from "@app/lib/metronome/events";
 import type { UsageType } from "@app/lib/metronome/types";
 import type { Host } from "@app/lib/model_constructors/types/hosts";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { statsDMetrics } from "@app/lib/utils/statsd";
@@ -85,6 +87,7 @@ export abstract class LLM<
   protected bypassFeatureFlag: boolean;
   protected metadata: LLMClientMetadata;
   protected host: Host;
+  private serviceTier: ServiceTier | undefined;
   // Temporary during the router migration; "new" is set by BaseTransition.
   protected readonly router: "legacy" | "new" = "legacy";
 
@@ -184,6 +187,7 @@ export abstract class LLM<
     return [
       ...this.getTelemetryTags({ surface }),
       requestedReasoningEffortTag(this.reasoningEffort),
+      ...serviceTierTags(this.serviceTier),
     ];
   }
 
@@ -330,6 +334,7 @@ export abstract class LLM<
     let currentEvent: LLMEvent | null = null;
     let timeToFirstEventMs: number | undefined;
     let timeToFirstTokenMs: number | undefined;
+    this.serviceTier = undefined;
 
     try {
       for await (const event of this.completeStream(
@@ -355,11 +360,10 @@ export abstract class LLM<
         // Providers report usage exactly once per response, at end of stream. Emitting here in
         // the base class covers both the new router and the legacy clients.
         if (currentEvent.type === "token_usage") {
+          this.serviceTier = currentEvent.content.serviceTier;
           emitTokenUsageMetrics(currentEvent.content, [
             ...metricTags,
-            ...(currentEvent.content.serviceTier
-              ? [`service_tier:${currentEvent.content.serviceTier}`]
-              : []),
+            ...serviceTierTags(this.serviceTier),
           ]);
         }
 
@@ -389,6 +393,7 @@ export abstract class LLM<
           timeToFirstEventMs,
           timeToFirstTokenMs,
           requestedReasoningEffort: this.reasoningEffort,
+          serviceTier: this.serviceTier,
           surface: "stream",
         });
 
