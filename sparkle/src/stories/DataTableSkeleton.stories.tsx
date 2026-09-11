@@ -16,6 +16,7 @@ import { expect, within } from "storybook/test";
 interface MemberRow {
   member: string;
   email: string;
+  agent: string;
   role: string;
   usage: string;
   onClick?: () => void;
@@ -25,23 +26,31 @@ const members: MemberRow[] = [
   {
     member: "Maya Chen",
     email: "maya@example.com",
+    agent: "Research Assistant",
     role: "Admin",
     usage: "124",
   },
   {
     member: "Alex Rivera",
     email: "alex@example.com",
+    agent: "Sales Assistant",
     role: "Builder",
     usage: "82",
   },
-  { member: "Sam Lee", email: "sam@example.com", role: "User", usage: "16" },
+  {
+    member: "Sam Lee",
+    email: "sam@example.com",
+    agent: "Data Analyst",
+    role: "User",
+    usage: "16",
+  },
 ];
 
 const columns: ColumnDef<MemberRow, string>[] = [
   {
     accessorKey: "member",
     header: "Member",
-    meta: { className: "w-1/2" },
+    meta: { className: "w-[40%]" },
     cell: ({ row }) => (
       <div className="flex items-center gap-2">
         <Avatar name={row.original.member} size="xs" isRounded />
@@ -55,10 +64,21 @@ const columns: ColumnDef<MemberRow, string>[] = [
     ),
   },
   {
+    accessorKey: "agent",
+    header: "Agent",
+    meta: { className: "w-[30%]" },
+    cell: ({ row }) => (
+      <div className="flex items-center gap-2">
+        <Avatar name={row.original.agent} size="sm" />
+        <div className="truncate text-sm">{row.original.agent}</div>
+      </div>
+    ),
+  },
+  {
     accessorKey: "role",
     header: "Role",
     enableSorting: false,
-    meta: { className: "w-1/4" },
+    meta: { className: "w-[20%]" },
     cell: ({ row }) => (
       <Chip
         label={row.original.role}
@@ -70,7 +90,7 @@ const columns: ColumnDef<MemberRow, string>[] = [
   {
     accessorKey: "usage",
     header: "Usage",
-    meta: { className: "w-1/4", headerAlign: "right" },
+    meta: { className: "w-[10%]", headerAlign: "right" },
     cell: ({ row }) => (
       <div className="text-right text-sm">{row.original.usage}</div>
     ),
@@ -84,11 +104,20 @@ function MemberSkeletonCell({
   switch (columnId) {
     case "member":
       return (
-        <AvatarCellSkeleton className="h-9">
+        <AvatarCellSkeleton rounded className="h-9">
           <TextCellSkeleton
             className={rowIndex % 2 === 0 ? "w-2/3" : "w-1/2"}
           />
           <TextCellSkeleton className="w-3/4" />
+        </AvatarCellSkeleton>
+      );
+    case "agent":
+      return (
+        <AvatarCellSkeleton
+          rounded={false}
+          avatarClassName="h-9 w-9 rounded-lg"
+        >
+          <TextCellSkeleton className="w-28" />
         </AvatarCellSkeleton>
       );
     case "role":
@@ -127,9 +156,9 @@ type Story = StoryObj<typeof meta>;
 
 /**
  * Reuse the loaded table columns and provide a cell renderer for their contents:
- * circular avatars and two text lines for members, chip-shaped roles, and
- * right-aligned usage values. Vary text widths with rowIndex for a natural layout.
- * @summary Custom cell placeholders matching avatars, badges, and text.
+ * circular user avatars, square agent avatars, chip-shaped roles, and right-aligned
+ * usage values. Vary text widths with rowIndex for a natural layout.
+ * @summary Custom cell placeholders matching user and agent avatars, badges, and text.
  */
 export const CustomCells: Story = {};
 

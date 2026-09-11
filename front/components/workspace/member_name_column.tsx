@@ -19,7 +19,7 @@ interface MemberNameSkeletonProps {
 
 export function MemberNameSkeleton({ rowIndex }: MemberNameSkeletonProps) {
   return (
-    <AvatarCellSkeleton className="h-9">
+    <AvatarCellSkeleton rounded className="h-9">
       <TextCellSkeleton
         className={["w-28", "w-36", "w-24", "w-40", "w-32"][rowIndex % 5]}
       />
