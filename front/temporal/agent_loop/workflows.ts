@@ -6,6 +6,7 @@ import {
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
+import type { DescendantRunData } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
@@ -300,6 +301,11 @@ export async function agentLoopWorkflow({
   // it back (see checkCreditSpendCheckpointActivity).
   let skipCreditSpendCheckpointChecks = false;
 
+  // The credit spend checkpoint's descendant walk, valid only for the very next step: nothing
+  // that creates a run happens between that check and the next step's own guardrail check, so it
+  // can reuse this instead of repeating the walk. Cleared after being passed through once.
+  let cachedDescendantData: DescendantRunData | null = null;
+
   const runIds: string[] = [];
 
   try {
@@ -327,6 +333,11 @@ export async function agentLoopWorkflow({
 
         const stepStartTime = Date.now();
 
+        // Valid only for this one call: consume it now regardless of outcome, and let the
+        // checkpoint check below repopulate it for the next step if it runs again.
+        const descendantDataForThisStep = cachedDescendantData;
+        cachedDescendantData = null;
+
         const { runId, shouldContinue, retryWithoutTools, isRootAgentMessage } =
           await executeStepIteration({
             authType,
@@ -338,6 +349,7 @@ export async function agentLoopWorkflow({
             runIds,
             startStep,
             forceDisableToolUse,
+            cachedDescendantData: descendantDataForThisStep,
           });
 
         forceDisableToolUse = retryWithoutTools ?? false;
@@ -422,6 +434,7 @@ export async function agentLoopWorkflow({
             if (checkpointResult.skipRemainingChecks) {
               skipCreditSpendCheckpointChecks = true;
             }
+            cachedDescendantData = checkpointResult.descendantData ?? null;
           } catch (err) {
             // Fails open: an activity failure must never fail the agent loop. Cancellation is
             // not a check failure and keeps propagating.
@@ -534,6 +547,7 @@ async function executeStepIteration({
   runIds,
   startStep,
   forceDisableToolUse,
+  cachedDescendantData,
 }: {
   authType: AuthenticatorType;
   currentStep: number;
@@ -541,6 +555,7 @@ async function executeStepIteration({
   runIds: string[];
   startStep: number;
   forceDisableToolUse: boolean;
+  cachedDescendantData: DescendantRunData | null;
 }): Promise<{
   runId: string | null;
   shouldContinue: boolean;
@@ -557,6 +572,7 @@ async function executeStepIteration({
     runIds,
     step: currentStep,
     forceDisableToolUse,
+    cachedDescendantData,
   });
 
   if (!result) {

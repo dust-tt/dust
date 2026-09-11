@@ -836,12 +836,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
-  static async fetchAgentMessageCreditSpendCheckpointState(
+  static async fetchCreditSpendCheckpointStateForAgentMessage(
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: string }
   ): Promise<{
     status: AgentMessageModel["creditSpendCheckpointStatus"];
-    runIds: string[];
   } | null> {
     const messageRow = await MessageModel.findOne({
       where: {
@@ -854,7 +853,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           model: AgentMessageModel,
           as: "agentMessage",
           required: true,
-          attributes: ["creditSpendCheckpointStatus", "runIds"],
+          attributes: ["creditSpendCheckpointStatus"],
         },
       ],
     });
@@ -866,7 +865,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     return {
       status: agentMessage.creditSpendCheckpointStatus,
-      runIds: agentMessage.runIds ?? [],
     };
   }
 
