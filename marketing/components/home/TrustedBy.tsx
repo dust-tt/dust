@@ -54,9 +54,9 @@ export default function TrustedBy({
   const listRegion = geoParam
     ? toLogoListRegion(geoParam)
     : regionParam === "eu"
-      ? "european-union"
+      ? "EU"
       : regionParam === "us"
-        ? "worldwide"
+        ? "US"
         : toLogoListRegion(countryCode);
 
   // Which hardcoded bar to show until this region has a published list. An

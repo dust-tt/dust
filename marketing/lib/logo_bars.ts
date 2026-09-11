@@ -139,9 +139,10 @@ export function homeTrustedBarSlug(geo: HomeTrustedGeo): string {
 // pick in Contentful. One published list supplies every bar on every marketing
 // page for that audience, so a French visitor sees the same lineup throughout.
 //
-// `worldwide` is the catch-all: the United States plus every country not
-// claimed by a more specific region below. Ordering matters in
-// `toLogoListRegion` — the first match wins.
+// `WW` is the catch-all: every country not claimed by a more specific region.
+// `US` is separate from it, so the United States and the rest of the world can
+// carry different lineups. Ordering matters in `toLogoListRegion` — the first
+// match wins, so the UK check has to precede the EU one.
 //
 // This list is deliberately code-owned rather than editor-owned. A visitor's
 // country arrives as an ISO code and has to be *mapped* to an audience, and
@@ -161,30 +162,30 @@ export function homeTrustedBarSlug(geo: HomeTrustedGeo): string {
 //   4. add the value to the `region` dropdown in Contentful (see
 //      contentful-migrations/README.md).
 // Marketing then creates and fills the list, and never needs you again.
-export const LOGO_LIST_REGIONS = [
-  "worldwide",
-  "european-union",
-  "united-kingdom",
-  "france",
-] as const;
+export const LOGO_LIST_REGIONS = ["WW", "US", "EU", "UK", "FR"] as const;
 
 export function toLogoListRegion(
   countryCode: string | null | undefined
 ): LogoListRegion {
   if (!countryCode) {
-    return "worldwide";
+    return "WW";
   }
   const code = countryCode.toUpperCase();
   if (code === "FR") {
-    return "france";
+    return "FR";
   }
+  // Before the EU check: the UK is in GDPR_COUNTRY_CODES but not
+  // EU_COUNTRY_CODES, and we want it on its own list either way.
   if (code === "GB") {
-    return "united-kingdom";
+    return "UK";
   }
   if (isEUCountry(code)) {
-    return "european-union";
+    return "EU";
   }
-  return "worldwide";
+  if (code === "US") {
+    return "US";
+  }
+  return "WW";
 }
 
 // Which hardcoded bar an audience falls back to when its region has no
@@ -195,14 +196,14 @@ export function toLogoListRegion(
 export function fallbackTrustedByRegion(
   region: LogoListRegion
 ): TrustedByRegion {
-  return region === "european-union" || region === "france" ? "eu" : "us";
+  return region === "EU" || region === "FR" ? "eu" : "us";
 }
 
 export function fallbackHomeTrustedGeo(region: LogoListRegion): HomeTrustedGeo {
-  if (region === "france") {
+  if (region === "FR") {
     return "fr";
   }
-  if (region === "united-kingdom") {
+  if (region === "UK") {
     return "gb";
   }
   return "default";

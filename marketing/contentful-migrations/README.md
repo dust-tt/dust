@@ -83,10 +83,15 @@ reverted by unpublishing.
 
 | Audience (`region`) | Who sees it |
 | --- | --- |
-| `france` | France |
-| `united-kingdom` | The United Kingdom |
-| `european-union` | The 27 EU countries — **not** the UK, Switzerland or Norway |
-| `worldwide` | The United States and everywhere else |
+| `FR` | France |
+| `UK` | The United Kingdom |
+| `EU` | The 27 EU countries — **not** the UK, Switzerland or Norway |
+| `US` | The United States |
+| `WW` | Everywhere else — **and** any audience above with no list of its own |
+
+`WW` doubles as the default, so publishing it moves every region that has no
+list of its own at the same time. Publish it last; until then each region goes
+live on its own.
 
 ### Who owns what
 

@@ -670,11 +670,7 @@ export type CustomerLogoSkeleton = EntrySkeletonType<
 // Must match LOGO_LIST_REGIONS in lib/logo_bars.ts — these strings are the
 // `region` values editors pick in Contentful, so renaming one silently
 // detaches its entry and reverts that audience to the hardcoded fallback.
-export type LogoListRegion =
-  | "worldwide"
-  | "european-union"
-  | "united-kingdom"
-  | "france";
+export type LogoListRegion = "WW" | "US" | "EU" | "UK" | "FR";
 
 export interface LogoListFields {
   region: string;
