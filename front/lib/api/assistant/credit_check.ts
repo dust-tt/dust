@@ -6,6 +6,7 @@ import {
 } from "@app/lib/api/credits/access_control";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
+import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 
@@ -70,8 +71,11 @@ export async function checkCreditSpendCheckpointGate(
     return DO_NOT_NOTIFY;
   }
 
+  const plan = auth.subscription()?.plan;
   const thresholdAwuCredits =
-    config.getCreditSpendCheckpointThresholdAwuCredits();
+    config.getCreditSpendCheckpointThresholdAwuCredits({
+      isEnterprisePlan: !!plan && isEnterprisePlanPrefix(plan.code),
+    });
 
   return consumedAwuCredits >= thresholdAwuCredits
     ? { crossed: true, thresholdAwuCredits }
