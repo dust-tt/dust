@@ -912,6 +912,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"
   | "disable_fair_use_awu_limit"
+  | "remote_db_query_identity_labels"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;

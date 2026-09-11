@@ -164,6 +164,16 @@ type CoreAPIQueryResult = {
   value: Record<string, string | number | boolean | null | undefined>;
 };
 
+/**
+ * Opaque Dust identity attached to remote warehouse query jobs for cost attribution.
+ * Written into the customer's own warehouse logs (BigQuery labels / Snowflake QUERY_TAG).
+ */
+export type CoreAPIQueryIdentity = {
+  workspace_id?: string;
+  agent_id?: string;
+  user_id?: string;
+};
+
 export type CoreAPISearchFilter = {
   tags: {
     in: string[] | null;
@@ -2049,6 +2059,7 @@ export class CoreAPI {
   async queryDatabase({
     tables,
     query,
+    queryIdentity,
   }: {
     tables: Array<{
       project_id: number;
@@ -2056,6 +2067,7 @@ export class CoreAPI {
       table_id: string;
     }>;
     query: string;
+    queryIdentity?: CoreAPIQueryIdentity;
   }): Promise<
     CoreAPIResponse<{
       schema: CoreAPITableSchema;
@@ -2070,6 +2082,7 @@ export class CoreAPI {
       body: JSON.stringify({
         query,
         tables: tables.map((t) => [t.project_id, t.data_source_id, t.table_id]),
+        ...(queryIdentity ? { query_identity: queryIdentity } : {}),
       }),
     });
 
