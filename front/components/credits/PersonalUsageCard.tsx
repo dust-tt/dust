@@ -2,9 +2,9 @@ import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
 import { AwuUsageBar } from "@app/components/workspace/MembersUsageTable";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import {
-  formatCreditResetCountdown,
   formatCredits,
-  formatFairUseAllowance,
+  formatCreditValue,
+  formatLimitTimeframe,
 } from "@app/lib/client/credits";
 import { useMyUsage, useSeatPlan } from "@app/lib/swr/credits";
 import { useFairUseCredits } from "@app/lib/swr/fair_use_credits";
@@ -14,6 +14,42 @@ import { ONE_DAY_MS, ordinalDay } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { ProgressBar, Separator, Spinner, Stars02 } from "@dust-tt/sparkle";
+
+// Relative day label for a refill date: "today", "tomorrow", a weekday within
+// the week, or the calendar date beyond that.
+function formatRefillDay(isoDate: string): string {
+  const refillAt = new Date(isoDate);
+  const now = new Date();
+  const refillDayMs = Date.UTC(
+    refillAt.getUTCFullYear(),
+    refillAt.getUTCMonth(),
+    refillAt.getUTCDate()
+  );
+  const currentDayMs = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate()
+  );
+  const daysUntilRefill = Math.round((refillDayMs - currentDayMs) / ONE_DAY_MS);
+
+  if (daysUntilRefill <= 0) {
+    return "today";
+  }
+  if (daysUntilRefill === 1) {
+    return "tomorrow";
+  }
+  if (daysUntilRefill < 7) {
+    return `on ${refillAt.toLocaleDateString("en-US", {
+      weekday: "long",
+      timeZone: "UTC",
+    })}`;
+  }
+  return `on ${refillAt.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  })}`;
+}
 
 interface PersonalUsageCardProps {
   owner: WorkspaceType;
@@ -75,47 +111,19 @@ export function PersonalUsageCard({
   const isPremiumModelUsageAtLimit = premiumModelUsage
     ? premiumModelUsage.usedMessages >= premiumModelUsage.limitMessages
     : false;
-  const nextPremiumModelRefillDate = (() => {
-    if (!premiumModelUsage?.nextRefill) {
-      return null;
-    }
-
-    const availableAt = new Date(premiumModelUsage.nextRefill.availableAt);
-    const now = new Date();
-    const availableDayMs = Date.UTC(
-      availableAt.getUTCFullYear(),
-      availableAt.getUTCMonth(),
-      availableAt.getUTCDate()
-    );
-    const currentDayMs = Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate()
-    );
-    const daysUntilAvailable = Math.round(
-      (availableDayMs - currentDayMs) / ONE_DAY_MS
-    );
-
-    if (daysUntilAvailable === 0) {
-      return "today";
-    }
-    if (daysUntilAvailable === 1) {
-      return "tomorrow";
-    }
-    return `on ${availableAt.toLocaleDateString("en-US", {
-      weekday: "long",
-      timeZone: "UTC",
-    })}`;
-  })();
+  const nextPremiumModelRefillDate = premiumModelUsage?.nextRefill
+    ? formatRefillDay(premiumModelUsage.nextRefill.availableAt)
+    : null;
   const fairUseCreditsPercentage = fairUseAwuCreditsState
     ? Math.min(
         (fairUseAwuCreditsState.count / fairUseAwuCreditsState.limit) * 100,
         100
       )
     : 0;
-  const fairUseCreditsSubtitle = fairUseAwuCreditsState?.nextResetAt
-    ? formatCreditResetCountdown(fairUseAwuCreditsState.nextResetAt)
-    : null;
+  const isFairUseCreditsAtLimit = fairUseAwuCreditsState
+    ? fairUseAwuCreditsState.count >= fairUseAwuCreditsState.limit
+    : false;
+  const nextFairUseRefill = fairUseAwuCreditsState?.refillSchedule?.[0] ?? null;
   const isLoading = isMyUsageLoading || isFairUseCreditsLoading;
 
   return (
@@ -190,8 +198,11 @@ export function PersonalUsageCard({
                     Credits consumption
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {fairUseCreditsSubtitle ??
-                      formatFairUseAllowance(fairUseAwuCreditsState.timeframe)}
+                    Used{" "}
+                    {formatLimitTimeframe(
+                      fairUseAwuCreditsState.timeframe,
+                      "compact"
+                    )}
                   </span>
                 </div>
                 <span className="text-sm tabular-nums text-muted-foreground">
@@ -213,6 +224,12 @@ export function PersonalUsageCard({
                   },
                 ]}
               />
+              {isFairUseCreditsAtLimit && nextFairUseRefill ? (
+                <span className="text-xs text-muted-foreground">
+                  {formatCreditValue(nextFairUseRefill.credits)} available again{" "}
+                  {formatRefillDay(nextFairUseRefill.date)}
+                </span>
+              ) : null}
             </div>
           ) : null}
           {showPremiumModelUsage && premiumModelUsage ? (
