@@ -6,6 +6,7 @@ import {
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
