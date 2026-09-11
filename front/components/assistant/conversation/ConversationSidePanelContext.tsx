@@ -66,11 +66,13 @@ const isSupportedPanelType = (
   type === "skill";
 
 interface ConversationSidePanelContextType {
+  canGoBack: boolean;
   currentPanel: ConversationSidePanelType;
   // True between closePanel() and the end of the collapse transition. `currentPanel` keeps the
   // old value meanwhile so the panel content does not flicker; toggles read this to unselect
   // right away.
   isPanelClosing: boolean;
+  goBack: () => void;
   openPanel: (params: OpenPanelParams) => void;
   togglePanel: (params: OpenPanelParams) => void;
   closePanel: () => void;
@@ -163,6 +165,13 @@ function getPanelData(params: OpenPanelParams): string {
   }
 }
 
+interface PanelHistoryEntry {
+  panel: ConversationSidePanelType;
+  data: string;
+}
+
+const MAX_PANEL_HISTORY = 50;
+
 interface ConversationSidePanelProviderProps {
   children: React.ReactNode;
 }
@@ -179,6 +188,9 @@ export function ConversationSidePanelProvider({
   const previousConversationIdRef = React.useRef(activeConversationId);
 
   const panelRef = React.useRef<ImperativePanelHandle | null>(null);
+  const [panelHistory, setPanelHistory] = React.useState<PanelHistoryEntry[]>(
+    []
+  );
   const [isPanelClosing, setIsPanelClosing] = React.useState(false);
   const [virtuosoMsg, setVirtuosoMsg] =
     React.useState<AgentMessageWithStreaming | null>(null);
@@ -196,6 +208,7 @@ export function ConversationSidePanelProvider({
     setIsPanelClosing(false);
     setData(undefined);
     setCurrentPanel(undefined);
+    setPanelHistory([]);
   }, [setData, setCurrentPanel]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
@@ -226,6 +239,17 @@ export function ConversationSidePanelProvider({
         return;
       }
 
+      if (
+        !isSameContent &&
+        !isPanelClosing &&
+        data &&
+        isSupportedPanelType(currentPanel)
+      ) {
+        setPanelHistory((history) =>
+          [...history, { panel: currentPanel, data }].slice(-MAX_PANEL_HISTORY)
+        );
+      }
+
       setIsPanelClosing(false);
       setCurrentPanel(params.type);
       setData(nextData);
@@ -250,6 +274,20 @@ export function ConversationSidePanelProvider({
       setFullScreenHash,
     ]
   );
+
+  const goBack = useCallback(() => {
+    const previous = panelHistory.at(-1);
+    if (!previous) {
+      return;
+    }
+
+    setPanelHistory((history) => history.slice(0, -1));
+    setIsPanelClosing(false);
+    setCurrentPanel(previous.panel);
+    setData(previous.data);
+    setFullScreenHash(undefined);
+    panelRef.current?.expand(getDefaultRightPanelSize(previous.panel));
+  }, [panelHistory, setCurrentPanel, setData, setFullScreenHash]);
 
   // Idempotent open for programmatic callers: a toggle could mis-close during a close→reopen
   // transition where `currentPanel` still reads the old value.
@@ -293,6 +331,8 @@ export function ConversationSidePanelProvider({
 
   const value = useMemo(
     () => ({
+      canGoBack: panelHistory.length > 0,
+      goBack,
       currentPanel: isSupportedPanelType(currentPanel)
         ? currentPanel
         : undefined,
@@ -308,6 +348,8 @@ export function ConversationSidePanelProvider({
       data,
     }),
     [
+      panelHistory,
+      goBack,
       currentPanel,
       isPanelClosing,
       openPanel,

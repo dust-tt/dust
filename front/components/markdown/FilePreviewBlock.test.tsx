@@ -135,6 +135,8 @@ function renderWithSidePanel(
     ...render(
       <ConversationSidePanelContext.Provider
         value={{
+          canGoBack: false,
+          goBack: vi.fn(),
           currentPanel: undefined,
           isPanelClosing: false,
           openPanel,
@@ -215,6 +217,8 @@ describe("getFilePreviewPlugin", () => {
     render(
       <ConversationSidePanelContext.Provider
         value={{
+          canGoBack: false,
+          goBack: vi.fn(),
           currentPanel: undefined,
           isPanelClosing: false,
           openPanel,

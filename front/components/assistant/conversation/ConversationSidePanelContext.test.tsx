@@ -96,6 +96,80 @@ describe("ConversationSidePanelProvider selection", () => {
   });
 });
 
+describe("ConversationSidePanelProvider history", () => {
+  beforeEach(resetHash);
+
+  it("starts with no history", () => {
+    const probe = renderProvider();
+
+    expect(probe.panel.canGoBack).toBe(false);
+  });
+
+  it("goes back to the previously shown panel", () => {
+    const probe = renderProvider();
+
+    act(() => probe.panel.openPanel({ type: "files" }));
+    expect(probe.panel.canGoBack).toBe(false);
+
+    act(() =>
+      probe.panel.openPanel({ type: "file_preview", filePath: "a.md" })
+    );
+    expect(probe.panel.canGoBack).toBe(true);
+
+    act(() => probe.panel.goBack());
+    expect(probe.panel.currentPanel).toBe("files");
+    expect(probe.panel.data).toBe("files");
+    expect(probe.panel.canGoBack).toBe(false);
+  });
+
+  it("walks back through several panels in order", () => {
+    const probe = renderProvider();
+
+    act(() => probe.panel.openPanel({ type: "files" }));
+    act(() =>
+      probe.panel.openPanel({ type: "file_preview", filePath: "a.md" })
+    );
+    act(() =>
+      probe.panel.openPanel({ type: "file_preview", filePath: "b.md" })
+    );
+
+    act(() => probe.panel.goBack());
+    expect(probe.panel.data).toBe("a.md");
+
+    act(() => probe.panel.goBack());
+    expect(probe.panel.currentPanel).toBe("files");
+    expect(probe.panel.canGoBack).toBe(false);
+  });
+
+  it("does not record a history entry when reselecting the same content", () => {
+    const probe = renderProvider();
+
+    act(() =>
+      probe.panel.openPanel({ type: "file_preview", filePath: "a.md" })
+    );
+    act(() =>
+      probe.panel.openPanel({ type: "file_preview", filePath: "a.md" })
+    );
+
+    expect(probe.panel.canGoBack).toBe(false);
+  });
+
+  it("clears history once the panel has closed", () => {
+    const probe = renderProvider();
+
+    act(() => probe.panel.openPanel({ type: "files" }));
+    act(() =>
+      probe.panel.openPanel({ type: "file_preview", filePath: "a.md" })
+    );
+    expect(probe.panel.canGoBack).toBe(true);
+
+    act(() => probe.panel.closePanel());
+    act(() => probe.panel.onPanelClosed());
+
+    expect(probe.panel.canGoBack).toBe(false);
+  });
+});
+
 describe("ConversationSidePanelProvider toggle", () => {
   beforeEach(resetHash);
 
