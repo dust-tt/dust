@@ -7,6 +7,7 @@ import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_uti
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { CONVERSATION_SIDE_PANEL_SERVER } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
+import { CURSOR_CLOUD_AGENTS_SERVER } from "@app/lib/api/actions/servers/cursor_cloud_agents/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
@@ -126,6 +127,10 @@ const SERVER_SOURCES: Array<{
   {
     name: "conversation_side_panel",
     tools: CONVERSATION_SIDE_PANEL_SERVER.tools,
+  },
+  {
+    name: "cursor_cloud_agents",
+    tools: CURSOR_CLOUD_AGENTS_SERVER.tools,
   },
   { name: "google_drive", tools: GOOGLE_DRIVE_SERVER.tools },
   { name: "google_sheets", tools: GOOGLE_SHEETS_SERVER.tools },

@@ -19,6 +19,7 @@ import { default as commonUtilitiesServer } from "@app/lib/api/actions/servers/c
 import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
 import { default as conversationSidePanelServer } from "@app/lib/api/actions/servers/conversation_side_panel";
+import { default as cursorCloudAgentsServer } from "@app/lib/api/actions/servers/cursor_cloud_agents";
 import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
 import { default as exaServer } from "@app/lib/api/actions/servers/exa";
@@ -197,6 +198,8 @@ export async function getInternalMCPServer(
       return conversationFilesServer(auth, toolContext);
     case "conversation_side_panel":
       return conversationSidePanelServer(auth, toolContext);
+    case "cursor_cloud_agents":
+      return cursorCloudAgentsServer(auth, toolContext);
     case "files":
       return filesServer(auth, toolContext);
     case "servicenow":
