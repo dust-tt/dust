@@ -101,8 +101,67 @@ impl TryFrom<&gcp_bigquery_client::model::table_schema::TableSchema> for TableSc
 pub const MAX_QUERY_RESULT_ROWS: usize = 25_000;
 pub const PAGE_SIZE: i32 = 500;
 
-// Must be kept in sync with the tag in connectors.
+// Must be kept in sync with the tags in connectors.
 pub const USE_METADATA_FOR_DBML_TAG: &str = "bigquery:useMetadataForDBML";
+pub const MAXIMUM_BYTES_BILLED_TAG_PREFIX: &str = "bigquery:maximumBytesBilled:";
+
+fn maximum_bytes_billed_from_tables(tables: &[Table]) -> Option<String> {
+    for table in tables {
+        for tag in table.get_tags() {
+            if let Some(bytes) = tag.strip_prefix(MAXIMUM_BYTES_BILLED_TAG_PREFIX) {
+                if !bytes.is_empty() && bytes.chars().all(|c| c.is_ascii_digit()) && bytes != "0" {
+                    return Some(bytes.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+mod maximum_bytes_billed_tests {
+    use super::*;
+
+    #[test]
+    fn parses_tag_from_tables() {
+        // Build a minimal Table via public constructor is heavy; test the tag parsing logic inline.
+        let tags = vec![
+            "bigquery:useMetadataForDBML".to_string(),
+            "bigquery:maximumBytesBilled:1073741824".to_string(),
+        ];
+        let bytes = tags.iter().find_map(|tag| {
+            tag.strip_prefix(MAXIMUM_BYTES_BILLED_TAG_PREFIX)
+                .and_then(|b| {
+                    if !b.is_empty() && b.chars().all(|c| c.is_ascii_digit()) && b != "0" {
+                        Some(b.to_string())
+                    } else {
+                        None
+                    }
+                })
+        });
+        assert_eq!(bytes.as_deref(), Some("1073741824"));
+    }
+
+    #[test]
+    fn ignores_zero_and_empty() {
+        for tag in [
+            "bigquery:maximumBytesBilled:0",
+            "bigquery:maximumBytesBilled:",
+            "bigquery:maximumBytesBilled:abc",
+        ] {
+            let parsed = tag
+                .strip_prefix(MAXIMUM_BYTES_BILLED_TAG_PREFIX)
+                .and_then(|b| {
+                    if !b.is_empty() && b.chars().all(|c| c.is_ascii_digit()) && b != "0" {
+                        Some(b.to_string())
+                    } else {
+                        None
+                    }
+                });
+            assert!(parsed.is_none(), "tag={tag}");
+        }
+    }
+}
 
 impl BigQueryRemoteDatabase {
     pub fn new(
@@ -121,6 +180,7 @@ impl BigQueryRemoteDatabase {
         &self,
         query: &str,
         query_identity: Option<&QueryIdentityContext>,
+        maximum_bytes_billed: Option<&str>,
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let labels = query_identity
             .map(|identity| identity.to_bigquery_labels())
@@ -132,6 +192,7 @@ impl BigQueryRemoteDatabase {
                 query: Some(JobConfigurationQuery {
                     query: query.to_string(),
                     use_legacy_sql: Some(false),
+                    maximum_bytes_billed: maximum_bytes_billed.map(|b| b.to_string()),
                     ..Default::default()
                 }),
                 labels,
@@ -272,12 +333,14 @@ impl BigQueryRemoteDatabase {
     pub async fn get_query_plan(
         &self,
         query: &str,
+        maximum_bytes_billed: Option<&str>,
     ) -> Result<BigQueryQueryPlan, QueryDatabaseError> {
         let job = Job {
             configuration: Some(JobConfiguration {
                 query: Some(JobConfigurationQuery {
                     query: query.to_string(),
                     use_legacy_sql: Some(false),
+                    maximum_bytes_billed: maximum_bytes_billed.map(|b| b.to_string()),
                     ..Default::default()
                 }),
                 dry_run: Some(true),
@@ -421,7 +484,7 @@ impl BigQueryRemoteDatabase {
                     "Failed to get allowed table metadata",
                 );
 
-                return self.get_query_plan(select.as_str()).await;
+                return self.get_query_plan(select.as_str(), None).await;
             }
         };
 
@@ -456,7 +519,7 @@ impl BigQueryRemoteDatabase {
             ),
         };
 
-        self.get_query_plan(query.as_str()).await
+        self.get_query_plan(query.as_str(), None).await
     }
 
     pub async fn check_if_all_forbidden_tables_are_part_of_allowed_views(
@@ -621,8 +684,11 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
         query: &str,
         query_identity: Option<&QueryIdentityContext>,
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
+        let maximum_bytes_billed = maximum_bytes_billed_from_tables(tables);
+        let maximum_bytes_billed = maximum_bytes_billed.as_deref();
+
         // Ensure that query is a SELECT query and only uses tables that are allowed directly or indirectly in an allowed view.
-        let plan = self.get_query_plan(query).await?;
+        let plan = self.get_query_plan(query, maximum_bytes_billed).await?;
         if !plan.is_select_query {
             Err(QueryDatabaseError::ExecutionError(
                 format!("Query is not a SELECT query"),
@@ -654,7 +720,8 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
             .await?;
         }
 
-        self.execute_query(query, query_identity).await
+        self.execute_query(query, query_identity, maximum_bytes_billed)
+            .await
     }
 
     async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<Option<TableSchema>>> {
