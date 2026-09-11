@@ -1078,12 +1078,25 @@ export class FileResource extends BaseResource<FileModel> {
     });
   }
 
+  /**
+   * @cc [owner:davidebbo,label:product;backend] frame-publication-records-agent
+   * When `publishedByAgentConfigurationId` is given, `useCaseMetadata.lastEditedByAgentConfigurationId`
+   * MUST be set to it. The conversation UI reads this field to enable "Ask agent to fix" on a
+   * Frame runtime error; if a publication path omits it, the retry affordance stays silently
+   * unavailable for every publication of that Frame, not just the failing one.
+   */
   async setActiveFramePublication(
     {
       publicationId,
       name,
       description,
-    }: { publicationId: string; name: string; description: string },
+      publishedByAgentConfigurationId,
+    }: {
+      publicationId: string;
+      name: string;
+      description: string;
+      publishedByAgentConfigurationId?: string;
+    },
     transaction?: Transaction
   ) {
     return this.update(
@@ -1093,6 +1106,12 @@ export class FileResource extends BaseResource<FileModel> {
           activePublicationId: publicationId,
           frameName: name,
           frameDescription: description,
+          ...(publishedByAgentConfigurationId
+            ? {
+                lastEditedByAgentConfigurationId:
+                  publishedByAgentConfigurationId,
+              }
+            : {}),
         },
       },
       transaction

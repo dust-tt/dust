@@ -230,11 +230,13 @@ export async function buildAndPublishFramePublication(
     frame,
     manifest,
     sourceFiles,
+    publishedByAgentConfigurationId,
   }: {
     conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
+    publishedByAgentConfigurationId?: string;
   }
 ): Promise<
   Result<
@@ -257,5 +259,6 @@ export async function buildAndPublishFramePublication(
     manifest,
     sourceFiles,
     uiBundleCode: buildResult.value.uiBundleCode,
+    publishedByAgentConfigurationId,
   });
 }
