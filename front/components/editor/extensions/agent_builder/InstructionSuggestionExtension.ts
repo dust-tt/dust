@@ -60,13 +60,17 @@ const CLASSES = {
   blockHighlightDimmed: "suggestion-highlight rounded bg-muted cursor-default",
 };
 
-// Inline <skill> references serialize as an EMPTY paired tag (see SkillNode's
-// renderHTML: the stored instructionsHtml must stay childless for the skill
-// reference reconciliation to match it). Addition widgets are built from that
-// serialization rather than from the React node view, so a suggested skill
-// reference would render as an invisible gap. Label it here, where the markup is
-// throwaway, instead of in the node's renderHTML, which feeds persisted HTML.
-// <tool> and <knowledge> need none of this: they carry their own chip markup.
+// Addition widgets are built by serializing the new nodes through `toDOM`
+// (renderHTML), not through their React node views. <tool> and <knowledge> carry
+// their own chip markup in renderHTML, so they show up in a diff for free;
+// <skill> serializes as an EMPTY paired tag and would render as an invisible gap.
+//
+// SkillNode cannot take the same route: its renderHTML output also feeds the
+// persisted instructionsHtml, and SKILL_REFERENCE_TAG_REGEX only matches a tag
+// that closes immediately, so a chip child would make the rename and
+// availability rewrites in `SkillResource.replaceSkillReferenceTags` silently
+// skip stored references. (Tools avoid that because TOOL_ELEMENT_REGEX tolerates
+// children.) So we label the reference here, where the markup is throwaway.
 const SKILL_CHIP_CLASS =
   "inline-flex items-center gap-0.5 border border-current/40 rounded px-0.5 text-xs leading-tight";
 const SKILL_LABEL_PREFIX = "Skill";
