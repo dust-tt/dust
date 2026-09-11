@@ -3,20 +3,12 @@ import {
   checkCreditSpendCheckpointGate,
   checkPoolCreditGate,
 } from "@app/lib/api/assistant/credit_check";
-import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { awuFromMicroUsd } from "@app/lib/credits/agent_message_billing";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import logger from "@app/logger/logger";
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
-import {
-  getFullAgentLoopDataWithAuth,
-  isAgentLoopDataSoftDeleteError,
-} from "@app/types/assistant/agent_run";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import maxBy from "lodash/maxBy";
 
 export async function checkCreditsActivity(
   authType: AuthenticatorType,
@@ -58,36 +50,30 @@ async function getConsumedAwuCredits(
   return awuFromMicroUsd(totalCostMicroUsd);
 }
 
-export type CreditSpendCheckpointActivityResult = {
-  crossed: boolean;
-  // Once true, the workflow stops calling this activity for the rest of the
-  // execution: the user already acknowledged the checkpoint, or the message is
-  // exempt from it. Neither can flip back within an execution.
-  skipRemainingChecks: boolean;
-};
+export type CreditSpendCheckpointActivityResult =
+  // Once `skipRemainingChecks` is true, the workflow stops calling this activity for the rest of
+  // the execution: the user already acknowledged the checkpoint, or the execution is exempt from
+  // it. Neither can flip back within an execution.
+  | { crossed: false; skipRemainingChecks: boolean }
+  | { crossed: true; thresholdAwuCredits: number };
 
 const NOT_CROSSED: CreditSpendCheckpointActivityResult = {
   crossed: false,
   skipRemainingChecks: false,
 };
+const SKIP: CreditSpendCheckpointActivityResult = {
+  crossed: false,
+  skipRemainingChecks: true,
+};
 
 /**
- * Has this agent message's own spend crossed the credit spend checkpoint?
- * When it has, the pause is persisted on the message and the user is notified.
+ * Has this agent message's own spend crossed the credit spend checkpoint? Pure decision: the
+ * pause itself is persisted and notified by the finalize activity, so a failure or timeout here
+ * can never leave the message marked paused while the loop keeps running.
  */
 export async function checkCreditSpendCheckpointActivity(
   authType: AuthenticatorType,
-  {
-    agentLoopArgs,
-    precomputedOwnCostMicroUsd,
-  }: {
-    agentLoopArgs: AgentLoopArgsWithTiming;
-    // This step's own-message cost, already computed by this step's guardrail check
-    // (see checkCostAndSubagentsThresholds). Reusing it avoids a second RunResource query for
-    // the same figure. Null when the caller had none available (e.g. the guardrail check didn't
-    // run for this step), in which case this activity queries it itself.
-    precomputedOwnCostMicroUsd?: number | null;
-  }
+  { agentLoopArgs }: { agentLoopArgs: AgentLoopArgsWithTiming }
 ): Promise<CreditSpendCheckpointActivityResult> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
@@ -97,80 +83,20 @@ export async function checkCreditSpendCheckpointActivity(
       { agentMessageId: agentLoopArgs.agentMessageId }
     );
   if (state?.status === "acknowledged") {
-    return { crossed: false, skipRemainingChecks: true };
+    return SKIP;
   }
 
-  const consumedAwuCredits =
-    precomputedOwnCostMicroUsd != null
-      ? awuFromMicroUsd(precomputedOwnCostMicroUsd)
-      : await getConsumedAwuCredits(auth, { runIds: state?.runIds ?? [] });
+  // Read after the step completed, so the step's own run is already accounted for.
+  const consumedAwuCredits = await getConsumedAwuCredits(auth, {
+    runIds: state?.runIds ?? [],
+  });
 
   const result = await checkCreditSpendCheckpointGate(auth, {
     consumedAwuCredits,
   });
-  if (!result.crossed) {
-    return NOT_CROSSED;
+  if (result.crossed) {
+    return { crossed: true, thresholdAwuCredits: result.thresholdAwuCredits };
   }
 
-  const runAgentDataRes = await getFullAgentLoopDataWithAuth(
-    auth,
-    agentLoopArgs
-  );
-  if (runAgentDataRes.isErr()) {
-    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
-      return { crossed: true, skipRemainingChecks: false };
-    }
-    throw normalizeError(runAgentDataRes.error);
-  }
-  const { agentConfiguration, agentMessage, conversation, userMessage } =
-    runAgentDataRes.value;
-
-  // A sub-agent message has no user watching it: the parent tool waits on the
-  // child's stream and nothing renders the pause card, so pausing here would
-  // only leave the parent hanging. The parent message runs its own checkpoint.
-  if (userMessage.agenticMessageData) {
-    return { crossed: false, skipRemainingChecks: true };
-  }
-
-  const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
-
-  // Persisted here so the pause survives a refresh.
-  await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(auth, {
-    agentMessageModelId: agentMessage.agentMessageId,
-  });
-
-  logger.info(
-    {
-      conversationId: agentLoopArgs.conversationId,
-      agentMessageId: agentLoopArgs.agentMessageId,
-    },
-    "Agent loop paused at credit spend checkpoint"
-  );
-
-  try {
-    await ConversationResource.markAsActionRequired(auth, { conversation });
-
-    await publishConversationRelatedEvent({
-      conversationId: conversation.sId,
-      step,
-      event: {
-        type: "agent_credit_spend_checkpoint_reached",
-        created: Date.now(),
-        configurationId: agentConfiguration.sId,
-        messageId: agentMessage.sId,
-        thresholdAwuCredits: result.thresholdAwuCredits,
-      },
-    });
-  } catch (err) {
-    logger.error(
-      {
-        conversationId: agentLoopArgs.conversationId,
-        agentMessageId: agentLoopArgs.agentMessageId,
-        error: normalizeError(err),
-      },
-      "[CreditSpendCheckpoint] Failed to notify after persisting pause"
-    );
-  }
-
-  return { crossed: true, skipRemainingChecks: false };
+  return result.exempt ? SKIP : NOT_CROSSED;
 }

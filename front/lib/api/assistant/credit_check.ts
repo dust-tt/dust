@@ -57,27 +57,48 @@ export async function checkPoolCreditGate(
 }
 
 export type CreditSpendCheckpointCheckResult =
-  | { crossed: false }
+  // `exempt` means the check does not apply to this execution at all (no credit-priced plan, no
+  // human user), as opposed to merely not having crossed the threshold yet.
+  | { crossed: false; exempt: boolean }
   | { crossed: true; thresholdAwuCredits: number };
 
-const DO_NOT_NOTIFY: CreditSpendCheckpointCheckResult = { crossed: false };
+const NOT_CROSSED: CreditSpendCheckpointCheckResult = {
+  crossed: false,
+  exempt: false,
+};
+const EXEMPT: CreditSpendCheckpointCheckResult = {
+  crossed: false,
+  exempt: true,
+};
 
+/**
+ * Determines whether a single agent message's own spend has reached the checkpoint at which the
+ * loop pauses and asks the user whether to continue. Applies to the same workspaces as the pool
+ * gate above (credit-priced plans with a Metronome customer), and only when a human user is there
+ * to answer.
+ */
 export async function checkCreditSpendCheckpointGate(
   auth: Authenticator,
   { consumedAwuCredits }: { consumedAwuCredits: number }
 ): Promise<CreditSpendCheckpointCheckResult> {
-  const user = auth.user();
-  if (!user) {
-    return DO_NOT_NOTIFY;
+  const owner = auth.getNonNullableWorkspace();
+  const plan = auth.subscription()?.plan;
+
+  if (
+    !owner.metronomeCustomerId ||
+    !plan ||
+    !isCreditPricedPlan(plan) ||
+    !auth.user()
+  ) {
+    return EXEMPT;
   }
 
-  const plan = auth.subscription()?.plan;
   const thresholdAwuCredits =
     config.getCreditSpendCheckpointThresholdAwuCredits({
-      isEnterprisePlan: !!plan && isEnterprisePlanPrefix(plan.code),
+      isEnterprisePlan: isEnterprisePlanPrefix(plan.code),
     });
 
   return consumedAwuCredits >= thresholdAwuCredits
     ? { crossed: true, thresholdAwuCredits }
-    : DO_NOT_NOTIFY;
+    : NOT_CROSSED;
 }
