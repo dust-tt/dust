@@ -188,10 +188,15 @@ Never explicitly say "I remember" or "based on our previous conversation" - just
 </memory_guidelines>`,
 };
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] exclude-skills-only-toolsets
+ * The available toolsets context MUST NOT include MCP server views restricted to skills.
+ */
 export function buildToolsetsContext(
   availableToolsets: MCPServerViewResource[]
 ): string {
   const toolsetsList = availableToolsets
+    .filter((toolset) => !toolset.isRestrictedToSkills)
     .sort((a, b) => {
       const aView = a.toJSON();
       const bView = b.toJSON();

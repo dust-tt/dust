@@ -18,6 +18,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import assert from "assert";
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] exclude-skills-only-toolsets
+ * The list result MUST NOT include MCP server views restricted to skills.
+ */
 const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
   list: async (_, { auth, runContext }) => {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
@@ -43,6 +47,7 @@ const handlers: ToolHandlers<typeof TOOLSETS_TOOLS_METADATA> = {
         }
       )
     )
+      .filter((mcpServerView) => !mcpServerView.isRestrictedToSkills)
       .map((mcpServerView) => mcpServerView.toJSON())
       .filter(
         (mcpServerView) =>
