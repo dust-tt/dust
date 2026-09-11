@@ -1,4 +1,8 @@
 import { normalizeTasksOwnerFilterFromPersistedBlob } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
+import {
+  FILE_EXPLORER_SORT_MODES,
+  FILE_EXPLORER_VIEW_MODES,
+} from "@app/components/file_explorer/types";
 import { useCallback, useMemo, useState } from "react";
 import { z } from "zod";
 
@@ -25,7 +29,15 @@ const scopedUIPreferencesSchemaByScope = {
   podPinnedBanner: z.object({
     collapsed: z.boolean().default(false),
   }),
+  fileExplorer: z.object({
+    viewMode: z.enum(FILE_EXPLORER_VIEW_MODES),
+    sortMode: z.enum(FILE_EXPLORER_SORT_MODES),
+  }),
 };
+
+export type FileExplorerScopedPreferences = z.infer<
+  (typeof scopedUIPreferencesSchemaByScope)["fileExplorer"]
+>;
 
 export type PodPinnedBannerScopedPreferences = z.infer<
   (typeof scopedUIPreferencesSchemaByScope)["podPinnedBanner"]

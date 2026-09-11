@@ -67,6 +67,11 @@ function ControlledFileExplorer(props: ControlledFileExplorerProps) {
   );
 }
 
+// Layout and sort preferences persist in localStorage.
+beforeEach(() => {
+  localStorage.clear();
+});
+
 beforeAll(() => {
   // Radix relies on this browser API when opening dropdown content.
   global.ResizeObserver = class {
@@ -363,5 +368,56 @@ describe("FileExplorer Frame packages", () => {
       await screen.findByRole("dialog", { name: "manifest.json" })
     ).toBeInTheDocument();
     expect(await screen.findByText("preview content")).toBeInTheDocument();
+  });
+});
+
+describe("FileExplorer preferences", () => {
+  const file = makeFile({
+    contentType: "text/plain",
+    fileName: "notes.txt",
+    lastModifiedMs: 1,
+  });
+
+  function renderExplorer() {
+    return render(
+      <ControlledFileExplorer
+        defaultViewMode="grid"
+        files={[file]}
+        getFileUrl={(path) => `/files/${path}`}
+        isLoading={false}
+        onDownload={vi.fn().mockResolvedValue(undefined)}
+      />
+    );
+  }
+
+  function isListLayout() {
+    const layout = screen
+      .getByText("notes.txt")
+      .closest("[data-layout]")
+      ?.getAttribute("data-layout");
+    return layout === "list";
+  }
+
+  async function pickListLayout(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: "Layout" }));
+    await user.click(await screen.findByText("List"));
+  }
+
+  it("restores view and sort mode after a remount", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderExplorer();
+    expect(isListLayout()).toBe(false);
+
+    await pickListLayout(user);
+    await user.click(screen.getByRole("button", { name: "Last modified" }));
+    await user.click(await screen.findByText("Name Z → A"));
+    expect(isListLayout()).toBe(true);
+    unmount();
+
+    renderExplorer();
+    expect(isListLayout()).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "Name Z → A" })
+    ).toBeInTheDocument();
   });
 });
