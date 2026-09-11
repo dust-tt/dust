@@ -4,6 +4,7 @@ import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { intelligenceAwuFromRunUsagesGroupedByRunKey } from "@app/lib/metronome/events";
+import { AgentMessageConsumptionItemModel } from "@app/lib/models/agent/agent_message_consumption_item";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -175,6 +176,7 @@ async function setupLlmAndToolConsumptionScenario(
           itemType: "tool",
           runUsageModelId: context.runUsageModelId,
           action,
+          attributedSkillIds: [],
           inputTokensCount: 2,
           outputTokensCount: 2,
           directCreditAmountMicro: 3_000_000,
@@ -399,6 +401,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             itemType: "tool",
             runUsageModelId: context.runUsageModelId,
             action: computerAction,
+            attributedSkillIds: [],
             inputTokensCount: 1,
             outputTokensCount: 1,
             directCreditAmountMicro: 0,
@@ -408,6 +411,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             itemType: "tool",
             runUsageModelId: context.runUsageModelId,
             action: frameAction,
+            attributedSkillIds: [],
             inputTokensCount: 0,
             outputTokensCount: 0,
             directCreditAmountMicro: 3_000_000,
@@ -499,6 +503,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             itemType: "tool",
             runUsageModelId: context.runUsageModelId,
             action: freeToolAction,
+            attributedSkillIds: [],
             inputTokensCount: 2,
             outputTokensCount: 2,
             directCreditAmountMicro: 0,
@@ -508,6 +513,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             itemType: "tool",
             runUsageModelId: context.runUsageModelId,
             action: chargedToolAction,
+            attributedSkillIds: [],
             inputTokensCount: 2,
             outputTokensCount: 2,
             directCreditAmountMicro: 3_000_000,
@@ -644,6 +650,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             itemType: "tool",
             runUsageModelId: context.runUsageModelId,
             action,
+            attributedSkillIds: [skillA.sId, skillB.sId],
             inputTokensCount: 2,
             outputTokensCount: 2,
             directCreditAmountMicro: 0,
@@ -652,6 +659,13 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
         ],
         pendingToolItems: [],
       }
+    );
+
+    // Rows written before attributedSkillIds was added remain nullable. Keep their Elasticsearch
+    // projection stable by recomputing from the message snapshot.
+    await AgentMessageConsumptionItemModel.update(
+      { attributedSkillIds: null },
+      { validate: false, where: { agentMCPActionId: action.id } }
     );
 
     const documents = await buildDocuments(context);
@@ -753,6 +767,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             itemType: "tool",
             runUsageModelId: context.runUsageModelId,
             action,
+            attributedSkillIds: [],
             inputTokensCount: 2,
             outputTokensCount: 2,
             directCreditAmountMicro: 0,
@@ -821,6 +836,7 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
             itemType: "tool",
             runUsageModelId: context.runUsageModelId,
             action,
+            attributedSkillIds: [skill.sId],
             inputTokensCount: 2,
             outputTokensCount: 2,
             directCreditAmountMicro: 0,

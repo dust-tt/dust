@@ -123,6 +123,7 @@ describe("getAgentMessageConsumption", () => {
           itemType: "tool",
           runUsageModelId,
           action: firstAction,
+          attributedSkillIds: [],
           inputTokensCount: 20,
           outputTokensCount: 5,
           grossAttributedCreditAmountMicro: 4_000_000,
@@ -132,6 +133,7 @@ describe("getAgentMessageConsumption", () => {
           itemType: "tool",
           runUsageModelId,
           action: secondAction,
+          attributedSkillIds: [],
           inputTokensCount: 10,
           outputTokensCount: 4,
           grossAttributedCreditAmountMicro: 3_000_000,
@@ -314,6 +316,7 @@ describe("getAgentMessageConsumption", () => {
           itemType: "tool",
           runUsageModelId,
           action: runChildAction,
+          attributedSkillIds: [],
           inputTokensCount: 20,
           outputTokensCount: 5,
           grossAttributedCreditAmountMicro: 6_000_000,
@@ -386,6 +389,7 @@ describe("getAgentMessageConsumption", () => {
         {
           itemType: "tool",
           action: hiddenHelperAction,
+          attributedSkillIds: [],
           runUsageModelId,
           inputTokensCount: null,
           outputTokensCount: 5,
@@ -396,6 +400,7 @@ describe("getAgentMessageConsumption", () => {
       pendingToolItems: [
         {
           action,
+          attributedSkillIds: [],
           runUsageModelId,
           outputTokensCount: 5,
           grossAttributedCreditAmountMicro: 1_000_000,

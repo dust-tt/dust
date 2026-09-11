@@ -38,6 +38,7 @@ export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
   itemType: "tool";
   runUsageModelId: ModelId;
   action: AgentMCPActionResource;
+  attributedSkillIds: string[];
   /** Estimated tokens in the result returned by this tool execution */
   inputTokensCount: number | null;
   /** Estimated tokens in the model output that emitted the tool name and arguments */
@@ -48,6 +49,7 @@ export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
 export type PendingToolConsumptionItem = ConsumptionItemEvidenceBase & {
   action: AgentMCPActionResource;
   runUsageModelId: ModelId;
+  attributedSkillIds: string[];
   /** Estimated tokens in the model output that emitted the tool name and arguments */
   outputTokensCount: number | null;
 };
@@ -232,6 +234,8 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       agentMessageId: agentMessageModelId,
       runUsageId: record.runUsageModelId,
       agentMCPActionId: record.itemType === "tool" ? record.action.id : null,
+      attributedSkillIds:
+        record.itemType === "tool" ? record.attributedSkillIds : null,
       itemKey: this.itemKey(record),
       itemType: record.itemType,
       attributionVersion,
@@ -259,6 +263,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       agentMessageId: item.action.agentMessageId,
       runUsageId: item.runUsageModelId,
       agentMCPActionId: item.action.id,
+      attributedSkillIds: item.attributedSkillIds,
       itemKey: `tool-action:${item.action.id}`,
       itemType: "tool",
       attributionVersion,
@@ -366,6 +371,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           {
             itemType: "tool",
             agentMCPActionId: actionModelId,
+            attributedSkillIds: record.attributedSkillIds,
             inputTokensCount: record.inputTokensCount,
             grossAttributedCreditAmountMicro:
               record.grossAttributedCreditAmountMicro,
