@@ -296,6 +296,11 @@ export function useAgentMessageStream({
   // insert by their stable, event-derived ids so nothing is appended twice.
   const seenEventIds = useRef<Set<string>>(new Set());
   const isStreamTerminated = useRef(false);
+  // A pause card may be showing for viewers who did not resolve the pause themselves; the first
+  // sign of the loop running again clears it.
+  const isPausedAtCreditSpendCheckpoint = useRef(
+    !!agentMessage.pausedAtCreditSpendCheckpoint
+  );
 
   useEffect(() => {
     return () => {
@@ -370,6 +375,17 @@ export function useAgentMessageStream({
         seenEventIds.current.add(eventPayload.eventId);
       }
       const eventType = eventPayload.data.type;
+      if (
+        isPausedAtCreditSpendCheckpoint.current &&
+        (eventType === "generation_tokens" || eventType === "tool_params")
+      ) {
+        isPausedAtCreditSpendCheckpoint.current = false;
+        methods.data.map((m) =>
+          isAgentMessageWithStreaming(m) && m.sId === sId
+            ? { ...m, pausedAtCreditSpendCheckpoint: null }
+            : m
+        );
+      }
       switch (eventType) {
         case "end-of-stream":
           // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
@@ -699,8 +715,16 @@ export function useAgentMessageStream({
           );
           break;
 
-        case "agent_credit_spend_checkpoint_reached":
+        case "agent_credit_spend_checkpoint_reached": {
+          const { thresholdAwuCredits } = eventPayload.data;
+          isPausedAtCreditSpendCheckpoint.current = true;
+          methods.data.map((m) =>
+            isAgentMessageWithStreaming(m) && m.sId === sId
+              ? { ...m, pausedAtCreditSpendCheckpoint: { thresholdAwuCredits } }
+              : m
+          );
           break;
+        }
 
         case "agent_generation_cancelled": {
           isStreamTerminated.current = true;

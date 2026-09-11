@@ -1,5 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
+import type { CreditSpendCheckpointDecision } from "@app/lib/api/assistant/conversation/credit_spend_checkpoint_pause";
 import type {
   ResolveAuthenticationKind,
   ResolveAuthenticationOutcome,
@@ -53,10 +54,19 @@ type ResolveAuthenticationRequest =
       outcome: ResolveAuthenticationOutcome;
     };
 
-type ValidateActionRequest = ToolActionContext & {
-  actionId: string;
-  approved: MCPValidationOutputType;
-};
+type ValidateActionRequest =
+  | (ToolActionContext & {
+      actionId: string;
+      approved: MCPValidationOutputType;
+    })
+  // Not a tool call, but resolved through the same request flow: the loop is paused on the
+  // message until the user decides.
+  | {
+      contextType: "credit_spend_checkpoint";
+      conversationId: string;
+      messageId: string;
+      decision: CreditSpendCheckpointDecision;
+    };
 
 interface ToolActionMutationRequest {
   url: string;
@@ -118,6 +128,11 @@ function getValidateActionRequest(
       return {
         url: `/api/w/${workspaceId}/sandbox-functions/${request.sandboxFunctionId}/invocations/${request.invocationId}/actions/${request.actionId}/validate-action`,
         body: { approved: request.approved },
+      };
+    case "credit_spend_checkpoint":
+      return {
+        url: `/api/w/${workspaceId}/assistant/conversations/${request.conversationId}/messages/${request.messageId}/credit-spend-checkpoint`,
+        body: { decision: request.decision },
       };
     default:
       assertNeverAndIgnore(request);
