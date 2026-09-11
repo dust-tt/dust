@@ -338,10 +338,8 @@ const schemaEnvelopeSchema = z.union([
   dbErrorEnvelopeSchema,
 ]);
 
-// Non-mounted scratch roots for regenerated schema files and oversized query results
-// (cf. BUILD_STAGING_ROOT).
+// Non-mounted scratch root for regenerated schema files (cf. BUILD_STAGING_ROOT).
 const DB_SCHEMA_STAGING_ROOT = "/tmp/dust-sandbox-db-schemas";
-const DB_QUERY_SPILL_ROOT = "/tmp/dust-sandbox-db-query-results";
 
 /**
  * `dsbx db schema`: regenerate a drizzle schema file from the live database and read its text
@@ -423,9 +421,9 @@ export interface QueryDatabaseResult {
   // Rows affected for statements that return no columns (plain INSERT/UPDATE/DELETE); null for
   // result-returning statements.
   changes: number | null;
-  // Set when the result crossed the runner's inline bounds: `rows` is then a preview and the full
-  // result set is at this sandbox path, one JSON object per line. Read it back off the same
-  // sandbox; it is scratch space, so it does not outlive the sandbox.
+  // Sandbox path of a full spill of an oversized result. Always null here: no spill directory is
+  // passed to dsbx, so the runner keeps `rows` as a bounded preview and `note` says how to page.
+  // Kept for parity with the local `dsbx db query` envelope.
   resultsFile: string | null;
   note: string | null;
 }
@@ -433,6 +431,8 @@ export interface QueryDatabaseResult {
 /**
  * `dsbx db query`: execute one SQL statement (stdin) against a live database. The runner allows
  * SELECT and DML but refuses DDL/PRAGMA/ATTACH, so the schema only evolves through reconcile.
+ * No spill directory (`DUST_POD_QUERY_SPILL_DIR`) is passed: the caller is never on this sandbox,
+ * so an oversized result is returned as a bounded inline preview rather than an unreadable path.
  */
 export async function queryDatabaseOnReadySandbox(
   auth: Authenticator,
@@ -440,18 +440,17 @@ export async function queryDatabaseOnReadySandbox(
     sandbox,
     database,
     sql,
-  }: { sandbox: SandboxResource; database: string; sql: string }
+  }: {
+    sandbox: SandboxResource;
+    database: string;
+    sql: string;
+  }
 ): Promise<Result<QueryDatabaseResult, SandboxFunctionError>> {
   const result = await execDbCommandOnReadySandbox(auth, sandbox, {
     // `--` stops the model-influenced database name from being read as a flag.
     command: `set -euo pipefail\n${DSBX_BIN_PATH} db query -- ${shellEscape(database)}`,
     schema: queryEnvelopeSchema,
     what: `dsbx db query ${database}`,
-    // Oversized results spill here rather than into a files mount: a Frame-owned sandbox carries
-    // no agent-visible one. The spill is a plain sandbox path, so `resultsFile` is read back off
-    // the same sandbox the caller passed in. The var name must match POD_QUERY_SPILL_DIR_ENV in
-    // cli/dust-sandbox/src/commands/db/query.rs.
-    envVars: { DUST_POD_QUERY_SPILL_DIR: DB_QUERY_SPILL_ROOT },
     stdin: sql,
   });
   if (result.isErr()) {
