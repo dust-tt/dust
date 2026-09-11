@@ -30,15 +30,15 @@ function formatRefillDay(isoDate: string): string {
     now.getUTCMonth(),
     now.getUTCDate()
   );
-  const daysUntilRefill = Math.round((refillDayMs - currentDayMs) / ONE_DAY_MS);
+  const refillDelayDays = Math.round((refillDayMs - currentDayMs) / ONE_DAY_MS);
 
-  if (daysUntilRefill <= 0) {
+  if (refillDelayDays <= 0) {
     return "today";
   }
-  if (daysUntilRefill === 1) {
+  if (refillDelayDays === 1) {
     return "tomorrow";
   }
-  if (daysUntilRefill < 7) {
+  if (refillDelayDays < 7) {
     return `on ${refillAt.toLocaleDateString("en-US", {
       weekday: "long",
       timeZone: "UTC",
