@@ -2,9 +2,11 @@ import * as workosAudit from "@app/lib/api/audit/workos_audit";
 
 import {
   maybeAutoUpgradeSeat,
+  maybeProactivelyAutoUpgradeSeatOnCapReached,
   resolveAutoUpgradeTarget,
 } from "@app/lib/api/credits/auto_seat_upgrade";
 import * as membershipApi from "@app/lib/api/membership";
+import * as userSpendLimit from "@app/lib/api/users/spend_limit";
 import * as workspaceApi from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
@@ -64,11 +66,24 @@ vi.mock("@app/lib/api/workspace", async () => {
   return { ...actual, getMembers: vi.fn() };
 });
 
+// The proactive helper gates on the rate-limiter cap-state reader; mock it so
+// tests drive the "cap reached" branch deterministically.
+vi.mock("@app/lib/api/users/spend_limit", async () => {
+  const actual = await vi.importActual<typeof userSpendLimit>(
+    "@app/lib/api/users/spend_limit"
+  );
+  return { ...actual, isUserSpendLimitRateCapReached: vi.fn() };
+});
+
 vi.mock("@app/lib/api/audit/workos_audit", async () => {
   const actual = await vi.importActual<typeof workosAudit>(
     "@app/lib/api/audit/workos_audit"
   );
-  return { ...actual, emitAuditLogEventDirect: vi.fn() };
+  return {
+    ...actual,
+    emitAuditLogEvent: vi.fn(),
+    emitAuditLogEventDirect: vi.fn(),
+  };
 });
 
 vi.mock("@app/lib/notifications/workflows/seat-auto-upgraded", async () => {
@@ -116,14 +131,23 @@ async function setup({
     seatType,
   });
 
-  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  await CreditUsageConfigurationResource.makeNew(auth, {
+  const adminAuth = await Authenticator.internalAdminForWorkspace(
+    workspace.sId
+  );
+  await CreditUsageConfigurationResource.makeNew(adminAuth, {
     autoSeatUpgradeEnabled,
     defaultDiscountPercent: 0,
     usageCapCredits: null,
   });
 
-  return { workspace, user };
+  // A member-scoped auth (auth.user() === the member) so callers exercise the
+  // real human-actor / client-IP audit attribution.
+  const auth = await Authenticator.fromUserIdAndWorkspaceId(
+    user.sId,
+    workspace.sId
+  );
+
+  return { workspace, user, auth };
 }
 
 beforeEach(() => {
@@ -132,6 +156,7 @@ beforeEach(() => {
     members: [],
     total: 0,
   });
+  vi.mocked(workosAudit.emitAuditLogEvent).mockResolvedValue(undefined);
   vi.mocked(workosAudit.emitAuditLogEventDirect).mockResolvedValue(undefined);
 });
 
@@ -201,8 +226,8 @@ describe("resolveAutoUpgradeTarget", () => {
 });
 
 describe("maybeAutoUpgradeSeat", () => {
-  it("upgrades a pro member to max, emits audit, and notifies admins", async () => {
-    const { workspace, user } = await setup({
+  it("upgrades a pro member to max, emits audit with the human actor, and notifies admins", async () => {
+    const { workspace, user, auth } = await setup({
       autoSeatUpgradeEnabled: true,
       seatType: "pro",
     });
@@ -216,25 +241,31 @@ describe("maybeAutoUpgradeSeat", () => {
     );
 
     const result = await maybeAutoUpgradeSeat({
+      auth,
       workspaceId: workspace.sId,
       userId: user.sId,
     });
 
     expect(expectOk(result)).toEqual({ upgraded: true });
 
+    // The seat change is attributed to the initiating human, not "no-author".
     expect(membershipApi.updateMembershipSeatAndTrack).toHaveBeenCalledWith(
       expect.objectContaining({
         newSeatType: "max",
-        author: "no-author",
+        author: expect.objectContaining({ sId: user.sId }),
         isDirectSync: true,
       })
     );
-    expect(workosAudit.emitAuditLogEventDirect).toHaveBeenCalledWith(
+    // Emitted via the auth-based helper (human actor + request client IP), not
+    // the system `emitAuditLogEventDirect`.
+    expect(workosAudit.emitAuditLogEvent).toHaveBeenCalledWith(
       expect.objectContaining({
+        auth,
         action: "membership.seat_auto_upgraded",
         metadata: { previous_seat_type: "pro", new_seat_type: "max" },
       })
     );
+    expect(workosAudit.emitAuditLogEventDirect).not.toHaveBeenCalled();
     expect(seatUpgradeNotif.notifyAdminsSeatAutoUpgraded).toHaveBeenCalledWith(
       expect.objectContaining({
         previousSeatType: "pro",
@@ -243,14 +274,41 @@ describe("maybeAutoUpgradeSeat", () => {
     );
   });
 
+  it("upgrades a free member to pro", async () => {
+    const { workspace, user, auth } = await setup({
+      autoSeatUpgradeEnabled: true,
+      seatType: "free",
+    });
+    setupEntitledSeats(["free", "pro"]);
+    vi.mocked(membershipApi.updateMembershipSeatAndTrack).mockResolvedValue(
+      new Ok({
+        previousSeatType: "free",
+        newSeatType: "pro",
+        scheduledSeatChangeAt: undefined,
+      })
+    );
+
+    const result = await maybeAutoUpgradeSeat({
+      auth,
+      workspaceId: workspace.sId,
+      userId: user.sId,
+    });
+
+    expect(expectOk(result)).toEqual({ upgraded: true });
+    expect(membershipApi.updateMembershipSeatAndTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ newSeatType: "pro" })
+    );
+  });
+
   it("no-ops when the workspace toggle is off", async () => {
-    const { workspace, user } = await setup({
+    const { workspace, user, auth } = await setup({
       autoSeatUpgradeEnabled: false,
       seatType: "pro",
     });
     setupEntitledSeats(["pro", "max"]);
 
     const result = await maybeAutoUpgradeSeat({
+      auth,
       workspaceId: workspace.sId,
       userId: user.sId,
     });
@@ -261,13 +319,14 @@ describe("maybeAutoUpgradeSeat", () => {
   });
 
   it("no-ops when the member is already at the top entitled tier", async () => {
-    const { workspace, user } = await setup({
+    const { workspace, user, auth } = await setup({
       autoSeatUpgradeEnabled: true,
       seatType: "max",
     });
     setupEntitledSeats(["pro", "max"]);
 
     const result = await maybeAutoUpgradeSeat({
+      auth,
       workspaceId: workspace.sId,
       userId: user.sId,
     });
@@ -277,7 +336,7 @@ describe("maybeAutoUpgradeSeat", () => {
   });
 
   it("no-ops without audit/notify when the seat update fails", async () => {
-    const { workspace, user } = await setup({
+    const { workspace, user, auth } = await setup({
       autoSeatUpgradeEnabled: true,
       seatType: "pro",
     });
@@ -287,6 +346,7 @@ describe("maybeAutoUpgradeSeat", () => {
     );
 
     const result = await maybeAutoUpgradeSeat({
+      auth,
       workspaceId: workspace.sId,
       userId: user.sId,
     });
@@ -299,7 +359,7 @@ describe("maybeAutoUpgradeSeat", () => {
   });
 
   it("no-ops without audit/notify when the applied seat is unchanged", async () => {
-    const { workspace, user } = await setup({
+    const { workspace, user, auth } = await setup({
       autoSeatUpgradeEnabled: true,
       seatType: "pro",
     });
@@ -313,11 +373,69 @@ describe("maybeAutoUpgradeSeat", () => {
     );
 
     const result = await maybeAutoUpgradeSeat({
+      auth,
       workspaceId: workspace.sId,
       userId: user.sId,
     });
 
     expect(expectOk(result)).toEqual({ upgraded: false });
     expect(workosAudit.emitAuditLogEventDirect).not.toHaveBeenCalled();
+  });
+});
+
+describe("maybeProactivelyAutoUpgradeSeatOnCapReached", () => {
+  it("upgrades the member when the per-user cap is reached", async () => {
+    const { user, auth } = await setup({
+      autoSeatUpgradeEnabled: true,
+      seatType: "pro",
+    });
+    setupEntitledSeats(["pro", "max"]);
+    vi.mocked(userSpendLimit.isUserSpendLimitRateCapReached).mockResolvedValue(
+      true
+    );
+    vi.mocked(membershipApi.updateMembershipSeatAndTrack).mockResolvedValue(
+      new Ok({
+        previousSeatType: "pro",
+        newSeatType: "max",
+        scheduledSeatChangeAt: undefined,
+      })
+    );
+
+    await maybeProactivelyAutoUpgradeSeatOnCapReached(auth, { user });
+
+    expect(membershipApi.updateMembershipSeatAndTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ newSeatType: "max" })
+    );
+  });
+
+  it("no-ops when the per-user cap is not reached", async () => {
+    const { user, auth } = await setup({
+      autoSeatUpgradeEnabled: true,
+      seatType: "pro",
+    });
+    setupEntitledSeats(["pro", "max"]);
+    vi.mocked(userSpendLimit.isUserSpendLimitRateCapReached).mockResolvedValue(
+      false
+    );
+
+    await maybeProactivelyAutoUpgradeSeatOnCapReached(auth, { user });
+
+    expect(userSpendLimit.isUserSpendLimitRateCapReached).toHaveBeenCalled();
+    expect(membershipApi.updateMembershipSeatAndTrack).not.toHaveBeenCalled();
+  });
+
+  it("skips the cap read and no-ops when auto-upgrade is off", async () => {
+    const { user, auth } = await setup({
+      autoSeatUpgradeEnabled: false,
+      seatType: "pro",
+    });
+    setupEntitledSeats(["pro", "max"]);
+
+    await maybeProactivelyAutoUpgradeSeatOnCapReached(auth, { user });
+
+    expect(
+      userSpendLimit.isUserSpendLimitRateCapReached
+    ).not.toHaveBeenCalled();
+    expect(membershipApi.updateMembershipSeatAndTrack).not.toHaveBeenCalled();
   });
 });

@@ -41,7 +41,7 @@ beforeEach(() => {
 });
 
 describe("credit_state_dispatcher seat balance", () => {
-  it("dispatchSeatBalanceExhausted transitions the seat and always attempts an auto-upgrade", async () => {
+  it("dispatchSeatBalanceExhausted transitions the seat without auto-upgrading", async () => {
     const workspaceType = await WorkspaceFactory.metronome({
       metronomeCustomerId: TEST_METRONOME_CUSTOMER_ID,
     });
@@ -71,12 +71,9 @@ describe("credit_state_dispatcher seat balance", () => {
         seatType: "pro",
       })
     );
-    // Auto-upgrade is fire-and-forget and runs regardless of the transition
-    // outcome.
-    expect(maybeAutoUpgradeSeat).toHaveBeenCalledWith({
-      workspaceId: workspaceType.sId,
-      userId: user.sId,
-    });
+    // Auto-upgrade is no longer driven from the seat-balance webhook: it runs
+    // reactively at message-send time when the user is actually blocked.
+    expect(maybeAutoUpgradeSeat).not.toHaveBeenCalled();
   });
 
   it("dispatchSeatBalanceResolved transitions the seat back", async () => {

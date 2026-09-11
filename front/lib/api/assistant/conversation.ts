@@ -2575,6 +2575,7 @@ export async function checkMessagesLimit(
       // message we just unblocked.
       if (user) {
         const upgrade = await maybeAutoUpgradeSeat({
+          auth,
           workspaceId: owner.sId,
           userId: user.sId,
         });
@@ -2598,6 +2599,23 @@ export async function checkMessagesLimit(
     // it reflects membership, not credit state.
     if (!isFreeOrigin(context.origin)) {
       if (blockedReason === "user_cap_reached") {
+        // A seat that has exhausted its cap (a free seat's lifetime allowance,
+        // or a pro seat with its seat balance and pool both spent) is
+        // auto-upgraded one tier (free→pro, pro→max) if the workspace opted in,
+        // so it can proceed with this message. This is the single reactive
+        // driver for all auto-upgrades: it fires exactly when the user is
+        // actually blocked, so we never upgrade a seat that can still spend from
+        // the pool.
+        if (user) {
+          const upgrade = await maybeAutoUpgradeSeat({
+            auth,
+            workspaceId: owner.sId,
+            userId: user.sId,
+          });
+          if (upgrade.isOk() && upgrade.value.upgraded) {
+            return new Ok(undefined);
+          }
+        }
         return new Err({
           status_code: 403,
           api_error: {
