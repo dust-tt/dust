@@ -67,6 +67,7 @@ export class FramePublicationError extends Error {
     readonly code:
       | "invalid_frame"
       | "invalid_function_artifact"
+      | "invalid_function_reference"
       | "invalid_manifest"
       | "invalid_publication"
       | "invalid_source"
