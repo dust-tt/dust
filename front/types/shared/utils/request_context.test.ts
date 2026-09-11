@@ -34,6 +34,22 @@ describe("RequestCachedQuery", () => {
     await expect(query.get("key", load)).resolves.toEqual({ load: 2 });
   });
 
+  it("reloads after invalidate within the same request", async () => {
+    const query = new RequestCachedQuery<string, number>();
+    let loadCount = 0;
+    const load = async () => ++loadCount;
+    const queryCache = new RequestQueryCache();
+
+    setRequestStorageResolver(() => ({ queryCache, requestContext }));
+
+    await expect(query.get("key", load)).resolves.toBe(1);
+    await expect(query.get("key", load)).resolves.toBe(1);
+
+    query.invalidate("key");
+    await expect(query.get("key", load)).resolves.toBe(2);
+    await expect(query.get("other", load)).resolves.toBe(3);
+  });
+
   it("does not cache when no request storage adapter is installed", async () => {
     const query = new RequestCachedQuery<string, number>();
     let loadCount = 0;

@@ -1831,10 +1831,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           .map((v) => [v.internalMCPServerId, v])
       );
 
-      // editedByUserId is only meaningful when an admin triggers the creation (workspace
-      // creation, feature-flag toggle); just-in-time hydration from a member read leaves it
-      // null, the views are platform-created.
-      const editedByUserId = auth.isAdmin() ? (auth.user()?.id ?? null) : null;
+      // editedByUserId is only meaningful when a workspace admin triggers the creation
+      // (workspace creation, feature-flag toggle). Just-in-time hydration from a member
+      // read, or a superuser acting from poke, leaves it null: the views are platform-created
+      // and a non-member must never be named as editor, the relocation copies the reference.
+      const editedByUserId = auth.isAdmin() ? auth.attributionUserId() : null;
 
       // Unlike MCPServerViewResource.create, this does not clean up regular-space views of
       // the same server when creating the global view. That case is only reachable on a
