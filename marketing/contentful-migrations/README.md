@@ -88,6 +88,30 @@ reverted by unpublishing.
 | `european-union` | The 27 EU countries — **not** the UK, Switzerland or Norway |
 | `worldwide` | The United States and everywhere else |
 
+### Who owns what
+
+The set of audiences is **code-owned on purpose**, and the `region` field is a
+dropdown rather than free text. A visitor's country arrives from IPinfo as an
+ISO code and has to be mapped to an audience; that mapping lives in
+`lib/logo_bars.ts`. A region invented in Contentful would match no visitor, and
+its list would silently never render — which is why the field constrains the
+values rather than trusting a typed one.
+
+So:
+
+| | Who | Deploy? |
+| --- | --- | --- |
+| Which markets exist | Engineering | Yes — a ~4-line PR |
+| Logos in a market, their order, retiring one | Marketing | No |
+
+Adding a market is deliberately small. The steps are listed in the comment
+above `LOGO_LIST_REGIONS` in `lib/logo_bars.ts`; the important part is step 3,
+picking the fallback bar so that merging the PR changes nothing on its own and
+the new audience only goes live when marketing publishes its list.
+
+Everything marketing actually does day to day — adding a logo, reordering a
+bar, pulling a logo that's gone stale — needs none of this.
+
 ### Previewing
 
 Marketing cannot see another country's bar from their own browser, so the

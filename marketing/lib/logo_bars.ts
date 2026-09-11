@@ -142,6 +142,25 @@ export function homeTrustedBarSlug(geo: HomeTrustedGeo): string {
 // `worldwide` is the catch-all: the United States plus every country not
 // claimed by a more specific region below. Ordering matters in
 // `toLogoListRegion` — the first match wins.
+//
+// This list is deliberately code-owned rather than editor-owned. A visitor's
+// country arrives as an ISO code and has to be *mapped* to an audience, and
+// that mapping is here — so a region invented in Contentful would never match
+// a visitor and its list would silently never render. The split that follows
+// is intentional: engineering owns which markets exist, marketing owns what
+// goes in each one (logos, order, retiring a logo), with no deploy.
+//
+// Adding a market is a small PR:
+//   1. add the token here;
+//   2. map its countries in `toLogoListRegion`, above the broader regions it
+//      should beat — the UK check has to precede `isEUCountry` for the same
+//      reason;
+//   3. pick the bar it falls back to until its list is published, in
+//      `fallbackTrustedByRegion` and `fallbackHomeTrustedGeo` — keep whatever
+//      that country sees today, so merging the PR changes nothing on its own;
+//   4. add the value to the `region` dropdown in Contentful (see
+//      contentful-migrations/README.md).
+// Marketing then creates and fills the list, and never needs you again.
 export const LOGO_LIST_REGIONS = [
   "worldwide",
   "european-union",
