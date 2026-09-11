@@ -326,6 +326,8 @@ const BulkSeatChangePreviewResponseSchema = z.object({
     // Optional: tolerate an older server that doesn't send the fields yet.
     nextBillingPeriodAt: z.string().nullable().optional(),
     seatTotals: z.array(BulkSeatChangeSeatTotalSchema).optional(),
+    blockedByCapCount: z.number().int().optional(),
+    targetMaxSeats: z.number().int().nullable().optional(),
   }),
 });
 
