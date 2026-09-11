@@ -52,7 +52,7 @@ import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.
 import {
   FIREWORKS_DEEPSEEK_V4_PRO_0813_MODEL_CONFIG,
   FIREWORKS_GLM_5_MODEL_CONFIG,
-  FIREWORKS_GLM_5P2_MODEL_CONFIG,
+  FIREWORKS_GLM_5P3_MODEL_CONFIG,
   FIREWORKS_KIMI_K3_MODEL_CONFIG,
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
 } from "@app/types/assistant/models/fireworks";
@@ -728,7 +728,7 @@ export function _getDustPistacheGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_PISTACHE,
     name: "dust-pistache",
-    preferredModelConfiguration: FIREWORKS_GLM_5P2_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_GLM_5P3_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -740,7 +740,7 @@ export function _getDustPistacheMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
     name: "dust-pistache-medium",
-    preferredModelConfiguration: FIREWORKS_GLM_5P2_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_GLM_5P3_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -752,7 +752,7 @@ export function _getDustPistacheHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
     name: "dust-pistache-high",
-    preferredModelConfiguration: FIREWORKS_GLM_5P2_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_GLM_5P3_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }
