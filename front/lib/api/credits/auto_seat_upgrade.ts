@@ -3,6 +3,7 @@ import {
   emitAuditLogEventDirect,
 } from "@app/lib/api/audit/workos_audit";
 import { updateMembershipSeatAndTrack } from "@app/lib/api/membership";
+import { isUserSpendLimitRateCapReached } from "@app/lib/api/users/spend_limit";
 import { getMembers } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
@@ -24,6 +25,7 @@ import type { MembershipSeatType } from "@app/types/memberships";
 import { toBaseSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 
 // Allowed auto-upgrade transitions, keyed on the *base* seat tier of the
@@ -272,6 +274,49 @@ export async function maybeAutoUpgradeSeat({
   });
 
   return new Ok({ upgraded: true });
+}
+
+/**
+ * Proactively auto-upgrade `user` one tier the moment their recorded usage has
+ * reached their per-user spend cap, so the *next* message isn't blocked and the
+ * "limit reached" banner never appears — the proactive counterpart to the
+ * reactive upgrade at message-send. Meant to be called fire-and-forget right
+ * after a message's usage is recorded (`credit_cost`), which is why it swallows
+ * its own errors: it must never affect the send it trails.
+ *
+ * Best-effort and cheap on the common path: it reads the (cached) workspace
+ * config first and bails when auto-upgrade is off, before paying for the
+ * cap-state read. No-ops when the cap isn't reached or no higher tier is
+ * entitled (see `maybeAutoUpgradeSeat`).
+ */
+export async function maybeProactivelyAutoUpgradeSeatOnCapReached(
+  auth: Authenticator,
+  { user }: { user: UserResource }
+): Promise<void> {
+  const workspace = auth.getNonNullableWorkspace();
+  try {
+    const config =
+      await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
+    if (!config?.autoSeatUpgradeEnabled) {
+      return;
+    }
+    if (!(await isUserSpendLimitRateCapReached(auth, { user }))) {
+      return;
+    }
+    await maybeAutoUpgradeSeat({
+      workspaceId: workspace.sId,
+      userId: user.sId,
+    });
+  } catch (err) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        err: normalizeError(err),
+      },
+      "[AutoSeatUpgrade] proactive upgrade check failed"
+    );
+  }
 }
 
 async function notifyAdmins({
