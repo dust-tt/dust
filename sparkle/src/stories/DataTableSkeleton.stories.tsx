@@ -1,33 +1,81 @@
-import { LoadingBlock, DataTableSkeleton } from "@sparkle/components";
+import {
+  Avatar,
+  AvatarCellSkeleton,
+  Chip,
+  ChipCellSkeleton,
+  DataTable,
+  DataTableSkeleton,
+  TextCellSkeleton,
+} from "@sparkle/components";
 import type { DataTableSkeletonCellProps } from "@sparkle/components";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ColumnDef } from "@tanstack/react-table";
 import React from "react";
+import { expect, within } from "storybook/test";
 
 interface MemberRow {
   member: string;
+  email: string;
   role: string;
   usage: string;
+  onClick?: () => void;
 }
 
-const columns = [
+const members: MemberRow[] = [
+  {
+    member: "Maya Chen",
+    email: "maya@example.com",
+    role: "Admin",
+    usage: "124",
+  },
+  {
+    member: "Alex Rivera",
+    email: "alex@example.com",
+    role: "Builder",
+    usage: "82",
+  },
+  { member: "Sam Lee", email: "sam@example.com", role: "User", usage: "16" },
+];
+
+const columns: ColumnDef<MemberRow, string>[] = [
   {
     accessorKey: "member",
     header: "Member",
     meta: { className: "w-1/2" },
+    cell: ({ row }) => (
+      <div className="flex items-center gap-2">
+        <Avatar name={row.original.member} size="xs" isRounded />
+        <div className="min-w-0">
+          <div className="truncate text-sm">{row.original.member}</div>
+          <div className="truncate text-xs text-muted-foreground">
+            {row.original.email}
+          </div>
+        </div>
+      </div>
+    ),
   },
   {
     accessorKey: "role",
     header: "Role",
     enableSorting: false,
     meta: { className: "w-1/4" },
+    cell: ({ row }) => (
+      <Chip
+        label={row.original.role}
+        size="xs"
+        className="w-16 justify-center"
+      />
+    ),
   },
   {
     accessorKey: "usage",
     header: "Usage",
     meta: { className: "w-1/4", headerAlign: "right" },
+    cell: ({ row }) => (
+      <div className="text-right text-sm">{row.original.usage}</div>
+    ),
   },
-] satisfies ColumnDef<MemberRow, string>[];
+];
 
 function MemberSkeletonCell({
   columnId,
@@ -36,20 +84,17 @@ function MemberSkeletonCell({
   switch (columnId) {
     case "member":
       return (
-        <div className="flex items-center gap-2">
-          <LoadingBlock className="h-8 w-8 shrink-0 rounded-full" />
-          <div className="flex min-w-0 flex-1 flex-col gap-1">
-            <LoadingBlock
-              className={rowIndex % 2 === 0 ? "h-3 w-2/3" : "h-3 w-1/2"}
-            />
-            <LoadingBlock className="h-3 w-3/4" />
-          </div>
-        </div>
+        <AvatarCellSkeleton className="h-9">
+          <TextCellSkeleton
+            className={rowIndex % 2 === 0 ? "w-2/3" : "w-1/2"}
+          />
+          <TextCellSkeleton className="w-3/4" />
+        </AvatarCellSkeleton>
       );
     case "role":
-      return <LoadingBlock className="h-6 w-16 max-w-full rounded-full" />;
+      return <ChipCellSkeleton />;
     case "usage":
-      return <LoadingBlock className="ml-auto h-4 w-12 max-w-full" />;
+      return <TextCellSkeleton className="ml-auto w-12" />;
     default:
       return null;
   }
@@ -75,15 +120,58 @@ const meta = {
       <DataTableSkeleton {...args} />
     </div>
   ),
-} satisfies Meta<typeof DataTableSkeleton>;
+} satisfies Meta<typeof DataTableSkeleton<MemberRow>>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
  * Reuse the loaded table columns and provide a cell renderer for their contents:
- * circular avatars and two text lines for members, pill-shaped roles, and
+ * circular avatars and two text lines for members, chip-shaped roles, and
  * right-aligned usage values. Vary text widths with rowIndex for a natural layout.
  * @summary Custom cell placeholders matching avatars, badges, and text.
  */
 export const CustomCells: Story = {};
+
+/**
+ * Keep the columns and their SkeletonCell renderer together. Choose the primitives
+ * from the loaded cell contents and reuse the columns in both states.
+ * @summary Compare loaded rows with the corresponding custom skeletons.
+ */
+export const LoadedComparison: Story = {
+  args: { rowCount: members.length },
+  render: (args) => (
+    <div className="flex w-full max-w-2xl flex-col gap-6">
+      <section aria-label="Loading members">
+        <h2 className="mb-2 text-sm font-semibold">Loading</h2>
+        <DataTableSkeleton {...args} />
+      </section>
+      <section aria-label="Loaded members">
+        <h2 className="mb-2 text-sm font-semibold">Loaded</h2>
+        <DataTable data={members} columns={args.columns} />
+      </section>
+    </div>
+  ),
+  play: ({ canvas }) => {
+    const loading = within(
+      canvas.getByRole("region", { name: "Loading members" })
+    );
+    const loaded = within(
+      canvas.getByRole("region", { name: "Loaded members" })
+    );
+    const loadingHeaders = loading.getAllByRole("columnheader");
+    const loadedHeaders = loaded.getAllByRole("columnheader");
+    expect(loadingHeaders).toHaveLength(loadedHeaders.length);
+    for (const [index, header] of loadingHeaders.entries()) {
+      expect(header.getBoundingClientRect().width).toBeCloseTo(
+        loadedHeaders[index].getBoundingClientRect().width,
+        0
+      );
+    }
+    const loadingRow = loading.getAllByRole("row", { hidden: true })[1];
+    const loadedRow = loaded.getAllByRole("row")[1];
+    expect(loadingRow.getBoundingClientRect().height).toBe(
+      loadedRow.getBoundingClientRect().height
+    );
+  },
+};

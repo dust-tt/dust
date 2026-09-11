@@ -8,7 +8,7 @@ import {
   ContentMessage,
   DataTable,
   DataTableSkeleton,
-  LoadingBlock,
+  TextCellSkeleton,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
@@ -28,13 +28,13 @@ type TopUpRowData = {
 function TopUpHistorySkeletonCell({ columnId }: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "date":
-      return <LoadingBlock className="h-3 w-24 max-w-full" />;
+      return <TextCellSkeleton />;
     case "name":
-      return <LoadingBlock className="h-3 w-40 max-w-full" />;
+      return <TextCellSkeleton className="w-40" />;
     case "credits":
-      return <LoadingBlock className="ml-auto h-3 w-16 max-w-full" />;
+      return <TextCellSkeleton className="ml-auto w-16" />;
     case "expiration":
-      return <LoadingBlock className="ml-auto h-3 w-24 max-w-full" />;
+      return <TextCellSkeleton className="ml-auto" />;
     default:
       return null;
   }

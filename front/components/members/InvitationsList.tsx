@@ -14,12 +14,12 @@ import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
-  cn,
+  ChipCellSkeleton,
   DataTable,
   DataTableSkeleton,
-  LoadingBlock,
   Mail01,
   Page,
+  TextCellSkeleton,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type React from "react";
@@ -36,15 +36,10 @@ function InvitationSkeletonCell({
   switch (columnId) {
     case "inviteEmail":
       return (
-        <LoadingBlock
-          className={cn(
-            "h-3 max-w-full",
-            ["w-48", "w-56", "w-40"][rowIndex % 3]
-          )}
-        />
+        <TextCellSkeleton className={["w-48", "w-56", "w-40"][rowIndex % 3]} />
       );
     case "initialRole":
-      return <LoadingBlock className="h-6 w-16 rounded-[9px]" />;
+      return <ChipCellSkeleton />;
     default:
       return null;
   }
