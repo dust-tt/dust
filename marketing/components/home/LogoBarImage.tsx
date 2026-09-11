@@ -5,29 +5,19 @@ import { cn } from "@dust-tt/sparkle";
 import Image from "next/image";
 
 /**
- * The box every customer logo is fitted into: 600x165.
- *
- * Deliberately flatter than the canvases the SVGs are drawn on (600 wide,
- * 240-300 tall). Fitting a logo to its own canvas made the bars too heavy, and
- * the canvases disagree with each other anyway — the repo files split into a
- * 240 cluster and a 300 cluster, 25% apart. A flatter box than any of them
- * means the box, not the file, decides the scale.
- *
- * Callers size the box; the logo is scaled to fit *inside* it with its own
- * proportions intact, so a wide wordmark is bounded by the box's width and a
- * square mark by its height. Neither can out-grow the other, which is what
- * went wrong before: height was capped but width wasn't, so wordmarks were
- * squeezed by their column while squarer logos ran to the height ceiling and
- * rendered half again as tall.
- */
-export const LOGO_BOX_ASPECT = "aspect-[40/11]";
-
-/**
  * Normalization applied to every customer logo.
  *
- * The repo's fallback SVGs are hand-flattened to a uniform gray, but logos
- * uploaded to Contentful arrive straight from a brand kit, in full color and
- * at arbitrary aspect ratios. `grayscale` plus the box above gets them close.
+ * The logo is bounded by its container on both axes and scaled down to fit,
+ * keeping its own proportions. Callers give the container an explicit height
+ * and centre it; as long as that container is *flatter* than any real logo,
+ * height is always the binding dimension and every logo — a 2.5:1 wordmark, a
+ * square mark, a portrait one — renders at exactly the same height.
+ *
+ * That "flatter than any logo" part is the whole trick. An earlier attempt
+ * used a 600x280 box, which sat in the middle of the logos' own ratios: wide
+ * wordmarks were bounded by its width and square marks by its height, so the
+ * square ones towered over the rest. Bounding both axes is not enough on its
+ * own — the box has to be flat enough that width never binds first.
  *
  * Two caveats no CSS can fix, both needing a better file:
  * - `grayscale` preserves luminance, so a very light brand color still reads
@@ -36,7 +26,8 @@ export const LOGO_BOX_ASPECT = "aspect-[40/11]";
  *   so a tightly-cropped file reads larger than a padded one at the same box
  *   size.
  */
-const LOGO_IMAGE_CLASSES = "h-full w-full object-contain grayscale";
+const LOGO_IMAGE_CLASSES =
+  "h-auto w-auto max-h-full max-w-full object-contain grayscale";
 
 export function LogoBarImage({
   logo,

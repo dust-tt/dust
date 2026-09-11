@@ -1,10 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
-import { cn } from "@marketing/components/poke/shadcn/lib/utils";
-import {
-  LOGO_BOX_ASPECT,
-  LogoBarImage,
-} from "@marketing/components/home/LogoBarImage";
+import { LogoBarImage } from "@marketing/components/home/LogoBarImage";
 import { useLogoBar } from "@marketing/components/home/LogoListsContext";
 import type { LogoBarLogo } from "@marketing/lib/logo_bars";
 import {
@@ -111,7 +107,7 @@ export function HomeTrustedMarqueeCompact() {
           {marqueeLogos.map((logo, idx) => (
             <div
               key={`${logo.name}-${idx}`}
-              className={cn("h-10 flex-shrink-0 opacity-60", LOGO_BOX_ASPECT)}
+              className="flex h-10 flex-shrink-0 items-center justify-center opacity-60"
               aria-hidden={idx >= logos.length}
             >
               <LogoBarImage
@@ -151,12 +147,7 @@ export function HomeTrustedSection() {
                   "home-trusted-item flex flex-shrink-0 flex-col items-center gap-1";
                 const inner = (
                   <>
-                    <div
-                      className={cn(
-                        "h-12 opacity-70 transition-opacity duration-150 ease-in-out [.home-trusted-item:hover_&]:opacity-100 md:h-14",
-                        LOGO_BOX_ASPECT
-                      )}
-                    >
+                    <div className="flex h-12 items-center justify-center opacity-70 transition-opacity duration-150 ease-in-out [.home-trusted-item:hover_&]:opacity-100 md:h-14">
                       <LogoBarImage
                         logo={logo}
                         alt={idx >= logos.length ? "" : logo.name}

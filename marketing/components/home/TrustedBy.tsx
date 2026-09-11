@@ -1,9 +1,6 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H4 } from "@marketing/components/home/ContentComponents";
-import {
-  LOGO_BOX_ASPECT,
-  LogoBarImage,
-} from "@marketing/components/home/LogoBarImage";
+import { LogoBarImage } from "@marketing/components/home/LogoBarImage";
 import { useLogoBar } from "@marketing/components/home/LogoListsContext";
 import { cn } from "@marketing/components/poke/shadcn/lib/utils";
 import type { TrustedByLogoSet } from "@marketing/lib/logo_bars";
@@ -113,11 +110,17 @@ export default function TrustedBy({
                   : "w-36 sm:w-48 lg:w-44 xl:w-40"
               )}
             >
-              {/* Fixed 600x280 box, logo scaled to fit inside it. The box
-                  is the only thing that decides how large a logo can be, so a
-                  brand-kit SVG and a hand-normalized one land at the same
-                  scale without anyone re-exporting anything. */}
-              <div className={cn("w-full", LOGO_BOX_ASPECT)}>
+              {/* Explicit height, flex-centred, logo scaled down to fit.
+                  The box is flatter than any real logo (at its narrowest,
+                  160x48 = 3.3:1 against a 2.5:1 wordmark), so height always
+                  binds and every logo renders the same height whatever canvas
+                  it was drawn on. */}
+              <div
+                className={cn(
+                  "flex w-full items-center justify-center",
+                  isLarge ? "h-12 sm:h-14" : "h-10 sm:h-12"
+                )}
+              >
                 <LogoBarImage logo={logo} width={200} height={55} />
               </div>
               {logo.caseStudyUrl ? (
