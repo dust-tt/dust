@@ -1,6 +1,7 @@
 import { formatCredits } from "@app/lib/client/credits";
 import { useAwuTopUpsHistory } from "@app/lib/swr/credits";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
@@ -25,7 +26,11 @@ type TopUpRowData = {
   onClick?: () => void;
 };
 
-function TopUpHistorySkeletonCell({ columnId }: DataTableSkeletonCellProps) {
+type TopUpColumnId = (typeof COLUMNS)[number]["id"];
+
+function TopUpHistorySkeletonCell({
+  columnId,
+}: DataTableSkeletonCellProps<TopUpColumnId>) {
   switch (columnId) {
     case "date":
       return <TextCellSkeleton />;
@@ -36,12 +41,13 @@ function TopUpHistorySkeletonCell({ columnId }: DataTableSkeletonCellProps) {
     case "expiration":
       return <TextCellSkeleton className="ml-auto" />;
     default:
-      return null;
+      return assertNever(columnId);
   }
 }
 
-const COLUMNS: ColumnDef<TopUpRowData, string>[] = [
+const COLUMNS = [
   {
+    id: "date" as const,
     accessorKey: "date",
     header: "Date",
     enableSorting: false,
@@ -49,6 +55,7 @@ const COLUMNS: ColumnDef<TopUpRowData, string>[] = [
     cell: ({ row }) => <span className="text-sm">{row.original.date}</span>,
   },
   {
+    id: "name" as const,
     accessorKey: "name",
     header: "Top-up",
     enableSorting: false,
@@ -56,6 +63,7 @@ const COLUMNS: ColumnDef<TopUpRowData, string>[] = [
     cell: ({ row }) => <span className="text-sm">{row.original.name}</span>,
   },
   {
+    id: "credits" as const,
     accessorKey: "credits",
     header: "Credits",
     enableSorting: false,
@@ -65,6 +73,7 @@ const COLUMNS: ColumnDef<TopUpRowData, string>[] = [
     ),
   },
   {
+    id: "expiration" as const,
     accessorKey: "expiration",
     header: "Expiration",
     enableSorting: false,
@@ -75,7 +84,7 @@ const COLUMNS: ColumnDef<TopUpRowData, string>[] = [
       </span>
     ),
   },
-];
+] satisfies ColumnDef<TopUpRowData, string>[];
 
 export function TopUpsHistoryTable({ owner }: TopUpsHistoryTableProps) {
   const { topUps, isTopUpsHistoryLoading, isTopUpsHistoryError } =

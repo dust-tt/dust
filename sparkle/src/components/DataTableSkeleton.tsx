@@ -9,18 +9,29 @@ import {
 } from "@tanstack/react-table";
 import React, { type ComponentType } from "react";
 
-export interface DataTableSkeletonCellProps {
+export interface DataTableSkeletonCellProps<TColumnId extends string = string> {
   /** The column id from the table definition. */
-  columnId: string;
+  columnId: TColumnId;
   /** Zero-based placeholder row index, for varying shapes across rows. */
   rowIndex: number;
 }
 
-export interface DataTableSkeletonProps<TData, TValue = string> {
-  /** Reuse the loaded table columns, including header alignment and width classes. */
-  columns: ColumnDef<TData, TValue>[];
+type SkeletonColumnDef<TData, TValue, TColumnId extends string> = ColumnDef<
+  TData,
+  TValue
+> & { id?: TColumnId } & (string extends TColumnId
+    ? unknown
+    : { id: TColumnId; columns?: never });
+
+export interface DataTableSkeletonProps<
+  TData,
+  TValue = string,
+  TColumnId extends string = string,
+> {
+  /** Reuse the loaded table columns. A column-id union requires explicit ids on flat columns. */
+  columns: SkeletonColumnDef<TData, TValue, TColumnId>[];
   /** Required cell renderer: compose cell skeleton primitives to match each column's content. */
-  SkeletonCell: ComponentType<DataTableSkeletonCellProps>;
+  SkeletonCell: ComponentType<DataTableSkeletonCellProps<NoInfer<TColumnId>>>;
   /** Number of placeholder rows. Defaults to 5. */
   rowCount?: number;
   /** Row height in pixels; match the loaded table. Defaults to 48. */
@@ -32,13 +43,19 @@ export interface DataTableSkeletonProps<TData, TValue = string> {
  * a custom SkeletonCell renderer. Keep that renderer alongside the table's columns
  * and compose TextCellSkeleton, AvatarCellSkeleton, or ChipCellSkeleton to match
  * their contents. Use LoadingBlock for other shapes or more specialized layouts.
+ * Preserve literal column ids with `as const` and `satisfies ColumnDef<...>[]`,
+ * then use `(typeof columns)[number]["id"]` to type an exhaustive cell renderer.
  */
-export function DataTableSkeleton<TData, TValue = string>({
+export function DataTableSkeleton<
+  TData,
+  TValue = string,
+  TColumnId extends string = string,
+>({
   columns,
   SkeletonCell,
   rowCount = 5,
   rowHeight = 48,
-}: DataTableSkeletonProps<TData, TValue>) {
+}: DataTableSkeletonProps<TData, TValue, TColumnId>) {
   const table = useReactTable({
     data: [],
     columns,
@@ -96,7 +113,12 @@ export function DataTableSkeleton<TData, TValue = string>({
                   className={cn("px-2", column.columnDef.meta?.className)}
                   style={{ height: rowHeight }}
                 >
-                  <SkeletonCell columnId={column.id} rowIndex={rowIndex} />
+                  <SkeletonCell
+                    // TanStack widens ids to string. Narrow ids require flat
+                    // columns with explicit ids, which TanStack preserves.
+                    columnId={column.id as TColumnId}
+                    rowIndex={rowIndex}
+                  />
                 </td>
               ))}
             </tr>
