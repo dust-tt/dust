@@ -1638,6 +1638,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
   }
 
+  get remoteMCPServerUrl(): string | null {
+    return this.serverType === "remote"
+      ? this.getRemoteMCPServerResource().url
+      : null;
+  }
+
   /**
    * Computes the sIds of the auto internal MCP servers enabled for the workspace. This is
    * the exact set of servers whose views must exist in the system and global spaces.

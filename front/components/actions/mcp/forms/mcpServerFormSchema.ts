@@ -83,9 +83,8 @@ export function getDefaultToolStakeLevel(
 ): MCPToolStakeLevelType {
   if (isRemoteMCPServerType(server)) {
     return (
-      getDefaultRemoteMCPServerByURL(server.url || undefined)?.toolStakes?.[
-        toolName
-      ] ?? FALLBACK_MCP_TOOL_STAKE_LEVEL
+      getDefaultRemoteMCPServerByURL(server.url)?.toolStakes?.[toolName] ??
+      FALLBACK_MCP_TOOL_STAKE_LEVEL
     );
   }
 
