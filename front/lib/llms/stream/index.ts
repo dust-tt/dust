@@ -14,6 +14,7 @@ import { DustAnthropicClaudeSonnetFiveEuropeAgentPlatformStream } from "@app/lib
 import { DustAnthropicClaudeSonnetFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_sonnet_five_global_anthropic";
 import { DustAnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_sonnet_four_dot_six_eu_agent_platform";
 import { DustAnthropicClaudeSonnetFourDotSixGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_sonnet_four_dot_six_global_anthropic";
+import { DustDeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/deepseek_deepseek_v_four_dot_one_flash_global_fireworks";
 import { DustDeepSeekDeepSeekV4Flash0731GlobalFireworksStream } from "@app/lib/llms/stream/endpoints/deepseek_deepseek_v4_flash_0731_global_fireworks";
 import { DustDeepSeekDeepSeekV4Pro0813GlobalFireworksStream } from "@app/lib/llms/stream/endpoints/deepseek_deepseek_v4_pro_0813_global_fireworks";
 import { DustDeepSeekDeepSeekV4ProGlobalFireworksStream } from "@app/lib/llms/stream/endpoints/deepseek_deepseek_v4_pro_global_fireworks";
@@ -141,6 +142,8 @@ export const DUST_STREAM_ENDPOINTS = {
 
   [DustDeepSeekDeepSeekV4Flash0731GlobalFireworksStream.id]:
     DustDeepSeekDeepSeekV4Flash0731GlobalFireworksStream,
+  [DustDeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream.id]:
+    DustDeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream,
 
   [DustZAiGlmFiveDotTwoGlobalFireworksStream.id]:
     DustZAiGlmFiveDotTwoGlobalFireworksStream,

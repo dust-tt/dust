@@ -708,7 +708,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_DEEPSEEK,
         name: "dust-deepseek",
-        description: "Same as dust but running DeepSeek V4 Pro.",
+        description: "Same as dust but running DeepSeek V4.1 Flash.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE:
