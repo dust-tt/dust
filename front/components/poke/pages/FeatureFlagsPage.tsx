@@ -2,10 +2,13 @@ import { FeatureFlagStageChip } from "@app/components/poke/features/stage_chip";
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { useSendNotification } from "@app/hooks/useNotification";
 import type { PokeFeatureFlagUsageAllCells } from "@app/hooks/usePokeFeatureFlagUsage";
 import { usePokeFeatureFlagUsageAllCells } from "@app/hooks/usePokeFeatureFlagUsage";
 import { useCellContext } from "@app/lib/auth/CellContext";
+import { clientFetch } from "@app/lib/egress/client";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
 import type { CellType } from "@app/types/cell";
@@ -16,7 +19,19 @@ import {
   isWhitelistableFeature,
   WHITELISTABLE_FEATURES_CONFIG,
 } from "@app/types/shared/feature_flags";
-import { Button, Chip, LinkWrapper, Pencil01, Trash01 } from "@dust-tt/sparkle";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import {
+  Button,
+  Chip,
+  LinkWrapper,
+  Pencil01,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
+  Rocket02,
+  Trash01,
+  XClose,
+} from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
@@ -36,14 +51,22 @@ interface PendingPluginAction {
 }
 
 interface MakeColumnsParams {
-  // Both are `null` when the current user cannot run the corresponding plugin.
+  // All `null` when the current user cannot run the corresponding plugin.
   onDeleteLegacyRows: ((flagName: string, cell: CellType) => void) | null;
   onEditGlobalRollout: ((flagName: string, cell: CellType) => void) | null;
+  onDeployToAllCells: ((flagName: string) => void) | null;
+  confirmDeployFlag: string | null;
+  setConfirmDeployFlag: (flagName: string | null) => void;
+  deployingFlag: string | null;
 }
 
 function makeColumns({
   onDeleteLegacyRows,
   onEditGlobalRollout,
+  onDeployToAllCells,
+  confirmDeployFlag,
+  setConfirmDeployFlag,
+  deployingFlag,
 }: MakeColumnsParams): ColumnDef<PokeFeatureFlagUsageAllCells>[] {
   return [
     {
@@ -189,6 +212,50 @@ function makeColumns({
                 </div>
               );
             })}
+            {onDeployToAllCells && (
+              <PopoverRoot
+                open={confirmDeployFlag === name}
+                onOpenChange={(open) =>
+                  setConfirmDeployFlag(open ? name : null)
+                }
+              >
+                <PopoverTrigger>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    icon={Rocket02}
+                    label="Deploy to everyone"
+                    tooltip="Set the rollout to 100% on every cell"
+                    isLoading={deployingFlag === name}
+                  />
+                </PopoverTrigger>
+                <PopoverContent>
+                  <div className="flex flex-col gap-3">
+                    <p className="text-sm text-foreground">
+                      This will enable &quot;{name}&quot; for every workspace on
+                      every cell. Are you sure?
+                    </p>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        icon={XClose}
+                        label="No"
+                        onClick={() => setConfirmDeployFlag(null)}
+                      />
+                      <Button
+                        variant="warning"
+                        size="xs"
+                        icon={Rocket02}
+                        label="Yes"
+                        isLoading={deployingFlag === name}
+                        onClick={() => onDeployToAllCells(name)}
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </PopoverRoot>
+            )}
           </div>
         );
       },
@@ -256,6 +323,7 @@ export function FeatureFlagsPage() {
 
   const { cells, cellInfo, setCellInfo } = useCellContext();
   const { featureFlags, isLoading, mutate } = usePokeFeatureFlagUsageAllCells();
+  const sendNotification = useSendNotification();
 
   const { plugins } = usePokeListPluginForResourceType({
     pluginResourceTarget: GLOBAL_PLUGIN_TARGET,
@@ -269,6 +337,10 @@ export function FeatureFlagsPage() {
 
   const [pendingAction, setPendingAction] =
     useState<PendingPluginAction | null>(null);
+  const [confirmDeployFlag, setConfirmDeployFlag] = useState<string | null>(
+    null
+  );
+  const [deployingFlag, setDeployingFlag] = useState<string | null>(null);
 
   const switchToCell = useCallback(
     (cell: CellType) => {
@@ -309,13 +381,93 @@ export function FeatureFlagsPage() {
     void mutate();
   }, [mutate]);
 
+  // Runs the global-rollout plugin against every cell directly (not through the current cell
+  // selection), so it does not depend on the client switching cells one at a time.
+  const onDeployToAllCells = useCallback(
+    async (flagName: string) => {
+      setConfirmDeployFlag(null);
+      setDeployingFlag(flagName);
+
+      try {
+        const results = await Promise.all(
+          cells.map(async (cell) => {
+            try {
+              const res = await clientFetch(
+                `${cell.url}/api/poke/plugins/${TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID}/run?resourceType=global`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    [FEATURE_FLAG_PLUGIN_ARG]: [flagName],
+                    rolloutPercentage: 100,
+                  }),
+                }
+              );
+              if (res.ok) {
+                return { cell: cell.name, ok: true as const };
+              }
+              const errorData = await getErrorFromResponse(res);
+              return {
+                cell: cell.name,
+                ok: false as const,
+                message: errorData.message,
+              };
+            } catch (error) {
+              return {
+                cell: cell.name,
+                ok: false as const,
+                message: normalizeError(error).message,
+              };
+            }
+          })
+        );
+
+        const failed = results.filter((result) => !result.ok);
+        if (failed.length > 0) {
+          sendNotification({
+            title: "Deploy to everyone failed",
+            description: failed
+              .map((result) => `${result.cell}: ${result.message}`)
+              .join(" "),
+            type: "error",
+          });
+        } else {
+          sendNotification({
+            title: "Deployed to everyone",
+            description: `"${flagName}" is now enabled for every workspace on every cell.`,
+            type: "success",
+          });
+        }
+
+        await mutate();
+      } finally {
+        setDeployingFlag(null);
+      }
+    },
+    [cells, mutate, sendNotification]
+  );
+
   const columns = useMemo(
     () =>
       makeColumns({
         onDeleteLegacyRows: deleteLegacyPlugin ? onDeleteLegacyRows : null,
         onEditGlobalRollout: rolloutPlugin ? onEditGlobalRollout : null,
+        onDeployToAllCells: rolloutPlugin
+          ? (flagName) => void onDeployToAllCells(flagName)
+          : null,
+        confirmDeployFlag,
+        setConfirmDeployFlag,
+        deployingFlag,
       }),
-    [deleteLegacyPlugin, onDeleteLegacyRows, onEditGlobalRollout, rolloutPlugin]
+    [
+      confirmDeployFlag,
+      deleteLegacyPlugin,
+      deployingFlag,
+      onDeleteLegacyRows,
+      onDeployToAllCells,
+      onEditGlobalRollout,
+      rolloutPlugin,
+    ]
   );
 
   const pendingPlugin = pendingAction
