@@ -421,8 +421,6 @@ export function FeatureFlagsPage() {
     void mutate();
   }, [mutate]);
 
-  // Runs the global-rollout plugin against the selected cells directly (not through the
-  // current cell selection), so it does not depend on the client switching cells one at a time.
   const onDeployToCells = useCallback(
     async (flagName: string, targetCells: CellType[]) => {
       setDeployState((s) => ({
