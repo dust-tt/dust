@@ -258,12 +258,36 @@ export function ChangeSeatModal({
     doFetchSeatChangePreview,
   ]);
 
+  // A seat type is unavailable when it has reached its hard cap (`maxSeats`)
+  // and isn't the member's current seat — the apply path rejects such a move
+  // with `seat_limit_reached` (immediate and deferred alike), so it must not
+  // be selectable here. The member's current seat is never blocked (its own
+  // assignment is already counted, and re-selecting it is a no-op).
+  function isSeatAtCap(
+    seatType: MembershipSeatType,
+    info: SeatTypeInfo
+  ): boolean {
+    return (
+      seatType !== currentSeatType &&
+      info.maxSeats !== null &&
+      info.assignedCount >= info.maxSeats
+    );
+  }
+
   function getBadge(
     seatType: MembershipSeatType,
     info: SeatTypeInfo
   ): React.ReactNode {
     if (seatType === currentSeatType) {
       return <Chip size="xs" color="highlight" label="Current" />;
+    }
+    if (isSeatAtCap(seatType, info)) {
+      return (
+        <span className="text-xs text-warning-600">
+          Seat limit reached ({info.assignedCount.toLocaleString("en-US")}/
+          {info.maxSeats?.toLocaleString("en-US")})
+        </span>
+      );
     }
     const price =
       info.billingFrequency === "annual" ? (
@@ -380,6 +404,10 @@ export function ChangeSeatModal({
     (invoicePreview?.deferredDeltaMonthlyCents ?? 0);
 
   const selectedSeatInfo = selectedSeat ? seatPlans[selectedSeat] : null;
+  const isSelectedSeatAtCap =
+    !!selectedSeat &&
+    !!selectedSeatInfo &&
+    isSeatAtCap(selectedSeat, selectedSeatInfo);
   // Trust the backend's own classification of this specific move (which
   // bucket its delta landed in) over recomputing it client-side.
   const isInvoiceDeltaDeferred =
@@ -454,6 +482,7 @@ export function ChangeSeatModal({
                     isSelected={selectedSeat === seatType}
                     badge={getBadge(seatType, info)}
                     onClick={() => setSelectedSeat(seatType)}
+                    disabled={isSeatAtCap(seatType, info)}
                   />
                 );
               })}
@@ -520,6 +549,7 @@ export function ChangeSeatModal({
                 : isSaving ||
                   !selectedSeat ||
                   isSubscriptionCancelled ||
+                  isSelectedSeatAtCap ||
                   (selectedSeat === currentSeatType &&
                     !isCancellingScheduledChange)),
             onClick: handleValidate,

@@ -422,9 +422,25 @@ function BulkChangeSeatModalPreviewDialogContent({
     .reduce((sum, m) => sum + m.count, 0);
   const seatTotals = preview.seatTotals ?? [];
   const hasAnyChange = immediateMoves.length > 0 || deferredMoves.length > 0;
+  const blockedByCapCount = preview.blockedByCapCount ?? 0;
+  const targetMaxSeats = preview.targetMaxSeats ?? null;
 
   return (
     <div className="flex flex-col gap-4">
+      {blockedByCapCount > 0 && targetMaxSeats !== null && (
+        <p className="text-sm text-warning-600">
+          {blockedByCapCount.toLocaleString("en-US")}{" "}
+          {blockedByCapCount === 1 ? "member can't" : "members can't"} be
+          assigned —{" "}
+          {seatMoveLabel(
+            preview.targetSeatType,
+            preview.targetSeatName,
+            seatPlans
+          )}{" "}
+          is at its cap of {targetMaxSeats.toLocaleString("en-US")}{" "}
+          {targetMaxSeats === 1 ? "seat" : "seats"}.
+        </p>
+      )}
       {immediateMoves.length > 0 && (
         <SeatMoveSection
           title="Immediate changes"
