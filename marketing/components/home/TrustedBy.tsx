@@ -118,7 +118,7 @@ export default function TrustedBy({
                   brand-kit SVG and a hand-normalized one land at the same
                   scale without anyone re-exporting anything. */}
               <div className={cn("w-full", LOGO_BOX_ASPECT)}>
-                <LogoBarImage logo={logo} width={200} height={93} />
+                <LogoBarImage logo={logo} width={200} height={55} />
               </div>
               {logo.caseStudyUrl ? (
                 <Link

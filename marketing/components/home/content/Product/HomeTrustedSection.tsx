@@ -111,14 +111,14 @@ export function HomeTrustedMarqueeCompact() {
           {marqueeLogos.map((logo, idx) => (
             <div
               key={`${logo.name}-${idx}`}
-              className={cn("h-12 flex-shrink-0 opacity-60", LOGO_BOX_ASPECT)}
+              className={cn("h-10 flex-shrink-0 opacity-60", LOGO_BOX_ASPECT)}
               aria-hidden={idx >= logos.length}
             >
               <LogoBarImage
                 logo={logo}
                 alt={idx >= logos.length ? "" : logo.name}
                 width={180}
-                height={84}
+                height={50}
               />
             </div>
           ))}
@@ -153,7 +153,7 @@ export function HomeTrustedSection() {
                   <>
                     <div
                       className={cn(
-                        "h-14 opacity-70 transition-opacity duration-150 ease-in-out [.home-trusted-item:hover_&]:opacity-100 md:h-16",
+                        "h-12 opacity-70 transition-opacity duration-150 ease-in-out [.home-trusted-item:hover_&]:opacity-100 md:h-14",
                         LOGO_BOX_ASPECT
                       )}
                     >
@@ -161,7 +161,7 @@ export function HomeTrustedSection() {
                         logo={logo}
                         alt={idx >= logos.length ? "" : logo.name}
                         width={220}
-                        height={103}
+                        height={60}
                       />
                     </div>
                     {/* Reserve a fixed-height slot so items with and without a

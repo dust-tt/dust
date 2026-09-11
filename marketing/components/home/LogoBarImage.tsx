@@ -5,8 +5,13 @@ import { cn } from "@dust-tt/sparkle";
 import Image from "next/image";
 
 /**
- * The box every customer logo is fitted into: 600x280, the aspect the repo's
- * hand-normalized SVGs were drawn against (600 wide, 240-300 tall).
+ * The box every customer logo is fitted into: 600x165.
+ *
+ * Deliberately flatter than the canvases the SVGs are drawn on (600 wide,
+ * 240-300 tall). Fitting a logo to its own canvas made the bars too heavy, and
+ * the canvases disagree with each other anyway — the repo files split into a
+ * 240 cluster and a 300 cluster, 25% apart. A flatter box than any of them
+ * means the box, not the file, decides the scale.
  *
  * Callers size the box; the logo is scaled to fit *inside* it with its own
  * proportions intact, so a wide wordmark is bounded by the box's width and a
@@ -15,7 +20,7 @@ import Image from "next/image";
  * squeezed by their column while squarer logos ran to the height ceiling and
  * rendered half again as tall.
  */
-export const LOGO_BOX_ASPECT = "aspect-[15/7]";
+export const LOGO_BOX_ASPECT = "aspect-[40/11]";
 
 /**
  * Normalization applied to every customer logo.
