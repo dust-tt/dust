@@ -11,7 +11,6 @@ export const MODEL_COST_MICRO_USD_PER_AWU_CREDIT = 8_500;
 // Metrics
 const DEV_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC =
   "e02846b3-956c-48bc-9fd1-162061aed624";
-const DEV_METRIC_TOOL_INVOCATIONS_V2 = "0a35a534-0d1c-4ed5-8177-358d9dff71a5";
 const DEV_METRIC_LLM_PROVIDER_COST_AWU_V2 =
   "a6abefc5-d749-4757-a139-336b53c837f5";
 
@@ -37,7 +36,6 @@ const DEV_PRODUCT_PLATFORM_FEE = "11e635e1-0fb9-44e1-9499-690d5ee27ace";
 // Metrics
 const PROD_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC =
   "3ad68bfb-7a59-49ad-b29e-54700fa0e6fa";
-const PROD_METRIC_TOOL_INVOCATIONS_V2 = "f32cc30e-c52f-4dc0-bde0-cef343bdc6d3";
 const PROD_METRIC_LLM_PROVIDER_COST_AWU_V2 =
   "ffb1ecce-6c2b-4f16-add1-5da81baec0a7";
 
@@ -263,8 +261,6 @@ export const getMetricLlmProviderCostProgrammaticId = () =>
     DEV_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC,
     PROD_METRIC_LLM_PROVIDER_COST_PROGRAMMATIC
   );
-export const getMetricToolInvocationsId = () =>
-  devOrProd(DEV_METRIC_TOOL_INVOCATIONS_V2, PROD_METRIC_TOOL_INVOCATIONS_V2);
 export const getMetricLlmProviderCostAwuId = () =>
   devOrProd(
     DEV_METRIC_LLM_PROVIDER_COST_AWU_V2,
