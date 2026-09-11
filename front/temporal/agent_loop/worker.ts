@@ -18,6 +18,7 @@ import {
 import { ensureConversationTitleActivity } from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import {
   finalizeCancelledAgentLoopActivity,
+  finalizeCreditSpendCheckpointPausedAgentLoopActivity,
   finalizeCreditStoppedAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
   finalizeGracefullyStoppedAgentLoopActivity,
@@ -113,6 +114,7 @@ async function runAgentLoopWorkerForQueue({
       finalizeSuccessfulAgentLoopActivity,
       finalizeGracefullyStoppedAgentLoopActivity,
       finalizeCreditStoppedAgentLoopActivity,
+      finalizeCreditSpendCheckpointPausedAgentLoopActivity,
       finalizeCancelledAgentLoopActivity,
       finalizeInterruptedAgentLoopActivity,
       finalizeErroredAgentLoopActivity,
