@@ -1,7 +1,3 @@
-import {
-  CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
-  CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS_ENTERPRISE,
-} from "@app/lib/constants/credits";
 import { DEFAULT_PRESTOP_DRAIN_DURATION_MS } from "@app/lib/constants/timeouts";
 import { isDevelopment } from "@app/types/shared/env";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
@@ -61,15 +57,6 @@ const config = {
 
     return durationSeconds * 1_000;
   },
-
-  getCreditSpendCheckpointThresholdAwuCredits: ({
-    isEnterprisePlan,
-  }: {
-    isEnterprisePlan: boolean;
-  }): number =>
-    isEnterprisePlan
-      ? CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS_ENTERPRISE
-      : CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
 
   // Dynamic API base URL: uses a custom resolver when set (SPA region switching),
   // otherwise falls back to getClientFacingUrl().
