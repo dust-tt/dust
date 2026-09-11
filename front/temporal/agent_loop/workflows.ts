@@ -244,6 +244,12 @@ export async function compactionWorkflow({
   }
 }
 
+/**
+ * @cc [owner:avervaet,label:performance] checkpoint-fails-open
+ * A failure of the credit spend checkpoint check activity MUST NOT fail or stop the agent loop:
+ * the step continues as if the threshold had not been crossed. Only cancellation and non-activity
+ * failures propagate.
+ */
 export async function agentLoopWorkflow({
   authType,
   initialStartTime,

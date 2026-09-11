@@ -71,6 +71,18 @@ const SKIP: CreditSpendCheckpointActivityResult = {
  * pause itself is persisted and notified by the finalize activity, so a failure or timeout here
  * can never leave the message marked paused while the loop keeps running.
  */
+/**
+ * @cc [owner:avervaet,label:backend] checkpoint-pure-check
+ * This activity MUST NOT persist, publish or notify anything: it only returns whether the
+ * threshold was crossed. Recording the pause belongs to the finalize path, so a failed or timed
+ * out check never leaves a message marked paused while its loop keeps running.
+ */
+/**
+ * @cc [owner:avervaet,label:product] checkpoint-acknowledged-skips
+ * When the message's checkpoint status is `acknowledged`, the activity MUST return not crossed
+ * with `skipRemainingChecks: true`, whatever the spend. A user who chose to continue is never
+ * asked again for the same message.
+ */
 export async function checkCreditSpendCheckpointActivity(
   authType: AuthenticatorType,
   { agentLoopArgs }: { agentLoopArgs: AgentLoopArgsWithTiming }
