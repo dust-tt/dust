@@ -379,6 +379,7 @@ export function FrameRenderer({
                 fileId={fileId}
                 fileContent={fileContent ?? null}
                 fileName={fileMetadata?.fileName}
+                contentType={fileMetadata?.contentType}
               />
               <ShareFrameSheet
                 key={contentHash ?? fileId}
@@ -443,6 +444,7 @@ export function FrameRenderer({
               fileId={fileId}
               fileContent={fileContent ?? null}
               fileName={fileMetadata?.fileName}
+              contentType={fileMetadata?.contentType}
             />
             <ShareFrameSheet
               key={contentHash ?? fileId}

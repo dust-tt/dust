@@ -810,6 +810,28 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
+  /**
+   * @cc [owner:davidebbo,label:product] frame-source-directory-is-a-folder
+   * Returns the scoped path of the folder holding this Frames v2 package's sources, and null
+   * unless this file is a `manifest.json` mounted in a folder under a mount root. A manifest
+   * sitting directly at a mount root has no source folder of its own and must return null.
+   */
+  getFrameV2SourceDirectoryPath(auth: Authenticator): string | null {
+    const manifestPath = this.toScopedPath(auth);
+    if (
+      !manifestPath ||
+      path.posix.basename(manifestPath) !== FRAME_MANIFEST_FILE
+    ) {
+      return null;
+    }
+
+    const sourceDirectory = DustFileSystem.normalizeScopedPath(
+      path.posix.dirname(manifestPath)
+    );
+
+    return sourceDirectory?.includes("/") ? sourceDirectory : null;
+  }
+
   private async deleteFrameV2(
     auth: Authenticator
   ): Promise<Result<undefined, Error>> {
@@ -824,14 +846,8 @@ export class FileResource extends BaseResource<FileModel> {
     if (!manifestPath) {
       return new Err(new Error("Frame source path not found."));
     }
-    const sourceDirectory = DustFileSystem.normalizeScopedPath(
-      path.posix.dirname(manifestPath)
-    );
-    if (
-      !sourceDirectory ||
-      !sourceDirectory.includes("/") ||
-      path.posix.basename(manifestPath) !== FRAME_MANIFEST_FILE
-    ) {
+    const sourceDirectory = this.getFrameV2SourceDirectoryPath(auth);
+    if (!sourceDirectory) {
       return new Err(
         new Error("Frame deletion requires its source folder under /files.")
       );
