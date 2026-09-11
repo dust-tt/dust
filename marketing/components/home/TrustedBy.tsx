@@ -1,6 +1,9 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H4 } from "@marketing/components/home/ContentComponents";
-import { LogoBarImage } from "@marketing/components/home/LogoBarImage";
+import {
+  LOGO_BOX_ASPECT,
+  LogoBarImage,
+} from "@marketing/components/home/LogoBarImage";
 import { useLogoBar } from "@marketing/components/home/LogoListsContext";
 import { cn } from "@marketing/components/poke/shadcn/lib/utils";
 import type { TrustedByLogoSet } from "@marketing/lib/logo_bars";
@@ -110,29 +113,12 @@ export default function TrustedBy({
                   : "w-36 sm:w-48 lg:w-44 xl:w-40"
               )}
             >
-              {/* Height is the fixed dimension and width follows the logo's
-                  own ratio, so every logo renders the same height whatever
-                  canvas it was exported on. Previously the image was allowed a
-                  `max-h` taller than this box and had no width bound, so wide
-                  wordmarks were limited by the column (~64px) while squarer
-                  logos ran up to the ceiling (96px) and towered over them.
-                  `max-w-full` catches anything wider than the column, letting
-                  it shrink proportionally rather than overflow. */}
-              <div
-                className={cn(
-                  "flex w-full items-center justify-center",
-                  isLarge ? "h-16 sm:h-20" : "h-14 sm:h-16"
-                )}
-              >
-                <LogoBarImage
-                  logo={logo}
-                  width={200}
-                  height={80}
-                  className={cn(
-                    "w-auto max-w-full",
-                    isLarge ? "h-16 sm:h-20" : "h-14 sm:h-16"
-                  )}
-                />
+              {/* Fixed 600x280 box, logo scaled to fit inside it. The box
+                  is the only thing that decides how large a logo can be, so a
+                  brand-kit SVG and a hand-normalized one land at the same
+                  scale without anyone re-exporting anything. */}
+              <div className={cn("w-full", LOGO_BOX_ASPECT)}>
+                <LogoBarImage logo={logo} width={200} height={93} />
               </div>
               {logo.caseStudyUrl ? (
                 <Link

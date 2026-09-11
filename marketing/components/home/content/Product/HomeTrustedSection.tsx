@@ -1,6 +1,10 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { HomeReveal } from "@marketing/components/home/content/Product/HomeReveal";
-import { LogoBarImage } from "@marketing/components/home/LogoBarImage";
+import { cn } from "@marketing/components/poke/shadcn/lib/utils";
+import {
+  LOGO_BOX_ASPECT,
+  LogoBarImage,
+} from "@marketing/components/home/LogoBarImage";
 import { useLogoBar } from "@marketing/components/home/LogoListsContext";
 import type { LogoBarLogo } from "@marketing/lib/logo_bars";
 import {
@@ -107,15 +111,14 @@ export function HomeTrustedMarqueeCompact() {
           {marqueeLogos.map((logo, idx) => (
             <div
               key={`${logo.name}-${idx}`}
-              className="flex h-12 flex-shrink-0 items-center justify-center opacity-60"
+              className={cn("h-12 flex-shrink-0 opacity-60", LOGO_BOX_ASPECT)}
               aria-hidden={idx >= logos.length}
             >
               <LogoBarImage
                 logo={logo}
                 alt={idx >= logos.length ? "" : logo.name}
                 width={180}
-                height={48}
-                className="max-h-10"
+                height={84}
               />
             </div>
           ))}
@@ -148,13 +151,17 @@ export function HomeTrustedSection() {
                   "home-trusted-item flex flex-shrink-0 flex-col items-center gap-1";
                 const inner = (
                   <>
-                    <div className="flex h-14 items-center justify-center opacity-70 transition-opacity duration-150 ease-in-out [.home-trusted-item:hover_&]:opacity-100 md:h-16">
+                    <div
+                      className={cn(
+                        "h-14 opacity-70 transition-opacity duration-150 ease-in-out [.home-trusted-item:hover_&]:opacity-100 md:h-16",
+                        LOGO_BOX_ASPECT
+                      )}
+                    >
                       <LogoBarImage
                         logo={logo}
                         alt={idx >= logos.length ? "" : logo.name}
                         width={220}
-                        height={64}
-                        className="max-h-14 md:max-h-16"
+                        height={103}
                       />
                     </div>
                     {/* Reserve a fixed-height slot so items with and without a
