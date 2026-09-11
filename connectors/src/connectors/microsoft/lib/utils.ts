@@ -137,7 +137,7 @@ export async function _getListColumns({
  * Graph API returns objects for taxonomy terms, lookups, and person/group
  * fields — interpolating them directly produces "[object Object]".
  */
-function formatFieldValue(v: unknown): string | null {
+export function formatFieldValue(v: unknown): string | null {
   if (v === null || v === undefined) {
     return null;
   }

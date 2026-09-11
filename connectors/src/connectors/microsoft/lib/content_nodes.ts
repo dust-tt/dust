@@ -1,6 +1,7 @@
 import {
   getDriveInternalId,
   getDriveItemInternalId,
+  getListInternalId,
   getSiteAPIPath,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
@@ -8,7 +9,8 @@ import { internalIdFromTypeAndPath } from "@connectors/connectors/microsoft/lib/
 import type { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import type { ContentNode, ContentNodeType } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
-import type { Drive, Site } from "@microsoft/microsoft-graph-types";
+import { assertNever } from "@dust-tt/client";
+import type { Drive, List, Site } from "@microsoft/microsoft-graph-types";
 
 export function getRootNodes(): ContentNode[] {
   return [getSitesRootAsContentNode()];
@@ -94,26 +96,68 @@ export function getFolderAsContentNode(
   };
 }
 
+export function getListAsContentNode(
+  list: List,
+  parentInternalId: string,
+  siteItemAPIPath: string
+): ContentNode {
+  return {
+    internalId: getListInternalId(list, siteItemAPIPath),
+    parentInternalId,
+    // A SharePoint list is a single structured table (unlike an Excel file which
+    // expands to several worksheets), so it is a directly-selectable leaf.
+    type: "table",
+    title: list.displayName || list.name || "unnamed",
+    sourceUrl: list.webUrl ?? null,
+    lastUpdatedAt: null,
+    expandable: false,
+    permission: "none",
+    mimeType: INTERNAL_MIME_TYPES.MICROSOFT.LIST,
+  };
+}
+
 export function getMicrosoftNodeAsContentNode(
   node: MicrosoftNodeResource,
   expandWorksheet: boolean
 ): ContentNode {
-  // When table picking we want spreadsheets to expand to select the different
-  // sheets. While extracting data we want to treat them as regular files.
+  // A SharePoint list is a single leaf table. Spreadsheets expand into their
+  // worksheets, but only while table-picking; otherwise treat them as files.
   const isExpandable =
-    !node.mimeType ||
-    (node.mimeType ===
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" &&
-      expandWorksheet);
+    node.nodeType !== "list" &&
+    (!node.mimeType ||
+      (node.mimeType ===
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" &&
+        expandWorksheet));
   let type: ContentNodeType;
-  if (["drive", "folder"].includes(node.nodeType)) {
-    type = "folder";
-  } else if (node.nodeType === "worksheet") {
-    type = expandWorksheet ? "table" : "document";
-  } else if (node.nodeType === "file") {
-    type = "document";
-  } else {
-    throw new Error(`Unsupported nodeType ${node.nodeType}.`);
+  let mimeType: string;
+  switch (node.nodeType) {
+    case "drive":
+    case "folder":
+      type = "folder";
+      mimeType = INTERNAL_MIME_TYPES.MICROSOFT.FOLDER;
+      break;
+    case "worksheet":
+      type = expandWorksheet ? "table" : "document";
+      mimeType =
+        type === "table"
+          ? INTERNAL_MIME_TYPES.MICROSOFT.SPREADSHEET
+          : node.mimeType || INTERNAL_MIME_TYPES.MICROSOFT.FOLDER;
+      break;
+    case "list":
+      type = "table";
+      mimeType = INTERNAL_MIME_TYPES.MICROSOFT.LIST;
+      break;
+    case "file":
+      type = "document";
+      mimeType = node.mimeType || INTERNAL_MIME_TYPES.MICROSOFT.FOLDER;
+      break;
+    case "sites-root":
+    case "site":
+    case "page":
+    case "message":
+      throw new Error(`Unsupported nodeType ${node.nodeType}.`);
+    default:
+      assertNever(node.nodeType);
   }
 
   return {
@@ -125,11 +169,6 @@ export function getMicrosoftNodeAsContentNode(
     lastUpdatedAt: null,
     expandable: isExpandable,
     permission: "none",
-    mimeType:
-      type === "table"
-        ? INTERNAL_MIME_TYPES.MICROSOFT.SPREADSHEET
-        : type === "folder"
-          ? INTERNAL_MIME_TYPES.MICROSOFT.FOLDER
-          : node.mimeType || INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
+    mimeType,
   };
 }

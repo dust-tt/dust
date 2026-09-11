@@ -10,6 +10,7 @@ import {
 import {
   getDriveAsContentNode,
   getFolderAsContentNode,
+  getListAsContentNode,
   getMicrosoftNodeAsContentNode,
   getSiteAsContentNode,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
@@ -18,6 +19,7 @@ import {
   getAllPaginatedEntities,
   getDrives,
   getFilesAndFolders,
+  getLists,
   getSites,
   getSubSites,
 } from "@connectors/connectors/microsoft/lib/graph_api";
@@ -433,9 +435,17 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           const drives = await getAllPaginatedEntities((nextLink) =>
             getDrives(logger, client, parentInternalId, nextLink)
           );
+          const lists = await getAllPaginatedEntities((nextLink) =>
+            getLists(logger, client, parentInternalId, nextLink)
+          );
+          const { itemAPIPath: siteItemAPIPath } =
+            typeAndPathFromInternalId(parentInternalId);
           nodes.push(
             ...subSites.map((n) => getSiteAsContentNode(n, parentInternalId)),
-            ...drives.map((n) => getDriveAsContentNode(n, parentInternalId))
+            ...drives.map((n) => getDriveAsContentNode(n, parentInternalId)),
+            ...lists.map((n) =>
+              getListAsContentNode(n, parentInternalId, siteItemAPIPath)
+            )
           );
           break;
         }
@@ -454,6 +464,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         case "page":
         case "message":
         case "worksheet":
+        case "list":
           throw new Error(
             `Unexpected node type ${nodeType} for retrievePermissions`
           );
@@ -845,7 +856,7 @@ export async function retrieveChildrenNodes(
   microsoftNode: MicrosoftNodeResource,
   expandWorksheet: boolean
 ): Promise<Result<ContentNode[], Error>> {
-  const nodeType: MicrosoftNodeType[] = ["file", "folder", "drive"];
+  const nodeType: MicrosoftNodeType[] = ["file", "folder", "drive", "list"];
   if (expandWorksheet) {
     nodeType.push("worksheet");
   }
