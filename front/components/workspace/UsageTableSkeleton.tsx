@@ -19,12 +19,6 @@ interface UsageTableSkeletonProps<TData, TValue> {
   rowHeight?: number;
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:react] content-specific-skeleton-cells
- * Callers MUST reuse their loaded table's column definitions and provide a
- * SkeletonCell that matches each column's content shape, including icons,
- * avatars, text lines, and controls where present.
- */
 export function UsageTableSkeleton<TData, TValue = string>({
   columns,
   SkeletonCell,
