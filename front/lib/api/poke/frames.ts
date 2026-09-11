@@ -31,7 +31,6 @@ import type { PokeSandboxType } from "@app/types/poke";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
-import assert from "assert";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 export type PokeFrameListItem = {
@@ -302,7 +301,7 @@ export type PokeFrameFunction = {
   // `slug: fn.name`, and Frames have no app prefix to strip.
   slug: string;
   description: string;
-  publicationId: string | null;
+  publicationId: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -355,10 +354,7 @@ export async function getFrameFunctionSource(
     sandboxFunction,
   }: { frame: FileResource; sandboxFunction: SandboxFunctionResource }
 ): Promise<Result<string, FramePublicationError>> {
-  // `publicationId` is non-null for anything resolved as a Frame function: baseFetch drops rows
-  // without one.
   const { publicationId } = sandboxFunction;
-  assert(publicationId, "A Frame function always belongs to a publication.");
 
   return readFramePublicationFunctionBundle(auth, {
     frame,

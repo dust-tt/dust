@@ -661,10 +661,7 @@ export class FileResource extends BaseResource<FileModel> {
     for (;;) {
       const sandboxFunctions = await SandboxFunctionModel.findAll({
         attributes: ["id"],
-        where: {
-          workspaceId: workspaceModelId,
-          publicationId: { [Op.ne]: null },
-        },
+        where: { workspaceId: workspaceModelId },
         limit: FRAME_FUNCTION_DELETE_BATCH_SIZE,
       });
       if (sandboxFunctions.length === 0) {
@@ -691,7 +688,6 @@ export class FileResource extends BaseResource<FileModel> {
       where: {
         workspaceId: workspaceModelId,
         fileId: this.id,
-        publicationId: { [Op.ne]: null },
       },
     });
     await FileResource.deleteFrameFunctionModelIds(
