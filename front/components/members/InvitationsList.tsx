@@ -8,7 +8,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
@@ -124,7 +124,8 @@ function InvitationSkeletonCell({
     case "initialRole":
       return <ChipCellSkeleton />;
     default:
-      return assertNever(columnId);
+      assertNeverAndIgnore(columnId);
+      return null;
   }
 }
 

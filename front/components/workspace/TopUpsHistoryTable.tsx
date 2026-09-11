@@ -1,7 +1,7 @@
 import { formatCredits } from "@app/lib/client/credits";
 import { useAwuTopUpsHistory } from "@app/lib/swr/credits";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
@@ -41,7 +41,8 @@ function TopUpHistorySkeletonCell({
     case "expiration":
       return <TextCellSkeleton className="ml-auto" />;
     default:
-      return assertNever(columnId);
+      assertNeverAndIgnore(columnId);
+      return null;
   }
 }
 

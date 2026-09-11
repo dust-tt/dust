@@ -8,7 +8,7 @@ import {
   TextCellSkeleton,
 } from "@sparkle/components";
 import type { DataTableSkeletonCellProps } from "@sparkle/components";
-import { assertNever } from "@sparkle/lib/utils";
+import { assertNeverAndIgnore } from "@sparkle/lib/utils";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ColumnDef } from "@tanstack/react-table";
 import React from "react";
@@ -132,7 +132,8 @@ function MemberSkeletonCell({
     case "usage":
       return <TextCellSkeleton className="ml-auto w-12" />;
     default:
-      return assertNever(columnId);
+      assertNeverAndIgnore(columnId);
+      return null;
   }
 }
 
@@ -166,7 +167,7 @@ type Story = StoryObj<typeof meta>;
  * Reuse the loaded table columns and provide a cell renderer for their contents:
  * circular user avatars, square agent avatars, chip-shaped roles, and right-aligned
  * usage values. Vary text widths with rowIndex for a natural layout.
- * Derive the column-id union from the columns and use assertNever so adding a
+ * Derive the column-id union from the columns and use assertNeverAndIgnore so adding a
  * column requires updating its skeleton.
  * @summary Custom cell placeholders matching user and agent avatars, badges, and text.
  */
