@@ -136,27 +136,28 @@ function MemberSkeletonCell({
   }
 }
 
-const meta = {
-  title: "Feedback & Status/DataTableSkeleton",
-  component: DataTableSkeleton<MemberRow, string, MemberColumnId>,
-  args: {
-    columns,
-    SkeletonCell: MemberSkeletonCell,
-    rowCount: 5,
-    rowHeight: 48,
-  },
-  argTypes: {
-    columns: { control: false },
-    SkeletonCell: { control: false },
-    rowCount: { control: { type: "number", min: 1, max: 10 } },
-    rowHeight: { control: { type: "number", min: 48, max: 96 } },
-  },
-  render: (args) => (
-    <div className="w-full max-w-2xl">
-      <DataTableSkeleton {...args} />
-    </div>
-  ),
-} satisfies Meta<typeof DataTableSkeleton<MemberRow, string, MemberColumnId>>;
+const meta: Meta<typeof DataTableSkeleton<MemberRow, string, MemberColumnId>> =
+  {
+    title: "Feedback & Status/DataTableSkeleton",
+    component: DataTableSkeleton,
+    args: {
+      columns,
+      SkeletonCell: MemberSkeletonCell,
+      rowCount: 5,
+      rowHeight: 48,
+    },
+    argTypes: {
+      columns: { control: false },
+      SkeletonCell: { control: false },
+      rowCount: { control: { type: "number", min: 1, max: 10 } },
+      rowHeight: { control: { type: "number", min: 48, max: 96 } },
+    },
+    render: (args) => (
+      <div className="w-full max-w-2xl">
+        <DataTableSkeleton {...args} />
+      </div>
+    ),
+  };
 
 export default meta;
 type Story = StoryObj<typeof meta>;
