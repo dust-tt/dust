@@ -44,6 +44,11 @@ export type RunModelAndCreateActionsResult = {
   // The model returned nothing at all: the loop should run one more step with
   // tool use disabled to force a final answer.
   retryWithoutTools?: boolean;
+  // This step's own guardrail cost snapshot (see checkCostAndSubagentsThresholds), taken at step
+  // start. Lets the credit spend checkpoint gate reuse it instead of re-querying RunResource for
+  // the same figure. Undefined when the guardrail check didn't run for this step (e.g. the tool
+  // test run bypass).
+  ownCostMicroUsd?: number | null;
 };
 
 const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
@@ -161,6 +166,7 @@ async function _runModelAndCreateActionsActivity({
   // Not tied to checkForResume: we want this check on every step, not only phase entry.
   let hardCapCheckResult: {
     totalCostMicroUsd: number;
+    ownCostMicroUsd: number | null;
     hardCapExceeded: boolean;
     subagentLaunchCount: number;
     subagentHardCapExceeded: boolean;
@@ -264,6 +270,7 @@ async function _runModelAndCreateActionsActivity({
       return {
         actionBlobs: existingData.actionBlobs,
         runId: null,
+        ownCostMicroUsd: hardCapCheckResult?.ownCostMicroUsd,
       };
     }
   }
@@ -299,7 +306,12 @@ async function _runModelAndCreateActionsActivity({
   // Generation completed (text response, no tool calls) — runModel returns
   // { actions: [], runId } so we still capture the runId for tracking.
   if (actions.length === 0) {
-    return { runId, actionBlobs: [], retryWithoutTools };
+    return {
+      runId,
+      actionBlobs: [],
+      retryWithoutTools,
+      ownCostMicroUsd: hardCapCheckResult?.ownCostMicroUsd,
+    };
   }
 
   // Enforce a limit on actions per step, reducing by depth (8/8/4/2)
@@ -339,6 +351,7 @@ async function _runModelAndCreateActionsActivity({
   return {
     runId,
     actionBlobs: createResult.actionBlobs,
+    ownCostMicroUsd: hardCapCheckResult?.ownCostMicroUsd,
   };
 }
 
