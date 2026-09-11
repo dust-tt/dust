@@ -9,11 +9,7 @@ import {
   isValidPodTabValue,
   usePodTabs,
 } from "@app/hooks/useSpaceProjectTabs";
-import {
-  useAuth,
-  useFeatureFlags,
-  useWorkspace,
-} from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useActivationPod } from "@app/lib/swr/activation";
 import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -62,11 +58,9 @@ const MISSING_FILE_TAB_TRIGGER_CLASSNAME = cn(
 export function PodPage() {
   const owner = useWorkspace();
   const { user } = useAuth();
-  const { hasFeature } = useFeatureFlags();
   const podId = useActivePodId();
   const { podKind } = useActivationPod({ workspaceId: owner.sId, podId });
   const isGoalPod = podKind === "goal";
-  const hasFileTabs = hasFeature("pod_frame_tabs");
 
   const {
     spaceInfo: podInfo,
@@ -96,12 +90,11 @@ export function PodPage() {
   const { files: podFiles, isPodFilesLoading } = usePodFiles({
     owner,
     podId,
-    disabled: !hasFileTabs,
   });
 
   const fileTabs = useMemo(
-    () => (hasFileTabs ? sortPodFileTabs(podInfo?.frameTabs ?? []) : []),
-    [hasFileTabs, podInfo?.frameTabs]
+    () => sortPodFileTabs(podInfo?.frameTabs ?? []),
+    [podInfo?.frameTabs]
   );
 
   const podFilePaths = useMemo(
@@ -114,13 +107,11 @@ export function PodPage() {
 
   const tabsOrder = useMemo(
     () =>
-      hasFileTabs
-        ? normalizeTabsOrder(
-            podInfo?.tabsOrder ?? [],
-            fileTabs.map((tab) => tab.path)
-          )
-        : [],
-    [fileTabs, hasFileTabs, podInfo?.tabsOrder]
+      normalizeTabsOrder(
+        podInfo?.tabsOrder ?? [],
+        fileTabs.map((tab) => tab.path)
+      ),
+    [fileTabs, podInfo?.tabsOrder]
   );
 
   const navItemsBeforeSettings = useMemo(
@@ -135,10 +126,10 @@ export function PodPage() {
     if (!filePath) {
       return;
     }
-    if (!hasFileTabs || !fileTabs.some((tab) => tab.path === filePath)) {
+    if (!fileTabs.some((tab) => tab.path === filePath)) {
       handleTabChange("conversations");
     }
-  }, [currentTab, fileTabs, handleTabChange, hasFileTabs]);
+  }, [currentTab, fileTabs, handleTabChange]);
 
   if (isPodsInfoLoading) {
     return (
@@ -221,7 +212,7 @@ export function PodPage() {
                 }
               }
             })}
-            {hasFileTabs && podInfo.isEditor && (
+            {podInfo.isEditor && (
               <PodNavAddFileTabButton
                 owner={owner}
                 podId={podInfo.sId}

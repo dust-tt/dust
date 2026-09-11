@@ -879,7 +879,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "self_improvement_beta_tester"
   | "legacy_billing"
   | "plan_mode"
-  | "pod_frame_tabs"
   | "admin_can_see_private_entities"
   | "skill_favorites"
   | "poke_mcp"

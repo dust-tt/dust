@@ -1,7 +1,6 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { validatePodFileTabs } from "@app/lib/api/projects/file_tabs";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -104,16 +103,6 @@ app.patch(
           api_error: {
             type: "invalid_request_error",
             message: "frameTabs and tabsOrder must be provided together.",
-          },
-        });
-      }
-
-      if (!(await hasFeatureFlag(auth, "pod_frame_tabs"))) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "feature_flag_not_found",
-            message: "Pod file tabs are not enabled for this workspace.",
           },
         });
       }

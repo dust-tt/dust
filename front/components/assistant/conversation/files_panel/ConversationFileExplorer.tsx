@@ -117,8 +117,6 @@ export function ConversationFileExplorer({
     isEditor: canEditPod,
   });
 
-  const hasFileTabs = hasFeature("pod_frame_tabs");
-
   const { removeFileTab, isFileTab } = usePodFileTabs({
     owner,
     podId: isPod ? conversation.spaceId : "",
@@ -152,35 +150,32 @@ export function ConversationFileExplorer({
         },
       ];
 
-      if (hasFileTabs) {
-        const asTab = isFileTab(entry.path);
-        items.push({
-          label: asTab ? "Remove from Pod tabs" : "Add as Pod tab",
-          icon: LayoutAlt02,
-          onClick: (e) => {
-            e.stopPropagation();
-            if (asTab) {
-              void removeFileTab(entry.path, { fileName: entry.fileName });
-              return;
-            }
-            setCreateFileTabDraft({
-              path: entry.path,
-              title: podFileTabBasename(entry.fileName).slice(
-                0,
-                MAX_POD_FILE_TAB_TITLE_LENGTH
-              ),
-              icon: DEFAULT_POD_FILE_TAB_ICON,
-            });
-          },
-        });
-      }
+      const asTab = isFileTab(entry.path);
+      items.push({
+        label: asTab ? "Remove from Pod tabs" : "Add as Pod tab",
+        icon: LayoutAlt02,
+        onClick: (e) => {
+          e.stopPropagation();
+          if (asTab) {
+            void removeFileTab(entry.path, { fileName: entry.fileName });
+            return;
+          }
+          setCreateFileTabDraft({
+            path: entry.path,
+            title: podFileTabBasename(entry.fileName).slice(
+              0,
+              MAX_POD_FILE_TAB_TITLE_LENGTH
+            ),
+            icon: DEFAULT_POD_FILE_TAB_ICON,
+          });
+        },
+      });
 
       return items;
     },
     [
       canEditPod,
       conversation.spaceId,
-      hasFileTabs,
       isFileTab,
       isPinned,
       removeFileTab,
