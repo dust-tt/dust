@@ -34,27 +34,15 @@ type FrameDatabaseListResponse = {
 
 /**
  * @cc [owner:davidebbo,label:security;product] frame-database-authorization
- * A Frame database request MUST be granted only when the Frame belongs to the conversation named
- * by the caller's action token (`cId`), or the caller can write the Frame's source
- * (`canWriteFrameV2Source`). The Frame MUST be resolved inside the token's workspace, and the
- * check MUST run before the Frame sandbox is started or queried. The action-token requirement
- * itself is enforced by the parent `sandboxAuth({ allowedTokenKinds: ["action"] })` mount.
+ * A Frame database request MUST be granted only to callers who can write the Frame's source
+ * (`canWriteFrameV2Source`), with the Frame resolved inside the token's workspace, and the check
+ * MUST run before the Frame sandbox is started or queried. The action-token requirement itself is
+ * enforced by the parent `sandboxAuth({ allowedTokenKinds: ["action"] })` mount. Userless runs
+ * (Slack bot user, triggers) are therefore denied for now: the permission helper requires a user.
  */
 function requireFrameDatabaseAccess() {
   return createMiddleware<SandboxFrameCtx>(async (ctx, next) => {
-    const auth = ctx.get("auth");
-    const frame = ctx.get("frame");
-    const { cId } = ctx.get("sandboxClaims");
-
-    // A conversation's own Frames are reachable from that conversation's sandbox even when the
-    // run has no user (Slack bot user, triggers), which `canWriteFrameV2Source` cannot grant.
-    const conversationMatch =
-      cId === undefined ? null : frame.belongsToConversation(cId);
-    const ownConversationFrame =
-      conversationMatch !== null &&
-      conversationMatch.isOk() &&
-      conversationMatch.value;
-    if (!ownConversationFrame && !(await canWriteFrameV2Source(auth, frame))) {
+    if (!(await canWriteFrameV2Source(ctx.get("auth"), ctx.get("frame")))) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
