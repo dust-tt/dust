@@ -6,7 +6,6 @@ import {
   buildModelSelection,
   buildTierSelection,
   getEffortStops,
-  getInitialEffort,
   getModelWithReasoningEffortLabel,
   getTierLockReason,
   getTierResolvedModelLabel,
@@ -58,35 +57,9 @@ function getCompactSearchName(item: SelectModelSlashCommand): string {
   return name.toLowerCase().replace(/[\s-]+/g, "");
 }
 
-// Among one model's rows, its initial effort ranks first so Enter picks it, like the picker.
-function compareDefaultEffortFirst(
-  a: SelectModelSlashCommand,
-  b: SelectModelSlashCommand,
-  { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
-): number {
-  const displayA = a.data.selection.display;
-  const displayB = b.data.selection.display;
-  if (
-    displayA.kind !== "model" ||
-    displayB.kind !== "model" ||
-    displayA.model.modelId !== displayB.model.modelId
-  ) {
-    return 0;
-  }
-
-  const initialEffort = getInitialEffort(displayA.model, {
-    lockPremiumEfforts,
-  });
-  if (displayA.effort === initialEffort) {
-    return -1;
-  }
-  return displayB.effort === initialEffort ? 1 : 0;
-}
-
 function filterAndRankByQuery(
   items: SelectModelSlashCommand[],
-  query: string,
-  { lockPremiumEfforts }: { lockPremiumEfforts: boolean }
+  query: string
 ): SelectModelSlashCommand[] {
   // Hyphens split like spaces so a displayed name such as "GPT-5.4 Mini" can be typed as is.
   const queryWords = query
@@ -112,13 +85,12 @@ function filterAndRankByQuery(
     return matching;
   }
 
-  return matching.sort(
-    (a, b) =>
-      compareForFuzzySort(
-        nameQuery,
-        getCompactSearchName(a),
-        getCompactSearchName(b)
-      ) || compareDefaultEffortFirst(a, b, { lockPremiumEfforts })
+  return matching.sort((a, b) =>
+    compareForFuzzySort(
+      nameQuery,
+      getCompactSearchName(a),
+      getCompactSearchName(b)
+    )
   );
 }
 
@@ -162,9 +134,8 @@ function buildTierSlashCommandItems({
  * (`light`, `medium`, `high`), only model rows at that effort are kept and the other words form
  * the name query; otherwise every word does. A row is kept when the name query, joined, is an in-order subsequence (`subFilter`)
  * of its name (tier name or model display name) without spaces or hyphens. Kept rows are ranked
- * with `compareForFuzzySort`, then a model's initial effort (`getInitialEffort`) before its other
- * efforts, remaining ties keeping catalog order. Descriptions are never searched; an empty query
- * keeps every row in catalog order.
+ * with `compareForFuzzySort`, ties keeping catalog order so a model's efforts stay light, medium,
+ * high. Descriptions are never searched; an empty query keeps every row.
  */
 export function buildPickModelSlashCommandItems({
   getModelIcon,
@@ -216,5 +187,5 @@ export function buildPickModelSlashCommandItems({
     }
   }
 
-  return filterAndRankByQuery(items, query, { lockPremiumEfforts });
+  return filterAndRankByQuery(items, query);
 }

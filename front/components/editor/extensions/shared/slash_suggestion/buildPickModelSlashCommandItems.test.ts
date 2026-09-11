@@ -128,33 +128,19 @@ describe("buildPickModelSlashCommandItems", () => {
       }).map((item) => item.label);
 
     // "gpt6" is a substring of "gpt6astra" and only a subsequence of "gpt5.6luna". Within a
-    // model, the default effort (medium for both) comes first so Enter picks it.
+    // model, efforts keep their light, medium, high order.
     expect(labelsFor("gpt6")).toEqual([
-      `${GPT_6_ASTRA_MODEL_CONFIG.displayName} Medium`,
       `${GPT_6_ASTRA_MODEL_CONFIG.displayName} Light`,
+      `${GPT_6_ASTRA_MODEL_CONFIG.displayName} Medium`,
       `${GPT_6_ASTRA_MODEL_CONFIG.displayName} High`,
-      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Medium`,
       `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Light`,
+      `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Medium`,
       `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} High`,
     ]);
     expect(labelsFor("laude")).toEqual([
-      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Light`,
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} High`,
-    ]);
-    // Haiku defaults to light, so its browse order is already the search order.
-    expect(
-      buildPickModelSlashCommandItems({
-        getModelIcon: () => Icon,
-        lockPremiumEfforts: false,
-        models: [asSelectable(CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG)],
-        query: "haiku",
-        streams: null,
-      }).map((item) => item.label)
-    ).toEqual([
-      `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} Light`,
-      `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} Medium`,
-      `${CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG.displayName} High`,
     ]);
     // Provider names are never searched.
     expect(labelsFor("anthropic")).toEqual([]);
