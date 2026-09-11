@@ -52,9 +52,11 @@ that has already been run.
 
 Creates the two types behind the "Trusted by …" logo bars:
 
-- **Customer logo** (`customerLogo`) — one entry per company: name, logo asset,
-  and an optional link to its case study. Unpublishing an entry removes that
-  logo from every list it appears in.
+- **Customer logo** (`customerLogo`) — one entry per company: `name`, `logo`
+  asset, and an optional `caseStudy` reference. The logo's link is derived from
+  the referenced story's slug, so it can't drift; a logo with no reference
+  renders without a link. Unpublishing an entry removes that logo from every
+  list it appears in.
 - **Logo list** (`logoList`) — one entry per *audience*, identified by `country`,
   holding an ordered list of Customer logo references in the `customerLogo`
   field. Drag order in Contentful is the display order on the site.

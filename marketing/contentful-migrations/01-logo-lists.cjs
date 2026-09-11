@@ -25,19 +25,24 @@
 const REGIONS = ["EU", "FR", "UK", "US"];
 
 module.exports = function (migration) {
+  // Field ids mirror the type already built by hand in the Contentful UI, which
+  // the site reads by id: the company name is `name` (the display field), and
+  // there is no free-text URL field — a case study is linked by reference so
+  // the URL derives from the story's slug and can't drift.
   const customerLogo = migration
     .createContentType("customerLogo")
     .name("Customer logo")
     .description(
-      "One company logo, reusable across audiences. Unpublish an entry to pull the logo from every list it appears in."
+      'Customer logo that can be added in the trust sections of the website.\nAdd a logo here. Then go to "Logo list" to choose its position in the logo list.'
     )
-    .displayField("companyName");
+    .displayField("name");
 
   customerLogo
-    .createField("companyName")
-    .name("Company name")
+    .createField("name")
+    .name("Name")
     .type("Symbol")
-    .required(true);
+    .required(true)
+    .validations([{ unique: true }]);
 
   customerLogo
     .createField("logo")
@@ -45,41 +50,30 @@ module.exports = function (migration) {
     .type("Link")
     .linkType("Asset")
     .required(true)
-    .validations([{ linkMimetypeGroup: ["image"] }]);
+    .validations([
+      { linkMimetypeGroup: ["image"] },
+      {
+        assetFileSize: { min: null, max: 1572864 },
+        message: "Add an SVG if possible or a PNG. No JPEG.",
+      },
+    ]);
 
   customerLogo
     .createField("caseStudy")
-    .name("Case study")
+    .name("Customer Story")
     .type("Link")
     .linkType("Entry")
     .required(false)
     .validations([{ linkContentType: ["customerStory"] }]);
 
-  customerLogo
-    .createField("caseStudyUrl")
-    .name("Case study URL (fallback)")
-    .type("Symbol")
-    .required(false)
-    .validations([
-      {
-        regexp: { pattern: "^(/|https?://)", flags: null },
-        message:
-          "Must start with / (e.g. /customers/acme) or with http:// or https://",
-      },
-    ]);
-
-  customerLogo.changeFieldControl("companyName", "builtin", "singleLine");
+  customerLogo.changeFieldControl("name", "builtin", "singleLine");
   customerLogo.changeFieldControl("logo", "builtin", "assetLinkEditor", {
     helpText:
       "SVG preferred. The site normalises the logo to gray, so upload the original brand colours.",
   });
   customerLogo.changeFieldControl("caseStudy", "builtin", "entryLinkEditor", {
     helpText:
-      "Preferred way to link a case study — the URL follows the story's slug, so it can't drift.",
-  });
-  customerLogo.changeFieldControl("caseStudyUrl", "builtin", "singleLine", {
-    helpText:
-      "Only for logos whose story isn't a Customer story entry yet. Ignored when Case study is set.",
+      "Optional. The logo links to this story, and the URL follows its slug so it can't drift.",
   });
 
   // Field ids mirror the type already built by hand in the Contentful UI

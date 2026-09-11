@@ -652,14 +652,15 @@ export interface ConversationDraft {
 // per-bar lineups in lib/logo_bars.ts, which reproduce today's behaviour
 // exactly. So this rolls out one country at a time: publish the France list
 // and only French visitors change.
+// Field ids as built in Contentful: the company name lives in `name` (the
+// display field). There is deliberately no free-text URL field — a case study
+// is linked by referencing the `customerStory` entry, so the URL is derived
+// from its slug and can't drift. A logo whose story isn't in Contentful simply
+// renders without a link.
 export interface CustomerLogoFields {
-  companyName: string;
+  name: string;
   logo?: Asset;
-  // Preferred way to link a case study: reference the `customerStory` entry
-  // and we derive the URL from its slug, so the link can't drift.
   caseStudy?: Entry<CustomerStorySkeleton>;
-  // Escape hatch for logos whose story doesn't live in Contentful yet.
-  caseStudyUrl?: string;
 }
 
 export type CustomerLogoSkeleton = EntrySkeletonType<

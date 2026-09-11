@@ -2023,7 +2023,7 @@ function contentfulEntryToLogoBarLogo(
 ): LogoBarLogo | null {
   const fields = entry.fields;
 
-  const companyNameField: unknown = fields.companyName;
+  const companyNameField: unknown = fields.name;
   const companyName = isString(companyNameField) ? companyNameField.trim() : "";
   if (companyName.length === 0) {
     return null;
@@ -2038,23 +2038,17 @@ function contentfulEntryToLogoBarLogo(
     return null;
   }
 
-  // Prefer the referenced customerStory's slug so the link tracks the story;
-  // fall back to the manual URL for companies with no story entry yet.
+  // The link is derived from the referenced customerStory's slug, so it tracks
+  // the story rather than drifting. No story reference means no link.
   const caseStudyField: unknown = fields.caseStudy;
   const story = isCustomerStoryEntry(caseStudyField) ? caseStudyField : null;
   const storySlugField: unknown = story?.fields.slug;
   const storySlug = isString(storySlugField) ? storySlugField : null;
 
-  const caseStudyUrlField: unknown = fields.caseStudyUrl;
-  const manualUrl =
-    isString(caseStudyUrlField) && caseStudyUrlField.trim().length > 0
-      ? caseStudyUrlField.trim()
-      : null;
-
   return {
     name: companyName,
     ...logo,
-    caseStudyUrl: storySlug ? `/customers/${storySlug}` : manualUrl,
+    caseStudyUrl: storySlug ? `/customers/${storySlug}` : null,
   };
 }
 
