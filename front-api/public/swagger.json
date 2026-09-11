@@ -9195,7 +9195,7 @@
     "/api/w/{wId}/files/{fileId}": {
       "get": {
         "summary": "Get or download a file",
-        "description": "View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download).",
+        "description": "View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download). Downloading a Frames v2 file redirects to its source folder as a ZIP archive.",
         "tags": [
           "Private Files"
         ],
@@ -9264,7 +9264,7 @@
             }
           },
           "302": {
-            "description": "Redirect to signed download URL"
+            "description": "Redirect to a signed download URL, or to the source folder ZIP archive for a Frames v2 file"
           },
           "404": {
             "description": "File not found"
