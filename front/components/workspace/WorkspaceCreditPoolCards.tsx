@@ -331,7 +331,7 @@ export function WorkspaceCreditPoolSection({
   }
 
   return (
-    <div className="flex flex-col items-stretch gap-10">
+    <div className="flex flex-col items-stretch gap-8">
       {cardsStatus === "error" ? (
         <ContentMessage
           title="Failed to load Workspace Credits Pool"
