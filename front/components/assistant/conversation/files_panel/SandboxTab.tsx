@@ -7,6 +7,7 @@ import {
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useDebounce } from "@app/hooks/useDebounce";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
+import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -18,7 +19,6 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import moment from "moment";
 import { useMemo } from "react";
 
 interface SandboxImageCardProps {
@@ -63,7 +63,9 @@ function SandboxImageCard({ entry, onClick }: SandboxImageCardProps) {
           }
         />
         <div className="text-xs text-white/70">
-          {entry.lastModifiedMs ? moment(entry.lastModifiedMs).fromNow() : null}
+          {entry.lastModifiedMs
+            ? formatRelativeTime(entry.lastModifiedMs)
+            : null}
         </div>
       </div>
     </Card>
@@ -206,7 +208,7 @@ export function SandboxTab({
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {entry.lastModifiedMs
-                              ? moment(entry.lastModifiedMs).fromNow()
+                              ? formatRelativeTime(entry.lastModifiedMs)
                               : null}
                           </div>
                         </div>

@@ -3,7 +3,7 @@ import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
-import moment from "moment";
+import { isSameDay } from "date-fns";
 import type { ContentFragmentType } from "../content_fragment";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
@@ -666,7 +666,7 @@ export function getConversationDisplayTitle(
       : "Branched conversation";
   }
 
-  return moment(conversation.created).isSame(now, "day")
+  return isSameDay(conversation.created, now)
     ? "New Conversation"
     : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`;
 }

@@ -7,6 +7,7 @@ import {
 import { useDebounce } from "@app/hooks/useDebounce";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import { getFileProcessedUrl } from "@app/lib/swr/files";
+import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
@@ -19,7 +20,6 @@ import {
   Spinner,
   Tooltip,
 } from "@dust-tt/sparkle";
-import moment from "moment";
 import { useMemo } from "react";
 
 interface FilesTabProps {
@@ -141,7 +141,7 @@ function FileCards({
                 />
                 <div className="flex items-center justify-between text-white/70">
                   <div className="text-xs ">
-                    {row.date ? `${moment(row.date).fromNow()}` : null}
+                    {row.date ? `${formatRelativeTime(row.date)}` : null}
                   </div>
                   <div className="flex items-center gap-3">
                     {row.isInProjectContext && (
@@ -186,7 +186,7 @@ function FileCards({
               </div>
               <div className="flex items-center justify-between">
                 <div className="text-xs text-muted-foreground">
-                  {row.date ? `${moment(row.date).fromNow()}` : null}
+                  {row.date ? `${formatRelativeTime(row.date)}` : null}
                 </div>
                 <div className="flex items-center gap-3">
                   {row.isInProjectContext && (

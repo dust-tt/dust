@@ -31,8 +31,8 @@ import {
   LinkWrapper,
   Spinner,
 } from "@dust-tt/sparkle";
+import { format } from "date-fns";
 import { ChevronLeft, ChevronRight, UsersIcon } from "lucide-react";
-import moment from "moment";
 import type { ChangeEvent } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useState } from "react";
@@ -89,7 +89,7 @@ function WorkspaceList({
                   <PokeTableRow>
                     <PokeTableCell className="space-x-2" colSpan={3}>
                       <label>
-                        Created: {moment(ws.createdAt).format("DD-MM-YYYY")}
+                        Created: {format(new Date(ws.createdAt), "dd-MM-yyyy")}
                       </label>
                     </PokeTableCell>
                   </PokeTableRow>

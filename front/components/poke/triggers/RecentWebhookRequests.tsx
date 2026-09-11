@@ -1,4 +1,5 @@
 import { WebhookRequestStatusBadge } from "@app/components/agent_builder/triggers/WebhookRequestStatusBadge";
+import { formatCalendarDateTime } from "@app/lib/utils/timestamps";
 import { usePokeWebhookRequests } from "@app/poke/swr/triggers";
 import type { WebhookRequestTriggerStatus } from "@app/types/assistant/triggers";
 import { WEBHOOK_REQUEST_TRIGGER_STATUSES } from "@app/types/assistant/triggers";
@@ -15,7 +16,6 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-import moment from "moment";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
 
@@ -161,11 +161,7 @@ function PokeRecentWebhookRequestsContent({
                 <Collapsible defaultOpen={false}>
                   <CollapsibleTrigger>
                     <div className="my-2 flex w-full items-center justify-between gap-4">
-                      {moment(new Date(request.timestamp)).calendar(undefined, {
-                        sameDay: "[Today at] LTS",
-                        lastDay: "[Yesterday at] LTS",
-                        lastWeek: "[Last] dddd [at] LTS",
-                      })}
+                      {formatCalendarDateTime(new Date(request.timestamp))}
                       <WebhookRequestStatusBadge status={request.status} />
                     </div>
                   </CollapsibleTrigger>

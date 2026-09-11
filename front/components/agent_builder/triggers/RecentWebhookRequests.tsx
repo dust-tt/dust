@@ -1,5 +1,6 @@
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useWebhookRequestTriggersForTrigger } from "@app/lib/swr/webhook_source";
+import { formatCalendarDateTime } from "@app/lib/utils/timestamps";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Collapsible,
@@ -12,7 +13,6 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-import moment from "moment";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useState } from "react";
 
@@ -128,11 +128,7 @@ function RecentWebhookRequestsContent({
             <Collapsible defaultOpen={false}>
               <CollapsibleTrigger>
                 <div className="my-2 flex w-full items-center justify-between gap-4">
-                  {moment(new Date(request.timestamp)).calendar(undefined, {
-                    sameDay: "[Today at] LTS",
-                    lastDay: "[Yesterday at] LTS",
-                    lastWeek: "[Last] dddd [at] LTS",
-                  })}
+                  {formatCalendarDateTime(new Date(request.timestamp))}
                   <WebhookRequestStatusBadge status={request.status} />
                 </div>
               </CollapsibleTrigger>

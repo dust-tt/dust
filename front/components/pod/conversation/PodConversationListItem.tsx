@@ -1,10 +1,10 @@
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import { stripMarkdown } from "@app/types/shared/utils/markdown";
 import type { WorkspaceType } from "@app/types/user";
 import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
-import moment from "moment";
 
 interface PodConversationListItemProps {
   conversation: PodConversationListItemType;
@@ -16,7 +16,7 @@ export function PodConversationListItem({
   owner,
 }: PodConversationListItemProps) {
   const router = useAppRouter();
-  const time = moment(conversation.updated).fromNow();
+  const time = formatRelativeTime(conversation.updated);
   return (
     <>
       <ConversationListItem
