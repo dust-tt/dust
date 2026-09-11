@@ -1549,18 +1549,6 @@ export class Authenticator {
   }
 
   /**
-   * The user to record as the actor of a write, `editedByUserId` and friends. Those
-   * columns name a member of the workspace. A Dust superuser acting from poke is not
-   * one, so the write is the platform's and carries no user.
-   */
-  attributionUserId(): ModelId | null {
-    if (this._isDustSuperUser) {
-      return null;
-    }
-    return this._user?.id ?? null;
-  }
-
-  /**
    * Poke operator principal (email/name). Prefers the attached Dust user when
    * present; otherwise the Cloudflare Access principal stashed at auth time.
    */

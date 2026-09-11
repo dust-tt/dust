@@ -48,6 +48,7 @@ import {
   destroyAgentMCPServerConfigurationsForViews,
   destroyMCPServerViewDependencies,
 } from "@app/lib/resources/mcp_server_view_helper";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { RemoteMCPServerHeavyAttributeType } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -1831,11 +1832,19 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           .map((v) => [v.internalMCPServerId, v])
       );
 
-      // editedByUserId is only meaningful when a workspace admin triggers the creation
-      // (workspace creation, feature-flag toggle). Just-in-time hydration from a member
-      // read, or a superuser acting from poke, leaves it null: the views are platform-created
-      // and a non-member must never be named as editor, the relocation copies the reference.
-      const editedByUserId = auth.isAdmin() ? auth.attributionUserId() : null;
+      // editedByUserId names a member of the workspace who triggered the creation (workspace
+      // creation, feature-flag toggle). Just-in-time hydration from a member read, or a
+      // superuser acting from poke, leaves it null: the views are platform-created, and a
+      // non-member is never recorded because the relocation copies that reference.
+      const actor = auth.user();
+      const actorMembership =
+        auth.isAdmin() && actor
+          ? await MembershipResource.getActiveMembershipOfUserInWorkspace({
+              user: actor,
+              workspace,
+            })
+          : null;
+      const editedByUserId = actorMembership ? (actor?.id ?? null) : null;
 
       // Unlike MCPServerViewResource.create, this does not clean up regular-space views of
       // the same server when creating the global view. That case is only reachable on a
