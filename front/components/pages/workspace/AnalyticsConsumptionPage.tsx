@@ -171,7 +171,7 @@ export function AnalyticsConsumptionPage() {
   const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
   const [skillDetailsId, setSkillDetailsId] = useState<string | null>(null);
   const state = useAnalyticsConsumptionState(useAnalyticsViewState());
-  const filter = useResolvedUsageFilter({
+  const { filter, isFacetsLoading } = useResolvedUsageFilter({
     workspaceId: owner.sId,
     period: state.period,
     filter: state.filter,
@@ -267,6 +267,13 @@ export function AnalyticsConsumptionPage() {
               user={user}
               onClose={closePanel}
               isOpen={isOpen}
+              isFacetsLoading={isFacetsLoading}
+              view={{
+                dimension: state.dimension,
+                filter,
+                granularity: state.granularity,
+                period: state.period,
+              }}
             />
           }
         >
