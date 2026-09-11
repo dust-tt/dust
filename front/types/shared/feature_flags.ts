@@ -423,7 +423,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Use the consumption analytics ES index instead of the message analytics index for message exports.",
     stage: "ask_owner",
-    owner: "sylvain",
+    owner: "sfriquet",
   },
   enable_new_usage_page: {
     description:
@@ -435,7 +435,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Enable the public API endpoint for raw consumption analytics export (POST /api/v1/w/:wId/analytics/consumption/export).",
     stage: "ask_owner",
-    owner: "sylvain",
+    owner: "sfriquet",
   },
 } as const satisfies Record<string, FeatureFlag>;
 
