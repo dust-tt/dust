@@ -131,10 +131,16 @@ runs:
           // over changelog width across cells.
           const inflightTags = new Set();
           if (!revert) {
+            // Zombie guard: a real rollout lives minutes (dust-infra caps a deploy at 40),
+            // but GitHub keeps abandoned runs queued for weeks and their ancient head
+            // shas would explode the changelog (a 5-week-old queued run once produced a
+            // 1770-commit card). Anything older than 3 hours is not a rollout in flight.
+            const freshEnough = (r) => Date.now() - new Date(r.created_at).getTime() < 3 * 60 * 60 * 1000;
             const collect = async (client, repository, workflowFile) => {
               for (const status of ['in_progress', 'queued', 'pending']) {
                 const { data } = await client.rest.actions.listWorkflowRuns({ owner, repo: repository, workflow_id: workflowFile, status, per_page: 50 });
                 for (const r of data.workflow_runs) {
+                  if (!freshEnough(r)) continue;
                   if (!(r.display_title || '').startsWith(`Deploy ${component} `)) continue;
                   if (repository === repo) {
                     if (r.id === context.runId || r.run_number >= context.runNumber) continue;
