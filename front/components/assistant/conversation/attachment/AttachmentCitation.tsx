@@ -47,7 +47,7 @@ export function AttachmentCitation({
       return `Uploading… ${uploadProgress}%`;
     }
     if (isTranscribingAudio && transcriptionProgress !== null) {
-      return `Transcribing…${transcriptionProgress}%`;
+      return `Transcribing… ${transcriptionProgress}%`;
     }
     // Bytes are in but the request is still open: the server is extracting/converting the file.
     if (isLoading && uploadProgress === 100) {
