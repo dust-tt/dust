@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockLaunchAgentLoopWorkflow,
-  mockFinalizeGracefullyStopped,
+  mockUpdateResourceAndPublishEvent,
   mockGenerateSmoothShutdownSummary,
 } = vi.hoisted(() => ({
   mockLaunchAgentLoopWorkflow: vi.fn(),
-  mockFinalizeGracefullyStopped: vi.fn(),
+  mockUpdateResourceAndPublishEvent: vi.fn(),
   mockGenerateSmoothShutdownSummary: vi.fn(),
 }));
 
@@ -14,9 +14,15 @@ vi.mock("@app/temporal/agent_loop/client", () => ({
   launchAgentLoopWorkflow: mockLaunchAgentLoopWorkflow,
 }));
 
-vi.mock("@app/temporal/agent_loop/activities/finalize", () => ({
-  finalizeGracefullyStoppedAgentLoopActivity: mockFinalizeGracefullyStopped,
-}));
+vi.mock(
+  "@app/temporal/agent_loop/activities/common",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@app/temporal/agent_loop/activities/common")
+    >()),
+    updateResourceAndPublishEvent: mockUpdateResourceAndPublishEvent,
+  })
+);
 
 vi.mock("@app/lib/api/assistant/conversation/smooth_shutdown_summary", () => ({
   generateSmoothShutdownSummary: mockGenerateSmoothShutdownSummary,
@@ -59,7 +65,7 @@ describe("credit spend checkpoint pause resolution", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     mockLaunchAgentLoopWorkflow.mockResolvedValue(new Ok(undefined));
-    mockFinalizeGracefullyStopped.mockResolvedValue(undefined);
+    mockUpdateResourceAndPublishEvent.mockResolvedValue(undefined);
     mockGenerateSmoothShutdownSummary.mockResolvedValue(
       new Ok("Progress so far.")
     );
@@ -190,7 +196,7 @@ describe("credit spend checkpoint pause resolution", () => {
 
     expect(second.isErr()).toBe(true);
     expect(mockLaunchAgentLoopWorkflow).toHaveBeenCalledTimes(1);
-    expect(mockFinalizeGracefullyStopped).not.toHaveBeenCalled();
+    expect(mockUpdateResourceAndPublishEvent).not.toHaveBeenCalled();
     expect(await getStatus()).toBe("acknowledged");
   });
 
@@ -207,7 +213,7 @@ describe("credit spend checkpoint pause resolution", () => {
     expect(await getStatus()).toBe("paused");
   });
 
-  it("decline clears the pause, the action-required flag, writes a recap and finalizes", async () => {
+  it("decline clears the pause, the action-required flag, writes a recap and stops gracefully", async () => {
     await ConversationResource.markAsActionRequired(auth, {
       conversation: conversationType,
     });
@@ -239,9 +245,16 @@ describe("credit spend checkpoint pause resolution", () => {
       value: "Progress so far.",
     });
 
-    expect(mockFinalizeGracefullyStopped).toHaveBeenCalledWith(
+    expect(mockUpdateResourceAndPublishEvent).toHaveBeenCalledTimes(1);
+    expect(mockUpdateResourceAndPublishEvent).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ agentMessageId: agentMessageSId })
+      expect.objectContaining({
+        step: 3,
+        event: expect.objectContaining({
+          type: "agent_message_gracefully_stopped",
+          messageId: agentMessageSId,
+        }),
+      })
     );
     expect(mockLaunchAgentLoopWorkflow).not.toHaveBeenCalled();
   });
