@@ -1,14 +1,14 @@
-import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
-import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import { formatCredits } from "@app/lib/client/credits";
 import { useAwuTopUpsHistory } from "@app/lib/swr/credits";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { TableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   AlertCircle,
   ContentMessage,
   DataTable,
   LoadingBlock,
+  TableSkeleton,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";

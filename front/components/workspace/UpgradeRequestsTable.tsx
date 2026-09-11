@@ -2,20 +2,20 @@ import {
   buildMemberNameColumn,
   MemberNameSkeleton,
 } from "@app/components/workspace/member_name_column";
-import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
-import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { timeAgoFrom } from "@app/lib/utils";
 import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
+import type { TableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   Button,
   Check,
   DataTable,
   LoadingBlock,
   Spinner,
+  TableSkeleton,
   XClose,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";

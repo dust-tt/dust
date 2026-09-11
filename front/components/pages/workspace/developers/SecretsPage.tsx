@@ -1,12 +1,11 @@
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
-import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
-import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
+import type { TableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   BookOpen01,
   Button,
@@ -24,6 +23,7 @@ import {
   Page,
   Plus,
   SearchInput,
+  TableSkeleton,
   Trash01,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";

@@ -1,12 +1,16 @@
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupSpendLimitCell } from "@app/components/workspace/GroupSpendLimitCell";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
-import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
-import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
-import { DataTable, LoadingBlock, Users01 } from "@dust-tt/sparkle";
+import type { TableSkeletonCellProps } from "@dust-tt/sparkle";
+import {
+  DataTable,
+  LoadingBlock,
+  TableSkeleton,
+  Users01,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 

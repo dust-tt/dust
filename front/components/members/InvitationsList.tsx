@@ -4,14 +4,13 @@ import {
   normalizeDisplayRole,
   ROLES_DATA,
 } from "@app/components/members/Roles";
-import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
-import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { sendInvitations } from "@app/lib/invitations";
 import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import type { TableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
@@ -20,6 +19,7 @@ import {
   LoadingBlock,
   Mail01,
   Page,
+  TableSkeleton,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
 import type React from "react";

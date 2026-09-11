@@ -1,5 +1,3 @@
-import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
-import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
@@ -11,7 +9,7 @@ import type { KeyType } from "@app/types/key";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { RoleType, WorkspaceType } from "@app/types/user";
-import type { MenuItem } from "@dust-tt/sparkle";
+import type { MenuItem, TableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   Building04,
   Button,
@@ -32,6 +30,7 @@ import {
   LoadingBlock,
   Lock01,
   SearchInput,
+  TableSkeleton,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";

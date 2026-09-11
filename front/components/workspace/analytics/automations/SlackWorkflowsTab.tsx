@@ -1,8 +1,6 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { AllowSlackWorkflowDialog } from "@app/components/workspace/analytics/automations/AllowSlackWorkflowDialog";
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
-import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
-import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import { useSlackWorkflowsOverview } from "@app/hooks/useSlackWorkflowsOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
@@ -14,6 +12,7 @@ import { timeAgoFrom } from "@app/lib/utils";
 import type { SlackWorkflowType } from "@app/types/api/slack/workflows";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { TableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   Button,
   cn,
@@ -21,6 +20,7 @@ import {
   LoadingBlock,
   Plus,
   SearchInput,
+  TableSkeleton,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";

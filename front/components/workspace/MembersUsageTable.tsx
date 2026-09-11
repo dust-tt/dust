@@ -16,8 +16,6 @@ import {
   OVER_POOL_LIMIT_BAR_CLASSES,
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
-import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
-import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import type { PremiumModelMessageUsage } from "@app/lib/api/assistant/rate_limits";
 import type {
   MemberFairUseUsage,
@@ -49,7 +47,7 @@ import {
   toBaseSeatType,
 } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { MenuItem } from "@dust-tt/sparkle";
+import type { MenuItem, TableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   AlertCircle,
   Button,
@@ -66,6 +64,7 @@ import {
   LoadingBlock,
   ProgressBar,
   Spinner,
+  TableSkeleton,
   Tooltip,
 } from "@dust-tt/sparkle";
 import type {

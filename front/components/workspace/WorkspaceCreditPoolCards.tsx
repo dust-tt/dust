@@ -1,6 +1,4 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
-import type { TableSkeletonCellProps } from "@app/components/workspace/TableSkeleton";
-import { TableSkeleton } from "@app/components/workspace/TableSkeleton";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
@@ -16,12 +14,14 @@ import type {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { TableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   AlertCircle,
   ContentMessage,
   cn,
   DataTable,
   LoadingBlock,
+  TableSkeleton,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useState } from "react";
