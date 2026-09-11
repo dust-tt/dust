@@ -63,7 +63,7 @@ export abstract class FireworksStream extends WithOpenAICompletionsInputConverte
   override toolCallResultMessageToMessage =
     toolCallResultMessageToFireworksMessage;
 
-  // Model ids are stored bare (e.g. `glm-5p2`); Fireworks' API expects the full
+  // Model ids are stored bare (e.g. `glm-5p3`); Fireworks' API expects the full
   // account-scoped model path.
   modelToHostModel = (modelId: Model): string =>
     `${FIREWORKS_MODEL_PREFIX}${modelId}`;
