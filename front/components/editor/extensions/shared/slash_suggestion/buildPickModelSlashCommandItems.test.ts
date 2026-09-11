@@ -212,6 +212,12 @@ describe("buildPickModelSlashCommandItems", () => {
     expect(labelsFor("claude me")).toEqual([
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
     ]);
+    // An effort word alone never reaches into names.
+    for (const query of ["m", "me", "medium"]) {
+      expect(labelsFor(query)).toEqual([
+        `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
+      ]);
+    }
   });
 
   it("matches tier rows on their name and never on an effort", () => {

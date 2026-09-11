@@ -97,7 +97,13 @@ function filterAndRankByQuery(
 
   const matching = items.filter((item) => {
     const { display } = item.data.selection;
-    if (effort && lastWord !== undefined && nameHasEffortWord(item, lastWord)) {
+    // An effort word alone ("m") always filters by effort; only "mistral me" reads it as a name.
+    if (
+      effort &&
+      lastWord !== undefined &&
+      queryWords.length > 1 &&
+      nameHasEffortWord(item, lastWord)
+    ) {
       return subFilter(queryWords.join(""), getCompactSearchName(item));
     }
     if (effort && (display.kind !== "model" || display.effort !== effort)) {
@@ -187,7 +193,8 @@ function buildTierSlashCommandItems({
  * `query` is split on whitespace and hyphens. When its last word is a prefix of a slider effort
  * (`light`, `medium`, `high`), only model rows at that effort are kept and the other words form
  * the name query, except for models whose display name contains that effort word ("Mistral
- * Medium 3.5"), which are matched on the whole query instead; otherwise every word does. A row is kept when the name query, joined, is an
+ * Medium 3.5"), which are matched on the whole query when other words precede it; otherwise
+ * every word does. A row is kept when the name query, joined, is an
  * in-order subsequence (`subFilter`) of its name (tier name or model display name) without
  * spaces or hyphens. Kept rows are ranked with `compareForFuzzySort`, ties keeping catalog order
  * so a model's efforts stay light, medium, high. Descriptions are never searched; an empty query
