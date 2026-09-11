@@ -141,8 +141,8 @@ export function ToolActionView({
   const Row = action.mcpIO ? "button" : "div";
 
   return (
-    <div>
-      <div className="relative mt-2">
+    <div className="flex min-w-0 flex-col gap-2">
+      <div className="relative">
         <Row
           type={action.mcpIO ? "button" : undefined}
           onClick={action.mcpIO ? onToggle : undefined}
@@ -184,18 +184,20 @@ export function ToolActionView({
         )}
       </div>
       {action.mcpIO && isExpanded && (
-        <div className="ml-9 mt-2 overflow-hidden rounded-md border border-separator bg-background">
-          <CodeBlock wrapLongLines className="language-json">
-            {JSON.stringify(
-              {
-                params: action.mcpIO.params,
-                output: action.mcpIO.output,
-                generatedFiles: action.mcpIO.generatedFiles,
-              },
-              undefined,
-              2
-            )}
-          </CodeBlock>
+        <div className="pl-9">
+          <div className="overflow-hidden rounded-md border border-separator bg-background">
+            <CodeBlock wrapLongLines className="language-json">
+              {JSON.stringify(
+                {
+                  params: action.mcpIO.params,
+                  output: action.mcpIO.output,
+                  generatedFiles: action.mcpIO.generatedFiles,
+                },
+                undefined,
+                2
+              )}
+            </CodeBlock>
+          </div>
         </div>
       )}
     </div>

@@ -180,92 +180,100 @@ export const AgentMessageView = ({
         )}
         type="agent"
       >
-        {message.content &&
-          (useMarkdown ? (
-            <Markdown content={message.content} />
-          ) : (
-            <div className="whitespace-pre-wrap">{message.content}</div>
-          ))}
-        {message.error && (
-          <div
-            className={cn(
-              "my-3 rounded-md border border-border-warning bg-background",
-              "p-2 text-sm font-medium text-warning"
-            )}
-          >
-            {message.error.message}
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="min-w-0">
+            {message.content &&
+              (useMarkdown ? (
+                <Markdown content={message.content} />
+              ) : (
+                <div className="whitespace-pre-wrap">{message.content}</div>
+              ))}
           </div>
-        )}
-        <div className="mt-3 rounded-md border border-separator bg-muted-background p-2">
-          <div className="flex flex-wrap items-center gap-4">
-            <StatusBadge
-              label={AGENT_STATUS[message.status]?.label ?? message.status}
-              color={AGENT_STATUS[message.status]?.color ?? "primary"}
-            />
-            <MetadataItem label="date">
-              {new Date(message.created).toLocaleString()}
-            </MetadataItem>
-            <MetadataItem label="version">{message.version}</MetadataItem>
-            <MetadataItem label="message" mono>
-              {message.sId}
-            </MetadataItem>
-            {message.modelInteractionDurationMs != null && (
-              <MetadataItem label="LLM">
-                {formatDurationMs(message.modelInteractionDurationMs)}
-              </MetadataItem>
-            )}
-            {message.completionDurationMs != null && (
-              <MetadataItem label="total">
-                {formatDurationMs(message.completionDurationMs)}
-              </MetadataItem>
-            )}
-            {message.runUrls && message.runUrls.length > 0 && (
-              <AgentTraceLinks
-                runUrls={message.runUrls}
-                langfuseUiBaseUrl={langfuseUiBaseUrl}
+          {message.error && (
+            <div
+              className={cn(
+                "rounded-md border border-border-warning bg-background",
+                "p-2 text-sm font-medium text-warning"
+              )}
+            >
+              {message.error.message}
+            </div>
+          )}
+          <div className="rounded-md border border-separator bg-muted-background p-2">
+            <div className="flex flex-wrap items-center gap-4">
+              <StatusBadge
+                label={AGENT_STATUS[message.status]?.label ?? message.status}
+                color={AGENT_STATUS[message.status]?.color ?? "primary"}
               />
-            )}
+              <MetadataItem label="date">
+                {new Date(message.created).toLocaleString()}
+              </MetadataItem>
+              <MetadataItem label="version">{message.version}</MetadataItem>
+              <MetadataItem label="message" mono>
+                {message.sId}
+              </MetadataItem>
+              {message.modelInteractionDurationMs != null && (
+                <MetadataItem label="LLM">
+                  {formatDurationMs(message.modelInteractionDurationMs)}
+                </MetadataItem>
+              )}
+              {message.completionDurationMs != null && (
+                <MetadataItem label="total">
+                  {formatDurationMs(message.completionDurationMs)}
+                </MetadataItem>
+              )}
+              {message.runUrls && message.runUrls.length > 0 && (
+                <AgentTraceLinks
+                  runUrls={message.runUrls}
+                  langfuseUiBaseUrl={langfuseUiBaseUrl}
+                />
+              )}
+            </div>
+          </div>
+          <div className="flex min-w-0 flex-col gap-2">
+            <PokeMessageConsumptionInspector
+              billedCredits={message.costCredits}
+              conversationId={conversationId}
+              isOpen={isConsumptionOpen}
+              messageId={message.sId}
+              onOpenChange={onConsumptionOpenChange}
+              onPanelExitComplete={onConsumptionPanelExitComplete}
+              onPanelRefChange={onConsumptionPanelRefChange}
+              subAgentBilledCredits={message.subAgentCostCredits}
+              workspaceId={owner.sId}
+            />
+            {toolExecutionTimelineEntries.map((timelineEntry) => {
+              switch (timelineEntry.type) {
+                case "provider_passthrough": {
+                  const { entry } = timelineEntry;
+                  return (
+                    <ProviderPassthroughView
+                      key={`provider-passthrough-${entry.key}`}
+                      entry={entry}
+                      isExpanded={expandedProviderPassthroughEntries.has(
+                        entry.key
+                      )}
+                      onToggle={() => toggleProviderPassthroughEntry(entry.key)}
+                    />
+                  );
+                }
+                case "action": {
+                  const { action } = timelineEntry;
+                  return (
+                    <ToolActionView
+                      key={`action-${action.sId}`}
+                      action={action}
+                      isExpanded={expandedActions.has(action.sId)}
+                      onToggle={() => toggleAction(action.sId)}
+                    />
+                  );
+                }
+                default:
+                  return assertNever(timelineEntry);
+              }
+            })}
           </div>
         </div>
-        <PokeMessageConsumptionInspector
-          billedCredits={message.costCredits}
-          conversationId={conversationId}
-          isOpen={isConsumptionOpen}
-          messageId={message.sId}
-          onOpenChange={onConsumptionOpenChange}
-          onPanelExitComplete={onConsumptionPanelExitComplete}
-          onPanelRefChange={onConsumptionPanelRefChange}
-          subAgentBilledCredits={message.subAgentCostCredits}
-          workspaceId={owner.sId}
-        />
-        {toolExecutionTimelineEntries.map((timelineEntry) => {
-          switch (timelineEntry.type) {
-            case "provider_passthrough": {
-              const { entry } = timelineEntry;
-              return (
-                <ProviderPassthroughView
-                  key={`provider-passthrough-${entry.key}`}
-                  entry={entry}
-                  isExpanded={expandedProviderPassthroughEntries.has(entry.key)}
-                  onToggle={() => toggleProviderPassthroughEntry(entry.key)}
-                />
-              );
-            }
-            case "action": {
-              const { action } = timelineEntry;
-              return (
-                <ToolActionView
-                  key={`action-${action.sId}`}
-                  action={action}
-                  isExpanded={expandedActions.has(action.sId)}
-                  onToggle={() => toggleAction(action.sId)}
-                />
-              );
-            }
-            default:
-              return assertNever(timelineEntry);
-          }
-        })}
       </ConversationMessage>
     </div>
   );

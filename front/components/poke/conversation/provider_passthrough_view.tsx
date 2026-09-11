@@ -133,14 +133,14 @@ export function ProviderPassthroughView({
   const kind = getProviderPassthroughKind(entry);
 
   return (
-    <div>
+    <div className="flex min-w-0 flex-col gap-2">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={isExpanded}
         aria-label={`${isExpanded ? "Collapse" : "Expand"} ${title} details`}
         className={cn(
-          "mt-2 flex w-full items-center gap-2",
+          "flex w-full items-center gap-2",
           "rounded-md border border-separator bg-muted-background",
           "cursor-pointer p-2 text-left transition-colors hover:bg-background",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -182,10 +182,12 @@ export function ProviderPassthroughView({
         </span>
       </button>
       {isExpanded && (
-        <div className="ml-9 mt-2 overflow-hidden rounded-md border border-separator bg-background">
-          <CodeBlock wrapLongLines className="language-json">
-            {JSON.stringify(entry.block, null, 2)}
-          </CodeBlock>
+        <div className="pl-9">
+          <div className="overflow-hidden rounded-md border border-separator bg-background">
+            <CodeBlock wrapLongLines className="language-json">
+              {JSON.stringify(entry.block, null, 2)}
+            </CodeBlock>
+          </div>
         </div>
       )}
     </div>

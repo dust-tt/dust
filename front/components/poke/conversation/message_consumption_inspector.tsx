@@ -380,7 +380,7 @@ export function PokeMessageConsumptionInspector({
   const triggerId = `message-${messageId}-consumption-trigger`;
 
   return (
-    <div className="relative mt-3 flex flex-col gap-3">
+    <div className="relative flex flex-col gap-3">
       <button
         ref={triggerRef}
         id={triggerId}
