@@ -437,7 +437,7 @@ export function constructPromptMultiActions(
     disableFormattingPrompt,
   });
   if (
-    agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_RAW &&
+    agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_UNPLUGGED &&
     !hasAvailableActions
   ) {
     return {

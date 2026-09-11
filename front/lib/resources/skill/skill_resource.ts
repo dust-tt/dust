@@ -1891,8 +1891,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * @cc [owner:aubin-tchoi,label:product] raw-agent-no-skills
-   * Dust Raw MUST start without auto-enabled, auto-equipped, favorite, or Pod-default
+   * @cc [owner:aubin-tchoi,label:product] unplugged-agent-no-skills
+   * Dust Unplugged MUST start without auto-enabled, auto-equipped, favorite, or Pod-default
    * skills. Explicitly enabled conversation skills and selected Spaces MUST remain available.
    */
   static async listForAgentLoop(
@@ -1934,7 +1934,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       }
     );
 
-    if (agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_RAW) {
+    if (agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_UNPLUGGED) {
       return {
         effectiveSpaceIds,
         hasSelectedSpacesOutsideAgentScope,

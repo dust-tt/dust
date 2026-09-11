@@ -20,7 +20,7 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { describe, expect, it } from "vitest";
 
-describe("Dust Raw", () => {
+describe("Dust Unplugged", () => {
   it("requires its feature flag for listing and direct fetches", async () => {
     const { authenticator } = await createResourceTest({ role: "admin" });
     const listedBefore = await getGlobalAgents(
@@ -29,24 +29,24 @@ describe("Dust Raw", () => {
       "light"
     );
     const fetchedBefore = await getGlobalAgents(authenticator, [
-      GLOBAL_AGENTS_SID.DUST_RAW,
+      GLOBAL_AGENTS_SID.DUST_UNPLUGGED,
     ]);
     expect(listedBefore.map((agent) => agent.sId)).not.toContain(
-      GLOBAL_AGENTS_SID.DUST_RAW
+      GLOBAL_AGENTS_SID.DUST_UNPLUGGED
     );
     expect(fetchedBefore).toEqual([]);
 
-    await FeatureFlagFactory.basic(authenticator, "dust_raw_agent");
+    await FeatureFlagFactory.basic(authenticator, "dust_unplugged_agent");
     const listedAfter = await getGlobalAgents(
       authenticator,
       undefined,
       "light"
     );
     const fetchedAfter = await getGlobalAgents(authenticator, [
-      GLOBAL_AGENTS_SID.DUST_RAW,
+      GLOBAL_AGENTS_SID.DUST_UNPLUGGED,
     ]);
     expect(listedAfter.map((agent) => agent.sId)).toContain(
-      GLOBAL_AGENTS_SID.DUST_RAW
+      GLOBAL_AGENTS_SID.DUST_UNPLUGGED
     );
     expect(fetchedAfter).toHaveLength(1);
   });
@@ -56,16 +56,16 @@ describe("Dust Raw", () => {
     "full",
   ] as const)("uses Dust's model with no configured capabilities (%s)", async (variant) => {
     const { authenticator } = await createResourceTest({ role: "admin" });
-    await FeatureFlagFactory.basic(authenticator, "dust_raw_agent");
-    const [dust, raw] = await getGlobalAgents(
+    await FeatureFlagFactory.basic(authenticator, "dust_unplugged_agent");
+    const [dust, unplugged] = await getGlobalAgents(
       authenticator,
-      [GLOBAL_AGENTS_SID.DUST, GLOBAL_AGENTS_SID.DUST_RAW],
+      [GLOBAL_AGENTS_SID.DUST, GLOBAL_AGENTS_SID.DUST_UNPLUGGED],
       variant
     );
-    expect(raw.model).toEqual(dust.model);
-    expect(raw).toMatchObject({
-      sId: GLOBAL_AGENTS_SID.DUST_RAW,
-      name: "dust-raw",
+    expect(unplugged.model).toEqual(dust.model);
+    expect(unplugged).toMatchObject({
+      sId: GLOBAL_AGENTS_SID.DUST_UNPLUGGED,
+      name: "dust-unplugged",
       status: "active",
       actions: [],
       codeDefinedSkillIds: [],
@@ -74,12 +74,12 @@ describe("Dust Raw", () => {
     });
 
     await upsertGlobalAgentSettings(authenticator, {
-      agentId: GLOBAL_AGENTS_SID.DUST_RAW,
+      agentId: GLOBAL_AGENTS_SID.DUST_UNPLUGGED,
       status: "disabled_by_admin",
     });
     const [disabled] = await getGlobalAgents(
       authenticator,
-      [GLOBAL_AGENTS_SID.DUST_RAW],
+      [GLOBAL_AGENTS_SID.DUST_UNPLUGGED],
       variant
     );
     expect(disabled.status).toBe("disabled_by_admin");
@@ -91,11 +91,11 @@ describe("Dust Raw", () => {
     const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",
     });
-    await FeatureFlagFactory.basic(authenticator, "dust_raw_agent");
+    await FeatureFlagFactory.basic(authenticator, "dust_unplugged_agent");
     await FeatureFlagFactory.basic(authenticator, "user_memory");
     await MCPServerViewResource.ensureAllAutoToolsAreCreated(authenticator);
-    const [raw] = await getGlobalAgents(authenticator, [
-      GLOBAL_AGENTS_SID.DUST_RAW,
+    const [unplugged] = await getGlobalAgents(authenticator, [
+      GLOBAL_AGENTS_SID.DUST_UNPLUGGED,
     ]);
 
     const autoViews =
@@ -117,12 +117,12 @@ describe("Dust Raw", () => {
     });
     await metadata.setDefaultSkills([skill]);
     const conversation = await ConversationFactory.create(authenticator, {
-      agentConfigurationId: raw.sId,
+      agentConfigurationId: unplugged.sId,
       messagesCreatedAt: [],
       spaceId: pod.id,
     });
     const initialSkills = await SkillResource.listForAgentLoop(authenticator, {
-      agentConfiguration: raw,
+      agentConfiguration: unplugged,
       conversation,
     });
     expect(initialSkills).toEqual({
@@ -134,7 +134,7 @@ describe("Dust Raw", () => {
       favoriteSkills: [],
     });
     const initialJitServers = await getJITServers(authenticator, {
-      agentConfiguration: raw,
+      agentConfiguration: unplugged,
       conversation,
       attachments: [],
     });
@@ -159,7 +159,7 @@ describe("Dust Raw", () => {
     expect(attached.isOk()).toBe(true);
 
     const skills = await SkillResource.listForAgentLoop(authenticator, {
-      agentConfiguration: raw,
+      agentConfiguration: unplugged,
       conversation,
     });
     expect(skills.enabledSkills.map((s) => s.sId)).toEqual([skill.sId]);
@@ -168,14 +168,14 @@ describe("Dust Raw", () => {
     expect(skills.favoriteSkills).toEqual([]);
     const { skillServers, systemSkillServers } = await resolveSkillMCPServers(
       authenticator,
-      { agentConfiguration: raw, conversation }
+      { agentConfiguration: unplugged, conversation }
     );
     expect(skillServers).toEqual([
       expect.objectContaining({ mcpServerViewId: view.sId }),
     ]);
     expect(systemSkillServers).toEqual([]);
     const jitServers = await getJITServers(authenticator, {
-      agentConfiguration: raw,
+      agentConfiguration: unplugged,
       conversation,
       attachments: [],
     });
@@ -185,7 +185,7 @@ describe("Dust Raw", () => {
 
     const { agentMessage } = await ConversationFactory.createAgentMessage(
       authenticator,
-      { workspace, conversation, agentConfig: raw }
+      { workspace, conversation, agentConfig: unplugged }
     );
     const { userMessage } = await ConversationFactory.createUserMessage({
       auth: authenticator,
@@ -197,7 +197,7 @@ describe("Dust Raw", () => {
     const tools = await tryListMCPTools(
       authenticator,
       {
-        agentConfiguration: raw,
+        agentConfiguration: unplugged,
         conversation,
         agentMessage,
         userMessage,
@@ -212,11 +212,11 @@ describe("Dust Raw", () => {
     expect(tools.flatMap((s) => s.tools)).not.toHaveLength(0);
 
     const prompt = constructPromptMultiActions(authenticator, {
-      agentConfiguration: raw,
+      agentConfiguration: unplugged,
       userMessage,
       modelInfo: {
         endpoint: getTestStreamEndpoint("gpt-5"),
-        temperature: raw.model.temperature,
+        temperature: unplugged.model.temperature,
       },
       conversation,
       hasAvailableActions: false,
@@ -233,11 +233,11 @@ describe("Dust Raw", () => {
     expect(promptText).not.toContain("enable_skill");
 
     const promptWithTools = constructPromptMultiActions(authenticator, {
-      agentConfiguration: raw,
+      agentConfiguration: unplugged,
       userMessage,
       modelInfo: {
         endpoint: getTestStreamEndpoint("gpt-5"),
-        temperature: raw.model.temperature,
+        temperature: unplugged.model.temperature,
       },
       conversation,
       hasAvailableActions: true,

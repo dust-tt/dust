@@ -68,7 +68,7 @@ import {
   _getDustPistacheMediumGlobalAgent,
   _getDustQuickGlobalAgent,
   _getDustQuickMediumGlobalAgent,
-  _getDustRawGlobalAgent,
+  _getDustUnpluggedGlobalAgent,
   _getRetiredDustLikeGlobalAgent,
   getCustomModelDustGlobalAgentIndex,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
@@ -382,8 +382,8 @@ function getGlobalAgent({
         preferSonnet5DefaultModel,
       });
       break;
-    case GLOBAL_AGENTS_SID.DUST_RAW:
-      agentConfiguration = _getDustRawGlobalAgent(auth, {
+    case GLOBAL_AGENTS_SID.DUST_UNPLUGGED:
+      agentConfiguration = _getDustUnpluggedGlobalAgent(auth, {
         settings,
         preFetchedDataSources,
         mcpServerViews,
@@ -1074,9 +1074,9 @@ export async function getGlobalAgents(
 
   const flags = await getFeatureFlags(auth);
 
-  if (!flags.includes("dust_raw_agent")) {
+  if (!flags.includes("dust_unplugged_agent")) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
-      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_RAW
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_UNPLUGGED
     );
   }
 
