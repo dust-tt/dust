@@ -19,7 +19,7 @@ export const AdditionMark = Mark.create({
     return [
       "span",
       {
-        class: "addition text-success-700 bg-success-100",
+        class: "addition rounded bg-highlight-200 text-highlight-900",
       },
       0,
     ];
@@ -45,7 +45,7 @@ export const DeletionMark = Mark.create({
     return [
       "span",
       {
-        class: "deletion text-warning-600 bg-warning-100 line-through",
+        class: "deletion rounded bg-warning-200 text-warning-900 line-through",
       },
       0,
     ];
