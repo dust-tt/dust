@@ -5,7 +5,11 @@ import { MoonshotAiKimiK2Dot6GlobalFireworksStream } from "@app/lib/model_constr
 export class DustMoonshotAiKimiK2Dot6GlobalFireworksStream extends WithDustMoonshotAiKimiK2Dot6Config(
   MoonshotAiKimiK2Dot6GlobalFireworksStream
 ) {
-  static readonly endpointFilter = {};
+  // Mirrors `availableIfOneOf` on FIREWORKS_KIMI_K2P6_MODEL_CONFIG: the legacy
+  // config gates the model picker, this gates the router.
+  static readonly endpointFilter = {
+    featureFlags: { contains: "fireworks_new_model_feature" as const },
+  };
 }
 
 defineDustStreamEndpoint(DustMoonshotAiKimiK2Dot6GlobalFireworksStream);
