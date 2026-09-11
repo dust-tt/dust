@@ -15,6 +15,8 @@ interface EditorFormattingToolbarProps {
 /**
  * The formatting toolbar shown above an editor's selection, with the link dialog it opens.
  *
+ */
+/**
  * @cc [owner:rfrenoy,label:react] link-dialog-sibling-of-selection-toolbar
  * The link dialog MUST stay a sibling of `EditorSelectionToolbar`, never a descendant: opening it
  * blurs the editor, which hides the selection toolbar and would unmount the dialog with it.

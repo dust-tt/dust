@@ -303,6 +303,8 @@ export interface ToolbarLinkDialogProps {
  * The dialog collecting the text and URL of the link inserted from a `ToolbarLink`. Own its state
  * via `isOpen` / `onOpenChange` and apply the link in `onSubmit`.
  *
+ */
+/**
  * @cc [owner:rfrenoy,label:react] dialog-outlives-toolbar
  * The dialog MUST be rendered outside of any toolbar that unmounts when the editor loses focus.
  * Opening it moves focus into the dialog, so rendering it within such a toolbar unmounts it
