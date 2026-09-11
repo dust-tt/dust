@@ -413,7 +413,8 @@ mod tests {
         let server = tokio::spawn(async move {
             let (mut stream, _) = listener.accept().await.expect("accept request");
             let mut request = [0_u8; 1024];
-            stream.read(&mut request).await.expect("read request");
+            let bytes_read = stream.read(&mut request).await.expect("read request");
+            assert!(bytes_read > 0, "request must contain bytes");
             tokio::time::sleep(Duration::from_millis(100)).await;
             let _ = stream
                 .write_all(
