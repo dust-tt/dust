@@ -33,6 +33,8 @@ import {
   SKILL_TAG_NAME,
   UNAVAILABLE_SKILL_TAG_NAME,
 } from "@app/lib/skills/format";
+import { CAPABILITIES_SWR_OPTIONS } from "@app/lib/swr/capabilities";
+import { useSkills } from "@app/lib/swr/skill_configurations";
 import { TOOL_TAG_NAME } from "@app/lib/tools/format";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { cn } from "@dust-tt/sparkle";
@@ -259,6 +261,18 @@ export function SkillBuilderInstructionsEditor({
     () => new Map(mcpServerViews.map((view) => [view.sId, view])),
     [mcpServerViews]
   );
+  // Preloaded by SkillBuilderProvider; needed to resolve inline skill
+  // references the user did not insert through the slash command (e.g. one
+  // added by accepting a suggestion) into `referencedSkills`.
+  const { skills: activeSkills } = useSkills({
+    owner,
+    status: "active",
+    swrOptions: CAPABILITIES_SWR_OPTIONS,
+  });
+  const activeSkillsById = useMemo(
+    () => new Map(activeSkills.map((skill) => [skill.sId, skill])),
+    [activeSkills]
+  );
   const [selectedSkillIdForDetails, setSelectedSkillIdForDetails] = useState<
     string | null
   >(null);
@@ -359,6 +373,44 @@ export function SkillBuilderInstructionsEditor({
     [mcpServerViewsById]
   );
 
+  // Mirrors reconcileInlineTools for inline skill references: additions must
+  // reach `referencedSkills` too, since that is what drives the skill's space
+  // requirements and the editor-access warnings. References can be added
+  // without going through the slash command (e.g. by accepting a suggestion),
+  // so the editor content is the source of truth here.
+  const reconcileInlineSkills = useCallback(
+    (editor: Editor) => {
+      const currentInlineSkillIds = collectSkillReferenceIds(editor);
+      const removedSkillIds = new Set(
+        [...previousInlineSkillIdsRef.current].filter(
+          (skillId) => !currentInlineSkillIds.has(skillId)
+        )
+      );
+      const remainingSkills = referencedSkillsRef.current.filter(
+        (skill) => !removedSkillIds.has(skill.id)
+      );
+      const referencedSkillIds = new Set(
+        remainingSkills.map((skill) => skill.id)
+      );
+      const addedSkills = removeNulls(
+        [...currentInlineSkillIds]
+          .filter((skillId) => !referencedSkillIds.has(skillId))
+          .map((skillId) => {
+            const skill = activeSkillsById.get(skillId);
+            return skill ? toReferencedSkill(skill) : null;
+          })
+      );
+
+      previousInlineSkillIdsRef.current = currentInlineSkillIds;
+
+      return remainingSkills.length !== referencedSkillsRef.current.length ||
+        addedSkills.length > 0
+        ? [...remainingSkills, ...addedSkills]
+        : null;
+    },
+    [activeSkillsById]
+  );
+
   const syncInlineReferencesFromEditor = useCallback(
     (editor: Editor) => {
       const nextTools = reconcileInlineTools(editor);
@@ -367,23 +419,18 @@ export function SkillBuilderInstructionsEditor({
         onToolsChange(nextTools);
       }
 
-      const currentInlineSkillIds = collectSkillReferenceIds(editor);
-      const removedSkillIds = [...previousInlineSkillIdsRef.current].filter(
-        (skillId) => !currentInlineSkillIds.has(skillId)
-      );
-
-      if (removedSkillIds.length > 0) {
-        const removedSkillIdsSet = new Set(removedSkillIds);
-        const nextReferencedSkills = referencedSkillsRef.current.filter(
-          (skill) => !removedSkillIdsSet.has(skill.id)
-        );
+      const nextReferencedSkills = reconcileInlineSkills(editor);
+      if (nextReferencedSkills) {
         referencedSkillsRef.current = nextReferencedSkills;
         onReferencedSkillsChange(nextReferencedSkills);
       }
-
-      previousInlineSkillIdsRef.current = currentInlineSkillIds;
     },
-    [onReferencedSkillsChange, onToolsChange, reconcileInlineTools]
+    [
+      onReferencedSkillsChange,
+      onToolsChange,
+      reconcileInlineSkills,
+      reconcileInlineTools,
+    ]
   );
 
   const syncInstructionsFromEditor = useCallback(
