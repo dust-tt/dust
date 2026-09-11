@@ -12,6 +12,7 @@ import {
   textDeltaToTextDeltaEvent,
   toolSearchItemToProviderPassthroughEvent,
   usageToTokenUsageEvent,
+  webSearchItemToProviderPassthroughEvent,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
@@ -37,6 +38,8 @@ export function WithOpenAIResponsesOutputConverter<
     functionCallToToolCallEvent = functionCallToToolCallEvent;
     toolSearchItemToProviderPassthroughEvent =
       toolSearchItemToProviderPassthroughEvent;
+    webSearchItemToProviderPassthroughEvent =
+      webSearchItemToProviderPassthroughEvent;
     usageToTokenUsageEvent = usageToTokenUsageEvent;
     streamErrorToErrorEvent = streamErrorToErrorEvent;
   }

@@ -18,8 +18,9 @@ import type {
 } from "@anthropic-ai/sdk/resources/messages/messages";
 import type { AnthropicInputConfig } from "@app/lib/model_constructors/providers/anthropic/inputConfig";
 import type { ANTHROPIC_SUPPORTED_NON_NULL_REASONING_EFFORTS } from "@app/lib/model_constructors/providers/anthropic/reasoning_efforts";
+import { ANTHROPIC_WEB_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/native_web_search";
+import { parseAnthropicServerToolBlock } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/server_tool_passthrough";
 import { TOOL_SEARCH_TOOL } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search";
-import { parseAnthropicToolSearchBlock } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/tool_search_passthrough";
 import type {
   OutputFormat,
   ToolChoiceInput,
@@ -250,14 +251,14 @@ export function assistantToolCallRequestToToolUseBlock(
 export function assistantProviderPassthroughMessageToBlocks(
   message: BaseAssistantProviderPassthroughMessage
 ): MessageParam["content"] {
-  // Replay the provider's own tool-search blocks verbatim so interleaved
+  // Replay the provider's own server-tool blocks verbatim so interleaved
   // thinking signatures stay valid. Skip blocks tagged for another provider or
   // that fail to parse.
   if (message.content.provider !== ANTHROPIC_LAB) {
     return [];
   }
 
-  const parsed = parseAnthropicToolSearchBlock(message.content.block);
+  const parsed = parseAnthropicServerToolBlock(message.content.block);
   return parsed ? [parsed] : [];
 }
 
@@ -432,8 +433,13 @@ export function toolSpecsToAnthropicAITools(
   {
     forceTool,
     toolSearchEnabled,
-  }: { forceTool: string | undefined; toolSearchEnabled: boolean }
-): Array<Tool | typeof TOOL_SEARCH_TOOL> {
+    nativeWebSearchEnabled,
+  }: {
+    forceTool: string | undefined;
+    toolSearchEnabled: boolean;
+    nativeWebSearchEnabled: boolean;
+  }
+): Array<Tool | typeof TOOL_SEARCH_TOOL | typeof ANTHROPIC_WEB_SEARCH_TOOL> {
   const converted = tools.map((tool) =>
     // A forced tool cannot be deferred: the API requires the tool_choice target
     // to be loaded, so treat it as eager.
@@ -443,10 +449,23 @@ export function toolSpecsToAnthropicAITools(
     )
   );
 
-  // The tool search tool is only needed when at least one tool is actually deferred.
-  return converted.some((tool) => tool.defer_loading)
-    ? [TOOL_SEARCH_TOOL, ...converted]
-    : converted;
+  // Server tools go first, in a fixed order, so the serialized tools prefix
+  // stays byte-stable across steps for prompt caching.
+  return [
+    // The tool search tool is only needed when at least one tool is actually deferred.
+    ...(converted.some((tool) => tool.defer_loading) ? [TOOL_SEARCH_TOOL] : []),
+    // A forced tool_choice targets a client tool; a server tool cannot be the
+    // target, and its interaction with a non-auto tool_choice is unspecified, so
+    // keep force-called requests (auxiliary calls only) free of server tools.
+    // `disableToolUse` deliberately does NOT drop it: tool_choice "none" already
+    // forbids every tool, and removing it would both invalidate the cached tools
+    // prefix on the last step and force the replay sanitizer to strip the search
+    // results the model needs to write its answer.
+    ...(nativeWebSearchEnabled && !forceTool
+      ? [ANTHROPIC_WEB_SEARCH_TOOL]
+      : []),
+    ...converted,
+  ];
 }
 
 export function forceToolNameToToolChoice(

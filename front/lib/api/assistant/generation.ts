@@ -309,17 +309,24 @@ function constructPastedContentSection(): string {
 
 function constructGuidelinesSection({
   agentConfiguration,
+  nativeWebSearchEnabled,
 }: {
   agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
+  nativeWebSearchEnabled: boolean;
 }): string {
   let guidelinesSection = "# GUIDELINES\n";
 
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
       areDataSourcesConfigured(action) ||
-      INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
-        isServerSideMCPServerConfigurationWithName(action, n)
-      ) ||
+      // The provider's native web search produces no Dust citation refs, so a
+      // web-search-only agent gets no citation guidance. `webbrowser` still
+      // lives on these servers and still produces refs, hence the OR below
+      // rather than dropping the clause outright.
+      (!nativeWebSearchEnabled &&
+        INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+          isServerSideMCPServerConfigurationWithName(action, n)
+        )) ||
       isServerSideMCPServerConfigurationWithName(action, "run_agent") ||
       isServerSideMCPServerConfigurationWithName(action, "slack") ||
       isServerSideMCPServerConfigurationWithName(action, "notion")
@@ -393,6 +400,7 @@ export function constructPromptMultiActions(
     hasSandboxTools = false,
     disableFormattingPrompt = false,
     hasSelectedSpacesOutsideAgentScope = false,
+    nativeWebSearchEnabled = false,
   }: {
     userMessage: AgentLoopExecutionData["userMessage"];
     agentConfiguration: AgentLoopExecutionData["agentConfiguration"];
@@ -410,6 +418,7 @@ export function constructPromptMultiActions(
     hasSandboxTools?: boolean;
     disableFormattingPrompt?: boolean;
     hasSelectedSpacesOutsideAgentScope?: boolean;
+    nativeWebSearchEnabled?: boolean;
   }
 ): SystemPromptSections {
   const owner = auth.workspace();
@@ -461,7 +470,10 @@ export function constructPromptMultiActions(
       })
     : constructAttachmentsSection({ hasSandboxTools, isComputerAlwaysActive });
   const pastedContentSection = constructPastedContentSection();
-  const guidelinesSection = constructGuidelinesSection({ agentConfiguration });
+  const guidelinesSection = constructGuidelinesSection({
+    agentConfiguration,
+    nativeWebSearchEnabled,
+  });
 
   if (hasStaticInstructions) {
     // Structured form with 3 cache tiers, ordered from most stable to most volatile.

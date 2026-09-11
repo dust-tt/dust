@@ -444,6 +444,7 @@ describe("toolSpecsToOpenAITools", () => {
       toolSpecsToOpenAITools([eagerTool, deferredTool], {
         forceTool: undefined,
         toolSearchEnabled: true,
+        nativeWebSearchEnabled: false,
       })
     ).toEqual([
       { type: "tool_search" },
@@ -459,6 +460,7 @@ describe("toolSpecsToOpenAITools", () => {
     const tools = toolSpecsToOpenAITools([deferredTool], {
       forceTool: deferredTool.name,
       toolSearchEnabled: true,
+      nativeWebSearchEnabled: false,
     });
 
     expect(tools).toEqual([expect.objectContaining({ name: "get_weather" })]);

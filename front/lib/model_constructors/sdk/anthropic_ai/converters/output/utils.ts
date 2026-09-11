@@ -16,8 +16,14 @@ import type {
   BetaRawMessageDeltaEvent,
   BetaRawMessageStartEvent,
   BetaRawMessageStreamEvent,
+  BetaTextBlock,
 } from "@anthropic-ai/sdk/resources/beta/messages/messages";
+import { ANTHROPIC_WEB_SEARCH_TOOL_NAME } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/native_web_search";
 import { parseToolArguments } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/utils";
+import {
+  logAnthropicWebSearchQuery,
+  logAnthropicWebSearchResult,
+} from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/native_web_search_logging";
 import {
   logToolSearchQuery,
   logToolSearchResult,
@@ -48,6 +54,7 @@ import {
   httpErrorMessage,
 } from "@app/lib/model_constructors/utils/classify_http_status";
 import { classifyStreamError } from "@app/lib/model_constructors/utils/classify_stream_error";
+import { formatWebSearchCitationLink } from "@app/lib/model_constructors/utils/web_search_citation";
 import logger from "@app/logger/logger";
 import {
   assertNever,
@@ -167,6 +174,16 @@ export type BlockState =
       accumulator: string;
       type: "tool_search";
       toolName: string;
+      // The server_tool_use block id, needed to replay the block verbatim.
+      toolId: string;
+    }
+  // The provider's native web search. Same server_tool_use shape as tool search,
+  // kept as its own variant because the two have different result blocks, log
+  // lines and replay rules.
+  | {
+      index: number;
+      accumulator: string;
+      type: "native_web_search";
       // The server_tool_use block id, needed to replay the block verbatim.
       toolId: string;
     };
@@ -525,7 +542,8 @@ export function contentBlockStartToEvents(
   state: BlockState | null,
   metadata: EndpointMetadata,
   converters: OutputEventConverters,
-  toolSearchQuery?: string
+  toolSearchQuery?: string,
+  nativeWebSearchQuery?: string
 ): [ModelResponseEvent[], BlockState | null] {
   const block = event.content_block;
   switch (block.type) {
@@ -553,8 +571,20 @@ export function contentBlockStartToEvents(
       ];
 
     case "server_tool_use":
-      // The only server tool we enable is tool search. Accumulate the query
-      // deltas, then emit the block as passthrough at content_block_stop.
+      // Accumulate the query deltas, then emit the block as passthrough at
+      // content_block_stop. Which server tool it is decides the state variant:
+      // native web search and tool search have different result blocks and logs.
+      if (block.name === ANTHROPIC_WEB_SEARCH_TOOL_NAME) {
+        return [
+          [],
+          {
+            index: event.index,
+            accumulator: "",
+            type: "native_web_search",
+            toolId: block.id,
+          },
+        ];
+      }
       return [
         [],
         {
@@ -572,7 +602,7 @@ export function contentBlockStartToEvents(
       logToolSearchResult({
         content: block.content,
         query: toolSearchQuery,
-        logFields: toolSearchLogFields(metadata),
+        logFields: serverToolLogFields(metadata),
       });
       return [
         [
@@ -585,11 +615,31 @@ export function contentBlockStartToEvents(
         null,
       ];
 
+    case "web_search_tool_result":
+      // Search results arrive inline (no deltas). Emit a passthrough so they
+      // replay verbatim on the next request: they carry the `encrypted_content`
+      // the model needs to keep citing them, and dropping them would invalidate
+      // interleaved thinking signatures. State stays null, so the stop is a no-op.
+      logAnthropicWebSearchResult({
+        content: block.content,
+        query: nativeWebSearchQuery,
+        logFields: serverToolLogFields(metadata),
+      });
+      return [
+        [
+          converters.serverToolBlockToProviderPassthroughEvent(metadata, {
+            type: "web_search_tool_result",
+            tool_use_id: block.tool_use_id,
+            content: block.content,
+          }),
+        ],
+        null,
+      ];
+
     // Block types we don't surface: redacted thinking, other server tools, and
     // their result / container blocks. Listed explicitly so the default stays
     // exhaustive.
     case "redacted_thinking":
-    case "web_search_tool_result":
     case "web_fetch_tool_result":
     case "code_execution_tool_result":
     case "bash_code_execution_tool_result":
@@ -649,7 +699,35 @@ export function contentBlockDeltaToEvents(
         ];
       }
       return [[], state];
-    case "citations_delta":
+    case "citations_delta": {
+      // Native web search attaches its sources here rather than writing them in
+      // the text. Dust's `:cite[REF]` scheme cannot carry them (refs are keyed on
+      // a persisted MCP action row, and a server-side search produces none), so
+      // splice each source in as a markdown link. The delta arrives immediately
+      // after the span it cites, so appending at arrival time puts the link in
+      // the right place. The accumulator is extended in lockstep, keeping the
+      // final aggregated text byte-identical to what was streamed.
+      if (
+        state.type !== "text" ||
+        delta.citation.type !== "web_search_result_location"
+      ) {
+        return [[], state];
+      }
+      const link = formatWebSearchCitationLink({
+        title: delta.citation.title,
+        url: delta.citation.url,
+      });
+      // Anthropic repeats a source across adjacent spans; emitting the same link
+      // twice in a row is noise, not a second citation. The accumulator is the
+      // state, so no extra bookkeeping is needed.
+      if (state.accumulator.endsWith(link)) {
+        return [[], state];
+      }
+      return [
+        [converters.textDeltaToTextDeltaEvent(metadata, link)],
+        { ...state, accumulator: state.accumulator + link },
+      ];
+    }
     case "compaction_delta":
       return [[], state];
     default:
@@ -744,14 +822,55 @@ export function contentBlockStopToEvents(
       ];
     }
 
+    case "native_web_search": {
+      // Same verbatim replay as tool search: the result block references this
+      // block's id, so the pair has to survive together.
+      const parsedInput = safeParseJSON(block.accumulator);
+      return [
+        [
+          converters.serverToolBlockToProviderPassthroughEvent(metadata, {
+            type: "server_tool_use",
+            id: block.toolId,
+            name: ANTHROPIC_WEB_SEARCH_TOOL_NAME,
+            input: parsedInput.isOk() ? parsedInput.value : {},
+          }),
+        ],
+        null,
+      ];
+    }
+
     default:
       assertNever(block);
   }
 }
 
-// Maps endpoint metadata into the structured log fields shared by both tool
-// search log lines.
-function toolSearchLogFields(metadata: EndpointMetadata) {
+// Concatenates the markdown links for a completed text block's native web
+// search citations. Other citation kinds (documents, search results) are already
+// carried by Dust's own ref system, so only web results are spliced in here.
+function webSearchCitationLinks(citations: BetaTextBlock["citations"]): string {
+  if (!citations) {
+    return "";
+  }
+
+  // These all land at the end of the block, so the same source appearing twice
+  // would be pure noise: dedupe by link rather than only consecutively.
+  const links = new Set(
+    citations
+      .filter((citation) => citation.type === "web_search_result_location")
+      .map((citation) =>
+        formatWebSearchCitationLink({
+          title: citation.title,
+          url: citation.url,
+        })
+      )
+  );
+
+  return [...links].join("");
+}
+
+// Maps endpoint metadata into the structured log fields shared by every
+// server-tool log line (tool search and native web search).
+function serverToolLogFields(metadata: EndpointMetadata) {
   return {
     providerId: metadata.lab,
     api: metadata.host,
@@ -811,6 +930,7 @@ export async function* rawOutputToEvents(
   // inline would drop the usage that follows it.
   let terminalError: ErrorEvent | null = null;
   const toolSearchQueriesByToolUseId = new Map<string, string | undefined>();
+  const webSearchQueriesByToolUseId = new Map<string, string | undefined>();
   // The per-TTL cache-creation breakdown is only emitted on `message_start`;
   // capture it so the trailing `message_delta` usage can be split by TTL.
   let cacheCreation: BetaCacheCreation | null = null;
@@ -869,15 +989,23 @@ export async function* rawOutputToEvents(
           event.content_block.type === "tool_search_tool_result"
             ? toolSearchQueriesByToolUseId.get(event.content_block.tool_use_id)
             : undefined;
+        const nativeWebSearchQuery =
+          event.content_block.type === "web_search_tool_result"
+            ? webSearchQueriesByToolUseId.get(event.content_block.tool_use_id)
+            : undefined;
         const [events, nextState] = contentBlockStartToEvents(
           event,
           blockState,
           metadata,
           converters,
-          toolSearchQuery
+          toolSearchQuery,
+          nativeWebSearchQuery
         );
         if (event.content_block.type === "tool_search_tool_result") {
           toolSearchQueriesByToolUseId.delete(event.content_block.tool_use_id);
+        }
+        if (event.content_block.type === "web_search_tool_result") {
+          webSearchQueriesByToolUseId.delete(event.content_block.tool_use_id);
         }
         outputEvents = events;
         blockState = nextState;
@@ -895,18 +1023,29 @@ export async function* rawOutputToEvents(
         break;
       }
       case "content_block_stop": {
+        const serverToolTags = [
+          `provider_id:${metadata.lab}`,
+          `api:${metadata.host}`,
+          `model_id:${metadata.model}`,
+        ];
         if (blockState?.type === "tool_search") {
           const query = logToolSearchQuery({
             rawInput: blockState.accumulator,
             toolName: blockState.toolName,
-            tags: [
-              `provider_id:${metadata.lab}`,
-              `api:${metadata.host}`,
-              `model_id:${metadata.model}`,
-            ],
-            logFields: toolSearchLogFields(metadata),
+            tags: serverToolTags,
+            logFields: serverToolLogFields(metadata),
           });
           toolSearchQueriesByToolUseId.set(blockState.toolId, query);
+        }
+        if (blockState?.type === "native_web_search") {
+          // Stash the query so the result block, which arrives later, can log
+          // query and result count together.
+          const query = logAnthropicWebSearchQuery({
+            rawInput: blockState.accumulator,
+            tags: serverToolTags,
+            logFields: serverToolLogFields(metadata),
+          });
+          webSearchQueriesByToolUseId.set(blockState.toolId, query);
         }
         const [events, nextState] = contentBlockStopToEvents(
           event,
@@ -990,9 +1129,13 @@ export function messageToEvents(
   message.content.forEach((block, index) => {
     switch (block.type) {
       case "text": {
+        // Mirrors the streaming `citations_delta` handling: native web search
+        // sources are appended as markdown links. Without per-span offsets on
+        // this path they all land at the end of the block, which is the best
+        // available placement.
         const event = converters.accumulatedTextToTextEvent(
           metadata,
-          block.text
+          block.text + webSearchCitationLinks(block.citations)
         );
         aggregated.push(event);
         events.push(event);
@@ -1031,8 +1174,9 @@ export function messageToEvents(
       }
       case "server_tool_use":
       case "tool_search_tool_result":
-        // Replay tool-search blocks verbatim so interleaved thinking signatures
-        // stay valid.
+      case "web_search_tool_result":
+        // Replay server-tool blocks verbatim so interleaved thinking signatures
+        // stay valid and web search results keep their citable content.
         events.push(
           converters.serverToolBlockToProviderPassthroughEvent(metadata, block)
         );
@@ -1041,7 +1185,6 @@ export function messageToEvents(
       // their result / container blocks. Listed explicitly so the default stays
       // exhaustive.
       case "redacted_thinking":
-      case "web_search_tool_result":
       case "web_fetch_tool_result":
       case "code_execution_tool_result":
       case "bash_code_execution_tool_result":

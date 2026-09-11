@@ -60,6 +60,10 @@ export const inputConfigSchema = z.object({
   // When true, supporting provider clients defer non-eager tools behind tool
   // search.
   toolSearchEnabled: z.boolean().optional(),
+  // When true, supporting provider clients add the provider's own server-side
+  // web search tool to the request. The agent loop drops Dust's `websearch`
+  // tool from the specs in the same breath, so the two never coexist.
+  nativeWebSearchEnabled: z.boolean().optional(),
   outputFormat: outputFormatSchema.optional(),
   cacheKey: z.string().optional(),
   serviceTier: serviceTierSchema.optional(),
