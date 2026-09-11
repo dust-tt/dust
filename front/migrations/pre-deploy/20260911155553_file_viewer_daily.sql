@@ -69,7 +69,7 @@ Statement 112
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."file_viewer_dailies" ADD CONSTRAINT "file_viewer_dailies_fileId_fkey" FOREIGN KEY ("fileId") REFERENCES files(id) ON UPDATE CASCADE ON DELETE CASCADE NOT VALID;
+ALTER TABLE "public"."file_viewer_dailies" ADD CONSTRAINT "file_viewer_dailies_fileId_fkey" FOREIGN KEY ("fileId") REFERENCES files(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 /*
 Statement 113

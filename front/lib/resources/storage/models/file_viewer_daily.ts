@@ -9,9 +9,8 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
 
 /**
  * @cc [owner:flvndvd,label:backend;concurrency] file-owned-viewer-history
- * Deleting a file MUST atomically remove its daily observations, including when
- * a concurrent reader records a view or an older server deletes the parent.
- * These rows own no external assets, so the file foreign key deliberately cascades.
+ * File and workspace foreign keys MUST restrict deletion while viewer rows remain.
+ * Cleanup MUST explicitly remove viewer rows before deleting their file or workspace.
  */
 export class FileViewerDailyModel extends WorkspaceAwareModel<FileViewerDailyModel> {
   declare createdAt: CreationOptional<Date>;
@@ -52,7 +51,7 @@ FileViewerDailyModel.init(
 
 FileModel.hasMany(FileViewerDailyModel, {
   foreignKey: { name: "fileId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 FileViewerDailyModel.belongsTo(FileModel, {
   foreignKey: { name: "fileId", allowNull: false },
