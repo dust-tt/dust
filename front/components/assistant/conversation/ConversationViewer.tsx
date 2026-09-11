@@ -106,7 +106,6 @@ import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { mutate } from "swr";
 import { ConversationErrorDisplay } from "./ConversationError";
-import { findFirstUnreadMessageIndex } from "./utils";
 
 const DEFAULT_PAGE_LIMIT = 50;
 // SSE is the fast path; poll slowly in case the completion event is missed before subscription.
@@ -429,43 +428,25 @@ export const ConversationViewer = ({
 
       // Fetch the message to scroll to from the URL hash.
       const hash = window.location.hash;
-      // If we arrive on an unread conversation from a deep link, we scroll to the linked message.
-      // This is useful when sharing a message link to someone else.
-      if (hash && hash.startsWith("#")) {
-        const messageId = hash.substring(1); // Remove the '#' prefix.
-        if (!messageId) {
-          return;
-        }
-
-        // Find the message index in the current data.
-        const messageIndex = messagesAndNotices.findIndex(
-          (m) => m.sId === messageId
-        );
-
-        if (messageIndex === -1) {
-          // nothing found to scroll to.
-          return;
-        }
-        setMessageIdToScrollTo(messageIndex);
-      } else if (conversation?.unread) {
-        const lastReadMs = conversation.lastReadMs;
-
-        if (lastReadMs === null) {
-          // Conversation has never been read, scroll to the beginning.
-          return;
-        }
-
-        const firstUnreadIndex = findFirstUnreadMessageIndex(
-          messagesAndNotices,
-          lastReadMs
-        );
-
-        if (firstUnreadIndex === -1) {
-          return;
-        }
-
-        setMessageIdToScrollTo(firstUnreadIndex);
+      if (!hash || !hash.startsWith("#")) {
+        return;
       }
+
+      const messageId = hash.substring(1); // Remove the '#' prefix.
+      if (!messageId) {
+        return;
+      }
+
+      // Find the message index in the current data.
+      const messageIndex = messagesAndNotices.findIndex(
+        (m) => m.sId === messageId
+      );
+
+      if (messageIndex === -1) {
+        // nothing found to scroll to.
+        return;
+      }
+      setMessageIdToScrollTo(messageIndex);
     }
   }, [
     initialListData,
@@ -473,8 +454,6 @@ export const ConversationViewer = ({
     messages,
     setInitialListData,
     isValidating,
-    conversation?.unread,
-    conversation?.lastReadMs,
   ]);
 
   // Sync the virtuoso ref with the side panel context.
