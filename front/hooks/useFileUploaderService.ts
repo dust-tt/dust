@@ -61,6 +61,24 @@ class FileBlobUploadError extends Error {
   }
 }
 
+type UploadResult = Result<FileBlob, FileBlobUploadError>;
+
+/**
+ * Wraps an upload so `onSettled` runs with a file's result as soon as that file settles, rather
+ * than when the whole batch does.
+ */
+function withOnSettled(
+  onSettled: ((result: UploadResult) => void) | undefined,
+  upload: (fileBlob: FileBlob) => Promise<UploadResult>
+) {
+  return async (fileBlob: FileBlob) => {
+    const result = await upload(fileBlob);
+    onSettled?.(result);
+
+    return result;
+  };
+}
+
 export function useFileUploaderService({
   hasSandboxTools,
   owner,
@@ -167,137 +185,126 @@ export function useFileUploaderService({
       newFileBlobs: FileBlob[],
       options?: {
         useCaseMetadata?: FileUseCaseMetadata;
-        onFileSettled?: (result: Result<FileBlob, FileBlobUploadError>) => void;
+        onFileSettled?: (result: UploadResult) => void;
       }
-    ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
+    ): Promise<UploadResult[]> => {
       const effectiveUseCaseMetadata =
         options?.useCaseMetadata ?? useCaseMetadata;
-      const uploadOne = async (
-        fileBlob: FileBlob
-      ): Promise<Result<FileBlob, FileBlobUploadError>> => {
-        // Get upload URL from server.
-        let uploadResponse;
-        try {
-          uploadResponse = await clientFetch(`/api/w/${owner.sId}/files`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              contentType: fileBlob.contentType,
-              fileName: fileBlob.filename,
-              fileSize: fileBlob.size,
-              useCase,
-              useCaseMetadata: effectiveUseCaseMetadata,
-            }),
-          });
-        } catch (err) {
-          logger.error({ err }, "Error uploading files");
-
-          return new Err(
-            new FileBlobUploadError(
-              fileBlob.file,
-              err instanceof Error ? err.message : undefined
-            )
-          );
-        }
-
-        if (!uploadResponse.ok) {
-          try {
-            const res = await uploadResponse.json();
-
-            return new Err(
-              new FileBlobUploadError(
-                fileBlob.file,
-                isAPIErrorResponse(res) ? res.error.message : undefined
-              )
-            );
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
-          } catch (err) {
-            return new Err(new FileBlobUploadError(fileBlob.file));
-          }
-        }
-
-        const { file } =
-          (await uploadResponse.json()) as FileUploadRequestResponseBody;
-
-        const formData = new FormData();
-        formData.append("file", fileBlob.file);
-
-        // Report the transfer to the attachment card. `clientUpload` already floors the
-        // percentage, so this only re-renders on whole-percent changes (at most 101 times per
-        // file) even for the very large spreadsheets allowed in conversations.
-        let lastReportedProgress: number | null = null;
-        const onProgress = (percentSent: number) => {
-          if (percentSent === lastReportedProgress) {
-            return;
-          }
-          lastReportedProgress = percentSent;
-
-          setFileBlobs((prevFiles) =>
-            prevFiles.map((f) =>
-              f.id === fileBlob.id ? { ...f, uploadProgress: percentSent } : f
-            )
-          );
-        };
-
-        // Upload a file to the obtained URL. `clientUpload` is used over `clientFetch` because
-        // `fetch` cannot report request body progress.
-        let uploadResult;
-        try {
-          uploadResult = await clientUpload(file.uploadUrl, formData, {
-            onProgress,
-          });
-        } catch (err) {
-          logger.error({ err }, "Error uploading files");
-
-          return new Err(
-            new FileBlobUploadError(
-              fileBlob.file,
-              err instanceof Error ? err.message : undefined
-            )
-          );
-        }
-
-        if (!uploadResult.ok) {
-          const { error } = await uploadResult.json();
-          return new Err(
-            new FileBlobUploadError(
-              fileBlob.file,
-              error?.message ?? "An unknown error happened."
-            )
-          );
-        }
-
-        const { file: fileUploaded } =
-          (await uploadResult.json()) as FileUploadedRequestResponseBody;
-
-        return new Ok({
-          ...fileBlob,
-          fileId: file.sId,
-          isUploading: false,
-          uploadProgress: null,
-          sourceUrl: fileUploaded.downloadUrl,
-          publicUrl: file.publicUrl,
-          path: fileUploaded.path,
-        });
-      };
-
       // Browsers have a limit on the number of concurrent network operations.
       // We have a limit of the allowed time to upload the content of a file once the file object has been created.
       // If we start a large number of uploads at the same time and the network is somewhat slow, it's possible that we'll
       // have created the file objects long before the upload of the content finishes.
       return concurrentExecutor(
         newFileBlobs,
-        async (fileBlob) => {
-          const result = await uploadOne(fileBlob);
-          // Report each file as soon as its own upload settles, so callers can commit it
-          // without waiting for the slowest upload of the batch.
-          options?.onFileSettled?.(result);
+        withOnSettled(options?.onFileSettled, async (fileBlob) => {
+          // Get upload URL from server.
+          let uploadResponse;
+          try {
+            uploadResponse = await clientFetch(`/api/w/${owner.sId}/files`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                contentType: fileBlob.contentType,
+                fileName: fileBlob.filename,
+                fileSize: fileBlob.size,
+                useCase,
+                useCaseMetadata: effectiveUseCaseMetadata,
+              }),
+            });
+          } catch (err) {
+            logger.error({ err }, "Error uploading files");
 
-          return result;
-        },
+            return new Err(
+              new FileBlobUploadError(
+                fileBlob.file,
+                err instanceof Error ? err.message : undefined
+              )
+            );
+          }
+
+          if (!uploadResponse.ok) {
+            try {
+              const res = await uploadResponse.json();
+
+              return new Err(
+                new FileBlobUploadError(
+                  fileBlob.file,
+                  isAPIErrorResponse(res) ? res.error.message : undefined
+                )
+              );
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              // biome-ignore lint/correctness/noUnusedVariables: ignored using `--suppress`
+            } catch (err) {
+              return new Err(new FileBlobUploadError(fileBlob.file));
+            }
+          }
+
+          const { file } =
+            (await uploadResponse.json()) as FileUploadRequestResponseBody;
+
+          const formData = new FormData();
+          formData.append("file", fileBlob.file);
+
+          // Report the transfer to the attachment card. `clientUpload` already floors the
+          // percentage, so this only re-renders on whole-percent changes (at most 101 times per
+          // file) even for the very large spreadsheets allowed in conversations.
+          let lastReportedProgress: number | null = null;
+          const onProgress = (percentSent: number) => {
+            if (percentSent === lastReportedProgress) {
+              return;
+            }
+            lastReportedProgress = percentSent;
+
+            setFileBlobs((prevFiles) =>
+              prevFiles.map((f) =>
+                f.id === fileBlob.id ? { ...f, uploadProgress: percentSent } : f
+              )
+            );
+          };
+
+          // Upload a file to the obtained URL. `clientUpload` is used over `clientFetch` because
+          // `fetch` cannot report request body progress.
+          let uploadResult;
+          try {
+            uploadResult = await clientUpload(file.uploadUrl, formData, {
+              onProgress,
+            });
+          } catch (err) {
+            logger.error({ err }, "Error uploading files");
+
+            return new Err(
+              new FileBlobUploadError(
+                fileBlob.file,
+                err instanceof Error ? err.message : undefined
+              )
+            );
+          }
+
+          if (!uploadResult.ok) {
+            const { error } = await uploadResult.json();
+            return new Err(
+              new FileBlobUploadError(
+                fileBlob.file,
+                error?.message ?? "An unknown error happened."
+              )
+            );
+          }
+
+          const { file: fileUploaded } =
+            (await uploadResult.json()) as FileUploadedRequestResponseBody;
+
+          return new Ok({
+            ...fileBlob,
+            fileId: file.sId,
+            isUploading: false,
+            uploadProgress: null,
+            sourceUrl: fileUploaded.downloadUrl,
+            publicUrl: file.publicUrl,
+            path: fileUploaded.path,
+          });
+        }),
         { concurrency: 4 }
       );
     },
