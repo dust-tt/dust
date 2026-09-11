@@ -227,10 +227,11 @@ describe("Dust Lean", () => {
     });
     const promptText = systemPromptToText(prompt);
     expect(promptText).toContain("You start without tools");
-    expect(promptText).not.toContain("Private Pod context");
-    expect(promptText).not.toContain("# TOOLS");
-    expect(promptText).not.toContain("# FILES");
-    expect(promptText).not.toContain("enable_skill");
+    expect(promptText).toContain("Private Pod context");
+    expect(promptText).toContain("# TOOLS");
+    expect(promptText).toContain("# FILES");
+    expect(promptText).toContain("## SKILLS");
+    expect(promptText).toContain("enable_skill");
 
     const promptWithTools = constructPromptMultiActions(authenticator, {
       agentConfiguration: lean,
