@@ -14,6 +14,7 @@ import { AnthropicClaudeSonnetFiveEuropeAgentPlatformStream } from "@app/lib/mod
 import { AnthropicClaudeSonnetFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_five_global_anthropic";
 import { AnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_four_dot_six_eu_agent_platform";
 import { AnthropicClaudeSonnetFourDotSixGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_four_dot_six_global_anthropic";
+import { DeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/deepseek_deepseek_v_four_dot_one_flash_global_fireworks";
 import { DeepSeekDeepSeekV4Flash0731GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/deepseek_deepseek_v4_flash_0731_global_fireworks";
 import { DeepSeekDeepSeekV4Pro0813GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/deepseek_deepseek_v4_pro_0813_global_fireworks";
 import { DeepSeekDeepSeekV4ProGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/deepseek_deepseek_v4_pro_global_fireworks";
@@ -133,6 +134,8 @@ export const STREAM_ENDPOINTS = {
     DeepSeekDeepSeekV4Pro0813GlobalFireworksStream,
   [DeepSeekDeepSeekV4Flash0731GlobalFireworksStream.id]:
     DeepSeekDeepSeekV4Flash0731GlobalFireworksStream,
+  [DeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream.id]:
+    DeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream,
   [ZAiGlmFiveDotTwoGlobalFireworksStream.id]:
     ZAiGlmFiveDotTwoGlobalFireworksStream,
   [ZAiGlmFiveDotThreeGlobalFireworksStream.id]:

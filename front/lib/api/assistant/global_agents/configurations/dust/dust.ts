@@ -50,7 +50,7 @@ import {
 } from "@app/types/assistant/models/anthropic";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import {
-  FIREWORKS_DEEPSEEK_V4_PRO_0813_MODEL_CONFIG,
+  FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_CONFIG,
   FIREWORKS_GLM_5_MODEL_CONFIG,
   FIREWORKS_GLM_5P3_MODEL_CONFIG,
   FIREWORKS_KIMI_K3_MODEL_CONFIG,
@@ -800,7 +800,7 @@ export function _getDustDeepseekGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_DEEPSEEK,
     name: "dust-deepseek",
-    preferredModelConfiguration: FIREWORKS_DEEPSEEK_V4_PRO_0813_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_CONFIG,
     // `none` on the preview meant "reasoning not wired up" and resolved to
     // DeepSeek's `high` on the wire; on this model's ladder that is `medium`.
     preferredReasoningEffort: "medium",

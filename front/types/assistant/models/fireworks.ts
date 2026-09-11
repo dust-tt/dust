@@ -4,6 +4,8 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_ID =
   "accounts/fireworks/models/deepseek-v3p2" as const;
 export const FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_ID =
   "accounts/fireworks/models/deepseek-v4-flash-0731" as const;
+export const FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_ID =
+  "accounts/fireworks/models/deepseek-v4p1-flash" as const;
 export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID =
   "accounts/fireworks/models/deepseek-v4-pro" as const;
 export const FIREWORKS_DEEPSEEK_V4_PRO_0813_MODEL_ID =
@@ -78,11 +80,55 @@ export const FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_CONFIG: ModelConfigurationTy
     description:
       "DeepSeek's V4 Flash Mixture-of-Experts model (284B total / 13B active) tuned for fast, cost-efficient reasoning, coding and agentic work, with 256k context (served via Fireworks).",
     shortDescription: "DeepSeek's V4 Flash model.",
-    isLegacy: false,
-    isLatest: true,
+    // Superseded by V4.1 Flash. Still served by Fireworks until 2026-09-25,
+    // so agents already pinned to it keep working; dropped from the model picker.
+    isLegacy: true,
+    isLatest: false,
     generationTokensCount: 64_000,
     supportsVision: false,
     // No native `medium`; `mapReasoningEffortToLowHighMax` folds our ladder on.
+    supportedReasoningEfforts: {
+      none: true,
+      light: true,
+      medium: true,
+      high: true,
+    },
+    defaultReasoningEffort: "light",
+    // Native thinking at `light`, so no chain-of-thought meta prompt.
+    useNativeLightReasoning: true,
+    supportsResponseFormat: true,
+    tokenizer: { type: "tiktoken", base: "o200k_base" },
+    regionalAvailability: {
+      "us-central1": true,
+      "europe-west1": false,
+    },
+  };
+// Specs, pricing, and availability verified 2026-09-11 against
+// https://fireworks.ai/models/deepseek-ai/deepseek-v4p1-flash (serverless,
+// 1040k context, function calling, native image input, $0.22/$0.66/$0.007 per
+// 1M) and https://api-docs.deepseek.com/quick_start/pricing (`deepseek-flash`
+// = DeepSeek-V4.1-Flash, 1M context, 384k max output). Native 1040k/384k,
+// capped to 256k/64k here as on V4 Flash 0731 and Kimi K3.
+export const FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_CONFIG: ModelConfigurationType =
+  {
+    providerId: "fireworks",
+    modelMaker: "deepseek",
+    modelId: FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_ID,
+    displayName: "DeepSeek V4.1 Flash",
+    contextSize: 256_000,
+    recommendedTopK: 32,
+    recommendedExhaustiveTopK: 64,
+    largeModel: true,
+    description:
+      "DeepSeek's V4.1 Flash multimodal Mixture-of-Experts model (served via Fireworks).",
+    shortDescription: "DeepSeek's V4.1 Flash model with vision support.",
+    isLegacy: false,
+    isLatest: true,
+    generationTokensCount: 64_000,
+    supportsVision: true,
+    // DeepSeek documents low/high/max + disabled, all confirmed live on
+    // 2026-09-11 (https://api-docs.deepseek.com/guides/thinking_mode/). No
+    // native `medium`; `mapReasoningEffortToLowHighMax` folds our ladder on.
     supportedReasoningEfforts: {
       none: true,
       light: true,
@@ -135,6 +181,9 @@ export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
     "europe-west1": false,
   },
 };
+// Superseded by DeepSeek V4.1 Flash, which DeepSeek reports surpasses V4 Pro
+// on performance, cost and speed;
+// Droppêd on 2026-09-25
 // Specs, pricing, and availability verified 2026-09-07 against
 // https://fireworks.ai/models/deepseek-ai/deepseek-v4-pro-0813 (serverless,
 // 1040k context, function calling, no image input, $1.32/$3.96/$0.044 per 1M)
@@ -153,10 +202,10 @@ export const FIREWORKS_DEEPSEEK_V4_PRO_0813_MODEL_CONFIG: ModelConfigurationType
     recommendedExhaustiveTopK: 64,
     largeModel: true,
     description:
-      "DeepSeek's V4 Pro Mixture-of-Experts model with frontier reasoning, advanced coding, and 1M context (served via Fireworks).",
+      "DeepSeek's V4 Pro Mixture-of-Experts model with advanced reasoning, coding, and 1M context (served via Fireworks).",
     shortDescription: "DeepSeek's V4 Pro model.",
-    isLegacy: false,
-    isLatest: true,
+    isLegacy: true,
+    isLatest: false,
     generationTokensCount: 64_000,
     supportsVision: false,
     // DeepSeek documents low/high/max for Pro, identically to V4 Flash

@@ -406,6 +406,12 @@ export const STATIC_MODEL_SUPPORTED_REASONING_EFFORTS = {
     medium: true,
     high: true,
   },
+  "accounts/fireworks/models/deepseek-v4p1-flash": {
+    none: true,
+    light: true,
+    medium: true,
+    high: true,
+  },
   "accounts/fireworks/models/kimi-k2-instruct-0905": {
     none: false,
     light: true,
