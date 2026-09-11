@@ -6,15 +6,10 @@ import {
 } from "@app/lib/metronome/client";
 import {
   getMetricLlmProviderCostAwuId,
-  getMetricToolInvocationsId,
   USAGE_TYPE_FREE,
   USAGE_TYPE_GROUP_KEY,
 } from "@app/lib/metronome/constants";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
-import {
-  isToolCostCategory,
-  TOOL_COST_CATEGORY_AWU_WEIGHTS,
-} from "@app/lib/metronome/events";
 import type { MetronomeUsageWithGroupsResponse } from "@app/lib/metronome/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Result } from "@app/types/shared/result";
@@ -286,27 +281,17 @@ export async function fetchPerUserAwuUsageRows({
     return new Ok([]);
   }
 
-  const [aiResult, toolResult] = await Promise.all([
-    fetchSegmentedUsage({
-      segments,
-      metronomeCustomerId,
-      billableMetricId: getMetricLlmProviderCostAwuId(),
-      groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
-      userIds,
-    }),
-    fetchSegmentedUsage({
-      segments,
-      metronomeCustomerId,
-      billableMetricId: getMetricToolInvocationsId(),
-      groupKey: ["user_id", USAGE_TYPE_GROUP_KEY, "tool_category"],
-      userIds,
-    }),
-  ]);
+  // Tool-invocation cost is now folded into the aggregated cost_awu metric
+  // (#31569), so we no longer query the ToolInvocations metric.
+  const aiResult = await fetchSegmentedUsage({
+    segments,
+    metronomeCustomerId,
+    billableMetricId: getMetricLlmProviderCostAwuId(),
+    groupKey: ["user_id", USAGE_TYPE_GROUP_KEY],
+    userIds,
+  });
   if (aiResult.isErr()) {
     return new Err(aiResult.error);
-  }
-  if (toolResult.isErr()) {
-    return new Err(toolResult.error);
   }
 
   const isBilledBucket = (entry: MetronomeUsageWithGroupsResponse): boolean => {
@@ -336,34 +321,6 @@ export async function fetchPerUserAwuUsageRows({
       value: entry.value,
       awuWeight: 1,
       awuCredits: entry.value,
-    });
-  }
-
-  // Tool usage: the value is an invocation count — weight it by the
-  // per-category AWU price to convert it into AWU spend.
-  for (const entry of toolResult.value) {
-    const userId = entry.group?.["user_id"];
-    const category = entry.group?.["tool_category"];
-    if (
-      !userId ||
-      entry.value === null ||
-      !isBilledBucket(entry) ||
-      !category ||
-      !isToolCostCategory(category)
-    ) {
-      continue;
-    }
-    const awuWeight = TOOL_COST_CATEGORY_AWU_WEIGHTS[category];
-    rows.push({
-      userId,
-      metric: "tool_invocations",
-      usageType: entry.group?.[USAGE_TYPE_GROUP_KEY] ?? "",
-      toolCategory: category,
-      startingOn: entry.startingOn,
-      endingBefore: entry.endingBefore,
-      value: entry.value,
-      awuWeight,
-      awuCredits: entry.value * awuWeight,
     });
   }
 
