@@ -943,3 +943,63 @@ export async function finalizeCreditStop(
     "[CreditCheck] agent loop stopped: workspace credit pool exhausted"
   );
 }
+
+/**
+ * Credit spend checkpoint pause: persists the pause on the message, flags the conversation as
+ * needing the user's attention and notifies the client. Runs in the non-cancellable finalize so
+ * the persisted status can never say "paused" while the loop is still running.
+ */
+export async function finalizeCreditSpendCheckpointPause(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs,
+  { thresholdAwuCredits }: { thresholdAwuCredits: number }
+): Promise<void> {
+  const runAgentDataRes = await getAgentLoopRuntimeData(
+    authType,
+    agentLoopArgs
+  );
+  if (runAgentDataRes.isErr()) {
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      await finalizeUnavailableAgentLoop(authType, agentLoopArgs);
+      logger.info(
+        {
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+        },
+        "Message or conversation was deleted, exiting"
+      );
+      return;
+    }
+    throw new Error(
+      `Failed to get run agent data: ${runAgentDataRes.error.message}`
+    );
+  }
+  const { auth, agentConfiguration, agentMessage, conversation } =
+    runAgentDataRes.value;
+
+  const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
+
+  await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(auth, {
+    agentMessageModelId: agentMessage.agentMessageId,
+  });
+  await ConversationResource.markAsActionRequired(auth, { conversation });
+
+  await publishConversationRelatedEvent({
+    conversationId: conversation.sId,
+    step,
+    event: {
+      type: "agent_credit_spend_checkpoint_reached",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+      thresholdAwuCredits,
+    },
+  });
+  logger.info(
+    {
+      agentMessageId: agentMessage.sId,
+      conversationId: conversation.sId,
+    },
+    "[CreditSpendCheckpoint] agent loop paused at credit spend checkpoint"
+  );
+}

@@ -8,12 +8,7 @@ const {
   mockFromJson,
   mockCheckPoolCreditGate,
   mockCheckCreditSpendCheckpointGate,
-  mockGetFullAgentLoopDataWithAuth,
-  mockIsAgentLoopDataSoftDeleteError,
-  mockPublishConversationRelatedEvent,
   mockFetchCheckpointState,
-  mockMarkCheckpointPaused,
-  mockMarkAsActionRequired,
   mockListByDustRunIds,
   mockListRunUsagesForRuns,
   mockAwuFromMicroUsd,
@@ -21,12 +16,7 @@ const {
   mockFromJson: vi.fn(),
   mockCheckPoolCreditGate: vi.fn(),
   mockCheckCreditSpendCheckpointGate: vi.fn(),
-  mockGetFullAgentLoopDataWithAuth: vi.fn(),
-  mockIsAgentLoopDataSoftDeleteError: vi.fn(),
-  mockPublishConversationRelatedEvent: vi.fn(),
   mockFetchCheckpointState: vi.fn(),
-  mockMarkCheckpointPaused: vi.fn(),
-  mockMarkAsActionRequired: vi.fn(),
   mockListByDustRunIds: vi.fn(),
   mockListRunUsagesForRuns: vi.fn(),
   mockAwuFromMicroUsd: vi.fn(),
@@ -41,15 +31,9 @@ vi.mock("@app/lib/api/assistant/credit_check", () => ({
   checkCreditSpendCheckpointGate: mockCheckCreditSpendCheckpointGate,
 }));
 
-vi.mock("@app/lib/api/assistant/streaming/events", () => ({
-  publishConversationRelatedEvent: mockPublishConversationRelatedEvent,
-}));
-
 vi.mock("@app/lib/resources/conversation_resource", () => ({
   ConversationResource: {
-    markAsActionRequired: mockMarkAsActionRequired,
     fetchAgentMessageCreditSpendCheckpointState: mockFetchCheckpointState,
-    markAgentMessageCreditSpendCheckpointPaused: mockMarkCheckpointPaused,
   },
 }));
 
@@ -62,11 +46,6 @@ vi.mock("@app/lib/resources/run_resource", () => ({
 
 vi.mock("@app/lib/credits/agent_message_billing", () => ({
   awuFromMicroUsd: mockAwuFromMicroUsd,
-}));
-
-vi.mock("@app/types/assistant/agent_run", () => ({
-  getFullAgentLoopDataWithAuth: mockGetFullAgentLoopDataWithAuth,
-  isAgentLoopDataSoftDeleteError: mockIsAgentLoopDataSoftDeleteError,
 }));
 
 const FAKE_AUTH = {
@@ -136,7 +115,7 @@ describe("checkCreditsActivity (pure decision)", () => {
   });
 });
 
-describe("checkCreditSpendCheckpointActivity", () => {
+describe("checkCreditSpendCheckpointActivity (pure decision)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFromJson.mockResolvedValue(FAKE_AUTH);
@@ -146,7 +125,7 @@ describe("checkCreditSpendCheckpointActivity", () => {
     mockAwuFromMicroUsd.mockReturnValue(0);
   });
 
-  it("returns crossed: false and skips further checks once acknowledged", async () => {
+  it("skips further checks once acknowledged, without consulting the gate", async () => {
     mockFetchCheckpointState.mockResolvedValue({
       status: "acknowledged",
       runIds: ["run_1"],
@@ -162,10 +141,13 @@ describe("checkCreditSpendCheckpointActivity", () => {
   });
 
   it("skips the run usage lookup when this message has no runIds yet", async () => {
-    mockCheckCreditSpendCheckpointGate.mockResolvedValue({ crossed: false });
+    mockCheckCreditSpendCheckpointGate.mockResolvedValue({
+      crossed: false,
+      exempt: false,
+    });
 
     await checkCreditSpendCheckpointActivity({} as never, {
-      agentLoopArgs: { agentMessageId: "msg_id" } as never,
+      agentLoopArgs: {} as never,
     });
 
     expect(mockListByDustRunIds).not.toHaveBeenCalled();
@@ -186,10 +168,13 @@ describe("checkCreditSpendCheckpointActivity", () => {
       { costMicroUsd: 250 },
     ]);
     mockAwuFromMicroUsd.mockReturnValue(42);
-    mockCheckCreditSpendCheckpointGate.mockResolvedValue({ crossed: false });
+    mockCheckCreditSpendCheckpointGate.mockResolvedValue({
+      crossed: false,
+      exempt: false,
+    });
 
-    await checkCreditSpendCheckpointActivity({} as never, {
-      agentLoopArgs: { agentMessageId: "msg_id" } as never,
+    const result = await checkCreditSpendCheckpointActivity({} as never, {
+      agentLoopArgs: {} as never,
     });
 
     expect(mockListByDustRunIds).toHaveBeenCalledWith(FAKE_AUTH, {
@@ -202,151 +187,32 @@ describe("checkCreditSpendCheckpointActivity", () => {
     expect(mockCheckCreditSpendCheckpointGate).toHaveBeenCalledWith(FAKE_AUTH, {
       consumedAwuCredits: 42,
     });
+    expect(result).toEqual({ crossed: false, skipRemainingChecks: false });
   });
 
-  it("does not load the conversation or publish when the gate says not crossed", async () => {
-    mockCheckCreditSpendCheckpointGate.mockResolvedValue({ crossed: false });
+  it("skips further checks when the gate says this execution is exempt", async () => {
+    mockCheckCreditSpendCheckpointGate.mockResolvedValue({
+      crossed: false,
+      exempt: true,
+    });
 
     const result = await checkCreditSpendCheckpointActivity({} as never, {
       agentLoopArgs: {} as never,
-    });
-
-    expect(result).toEqual({ crossed: false, skipRemainingChecks: false });
-    expect(mockGetFullAgentLoopDataWithAuth).not.toHaveBeenCalled();
-    expect(mockPublishConversationRelatedEvent).not.toHaveBeenCalled();
-  });
-
-  it("loads the conversation and publishes a notification event when crossed", async () => {
-    mockCheckCreditSpendCheckpointGate.mockResolvedValue({
-      crossed: true,
-      thresholdAwuCredits: 1500,
-    });
-    mockGetFullAgentLoopDataWithAuth.mockResolvedValue({
-      isErr: () => false,
-      value: {
-        agentConfiguration: { sId: "agent_config_id" },
-        agentMessage: { sId: "msg_id", contents: [{ step: 2 }] },
-        conversation: { sId: "conv_id" },
-        userMessage: {},
-      },
-    });
-
-    const result = await checkCreditSpendCheckpointActivity({} as never, {
-      agentLoopArgs: {
-        conversationId: "conv_id",
-        agentMessageId: "msg_id",
-      } as never,
-    });
-
-    expect(result).toEqual({ crossed: true, skipRemainingChecks: false });
-    expect(mockPublishConversationRelatedEvent).toHaveBeenCalledWith({
-      conversationId: "conv_id",
-      step: 2,
-      event: {
-        type: "agent_credit_spend_checkpoint_reached",
-        created: expect.any(Number),
-        configurationId: "agent_config_id",
-        messageId: "msg_id",
-        thresholdAwuCredits: 1500,
-      },
-    });
-  });
-
-  it("exempts sub-agent messages: no pause, and skips further checks", async () => {
-    mockCheckCreditSpendCheckpointGate.mockResolvedValue({
-      crossed: true,
-      thresholdAwuCredits: 1500,
-    });
-    mockGetFullAgentLoopDataWithAuth.mockResolvedValue({
-      isErr: () => false,
-      value: {
-        agentConfiguration: { sId: "agent_config_id" },
-        agentMessage: { sId: "msg_id", contents: [{ step: 2 }] },
-        conversation: { sId: "conv_id" },
-        userMessage: {
-          agenticMessageData: { type: "run_agent", originMessageId: "parent" },
-        },
-      },
-    });
-
-    const result = await checkCreditSpendCheckpointActivity({} as never, {
-      agentLoopArgs: {
-        conversationId: "conv_id",
-        agentMessageId: "msg_id",
-      } as never,
     });
 
     expect(result).toEqual({ crossed: false, skipRemainingChecks: true });
-    expect(mockMarkCheckpointPaused).not.toHaveBeenCalled();
-    expect(mockPublishConversationRelatedEvent).not.toHaveBeenCalled();
   });
 
-  it("still reports crossed but skips publishing when the message was soft-deleted", async () => {
+  it("returns the gate's threshold when crossed", async () => {
     mockCheckCreditSpendCheckpointGate.mockResolvedValue({
       crossed: true,
       thresholdAwuCredits: 1500,
     });
-    mockGetFullAgentLoopDataWithAuth.mockResolvedValue({
-      isErr: () => true,
-      error: new Error("agent_message_deleted"),
-    });
-    mockIsAgentLoopDataSoftDeleteError.mockReturnValue(true);
 
     const result = await checkCreditSpendCheckpointActivity({} as never, {
       agentLoopArgs: {} as never,
     });
 
-    expect(result).toEqual({ crossed: true, skipRemainingChecks: false });
-    expect(mockPublishConversationRelatedEvent).not.toHaveBeenCalled();
-  });
-
-  it("throws (instead of pausing) on a non-deletion failure to load agent loop data", async () => {
-    mockCheckCreditSpendCheckpointGate.mockResolvedValue({
-      crossed: true,
-      thresholdAwuCredits: 1500,
-    });
-    mockGetFullAgentLoopDataWithAuth.mockResolvedValue({
-      isErr: () => true,
-      error: new Error("transient_db_error"),
-    });
-    mockIsAgentLoopDataSoftDeleteError.mockReturnValue(false);
-
-    await expect(
-      checkCreditSpendCheckpointActivity({} as never, {
-        agentLoopArgs: {} as never,
-      })
-    ).rejects.toThrow("transient_db_error");
-
-    expect(mockMarkCheckpointPaused).not.toHaveBeenCalled();
-    expect(mockPublishConversationRelatedEvent).not.toHaveBeenCalled();
-  });
-
-  it("still reports crossed when the pause is persisted but the notification fails", async () => {
-    mockCheckCreditSpendCheckpointGate.mockResolvedValue({
-      crossed: true,
-      thresholdAwuCredits: 1500,
-    });
-    mockGetFullAgentLoopDataWithAuth.mockResolvedValue({
-      isErr: () => false,
-      value: {
-        agentConfiguration: { sId: "agent_config_id" },
-        agentMessage: { sId: "msg_id", contents: [{ step: 2 }] },
-        conversation: { sId: "conv_id" },
-        userMessage: {},
-      },
-    });
-    mockPublishConversationRelatedEvent.mockRejectedValue(
-      new Error("redis_publish_failed")
-    );
-
-    const result = await checkCreditSpendCheckpointActivity({} as never, {
-      agentLoopArgs: {
-        conversationId: "conv_id",
-        agentMessageId: "msg_id",
-      } as never,
-    });
-
-    expect(result).toEqual({ crossed: true, skipRemainingChecks: false });
-    expect(mockMarkCheckpointPaused).toHaveBeenCalled();
+    expect(result).toEqual({ crossed: true, thresholdAwuCredits: 1500 });
   });
 });
