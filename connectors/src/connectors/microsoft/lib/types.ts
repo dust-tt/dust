@@ -46,6 +46,12 @@ export const DRIVE_ITEM_DELTA_SELECTS =
 export const MICROSOFT_SKIP_REASON_SENSITIVITY_LABEL_NOT_ALLOWED =
   "sensitivity_label_not_allowed" as const;
 
+// SharePoint list items are fetched with their `fields` expanded so we get every
+// custom column value in a single call. Unlike driveItems, list items carry no
+// download URL and no heavy binary payload, so this projection stays lean.
+export const LIST_ITEM_EXPANDS_AND_SELECTS =
+  "$expand=fields&$select=id,webUrl,createdDateTime,lastModifiedDateTime,createdBy,lastModifiedBy";
+
 export const MICROSOFT_NODE_TYPES = [
   "sites-root",
   "site",
@@ -55,6 +61,7 @@ export const MICROSOFT_NODE_TYPES = [
   "page",
   "message",
   "worksheet",
+  "list",
 ] as const;
 export type MicrosoftNodeType = (typeof MICROSOFT_NODE_TYPES)[number];
 
