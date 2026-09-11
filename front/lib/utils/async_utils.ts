@@ -13,21 +13,12 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  * @param items - Array of items to be processed
  * @param iterator - Async function that processes each item. Receives the item and its index
  * @param options.concurrency - Maximum number of parallel executions (default: 8)
- * @param options.onResult - Called with each item's result as soon as it resolves
  * @returns Promise resolving to array of results in the same order as input items.
- */
-/**
- * @cc [owner:Nils-Fedrigo,label:concurrency] concurrent-executor-per-item-on-result
- * `onResult` MUST run once per item, as soon as that item's iterator resolves, and MUST NOT be
- * batched until the end: callers use it to release per-item state while the batch is still running.
  */
 export async function concurrentExecutor<T, V>(
   items: T[] | readonly T[],
   iterator: (item: T, idx: number) => Promise<V>,
-  {
-    concurrency = 8,
-    onResult,
-  }: { concurrency: number; onResult?: (result: V, idx: number) => void }
+  { concurrency = 8 }: { concurrency: number }
 ) {
   const results: V[] = new Array(items.length);
 
@@ -51,7 +42,6 @@ export async function concurrentExecutor<T, V>(
     while ((work = queue.shift())) {
       const result = await iterator(work.item, work.index);
       results[work.index] = result;
-      onResult?.(result, work.index);
     }
   }
 
