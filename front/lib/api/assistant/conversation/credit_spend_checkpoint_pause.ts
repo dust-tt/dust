@@ -6,7 +6,7 @@ import { DustError } from "@app/lib/error";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import { finalizeGracefullyStoppedAgentLoopActivity } from "@app/temporal/agent_loop/activities/finalize";
+import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getFullAgentLoopDataWithAuth } from "@app/types/assistant/agent_run";
@@ -101,6 +101,18 @@ function nextStep(agentMessage: AgentMessageType): number {
   return (maxBy(agentMessage.contents, "step")?.step ?? 0) + 1;
 }
 
+/**
+ * @cc [owner:avervaet,label:backend;concurrency] checkpoint-single-resolution
+ * A pause MUST be resolved at most once: the `paused` status is transitioned with a conditional
+ * update and, when another resolution already applied, the call MUST return `Ok` without
+ * relaunching or finalizing anything.
+ */
+/**
+ * @cc [owner:avervaet,label:backend] checkpoint-resume-next-step
+ * Continuing MUST relaunch the loop at the step after the message's highest persisted step
+ * content, marking the message `acknowledged` first. If the launch fails, the message MUST be
+ * put back to `paused` so the user can retry.
+ */
 export async function continueCreditSpendCheckpointPause(
   auth: Authenticator,
   conversation: ConversationResource,
@@ -154,7 +166,12 @@ async function writeSmoothShutdownRecap(
   {
     agentMessage,
     conversation,
-  }: { agentMessage: AgentMessageType; conversation: ConversationType }
+    step,
+  }: {
+    agentMessage: AgentMessageType;
+    conversation: ConversationType;
+    step: number;
+  }
 ): Promise<void> {
   const summaryRes = await generateSmoothShutdownSummary(auth, conversation);
   if (summaryRes.isErr()) {
@@ -172,13 +189,20 @@ async function writeSmoothShutdownRecap(
   await AgentStepContentResource.createNewVersion({
     workspaceId: auth.getNonNullableWorkspace().id,
     agentMessageId: agentMessage.agentMessageId,
-    step: nextStep(agentMessage),
+    step,
     index: 0,
     type: "text_content",
     value: { type: "text_content", value: summaryRes.value },
   });
 }
 
+/**
+ * @cc [owner:avervaet,label:backend] checkpoint-decline-no-refinalize
+ * Declining MUST only write the recap, clear the action-required flag and mark the message
+ * `gracefully_stopped` through the terminal-event path. It MUST NOT re-run the finalize side
+ * effects (analytics, consumption attribution, usage tracking, Metronome events): the paused
+ * finalize already ran them for this execution.
+ */
 export async function declineCreditSpendCheckpointPause(
   auth: Authenticator,
   conversation: ConversationResource,
@@ -190,7 +214,7 @@ export async function declineCreditSpendCheckpointPause(
   if (foundRes.isErr()) {
     return foundRes;
   }
-  const { agentLoopArgs, agentMessage } = foundRes.value;
+  const { agentMessage } = foundRes.value;
 
   const { applied } =
     await ConversationResource.transitionAgentMessageCreditSpendCheckpointStatus(
@@ -215,33 +239,28 @@ export async function declineCreditSpendCheckpointPause(
     conversation
   );
 
-  // Not transactional: the finalizer publishes events and launches workflows that cannot be
-  // rolled back. A failure here is logged and reported; the pause itself is already resolved.
-  try {
-    await writeSmoothShutdownRecap(auth, {
-      agentMessage,
-      conversation: foundRes.value.conversation,
-    });
-    await finalizeGracefullyStoppedAgentLoopActivity(
-      auth.toJSON(),
-      agentLoopArgs
-    );
-  } catch (error) {
-    logger.error(
-      {
-        agentMessageId: agentMessage.sId,
-        conversationId: conversation.sId,
-        error,
-      },
-      "Failed to finalize the declined spend checkpoint pause"
-    );
-    return new Err(
-      new DustError(
-        "internal_error",
-        "Failed to finalize the declined spend checkpoint pause"
-      )
-    );
-  }
+  const step = nextStep(agentMessage);
+  await writeSmoothShutdownRecap(auth, {
+    agentMessage,
+    conversation: foundRes.value.conversation,
+    step,
+  });
+
+  // Same terminal path as a graceful stop signalled to a running loop: persists the status and
+  // publishes the event with the server-rendered content view, which now includes the recap.
+  await updateResourceAndPublishEvent(auth, {
+    event: {
+      type: "agent_message_gracefully_stopped",
+      created: Date.now(),
+      configurationId: agentMessage.configuration.sId,
+      messageId: agentMessage.sId,
+      message: agentMessage,
+      runIds: [],
+    },
+    agentMessage,
+    conversation: foundRes.value.conversation,
+    step,
+  });
 
   return new Ok(undefined);
 }
