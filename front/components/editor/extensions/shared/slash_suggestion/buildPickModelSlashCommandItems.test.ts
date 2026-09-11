@@ -17,6 +17,7 @@ import {
   AUTO_MODEL_ID,
 } from "@app/types/assistant/models/auto";
 import { GEMINI_3_1_FLASH_LITE_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_MEDIUM_3_5_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 import {
   GPT_4_1_MODEL_CONFIG,
   GPT_5_4_MINI_MODEL_CONFIG,
@@ -185,6 +186,31 @@ describe("buildPickModelSlashCommandItems", () => {
       `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
       `${GPT_5_6_LUNA_MODEL_CONFIG.displayName} Medium`,
       `${GPT_5_4_MINI_MODEL_CONFIG.displayName} Medium`,
+    ]);
+  });
+
+  it("keeps an effort word that belongs to a model's name", () => {
+    const labelsFor = (query: string) =>
+      buildPickModelSlashCommandItems({
+        getModelIcon: () => Icon,
+        lockPremiumEfforts: false,
+        models: [
+          asSelectable(MISTRAL_MEDIUM_3_5_MODEL_CONFIG),
+          asSelectable(CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG),
+        ],
+        query,
+        streams: null,
+      }).map((item) => item.label);
+
+    // Mistral Medium 3.5 only offers the high effort, so its single row is "High".
+    const mistralMediumHigh = `${MISTRAL_MEDIUM_3_5_MODEL_CONFIG.displayName} High`;
+    expect(labelsFor("mistral medium")).toEqual([mistralMediumHigh]);
+    expect(labelsFor("mistral me")).toEqual([mistralMediumHigh]);
+    expect(labelsFor("mistral medium h")).toEqual([mistralMediumHigh]);
+    expect(labelsFor("mistral h")).toEqual([mistralMediumHigh]);
+    // Other models still read the trailing word as the effort.
+    expect(labelsFor("claude me")).toEqual([
+      `${CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.displayName} Medium`,
     ]);
   });
 

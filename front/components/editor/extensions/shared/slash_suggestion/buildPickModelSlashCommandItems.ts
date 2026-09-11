@@ -58,6 +58,27 @@ function getCompactSearchName(item: SelectModelSlashCommand): string {
   return name.toLowerCase().replace(/[\s-]+/g, "");
 }
 
+// Whether the model's display name has a word that is an effort name starting with `word`, as
+// "Mistral Medium 3.5" does for "me": that word then belongs to the name, not to the effort.
+function nameHasEffortWord(
+  item: SelectModelSlashCommand,
+  word: string
+): boolean {
+  const { display } = item.data.selection;
+  if (display.kind !== "model") {
+    return false;
+  }
+
+  return display.model.displayName
+    .toLowerCase()
+    .split(/[\s-]+/)
+    .some(
+      (nameWord) =>
+        SLIDER_EFFORTS.some((candidate) => candidate === nameWord) &&
+        nameWord.startsWith(word)
+    );
+}
+
 function filterAndRankByQuery(
   items: SelectModelSlashCommand[],
   query: string
@@ -76,6 +97,9 @@ function filterAndRankByQuery(
 
   const matching = items.filter((item) => {
     const { display } = item.data.selection;
+    if (effort && lastWord !== undefined && nameHasEffortWord(item, lastWord)) {
+      return subFilter(queryWords.join(""), getCompactSearchName(item));
+    }
     if (effort && (display.kind !== "model" || display.effort !== effort)) {
       return false;
     }
@@ -162,7 +186,8 @@ function buildTierSlashCommandItems({
  * @cc [owner:PopDaph,label:product] query-selects-name-then-effort
  * `query` is split on whitespace and hyphens. When its last word is a prefix of a slider effort
  * (`light`, `medium`, `high`), only model rows at that effort are kept and the other words form
- * the name query; otherwise every word does. A row is kept when the name query, joined, is an
+ * the name query, except for models whose display name contains that effort word ("Mistral
+ * Medium 3.5"), which are matched on the whole query instead; otherwise every word does. A row is kept when the name query, joined, is an
  * in-order subsequence (`subFilter`) of its name (tier name or model display name) without
  * spaces or hyphens. Kept rows are ranked with `compareForFuzzySort`, ties keeping catalog order
  * so a model's efforts stay light, medium, high. Descriptions are never searched; an empty query
