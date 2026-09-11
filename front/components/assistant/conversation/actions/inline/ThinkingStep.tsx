@@ -1,6 +1,6 @@
 import { TimelineRow } from "@app/components/assistant/conversation/actions/inline/TimelineRow";
 import { cn, Markdown } from "@dust-tt/sparkle";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useLayoutEffect, useRef, useState } from "react";
 
 import styles from "./ThinkingStep.module.css";
 
@@ -46,7 +46,7 @@ export const ThinkingStep = memo(function ThinkingStep({
   const [needsTruncation, setNeedsTruncation] = useState(isMessageDone);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = contentRef.current;
     if (!el || isStreaming) {
       return;
