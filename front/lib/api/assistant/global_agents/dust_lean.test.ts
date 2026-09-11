@@ -87,7 +87,7 @@ describe("Dust Lean", () => {
     expect(disabled.codeDefinedSkillIds).toEqual([]);
   });
 
-  it("inherits default skills and allows explicitly added conversation tools and skills", async () => {
+  it("inherits default tools and skills and allows explicit conversation additions", async () => {
     const { authenticator, workspace, user } = await createResourceTest({
       role: "admin",
     });
@@ -142,7 +142,9 @@ describe("Dust Lean", () => {
       conversation,
       attachments: [],
     });
-    expect(initialJitServers).toEqual([]);
+    expect(initialJitServers).toContainEqual(
+      expect.objectContaining({ mcpServerViewId: view.sId })
+    );
 
     const enabled = await skill.upsertToConversation(authenticator, {
       conversationId: conversation.id,
@@ -183,9 +185,9 @@ describe("Dust Lean", () => {
       conversation,
       attachments: [],
     });
-    expect(jitServers).toEqual([
-      expect.objectContaining({ mcpServerViewId: view.sId }),
-    ]);
+    expect(jitServers).toContainEqual(
+      expect.objectContaining({ mcpServerViewId: view.sId })
+    );
 
     const { agentMessage } = await ConversationFactory.createAgentMessage(
       authenticator,

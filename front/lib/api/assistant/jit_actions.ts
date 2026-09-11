@@ -17,7 +17,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
 
@@ -189,15 +188,6 @@ export async function getJITServers(
     attachments: ConversationAttachmentType[];
   }
 ): Promise<ServerSideMCPServerConfigurationType[]> {
-  if (agentConfiguration.sId === GLOBAL_AGENTS_SID.DUST_LEAN) {
-    const conversationServers = await getConversationMCPServers(
-      auth,
-      conversation,
-      agentConfiguration.sId
-    );
-    return conversationServers;
-  }
-
   const mcpServersToFetch = new Set<AutoInternalMCPServerNameType>(
     ALWAYS_PREFETCHED_MCP_SERVERS
   );
