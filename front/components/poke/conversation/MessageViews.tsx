@@ -1,5 +1,5 @@
-import type { ChipColor } from "@app/components/poke/conversation/message_metadata";
-import { StatusBadge } from "@app/components/poke/conversation/message_metadata";
+import type { ChipColor } from "@app/components/poke/conversation/MessageMetadata";
+import { StatusBadge } from "@app/components/poke/conversation/MessageMetadata";
 import type {
   CompactionMessageStatus,
   CompactionMessageType,

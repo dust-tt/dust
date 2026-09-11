@@ -1,12 +1,12 @@
-import { AgentMessageView } from "@app/components/poke/conversation/agent_message_view";
+import { AgentMessageView } from "@app/components/poke/conversation/AgentMessageView";
+import { ConversationActions } from "@app/components/poke/conversation/ConversationActions";
+import { ConversationMessagesHeader } from "@app/components/poke/conversation/ConversationMessagesHeader";
 import { PokeConversationConsumptionInspector } from "@app/components/poke/conversation/consumption_inspectors";
-import { ConversationActions } from "@app/components/poke/conversation/conversation_actions";
-import { ConversationMessagesHeader } from "@app/components/poke/conversation/conversation_messages_header";
 import {
   CompactionMessageView,
   ContentFragmentView,
   UserMessageView,
-} from "@app/components/poke/conversation/message_views";
+} from "@app/components/poke/conversation/MessageViews";
 import { useConversationInspectorPanels } from "@app/components/poke/conversation/use_conversation_inspector_panels";
 import { PokeConversationWakeUpsInspector } from "@app/components/poke/conversation/wakeups_inspector";
 import { PluginList } from "@app/components/poke/plugins/PluginList";

@@ -140,7 +140,7 @@ export function ProviderPassthroughView({
         aria-expanded={isExpanded}
         aria-label={`${isExpanded ? "Collapse" : "Expand"} ${title} details`}
         className={cn(
-          "flex w-full items-center gap-2",
+          "flex w-full items-center gap-4",
           "rounded-md border border-separator bg-muted-background",
           "cursor-pointer p-2 text-left transition-colors hover:bg-background",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -167,7 +167,7 @@ export function ProviderPassthroughView({
             />
           </span>
         </span>
-        <span className="flex min-w-0 flex-1 items-center gap-3">
+        <span className="flex min-w-0 flex-1 items-center gap-4">
           <span className="w-24 shrink-0" />
           <Chip label={`Step ${entry.step}`} />
           <span

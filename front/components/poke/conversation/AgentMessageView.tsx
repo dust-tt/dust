@@ -1,15 +1,15 @@
-import { PokeMessageConsumptionInspector } from "@app/components/poke/conversation/message_consumption_inspector";
-import type { ChipColor } from "@app/components/poke/conversation/message_metadata";
+import type { ChipColor } from "@app/components/poke/conversation/MessageMetadata";
 import {
   formatDurationMs,
   MetadataItem,
   StatusBadge,
-} from "@app/components/poke/conversation/message_metadata";
+} from "@app/components/poke/conversation/MessageMetadata";
+import { PokeMessageConsumptionInspector } from "@app/components/poke/conversation/message_consumption_inspector";
 import {
   getProviderPassthroughEntries,
   ProviderPassthroughView,
-} from "@app/components/poke/conversation/provider_passthrough_view";
-import { ToolActionView } from "@app/components/poke/conversation/tool_action_view";
+} from "@app/components/poke/conversation/ProviderPassthroughView";
+import { ToolActionView } from "@app/components/poke/conversation/ToolActionView";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
 import type { PokeAgentMessageType } from "@app/types/poke";
 import { assertNever } from "@app/types/shared/utils/assert_never";

@@ -1,5 +1,5 @@
-import type { ChipColor } from "@app/components/poke/conversation/message_metadata";
-import { formatDurationMs } from "@app/components/poke/conversation/message_metadata";
+import type { ChipColor } from "@app/components/poke/conversation/MessageMetadata";
+import { formatDurationMs } from "@app/components/poke/conversation/MessageMetadata";
 import type { PokeAgentMessageType } from "@app/types/poke";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import {
@@ -67,7 +67,7 @@ function ToolActionContent({ action, isExpanded }: ToolActionContentProps) {
 
   return (
     <>
-      <span className="shrink-0">
+      <span className="w-8 shrink-0">
         {action.mcpIO ? (
           <span
             aria-hidden="true"
