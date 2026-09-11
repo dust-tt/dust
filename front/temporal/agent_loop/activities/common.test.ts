@@ -12,13 +12,21 @@ import type {
 } from "@app/types/assistant/agent";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { ApplicationFailure } from "@temporalio/common";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   finalizeCancellation,
   finalizeCreditSpendCheckpointPause,
   processEventForDatabase,
   updateAgentMessageDBAndMemory,
 } from "./common";
+
+const { mockNotifyManualActionRequired } = vi.hoisted(() => ({
+  mockNotifyManualActionRequired: vi.fn(),
+}));
+
+vi.mock("@app/lib/notifications/workflows/manual-action-required", () => ({
+  notifyManualActionRequired: mockNotifyManualActionRequired,
+}));
 
 // Helper to create an event with runIds for testing
 function createEventWithRunIds(
@@ -1420,5 +1428,9 @@ describe("finalizeCreditSpendCheckpointPause", () => {
         conversation.id
       );
     expect(actionRequired).toBe(true);
+    expect(mockNotifyManualActionRequired).toHaveBeenCalledWith(
+      expect.anything(),
+      { conversationId: conversation.sId }
+    );
   });
 });

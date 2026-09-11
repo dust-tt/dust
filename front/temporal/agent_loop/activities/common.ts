@@ -12,6 +12,7 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/llms/agent_message_content_parser";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
+import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
@@ -982,6 +983,10 @@ export async function finalizeCreditSpendCheckpointPause(
   await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(auth, {
     agentMessageModelId: agentMessage.agentMessageId,
   });
+
+  if (!conversation.actionRequired) {
+    notifyManualActionRequired(auth, { conversationId: conversation.sId });
+  }
   await ConversationResource.markAsActionRequired(auth, { conversation });
 
   await publishConversationRelatedEvent({
