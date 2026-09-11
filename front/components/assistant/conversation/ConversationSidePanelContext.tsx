@@ -105,6 +105,38 @@ export function parseDataAsMessageIdAndActionId(data?: string): {
   return { messageId, actionId };
 }
 
+function getPanelData(params: OpenPanelParams): string {
+  switch (params.type) {
+    case AGENT_ACTIONS_SIDE_PANEL_TYPE:
+      return params.actionId
+        ? `${params.messageId}@${params.actionId}`
+        : params.messageId;
+
+    case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
+      return params.timestamp
+        ? `${params.fileId}@${params.timestamp}`
+        : params.fileId;
+
+    case FILE_PREVIEW_SIDE_PANEL_TYPE:
+      return params.filePath;
+
+    case FILES_SIDE_PANEL_TYPE:
+      return "files";
+
+    case CREDITS_SIDE_PANEL_TYPE:
+      return "credits";
+
+    case PLAN_SIDE_PANEL_TYPE:
+      return "plan";
+
+    case SKILL_SIDE_PANEL_TYPE:
+      return params.skillId;
+
+    default:
+      assertNever(params);
+  }
+}
+
 interface ConversationSidePanelProviderProps {
   children: React.ReactNode;
 }
@@ -159,79 +191,38 @@ export function ConversationSidePanelProvider({
   // that is already closing reads as unselected, so re-selecting it reopens instead.
   const applyPanel = useCallback(
     (params: OpenPanelParams, { toggle }: { toggle: boolean }) => {
-      const closeOnReselect = toggle && !isPanelClosing;
+      const nextData = getPanelData(params);
+      const isSamePanel = currentPanel === params.type;
+      const isSameContent = isSamePanel && nextData === data;
+
+      if (toggle && !isPanelClosing && isSameContent) {
+        closePanel();
+        return;
+      }
+
       setIsPanelClosing(false);
       setCurrentPanel(params.type);
-
-      switch (params.type) {
-        case AGENT_ACTIONS_SIDE_PANEL_TYPE: {
-          const newData = params.actionId
-            ? `${params.messageId}@${params.actionId}`
-            : params.messageId;
-
-          // A different message/action switches content; only the same data toggles closed.
-          if (closeOnReselect && newData === data) {
-            closePanel();
-            return;
-          }
-
-          setData(newData);
-          break;
-        }
-
-        case INTERACTIVE_CONTENT_SIDE_PANEL_TYPE:
-          // eslint-disable-next-line no-unused-expressions
-          params.timestamp
-            ? setData(`${params.fileId}@${params.timestamp}`)
-            : setData(params.fileId);
-          break;
-
-        case FILE_PREVIEW_SIDE_PANEL_TYPE:
-          setData(params.filePath);
-          break;
-
-        case FILES_SIDE_PANEL_TYPE:
-          if (closeOnReselect && currentPanel === FILES_SIDE_PANEL_TYPE) {
-            closePanel();
-            return;
-          }
-          setData("files");
-          break;
-
-        case CREDITS_SIDE_PANEL_TYPE:
-          if (closeOnReselect && currentPanel === CREDITS_SIDE_PANEL_TYPE) {
-            closePanel();
-            return;
-          }
-          setData("credits");
-          break;
-
-        case PLAN_SIDE_PANEL_TYPE:
-          if (closeOnReselect && currentPanel === PLAN_SIDE_PANEL_TYPE) {
-            closePanel();
-            return;
-          }
-          setData("plan");
-          break;
-
-        case SKILL_SIDE_PANEL_TYPE:
-          // A different skill switches content; only the same skill toggles closed.
-          if (closeOnReselect && params.skillId === data) {
-            closePanel();
-            return;
-          }
-          setData(params.skillId);
-          break;
-
-        default:
-          assertNever(params);
+      setData(nextData);
+      if (!isSamePanel) {
+        // Only FrameRenderer can leave full screen, so switching away from it would
+        // otherwise strand the next panel at 100% with the nav bar hidden. Staying on
+        // the same panel keeps it, so a refreshing frame does not drop out.
+        setFullScreenHash(undefined);
       }
 
       // Re-expand imperatively: the container's expand effect only fires when `currentPanel`
       // changes, so a close→reopen race (same value) wouldn't re-run it. No-op on mobile.
       panelRef.current?.expand(getDefaultRightPanelSize(params.type));
     },
-    [setCurrentPanel, setData, data, closePanel, currentPanel, isPanelClosing]
+    [
+      setCurrentPanel,
+      setData,
+      data,
+      closePanel,
+      currentPanel,
+      isPanelClosing,
+      setFullScreenHash,
+    ]
   );
 
   // Idempotent open for programmatic callers: a toggle could mis-close during a close→reopen
