@@ -4,10 +4,12 @@ import {
   CreateCursorRunResponseSchema,
   CursorAgentSchema,
   CursorAgentUsageResponseSchema,
+  CursorApiErrorResponseSchema,
   CursorApiKeyInfoSchema,
   CursorArtifactDownloadResponseSchema,
   CursorArtifactsResponseSchema,
   CursorIdResponseSchema,
+  CursorJsonObjectSchema,
   CursorModelsResponseSchema,
   CursorRepositoriesResponseSchema,
   CursorRunSchema,
@@ -19,10 +21,63 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const CURSOR_API_BASE_URL = "https://api.cursor.com";
+
+const REDACTED_API_KEY = "[redacted]";
+
+// Describes a rejected payload for logs without asserting its shape: the keys alone are enough to
+// tell an unexpected schema from an error envelope or a proxy's HTML page.
+function describeResponseShape(rawData: unknown): string[] | string {
+  const asObject = CursorJsonObjectSchema.safeParse(rawData);
+  return asObject.success ? Object.keys(asObject.data) : "not-an-object";
+}
+
+// Only the response fields the formatter reads. `untrustedFetch` resolves to undici's `Response`,
+// which is not assignable to the global one.
+interface UpstreamErrorResponse {
+  status: number;
+  statusText: string;
+  headers: { get(name: string): string | null };
+}
+
+// Turns a failed Cursor response into a single human-readable line. Cursor reports failures as
+// `{ error: { code, message, helpUrl } }`, but the body is external data and may be anything, so
+// the raw text is the fallback.
+function formatUpstreamError(
+  response: UpstreamErrorResponse,
+  rawError: string
+): string {
+  let message = rawError || response.statusText;
+
+  const json = safeParseJSON(rawError);
+  if (json.isOk()) {
+    const parsed = CursorApiErrorResponseSchema.safeParse(json.value);
+    if (parsed.success && parsed.data.error) {
+      const { code, message: errorMessage, helpUrl } = parsed.data.error;
+      if (errorMessage) {
+        message = errorMessage;
+      }
+      if (code) {
+        message = `${code}: ${message}`;
+      }
+      if (helpUrl) {
+        message += ` (${helpUrl})`;
+      }
+    }
+  }
+
+  const retryAfter = response.headers.get("retry-after");
+  if (response.status === 429 && retryAfter) {
+    message += ` Retry after ${retryAfter} seconds.`;
+  }
+
+  return message;
+}
 
 interface CursorApiRequestOptions {
   method?: "GET" | "POST" | "DELETE";
@@ -71,6 +126,18 @@ export class CursorCloudAgentsClient {
   constructor(private readonly apiKey: string) {}
 
   /**
+   * Strips the API key from any string that leaves this class. `fetch` header validation echoes
+   * the offending header value, so a malformed key (an embedded newline, for instance) otherwise
+   * reaches the model and the logs verbatim through the thrown error's message.
+   */
+  private redactApiKey(message: string): string {
+    if (this.apiKey.length === 0) {
+      return message;
+    }
+    return message.replaceAll(this.apiKey, REDACTED_API_KEY);
+  }
+
+  /**
    * @cc [owner:sflory,label:security;error-handling] cursor-api-token-boundary
    * The Cursor API key MUST only be sent in the Authorization header to the fixed
    * `https://api.cursor.com` origin and MUST NOT appear in errors or logs.
@@ -100,31 +167,11 @@ export class CursorCloudAgentsClient {
 
       if (!response.ok) {
         const rawError = await response.text();
-        let message = rawError || response.statusText;
-        try {
-          const parsed = JSON.parse(rawError) as {
-            error?: { code?: string; message?: string; helpUrl?: string };
-          };
-          if (parsed.error?.message) {
-            message = parsed.error.message;
-          }
-          if (parsed.error?.code) {
-            message = `${parsed.error.code}: ${message}`;
-          }
-          if (parsed.error?.helpUrl) {
-            message += ` (${parsed.error.helpUrl})`;
-          }
-        } catch {
-          // Keep the response text when Cursor did not return its JSON error shape.
-        }
-
-        const retryAfter = response.headers.get("retry-after");
-        if (response.status === 429 && retryAfter) {
-          message += ` Retry after ${retryAfter} seconds.`;
-        }
         return new Err(
           new Error(
-            `Cursor API request failed (${response.status}): ${message}`
+            this.redactApiKey(
+              `Cursor API request failed (${response.status}): ${formatUpstreamError(response, rawError)}`
+            )
           )
         );
       }
@@ -135,11 +182,8 @@ export class CursorCloudAgentsClient {
         logger.error(
           {
             path,
-            error: parsed.error.message,
-            responseKeys:
-              rawData && typeof rawData === "object"
-                ? Object.keys(rawData)
-                : typeof rawData,
+            error: this.redactApiKey(fromError(parsed.error).toString()),
+            responseShape: describeResponseShape(rawData),
           },
           "[CursorCloudAgents] Invalid API response"
         );
@@ -148,7 +192,11 @@ export class CursorCloudAgentsClient {
       return new Ok(parsed.data);
     } catch (error) {
       return new Err(
-        new Error(`Cursor API request failed: ${normalizeError(error).message}`)
+        new Error(
+          this.redactApiKey(
+            `Cursor API request failed: ${normalizeError(error).message}`
+          )
+        )
       );
     }
   }

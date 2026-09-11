@@ -10,7 +10,9 @@ function optionalLine(label: string, value: unknown): string | null {
     : `- ${label}: ${String(value)}`;
 }
 
-export function renderAgent(agent: CursorAgent | CursorAgentSummary): string {
+// Takes the full agent rather than the summary: `repos` only exists on the full shape, and the
+// summary schema's passthrough would let an arbitrary `repos` value through unvalidated.
+export function renderAgent(agent: CursorAgent): string {
   const lines = [
     `## ${agent.name ?? "Cursor Cloud Agent"}`,
     `- ID: ${agent.id}`,
@@ -21,12 +23,11 @@ export function renderAgent(agent: CursorAgent | CursorAgentSummary): string {
     `- Updated: ${agent.updatedAt}`,
   ].filter((line): line is string => line !== null);
 
-  const fullAgent = agent as CursorAgent;
-  if (fullAgent.repos?.length) {
+  if (agent.repos?.length) {
     lines.push(
       "",
       "### Repositories",
-      ...fullAgent.repos.map(
+      ...agent.repos.map(
         (repo) =>
           `- ${repo.url}${repo.prUrl ? ` — PR: ${repo.prUrl}` : repo.startingRef ? ` @ ${repo.startingRef}` : ""}`
       )

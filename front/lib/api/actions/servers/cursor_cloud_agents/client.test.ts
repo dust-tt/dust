@@ -120,6 +120,89 @@ describe("CursorCloudAgentsClient", () => {
     expect(result.error.message).not.toContain("super-secret-cursor-key");
   });
 
+  it("redacts the API key from transport errors that echo the request header", async () => {
+    // `fetch` rejects a header value containing a newline and quotes the offending value back,
+    // which puts the key itself in the thrown error's message.
+    vi.mocked(untrustedFetch).mockRejectedValue(
+      new Error(
+        'Invalid header value: "Bearer super-secret-cursor-key\nX-Injected: 1"'
+      )
+    );
+    const client = new CursorCloudAgentsClient(
+      "super-secret-cursor-key\nX-Injected: 1"
+    );
+
+    const result = await client.listModels();
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected an error.");
+    }
+    expect(result.error.message).not.toContain("super-secret-cursor-key");
+    expect(result.error.message).toContain("[redacted]");
+  });
+
+  it("redacts the API key echoed back in an upstream error body", async () => {
+    vi.mocked(untrustedFetch).mockResolvedValue(
+      jsonResponse(
+        {
+          error: {
+            code: "invalid_api_key",
+            message: "The key super-secret-cursor-key is not valid.",
+          },
+        },
+        { status: 401 }
+      )
+    );
+    const client = new CursorCloudAgentsClient("super-secret-cursor-key");
+
+    const result = await client.listModels();
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected an error.");
+    }
+    expect(result.error.message).toContain("invalid_api_key");
+    expect(result.error.message).not.toContain("super-secret-cursor-key");
+  });
+
+  it("reports a non-JSON upstream error body without crashing", async () => {
+    vi.mocked(untrustedFetch).mockResolvedValue(
+      new Response("<html>502 Bad Gateway</html>", {
+        status: 502,
+        headers: { "Content-Type": "text/html" },
+      })
+    );
+    const client = new CursorCloudAgentsClient("cursor-api-key");
+
+    const result = await client.listModels();
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected an error.");
+    }
+    expect(result.error.message).toContain("502");
+    expect(result.error.message).toContain("Bad Gateway");
+  });
+
+  it("reports an object-valued upstream error message without rendering [object Object]", async () => {
+    vi.mocked(untrustedFetch).mockResolvedValue(
+      jsonResponse(
+        { error: { message: { nested: "unexpected shape" } } },
+        { status: 400 }
+      )
+    );
+    const client = new CursorCloudAgentsClient("cursor-api-key");
+
+    const result = await client.listModels();
+
+    expect(result.isErr()).toBe(true);
+    if (result.isOk()) {
+      throw new Error("Expected an error.");
+    }
+    expect(result.error.message).not.toContain("[object Object]");
+  });
+
   it("accepts agent and run statuses missing from Cursor's published enums", async () => {
     vi.mocked(untrustedFetch).mockResolvedValue(
       jsonResponse({

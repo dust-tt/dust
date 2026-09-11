@@ -1,27 +1,19 @@
-import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createCursorCloudAgentsTools } from "@app/lib/api/actions/servers/cursor_cloud_agents/tools";
-import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import {
+  makeExtra,
+  setupPlainConversation,
+} from "@app/tests/utils/conversation_test_factories";
 import { describe, expect, it } from "vitest";
 
 describe("Cursor Cloud Agents tools", () => {
   it("rejects a pull request launch without exactly one repository", async () => {
-    const { authenticator } = await createResourceTest({ role: "admin" });
-    const tool = createCursorCloudAgentsTools(authenticator).find(
+    const { auth, conversation } = await setupPlainConversation();
+    const tool = createCursorCloudAgentsTools(auth).find(
       ({ name }) => name === "launch_agent"
     );
     if (!tool) {
       throw new Error("launch_agent tool not found");
     }
-
-    const extra: Omit<ToolHandlerExtra, "runContext"> = {
-      auth: authenticator,
-      requestId: "cursor-cloud-agents-test",
-      sendNotification: async () => {},
-      sendRequest: async () => {
-        throw new Error("Unexpected MCP request");
-      },
-      signal: new AbortController().signal,
-    };
 
     const result = await tool.handler(
       {
@@ -29,7 +21,7 @@ describe("Cursor Cloud Agents tools", () => {
         pullRequestUrl: "https://github.com/dust-tt/dust/pull/123",
         repositoryUrls: [],
       },
-      extra as ToolHandlerExtra
+      makeExtra(auth, conversation)
     );
 
     expect(result.isErr()).toBe(true);

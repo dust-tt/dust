@@ -189,6 +189,25 @@ export const CursorIdResponseSchema = z
   })
   .passthrough();
 
+// Cursor reports failures as `{ error: { code, message, helpUrl } }`. Every field is optional
+// because error bodies are external data: a proxy or gateway can return an unrelated JSON shape
+// with the same HTTP status.
+export const CursorApiErrorResponseSchema = z
+  .object({
+    error: z
+      .object({
+        code: z.string().optional(),
+        message: z.string().optional(),
+        helpUrl: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+// Used to describe an otherwise-unusable response payload in logs without asserting its shape.
+export const CursorJsonObjectSchema = z.record(z.string(), z.unknown());
+
 export type CursorAgent = z.infer<typeof CursorAgentSchema>;
 export type CursorAgentSummary = z.infer<typeof CursorAgentSummarySchema>;
 export type CursorRun = z.infer<typeof CursorRunSchema>;
