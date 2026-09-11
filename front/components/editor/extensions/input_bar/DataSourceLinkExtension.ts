@@ -74,6 +74,10 @@ export const DataSourceLinkExtension = Node.create({
   },
 
   renderMarkdown: (node) => {
-    return `:content_node_mention[${node.attrs?.title ?? ""}]`;
+    const title = node.attrs?.title ?? "";
+    const url = node.attrs?.url;
+    return url
+      ? `:content_node_mention[${title}]{url=${url}}`
+      : `:content_node_mention[${title}]`;
   },
 });

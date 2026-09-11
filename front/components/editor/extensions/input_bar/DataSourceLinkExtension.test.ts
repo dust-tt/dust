@@ -42,7 +42,9 @@ describe("DataSourceLinkExtension", () => {
     ]);
 
     const result = editor.getMarkdown();
-    expect(result).toBe(":content_node_mention[Project Documentation]");
+    expect(result).toBe(
+      ":content_node_mention[Project Documentation]{url=https://example.com/docs}"
+    );
   });
 
   it("should handle data source link with space and other characters", () => {
@@ -74,7 +76,7 @@ describe("DataSourceLinkExtension", () => {
 
     const result = editor.getMarkdown();
     expect(result).toBe(
-      ":content_node_mention[My Document (v2.0) - Final.pdf]"
+      ":content_node_mention[My Document (v2.0) - Final.pdf]{url=https://example.com/docs/My%20Document%20(v2.0)%20-%20Final.pdf}"
     );
   });
 
@@ -106,6 +108,8 @@ describe("DataSourceLinkExtension", () => {
     ]);
 
     const result = editor.getMarkdown();
-    expect(result).toBe(":content_node_mention[Goodies Stock]");
+    expect(result).toBe(
+      ":content_node_mention[Goodies Stock]{url=https://docs.google.com/spreadsheets/d/1fiWXOaCHIVybS1ZD9ODeVt2EvNPyESwRZe0bET47-h0/edit?gid=0#gid=0}"
+    );
   });
 });
