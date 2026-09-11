@@ -34,9 +34,8 @@ questions that fit this exact setup.
 /**
  * @cc [owner:achilleburah,label:product] opening-message-snapshots-the-view
  * The opening message embeds `view` as it stands when `startConversation` runs, and is never
- * regenerated. Callers MUST NOT start while the filter's display names are still resolving,
- * otherwise the greeting names raw identifiers for the whole life of the conversation. A later
- * change to the view MUST reach the agent through a tool that reads it live.
+ * regenerated. Every call site MUST hold off while the view's filter names are still being
+ * resolved, otherwise the greeting names raw identifiers for the whole life of the conversation.
  */
 export function useAnalyticsConversation({
   owner,
