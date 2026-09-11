@@ -168,7 +168,7 @@ runs:
               if (login && email) emails.set(login.trim().toLowerCase(), email.trim());
             }
           }
-          const mention = async (login, name) => {
+          const slackMention = async (login, name) => {
             const email = login && emails.get(login.toLowerCase());
             if (email) {
               const res = await slack('users.lookupByEmail', { email });
@@ -176,13 +176,18 @@ runs:
             }
             return esc(name || login || 'someone');
           };
+          // Only front deploys ping the commit authors: front is where the monorepo's
+          // work ships, so the ping means "your PR is going out". Everywhere else the
+          // authors appear by name and only the person who started the run is pinged.
+          const mention = async (login, name) =>
+            component === 'front' ? slackMention(login, name) : esc(name || login || 'someone');
           const authors = new Map();
           for (const c of shipping.commits) {
             const login = c.author && c.author.login;
             const key = login || c.commit.author.name;
             if (!authors.has(key)) authors.set(key, await mention(login, c.commit.author.name));
           }
-          const starter = await mention(context.actor, context.actor);
+          const starter = await slackMention(context.actor, context.actor);
           const list = [...authors.values()];
           const people = list.length === 1 ? list[0] : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`;
           const count = `${shipping.total} commit${shipping.total === 1 ? '' : 's'}`;
