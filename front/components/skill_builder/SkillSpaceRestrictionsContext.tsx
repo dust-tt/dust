@@ -1,25 +1,18 @@
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { EditorWithoutSpaceAccess } from "@app/components/shared/useEditorsWithoutSpaceAccess";
+import { useEditorsWithoutSpaceAccess } from "@app/components/shared/useEditorsWithoutSpaceAccess";
 import type {
   AttachedKnowledgeFormData,
   ReferencedSkillFormData,
   SkillBuilderFormData,
 } from "@app/components/skill_builder/SkillBuilderFormContext";
-import {
-  useSpaceProjectsLookup,
-  useSpacesAccessCheck,
-} from "@app/lib/swr/spaces";
-import type { EnrichedSpaceType, SpaceType } from "@app/types/space";
+import { useSpaceProjectsLookup } from "@app/lib/swr/spaces";
+import type { EnrichedSpaceType } from "@app/types/space";
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
 import { useWatch } from "react-hook-form";
-
-/** An editor of the skill, with the restricted spaces they cannot read. */
-export interface EditorWithoutSpaceAccess {
-  editor: SkillBuilderFormData["editors"][number];
-  missingSpaces: SpaceType[];
-}
 
 export interface SkillSpaceRestrictionsContextType {
   actionsBySpaceId: ReturnType<typeof getSpaceIdToActionsMap>;
@@ -164,47 +157,11 @@ export function SkillSpaceRestrictionsProvider({
 
   // `allSpaces` only holds spaces the current user can read, so the access check
   // never gets asked about a space it would reject.
-  const restrictedSpaceIds = useMemo(() => {
-    return nonGlobalSpacesWithRestrictions.map((space) => space.sId);
-  }, [nonGlobalSpacesWithRestrictions]);
-
-  const editorIds = useMemo(() => {
-    return (editors ?? []).map((editor) => editor.sId);
-  }, [editors]);
-
-  const { spacesAccess } = useSpacesAccessCheck({
-    workspaceId: owner.sId,
-    spaceIds: restrictedSpaceIds,
-    userIds: editorIds,
+  const editorsWithoutSpaceAccess = useEditorsWithoutSpaceAccess({
+    owner,
+    restrictedSpaces: nonGlobalSpacesWithRestrictions,
+    editors,
   });
-
-  const editorsWithoutSpaceAccess: EditorWithoutSpaceAccess[] = useMemo(() => {
-    const spaceById = new Map(
-      nonGlobalSpacesWithRestrictions.map((space) => [space.sId, space])
-    );
-    const missingSpacesByEditorId = new Map<string, SpaceType[]>();
-
-    for (const { spaceId, userIdsWithoutAccess } of spacesAccess) {
-      const space = spaceById.get(spaceId);
-      if (!space) {
-        continue;
-      }
-
-      for (const userId of userIdsWithoutAccess) {
-        const existing = missingSpacesByEditorId.get(userId);
-        if (existing) {
-          existing.push(space);
-        } else {
-          missingSpacesByEditorId.set(userId, [space]);
-        }
-      }
-    }
-
-    return (editors ?? []).flatMap((editor) => {
-      const missingSpaces = missingSpacesByEditorId.get(editor.sId);
-      return missingSpaces ? [{ editor, missingSpaces }] : [];
-    });
-  }, [editors, nonGlobalSpacesWithRestrictions, spacesAccess]);
 
   const value = useMemo(
     () => ({
