@@ -5,6 +5,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "flvndvd",
   },
+  group_seat_provisioning: {
+    description:
+      "Map workspace groups to seat types so group membership drives members' seats",
+    stage: "dust_only",
+    owner: "tdraier",
+  },
   dust_filesystem: {
     description:
       "Allow fresh Pods and standalone conversations to use the database-backed filesystem",
