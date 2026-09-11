@@ -19,6 +19,7 @@ import { z } from "zod";
 
 import groupDetail from "./[groupId]";
 import grantedRole from "./[groupId]/granted_role";
+import grantedSeatType from "./[groupId]/granted_seat_type";
 import spendLimit from "./[groupId]/spend_limit";
 
 export type GetGroupsResponseBody = {
@@ -130,6 +131,7 @@ app.post(
 
 app.route("/:groupId/spend_limit", spendLimit);
 app.route("/:groupId/granted_role", grantedRole);
+app.route("/:groupId/granted_seat_type", grantedSeatType);
 app.route("/:groupId", groupDetail);
 
 export default app;

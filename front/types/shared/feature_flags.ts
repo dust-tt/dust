@@ -14,7 +14,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   group_seat_provisioning: {
     description:
       "Map workspace groups to seat types so group membership drives members' seats",
-    stage: "dust_only",
+    stage: "ask_owner",
     owner: "tdraier",
   },
   dust_filesystem: {
