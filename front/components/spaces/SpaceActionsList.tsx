@@ -21,7 +21,8 @@ import { isDevelopment } from "@app/types/shared/env";
 import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import { DataTable, Spinner } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
+import { DataTable, DataTableSkeleton, LoadingBlock } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type { ParsedUrlQuery } from "querystring";
 import * as React from "react";
@@ -46,6 +47,31 @@ interface SpaceActionsListProps {
   isAdmin: boolean;
   owner: LightWorkspaceType;
   space: SpaceType;
+}
+
+function SpaceActionSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return (
+        <div className="flex items-center gap-2 py-3">
+          <LoadingBlock className="h-9 w-9 shrink-0 rounded-lg" />
+          <LoadingBlock
+            className={rowIndex % 2 === 0 ? "h-4 w-28" : "h-4 w-36"}
+          />
+        </div>
+      );
+    case "description":
+      return (
+        <LoadingBlock
+          className={rowIndex % 2 === 0 ? "h-4 w-3/4" : "h-4 w-1/2"}
+        />
+      );
+    default:
+      return null;
+  }
 }
 
 export const SpaceActionsList = ({
@@ -170,15 +196,19 @@ export const SpaceActionsList = ({
     containerId: ACTION_BUTTONS_CONTAINER_ID,
   });
 
+  const columns = getTableColumns();
+
   if (isMCPServerViewsLoading) {
     return (
-      <div className="mt-8 flex justify-center">
-        <Spinner size="lg" />
+      <div className="pb-4">
+        <DataTableSkeleton
+          columns={columns}
+          SkeletonCell={SpaceActionSkeletonCell}
+          rowHeight={60}
+        />
       </div>
     );
   }
-
-  const columns = getTableColumns();
 
   const isEmpty = rows.length === 0;
 
