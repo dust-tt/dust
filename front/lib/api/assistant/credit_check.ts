@@ -5,8 +5,7 @@ import {
 } from "@app/lib/api/credits/access_control";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
-import { getCreditSpendCheckpointThresholdAwuCredits } from "@app/lib/constants/credits";
-import { isEnterprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 
@@ -57,8 +56,8 @@ export async function checkPoolCreditGate(
 }
 
 export type CreditSpendCheckpointCheckResult =
-  // `exempt` means the check does not apply to this execution at all (no credit-priced plan, no
-  // human user), as opposed to merely not having crossed the threshold yet.
+  // `exempt` means the check does not apply to this execution at all (no plan resolved, no human
+  // user), as opposed to merely not having crossed the threshold yet.
   | { crossed: false; exempt: boolean }
   | { crossed: true; thresholdAwuCredits: number };
 
@@ -73,29 +72,29 @@ const EXEMPT: CreditSpendCheckpointCheckResult = {
 
 /**
  * Determines whether a single agent message's own spend has reached the checkpoint at which the
- * loop pauses and asks the user whether to continue. Applies to the same workspaces as the pool
- * gate above (credit-priced plans with a Metronome customer), and only when a human user is there
- * to answer.
+ * loop pauses and asks the user whether to continue. Unlike the pool gate above, this applies to
+ * every plan (credit-priced or not, with or without a Metronome customer) — it's a runaway-loop
+ * safeguard for the human on the other end, not a billing enforcement — and only when a human
+ * user is there to answer.
+ */
+/**
+ * @cc [owner:avervaet,label:product] checkpoint-applies-regardless-of-plan
+ * This gate MUST NOT key exemption off `isCreditPricedPlan` or the presence of a
+ * `metronomeCustomerId`: it applies to every plan, including legacy Stripe-billed and
+ * non-Metronome workspaces, since it protects the human from a runaway loop rather than
+ * enforcing billing. Only a missing `plan` or a missing human `user()` exempts an execution.
  */
 export async function checkCreditSpendCheckpointGate(
   auth: Authenticator,
   { consumedAwuCredits }: { consumedAwuCredits: number }
 ): Promise<CreditSpendCheckpointCheckResult> {
-  const owner = auth.getNonNullableWorkspace();
   const plan = auth.subscription()?.plan;
 
-  if (
-    !owner.metronomeCustomerId ||
-    !plan ||
-    !isCreditPricedPlan(plan) ||
-    !auth.user()
-  ) {
+  if (!plan || !auth.user()) {
     return EXEMPT;
   }
 
-  const thresholdAwuCredits = getCreditSpendCheckpointThresholdAwuCredits({
-    isEnterprisePlan: isEnterprisePlanPrefix(plan.code),
-  });
+  const thresholdAwuCredits = CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS;
 
   return consumedAwuCredits >= thresholdAwuCredits
     ? { crossed: true, thresholdAwuCredits }
