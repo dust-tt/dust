@@ -71,16 +71,18 @@ function ToolActionContent({ action, isExpanded }: ToolActionContentProps) {
         {action.mcpIO ? (
           <span
             aria-hidden="true"
-            className={buttonVariants({
-              variant: "outline",
-              size: "sm",
-              isIconOnly: true,
-              press: false,
-            })}
+            className={cn(
+              buttonVariants({
+                variant: "outline",
+                size: "sm",
+                isIconOnly: true,
+                press: false,
+              })
+            )}
           >
             <ChevronDown
               className={cn(
-                "h-4 w-4 transition-transform motion-reduce:transition-none",
+                "h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none",
                 !isExpanded ? "-rotate-90" : null
               )}
             />
@@ -96,7 +98,7 @@ function ToolActionContent({ action, isExpanded }: ToolActionContentProps) {
           </span>
         )}
       </span>
-      <span className="flex min-w-0 flex-1 items-center gap-3">
+      <span className="flex min-w-0 flex-1 items-center gap-4">
         <span className="w-24 shrink-0 text-sm tabular-nums text-muted-foreground">
           {action.created ? new Date(action.created).toLocaleTimeString() : "—"}
         </span>
@@ -153,7 +155,7 @@ export function ToolActionView({
               : undefined
           }
           className={cn(
-            "flex w-full items-center gap-2 rounded-md border",
+            "flex w-full items-center gap-4 rounded-md border",
             "border-separator bg-muted-background p-2 text-left",
             action.status === "errored"
               ? "border-border-warning bg-background"
@@ -184,20 +186,18 @@ export function ToolActionView({
         )}
       </div>
       {action.mcpIO && isExpanded && (
-        <div className="pl-9">
-          <div className="overflow-hidden rounded-md border border-separator bg-background">
-            <CodeBlock wrapLongLines className="language-json">
-              {JSON.stringify(
-                {
-                  params: action.mcpIO.params,
-                  output: action.mcpIO.output,
-                  generatedFiles: action.mcpIO.generatedFiles,
-                },
-                undefined,
-                2
-              )}
-            </CodeBlock>
-          </div>
+        <div className="overflow-hidden rounded-md border border-separator bg-background">
+          <CodeBlock wrapLongLines className="language-json">
+            {JSON.stringify(
+              {
+                params: action.mcpIO.params,
+                output: action.mcpIO.output,
+                generatedFiles: action.mcpIO.generatedFiles,
+              },
+              undefined,
+              2
+            )}
+          </CodeBlock>
         </div>
       )}
     </div>

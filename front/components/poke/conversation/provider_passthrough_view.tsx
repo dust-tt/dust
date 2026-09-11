@@ -150,16 +150,18 @@ export function ProviderPassthroughView({
         <span className="shrink-0">
           <span
             aria-hidden="true"
-            className={buttonVariants({
-              variant: "outline",
-              size: "sm",
-              isIconOnly: true,
-              press: false,
-            })}
+            className={cn(
+              buttonVariants({
+                variant: "outline",
+                size: "sm",
+                isIconOnly: true,
+                press: false,
+              })
+            )}
           >
             <ChevronDown
               className={cn(
-                "h-4 w-4 transition-transform motion-reduce:transition-none",
+                "h-4 w-4 shrink-0 transition-transform motion-reduce:transition-none",
                 !isExpanded ? "-rotate-90" : null
               )}
             />
@@ -182,12 +184,10 @@ export function ProviderPassthroughView({
         </span>
       </button>
       {isExpanded && (
-        <div className="pl-9">
-          <div className="overflow-hidden rounded-md border border-separator bg-background">
-            <CodeBlock wrapLongLines className="language-json">
-              {JSON.stringify(entry.block, null, 2)}
-            </CodeBlock>
-          </div>
+        <div className="overflow-hidden rounded-md border border-separator bg-background">
+          <CodeBlock wrapLongLines className="language-json">
+            {JSON.stringify(entry.block, null, 2)}
+          </CodeBlock>
         </div>
       )}
     </div>
