@@ -1,6 +1,10 @@
+import type { DimensionLabel } from "@app/lib/api/analytics/consumption/labels";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionScopeFilter,
+  ConsumptionTopDimension,
+} from "@app/lib/api/analytics/consumption/scope";
 import { buildConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/scope";
 import {
   roundToTwoDecimals,
@@ -10,9 +14,11 @@ import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
+import logger from "@app/logger/logger";
 import type { AgentMessageConsumptionAnalyticsData } from "@app/types/assistant/analytics";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
 
@@ -106,6 +112,44 @@ const CONSUMPTION_LINE_EXPORT_HEADERS: (keyof ConsumptionLineExportRow)[] = [
   "executionTimeMs",
 ];
 
+const ES_SORT: estypes.Sort = [
+  { completed_at: "asc" },
+  { agent_message_id: "asc" },
+  { consumption_key: "asc" },
+];
+
+type DimensionLabelCache = Map<
+  ConsumptionTopDimension,
+  Map<string, DimensionLabel>
+>;
+
+function newDimensionLabelCache(): DimensionLabelCache {
+  return new Map();
+}
+
+async function resolveAndCache(
+  auth: Authenticator,
+  cache: DimensionLabelCache,
+  dimension: ConsumptionTopDimension,
+  keys: string[]
+): Promise<Map<string, DimensionLabel>> {
+  let cached = cache.get(dimension);
+  if (!cached) {
+    cached = new Map();
+    cache.set(dimension, cached);
+  }
+
+  const uncached = keys.filter((k) => !cached.has(k));
+  if (uncached.length > 0) {
+    const resolved = await resolveDimensionLabels(auth, dimension, uncached);
+    for (const [k, v] of resolved) {
+      cached.set(k, v);
+    }
+  }
+
+  return cached;
+}
+
 // One document per unit of billed credit consumption
 async function fetchAllConsumptionDocuments(
   query: estypes.QueryDslQueryContainer
@@ -120,11 +164,7 @@ async function fetchAllConsumptionDocuments(
         query,
         {
           size: EXPORT_PAGE_SIZE,
-          sort: [
-            { completed_at: "asc" },
-            { agent_message_id: "asc" },
-            { consumption_key: "asc" },
-          ],
+          sort: ES_SORT,
           search_after: searchAfter,
         }
       );
@@ -149,8 +189,15 @@ async function fetchAllConsumptionDocuments(
 
 async function buildConsumptionLineExportRows(
   auth: Authenticator,
-  docs: AgentMessageConsumptionAnalyticsData[]
+  docs: AgentMessageConsumptionAnalyticsData[],
+  labelCache?: DimensionLabelCache
 ): Promise<ConsumptionLineExportRow[]> {
+  const resolve = labelCache
+    ? (dimension: ConsumptionTopDimension, keys: string[]) =>
+        resolveAndCache(auth, labelCache, dimension, keys)
+    : (dimension: ConsumptionTopDimension, keys: string[]) =>
+        resolveDimensionLabels(auth, dimension, keys);
+
   const [
     agentLabels,
     userLabels,
@@ -160,25 +207,21 @@ async function buildConsumptionLineExportRows(
     groupLabels,
     sourceLabels,
   ] = await Promise.all([
-    resolveDimensionLabels(auth, "agent", [
-      ...new Set(docs.map((doc) => doc.agent.attributed_id)),
-    ]),
-    resolveDimensionLabels(auth, "user", [
-      ...new Set(removeNulls(docs.map((doc) => doc.user?.id))),
-    ]),
-    resolveDimensionLabels(auth, "model", [
+    resolve("agent", [...new Set(docs.map((doc) => doc.agent.attributed_id))]),
+    resolve("user", [...new Set(removeNulls(docs.map((doc) => doc.user?.id)))]),
+    resolve("model", [
       ...new Set(removeNulls(docs.map((doc) => doc.model?.model_id))),
     ]),
-    resolveDimensionLabels(auth, "tool", [
+    resolve("tool", [
       ...new Set(removeNulls(docs.map((doc) => doc.tool?.server_name))),
     ]),
-    resolveDimensionLabels(auth, "skill", [
+    resolve("skill", [
       ...new Set(docs.flatMap((doc) => doc.tool?.attributed_skill_ids ?? [])),
     ]),
-    resolveDimensionLabels(auth, "group", [
+    resolve("group", [
       ...new Set(docs.flatMap((doc) => doc.user?.group_ids ?? [])),
     ]),
-    resolveDimensionLabels(auth, "source", [
+    resolve("source", [
       ...new Set(removeNulls(docs.map((doc) => doc.context_origin))),
     ]),
   ]);
@@ -274,6 +317,32 @@ export async function fetchConsumptionExportBucketCsv(
     filter?: ConsumptionScopeFilter;
   }
 ): Promise<Result<string, ElasticsearchError>> {
+  const rows = await fetchConsumptionExportRows(auth, { period, filter });
+  if (rows.isErr()) {
+    return rows;
+  }
+
+  return new Ok(
+    rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows.value, {
+      includeHeader: false,
+    })
+  );
+}
+
+export function buildConsumptionLineExportCsvHeader(): string {
+  return rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, []);
+}
+
+async function fetchConsumptionExportRows(
+  auth: Authenticator,
+  {
+    period,
+    filter,
+  }: {
+    period: ConsumptionPeriod;
+    filter?: ConsumptionScopeFilter;
+  }
+): Promise<Result<ConsumptionLineExportRow[], ElasticsearchError>> {
   const query = buildConsumptionScopeQuery({
     auth,
     startDate: period.startDate,
@@ -287,12 +356,153 @@ export async function fetchConsumptionExportBucketCsv(
   }
 
   const rows = await buildConsumptionLineExportRows(auth, docsResult.value);
+  return new Ok(rows);
+}
 
-  return new Ok(
-    rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows, { includeHeader: false })
+export function rowsToNdjson(rows: ConsumptionLineExportRow[]): string {
+  return (
+    rows.map((row) => JSON.stringify(row)).join("\n") +
+    (rows.length > 0 ? "\n" : "")
   );
 }
 
-export function buildConsumptionLineExportCsvHeader(): string {
-  return rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, []);
+export function rowsToCsvString(rows: ConsumptionLineExportRow[]): string {
+  return rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows);
+}
+
+/**
+ * Streams consumption export data page by page. The first ES page is fetched
+ * eagerly: if it fails, an Err is returned so the caller can respond with a
+ * proper API error. Once streaming has started (Ok), mid-stream failures are
+ * appended as a raw error line (intentionally not valid CSV/NDJSON so parsers
+ * break loudly) and the stream is closed.
+ */
+export async function streamConsumptionExport(
+  auth: Authenticator,
+  opts: {
+    period: ConsumptionPeriod;
+    filter?: ConsumptionScopeFilter;
+    format: "csv" | "ndjson";
+    signal?: AbortSignal;
+  }
+): Promise<Result<ReadableStream<Uint8Array>, ElasticsearchError>> {
+  const encoder = new TextEncoder();
+  const { period, filter, format, signal } = opts;
+
+  const query = buildConsumptionScopeQuery({
+    auth,
+    startDate: period.startDate,
+    endDate: period.endDate,
+    filter,
+  });
+
+  // Fetch the first page eagerly so failures surface as a Result before
+  // the caller commits to a streaming 200 response.
+  const firstResult =
+    await searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>(
+      query,
+      { size: EXPORT_PAGE_SIZE, sort: ES_SORT }
+    );
+
+  if (firstResult.isErr()) {
+    return new Err(firstResult.error);
+  }
+
+  const firstPageHits = firstResult.value.hits.hits;
+  let cancelled = false;
+
+  async function* pages(): AsyncGenerator<Uint8Array> {
+    // Yield the first (already-fetched) page, then continue paginating.
+    // Labels resolved on earlier pages are cached and reused.
+    const labelCache = newDimensionLabelCache();
+    let currentHits = firstPageHits;
+    let isFirst = true;
+
+    while (true) {
+      const docs: AgentMessageConsumptionAnalyticsData[] = [];
+      for (const hit of currentHits) {
+        if (hit._source) {
+          docs.push(hit._source);
+        }
+      }
+
+      const rows = await buildConsumptionLineExportRows(auth, docs, labelCache);
+
+      const chunk =
+        format === "csv"
+          ? rowsToCsv(CONSUMPTION_LINE_EXPORT_HEADERS, rows, {
+              includeHeader: isFirst,
+            })
+          : rowsToNdjson(rows);
+
+      isFirst = false;
+      yield encoder.encode(chunk);
+
+      if (currentHits.length < EXPORT_PAGE_SIZE) {
+        break;
+      }
+
+      if (cancelled) {
+        return;
+      }
+      if (signal?.aborted) {
+        yield encoder.encode("ERROR: Export timed out.");
+        return;
+      }
+
+      const searchAfter = currentHits[currentHits.length - 1]?.sort;
+      const result =
+        await searchConsumptionAnalytics<AgentMessageConsumptionAnalyticsData>(
+          query,
+          {
+            size: EXPORT_PAGE_SIZE,
+            sort: ES_SORT,
+            search_after: searchAfter,
+          }
+        );
+
+      if (result.isErr()) {
+        logger.error(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            startDate: period.startDate,
+            endDate: period.endDate,
+            filter,
+            error: result.error.message,
+          },
+          "[Consumption Export] Failed to stream consumption lines"
+        );
+        yield encoder.encode("ERROR: Internal server error.");
+        return;
+      }
+
+      currentHits = result.value.hits.hits;
+    }
+  }
+
+  const gen = pages();
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { value, done } = await gen.next();
+        if (done) {
+          controller.close();
+        } else {
+          controller.enqueue(value);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          logger.error({ err }, "[Consumption Export] Unexpected stream error");
+          controller.error(normalizeError(err));
+        } else {
+          controller.close();
+        }
+      }
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
+
+  return new Ok(stream);
 }

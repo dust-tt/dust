@@ -899,6 +899,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "xai_feature"
   | "conversations_slack_notifications"
   | "collapsible_messages"
+  | "consumption_export_api"
   | "conversation_consumption_details"
   | "use_dust_keys"
   | "sensitivity_labels"
@@ -3250,6 +3251,64 @@ export const GetAnalyticsExportRequestSchema = z
 
 export type GetAnalyticsExportRequestType = z.infer<
   typeof GetAnalyticsExportRequestSchema
+>;
+
+const ConsumptionExportFilterKeySchema = z.enum([
+  "agents",
+  "users",
+  "api_keys",
+  "groups",
+  "models",
+  "tools",
+  "skills",
+  "sources",
+  "tags",
+]);
+
+const IsoDateTimeSchema = z
+  .string()
+  .refine((s): s is string => !isNaN(new Date(s).getTime()), {
+    message: "Must be a valid ISO 8601 datetime (e.g. 2026-01-15T00:00:00Z)",
+  });
+
+export const PostConsumptionExportRequestSchema = z
+  .object({
+    startDate: IsoDateTimeSchema,
+    endDate: IsoDateTimeSchema,
+    format: z.enum(["csv", "ndjson"]).optional(),
+    filter: z
+      .record(ConsumptionExportFilterKeySchema, z.string().max(256).array())
+      .optional(),
+  })
+  .refine(
+    (d) => new Date(d.startDate).getTime() < new Date(d.endDate).getTime(),
+    { message: "startDate must be strictly before endDate" }
+  )
+  .refine(
+    (d) => {
+      const diffMs =
+        new Date(d.endDate).getTime() - new Date(d.startDate).getTime();
+      return diffMs <= 30 * 24 * 60 * 60 * 1000;
+    },
+    { message: "Time range must not exceed 30 days" }
+  )
+  .refine(
+    (d) => {
+      if (!d.filter) {
+        return true;
+      }
+      const total = Object.values(d.filter).reduce(
+        (sum, arr) => sum + arr.length,
+        0
+      );
+      // Aligned with CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION in front.
+      return total <= 500;
+    },
+    { message: "Filter must not exceed 500 values total across all dimensions" }
+  );
+
+export type PostConsumptionExportRequestType = z.infer<
+  typeof PostConsumptionExportRequestSchema
 >;
 
 export const FileUploadUrlRequestSchema = z.object({
