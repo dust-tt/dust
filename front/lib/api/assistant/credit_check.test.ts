@@ -49,14 +49,18 @@ function makeAuth({
   isCreditPriced = true,
   metronomeCustomerId = "metro_123",
   hasUser = true,
+  planCode,
 }: {
   isCreditPriced?: boolean;
   metronomeCustomerId?: string | null;
   hasUser?: boolean;
+  planCode?: string;
 } = {}): Authenticator {
-  const plan = isCreditPriced
-    ? { code: "ENT_NEW_CREDIT", limits: {} }
-    : { code: "LEGACY_PRO", limits: {} };
+  const plan = planCode
+    ? { code: planCode, limits: {} }
+    : isCreditPriced
+      ? { code: "ENT_NEW_CREDIT", limits: {} }
+      : { code: "LEGACY_PRO", limits: {} };
 
   return {
     getNonNullableWorkspace: () => ({ sId: "ws_test", metronomeCustomerId }),
@@ -191,10 +195,21 @@ describe("checkCreditSpendCheckpointGate", () => {
   });
 
   it("notifies with the fixed threshold once this message's consumed credits reach it", async () => {
-    const auth = makeAuth({ hasUser: true });
+    const auth = makeAuth({ hasUser: true, planCode: "CP_BUSINESS_PLAN" });
     const result = await checkCreditSpendCheckpointGate(auth, {
       consumedAwuCredits: 1000,
     });
     expect(result).toEqual({ crossed: true, thresholdAwuCredits: 1000 });
+    expect(mockGetCreditSpendCheckpointAwuCredits).toHaveBeenCalledWith({
+      isEnterprisePlan: false,
+    });
+  });
+
+  it("requests the enterprise threshold for an enterprise plan", async () => {
+    const auth = makeAuth({ hasUser: true, planCode: "CP_ENT_DEFAULT_PLAN" });
+    await checkCreditSpendCheckpointGate(auth, { consumedAwuCredits: 1000 });
+    expect(mockGetCreditSpendCheckpointAwuCredits).toHaveBeenCalledWith({
+      isEnterprisePlan: true,
+    });
   });
 });
