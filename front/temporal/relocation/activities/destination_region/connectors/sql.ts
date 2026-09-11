@@ -12,22 +12,22 @@ import { QueryTypes } from "sequelize";
 export async function processConnectorsTableChunk({
   connectorId,
   dataPath,
-  destRegion,
-  sourceRegion,
+  destCell,
+  sourceCell,
   tableName,
   workspaceId,
 }: {
   connectorId?: ModelId;
   dataPath: string;
-  destRegion: string;
-  sourceRegion: string;
+  destCell: string;
+  sourceCell: string;
   tableName: string;
   workspaceId: string;
 }) {
   const localLogger = logger.child({
     connectorId,
-    destRegion,
-    sourceRegion,
+    destCell,
+    sourceCell,
     tableName,
     workspaceId,
   });

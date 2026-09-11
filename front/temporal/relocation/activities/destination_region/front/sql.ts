@@ -17,26 +17,26 @@ import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
-import type { RegionType } from "@app/types/region";
+import type { CellType } from "@app/types/cell";
 import assert from "assert";
 import { QueryTypes } from "sequelize";
 
 interface WriteCoreEntitiesParams {
   dataPath: string;
-  destRegion: RegionType;
-  sourceRegion: RegionType;
+  destCell: CellType;
+  sourceCell: CellType;
   workspaceId: string;
 }
 
 export async function writeCoreEntitiesToDestinationRegionWithIdNormalization({
   dataPath,
-  destRegion,
-  sourceRegion,
+  destCell,
+  sourceCell,
   workspaceId,
 }: WriteCoreEntitiesParams) {
   const localLogger = logger.child({
-    destRegion,
-    sourceRegion,
+    destCell,
+    sourceCell,
     workspaceId,
   });
 
@@ -48,9 +48,9 @@ export async function writeCoreEntitiesToDestinationRegionWithIdNormalization({
 
   const normalization = await buildDestinationIdNormalization({ blob });
   await writeDestinationIdNormalization({
-    destRegion,
+    destCell,
     normalization,
-    sourceRegion,
+    sourceCell,
     workspaceId,
   });
 
@@ -118,22 +118,22 @@ export async function writeCoreEntitiesToDestinationRegionWithIdNormalization({
 
 interface ProcessFrontTableChunkParams {
   dataPath: string;
-  destRegion: RegionType;
-  sourceRegion: RegionType;
+  destCell: CellType;
+  sourceCell: CellType;
   tableName: string;
   workspaceId: string;
 }
 
 export async function processFrontTableChunkWithIdNormalization({
   dataPath,
-  destRegion,
-  sourceRegion,
+  destCell,
+  sourceCell,
   tableName,
   workspaceId,
 }: ProcessFrontTableChunkParams) {
   const localLogger = logger.child({
-    destRegion,
-    sourceRegion,
+    destCell,
+    sourceCell,
     tableName,
     workspaceId,
   });
@@ -159,8 +159,8 @@ export async function processFrontTableChunkWithIdNormalization({
   }
 
   const normalization = await readDestinationIdNormalization({
-    destRegion,
-    sourceRegion,
+    destCell,
+    sourceCell,
     workspaceId,
   });
 

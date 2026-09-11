@@ -1,8 +1,8 @@
-import { config } from "@app/lib/api/regions/config";
+import { config } from "@app/lib/api/cells/config";
 import { Authenticator } from "@app/lib/auth";
 import { makeScript } from "@app/scripts/helpers";
 import { launchCoreDataSourceRelocationWorkflow } from "@app/temporal/relocation/client";
-import { isRegionType, SUPPORTED_REGIONS } from "@app/types/region";
+import { isCellType, SUPPORTED_CELLS } from "@app/types/cell";
 import assert from "assert";
 
 makeScript(
@@ -12,14 +12,14 @@ makeScript(
       type: "string",
       demandOption: true,
     },
-    sourceRegion: {
+    sourceCell: {
       type: "string",
-      choices: SUPPORTED_REGIONS,
+      choices: SUPPORTED_CELLS,
       demandOption: true,
     },
-    destinationRegion: {
+    destinationCell: {
       type: "string",
-      choices: SUPPORTED_REGIONS,
+      choices: SUPPORTED_CELLS,
       demandOption: true,
     },
     dataSourceCoreIds: {
@@ -31,7 +31,7 @@ makeScript(
     destIds: {
       type: "string",
       description:
-        "The ids of the data source in the destination region (stringified JSON)",
+        "The ids of the data source in the destination cell (stringified JSON)",
       demandOption: true,
     },
     pageCursor: {
@@ -44,21 +44,21 @@ makeScript(
     {
       dataSourceCoreIds,
       destIds,
-      destinationRegion,
+      destinationCell,
       execute,
       pageCursor,
-      sourceRegion,
+      sourceCell,
       workspaceId,
     },
     logger
   ) => {
-    if (!isRegionType(sourceRegion) || !isRegionType(destinationRegion)) {
-      logger.error("Invalid region.");
+    if (!isCellType(sourceCell) || !isCellType(destinationCell)) {
+      logger.error("Invalid cell.");
       return;
     }
 
-    if (sourceRegion === destinationRegion) {
-      logger.error("Source and destination regions must be different.");
+    if (sourceCell === destinationCell) {
+      logger.error("Source and destination cells must be different.");
       return;
     }
 
@@ -71,8 +71,8 @@ makeScript(
     }
 
     assert(
-      config.getCurrentRegion() === sourceRegion,
-      "Must run from source region"
+      config.getCurrentCell().name === sourceCell,
+      "Must run from the source cell"
     );
 
     const parsedDataSourceCoreIds = JSON.parse(dataSourceCoreIds);
@@ -82,9 +82,9 @@ makeScript(
       await launchCoreDataSourceRelocationWorkflow({
         dataSourceCoreIds: parsedDataSourceCoreIds,
         destIds: parsedDestIds,
-        destRegion: destinationRegion,
+        destCell: destinationCell,
         pageCursor,
-        sourceRegion,
+        sourceCell,
         workspaceId,
       });
     }

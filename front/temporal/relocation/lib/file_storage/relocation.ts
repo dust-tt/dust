@@ -10,6 +10,24 @@ import { isDevelopment } from "@app/types/shared/env";
 
 const RELOCATION_PATH_PREFIX = "relocations";
 
+// A staging reference names its bucket: the source stages in the bucket of its own
+// location and the destination reads wherever the reference points, so a move inside
+// the EU never crosses to the US bucket. Bare paths are read from the local bucket.
+function parseRelocationStorageRef(ref: string): {
+  bucket: string;
+  path: string;
+} {
+  const match = ref.match(/^gs:\/\/([^/]+)\/(.+)$/);
+  if (match) {
+    return { bucket: match[1], path: match[2] };
+  }
+  return { bucket: config.getGcsRelocationBucket(), path: ref };
+}
+
+function getRelocationBucket(bucket: string) {
+  return getBucketInstance(bucket, { useServiceAccount: isDevelopment() });
+}
+
 interface RelocationStorageOptions {
   workspaceId: string;
   type: "front" | "connectors" | "core";
@@ -39,9 +57,8 @@ export async function writeToRelocationStorage(
     fileName: fileName ?? Date.now().toString(),
   });
 
-  const relocationBucket = getBucketInstance(config.getGcsRelocationBucket(), {
-    useServiceAccount: isDevelopment(),
-  });
+  const bucket = config.getGcsRelocationBucket();
+  const relocationBucket = getRelocationBucket(bucket);
 
   try {
     await relocationBucket.uploadRawContentToBucket({
@@ -63,27 +80,25 @@ export async function writeToRelocationStorage(
     throw err;
   }
 
-  return path;
+  return `gs://${bucket}/${path}`;
 }
 
 export async function readFromRelocationStorage<T = unknown>(
   dataPath: string
 ): Promise<T> {
-  const relocationBucket = getBucketInstance(config.getGcsRelocationBucket(), {
-    useServiceAccount: isDevelopment(),
-  });
+  const { bucket, path } = parseRelocationStorageRef(dataPath);
+  const relocationBucket = getRelocationBucket(bucket);
 
-  const content = await relocationBucket.fetchFileContent(dataPath);
+  const content = await relocationBucket.fetchFileContent(path);
 
   return JSON.parse(content) as T;
 }
 
 export async function deleteFromRelocationStorage(dataPath: string) {
-  const relocationBucket = getBucketInstance(config.getGcsRelocationBucket(), {
-    useServiceAccount: isDevelopment(),
-  });
+  const { bucket, path } = parseRelocationStorageRef(dataPath);
+  const relocationBucket = getRelocationBucket(bucket);
 
-  await relocationBucket.delete(dataPath, { ignoreNotFound: true });
+  await relocationBucket.delete(path, { ignoreNotFound: true });
 }
 
 export async function withJSONSerializationRetry<

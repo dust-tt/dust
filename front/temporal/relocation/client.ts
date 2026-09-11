@@ -2,28 +2,28 @@ import type {
   CreateDataSourceProjectResult,
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
-import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
+import { RELOCATION_QUEUES_PER_CELL } from "@app/temporal/relocation/config";
 import { getTemporalRelocationClient } from "@app/temporal/relocation/temporal";
 import {
   workspaceRelocateCoreDataSourceResourcesWorkflow,
   workspaceRelocationWorkflow,
 } from "@app/temporal/relocation/workflows";
-import type { RegionType } from "@app/types/region";
+import type { CellType } from "@app/types/cell";
 
 export async function launchWorkspaceRelocationWorkflow({
   workspaceId,
-  sourceRegion,
-  destRegion,
+  sourceCell,
+  destCell,
 }: {
   workspaceId: string;
-  sourceRegion: RegionType;
-  destRegion: RegionType;
+  sourceCell: CellType;
+  destCell: CellType;
 }) {
   const client = await getTemporalRelocationClient();
 
   await client.workflow.start(workspaceRelocationWorkflow, {
-    args: [{ workspaceId, sourceRegion, destRegion }],
-    taskQueue: RELOCATION_QUEUES_PER_REGION[sourceRegion],
+    args: [{ workspaceId, sourceCell, destCell }],
+    taskQueue: RELOCATION_QUEUES_PER_CELL[sourceCell],
     workflowId: `relocate-workspace-${workspaceId}`,
   });
 }
@@ -31,16 +31,16 @@ export async function launchWorkspaceRelocationWorkflow({
 export async function launchCoreDataSourceRelocationWorkflow({
   dataSourceCoreIds,
   destIds,
-  destRegion,
+  destCell,
   pageCursor,
-  sourceRegion,
+  sourceCell,
   workspaceId,
 }: {
   dataSourceCoreIds: DataSourceCoreIds;
   destIds: CreateDataSourceProjectResult;
-  destRegion: RegionType;
+  destCell: CellType;
   pageCursor: string | null;
-  sourceRegion: RegionType;
+  sourceCell: CellType;
   workspaceId: string;
 }) {
   const client = await getTemporalRelocationClient();
@@ -57,13 +57,13 @@ export async function launchCoreDataSourceRelocationWorkflow({
         {
           dataSourceCoreIds,
           destIds,
-          destRegion,
+          destCell,
           pageCursor,
-          sourceRegion,
+          sourceCell,
           workspaceId,
         },
       ],
-      taskQueue: RELOCATION_QUEUES_PER_REGION[sourceRegion],
+      taskQueue: RELOCATION_QUEUES_PER_CELL[sourceCell],
     }
   );
 }

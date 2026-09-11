@@ -1,8 +1,8 @@
 import { makeScript } from "@app/scripts/helpers";
-import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
+import { RELOCATION_QUEUES_PER_CELL } from "@app/temporal/relocation/config";
 import { getTemporalRelocationClient } from "@app/temporal/relocation/temporal";
 import { workspaceRelocateAppsWorkflow } from "@app/temporal/relocation/workflows";
-import { isRegionType, SUPPORTED_REGIONS } from "@app/types/region";
+import { isCellType, SUPPORTED_CELLS } from "@app/types/cell";
 import { WorkflowNotFoundError } from "@temporalio/common";
 
 makeScript(
@@ -12,31 +12,28 @@ makeScript(
       type: "string",
       demandOption: true,
     },
-    sourceRegion: {
+    sourceCell: {
       type: "string",
-      choices: SUPPORTED_REGIONS,
+      choices: SUPPORTED_CELLS,
       demandOption: true,
     },
-    destRegion: {
+    destCell: {
       type: "string",
-      choices: SUPPORTED_REGIONS,
+      choices: SUPPORTED_CELLS,
       demandOption: true,
     },
     suffix: {
       type: "string",
     },
   },
-  async (
-    { workspaceId, sourceRegion, destRegion, suffix, execute },
-    logger
-  ) => {
-    if (!isRegionType(sourceRegion) || !isRegionType(destRegion)) {
-      logger.error("Invalid region.");
+  async ({ workspaceId, sourceCell, destCell, suffix, execute }, logger) => {
+    if (!isCellType(sourceCell) || !isCellType(destCell)) {
+      logger.error("Invalid cell.");
       return;
     }
 
-    if (sourceRegion === destRegion) {
-      logger.error("Source and destination regions must be different.");
+    if (sourceCell === destCell) {
+      logger.error("Source and destination cells must be different.");
       return;
     }
 
@@ -70,17 +67,17 @@ makeScript(
       logger.info(
         {
           workspaceId,
-          sourceRegion,
-          destRegion,
-          queue: RELOCATION_QUEUES_PER_REGION[sourceRegion],
+          sourceCell,
+          destCell,
+          queue: RELOCATION_QUEUES_PER_CELL[sourceCell],
           workflowId,
         },
         "starting workspaceRelocateAppsWorkflow"
       );
 
       await client.workflow.start(workspaceRelocateAppsWorkflow, {
-        args: [{ workspaceId, sourceRegion, destRegion }],
-        taskQueue: RELOCATION_QUEUES_PER_REGION[sourceRegion],
+        args: [{ workspaceId, sourceCell, destCell }],
+        taskQueue: RELOCATION_QUEUES_PER_CELL[sourceCell],
         workflowId,
         memo: { workspaceId },
       });

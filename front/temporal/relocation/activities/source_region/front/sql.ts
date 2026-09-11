@@ -21,23 +21,23 @@ import {
 } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
-import type { RegionType } from "@app/types/region";
+import type { CellType } from "@app/types/cell";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import { Op, QueryTypes } from "sequelize";
 
 export async function readCoreEntitiesFromSourceRegion({
-  destRegion,
-  sourceRegion,
+  destCell,
+  sourceCell,
   workspaceId,
 }: {
-  destRegion: RegionType;
-  sourceRegion: RegionType;
+  destCell: CellType;
+  sourceCell: CellType;
   workspaceId: string;
 }) {
   const localLogger = logger.child({
-    destRegion,
-    sourceRegion,
+    destCell,
+    sourceCell,
     workspaceId,
   });
 
@@ -72,7 +72,7 @@ export async function readCoreEntitiesFromSourceRegion({
 
   // Fetch all associated users metadata of the workspace.
   // Only fetch metadata where workspaceId is null (global) or matches the workspace being
-  // relocated. This avoids FK violations when inserting into destination region for metadata
+  // relocated. This avoids FK violations when inserting into destination cell for metadata
   // referencing other workspaces.
   const userMetadata = await UserMetadataModel.findAll({
     where: {
@@ -154,18 +154,18 @@ export async function getTablesWithWorkspaceIdOrder() {
 }
 
 export async function readFrontTableChunk({
-  destRegion,
+  destCell,
   lastId,
   limit,
-  sourceRegion,
+  sourceCell,
   tableName,
   workspaceId,
   fileName,
 }: ReadTableChunkParams) {
   const localLogger = logger.child({
-    destRegion,
+    destCell,
     lastId,
-    sourceRegion,
+    sourceCell,
     tableName,
     workspaceId,
     fileName,

@@ -7,21 +7,21 @@ import type {
   CreateDataSourceProjectResult,
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
+import type { CellType } from "@app/types/cell";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { CoreAPIDataSource } from "@app/types/core/data_source";
-import type { RegionType } from "@app/types/region";
 
 export async function createDataSourceProject({
-  destRegion,
-  sourceRegionCoreDataSource,
+  destCell,
+  sourceCoreDataSource,
   workspaceId,
 }: {
-  destRegion: RegionType;
-  sourceRegionCoreDataSource: CoreAPIDataSource;
+  destCell: CellType;
+  sourceCoreDataSource: CoreAPIDataSource;
   workspaceId: string;
 }): Promise<CreateDataSourceProjectResult> {
   const localLogger = logger.child({
-    destRegion,
+    destCell,
     workspaceId,
   });
 
@@ -43,10 +43,10 @@ export async function createDataSourceProject({
 
   const dustDataSource = await coreAPI.createDataSource({
     projectId: dustProject.value.project.project_id.toString(),
-    config: sourceRegionCoreDataSource.config,
+    config: sourceCoreDataSource.config,
     credentials,
     // Temporary to unblock migration. Name was not returned by the core API.
-    name: sourceRegionCoreDataSource.name ?? "",
+    name: sourceCoreDataSource.name ?? "",
   });
 
   if (dustDataSource.isErr()) {

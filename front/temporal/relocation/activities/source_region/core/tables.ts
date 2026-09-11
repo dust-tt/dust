@@ -13,32 +13,32 @@ import {
   withJSONSerializationRetry,
   writeToRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type { CellType } from "@app/types/cell";
 import type {
   CoreAPINodesSearchFilter,
   CoreAPISearchCursorRequest,
 } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { CoreAPITableBlob } from "@app/types/core/data_source";
-import type { RegionType } from "@app/types/region";
 import type { Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 export async function getDataSourceTables({
   dataSourceCoreIds,
   pageCursor,
-  sourceRegion,
+  sourceCell,
   workspaceId,
   limit,
 }: {
   dataSourceCoreIds: DataSourceCoreIds;
   pageCursor: string | null;
-  sourceRegion: RegionType;
+  sourceCell: CellType;
   workspaceId: string;
   limit: number;
 }) {
   const localLogger = logger.child({
     dataSourceCoreIds,
-    sourceRegion,
+    sourceCell,
   });
 
   localLogger.info("[Core] Retrieving data source tables");

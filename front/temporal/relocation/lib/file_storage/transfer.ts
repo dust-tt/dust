@@ -1,5 +1,5 @@
 import config from "@app/lib/api/config";
-import type { RegionType } from "@app/types/region";
+import type { CellType } from "@app/types/cell";
 import { isDevelopment } from "@app/types/shared/env";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -12,12 +12,12 @@ import type { google } from "@google-cloud/storage-transfer/build/protos/protos"
 interface TransferConfig {
   destBucket: string;
   destPath?: string;
-  destRegion: RegionType;
+  destCell: CellType;
   includePrefixes?: string[];
   sourceBucket: string;
   sourcePath?: string;
-  sourceProjectId: string;
-  sourceRegion: RegionType;
+  sourceCell: CellType;
+  transferProjectId: string;
   workspaceId: string;
 }
 
@@ -39,12 +39,12 @@ export class StorageTransferService {
   async createTransferJob({
     destBucket,
     destPath,
-    destRegion,
+    destCell,
     includePrefixes,
     sourceBucket,
     sourcePath,
-    sourceProjectId,
-    sourceRegion,
+    sourceCell,
+    transferProjectId,
     workspaceId,
   }: TransferConfig): Promise<Result<string, Error>> {
     const spec: google.storagetransfer.v1.ITransferSpec = {
@@ -69,8 +69,8 @@ export class StorageTransferService {
     }
 
     const transferJob: google.storagetransfer.v1.ITransferJob = {
-      description: `Migrate workspace ${workspaceId} from region ${sourceRegion} to ${destRegion}`,
-      projectId: sourceProjectId,
+      description: `Relocate workspace ${workspaceId} from ${sourceCell} to ${destCell}`,
+      projectId: transferProjectId,
       transferSpec: spec,
       // Schedule the transfer to start immediately.
       schedule: {
@@ -106,15 +106,15 @@ export class StorageTransferService {
 
   async isTransferJobDone({
     jobName,
-    sourceProjectId,
+    transferProjectId,
   }: {
     jobName: string;
-    sourceProjectId: string;
+    transferProjectId: string;
   }): Promise<Result<boolean, Error>> {
     try {
       const [transferJob] = await this.transferClient.getTransferJob({
         jobName,
-        projectId: sourceProjectId,
+        projectId: transferProjectId,
       });
 
       const { latestOperationName } = transferJob;
