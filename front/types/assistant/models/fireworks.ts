@@ -22,6 +22,8 @@ export const FIREWORKS_GLM_5_MODEL_ID =
   "accounts/fireworks/models/glm-5" as const;
 export const FIREWORKS_GLM_5P2_MODEL_ID =
   "accounts/fireworks/models/glm-5p2" as const;
+export const FIREWORKS_GLM_5P3_MODEL_ID =
+  "accounts/fireworks/models/glm-5p3" as const;
 export const FIREWORKS_GLM_5P3_FLASH_MODEL_ID =
   "accounts/fireworks/models/glm-5p3-flash" as const;
 export const FIREWORKS_INKLING_MODEL_ID =
@@ -362,7 +364,8 @@ export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
     "Z.ai's GLM-5.2 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context, served via Fireworks).",
   shortDescription: "GLM-5.2 for coding and agentic tasks.",
   isLegacy: false,
-  isLatest: true,
+  // Superseded by GLM-5.3, but kept pickable as the family's previous version.
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: false,
   supportedReasoningEfforts: {
@@ -372,6 +375,46 @@ export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
     high: true,
   },
   defaultReasoningEffort: "high",
+  supportsResponseFormat: true,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+// Specs and pricing verified 2026-09-11 against
+// https://docs.z.ai/guides/llm/glm-5.3 and
+// https://fireworks.ai/models/fireworks/glm-5p3. The provider supports
+// 1,048,576 context / 131,072 output; Dust rounds those down to 1M / 128k.
+export const FIREWORKS_GLM_5P3_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "fireworks",
+  modelMaker: "zai",
+  modelId: FIREWORKS_GLM_5P3_MODEL_ID,
+  displayName: "GLM-5.3",
+  contextSize: 1_000_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Z.ai's flagship GLM-5.3 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context, served via Fireworks).",
+  shortDescription: "GLM-5.3 for coding and agentic tasks.",
+  isLegacy: false,
+  isLatest: true,
+  generationTokensCount: 128_000,
+  // GLM-5.3 is text-only; visual understanding lives in GLM-5.3 Flash.
+  supportsVision: false,
+  // GLM-5.3 documents low/high/max with thinking always enabled, so there is no
+  // `none` tier. Dust maps light/medium/high onto those native efforts in the
+  // llms layer.
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "high",
+  // Native thinking at `light`, so no chain-of-thought meta prompt.
+  useNativeLightReasoning: true,
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -397,8 +440,8 @@ export const FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
     "Z.ai's efficient native multimodal model for coding, long-horizon agentic work, and visual understanding (256k context, served via Fireworks).",
   shortDescription: "GLM-5.3 Flash for multimodal coding and agentic tasks.",
   isLegacy: false,
-  // Flash is the latest efficiency model; GLM-5.2 remains the latest full-size
-  // model rather than being demoted by this separate subfamily.
+  // Flash is the latest model of its own efficiency subfamily; GLM-5.3 is the
+  // latest full-size model.
   isLatest: true,
   generationTokensCount: 64_000,
   supportsVision: true,
