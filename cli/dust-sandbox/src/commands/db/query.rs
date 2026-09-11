@@ -7,7 +7,10 @@ use serde::Serialize;
 use crate::api::{DustApiClient, FrameDatabaseQueryResponse};
 
 use super::super::frame::print_response;
-use super::{db_file_path, emit_error, execution_target, spawn_runner, DbExecutionTarget};
+use super::{
+    db_file_path, emit_error, ensure_valid_db_name, execution_target, spawn_runner,
+    DbExecutionTarget,
+};
 
 /// Env carrying a directory the caller can read, into which an oversized local query result is
 /// spilled in full. Absent, the runner keeps only the bounded inline preview (Front's Frame
@@ -58,6 +61,7 @@ async fn run_remote_query(name: &str, frame_id: &str) -> Result<()> {
 }
 
 async fn query_remote_database(name: &str, frame_id: &str) -> Result<FrameDatabaseQueryResponse> {
+    ensure_valid_db_name(name)?;
     let mut sql = String::new();
     std::io::stdin().read_to_string(&mut sql)?;
     DustApiClient::from_env()?

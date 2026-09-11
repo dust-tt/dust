@@ -141,13 +141,20 @@ pub(crate) fn is_valid_db_name(name: &str) -> bool {
         && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
 }
 
+/// Reject a database name outside the contract. Also guards the remote path, where the name
+/// becomes a URL segment.
+pub(crate) fn ensure_valid_db_name(name: &str) -> Result<()> {
+    if !is_valid_db_name(name) {
+        return Err(anyhow!(
+            "invalid database name {name:?}: must match ^[a-z][a-z0-9_]{{0,63}}$"
+        ));
+    }
+    Ok(())
+}
+
 /// Resolve a database name to its `{name}.db` file path, or emit a typed error.
 pub(crate) fn db_file_path(name: &str) -> Result<PathBuf> {
-    if !is_valid_db_name(name) {
-        return Err(emit_error(anyhow!(
-            "invalid database name {name:?}: must match ^[a-z][a-z0-9_]{{0,63}}$"
-        )));
-    }
+    ensure_valid_db_name(name).map_err(emit_error)?;
     Ok(databases_dir().join(format!("{name}.db")))
 }
 
