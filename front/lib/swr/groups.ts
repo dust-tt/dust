@@ -4,7 +4,11 @@ import type {
   GetWorkspaceGrantedSeatTypesResponseBody,
 } from "@app/lib/api/workspace";
 import { clientFetch } from "@app/lib/egress/client";
-import { invalidateMembersUsage } from "@app/lib/swr/memberships";
+import type { BulkSeatChangePreviewBody } from "@app/lib/swr/memberships";
+import {
+  BulkSeatChangePreviewResponseSchema,
+  invalidateMembersUsage,
+} from "@app/lib/swr/memberships";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetGroupsResponseBody } from "@app/types/api/groups";
 import type {
@@ -790,4 +794,50 @@ export function useUpdateGroupGrantedSeatType({
   );
 
   return { doUpdateGroupGrantedSeatType, isUpdating };
+}
+
+// Previews how many of a group's members would actually move to `seatType` if
+// the group granted it (highest-wins: members already on a higher granted seat
+// are excluded), and the cost — reusing the bulk seat-change preview shape.
+export function useGroupSeatMappingPreview({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+
+  const doFetchGroupSeatMappingPreview = useCallback(
+    async ({
+      groupId,
+      seatType,
+    }: {
+      groupId: string;
+      seatType: GroupGrantableSeatType;
+    }): Promise<BulkSeatChangePreviewBody | null> => {
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/groups/${groupId}/granted_seat_type/preview`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ grantedSeatType: seatType }),
+        }
+      );
+
+      if (!res.ok) {
+        const error = await res.json();
+        sendNotification({
+          type: "error",
+          title: "Failed to prepare seat change",
+          description: error?.error?.message ?? "An unexpected error occurred.",
+        });
+        return null;
+      }
+
+      return BulkSeatChangePreviewResponseSchema.parse(await res.json())
+        .preview;
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return { doFetchGroupSeatMappingPreview };
 }

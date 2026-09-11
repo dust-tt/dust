@@ -1476,6 +1476,7 @@ export function UsagePage() {
                     <SeatProvisioningSection
                       owner={owner}
                       availableSeatTypes={grantableSeatTypes}
+                      seatPlans={seatPlans}
                     />
                   )}
                   {isCreditPriced && (

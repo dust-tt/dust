@@ -52,6 +52,12 @@ export type PutGroupGrantedSeatTypeResponseBody = {
   group: GroupType;
 };
 
+// Preview of mapping this group to a seat: the seat must be a real grantable
+// type (not null — clearing has no cost to preview).
+export const PostGroupGrantedSeatTypePreviewBodySchema = z.object({
+  grantedSeatType: z.enum(GROUP_GRANTABLE_SEAT_TYPES),
+});
+
 export type GetMemberGroupsResponseBody = {
   groups: GroupType[];
 };
