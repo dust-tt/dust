@@ -31,19 +31,22 @@ export interface DescendantRunData {
   descendantAgenticUserMessageCount: number;
 }
 
+/**
+ * @cc [owner:avervaet,label:concurrency] descendant-data-cache-freshness
+ * `descendantData`, when passed, MUST come from a descendant walk with no run-creating
+ * activity between that walk and this call. Passing a walk result from further back yields cost
+ * and subagent counts computed from an incomplete run set.
+ */
 export async function checkCostAndSubagentsThresholds({
   auth,
   isRootAgentMessage,
   eventData,
-  cachedDescendantData,
+  descendantData,
 }: {
   auth: Authenticator;
   isRootAgentMessage: boolean;
   eventData: CostThresholdEventData;
-  // Nothing that creates a run can happen between the credit spend checkpoint's descendant walk
-  // (end of the previous step) and this call (start of this step, before its own model runs), so
-  // the caller may pass that walk's result here to skip repeating it.
-  cachedDescendantData?: DescendantRunData | null;
+  descendantData?: DescendantRunData | null;
 }): Promise<{
   totalCostMicroUsd: number;
   hardCapExceeded: boolean;
@@ -61,7 +64,7 @@ export async function checkCostAndSubagentsThresholds({
   }
 
   const { dustRunIds, descendantAgenticUserMessageCount } =
-    cachedDescendantData ??
+    descendantData ??
     (await collectDescendantData(auth, {
       rootAgentMessageId: eventData.agentMessageId,
     }));
