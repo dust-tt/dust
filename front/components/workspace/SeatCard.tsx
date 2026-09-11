@@ -366,6 +366,9 @@ interface SeatCardProps {
   isSelected: boolean;
   badge: React.ReactNode;
   onClick: () => void;
+  // When set, the card can't be selected (e.g. the seat type is at its
+  // `maxSeats` cap). Clicks are ignored and the card is visually muted.
+  disabled?: boolean;
 }
 
 export function SeatCard({
@@ -374,6 +377,7 @@ export function SeatCard({
   isSelected,
   badge,
   onClick,
+  disabled = false,
 }: SeatCardProps) {
   const seatIcon = SEAT_TYPE_ICONS[seatType];
   // Same treatment as PlanCard (SubscriptionPlans.tsx): seat tiers without a
@@ -389,8 +393,11 @@ export function SeatCard({
       variant="primary"
       size="sm"
       selected={isSelected}
-      onClick={onClick}
-      className="w-full flex-col items-stretch gap-2 ring-0"
+      onClick={disabled ? undefined : onClick}
+      className={cn(
+        "w-full flex-col items-stretch gap-2 ring-0",
+        disabled && "cursor-not-allowed opacity-60"
+      )}
     >
       <div className="flex w-full items-center gap-2">
         <div
