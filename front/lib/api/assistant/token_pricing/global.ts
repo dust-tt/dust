@@ -367,13 +367,16 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     },
   },
   // Gemini 3.1 Pro: same pricing structure as 3 Pro (2/12 for <=200k, 4/18 for >200k).
+  // Verified 2026-09-11: https://ai.google.dev/gemini-api/docs/pricing
   "gemini-3.1-pro-preview": {
     input: 2,
     output: 12,
+    cache_read_input_tokens: 0.2,
     long_context: {
       prompt_token_threshold: 200_001,
       input: 4,
       output: 18,
+      cache_read_input_tokens: 0.4,
     },
   },
   "gemini-3-flash-preview": {

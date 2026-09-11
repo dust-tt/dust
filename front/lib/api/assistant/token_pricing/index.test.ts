@@ -348,6 +348,28 @@ describe("computeTokensCostForUsageInMicroUsd", () => {
     ).toBe(818_004);
   });
 
+  it("discounts Gemini 3.1 Pro cached input through 200k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GEMINI_3_1_PRO_MODEL_ID,
+        promptTokens: 200_000,
+        completionTokens: 1_000,
+        cachedTokens: 100_000,
+      })
+    ).toBe(232_000);
+  });
+
+  it("uses Gemini 3.1 Pro long-context cached input pricing above 200k prompt tokens", () => {
+    expect(
+      computeTokensCostForUsageInMicroUsd({
+        modelId: GEMINI_3_1_PRO_MODEL_ID,
+        promptTokens: 200_001,
+        completionTokens: 1_000,
+        cachedTokens: 100_000,
+      })
+    ).toBe(458_004);
+  });
+
   it("uses long-context Grok 4.5 pricing at 200k prompt tokens", () => {
     expect(
       computeTokensCostForUsageInMicroUsd({
