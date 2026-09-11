@@ -59,7 +59,7 @@ async function findPausedAgentMessage(
   }
 
   const state =
-    await ConversationResource.fetchAgentMessageCreditSpendCheckpointState(
+    await ConversationResource.fetchCreditSpendCheckpointStateForAgentMessage(
       auth,
       { agentMessageId }
     );
