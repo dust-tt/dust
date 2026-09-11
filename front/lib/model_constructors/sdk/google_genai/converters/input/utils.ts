@@ -259,6 +259,34 @@ function assistantMessageToContent(
   }
 }
 
+function hasFunctionResponse(content: Content): boolean {
+  return (
+    content.parts?.some((part) => part.functionResponse !== undefined) ?? false
+  );
+}
+
+function canMergeContents(previous: Content, content: Content): boolean {
+  if (previous.role !== content.role) {
+    return false;
+  }
+
+  if (previous.role === "model") {
+    return true;
+  }
+
+  // A function-response turn must remain distinct from a following user
+  // message. This matters for enable_skill: its result is immediately followed
+  // by a user message containing the enabled skill's instructions.
+  return hasFunctionResponse(previous) === hasFunctionResponse(content);
+}
+
+/**
+ * @cc [owner:frankaloia,label:backend] preserve-function-response-boundary
+ * A Gemini `user` Content containing a functionResponse MUST NOT be merged with an adjacent user
+ * Content that does not contain one. Adjacent functionResponse Contents still merge so their count
+ * matches the preceding functionCall count, and adjacent model Contents still merge so replayed
+ * thought signatures remain attached to their logical model turn.
+ */
 export async function conversationToContents(
   conversation: BaseConversation,
   converters: ContentBlockConverters
@@ -284,8 +312,7 @@ export async function conversationToContents(
     )
   );
 
-  // Merge consecutive same-role turns into a single Content. This serves two
-  // purposes:
+  // Merge compatible consecutive same-role Contents. This serves two purposes:
   // - Function-response turns: Gemini requires the functionResponse part count
   //   to match the functionCall count of the preceding model turn.
   // - Model turns: a single assistant turn is split into one BaseMessage per
@@ -294,11 +321,13 @@ export async function conversationToContents(
   //   over the whole turn (e.g. reasoning followed by the functionCall), so the
   //   parts must be replayed together in one Content or the signature is
   //   rejected as corrupted.
-  // Consecutive same-role Contents only arise from one logical turn being split:
-  // distinct assistant turns are always separated by a tool-result/user turn.
+  // Keep a function-response Content separate from adjacent ordinary user
+  // content. In particular, enable_skill emits its result followed by a user
+  // message carrying the skill instructions; mixing those parts makes the
+  // function-response boundary ambiguous to Gemini.
   return contents.reduce<Content[]>((merged, content) => {
     const previous = merged[merged.length - 1];
-    if (previous && previous.role === content.role) {
+    if (previous && canMergeContents(previous, content)) {
       return [
         ...merged.slice(0, -1),
         {
