@@ -1,4 +1,3 @@
-import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { Authenticator } from "@app/lib/auth";
 import { isPAYGEnabled } from "@app/lib/credits/credit_payg";
@@ -194,10 +193,11 @@ export async function dispatchSeatBalanceExhausted({
     });
   }
 
-  // The personal seat balance is exhausted: auto-upgrade one tier (free→pro,
-  // pro→max) if the workspace opted in and a higher tier exists (no-op
-  // otherwise, and for pool-based seats).
-  void maybeAutoUpgradeSeat({ workspaceId: workspace.sId, userId });
+  // No auto-upgrade here: exhausting the seat balance while the pool still has
+  // credits does not block the user (they fall back to `on_pool` above), so
+  // upgrading now would burn a higher-tier seat prematurely. Auto-upgrade is
+  // driven reactively at message-send time, when the user is actually blocked
+  // (see `maybeAutoUpgradeSeat` in the conversation send path).
 }
 
 export async function dispatchSeatBalanceResolved({
