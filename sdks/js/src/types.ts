@@ -1248,6 +1248,7 @@ const UserMessageContextSchema = z.object({
   clientSideMCPServerIds: z.array(z.string()).optional().nullable(),
   selectedMCPServerViewIds: z.array(z.string()).optional().nullable(),
   lastTriggerRunAt: z.number().optional().nullable(),
+  excludedRetrievalTags: z.array(z.string()).optional().nullable(),
 });
 
 const AgenticMessageDataSchema = z.object({

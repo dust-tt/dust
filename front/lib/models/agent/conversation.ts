@@ -313,6 +313,7 @@ export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
   declare userContextLastTriggerRunAt: Date | null;
   declare userContextApiKeyId: ForeignKey<KeyModel["id"]> | null;
   declare userContextAuthMethod: string | null;
+  declare userContextExcludedRetrievalTags: string[] | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
   // Denormalized from messages for conversation-scoped fetches (plain column, no FK — the value
@@ -390,6 +391,11 @@ UserMessageModel.init(
     userContextAuthMethod: {
       type: DataTypes.STRING(50),
       allowNull: true,
+    },
+    userContextExcludedRetrievalTags: {
+      type: DataTypes.ARRAY(DataTypes.STRING),
+      allowNull: true,
+      defaultValue: null,
     },
     agenticMessageType: {
       type: DataTypes.STRING(16),

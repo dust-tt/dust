@@ -1269,6 +1269,12 @@ async function answerMessage(
       email: slackChatBotMessage.slackEmail,
       profilePictureUrl: slackChatBotMessage.slackAvatar || null,
       origin,
+      // Keep retrieval from self-matching on the very thread that triggered this run: the current
+      // Slack thread is indexed (question text included) as a document tagged `threadId:<ts>`, and
+      // its content is already provided to the conversation as a content fragment.
+      excludedRetrievalTags: slackChatBotMessage.threadTs
+        ? [`threadId:${slackChatBotMessage.threadTs}`]
+        : undefined,
     },
     skipToolsValidation,
   };
