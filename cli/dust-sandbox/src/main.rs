@@ -29,7 +29,7 @@ enum Commands {
         #[command(subcommand)]
         command: commands::function::FunctionCommand,
     },
-    /// Manage pod databases
+    /// Manage sandbox databases
     Db {
         #[command(subcommand)]
         command: commands::db::DbCommand,
@@ -127,8 +127,12 @@ async fn run() -> anyhow::Result<()> {
             commands::db::DbCommand::Schema { name, out_schema } => {
                 commands::cmd_db_schema(&name, &out_schema).await?
             }
-            commands::db::DbCommand::List => commands::cmd_db_list()?,
-            commands::db::DbCommand::Query { name } => commands::cmd_db_query(&name).await?,
+            commands::db::DbCommand::List { frame } => {
+                commands::cmd_db_list(frame.as_deref()).await?
+            }
+            commands::db::DbCommand::Query { name, frame } => {
+                commands::cmd_db_query(&name, frame.as_deref()).await?
+            }
         },
         Commands::Frame { command } => match command {
             commands::frame::FrameCommand::Call {
@@ -465,7 +469,22 @@ mod tests {
         let cli = Cli::try_parse_from(["dsbx", "db", "list"]).expect("parse");
         match cli.command {
             Commands::Db { command } => match command {
-                commands::db::DbCommand::List => {}
+                commands::db::DbCommand::List { frame } => assert_eq!(frame, None),
+                _ => panic!("expected list"),
+            },
+            _ => panic!("expected db"),
+        }
+    }
+
+    #[test]
+    fn db_list_with_frame_parses() {
+        let cli =
+            Cli::try_parse_from(["dsbx", "db", "list", "--frame", "fil_abc123"]).expect("parse");
+        match cli.command {
+            Commands::Db { command } => match command {
+                commands::db::DbCommand::List { frame } => {
+                    assert_eq!(frame.as_deref(), Some("fil_abc123"));
+                }
                 _ => panic!("expected list"),
             },
             _ => panic!("expected db"),
@@ -477,7 +496,26 @@ mod tests {
         let cli = Cli::try_parse_from(["dsbx", "db", "query", "chat"]).expect("parse");
         match cli.command {
             Commands::Db { command } => match command {
-                commands::db::DbCommand::Query { name } => assert_eq!(name, "chat"),
+                commands::db::DbCommand::Query { name, frame } => {
+                    assert_eq!(name, "chat");
+                    assert_eq!(frame, None);
+                }
+                _ => panic!("expected query"),
+            },
+            _ => panic!("expected db"),
+        }
+    }
+
+    #[test]
+    fn db_query_with_frame_parses() {
+        let cli = Cli::try_parse_from(["dsbx", "db", "query", "chat", "--frame", "fil_abc123"])
+            .expect("parse");
+        match cli.command {
+            Commands::Db { command } => match command {
+                commands::db::DbCommand::Query { name, frame } => {
+                    assert_eq!(name, "chat");
+                    assert_eq!(frame.as_deref(), Some("fil_abc123"));
+                }
                 _ => panic!("expected query"),
             },
             _ => panic!("expected db"),

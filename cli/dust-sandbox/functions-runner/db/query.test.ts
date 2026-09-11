@@ -115,7 +115,7 @@ describe("db query", () => {
       db.close();
 
       const result = unwrap(
-        runQuery(dbPath, "SELECT label FROM notes ORDER BY id")
+        runQuery(dbPath, "SELECT label FROM notes ORDER BY id", undefined, dir)
       );
       expect(result.rows.length).toBe(QUERY_INLINE_ROW_CAP);
       expect(result.row_count).toBe(QUERY_INLINE_ROW_CAP + 1);
@@ -133,6 +133,50 @@ describe("db query", () => {
         });
         await rm(result.results_file, { force: true });
       }
+    });
+  });
+
+  test("keeps only a preview when no spill directory is given", async () => {
+    await withDir(async (dir) => {
+      const dbPath = join(dir, "notes.db");
+      unwrap(await reconcile(dbPath, fx("notes.db.ts")));
+      const db = new Database(dbPath);
+      const insert = db.prepare("INSERT INTO notes (label) VALUES (?)");
+      db.exec("BEGIN");
+      for (let i = 0; i < QUERY_INLINE_ROW_CAP + 1; i++) {
+        insert.run(`row-${i}`);
+      }
+      db.exec("COMMIT");
+      db.close();
+
+      const result = unwrap(
+        runQuery(dbPath, "SELECT label FROM notes ORDER BY id")
+      );
+      expect(result.rows.length).toBe(QUERY_INLINE_ROW_CAP);
+      expect(result.row_count).toBe(QUERY_INLINE_ROW_CAP + 1);
+      expect(result.results_file).toBeNull();
+      expect(result.note).toContain("Refine the query with LIMIT and OFFSET");
+    });
+  });
+
+  test("a preview never skips an oversized row to include later rows", async () => {
+    await withDir(async (dir) => {
+      const dbPath = join(dir, "notes.db");
+      unwrap(await reconcile(dbPath, fx("notes.db.ts")));
+      const db = new Database(dbPath);
+      const insert = db.prepare("INSERT INTO notes (label) VALUES (?)");
+      insert.run("first");
+      insert.run("x".repeat(QUERY_INLINE_PAYLOAD_CAP_BYTES));
+      insert.run("third");
+      db.close();
+
+      const result = unwrap(
+        runQuery(dbPath, "SELECT label FROM notes ORDER BY id")
+      );
+      expect(result.rows).toEqual([{ label: "first" }]);
+      expect(result.row_count).toBe(3);
+      expect(result.results_file).toBeNull();
+      expect(result.note).toContain("the first 1 are shown here");
     });
   });
 
@@ -310,7 +354,7 @@ describe("db query", () => {
       db.close();
 
       const result = unwrap(
-        runQuery(dbPath, "SELECT label FROM notes ORDER BY id")
+        runQuery(dbPath, "SELECT label FROM notes ORDER BY id", undefined, dir)
       );
       expect(result.rows.length).toBe(1);
       expect(result.row_count).toBe(3);
@@ -420,6 +464,32 @@ describe("runner db-query envelope", () => {
       const envelope = JSON.parse(stdout.trim());
       expect(envelope.ok).toBe(true);
       expect(envelope.rows).toEqual([{ n: 0 }]);
+    });
+  });
+
+  test("db-query keeps large results inline as a preview without a spill dir", async () => {
+    await withDir(async (dir) => {
+      const dbPath = join(dir, "notes.db");
+      await run(["db-reconcile", dbPath, fx("notes.db.ts")]);
+      const db = new Database(dbPath);
+      const insert = db.prepare("INSERT INTO notes (label) VALUES (?)");
+      db.exec("BEGIN");
+      for (let i = 0; i < QUERY_INLINE_ROW_CAP + 1; i++) {
+        insert.run(`row-${i}`);
+      }
+      db.exec("COMMIT");
+      db.close();
+
+      const { stdout, code } = await run(
+        ["db-query", dbPath],
+        "SELECT label FROM notes ORDER BY id"
+      );
+
+      expect(code).toBe(0);
+      const envelope = JSON.parse(stdout.trim());
+      expect(envelope.row_count).toBe(QUERY_INLINE_ROW_CAP + 1);
+      expect(envelope.rows.length).toBe(QUERY_INLINE_ROW_CAP);
+      expect(envelope.results_file).toBeNull();
     });
   });
 
