@@ -301,7 +301,7 @@ function buildColumns({
       id: "credits",
       accessorKey: "credits",
       header: "Credits",
-      enableSorting: false,
+      enableSorting: true,
       meta: { className: "h-16 w-32", headerAlign: "left" },
       cell: (info) => {
         const { credits, monthlyCap } = info.row.original;
@@ -611,6 +611,16 @@ export function APIKeysTable({
       switch (activeSort.id) {
         case "name":
           comparison = left.name.localeCompare(right.name);
+          break;
+        case "credits":
+          if (left.credits === null || right.credits === null) {
+            return left.credits === right.credits
+              ? 0
+              : left.credits === null
+                ? 1
+                : -1;
+          }
+          comparison = left.credits - right.credits;
           break;
         case "lastUsedAt":
           comparison = (left.lastUsedAt ?? 0) - (right.lastUsedAt ?? 0);
