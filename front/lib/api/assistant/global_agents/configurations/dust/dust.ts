@@ -486,11 +486,6 @@ export function _getDustGlobalAgent(
   });
 }
 
-/**
- * @cc [owner:aubin-tchoi,label:product] lean-agent-configuration
- * Dust Lean MUST use Dust's model selection and return no configured actions or skills.
- * Its instructions MUST limit capability use to capabilities explicitly provided in the conversation.
- */
 export function _getDustLeanGlobalAgent(
   auth: Authenticator,
   args: DustLikeGlobalAgentArgs

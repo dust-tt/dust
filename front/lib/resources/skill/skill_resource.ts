@@ -1890,11 +1890,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  /**
-   * @cc [owner:aubin-tchoi,label:product] lean-agent-no-skills
-   * Dust Lean MUST start without auto-enabled, auto-equipped, favorite, or Pod-default
-   * skills. Explicitly enabled conversation skills and selected Spaces MUST remain available.
-   */
   static async listForAgentLoop(
     auth: Authenticator,
     params:
