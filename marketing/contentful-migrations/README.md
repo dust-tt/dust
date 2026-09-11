@@ -18,8 +18,27 @@ export CONTENTFUL_MANAGEMENT_TOKEN=...    # personal CMA token, keep out of git
 npm run contentful:migrate -- --environment-id master contentful-migrations/01-logo-bars.cjs
 ```
 
-The CLI prints the plan and asks for confirmation before writing. Dry-run it on
-a sandbox environment first if the space has one:
+The CLI prints the plan and asks for confirmation before writing.
+
+### Running from a git worktree
+
+`node_modules` in a worktree may be a symlink to the main checkout's tree (it is
+in `dust-logo-bars`). `npm install` there would reconcile the *main* checkout's
+installed packages against this branch's lockfile, breaking whatever is checked
+out over there. Run the CLI through `npx` instead, which caches outside the
+project:
+
+```bash
+npx --yes contentful-migration@5.1.0 \
+  --space-id $CONTENTFUL_SPACE_ID \
+  --management-token $CONTENTFUL_MANAGEMENT_TOKEN \
+  --environment-id master \
+  contentful-migrations/01-logo-bars.cjs
+```
+
+### Dry runs
+
+Dry-run on a sandbox environment first if the space has one:
 
 ```bash
 npm run contentful:migrate -- --environment-id sandbox contentful-migrations/01-logo-bars.cjs
