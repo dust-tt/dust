@@ -12,7 +12,7 @@ import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
 import { useVisualizationRevert } from "@app/hooks/conversations";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -72,8 +72,6 @@ export function FrameRenderer({
   renderMode,
 }: FrameRendererProps) {
   const { vizUrl } = useAuth();
-  const { hasFeature } = useFeatureFlags();
-  const hasFileTabs = hasFeature("pod_frame_tabs");
   const isMobile = useIsMobile();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
@@ -396,18 +394,16 @@ export function FrameRenderer({
                 fileName={fileMetadata?.fileName}
                 hidden={!isFrameInPod}
               />
-              {hasFileTabs && (
-                <PodFileTabButton
-                  owner={owner}
-                  spaceId={projectId ?? ""}
-                  fileTabs={projectInfo?.frameTabs ?? []}
-                  tabsOrder={projectInfo?.tabsOrder ?? []}
-                  isEditor={projectInfo?.isEditor ?? false}
-                  filePath={framePath}
-                  fileName={fileMetadata?.fileName}
-                  hidden={!isFrameInPod}
-                />
-              )}
+              <PodFileTabButton
+                owner={owner}
+                spaceId={projectId ?? ""}
+                fileTabs={projectInfo?.frameTabs ?? []}
+                tabsOrder={projectInfo?.tabsOrder ?? []}
+                isEditor={projectInfo?.isEditor ?? false}
+                filePath={framePath}
+                fileName={fileMetadata?.fileName}
+                hidden={!isFrameInPod}
+              />
               {projectSaveState === "saved" && (
                 <Button
                   icon={CheckCircle}

@@ -106,7 +106,6 @@ export function PodSettingsTab({
   const { hasFeature } = useFeatureFlags();
   const { isAdmin } = useAuth();
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
-  const hasFileTabs = hasFeature("pod_frame_tabs");
   // The pod env vars section stays workspace-admin only (matching the API,
   // which keeps env-vars admin-only). Mirrors that gate — change both together.
   const isPodSandboxAdminEnabled = isAdmin && hasFeature("frames_v2");
@@ -727,15 +726,13 @@ export function PodSettingsTab({
           </div>
         </div>
 
-        {hasFileTabs && (
-          <PodTabsCustomizationSection
-            owner={owner}
-            podId={pod.sId}
-            fileTabs={pod.frameTabs ?? []}
-            tabsOrder={pod.tabsOrder}
-            isEditor={isPodEditor}
-          />
-        )}
+        <PodTabsCustomizationSection
+          owner={owner}
+          podId={pod.sId}
+          fileTabs={pod.frameTabs ?? []}
+          tabsOrder={pod.tabsOrder}
+          isEditor={isPodEditor}
+        />
 
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">

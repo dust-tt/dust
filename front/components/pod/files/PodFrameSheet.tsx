@@ -3,7 +3,7 @@ import { ExportContentDropdown } from "@app/components/assistant/conversation/in
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
 import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
 import { getFrameFunctionReferenceKind } from "@app/types/api/frame_function_reference";
 import type { PodFileTab } from "@app/types/pod_file_tab";
@@ -55,8 +55,6 @@ export function PodFrameSheet({
   owner,
 }: PodFrameSheetProps) {
   const { vizUrl } = useAuth();
-  const { hasFeature } = useFeatureFlags();
-  const hasFileTabs = hasFeature("pod_frame_tabs");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -119,18 +117,16 @@ export function PodFrameSheet({
                   fileName={fileName}
                   hidden={isArchived}
                 />
-                {hasFileTabs && (
-                  <PodFileTabButton
-                    owner={owner}
-                    spaceId={podId}
-                    fileTabs={fileTabs}
-                    tabsOrder={tabsOrder}
-                    isEditor={isEditor}
-                    filePath={framePath}
-                    fileName={fileName}
-                    hidden={isArchived}
-                  />
-                )}
+                <PodFileTabButton
+                  owner={owner}
+                  spaceId={podId}
+                  fileTabs={fileTabs}
+                  tabsOrder={tabsOrder}
+                  isEditor={isEditor}
+                  filePath={framePath}
+                  fileName={fileName}
+                  hidden={isArchived}
+                />
                 <Button
                   icon={isFullscreen ? Minimize01 : Maximize01}
                   variant="ghost"

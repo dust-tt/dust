@@ -1,7 +1,6 @@
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -245,8 +244,6 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     const { workspace, auth, user } = await createPrivateApiMockRequest({
       role: "admin",
     });
-
-    await FeatureFlagFactory.basic(auth, "pod_frame_tabs");
 
     const projectSpace = await SpaceFactory.project(workspace, user.id);
 

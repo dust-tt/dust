@@ -365,12 +365,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "frankaloia",
   },
-  pod_frame_tabs: {
-    description:
-      "Allow adding previewable Pod files (frames, markdown, and other previews) as custom tabs (title, icon, order) on the pod.",
-    stage: "dust_only",
-    owner: "Fraggle",
-  },
   group_permissions_shadow: {
     description:
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
