@@ -10,10 +10,11 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import type { VirtuosoMessageListContext } from "@app/components/assistant/conversation/types";
 import type { AnalyticsViewInput } from "@app/components/workspace/analytics/analyticsView";
 import { useAnalyticsConversation } from "@app/hooks/useAnalyticsConversation";
+import { useAnalyticsMCPServer } from "@app/hooks/useAnalyticsMCPServer";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Button, Icon, Robot, Spinner, XClose } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 interface AnalyticsConversationPanelHeaderProps {
   onClose: () => void;
@@ -42,6 +43,7 @@ function AnalyticsConversationPanelHeader({
 interface AnalyticsConversationPanelBodyProps {
   owner: WorkspaceType;
   user: UserType;
+  clientSideMCPServerIds: string[];
   conversation: ConversationType | null;
   isOpen: boolean;
   isCreatingConversation: boolean;
@@ -53,6 +55,7 @@ interface AnalyticsConversationPanelBodyProps {
 function AnalyticsConversationPanelBody({
   owner,
   user,
+  clientSideMCPServerIds,
   conversation,
   isOpen,
   isCreatingConversation,
@@ -120,6 +123,7 @@ function AnalyticsConversationPanelBody({
             conversationId={conversation.sId}
             disabled={!isOpen}
             agentBuilderContext={analystAgentContext}
+            clientSideMCPServerIds={clientSideMCPServerIds}
             key={conversation.sId}
           />
         </div>
@@ -163,6 +167,33 @@ export function AnalyticsConversationPanel({
     resetConversation,
   } = useAnalyticsConversation({ owner, user, view });
 
+  const viewRef = useRef(view);
+  useEffect(() => {
+    viewRef.current = view;
+  }, [view]);
+  const getView = useCallback(() => viewRef.current, []);
+
+  // Latched rather than tied to `isOpen`: closing the panel does not cancel a running generation,
+  // and deregistering under it leaves its `get_analytics_view` call without a subscriber until the
+  // MCP request times out. Registering only after a first open still keeps page loads that never
+  // open the panel free of an SSE stream.
+  const [hasOpenedPanel, setHasOpenedPanel] = useState(false);
+  useEffect(() => {
+    if (isOpen) {
+      setHasOpenedPanel(true);
+    }
+  }, [isOpen]);
+
+  const analyticsMCPServerId = useAnalyticsMCPServer({
+    enabled: hasOpenedPanel,
+    getView,
+    workspaceId: owner.sId,
+  });
+  const clientSideMCPServerIds = useMemo(
+    () => (analyticsMCPServerId ? [analyticsMCPServerId] : []),
+    [analyticsMCPServerId]
+  );
+
   // `ResizableSidePanel` keeps this panel mounted while closed, so a mount effect would bootstrap
   // a conversation on every Analytics page load. Wait for filter resolution too: the opening
   // message names the filters and is never regenerated, so starting early would name raw ids.
@@ -193,6 +224,7 @@ export function AnalyticsConversationPanel({
                 <AnalyticsConversationPanelBody
                   owner={owner}
                   user={user}
+                  clientSideMCPServerIds={clientSideMCPServerIds}
                   conversation={conversation}
                   isOpen={isOpen}
                   isCreatingConversation={isCreatingConversation}
