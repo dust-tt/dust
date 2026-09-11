@@ -1,6 +1,7 @@
 import { canCurrentUserRespondToParentUserMessage } from "@app/lib/api/assistant/conversation/can_current_user_respond";
 import type { CreditSpendCheckpointDecision } from "@app/lib/api/assistant/conversation/credit_spend_checkpoint_pause";
 import { useAuth } from "@app/lib/auth/AuthContext";
+import { formatCredits } from "@app/lib/client/credits";
 import { useValidateAction } from "@app/lib/swr/tool_actions";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import {
@@ -18,8 +19,10 @@ interface CreditSpendCheckpointPausedCardProps {
   conversationId: string;
   messageId: string;
   triggeringUser: UserType | null;
-  // Only known from the live stream event; null after a page refresh.
-  thresholdAwuCredits: number | null;
+  // The message's real, billed cost (LLM + tools, including sub-agents) as of the pause,
+  // computed by the same finalize activity that recorded it. Null until that finalize activity
+  // has run (briefly, right when the live event first arrives).
+  creditsUsed: number | null;
 }
 
 export function CreditSpendCheckpointPausedCard({
@@ -27,7 +30,7 @@ export function CreditSpendCheckpointPausedCard({
   conversationId,
   messageId,
   triggeringUser,
-  thresholdAwuCredits,
+  creditsUsed,
 }: CreditSpendCheckpointPausedCardProps) {
   const { user } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -77,8 +80,8 @@ export function CreditSpendCheckpointPausedCard({
       </div>
 
       <div className="text-base text-muted-foreground">
-        {thresholdAwuCredits !== null
-          ? `This task has used more than ${thresholdAwuCredits.toLocaleString("en-US")} credits so far and is paused. Continue running it?`
+        {creditsUsed !== null
+          ? `This task has used ${formatCredits(creditsUsed)} credits so far and is paused. Continue running it?`
           : "This task is paused because it has used a lot of credits. Continue running it?"}
       </div>
 
