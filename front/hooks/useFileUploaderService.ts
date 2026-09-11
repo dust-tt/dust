@@ -26,11 +26,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { ChangeEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 
-/**
- * Upload state of a `FileBlob`, as a union rather than two free-standing fields so that the
- * incoherent combination — a progress percentage on a file that is not uploading — cannot be
- * built. `uploadProgress` is `null` until the file's bytes start moving.
- */
 type FileBlobUploadState =
   | { isUploading: false; uploadProgress: null }
   | { isUploading: true; uploadProgress: number | null };
