@@ -68,7 +68,7 @@ KeyModel.init(
     },
     role: {
       type: DataTypes.STRING,
-      defaultValue: "builder",
+      defaultValue: "user",
       allowNull: false,
     },
     monthlyCapMicroUsd: {
