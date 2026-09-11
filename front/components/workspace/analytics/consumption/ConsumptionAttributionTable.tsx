@@ -453,7 +453,7 @@ function buildColumns({
       id: "vsPrev",
       header: "vs prev",
       enableSorting: false,
-      meta: { className: "w-16", sizeRatio: 18, headerAlign: "right" },
+      meta: { className: "w-28", sizeRatio: 18, headerAlign: "right" },
       cell: (info) => (
         <VsPrevCell
           credits={info.row.original.credits}
