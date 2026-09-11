@@ -3,7 +3,11 @@ import {
   isConnectionReadonly,
 } from "@connectors/connectors/bigquery/lib/bigquery_api";
 import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
-import { sync } from "@connectors/lib/remote_databases/activities";
+import {
+  hasSelectedRemoteDatabasePermissions,
+  sync,
+} from "@connectors/lib/remote_databases/activities";
+import type { RemoteDBTree } from "@connectors/lib/remote_databases/utils";
 import { getConnectorAndCredentials } from "@connectors/lib/remote_databases/utils";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger, { getActivityLogger } from "@connectors/logger/logger";
@@ -49,21 +53,39 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
 
   const activityLogger = getActivityLogger(connector);
 
-  const treeRes = await fetchTree({
-    credentials,
-    fetchTablesDescription: useMetadataForDBML,
-    logger: activityLogger,
-  });
-  if (treeRes.isErr()) {
-    throw treeRes.error;
+  // Enumerating a BigQuery project's datasets and tables can take hours on large warehouses
+  // (observed 14h on a 100k+ table project). When nothing is selected there is nothing to sync, so
+  // skip the enumeration entirely and let `sync` run its cleanup with an empty tree. See the
+  // `remote-databases-skip-enumeration-when-nothing-selected` contract in remote_databases.
+  const hasSelection = await hasSelectedRemoteDatabasePermissions(connector.id);
+
+  let tree: RemoteDBTree | undefined;
+  if (hasSelection) {
+    const treeRes = await fetchTree({
+      credentials,
+      fetchTablesDescription: useMetadataForDBML,
+      logger: activityLogger,
+    });
+    if (treeRes.isErr()) {
+      throw treeRes.error;
+    }
+    tree = treeRes.value;
+  } else {
+    activityLogger.info(
+      { connectorId },
+      "[BigQuery] No selected permissions, skipping remote tree enumeration."
+    );
   }
-  const tree = treeRes.value;
 
   await sync({
     remoteDBTree: tree,
     mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
     connector,
     tags: useMetadataForDBML ? [USE_METADATA_FOR_DBML_TAG] : [],
+    // On the skip path a selection may have been saved between the precheck and `sync`'s read;
+    // preserve it instead of deleting it so the resync it signaled can recover it. Required by the
+    // `remote-databases-skip-enumeration-when-nothing-selected` contract.
+    preserveSelectedPermissions: !hasSelection,
   });
 
   await syncSucceeded(connectorId);

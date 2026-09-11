@@ -19,7 +19,11 @@ import { buildInternalId } from "@connectors/lib/remote_databases/utils";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig, INTERNAL_MIME_TYPES } from "@connectors/types";
+import type {
+  DataSourceConfig,
+  INTERNAL_MIME_TYPES,
+  ModelId,
+} from "@connectors/types";
 
 type RemoteDatabaseHierarchyModel =
   | RemoteDatabaseModel
@@ -368,6 +372,42 @@ async function cleanupUnusedRemoteDatabaseHierarchyModel({
   } else {
     await model.destroy();
   }
+}
+
+/**
+ * @cc [owner:frankaloia,label:performance] remote-databases-skip-enumeration-when-nothing-selected
+ * Returns whether the connector has any read-granted node, i.e. a database/schema/table row with
+ * permission "selected" — the same set `sync` derives into `readGrantedInternalIds`. Keep this
+ * "selected" filter identical to the one `sync` uses.
+ *
+ * `sync` only creates read-granted nodes and removes every existing row it did not (re)use, so when
+ * nothing is selected the remote tree is irrelevant: `sync` creates nothing and cleans everything up
+ * regardless of the tree. Callers MUST use this to skip the (potentially multi-hour) remote
+ * enumeration when it returns false, passing an empty `remoteDBTree` to `sync`.
+ *
+ * `sync` re-reads selections via its own `findAll` AFTER this precheck, so a selection saved in that
+ * window would be left unused and destroyed by cleanup. Callers taking the skip path MUST therefore
+ * call `sync` with `preserveSelectedPermissions: true`, so a concurrently-saved selection is
+ * preserved (its `lastUpsertedAt` reset rather than the row deleted) and recovered by the resync
+ * that selection signals.
+ */
+export async function hasSelectedRemoteDatabasePermissions(
+  connectorId: ModelId
+): Promise<boolean> {
+  const [selectedDatabases, selectedSchemas, selectedTables] =
+    await Promise.all([
+      RemoteDatabaseModel.count({
+        where: { connectorId, permission: "selected" },
+      }),
+      RemoteSchemaModel.count({
+        where: { connectorId, permission: "selected" },
+      }),
+      RemoteTableModel.count({
+        where: { connectorId, permission: "selected" },
+      }),
+    ]);
+
+  return selectedDatabases + selectedSchemas + selectedTables > 0;
 }
 
 export async function sync({
