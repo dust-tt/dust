@@ -3,6 +3,7 @@ import {
   checkPoolCreditGate,
 } from "@app/lib/api/assistant/credit_check";
 import type { Authenticator } from "@app/lib/auth";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -173,7 +174,10 @@ describe("checkCreditSpendCheckpointGate", () => {
     const result = await checkCreditSpendCheckpointGate(auth, {
       consumedAwuCredits: 5000,
     });
-    expect(result).toEqual({ crossed: true, thresholdAwuCredits: 300 });
+    expect(result).toEqual({
+      crossed: true,
+      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+    });
   });
 
   it("applies even when metronomeCustomerId is null, unlike the pool gate", async () => {
@@ -181,7 +185,10 @@ describe("checkCreditSpendCheckpointGate", () => {
     const result = await checkCreditSpendCheckpointGate(auth, {
       consumedAwuCredits: 5000,
     });
-    expect(result).toEqual({ crossed: true, thresholdAwuCredits: 300 });
+    expect(result).toEqual({
+      crossed: true,
+      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+    });
   });
 
   it("is exempt when there is no user to answer the pause", async () => {
@@ -195,7 +202,7 @@ describe("checkCreditSpendCheckpointGate", () => {
   it("does not notify when this message's consumed credits are below the threshold", async () => {
     const auth = makeAuth({ hasUser: true });
     const result = await checkCreditSpendCheckpointGate(auth, {
-      consumedAwuCredits: 299,
+      consumedAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS - 1,
     });
     expect(result).toEqual({ crossed: false, exempt: false });
   });
@@ -203,8 +210,11 @@ describe("checkCreditSpendCheckpointGate", () => {
   it("notifies with the fixed threshold once this message's consumed credits reach it", async () => {
     const auth = makeAuth({ hasUser: true });
     const result = await checkCreditSpendCheckpointGate(auth, {
-      consumedAwuCredits: 300,
+      consumedAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
     });
-    expect(result).toEqual({ crossed: true, thresholdAwuCredits: 300 });
+    expect(result).toEqual({
+      crossed: true,
+      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+    });
   });
 });
