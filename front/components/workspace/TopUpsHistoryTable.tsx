@@ -1,13 +1,13 @@
-import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
-import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import { formatCredits } from "@app/lib/client/credits";
 import { useAwuTopUpsHistory } from "@app/lib/swr/credits";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   AlertCircle,
   ContentMessage,
   DataTable,
+  DataTableSkeleton,
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -25,7 +25,7 @@ type TopUpRowData = {
   onClick?: () => void;
 };
 
-function TopUpHistorySkeletonCell({ columnId }: UsageTableSkeletonCellProps) {
+function TopUpHistorySkeletonCell({ columnId }: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "date":
       return <LoadingBlock className="h-3 w-24 max-w-full" />;
@@ -109,7 +109,7 @@ export function TopUpsHistoryTable({ owner }: TopUpsHistoryTableProps) {
 
   if (isTopUpsHistoryLoading) {
     return (
-      <UsageTableSkeleton
+      <DataTableSkeleton
         columns={COLUMNS}
         SkeletonCell={TopUpHistorySkeletonCell}
       />

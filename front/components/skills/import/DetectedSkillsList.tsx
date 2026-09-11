@@ -7,10 +7,11 @@ import { isImportableSkillStatus } from "@app/lib/skill_detection";
 import {
   Chip,
   ContentMessage,
+  cn,
   createSelectionColumn,
   DataTable,
-  DataTableLoadingSkeleton,
   InfoCircle,
+  LoadingBlock,
   PuzzlePiece01,
   ScrollableDataTable,
 } from "@dust-tt/sparkle";
@@ -35,6 +36,34 @@ interface SkillRowData {
 }
 
 type SkillCellInfo = CellContext<SkillRowData, unknown>;
+
+const DETECTED_SKILLS_SKELETON_ROWS: SkillRowData[] = Array.from(
+  { length: 3 },
+  () => ({ name: "", status: "ready" })
+);
+
+function renderDetectedSkillSkeletonCell(columnId: string, rowIndex: number) {
+  switch (columnId) {
+    case "select":
+      return <LoadingBlock className="h-4 w-4 rounded-sm" />;
+    case "name":
+      return (
+        <div className="flex items-center gap-2">
+          <LoadingBlock className="h-5 w-5 shrink-0" />
+          <LoadingBlock
+            className={cn(
+              "h-3 max-w-full",
+              ["w-32", "w-40", "w-28"][rowIndex % 3]
+            )}
+          />
+        </div>
+      );
+    case "status":
+      return <LoadingBlock className="h-6 w-40 max-w-full rounded-[9px]" />;
+    default:
+      return null;
+  }
+}
 
 function getColumns(): ColumnDef<SkillRowData>[] {
   return [
@@ -103,6 +132,24 @@ export function DetectedSkillsList({
   );
 
   const columns = useMemo(() => getColumns(), []);
+  const skeletonColumns = useMemo(
+    () =>
+      columns.map((column) => {
+        const skeletonColumn = {
+          ...column,
+          cell: (info: SkillCellInfo) =>
+            renderDetectedSkillSkeletonCell(info.column.id, info.row.index),
+        };
+        return column.id === "select"
+          ? {
+              ...skeletonColumn,
+              id: "select",
+              header: () => <LoadingBlock className="h-4 w-4 rounded-sm" />,
+            }
+          : skeletonColumn;
+      }),
+    [columns]
+  );
 
   // Build rowSelection state from selectedSkillNames form field.
   const rowSelection = useMemo(() => {
@@ -131,7 +178,17 @@ export function DetectedSkillsList({
 
   return (
     <>
-      {isDetecting && <DataTableLoadingSkeleton rows={3} />}
+      {isDetecting && (
+        <div role="status" aria-label="Detecting skills" aria-busy="true">
+          <div aria-hidden="true">
+            <ScrollableDataTable
+              data={DETECTED_SKILLS_SKELETON_ROWS}
+              columns={skeletonColumns}
+              maxHeight="max-h-64"
+            />
+          </div>
+        </div>
+      )}
       {detectError && (
         <ContentMessage
           title="Detection failed"

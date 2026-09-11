@@ -16,8 +16,6 @@ import {
   OVER_POOL_LIMIT_BAR_CLASSES,
   OVERAGE_BAR_CLASSES,
 } from "@app/components/workspace/seat_styles";
-import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
-import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import type { PremiumModelMessageUsage } from "@app/lib/api/assistant/rate_limits";
 import type {
   MemberFairUseUsage,
@@ -49,7 +47,7 @@ import {
   toBaseSeatType,
 } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { MenuItem } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps, MenuItem } from "@dust-tt/sparkle";
 import {
   AlertCircle,
   Button,
@@ -58,6 +56,7 @@ import {
   CoinsStacked03,
   createSelectionColumn,
   DataTable,
+  DataTableSkeleton,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -134,7 +133,7 @@ type Info = CellContext<RowData, string>;
 function MemberUsageSkeletonCell({
   columnId,
   rowIndex,
-}: UsageTableSkeletonCellProps) {
+}: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "select":
       return <LoadingBlock className="h-4 w-4 rounded" />;
@@ -1560,7 +1559,7 @@ export function MembersUsageTable({
       totalRowCount - pagination.pageIndex * pagination.pageSize;
     return (
       <div className="flex flex-col gap-2">
-        <UsageTableSkeleton
+        <DataTableSkeleton
           columns={columns}
           SkeletonCell={MemberUsageSkeletonCell}
           rowCount={

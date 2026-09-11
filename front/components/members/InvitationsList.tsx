@@ -10,11 +10,14 @@ import { useWorkspaceInvitations } from "@app/lib/swr/memberships";
 import type { MembershipInvitationType } from "@app/types/membership_invitation";
 import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   Button,
   Chip,
+  cn,
   DataTable,
-  DataTableLoadingSkeleton,
+  DataTableSkeleton,
+  LoadingBlock,
   Mail01,
   Page,
 } from "@dust-tt/sparkle";
@@ -25,6 +28,27 @@ import { useMemo, useState } from "react";
 type RowData = MembershipInvitationType & {
   onClick: () => void;
 };
+
+function InvitationSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
+  switch (columnId) {
+    case "inviteEmail":
+      return (
+        <LoadingBlock
+          className={cn(
+            "h-3 max-w-full",
+            ["w-48", "w-56", "w-40"][rowIndex % 3]
+          )}
+        />
+      );
+    case "initialRole":
+      return <LoadingBlock className="h-6 w-16 rounded-[9px]" />;
+    default:
+      return null;
+  }
+}
 
 export function InvitationsList({
   owner,
@@ -143,7 +167,11 @@ export function InvitationsList({
       />
       <div className="flex flex-col gap-1 pt-2">
         {isInvitationsLoading && (
-          <DataTableLoadingSkeleton showSelectionColumn={false} rows={3} />
+          <DataTableSkeleton
+            columns={columns}
+            SkeletonCell={InvitationSkeletonCell}
+            rowCount={3}
+          />
         )}
         {!isInvitationsLoading && invitations.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center">

@@ -100,7 +100,11 @@ export {
   DataTable,
   ScrollableDataTable,
 } from "./DataTable";
-export { DataTableLoadingSkeleton } from "./DataTableLoadingSkeleton";
+export type {
+  DataTableSkeletonCellProps,
+  DataTableSkeletonProps,
+} from "./DataTableSkeleton";
+export { DataTableSkeleton } from "./DataTableSkeleton";
 export {
   Dialog,
   DialogClose,

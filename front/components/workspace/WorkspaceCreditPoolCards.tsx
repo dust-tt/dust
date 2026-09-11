@@ -1,6 +1,4 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
-import type { UsageTableSkeletonCellProps } from "@app/components/workspace/UsageTableSkeleton";
-import { UsageTableSkeleton } from "@app/components/workspace/UsageTableSkeleton";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
 import { formatCredits } from "@app/lib/client/credits";
 import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
@@ -16,11 +14,13 @@ import type {
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   AlertCircle,
   ContentMessage,
   cn,
   DataTable,
+  DataTableSkeleton,
   LoadingBlock,
   Page,
 } from "@dust-tt/sparkle";
@@ -201,7 +201,7 @@ const CYCLE_HISTORY_COLUMNS: ColumnDef<CycleHistoryRowData, string>[] = [
 export const INITIAL_CYCLE_HISTORY_ROW_COUNT = 2;
 export const CYCLE_HISTORY_LOAD_MORE_COUNT = 5;
 
-function CycleHistorySkeletonCell({ columnId }: UsageTableSkeletonCellProps) {
+function CycleHistorySkeletonCell({ columnId }: DataTableSkeletonCellProps) {
   switch (columnId) {
     case "cycle":
       return <LoadingBlock className="h-3 w-56 max-w-full" />;
@@ -273,7 +273,7 @@ function WorkspaceCreditPoolHistory({
     case "loading":
       return (
         <div className="flex flex-col gap-2">
-          <UsageTableSkeleton
+          <DataTableSkeleton
             columns={CYCLE_HISTORY_COLUMNS}
             SkeletonCell={CycleHistorySkeletonCell}
             rowCount={INITIAL_CYCLE_HISTORY_ROW_COUNT}
