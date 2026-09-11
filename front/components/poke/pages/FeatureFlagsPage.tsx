@@ -228,7 +228,7 @@ function makeColumns({
                   }
                 }}
               >
-                <PopoverTrigger className="self-start">
+                <PopoverTrigger asChild className="self-start">
                   <Button
                     variant="highlight"
                     size="xs"
