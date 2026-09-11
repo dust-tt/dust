@@ -1,7 +1,4 @@
 {
   "private": true,
-  "type": "module",
-  "scripts": {
-    "test": "node --experimental-strip-types --test review-bot.test.ts"
-  }
+  "type": "module"
 }
