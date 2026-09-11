@@ -707,7 +707,6 @@ const InputBarContainer = ({
   };
 
   const handleToolSelect = (view: MCPServerViewLightType) => {
-    debugger;
     onMCPServerViewSelect(view);
 
     if (!isInlineReferenceEnabled) {
