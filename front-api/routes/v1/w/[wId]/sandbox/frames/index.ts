@@ -11,7 +11,7 @@ import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-
+import frameById from "./[frameId]";
 import call from "./call";
 import callById from "./call_by_id";
 import register from "./register";
@@ -122,5 +122,10 @@ app.post(
     }
   }
 );
+
+// A plain param, not a regex-constrained one: Hono's RegExpRouter cannot merge `/:frameId{...}`
+// with the `/:frameId/call` sibling above and would silently downgrade the whole app to the trie
+// router. The id shape is validated in the sub-app instead.
+app.route("/:frameId", frameById);
 
 export default app;

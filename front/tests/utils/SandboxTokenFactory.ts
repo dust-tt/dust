@@ -29,9 +29,13 @@ process.env.DUST_SANDBOX_JWT_SECRET ??= "test-sandbox-jwt-secret";
 export async function createSandboxTokenTestContext({
   disableComputerFeature = false,
   usePodSpaceForConversation = false,
+  // Mint the exec token without a user, as for a run driven by a non-human actor (Slack bot
+  // user, trigger). The conversation itself is still created by the member user.
+  userlessToken = false,
 }: {
   disableComputerFeature?: boolean;
   usePodSpaceForConversation?: boolean;
+  userlessToken?: boolean;
 } = {}) {
   const user = await UserFactory.basic();
   const workspace = await WorkspaceFactory.basic();
@@ -127,7 +131,10 @@ export async function createSandboxTokenTestContext({
     displayLabels: null,
   };
 
-  const token = await generateSandboxExecToken(auth, {
+  const tokenAuth = userlessToken
+    ? await Authenticator.internalAdminForWorkspace(workspace.sId)
+    : auth;
+  const token = await generateSandboxExecToken(tokenAuth, {
     agentConfiguration: agentConfig,
     agentMessage,
     conversation,
