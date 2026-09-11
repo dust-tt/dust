@@ -182,7 +182,6 @@ const {
   finalizeSuccessfulAgentLoopActivity,
   finalizeGracefullyStoppedAgentLoopActivity,
   finalizeCreditStoppedAgentLoopActivity,
-  finalizePausedAgentLoopActivity,
   finalizeCancelledAgentLoopActivity,
   finalizeInterruptedAgentLoopActivity,
   finalizeErroredAgentLoopActivity,
@@ -315,7 +314,7 @@ export async function agentLoopWorkflow({
 
         const stepStartTime = Date.now();
 
-        const { runId, shouldContinue, retryWithoutTools } =
+        const { runId, shouldContinue, retryWithoutTools, ownCostMicroUsd } =
           await executeStepIteration({
             authType,
             agentLoopArgs: {
@@ -390,6 +389,7 @@ export async function agentLoopWorkflow({
                   ...agentLoopArgs,
                   initialStartTime,
                 },
+                precomputedOwnCostMicroUsd: ownCostMicroUsd ?? null,
               }
             );
             if (checkpointResult.skipRemainingChecks) {
@@ -439,8 +439,6 @@ export async function agentLoopWorkflow({
             authType,
             argsWithRunIds
           );
-        } else if (creditSpendCheckpointPauseRequested) {
-          await finalizePausedAgentLoopActivity(authType, argsWithRunIds);
         } else {
           await finalizeSuccessfulAgentLoopActivity(authType, argsWithRunIds);
         }
@@ -516,6 +514,9 @@ async function executeStepIteration({
   runId: string | null;
   shouldContinue: boolean;
   retryWithoutTools?: boolean;
+  // This step's guardrail cost snapshot, passed through so the caller can hand it to the credit
+  // spend checkpoint gate instead of it re-querying the same cost data.
+  ownCostMicroUsd?: number | null;
 }> {
   const result = await runModelAndCreateActionsActivity({
     authType,
@@ -534,7 +535,12 @@ async function executeStepIteration({
     };
   }
 
-  const { runId, actionBlobs, retryWithoutTools = false } = result;
+  const {
+    runId,
+    actionBlobs,
+    retryWithoutTools = false,
+    ownCostMicroUsd,
+  } = result;
 
   // Generation completed or the loop unpaused and no new tools were generated.
   if (actionBlobs.length === 0) {
@@ -546,6 +552,7 @@ async function executeStepIteration({
       // disabled to force a final answer.
       shouldContinue: runId === null || retryWithoutTools,
       retryWithoutTools,
+      ownCostMicroUsd,
     };
   }
 
@@ -556,6 +563,7 @@ async function executeStepIteration({
     return {
       runId,
       shouldContinue: false,
+      ownCostMicroUsd,
     };
   }
 
@@ -594,6 +602,7 @@ async function executeStepIteration({
       return {
         runId,
         shouldContinue: false,
+        ownCostMicroUsd,
       };
     }
   }
@@ -601,6 +610,7 @@ async function executeStepIteration({
   return {
     runId,
     shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
+    ownCostMicroUsd,
   };
 }
 

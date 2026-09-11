@@ -99,38 +99,6 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
 }
 
 /**
- * Credit spend checkpoint pause: the message is not done, it is waiting on the user's decision.
- * Like the blocked-action pause, this execution's runs must still be accounted for (credits,
- * analytics, usage), since a later execution only accounts for its own runs. Completion-only
- * side effects (unread notification, mentions, email reply) wait for the final execution.
- */
-export async function finalizePausedAgentLoopActivity(
-  authType: AuthenticatorType,
-  agentLoopArgs: AgentLoopArgs
-): Promise<void> {
-  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
-
-  logger.info(
-    {
-      workspaceId: authType.workspaceId,
-      conversationId: agentLoopArgs.conversationId,
-      agentMessageId: agentLoopArgs.agentMessageId,
-    },
-    "Agent loop paused at credit spend checkpoint"
-  );
-
-  await Promise.all([
-    launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
-      auth,
-      agentLoopArgs
-    ),
-    launchTrackProgrammaticUsage(auth, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-  ]);
-}
-
-/**
  * Interrupt mirrors the cancelled path (immediate kill) but also continues processing
  * any pending queued messages: the user chose to redirect, not abort entirely.
  *

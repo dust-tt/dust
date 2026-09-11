@@ -36,6 +36,9 @@ export async function checkCostAndSubagentsThresholds({
   eventData: CostThresholdEventData;
 }): Promise<{
   totalCostMicroUsd: number;
+  // The root message's own cost (excluding subagent descendants), for callers that need a
+  // per-message figure without re-querying `RunResource` themselves.
+  ownCostMicroUsd: number | null;
   hardCapExceeded: boolean;
   subagentLaunchCount: number;
   subagentHardCapExceeded: boolean;
@@ -44,20 +47,22 @@ export async function checkCostAndSubagentsThresholds({
   if (!isRootAgentMessage) {
     return {
       totalCostMicroUsd: 0,
+      ownCostMicroUsd: null,
       hardCapExceeded: false,
       subagentLaunchCount: 0,
       subagentHardCapExceeded: false,
     };
   }
 
-  const { dustRunIds, descendantAgenticUserMessageCount } =
+  const { dustRunIds, ownDustRunIds, descendantAgenticUserMessageCount } =
     await collectDescendantData(auth, {
       rootAgentMessageId: eventData.agentMessageId,
     });
 
-  const totalCostMicroUsd = await getCumulativeCostMicroUsd(auth, {
-    dustRunIds,
-  });
+  const { totalCostMicroUsd, ownCostMicroUsd } = await getCostBreakdownMicroUsd(
+    auth,
+    { dustRunIds, ownDustRunIds }
+  );
 
   if (totalCostMicroUsd > 0) {
     for (const thresholdUsd of COST_WARNING_THRESHOLDS_USD) {
@@ -100,6 +105,7 @@ export async function checkCostAndSubagentsThresholds({
 
   return {
     totalCostMicroUsd,
+    ownCostMicroUsd,
     hardCapExceeded: totalCostMicroUsd >= AGENT_LOOP_COST_HARD_CAP_MICRO_USD,
     subagentLaunchCount: descendantAgenticUserMessageCount,
     subagentHardCapExceeded:
@@ -107,12 +113,17 @@ export async function checkCostAndSubagentsThresholds({
   };
 }
 
-async function getCumulativeCostMicroUsd(
+// Computes total cost (root + subagent descendants) and the root's own cost in a single query
+// pass, so callers that need both don't have to fetch `RunResource`/`RunUsage` data twice.
+async function getCostBreakdownMicroUsd(
   auth: Authenticator,
-  { dustRunIds }: { dustRunIds: string[] }
-): Promise<number> {
+  {
+    dustRunIds,
+    ownDustRunIds,
+  }: { dustRunIds: string[]; ownDustRunIds: string[] }
+): Promise<{ totalCostMicroUsd: number; ownCostMicroUsd: number }> {
   if (dustRunIds.length === 0) {
-    return 0;
+    return { totalCostMicroUsd: 0, ownCostMicroUsd: 0 };
   }
 
   const runResources = await RunResource.listByDustRunIds(auth, { dustRunIds });
@@ -120,7 +131,23 @@ async function getCumulativeCostMicroUsd(
     runs: runResources,
   });
 
-  return runUsages.reduce((acc, usage) => acc + usage.costMicroUsd, 0);
+  const ownDustRunIdSet = new Set(ownDustRunIds);
+  const ownRunModelIds = new Set(
+    runResources
+      .filter((run) => ownDustRunIdSet.has(run.dustRunId))
+      .map((run) => run.id)
+  );
+
+  let totalCostMicroUsd = 0;
+  let ownCostMicroUsd = 0;
+  for (const usage of runUsages) {
+    totalCostMicroUsd += usage.costMicroUsd;
+    if (ownRunModelIds.has(usage.runModelId)) {
+      ownCostMicroUsd += usage.costMicroUsd;
+    }
+  }
+
+  return { totalCostMicroUsd, ownCostMicroUsd };
 }
 
 /**
@@ -136,13 +163,18 @@ async function collectDescendantData(
   { rootAgentMessageId }: { rootAgentMessageId: string }
 ): Promise<{
   dustRunIds: string[];
+  // The root message's own runIds, a subset of dustRunIds. Captured for free from the first BFS
+  // level, so callers needing a per-message cost breakdown don't need their own extra query.
+  ownDustRunIds: string[];
   descendantAgenticUserMessageCount: number;
 }> {
   const workspace = auth.getNonNullableWorkspace();
   const visitedAgentMessageIds = new Set<string>();
   const runIds = new Set<string>();
+  let ownDustRunIds: string[] = [];
   const descendantAgenticUserMessageRowIds = new Set<number>();
   let frontierAgentMessageIds = [rootAgentMessageId];
+  let isRootLevel = true;
 
   while (frontierAgentMessageIds.length > 0) {
     const currentFrontier = frontierAgentMessageIds.filter(
@@ -182,6 +214,11 @@ async function collectDescendantData(
       for (const runId of agentMessage.runIds) {
         runIds.add(runId);
       }
+    }
+
+    if (isRootLevel) {
+      ownDustRunIds = [...runIds];
+      isRootLevel = false;
     }
 
     const childUserMessageRows = await MessageModel.findAll({
@@ -239,6 +276,7 @@ async function collectDescendantData(
 
   return {
     dustRunIds: [...runIds],
+    ownDustRunIds,
     descendantAgenticUserMessageCount: descendantAgenticUserMessageRowIds.size,
   };
 }
