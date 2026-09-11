@@ -12,7 +12,6 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
-import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxEnvVarModel } from "@app/lib/resources/storage/models/sandbox_env_var";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -938,14 +937,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
 
     if (hardDelete) {
-      await SandboxOwnerModel.destroy({
-        where: {
-          spaceId: this.id,
-          workspaceId,
-        },
-        transaction,
-      });
-
       // Pod-scoped env var rows only — workspace rows have spaceId NULL.
       await SandboxEnvVarModel.destroy({
         where: {

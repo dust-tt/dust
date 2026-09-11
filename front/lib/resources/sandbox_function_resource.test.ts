@@ -63,21 +63,13 @@ describe("SandboxFunctionResource", () => {
     ]);
   });
 
-  it("declares legacy and publication-scoped uniqueness indexes", () => {
+  it("declares the publication-scoped uniqueness index", () => {
     const indexes = SandboxFunctionModel.options.indexes ?? [];
 
     expect(indexes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           fields: ["fileId"],
-        }),
-        expect.objectContaining({
-          fields: ["workspaceId", "spaceId", "fileId"],
-          unique: true,
-        }),
-        expect.objectContaining({
-          fields: ["workspaceId", "spaceId", "slug"],
-          unique: true,
         }),
         expect.objectContaining({
           fields: ["workspaceId", "fileId", "publicationId", "slug"],
