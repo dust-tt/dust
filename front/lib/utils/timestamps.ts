@@ -188,20 +188,6 @@ export type RelativeDateBucket =
   | "Last 12 Months"
   | "Older";
 
-/**
- * @cc [owner:avervaet,label:coding] moment-bucket-replacement
- * This is the standard replacement for moment-based Today/Yesterday/Last Week/... list
- * bucketing: new code needing that bucketing must use this helper instead of importing
- * `moment`. Bucket boundaries are computed by shifting `now` first and taking the start of
- * that day second; the reverse order drifts by an hour on days where midnight does not exist
- * (zones whose DST switch happens at 00:00).
- */
-/**
- * Buckets a date into a coarse relative-time group, for sectioning lists (e.g. sidebar
- * conversation lists) into "Today", "Yesterday", "Last Week", etc.
- * @param date - The date to bucket (Date object or timestamp in milliseconds)
- * @param now - The reference date to bucket against (defaults to now)
- */
 export const getRelativeDateBucket = (
   date: Date | number,
   now: Date = new Date()
