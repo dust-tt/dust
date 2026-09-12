@@ -42,6 +42,18 @@ const EMPTY_BLOCKED_ACTIONS_QUEUE: BlockedActionQueueItem[] = [];
 const EMPTY_APPROVAL_QUEUE: ApprovalQueueItem[] = [];
 const pulseDurationMs = 3000;
 
+// Identity of a tool for conversation-scoped approvals. Uses a NUL separator because
+// mcp server names and tool names are free-form but never contain one.
+function conversationApprovalKey({
+  mcpServerName,
+  toolName,
+}: {
+  mcpServerName: string;
+  toolName: string;
+}): string {
+  return `${mcpServerName}\0${toolName}`;
+}
+
 function getApprovalQueueItems(
   blockedActionsQueue: BlockedActionQueueItem[]
 ): ApprovalQueueItem[] {
@@ -99,6 +111,16 @@ type BlockedActionsContextType = {
   startPulsingAction: (actionId: string) => void;
   stopPulsingAction: (actionId: string) => void;
   isActionPulsing: (actionId: string) => boolean;
+  // Whether ephemeral per-conversation tool approvals are offered (extension only).
+  conversationApprovalEnabled: boolean;
+  isToolApprovedForConversation: (params: {
+    mcpServerName: string;
+    toolName: string;
+  }) => boolean;
+  approveToolForConversation: (params: {
+    mcpServerName: string;
+    toolName: string;
+  }) => void;
 };
 
 const BlockedActionsContext = createContext<
@@ -119,12 +141,24 @@ export function useBlockedActionsContext() {
 interface BlockedActionsProviderProps {
   owner: LightWorkspaceType;
   conversation?: ConversationListItemType;
+  // When true, offer ephemeral per-conversation tool approvals. Only the
+  // browser extension enables this today.
+  conversationApprovalEnabled?: boolean;
   children: ReactNode;
 }
 
+/**
+ * @cc [owner:tdraier,label:react;product] conversation-approvals-ephemeral
+ * Conversation-scoped tool approvals granted through `approveToolForConversation`
+ * MUST stay ephemeral: kept only in provider state, never persisted, and cleared
+ * whenever `conversationId` changes. `isToolApprovedForConversation` MUST return
+ * `false` when `conversationApprovalEnabled` is `false`, so the feature stays inert
+ * outside the surfaces (the browser extension) that opt in.
+ */
 export function BlockedActionsProvider({
   owner,
   conversation,
+  conversationApprovalEnabled = false,
   children,
 }: BlockedActionsProviderProps) {
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -149,6 +183,36 @@ export function BlockedActionsProvider({
     new Set()
   );
   const pulseTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Ephemeral, per-conversation, per-tool approvals. Not persisted: reset when
+  // the conversation changes and lost on reload.
+  const [conversationApprovedTools, setConversationApprovedTools] = useState<
+    Set<string>
+  >(new Set());
+
+  // Reset ephemeral approvals whenever the conversation changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: conversationId is an intentional reset trigger, not read in the body
+  useEffect(() => {
+    setConversationApprovedTools(new Set());
+  }, [conversationId]);
+
+  const isToolApprovedForConversation = useCallback(
+    (params: { mcpServerName: string; toolName: string }) =>
+      conversationApprovalEnabled &&
+      conversationApprovedTools.has(conversationApprovalKey(params)),
+    [conversationApprovalEnabled, conversationApprovedTools]
+  );
+
+  const approveToolForConversation = useCallback(
+    (params: { mcpServerName: string; toolName: string }) => {
+      setConversationApprovedTools((prev) => {
+        const next = new Set(prev);
+        next.add(conversationApprovalKey(params));
+        return next;
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     if (conversationId) {
@@ -442,6 +506,9 @@ export function BlockedActionsProvider({
       startPulsingAction,
       stopPulsingAction,
       isActionPulsing,
+      conversationApprovalEnabled,
+      isToolApprovedForConversation,
+      approveToolForConversation,
     }),
     [
       enqueueBlockedAction,
@@ -456,6 +523,9 @@ export function BlockedActionsProvider({
       startPulsingAction,
       stopPulsingAction,
       isActionPulsing,
+      conversationApprovalEnabled,
+      isToolApprovedForConversation,
+      approveToolForConversation,
     ]
   );
 

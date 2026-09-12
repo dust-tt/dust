@@ -78,6 +78,10 @@ interface ToolValidationCardProps {
   isPulsing?: boolean;
   // Submits the user's decision; returns whether the submission succeeded.
   onValidate: (approved: MCPValidationOutputType) => Promise<boolean>;
+  // When provided, offers an ephemeral "allow for this conversation" option that
+  // suppresses further prompts for this tool for the rest of the conversation.
+  // Only wired up for low/medium stake tools on surfaces that opt in.
+  onApproveForConversation?: () => Promise<boolean>;
 }
 
 interface ToolValidationDetailsDialogProps {
@@ -138,6 +142,16 @@ function ToolValidationDetailsDialog({
   );
 }
 
+/**
+ * @cc [owner:tdraier,label:react;product] conversation-approval-medium-only
+ * The "Allow all in this conversation" button MUST be offered only when
+ * `onApproveForConversation` is provided AND the tool is `medium` stake AND it
+ * declares a non-empty `argumentsRequiringApproval`. That is the only case where
+ * "Always allow" keeps re-prompting (per input value); at other stakes the button
+ * is redundant (`never_ask`/`low`) or contradicts the "never savable" intent
+ * (`high`), and a medium tool with no approval args is already covered
+ * permanently by "Always allow".
+ */
 export function ToolValidationCard({
   validationRequest,
   approvalProgress,
@@ -149,11 +163,15 @@ export function ToolValidationCard({
   isValidating,
   isPulsing = false,
   onValidate,
+  onApproveForConversation,
 }: ToolValidationCardProps) {
   const toolOverride = getToolOverride(validationRequest.metadata);
   const [submittingDecision, setSubmittingDecision] =
     useState<MCPValidationOutputType | null>(null);
-  const isSubmitting = isValidating || submittingDecision !== null;
+  const [isApprovingForConversation, setIsApprovingForConversation] =
+    useState(false);
+  const isSubmitting =
+    isValidating || submittingDecision !== null || isApprovingForConversation;
 
   const canCurrentUserRespond = canCurrentUserRespondToParentUserMessage({
     parentUserId: validationRequest.userId,
@@ -173,6 +191,18 @@ export function ToolValidationCard({
     }
   };
 
+  const handleApproveForConversation = async () => {
+    if (!onApproveForConversation) {
+      return;
+    }
+    setIsApprovingForConversation(true);
+    try {
+      await onApproveForConversation();
+    } finally {
+      setIsApprovingForConversation(false);
+    }
+  };
+
   const {
     metadata: { agentName, mcpServerName },
   } = validationRequest;
@@ -187,6 +217,15 @@ export function ToolValidationCard({
   const canAlwaysAllow = ["low", "medium"].includes(
     validationRequest.stake ?? ""
   );
+
+  // "Allow all in this conversation" only adds value for a medium-stake tool
+  // that re-prompts per input value. At other stakes it is redundant
+  // (never_ask/low) or contradicts "never savable" (high), and a medium tool
+  // with no approval args is already covered permanently by "Always allow".
+  const canApproveForConversation =
+    Boolean(onApproveForConversation) &&
+    validationRequest.stake === "medium" &&
+    (validationRequest.argumentsRequiringApproval?.length ?? 0) > 0;
   const approveLabel = toolOverride?.approveLabel ?? "Allow";
 
   return (
@@ -268,6 +307,17 @@ export function ToolValidationCard({
               disabled={isSubmitting}
               isLoading={submittingDecision === "always_approved"}
               onClick={() => void handleValidation("always_approved")}
+            />
+          )}
+          {canApproveForConversation && (
+            <Button
+              label="Allow all in this conversation"
+              variant="outline"
+              icon={Check}
+              tooltip="Stop asking for this tool for the rest of this conversation, on any page or input. Nothing is saved once the conversation ends."
+              disabled={isSubmitting}
+              isLoading={isApprovingForConversation}
+              onClick={() => void handleApproveForConversation()}
             />
           )}
           <Button
