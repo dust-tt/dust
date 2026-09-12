@@ -8,6 +8,7 @@ import { ConversationViewer } from "@app/components/assistant/conversation/Conve
 import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
 import type { VirtuosoMessageListContext } from "@app/components/assistant/conversation/types";
+import type { AnalyticsViewInput } from "@app/components/workspace/analytics/analyticsView";
 import { useAnalyticsConversation } from "@app/hooks/useAnalyticsConversation";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -138,6 +139,8 @@ export interface AnalyticsConversationPanelProps {
   user: UserType;
   onClose: () => void;
   isOpen: boolean;
+  isFacetsLoading: boolean;
+  view: AnalyticsViewInput;
 }
 
 /**
@@ -149,6 +152,8 @@ export function AnalyticsConversationPanel({
   user,
   onClose,
   isOpen,
+  isFacetsLoading,
+  view,
 }: AnalyticsConversationPanelProps) {
   const {
     conversation,
@@ -156,20 +161,25 @@ export function AnalyticsConversationPanel({
     creationFailed,
     startConversation,
     resetConversation,
-  } = useAnalyticsConversation({ owner, user });
+  } = useAnalyticsConversation({ owner, user, view });
 
   // `ResizableSidePanel` keeps this panel mounted while closed, so a mount effect would bootstrap
-  // a conversation on every Analytics page load.
+  // a conversation on every Analytics page load. Wait for filter resolution too: the opening
+  // message names the filters and is never regenerated, so starting early would name raw ids.
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !isFacetsLoading) {
       void startConversation();
     }
-  }, [isOpen, startConversation]);
+  }, [isOpen, isFacetsLoading, startConversation]);
 
   const handleRetry = useCallback(() => {
     resetConversation();
-    void startConversation();
-  }, [resetConversation, startConversation]);
+    // Same gate as the effect above; when names are still resolving the effect starts the
+    // conversation as soon as they land.
+    if (!isFacetsLoading) {
+      void startConversation();
+    }
+  }, [isFacetsLoading, resetConversation, startConversation]);
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden">
