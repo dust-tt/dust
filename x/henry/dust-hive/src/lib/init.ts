@@ -209,6 +209,7 @@ async function initElasticsearchTS(
     { name: "agent_document_outputs", version: "1" },
     { name: "agent_message_analytics", version: "2" },
     { name: "agent_message_consumption_analytics", version: "1" },
+    { name: "skill_search", version: "1" },
     { name: "user_search", version: "1" },
   ];
 
