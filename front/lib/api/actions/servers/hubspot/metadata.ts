@@ -212,7 +212,10 @@ export const HUBSPOT_TOOLS_METADATA = [
         .optional()
         .describe("Specific properties to return."),
       limit: z.number().optional().default(200),
-      after: z.string().optional().describe("Pagination cursor."),
+      after: z
+        .string()
+        .optional()
+        .describe("Pagination cursor (paging.after from a previous response)."),
     },
     stake: "never_ask",
     displayLabels: {
