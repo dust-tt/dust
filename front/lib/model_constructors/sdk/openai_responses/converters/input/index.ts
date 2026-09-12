@@ -16,6 +16,7 @@ import {
   reasoningToOpenAIResponsesReasoning,
   systemMessagesToInputItems,
   toolCallResultMessageToInputItem,
+  toolNamesCalledWithoutNamespace,
   toolSpecsToOpenAITools,
   userImageMessageToInputItem,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
@@ -102,6 +103,8 @@ export function WithOpenAIResponsesInputConverter<
       const openAITools = toolSpecsToOpenAITools(tools, {
         forceTool,
         toolSearchEnabled: toolSearchEnabled ?? false,
+        toolNamesRequiringDefaultNamespace:
+          toolNamesCalledWithoutNamespace(conversation),
       });
 
       return {
