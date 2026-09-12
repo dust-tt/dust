@@ -62,6 +62,24 @@ class FileBlobUploadError extends Error {
   }
 }
 
+type UploadResult = Result<FileBlob, FileBlobUploadError>;
+
+/**
+ * Wraps an upload so `onSettled` runs with a file's result as soon as that file settles, rather
+ * than when the whole batch does.
+ */
+function withOnSettled(
+  onSettled: ((result: UploadResult) => void) | undefined,
+  upload: (fileBlob: FileBlob) => Promise<UploadResult>
+) {
+  return async (fileBlob: FileBlob) => {
+    const result = await upload(fileBlob);
+    onSettled?.(result);
+
+    return result;
+  };
+}
+
 export function useFileUploaderService({
   hasSandboxTools,
   owner,
@@ -166,8 +184,11 @@ export function useFileUploaderService({
   const uploadFiles = useCallback(
     async (
       newFileBlobs: FileBlob[],
-      options?: { useCaseMetadata?: FileUseCaseMetadata }
-    ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
+      options?: {
+        useCaseMetadata?: FileUseCaseMetadata;
+        onFileSettled?: (result: UploadResult) => void;
+      }
+    ): Promise<UploadResult[]> => {
       const effectiveUseCaseMetadata =
         options?.useCaseMetadata ?? useCaseMetadata;
       // Browsers have a limit on the number of concurrent network operations.
@@ -176,7 +197,7 @@ export function useFileUploaderService({
       // have created the file objects long before the upload of the content finishes.
       return concurrentExecutor(
         newFileBlobs,
-        async (fileBlob) => {
+        withOnSettled(options?.onFileSettled, async (fileBlob) => {
           // Get upload URL from server.
           let uploadResponse;
           try {
@@ -286,7 +307,7 @@ export function useFileUploaderService({
             publicUrl: file.publicUrl,
             path: fileUploaded.path,
           });
-        },
+        }),
         { concurrency: 4 }
       );
     },
@@ -380,8 +401,16 @@ export function useFileUploaderService({
       const previewResults = processSelectedFiles(files);
       const newFileBlobs = processResults(previewResults, true);
 
-      const uploadResults = await uploadFiles(newFileBlobs, options);
-      const finalFileBlobs = processResults(uploadResults);
+      // Commit each file as its own upload settles. Processing only the finished batch would
+      // hold a file that is already uploaded at `uploadProgress: 100`, and a failed one at
+      // `isUploading: true`, until the slowest upload of the batch finishes.
+      const uploadResults = await uploadFiles(newFileBlobs, {
+        ...options,
+        onFileSettled: (result) => processResults([result]),
+      });
+      const finalFileBlobs = uploadResults.flatMap((result) =>
+        result.isOk() ? [result.value] : []
+      );
 
       setNumFilesProcessing((prev) => prev - files.length);
 
