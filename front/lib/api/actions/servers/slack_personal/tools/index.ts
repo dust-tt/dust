@@ -11,6 +11,7 @@ import type { AgentLoopRunContext, ToolContext } from "@app/lib/actions/types";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { SLACK_SEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import {
+  buildSlackPermalink,
   executeArchiveChannel,
   executeCreateChannel,
   executeGetChannelCanvases,
@@ -25,6 +26,7 @@ import {
   executeSetUserStatus,
   executeWriteCanvas,
   getSlackClient,
+  getSlackTeamUrl,
   isSlackMissingScope,
   resolveChannelDisplayName,
   resolveChannelId,
@@ -813,6 +815,10 @@ export function createSlackPersonalTools(
         accessToken,
       });
 
+      // Fetch the team URL once to construct message permalinks
+      // (conversations.history does not return them).
+      const teamUrl = await getSlackTeamUrl({ accessToken });
+
       const { citationsOffset } = isAgentLoopRunContext(toolContext.runContext)
         ? toolContext.runContext.stepContext
         : { citationsOffset: 0 };
@@ -834,6 +840,14 @@ export function createSlackPersonalTools(
           return {
             ts: match.ts,
             reply_count: match.reply_count,
+            permalink:
+              teamUrl && match.ts
+                ? buildSlackPermalink({
+                    teamUrl,
+                    channelId,
+                    messageTs: match.ts,
+                  })
+                : undefined,
             authorName: authorName ?? "Unknown",
             // Reconstruct readable text from blocks/attachments: app/bot messages
             // (Datadog, Zendesk, ...) often have an empty `text` and put content in
