@@ -662,7 +662,19 @@ function AgentBuilderForm({
     });
   };
 
-  const { isDirty, isSubmitting } = form.formState;
+  const { isSubmitting, dirtyFields } = form.formState;
+
+  // `instructionsHtml` mirrors the editor content as serialized HTML (used for
+  // sidekick block targeting). Its value can differ from the stored baseline
+  // without any real user edit — e.g. regenerated block ids or legacy markup
+  // that the editor no longer reproduces verbatim — so it must not, on its own,
+  // count as an unsaved change. Real edits live in `instructions` and the other
+  // form fields. We therefore derive "unsaved changes" from the set of dirty
+  // fields, ignoring `instructionsHtml`, rather than from the whole-form
+  // `isDirty`.
+  const hasUnsavedChanges = Object.keys(dirtyFields).some(
+    (field) => field !== "instructionsHtml"
+  );
 
   const hasAgentDataLoadError =
     isActionsError || isSkillsError || !!isTriggersError || isEditorsError;
@@ -709,7 +721,7 @@ function AgentBuilderForm({
   };
 
   // Disable navigation lock during save process for new agents
-  useNavigationLock((isDirty || !!duplicateAgentId) && !isSaving);
+  useNavigationLock((hasUnsavedChanges || !!duplicateAgentId) && !isSaving);
 
   const saveLabel = isSubmitting ? "Saving..." : "Save";
 
@@ -755,6 +767,7 @@ function AgentBuilderForm({
             setIsCreatedDialogOpen={setIsCreatedDialogOpen}
             isNewAgent={!!duplicateAgentId || !agentConfiguration}
             isDuplicate={!!duplicateAgentId}
+            hasUnsavedChanges={hasUnsavedChanges}
             templateInfo={
               assistantTemplate
                 ? {
@@ -804,6 +817,7 @@ interface AgentBuilderContentProps {
   isDuplicate: boolean;
   templateInfo?: TemplateInfo;
   conversationId?: string;
+  hasUnsavedChanges: boolean;
 }
 
 function AgentBuilderContent({
@@ -828,6 +842,7 @@ function AgentBuilderContent({
   isDuplicate,
   templateInfo,
   conversationId,
+  hasUnsavedChanges,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
   const confirm = useContext(ConfirmContext);
@@ -946,6 +961,7 @@ function AgentBuilderContent({
             isEditorGateVisible={isEditorGateVisible}
             isAddingSelfAsEditor={isAddingSelfAsEditor}
             onAddSelfAsEditor={onAddSelfAsEditor}
+            hasUnsavedChanges={hasUnsavedChanges}
           />
         }
         rightPanel={
