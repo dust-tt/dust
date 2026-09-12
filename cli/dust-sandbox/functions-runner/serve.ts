@@ -261,7 +261,8 @@ function overloadedFrame(): Record<string, unknown> {
 
 export async function serve(
   functionsDir: string,
-  socketPath: string
+  socketPath: string,
+  eagerName?: string
 ): Promise<never> {
   for (const key of SPAWN_ENV_SCRUB_KEYS) {
     delete process.env[key];
@@ -449,10 +450,22 @@ export async function serve(
   // bytes and serving stale code under a fresh stamp from then on.
   const importsInFlight = new Map<string, Promise<FuseImportResult>>();
 
+  // Poison is sticky: once a name's import was caught racing a rewrite, the
+  // module registry permanently holds bytes whose hash is unknown, and NO
+  // later fuse run can fix that — import() would return the already-evaluated
+  // module while the pipeline hashes the new on-disk bytes, silently pairing
+  // a fresh hash with stale code. A background (prefetch) import that
+  // discovers poison ignores the result, so the set is what guarantees the
+  // next real request still takes the stale-and-recycle path.
+  const poisonedNames = new Set<string>();
+
   function importFromFunctionsDir(name: string): Promise<FuseImportResult> {
     const inFlight = importsInFlight.get(name);
     if (inFlight !== undefined) {
       return inFlight;
+    }
+    if (poisonedNames.has(name)) {
+      return Promise.resolve({ kind: "poisoned" });
     }
     const flight = (async (): Promise<FuseImportResult> => {
       const handlerPath = resolveBundle(functionsDir, name);
@@ -487,10 +500,17 @@ export async function serve(
       // for this path and must recycle.
       const after = await statBundle(handlerPath);
       if (!sameStamp(stamp, after)) {
+        poisonedNames.add(name);
         return { kind: "poisoned" };
       }
       const bundle: ImportedBundle = { handlerPath, stamp, sha256 };
-      imported.set(name, bundle);
+      // An entry appearing mid-flight came from a stamped cache import and
+      // is at least as current as the fuse's read (gcsfuse can lag); never
+      // clobber it. Request callers only run this pipeline when the entry
+      // was absent.
+      if (!imported.has(name)) {
+        imported.set(name, bundle);
+      }
       return { kind: "ok", bundle };
     })();
     // Registered synchronously (before any await runs) and cleared on
@@ -500,6 +520,97 @@ export async function serve(
     });
     importsInFlight.set(name, tracked);
     return tracked;
+  }
+
+  // Sibling prefetch: the first import of an app's function warms the rest
+  // of the app in the background, restoring what per-function servers used
+  // to get by importing in parallel processes — without it, an app opening
+  // through a Frame pays its bundles' imports serially, each first request
+  // stalling behind the previous function's import. Best-effort and polite:
+  // one bundle at a time, only while nothing is running or queued (module
+  // evaluation is synchronous and would stall live requests), stopping at a
+  // soft RSS ceiling, and one attempt per app per worker lifetime.
+  const PREFETCH_MAX_SIBLINGS = 16;
+  const PREFETCH_RSS_CEILING_BYTES = Math.floor(MAX_RSS_BYTES * 0.8);
+  const PREFETCH_QUIET_RECHECK_MS = 100;
+  const prefetchedApps = new Set<string>();
+
+  /** The app-folder prefix of a slug (`myapp__list-notes` -> `myapp`), or
+   * null for root-level functions, which have no app to prefetch. Mirrors
+   * the affinity key in warm.rs. */
+  function appPrefix(name: string): string | null {
+    const separator = name.indexOf("__");
+    return separator > 0 ? name.slice(0, separator) : null;
+  }
+
+  function listUnimportedAppSiblings(prefix: string): string[] {
+    let entries: import("node:fs").Dirent[];
+    try {
+      entries = readdirSync(functionsDir, { withFileTypes: true });
+    } catch {
+      return [];
+    }
+    const siblings: string[] = [];
+    for (const entry of entries) {
+      if (!entry.isFile()) {
+        continue;
+      }
+      const dot = entry.name.lastIndexOf(".");
+      const stem = dot <= 0 ? entry.name : entry.name.slice(0, dot);
+      if (
+        stem.startsWith(`${prefix}__`) &&
+        VALID_NAME.test(stem) &&
+        !imported.has(stem)
+      ) {
+        siblings.push(stem);
+      }
+    }
+    return siblings;
+  }
+
+  function schedulePrefetch(name: string): void {
+    const prefix = appPrefix(name);
+    if (prefix === null || prefetchedApps.has(prefix)) {
+      return;
+    }
+    prefetchedApps.add(prefix);
+    // The chain is written to never reject; the catch keeps a runner bug in
+    // background work from becoming an unhandled rejection that kills a
+    // serving worker.
+    prefetchApp(prefix).catch(() => {});
+  }
+
+  async function prefetchApp(prefix: string): Promise<void> {
+    const siblings = listUnimportedAppSiblings(prefix).slice(
+      0,
+      PREFETCH_MAX_SIBLINGS
+    );
+    for (const sibling of siblings) {
+      // Yield to live traffic: a prefetch import runs only on a fully quiet
+      // worker, so at most one background import ever stands in front of a
+      // request.
+      while (running > 0 || queuedLive > 0) {
+        if (draining) {
+          return;
+        }
+        await new Promise((resolve) =>
+          setTimeout(resolve, PREFETCH_QUIET_RECHECK_MS)
+        );
+      }
+      if (draining) {
+        return;
+      }
+      if (process.memoryUsage.rss() > PREFETCH_RSS_CEILING_BYTES) {
+        return;
+      }
+      if (imported.has(sibling)) {
+        continue;
+      }
+      // Failures (unresolved, poisoned) are ignored: prefetch is an
+      // optimization, and the request path re-runs the pipeline with full
+      // handling when the function is actually called.
+      await importFromFunctionsDir(sibling);
+    }
   }
 
   /**
@@ -560,6 +671,7 @@ export async function serve(
       }
       const bundle: ImportedBundle = { handlerPath: cachePath, stamp, sha256 };
       imported.set(request.name, bundle);
+      schedulePrefetch(request.name);
       return { bundle, importKind: "fresh" };
     };
 
@@ -619,6 +731,7 @@ export async function serve(
           // disk change recycles the worker through the stat check above.
           return staleReply();
         }
+        schedulePrefetch(request.name);
         return { bundle: result.bundle, importKind: "fresh" };
     }
   }
@@ -873,6 +986,21 @@ export async function serve(
   }
 
   armIdle();
+
+  // Eager warm-up: the worker is spawned right after a cold run of one
+  // function, so importing that bundle now (and prefetching its app) makes
+  // the very next invocation fast instead of paying the import on its first
+  // request. Best-effort; a request arriving mid-import joins the
+  // single-flight pipeline.
+  if (eagerName !== undefined && VALID_NAME.test(eagerName)) {
+    // The catch mirrors prefetchApp's: background work must never become an
+    // unhandled rejection.
+    importFromFunctionsDir(eagerName)
+      .then(() => {
+        schedulePrefetch(eagerName);
+      })
+      .catch(() => {});
+  }
 
   // The process stays alive on the event loop; exits go through exit() above.
   return new Promise<never>(() => {});

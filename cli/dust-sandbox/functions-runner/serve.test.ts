@@ -719,6 +719,106 @@ describe("runner serve", () => {
   });
 });
 
+describe("sibling prefetch", () => {
+  const appDir = () => {
+    const dir = scratch();
+    for (const stem of [
+      "myapp__alpha",
+      "myapp__beta",
+      "myapp__gamma",
+      "solo",
+    ]) {
+      copyFileSync(join(fixturesDir, "hello.ts"), join(dir, `${stem}.ts`));
+    }
+    return dir;
+  };
+
+  // The fixtures import in milliseconds and the prefetch loop re-checks
+  // quiet every 100ms, so this settle window makes the background imports
+  // deterministic: after it, a sibling's FIRST request must already be
+  // cached — polling would be vacuous, since the poll itself imports.
+  const PREFETCH_SETTLE_MS = 2_000;
+
+  test("the first import of an app warms its siblings in the background", async () => {
+    const dir = appDir();
+    const { proc, socketPath } = await startWorker(dir);
+    try {
+      const first = await requestFrames(
+        socketPath,
+        warmRequest("myapp__alpha", {}, { url: "http://localhost/?name=a" })
+      );
+      expect(first[1]?.importKind).toBe("fresh");
+
+      await new Promise((resolve) => setTimeout(resolve, PREFETCH_SETTLE_MS));
+
+      // The very first request for each sibling is served from the module
+      // cache: the prefetch paid the import, not this request.
+      const beta = await requestFrames(
+        socketPath,
+        warmRequest("myapp__beta", {}, { url: "http://localhost/" })
+      );
+      expect(beta[1]?.importKind).toBe("cached");
+      const gamma = await requestFrames(
+        socketPath,
+        warmRequest("myapp__gamma", {}, { url: "http://localhost/" })
+      );
+      expect(gamma[1]?.importKind).toBe("cached");
+
+      // The root-level function shares the worker but not the app: it is
+      // not prefetched and pays its own import on first request.
+      const solo = await requestFrames(
+        socketPath,
+        warmRequest("solo", {}, { url: "http://localhost/" })
+      );
+      expect(solo[1]?.importKind).toBe("fresh");
+    } finally {
+      proc.kill();
+    }
+  }, 15_000);
+
+  test("an eager-name spawn imports the function and its app before any request", async () => {
+    const dir = appDir();
+    const socketPath = join(scratch(), "fn.sock");
+    const proc = Bun.spawn(
+      ["bun", runner, "serve", dir, socketPath, "myapp__alpha"],
+      { stdin: "ignore", stdout: "ignore", stderr: "inherit" }
+    );
+    try {
+      const deadline = Date.now() + 10_000;
+      let up = false;
+      while (Date.now() < deadline && !up) {
+        try {
+          const probe = await Bun.connect({
+            unix: socketPath,
+            socket: { data() {} },
+          });
+          probe.end();
+          up = true;
+        } catch {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+      }
+      expect(up).toBe(true);
+      await new Promise((resolve) => setTimeout(resolve, PREFETCH_SETTLE_MS));
+
+      // No request has been made yet: the eager import covered the named
+      // function and the prefetch covered its sibling.
+      const alpha = await requestFrames(
+        socketPath,
+        warmRequest("myapp__alpha", {}, { url: "http://localhost/" })
+      );
+      expect(alpha[1]?.importKind).toBe("cached");
+      const beta = await requestFrames(
+        socketPath,
+        warmRequest("myapp__beta", {}, { url: "http://localhost/" })
+      );
+      expect(beta[1]?.importKind).toBe("cached");
+    } finally {
+      proc.kill();
+    }
+  }, 15_000);
+});
+
 describe("resolveBundle", () => {
   test("resolves a name to its single matching file", () => {
     expect(resolveBundle(fixturesDir, "hello")).toBe(
