@@ -204,6 +204,7 @@ export const SpaceActionsList = ({
         <DataTableSkeleton
           columns={columns}
           SkeletonCell={SpaceActionSkeletonCell}
+          rowCount={10}
           rowHeight={60}
         />
       </div>
