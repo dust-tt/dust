@@ -1,6 +1,6 @@
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.stubGlobal(
@@ -12,27 +12,34 @@ vi.stubGlobal(
   }
 );
 
+function makeNode(
+  overrides: Partial<ContentNode> & Pick<ContentNode, "internalId" | "title">
+): ContentNode {
+  return {
+    childrenCount: 0,
+    expandable: false,
+    lastUpdatedAt: null,
+    mimeType: "application/vnd.dust.folder",
+    parentInternalId: null,
+    permission: "none",
+    providerVisibility: null,
+    sourceUrl: null,
+    type: "folder",
+    ...overrides,
+  };
+}
+
 describe("ContentNodeTree", () => {
-  it("does not select prevented nodes but can unselect them", () => {
-    const selectableNode = {
-      childrenCount: 0,
-      expandable: false,
+  it("does not select prevented nodes but can unselect them", async () => {
+    const selectableNode = makeNode({
       internalId: "selectable",
-      lastUpdatedAt: null,
-      mimeType: "application/vnd.dust.folder",
-      parentInternalId: null,
-      permission: "none",
-      providerVisibility: null,
-      sourceUrl: null,
       title: "Selectable",
-      type: "folder",
-    } satisfies ContentNode;
-    const preventedNode = {
-      ...selectableNode,
+    });
+    const preventedNode = makeNode({
       internalId: "prevented",
       preventSelection: true,
       title: "Prevented",
-    } satisfies ContentNode;
+    });
     const setSelectedNodes = vi.fn();
 
     render(
@@ -50,6 +57,10 @@ describe("ContentNodeTree", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Select All" }));
 
+    await waitFor(() => {
+      expect(setSelectedNodes).toHaveBeenCalled();
+    });
+
     const updateSelection = setSelectedNodes.mock.lastCall?.[0];
     expect(updateSelection?.({})).toEqual({
       selectable: {
@@ -60,6 +71,10 @@ describe("ContentNodeTree", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Unselect All" }));
+
+    await waitFor(() => {
+      expect(setSelectedNodes).toHaveBeenCalledTimes(2);
+    });
 
     const clearSelection = setSelectedNodes.mock.lastCall?.[0];
     expect(
@@ -80,6 +95,52 @@ describe("ContentNodeTree", () => {
         isSelected: false,
         node: preventedNode,
         parents: [],
+      },
+    });
+  });
+
+  it("selects children of prevented containers via fetchChildResources", async () => {
+    const site = makeNode({
+      expandable: true,
+      internalId: "site",
+      preventSelection: true,
+      title: "SharePoint site",
+    });
+    const drive = makeNode({
+      internalId: "drive",
+      parentInternalId: "site",
+      title: "Documents",
+    });
+    const setSelectedNodes = vi.fn();
+    const fetchChildResources = vi.fn(async () => [drive]);
+
+    render(
+      <ContentNodeTree
+        isTitleFilterEnabled
+        selectedNodes={{}}
+        setSelectedNodes={setSelectedNodes}
+        fetchChildResources={fetchChildResources}
+        useResourcesHook={() => ({
+          resources: [site],
+          isResourcesLoading: false,
+          isResourcesError: false,
+        })}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Select All" }));
+
+    await waitFor(() => {
+      expect(fetchChildResources).toHaveBeenCalledWith("site");
+      expect(setSelectedNodes).toHaveBeenCalled();
+    });
+
+    const updateSelection = setSelectedNodes.mock.lastCall?.[0];
+    expect(updateSelection?.({})).toEqual({
+      drive: {
+        isSelected: true,
+        node: drive,
+        parents: ["site"],
       },
     });
   });
