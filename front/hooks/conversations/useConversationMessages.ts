@@ -8,8 +8,11 @@ import type {
   FetchConversationMessageResponse,
   FetchConversationMessagesResponse,
 } from "@app/types/api/assistant/messages";
+import { isCompactionMessageType } from "@app/types/assistant/conversation";
 import { useMemo } from "react";
 import type { Fetcher } from "swr";
+
+const COMPACTION_REFRESH_INTERVAL_MS = 5_000;
 
 export function useConversationMessages({
   conversationId,
@@ -50,6 +53,17 @@ export function useConversationMessages({
       },
       messagesFetcher,
       {
+        refreshInterval: (pages) =>
+          pages?.some((page) =>
+            page.messages.some(
+              (
+                message: FetchConversationMessagesResponse["messages"][number]
+              ) =>
+                isCompactionMessageType(message) && message.status === "created"
+            )
+          )
+            ? COMPACTION_REFRESH_INTERVAL_MS
+            : 0,
         revalidateAll: false,
         revalidateOnFocus: false,
       }

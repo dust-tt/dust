@@ -275,6 +275,10 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     }
 
     if (isCompactionMessage(data)) {
+      if (data.status === "created" || !nextData) {
+        return <div ref={ref} className="h-px" />;
+      }
+
       return (
         <div
           ref={ref}
