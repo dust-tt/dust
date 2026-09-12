@@ -43,6 +43,7 @@ import {
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import {
   makeMCPToolExit,
   makePersonalAuthenticationError,
@@ -170,7 +171,8 @@ export function getToolExtraFields(
     toolName: string;
     permission: MCPToolStakeLevelType;
     enabled: boolean;
-  }[]
+  }[],
+  remoteServerUrl: string | null
 ) {
   let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
   let serverTimeoutMs: number | undefined;
@@ -200,6 +202,10 @@ export function getToolExtraFields(
       ({ toolName, permission }) => (toolsStakes[toolName] = permission)
     );
   } else {
+    toolsStakes = {
+      ...getDefaultRemoteMCPServerByURL(remoteServerUrl)?.toolStakes,
+    };
+
     metadata.forEach(
       ({ toolName, permission }) => (toolsStakes[toolName] = permission)
     );
@@ -761,6 +767,7 @@ function makeServerSideMCPConnectionParams(
     mcpServerId: mcpServerView.mcpServerId,
     oAuthUseCase: mcpServerView.oAuthUseCase,
     oauthScope: mcpServerView.oauthScope,
+    remoteMCPServerUrl: mcpServerView.remoteMCPServerUrl,
   };
 }
 
@@ -1418,22 +1425,33 @@ export async function listToolsForServerSideMCPServer(
     auth,
     connectionParams.mcpServerId,
     config,
-    allToolsRaw
+    allToolsRaw,
+    connectionParams.remoteMCPServerUrl
   );
 }
 
+/**
+ * @cc [owner:rfrenoy,label:performance] remote-url-supplied-by-caller
+ * `remoteMCPServerUrl` MUST be supplied by the caller from an already-fetched
+ * `MCPServerViewResource` or connection params. This function MUST NOT fetch the remote server to
+ * resolve it: it runs once per server configuration under `tryListMCPTools`' `concurrentExecutor`,
+ * so a fetch here is one SQL query per configured server (see `batch-database-queries`). Pass
+ * `null` for internal servers and when no remote server URL is known; preset tool stakes are then
+ * not applied.
+ */
 export async function buildToolConfigurationsFromRawTools(
   auth: Authenticator,
   mcpServerId: string,
   config: ServerSideMCPServerConfigurationType,
-  allToolsRaw: MCPToolType[]
+  allToolsRaw: MCPToolType[],
+  remoteMCPServerUrl: string | null
 ): Promise<Result<ServerSideMCPToolConfigurationType[], Error>> {
   const metadata = await RemoteMCPServerToolMetadataResource.fetchByServerId(
     auth,
     mcpServerId
   );
 
-  const r = getToolExtraFields(mcpServerId, metadata);
+  const r = getToolExtraFields(mcpServerId, metadata, remoteMCPServerUrl);
   if (r.isErr()) {
     return r;
   }
@@ -1542,7 +1560,8 @@ async function listMCPServerToolsAndServerInstructions(
               auth,
               connectionParams.mcpServerId,
               config,
-              cachedTools
+              cachedTools,
+              connectionParams.remoteMCPServerUrl
             );
             if (cachedToolsRes.isOk()) {
               return new Ok({

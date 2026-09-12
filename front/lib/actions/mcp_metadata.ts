@@ -122,6 +122,10 @@ interface ConnectViaMCPServerId {
   // Admin-configured scope restriction stored on the MCP server view. When set,
   // this overrides the hardcoded metadata scope for personal connection prompts.
   oauthScope?: string | null;
+  // URL of the remote server this view points at, read off the already-fetched view so that
+  // resolving preset tool stakes does not re-query the server. Null for internal servers, and
+  // for callers that only connect and never build tool configurations.
+  remoteMCPServerUrl: string | null;
 }
 
 export function isConnectViaMCPServerId(
@@ -941,6 +945,7 @@ export async function fetchRemoteServerMetaDataByServerId(
       type: "mcpServerId",
       mcpServerId: serverId,
       oAuthUseCase: "platform_actions",
+      remoteMCPServerUrl: null,
     },
   });
 

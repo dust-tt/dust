@@ -611,6 +611,7 @@ async function runConnectListToolsCheck(
       type: "mcpServerId",
       mcpServerId,
       oAuthUseCase,
+      remoteMCPServerUrl: null,
     },
     toolContext,
   });
