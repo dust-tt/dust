@@ -29,10 +29,6 @@ runs:
         # anyway costs ~15s per job for nothing.
         package-manager-cache: false
 
-    - name: Upgrade npm
-      shell: bash
-      run: npm install -g npm@11.10.0
-
     - name: Cache node_modules
       id: cache-node-modules
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
@@ -53,19 +49,42 @@ runs:
         restore-keys: |
           workspaces-node-modules-${{ runner.os }}-node${{ inputs.node-version }}-
 
+    # Only needed to run `npm ci` below with the npm version we pin. On a cache
+    # hit we never install, so paying ~4s per job for this is pure waste.
+    - name: Upgrade npm
+      if: steps.cache-node-modules.outputs.cache-hit != 'true'
+      shell: bash
+      run: npm install -g npm@11.10.0
+
     - name: Install workspaces dependencies
       if: steps.cache-node-modules.outputs.cache-hit != 'true'
       shell: bash
       run: npm ci
 
-    - name: Build SDK/JS
+    - name: Cache SDK/JS build
       if: inputs.build-sdks == 'true'
+      id: cache-sdks-dist
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: sdks/js/dist
+        key: sdks-js-dist-${{ runner.os }}-node${{ inputs.node-version }}-${{ hashFiles('package-lock.json', 'sdks/js/src/**', 'sdks/js/package.json', 'sdks/js/tsconfig.json', 'sdks/js/esbuild.config.ts') }}
+
+    - name: Build SDK/JS
+      if: inputs.build-sdks == 'true' && steps.cache-sdks-dist.outputs.cache-hit != 'true'
       working-directory: sdks/js
       shell: bash
       run: npm run build
 
-    - name: Build Sparkle
+    - name: Cache Sparkle build
       if: inputs.build-sparkle == 'true'
+      id: cache-sparkle-dist
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: sparkle/dist
+        key: sparkle-dist-${{ runner.os }}-node${{ inputs.node-version }}-${{ hashFiles('package-lock.json', 'sparkle/src/**', 'sparkle/package.json', 'sparkle/tsconfig.json', 'sparkle/scripts/**', 'sparkle/postcss.config.js') }}
+
+    - name: Build Sparkle
+      if: inputs.build-sparkle == 'true' && steps.cache-sparkle-dist.outputs.cache-hit != 'true'
       working-directory: sparkle
       shell: bash
       run: npm run build
