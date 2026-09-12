@@ -19,9 +19,24 @@ export const apiConfig = {
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
   },
-  getFirecrawlAPIConfig: (): { apiKey: string } => {
+  getFirecrawlAPIConfig: (): { apiKey: string; apiUrl?: string } => {
     return {
       apiKey: EnvironmentConfig.getEnvVariable("FIRECRAWL_API_KEY"),
+      // Optional base URL override. When unset, the Firecrawl client defaults to
+      // the Firecrawl cloud. This allows pointing at a self-hosted instance.
+      apiUrl: EnvironmentConfig.getOptionalEnvVariable("FIRECRAWL_API_URL"),
+    };
+  },
+  // fastCRW is a Firecrawl-compatible web scraper (single binary; self-host or
+  // cloud). It exposes the same REST API as Firecrawl, so the existing Firecrawl
+  // client can target it by overriding the base URL. Defaults to the managed
+  // cloud at https://fastcrw.com/api; override apiUrl for self-host.
+  getCrwAPIConfig: (): { apiKey: string | null; apiUrl: string } => {
+    return {
+      apiKey: EnvironmentConfig.getOptionalEnvVariable("CRW_API_KEY") ?? null,
+      apiUrl:
+        EnvironmentConfig.getOptionalEnvVariable("CRW_API_URL") ??
+        "https://fastcrw.com/api",
     };
   },
   getUntrustedEgressProxyHost: (): string | undefined => {
