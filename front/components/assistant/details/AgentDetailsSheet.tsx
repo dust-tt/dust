@@ -14,16 +14,18 @@ import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
+import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
+import { areEmailAgentsAllowed } from "@app/lib/workspace_policies";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isManager } from "@app/types/user";
+import { isAdmin, isManager } from "@app/types/user";
 import {
   ArrowLeft,
   Avatar,
@@ -33,8 +35,11 @@ import {
   Button,
   Chip,
   ContentMessage,
+  ContentMessageInline,
   InfoCircle,
   Lock01,
+  Mail01,
+  Markdown,
   RefreshCw02,
   Sheet,
   SheetContainer,
@@ -125,6 +130,10 @@ type AgentDetailsSheetProps = {
   user: UserType;
 };
 
+/** @cc [owner:philipperolet,label:product] email-agent-footer
+ * Active, readable agents not blocked from email show an address footer, with enablement guidance
+ * when workspace email agents are disabled.
+ */
 export function AgentDetailsSheet({
   agentId,
   onClose,
@@ -214,6 +223,13 @@ export function AgentDetailsSheet({
 
   const showInsightsTabs =
     agentId != null && (agentConfiguration?.canEdit || isManager(owner));
+
+  let emailFooterAction = "Email this agent at";
+  if (!areEmailAgentsAllowed(owner)) {
+    emailFooterAction = isAdmin(owner)
+      ? `[Enable email agents](/w/${owner.sId}/governance) to use`
+      : "Ask an admin to enable email agents to use";
+  }
 
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];
@@ -435,6 +451,24 @@ export function AgentDetailsSheet({
                 </ContentMessage>
               )}
             </SheetContainer>
+            {agentConfiguration?.status === "active" &&
+              agentConfiguration.canRead &&
+              !(
+                Array.isArray(owner.metadata?.emailBlacklistedAgentIds) &&
+                owner.metadata.emailBlacklistedAgentIds.includes(
+                  agentConfiguration.sId
+                )
+              ) && (
+                <div className="px-5 pb-4">
+                  <ContentMessageInline variant="primary" icon={Mail01}>
+                    <Markdown
+                      content={`${emailFooterAction} **${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}**. [Learn more](https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents)`}
+                      forcedTextSize="text-xs"
+                      optimizeForStreaming={false}
+                    />
+                  </ContentMessageInline>
+                </div>
+              )}
           </>
         )}
       </SheetContent>
