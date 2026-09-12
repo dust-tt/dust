@@ -46,7 +46,7 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -80,6 +80,7 @@ describe("createSandboxChildAction", () => {
   let conversation: ConversationType;
   let agentMessage: AgentMessageType;
   let view: MCPServerViewResource;
+  let globalSpace: SpaceResource;
   let serverId: string;
   let parentActionId: string;
 
@@ -93,6 +94,7 @@ describe("createSandboxChildAction", () => {
     const setup = await createResourceTest({ role: "admin" });
     workspace = setup.workspace;
     auth = setup.authenticator;
+    globalSpace = setup.globalSpace;
 
     const server = await RemoteMCPServerFactory.create(workspace, {
       tools: [
@@ -578,6 +580,44 @@ describe("createSandboxChildAction", () => {
       parentActionId
     );
     expect(reloadedParent?.status).toBe("succeeded");
+  });
+
+  it("computes the child's step context from its own tool instead of the parent's", async () => {
+    const websearchView =
+      await MCPServerViewResource.getMCPServerViewForAutoInternalTool(
+        auth,
+        "web_search_&_browse"
+      );
+    if (!websearchView) {
+      throw new Error("Expected the web_search_&_browse view to exist.");
+    }
+    await AgentMCPServerConfigurationFactory.create(auth, globalSpace, {
+      agent: agentConfig,
+      mcpServerView: websearchView,
+    });
+
+    const result = await callChildTool(
+      { query: "dust" },
+      { serverViewId: websearchView.sId, toolName: "websearch" }
+    );
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    const child = await AgentMCPActionResource.fetchById(
+      auth,
+      result.value.actionId
+    );
+    // The parent (sandbox-only step) carries websearchResultCount 5 and
+    // retrievalTopK 10; the child gets the allocation of a websearch-only step.
+    expect(child?.stepContext).toEqual({
+      citationsCount: 16,
+      citationsOffset: 0,
+      resumeState: null,
+      retrievalTopK: 0,
+      websearchResultCount: 16,
+      sandboxChildActionInfo: { parentActionId },
+    });
   });
 
   it("defaults to high stake and blocks when the tool has no configured permission", async () => {
