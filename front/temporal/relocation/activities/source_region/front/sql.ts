@@ -21,6 +21,7 @@ import {
 } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { generateParameterizedInsertStatements } from "@app/temporal/relocation/lib/sql/insert";
 import { getTopologicalOrder } from "@app/temporal/relocation/lib/sql/schema/dependencies";
+import { getWorkspaceReferencedUserIds } from "@app/temporal/relocation/lib/sql/schema/introspection";
 import type { CellType } from "@app/types/cell";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
@@ -59,11 +60,28 @@ export async function readCoreEntitiesFromSourceRegion({
     workspace: renderLightWorkspaceType({ workspace }),
   });
 
-  // Fetch all associated users of the workspace.
+  // Every user the workspace's rows point at, members included. The destination maps
+  // each of them to its own user by workOSUserId, or creates them, so no foreign key
+  // is left dangling by a reference to someone who is not a member.
+  const memberUserIds = memberships.map((m) => m.userId);
+  const referencedUserIds = await getWorkspaceReferencedUserIds(
+    frontSequelize,
+    {
+      workspaceId: workspace.id,
+    }
+  );
+  const userIds = [...new Set([...memberUserIds, ...referencedUserIds])];
+  localLogger.info(
+    {
+      memberCount: memberUserIds.length,
+      referencedOnlyCount: userIds.length - memberUserIds.length,
+    },
+    "[SQL Core Entities] Users to relocate."
+  );
   const users = await UserModel.findAll({
     where: {
       id: {
-        [Op.in]: memberships.map((m) => m.userId),
+        [Op.in]: userIds,
       },
     },
     // We need the raw SQL.
