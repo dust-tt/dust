@@ -174,6 +174,20 @@ export async function finalizeCreditStoppedAgentLoopActivity(
   ]);
 }
 
+// Plain-object error payload passed from the workflow (Error fields don't survive the
+// workflow→activity serialization). The optional fields carry terminal activity failure details;
+// `swallowed` is true when the workflow completes instead of failing (see
+// isSwallowableWorkflowFailure). All optional fields are absent for workflows started before
+// they were added.
+type WorkflowErrorPayload = {
+  message: string;
+  name: string;
+  swallowed?: boolean;
+  activityType?: string;
+  retryState?: string;
+  timeoutType?: string;
+};
+
 // Attribute the failure to the tools that never finished. The worker that ran them may have died
 // without logging anything (heartbeat timeouts), but the action rows it left behind in a
 // non-final status carry the tool identity. Diagnostic only: it must never fail the finalize
@@ -188,7 +202,7 @@ export async function logStuckToolsForErroredAgentMessage(
   }: {
     agentLoopArgs: Pick<AgentLoopArgs, "conversationId" | "agentMessageId">;
     agentMessageModelId: ModelId;
-    error: { message: string; name: string };
+    error: WorkflowErrorPayload;
   }
 ): Promise<void> {
   let stuckTools: {
@@ -226,6 +240,10 @@ export async function logStuckToolsForErroredAgentMessage(
       workspaceId: auth.getNonNullableWorkspace().sId,
       workflowErrorName: error.name,
       workflowErrorMessage: error.message,
+      swallowed: error.swallowed,
+      activityType: error.activityType,
+      retryState: error.retryState,
+      timeoutType: error.timeoutType,
       stuckTools,
     },
     "Agent loop finalized as errored"
@@ -235,7 +253,7 @@ export async function logStuckToolsForErroredAgentMessage(
 export async function finalizeErroredAgentLoopActivity(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs,
-  error: { message: string; name: string }
+  error: WorkflowErrorPayload
 ): Promise<void> {
   const agentMessageModelId = await notifyWorkflowError(
     authType,
