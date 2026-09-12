@@ -79,7 +79,11 @@ import {
   removeNulls,
 } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
-import type { MessageElement } from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
+import type {
+  Attachment,
+  DescriptionBlockElement,
+  MessageElement,
+} from "@slack/web-api/dist/types/response/ConversationsRepliesResponse";
 import removeMarkdown from "remove-markdown";
 
 const SLACK_RATE_LIMIT_ERROR_MARKDOWN =
@@ -1436,6 +1440,56 @@ export async function getBotEnabled(
   return new Ok(slackConfig.botEnabled);
 }
 
+function renderSlackAttachmentsToText(attachments?: Attachment[]): string {
+  if (!attachments?.length) {
+    return "";
+  }
+  return attachments
+    .filter(
+      (a) => !a.is_msg_unfurl && !a.is_reply_unfurl && !a.is_thread_root_unfurl
+    )
+    .map((a, index) => {
+      const fieldsText = (a.fields ?? [])
+        .map((field) =>
+          field.title && field.value
+            ? `${field.title}: ${field.value}`
+            : field.value || field.title || null
+        )
+        .filter((v): v is string => v !== null);
+      const parts = [
+        a.pretext,
+        a.title ? `*${a.title}*` : null,
+        a.text,
+        ...fieldsText,
+        a.footer,
+        a.fallback,
+      ].filter((v): v is string => v !== null && v !== undefined);
+      return `[Attachment ${index + 1}]\n${parts.join("\n")}`;
+    })
+    .join("\n\n");
+}
+
+function renderSlackBlocksToText(blocks?: DescriptionBlockElement[]): string {
+  if (!blocks?.length) {
+    return "";
+  }
+  const blockTexts = blocks
+    .map((block) => {
+      const blockText = block.text;
+      const mainText =
+        typeof blockText === "object" ? blockText?.text : blockText;
+      const fieldsText = (block.fields ?? [])
+        .map((field) => field?.text)
+        .filter((v): v is string => v !== null && v !== undefined)
+        .join("\n");
+      return [mainText, fieldsText]
+        .filter((v): v is string => v !== null && v !== undefined)
+        .join("\n");
+    })
+    .filter((v): v is string => v !== null && v !== undefined && v !== "");
+  return blockTexts.join("\n");
+}
+
 async function makeContentFragments(
   slackClient: WebClient,
   dustAPI: DustAPI,
@@ -1699,10 +1753,24 @@ async function makeContentFragments(
     ? `$url: ${url}\n${sectionHeader}${sectionFullText(document)}`
     : `$url: ${url}\n${sectionHeader}`;
 
+  // Append Slack message attachments (e.g. Grafana/Datadog alerts) and Block Kit
+  // blocks as text, so the agent can see content that lives outside message.text.
+  // This only affects the bot thread-context content fragment, not channel sync.
+  const attachmentsText = allMessages
+    .map((message) => {
+      const attachmentText = renderSlackAttachmentsToText(message.attachments);
+      const blockText = renderSlackBlocksToText(message.blocks);
+      return [attachmentText, blockText].filter((v) => v !== "").join("\n");
+    })
+    .filter((v) => v !== "")
+    .map((v) => `\n${v}`)
+    .join("");
+  const fullSection = section + attachmentsText;
+
   const contentType = "text/vnd.dust.attachment.slack.thread";
   const fileName = `slack_thread-${channelName}-${threadTs}.txt`;
 
-  const blob = new Blob([section]);
+  const blob = new Blob([fullSection]);
   const fileSize = blob.size;
 
   const fileRes = await dustAPI.uploadFile({
