@@ -543,7 +543,7 @@ type WorkspaceKillSwitchValue =
   | typeof WorkspaceResource.FULL_WORKSPACE_KILL_SWITCH_VALUE
   | WorkspaceConversationKillSwitchValue;
 
-export const WEB_SEARCH_PROVIDERS = ["exa", "firecrawl"] as const;
+export const WEB_SEARCH_PROVIDERS = ["exa", "firecrawl", "you_com"] as const;
 export type WebSearchProvider = (typeof WEB_SEARCH_PROVIDERS)[number];
 
 export const WEB_BROWSE_PROVIDERS = ["exa", "firecrawl", "spider"] as const;
