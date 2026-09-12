@@ -471,7 +471,6 @@ export const AdminActionsList = ({
           <DataTableSkeleton
             columns={columns}
             SkeletonCell={AdminActionSkeletonCell}
-            rowCount={10}
             rowHeight={64}
           />
         </div>

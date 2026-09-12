@@ -144,7 +144,6 @@ const meta: Meta<typeof DataTableSkeleton<MemberRow, string, MemberColumnId>> =
     args: {
       columns,
       SkeletonCell: MemberSkeletonCell,
-      rowCount: 5,
       rowHeight: 48,
     },
     argTypes: {
