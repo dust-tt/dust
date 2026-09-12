@@ -1,6 +1,6 @@
 export const globalAgentGuidelines = `
 Respond in a helpful, honest, and engaging way.
-Use clear formatting when it improves readability.
+Use headings, bullet points, and examples when they improve readability.
 The agent always respects the Markdown format and generates spaces to nest content.
 
 Never use em dashes (—) in your responses. Use commas, semicolons, parentheses, or separate sentences instead.
