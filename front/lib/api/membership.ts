@@ -4,6 +4,7 @@ import {
   emitAuditLogEventDirect,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { applyMembershipSeatChange } from "@app/lib/api/membership_seats";
 import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import type { AuditLogActor } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
@@ -13,10 +14,6 @@ import {
   getProductSeatTypes,
   resolveRequestedSeatTypeForContract,
 } from "@app/lib/metronome/seat_types";
-import {
-  classifySeatChange,
-  hasContractSeatSubscription,
-} from "@app/lib/metronome/seats";
 import {
   isCreditPricedPlanPrefix,
   isFreePlan,
@@ -44,7 +41,6 @@ import type {
 import { isPaidSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   ActiveRoleType,
   LightWorkspaceType,
@@ -612,23 +608,91 @@ export async function updateMembershipSeatAndTrack({
     }
   >
 > {
-  const membership =
+  // Free-plan guard: a paid seat cannot be assigned while the workspace is on a
+  // free plan. Enforced here rather than in the shared `applyMembershipSeatChange`
+  // core, because the group-sync path also uses that core but only ever reaches it
+  // for Metronome seat-billed workspaces (never a free plan), and moving the
+  // `SubscriptionResource` dependency out of the core avoids an import cycle.
+  const currentMembership =
     await MembershipResource.getActiveMembershipOfUserInWorkspace({
       user,
       workspace,
     });
-  if (!membership) {
-    return new Err({ type: "not_found" });
+  if (
+    currentMembership &&
+    newSeatType !== currentMembership.seatType &&
+    isPaidSeatType(newSeatType)
+  ) {
+    const subscription =
+      await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
+    if (isFreePlan(subscription.getPlan().code)) {
+      return new Err({ type: "paid_seat_not_allowed_on_free_plan" });
+    }
   }
 
-  const previousSeatType = membership.seatType;
+  // The immediate-vs-deferred timing decision and DB write live in the shared,
+  // audit-free `applyMembershipSeatChange` core (also used by group-driven seat
+  // provisioning). This wrapper adds the Metronome reconcile, optional direct
+  // sync, and the audit event.
+  const applyResult = await applyMembershipSeatChange({
+    user,
+    workspace,
+    newSeatType,
+    author,
+    immediate,
+    allowReturningMemberFreeSeat,
+  });
+  if (applyResult.isErr()) {
+    return new Err(applyResult.error);
+  }
+  const {
+    previousSeatType,
+    resultingActiveSeatType,
+    scheduledSeatChangeAt,
+    metronomeBilled,
+  } = applyResult.value;
 
-  // Emit a per-member seat-change audit event. Only fires when the seat
-  // actually changed or a deferred change was scheduled (skips noops).
-  const emitSeatUpdated = (scheduledAt: Date | undefined) => {
-    if (previousSeatType === newSeatType && !scheduledAt) {
-      return;
+  // Reconcile the Metronome seat count whenever the workspace bills seats
+  // through Metronome (matches the core's `metronomeBilled` short-circuits).
+  if (metronomeBilled) {
+    const syncResult = await launchMetronomeSeatCountSyncWorkflow({
+      workspaceId: workspace.sId,
+    });
+    if (syncResult.isErr()) {
+      logger.error(
+        {
+          workspaceId: workspace.sId,
+          userId: user.sId,
+          previousSeatType,
+          newSeatType,
+          error: syncResult.error,
+        },
+        "[Metronome] Failed to sync seat count for transition"
+      );
+      return new Err({ type: "metronome_error" });
     }
+
+    if (isDirectSync && resultingActiveSeatType !== previousSeatType) {
+      const directSyncResult = await syncMetronomeSeatCountForWorkspace({
+        workspace,
+        reconcileUserId: user.sId,
+      });
+      if (directSyncResult.isErr()) {
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            userId: user.sId,
+            err: directSyncResult.error.message,
+          },
+          "[Metronome] Direct seat sync failed; debounced workflow will retry"
+        );
+      }
+    }
+  }
+
+  // Emit a per-member seat-change audit event. Skips noops (no seat change and
+  // no deferral scheduled).
+  if (!(previousSeatType === newSeatType && !scheduledSeatChangeAt)) {
     void emitAuditLogEventDirect({
       workspace,
       action: "membership.seat_updated",
@@ -644,219 +708,11 @@ export async function updateMembershipSeatAndTrack({
       metadata: {
         previous_seat_type: previousSeatType,
         new_seat_type: newSeatType,
-        scheduled_seat_change_at: scheduledAt?.toISOString() ?? "",
+        scheduled_seat_change_at: scheduledSeatChangeAt?.toISOString() ?? "",
       },
     });
-  };
-
-  // `free` is a one-shot starter tier — only assignable when the user has
-  // never held a real seat in this workspace. `none` is not a real seat:
-  // a user whose active seat is `none` and who has no prior real-seat history
-  // is still eligible for `free`. A free→free noop is unaffected.
-  // `allowReturningMemberFreeSeat` lets an admin (poke) override this for a
-  // returning member; the free-credit grant stays one-shot regardless (see
-  // `grantFreeSeatCredits`'s uniqueness key), so this cannot re-grant credits.
-  if (!allowReturningMemberFreeSeat) {
-    if (newSeatType === "free" && previousSeatType === "none") {
-      const hasPreviousMembership =
-        await MembershipResource.hasAnyMembershipOfUserInWorkspace({
-          user,
-          workspace,
-        });
-      if (hasPreviousMembership) {
-        return new Err({ type: "free_seat_not_allowed" });
-      }
-    } else if (newSeatType === "free" && previousSeatType !== "free") {
-      return new Err({ type: "free_seat_not_allowed" });
-    }
   }
 
-  if (newSeatType !== previousSeatType) {
-    const subscription =
-      await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
-    if (
-      isPaidSeatType(newSeatType) &&
-      isFreePlan(subscription.getPlan().code)
-    ) {
-      return new Err({ type: "paid_seat_not_allowed_on_free_plan" });
-    }
-  }
-
-  // Enforce the per-seat-type hard cap (`maxSeats`). Assigning to `none`
-  // (removing a seat) is always allowed. Same-type noops are also allowed (no
-  // net change). This cap is never bypassed — committed seat counts (`minSeats`)
-  // are not enforced here, so exceeding the commitment is already permitted.
-  if (newSeatType !== "none" && newSeatType !== previousSeatType) {
-    const seatLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
-      workspace,
-    });
-    const limit = seatLimits.get(newSeatType);
-    if (limit?.maxSeats !== null && limit?.maxSeats !== undefined) {
-      const seatCounts =
-        await MembershipResource.getActiveSeatTypeCountsForWorkspace({
-          workspace,
-        });
-      const currentCount = seatCounts[newSeatType] ?? 0;
-      if (currentCount >= limit.maxSeats) {
-        return new Err({ type: "seat_limit_reached" });
-      }
-    }
-  }
-
-  const scheduledRow =
-    await MembershipResource.getScheduledMembershipOfUserInWorkspace({
-      user,
-      workspace,
-    });
-
-  // Outside of Metronome billing we just write the DB straight through —
-  // no scheduling logic applies.
-  if (!workspace.metronomeCustomerId) {
-    if (previousSeatType !== newSeatType) {
-      await membership.updateMembershipSeat({
-        user,
-        workspace,
-        newSeatType,
-        author,
-      });
-    }
-    emitSeatUpdated(undefined);
-    return new Ok({
-      previousSeatType,
-      newSeatType,
-      scheduledSeatChangeAt: undefined,
-    });
-  }
-
-  const contract = await getActiveContract(workspace.sId);
-  const hasSeatSubscription = contract
-    ? await hasContractSeatSubscription(contract)
-    : false;
-  if (!contract || !hasSeatSubscription) {
-    // Workspace is on Metronome but the active contract has no seat
-    // subscription — apply the DB change without touching Metronome.
-    if (previousSeatType !== newSeatType) {
-      await membership.updateMembershipSeat({
-        user,
-        workspace,
-        newSeatType,
-        author,
-      });
-    }
-    emitSeatUpdated(undefined);
-    return new Ok({
-      previousSeatType,
-      newSeatType,
-      scheduledSeatChangeAt: undefined,
-    });
-  }
-
-  const productSeatTypes = await getProductSeatTypes();
-  const outcome = immediate
-    ? previousSeatType === newSeatType
-      ? { kind: "noop" as const }
-      : { kind: "immediate" as const }
-    : classifySeatChange({
-        contract,
-        productSeatTypes,
-        now: new Date(),
-        change: {
-          userId: user.sId,
-          previousSeatType,
-          newSeatType,
-          pendingScheduledChange: scheduledRow
-            ? { seatType: scheduledRow.seatType, at: scheduledRow.startAt }
-            : undefined,
-        },
-      });
-  if (!outcome) {
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        userId: user.sId,
-        previousSeatType,
-        newSeatType,
-      },
-      "[Metronome] Cannot defer seat transition — no next billing period on contract"
-    );
-    return new Err({ type: "metronome_error" });
-  }
-
-  // Apply the DB write *before* syncing Metronome. `syncSeatCount` reads
-  // active + scheduled-future memberships and reconciles Metronome to match
-  // — no `change` plumbing required.
-  let scheduledSeatChangeAt: Date | undefined;
-  let resultingActiveSeatType: MembershipSeatType = previousSeatType;
-  switch (outcome.kind) {
-    case "noop":
-      break;
-    case "cancelled":
-      await membership.cancelScheduledSeatChange({ user, workspace, author });
-      break;
-    case "immediate":
-      // Drop any pending future row first so `syncSeatCount` doesn't try
-      // to reconcile a stale scheduled segment.
-      if (scheduledRow) {
-        await membership.cancelScheduledSeatChange({ user, workspace, author });
-      }
-      await membership.updateMembershipSeat({
-        user,
-        workspace,
-        newSeatType,
-        author,
-      });
-      resultingActiveSeatType = newSeatType;
-      break;
-    case "deferred":
-      // `scheduleSeatChange` already destroys any prior pending row.
-      await membership.scheduleSeatChange({
-        user,
-        workspace,
-        newSeatType,
-        scheduledAt: outcome.at,
-        author,
-      });
-      scheduledSeatChangeAt = outcome.at;
-      break;
-    default:
-      return assertNever(outcome);
-  }
-
-  const syncResult = await launchMetronomeSeatCountSyncWorkflow({
-    workspaceId: workspace.sId,
-  });
-  if (syncResult.isErr()) {
-    logger.error(
-      {
-        workspaceId: workspace.sId,
-        userId: user.sId,
-        previousSeatType,
-        newSeatType,
-        error: syncResult.error,
-      },
-      "[Metronome] Failed to sync seat count for transition"
-    );
-    return new Err({ type: "metronome_error" });
-  }
-
-  if (isDirectSync && resultingActiveSeatType !== previousSeatType) {
-    const directSyncResult = await syncMetronomeSeatCountForWorkspace({
-      workspace,
-      reconcileUserId: user.sId,
-    });
-    if (directSyncResult.isErr()) {
-      logger.warn(
-        {
-          workspaceId: workspace.sId,
-          userId: user.sId,
-          err: directSyncResult.error.message,
-        },
-        "[Metronome] Direct seat sync failed; debounced workflow will retry"
-      );
-    }
-  }
-
-  emitSeatUpdated(scheduledSeatChangeAt);
   return new Ok({
     previousSeatType,
     newSeatType: resultingActiveSeatType,
