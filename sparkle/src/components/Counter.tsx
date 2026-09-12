@@ -7,7 +7,7 @@ export const COUNTER_SIZES = ["xs", "sm", "md"] as const;
 const pillShadow =
   "drop-shadow-[0px_1px_0.75px_rgba(0,0,0,0.08)] [text-shadow:0px_1px_1.5px_rgba(0,0,0,0.08)]";
 
-const counterVariants = cva(
+export const counterVariants = cva(
   "inline-flex items-center justify-center rounded-full",
   {
     variants: {

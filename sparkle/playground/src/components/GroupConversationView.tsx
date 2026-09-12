@@ -49,6 +49,7 @@ import {
   TabsContent,
   Trash01,
   TypingAnimation,
+  Umbrella03,
   Upload01,
   Users01,
   XClose,
@@ -81,6 +82,7 @@ import {
   isMyPodMineConversation,
   isTriggeredConversation,
 } from "../data/myPod";
+import { formatRowTime } from "../data/time";
 import type {
   Agent,
   Conversation,
@@ -1234,7 +1236,9 @@ function GroupConversationTabContent({
         <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-4">
           <div
             className={cn(
-              "mx-auto flex w-full max-w-4xl flex-col gap-3 py-8",
+              // flex-1 so an empty state below the input centers on what is
+              // left of the panel instead of hugging it.
+              "mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 py-8",
               contentClassName
             )}
           >
@@ -1275,6 +1279,7 @@ function ProjectSetupEmptyState({
 }) {
   return (
     <EmptyState
+      icon={Umbrella03}
       title="It's quiet in here."
       description="Your Pod is ready but empty! Let us help you invite people, add key data, and more."
       action={
@@ -1799,6 +1804,7 @@ export function GroupConversationView({
         messageCount: number;
         replyCount: number;
         time: string;
+        unread: boolean;
       }
     >();
 
@@ -1812,19 +1818,20 @@ export function GroupConversationView({
         seededRandom(rowSeed, 2) * (messageCount + 1)
       );
 
+      // A thread you have not read yet is most often a recent one, so age
+      // weights the odds rather than deciding them outright.
+      const ageInDays =
+        (Date.now() - conversation.updatedAt.getTime()) / (24 * 60 * 60 * 1000);
+      const unreadOdds = ageInDays < 1 ? 0.6 : ageInDays < 7 ? 0.4 : 0.25;
+
       itemMap.set(conversation.id, {
         avatarProps: participantsToAvatarProps(participants),
         creator: getRandomCreator(conversation, users),
         mentionCount,
         messageCount,
         replyCount,
-        time: conversation.updatedAt
-          .toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          })
-          .replace("24:", "00:"),
+        time: formatRowTime(conversation.updatedAt),
+        unread: seededRandom(rowSeed, 3) < unreadOdds,
       });
     });
 
@@ -3373,6 +3380,7 @@ export function GroupConversationView({
                                 creator={listItem.creator || undefined}
                                 className="border-t-0 border-b-0 rounded-2xl hover:bg-hover"
                                 time={listItem.time}
+                                unread={listItem.unread}
                                 showFocus={
                                   conversationIdToShowFocus === conversation.id
                                 }
@@ -3380,12 +3388,12 @@ export function GroupConversationView({
                                   <ReplySection
                                     replyCount={listItem.replyCount}
                                     unreadCount={
-                                      bucketKey === "Today"
+                                      listItem.unread
                                         ? listItem.messageCount
                                         : 0
                                     }
                                     mentionCount={
-                                      bucketKey === "Today"
+                                      listItem.unread
                                         ? listItem.mentionCount
                                         : 0
                                     }

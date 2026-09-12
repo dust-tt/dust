@@ -1,5 +1,6 @@
 import { AnimatedText } from "@sparkle/components/AnimatedText";
 import { Avatar } from "@sparkle/components/Avatar";
+import { Icon } from "@sparkle/components/Icon";
 import { ListItem } from "@sparkle/components/ListItem";
 import { cn } from "@sparkle/lib/utils";
 import React, { type ReactNode } from "react";
@@ -89,7 +90,7 @@ export function ReplySection({
 }
 
 export interface ConversationListItemProps {
-  /** Marks the row as unread: shows a highlight dot and colors the timestamp. */
+  /** Marks the row as unread: shows a highlight dot after the timestamp. */
   unread: boolean;
   /** The conversation to summarise (title, optional description, last update). */
   conversation: {
@@ -111,6 +112,13 @@ export interface ConversationListItemProps {
     fullName: string;
     portrait?: string;
   };
+  /**
+   * Leading visual rendered instead of the avatar, for an avatar that carries a
+   * badge or an overlay. Pass `creator` alongside it to keep the name by the title.
+   */
+  leadingVisual?: ReactNode;
+  /** Icon shown before the title, for lists whose rows are labelled by a category. */
+  titleIcon?: React.ComponentType<{ className?: string }>;
   /** Formatted timestamp displayed on the right of the title. */
   time: string;
   /** Slot for reply/unread/mention counts — use the ReplySection component. */
@@ -126,7 +134,8 @@ export interface ConversationListItemProps {
 
 /**
  * A list row summarising a conversation: title and description, a timestamp,
- * and a leading avatar (direct) or creator portrait (group), with an optional
+ * and a leading avatar (direct) or creator portrait (group), replaceable by a
+ * leadingVisual, with an optional titleIcon before the title and an optional
  * replySection for reply/unread/mention counts. Use it to render an inbox or
  * activity feed of conversations, grouping rows inside ListGroup so dividers
  * and spacing stay consistent.
@@ -137,6 +146,8 @@ export function ConversationListItem({
   unread,
   avatar,
   creator,
+  leadingVisual,
+  titleIcon,
   time,
   replySection,
   onClick,
@@ -180,7 +191,9 @@ export function ConversationListItem({
         className
       )}
     >
-      {creator ? (
+      {leadingVisual ? (
+        leadingVisual
+      ) : creator ? (
         <Avatar
           name={creator.fullName}
           visual={creator.portrait}
@@ -199,7 +212,10 @@ export function ConversationListItem({
       ) : null}
       <div className="mb-0.5 flex min-w-0 grow flex-col gap-1">
         <div className="heading-sm flex w-full items-center justify-between gap-2 text-foreground">
-          <div className="flex min-w-0 flex-1 gap-2 overflow-hidden">
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
+            {titleIcon && (
+              <Icon visual={titleIcon} size="xs" className="shrink-0" />
+            )}
             <span className="min-w-0 truncate">
               {textAnimation === "streaming" ? (
                 <AnimatedText variant="muted">
@@ -216,16 +232,10 @@ export function ConversationListItem({
             )}
           </div>
           <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+            <span className="font-mono font-normal">{time}</span>
             {unread && (
-              <div
-                className={cn(
-                  "heading-xs flex flex-shrink-0 items-center justify-center rounded-full h-2 w-2 m-1 bg-highlight-500"
-                )}
-              />
+              <div className="h-2 w-2 flex-shrink-0 rounded-full bg-highlight-500" />
             )}
-            <span className={cn("font-normal", unread && "text-highlight")}>
-              {time}
-            </span>
           </div>
         </div>
         {conversation.description && (
