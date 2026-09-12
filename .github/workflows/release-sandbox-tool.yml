@@ -50,7 +50,7 @@ jobs:
           sha256sum apply_patch-linux-x86_64 > checksums-sha256.txt
 
       - name: Create Release
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: apply-patch-v${{ inputs.apply_patch_version }}
           name: apply_patch v${{ inputs.apply_patch_version }}
