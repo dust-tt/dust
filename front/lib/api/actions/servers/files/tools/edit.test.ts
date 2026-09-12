@@ -49,6 +49,10 @@ describe("editHandler", () => {
       type: "text",
       text: expect.stringContaining("made 1 replacement"),
     });
+    assert(result.value[0].type === "text");
+    expect(result.value[0].text).toMatch(
+      /is now 1 line \(sha256:[0-9a-f]{8}\)/
+    );
 
     expect(fileStorageMock.saveFileCalls).toHaveLength(1);
     const { filePath, content, contentType } = fileStorageMock.saveFileCalls[0];
@@ -235,6 +239,178 @@ describe("editHandler", () => {
     assert(result.isOk());
     expect(fileStorageMock.saveFileCalls[0].content.toString("utf8")).toContain(
       "New"
+    );
+  });
+
+  it("applies a full batch of edits sequentially with a single write", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    mockStoredFile("const a = 1;\nconst b = 2;\nconst c = 3;\n", "text/plain");
+
+    const result = await editHandler(
+      {
+        path: `conversation-${conversation.sId}/notes.txt`,
+        edits: [
+          { old_string: "const a = 1;", new_string: "const a = 10;" },
+          { old_string: "const b = 2;", new_string: "const b = 20;" },
+          { old_string: "const c = 3;", new_string: "const c = 30;" },
+        ],
+      },
+      makeExtra(auth, conversation)
+    );
+
+    assert(result.isOk());
+    assert(result.value[0].type === "text");
+    expect(result.value[0].text).toContain(
+      "made 3 replacements across 3 edits"
+    );
+    expect(result.value[0].text).toMatch(
+      /is now 3 lines \(sha256:[0-9a-f]{8}\)/
+    );
+
+    expect(fileStorageMock.saveFileCalls).toHaveLength(1);
+    expect(fileStorageMock.saveFileCalls[0].content.toString("utf8")).toBe(
+      "const a = 10;\nconst b = 20;\nconst c = 30;\n"
+    );
+  });
+
+  it("matches later batch edits against the output of earlier ones", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    mockStoredFile("hello world\n", "text/plain");
+
+    const result = await editHandler(
+      {
+        path: `conversation-${conversation.sId}/notes.txt`,
+        edits: [
+          { old_string: "hello world", new_string: "hello brave world" },
+          // Only matches after the first edit has been applied in memory.
+          { old_string: "brave world", new_string: "brave new world" },
+        ],
+      },
+      makeExtra(auth, conversation)
+    );
+
+    assert(result.isOk());
+    expect(fileStorageMock.saveFileCalls).toHaveLength(1);
+    expect(fileStorageMock.saveFileCalls[0].content.toString("utf8")).toBe(
+      "hello brave new world\n"
+    );
+  });
+
+  it("leaves the file untouched when a mid-batch edit does not match", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    mockStoredFile("const a = 1;\nconst b = 2;\n", "text/plain");
+
+    const result = await editHandler(
+      {
+        path: `conversation-${conversation.sId}/notes.txt`,
+        edits: [
+          { old_string: "const a = 1;", new_string: "const a = 10;" },
+          { old_string: "const z = 9;", new_string: "const z = 90;" },
+          { old_string: "const b = 2;", new_string: "const b = 20;" },
+        ],
+      },
+      makeExtra(auth, conversation)
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("Edit 2 of 3 failed");
+      expect(result.error.message).toContain('"const z = 9;" not found');
+      expect(result.error.message).toContain(
+        "zero edits were applied and the file was not modified"
+      );
+    }
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("leaves the file untouched when a batch edit occurrence count differs", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    mockStoredFile("a b a\n", "text/plain");
+
+    const result = await editHandler(
+      {
+        path: `conversation-${conversation.sId}/notes.txt`,
+        edits: [
+          { old_string: "b", new_string: "d" },
+          { old_string: "a", new_string: "c" },
+        ],
+      },
+      makeExtra(auth, conversation)
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "Edit 2 of 2 failed: expected 1 replacement, but found 2 occurrences"
+      );
+      expect(result.error.message).toContain(
+        "zero edits were applied and the file was not modified"
+      );
+    }
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("returns Err when both old_string and edits are provided", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    mockStoredFile("a\n", "text/plain");
+
+    const result = await editHandler(
+      {
+        path: `conversation-${conversation.sId}/notes.txt`,
+        old_string: "a",
+        new_string: "b",
+        edits: [{ old_string: "a", new_string: "b" }],
+      },
+      makeExtra(auth, conversation)
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("not both");
+    }
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("returns Err when neither old_string/new_string nor edits are provided", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    mockStoredFile("a\n", "text/plain");
+
+    const result = await editHandler(
+      {
+        path: `conversation-${conversation.sId}/notes.txt`,
+      },
+      makeExtra(auth, conversation)
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "Pass `old_string` and `new_string`, or an `edits` array."
+      );
+    }
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+  });
+
+  it("appends the publish reminder after the digest on a batched Frame edit", async () => {
+    const { auth, conversation } = await setupProjectConversation();
+    mockStoredFile(
+      "export default function App() { return <h1>Old</h1>; }\n",
+      "application/vnd.dust.frame"
+    );
+
+    const result = await editHandler(
+      {
+        path: `conversation-${conversation.sId}/App.tsx`,
+        edits: [{ old_string: "Old", new_string: "New" }],
+      },
+      makeExtra(auth, conversation)
+    );
+
+    assert(result.isOk());
+    assert(result.value[0].type === "text");
+    expect(result.value[0].text).toMatch(/sha256:[0-9a-f]{8}/);
+    expect(result.value[0].text).toContain(
+      "interactive_content__publish_interactive_content_file"
     );
   });
 
