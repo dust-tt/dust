@@ -133,6 +133,7 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       inputs,
       toolConfiguration,
       status,
+      idempotencyKey,
     }: {
       invocation: SandboxFunctionInvocationResource;
       mcpServerView: MCPServerViewResource;
@@ -140,6 +141,7 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
       inputs: Record<string, unknown>;
       toolConfiguration: LightMCPToolConfigurationType;
       status: "running" | "blocked_validation_required";
+      idempotencyKey?: string;
     },
     transaction?: Transaction
   ): Promise<SandboxFunctionMCPActionResource> {
@@ -161,6 +163,7 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
         inputs,
         toolConfiguration,
         status,
+        idempotencyKey: idempotencyKey ?? null,
       },
       { transaction }
     );
@@ -199,6 +202,45 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
 
     const [action] = await this.baseFetch(auth, {
       where: { id: actionModelId },
+    });
+
+    return action ?? null;
+  }
+
+  // Most recent action created with this idempotency key for the invocation, if any within the
+  // window. The key is scoped to (invocation, server view, tool): a key accidentally reused for a
+  // different tool creates a fresh action rather than replaying an unrelated one, and reuse
+  // across invocations never collides. Rides the (workspaceId, sandboxFunctionInvocationId)
+  // index — an invocation only ever holds a handful of actions.
+  static async fetchByIdempotencyKey(
+    auth: Authenticator,
+    {
+      invocation,
+      mcpServerView,
+      toolName,
+      idempotencyKey,
+      createdAfter,
+    }: {
+      invocation: SandboxFunctionInvocationResource;
+      mcpServerView: MCPServerViewResource;
+      toolName: string;
+      idempotencyKey: string;
+      createdAfter: Date;
+    }
+  ): Promise<SandboxFunctionMCPActionResource | null> {
+    const [action] = await this.baseFetch(auth, {
+      where: {
+        sandboxFunctionInvocationId: invocation.id,
+        mcpServerViewId: mcpServerView.id,
+        toolName,
+        idempotencyKey,
+        createdAt: { [Op.gte]: createdAfter },
+      },
+      order: [
+        ["createdAt", "DESC"],
+        ["id", "DESC"],
+      ],
+      limit: 1,
     });
 
     return action ?? null;

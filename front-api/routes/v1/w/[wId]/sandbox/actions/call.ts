@@ -35,6 +35,7 @@ app.post(
       serverViewId,
       toolName,
       arguments: toolArgs,
+      idempotencyKey,
     } = ctx.req.valid("json");
 
     // Sandbox function invocations have no conversation: the action and any approval event are
@@ -68,6 +69,7 @@ app.post(
         serverViewId,
         toolName,
         rawInputs: toolArgs ?? {},
+        idempotencyKey,
       });
 
       if (result.isErr()) {
@@ -111,6 +113,8 @@ app.post(
       });
     }
 
+    // `idempotencyKey` only deduplicates function-invocation calls today: child actions live on
+    // the agent-loop's action model, which does not carry the key.
     const result = await createSandboxChildAction(auth, {
       parentActionId: claims.actionId,
       agentId: claims.aId,
