@@ -347,6 +347,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "fontanierh",
   },
+  inline_tool_knowledge_reference: {
+    description:
+      "Insert selected tools and knowledge as inline chips in the conversation input bar and attach them to the conversation at message submit.",
+    stage: "dust_only",
+    owner: "ykmsd",
+  },
   disable_formatting_prompt: {
     description:
       "Skip injecting the OpenAI formatting meta prompt entirely (no markdown/paragraph style guidance)",
