@@ -22,6 +22,10 @@ const JSONB_COLUMNS = [
     tableName: "zendesk_configurations",
     columns: ["customFieldsConfig"],
   },
+  {
+    tableName: "project_metadata",
+    columns: ["frameTabs"],
+  },
 ];
 
 export function generateParameterizedInsertStatements(
