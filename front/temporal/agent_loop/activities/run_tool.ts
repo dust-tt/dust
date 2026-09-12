@@ -17,7 +17,10 @@ import { getShutdownSignal } from "@app/lib/shutdown_signal";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
-import { TOOL_SETUP_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
+import {
+  TOOL_ACTIVITY_HEARTBEAT_INTERVAL_MS,
+  TOOL_SETUP_HEARTBEAT_INTERVAL_MS,
+} from "@app/temporal/agent_loop/config";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type {
@@ -91,6 +94,28 @@ function extractDataSourceIds(
 
 export async function runToolActivity(
   authType: AuthenticatorType,
+  params: {
+    actionId: ModelId;
+    runAgentArgs: AgentLoopArgsWithTiming;
+    step: number;
+    runIds?: string[];
+  }
+): Promise<ToolExecutionResult> {
+  // Several phases of a tool run (action state transitions, MCP server connection, event
+  // publication) sit outside the MCP call's own heartbeat loop and can stall past the heartbeat
+  // timeout under DB or network contention. Tools with the no_retry policy get a single attempt,
+  // so one missed heartbeat window fails the whole run: heartbeat immediately and periodically
+  // for the whole activity, same pattern as runModelAndCreateActionsActivity.
+  heartbeat();
+
+  return withPeriodicHeartbeat(() => _runToolActivity(authType, params), {
+    intervalMs: TOOL_ACTIVITY_HEARTBEAT_INTERVAL_MS,
+    heartbeatFn: () => heartbeat(),
+  });
+}
+
+async function _runToolActivity(
+  authType: AuthenticatorType,
   {
     actionId,
     runAgentArgs,
@@ -103,13 +128,10 @@ export async function runToolActivity(
     runIds?: string[];
   }
 ): Promise<ToolExecutionResult> {
-  // The setup phase below is DB-bound and can stall past the heartbeat timeout under
-  // connection-pool contention. Tool activities are not retried, so a missed first heartbeat
-  // kills the whole run: heartbeat immediately and periodically until setup completes.
-  heartbeat();
-
   const deferredEvents: ToolExecutionResult["deferredEvents"] = [];
 
+  // The activity-lifetime wrapper above already covers liveness: this inner wrapper is kept for
+  // its log, each firing meaning the DB-bound setup phase is stalling (DB pool contention).
   const { auth, runAgentDataRes, action } = await withPeriodicHeartbeat(
     async () => {
       const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
