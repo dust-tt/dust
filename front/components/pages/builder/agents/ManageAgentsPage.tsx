@@ -167,6 +167,12 @@ export function ManageAgentsPage() {
       a: LightAgentConfigurationType,
       b: LightAgentConfigurationType
     ) => a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    // Archived agents are rarely touched again, so `updatedAt` doubles as their archival date;
+    // sorting by name isn't relevant once agents are archived.
+    const byUpdatedAtDesc = (
+      a: LightAgentConfigurationType,
+      b: LightAgentConfigurationType
+    ) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? "");
     const allAgents: LightAgentConfigurationType[] = agentConfigurations
       .filter(matchesFilters)
       .sort(byName);
@@ -192,7 +198,7 @@ export function ManageAgentsPage() {
       editable_by_me: filteredList(allAgents.filter((a) => a.canEdit)),
       global: filteredList(allAgents.filter((a) => a.scope === "global")),
       archived: filteredList(
-        archivedAgentConfigurations.filter(matchesFilters).sort(byName)
+        archivedAgentConfigurations.filter(matchesFilters).sort(byUpdatedAtDesc)
       ),
     };
   }, [

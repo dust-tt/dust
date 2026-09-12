@@ -259,6 +259,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       id: agent.id,
       sId: agent.sId,
       versionCreatedAt: agent.createdAt.toISOString(),
+      updatedAt: agent.updatedAt.toISOString(),
       version: agent.version,
       scope: agent.scope,
       userFavorite: !!favoriteStatePerAgent.get(agent.sId),

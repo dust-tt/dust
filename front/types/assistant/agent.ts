@@ -166,6 +166,9 @@ export type GlobalAgentContext = {
 export const LightAgentConfigurationSchema = z.object({
   id: DbModelIdSchema,
   versionCreatedAt: z.string().nullable(),
+  // Row `updatedAt`, exposed as a stand-in for `archivedAt` since archived agents are rarely
+  // touched again. Undefined for static global agents, which have no backing DB row.
+  updatedAt: z.string().nullable().optional(),
   sId: z.string(),
   version: z.number(),
   versionAuthorId: DbModelIdSchema.nullable(),

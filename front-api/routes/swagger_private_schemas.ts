@@ -890,6 +890,10 @@
  *         versionCreatedAt:
  *           type: string
  *           nullable: true
+ *         updatedAt:
+ *           type: string
+ *           nullable: true
+ *           description: Timestamp of the last update to this agent configuration row. Used as a stand-in for `archivedAt` when the agent is archived.
  *         versionAuthorId:
  *           type: integer
  *           nullable: true

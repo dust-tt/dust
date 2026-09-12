@@ -158,6 +158,11 @@
  *           nullable: true
  *           description: Timestamp of when the version was created
  *           example: "2023-06-15T14:30:00Z"
+ *         updatedAt:
+ *           type: string
+ *           nullable: true
+ *           description: Timestamp of the last update to this agent configuration row. Used as a stand-in for `archivedAt` when the agent is archived.
+ *           example: "2023-06-15T14:30:00Z"
  *         versionAuthorId:
  *           type: string
  *           nullable: true
