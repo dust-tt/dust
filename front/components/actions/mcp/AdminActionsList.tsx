@@ -34,7 +34,15 @@ import type {
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
-import { Chip, cn, DataTable, EmptyCTA, Spinner } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
+import {
+  Chip,
+  cn,
+  DataTable,
+  DataTableSkeleton,
+  EmptyCTA,
+  LoadingBlock,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
@@ -47,6 +55,44 @@ type RowData = {
   spaces: SpaceType[];
   onClick: () => void;
 };
+
+function AdminActionSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return (
+        <div className="flex items-center gap-3 py-3">
+          <LoadingBlock className="h-9 w-9 shrink-0 rounded-lg" />
+          <div className="flex h-10 min-w-0 flex-1 flex-col justify-center gap-2">
+            <LoadingBlock
+              className={rowIndex % 2 === 0 ? "h-3 w-28" : "h-3 w-36"}
+            />
+            <LoadingBlock
+              className={rowIndex % 2 === 0 ? "h-3 w-3/4" : "h-3 w-1/2"}
+            />
+          </div>
+        </div>
+      );
+    case "usedBy":
+      return (
+        <div className="flex justify-center">
+          <LoadingBlock className="h-6 w-16 rounded-md" />
+        </div>
+      );
+    case "access":
+      return <LoadingBlock className="h-3 w-20 max-w-full" />;
+    case "account":
+      return <LoadingBlock className="h-3 w-14 max-w-full" />;
+    case "by":
+      return <LoadingBlock className="h-7 w-7 rounded-full" />;
+    case "lastUpdated":
+      return <LoadingBlock className="h-3 w-16 max-w-full" />;
+    default:
+      return null;
+  }
+}
 
 const NameCell = ({ row }: { row: RowData }) => {
   const { mcpServer, mcpServerView, isConnected } = row;
@@ -421,8 +467,12 @@ export const AdminActionsList = ({
         )}
 
       {showLoader && (
-        <div className="mt-16 flex justify-center">
-          <Spinner />
+        <div className="pb-4">
+          <DataTableSkeleton
+            columns={columns}
+            SkeletonCell={AdminActionSkeletonCell}
+            rowHeight={64}
+          />
         </div>
       )}
 

@@ -32,7 +32,7 @@ export interface DataTableSkeletonProps<
   columns: SkeletonColumnDef<TData, TValue, TColumnId>[];
   /** Required cell renderer: compose cell skeleton primitives to match each column's content. */
   SkeletonCell: ComponentType<DataTableSkeletonCellProps<NoInfer<TColumnId>>>;
-  /** Number of placeholder rows. Defaults to 5. */
+  /** Number of placeholder rows. Defaults to 10. */
   rowCount?: number;
   /** Row height in pixels; match the loaded table. Defaults to 48. */
   rowHeight?: number;
@@ -53,7 +53,7 @@ export function DataTableSkeleton<
 >({
   columns,
   SkeletonCell,
-  rowCount = 5,
+  rowCount = 10,
   rowHeight = 48,
 }: DataTableSkeletonProps<TData, TValue, TColumnId>) {
   const table = useReactTable({
