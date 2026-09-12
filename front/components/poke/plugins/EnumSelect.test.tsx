@@ -25,8 +25,8 @@ const OPTIONS = [
     value: "workspace_default_agent",
   },
   {
-    label: "[Dust only] xai_feature",
-    value: "xai_feature",
+    label: "[Dust only] show_debug_tools",
+    value: "show_debug_tools",
   },
 ] as const;
 
@@ -71,7 +71,7 @@ describe("EnumSelect", () => {
       screen.getByText("[On demand] workspace_default_agent")
     ).toBeVisible();
     expect(
-      screen.queryByText("[Dust only] xai_feature")
+      screen.queryByText("[Dust only] show_debug_tools")
     ).not.toBeInTheDocument();
   });
 });
