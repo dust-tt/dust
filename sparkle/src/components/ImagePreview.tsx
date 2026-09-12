@@ -14,7 +14,11 @@ import React, { useCallback, useState } from "react";
 export const IMAGE_PREVIEW_VARIANTS = ["embedded", "standalone"] as const;
 export type ImagePreviewVariantType = (typeof IMAGE_PREVIEW_VARIANTS)[number];
 
-export const IMAGE_PREVIEW_TITLE_POSITIONS = ["bottom", "center"] as const;
+export const IMAGE_PREVIEW_TITLE_POSITIONS = [
+  "bottom",
+  "center",
+  "hidden",
+] as const;
 export type ImagePreviewTitlePositionType =
   (typeof IMAGE_PREVIEW_TITLE_POSITIONS)[number];
 
@@ -50,6 +54,8 @@ const overlayVariants = cva(
       titlePosition: {
         bottom: cn("flex flex-col items-start justify-end", "px-3 pb-7"),
         center: "flex items-center justify-center",
+        // No title: the overlay only dims the image on hover.
+        hidden: "",
       },
       variant: {
         // Embedded: uses parent's group for hover
@@ -72,6 +78,7 @@ const titleVariants = cva(
       titlePosition: {
         bottom: "",
         center: "max-w-[90%] px-2 text-center",
+        hidden: "",
       },
     },
     defaultVariants: {
@@ -85,7 +92,7 @@ interface ImagePreviewProps
     VariantProps<typeof overlayVariants> {
   imgSrc: string;
   alt?: string;
-  /** Label shown in the hover overlay; also used as the download filename. */
+  /** Label shown in the hover overlay (unless `titlePosition` is `hidden`); also used as the download filename. */
   title?: string;
   /** When set (and no `onClose`), a download button is shown on hover. */
   downloadUrl?: string;
@@ -198,9 +205,11 @@ const ImagePreview = React.forwardRef<HTMLDivElement, ImagePreviewProps>(
               />
               {/* Overlay with title - shown on hover */}
               <div className={overlayVariants({ titlePosition, variant })}>
-                <span className={titleVariants({ titlePosition })}>
-                  {title}
-                </span>
+                {titlePosition !== "hidden" && (
+                  <span className={titleVariants({ titlePosition })}>
+                    {title}
+                  </span>
+                )}
               </div>
               {/* Action button - top right on hover */}
               <div

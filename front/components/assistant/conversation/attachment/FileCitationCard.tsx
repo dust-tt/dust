@@ -13,7 +13,10 @@ import type { ComponentType } from "react";
 import { isValidElement } from "react";
 
 export type FileCitationCardSize = "md" | "sm" | "xs";
-export type FileCitationCardIcon = ComponentType | React.ReactNode;
+// Either an icon component or an already rendered visual (e.g. a DoubleIcon).
+export type FileCitationCardIcon =
+  | ComponentType<{ className?: string }>
+  | React.ReactElement;
 
 interface FileCitationCardPropsBase {
   description?: React.ReactNode;
@@ -27,12 +30,30 @@ interface FileCitationCardPropsBase {
 }
 
 // Card is either interactive (onClick or href) or static, never both at once.
-type FileCitationCardProps = FileCitationCardPropsBase &
+export type FileCitationCardProps = FileCitationCardPropsBase &
   (
-    | { onClick: (e: React.MouseEvent<HTMLDivElement>) => void; href?: never }
+    | { onClick: () => void; href?: never }
     | { href: string; onClick?: never }
     | { onClick?: never; href?: never }
   );
+
+interface FileCitationTooltipLabelProps {
+  title: React.ReactNode;
+  description: React.ReactNode;
+}
+
+/** Two-line tooltip content: title with a muted description below. */
+export function FileCitationTooltipLabel({
+  title,
+  description,
+}: FileCitationTooltipLabelProps) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <div>{title}</div>
+      <div className="text-sm text-muted-foreground">{description}</div>
+    </div>
+  );
+}
 
 function getFileCitationCardLayout(size: Exclude<FileCitationCardSize, "xs">) {
   switch (size) {
@@ -66,10 +87,7 @@ function getFileCitationCardTooltipLabel({
   }
 
   return (
-    <div className="flex flex-col gap-0.5">
-      <div>{tooltipLabel}</div>
-      <div className="text-sm text-muted-foreground">{description}</div>
-    </div>
+    <FileCitationTooltipLabel title={tooltipLabel} description={description} />
   );
 }
 
@@ -77,28 +95,21 @@ function getIconSizeForCitationCard(size: FileCitationCardSize): "xs" | "sm" {
   return size === "xs" ? "xs" : "sm";
 }
 
+export function isIconComponent(
+  icon: FileCitationCardIcon
+): icon is ComponentType<{ className?: string }> {
+  return !isValidElement(icon);
+}
+
 function renderFileCitationIcon(
   icon: FileCitationCardIcon,
   size: FileCitationCardSize
 ): React.ReactNode {
-  if (isValidElement(icon)) {
-    return icon;
-  }
-
-  if (typeof icon === "function") {
-    return <Icon visual={icon} size={getIconSizeForCitationCard(size)} />;
-  }
-
-  if (typeof icon === "object" && icon !== null) {
-    return (
-      <Icon
-        visual={icon as unknown as ComponentType}
-        size={getIconSizeForCitationCard(size)}
-      />
-    );
-  }
-
-  return icon;
+  return isIconComponent(icon) ? (
+    <Icon visual={icon} size={getIconSizeForCitationCard(size)} />
+  ) : (
+    icon
+  );
 }
 
 export function FileCitationCard(props: FileCitationCardProps) {
@@ -138,14 +149,7 @@ export function FileCitationCard(props: FileCitationCardProps) {
       ) : (
         <Chip
           {...chipProps}
-          onClick={
-            "onClick" in props && props.onClick
-              ? () =>
-                  props.onClick({
-                    stopPropagation: () => {},
-                  } as React.MouseEvent<HTMLDivElement>)
-              : undefined
-          }
+          onClick={"onClick" in props ? props.onClick : undefined}
         />
       );
 

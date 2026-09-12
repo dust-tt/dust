@@ -1,8 +1,12 @@
+import { AttachmentChipCitation } from "@app/components/assistant/conversation/attachment/AttachmentChipCitation";
 import type {
   FileCitationCardIcon,
   FileCitationCardSize,
 } from "@app/components/assistant/conversation/attachment/FileCitationCard";
-import { FileCitationCard } from "@app/components/assistant/conversation/attachment/FileCitationCard";
+import {
+  FileCitationCard,
+  FileCitationTooltipLabel,
+} from "@app/components/assistant/conversation/attachment/FileCitationCard";
 import { ConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { useFilePreviewContext } from "@app/components/assistant/conversation/FilePreviewContext";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -12,6 +16,7 @@ import {
   isSupportedImageContentType,
 } from "@app/types/files";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import type { ImagePreviewTitlePositionType } from "@dust-tt/sparkle";
 import {
   Citation,
   CitationImage,
@@ -31,6 +36,8 @@ interface PreviewableCitationProps {
   filePath?: string;
   // Icon for non-image citations, auto-computed from contentType and title if omitted.
   icon?: FileCitationCardIcon;
+  // Where the image preview's hover title sits (image citations only).
+  imageTitlePosition?: ImagePreviewTitlePositionType;
   isLoading?: boolean;
   loadingLabel?: string;
   onRemove?: () => void;
@@ -39,7 +46,8 @@ interface PreviewableCitationProps {
   thumbnailUrl?: string;
   title: string;
   tooltipLabel?: React.ReactNode;
-  variant?: "card" | "inline";
+  // `chip` is the composer attachment row; `inline` is a text-level reference.
+  variant?: "card" | "chip" | "inline";
 }
 
 export function PreviewableCitation({
@@ -50,6 +58,7 @@ export function PreviewableCitation({
   fileId,
   filePath,
   icon,
+  imageTitlePosition,
   isLoading,
   loadingLabel,
   onRemove,
@@ -95,10 +104,7 @@ export function PreviewableCitation({
     const inlineTooltipLabel =
       tooltipLabel ??
       (description ? (
-        <div className="flex flex-col gap-0.5">
-          <div>{title}</div>
-          <div className="text-sm text-muted-foreground">{description}</div>
-        </div>
+        <FileCitationTooltipLabel title={title} description={description} />
       ) : (
         title
       ));
@@ -127,7 +133,8 @@ export function PreviewableCitation({
     );
   }
 
-  if (isSupportedImageContentType(contentType) && thumbnailUrl) {
+  // Image preview, or its loading placeholder while the thumbnail is not available yet.
+  if (isSupportedImageContentType(contentType) && (thumbnailUrl || isLoading)) {
     return (
       <Tooltip
         trigger={
@@ -140,6 +147,7 @@ export function PreviewableCitation({
               imgSrc={thumbnailUrl ?? ""}
               downloadUrl={downloadUrl}
               title={title}
+              titlePosition={imageTitlePosition}
               isLoading={isLoading}
               onClose={onRemove}
               onClick={handleClick}
@@ -152,6 +160,21 @@ export function PreviewableCitation({
   }
 
   const FileIcon = getFileTypeIcon(contentType, title);
+  if (variant === "chip") {
+    return (
+      <AttachmentChipCitation
+        icon={icon ?? FileIcon}
+        title={title}
+        description={description}
+        isLoading={isLoading}
+        loadingLabel={loadingLabel}
+        onClick={handleClick}
+        onRemove={onRemove}
+        tooltipLabel={tooltipLabel ?? title}
+      />
+    );
+  }
+
   return (
     <FileCitationCard
       icon={icon ?? FileIcon}
