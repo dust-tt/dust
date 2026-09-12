@@ -576,6 +576,40 @@ export async function getChannelById(
   return res.channel;
 }
 
+// Memoized channel lookup (mirrors `getSlackUserInfoMemoized` for users) so a thread
+// mentioning the same channel across many messages does not refetch it.
+const getChannelByIdMemoized = cacheWithRedis(
+  (connectorId: ModelId, slackClient: WebClient, channelId: string) =>
+    getChannelById(slackClient, connectorId, channelId),
+  (connectorId, _slackClient, channelId) =>
+    `slack-channel-info-${connectorId}-${channelId}`,
+  { ttlMs: 60 * 60 * 1000 }
+);
+
+// Resolves a channel id to its name (mirrors `getUserInfo`: a thin wrapper over the memoized
+// lookup). Returns `null` when the channel cannot be read, so the caller can fall back to the
+// raw id.
+export async function getChannelNameById(
+  connectorId: ModelId,
+  slackClient: WebClient,
+  channelId: string
+): Promise<string | null> {
+  try {
+    const channel = await getChannelByIdMemoized(
+      connectorId,
+      slackClient,
+      channelId
+    );
+    return channel.name ?? null;
+  } catch (err) {
+    logger.info(
+      { connectorId, channelId, err: normalizeError(err) },
+      "Could not resolve Slack channel mention."
+    );
+    return null;
+  }
+}
+
 export async function migrateChannelsFromLegacyBotToNewBot(
   slackConnector: ConnectorResource,
   slackBotConnector: ConnectorResource

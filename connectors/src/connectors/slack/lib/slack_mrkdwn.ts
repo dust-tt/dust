@@ -32,21 +32,10 @@ function slackInlineToken(
 }
 
 // Patterns are anchored (`^`): marked feeds the tokenizer the source from the match start.
+// User (`<@U123>`) and channel (`<#C123>`) tokens are intentionally NOT handled here: their
+// ids are resolved to names against the Slack API downstream (`processMessageForMentions` in
+// `messages.ts`), so we let them pass through untouched for that pass to pick up.
 const SLACK_EXTENSIONS: TokenizerAndRendererExtension[] = [
-  // <@U123> or <@U123|name> -> @name (falls back to the id when no label).
-  slackInlineToken(
-    "slackUser",
-    "<@",
-    /^<@([UW][A-Z0-9]+)(?:\|([^>]+))?>/,
-    (m) => `@${m[2] ?? m[1]}`
-  ),
-  // <#C123> or <#C123|name> -> #name.
-  slackInlineToken(
-    "slackChannel",
-    "<#",
-    /^<#([A-Z0-9]+)(?:\|([^>]+))?>/,
-    (m) => `#${m[2] ?? m[1]}`
-  ),
   // <!subteam^S123|@group> -> @group ; <!subteam^S123> -> @S123.
   slackInlineToken(
     "slackSubteam",
