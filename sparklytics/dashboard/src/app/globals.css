@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    background-color: #050507;
+    color: #f2f2f2;
+    /* VoltAgent: standard letter-spacing (NOT positive — compressed headings are handled per element) */
+    letter-spacing: normal;
+    font-feature-settings: "calt", "rlig";
+  }
+
+  body {
+    /* VoltAgent: weight 400 as baseline for body text */
+    font-weight: 400;
+  }
+
+  /* VoltAgent: system-ui for all headings — native authority, zero FOIT */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-feature-settings: "calt", "rlig";
+    line-height: 1.11;
+    letter-spacing: -0.6px;
+  }
+
+  /* VoltAgent: Warm Charcoal as the default border — warm, not cold */
+  * {
+    border-color: #3d3a39;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #101010;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #3d3a39;
+    border-radius: 3px;
+  }
+}
+
+@layer utilities {
+  /* VoltAgent standard card — warm charcoal border + ambient haze */
+  .card {
+    border: 1px solid #3d3a39;
+    box-shadow: rgba(92, 88, 85, 0.2) 0px 0px 15px;
+  }
+
+  /* Highlighted / active card — green accent border */
+  .card-accent {
+    border: 2px solid #00d992;
+    box-shadow: rgba(0, 217, 146, 0.1) 0px 0px 15px;
+  }
+
+  /* Green signal glow for interactive accent elements */
+  .glow-green {
+    filter: drop-shadow(0 0 6px #00d992);
+  }
+
+  /* Dashed blueprint line for diagrams */
+  .border-dashed-slate {
+    border: 1px dashed rgba(79, 93, 117, 0.4);
+  }
+}
