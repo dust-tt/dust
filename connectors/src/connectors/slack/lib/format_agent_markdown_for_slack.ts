@@ -96,7 +96,7 @@ function replaceContentNodeMentionsForSlack(text: string): string {
       if (!attrs) {
         return cleanTitle;
       }
-      const urlMatch = attrs.match(/url=([^}\s]+)/);
+      const urlMatch = attrs.match(/url="?([^"}\s]+)"?/);
       if (urlMatch?.[1]) {
         return `<${urlMatch[1]}|${cleanTitle}>`;
       }
