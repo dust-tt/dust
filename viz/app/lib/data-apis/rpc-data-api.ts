@@ -1,10 +1,31 @@
-import { normalizeSandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
+import {
+  normalizeSandboxFunctionCallError,
+  SandboxFunctionCallError,
+} from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import type { VisualizationDataAPI } from "@viz/app/lib/visualization-api";
 import type {
   CommandResultMap,
   VisualizationRPCCommand,
   VisualizationRPCRequestMap,
 } from "@viz/app/types";
+
+export type HostLivenessState = "unknown" | "alive" | "unresponsive";
+
+interface RPCDataAPIOptions {
+  // Whether a separate host window exists to answer RPC messages. Defaults to detecting a
+  // top-level browser window (window.parent === window), where postMessage RPC can never be
+  // answered. SSR constructs the API without a `window` and never calls functions, so the
+  // detection defaults to true there.
+  hasHostWindow?: boolean;
+}
+
+function detectHostWindow(): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  return window.parent !== window;
+}
 
 /**
  * RPC-based data API for client-side components
@@ -16,16 +37,54 @@ export class RPCDataAPI implements VisualizationDataAPI {
     params: VisualizationRPCRequestMap[T]
   ) => Promise<CommandResultMap[T]>;
 
+  private readonly hasHostWindow: boolean;
+  private _hostLiveness: HostLivenessState = "unknown";
+
   constructor(
     sendMessage: <T extends VisualizationRPCCommand>(
       command: T,
       params: VisualizationRPCRequestMap[T]
-    ) => Promise<CommandResultMap[T]>
+    ) => Promise<CommandResultMap[T]>,
+    options?: RPCDataAPIOptions
   ) {
     this.sendMessage = sendMessage;
+    this.hasHostWindow = options?.hasHostWindow ?? detectHostWindow();
+
+    if (this.hasHostWindow) {
+      // Probe host liveness once per mount. The transport bounds the ping with its own
+      // timeout, so this settles either way. An unanswered ping is recorded but does not
+      // change behavior: embedded hosts that predate the ping command are treated as
+      // legacy and keep the pre-ping semantics.
+      void this.probeHostLiveness();
+    } else {
+      this._hostLiveness = "unresponsive";
+    }
+  }
+
+  get hostLiveness(): HostLivenessState {
+    return this._hostLiveness;
+  }
+
+  private async probeHostLiveness(): Promise<void> {
+    try {
+      await this.sendMessage("ping", null);
+      this._hostLiveness = "alive";
+    } catch (_error) {
+      this._hostLiveness = "unresponsive";
+    }
   }
 
   async callFunction(functionId: string, input?: unknown): Promise<unknown> {
+    if (!this.hasHostWindow) {
+      // Top-level window: there is no host to serve the call, so the RPC below would hang
+      // forever (only getUserIdentity has a transport timeout). Fail fast with the code
+      // frames already branch on for hostless contexts.
+      throw new SandboxFunctionCallError({
+        code: "not_supported",
+        message: `Sandbox function ${functionId} cannot be called: no host window is available to serve function calls.`,
+      });
+    }
+
     try {
       return await this.sendMessage("callFunction", {
         functionIdOrSlug: functionId,

@@ -709,6 +709,11 @@ function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
 
 export const USER_IDENTITY_RPC_TIMEOUT_MS = 5_000;
 
+// How long the host has to answer the liveness ping sent when the RPC data API is
+// constructed. Hosts answer synchronously from their message listener, so an unanswered
+// ping means the host is either absent or a legacy deploy that predates the command.
+export const HOST_LIVENESS_PING_TIMEOUT_MS = 3_000;
+
 export function makeSendCrossDocumentMessage({
   identifier,
   allowedOrigins,
@@ -755,6 +760,11 @@ export function makeSendCrossDocumentMessage({
           cleanup();
           reject(new Error("Frame host did not provide user identity."));
         }, USER_IDENTITY_RPC_TIMEOUT_MS);
+      } else if (command === "ping") {
+        timeoutId = window.setTimeout(() => {
+          cleanup();
+          reject(new Error("Frame host did not answer the liveness ping."));
+        }, HOST_LIVENESS_PING_TIMEOUT_MS);
       }
       window.parent?.postMessage(
         {
