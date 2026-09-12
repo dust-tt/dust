@@ -4,6 +4,10 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import {
+  readPodAgentsMdContent,
+  writePodAgentsMdContent,
+} from "@app/lib/api/projects/agents_md";
+import {
   getSpaceCategoriesWithUsage,
   softDeleteSpaceAndLaunchScrubWorkflow,
 } from "@app/lib/api/spaces";
@@ -147,6 +151,10 @@ const app = workspaceApp();
  *                         description:
  *                           type: string
  *                           nullable: true
+ *                         instructions:
+ *                           type: string
+ *                           nullable: true
+ *                           description: Pod-wide Instructions for Agents, stored as AGENTS.md in the Pod's files.
  *                         archivedAt:
  *                           type: integer
  *                           nullable: true
@@ -209,6 +217,9 @@ const app = workspaceApp();
  *             properties:
  *               name:
  *                 type: string
+ *               instructions:
+ *                 type: string
+ *                 description: Pod-wide Instructions for Agents, stored as AGENTS.md in the Pod's files.
  *               content:
  *                 type: array
  *                 items:
@@ -325,9 +336,12 @@ app.get(
     // are the two put together.
     const groups = await space.toGroupAccessesJSON(auth);
 
-    const meta = space.isProject()
-      ? await ProjectMetadataResource.fetchBySpace(auth, space)
-      : undefined;
+    const [meta, instructions] = space.isProject()
+      ? await Promise.all([
+          ProjectMetadataResource.fetchBySpace(auth, space),
+          readPodAgentsMdContent(auth, space.sId),
+        ])
+      : [undefined, null];
 
     const [enrichedSpace] = await SpaceResource.enrichSpacesWithAccess(auth, [
       space,
@@ -346,6 +360,7 @@ app.get(
         description: meta?.description ?? null,
         archivedAt: meta?.archivedAt?.getTime() ?? null,
         // Automated task generation removed; keep fields hardcoded for API compat.
+        instructions,
         todoGenerationEnabled: false,
         lastTodoAnalysisAt: null,
         pinnedFramePath: meta?.pinnedFramePath ?? null,
@@ -378,7 +393,7 @@ app.patch(
       });
     }
 
-    const { content, name } = ctx.req.valid("json");
+    const { content, instructions, name } = ctx.req.valid("json");
 
     if (content) {
       const currentViews = await DataSourceViewResource.listBySpace(
@@ -448,6 +463,55 @@ app.patch(
         });
       }
     }
+
+    if (instructions !== undefined) {
+      if (!space.isProject()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Instructions for Agents are only available for Pods.",
+          },
+        });
+      }
+
+      const writeResult = await writePodAgentsMdContent(
+        auth,
+        space.sId,
+        instructions
+      );
+      if (writeResult.isErr()) {
+        const error = writeResult.error;
+        const statusCode =
+          error.code === "unauthorized"
+            ? 403
+            : error.code === "not_found"
+              ? 404
+              : error.code === "internal" || error.code === "too_many_mounts"
+                ? 500
+                : 400;
+
+        return apiError(ctx, {
+          status_code: statusCode,
+          api_error: {
+            type:
+              statusCode === 403
+                ? "workspace_auth_error"
+                : statusCode === 404
+                  ? "file_not_found"
+                  : statusCode === 500
+                    ? "internal_server_error"
+                    : "invalid_request_error",
+            message: error.message,
+          },
+        });
+      }
+
+      return ctx.json({
+        space: { ...space.toJSON(), instructions },
+      });
+    }
+
     return ctx.json({ space: space.toJSON() });
   }
 );

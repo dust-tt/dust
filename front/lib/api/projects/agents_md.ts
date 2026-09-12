@@ -5,6 +5,9 @@ import {
 } from "@app/lib/api/projects/constants";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
+import { DustFileSystemError } from "@app/types/file_system";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 export async function readPodAgentsMdContent(
   auth: Authenticator,
@@ -45,6 +48,38 @@ export async function readPodAgentsMdContent(
   }
 
   return content;
+}
+
+export async function writePodAgentsMdContent(
+  auth: Authenticator,
+  podId: string,
+  content: string
+): Promise<Result<void, DustFileSystemError>> {
+  if (content.length > POD_AGENTS_MD_MAX_CHARACTER_COUNT) {
+    return new Err(
+      new DustFileSystemError(
+        "invalid_path",
+        `Instructions must be ${POD_AGENTS_MD_MAX_CHARACTER_COUNT} characters or fewer.`
+      )
+    );
+  }
+
+  const scopedPath = getPodAgentsMdScopedPath(podId);
+  const fsResult = await DustFileSystem.fromScopedPath(auth, scopedPath);
+  if (fsResult.isErr()) {
+    return fsResult;
+  }
+
+  const writeResult = await fsResult.value.write(
+    scopedPath,
+    content,
+    "text/markdown"
+  );
+  if (writeResult.isErr()) {
+    return writeResult;
+  }
+
+  return new Ok(undefined);
 }
 
 export function formatPodAgentsMdPromptSection(content: string): string {

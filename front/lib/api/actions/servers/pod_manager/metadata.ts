@@ -83,7 +83,7 @@ export const POD_MANAGER_TOOLS_METADATA = [
   {
     name: EDIT_INFORMATION_TOOL_NAME,
     description:
-      "Edit Pod information: title, description, and/or access. " +
+      "Edit Pod information: title, description, instructions, and/or access. " +
       "Provide at least one field to update. Descriptions must be plain text only (no markdown, HTML, or formatting). " +
       "Access can be set to open or restricted; open Pods are subject to workspace policy.",
     schema: {
@@ -93,6 +93,13 @@ export const POD_MANAGER_TOOLS_METADATA = [
         .optional()
         .describe(
           "New Pod description. Must be plain text only (no markdown, HTML, or other formatting). Keep it brief and concise: 1-2 short sentences max."
+        ),
+      instructions: z
+        .string()
+        .max(8192)
+        .optional()
+        .describe(
+          "New Pod-wide Instructions for Agents, stored as AGENTS.md in the Pod's files."
         ),
       access: z
         .enum(["restricted", "open"])
