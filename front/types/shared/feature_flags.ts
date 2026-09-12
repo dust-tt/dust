@@ -335,6 +335,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "tdraier",
   },
+  remote_db_query_identity_labels: {
+    description:
+      "Attach Dust workspace/agent/user sIds as BigQuery job labels and Snowflake QUERY_TAG for remote database cost attribution",
+    stage: "self_serve",
+    owner: "fraggle",
+  },
   restricted_spaces_in_input_bar: {
     description:
       "Allow users to explicitly select Spaces from the conversation input bar.",

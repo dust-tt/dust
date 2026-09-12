@@ -1,5 +1,5 @@
 use std::{collections::HashSet, env};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -8,7 +8,7 @@ use serde::Deserialize;
 
 use crate::databases::{
     database::{QueryDatabaseError, QueryResult, SqlDialect},
-    remote_databases::remote_database::{RemoteDatabase, QUERY_TIMEOUT},
+    remote_databases::remote_database::{QueryIdentityContext, RemoteDatabase, QUERY_TIMEOUT},
     table::Table,
     table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
 };
@@ -474,8 +474,22 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         &self,
         tables: &Vec<Table>,
         query: &str,
+        query_identity: Option<&QueryIdentityContext>,
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         let session = self.get_session().await?;
+
+        if let Some(query_tag) =
+            query_identity.and_then(|identity| identity.to_snowflake_query_tag())
+        {
+            let escaped_tag = query_tag.replace('\'', "''");
+            if let Err(e) = session
+                .execute(format!("ALTER SESSION SET QUERY_TAG = '{}'", escaped_tag))
+                .await
+            {
+                // Attribution is best-effort: do not fail the user's query if tagging fails.
+                warn!("Failed to set Snowflake QUERY_TAG (continuing): {}", e);
+            }
+        }
 
         // Authorize the query based on allowed tables, query plan,
         // and forbidden operations.
