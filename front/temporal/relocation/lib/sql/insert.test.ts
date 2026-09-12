@@ -13,9 +13,10 @@ describe("generateParameterizedInsertStatements", () => {
   });
 
   it("stringifies empty JSONB arrays", () => {
-    const [statement] = generateParameterizedInsertStatements("project_metadata", [
-      { frameTabs: [] },
-    ]);
+    const [statement] = generateParameterizedInsertStatements(
+      "project_metadata",
+      [{ frameTabs: [] }]
+    );
 
     expect(statement?.params).toEqual(["[]"]);
   });

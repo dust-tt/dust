@@ -17,15 +17,35 @@
 
 import { Authenticator } from "@app/lib/auth";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { QueryTypes } from "sequelize";
+import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 
 import { makeScript } from "./helpers";
 
 type FrameTabsRow = {
   id: number;
   spaceId: number;
-  frameTabsType: string | null;
+  frameTabsType: string;
+  frameTabs: unknown;
 };
+
+function getFrameTabsType(value: unknown): string {
+  if (Array.isArray(value)) {
+    return "array";
+  }
+  if (value === null) {
+    return "null";
+  }
+  return typeof value;
+}
+
+function isEmptyObject(value: unknown): boolean {
+  return (
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 0
+  );
+}
 
 makeScript(
   {
@@ -39,37 +59,31 @@ makeScript(
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
     const workspace = auth.getNonNullableWorkspace();
 
-    const invalidRows = await frontSequelize.query<FrameTabsRow>(
-      `SELECT
-         id,
-         "spaceId",
-         jsonb_typeof("frameTabs") AS "frameTabsType"
-       FROM "project_metadata"
-       WHERE "workspaceId" = :workspaceId
-         AND jsonb_typeof("frameTabs") <> 'array'
-       ORDER BY id`,
-      {
-        replacements: { workspaceId: workspace.id },
-        type: QueryTypes.SELECT,
-      }
-    );
+    const metadataRows = await ProjectMetadataModel.findAll({
+      where: { workspaceId: workspace.id },
+      attributes: ["id", "spaceId", "frameTabs"],
+    });
 
-    const repairableRows = await frontSequelize.query<FrameTabsRow>(
-      `SELECT
-         id,
-         "spaceId",
-         jsonb_typeof("frameTabs") AS "frameTabsType"
-       FROM "project_metadata"
-       WHERE "workspaceId" = :workspaceId
-         AND jsonb_typeof("frameTabs") = 'object'
-         AND "frameTabs" = '{}'::jsonb
-       ORDER BY id`,
-      {
-        replacements: { workspaceId: workspace.id },
-        type: QueryTypes.SELECT,
+    const invalidRows: FrameTabsRow[] = metadataRows.flatMap((metadata) => {
+      const frameTabs = metadata.get("frameTabs") as unknown;
+      const frameTabsType = getFrameTabsType(frameTabs);
+      if (frameTabsType === "array") {
+        return [];
       }
-    );
 
+      return [
+        {
+          id: metadata.id,
+          spaceId: metadata.spaceId,
+          frameTabsType,
+          frameTabs,
+        },
+      ];
+    });
+
+    const repairableRows = invalidRows.filter((row) =>
+      isEmptyObject(row.frameTabs)
+    );
     const repairableIds = new Set(repairableRows.map((row) => row.id));
     const manualReviewRows = invalidRows.filter(
       (row) => !repairableIds.has(row.id)
@@ -104,21 +118,21 @@ makeScript(
       return;
     }
 
-    const [, repairedCount] = await frontSequelize.transaction(
-      async (transaction) =>
-        frontSequelize.query(
-          `UPDATE "project_metadata"
-           SET "frameTabs" = '[]'::jsonb,
-               "updatedAt" = NOW()
-           WHERE "workspaceId" = :workspaceId
-             AND jsonb_typeof("frameTabs") = 'object'
-             AND "frameTabs" = '{}'::jsonb`,
-          {
-            replacements: { workspaceId: workspace.id },
-            type: QueryTypes.UPDATE,
-            transaction,
-          }
-        )
+    const repairedCount = await frontSequelize.transaction(
+      async (transaction) => {
+        let count = 0;
+        for (const row of repairableRows) {
+          await ProjectMetadataModel.update(
+            { frameTabs: [] },
+            {
+              where: { id: row.id, workspaceId: workspace.id },
+              transaction,
+            }
+          );
+          count += 1;
+        }
+        return count;
+      }
     );
 
     logger.info(
