@@ -204,30 +204,10 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     expect(data.skill.relations.usage.skills).toEqual([]);
   });
 
-  it("should not expose favorite state when the feature flag is disabled", async () => {
+  it("should include favorite state", async () => {
     const { workspace, skill, requestUserAuth } = await setupTest({
       requestUserRole: "admin",
     });
-
-    const result = await skill.setFavorite(requestUserAuth, true);
-    expect(result.isOk()).toBe(true);
-
-    const response = await getSkill(workspace, skill.sId);
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    expect(data.skill).not.toHaveProperty("isFavorite");
-
-    const relationsResponse = await getSkillWithRelations(workspace, skill.sId);
-    expect(relationsResponse.status).toBe(200);
-    const relationsData = await relationsResponse.json();
-    expect(relationsData.skill).not.toHaveProperty("isFavorite");
-  });
-
-  it("should include favorite state when the feature flag is enabled", async () => {
-    const { workspace, skill, requestUserAuth } = await setupTest({
-      requestUserRole: "admin",
-    });
-    await FeatureFlagFactory.basic(requestUserAuth, "skill_favorites");
 
     const result = await skill.setFavorite(requestUserAuth, true);
     expect(result.isOk()).toBe(true);

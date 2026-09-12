@@ -1944,13 +1944,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         agentLoopData,
         effectiveSpaceIds,
       });
-      const hasSkillFavorites = await hasFeatureFlag(auth, "skill_favorites");
-      if (hasSkillFavorites) {
-        favoriteSkills = await this.listFavoritesForCurrentUser(auth, {
-          agentLoopData,
-          effectiveSpaceIds,
-        });
-      }
+      favoriteSkills = await this.listFavoritesForCurrentUser(auth, {
+        agentLoopData,
+        effectiveSpaceIds,
+      });
     }
 
     const sortByName = (a: SkillResource, b: SkillResource) =>
