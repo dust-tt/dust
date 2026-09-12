@@ -103,10 +103,11 @@ export function OptionCard(props: OptionCardProps) {
         isInteractive && "cursor-pointer",
         // In input mode `disabled` targets the field, not the card chrome.
         !isInput && disabled && "pointer-events-none opacity-60",
-        // Selected state is a flat "transparency-selected" overlay (6% of the
-        // foreground); the token is dark-mode aware on its own.
-        selected && "bg-foreground/[0.06] hover:bg-foreground/[0.06]",
-        !selected && !disableHover && "hover:bg-muted-background/60",
+        // Same hover/selected tints as sidebar and menu items: the translucent
+        // hover/selected tokens composite over any surface and flip with the
+        // theme. A selected card gets no extra tint on hover.
+        selected && "bg-selected hover:bg-selected",
+        !selected && !disableHover && "hover:bg-hover",
         className
       )}
       onClick={disabled ? undefined : onClick}
