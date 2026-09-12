@@ -11,4 +11,12 @@ describe("generateParameterizedInsertStatements", () => {
     expect(statement?.columns).toEqual(["id", "workspaceId", "planId"]);
     expect(statement?.params).toEqual([1, 10, 20, 2, 10, 21]);
   });
+
+  it("stringifies empty JSONB arrays", () => {
+    const [statement] = generateParameterizedInsertStatements("project_metadata", [
+      { frameTabs: [] },
+    ]);
+
+    expect(statement?.params).toEqual(["[]"]);
+  });
 });
