@@ -1,4 +1,4 @@
-import { BigQueryUseMetadataForDBMLView } from "@app/components/data_source/BigQueryUseMetadataForDBMLView";
+import { BigQueryOptionsView } from "@app/components/data_source/BigQueryOptionsView";
 import { createConnectorOptionsPdfEnabled } from "@app/components/data_source/ConnectorOptionsPdfEnabled";
 import { GithubCodeEnableView } from "@app/components/data_source/GithubCodeEnableView";
 import { GongOptionComponent } from "@app/components/data_source/gong/GongOptionComponent";
@@ -373,7 +373,7 @@ export const CONNECTOR_UI_CONFIGURATIONS: Record<
     getLogoComponent: () => {
       return BigQueryLogo;
     },
-    optionsComponent: BigQueryUseMetadataForDBMLView,
+    optionsComponent: BigQueryOptionsView,
     isNested: true,
     selectLabel: "Select tables",
     permissions: {

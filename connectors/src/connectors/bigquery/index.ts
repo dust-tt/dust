@@ -88,6 +88,7 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     // We can create the connector.
     const configBlob = {
       useMetadataForDBML: false,
+      maximumBytesBilled: null,
     };
     const connector = await ConnectorResource.makeNew(
       "bigquery",
@@ -378,7 +379,7 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
     configKey,
     configValue,
   }: {
-    configKey: "useMetadataForDBML";
+    configKey: "useMetadataForDBML" | "maximumBytesBilled";
     configValue: string;
   }): Promise<Result<void, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
@@ -388,44 +389,73 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
+    const connectorConfig = await BigQueryConfigurationModel.findOne({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+    if (!connectorConfig) {
+      return new Err(
+        new Error(
+          `Connector configuration not found (connectorId: ${connector.id})`
+        )
+      );
+    }
+
     switch (configKey) {
       case "useMetadataForDBML": {
-        const connectorConfig = await BigQueryConfigurationModel.findOne({
-          where: {
-            connectorId: connector.id,
-          },
-        });
-        if (!connectorConfig) {
-          return new Err(
-            new Error(
-              `Connector configuration not found (connectorId: ${connector.id})`
-            )
-          );
-        }
-
         await connectorConfig.update({
           useMetadataForDBML: configValue === "true",
         });
-
-        // Clean lastUpsertedAt for all remote tables to force a full sync with the appropriate tags
-        await RemoteTableModel.update(
-          {
-            lastUpsertedAt: null,
-          },
-          { where: { connectorId: connector.id } }
-        );
-
-        await launchBigQuerySyncWorkflow(connector.id);
-
-        return new Ok(void 0);
+        break;
       }
+      case "maximumBytesBilled": {
+        const trimmed = configValue.trim();
+        if (trimmed === "" || trimmed === "0") {
+          await connectorConfig.update({ maximumBytesBilled: null });
+          break;
+        }
+        if (!/^\d+$/.test(trimmed)) {
+          return new Err(
+            new Error(
+              "maximumBytesBilled must be a non-negative integer (bytes), or empty/0 for no limit"
+            )
+          );
+        }
+        const bytes = Number(trimmed);
+        if (!Number.isSafeInteger(bytes) || bytes < 0) {
+          return new Err(
+            new Error(
+              "maximumBytesBilled must be a non-negative integer (bytes), or empty/0 for no limit"
+            )
+          );
+        }
+        await connectorConfig.update({
+          maximumBytesBilled: bytes === 0 ? null : bytes,
+        });
+        break;
+      }
+      default:
+        assertNever(configKey);
     }
+
+    // Clean lastUpsertedAt for all remote tables to force a full sync with the appropriate tags
+    await RemoteTableModel.update(
+      {
+        lastUpsertedAt: null,
+      },
+      { where: { connectorId: connector.id } }
+    );
+
+    await launchBigQuerySyncWorkflow(connector.id);
+
+    return new Ok(void 0);
   }
 
   async getConfigurationKey({
     configKey,
   }: {
-    configKey: "useMetadataForDBML";
+    configKey: "useMetadataForDBML" | "maximumBytesBilled";
   }): Promise<Result<string | null, Error>> {
     const connector = await ConnectorResource.fetchById(this.connectorId);
     if (!connector) {
@@ -434,25 +464,32 @@ export class BigQueryConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    switch (configKey) {
-      case "useMetadataForDBML": {
-        const connectorConfig = await BigQueryConfigurationModel.findOne({
-          where: {
-            connectorId: connector.id,
-          },
-        });
-        if (!connectorConfig) {
-          return new Err(
-            new Error(
-              `Connector configuration not found (connectorId: ${connector.id})`
-            )
-          );
-        }
+    const connectorConfig = await BigQueryConfigurationModel.findOne({
+      where: {
+        connectorId: connector.id,
+      },
+    });
+    if (!connectorConfig) {
+      return new Err(
+        new Error(
+          `Connector configuration not found (connectorId: ${connector.id})`
+        )
+      );
+    }
 
+    switch (configKey) {
+      case "useMetadataForDBML":
         return new Ok(connectorConfig.useMetadataForDBML.toString());
+      case "maximumBytesBilled": {
+        const value = connectorConfig.maximumBytesBilled;
+        if (value === null || value === undefined) {
+          return new Ok("");
+        }
+        // BIGINT may come back as string from Sequelize/pg.
+        return new Ok(value.toString());
       }
       default:
-        return new Err(new Error(`Invalid config key ${configKey}`));
+        assertNever(configKey);
     }
   }
 
