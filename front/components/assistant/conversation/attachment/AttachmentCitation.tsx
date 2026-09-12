@@ -20,24 +20,42 @@ export function AttachmentCitation({
   const sidePanel = useContext(ConversationSidePanelContext);
 
   const isLoading =
-    attachmentCitation.type === "file" && attachmentCitation.isUploading;
+    attachmentCitation.type === "file" &&
+    attachmentCitation.isUploading === true;
+
+  const isRegularFile =
+    attachmentCitation.type === "file" &&
+    attachmentCitation.attachmentCitationType !== "mcp";
+  const uploadProgress = isRegularFile
+    ? attachmentCitation.uploadProgress
+    : null;
+  const audioSizeBytes = isRegularFile ? attachmentCitation.size : undefined;
+
+  const isTransferringBytes =
+    isLoading && uploadProgress !== null && uploadProgress < 100;
 
   const isTranscribingAudio =
-    isLoading === true && isAudioContentType(attachmentCitation);
-  const audioSizeBytes =
-    attachmentCitation.type === "file" &&
-    attachmentCitation.attachmentCitationType !== "mcp"
-      ? attachmentCitation.size
-      : undefined;
+    isLoading && !isTransferringBytes && isAudioContentType(attachmentCitation);
 
   const transcriptionProgress = useTranscribingProgress({
     isTranscriptingInProgress: isTranscribingAudio,
     sizeBytes: audioSizeBytes ?? 0,
   });
-  const loadingLabel =
-    isTranscribingAudio && transcriptionProgress !== null
-      ? `${transcriptionProgress}%`
-      : undefined;
+
+  const getLoadingLabel = (): string | undefined => {
+    if (isTransferringBytes) {
+      return `Uploading… ${uploadProgress}%`;
+    }
+    if (isTranscribingAudio && transcriptionProgress !== null) {
+      return `Transcribing… ${transcriptionProgress}%`;
+    }
+    // Bytes are in but the request is still open: the server is extracting/converting the file.
+    if (isLoading && uploadProgress === 100) {
+      return "Processing…";
+    }
+    return undefined;
+  };
+  const loadingLabel = getLoadingLabel();
 
   // Node citation: link to an external datasource document.
   if (attachmentCitation.type === "node") {
