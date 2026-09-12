@@ -1,6 +1,7 @@
 import { frontSequelize } from "@app/lib/resources/storage";
+import logger from "@app/logger/logger";
 import type { Transaction } from "sequelize";
-import { Sequelize } from "sequelize";
+import { DatabaseError, Sequelize, UniqueConstraintError } from "sequelize";
 import { injectReplacements } from "sequelize/lib/utils/sql";
 
 export function getInsertSQL(model: any, data: any) {
@@ -66,4 +67,76 @@ export async function withTransaction<T>(
   }
 
   return frontSequelize.transaction(fn);
+}
+
+const DEADLOCK_DETECTED = "40P01";
+
+const TRANSACTION_MAX_ATTEMPTS = 3;
+
+function getPostgresErrorCode(err: DatabaseError): string | null {
+  const { parent } = err;
+
+  if ("code" in parent && typeof parent.code === "string") {
+    return parent.code;
+  }
+
+  return null;
+}
+
+/**
+ * Two writers raced for the same slot (unique violation) or their row locks interleaved
+ * (deadlock). Both clear on a fresh attempt: the loser rolled back, so it re-reads the state the
+ * winner committed.
+ *
+ * `UniqueConstraintError` is a `ValidationError`, not a `DatabaseError`, hence the two branches.
+ */
+export function isWriteConflictError(err: unknown): boolean {
+  if (err instanceof UniqueConstraintError) {
+    return true;
+  }
+
+  return (
+    err instanceof DatabaseError &&
+    getPostgresErrorCode(err) === DEADLOCK_DETECTED
+  );
+}
+
+export async function retryOnWriteConflict<T>(
+  run: () => Promise<T>
+): Promise<T> {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await run();
+    } catch (err) {
+      if (attempt >= TRANSACTION_MAX_ATTEMPTS || !isWriteConflictError(err)) {
+        throw err;
+      }
+
+      logger.warn(
+        { attempt, maxAttempts: TRANSACTION_MAX_ATTEMPTS, err },
+        "Transaction hit a write conflict, retrying."
+      );
+    }
+  }
+}
+
+/**
+ * `withTransaction`, re-running the closure when a write conflict rolls it back.
+ *
+ * Retries only when this call opened the transaction. A transaction passed in is already aborted by
+ * the failed statement, so replaying `fn` on it would just add "current transaction is aborted"
+ * errors; whoever opened it retries instead.
+ *
+ * `fn` restarts from scratch, so it has to read whatever it derives its writes from, and leave side
+ * effects on `transaction.afterCommit`.
+ */
+export async function withRetriedTransaction<T>(
+  fn: (transaction: Transaction) => Promise<T>,
+  transaction?: Transaction
+): Promise<T> {
+  if (transaction || getCurrentTransaction()) {
+    return withTransaction(fn, transaction);
+  }
+
+  return retryOnWriteConflict(() => withTransaction(fn));
 }
