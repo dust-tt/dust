@@ -63,57 +63,98 @@ export default defineComponent({
       `---\nclaap_id: ${rec.id}\ntitle: ${JSON.stringify(rec.title || "")}\n` +
       `recorder_email: ${email}\nclaap_url: ${rec.url}\n---\n\n# Transcript\n\n${segs}\n`;
     const json = JSON.stringify({ archivedAt: new Date().toISOString(), recording: rec, transcript: tr }, null, 2);
+
     async function drive(url, init = {}) {
       const res = await fetch(url, {
         ...init,
         headers: { Authorization: `Bearer ${token}`, ...(init.headers || {}) },
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { raw: text.slice(0, 400) };
+      }
       if (!res.ok || data.error) {
-        throw new Error(`Drive ${res.status}: ${JSON.stringify(data).slice(0, 500)}`);
+        throw new Error(`Drive ${res.status} ${url.split("?")[0]}: ${JSON.stringify(data).slice(0, 500)}`);
       }
       return data;
     }
-    const q = encodeURIComponent(`name='${email}' and '${this.rootFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
-    const found = await drive(
-      `https://www.googleapis.com/drive/v3/files?q=${q}&corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true`
+
+    const root = await drive(
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(this.rootFolderId)}?fields=id,name,driveId,parents&supportsAllDrives=true`
     );
-    let folderId = found.files?.[0]?.id;
-    if (!folderId) {
-      const created = await drive("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: email,
-          mimeType: "application/vnd.google-apps.folder",
-          parents: [this.rootFolderId],
-        }),
-      });
-      folderId = created.id;
+    const driveQs = root.driveId
+      ? `corpora=drive&driveId=${encodeURIComponent(root.driveId)}&includeItemsFromAllDrives=true&supportsAllDrives=true`
+      : "corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true";
+
+    async function findInFolder(parentId, name, mime) {
+      const safe = String(name).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+      const q = encodeURIComponent(
+        `name='${safe}' and '${parentId}' in parents and trashed=false` +
+          (mime ? ` and mimeType='${mime}'` : "")
+      );
+      const found = await drive(
+        `https://www.googleapis.com/drive/v3/files?q=${q}&${driveQs}&fields=files(id,name,webViewLink)&pageSize=1`
+      );
+      return found.files?.[0] || null;
     }
-    if (!folderId) throw new Error("Drive folder create returned no id");
+
+    let folder = await findInFolder(this.rootFolderId, email, "application/vnd.google-apps.folder");
+    if (!folder?.id) {
+      folder = await drive(
+        "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,webViewLink",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: email,
+            mimeType: "application/vnd.google-apps.folder",
+            parents: [this.rootFolderId],
+          }),
+        }
+      );
+    }
+    const folderId = folder.id;
+    if (!folderId) throw new Error(`Drive folder create returned no id: ${JSON.stringify(folder)}`);
+
     const base = `${date}_${rec.id}`;
     const boundary = "xxx";
     async function put(name, mime, content) {
+      const existing = await findInFolder(folderId, name);
+      const meta = existing?.id
+        ? { name, mimeType: mime }
+        : { name, mimeType: mime, parents: [folderId] };
       const body =
         `--${boundary}\r\nContent-Type: application/json\r\n\r\n` +
-        `${JSON.stringify({ name, mimeType: mime, parents: [folderId] })}\r\n` +
+        `${JSON.stringify(meta)}\r\n` +
         `--${boundary}\r\nContent-Type: ${mime}\r\n\r\n${content}\r\n--${boundary}--`;
-      return fetch(
-        "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": `multipart/related; boundary=${boundary}`,
-          },
-          body,
-        }
-      ).then((r) => r.json());
+      const url = existing?.id
+        ? `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink`
+        : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink";
+      return drive(url, {
+        method: existing?.id ? "PATCH" : "POST",
+        headers: { "Content-Type": `multipart/related; boundary=${boundary}` },
+        body,
+      });
     }
+
     const mdFile = await put(`${base}.md`, "text/markdown", md);
     const jsonFile = await put(`${base}.json`, "application/json", json);
+    if (!mdFile.id || !jsonFile.id) {
+      throw new Error(`Drive upload missing id md=${JSON.stringify(mdFile)} json=${JSON.stringify(jsonFile)}`);
+    }
     $.export("summary", `Archived ${recordingId} to ${folderId}`);
-    return { recordingId, requestedId: this.recordingId, listed, folderId, mdFile, jsonFile };
+    return {
+      recordingId,
+      requestedId: this.recordingId,
+      listed,
+      driveId: root.driveId || null,
+      rootName: root.name,
+      folderId,
+      mdFile,
+      jsonFile,
+    };
   },
 });
