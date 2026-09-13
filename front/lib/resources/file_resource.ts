@@ -2094,6 +2094,14 @@ export class FileResource extends BaseResource<FileModel> {
    * viewer the same page an unshared link gives them. Gating the payload endpoint alone is not
    * enough: the share page renders its 404 off the metadata endpoint.
    *
+   * The write path carries the mirror obligation: an editor must not be able to create a share
+   * whose audience this predicate would then lock out, or sharing succeeds and mints a link that
+   * 404s for everyone it reached. `checkFrameShareScopePermission` refuses `public` and
+   * `checkFrameEmailGrantPermission` refuses invites to non-members, both regardless of the
+   * workspace sharing policy and of the caller's publish/invite permission. Narrowing a scope and
+   * revoking a grant stay allowed so an over-broad earlier share can still be fixed, and
+   * `GET /share/grants` reports its external grants as `blockedByPolicy`.
+   *
    * Whether this Frame's *active* publication declares any function. Scoped to the active
    * publication because a Frame keeps every past publication's function rows: a plain per-file
    * count would keep reporting functions for a Frame since republished without any.
