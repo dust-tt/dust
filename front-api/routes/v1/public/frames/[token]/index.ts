@@ -127,6 +127,18 @@ app.get(
       });
     }
 
+    // Runs before the email-scope branch so an external viewer is not walked through OTP for a
+    // Frame they still could not use.
+    if (!auth && (await file.hasActiveFrameFunctions())) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+
     // Handle email-based share scopes (treat legacy "workspace" as "workspace_and_emails").
     if (
       shareScope === "emails_only" ||

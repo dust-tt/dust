@@ -10,6 +10,7 @@ import { createHono } from "@front-api/lib/hono";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { resolveOptionalAuth } from "@front-api/routes/v1/public/frames/shared_auth";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -95,6 +96,21 @@ app.get(
           message: "File not found.",
         },
       });
+    }
+
+    // Auth resolution is deferred behind the function check so Frames without functions keep
+    // serving metadata with no session lookup at all.
+    if (await file.hasActiveFrameFunctions()) {
+      const auth = await resolveOptionalAuth(ctx, workspace.sId);
+      if (!auth) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "file_not_found",
+            message: "File not found.",
+          },
+        });
+      }
     }
 
     const shareUrl = `${config.getAppUrl()}/share/frame/${token}`;
