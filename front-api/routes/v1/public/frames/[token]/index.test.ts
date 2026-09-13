@@ -8,14 +8,16 @@ import {
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { FileShareScope } from "@app/types/files";
-import { frameContentType } from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
+import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock resolveOptionalAuth to control authentication per test.
@@ -529,6 +531,99 @@ describe("GET /api/v1/public/frames/[token]", () => {
   describe("public scope", () => {
     it("returns 200 without any authentication", async () => {
       const { token } = await createFrameWithScope("public");
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
+
+      const response = await requestFrame(token);
+
+      expect(response.status).toBe(200);
+    });
+  });
+
+  describe("Frame v2 function gating", () => {
+    const createFrameV2WithFunction = async (scope: FileShareScope) => {
+      const space = await SpaceFactory.project(workspace, user.id);
+      const { frame } = await createTestFrameFunction(auth, { space });
+      await frame.setShareScope(auth, scope);
+
+      const shareInfo = await frame.getShareInfo();
+      assert(shareInfo, "Share info should be available");
+      const token = shareInfo.shareUrl.split("/").at(-1);
+      assert(token, "Share URL should end with a token");
+
+      return { frame, token };
+    };
+
+    const createFrameV2WithoutFunction = async (scope: FileShareScope) => {
+      const space = await SpaceFactory.project(workspace, user.id);
+      const frame = await FileFactory.create(auth, user, {
+        contentType: frameV2ContentType,
+        fileName: "manifest.json",
+        fileSize: 100,
+        status: "ready",
+        useCase: "project_context",
+        useCaseMetadata: {
+          spaceId: space.sId,
+          activePublicationId: "publication-1",
+        },
+      });
+      await frame.setShareScope(auth, scope);
+
+      const shareInfo = await frame.getShareInfo();
+      assert(shareInfo, "Share info should be available");
+      const token = shareInfo.shareUrl.split("/").at(-1);
+      assert(token, "Share URL should end with a token");
+
+      return { frame, token };
+    };
+
+    it("returns 404 for an anonymous viewer of a public frame", async () => {
+      const { token } = await createFrameV2WithFunction("public");
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
+
+      const response = await requestFrame(token);
+
+      expect(response.status).toBe(404);
+    });
+
+    it("returns 404 for an OTP-verified external viewer", async () => {
+      const { frame, token } = await createFrameV2WithFunction("emails_only");
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
+
+      const sessionToken = await createGrantAndSession(
+        frame,
+        "external@example.com"
+      );
+      const response = await requestFrame(token, {
+        cookies: { dust_frame_session: sessionToken },
+      });
+
+      expect(response.status).toBe(404);
+    });
+
+    it("returns 200 for an authenticated workspace member", async () => {
+      const { token } = await createFrameV2WithFunction("workspace_and_emails");
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(auth);
+
+      const response = await requestFrame(token);
+
+      expect(response.status).toBe(200);
+    });
+
+    it("stays public for a Frame v2 declaring no function", async () => {
+      const { token } = await createFrameV2WithoutFunction("public");
+      vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
+
+      const response = await requestFrame(token);
+
+      expect(response.status).toBe(200);
+    });
+
+    it("stays public once the active publication declares no function", async () => {
+      const { frame, token } = await createFrameV2WithFunction("public");
+      await frame.setUseCaseMetadata(auth, {
+        ...frame.useCaseMetadata,
+        activePublicationId: "publication-2",
+      });
       vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
 
       const response = await requestFrame(token);
