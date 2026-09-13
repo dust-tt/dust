@@ -128,8 +128,14 @@ async function resolveRecordingId(apiKey, recordingId) {
     }
     const page = await claapGet(apiKey, "v1/recordings?limit=50&sort=created_desc");
     const recordings = page.result.recordings || [];
+    const suffix = recordingId.includes("-") ? recordingId.split("-").pop() : recordingId;
     const hit = recordings.find(
-      (recording) => recording.id === recordingId || recording.url?.includes(recordingId)
+      (recording) =>
+        recording.id === recordingId ||
+        recording.id === suffix ||
+        recordingId.endsWith(recording.id) ||
+        recording.url?.includes(recordingId) ||
+        recording.url?.endsWith(recording.id)
     );
     if (hit) {
       return hit.id;

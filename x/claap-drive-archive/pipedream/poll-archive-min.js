@@ -30,8 +30,13 @@ export default defineComponent({
         url: r.url,
         state: r.state,
       }));
+      const suffix = recordingId.includes("-") ? recordingId.split("-").pop() : recordingId;
       const hit = listed.find(
-        (r) => r.id === recordingId || (r.url && r.url.includes(recordingId))
+        (r) =>
+          r.id === recordingId ||
+          r.id === suffix ||
+          recordingId.endsWith(r.id) ||
+          (r.url && (r.url.includes(recordingId) || r.url.endsWith(r.id)))
       );
       if (!hit) {
         throw new Error(
@@ -58,24 +63,35 @@ export default defineComponent({
       `---\nclaap_id: ${rec.id}\ntitle: ${JSON.stringify(rec.title || "")}\n` +
       `recorder_email: ${email}\nclaap_url: ${rec.url}\n---\n\n# Transcript\n\n${segs}\n`;
     const json = JSON.stringify({ archivedAt: new Date().toISOString(), recording: rec, transcript: tr }, null, 2);
+    async function drive(url, init = {}) {
+      const res = await fetch(url, {
+        ...init,
+        headers: { Authorization: `Bearer ${token}`, ...(init.headers || {}) },
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(`Drive ${res.status}: ${JSON.stringify(data).slice(0, 500)}`);
+      }
+      return data;
+    }
     const q = encodeURIComponent(`name='${email}' and '${this.rootFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`);
-    const found = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${q}&includeItemsFromAllDrives=true&supportsAllDrives=true`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    ).then((r) => r.json());
+    const found = await drive(
+      `https://www.googleapis.com/drive/v3/files?q=${q}&corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true`
+    );
     let folderId = found.files?.[0]?.id;
     if (!folderId) {
-      const created = await fetch("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true", {
+      const created = await drive("https://www.googleapis.com/drive/v3/files?supportsAllDrives=true", {
         method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: email,
           mimeType: "application/vnd.google-apps.folder",
           parents: [this.rootFolderId],
         }),
-      }).then((r) => r.json());
+      });
       folderId = created.id;
     }
+    if (!folderId) throw new Error("Drive folder create returned no id");
     const base = `${date}_${rec.id}`;
     const boundary = "xxx";
     async function put(name, mime, content) {
