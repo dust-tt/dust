@@ -3,7 +3,9 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
@@ -258,6 +260,85 @@ describe("share scope endpoint", () => {
       expect(response.status).toBe(200);
       expect((await response.json()).scope).toBe("workspace_and_emails");
       expect(await file.getShareInfo()).not.toBeNull();
+    });
+  });
+
+  describe("frames with functions", () => {
+    it("refuses public scope for a frame whose active publication has functions", async () => {
+      const { auth, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+      // Opens both gates the refusal could otherwise be attributed to.
+      await setSharingPolicy(workspace, "all_scopes");
+      await grantPublishToEveryone(workspace);
+      const space = await SpaceFactory.project(workspace);
+      const { frame } = await createTestFrameFunction(auth, { space });
+
+      const response = await postShare(workspace, frame.sId, {
+        shareScope: "public",
+      });
+
+      expect(response.status).toBe(403);
+      expect(await frame.getShareScope()).not.toBe("public");
+    });
+
+    it("allows public scope for a frame v2 with no functions", async () => {
+      const { auth, user, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+      await setSharingPolicy(workspace, "all_scopes");
+      await grantPublishToEveryone(workspace);
+      const file = await FileFactory.create(auth, user, {
+        contentType: frameV2ContentType,
+        fileName: "manifest.json",
+        fileSize: 1024,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: { activePublicationId: "publication-1" },
+      });
+
+      const response = await postShare(workspace, file.sId, {
+        shareScope: "public",
+      });
+
+      expect(response.status).toBe(200);
+      expect((await response.json()).scope).toBe("public");
+    });
+
+    it("allows sharing a frame with functions to the workspace", async () => {
+      const { auth, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+      await setSharingPolicy(workspace, "all_scopes");
+      const space = await SpaceFactory.project(workspace);
+      const { frame } = await createTestFrameFunction(auth, { space });
+
+      const response = await postShare(workspace, frame.sId, {
+        shareScope: "workspace_and_emails",
+      });
+
+      expect(response.status).toBe(200);
+      expect((await response.json()).scope).toBe("workspace_and_emails");
+    });
+
+    it("allows narrowing a frame with functions to invite-only", async () => {
+      const { auth, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+      await setSharingPolicy(workspace, "all_scopes");
+      const space = await SpaceFactory.project(workspace);
+      const { frame } = await createTestFrameFunction(auth, { space });
+
+      const response = await postShare(workspace, frame.sId, {
+        shareScope: "emails_only",
+      });
+
+      expect(response.status).toBe(200);
+      expect((await response.json()).scope).toBe("emails_only");
     });
   });
 });
