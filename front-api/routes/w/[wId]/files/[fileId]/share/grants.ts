@@ -47,7 +47,12 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
   const grants = await file.listActiveSharingGrants();
 
   const workspace = auth.getNonNullableWorkspace();
-  if (workspace.sharingPolicy === "workspace_only" && grants.length > 0) {
+  // A Frame with functions restricts its audience to members the same way `workspace_only` does,
+  // so grants predating its functions must surface as blocked instead of 404ing at the read gate.
+  const membersOnly =
+    workspace.sharingPolicy === "workspace_only" ||
+    (await file.hasActiveFrameFunctions());
+  if (membersOnly && grants.length > 0) {
     const emails = grants.map((g) => g.email.toLowerCase());
     const users = await UserResource.fetchByEmails(emails);
 
@@ -90,7 +95,11 @@ app.post(
 
     const { emails: rawEmails } = ctx.req.valid("json");
 
-    const permission = await checkFrameEmailGrantPermission(auth, rawEmails);
+    const permission = await checkFrameEmailGrantPermission(
+      auth,
+      rawEmails,
+      file
+    );
     if (permission.isErr()) {
       return apiError(ctx, {
         status_code: 403,
