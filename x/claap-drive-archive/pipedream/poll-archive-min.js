@@ -82,9 +82,38 @@ export default defineComponent({
       return data;
     }
 
-    const root = await drive(
-      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(this.rootFolderId)}?fields=id,name,driveId,parents&supportsAllDrives=true`
-    );
+    const requestedRootId = this.rootFolderId;
+    async function resolveRoot() {
+      const id = requestedRootId;
+      const fields = "id,name,driveId,parents";
+      try {
+        return await drive(
+          `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=${fields}&supportsAllDrives=true`
+        );
+      } catch (getErr) {
+        const named = await drive(
+          "https://www.googleapis.com/drive/v3/files?" +
+            `q=${encodeURIComponent("name='Claap Recordings' and mimeType='application/vnd.google-apps.folder' and trashed=false")}` +
+            "&corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true" +
+            `&fields=files(${fields})&pageSize=10`
+        );
+        const hit =
+          (named.files || []).find((f) => f.id === id) ||
+          (named.files || []).find((f) => f.driveId) ||
+          named.files?.[0];
+        if (hit?.id) return hit;
+        let drives = {};
+        try {
+          drives = await drive("https://www.googleapis.com/drive/v3/drives?pageSize=20");
+        } catch (driveErr) {
+          drives = { error: String(driveErr.message).slice(0, 300) };
+        }
+        throw new Error(
+          `${getErr.message} | namedFolders=${JSON.stringify(named.files || [])} | drives=${JSON.stringify(drives).slice(0, 400)}`
+        );
+      }
+    }
+    const root = await resolveRoot();
     const driveQs = root.driveId
       ? `corpora=drive&driveId=${encodeURIComponent(root.driveId)}&includeItemsFromAllDrives=true&supportsAllDrives=true`
       : "corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true";
@@ -101,7 +130,7 @@ export default defineComponent({
       return found.files?.[0] || null;
     }
 
-    let folder = await findInFolder(this.rootFolderId, email, "application/vnd.google-apps.folder");
+    let folder = await findInFolder(root.id, email, "application/vnd.google-apps.folder");
     if (!folder?.id) {
       folder = await drive(
         "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,webViewLink",
@@ -111,7 +140,7 @@ export default defineComponent({
           body: JSON.stringify({
             name: email,
             mimeType: "application/vnd.google-apps.folder",
-            parents: [this.rootFolderId],
+            parents: [root.id],
           }),
         }
       );
