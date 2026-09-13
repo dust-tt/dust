@@ -28,7 +28,7 @@ import {
   useSelectableConversationSpaces,
 } from "@app/lib/swr/conversation_selected_spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { extractToolTags, getToolIdsToAttach } from "@app/lib/tools/format";
+import { getToolIdsToAttach } from "@app/lib/tools/format";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import {
@@ -552,7 +552,7 @@ export const InputBar = React.memo(function InputBar({
 
     onBeforeSubmit?.();
 
-    const { mentions: rawMentions, markdown } = markdownAndMentions;
+    const { mentions: rawMentions, markdown, tools } = markdownAndMentions;
     const shouldInjectSelectedAgent =
       selectedSingleAgent &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);
@@ -566,9 +566,7 @@ export const InputBar = React.memo(function InputBar({
       mentions.some((m) => m.id === a.sId && m.type === "agent")
     );
 
-    const messageTools = isInlineReferenceEnabled
-      ? extractToolTags(markdown)
-      : [];
+    const messageTools = isInlineReferenceEnabled ? tools : [];
     const toolIdsToAttach = getToolIdsToAttach(
       messageTools,
       new Set(conversationTools.map((serverView) => serverView.sId))

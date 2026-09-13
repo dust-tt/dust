@@ -253,15 +253,19 @@ const useEditorService = (editor: Editor | null, isMobileViewport: boolean) => {
             markdown: "",
             mentions: [],
             skills: [],
+            tools: [],
           };
         }
 
-        const { mentions, skills } = extractFromEditorJSON(editor?.getJSON());
+        const { mentions, skills, tools } = extractFromEditorJSON(
+          editor?.getJSON()
+        );
 
         return {
           markdown: editor.getMarkdown(),
           mentions,
           skills,
+          tools,
         };
       },
 
