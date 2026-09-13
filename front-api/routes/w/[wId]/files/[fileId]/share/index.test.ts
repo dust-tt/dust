@@ -280,7 +280,8 @@ describe("share scope endpoint", () => {
       });
 
       expect(response.status).toBe(403);
-      expect(await frame.getShareScope()).not.toBe("public");
+      // Null, not merely non-public: the refusal has to land before any share record is written.
+      expect(await frame.getShareInfo()).toBeNull();
     });
 
     it("allows public scope for a frame v2 with no functions", async () => {
