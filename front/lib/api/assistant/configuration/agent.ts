@@ -1,4 +1,3 @@
-import { areAgentGrantsEnabled } from "@app/lib/api/assistant/agent_grants";
 import {
   shadowCanAdminAgent,
   shadowEditableAgents,
@@ -18,6 +17,7 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getModelsForAuth } from "@app/lib/model_tiers/enabled_models";
@@ -1002,7 +1002,7 @@ export async function createAgentConfiguration(
           agentConfigurationInstance
         );
         await agentResource.grantEditors(auth, { editors, transaction: t });
-        if (await areAgentGrantsEnabled(auth)) {
+        if (!isLegacyAclsEnabled()) {
           const currentEditors = await agentResource.listEditors(auth, {
             transaction: t,
           });
@@ -1727,7 +1727,7 @@ export async function updateAgentPermissions(
           );
         }
         let legacyUsersToRemove = usersToRemove;
-        if (await areAgentGrantsEnabled(auth)) {
+        if (!isLegacyAclsEnabled()) {
           const editors = await agentResource.listEditors(auth, {
             transaction: t,
           });

@@ -1549,7 +1549,7 @@ it("revokes grant-only editors when saving the complete editor set", async () =>
       })
     ).isOk()
   );
-  await FeatureFlagFactory.basic(auth, "agent_permission_grants");
+  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(false);
   await AgentConfigurationFactory.updateTestAgent(auth, agent.sId);
   expect((await getEditors(auth, agent)).map((user) => user.id)).not.toContain(
     editor.id
