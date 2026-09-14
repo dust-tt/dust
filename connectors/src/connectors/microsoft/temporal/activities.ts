@@ -83,8 +83,8 @@ import {
   isDevelopment,
   normalizeError,
 } from "@connectors/types";
-import type { LoggerInterface } from "@dust-tt/client";
-import { removeNulls } from "@dust-tt/client";
+import type { LoggerInterface, Result } from "@dust-tt/client";
+import { Err, Ok, removeNulls } from "@dust-tt/client";
 import type { Bucket } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 import type { Client } from "@microsoft/microsoft-graph-client";
@@ -193,7 +193,7 @@ async function readDeltaBatchFromGCSStream(
   file: ReturnType<Bucket["file"]>,
   startIndex: number,
   batchSize: number
-): Promise<DeltaBatchFromGCS> {
+): Promise<Result<DeltaBatchFromGCS, Error>> {
   const readStream = file.createReadStream();
   const jsonParser = parser();
 
@@ -244,12 +244,18 @@ async function readDeltaBatchFromGCSStream(
       sourceError,
     ]);
 
-    return {
+    return new Ok({
       deltaLink: meta.deltaLink ?? "",
       rootNodeIds: meta.rootNodeIds ?? [],
       totalItems: meta.totalItems ?? 0,
       batch,
-    };
+    });
+  } catch (error) {
+    // The failures here come from the GCS read stream and the stream-json
+    // parser (external libraries). Return them as an Err so the activity
+    // entrypoint reports the failure at the boundary, per the
+    // temporal-activity-failure-boundary contract.
+    return new Err(normalizeError(error));
   } finally {
     // Tear everything down so the underlying TLS socket is released back to the
     // agent pool, mirroring the previous `pipeline()`-based cleanup.
@@ -2612,12 +2618,22 @@ export async function processDeltaChangesFromGCS({
   // Stream only the current batch window out of the (potentially huge) delta
   // file to avoid materializing all changed items in memory.
   const startIndex = cursor;
+  const deltaBatchRes = await readDeltaBatchFromGCSStream(
+    file,
+    startIndex,
+    batchSize
+  );
+  if (deltaBatchRes.isErr()) {
+    // Convert the helper failure into a thrown activity failure at this
+    // registered activity boundary (temporal-activity-failure-boundary).
+    throw deltaBatchRes.error;
+  }
   const {
     deltaLink,
     rootNodeIds,
     totalItems,
     batch: currentBatch,
-  } = await readDeltaBatchFromGCSStream(file, startIndex, batchSize);
+  } = deltaBatchRes.value;
 
   logger.info(
     {
