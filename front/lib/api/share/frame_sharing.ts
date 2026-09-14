@@ -3,6 +3,7 @@ import { sendEmailWithTemplate } from "@app/lib/api/email";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -32,10 +33,23 @@ export function getDefaultFrameShareScope(
 
 export async function checkFrameShareScopePermission(
   auth: Authenticator,
-  shareScope: FileShareScope
+  shareScope: FileShareScope,
+  frame: FileResource
 ): Promise<Result<void, DustError<"unauthorized">>> {
   if (shareScope !== "public") {
     return new Ok(undefined);
+  }
+
+  // Write half of [shared-frame-with-functions-needs-workspace-user]: the read path hides such a
+  // Frame from every viewer who is not a workspace user, so publishing it would mint a dead link.
+  const hasActiveFrameFunctions = await frame.hasActiveFrameFunctions();
+  if (hasActiveFrameFunctions) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "This Frame has functions, which only workspace members can run. It cannot be shared publicly."
+      )
+    );
   }
 
   const workspace = auth.getNonNullableWorkspace();
@@ -61,7 +75,8 @@ export async function checkFrameShareScopePermission(
 
 export async function checkFrameEmailGrantPermission(
   auth: Authenticator,
-  rawEmails: string[]
+  rawEmails: string[],
+  frame: FileResource
 ): Promise<Result<void, DustError<"unauthorized">>> {
   if (rawEmails.length === 0) {
     return new Ok(undefined);
@@ -70,8 +85,14 @@ export async function checkFrameEmailGrantPermission(
   const workspace = auth.getNonNullableWorkspace();
   const externalSharingDisabledByPolicy =
     workspace.sharingPolicy === "workspace_only";
+  // Write half of [shared-frame-with-functions-needs-workspace-user]: the read path hides such a
+  // Frame from non-members, so inviting one would mint a dead link. Kept apart from the policy
+  // flag so the refusal can name which of the two applies.
+  const externalSharingDisabledByFunctions =
+    await frame.hasActiveFrameFunctions();
   const canInviteExternal =
     !externalSharingDisabledByPolicy &&
+    !externalSharingDisabledByFunctions &&
     (await auth.hasWorkspacePermission("invite", "frame"));
   if (canInviteExternal) {
     return new Ok(undefined);
@@ -92,18 +113,27 @@ export async function checkFrameEmailGrantPermission(
       .filter((email): email is string => email !== undefined)
   );
 
-  if (emails.some((email) => !memberEmails.has(email))) {
+  const areAllEmailsMemberEmails = emails.every((email) =>
+    memberEmails.has(email)
+  );
+  if (areAllEmailsMemberEmails) {
+    return new Ok(undefined);
+  }
+
+  if (externalSharingDisabledByFunctions) {
     return new Err(
       new DustError(
         "unauthorized",
-        externalSharingDisabledByPolicy
-          ? "Only workspace members can be invited when external sharing is disabled."
-          : "You do not have permission to invite people outside the workspace. Only workspace members can be invited."
+        "This Frame has functions, which only workspace members can run. Only workspace members can be invited."
       )
     );
   }
 
-  return new Ok(undefined);
+  const errorMessage = externalSharingDisabledByPolicy
+    ? "Only workspace members can be invited when external sharing is disabled."
+    : "You do not have permission to invite people outside the workspace. Only workspace members can be invited.";
+
+  return new Err(new DustError("unauthorized", errorMessage));
 }
 
 const OTP_TTL_SECONDS = 15 * 60; // 15 minutes.

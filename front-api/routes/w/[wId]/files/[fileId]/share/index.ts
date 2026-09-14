@@ -86,7 +86,11 @@ app.post(
 
     const { shareScope } = ctx.req.valid("json");
 
-    const permission = await checkFrameShareScopePermission(auth, shareScope);
+    const permission = await checkFrameShareScopePermission(
+      auth,
+      shareScope,
+      file
+    );
     if (permission.isErr()) {
       return apiError(ctx, {
         status_code: 403,

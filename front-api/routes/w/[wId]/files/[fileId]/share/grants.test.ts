@@ -2,8 +2,10 @@ import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { frameContentType } from "@app/types/files";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
@@ -639,5 +641,124 @@ describe("sharing grants endpoint", () => {
     });
 
     expect(response.status).toBe(400);
+  });
+
+  describe("frames with functions", () => {
+    it("blocks inviting an external email to a frame with functions", async () => {
+      const { auth, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+      // Opens both gates the refusal could otherwise be attributed to.
+      await setSharingPolicy(workspace, "all_scopes");
+      await grantInviteToEveryone(workspace);
+      const space = await SpaceFactory.project(workspace);
+      const { frame } = await createTestFrameFunction(auth, { space });
+
+      const response = await postGrants(workspace, frame.sId, {
+        emails: ["external@example.com"],
+      });
+
+      expect(response.status).toBe(403);
+      expect(await frame.listActiveSharingGrants()).toHaveLength(0);
+    });
+
+    it("blocks an admin from inviting an external email to a frame with functions", async () => {
+      const { auth, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "admin",
+      });
+      await setSharingPolicy(workspace, "all_scopes");
+      const space = await SpaceFactory.project(workspace);
+      const { frame } = await createTestFrameFunction(auth, { space });
+
+      const response = await postGrants(workspace, frame.sId, {
+        emails: ["external@example.com"],
+      });
+
+      expect(response.status).toBe(403);
+    });
+
+    it("allows inviting a workspace member to a frame with functions", async () => {
+      const { auth, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+      await setSharingPolicy(workspace, "all_scopes");
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+      const space = await SpaceFactory.project(workspace);
+      const { frame } = await createTestFrameFunction(auth, { space });
+
+      const response = await postGrants(workspace, frame.sId, {
+        emails: [member.email],
+      });
+
+      expect(response.status).toBe(200);
+      const { grants } = await response.json();
+      expect(grants).toHaveLength(1);
+      expect(grants[0].email).toBe(member.email.toLowerCase());
+    });
+
+    it("blocks the batch if any email is not a workspace member", async () => {
+      const { auth, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+      await setSharingPolicy(workspace, "all_scopes");
+      await grantInviteToEveryone(workspace);
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+      const space = await SpaceFactory.project(workspace);
+      const { frame } = await createTestFrameFunction(auth, { space });
+
+      const response = await postGrants(workspace, frame.sId, {
+        emails: [member.email, "external@example.com"],
+      });
+
+      expect(response.status).toBe(403);
+      expect(await frame.listActiveSharingGrants()).toHaveLength(0);
+    });
+
+    it("marks pre-existing external grants as blockedByPolicy on GET", async () => {
+      const { auth, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+      await setSharingPolicy(workspace, "all_scopes");
+      await grantInviteToEveryone(workspace);
+      const space = await SpaceFactory.project(workspace);
+      const { frame } = await createTestFrameFunction(auth, { space });
+      await frame.addSharingGrants(auth, { emails: ["external@example.com"] });
+
+      const response = await getGrants(workspace, frame.sId);
+
+      expect(response.status).toBe(200);
+      const { grants } = await response.json();
+      expect(grants).toHaveLength(1);
+      expect(grants[0].email).toBe("external@example.com");
+      expect(grants[0].blockedByPolicy).toBe(true);
+    });
+
+    it("allows revoking a grant on a frame with functions", async () => {
+      const { auth, workspace } = await createPrivateApiMockRequest({
+        method: "POST",
+        role: "user",
+      });
+      await setSharingPolicy(workspace, "all_scopes");
+      await grantInviteToEveryone(workspace);
+      const space = await SpaceFactory.project(workspace);
+      const { frame } = await createTestFrameFunction(auth, { space });
+      const [grant] = await frame.addSharingGrants(auth, {
+        emails: ["external@example.com"],
+      });
+
+      const response = await deleteGrant(workspace, frame.sId, {
+        grantId: grant.id,
+      });
+
+      expect(response.status).toBe(204);
+      expect(await frame.listActiveSharingGrants()).toHaveLength(0);
+    });
   });
 });
