@@ -33,7 +33,10 @@ import {
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { AlertCircle } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+// How long a fully successful run stays visible before the dialog closes itself.
+const AUTO_CLOSE_DELAY_MS = 1500;
 
 function formatElapsed(seconds: number): string {
   if (seconds < 60) {
@@ -126,11 +129,13 @@ type ExecutePluginDialogProps = {
   // When set, the plugin runs once per selected cell instead of against
   // `pluginResourceTarget`. `initiallySelected` defaults to every candidate
   // cell; `cellSubtitles` appends extra context (e.g. current rollout %) next
-  // to a cell's name.
+  // to a cell's name, refreshed via `formatSubtitleAfterRun` for cells the run
+  // succeeded on so the new value shows without closing the dialog.
   cellSelection?: {
     cells: CellInfo[];
     initiallySelected?: CellType[];
     cellSubtitles?: Partial<Record<CellType, string>>;
+    formatSubtitleAfterRun?: (args: object) => string;
   };
 };
 
@@ -144,6 +149,9 @@ export function RunPluginDialog({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PluginResponse | null>(null);
   const [cellResults, setCellResults] = useState<CellRunResult[] | null>(null);
+  const [cellSubtitleOverrides, setCellSubtitleOverrides] = useState<
+    Partial<Record<CellType, string>>
+  >({});
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [selectedCells, setSelectedCells] = useState<Set<CellType>>(
@@ -177,6 +185,21 @@ export function RunPluginDialog({
 
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
+  const autoCloseTimeoutRef = useRef<number | null>(null);
+  const clearAutoClose = useCallback(() => {
+    if (autoCloseTimeoutRef.current !== null) {
+      window.clearTimeout(autoCloseTimeoutRef.current);
+      autoCloseTimeoutRef.current = null;
+    }
+  }, []);
+  const scheduleAutoClose = useCallback(() => {
+    clearAutoClose();
+    autoCloseTimeoutRef.current = window.setTimeout(() => {
+      onClose();
+    }, AUTO_CLOSE_DELAY_MS);
+  }, [clearAutoClose, onClose]);
+  useEffect(() => clearAutoClose, [clearAutoClose]);
+
   // Tick an elapsed timer every 5s while the plugin runs so long jobs don't
   // look stalled. Hidden until the first tick so fast plugins stay quiet.
   useEffect(() => {
@@ -202,15 +225,18 @@ export function RunPluginDialog({
   }, [copyToClipboard, result]);
 
   const handleClose = () => {
+    clearAutoClose();
     setError(null);
     setResult(null);
     setCellResults(null);
+    setCellSubtitleOverrides({});
     setElapsedSeconds(0);
     onClose();
   };
 
   const onSubmit = useCallback(
     async (args: object) => {
+      clearAutoClose();
       setError(null);
       setResult(null);
       setCellResults(null);
@@ -250,19 +276,42 @@ export function RunPluginDialog({
                   }
             )
           );
+          if (cellSelection.formatSubtitleAfterRun) {
+            const newSubtitle = cellSelection.formatSubtitleAfterRun(args);
+            setCellSubtitleOverrides((overrides) => ({
+              ...overrides,
+              ...Object.fromEntries(
+                results
+                  .filter((cellResult) => cellResult.ok)
+                  .map((cellResult) => [cellResult.cell.name, newSubtitle])
+              ),
+            }));
+          }
+          if (results.every((cellResult) => cellResult.ok)) {
+            scheduleAutoClose();
+          }
         } else {
           const runRes = await doRunPlugin(args);
           if (runRes.isErr()) {
             setError(runRes.error);
           } else {
             setResult(runRes.value);
+            scheduleAutoClose();
           }
         }
       } finally {
         setIsRunning(false);
       }
     },
-    [cellSelection, selectedCells, doRunPlugin, plugin.id, pluginResourceTarget]
+    [
+      cellSelection,
+      selectedCells,
+      doRunPlugin,
+      plugin.id,
+      pluginResourceTarget,
+      clearAutoClose,
+      scheduleAutoClose,
+    ]
   );
 
   return (
@@ -394,28 +443,33 @@ export function RunPluginDialog({
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-1">
-                    {cellSelection.cells.map((cell) => (
-                      <CheckboxWithText
-                        key={cell.name}
-                        id={`run-plugin-cell-${cell.name}`}
-                        text={
-                          cellSelection.cellSubtitles?.[cell.name]
-                            ? `${getCellDisplay(cell)} — ${cellSelection.cellSubtitles[cell.name]}`
-                            : getCellDisplay(cell)
-                        }
-                        checked={selectedCells.has(cell.name)}
-                        disabled={cellResults !== null || isRunning}
-                        onCheckedChange={(checked) => {
-                          const nextSelectedCells = new Set(selectedCells);
-                          if (checked === true) {
-                            nextSelectedCells.add(cell.name);
-                          } else {
-                            nextSelectedCells.delete(cell.name);
+                    {cellSelection.cells.map((cell) => {
+                      const subtitle =
+                        cellSubtitleOverrides[cell.name] ??
+                        cellSelection.cellSubtitles?.[cell.name];
+                      return (
+                        <CheckboxWithText
+                          key={cell.name}
+                          id={`run-plugin-cell-${cell.name}`}
+                          text={
+                            subtitle
+                              ? `${getCellDisplay(cell)} — ${subtitle}`
+                              : getCellDisplay(cell)
                           }
-                          setSelectedCells(nextSelectedCells);
-                        }}
-                      />
-                    ))}
+                          checked={selectedCells.has(cell.name)}
+                          disabled={cellResults !== null || isRunning}
+                          onCheckedChange={(checked) => {
+                            const nextSelectedCells = new Set(selectedCells);
+                            if (checked === true) {
+                              nextSelectedCells.add(cell.name);
+                            } else {
+                              nextSelectedCells.delete(cell.name);
+                            }
+                            setSelectedCells(nextSelectedCells);
+                          }}
+                        />
+                      );
+                    })}
                   </div>
                 </div>
               )}

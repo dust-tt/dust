@@ -407,6 +407,16 @@ export function FeatureFlagsPage() {
                   ])
                 )
               : undefined,
+            formatSubtitleAfterRun: pendingAction.showRolloutPercentage
+              ? (args) => {
+                  const rolloutPercentage = (
+                    args as { rolloutPercentage?: number }
+                  ).rolloutPercentage;
+                  return rolloutPercentage === 0
+                    ? "—"
+                    : `${rolloutPercentage}%`;
+                }
+              : undefined,
           }}
         />
       )}

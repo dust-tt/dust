@@ -261,8 +261,17 @@ export function PluginForm({
                             <PokeFormInput
                               type={arg.variant === "text" ? "text" : "number"}
                               {...field}
+                              value={field.value ?? ""}
                               onChange={(e) => {
-                                const parsed = Number(e.target.value);
+                                const raw = e.target.value;
+                                // Let the field go empty while editing instead of
+                                // snapping back to 0, which made it impossible to
+                                // clear the value and type a new one.
+                                if (raw === "") {
+                                  field.onChange(raw);
+                                  return;
+                                }
+                                const parsed = Number(raw);
                                 if (isFinite(parsed)) {
                                   field.onChange(parsed);
                                 }
