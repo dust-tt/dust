@@ -15,15 +15,17 @@ interface ConversationToolPanelProps {
   owner: LightWorkspaceType;
 }
 
+interface ToolPanelBodyProps {
+  owner: LightWorkspaceType;
+  serverView: MCPServerViewType | null;
+  isError: boolean;
+}
+
 function ToolPanelBody({
   owner,
   serverView,
   isError,
-}: {
-  owner: LightWorkspaceType;
-  serverView: MCPServerViewType | null;
-  isError: boolean;
-}) {
+}: ToolPanelBodyProps) {
   if (!serverView) {
     return (
       <div className="flex h-full items-center justify-center">
