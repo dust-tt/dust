@@ -3,22 +3,22 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
-// Workflows informed by Anthropic's PDF skill and OpenAI's bundled PDF skill.
 // Library choices are limited to the tools registered in api/sandbox/image/registry.ts.
 const PDF_SKILL_INSTRUCTIONS = `# PDFs
 
 Use the Computer's \`bash\` tool for PDF operations. Inputs are mounted under
 \`/files/conversation\` (or \`/files/pod\` inside a Pod). Copy inputs to \`/tmp\`
-before repeated reads or rendering; keep scratch files there. Save requested
+before repeated reads or rendering. Keep scratch files there. Save requested
 deliverables under \`/files/conversation\`, using a new filename to preserve the source.
 
 ## Available tools
 
-- \`pdftotext\`: extract embedded text; \`pdftoppm\`: render pages;
-  \`pdfimages\`: extract embedded images. These commands come from Poppler.
+- Poppler: \`pdftotext\` extracts embedded text, \`pdftoppm\` renders pages,
+  and \`pdfimages\` extracts embedded images.
 - \`pypdf\`: page-aware text extraction and PDF manipulation.
 - \`pdfplumber\`: text positions, cropping, and table extraction.
-- \`reportlab\`: PDF creation; \`qpdf\`: PDF manipulation and structural checks.
+- \`reportlab\`: PDF creation.
+- \`qpdf\`: PDF manipulation and structural checks.
 - \`Pillow\` and \`pdf2image\`: image processing and PDF rendering from Python.
 
 These are already installed. Do not install packages or assume tools such as
@@ -34,8 +34,8 @@ pdftotext /tmp/report.pdf /tmp/report.txt
 \`\`\`
 
 Search the result with \`rg\` and read relevant excerpts instead of returning the
-whole document to the conversation. Use \`-layout\` when physical spacing helps;
-it does not guarantee correct column order or table structure. To limit extraction
+whole document to the conversation. Use \`-layout\` when physical spacing helps.
+It does not guarantee correct column order or table structure. To limit extraction
 to PDF pages 3 through 5: \`pdftotext -f 3 -l 5 /tmp/report.pdf /tmp/excerpt.txt\`.
 
 For page references and detecting pages with no embedded text, use \`pypdf\`:
@@ -52,10 +52,10 @@ with open("/tmp/report-by-page.txt", "w", encoding="utf-8") as output:
         output.write(f"--- PDF page {page_number} ---\\n{text}\\n\\n")
 \`\`\`
 
-PDF page indices in Python start at 0; command-line page ranges start at 1.
+PDF page indices in Python start at 0. Command-line page ranges start at 1.
 Distinguish PDF page positions from printed page numbers when citing content.
 A nonempty extract can still miss scanned pages, figures, or text within images.
-Check the pages relevant to the request; do not treat missing text as an empty page.
+Check the pages relevant to the request. Do not treat missing text as an empty page.
 
 ## 2. Extract tables
 
@@ -74,7 +74,7 @@ with open("/tmp/page-3-tables.json", "w", encoding="utf-8") as output:
 Inspect the rendered page to verify headers, merged cells, row boundaries, and units
 before using the values. An empty table list does not prove there is no table.
 Crop to the table or adjust extraction settings if necessary. Preserve blanks and
-source page references; do not combine unrelated tables or invent missing values.
+source page references. Do not combine unrelated tables or invent missing values.
 
 ## 3. Read scans and inspect visual content
 
@@ -92,18 +92,18 @@ Open the resulting image with the \`files__cat\` tool using its scoped path,
 \`conversation-<id>/.pdf_render/report/page-3.jpg\`, with the real conversation id
 (use \`files__list\` to obtain the path if needed). A shell \`cat\` does not
 show pixels, and \`files__cat\` cannot access \`/tmp\`. Images must
-be at most 2 MB each; resize or compress with Pillow if needed, keeping text legible.
+be at most 2 MB each. Resize or compress with Pillow if needed, keeping text legible.
 Render a few pages at a time for large files. If the result contains no visible
-image, report that limitation; do not claim to have inspected or transcribed it.
+image, report that limitation. Do not claim to have inspected or transcribed it.
 
 For a full transcription, inspect every requested page and preserve page boundaries.
-Describe vision-based transcription as such; it does not add a searchable text
+Describe vision-based transcription as such. It does not add a searchable text
 layer to the original PDF. Do not claim to have produced an OCR-searchable PDF.
 
 ## 4. Create or modify PDFs
 
 Use \`reportlab\` for new PDFs. Prefer Platypus (\`SimpleDocTemplate\`,
-\`Paragraph\`, \`Table\`) for flowing text and tables; use its canvas for precise
+\`Paragraph\`, \`Table\`) for flowing text and tables. Use its canvas for precise
 drawing. Set page size, margins, and styles deliberately. Embed fonts that cover
 the requested characters and check their rendered glyphs. Escape user text before
 passing it into Paragraph's markup parser.
@@ -123,7 +123,7 @@ writer.close()
 
 Use \`writer.append(source, pages=(start, stop))\` for a zero-based,
 stop-exclusive page range. For forms, inspect \`PdfReader.get_fields()\` and
-preserve the form structure with pypdf; an image of a form has no editable fields.
+preserve the form structure with pypdf. An image of a form has no editable fields.
 For encrypted inputs, use a password supplied by the user rather than guessing.
 
 ## 5. Validate and deliver
