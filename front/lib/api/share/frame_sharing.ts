@@ -113,26 +113,27 @@ export async function checkFrameEmailGrantPermission(
       .filter((email): email is string => email !== undefined)
   );
 
-  if (emails.some((email) => !memberEmails.has(email))) {
-    if (externalSharingDisabledByFunctions) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "This Frame has functions, which only workspace members can run. Only workspace members can be invited."
-        )
-      );
-    }
+  const areAllEmailsMemberEmails = emails.every((email) =>
+    memberEmails.has(email)
+  );
+  if (areAllEmailsMemberEmails) {
+    return new Ok(undefined);
+  }
+
+  if (externalSharingDisabledByFunctions) {
     return new Err(
       new DustError(
         "unauthorized",
-        externalSharingDisabledByPolicy
-          ? "Only workspace members can be invited when external sharing is disabled."
-          : "You do not have permission to invite people outside the workspace. Only workspace members can be invited."
+        "This Frame has functions, which only workspace members can run. Only workspace members can be invited."
       )
     );
   }
 
-  return new Ok(undefined);
+  const errorMessage = externalSharingDisabledByPolicy
+    ? "Only workspace members can be invited when external sharing is disabled."
+    : "You do not have permission to invite people outside the workspace. Only workspace members can be invited.";
+
+  return new Err(new DustError("unauthorized", errorMessage));
 }
 
 const OTP_TTL_SECONDS = 15 * 60; // 15 minutes.
