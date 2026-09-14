@@ -2057,10 +2057,13 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   }
 
   /**
-   * Light serialization for list surfaces (conversation capabilities picker, slash menu) that
-   * only render names, descriptions and icons. Remote tools are not included at all (surfaces
-   * needing them fetch the full server on demand), so no heavy attribute is required at fetch
-   * time.
+   * Light serialization for list surfaces, including space, account and editor metadata.
+   * Surfaces needing full remote tools fetch the server on demand.
+   */
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;performance] light-serialization-no-heavy-attributes
+   * Serialization MUST NOT require remote heavy attributes. Remote tools MUST be empty;
+   * internal tools MUST contain only names and descriptions.
    */
   toJSONLight(): MCPServerViewLightType {
     let server: MCPServerLightType;
@@ -2092,6 +2095,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       sId: this.sId,
       name: this.name,
       description: this.description,
+      spaceId: this.space.sId,
+      oAuthUseCase: this.oAuthUseCase,
+      editedByUser: this.makeEditedBy(
+        this.editedByUser,
+        this.remoteMCPServer ? this.remoteMCPServer.updatedAt : this.updatedAt
+      ),
       server,
     };
   }

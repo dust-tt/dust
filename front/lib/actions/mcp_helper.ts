@@ -12,7 +12,7 @@ import {
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type {
   MCPServerType,
-  MCPServerTypeWithViews,
+  MCPServerViewLightType,
   MCPServerViewType,
   RemoteMCPServerType,
 } from "@app/lib/api/mcp";
@@ -155,12 +155,12 @@ export const mcpServerViewSortingFn = (
 
 export const mcpServersSortingFn = (
   a: {
-    mcpServer: MCPServerType | MCPServerTypeWithViews;
-    mcpServerView?: MCPServerViewType;
+    mcpServer: MCPServerType;
+    mcpServerView?: MCPServerViewLightType;
   },
   b: {
-    mcpServer: MCPServerType | MCPServerTypeWithViews;
-    mcpServerView?: MCPServerViewType;
+    mcpServer: MCPServerType;
+    mcpServerView?: MCPServerViewLightType;
   }
 ) => {
   const aDisplayName = a.mcpServerView

@@ -3,6 +3,7 @@ import {
   type GetMCPServersResponseBody,
   getMCPServerViewNameConflictMessage,
   isMCPServerViewNameConflict,
+  type MCPServerViewLightType,
 } from "@app/lib/api/mcp";
 import {
   createInternalMCPServer,
@@ -66,11 +67,16 @@ const PostBodySchema = z.discriminatedUnion("serverType", [
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get("/", async (ctx): HandlerResult<GetMCPServersResponseBody> => {
-  const auth = ctx.get("auth");
-  const servers = await listMCPServersWithViews(auth);
-  return ctx.json({ success: true, servers });
-});
+app.get(
+  "/",
+  async (
+    ctx
+  ): HandlerResult<GetMCPServersResponseBody<MCPServerViewLightType>> => {
+    const auth = ctx.get("auth");
+    const servers = await listMCPServersWithViews(auth);
+    return ctx.json({ success: true, servers });
+  }
+);
 
 app.post("/", validate("json", PostBodySchema), async (ctx) => {
   const auth = ctx.get("auth");

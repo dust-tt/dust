@@ -160,9 +160,8 @@ export interface MCPServerViewType {
   }[];
 }
 
-// Light variants for list surfaces that only render names, descriptions and icons (conversation
-// capabilities picker, slash menu). Served by GET /mcp/views/jit; full types are structurally
-// assignable to them.
+// Light variants for list surfaces (admin tools, conversation capabilities picker, slash menu).
+// Full types are structurally assignable to them.
 export type MCPToolLightType = Pick<MCPToolType, "name" | "description">;
 
 export type MCPServerLightType = Pick<
@@ -174,7 +173,7 @@ export type MCPServerLightType = Pick<
 
 export type MCPServerViewLightType = Pick<
   MCPServerViewType,
-  "sId" | "name" | "description"
+  "sId" | "name" | "description" | "spaceId" | "oAuthUseCase" | "editedByUser"
 > & {
   server: MCPServerLightType;
 };
@@ -229,8 +228,10 @@ export type InternalMCPServerDefinitionType = Omit<
   displayedAs?: "agent" | "server";
 };
 
-export type MCPServerTypeWithViews = MCPServerType & {
-  views: MCPServerViewType[];
+export type MCPServerTypeWithViews<
+  V extends MCPServerViewLightType = MCPServerViewType,
+> = MCPServerType & {
+  views: V[];
 };
 
 export type DeveloperSecretSelectionType = "required" | "optional";
@@ -240,9 +241,11 @@ export type GetMCPServerViewsNotActivatedResponseBody = {
   serverViews: MCPServerViewType[];
 };
 
-export type GetMCPServersResponseBody = {
+export type GetMCPServersResponseBody<
+  V extends MCPServerViewLightType = MCPServerViewType,
+> = {
   success: true;
-  servers: MCPServerTypeWithViews[];
+  servers: MCPServerTypeWithViews<V>[];
 };
 
 export type CreateMCPServerResponseBody = {

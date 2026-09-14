@@ -17,6 +17,7 @@ import type {
   GetMCPServerViewsNotActivatedResponseBody,
   MCPServerType,
   MCPServerTypeWithViews,
+  MCPServerViewLightType,
   MCPServerViewNameConflict,
   MCPServerViewType,
   SyncMCPServerResponseBody,
@@ -170,7 +171,9 @@ export function useMCPServers({
   revalidateIfStale?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
+  const configFetcher: Fetcher<
+    GetMCPServersResponseBody<MCPServerViewLightType>
+  > = fetcher;
 
   const url = `/api/w/${owner.sId}/mcp`;
 
@@ -894,7 +897,7 @@ export function useMCPServerViews({
 }
 
 const getOptimisticDataForCreate = (
-  data: GetMCPServersResponseBody | undefined,
+  data: GetMCPServersResponseBody<MCPServerViewLightType> | undefined,
   server: MCPServerType,
   space: SpaceType
 ) => {
@@ -935,7 +938,7 @@ const getOptimisticDataForCreate = (
 };
 
 const getOptimisticDataForRemove = (
-  data: GetMCPServersResponseBody | undefined,
+  data: GetMCPServersResponseBody<MCPServerViewLightType> | undefined,
   serverView: MCPServerViewType
 ) => {
   if (!data) {
