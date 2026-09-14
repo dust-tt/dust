@@ -154,16 +154,20 @@ async function archiveCustomerAlerts(
   return { archived, failed };
 }
 
-// Resolve which Metronome customers to scan from the CLI flags. `--customerId`
-// targets one customer directly (works even for a deleted workspace); each
-// `--workspaceId` resolves through the DB; otherwise every Metronome customer is
-// scanned (the only path that reaches deleted workspaces' orphaned alerts).
-async function resolveTargets(
+// Stream the customers to scan. `--customerId` yields one target directly (works
+// even for a deleted workspace); `--workspaceId` resolves through the DB;
+// otherwise every Metronome customer is streamed (the only path that reaches
+// deleted workspaces' orphaned alerts). Streaming — rather than buffering all
+// ~5000 customers up front — lets the sweep make incremental progress and start
+// archiving as the first page arrives. Yields nothing on a bad `--workspaceId`
+// (after logging).
+async function* iterTargets(
   { workspaceId, customerId }: { workspaceId?: string; customerId?: string },
   logger: Logger
-): Promise<CustomerTarget[] | null> {
+): AsyncGenerator<CustomerTarget> {
   if (customerId) {
-    return [{ metronomeCustomerId: customerId, workspaceId: null }];
+    yield { metronomeCustomerId: customerId, workspaceId: null };
+    return;
   }
 
   if (workspaceId) {
@@ -173,31 +177,48 @@ async function resolveTargets(
         { workspaceId },
         "[ArchiveMetronomeAlerts] Workspace not found"
       );
-      return null;
+      return;
     }
     if (!workspace.metronomeCustomerId) {
       logger.info(
         { workspaceId },
         "[ArchiveMetronomeAlerts] Workspace has no Metronome customer; nothing to do"
       );
-      return [];
+      return;
     }
-    return [
-      {
-        metronomeCustomerId: workspace.metronomeCustomerId,
-        workspaceId: workspace.sId,
-      },
-    ];
+    yield {
+      metronomeCustomerId: workspace.metronomeCustomerId,
+      workspaceId: workspace.sId,
+    };
+    return;
   }
 
-  const targets: CustomerTarget[] = [];
   for await (const customer of listMetronomeCustomers()) {
-    targets.push({
+    yield {
       metronomeCustomerId: customer.id,
       workspaceId: customer.ingest_aliases[0] ?? null,
-    });
+    };
   }
-  return targets;
+}
+
+// Pull an async iterable in fixed-size batches, so the caller can process (and
+// log progress for) each batch as customers page in, bounding memory instead of
+// materializing the whole customer list.
+async function* batchAsync<T>(
+  source: AsyncIterable<T>,
+  size: number
+): AsyncGenerator<T[]> {
+  let batch: T[] = [];
+  for await (const item of source) {
+    batch.push(item);
+    if (batch.length >= size) {
+      yield batch;
+      batch = [];
+    }
+  }
+  if (batch.length > 0) {
+    yield batch;
+  }
 }
 
 makeScript(
@@ -221,39 +242,46 @@ makeScript(
     // error for every customer and exit "successfully".
     getMetronomeClient();
 
-    const targets = await resolveTargets({ workspaceId, customerId }, logger);
-    if (targets === null) {
-      return;
-    }
-
     logger.info(
-      { customers: targets.length, dryRun: !execute },
+      { dryRun: !execute },
       "[ArchiveMetronomeAlerts] Scanning Metronome customers for unused alerts"
     );
 
+    // Process customers in batches as they page in: each batch runs concurrently,
+    // then we log cumulative progress so a full ~5000-customer sweep is visibly
+    // advancing rather than appearing stuck.
+    const CONCURRENCY = 4;
+    const BATCH_SIZE = 50;
+    let customersScanned = 0;
     let totalArchived = 0;
     let totalFailed = 0;
-    await concurrentExecutor(
-      targets,
-      async (target) => {
-        const { archived, failed } = await archiveCustomerAlerts(
-          target,
-          execute,
-          logger
-        );
-        totalArchived += archived;
-        totalFailed += failed;
-      },
-      { concurrency: 4 }
-    );
+
+    for await (const batch of batchAsync(
+      iterTargets({ workspaceId, customerId }, logger),
+      BATCH_SIZE
+    )) {
+      await concurrentExecutor(
+        batch,
+        async (target) => {
+          const { archived, failed } = await archiveCustomerAlerts(
+            target,
+            execute,
+            logger
+          );
+          totalArchived += archived;
+          totalFailed += failed;
+        },
+        { concurrency: CONCURRENCY }
+      );
+      customersScanned += batch.length;
+      logger.info(
+        { customersScanned, totalArchived, totalFailed, dryRun: !execute },
+        "[ArchiveMetronomeAlerts] Progress"
+      );
+    }
 
     logger.info(
-      {
-        customersScanned: targets.length,
-        totalArchived,
-        totalFailed,
-        dryRun: !execute,
-      },
+      { customersScanned, totalArchived, totalFailed, dryRun: !execute },
       "[ArchiveMetronomeAlerts] Done"
     );
   }
