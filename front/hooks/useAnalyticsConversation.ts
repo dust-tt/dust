@@ -5,7 +5,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 // Hidden in the panel by its origin, so what the user sees first is @analyst's reply to it.
 function openingMessage(view: AnalyticsViewInput): string {
@@ -54,10 +54,6 @@ export function useAnalyticsConversation({
   const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [creationFailed, setCreationFailed] = useState(false);
   const hasStartedRef = useRef(false);
-  const viewRef = useRef(view);
-  useEffect(() => {
-    viewRef.current = view;
-  }, [view]);
 
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner,
@@ -72,7 +68,7 @@ export function useAnalyticsConversation({
 
     setIsCreatingConversation(true);
 
-    const input = openingMessage(viewRef.current);
+    const input = openingMessage(view);
 
     const result = await createConversationWithMessage({
       messageData: {
@@ -102,7 +98,7 @@ export function useAnalyticsConversation({
 
     setConversation(result.value);
     setIsCreatingConversation(false);
-  }, [createConversationWithMessage, sendNotification]);
+  }, [createConversationWithMessage, sendNotification, view]);
 
   const resetConversation = useCallback(() => {
     hasStartedRef.current = false;
