@@ -1,6 +1,6 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import type { AgentLoopRunContext } from "@app/lib/actions/types";
+import type { AgentLoopRunContext, StepContext } from "@app/lib/actions/types";
 import { createConversation } from "@app/lib/api/assistant/conversation";
 import type { AgentMessageFeedbackDirection } from "@app/lib/api/assistant/conversation/feedbacks";
 import { Authenticator } from "@app/lib/auth";
@@ -23,7 +23,8 @@ import { SpaceFactory } from "./SpaceFactory";
 
 export function makeExtra(
   auth: Authenticator,
-  conversation: ConversationResource
+  conversation: ConversationResource,
+  { stepContext }: { stepContext?: StepContext } = {}
 ): ToolHandlerExtra & { runContext: AgentLoopRunContext } {
   const runContext = {
     contextType: "agent_loop",
@@ -32,6 +33,7 @@ export function makeExtra(
       visibility: conversation.visibility,
       owner: auth.getNonNullableWorkspace(),
     },
+    stepContext,
   } as unknown as AgentLoopRunContext;
   return { auth, runContext } as unknown as ToolHandlerExtra & {
     runContext: AgentLoopRunContext;
