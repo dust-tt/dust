@@ -40,7 +40,7 @@ export function getRefs() {
  */
 export function citationMetaPrompt(isUsingRunAgent: boolean) {
   return (
-    "## CITING DOCUMENTS\n" +
+    "## CITING DOCUMENTS\n\n" +
     "Documents and web pages are automatically assigned a 3-character REFERENCE. " +
     "When referring to a document or a web page, use the markdown directive :cite[REFERENCE] " +
     "(eg :cite[xxx] or :cite[xxx,xxx] but not :cite[xxx][xxx]). " +

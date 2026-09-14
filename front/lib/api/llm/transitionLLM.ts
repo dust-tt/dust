@@ -730,7 +730,10 @@ abstract class BaseTransition extends LLM {
 
     const system: SystemTextMessage[] = [];
 
-    const instructionsText = instructions.map((s) => s.content).join("\n");
+    const instructionsText = instructions
+      .map((s) => s.content.trim())
+      .filter(Boolean)
+      .join("\n\n");
     if (instructionsText) {
       // The instructions tier only carries content that is stable per agent
       // version and workspace settings (the tool directives and server listing,
@@ -744,7 +747,10 @@ abstract class BaseTransition extends LLM {
       });
     }
 
-    const sharedText = sharedContext.map((s) => s.content).join("\n");
+    const sharedText = sharedContext
+      .map((s) => s.content.trim())
+      .filter(Boolean)
+      .join("\n\n");
     if (sharedText) {
       system.push({
         role: "system",
@@ -754,7 +760,10 @@ abstract class BaseTransition extends LLM {
       });
     }
 
-    const ephemeralText = ephemeralContext.map((s) => s.content).join("\n");
+    const ephemeralText = ephemeralContext
+      .map((s) => s.content.trim())
+      .filter(Boolean)
+      .join("\n\n");
     if (ephemeralText) {
       system.push({
         role: "system",

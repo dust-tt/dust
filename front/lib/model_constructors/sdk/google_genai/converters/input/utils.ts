@@ -352,7 +352,7 @@ export function systemMessagesToSystemInstruction(
     text: system
       .map((message) => converters.systemMessageToPart(message).text ?? "")
       .filter(Boolean)
-      .join("\n"),
+      .join("\n\n"),
   };
 }
 
