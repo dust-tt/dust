@@ -1,7 +1,7 @@
 import {
-  canAdminAgent,
-  filterEditableAgents,
-  listAgentUsageConfigIds,
+  shadowCanAdminAgent,
+  shadowEditableAgents,
+  shadowUsageConfigIds,
 } from "@app/lib/api/assistant/agent_permissions";
 import {
   archiveAgentConfiguration,
@@ -125,12 +125,12 @@ it.each([
     false,
   ]);
   const legacyPermission = async () => legacyGroup.value.isMember(member);
-  expect(await canAdminAgent(auth, legacyAgent, legacyPermission, "test")).toBe(
-    mode !== "grants"
-  );
+  expect(
+    await shadowCanAdminAgent(auth, legacyAgent, legacyPermission, "test")
+  ).toBe(mode !== "grants");
   expect(
     (
-      await filterEditableAgents(
+      await shadowEditableAgents(
         auth,
         [grantAgent, legacyAgent],
         [legacyAgent],
@@ -138,7 +138,7 @@ it.each([
       )
     ).map((agent) => agent.sId)
   ).toEqual([selected.sId]);
-  expect(await listAgentUsageConfigIds(auth, "test")).toEqual([selected.id]);
+  expect(await shadowUsageConfigIds(auth, "test")).toEqual([selected.id]);
   expect(await AgentSuggestionResource.fetchById(auth, suggestion.sId)).toEqual(
     mode === "grants" ? expect.objectContaining({ sId: suggestion.sId }) : null
   );
@@ -211,9 +211,9 @@ it("keeps author access and admin redaction when grants are enabled", async () =
     canEdit: false,
     instructions: null,
   });
-  expect(await canAdminAgent(adminAuth, agent, async () => true, "test")).toBe(
-    true
-  );
+  expect(
+    await shadowCanAdminAgent(adminAuth, agent, async () => true, "test")
+  ).toBe(true);
 });
 
 it("loads legacy memberships when rollback starts during a view read", async () => {

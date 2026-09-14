@@ -341,17 +341,6 @@ type ShadowCompareAgentViewArgs = {
   omitHeavyAttributes?: boolean;
 };
 
-function grantEditorFilter(
-  auth: Authenticator,
-  view: AgentsGetViewType
-): EditorFilter {
-  const grants = auth.getResourceIdsWithVerb("agent", "write");
-  if ((auth.isAdmin() && view === "archived") || grants.kind === "all") {
-    return { kind: "all" };
-  }
-  return { kind: "agent", modelIds: grants.resourceIds };
-}
-
 /**
  * @cc [owner:philipperolet,label:logging] recheck-view-mismatches
  * When IDs differ, recheck the legacy view once; log a mismatch only if they still differ.
@@ -382,7 +371,13 @@ async function shadowCompareAgentView({
     auth,
     legacy: stableAgentModelIds(legacyModels),
     candidate: async () => {
-      const editorFilter = grantEditorFilter(auth, view);
+      const grantResources = auth.getResourceIdsWithVerb("agent", "write");
+      const editorFilter: EditorFilter =
+        auth.isAdmin() && view === "archived"
+          ? { kind: "all" }
+          : grantResources.kind === "all"
+            ? { kind: "all" }
+            : { kind: "agent", modelIds: grantResources.resourceIds };
       const candidateModels =
         await fetchWorkspaceAgentConfigurationsWithoutActions(auth, {
           ...queryOptions,
@@ -430,7 +425,7 @@ async function shadowCompareAgentView({
 
 /**
  * @cc [owner:philipperolet,label:performance;error-handling] view-shadow-is-best-effort
- * When serving legacy reads, view shadow comparisons are not awaited and their failures are logged.
+ * View shadow comparisons are not awaited; their failures are logged without rejecting legacy reads.
  */
 async function fetchWorkspaceAgentConfigurationsForView(
   auth: Authenticator,
@@ -468,16 +463,25 @@ async function fetchWorkspaceAgentConfigurationsForView(
     ? { kind: "all" }
     : { kind: "configuration", modelIds: agentIdsForUserAsEditor };
 
+  let editorFilter: EditorFilter =
+    agentsGetView === "archived"
+      ? legacyEditorFilter
+      : { kind: "configuration", modelIds: agentIdsForUserAsEditor };
+  if (useGrants) {
+    const grantResources = auth.getResourceIdsWithVerb("agent", "write");
+    editorFilter =
+      (auth.isAdmin() && agentsGetView === "archived") ||
+      grantResources.kind === "all"
+        ? { kind: "all" }
+        : { kind: "agent", modelIds: grantResources.resourceIds };
+  }
+
   const agentModels = await fetchWorkspaceAgentConfigurationsWithoutActions(
     auth,
     {
       agentPrefix,
       agentsGetView,
-      editorFilter: useGrants
-        ? grantEditorFilter(auth, agentsGetView)
-        : agentsGetView === "archived"
-          ? legacyEditorFilter
-          : { kind: "configuration", modelIds: agentIdsForUserAsEditor },
+      editorFilter,
       limit,
       owner,
       sort,
