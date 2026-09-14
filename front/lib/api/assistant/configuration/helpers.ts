@@ -113,11 +113,13 @@ async function shadowAgentPermissions(
   auth: Authenticator,
   agentModels: AgentConfigurationModel[],
   legacyAgents: AgentConfigurationType[],
-  spaceById: Map<ModelId, SpaceResource>
+  spaceById: Map<ModelId, SpaceResource>,
+  reverse = false
 ): Promise<void> {
   const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
   await shadowCompare({
     auth,
+    reverse,
     legacy: legacyAgents.map((agent) => ({
       agentId: agent.sId,
       agentConfigurationModelId: agent.id,
@@ -125,12 +127,32 @@ async function shadowAgentPermissions(
       write: agent.canEdit,
       admin: agent.canEdit || auth.isAdmin(),
     })),
-    candidate: async () =>
-      agentModels.map((agent) => {
+    candidate: async () => {
+      const groups =
+        reverse && auth.user()
+          ? await GroupResource.findAgentIdsForGroups(
+              auth,
+              auth.groupModelIds()
+            )
+          : [];
+      const editorIds = new Set(
+        groups.map((group) => group.agentConfigurationId)
+      );
+      return agentModels.map((agent) => {
         const resource = AgentResource.fromAgentConfigurationModel(agent);
-        const read = auth.can("read", resource);
+        const legacyAccess =
+          agent.authorId === auth.user()?.id ||
+          editorIds.has(agent.id) ||
+          (!auth.user() && !isRegularApiKey && auth.can("write", resource));
+        const read = reverse
+          ? legacyAccess || agent.scope === "visible" || auth.isAdmin()
+          : auth.can("read", resource);
         const write =
-          auth.can("write", resource) &&
+          (reverse
+            ? isRegularApiKey
+              ? auth.isAdmin()
+              : legacyAccess
+            : auth.can("write", resource)) &&
           (!isRegularApiKey ||
             (agent.status === "active" &&
               canReadRequestedSpaces(
@@ -143,9 +165,12 @@ async function shadowAgentPermissions(
           agentConfigurationModelId: agent.id,
           read,
           write,
-          admin: auth.can("admin", resource),
+          admin: reverse
+            ? write || auth.isAdmin()
+            : auth.can("admin", resource),
         };
-      }),
+      });
+    },
     context: {
       check: "agent_permissions",
       workspaceId: auth.getNonNullableWorkspace().sId,

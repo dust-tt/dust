@@ -10,15 +10,15 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  * Shadow-compare machinery for the group_permissions rollout.
  *
  * Every later phase runs the legacy permission check and the new group_permissions check side by
- * side, serves the legacy result, and logs mismatches so a Datadog monitor can confirm parity
- * before we flip. The candidate is only evaluated when the feature flag is enabled for the
+ * side, serves the selected result, and logs mismatches so a Datadog monitor can confirm parity
+ * before and after the flip. The other source is only evaluated when the feature flag is enabled for the
  * workspace, so shadowing is per-workspace and reverts instantly by toggling the flag off.
  */
 
 // The literal message is the Datadog monitor key — keep it stable.
 const SHADOW_MISMATCH_MESSAGE = "group_permissions_shadow_mismatch";
 
-// Logged when the candidate check itself throws (it must never break the served legacy path).
+// Logged when the comparison throws (it must never break the served path).
 const SHADOW_CANDIDATE_ERROR_MESSAGE =
   "group_permissions_shadow_candidate_error";
 
@@ -28,10 +28,12 @@ type ShadowContext = Record<string, string | number | boolean | null>;
 
 interface ShadowCompareArgs<T> {
   auth: Authenticator;
-  // The result actually served — already computed on the legacy path.
+  // The result actually served — already computed outside the shadow comparison.
   legacy: T;
-  // The new check, evaluated lazily and only while shadowing is enabled.
+  // The other source, evaluated lazily and only while shadowing is enabled.
   candidate: () => Promise<T>;
+  // When serving grants, keep comparison arguments and log fields in legacy/grant order.
+  reverse?: boolean;
   // Structured fields identifying the call site, logged on mismatch.
   context: ShadowContext;
   // Custom equality when T is not comparable with ===.
@@ -42,30 +44,42 @@ export async function shadowCompare<T>({
   auth,
   legacy,
   candidate,
+  reverse = false,
   context,
   equals,
 }: ShadowCompareArgs<T>): Promise<T> {
-  const flags = await getFeatureFlags(auth);
-  if (!flags.includes(SHADOW_FEATURE_FLAG)) {
-    return legacy;
-  }
-
   // Shadowing must never break the served path: any failure computing or comparing the candidate is
-  // logged and swallowed, and the legacy result is still returned.
+  // logged and swallowed, and the selected result is still returned.
   try {
+    const flags = await getFeatureFlags(auth);
+    if (!flags.includes(SHADOW_FEATURE_FLAG)) {
+      return legacy;
+    }
     const candidateResult = await candidate();
+    const [legacyResult, grantsResult] = reverse
+      ? [candidateResult, legacy]
+      : [legacy, candidateResult];
     const matches = equals
-      ? await equals(legacy, candidateResult)
-      : legacy === candidateResult;
+      ? await equals(legacyResult, grantsResult)
+      : legacyResult === grantsResult;
     if (!matches) {
       logger.warn(
-        { ...context, legacyResult: legacy, candidateResult },
+        {
+          ...context,
+          legacyResult,
+          candidateResult: grantsResult,
+          servedSource: reverse ? "grants" : "legacy",
+        },
         SHADOW_MISMATCH_MESSAGE
       );
     }
   } catch (err) {
     logger.error(
-      { ...context, err: normalizeError(err) },
+      {
+        ...context,
+        err: normalizeError(err),
+        servedSource: reverse ? "grants" : "legacy",
+      },
       SHADOW_CANDIDATE_ERROR_MESSAGE
     );
   }
