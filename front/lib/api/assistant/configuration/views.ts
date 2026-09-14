@@ -330,6 +330,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
 }
 
 type ShadowCompareAgentViewArgs = {
+  reverse: boolean;
   auth: Authenticator;
   owner: WorkspaceType;
   view: "list" | "manage" | "archived";
@@ -346,6 +347,7 @@ type ShadowCompareAgentViewArgs = {
  * When IDs differ, recheck the legacy view once; log a mismatch only if they still differ.
  */
 async function shadowCompareAgentView({
+  reverse,
   auth,
   owner,
   view,
@@ -369,15 +371,31 @@ async function shadowCompareAgentView({
 
   await shadowCompare({
     auth,
+    reverse,
     legacy: stableAgentModelIds(legacyModels),
     candidate: async () => {
       const grantResources = auth.getResourceIdsWithVerb("agent", "write");
-      const editorFilter: EditorFilter =
+      let editorFilter: EditorFilter =
         auth.isAdmin() && view === "archived"
           ? { kind: "all" }
           : grantResources.kind === "all"
             ? { kind: "all" }
             : { kind: "agent", modelIds: grantResources.resourceIds };
+      if (reverse) {
+        const groupAgents = auth.user()
+          ? await GroupResource.findAgentIdsForGroups(
+              auth,
+              auth.groupModelIds()
+            )
+          : [];
+        editorFilter =
+          auth.isAdmin() && view === "archived"
+            ? { kind: "all" }
+            : {
+                kind: "configuration",
+                modelIds: groupAgents.map((g) => g.agentConfigurationId),
+              };
+      }
       const candidateModels =
         await fetchWorkspaceAgentConfigurationsWithoutActions(auth, {
           ...queryOptions,
@@ -504,12 +522,12 @@ async function fetchWorkspaceAgentConfigurationsForView(
     : await filterAgentsByRequestedSpaces(auth, agentModels);
 
   if (
-    !useGrants &&
-    (agentsGetView === "list" ||
-      agentsGetView === "manage" ||
-      agentsGetView === "archived")
+    agentsGetView === "list" ||
+    agentsGetView === "manage" ||
+    agentsGetView === "archived"
   ) {
     void shadowCompareAgentView({
+      reverse: useGrants,
       auth,
       owner,
       view: agentsGetView,
@@ -526,6 +544,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
           check: "agent_view",
           view: agentsGetView,
           workspaceId: owner.sId,
+          servedSource: useGrants ? "grants" : "legacy",
         },
         "group_permissions_shadow_candidate_error"
       );
