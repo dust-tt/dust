@@ -61,7 +61,16 @@ export async function listMCPServersWithViews(
   // Batch-fetch all views in a single query instead of N+1.
   const allViews = await MCPServerViewResource.listByMCPServers(
     auth,
-    servers.map((s) => s.sId)
+    servers.map((s) => s.sId),
+    {
+      includeHeavyAttributes: [
+        "authorization",
+        "cachedTools",
+        "customHeaders",
+        "lastError",
+        "sharedSecret",
+      ],
+    }
   );
 
   const viewsByServerId = new Map<string, MCPServerViewLightType[]>();
