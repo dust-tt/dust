@@ -11,13 +11,13 @@ import {
   isBinaryFormat,
   isValidOutputType,
 } from "@app/lib/api/actions/servers/file_generation/helpers";
-import {
-  FILE_GENERATION_TOOLS_METADATA,
-  OUTPUT_FORMATS,
-} from "@app/lib/api/actions/servers/file_generation/metadata";
+import { getFileGenerationToolsMetadata } from "@app/lib/api/actions/servers/file_generation/metadata";
 import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { cacheWithRedis } from "@app/lib/utils/cache";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { validateUrl } from "@app/types/shared/utils/url_utils";
@@ -25,7 +25,9 @@ import assert from "assert";
 import ConvertAPI from "convertapi";
 import { marked } from "marked";
 
-const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
+const handlers: ToolHandlers<
+  ReturnType<typeof getFileGenerationToolsMetadata>
+> = {
   get_supported_source_formats_for_output_format: async ({ output_format }) => {
     const formats = await cacheWithRedis(
       async () => {
@@ -142,7 +144,7 @@ const handlers: ToolHandlers<typeof FILE_GENERATION_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: `The format ${extension} is not supported. Supported formats are: ${OUTPUT_FORMATS.join(", ")}`,
+          text: `The format ${extension} is not supported. Check the file generation tools for supported output formats.`,
         },
       ]);
     }
@@ -301,4 +303,11 @@ ${file_content
   },
 };
 
-export const TOOLS = buildTools(FILE_GENERATION_TOOLS_METADATA, handlers);
+export async function createFileGenerationTools(auth: Authenticator) {
+  const flags = await getFeatureFlags(auth);
+  const metadata = getFileGenerationToolsMetadata({
+    hasComputer: isComputerFeatureEnabled(flags),
+  });
+
+  return buildTools(metadata, handlers);
+}

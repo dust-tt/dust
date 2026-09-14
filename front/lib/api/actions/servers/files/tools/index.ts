@@ -24,6 +24,9 @@ import { listHandler } from "@app/lib/api/actions/servers/files/tools/list";
 import { moveHandler } from "@app/lib/api/actions/servers/files/tools/move";
 import { resolveHandler } from "@app/lib/api/actions/servers/files/tools/resolve";
 import { uploadFromUrlHandler } from "@app/lib/api/actions/servers/files/tools/upload_from_url";
+import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
+import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 const HANDLERS = {
   [FILES_CAT_ACTION_NAME]: catHandler,
@@ -39,4 +42,17 @@ const HANDLERS = {
   [FILES_RESOLVE_ACTION_NAME]: resolveHandler,
 };
 
-export const TOOLS = buildTools(FILES_TOOLS_METADATA, HANDLERS);
+/**
+ * @cc [owner:flvndvd,label:product;mcp] extraction-follows-computer-availability
+ * When the workspace Computer feature is enabled, files.extract_text MUST be
+ * omitted in favor of the document skills. When disabled, it MUST remain available.
+ * Other files tools MUST remain available in both cases.
+ */
+export async function createFilesTools(auth: Authenticator) {
+  const tools = buildTools(FILES_TOOLS_METADATA, HANDLERS);
+  const flags = await getFeatureFlags(auth);
+
+  return isComputerFeatureEnabled(flags)
+    ? tools.filter((tool) => tool.name !== FILES_EXTRACT_TEXT_ACTION_NAME)
+    : tools;
+}
