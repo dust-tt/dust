@@ -1,4 +1,4 @@
-import { applyMembershipSeatChange } from "@app/lib/api/membership_seats";
+import { applyMembershipSeatChangesForWorkspace } from "@app/lib/api/membership_seats";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
@@ -3293,10 +3293,14 @@ export class GroupResource extends BaseResource<GroupModel> {
       memberships.map((m) => [m.userId, m.seatType])
     );
 
-    // NOTE: this loop calls `applyMembershipSeatChange` per member, which reads
-    // that member's active/scheduled membership (and seat counts when capped).
-    // Group memberships are bounded and the sync runs after commit (never in the
-    // request's critical path); very large groups should move to a workflow.
+    // Resolve each member's target seat from their group grants (pure — no DB
+    // access), then apply them all through the batched core, which reads each
+    // member's active/scheduled membership (and seat counts) once for the whole
+    // set rather than once per member.
+    const changes: Array<{
+      user: UserResource;
+      newSeatType: MembershipSeatType;
+    }> = [];
     for (const user of users) {
       const grantedSeats = grantedSeatsByUser.get(user.id) ?? [];
 
@@ -3342,47 +3346,42 @@ export class GroupResource extends BaseResource<GroupModel> {
         }
       }
 
-      try {
-        // These per-member seat changes don't emit the `membership.seat_updated`
-        // WorkOS audit (group_resource can't import workos_audit — import cycle,
-        // same as the group-driven role sync). The causal admin action is audited
-        // at its call site: the mapping edit emits `group.granted_seat_type_updated`,
-        // and membership changes emit `scim.group_user_*` / `group.member_*`.
-        const res = await applyMembershipSeatChange({
-          user,
-          workspace,
-          newSeatType: targetSeatType,
-          author,
-        });
-        if (res.isErr()) {
-          logger.warn(
-            {
-              workspaceId: workspace.sId,
-              userId: user.sId,
-              targetSeatType,
-              error: res.error.type,
-            },
-            "Failed to apply group-driven seat change"
-          );
-          continue;
-        }
-        if (res.value.seatChanged) {
-          logger.info(
-            {
-              workspaceId: workspace.sId,
-              userId: user.sId,
-              previousSeatType: res.value.previousSeatType,
-              newSeatType: res.value.resultingActiveSeatType,
-              scheduledSeatChangeAt:
-                res.value.scheduledSeatChangeAt?.toISOString(),
-            },
-            "Synced seat from group membership"
-          );
-        }
-      } catch (err) {
-        logger.error(
-          { err, workspaceId: workspace.sId, userId: user.sId },
-          "Error applying group-driven seat change"
+      changes.push({ user, newSeatType: targetSeatType });
+    }
+
+    // These per-member seat changes don't emit the `membership.seat_updated`
+    // WorkOS audit (group_resource can't import workos_audit — import cycle, same
+    // as the group-driven role sync). The causal admin action is audited at its
+    // call site: the mapping edit emits `group.granted_seat_type_updated`, and
+    // membership changes emit `scim.group_user_*` / `group.member_*`.
+    const applied = await applyMembershipSeatChangesForWorkspace({
+      workspace,
+      changes,
+      author,
+    });
+    for (const { user, result } of applied) {
+      if (result.isErr()) {
+        logger.warn(
+          {
+            workspaceId: workspace.sId,
+            userId: user.sId,
+            error: result.error.type,
+          },
+          "Failed to apply group-driven seat change"
+        );
+        continue;
+      }
+      if (result.value.seatChanged) {
+        logger.info(
+          {
+            workspaceId: workspace.sId,
+            userId: user.sId,
+            previousSeatType: result.value.previousSeatType,
+            newSeatType: result.value.resultingActiveSeatType,
+            scheduledSeatChangeAt:
+              result.value.scheduledSeatChangeAt?.toISOString(),
+          },
+          "Synced seat from group membership"
         );
       }
     }

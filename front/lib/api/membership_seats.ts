@@ -22,6 +22,33 @@ export type ApplyMembershipSeatChangeError = {
     | "metronome_error";
 };
 
+// Resolved Metronome seat-billing context for a workspace: the active contract
+// and the product seat-type catalog. `null` means the workspace does not bill
+// seats through Metronome (no `metronomeCustomerId`, no active contract, or a
+// contract with no seat subscription) — seat changes then write straight through
+// without any scheduling.
+type MetronomeSeatContext = {
+  contract: NonNullable<Awaited<ReturnType<typeof getActiveContract>>>;
+  productSeatTypes: Awaited<ReturnType<typeof getProductSeatTypes>>;
+};
+
+async function resolveMetronomeSeatContext(
+  workspace: LightWorkspaceType
+): Promise<MetronomeSeatContext | null> {
+  if (!workspace.metronomeCustomerId) {
+    return null;
+  }
+  const contract = await getActiveContract(workspace.sId);
+  const hasSeatSubscription = contract
+    ? await hasContractSeatSubscription(contract)
+    : false;
+  if (!contract || !hasSeatSubscription) {
+    return null;
+  }
+  const productSeatTypes = await getProductSeatTypes();
+  return { contract, productSeatTypes };
+}
+
 export type ApplyMembershipSeatChangeResult = {
   previousSeatType: MembershipSeatType;
   // The user's active seat type after the DB write: `newSeatType` for an
@@ -125,9 +152,57 @@ export async function applyMembershipSeatChange({
       workspace,
     });
 
+  const metronome = await resolveMetronomeSeatContext(workspace);
+
+  return applyClassifiedSeatChange({
+    user,
+    workspace,
+    author,
+    membership,
+    previousSeatType,
+    newSeatType,
+    scheduledRow,
+    metronome,
+    immediate,
+  });
+}
+
+/**
+ * @cc [owner:tdraier,label:product;backend] classified-seat-write
+ * The immediate-vs-deferred timing MUST be decided by `classifySeatChange`
+ * (unless `immediate` is set). This helper only writes the DB from prefetched
+ * inputs and reports the outcome; it does NOT read the DB (no per-call membership
+ * / scheduled / limit / contract fetch), audit, reconcile Metronome, or enforce
+ * the free-plan or `maxSeats` guards — its callers own those. `metronome` null
+ * means the workspace does not bill seats through Metronome and the change is
+ * written straight through with no scheduling.
+ */
+async function applyClassifiedSeatChange({
+  user,
+  workspace,
+  author,
+  membership,
+  previousSeatType,
+  newSeatType,
+  scheduledRow,
+  metronome,
+  immediate,
+}: {
+  user: UserResource;
+  workspace: LightWorkspaceType;
+  author: UserType | "no-author";
+  membership: MembershipResource;
+  previousSeatType: MembershipSeatType;
+  newSeatType: MembershipSeatType;
+  scheduledRow: MembershipResource | null;
+  metronome: MetronomeSeatContext | null;
+  immediate: boolean;
+}): Promise<
+  Result<ApplyMembershipSeatChangeResult, ApplyMembershipSeatChangeError>
+> {
   // Outside of Metronome billing we just write the DB straight through —
   // no scheduling logic applies.
-  if (!workspace.metronomeCustomerId) {
+  if (!metronome) {
     if (previousSeatType !== newSeatType) {
       await membership.updateMembershipSeat({
         user,
@@ -145,31 +220,7 @@ export async function applyMembershipSeatChange({
     });
   }
 
-  const contract = await getActiveContract(workspace.sId);
-  const hasSeatSubscription = contract
-    ? await hasContractSeatSubscription(contract)
-    : false;
-  if (!contract || !hasSeatSubscription) {
-    // Workspace is on Metronome but the active contract has no seat
-    // subscription — apply the DB change without touching Metronome.
-    if (previousSeatType !== newSeatType) {
-      await membership.updateMembershipSeat({
-        user,
-        workspace,
-        newSeatType,
-        author,
-      });
-    }
-    return new Ok({
-      previousSeatType,
-      resultingActiveSeatType: newSeatType,
-      scheduledSeatChangeAt: undefined,
-      metronomeBilled: false,
-      seatChanged: previousSeatType !== newSeatType,
-    });
-  }
-
-  const productSeatTypes = await getProductSeatTypes();
+  const { contract, productSeatTypes } = metronome;
   const outcome = immediate
     ? previousSeatType === newSeatType
       ? { kind: "noop" as const }
@@ -258,4 +309,133 @@ export async function applyMembershipSeatChange({
     metronomeBilled: true,
     seatChanged,
   });
+}
+
+export type ApplyMembershipSeatChangeForUser = {
+  user: UserResource;
+  result: Result<
+    ApplyMembershipSeatChangeResult,
+    ApplyMembershipSeatChangeError
+  >;
+};
+
+// Batch entry point for applying many seat changes at once (the group-driven
+// seat sync). It computes nothing about targets — each change's `newSeatType` is
+// resolved by the caller — and reuses the same timing/write core as the
+// single-user `applyMembershipSeatChange`, so per-member timing is identical.
+// Unlike the single path it does NOT enforce the one-shot `free` guard, so
+// callers MUST NOT pass `free` as a target.
+/**
+ * @cc [owner:tdraier,label:performance;backend] batch-seat-change-reads
+ * The number of database reads MUST NOT scale with `changes.length`: the active
+ * memberships, scheduled future rows, workspace seat limits, seat-type counts,
+ * and Metronome context are each read once for the whole batch — no per-member
+ * query inside the loop. The per-seat-type `maxSeats` cap MUST be enforced
+ * against a running count that is updated as immediate changes are applied within
+ * the batch (so N immediate assignments to a capped tier cannot all pass a check
+ * against the pre-batch count).
+ */
+export async function applyMembershipSeatChangesForWorkspace({
+  workspace,
+  changes,
+  author,
+}: {
+  workspace: LightWorkspaceType;
+  changes: Array<{ user: UserResource; newSeatType: MembershipSeatType }>;
+  author: UserType | "no-author";
+}): Promise<ApplyMembershipSeatChangeForUser[]> {
+  if (changes.length === 0) {
+    return [];
+  }
+
+  const users = changes.map((c) => c.user);
+
+  // One query each — no per-member reads in the loop below.
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+    users,
+  });
+  const membershipByUser = new Map(memberships.map((m) => [m.userId, m]));
+  const scheduledByUser =
+    await MembershipResource.getScheduledMembershipsByUserIdInWorkspace({
+      workspace,
+      userIds: users.map((u) => u.id),
+    });
+  const seatLimits = await WorkspaceSeatLimitResource.fetchByWorkspace({
+    workspace,
+  });
+  // Running per-seat-type counts, updated as immediate changes are applied so the
+  // `maxSeats` cap holds across the whole batch (not just against the initial
+  // snapshot).
+  const runningCounts: Partial<Record<MembershipSeatType, number>> = {
+    ...(await MembershipResource.getActiveSeatTypeCountsForWorkspace({
+      workspace,
+    })),
+  };
+  const metronome = await resolveMetronomeSeatContext(workspace);
+
+  const results: ApplyMembershipSeatChangeForUser[] = [];
+  for (const { user, newSeatType } of changes) {
+    const membership = membershipByUser.get(user.id);
+    if (!membership) {
+      results.push({ user, result: new Err({ type: "not_found" }) });
+      continue;
+    }
+    const previousSeatType: MembershipSeatType = membership.seatType;
+
+    // Enforce the per-seat-type hard cap (`maxSeats`) against the running count.
+    // Removals (`none`) and same-type noops never consume a seat.
+    if (newSeatType !== "none" && newSeatType !== previousSeatType) {
+      const limit = seatLimits.get(newSeatType);
+      if (limit?.maxSeats !== null && limit?.maxSeats !== undefined) {
+        const currentCount = runningCounts[newSeatType] ?? 0;
+        if (currentCount >= limit.maxSeats) {
+          results.push({ user, result: new Err({ type: "seat_limit_reached" }) });
+          continue;
+        }
+      }
+    }
+
+    // Isolate an unexpected write failure to its own member (like the single
+    // per-member path did) so one bad row doesn't abort the whole batch.
+    try {
+      const result = await applyClassifiedSeatChange({
+        user,
+        workspace,
+        author,
+        membership,
+        previousSeatType,
+        newSeatType,
+        scheduledRow: scheduledByUser.get(user.id) ?? null,
+        metronome,
+        immediate: false,
+      });
+
+      // Keep the running counts in sync with the active-seat change we just
+      // wrote (immediate move or removal). Deferred changes and cancellations
+      // leave the active count unchanged.
+      if (result.isOk()) {
+        const { resultingActiveSeatType } = result.value;
+        if (resultingActiveSeatType !== previousSeatType) {
+          if (previousSeatType !== "none") {
+            runningCounts[previousSeatType] =
+              (runningCounts[previousSeatType] ?? 0) - 1;
+          }
+          if (resultingActiveSeatType !== "none") {
+            runningCounts[resultingActiveSeatType] =
+              (runningCounts[resultingActiveSeatType] ?? 0) + 1;
+          }
+        }
+      }
+
+      results.push({ user, result });
+    } catch (err) {
+      logger.error(
+        { err, workspaceId: workspace.sId, userId: user.sId },
+        "Error applying seat change in batch"
+      );
+    }
+  }
+
+  return results;
 }
