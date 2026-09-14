@@ -75,12 +75,17 @@ function ToolNodeView({
   };
   const display = useToolNodeDisplay(attrs);
   const view = display.kind === "tool" ? display.view : null;
-  const handleClick =
-    view && onToolDetails
-      ? () => onToolDetails(view)
-      : onToolDetailsById
-        ? () => onToolDetailsById(attrs.mcpServerViewId)
-        : undefined;
+  const handleClick = () => {
+    if (view && onToolDetails) {
+      onToolDetails(view);
+      return;
+    }
+    if (onToolDetailsById) {
+      onToolDetailsById(attrs.mcpServerViewId);
+    }
+  }
+
+  const isClickable = Boolean((view && onToolDetails) || onToolDetailsById);
   const onRemove = editor.isEditable ? deleteNode : undefined;
 
   return (
@@ -91,7 +96,7 @@ function ToolNodeView({
         <ToolChip
           title={display.title}
           toolIcon={display.toolIcon}
-          onClick={handleClick}
+          onClick={isClickable ? handleClick : undefined}
           onRemove={onRemove}
         />
       )}
