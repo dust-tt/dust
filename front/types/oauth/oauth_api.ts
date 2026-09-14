@@ -73,11 +73,13 @@ export class OAuthAPI {
   async createConnection({
     provider,
     metadata,
+    redirectUri,
     migratedCredentials,
     relatedCredential,
   }: {
     provider: OAuthProvider;
     metadata: Record<string, unknown> | null;
+    redirectUri?: string;
     migratedCredentials?: MigratedCredentialsType;
     relatedCredential?: {
       content: Record<string, unknown>;
@@ -90,6 +92,7 @@ export class OAuthAPI {
     const body: {
       provider: OAuthProvider;
       metadata: Record<string, unknown> | null;
+      redirect_uri?: string;
       migrated_credentials?: MigratedCredentialsType;
       related_credential?: {
         content: Record<string, unknown>;
@@ -102,6 +105,10 @@ export class OAuthAPI {
       provider,
       metadata,
     };
+
+    if (redirectUri) {
+      body.redirect_uri = redirectUri;
+    }
 
     if (migratedCredentials) {
       body.migrated_credentials = migratedCredentials;

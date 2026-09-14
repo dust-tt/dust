@@ -597,6 +597,9 @@ export type OAuthConnectionType = {
   provider: OAuthProvider;
   status: "pending" | "finalized";
   related_credential_id?: string | null;
+  // The finalize URI the connection was created with, absent on connections
+  // that predate its storage.
+  redirect_uri?: string | null;
 };
 
 export function isOAuthConnectionType(

@@ -133,16 +133,6 @@ const config = {
       config.getApiBaseUrl()
     );
   },
-  // For OAuth provider redirects. The finalize page is served by the SPA on the
-  // app URL for every cell, so providers register one redirect URI per provider
-  // instead of one per cell.
-  getOAuthRedirectBaseUrl: (): string => {
-    return (
-      EnvironmentConfig.getOptionalEnvVariable(
-        "DUST_OAUTH_REDIRECT_BASE_URL"
-      ) ?? config.getAppUrl()
-    );
-  },
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
   },
