@@ -390,7 +390,10 @@ export async function applyMembershipSeatChangesForWorkspace({
       if (limit?.maxSeats !== null && limit?.maxSeats !== undefined) {
         const currentCount = runningCounts[newSeatType] ?? 0;
         if (currentCount >= limit.maxSeats) {
-          results.push({ user, result: new Err({ type: "seat_limit_reached" }) });
+          results.push({
+            user,
+            result: new Err({ type: "seat_limit_reached" }),
+          });
           continue;
         }
       }

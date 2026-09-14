@@ -3,6 +3,7 @@ import type {
   GetWorkspaceGrantedRolesResponseBody,
   GetWorkspaceGrantedSeatTypesResponseBody,
 } from "@app/lib/api/workspace";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -122,19 +123,25 @@ export function useWorkspaceGrantedSeatTypes({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
+  const { hasFeature } = useFeatureFlags();
   const grantedSeatTypesFetcher: Fetcher<GetWorkspaceGrantedSeatTypesResponseBody> =
     fetcher;
+
+  // Skip the request entirely when the feature is off: the endpoint returns an
+  // empty list in that case, so there is nothing to fetch and no reason to lock
+  // seat editing in the members UI.
+  const isDisabled = disabled || !hasFeature("group_seat_provisioning");
 
   const { data, error } = useSWRWithDefaults(
     grantedSeatTypesUrl(workspaceId),
     grantedSeatTypesFetcher,
-    { disabled }
+    { disabled: isDisabled }
   );
 
   return {
     grantedSeatTypes:
       data?.grantedSeatTypes ?? emptyArray<GroupGrantableSeatType>(),
-    isGrantedSeatTypesLoading: !error && !data && !disabled,
+    isGrantedSeatTypesLoading: !error && !data && !isDisabled,
     isGrantedSeatTypesError: error,
   };
 }
