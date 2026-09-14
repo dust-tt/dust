@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  formatCalendarDate,
   formatCalendarDateTime,
+  formatDate,
   formatRelativeTime,
   getRelativeDateBucket,
 } from "./timestamps";
@@ -24,6 +26,69 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe("formatDate", () => {
+  it("formats a Date object with the given pattern", () => {
+    expect(formatDate(NOW, "yyyy-MM-dd")).toBe("2026-09-10");
+  });
+
+  it("formats a timestamp with the given pattern", () => {
+    expect(formatDate(NOW.getTime(), "dd-MM-yyyy")).toBe("10-09-2026");
+  });
+
+  it("formats a date string with the given pattern", () => {
+    expect(formatDate("2026-09-10T09:30:00", "h:mm a")).toBe("9:30 AM");
+  });
+
+  it("renders an invalid date like moment instead of throwing", () => {
+    expect(formatDate(Number.NaN, "yyyy-MM-dd")).toBe("Invalid date");
+    expect(formatDate("not-a-date", "yyyy-MM-dd")).toBe("Invalid date");
+  });
+});
+
+describe("formatCalendarDate", () => {
+  it("labels a time today as 'Today'", () => {
+    expect(formatCalendarDate(new Date(2026, 8, 10, 9, 30, 0))).toBe("Today");
+  });
+
+  it("labels a time tomorrow as 'Tomorrow'", () => {
+    expect(formatCalendarDate(new Date(2026, 8, 11, 9, 30, 0))).toBe(
+      "Tomorrow"
+    );
+  });
+
+  it("labels a time yesterday as 'Yesterday'", () => {
+    expect(formatCalendarDate(new Date(2026, 8, 9, 9, 30, 0))).toBe(
+      "Yesterday"
+    );
+  });
+
+  it("labels a time within the last week as 'Last <weekday>'", () => {
+    const lastSunday = new Date(2026, 8, 6, 15, 0, 0); // 4 days ago.
+    expect(formatCalendarDate(lastSunday)).toBe("Last Sunday");
+    const sevenDaysAgo = new Date(2026, 8, 3, 15, 0, 0);
+    expect(formatCalendarDate(sevenDaysAgo)).toBe("Last Thursday");
+  });
+
+  it("labels a time within the next week as the plain weekday", () => {
+    const inSixDays = new Date(2026, 8, 16, 15, 0, 0);
+    expect(formatCalendarDate(inSixDays)).toBe("Wednesday");
+    const inSevenDays = new Date(2026, 8, 17, 15, 0, 0);
+    expect(formatCalendarDate(inSevenDays)).toBe("Thursday");
+  });
+
+  it("falls back to a plain date beyond a week in either direction", () => {
+    const eightDaysAgo = new Date(2026, 8, 2, 15, 0, 0);
+    expect(formatCalendarDate(eightDaysAgo)).toBe("02/09/2026");
+    const eightDaysAhead = new Date(2026, 8, 18, 15, 0, 0);
+    expect(formatCalendarDate(eightDaysAhead)).toBe("18/09/2026");
+  });
+
+  it("renders an invalid date like moment instead of throwing", () => {
+    expect(formatCalendarDate(Number.NaN)).toBe("Invalid date");
+    expect(formatCalendarDate(new Date(Number.NaN))).toBe("Invalid date");
+  });
 });
 
 describe("formatRelativeTime", () => {
