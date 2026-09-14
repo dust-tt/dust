@@ -72,12 +72,13 @@ type ReviewBotOptions = {
 
 /**
  * @cc [label:product] review-request-syntax
- * Parse consecutive GitHub mentions and bare `cc` tokens after a column-zero `r?` followed by
- * whitespace, retaining the request line for notifications. Bare `cc` requests a contract review
- * case-insensitively; `@cc` remains a GitHub mention. Trailing prose ends the list. Deduplicate
- * handles case-insensitively within each request. Markdown filtering is best-effort: skip simple
- * fenced blocks, HTML comments, and explicitly quoted lines. Inline code, nested blocks, lazy quote
- * continuations, and interactions between comments and fences may cause missed or extra requests.
+ * Parse every whitespace-delimited GitHub mention and bare `cc` token after a column-zero `r?`
+ * followed by whitespace, retaining the request line for notifications. Bare `cc` requests a
+ * contract review case-insensitively anywhere on the line; `@cc` remains a GitHub mention. Prose
+ * between tokens is ignored and does not end the list. Deduplicate handles case-insensitively
+ * within each request. Markdown filtering is best-effort: skip simple fenced blocks, HTML comments,
+ * and explicitly quoted lines. Inline code, nested blocks, lazy quote continuations, and
+ * interactions between comments and fences may cause missed or extra requests.
  */
 export function parseReviewRequests(
   body: string | null | undefined
@@ -118,7 +119,7 @@ export function parseReviewRequests(
         continue;
       }
       if (!/^@[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(token)) {
-        break;
+        continue;
       }
       reviewers.add(token.slice(1).toLowerCase());
     }

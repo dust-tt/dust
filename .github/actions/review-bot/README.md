@@ -6,6 +6,8 @@ their reviews and a contract review. Use `r? cc` to request only a contract revi
 ```text
 r? @spolu @flvndvd
 r? @spolu please take a look
+r? @pmilliotte or @Nils-Fedrigo
+r? please review @spolu and @flvndvd
 r? cc
 r? @spolu cc @flvndvd PMRR
 ```
@@ -15,12 +17,12 @@ review summary containing a request requests reviews again, including from users
 reviewed. Opening a PR with a request also works. Title edits, pushes, and comment edits do not
 request reviews.
 
-The `r?` must start the line without indentation. Surrounding lines and trailing prose are allowed;
-only consecutive GitHub mentions and bare `cc` tokens immediately after `r?` are reviewers. `cc` is
-case-insensitive; `@cc` requests the GitHub user instead. Team mentions and tokens after trailing
-prose are ignored. Markdown filtering is best-effort: simple fenced blocks, HTML comments, and
-explicitly quoted lines are skipped. Inline code, nested blocks, lazy quote continuations, and
-interactions between comments and fences may cause missed or extra requests.
+The `r?` must start the line without indentation. Surrounding lines and prose between mentions are
+allowed; every whitespace-delimited GitHub mention and bare `cc` token after `r?` is collected.
+`cc` is case-insensitive anywhere on the line; `@cc` requests the GitHub user instead. Team mentions
+and other non-mention tokens are ignored. Markdown filtering is best-effort: simple fenced blocks,
+HTML comments, and explicitly quoted lines are skipped. Inline code, nested blocks, lazy quote
+continuations, and interactions between comments and fences may cause missed or extra requests.
 
 GitHub reviews, contract reviews, and Slack notifications require a human requester with repository
 `write`, `maintain`, or `admin` permission.
