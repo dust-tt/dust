@@ -131,7 +131,7 @@ export function useMCPServerView({
 }: {
   disabled?: boolean;
   owner: LightWorkspaceType;
-  viewId: string | null;
+  viewId?: string | null;
 }) {
   const { fetcher } = useFetcher();
   const viewFetcher: Fetcher<GetMCPServerViewResponseBody> = fetcher;
@@ -175,7 +175,7 @@ export function useResolvedMCPServerView({
   const { serverView: serverViewFromId, isMCPServerViewError } =
     useMCPServerView({
       owner,
-      viewId: mcpServerView ? null : (mcpServerViewId ?? null),
+      viewId: mcpServerView ? null : mcpServerViewId,
     });
   const lightServerView = mcpServerView ?? serverViewFromId;
 
