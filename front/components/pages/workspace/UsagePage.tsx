@@ -229,7 +229,7 @@ export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
-  const isNewUsagePage = hasFeature("enable_new_usage_page");
+  const isNewUsagePage = true;
   const groupSeatProvisioningEnabled = hasFeature("group_seat_provisioning");
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
   // Workspaces off a credit plan see this page without the credit pool, seat
@@ -425,7 +425,7 @@ export function UsagePage() {
         setEditSpendLimitMember(member);
       }
     },
-    [isNewUsagePage]
+    []
   );
   const { setUserAllowedModelTier, clearUserAllowedModelTier } =
     useUserAllowedModelTierMutations({ owner });

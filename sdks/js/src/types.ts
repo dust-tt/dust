@@ -855,7 +855,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_internal_global_agents"
   | "dust_lean_agent"
   | "dust_pod_goal"
-  | "enable_new_usage_page"
   | "fireworks_new_model_feature"
   | "frames_v2"
   | "google_sheets_tool"

@@ -444,12 +444,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "sfriquet",
   },
-  enable_new_usage_page: {
-    description:
-      "Show the new credit-pool usage page (credit pool cards + compact members table) on the front usage page instead of the legacy usage page.",
-    stage: "ask_owner",
-    owner: "avervaet",
-  },
   consumption_export_api: {
     description:
       "Enable the public API endpoint for raw consumption analytics export (POST /api/v1/w/:wId/analytics/consumption/export).",
