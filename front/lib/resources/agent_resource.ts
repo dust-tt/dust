@@ -266,26 +266,6 @@ export class AgentResource implements WithAccessControl {
     return configurations.map((configuration) => configuration.id);
   }
 
-  static async hasActiveConfigurations(
-    auth: Authenticator,
-    configurationModelIds: ModelId[]
-  ): Promise<boolean> {
-    if (configurationModelIds.length === 0) {
-      return false;
-    }
-
-    // Primary-key lookups, bounded by the supplied configuration IDs.
-    const configuration = await AgentConfigurationModel.findOne({
-      attributes: ["id"],
-      where: {
-        id: configurationModelIds,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        status: "active",
-      },
-    });
-    return configuration !== null;
-  }
-
   async grantEditors(
     auth: Authenticator,
     { editors, transaction }: { editors: UserType[]; transaction: Transaction }

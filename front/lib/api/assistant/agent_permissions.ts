@@ -1,4 +1,7 @@
-import { shadowCompare } from "@app/lib/api/permissions/shadow";
+import {
+  hasActiveConfigurations,
+  shadowCompare,
+} from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -95,9 +98,6 @@ export async function shadowUsageConfigIds(
     },
     // Usage queries only read active configurations; historical editor links do not affect them.
     equals: async (legacy, candidate) =>
-      !(await AgentResource.hasActiveConfigurations(
-        auth,
-        xor(legacy, candidate)
-      )),
+      !(await hasActiveConfigurations(auth, xor(legacy, candidate))),
   });
 }

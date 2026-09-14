@@ -1,7 +1,9 @@
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import logger from "@app/logger/logger";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
+import type { ModelId } from "@app/types/shared/model_id";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
@@ -69,4 +71,25 @@ export async function shadowCompare<T>({
   }
 
   return legacy;
+}
+
+// Temporary shadow-only lookup: keep the model access here and remove it with the shadow checks.
+export async function hasActiveConfigurations(
+  auth: Authenticator,
+  configurationModelIds: ModelId[]
+): Promise<boolean> {
+  if (configurationModelIds.length === 0) {
+    return false;
+  }
+
+  // Primary-key lookups, bounded by the supplied configuration IDs.
+  const configuration = await AgentConfigurationModel.findOne({
+    attributes: ["id"],
+    where: {
+      id: configurationModelIds,
+      workspaceId: auth.getNonNullableWorkspace().id,
+      status: "active",
+    },
+  });
+  return configuration !== null;
 }
