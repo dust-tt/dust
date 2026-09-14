@@ -10,6 +10,11 @@ import {
   CLAUDE_SONNET_4_6_MODEL_ID,
   CLAUDE_SONNET_5_MODEL_ID,
 } from "@app/types/assistant/models/anthropic";
+import {
+  GEMINI_3_6_FLASH_MODEL_ID,
+  GEMINI_3_7_FLASH_MODEL_ID,
+  GEMINI_3_8_FLASH_MODEL_ID,
+} from "@app/types/assistant/models/google_ai_studio";
 import type { StaticModelIdType } from "@app/types/assistant/models/models";
 import {
   GPT_5_4_MINI_MODEL_ID,
@@ -26,9 +31,16 @@ import {
 // Regional and multi-region endpoints charge a 10% premium over global endpoints.
 // Anthropic: Claude 4.5 and later models served through Vertex AI in EU.
 // OpenAI: models whose pricing pages specify the data-residency uplift.
+// Google: Gemini served through a non-global agent-platform endpoint.
 // Verified 2026-08-13:
 // https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai
 // https://openai.com/api/pricing/
+// Verified 2026-09-04:
+// https://cloud.google.com/gemini-enterprise-agent-platform/generative-ai/pricing
+//
+// This list is not completeness-enforced: a registered EU endpoint missing from it silently
+// bills at global rates. It must cover every `region = EUROPE` endpoint in `STREAM_ENDPOINTS`
+// whose `tokenPricing` sits above its global sibling's.
 const EU_PRICING_MULTIPLIER = 1.1;
 
 export const EU_UPLIFT_MODEL_IDS = [
@@ -49,6 +61,9 @@ export const EU_UPLIFT_MODEL_IDS = [
   GPT_5_6_TERRA_MODEL_ID,
   GPT_5_6_TERRA_LONG_CONTEXT_MODEL_ID,
   GPT_5_6_LUNA_MODEL_ID,
+  GEMINI_3_6_FLASH_MODEL_ID,
+  GEMINI_3_7_FLASH_MODEL_ID,
+  GEMINI_3_8_FLASH_MODEL_ID,
 ] as const satisfies readonly StaticModelIdType[];
 
 function applyRegionalUplift(pricing: PricingEntry): PricingEntry {
