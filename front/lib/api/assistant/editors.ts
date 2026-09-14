@@ -45,6 +45,9 @@ export async function getAgentEditorsShadowed(
             legacyOnly: true,
           }
         );
+        if (editors.isErr() && editors.error.code !== "group_not_found") {
+          throw editors.error;
+        }
         return sortedUserModelIds(editors.isOk() ? editors.value : []);
       }
       const resource = AgentResource.fromAgentConfiguration(
