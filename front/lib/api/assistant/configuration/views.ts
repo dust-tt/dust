@@ -1,3 +1,4 @@
+import { areAgentGrantsEnabled } from "@app/lib/api/assistant/agent_grants";
 import { filterAgentsByRequestedSpaces } from "@app/lib/api/assistant/configuration/agent";
 import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import type {
@@ -340,6 +341,17 @@ type ShadowCompareAgentViewArgs = {
   omitHeavyAttributes?: boolean;
 };
 
+function grantEditorFilter(
+  auth: Authenticator,
+  view: AgentsGetViewType
+): EditorFilter {
+  const grants = auth.getResourceIdsWithVerb("agent", "write");
+  if ((auth.isAdmin() && view === "archived") || grants.kind === "all") {
+    return { kind: "all" };
+  }
+  return { kind: "agent", modelIds: grants.resourceIds };
+}
+
 /**
  * @cc [owner:philipperolet,label:logging] recheck-view-mismatches
  * When IDs differ, recheck the legacy view once; log a mismatch only if they still differ.
@@ -370,13 +382,7 @@ async function shadowCompareAgentView({
     auth,
     legacy: stableAgentModelIds(legacyModels),
     candidate: async () => {
-      const grantResources = auth.getResourceIdsWithVerb("agent", "write");
-      const editorFilter: EditorFilter =
-        auth.isAdmin() && view === "archived"
-          ? { kind: "all" }
-          : grantResources.kind === "all"
-            ? { kind: "all" }
-            : { kind: "agent", modelIds: grantResources.resourceIds };
+      const editorFilter = grantEditorFilter(auth, view);
       const candidateModels =
         await fetchWorkspaceAgentConfigurationsWithoutActions(auth, {
           ...queryOptions,
@@ -424,7 +430,7 @@ async function shadowCompareAgentView({
 
 /**
  * @cc [owner:philipperolet,label:performance;error-handling] view-shadow-is-best-effort
- * View shadow comparisons are not awaited; their failures are logged without rejecting legacy reads.
+ * When serving legacy reads, view shadow comparisons are not awaited and their failures are logged.
  */
 async function fetchWorkspaceAgentConfigurationsForView(
   auth: Authenticator,
@@ -449,9 +455,11 @@ async function fetchWorkspaceAgentConfigurationsForView(
 ) {
   const user = auth.user();
 
-  const agentIdsForGroups = user
-    ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
-    : [];
+  const useGrants = await areAgentGrantsEnabled(auth);
+  const agentIdsForGroups =
+    !useGrants && user
+      ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
+      : [];
 
   const agentIdsForUserAsEditor = agentIdsForGroups.map(
     (g) => g.agentConfigurationId
@@ -465,8 +473,9 @@ async function fetchWorkspaceAgentConfigurationsForView(
     {
       agentPrefix,
       agentsGetView,
-      editorFilter:
-        agentsGetView === "archived"
+      editorFilter: useGrants
+        ? grantEditorFilter(auth, agentsGetView)
+        : agentsGetView === "archived"
           ? legacyEditorFilter
           : { kind: "configuration", modelIds: agentIdsForUserAsEditor },
       limit,
@@ -491,9 +500,10 @@ async function fetchWorkspaceAgentConfigurationsForView(
     : await filterAgentsByRequestedSpaces(auth, agentModels);
 
   if (
-    agentsGetView === "list" ||
-    agentsGetView === "manage" ||
-    agentsGetView === "archived"
+    !useGrants &&
+    (agentsGetView === "list" ||
+      agentsGetView === "manage" ||
+      agentsGetView === "archived")
   ) {
     void shadowCompareAgentView({
       auth,
@@ -520,7 +530,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
   return enrichAgentConfigurations(auth, allowedAgentModels, {
     variant,
-    agentIdsForUserAsEditor,
+    agentIdsForUserAsEditor: useGrants ? undefined : agentIdsForUserAsEditor,
   });
 }
 
