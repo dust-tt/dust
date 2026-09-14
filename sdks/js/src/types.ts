@@ -860,6 +860,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "frames_v2"
   | "google_sheets_tool"
   | "gpt_5_6_terra_long_context"
+  | "gpt_live"
   | "http_client_tool"
   | "index_private_slack_channel"
   | "inline_tool_knowledge_reference"
