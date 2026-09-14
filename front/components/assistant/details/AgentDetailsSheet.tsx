@@ -17,6 +17,7 @@ import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_mem
 import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { useEmailAgentFooter } from "@app/lib/swr/user";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import { areEmailAgentsAllowed } from "@app/lib/workspace_policies";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
@@ -35,6 +36,7 @@ import {
   Button,
   Chip,
   ContentMessage,
+  ContentMessageAction,
   ContentMessageInline,
   InfoCircle,
   Lock01,
@@ -52,6 +54,7 @@ import {
   TabsList,
   TabsTrigger,
   Users01,
+  XClose,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useEffect, useState } from "react";
@@ -132,7 +135,7 @@ type AgentDetailsSheetProps = {
 
 /** @cc [owner:philipperolet,label:product] email-agent-footer
  * Active, readable agents not blocked from email show an address footer, with enablement guidance
- * when workspace email agents are disabled.
+ * when workspace email agents are disabled, unless the user has dismissed it.
  */
 export function AgentDetailsSheet({
   agentId,
@@ -146,6 +149,9 @@ export function AgentDetailsSheet({
   const [triggerEditMode, setTriggerEditMode] = useState<SheetMode | null>(
     null
   );
+  const { showEmailFooter, dismissFooter, isDismissing } = useEmailAgentFooter({
+    disabled: !agentId,
+  });
 
   const {
     agentConfiguration,
@@ -451,7 +457,8 @@ export function AgentDetailsSheet({
                 </ContentMessage>
               )}
             </SheetContainer>
-            {agentConfiguration?.status === "active" &&
+            {showEmailFooter &&
+              agentConfiguration?.status === "active" &&
               agentConfiguration.canRead &&
               !(
                 Array.isArray(owner.metadata?.emailBlacklistedAgentIds) &&
@@ -465,6 +472,13 @@ export function AgentDetailsSheet({
                       content={`${emailFooterAction} **${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}**. [Learn more](https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents)`}
                       forcedTextSize="text-xs"
                       optimizeForStreaming={false}
+                    />
+                    <ContentMessageAction
+                      variant="ghost"
+                      icon={XClose}
+                      tooltip="Dismiss email tip for all agents"
+                      onClick={dismissFooter}
+                      isLoading={isDismissing}
                     />
                   </ContentMessageInline>
                 </div>

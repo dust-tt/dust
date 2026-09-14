@@ -20,7 +20,7 @@ import type {
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 
 export function useUser(
@@ -81,6 +81,55 @@ export function useUserMetadata(
     isMetadataLoading: !error && !data,
     isMetadataError: error,
     mutateMetadata: mutate,
+  };
+}
+
+/** @cc [owner:philipperolet,label:product] email-footer-dismissal
+ * Dismissal persists for the user across all agents and workspaces. Hide the footer until the
+ * preference has loaded, and only mark it dismissed after the save succeeds.
+ */
+export function useEmailAgentFooter({ disabled }: { disabled: boolean }) {
+  const key = "emailAgentFooterDismissed";
+  const { metadata, isMetadataLoading, isMetadataError, mutateMetadata } =
+    useUserMetadata(key, { disabled });
+  const [isDismissing, setIsDismissing] = useState(false);
+  const sendNotification = useSendNotification();
+
+  const dismissFooter = async () => {
+    setIsDismissing(true);
+    try {
+      const response = await clientFetch(`/api/user/metadata/${key}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: "true" }),
+      }).catch(() => null);
+
+      if (!response?.ok) {
+        sendNotification({
+          type: "error",
+          title: "Could not dismiss the email tip",
+          description: "Please try again.",
+        });
+        return;
+      }
+
+      await mutateMetadata(
+        { metadata: { key, value: "true" } },
+        { revalidate: false }
+      );
+    } finally {
+      setIsDismissing(false);
+    }
+  };
+
+  return {
+    showEmailFooter:
+      !disabled &&
+      !isMetadataLoading &&
+      !isMetadataError &&
+      metadata?.value !== "true",
+    dismissFooter,
+    isDismissing,
   };
 }
 
