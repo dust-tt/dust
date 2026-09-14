@@ -12,7 +12,9 @@ function openingMessage(view: AnalyticsViewInput): string {
   return `<dust_system>
 The user just opened the @analyst panel on the workspace Analytics page.
 
-What they have set up on the page right now:
+Below are the period and filters they had applied at that moment. Use them for this greeting only.
+On later turns read the view again, since the user may have changed it. If you have no tool to read
+it, say you cannot see their current period and filters.
 ${describeAnalyticsView(view)}
 
 Do NOT call any tools. Greet briefly, naming the period they chose and, when they have any, each

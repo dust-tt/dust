@@ -2,9 +2,14 @@ import type { AnalyticsViewInput } from "@app/components/workspace/analytics/ana
 import { registerGetAnalyticsViewTool } from "@app/components/workspace/analytics/tools/getAnalyticsView";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 const SERVER_NAME = "analytics-panel-client";
+
+export interface AnalyticsMCPServerHandle {
+  serverId: string | undefined;
+  isRegistering: boolean;
+}
 
 /**
  * Registers the client-side MCP server backing the Analytics conversation panel, exposing the
@@ -13,14 +18,20 @@ const SERVER_NAME = "analytics-panel-client";
  */
 export function useAnalyticsMCPServer({
   enabled,
-  getView,
+  view,
   workspaceId,
 }: {
   enabled: boolean;
-  getView: () => AnalyticsViewInput;
+  view: AnalyticsViewInput;
   workspaceId: string;
-}): string | undefined {
+}): AnalyticsMCPServerHandle {
   const [serverId, setServerId] = useState<string | undefined>(undefined);
+  const [isRegistering, setIsRegistering] = useState(true);
+  // Read through a ref so a filter change does not re-register the server.
+  const viewRef = useRef(view);
+  useLayoutEffect(() => {
+    viewRef.current = view;
+  }, [view]);
 
   useEffect(() => {
     if (!enabled) {
@@ -47,7 +58,7 @@ export function useAnalyticsMCPServer({
     const initializeMCPServer = async () => {
       try {
         server = new McpServer({ name: SERVER_NAME, version: "1.0.0" });
-        registerGetAnalyticsViewTool(server, getView);
+        registerGetAnalyticsViewTool(server, () => viewRef.current);
 
         transport = new BrowserMCPTransport(
           workspaceId,
@@ -55,6 +66,7 @@ export function useAnalyticsMCPServer({
           (newServerId) => {
             if (!cancelled) {
               setServerId(newServerId);
+              setIsRegistering(false);
             }
           }
         );
@@ -70,6 +82,7 @@ export function useAnalyticsMCPServer({
       } catch (err) {
         console.error("[useAnalyticsMCPServer] Failed to initialize:", err);
         closeServer();
+        setIsRegistering(false);
       }
     };
 
@@ -80,7 +93,7 @@ export function useAnalyticsMCPServer({
       closeServer();
       setServerId(undefined);
     };
-  }, [enabled, getView, workspaceId]);
+  }, [enabled, workspaceId]);
 
-  return serverId;
+  return { serverId, isRegistering };
 }

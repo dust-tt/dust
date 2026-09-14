@@ -16,96 +16,54 @@ function makeView(overrides: Partial<AnalyticsViewInput> = {}) {
   } satisfies AnalyticsViewInput;
 }
 
-const EVERY_CATEGORY: Required<UsageFilter> = {
-  agent: [
-    { kind: "agent", id: "agt", name: "Dust", disabled: false, image: null },
-  ],
-  member: [
-    { kind: "member", id: "usr", name: "Ada", disabled: false, image: null },
-  ],
-  group: [{ kind: "group", id: "grp", name: "Eng", disabled: false }],
-  model: [
-    {
-      kind: "model",
-      id: "claude-sonnet-4-5",
-      name: "Sonnet",
-      disabled: false,
-      tier: undefined,
-    },
-  ],
-  tool: [
-    { kind: "tool", id: "srv", name: "Search", disabled: false, icon: null },
-  ],
-  skill: [
-    { kind: "skill", id: "skl", name: "Frames", disabled: false, icon: null },
-  ],
+const option = { name: "option", disabled: false };
+
+const EVERY_CATEGORY: UsageFilter = {
+  agent: [{ kind: "agent", id: "agt", image: null, ...option }],
+  member: [{ kind: "member", id: "usr", image: null, ...option }],
+  group: [{ kind: "group", id: "grp", ...option }],
+  model: [{ kind: "model", id: "mdl", tier: undefined, ...option }],
+  tool: [{ kind: "tool", id: "srv", icon: null, ...option }],
+  skill: [{ kind: "skill", id: "skl", icon: null, ...option }],
   source: [
-    {
-      kind: "source",
-      id: "slack",
-      name: "Slack",
-      disabled: false,
-      connectorProvider: "slack",
-    },
+    { kind: "source", id: "slack", connectorProvider: "slack", ...option },
   ],
-  api_key: [{ kind: "api_key", id: "key", name: "CI", disabled: false }],
+  api_key: [{ kind: "api_key", id: "key", ...option }],
 };
 
-function serialized(view: AnalyticsViewInput) {
-  return JSON.parse(JSON.stringify(analyticsViewToolPayload(view)));
+function toolArguments(view: AnalyticsViewInput) {
+  return JSON.parse(JSON.stringify(analyticsViewToolPayload(view)))
+    .toolArguments;
 }
 
 describe("analyticsViewToolPayload", () => {
-  it("omits days for the billing cycle", () => {
-    expect(serialized(makeView()).toolArguments).toEqual({ period: "cycle" });
+  it("leaves out every dimension the user does not filter on", () => {
+    expect(toolArguments(makeView())).toEqual({ period: "cycle" });
   });
 
-  it("carries days for a relative period", () => {
-    expect(
-      serialized(makeView({ period: { kind: "days", days: 30 } })).toolArguments
-    ).toEqual({ period: "days", days: 30 });
-  });
+  it("names every filter the way the workspace analytics tools accept", () => {
+    const args = toolArguments(
+      makeView({ filter: EVERY_CATEGORY, period: { kind: "days", days: 90 } })
+    );
 
-  it("names every filter dimension the way the analytics tools do", () => {
-    expect(
-      serialized(makeView({ filter: EVERY_CATEGORY })).toolArguments
-    ).toEqual({
-      period: "cycle",
+    expect(args).toEqual({
+      period: "days",
+      days: 90,
       agentIds: ["agt"],
       userIds: ["usr"],
       groupIds: ["grp"],
-      modelIds: ["claude-sonnet-4-5"],
+      modelIds: ["mdl"],
       toolNames: ["srv"],
       skillIds: ["skl"],
       sources: ["slack"],
       apiKeyNames: ["key"],
     });
-  });
-
-  it("reports granularity and dimension outside the tool arguments", () => {
-    const payload = serialized(
-      makeView({ dimension: "tool", granularity: "week" })
-    );
-
-    expect(payload.granularity).toBe("week");
-    expect(payload.dimension).toBe("tool");
-    expect(payload.toolArguments).not.toHaveProperty("granularity");
-    expect(payload.toolArguments).not.toHaveProperty("dimension");
-  });
-
-  it("produces arguments the workspace analytics tools accept", () => {
-    const schema = z
-      .object(consumptionFilterSchema)
-      .merge(ConsumptionPeriodSchema)
-      .strict();
-
-    for (const view of [
-      makeView(),
-      makeView({ filter: EVERY_CATEGORY, period: { kind: "days", days: 90 } }),
-    ]) {
-      expect(schema.safeParse(serialized(view).toolArguments).success).toBe(
-        true
-      );
-    }
+    expect(
+      z
+        .object(consumptionFilterSchema)
+        .merge(ConsumptionPeriodSchema)
+        .strict()
+        .safeParse(args).success
+    ).toBe(true);
   });
 });

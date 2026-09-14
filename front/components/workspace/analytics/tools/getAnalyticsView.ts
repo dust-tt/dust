@@ -6,20 +6,19 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 export const GET_ANALYTICS_VIEW_TOOL_NAME = "get_analytics_view";
 
 const DESCRIPTION = `Read the period and filters the user currently has applied on the workspace \
-Analytics page they are looking at.
+Analytics page.
 
-Call this before answering any question that refers to what the user sees — "this", "these agents", \
-"the current view", "my filters" — and call it again on every later turn that depends on the view: \
-the user can change the filters at any moment, so an earlier reading goes stale.
+Call this before answering anything that refers to what the user sees ("this", "these agents", \
+"my filters") and again on every later turn that depends on the view, since the user can change \
+the filters at any moment.
 
 Forward every key of \`toolArguments\` unchanged to the workspace analytics tools so your figures \
-match what is on screen. A key that is absent means the user filters nothing on that dimension; \
-never substitute an empty array for it.
+match what is on screen. An absent key means no filter on that dimension, never replace it with an \
+empty array.
 
-\`granularity\` is the bucket size to pass to get_credit_timeseries, \`dimension\` is what the user \
-is currently breaking down by, named \`dimension\` on the ranking tools and \`breakdownBy\` on \
-get_credit_timeseries, and \`description\` is display text for talking to the user. None of the \
-three is a filter.`;
+\`granularity\` is the bucket size for get_credit_timeseries. \`dimension\` is the current \
+breakdown, passed as \`dimension\` to the ranking tools and \`breakdownBy\` to \
+get_credit_timeseries. \`description\` is display text for the user. None of the three is a filter.`;
 
 /**
  * @cc [owner:achilleburah,label:mcp;product] tool-arguments-are-pass-through
@@ -27,8 +26,6 @@ three is a filter.`;
  * `workspace_analytics` tool that accepts filters, so the agent can forward them unchanged.
  * A dimension the user does not filter on MUST be absent rather than an empty array, which the
  * consumption endpoints would read as "match nothing".
- * Conversely every dimension `USAGE_FILTER_CATEGORIES` can express MUST appear here, or a filter
- * the user applied on screen would leave the agent scoped more broadly than the page.
  */
 export function analyticsViewToolPayload(view: AnalyticsViewInput) {
   const ids = usageFilterToIds(view.filter);
@@ -62,10 +59,7 @@ export function registerGetAnalyticsViewTool(
       description: DESCRIPTION,
       _meta: {
         dust: {
-          // The page state is already in the browser, and prompting to read what the user is
-          // looking at would land on most turns.
           stake: "never_ask",
-          // Answering "what am I looking at" must not cost a tool-search hop first.
           eager: true,
           displayLabels: {
             running: "Reading the Analytics view",

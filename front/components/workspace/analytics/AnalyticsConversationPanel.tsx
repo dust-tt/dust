@@ -14,14 +14,7 @@ import { useAnalyticsMCPServer } from "@app/hooks/useAnalyticsMCPServer";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Button, Icon, Robot, Spinner, XClose } from "@dust-tt/sparkle";
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface AnalyticsConversationPanelHeaderProps {
   onClose: () => void;
@@ -52,6 +45,7 @@ interface AnalyticsConversationPanelBodyProps {
   user: UserType;
   clientSideMCPServerIds: string[];
   conversation: ConversationType | null;
+  isRegisteringMCPServer: boolean;
   isOpen: boolean;
   isCreatingConversation: boolean;
   creationFailed: boolean;
@@ -64,6 +58,7 @@ function AnalyticsConversationPanelBody({
   user,
   clientSideMCPServerIds,
   conversation,
+  isRegisteringMCPServer,
   isOpen,
   isCreatingConversation,
   creationFailed,
@@ -103,7 +98,7 @@ function AnalyticsConversationPanelBody({
     );
   }
 
-  if (isCreatingConversation || !conversation) {
+  if (isCreatingConversation || !conversation || isRegisteringMCPServer) {
     return (
       <div className="flex h-full min-h-0 items-center justify-center">
         <div className="flex items-center gap-3">
@@ -173,39 +168,29 @@ export function AnalyticsConversationPanel({
     startConversation,
     resetConversation,
   } = useAnalyticsConversation({ owner, user, view });
+  const [mcpServerEnabled, setMcpServerEnabled] = useState(false);
 
-  const viewRef = useRef(view);
-  useLayoutEffect(() => {
-    viewRef.current = view;
-  }, [view]);
-  const getView = useCallback(() => viewRef.current, []);
-
-  // Latched rather than tied to `isOpen`: closing the panel does not cancel a running generation,
-  // and deregistering under it leaves its `get_analytics_view` call without a subscriber until the
-  // MCP request times out. Registering only after a first open still keeps page loads that never
-  // open the panel free of an SSE stream.
-  const [hasOpenedPanel, setHasOpenedPanel] = useState(false);
-  useEffect(() => {
-    if (isOpen) {
-      setHasOpenedPanel(true);
-    }
-  }, [isOpen]);
-
-  const analyticsMCPServerId = useAnalyticsMCPServer({
-    enabled: hasOpenedPanel,
-    getView,
-    workspaceId: owner.sId,
-  });
+  const { serverId: analyticsMCPServerId, isRegistering } =
+    useAnalyticsMCPServer({
+      enabled: mcpServerEnabled,
+      view,
+      workspaceId: owner.sId,
+    });
   const clientSideMCPServerIds = useMemo(
     () => (analyticsMCPServerId ? [analyticsMCPServerId] : []),
     [analyticsMCPServerId]
   );
-
   // `ResizableSidePanel` keeps this panel mounted while closed, so a mount effect would bootstrap
   // a conversation on every Analytics page load. Wait for filter resolution too: the opening
   // message names the filters and is never regenerated, so starting early would name raw ids.
   useEffect(() => {
-    if (isOpen && !isFacetsLoading) {
+    if (!isOpen) {
+      return;
+    }
+
+    setMcpServerEnabled(true);
+
+    if (!isFacetsLoading) {
       void startConversation();
     }
   }, [isOpen, isFacetsLoading, startConversation]);
@@ -237,6 +222,7 @@ export function AnalyticsConversationPanel({
                   user={user}
                   clientSideMCPServerIds={clientSideMCPServerIds}
                   conversation={conversation}
+                  isRegisteringMCPServer={isRegistering}
                   isOpen={isOpen}
                   isCreatingConversation={isCreatingConversation}
                   creationFailed={creationFailed}
