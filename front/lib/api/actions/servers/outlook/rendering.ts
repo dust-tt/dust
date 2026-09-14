@@ -1,6 +1,6 @@
 import type { OutlookEvent } from "@app/lib/api/actions/servers/outlook/outlook_api_helper";
 import { pluralize } from "@app/types/shared/utils/string_utils";
-import moment from "moment-timezone";
+import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 
 interface EnrichedOutlookEventDateTime {
   dateTime: string;
@@ -31,12 +31,15 @@ function stripHtmlTags(html: string): string {
     .trim();
 }
 
+// `dateTime` is a naive local timestamp (no offset), local to `sourceTimezone`. Resolves the
+// absolute instant it represents; `targetTimezone` is only consulted by callers formatting it
+// back out, and can differ from `sourceTimezone` (the two calendar dates then differ too, near
+// midnight in either zone).
 function parseDateTimeInTimezone(
   dateTime: string,
-  sourceTimezone: string,
-  targetTimezone: string
-): moment.Moment {
-  return moment.tz(dateTime, sourceTimezone).tz(targetTimezone);
+  sourceTimezone: string
+): Date {
+  return fromZonedTime(dateTime, sourceTimezone);
 }
 
 function enrichEventWithDayOfWeek(
@@ -46,16 +49,16 @@ function enrichEventWithDayOfWeek(
   const startTz = userTimezone ?? event.start.timeZone ?? "UTC";
   const endTz = userTimezone ?? event.end.timeZone ?? "UTC";
 
-  const startMoment = parseDateTimeInTimezone(
+  const startInstant = parseDateTimeInTimezone(
     event.start.dateTime,
-    event.start.timeZone ?? "UTC",
-    startTz
+    event.start.timeZone ?? "UTC"
   );
-  const endMoment = parseDateTimeInTimezone(
+  const endInstant = parseDateTimeInTimezone(
     event.end.dateTime,
-    event.end.timeZone ?? "UTC",
-    endTz
+    event.end.timeZone ?? "UTC"
   );
+  const startDayOfWeek = formatInTimeZone(startInstant, startTz, "EEEE");
+  const endDayOfWeek = formatInTimeZone(endInstant, endTz, "EEEE");
 
   return {
     ...event,
@@ -63,13 +66,13 @@ function enrichEventWithDayOfWeek(
       dateTime: event.start.dateTime,
       timeZone: event.start.timeZone,
       isAllDay: event.isAllDay ?? false,
-      eventDayOfWeek: startMoment.format("dddd"),
+      eventDayOfWeek: startDayOfWeek,
     },
     end: {
       dateTime: event.end.dateTime,
       timeZone: event.end.timeZone,
       isAllDay: event.isAllDay ?? false,
-      eventDayOfWeek: endMoment.format("dddd"),
+      eventDayOfWeek: endDayOfWeek,
     },
   };
 }
@@ -166,18 +169,17 @@ export function renderOutlookEvent(
   if (enrichedEvent.start) {
     const start = enrichedEvent.start;
     const targetTz = userTimezone ?? start.timeZone ?? "UTC";
-    const startMoment = parseDateTimeInTimezone(
+    const startInstant = parseDateTimeInTimezone(
       start.dateTime,
-      start.timeZone ?? "UTC",
-      targetTz
+      start.timeZone ?? "UTC"
     );
 
     if (start.isAllDay) {
-      const dateStr = startMoment.format("MMMM D, YYYY");
+      const dateStr = formatInTimeZone(startInstant, targetTz, "MMMM d, yyyy");
       lines.push(`Date: ${start.eventDayOfWeek}, ${dateStr} (All day)`);
     } else {
-      const timeStr = startMoment.format("h:mm A");
-      const dateStr = startMoment.format("MMMM D, YYYY");
+      const timeStr = formatInTimeZone(startInstant, targetTz, "h:mm a");
+      const dateStr = formatInTimeZone(startInstant, targetTz, "MMMM d, yyyy");
       lines.push(
         `Start: ${start.eventDayOfWeek}, ${dateStr} at ${timeStr} (${targetTz})`
       );
@@ -187,14 +189,13 @@ export function renderOutlookEvent(
   if (enrichedEvent.end && !enrichedEvent.isAllDay) {
     const end = enrichedEvent.end;
     const targetTz = userTimezone ?? end.timeZone ?? "UTC";
-    const endMoment = parseDateTimeInTimezone(
+    const endInstant = parseDateTimeInTimezone(
       end.dateTime,
-      end.timeZone ?? "UTC",
-      targetTz
+      end.timeZone ?? "UTC"
     );
 
-    const timeStr = endMoment.format("h:mm A");
-    const dateStr = endMoment.format("MMMM D, YYYY");
+    const timeStr = formatInTimeZone(endInstant, targetTz, "h:mm a");
+    const dateStr = formatInTimeZone(endInstant, targetTz, "MMMM d, yyyy");
     lines.push(
       `End: ${end.eventDayOfWeek}, ${dateStr} at ${timeStr} (${targetTz})`
     );

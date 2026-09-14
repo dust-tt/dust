@@ -37,7 +37,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 import type { WorkspaceType } from "@app/types/user";
-import moment from "moment-timezone";
+import { formatInTimeZone } from "date-fns-tz";
 
 // This section is included in the system prompt, which benefits from prompt caching.
 // To maximize cache hits, avoid adding high-entropy data (e.g., timestamps with time precision,
@@ -56,11 +56,15 @@ function constructContextSection({
   owner: WorkspaceType | null;
   disableFormattingPrompt: boolean;
 }): string {
-  const d = moment(new Date()).tz(userMessage.context.timezone);
+  const currentDate = formatInTimeZone(
+    new Date(),
+    userMessage.context.timezone,
+    "yyyy-MM-dd (EEE)"
+  );
 
   let context = "# CONTEXT\n\n";
   context += `assistant: @${agentConfiguration.name}\n`;
-  context += `current_date: ${d.format("YYYY-MM-DD (ddd)")}\n`;
+  context += `current_date: ${currentDate}\n`;
   if (owner) {
     context += `workspace: ${owner.name}\n`;
   }
