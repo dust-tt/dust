@@ -836,6 +836,7 @@ export async function postUserMessage(
 
   if (user && modelResolution) {
     const premiumLimitResult = await enforcePremiumModelLimit(auth, {
+      agentConfigurationId: mentionedAgentConfiguration.sId,
       user,
       resolution: modelResolution,
       context,
@@ -1257,6 +1258,7 @@ export async function editUserMessage(
 
   if (user && modelResolution) {
     const premiumLimitResult = await enforcePremiumModelLimit(auth, {
+      agentConfigurationId: mentionedAgentConfiguration.sId,
       user,
       resolution: modelResolution,
       context: message.context,
@@ -1834,6 +1836,7 @@ export async function retryAgentMessage(
   const user = auth.user();
   if (user) {
     const premiumLimitResult = await enforcePremiumModelLimit(auth, {
+      agentConfigurationId: message.configuration.sId,
       user,
       resolution: retryModelResolution,
       context: parentUserMessage.context,
@@ -3442,6 +3445,7 @@ export async function updateAgentMessageWithFinalStatus(
     const user = promotedAuth.user();
     if (user) {
       const premiumLimitResult = await enforcePremiumModelLimit(promotedAuth, {
+        agentConfigurationId: agentMessage.configuration.sId,
         user,
         resolution: modelResolution,
         context: promotedUserMessage.context,

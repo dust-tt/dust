@@ -70,10 +70,12 @@ async function resolveDowngradeTarget(
 export async function applyPremiumModelFairUse(
   auth: Authenticator,
   {
+    agentConfigurationId,
     user,
     resolution,
     context,
   }: {
+    agentConfigurationId: string;
     user: UserResource;
     resolution: AgentMessageModelResolution;
     context: UserMessageContext;
@@ -123,6 +125,7 @@ export async function applyPremiumModelFairUse(
     {
       workspaceId: workspace.sId,
       userId: user.sId,
+      agentConfigurationId,
       limit: PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
       modelId: resolvedModel.modelId,
       reasoningEffort: resolvedModel.reasoningEffort,
@@ -143,6 +146,7 @@ export async function applyPremiumModelFairUse(
       event: "premium_model_downgraded",
       workspaceId: workspace.sId,
       extra: {
+        agent_id: agentConfigurationId,
         limit_messages: PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
         requested_model_id: resolvedModel.modelId,
         requested_reasoning_effort: resolvedModel.reasoningEffort,
@@ -168,10 +172,12 @@ export async function applyPremiumModelFairUse(
 export async function enforcePremiumModelLimit(
   auth: Authenticator,
   {
+    agentConfigurationId,
     user,
     resolution,
     context,
   }: {
+    agentConfigurationId: string;
     user: UserResource;
     resolution: AgentMessageModelResolution;
     context: UserMessageContext;
@@ -180,6 +186,7 @@ export async function enforcePremiumModelLimit(
   Result<AgentMessageModelResolution, APIErrorWithContentfulStatusCode>
 > {
   const decision = await applyPremiumModelFairUse(auth, {
+    agentConfigurationId,
     user,
     resolution,
     context,
