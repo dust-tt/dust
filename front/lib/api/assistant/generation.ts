@@ -28,6 +28,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
@@ -36,6 +37,7 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
+import { isValidTimeZone } from "@app/types/shared/utils/date_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { formatInTimeZone } from "date-fns-tz";
 
@@ -56,9 +58,17 @@ function constructContextSection({
   owner: WorkspaceType | null;
   disableFormattingPrompt: boolean;
 }): string {
+  const { timezone } = userMessage.context;
+  const resolvedTimezone = isValidTimeZone(timezone) ? timezone : "UTC";
+  if (resolvedTimezone !== timezone) {
+    logger.warn(
+      { timezone },
+      "Invalid IANA timezone in user message context, falling back to UTC"
+    );
+  }
   const currentDate = formatInTimeZone(
     new Date(),
-    userMessage.context.timezone,
+    resolvedTimezone,
     "yyyy-MM-dd (EEE)"
   );
 

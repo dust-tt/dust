@@ -1,6 +1,21 @@
 import type { OutlookEvent } from "@app/lib/api/actions/servers/outlook/outlook_api_helper";
+import logger from "@app/logger/logger";
+import { isValidTimeZone } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
+
+// Falls back to UTC and logs rather than throwing, so one malformed timezone
+// from an external source doesn't fail the whole event render.
+function resolveTimeZone(timeZone: string): string {
+  if (isValidTimeZone(timeZone)) {
+    return timeZone;
+  }
+  logger.warn(
+    { timeZone },
+    "Invalid IANA timezone in Outlook event, falling back to UTC"
+  );
+  return "UTC";
+}
 
 interface EnrichedOutlookEventDateTime {
   dateTime: string;
@@ -31,31 +46,22 @@ function stripHtmlTags(html: string): string {
     .trim();
 }
 
-// `dateTime` is a naive local timestamp (no offset), local to `sourceTimezone`. Resolves the
-// absolute instant it represents; `targetTimezone` is only consulted by callers formatting it
-// back out, and can differ from `sourceTimezone` (the two calendar dates then differ too, near
-// midnight in either zone).
-function parseDateTimeInTimezone(
-  dateTime: string,
-  sourceTimezone: string
-): Date {
-  return fromZonedTime(dateTime, sourceTimezone);
-}
-
 function enrichEventWithDayOfWeek(
   event: OutlookEvent,
   userTimezone?: string
 ): EnrichedOutlookEvent {
-  const startTz = userTimezone ?? event.start.timeZone ?? "UTC";
-  const endTz = userTimezone ?? event.end.timeZone ?? "UTC";
-
-  const startInstant = parseDateTimeInTimezone(
-    event.start.dateTime,
-    event.start.timeZone ?? "UTC"
+  const startTz = resolveTimeZone(
+    userTimezone ?? event.start.timeZone ?? "UTC"
   );
-  const endInstant = parseDateTimeInTimezone(
+  const endTz = resolveTimeZone(userTimezone ?? event.end.timeZone ?? "UTC");
+
+  const startInstant = fromZonedTime(
+    event.start.dateTime,
+    resolveTimeZone(event.start.timeZone ?? "UTC")
+  );
+  const endInstant = fromZonedTime(
     event.end.dateTime,
-    event.end.timeZone ?? "UTC"
+    resolveTimeZone(event.end.timeZone ?? "UTC")
   );
   const startDayOfWeek = formatInTimeZone(startInstant, startTz, "EEEE");
   const endDayOfWeek = formatInTimeZone(endInstant, endTz, "EEEE");
@@ -168,10 +174,10 @@ export function renderOutlookEvent(
 
   if (enrichedEvent.start) {
     const start = enrichedEvent.start;
-    const targetTz = userTimezone ?? start.timeZone ?? "UTC";
-    const startInstant = parseDateTimeInTimezone(
+    const targetTz = resolveTimeZone(userTimezone ?? start.timeZone ?? "UTC");
+    const startInstant = fromZonedTime(
       start.dateTime,
-      start.timeZone ?? "UTC"
+      resolveTimeZone(start.timeZone ?? "UTC")
     );
 
     if (start.isAllDay) {
@@ -188,10 +194,10 @@ export function renderOutlookEvent(
 
   if (enrichedEvent.end && !enrichedEvent.isAllDay) {
     const end = enrichedEvent.end;
-    const targetTz = userTimezone ?? end.timeZone ?? "UTC";
-    const endInstant = parseDateTimeInTimezone(
+    const targetTz = resolveTimeZone(userTimezone ?? end.timeZone ?? "UTC");
+    const endInstant = fromZonedTime(
       end.dateTime,
-      end.timeZone ?? "UTC"
+      resolveTimeZone(end.timeZone ?? "UTC")
     );
 
     const timeStr = formatInTimeZone(endInstant, targetTz, "h:mm a");
