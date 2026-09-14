@@ -1,7 +1,6 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentEditorsShadowed } from "@app/lib/api/assistant/editors";
+import { getAgentEditors } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
@@ -114,18 +113,13 @@ export async function getAgentConfigurationContext(
         : "strict",
     }
   );
-  const editorsResult = await GroupResource.findEditorGroupForAgent(
+  const editorsResult = await getAgentEditors(
     auth,
-    agentConfiguration
+    agentConfiguration,
+    "getAgentConfigurationContext"
   );
 
   if (editorsResult.isErr()) {
-    await getAgentEditorsShadowed(
-      auth,
-      agentConfiguration,
-      [],
-      "getAgentConfigurationContext"
-    );
     if (requireEditorGroup) {
       return new Err({
         status_code: 400,
@@ -143,12 +137,9 @@ export async function getAgentConfigurationContext(
     });
   }
 
-  const editorUsers = await getAgentEditorsShadowed(
-    auth,
+  return new Ok({
     agentConfiguration,
-    await editorsResult.value.getActiveMembers(auth),
-    "getAgentConfigurationContext"
-  );
-
-  return new Ok({ agentConfiguration, editorUsers, skills });
+    editorUsers: editorsResult.value,
+    skills,
+  });
 }
