@@ -443,11 +443,17 @@ impl TableSchema {
         Ok(TableSchema(merged_schema))
     }
 
+    /**
+     * @cc [label:product] dbml-includes-table-metadata-note
+     * When `table_metadata_note` is set (e.g. BigQuery partition / clustering), it is
+     * rendered as an additional DBML `Note` so agents can prefer filtered reads.
+     */
     pub fn render_dbml(
         &self,
         name: &str,
         description: &str,
         use_column_description: bool,
+        table_metadata_note: Option<&str>,
     ) -> String {
         let mut result = format!(
             "Table {} {{\n{}",
@@ -458,8 +464,21 @@ impl TableSchema {
                 .join("\n")
         );
 
+        let mut notes = Vec::new();
         if !description.is_empty() {
-            result.push_str(&format!("\n\n  Note: '{}'", description));
+            notes.push(description);
+        }
+        if let Some(note) = table_metadata_note {
+            if !note.is_empty() {
+                notes.push(note);
+            }
+        }
+
+        if !notes.is_empty() {
+            result.push_str("\n");
+            for note in notes {
+                result.push_str(&format!("\n  Note: '{}'", note));
+            }
         }
 
         result.push_str("\n}");
@@ -1022,6 +1041,31 @@ mod tests {
         assert!(rows.next()?.is_none());
 
         Ok(())
+    }
+
+    #[test]
+    fn test_render_dbml_includes_table_metadata_note() {
+        let schema = TableSchema::from_columns(vec![TableSchemaColumn::new(
+            "event_date",
+            TableSchemaFieldType::DateTime,
+            None,
+            None,
+        )]);
+
+        let dbml = schema.render_dbml(
+            "project.dataset.events",
+            "Orders events",
+            false,
+            Some(
+                "Partition type: DAY; Partition column: event_date. Filter on the partition column (and clustering fields when useful) to avoid full table scans.",
+            ),
+        );
+
+        assert!(dbml.contains("Table project.dataset.events {"));
+        assert!(dbml.contains("event_date timestamp"));
+        assert!(dbml.contains("Note: 'Orders events'"));
+        assert!(dbml.contains("Partition type: DAY"));
+        assert!(dbml.contains("Partition column: event_date"));
     }
 
     // Helper function to set up an in-memory database with a test table

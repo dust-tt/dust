@@ -129,13 +129,14 @@ pub async fn get_tables_schema(
             let dbmls = tables
                 .iter()
                 .zip(schemas.iter())
-                .map(|(table, schema)| {
+                .map(|(table, remote_schema)| {
                     let table_id = table.table_id_for_dbml().replace("__DUST_DOT__", ".");
-                    schema.as_ref().map(|s| {
-                        s.render_dbml(
+                    remote_schema.as_ref().map(|s| {
+                        s.schema.render_dbml(
                             &table_id,
                             table.description(),
                             remote_db.should_use_column_description(table),
+                            s.table_metadata_note.as_deref(),
                         )
                     })
                 })
@@ -146,10 +147,10 @@ pub async fn get_tables_schema(
                 schemas
                     .into_iter()
                     .zip(dbmls.into_iter())
-                    .filter_map(|(schema, dbml)| {
-                        if let (Some(schema), Some(dbml)) = (schema, dbml) {
+                    .filter_map(|(remote_schema, dbml)| {
+                        if let (Some(remote_schema), Some(dbml)) = (remote_schema, dbml) {
                             Some(GetTableSchemaResult {
-                                schema: Some(schema),
+                                schema: Some(remote_schema.schema),
                                 dbml,
                                 head: None,
                             })

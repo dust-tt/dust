@@ -8,7 +8,9 @@ use serde::Deserialize;
 
 use crate::databases::{
     database::{QueryDatabaseError, QueryResult, SqlDialect},
-    remote_databases::remote_database::{QueryIdentityContext, RemoteDatabase, QUERY_TIMEOUT},
+    remote_databases::remote_database::{
+        QueryIdentityContext, RemoteDatabase, RemoteTableSchema, QUERY_TIMEOUT,
+    },
     table::Table,
     table_schema::{TableSchema, TableSchemaColumn, TableSchemaFieldType},
 };
@@ -498,7 +500,10 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
         self.execute_query(&session, query).await
     }
 
-    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<Option<TableSchema>>> {
+    async fn get_tables_schema(
+        &self,
+        opaque_ids: &Vec<&str>,
+    ) -> Result<Vec<Option<RemoteTableSchema>>> {
         // Construct a "DESCRIBE TABLE" query for each opaque table ID.
         let queries: Vec<String> = opaque_ids
             .iter()
@@ -542,7 +547,10 @@ impl RemoteDatabase for SnowflakeRemoteDatabase {
                         )
                     })?;
 
-                Ok(Some(TableSchema::from_columns(columns)))
+                Ok(Some(RemoteTableSchema {
+                    schema: TableSchema::from_columns(columns),
+                    table_metadata_note: None,
+                }))
             })
             .collect()
     }
