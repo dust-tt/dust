@@ -1,3 +1,5 @@
+import type { AnalyticsViewInput } from "@app/components/workspace/analytics/analyticsView";
+import { describeAnalyticsView } from "@app/components/workspace/analytics/analyticsView";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -6,10 +8,18 @@ import type { UserType, WorkspaceType } from "@app/types/user";
 import { useCallback, useRef, useState } from "react";
 
 // Hidden in the panel by its origin, so what the user sees first is @analyst's reply to it.
-const OPENING_MESSAGE = `<dust_system>
+function openingMessage(view: AnalyticsViewInput): string {
+  return `<dust_system>
 The user just opened the @analyst panel on the workspace Analytics page.
-Do NOT call any tools. Greet briefly and offer 2-3 example questions they could ask.
+
+What they have set up on the page right now:
+${describeAnalyticsView(view)}
+
+Do NOT call any tools. Greet briefly, naming the period they chose and, when they have any, each
+filter they applied by its name rather than as "the selected filters". Then offer 2-3 example
+questions that fit this exact setup.
 </dust_system>`;
+}
 
 /**
  * Creates and holds the single conversation for the Analytics conversation
@@ -21,12 +31,20 @@ Do NOT call any tools. Greet briefly and offer 2-3 example questions they could 
  * gate the first call on the panel being open, since it stays mounted while
  * closed.
  */
+/**
+ * @cc [owner:achilleburah,label:product] opening-message-snapshots-the-view
+ * The opening message embeds `view` as it stands when `startConversation` runs, and is never
+ * regenerated. Every call site MUST hold off while the view's filter names are still being
+ * resolved, otherwise the greeting names raw identifiers for the whole life of the conversation.
+ */
 export function useAnalyticsConversation({
   owner,
   user,
+  view,
 }: {
   owner: WorkspaceType;
   user: UserType | null;
+  view: AnalyticsViewInput;
 }) {
   const sendNotification = useSendNotification();
 
@@ -50,9 +68,11 @@ export function useAnalyticsConversation({
 
     setIsCreatingConversation(true);
 
+    const input = openingMessage(view);
+
     const result = await createConversationWithMessage({
       messageData: {
-        input: OPENING_MESSAGE,
+        input,
         mentions: [{ configurationId: GLOBAL_AGENTS_SID.ANALYST }],
         contentFragments: { uploaded: [], contentNodes: [] },
         origin: "analytics_panel",
@@ -78,7 +98,7 @@ export function useAnalyticsConversation({
 
     setConversation(result.value);
     setIsCreatingConversation(false);
-  }, [createConversationWithMessage, sendNotification]);
+  }, [createConversationWithMessage, sendNotification, view]);
 
   const resetConversation = useCallback(() => {
     hasStartedRef.current = false;
