@@ -62,6 +62,9 @@ describe("OAuth setup handler", () => {
         })
     );
     vi.spyOn(config, "getAppUrl").mockReturnValue("https://app.dust.tt");
+    vi.spyOn(config, "getRemoteMCPOAuthRedirectBaseUrl").mockReturnValue(
+      "https://eu.dust.tt"
+    );
     vi.spyOn(config, "getOAuthFreshserviceClientId").mockReturnValue(
       "workspace-client"
     );
@@ -159,7 +162,7 @@ describe("OAuth setup handler", () => {
 
     expect(response.status).toBe(200);
     const expectedRedirect =
-      redirectUri ?? `https://app.dust.tt/oauth/${provider}/finalize`;
+      redirectUri ?? `https://eu.dust.tt/oauth/${provider}/finalize`;
     expect(mocks.createConnection).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         redirectUri: expectedRedirect,
@@ -186,13 +189,61 @@ describe("OAuth setup handler", () => {
   });
 
   it.each([
-    "mcp",
-    "mcp_static",
-  ] as const)("uses the app callback for a new %s workspace client despite caller overrides", async (provider) => {
+    {
+      provider: "mcp",
+      legacyBase: "https://dust.tt",
+      callbackBase: "https://dust.tt",
+    },
+    {
+      provider: "mcp",
+      legacyBase: "https://eu.dust.tt",
+      callbackBase: "https://eu.dust.tt",
+    },
+    {
+      provider: "mcp_static",
+      legacyBase: "https://dust.tt",
+      callbackBase: "https://dust.tt",
+    },
+    {
+      provider: "mcp_static",
+      legacyBase: "https://eu.dust.tt",
+      callbackBase: "https://eu.dust.tt",
+    },
+    {
+      provider: "mcp_static",
+      legacyBase: "https://legacy.example.com",
+      callbackBase: "https://legacy.example.com",
+    },
+    {
+      provider: "gmail",
+      legacyBase: "https://eu.dust.tt",
+      callbackBase: "https://app.dust.tt",
+    },
+    {
+      provider: "salesforce",
+      legacyBase: "https://eu.dust.tt",
+      callbackBase: "https://app.dust.tt",
+    },
+  ] as const)("uses $callbackBase for a new $provider workspace client despite caller overrides", async ({
+    provider,
+    legacyBase,
+    callbackBase,
+  }) => {
+    vi.mocked(config.getRemoteMCPOAuthRedirectBaseUrl).mockReturnValue(
+      legacyBase
+    );
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
     });
+    const callbackResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/oauth/${provider}/redirect_uri`
+    );
+    expect(callbackResponse.status).toBe(200);
+    const advertisedCallback = await callbackResponse.json();
+    expect(advertisedCallback.redirectUri).toBe(
+      `${callbackBase}/oauth/${provider}/finalize`
+    );
     const params = new URLSearchParams({
       useCase: "platform_actions",
       extraConfig: JSON.stringify({
@@ -201,6 +252,8 @@ describe("OAuth setup handler", () => {
         authorization_endpoint: "https://mcp.example.com/authorize",
         token_endpoint: "https://mcp.example.com/token",
         redirect_uri: "https://untrusted.example.com/callback",
+        instance_url: "https://example.my.salesforce.com",
+        scope: "https://www.googleapis.com/auth/gmail.readonly",
       }),
     });
     const response = await honoApp.request(
@@ -208,7 +261,7 @@ describe("OAuth setup handler", () => {
     );
 
     expect(response.status).toBe(200);
-    const expectedRedirect = `https://app.dust.tt/oauth/${provider}/finalize`;
+    const expectedRedirect = `${callbackBase}/oauth/${provider}/finalize`;
     expect(mocks.createConnection).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         redirectUri: expectedRedirect,
@@ -224,6 +277,17 @@ describe("OAuth setup handler", () => {
       expectedRedirect
     );
     expect(authorizationUrl.searchParams.get("client_id")).toBe("new-client");
+  });
+
+  it("rejects unknown providers when reading the callback", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/oauth/unknown/redirect_uri`
+    );
+    expect(response.status).toBe(400);
   });
 
   it("returns a 404 when the workspace connection for the MCP server is missing", async () => {

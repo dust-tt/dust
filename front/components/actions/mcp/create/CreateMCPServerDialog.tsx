@@ -646,6 +646,8 @@ export function CreateMCPServerDialog({
               {!internalMCPServer &&
                 (!authorization || authorization.provider === "mcp_static") && (
                   <RemoteMCPServerConfigurationSection
+                    workspaceId={owner.sId}
+                    isOpen={isOpen}
                     defaultServerConfig={defaultServerConfig}
                     onAuthorizationChange={setAuthorization}
                   />
