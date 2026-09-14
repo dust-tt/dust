@@ -8217,8 +8217,14 @@
           "401": {
             "description": "Unauthorized"
           },
+          "403": {
+            "description": "Not allowed to delete this message"
+          },
           "404": {
             "description": "Message or conversation not found"
+          },
+          "409": {
+            "description": "The message was edited, retried, or replied to since it was loaded"
           }
         }
       }

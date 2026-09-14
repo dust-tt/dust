@@ -13,6 +13,7 @@ import {
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { apiErrorForConversation } from "@front-api/lib/api/assistant/conversation/helper";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -126,8 +127,12 @@ const app = workspaceApp();
  *                   type: boolean
  *       401:
  *         description: Unauthorized
+ *       403:
+ *         description: Not allowed to delete this message
  *       404:
  *         description: Message or conversation not found
+ *       409:
+ *         description: The message was edited, retried, or replied to since it was loaded
  */
 
 app.get("/", validate("param", ParamsSchema), async (ctx) => {
@@ -251,13 +256,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
       conversationResource,
     });
     if (deleteResult.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: deleteResult.error.type,
-          message: deleteResult.error.message,
-        },
-      });
+      return apiErrorForConversation(ctx, deleteResult.error);
     }
   } else if (isAgentMessageType(renderedMessage)) {
     const deleteResult = await softDeleteAgentMessage(auth, {
@@ -265,13 +264,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
       conversation,
     });
     if (deleteResult.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: deleteResult.error.type,
-          message: deleteResult.error.message,
-        },
-      });
+      return apiErrorForConversation(ctx, deleteResult.error);
     }
   } else {
     return apiError(ctx, {

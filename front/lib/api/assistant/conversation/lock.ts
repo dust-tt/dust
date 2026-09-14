@@ -75,3 +75,34 @@ export async function getNextConversationMessageRank(
     })) ?? -1) + 1
   );
 }
+
+/**
+ * Latest version of the message at `rank`, deleted placeholders included. Callers deciding whether
+ * to append a new version must run this inside the transaction holding the conversation rank lock,
+ * otherwise the version they compute can collide with a concurrent writer.
+ */
+export async function getLatestMessageAtRank(
+  auth: Authenticator,
+  {
+    conversation,
+    rank,
+    transaction,
+  }: {
+    conversation: ConversationWithoutContentType;
+    rank: number;
+    transaction: Transaction;
+  }
+): Promise<MessageModel | null> {
+  const owner = auth.getNonNullableWorkspace();
+
+  return MessageModel.findOne({
+    attributes: ["id", "rank", "version", "visibility"],
+    where: {
+      workspaceId: owner.id,
+      conversationId: conversation.id,
+      rank,
+    },
+    order: [["version", "DESC"]],
+    transaction,
+  });
+}
