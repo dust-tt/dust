@@ -46,6 +46,7 @@ import { isEqualNode } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
 import React, {
   useCallback,
@@ -258,8 +259,6 @@ export const InputBar = React.memo(function InputBar({
     !!conversation &&
     getConversationGeneratingMessages(conversation.sId).length > 0;
 
-  // Tools selection
-
   const [selectedMCPServerViews, setSelectedMCPServerViews] = useState<
     MCPServerViewLightType[]
   >([]);
@@ -271,10 +270,15 @@ export const InputBar = React.memo(function InputBar({
     workspaceId: owner.sId,
   });
 
-  // The truth is in the conversationTools, we need to update the selectedMCPServerViewIds when the conversationTools change.
+  const isInlineReferenceEnabled = featureFlags.includes(
+    "inline_tool_knowledge_reference"
+  );
+
   useEffect(() => {
-    setSelectedMCPServerViews(conversationTools);
-  }, [conversationTools]);
+    if (!isInlineReferenceEnabled) {
+      setSelectedMCPServerViews(conversationTools);
+    }
+  }, [conversationTools, isInlineReferenceEnabled]);
 
   const { addTool, deleteTool } = useAddDeleteConversationTool({
     conversationId: conversation?.sId,
@@ -284,6 +288,7 @@ export const InputBar = React.memo(function InputBar({
     () => new Set(selectedMCPServerViews.map((serverView) => serverView.sId)),
     [selectedMCPServerViews]
   );
+
   const spacesSelectionKey = conversation?.sId ?? `draft:${draftKey}`;
   const draftSelectedSpaceIds = useMemo(
     () => getDraft()?.selectedSpaceIds ?? [],
@@ -410,7 +415,10 @@ export const InputBar = React.memo(function InputBar({
 
   const handleMCPServerViewSelect = useCallback(
     (serverView: MCPServerViewLightType) => {
-      if (selectedMCPServerViewIds.has(serverView.sId)) {
+      if (
+        !isInlineReferenceEnabled &&
+        selectedMCPServerViewIds.has(serverView.sId)
+      ) {
         return;
       }
 
@@ -419,23 +427,30 @@ export const InputBar = React.memo(function InputBar({
           ? prev
           : [...prev, serverView]
       );
-      void addTool(serverView.sId);
+      if (!isInlineReferenceEnabled) {
+        void addTool(serverView.sId);
+      }
     },
-    [addTool, selectedMCPServerViewIds]
+    [addTool, isInlineReferenceEnabled, selectedMCPServerViewIds]
   );
 
   const handleMCPServerViewDeselect = useCallback(
     (serverView: MCPServerViewLightType) => {
-      if (!selectedMCPServerViewIds.has(serverView.sId)) {
+      if (
+        !isInlineReferenceEnabled &&
+        !selectedMCPServerViewIds.has(serverView.sId)
+      ) {
         return;
       }
 
       setSelectedMCPServerViews((prev) =>
         prev.filter((sv) => sv.sId !== serverView.sId)
       );
-      void deleteTool(serverView.sId);
+      if (!isInlineReferenceEnabled) {
+        void deleteTool(serverView.sId);
+      }
     },
-    [deleteTool, selectedMCPServerViewIds]
+    [deleteTool, isInlineReferenceEnabled, selectedMCPServerViewIds]
   );
 
   const clearSideChannelSelections = useCallback(async () => {
@@ -445,10 +460,12 @@ export const InputBar = React.memo(function InputBar({
     setSelectedMCPServerViews([]);
     setAttachedNodes([]);
 
-    await Promise.all(
-      serverViewIds.map((serverViewId) => deleteTool(serverViewId))
-    );
-  }, [deleteTool, selectedMCPServerViews]);
+    if (!isInlineReferenceEnabled) {
+      await Promise.all(
+        serverViewIds.map((serverViewId) => deleteTool(serverViewId))
+      );
+    }
+  }, [deleteTool, isInlineReferenceEnabled, selectedMCPServerViews]);
 
   const handleSelectedSpaceIdsChange = useCallback(
     async (spaceIds: string[]): Promise<string[] | null> => {
@@ -535,7 +552,7 @@ export const InputBar = React.memo(function InputBar({
 
     onBeforeSubmit?.();
 
-    const { mentions: rawMentions, markdown } = markdownAndMentions;
+    const { mentions: rawMentions, markdown, tools } = markdownAndMentions;
     const shouldInjectSelectedAgent =
       selectedSingleAgent &&
       !rawMentions.some((m) => m.id === selectedSingleAgent.id);
@@ -549,6 +566,12 @@ export const InputBar = React.memo(function InputBar({
       mentions.some((m) => m.id === a.sId && m.type === "agent")
     );
 
+    const messageTools = isInlineReferenceEnabled ? tools : [];
+    const toolIdsToAttach = uniq(messageTools.map((tool) => tool.id));
+    const trackedTools = isInlineReferenceEnabled
+      ? messageTools.map((t) => t.name)
+      : selectedMCPServerViews.map((t) => t.server.name);
+
     trackEvent({
       area: TRACKING_AREAS.CONVERSATION,
       object: "message_send",
@@ -556,7 +579,7 @@ export const InputBar = React.memo(function InputBar({
       extra: {
         conversation_id: conversation?.sId ?? "new",
         has_attachments: attachedNodes.length > 0 || uploadedFiles.length > 0,
-        has_tools: selectedMCPServerViews.length > 0,
+        has_tools: trackedTools.length > 0,
         has_agents: mentionedAgents.length > 0,
         has_default_agent: mentionedAgents.some((a) => isGlobalAgentId(a.sId)),
         has_custom_agent: mentionedAgents.some((a) => !isGlobalAgentId(a.sId)),
@@ -564,8 +587,8 @@ export const InputBar = React.memo(function InputBar({
         agent_count: mentions.length,
         agent_ids: mentionedAgents.map((a) => a.sId).join(","),
         attachment_count: attachedNodes.length + uploadedFiles.length,
-        tool_count: selectedMCPServerViews.length,
-        tool_names: selectedMCPServerViews.map((t) => t.server.name).join(","),
+        tool_count: trackedTools.length,
+        tool_names: trackedTools.join(","),
         message_length: markdown.length,
       },
     });
@@ -591,9 +614,9 @@ export const InputBar = React.memo(function InputBar({
             }),
             contentNodes: attachedNodes,
           },
-          // Only send the selectedMCPServerViewIds if we are creating a new conversation.
-          // Once the conversation is created, the selectedMCPServerViewIds will be updated in the conversationTools hook.
-          selectedMCPServerViews.map((sv) => sv.sId),
+          isInlineReferenceEnabled
+            ? toolIdsToAttach
+            : selectedMCPServerViews.map((sv) => sv.sId),
           selectedSpaceIds,
           modelSelectionRef.current
         );
@@ -602,6 +625,9 @@ export const InputBar = React.memo(function InputBar({
           clearDraft();
           resetEditorText();
           fileUploaderService.resetUpload();
+          if (isInlineReferenceEnabled) {
+            setSelectedMCPServerViews([]);
+          }
           setSelectedSpacesState({
             key: spacesSelectionKey,
             spaceIds: [],
@@ -629,9 +655,7 @@ export const InputBar = React.memo(function InputBar({
             }),
             contentNodes: attachedNodes,
           },
-          // Existing conversation: MCP server views are synced via the
-          // conversationTools hook.
-          undefined,
+          toolIdsToAttach.length > 0 ? toolIdsToAttach : undefined,
           selectedSpaceIds,
           modelSelectionRef.current
         );
@@ -641,6 +665,9 @@ export const InputBar = React.memo(function InputBar({
         clearDraft();
         fileUploaderService.resetUpload();
         setAttachedNodes([]);
+        if (isInlineReferenceEnabled) {
+          setSelectedMCPServerViews([]);
+        }
 
         await submitPromise;
       } finally {
@@ -663,10 +690,10 @@ export const InputBar = React.memo(function InputBar({
   };
 
   const handleResetMCPServerViews = () => {
-    setSelectedMCPServerViews((prev) => {
-      prev.forEach((sv) => void deleteTool(sv.sId));
-      return [];
-    });
+    if (!isInlineReferenceEnabled) {
+      selectedMCPServerViews.forEach((sv) => void deleteTool(sv.sId));
+    }
+    setSelectedMCPServerViews([]);
   };
 
   const handleShake = useCallback(() => {
