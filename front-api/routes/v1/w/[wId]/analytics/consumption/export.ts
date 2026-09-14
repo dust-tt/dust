@@ -19,7 +19,6 @@ const app = publicApiApp();
  *     description: |
  *       Export per-call consumption analytics for the workspace identified by {wId}.
  *       Each row represents one unit of billed credit consumption (an LLM call or a tool call).
- *       The creditsAction field reports direct tool execution charges in credits, rounded to two decimal places.
  *       The export can be filtered by various dimensions (agents, users, API keys, groups, models, tools, skills, sources, tags).
  *       The export is limited to a maximum of 30 days per request and times out after 10 seconds: reduce the time range
  *       or apply filters to reduce the number of rows if you encounter a timeout.
