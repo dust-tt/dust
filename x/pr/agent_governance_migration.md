@@ -3,7 +3,7 @@
 This plan migrates workspace-agent editor permissions from the `agent_editors` group kind and
 `group_agents` join table to the `regular_auto` group kind and `group_permissions` table.
 
-Each numbered item is one PR, except PR 11's three parts and PR 12's four parts. The 300-line target is a soft bound: combine
+Each numbered item is one PR, except PR 11's three parts and PR 12's stack. The 300-line target is a soft bound: combine
 related changes when an intermediate state has no review or operational value. Split at real deploy,
 backfill, observation, or rollback boundaries.
 
