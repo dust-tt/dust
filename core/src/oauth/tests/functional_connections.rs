@@ -14,6 +14,88 @@ struct ConnectionExpectedResponse {
 }
 
 #[tokio::test]
+async fn test_redirect_uri_survives_metadata_reads_and_finalization() -> anyhow::Result<()> {
+    let redirect_uri = "https://eu.dust.tt/oauth/mock/finalize";
+    for initial_redirect_uri in [Some(redirect_uri), None] {
+        let created = do_api_call(
+            "/connections".to_string(),
+            HttpMethod::POST,
+            &json!({
+                "provider": "mock",
+                "redirect_uri": initial_redirect_uri,
+                "metadata": {}
+            }),
+        )
+        .await
+        .response
+        .ok_or_else(|| anyhow::anyhow!("Missing create response"))?;
+        let connection_id = created["connection"]["connection_id"]
+            .as_str()
+            .ok_or_else(|| anyhow::anyhow!("Missing connection ID"))?;
+
+        let metadata = do_api_call(
+            format!("/connections/{connection_id}/metadata"),
+            HttpMethod::GET,
+            &json!({}),
+        )
+        .await
+        .response
+        .ok_or_else(|| anyhow::anyhow!("Missing metadata response"))?;
+        assert_eq!(
+            metadata["connection"]["redirect_uri"],
+            json!(initial_redirect_uri)
+        );
+
+        // Older connections first acquired their stored URI during finalization.
+        do_api_call(
+            format!("/connections/{connection_id}/finalize"),
+            HttpMethod::POST,
+            &json!({ "provider": "mock", "code": "test-code", "redirect_uri": redirect_uri }),
+        )
+        .await;
+
+        for endpoint in ["metadata", "access_token"] {
+            let response = do_api_call(
+                format!("/connections/{connection_id}/{endpoint}"),
+                HttpMethod::GET,
+                &json!({}),
+            )
+            .await
+            .response
+            .ok_or_else(|| anyhow::anyhow!("Missing {endpoint} response"))?;
+            assert_eq!(response["connection"]["redirect_uri"], json!(redirect_uri));
+        }
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_metadata_update_preserves_redirect_uri() -> anyhow::Result<()> {
+    let redirect_uri = "https://dust.tt/oauth/mcp/finalize";
+    let created = do_api_call(
+        "/connections".to_string(),
+        HttpMethod::POST,
+        &json!({ "provider": "mcp", "redirect_uri": redirect_uri, "metadata": {} }),
+    )
+    .await
+    .response
+    .ok_or_else(|| anyhow::anyhow!("Missing create response"))?;
+    let connection_id = created["connection"]["connection_id"]
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("Missing connection ID"))?;
+    let response = do_api_call(
+        format!("/connections/{connection_id}/metadata"),
+        HttpMethod::PATCH,
+        &json!({ "use_static_ip_proxy": false }),
+    )
+    .await
+    .response
+    .ok_or_else(|| anyhow::anyhow!("Missing metadata update response"))?;
+    assert_eq!(response["connection"]["redirect_uri"], json!(redirect_uri));
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_oauth_connexion_flow_success() {
     let create_url = "/connections".to_string();
     let create_body = json!({

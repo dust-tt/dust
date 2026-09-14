@@ -180,6 +180,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
             from_connection_id: connectionId,
           },
           metadata: { workspace_id: workspaceId, user_id: userId },
+          redirectUri: connection.redirect_uri,
         });
       }
     } else if (useCase === "platform_actions") {

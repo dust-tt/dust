@@ -9,9 +9,15 @@ import type { Result } from "@app/types/shared/result";
 import type { ParsedUrlQuery } from "querystring";
 
 // Use this if you need to associate credentials with the connection (eg: custom client_secret).
+/**
+ * @cc [owner:flvndvd,label:security] trusted-credential-redirect
+ * When reusing a workspace connection's credentials, redirectUri MUST carry that
+ * connection's stored redirect_uri. It MUST NOT come from caller-supplied extraConfig.
+ */
 export type RelatedCredential = {
   content: Record<string, string>;
   metadata: { workspace_id: string; user_id: string };
+  redirectUri?: string | null;
 };
 
 export interface BaseOAuthStrategyProvider {

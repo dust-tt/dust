@@ -144,6 +144,7 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
             from_connection_id: connectionId,
           },
           metadata: { workspace_id: workspaceId, user_id: userId },
+          redirectUri: connection.redirect_uri,
         });
       }
     }

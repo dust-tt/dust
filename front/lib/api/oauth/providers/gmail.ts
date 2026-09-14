@@ -123,6 +123,7 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
             from_connection_id: connectionId,
           },
           metadata: { workspace_id: workspaceId, user_id: userId },
+          redirectUri: connection.redirect_uri,
         });
       }
     }
@@ -138,6 +139,11 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
     });
   }
 
+  /**
+   * @cc [owner:flvndvd,label:security] workspace-client-authoritative
+   * For personal_actions with mcp_server_id, the returned client_id MUST come
+   * from the workspace connection, regardless of caller-supplied extraConfig.
+   */
   async getUpdatedExtraConfig(
     auth: Authenticator,
     {
@@ -174,8 +180,8 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
         const connection = connectionRes.value.connection;
 
         return {
-          client_id: connection.metadata.client_id,
           ...restConfig,
+          client_id: connection.metadata.client_id,
         };
       }
     }
