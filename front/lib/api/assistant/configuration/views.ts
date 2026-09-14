@@ -25,6 +25,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
+import isEqual from "lodash/isEqual";
 import { Op, Sequelize } from "sequelize";
 
 const HEAVY_AGENT_CONFIGURATION_ATTRIBUTES = [
@@ -339,6 +340,10 @@ type ShadowCompareAgentViewArgs = {
   omitHeavyAttributes?: boolean;
 };
 
+/**
+ * @cc [owner:philipperolet,label:logging] recheck-view-mismatches
+ * When IDs differ, recheck the legacy view once; log a mismatch only if they still differ.
+ */
 async function shadowCompareAgentView({
   auth,
   owner,
@@ -352,6 +357,14 @@ async function shadowCompareAgentView({
 }: ShadowCompareAgentViewArgs): Promise<void> {
   const stableAgentModelIds = (models: AgentConfigurationModel[]) =>
     [...new Set(models.map((model) => model.agentId))].sort((a, b) => a - b);
+  const queryOptions = {
+    agentPrefix,
+    agentsGetView: view,
+    limit,
+    owner,
+    sort,
+    omitHeavyAttributes,
+  };
 
   await shadowCompare({
     auth,
@@ -366,13 +379,8 @@ async function shadowCompareAgentView({
             : { kind: "agent", modelIds: grantResources.resourceIds };
       const candidateModels =
         await fetchWorkspaceAgentConfigurationsWithoutActions(auth, {
-          agentPrefix,
-          agentsGetView: view,
+          ...queryOptions,
           editorFilter,
-          limit,
-          owner,
-          sort,
-          omitHeavyAttributes,
         });
       const allowedCandidateModels = skipPermissionFiltering
         ? candidateModels
@@ -385,9 +393,32 @@ async function shadowCompareAgentView({
       view,
       workspaceId: owner.sId,
     },
-    equals: (legacy, candidate) =>
-      legacy.length === candidate.length &&
-      legacy.every((agentModelId, index) => agentModelId === candidate[index]),
+    equals: async (legacy, candidate) => {
+      if (isEqual(legacy, candidate)) {
+        return true;
+      }
+
+      // A save can archive the configuration IDs read before the legacy list query. Re-read once
+      // on mismatch, using the same indexed queries and filters, without changing the served list.
+      const groupAgents = auth.user()
+        ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
+        : [];
+      const refreshedModels =
+        await fetchWorkspaceAgentConfigurationsWithoutActions(auth, {
+          ...queryOptions,
+          editorFilter:
+            auth.isAdmin() && view === "archived"
+              ? { kind: "all" }
+              : {
+                  kind: "configuration",
+                  modelIds: groupAgents.map((g) => g.agentConfigurationId),
+                },
+        });
+      const allowedModels = skipPermissionFiltering
+        ? refreshedModels
+        : await filterAgentsByRequestedSpaces(auth, refreshedModels);
+      return isEqual(stableAgentModelIds(allowedModels), candidate);
+    },
   });
 }
 
