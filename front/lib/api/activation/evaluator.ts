@@ -2,7 +2,11 @@ import { fetchUserDayCells } from "@app/lib/api/activation/queries/user_day_cell
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import moment from "moment-timezone";
+import {
+  formatUTCDateFromMillis,
+  ONE_DAY_MS,
+} from "@app/types/shared/utils/date_utils";
+import { getISOWeek, getISOWeekYear } from "date-fns";
 
 // A user is ACTIVATED when, over the trailing TRAILING_WINDOW_DAYS days, they
 // have ≥MIN_HVUC_DAYS high value use case (HVUC) days spanning ≥MIN_DISTINCT_WEEKS
@@ -43,9 +47,13 @@ export interface UserDayCell {
   isHvuc: boolean;
 }
 
+// `dayMs` is UTC-day-aligned; date-fns' getISOWeek*/getISOWeekYear read via local getters, so
+// the UTC calendar fields are replayed onto a Date constructed in local time to keep the result
+// independent of the host's configured timezone.
 function isoWeekKey(dayMs: number): string {
-  const m = moment.utc(dayMs);
-  return `${m.isoWeekYear()}-W${String(m.isoWeek()).padStart(2, "0")}`;
+  const d = new Date(dayMs);
+  const asLocal = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  return `${getISOWeekYear(asLocal)}-W${String(getISOWeek(asLocal)).padStart(2, "0")}`;
 }
 
 /**
@@ -64,7 +72,7 @@ export function computeActivationFromCells(
     if (!cell.isDau || !cell.isHvuc) {
       continue;
     }
-    qualifyingDays.push(moment.utc(cell.dayMs).format("YYYY-MM-DD"));
+    qualifyingDays.push(formatUTCDateFromMillis(cell.dayMs));
     weeks.add(isoWeekKey(cell.dayMs));
   }
 
@@ -104,10 +112,9 @@ export async function evaluateActivation(
 ): Promise<Result<Map<string, ActivationResult>, Error>> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const windowEnd = asOf;
-  const windowStart = moment
-    .utc(asOf)
-    .subtract(TRAILING_WINDOW_DAYS, "days")
-    .toDate();
+  const windowStart = new Date(
+    asOf.getTime() - TRAILING_WINDOW_DAYS * ONE_DAY_MS
+  );
 
   const factsResult = await fetchUserDayCells({
     workspaceId,
