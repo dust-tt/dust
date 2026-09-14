@@ -88,7 +88,10 @@ export interface AgentMessageConsumptionItemResource
 
 export interface AgentMessageModelConsumptionItemResource
   extends AgentMessageConsumptionItemResource {
-  readonly itemType: Exclude<AgentMessageConsumptionItemType, "tool">;
+  readonly itemType: Exclude<
+    AgentMessageConsumptionItemType,
+    "tool" | "rounding"
+  >;
   readonly agentMCPActionId: null;
   readonly directCreditAmountMicro: null;
   readonly completedAt: Date;
@@ -126,6 +129,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         );
         return true;
 
+      case "rounding":
       case "tool":
         return false;
 
