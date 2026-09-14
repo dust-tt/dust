@@ -8,6 +8,7 @@ import {
   restoreAgentConfiguration,
   unsafeHardDeleteAgentConfiguration,
   updateAgentConfigurationsScope,
+  updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
@@ -1268,14 +1269,12 @@ describe("publish agent capability", () => {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
 
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-      adminAuth,
-      agent
-    );
-    if (editorGroupRes.isErr()) {
-      throw editorGroupRes.error;
-    }
-    await GroupFactory.withMembers(adminAuth, editorGroupRes.value, [user]);
+    const result = await updateAgentPermissions(adminAuth, {
+      agent,
+      usersToAdd: [user.toJSON()],
+      usersToRemove: [],
+    });
+    assert(result.isOk());
 
     if (withPublishCapability) {
       const group = await GroupFactory.regularAuto(workspace, "publishers");
