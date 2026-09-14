@@ -476,7 +476,7 @@ export function InboxAltView({
     // row of its own to keep to its content's width.
     return (
       <div className="flex">
-        <Chip size="mini" icon={chip.icon} label={chip.label} />
+        <Chip size="xs" icon={chip.icon} label={chip.label} />
       </div>
     );
   };
