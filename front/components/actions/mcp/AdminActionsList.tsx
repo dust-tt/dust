@@ -417,6 +417,11 @@ export const AdminActionsList = ({
         header: "Last updated",
         cell: (info: CellContext<RowData, number>) => (
           <DataTable.BasicCellContent
+            tooltip={
+              info.getValue()
+                ? formatTimestampToFriendlyDate(info.getValue(), "long")
+                : undefined
+            }
             label={
               info.getValue()
                 ? formatTimestampToFriendlyDate(info.getValue(), "compact")

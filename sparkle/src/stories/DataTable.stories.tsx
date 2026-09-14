@@ -1,4 +1,4 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   ColumnDef,
   PaginationState,
@@ -51,6 +51,42 @@ const meta = {
 } satisfies Meta<typeof DataTable>;
 
 export default meta;
+
+interface LastUpdatedTooltipProps {
+  data: Pick<Data, "lastUpdated" | "onClick">[];
+  columns: ColumnDef<Pick<Data, "lastUpdated" | "onClick">>[];
+}
+
+/**
+ * A compact date cell exposes the full edit date and time on hover. Missing edit
+ * dates keep their placeholder without a tooltip.
+ * @summary Full date tooltips on compact date cells.
+ */
+export const LastUpdatedTooltip: StoryObj<LastUpdatedTooltipProps> = {
+  args: {
+    data: [
+      { lastUpdated: "September 14, 2026 at 3:37:32 PM" },
+      { lastUpdated: "" },
+    ],
+    columns: [
+      {
+        accessorKey: "lastUpdated",
+        header: "Last updated",
+        cell: ({ row }) => (
+          <DataTable.BasicCellContent
+            label={row.original.lastUpdated ? "Sep, 2026" : "-"}
+            tooltip={row.original.lastUpdated || undefined}
+          />
+        ),
+      },
+    ],
+  },
+  render: (args) => (
+    <div className="w-64">
+      <DataTable {...args} />
+    </div>
+  ),
+};
 
 type Data = {
   name: string;
