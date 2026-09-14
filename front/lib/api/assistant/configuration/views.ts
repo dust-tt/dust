@@ -1,4 +1,3 @@
-import { areAgentGrantsEnabled } from "@app/lib/api/assistant/agent_grants";
 import { filterAgentsByRequestedSpaces } from "@app/lib/api/assistant/configuration/agent";
 import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import type {
@@ -7,6 +6,7 @@ import type {
 } from "@app/lib/api/assistant/configuration/types";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { shadowCompare } from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -455,7 +455,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
 ) {
   const user = auth.user();
 
-  const useGrants = await areAgentGrantsEnabled(auth);
+  const useGrants = !isLegacyAclsEnabled();
   const agentIdsForGroups =
     !useGrants && user
       ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())

@@ -20,20 +20,22 @@ import { GroupPermissionResource } from "@app/lib/resources/group_permission_res
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import assert from "assert";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 it.each([
   "legacy",
   "grants",
-  "rollback",
 ])("selects %s for editor lists, permissions, and views", async (mode) => {
   vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(
-    mode === "rollback"
+    mode === "legacy"
   );
   const { authenticator: authorAuth, workspace } = await createResourceTest({
     role: "user",
@@ -79,9 +81,6 @@ it.each([
     authorAuth,
     grantAgent
   );
-  if (mode !== "legacy") {
-    await FeatureFlagFactory.basic(authorAuth, "agent_permission_grants");
-  }
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     member.sId,
     workspace.sId
@@ -184,7 +183,7 @@ it("keeps author access and admin redaction when grants are enabled", async () =
       })
     ).isOk()
   );
-  await FeatureFlagFactory.basic(authorAuth, "agent_permission_grants");
+  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(false);
   const legacyGroup = await GroupResource.findEditorGroupForAgent(
     authorAuth,
     agent
@@ -235,7 +234,7 @@ it("loads legacy memberships when rollback starts during a view read", async () 
       })
     ).isOk()
   );
-  await FeatureFlagFactory.basic(auth, "agent_permission_grants");
+  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(false);
   const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
     editor.sId,
     workspace.sId
