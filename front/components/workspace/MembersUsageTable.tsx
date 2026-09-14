@@ -1,5 +1,4 @@
 import {
-  SEAT_TYPE_ICONS,
   seatTypeChipColor,
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
@@ -11,7 +10,6 @@ import {
 import {
   AT_POOL_LIMIT_BAR_CLASSES,
   getSeatBarClasses,
-  getSeatIconColorClass,
   MUTED_BAR_CLASSES,
   OVER_POOL_LIMIT_BAR_CLASSES,
   OVERAGE_BAR_CLASSES,
@@ -30,7 +28,6 @@ import {
   toUserModelTierSelection,
 } from "@app/lib/client/model_tier_options";
 import {
-  formatModelTiersSummary,
   formatUserModelTierInheritLabel,
   resolveModelTiersForUser,
 } from "@app/lib/client/model_tiers";
@@ -52,7 +49,6 @@ import {
   AlertCircle,
   Button,
   Chip,
-  Clock,
   CoinsStacked03,
   createSelectionColumn,
   DataTable,
@@ -224,28 +220,6 @@ function getScheduledSeatChangeLabel(
         : "changed";
   const targetLabel = seatTypeDisplayName(scheduledSeatType);
   return `This user will be ${verb} to ${targetLabel} at the end of the billing period${dateSuffix}`;
-}
-
-interface SeatTypeIconProps {
-  seatType: MembershipSeatType | null;
-}
-
-function SeatTypeIcon({ seatType }: SeatTypeIconProps) {
-  if (!seatType) {
-    return null;
-  }
-  const displaySeatType = toBaseSeatType(seatType);
-  const visual = SEAT_TYPE_ICONS[displaySeatType];
-  if (!visual) {
-    return null;
-  }
-  return (
-    <Icon
-      visual={visual}
-      size="sm"
-      className={getSeatIconColorClass(displaySeatType)}
-    />
-  );
 }
 
 interface AwuUsageBarProps {
@@ -569,51 +543,6 @@ const groupsColumn: ColumnDef<RowData, string> = {
   },
 };
 
-const seatTypeColumn: ColumnDef<RowData, string> = {
-  id: "seatType" as const,
-  header: "Seat",
-  enableSorting: false,
-  accessorFn: (row) => row.seatType ?? "",
-  cell: (info: Info) => {
-    if (info.row.original.isSeatChangePending) {
-      return (
-        <DataTable.CellContent>
-          <Spinner size="xs" />
-        </DataTable.CellContent>
-      );
-    }
-    const seatType = info.row.original.seatType;
-    const scheduledSeatType = info.row.original.scheduledSeatType;
-    const scheduledSeatChangeAt = info.row.original.scheduledSeatChangeAt;
-    return (
-      <DataTable.CellContent>
-        <span className="flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
-          <SeatTypeIcon seatType={seatType} />
-          {seatType ? seatTypeDisplayName(seatType) : seatType}
-          {scheduledSeatType && (
-            <Tooltip
-              label={getScheduledSeatChangeLabel(
-                seatType,
-                scheduledSeatType,
-                scheduledSeatChangeAt
-              )}
-              tooltipTriggerAsChild
-              trigger={
-                <span className="cursor-default">
-                  <Icon visual={Clock} size="xs" />
-                </span>
-              }
-            />
-          )}
-        </span>
-      </DataTable.CellContent>
-    );
-  },
-  meta: {
-    className: "hidden @3xl:table-cell @3xl:w-32",
-  },
-};
-
 const seatsIconColumn: ColumnDef<RowData, string> = {
   id: "seatsIcon" as const,
   header: "Seats",
@@ -711,32 +640,16 @@ const seatUsageColumn: ColumnDef<RowData, string> = {
 };
 
 function buildPoolCreditUsageColumn(
-  creditsResetAt: string | null,
-  variant: MembersUsageTableVariant,
   hasPool: boolean
 ): ColumnDef<RowData, string> {
   return {
     id: "consumedFromPoolAwuCredits" as const,
     header: () => (
       <div className="flex flex-col">
-        {variant === "compact" ? (
-          <span className="flex items-center gap-1">
-            <Icon visual={CoinsStacked03} size="xs" />
-            {hasPool ? "Pool usage" : "Credit usage"}
-          </span>
-        ) : (
-          <span>Credits usage this month</span>
-        )}
-        {variant !== "compact" && creditsResetAt && (
-          <span className="text-xs font-normal text-muted-foreground">
-            Limits reset on{" "}
-            {new Date(creditsResetAt).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              timeZone: "UTC",
-            })}
-          </span>
-        )}
+        <span className="flex items-center gap-1">
+          <Icon visual={CoinsStacked03} size="xs" />
+          {hasPool ? "Pool usage" : "Credit usage"}
+        </span>
       </div>
     ),
     accessorFn: (row) => row.consumedFromPoolAwuCredits.toString(),
@@ -757,7 +670,7 @@ function buildPoolCreditUsageColumn(
           isTotalAllowedUsagePending={
             info.row.original.isTotalAllowedUsagePending
           }
-          poolOnly={variant === "compact"}
+          poolOnly
         />
       </div>
     ),
@@ -1074,24 +987,12 @@ const offPaceColumn: ColumnDef<RowData, string> = {
   },
 };
 
-function buildModelTiersColumn(
-  variant: MembersUsageTableVariant
-): ColumnDef<RowData, string> {
+function buildModelTiersColumn(): ColumnDef<RowData, string> {
   return {
     id: "modelTiers" as const,
     header: () => (
       <span className="flex items-center gap-1">
-        {(() => {
-          switch (variant) {
-            case "compact":
-              return "Models";
-            case "legacy":
-              return "Models tier";
-            default:
-              assertNeverAndIgnore(variant);
-              return "Models tier";
-          }
-        })()}
+        Models
         <ModelTiersInfoButton />
       </span>
     ),
@@ -1113,14 +1014,9 @@ function buildModelTiersColumn(
       );
     },
     meta: {
-      // On the compact (new usage / Poke) variant the extra seat + off-pace
-      // columns compete for width, so Models tier yields sooner to keep Name
-      // readable; the legacy admin page has fewer columns and can show it at
-      // the container width it caps out at.
-      className:
-        variant === "compact"
-          ? "hidden @6xl:table-cell @6xl:w-48"
-          : "hidden @5xl:table-cell @5xl:w-48",
+      // The extra seat + off-pace columns compete for width, so Models tier
+      // yields sooner to keep Name readable.
+      className: "hidden @6xl:table-cell @6xl:w-48",
     },
   };
 }
@@ -1144,16 +1040,12 @@ const actionsColumn: ColumnDef<RowData, string> = {
 };
 
 function buildCreditPlanColumns({
-  creditsResetAt,
-  variant,
   hasPool,
   showPremiumMessageUsage,
   premiumMessageWindowDays,
   fairUseWindowDays,
   showUnblockWidth,
 }: {
-  creditsResetAt: string | null;
-  variant: MembersUsageTableVariant;
   hasPool: boolean;
   showPremiumMessageUsage: boolean;
   premiumMessageWindowDays: number;
@@ -1163,23 +1055,11 @@ function buildCreditPlanColumns({
   return [
     // Premium message plans have no seats: every member is billed per
     // message, so the seat columns have nothing to show.
-    ...(showPremiumMessageUsage
-      ? []
-      : (() => {
-          switch (variant) {
-            case "compact":
-              return [seatsIconColumn, seatUsageColumn];
-            case "legacy":
-              return [seatTypeColumn];
-            default:
-              assertNeverAndIgnore(variant);
-              return [seatTypeColumn];
-          }
-        })()),
+    ...(showPremiumMessageUsage ? [] : [seatsIconColumn, seatUsageColumn]),
     {
       ...(showPremiumMessageUsage
         ? buildPremiumMessageUsageColumn(premiumMessageWindowDays)
-        : buildPoolCreditUsageColumn(creditsResetAt, variant, hasPool)),
+        : buildPoolCreditUsageColumn(hasPool)),
       meta: { className: "w-56" },
     },
     // Premium message plans also carry a fixed AWU credit allowance for
@@ -1188,7 +1068,7 @@ function buildCreditPlanColumns({
       ? [buildFairUseCreditsColumn(fairUseWindowDays)]
       : []),
     // Icon-wide until an "Unblock" button has shown up, button-wide from then on.
-    ...(variant === "compact" && !showPremiumMessageUsage
+    ...(!showPremiumMessageUsage
       ? [
           showUnblockWidth
             ? offPaceColumn
@@ -1209,8 +1089,6 @@ function buildColumns({
   showGroupsColumn,
   showModelTiersColumn,
   showSeatAndCredits,
-  creditsResetAt,
-  variant,
   hasPool,
   showPremiumMessageUsage,
   premiumMessageWindowDays,
@@ -1221,8 +1099,6 @@ function buildColumns({
   showGroupsColumn: boolean;
   showModelTiersColumn: boolean;
   showSeatAndCredits: boolean;
-  creditsResetAt: string | null;
-  variant: MembersUsageTableVariant;
   hasPool: boolean;
   showPremiumMessageUsage: boolean;
   premiumMessageWindowDays: number;
@@ -1233,11 +1109,9 @@ function buildColumns({
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
     nameColumn,
     ...(showGroupsColumn ? [groupsColumn] : []),
-    ...(showModelTiersColumn ? [buildModelTiersColumn(variant)] : []),
+    ...(showModelTiersColumn ? [buildModelTiersColumn()] : []),
     ...(showSeatAndCredits
       ? buildCreditPlanColumns({
-          creditsResetAt,
-          variant,
           hasPool,
           showPremiumMessageUsage,
           premiumMessageWindowDays,
@@ -1250,16 +1124,8 @@ function buildColumns({
   ];
 }
 
-// "compact" is the Poke Pool Usage page layout: no "Up to " prefix on the
-// Models tier summary, a "Models" header instead of "Models tier". "legacy"
-// keeps the customer-facing usage page unchanged.
-export type MembersUsageTableVariant = "legacy" | "compact";
-
 interface MembersUsageTableProps {
   members: MemberUsageType[];
-  // End of the current billing period (workspace-level, from the members-usage
-  // response) shown under the credits column header. Null hides the line.
-  creditsResetAt: string | null;
   isLoading: boolean;
   isRefreshing?: boolean;
   totalAllowedUsagePendingMemberIds: ReadonlySet<string>;
@@ -1277,9 +1143,8 @@ interface MembersUsageTableProps {
   onChangeSeat: (member: MemberUsageType) => void;
   onRemoveSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
-  // Poke-only: opens the read-only change-seat recap modal from the
-  // off-pace column's "Unblock" panel. No-op default for the customer-facing
-  // ("legacy") variant, which never renders that column.
+  // Opens the read-only change-seat recap modal from the off-pace column's
+  // "Unblock" panel.
   onOpenChangeSeatRecap?: (member: MemberUsageType) => void;
   onOpenSpendLimitRecap?: (member: MemberUsageType) => void;
   canUpgradeSeat?: (member: MemberUsageType) => boolean;
@@ -1288,9 +1153,8 @@ interface MembersUsageTableProps {
     selection: UserModelTierSelection
   ) => void;
   showModelTiersColumn?: boolean;
-  variant?: MembersUsageTableVariant;
-  // Whether the workspace has an active credit pool. Only affects the
-  // "compact" (poke) variant's credit column header.
+  // Whether the workspace has an active credit pool. Only affects the credit
+  // column header.
   hasPool?: boolean;
   showPremiumMessageUsage?: boolean;
   userModelTierSelectionByUserId?: Record<string, UserModelTierSelection>;
@@ -1312,7 +1176,6 @@ interface MembersUsageTableProps {
 
 export function MembersUsageTable({
   members,
-  creditsResetAt,
   isLoading,
   isRefreshing = false,
   totalAllowedUsagePendingMemberIds,
@@ -1330,7 +1193,6 @@ export function MembersUsageTable({
   canUpgradeSeat = ALWAYS_CAN_UPGRADE_SEAT,
   onSetUserModelTier,
   showModelTiersColumn = false,
-  variant = "legacy",
   hasPool = true,
   showPremiumMessageUsage = false,
   userModelTierSelectionByUserId = EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID,
@@ -1395,17 +1257,7 @@ export function MembersUsageTable({
           fairUse: m.fairUse ?? null,
           modelTiersSummary: (() => {
             const maxTierName = getMaxTierName(resolvedModelTiers?.tiers ?? []);
-            switch (variant) {
-              case "compact":
-                return maxTierName
-                  ? getModelsTierDisplayName(maxTierName)
-                  : "--";
-              case "legacy":
-                return formatModelTiersSummary(maxTierName);
-              default:
-                assertNeverAndIgnore(variant);
-                return formatModelTiersSummary(maxTierName);
-            }
+            return maxTierName ? getModelsTierDisplayName(maxTierName) : "--";
           })(),
           hasUserLevelModelTiersOverride: resolvedModelTiers?.source === "user",
           menuItems: [
@@ -1487,7 +1339,6 @@ export function MembersUsageTable({
       isSeatBased,
       showSpendLimit,
       showModelTiersColumn,
-      variant,
       userModelTierSelectionByUserId,
       userAllowedModelTiersByUserId,
       groupModelTiersByGroupId,
@@ -1531,8 +1382,6 @@ export function MembersUsageTable({
         showGroupsColumn,
         showModelTiersColumn,
         showSeatAndCredits,
-        creditsResetAt,
-        variant,
         hasPool,
         showPremiumMessageUsage,
         premiumMessageWindowDays,
@@ -1544,8 +1393,6 @@ export function MembersUsageTable({
       showGroupsColumn,
       showModelTiersColumn,
       showSeatAndCredits,
-      creditsResetAt,
-      variant,
       hasPool,
       premiumMessageWindowDays,
       showPremiumMessageUsage,
