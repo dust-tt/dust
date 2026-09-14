@@ -250,9 +250,7 @@ export function UsagePage() {
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
-  const [sorting, setSorting] = useState<SortingState>(
-    isNewUsagePage ? [] : [{ id: "name", desc: false }]
-  );
+  const [sorting, setSorting] = useState<SortingState>([]);
 
   // Members are sorted server-side; reset to the first page when the sort
   // changes so the user lands on the start of the new ordering.
@@ -284,24 +282,16 @@ export function UsagePage() {
   }, []);
 
   const effectiveSorting: SortingState =
-    isNewUsagePage && sorting.length === 0
+    sorting.length === 0
       ? [{ id: "consumedFromPoolAwuCredits", desc: true }]
       : sorting;
   const sort = effectiveSorting[0];
-  // The legacy table's pool-usage cell displays total consumption
-  // (consumedAwuCredits), not the pool-only amount, so its "column" of the
-  // same id must sort by the total. Only the compact/Poke variant, which
-  // shows pool-only usage, sorts by consumedFromPoolAwuCredits.
-  // TODO(avervaet, 2026-09-02): remove once the app page and Poke page usage
-  // tables are uniformized.
   const membersOrderColumn =
-    sort?.id === "email" || sort?.id === "seatUsage"
+    sort?.id === "email" ||
+    sort?.id === "seatUsage" ||
+    sort?.id === "consumedFromPoolAwuCredits"
       ? sort.id
-      : sort?.id === "consumedFromPoolAwuCredits"
-        ? isNewUsagePage
-          ? "consumedFromPoolAwuCredits"
-          : "consumedAwuCredits"
-        : "name";
+      : "name";
   const membersOrderDirection = sort?.desc ? "desc" : "asc";
 
   const { myUsage } = useMyUsage({
@@ -948,8 +938,8 @@ export function UsagePage() {
 
   const topUpButton = isWorkspaceAdmin ? (
     <Button
-      label={isNewUsagePage ? "Add credits" : "Top up"}
-      icon={isNewUsagePage ? Plus : ArrowUp}
+      label="Add credits"
+      icon={Plus}
       size="sm"
       variant="outline"
       disabled={!isCreditPriced || !usageSettings.topUpEnabled}
@@ -1288,7 +1278,7 @@ export function UsagePage() {
             </div>
           ) : null}
 
-          {isNewUsagePage && isCreditPriced ? (
+          {isCreditPriced ? (
             <div className="flex flex-col items-stretch gap-4">
               <div className="flex justify-end">{topUpButton}</div>
               <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
