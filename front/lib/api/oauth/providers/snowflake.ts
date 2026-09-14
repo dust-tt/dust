@@ -193,6 +193,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
             from_connection_id: connectionResult.value.connection_id,
           },
           metadata: { workspace_id: workspaceId, user_id: userId },
+          redirectUri: connectionResult.value.redirect_uri,
         });
       }
     }

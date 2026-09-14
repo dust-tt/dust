@@ -174,6 +174,7 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
             freshservice_domain: connection.metadata.freshservice_domain,
           },
           metadata: { workspace_id: workspaceId, user_id: userId },
+          redirectUri: connection.redirect_uri,
         });
       }
     }

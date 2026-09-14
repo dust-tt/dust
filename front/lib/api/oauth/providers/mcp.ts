@@ -180,6 +180,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
             from_connection_id: connectionId,
           },
           metadata: { workspace_id: workspaceId, user_id: userId },
+          redirectUri: connection.redirect_uri,
         });
       }
     } else if (useCase === "platform_actions") {
@@ -255,14 +256,6 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           resource: connection.metadata.resource,
           token_endpoint_auth_method:
             connection.metadata.token_endpoint_auth_method,
-          // The workspace connection's client is registered with the finalize
-          // URI that connection was created with. The personal connection must
-          // present the same one, or the authorization server rejects the
-          // authorize call (clients registered before the redirect cutover
-          // carry the legacy URI, which the client registration pins forever).
-          ...(typeof connection.redirect_uri === "string" && {
-            redirect_uri: connection.redirect_uri,
-          }),
           code_verifier,
           code_challenge,
           use_static_ip_proxy: String(

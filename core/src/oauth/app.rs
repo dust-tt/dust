@@ -239,6 +239,9 @@ pub struct ConnectionMetadataResponse {
     pub connection: ConnectionInfo,
 }
 
+/// @cc [owner:flvndvd,label:api] expose-stored-redirect
+/// Metadata and access-token responses MUST include the connection's stored redirect_uri
+/// when present, including for connections created before redirect_uri was accepted at creation.
 #[derive(Serialize, Deserialize)]
 pub struct ConnectionInfo {
     connection_id: String,
