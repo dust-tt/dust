@@ -455,6 +455,13 @@ export async function getWorksheets(
   return { results: res.value };
 }
 
+/**
+ * @cc [owner:tdraier,label:performance] reject-oversized-before-load
+ * This fetches the worksheet's entire used range as text and materializes it in
+ * memory. Callers MUST reject sheets whose used-range row count exceeds
+ * MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS (probed via getWorksheetUsedRangeRowCount)
+ * before calling this, so an oversized sheet cannot OOM the worker.
+ */
 export async function getWorksheetContent(
   logger: LoggerInterface,
   client: Client,
@@ -474,6 +481,30 @@ export async function getWorksheetContent(
     `${itemApiPath}/usedRange?$select=text`
   );
   return res;
+}
+
+// `$select=rowCount` returns only the used-range dimensions, not the cell
+// contents, so this is a cheap way to know a sheet's size before fetching (and
+// materializing in memory) the full `text` payload via getWorksheetContent.
+export async function getWorksheetUsedRangeRowCount(
+  logger: LoggerInterface,
+  client: Client,
+  internalId: string
+): Promise<number> {
+  const { nodeType, itemAPIPath: itemApiPath } =
+    typeAndPathFromInternalId(internalId);
+
+  if (nodeType !== "worksheet") {
+    throw new Error(
+      `Invalid node type: ${nodeType} for getWorksheetUsedRangeRowCount, expected worksheet`
+    );
+  }
+  const res: WorkbookRange = await clientApiGet(
+    logger,
+    client,
+    `${itemApiPath}/usedRange?$select=rowCount`
+  );
+  return res.rowCount ?? 0;
 }
 
 export async function getMessagesFromConversation(

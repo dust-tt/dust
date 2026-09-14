@@ -199,7 +199,11 @@ async function readDeltaFromGCSStream(
   }
 }
 
-const FILES_SYNC_CONCURRENCY = 10;
+// Kept low because a single file sync can be an Excel spreadsheet whose full
+// content is materialized in memory (see handleSpreadSheet); N concurrent sheet
+// loads within one activity, times the worker's activity slots, must stay within
+// the pod memory limit.
+const FILES_SYNC_CONCURRENCY = 3;
 const DELETE_CONCURRENCY = 5;
 
 // Page size for scanning sensitivity-label-skipped nodes during reconciliation.
