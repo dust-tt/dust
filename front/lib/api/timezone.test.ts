@@ -1,4 +1,5 @@
 import {
+  dayBoundaryInTimezone,
   isValidTimezone,
   localTimeOfDayToUtc,
   timezoneSchema,
@@ -61,6 +62,46 @@ describe("localTimeOfDayToUtc", () => {
       hour: 4,
       minute: 0,
     });
+  });
+});
+
+describe("dayBoundaryInTimezone", () => {
+  it("resolves the start of a bare calendar date as local midnight, not a UTC-then-reobserved instant", () => {
+    // If the bare date were parsed as UTC first, this would resolve to June 14 (America/New_York
+    // is behind UTC), not June 15.
+    expect(
+      dayBoundaryInTimezone("2024-06-15", "America/New_York").toISOString()
+    ).toBe("2024-06-15T04:00:00.000Z");
+  });
+
+  it("resolves the end of the same date to 23:59:59.999 local", () => {
+    expect(
+      dayBoundaryInTimezone("2024-06-15", "America/New_York", {
+        boundary: "end",
+      }).toISOString()
+    ).toBe("2024-06-16T03:59:59.999Z");
+  });
+
+  it("applies offsetDays as whole calendar days", () => {
+    expect(
+      dayBoundaryInTimezone("2024-06-15", "America/New_York", {
+        offsetDays: -1,
+      }).toISOString()
+    ).toBe("2024-06-14T04:00:00.000Z");
+    expect(
+      dayBoundaryInTimezone("2024-06-15", "America/New_York", {
+        offsetDays: 1,
+      }).toISOString()
+    ).toBe("2024-06-16T04:00:00.000Z");
+  });
+
+  it("counts a DST spring-forward (23h) day as exactly one day", () => {
+    // 2024-03-10 is the DST transition day in America/New_York (2am -> 3am).
+    expect(
+      dayBoundaryInTimezone("2024-03-09", "America/New_York", {
+        offsetDays: 1,
+      }).toISOString()
+    ).toBe("2024-03-10T05:00:00.000Z");
   });
 });
 

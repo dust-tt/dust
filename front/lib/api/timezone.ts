@@ -1,4 +1,6 @@
 import logger from "@app/logger/logger";
+import { addDays, endOfDay, startOfDay } from "date-fns";
+import { fromZonedTime } from "date-fns-tz";
 import { z } from "zod";
 
 // Intl throws on a timezone it doesn't recognize, and date-fns-tz relies on Intl
@@ -65,6 +67,37 @@ export function localTimeOfDayToUtc(
     ((relativeMinutesOfDay % MINUTES_IN_A_DAY) + MINUTES_IN_A_DAY) %
     MINUTES_IN_A_DAY;
   return { hour: Math.floor(minutesOfDay / 60), minute: minutesOfDay % 60 };
+}
+
+/**
+ * @cc [owner:avervaet,label:product] bare-date-is-already-local
+ * `isoDate` is a bare `yyyy-MM-dd` calendar date with no attached offset, already local to
+ * `timezone` — matching `moment.tz(isoDate, timezone)`'s treatment of a date-only string. It is
+ * NOT parsed as a UTC instant and then re-observed in `timezone`, which for most timezones would
+ * resolve to the wrong calendar day.
+ */
+/**
+ * @cc [owner:avervaet,label:product] calendar-day-offset-is-dst-safe
+ * `offsetDays` shifts by whole calendar days in `timezone`'s local calendar (via zoned-time
+ * arithmetic), not by a fixed `86400000 * offsetDays` milliseconds. A 23h or 25h local day
+ * (a DST transition day) still counts as exactly one day, matching how every call site's
+ * pre-migration `moment` chain behaved.
+ */
+export function dayBoundaryInTimezone(
+  isoDate: string,
+  timezone: string,
+  {
+    offsetDays = 0,
+    boundary = "start",
+  }: { offsetDays?: number; boundary?: "start" | "end" } = {}
+): Date {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const naiveLocalDate = new Date(year, month - 1, day);
+  const shifted =
+    offsetDays === 0 ? naiveLocalDate : addDays(naiveLocalDate, offsetDays);
+  const bounded =
+    boundary === "start" ? startOfDay(shifted) : endOfDay(shifted);
+  return fromZonedTime(bounded, timezone);
 }
 
 export const timezoneSchema = z

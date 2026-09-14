@@ -1,4 +1,5 @@
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { dayBoundaryInTimezone } from "@app/lib/api/timezone";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -8,7 +9,7 @@ import {
 } from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
-import moment from "moment-timezone";
+import { formatInTimeZone } from "date-fns-tz";
 
 export interface ActiveUsersMetricsPoint {
   timestamp: number;
@@ -84,17 +85,17 @@ export async function fetchActiveUsersMetrics(
 ): Promise<Result<ActiveUsersMetricsPoint[], Error>> {
   const workspaceId = workspace.sId;
 
-  const extendedStart = moment
-    .tz(startDate, timezone)
-    .subtract(MAU_WINDOW_DAYS - 1, "days")
-    .format("YYYY-MM-DD");
+  const extendedStart = formatInTimeZone(
+    dayBoundaryInTimezone(startDate, timezone, {
+      offsetDays: -(MAU_WINDOW_DAYS - 1),
+    }),
+    timezone,
+    "yyyy-MM-dd"
+  );
   const rangeFilter: estypes.QueryDslQueryContainer = {
     range: { timestamp: { gte: extendedStart, lte: endDate } },
   };
-  const cutoffTimestamp = moment
-    .tz(startDate, timezone)
-    .startOf("day")
-    .valueOf();
+  const cutoffTimestamp = dayBoundaryInTimezone(startDate, timezone).getTime();
 
   const query: estypes.QueryDslQueryContainer = {
     bool: {
