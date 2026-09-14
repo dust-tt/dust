@@ -104,11 +104,7 @@ export const MainPage = () => {
           </p>
         </div>
       )}
-      <BlockedActionsProvider
-        owner={workspace}
-        conversation={conversation}
-        conversationApprovalEnabled
-      >
+      <BlockedActionsProvider owner={workspace} conversation={conversation}>
         <GenerationContextProvider>
           <ConversationContainer
             workspace={workspace}

@@ -111,8 +111,6 @@ type BlockedActionsContextType = {
   startPulsingAction: (actionId: string) => void;
   stopPulsingAction: (actionId: string) => void;
   isActionPulsing: (actionId: string) => boolean;
-  // Whether ephemeral per-conversation tool approvals are offered (extension only).
-  conversationApprovalEnabled: boolean;
   isToolApprovedForConversation: (params: {
     mcpServerName: string;
     toolName: string;
@@ -141,9 +139,6 @@ export function useBlockedActionsContext() {
 interface BlockedActionsProviderProps {
   owner: LightWorkspaceType;
   conversation?: ConversationListItemType;
-  // When true, offer ephemeral per-conversation tool approvals. Only the
-  // browser extension enables this today.
-  conversationApprovalEnabled?: boolean;
   children: ReactNode;
 }
 
@@ -151,14 +146,11 @@ interface BlockedActionsProviderProps {
  * @cc [owner:tdraier,label:react;product] conversation-approvals-ephemeral
  * Conversation-scoped tool approvals granted through `approveToolForConversation`
  * MUST stay ephemeral: kept only in provider state, never persisted, and cleared
- * whenever `conversationId` changes. `isToolApprovedForConversation` MUST return
- * `false` when `conversationApprovalEnabled` is `false`, so the feature stays inert
- * outside the surfaces (the browser extension) that opt in.
+ * whenever `conversationId` changes.
  */
 export function BlockedActionsProvider({
   owner,
   conversation,
-  conversationApprovalEnabled = false,
   children,
 }: BlockedActionsProviderProps) {
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -198,9 +190,8 @@ export function BlockedActionsProvider({
 
   const isToolApprovedForConversation = useCallback(
     (params: { mcpServerName: string; toolName: string }) =>
-      conversationApprovalEnabled &&
       conversationApprovedTools.has(conversationApprovalKey(params)),
-    [conversationApprovalEnabled, conversationApprovedTools]
+    [conversationApprovedTools]
   );
 
   const approveToolForConversation = useCallback(
@@ -506,7 +497,6 @@ export function BlockedActionsProvider({
       startPulsingAction,
       stopPulsingAction,
       isActionPulsing,
-      conversationApprovalEnabled,
       isToolApprovedForConversation,
       approveToolForConversation,
     }),
@@ -523,7 +513,6 @@ export function BlockedActionsProvider({
       startPulsingAction,
       stopPulsingAction,
       isActionPulsing,
-      conversationApprovalEnabled,
       isToolApprovedForConversation,
       approveToolForConversation,
     ]

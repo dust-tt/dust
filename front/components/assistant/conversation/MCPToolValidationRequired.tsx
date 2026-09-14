@@ -35,7 +35,6 @@ export function MCPToolValidationRequired({
     removeCompletedAction,
     isActionPulsing,
     stopPulsingAction,
-    conversationApprovalEnabled,
     isToolApprovedForConversation,
     approveToolForConversation,
   } = useBlockedActionsContext();
@@ -132,7 +131,6 @@ export function MCPToolValidationRequired({
    * rendered. Auto-submission MUST fire at most once per mounted action.
    */
   const isAutoApproved =
-    conversationApprovalEnabled &&
     canCurrentUserRespond &&
     isToolApprovedForConversation({ mcpServerName, toolName });
 
@@ -196,9 +194,7 @@ export function MCPToolValidationRequired({
       isValidating={isValidating}
       isPulsing={isPulsing}
       onValidate={handleValidation}
-      onApproveForConversation={
-        conversationApprovalEnabled ? handleApproveForConversation : undefined
-      }
+      onApproveForConversation={handleApproveForConversation}
     />
   );
 }
