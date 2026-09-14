@@ -3,6 +3,7 @@
  * the same normalized values so their dimensions cannot drift.
  */
 import type { LLMErrorType } from "@app/lib/api/llm/types/errors";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type { ErrorSource } from "@app/lib/model_constructors/types/output/events";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
@@ -25,6 +26,12 @@ export function requestedReasoningEffortTag(
   requestedReasoningEffort: ReasoningEffort | null
 ): string {
   return `requested_reasoning_effort:${requestedReasoningEffort ?? "none"}`;
+}
+
+export function serviceTierTags(
+  serviceTier: ServiceTier | undefined
+): string[] {
+  return serviceTier ? [`service_tier:${serviceTier}`] : [];
 }
 
 export function emitLLMDurationMs({
@@ -89,18 +96,21 @@ export function llmAttemptLogFields({
   timeToFirstEventMs,
   timeToFirstTokenMs,
   requestedReasoningEffort,
+  serviceTier,
   surface,
 }: {
   durationMs?: number;
   timeToFirstEventMs?: number;
   timeToFirstTokenMs?: number;
   requestedReasoningEffort: ReasoningEffort | null;
+  serviceTier?: ServiceTier;
   surface: LLMTelemetrySurface;
 }): {
   durationMs?: number;
   timeToFirstEventMs?: number;
   timeToFirstTokenMs?: number;
   requestedReasoningEffort: ReasoningEffort | null;
+  serviceTier?: ServiceTier;
   surface: LLMTelemetrySurface;
 } {
   return {
@@ -108,6 +118,7 @@ export function llmAttemptLogFields({
     ...(timeToFirstEventMs !== undefined ? { timeToFirstEventMs } : {}),
     ...(timeToFirstTokenMs !== undefined ? { timeToFirstTokenMs } : {}),
     requestedReasoningEffort,
+    ...(serviceTier !== undefined ? { serviceTier } : {}),
     surface,
   };
 }
