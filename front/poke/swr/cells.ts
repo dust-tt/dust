@@ -45,11 +45,7 @@ export async function fetchPokeFromAllCells<T>({
         ...init,
       });
       if (!response.ok) {
-        // Prefer the API's own message; fall back to the status when the body
-        // is not a parseable error payload.
-        const { message } = await getErrorFromResponse(response).catch(() => ({
-          message: `HTTP ${response.status}`,
-        }));
+        const { message } = await getErrorFromResponse(response);
         throw new Error(`Failed to fetch from ${cell.name}: ${message}`);
       }
       const data = (await response.json()) as T;
