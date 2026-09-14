@@ -45,7 +45,7 @@ interface AnalyticsConversationPanelBodyProps {
   user: UserType;
   clientSideMCPServerIds: string[];
   conversation: ConversationType | null;
-  isRegisteringMCPServer: boolean;
+  isMCPServerRegistering: boolean;
   isOpen: boolean;
   isCreatingConversation: boolean;
   creationFailed: boolean;
@@ -58,7 +58,7 @@ function AnalyticsConversationPanelBody({
   user,
   clientSideMCPServerIds,
   conversation,
-  isRegisteringMCPServer,
+  isMCPServerRegistering,
   isOpen,
   isCreatingConversation,
   creationFailed,
@@ -98,7 +98,7 @@ function AnalyticsConversationPanelBody({
     );
   }
 
-  if (isCreatingConversation || !conversation || isRegisteringMCPServer) {
+  if (isCreatingConversation || !conversation || isMCPServerRegistering) {
     return (
       <div className="flex h-full min-h-0 items-center justify-center">
         <div className="flex items-center gap-3">
@@ -170,7 +170,7 @@ export function AnalyticsConversationPanel({
   } = useAnalyticsConversation({ owner, user, view });
   const [mcpServerEnabled, setMcpServerEnabled] = useState(false);
 
-  const { serverId: analyticsMCPServerId, isRegistering } =
+  const { serverId: analyticsMCPServerId, status: mcpServerStatus } =
     useAnalyticsMCPServer({
       enabled: mcpServerEnabled,
       view,
@@ -222,7 +222,7 @@ export function AnalyticsConversationPanel({
                   user={user}
                   clientSideMCPServerIds={clientSideMCPServerIds}
                   conversation={conversation}
-                  isRegisteringMCPServer={isRegistering}
+                  isMCPServerRegistering={mcpServerStatus === "registering"}
                   isOpen={isOpen}
                   isCreatingConversation={isCreatingConversation}
                   creationFailed={creationFailed}

@@ -13,8 +13,7 @@ Call this before answering anything that refers to what the user sees ("this", "
 the filters at any moment.
 
 Forward every key of \`toolArguments\` unchanged to the workspace analytics tools so your figures \
-match what is on screen. An absent key means no filter on that dimension, never replace it with an \
-empty array.
+match what is on screen. An absent key means no filter on that dimension.
 
 \`granularity\` is the bucket size for get_credit_timeseries. \`dimension\` is the current \
 breakdown, passed as \`dimension\` to the ranking tools and \`breakdownBy\` to \
@@ -24,8 +23,6 @@ get_credit_timeseries. \`description\` is display text for the user. None of the
  * @cc [owner:achilleburah,label:mcp;product] tool-arguments-are-pass-through
  * Every key of `toolArguments` MUST be a valid argument, under that exact name, of every
  * `workspace_analytics` tool that accepts filters, so the agent can forward them unchanged.
- * A dimension the user does not filter on MUST be absent rather than an empty array, which the
- * consumption endpoints would read as "match nothing".
  */
 export function analyticsViewToolPayload(view: AnalyticsViewInput) {
   const ids = usageFilterToIds(view.filter);

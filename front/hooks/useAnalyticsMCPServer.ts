@@ -1,6 +1,7 @@
 import type { AnalyticsViewInput } from "@app/components/workspace/analytics/analyticsView";
 import { registerGetAnalyticsViewTool } from "@app/components/workspace/analytics/tools/getAnalyticsView";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
+import logger from "@app/logger/logger";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
@@ -8,7 +9,7 @@ const SERVER_NAME = "analytics-panel-client";
 
 export interface AnalyticsMCPServerHandle {
   serverId: string | undefined;
-  isRegistering: boolean;
+  status: "idle" | "registering" | "registered" | "failed";
 }
 
 /**
@@ -26,7 +27,8 @@ export function useAnalyticsMCPServer({
   workspaceId: string;
 }): AnalyticsMCPServerHandle {
   const [serverId, setServerId] = useState<string | undefined>(undefined);
-  const [isRegistering, setIsRegistering] = useState(true);
+  const [status, setStatus] =
+    useState<AnalyticsMCPServerHandle["status"]>("idle");
   // Read through a ref so a filter change does not re-register the server.
   const viewRef = useRef(view);
   useLayoutEffect(() => {
@@ -38,6 +40,7 @@ export function useAnalyticsMCPServer({
       return;
     }
 
+    setStatus("registering");
     let cancelled = false;
     // Held as locals rather than refs: cleanup runs while `connect` is still awaiting, when refs
     // assigned after the await are still empty, leaving the registration and its heartbeat alive.
@@ -66,12 +69,12 @@ export function useAnalyticsMCPServer({
           (newServerId) => {
             if (!cancelled) {
               setServerId(newServerId);
-              setIsRegistering(false);
+              setStatus("registered");
             }
           }
         );
         transport.onerror = (err) => {
-          console.error("[useAnalyticsMCPServer] Transport error:", err);
+          logger.error({ err }, "[useAnalyticsMCPServer] Transport error");
         };
 
         await server.connect(transport);
@@ -80,9 +83,9 @@ export function useAnalyticsMCPServer({
           closeServer();
         }
       } catch (err) {
-        console.error("[useAnalyticsMCPServer] Failed to initialize:", err);
+        logger.error({ err }, "[useAnalyticsMCPServer] Failed to initialize");
         closeServer();
-        setIsRegistering(false);
+        setStatus("failed");
       }
     };
 
@@ -92,8 +95,9 @@ export function useAnalyticsMCPServer({
       cancelled = true;
       closeServer();
       setServerId(undefined);
+      setStatus("idle");
     };
   }, [enabled, workspaceId]);
 
-  return { serverId, isRegistering };
+  return { serverId, status };
 }
