@@ -22,6 +22,7 @@ import {
   setUsageFilterFromAttributionRow,
   toConsumptionScopeFilter,
 } from "@app/components/workspace/analytics/usageFilter";
+import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type {
   ConsumptionGranularity,
   ConsumptionPeriodSelection,
@@ -32,8 +33,11 @@ import {
 } from "@app/lib/analytics/consumption_period";
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { WorkspaceType } from "@app/types/user";
 import {
+  ContentMessage,
+  Lock01,
   Page,
   Tabs,
   TabsContent,
@@ -50,6 +54,11 @@ interface AgentInsightsTabProps {
   agentConfiguration: AgentConfigurationType;
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] restricted-insights
+ * When the overview returns agent_configuration_not_found, show an access explanation instead
+ * of empty analytics and feedback panels.
+ */
 export function AgentInsightsTab({
   owner,
   agentConfiguration,
@@ -72,6 +81,27 @@ export function AgentInsightsTab({
     agentId,
   };
   const isCustomAgent = agentConfiguration.scope !== "global";
+  // Shares the overview query with ConsumptionOverview, keeping the API's space check authoritative.
+  const { isOverviewError } = useConsumptionOverview({
+    workspaceId: owner.sId,
+    period,
+    analyticsScope,
+  });
+
+  if (
+    isAPIErrorResponse(isOverviewError) &&
+    isOverviewError.error.type === "agent_configuration_not_found"
+  ) {
+    return (
+      <div className="flex flex-col gap-4">
+        <h2 className="text-lg font-semibold text-foreground">Insights</h2>
+        <ContentMessage title="Restricted access" icon={Lock01} size="md">
+          You need access to all spaces used by this agent to view its insights.
+          Open the Info tab to review the access requirements.
+        </ContentMessage>
+      </div>
+    );
+  }
 
   return (
     <ObservabilityProvider>
