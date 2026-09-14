@@ -141,7 +141,20 @@ export function useSubmitMessage({
             modelSelection,
           }),
         }
-      );
+      ).catch((error: unknown) => {
+        if (!(error instanceof TypeError) && !(error instanceof DOMException)) {
+          throw error;
+        }
+        return new Err<SubmitMessageError>({
+          type: "message_send_error",
+          title: "Connection interrupted",
+          message:
+            "Check the conversation before retrying; your message may have been sent.",
+        });
+      });
+      if (mRes instanceof Err) {
+        return mRes;
+      }
 
       if (!mRes.ok) {
         if (mRes.status === 413) {

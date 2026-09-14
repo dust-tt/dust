@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  gpt_live: {
+    description: "Enable the GPT-Live voice conversation POC",
+    stage: "dust_only",
+    owner: "aubin-tchoi",
+  },
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
