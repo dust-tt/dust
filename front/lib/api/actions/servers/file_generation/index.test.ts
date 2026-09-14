@@ -73,7 +73,12 @@ describe("file_generation PDF availability", () => {
       (tool) => tool.name === "generate_file"
     );
     assert(generateFile);
-    for (const name of ["report.pdf", "report.PDF"]) {
+    for (const name of [
+      "report.pdf",
+      "report.PDF",
+      "report.pdf/",
+      "report.pdf///",
+    ]) {
       expect(generateFile.schema.file_name.safeParse(name).success).toBe(
         !computerEnabled
       );

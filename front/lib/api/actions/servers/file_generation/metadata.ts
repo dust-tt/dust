@@ -157,8 +157,9 @@ export function getFileGenerationToolsMetadata({
           ...tool,
           schema: {
             ...tool.schema,
+            // The handler's path.extname ignores trailing slashes.
             file_name: tool.schema.file_name
-              .refine((name) => !name.toLowerCase().endsWith(".pdf"), {
+              .refine((name) => !/\.pdf\/*$/i.test(name), {
                 message: "Use the PDFs skill in the Computer to create PDFs.",
               })
               .describe(
