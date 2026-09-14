@@ -474,6 +474,8 @@ const InputBarContainer = ({
   >(null);
   const [selectedServerViewForDetails, setSelectedServerViewForDetails] =
     useState<MCPServerViewLightType | null>(null);
+  const [selectedServerViewIdForDetails, setSelectedServerViewIdForDetails] =
+    useState<string | null>(null);
   shouldEnableSlashSuggestionRef.current = shouldEnableSlashSuggestion;
 
   useEffect(() => {
@@ -831,6 +833,7 @@ const InputBarContainer = ({
       onDetailsRef,
       onSkillDetails: setSelectedSkillIdForDetails,
       selectedMCPServerViewIdsRef,
+      onToolDetailsById: setSelectedServerViewIdForDetails,
       slashCommandsRef,
       includeAttachKnowledgeRef,
       includePickModelRef,
@@ -1685,8 +1688,12 @@ const InputBarContainer = ({
         user={user}
         selectedSkillId={selectedSkillIdForDetails}
         selectedMCPServerView={selectedServerViewForDetails}
+        selectedMCPServerViewId={selectedServerViewIdForDetails}
         onCloseSkill={() => setSelectedSkillIdForDetails(null)}
-        onCloseTool={() => setSelectedServerViewForDetails(null)}
+        onCloseTool={() => {
+          setSelectedServerViewForDetails(null);
+          setSelectedServerViewIdForDetails(null);
+        }}
       />
 
       {isCompact && (

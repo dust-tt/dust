@@ -1,4 +1,7 @@
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type {
+  MCPServerViewLightType,
+  MCPServerViewType,
+} from "@app/lib/api/mcp";
 import { getMCPServerViewNameConflictMessage } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -35,6 +38,11 @@ export type PatchMCPServerViewBody = z.infer<
 export type PatchMCPServerViewResponseBody = {
   success: true;
   serverView: MCPServerViewType;
+};
+
+export type GetMCPServerViewResponseBody = {
+  success: true;
+  serverView: MCPServerViewLightType;
 };
 
 async function getAllMCPServerViewsInWorkspace(

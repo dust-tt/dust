@@ -14,6 +14,7 @@ import {
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
   SKILL_SIDE_PANEL_TYPE,
+  TOOL_SIDE_PANEL_TYPE,
 } from "@app/types/conversation_side_panel";
 import {
   assertNever,
@@ -49,6 +50,11 @@ type OpenPanelParams =
   | {
       type: "skill";
       skillId: string;
+    }
+  | {
+      type: "tool";
+      // The MCP server view sId.
+      toolId: string;
     };
 
 // The `spid` hash value for a panel. Two panels are the same when type and key match.
@@ -70,6 +76,8 @@ function panelDataKey(params: OpenPanelParams): string {
       return params.type;
     case SKILL_SIDE_PANEL_TYPE:
       return params.skillId;
+    case TOOL_SIDE_PANEL_TYPE:
+      return params.toolId;
     default:
       return assertNever(params);
   }
@@ -119,6 +127,8 @@ function panelParamsFromHash(
       return { type };
     case SKILL_SIDE_PANEL_TYPE:
       return { type, skillId: data };
+    case TOOL_SIDE_PANEL_TYPE:
+      return { type, toolId: data };
     default:
       assertNeverAndIgnore(type);
       return null;
@@ -134,7 +144,8 @@ const isSupportedPanelType = (
   type === "file_preview" ||
   type === "files" ||
   type === "plan" ||
-  type === "skill";
+  type === "skill" ||
+  type === "tool";
 
 interface ConversationSidePanelContextType {
   currentPanel: ConversationSidePanelType;

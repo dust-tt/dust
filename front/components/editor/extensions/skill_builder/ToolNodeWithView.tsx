@@ -13,10 +13,12 @@ import { useMemo } from "react";
 
 interface ToolNodeWithViewOptions {
   onToolDetails?: (tool: MCPServerViewType) => void;
+  onToolDetailsById?: (mcpServerViewId: string) => void;
 }
 
 interface ToolNodeViewProps extends NodeViewProps {
   onToolDetails?: (tool: MCPServerViewType) => void;
+  onToolDetailsById?: (mcpServerViewId: string) => void;
 }
 
 function useToolNodeDisplay(attrs: ToolNodeAttributes) {
@@ -64,6 +66,7 @@ function ToolNodeView({
   editor,
   node,
   onToolDetails,
+  onToolDetailsById,
 }: ToolNodeViewProps) {
   const attrs: ToolNodeAttributes = {
     mcpServerViewId: node.attrs.mcpServerViewId,
@@ -71,10 +74,13 @@ function ToolNodeView({
     toolName: node.attrs.toolName,
   };
   const display = useToolNodeDisplay(attrs);
+  const view = display.kind === "tool" ? display.view : null;
   const handleClick =
-    display.kind === "tool" && display.view && onToolDetails
-      ? () => onToolDetails(display.view)
-      : undefined;
+    view && onToolDetails
+      ? () => onToolDetails(view)
+      : onToolDetailsById
+        ? () => onToolDetailsById(attrs.mcpServerViewId)
+        : undefined;
   const onRemove = editor.isEditable ? deleteNode : undefined;
 
   return (
@@ -98,12 +104,17 @@ export const ToolNodeWithView = ToolNode.extend<ToolNodeWithViewOptions>({
     return {
       ...this.parent?.(),
       onToolDetails: undefined,
+      onToolDetailsById: undefined,
     };
   },
 
   addNodeView() {
     return ReactNodeViewRenderer((props: NodeViewProps) => (
-      <ToolNodeView {...props} onToolDetails={this.options.onToolDetails} />
+      <ToolNodeView
+        {...props}
+        onToolDetails={this.options.onToolDetails}
+        onToolDetailsById={this.options.onToolDetailsById}
+      />
     ));
   },
 });

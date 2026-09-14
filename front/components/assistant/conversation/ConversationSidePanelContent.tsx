@@ -5,6 +5,7 @@ import { FilePreviewPanel } from "@app/components/assistant/conversation/files_p
 import { InteractiveContentContainer } from "@app/components/assistant/conversation/interactive_content/InteractiveContentContainer";
 import { ConversationPlanModePanel } from "@app/components/assistant/conversation/plan_mode/ConversationPlanModePanel";
 import { ConversationSkillPanel } from "@app/components/assistant/conversation/skill_panel/ConversationSkillPanel";
+import { ConversationToolPanel } from "@app/components/assistant/conversation/tool_panel/ConversationToolPanel";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
@@ -15,6 +16,7 @@ import {
   INTERACTIVE_CONTENT_SIDE_PANEL_TYPE,
   PLAN_SIDE_PANEL_TYPE,
   SKILL_SIDE_PANEL_TYPE,
+  TOOL_SIDE_PANEL_TYPE,
 } from "@app/types/conversation_side_panel";
 import type { LightWorkspaceType } from "@app/types/user";
 
@@ -64,6 +66,9 @@ export default function ConversationSidePanelContent({
 
     case SKILL_SIDE_PANEL_TYPE:
       return <ConversationSkillPanel owner={owner} />;
+
+    case TOOL_SIDE_PANEL_TYPE:
+      return <ConversationToolPanel owner={owner} />;
 
     default:
       return null;

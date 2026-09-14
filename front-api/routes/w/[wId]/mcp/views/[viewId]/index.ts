@@ -1,4 +1,7 @@
-import type { PatchMCPServerViewResponseBody } from "@app/lib/api/mcp/views";
+import type {
+  GetMCPServerViewResponseBody,
+  PatchMCPServerViewResponseBody,
+} from "@app/lib/api/mcp/views";
 import {
   PatchMCPServerViewBodySchema,
   updateNameAndDescriptionForMCPServerViews,
@@ -20,6 +23,35 @@ const ParamsSchema = z.object({
 
 // Mounted at /api/w/:wId/mcp/views/:viewId.
 const app = workspaceApp();
+
+/** @ignoreswagger */
+app.get(
+  "/",
+  validate("param", ParamsSchema),
+  ensureIsUser(),
+  async (ctx): HandlerResult<GetMCPServerViewResponseBody> => {
+    const auth = ctx.get("auth");
+
+    const { viewId } = ctx.req.valid("param");
+
+    const serverView = await MCPServerViewResource.fetchById(auth, viewId);
+
+    if (!serverView) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "mcp_server_view_not_found",
+          message: "MCP Server View not found",
+        },
+      });
+    }
+
+    return ctx.json({
+      success: true as const,
+      serverView: serverView.toJSONLight(),
+    });
+  }
+);
 
 /** @ignoreswagger */
 app.patch(
