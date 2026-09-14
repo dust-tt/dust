@@ -90,6 +90,9 @@ export function getSandboxImage(
 
   // Dev-only: bypass all egress restrictions. Pairs with skipping the dsbx
   // forwarder + tearing down in-sandbox nftables in tools/index.ts.
+  // Required when SBX_DEV_FRONT_URL points at a local tunnel: agent-proxied
+  // traffic otherwise goes through the cloud egress proxy (default allowlist
+  // dust.tt only), which closes the connection and surfaces as TLS EOF in dsbx.
   if (config.getSandboxDevUnrestrictedEgress()) {
     return new Ok(image.withNetwork({ mode: "allow_all" }));
   }
@@ -99,6 +102,9 @@ export function getSandboxImage(
     return new Ok(image);
   }
 
+  // E2B allowlist only helps root processes that bypass the in-sandbox
+  // forwarder. Prefer SBX_DEV_UNRESTRICTED_EGRESS when the sandbox must call
+  // the tunnel (dev/scripts/env.sh sets it whenever the ngrok URL file exists).
   return new Ok(
     image.withNetwork({
       mode: image.network.mode,
