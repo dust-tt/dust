@@ -1,5 +1,6 @@
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
 import { getAgentsEditors, getEditors } from "@app/lib/api/assistant/editors";
+import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import logger from "@app/logger/logger";
@@ -7,7 +8,11 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import assert from "assert";
-import { expect, it, vi } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 it.each([
   false,
@@ -32,9 +37,7 @@ it.each([
   );
   assert(revokeResult.isOk());
 
-  if (grants) {
-    await FeatureFlagFactory.basic(authenticator, "agent_permission_grants");
-  }
+  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
   const warn = vi.spyOn(logger, "warn");
   const editors = await getEditors(authenticator, agent);
 

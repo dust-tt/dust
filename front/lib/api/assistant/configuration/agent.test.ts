@@ -1257,9 +1257,7 @@ describe("updateAgentConfigurationsScope", () => {
         })
       ).isOk()
     ).toBe(true);
-    if (grants) {
-      await FeatureFlagFactory.basic(authenticator, "agent_permission_grants");
-    }
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
 
     const result = await updateAgentConfigurationsScope(
       authenticator,

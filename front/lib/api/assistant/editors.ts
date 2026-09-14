@@ -1,4 +1,4 @@
-import { areAgentGrantsEnabled } from "@app/lib/api/assistant/agent_grants";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { shadowCompare } from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
@@ -77,10 +77,7 @@ export async function getAgentEditors(
     >
   >
 > {
-  if (
-    agentConfiguration.scope !== "global" &&
-    (await areAgentGrantsEnabled(auth))
-  ) {
+  if (agentConfiguration.scope !== "global" && !isLegacyAclsEnabled()) {
     const resource = await AgentResource.fetchByAgentConfiguration(
       auth,
       agentConfiguration
@@ -178,7 +175,7 @@ export const getAgentsEditors = async (
   auth: Authenticator,
   agentConfigurations: LightAgentConfigurationType[]
 ): Promise<Record<string, UserType[]>> => {
-  if (await areAgentGrantsEnabled(auth)) {
+  if (!isLegacyAclsEnabled()) {
     const resources = await AgentResource.fetchByAgentConfigurations(
       auth,
       agentConfigurations.filter((agent) => agent.scope !== "global")
