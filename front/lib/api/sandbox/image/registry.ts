@@ -26,7 +26,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.107";
+const DUST_BASE_IMAGE_VERSION = "0.8.108";
 const DSBX_CLI_VERSION = "0.1.57";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
@@ -86,6 +86,11 @@ const PYTHON_LIBRARIES: PythonLibrary[] = [
   { name: "openpyxl", version: "3.1.5", description: "Excel file support" },
   { name: "pdfplumber", version: "0.11.9", description: "PDF extraction" },
   { name: "pypdf", version: "6.8.0", description: "PDF manipulation" },
+  {
+    name: "pytesseract",
+    version: "0.3.13",
+    description: "OCR for images and scans",
+  },
   { name: "reportlab", version: "4.4.10", description: "PDF generation" },
   {
     name: "python-docx",
@@ -302,6 +307,11 @@ function getSshHardeningCommand(): string {
   ].join(" && ");
 }
 
+/**
+ * @cc [owner:flvndvd,label:product] pdf-ocr-runtime
+ * The dust-base runtime MUST provide Tesseract, pytesseract, and English, French,
+ * and orientation data so the PDF skill can run OCR without installing packages.
+ */
 const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   `dust-sbx-bedrock:${DUST_BEDROCK_IMAGE_VERSION}`
 )
@@ -372,6 +382,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   .runCmd(
     "apt-get update && apt-get install -y jq pandoc imagemagick ffmpeg unzip file " +
       "sqlite3 libreoffice libeot0 poppler-utils qpdf " +
+      "tesseract-ocr tesseract-ocr-eng tesseract-ocr-fra tesseract-ocr-osd " +
       "fonts-crosextra-carlito fonts-crosextra-caladea fonts-liberation2 " +
       "fonts-noto-core && fc-cache -f",
     { user: "root" }
@@ -413,6 +424,12 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     {
       name: "qpdf",
       description: "PDF transformation (merge, split, encrypt)",
+      runtime: "system",
+    },
+    {
+      name: "tesseract",
+      description:
+        "OCR for images and scans, with English and French language data",
       runtime: "system",
     },
   ])

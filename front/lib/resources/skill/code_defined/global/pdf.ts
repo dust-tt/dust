@@ -17,12 +17,14 @@ deliverables under \`/files/conversation\`, using a new filename to preserve the
   and \`pdfimages\` extracts embedded images.
 - \`pypdf\`: page-aware text extraction and PDF manipulation.
 - \`pdfplumber\`: text positions, cropping, and table extraction.
+- \`tesseract\` and \`pytesseract\`: OCR with English (\`eng\`), French (\`fra\`),
+  and orientation/script detection (\`osd\`) data.
 - \`reportlab\`: PDF creation.
 - \`qpdf\`: PDF manipulation and structural checks.
 - \`Pillow\` and \`pdf2image\`: image processing and PDF rendering from Python.
 
 These are already installed. Do not install packages or assume tools such as
-PyMuPDF, pdf-lib, pdftk, Tesseract, or OCRmyPDF are available.
+PyMuPDF, pdf-lib, pdftk, or OCRmyPDF are available.
 
 ## 1. Read and extract text
 
@@ -76,12 +78,61 @@ before using the values. An empty table list does not prove there is no table.
 Crop to the table or adjust extraction settings if necessary. Preserve blanks and
 source page references. Do not combine unrelated tables or invent missing values.
 
-## 3. Read scans and inspect visual content
+## 3. OCR scans and inspect visual content
 
 When text is missing, garbled, or insufficient to understand a chart or layout,
-render the affected pages and inspect their images. Neither \`pypdf\` nor
-\`pdfplumber\` performs OCR. No local OCR engine is provided: use your vision
-capability to read or transcribe rendered pages, marking any illegible content.
+render the affected pages and inspect their images. Use Tesseract for printed
+scans. Neither \`pypdf\` nor \`pdfplumber\` performs OCR on its own.
+
+Check \`tesseract --list-langs\` and select the document's language. Use \`eng\`,
+\`fra\`, or \`eng+fra\` for mixed English/French text. \`osd\` detects orientation
+and scripts. It is not a recognition language. For unsupported languages,
+handwriting, or failed recognition, use vision and mark any illegible content.
+If an older Computer lacks Tesseract, use the same vision fallback and disclose
+that OCR was unavailable. Do not try to install missing engines or language data.
+
+For a scanned PDF, render and OCR one page at a time to bound memory usage:
+
+\`\`\`python
+from pdf2image import convert_from_path
+from pypdf import PdfReader
+import pytesseract
+
+source = "/tmp/report.pdf"
+page_count = len(PdfReader(source).pages)
+with open("/tmp/report-ocr.txt", "w", encoding="utf-8") as output:
+    for page_number in range(1, page_count + 1):
+        pages = convert_from_path(
+            source, dpi=300, first_page=page_number, last_page=page_number,
+            timeout=60,
+        )
+        with pages[0] as page:
+            text = pytesseract.image_to_string(page, lang="eng", timeout=60)
+        if not text.strip():
+            text = "[No text recognized: inspect the rendered page.]"
+        output.write(f"--- PDF page {page_number} ---\\n{text}\\n\\n")
+\`\`\`
+
+Limit the page range to the request. For mixed PDFs, retain embedded text from
+searchable pages and OCR only the scans. If rendering or OCR times out, reduce
+the resolution or process the affected page separately. Report failed pages
+instead of silently omitting them. Check OCR text against the rendered pages,
+especially names, numbers, symbols, and tables. OCR does not recover table
+structure reliably. Correct skew or rotation when the rendered page requires it.
+
+To make a scanned page searchable, create a PDF containing the page image and
+a recognized text layer:
+
+\`\`\`bash
+pdftoppm -png -r 300 -f 3 -l 3 -singlefile /tmp/report.pdf /tmp/page-3
+tesseract /tmp/page-3.png /tmp/page-3-searchable -l eng pdf
+\`\`\`
+
+Combine the resulting page PDFs in source order with \`pypdf\`. Preserve existing
+searchable pages in mixed PDFs. Verify text extraction from the result as well
+as page count, order, and appearance before calling it searchable.
+
+For visual inspection, publish a smaller preview that fits the image tool limit:
 
 \`\`\`bash
 mkdir -p /files/conversation/.pdf_render/report
@@ -98,7 +149,8 @@ image, report that limitation. Do not claim to have inspected or transcribed it.
 
 For a full transcription, inspect every requested page and preserve page boundaries.
 Describe vision-based transcription as such. It does not add a searchable text
-layer to the original PDF. Do not claim to have produced an OCR-searchable PDF.
+layer to the original PDF. Only claim a searchable PDF when you created and
+verified its text layer.
 
 ## 4. Create or modify PDFs
 
@@ -151,10 +203,10 @@ export const pdfSkill = {
   kind: "global",
   name: "PDFs",
   userFacingDescription:
-    "Read, extract text and tables, create, and edit PDFs in the Computer.",
+    "Read, OCR scans, extract text and tables, create, and edit PDFs in the Computer.",
   agentFacingDescription:
     "Use this skill when working with PDF files in the Computer: reading or extracting text and tables, " +
-    "inspecting scanned pages and charts, creating PDFs, or merging, splitting, and editing existing PDFs. " +
+    "running OCR on scans, inspecting charts, creating searchable PDFs, or merging, splitting, and editing existing PDFs. " +
     "Includes page-aware extraction and visual verification using the installed PDF libraries.",
   instructions: PDF_SKILL_INSTRUCTIONS,
   exposeInstructions: true,
