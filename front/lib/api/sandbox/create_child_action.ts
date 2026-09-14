@@ -240,11 +240,8 @@ export async function createSandboxChildAction(
   // per-step counts (retrievalTopK, websearchResultCount, citationsCount) do not
   // account for the child tool. Compute them for the child as a single-action
   // step, resolving the model the same way the agent loop does.
-  //
-  // Children are excluded from the conversation timeline and from later steps'
-  // citation offset sums, so their references start at the parent's offset and
-  // may overlap with siblings' and later steps'. Child outputs feed the LLM
-  // inside the sandbox, not the conversation's citations.
+  // Children are excluded from later steps' citation offset sums, so their
+  // references may overlap them; child outputs only feed the sandbox LLM.
   const modelConfig = getSupportedModelConfig(
     await resolveAgentMessageModelConfig(auth, {
       agentConfiguration,

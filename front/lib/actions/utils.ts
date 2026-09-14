@@ -4,7 +4,7 @@ import type { StepContext } from "@app/lib/actions/types";
 import { isServerSideMCPToolConfigurationWithName } from "@app/lib/actions/types/guards";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 
-const WEBSEARCH_ACTION_NUM_RESULTS = 16;
+export const WEBSEARCH_ACTION_NUM_RESULTS = 16;
 export const SLACK_SEARCH_ACTION_NUM_RESULTS = 24;
 export const NOTION_SEARCH_ACTION_NUM_RESULTS = 16;
 export const RUN_AGENT_ACTION_NUM_RESULTS = 64;

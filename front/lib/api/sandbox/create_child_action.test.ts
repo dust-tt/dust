@@ -33,6 +33,7 @@ import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { WEBSEARCH_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { computeAndStoreAgentMessageConsumptionAttribution } from "@app/lib/api/assistant/agent_message_consumption_attribution/store";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
@@ -612,11 +613,11 @@ describe("createSandboxChildAction", () => {
     // retrievalTopK 10; the child gets the allocation of a websearch-only step
     // starting at the parent's citation offset.
     expect(child?.stepContext).toEqual({
-      citationsCount: 16,
+      citationsCount: WEBSEARCH_ACTION_NUM_RESULTS,
       citationsOffset: 7,
       resumeState: null,
       retrievalTopK: 0,
-      websearchResultCount: 16,
+      websearchResultCount: WEBSEARCH_ACTION_NUM_RESULTS,
       sandboxChildActionInfo: { parentActionId },
     });
   });

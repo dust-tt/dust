@@ -480,14 +480,14 @@ async function buildAgentLoopRuntimeData(
     return new Err(new Error(`Agent configuration not found ${agentId}`));
   }
 
-  const { model: agentModelConfig, ...agentConfigurationWithoutModel } =
+  const { model: _model, ...agentConfigurationWithoutModel } =
     agentConfiguration;
 
   const resolvedModelConfig = await resolveAgentMessageModelConfig(auth, {
     agentConfiguration,
     agentMessage,
   });
-  const isNoopPinnedModel = agentModelConfig.modelId === NOOP_MODEL_ID;
+  const isNoopPinnedModel = resolvedModelConfig.modelId === NOOP_MODEL_ID;
 
   // Select the endpoint by its router-native `model` id (bare `Model`), 1-to-1
   // with legacy model selection.

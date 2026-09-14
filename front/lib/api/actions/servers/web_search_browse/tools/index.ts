@@ -42,7 +42,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 const MIN_CHARACTERS_TO_SUMMARIZE = 16_000;
 const BROWSE_MAX_TOKENS_LIMIT = 32_000;
 const DEFAULT_WEBSEARCH_MODEL_CONFIG = GPT_4O_MODEL_CONFIG;
-const AGENT_LESS_DEFAULT_WEBSEARCH_RESULT_COUNT = 10;
+export const AGENT_LESS_DEFAULT_WEBSEARCH_RESULT_COUNT = 10;
 
 async function handleWebsearch(
   { query }: { query: string },
@@ -66,7 +66,10 @@ async function handleWebsearch(
       : AGENT_LESS_DEFAULT_WEBSEARCH_RESULT_COUNT;
   if (stepResultCount <= 0) {
     logger.warn(
-      { websearchResultCount: stepResultCount },
+      {
+        websearchResultCount: stepResultCount,
+        workspaceId: extra.auth.getNonNullableWorkspace().sId,
+      },
       "Invalid websearchResultCount in step context, falling back to default"
     );
   }
