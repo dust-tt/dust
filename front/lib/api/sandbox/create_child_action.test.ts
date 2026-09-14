@@ -191,7 +191,7 @@ describe("createSandboxChildAction", () => {
         stepContentId: stepContent.id,
         stepContext: {
           citationsCount: 0,
-          citationsOffset: 0,
+          citationsOffset: 7,
           resumeState: null,
           retrievalTopK: 10,
           websearchResultCount: 5,
@@ -609,10 +609,11 @@ describe("createSandboxChildAction", () => {
       result.value.actionId
     );
     // The parent (sandbox-only step) carries websearchResultCount 5 and
-    // retrievalTopK 10; the child gets the allocation of a websearch-only step.
+    // retrievalTopK 10; the child gets the allocation of a websearch-only step
+    // starting at the parent's citation offset.
     expect(child?.stepContext).toEqual({
       citationsCount: 16,
-      citationsOffset: 0,
+      citationsOffset: 7,
       resumeState: null,
       retrievalTopK: 0,
       websearchResultCount: 16,

@@ -50,14 +50,26 @@ async function handleWebsearch(
 ) {
   const { runContext } = extra;
 
-  const { websearchResultCount, citationsOffset } = isAgentLoopRunContext(
-    runContext
-  )
-    ? runContext.stepContext
-    : {
-        websearchResultCount: AGENT_LESS_DEFAULT_WEBSEARCH_RESULT_COUNT,
-        citationsOffset: 0,
-      };
+  const { websearchResultCount: stepResultCount, citationsOffset } =
+    isAgentLoopRunContext(runContext)
+      ? runContext.stepContext
+      : {
+          websearchResultCount: AGENT_LESS_DEFAULT_WEBSEARCH_RESULT_COUNT,
+          citationsOffset: 0,
+        };
+
+  // Providers reject a zero limit. A non-positive count means the step context
+  // was not computed for a websearch tool.
+  const websearchResultCount =
+    stepResultCount > 0
+      ? stepResultCount
+      : AGENT_LESS_DEFAULT_WEBSEARCH_RESULT_COUNT;
+  if (stepResultCount <= 0) {
+    logger.warn(
+      { websearchResultCount: stepResultCount },
+      "Invalid websearchResultCount in step context, falling back to default"
+    );
+  }
 
   const rawSearchProvider = (
     (extra.auth.getNonNullableWorkspace().metadata as WorkspaceMetadata) ?? {}

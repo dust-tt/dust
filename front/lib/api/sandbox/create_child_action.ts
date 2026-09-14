@@ -15,6 +15,7 @@ import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agen
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import { resolveAgentMessageModelConfig } from "@app/lib/api/assistant/resolve_model";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
@@ -239,10 +240,17 @@ export async function createSandboxChildAction(
   // per-step counts (retrievalTopK, websearchResultCount, citationsCount) do not
   // account for the child tool. Compute them for the child as a single-action
   // step, resolving the model the same way the agent loop does.
-  const modelConfig = getSupportedModelConfig({
-    ...agentConfiguration.model,
-    ...agentMessage.resolvedModel,
-  });
+  //
+  // Children are excluded from the conversation timeline and from later steps'
+  // citation offset sums, so their references start at the parent's offset and
+  // may overlap with siblings' and later steps'. Child outputs feed the LLM
+  // inside the sandbox, not the conversation's citations.
+  const modelConfig = getSupportedModelConfig(
+    await resolveAgentMessageModelConfig(auth, {
+      agentConfiguration,
+      agentMessage,
+    })
+  );
   if (!modelConfig) {
     return new Err(
       new Error(

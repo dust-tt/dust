@@ -2,14 +2,21 @@ import { getDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
 import { selectEnabledModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { getAgentAllowedTierNamesOverride } from "@app/lib/model_tiers/agent_tier_overrides";
 import {
   getEnabledModelsForAuth,
   resolveStreamModel,
 } from "@app/lib/model_tiers/enabled_models";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentConfigurationType,
+  AgentModelConfigurationType,
+  LightAgentConfigurationType,
+} from "@app/types/assistant/agent";
+import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
+import { NOOP_MODEL_ID } from "@app/types/assistant/models/noop";
 import type {
   ModelConfigurationType,
   ModelResolutionMethodType,
@@ -138,5 +145,42 @@ export async function resolveModel(
   return {
     resolvedModel: toResolvedModel(enabled, effort),
     modelResolutionMethod,
+  };
+}
+
+/**
+ * Resolves the model configuration an agent message runs with: the agent's configured model
+ * (temperature, response format, etc.) overridden by the model resolved for the message.
+ *
+ * Legacy messages have no stored resolution; when the agent is on a model stream, the stream is
+ * resolved now. Global agents may pin the noop model at run time (static replies from the dust and
+ * sidekick agents, see `getStaticReplyForUserMessage`); the model stored on the message was
+ * resolved without that context, so it must not override the noop pin.
+ */
+export async function resolveAgentMessageModelConfig(
+  auth: Authenticator,
+  {
+    agentConfiguration,
+    agentMessage,
+  }: {
+    agentConfiguration: AgentConfigurationType;
+    agentMessage: Pick<AgentMessageType, "resolvedModel">;
+  }
+): Promise<AgentModelConfigurationType> {
+  const { model } = agentConfiguration;
+
+  let { resolvedModel } = agentMessage;
+  if (!resolvedModel && isModelStreamId(model.modelId)) {
+    ({ resolvedModel } = await resolveModel(auth, {
+      configuration: agentConfiguration,
+      featureFlags: await getFeatureFlags(auth),
+    }));
+  }
+
+  const isNoopPinnedModel = model.modelId === NOOP_MODEL_ID;
+
+  return {
+    ...model,
+    ...(isNoopPinnedModel ? null : resolvedModel),
   };
 }
