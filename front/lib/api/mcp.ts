@@ -246,11 +246,6 @@ export type GetMCPServersResponseBody = {
   servers: MCPServerTypeWithViews<MCPServerViewLightType>[];
 };
 
-export type GetAvailableMCPServersResponseBody = {
-  success: boolean;
-  servers: MCPServerType[];
-};
-
 export type CreateMCPServerResponseBody = {
   success: true;
   server: MCPServerType;

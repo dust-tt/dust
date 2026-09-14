@@ -1,13 +1,15 @@
-import type {
-  GetAvailableMCPServersResponseBody,
-  MCPServerType,
-} from "@app/lib/api/mcp";
+import type { MCPServerType } from "@app/lib/api/mcp";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { withSpace } from "@front-api/middlewares/with_space";
+
+export type GetMCPServersResponseBody = {
+  success: boolean;
+  servers: MCPServerType[];
+};
 
 // Mounted under /api/w/:wId/spaces/:spaceId/mcp/available.
 //
@@ -20,7 +22,7 @@ const app = workspaceApp();
 app.get(
   "/",
   withSpace({ requireCanRead: true }),
-  async (ctx): HandlerResult<GetAvailableMCPServersResponseBody> => {
+  async (ctx): HandlerResult<GetMCPServersResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 

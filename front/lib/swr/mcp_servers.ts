@@ -9,7 +9,6 @@ import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_action
 import type {
   CreateMCPServerResponseBody,
   DeleteMCPServerResponseBody,
-  GetAvailableMCPServersResponseBody,
   GetJITMCPServerViewsListResponseBody,
   GetMCPServerResponseBody,
   GetMCPServersResponseBody,
@@ -17,6 +16,7 @@ import type {
   GetMCPServerViewsListResponseBody,
   GetMCPServerViewsNotActivatedResponseBody,
   MCPServerType,
+  MCPServerTypeWithViews,
   MCPServerViewNameConflict,
   MCPServerViewType,
   SyncMCPServerResponseBody,
@@ -131,7 +131,7 @@ export function useAvailableMCPServers({
   swrOptions?: SWRConfiguration;
 }) {
   const { fetcher } = useFetcher();
-  const configFetcher: Fetcher<GetAvailableMCPServersResponseBody> = fetcher;
+  const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
 
   const url = space
     ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp/available`
@@ -148,7 +148,7 @@ export function useAvailableMCPServers({
         ? data.servers.sort((a, b) =>
             mcpServersSortingFn({ mcpServer: a }, { mcpServer: b })
           )
-        : emptyArray<MCPServerType>(),
+        : emptyArray<MCPServerTypeWithViews>(),
     [data]
   );
 
