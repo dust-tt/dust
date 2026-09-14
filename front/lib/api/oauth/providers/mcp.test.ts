@@ -111,6 +111,56 @@ describe("MCPOAuthProvider.getUpdatedExtraConfig", () => {
       true
     );
   });
+
+  it("inherits the workspace connection's finalize URI, which its client registration pins", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const provider = new MCPOAuthProvider();
+
+    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockResolvedValue(
+      new Ok("con_workspace")
+    );
+    const workspaceConnection = makeConnection({
+      client_id: "workspace-client",
+      token_endpoint: "https://unverified.example.com/token",
+      authorization_endpoint: "https://unverified.example.com/authorize",
+    });
+    workspaceConnection.redirect_uri = "https://eu.dust.tt/oauth/mcp/finalize";
+    mocks.getConnectionMetadata.mockResolvedValue(
+      new Ok({ connection: workspaceConnection })
+    );
+
+    const updated = await provider.getUpdatedExtraConfig(authenticator, {
+      useCase: "personal_actions",
+      extraConfig: { mcp_server_id: "srv_123" },
+    });
+
+    expect(updated.redirect_uri).toBe("https://eu.dust.tt/oauth/mcp/finalize");
+  });
+
+  it("imposes no finalize URI when the workspace connection stores none", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
+    const provider = new MCPOAuthProvider();
+
+    mocks.getWorkspaceOAuthConnectionIdForMCPServer.mockResolvedValue(
+      new Ok("con_workspace")
+    );
+    mocks.getConnectionMetadata.mockResolvedValue(
+      new Ok({
+        connection: makeConnection({
+          client_id: "workspace-client",
+          token_endpoint: "https://unverified.example.com/token",
+          authorization_endpoint: "https://unverified.example.com/authorize",
+        }),
+      })
+    );
+
+    const updated = await provider.getUpdatedExtraConfig(authenticator, {
+      useCase: "personal_actions",
+      extraConfig: { mcp_server_id: "srv_123" },
+    });
+
+    expect(updated.redirect_uri).toBeUndefined();
+  });
 });
 
 describe("MCPOAuthProvider.setupUri", () => {

@@ -246,6 +246,9 @@ pub struct ConnectionInfo {
     pub provider: ConnectionProvider,
     status: connection::ConnectionStatus,
     pub metadata: serde_json::Value,
+    // The finalize URI the connection was created or finalized with.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    redirect_uri: Option<String>,
 }
 
 async fn deprecated_connections_access_token(
@@ -310,6 +313,7 @@ async fn connections_access_token(
                                 provider: c.provider(),
                                 status: c.status(),
                                 metadata: c.metadata().clone(),
+                                redirect_uri: c.redirect_uri(),
                             },
                             access_token,
                             access_token_expiry: c.access_token_expiry(),
@@ -349,6 +353,7 @@ async fn connections_metadata(
                         provider: c.provider(),
                         status: c.status(),
                         metadata: c.metadata().clone(),
+                        redirect_uri: c.redirect_uri(),
                     },
                 })),
             }),
@@ -420,6 +425,7 @@ async fn connections_update_metadata(
                             provider: c.provider(),
                             status: c.status(),
                             metadata: c.metadata().clone(),
+                            redirect_uri: c.redirect_uri(),
                         },
                     })),
                 }),

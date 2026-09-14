@@ -241,8 +241,14 @@ export async function createConnectionAndGetSetupUrl(
   const cRes = await api.createConnection({
     provider,
     metadata,
-    // Stored on the connection so the finalize URI survives redirect base changes.
-    redirectUri: finalizeUriForProvider({ provider, connection: null }),
+    // Stored on the connection so the finalize URI survives redirect base
+    // changes. A provider strategy may impose one through the updated extra
+    // config (MCP inherits the workspace connection's, which its registered
+    // client requires), the current default applies otherwise.
+    redirectUri:
+      typeof extraConfig.redirect_uri === "string"
+        ? extraConfig.redirect_uri
+        : finalizeUriForProvider({ provider, connection: null }),
     relatedCredential,
   });
   if (cRes.isErr()) {
