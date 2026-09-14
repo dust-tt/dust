@@ -80,6 +80,7 @@ import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/
 import type { DataSourceViewContentNode } from "@app/types/data_source_view";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import {
@@ -1177,9 +1178,9 @@ const InputBarContainer = ({
       }
 
       if (node.type.name === TOOL_NODE_TYPE) {
-        const mcpServerViewId = node.attrs.mcpServerViewId;
+        const { mcpServerViewId } = node.attrs;
         if (
-          typeof mcpServerViewId === "string" &&
+          isString(mcpServerViewId) &&
           !hasAnotherAttachedNode(
             currentEditor,
             TOOL_NODE_TYPE,

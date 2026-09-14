@@ -28,7 +28,6 @@ import {
   useSelectableConversationSpaces,
 } from "@app/lib/swr/conversation_selected_spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { getToolIdsToAttach } from "@app/lib/tools/format";
 import { TRACKING_AREAS, trackEvent } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import {
@@ -47,6 +46,7 @@ import { isEqualNode } from "@app/types/data_source_view";
 import type { Result } from "@app/types/shared/result";
 import type { SpaceType } from "@app/types/space";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
 import React, {
   useCallback,
@@ -265,7 +265,7 @@ export const InputBar = React.memo(function InputBar({
   const [selectedSpacesState, setSelectedSpacesState] =
     useState<SelectedSpacesState | null>(null);
 
-  const { conversationTools, mutateConversationTools } = useConversationTools({
+  const { conversationTools } = useConversationTools({
     conversationId: conversation?.sId,
     workspaceId: owner.sId,
   });
@@ -567,10 +567,7 @@ export const InputBar = React.memo(function InputBar({
     );
 
     const messageTools = isInlineReferenceEnabled ? tools : [];
-    const toolIdsToAttach = getToolIdsToAttach(
-      messageTools,
-      new Set(conversationTools.map((serverView) => serverView.sId))
-    );
+    const toolIdsToAttach = uniq(messageTools.map((tool) => tool.id));
     const trackedTools = isInlineReferenceEnabled
       ? messageTools.map((t) => t.name)
       : selectedMCPServerViews.map((t) => t.server.name);
@@ -672,12 +669,7 @@ export const InputBar = React.memo(function InputBar({
           setSelectedMCPServerViews([]);
         }
 
-        const r = await submitPromise;
-        if (r.isOk() && toolIdsToAttach.length > 0) {
-          // Newly attached tools are now part of the conversation's server-side set; refresh it
-          // so the next submit's diff doesn't re-send them.
-          void mutateConversationTools();
-        }
+        await submitPromise;
       } finally {
         setIsLocalSubmitting(false);
       }
