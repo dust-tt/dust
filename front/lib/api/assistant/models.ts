@@ -5,7 +5,7 @@ import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { GEMINI_3_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { GEMINI_3_8_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 import { isModelId } from "@app/types/assistant/models/models";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
@@ -128,7 +128,7 @@ export function selectEnabledModel(
 
 const ORDERED_FAST_MODEL_CONFIGS: ModelConfigurationType[] = [
   MISTRAL_SMALL_MODEL_CONFIG,
-  GEMINI_3_5_FLASH_MODEL_CONFIG,
+  GEMINI_3_8_FLASH_MODEL_CONFIG,
 ];
 
 export function getFastestWhitelistedModel(
@@ -169,7 +169,7 @@ export function getLargeWhitelistedModel(
 const ORDERED_SMALL_MODEL_CONFIGS: ModelConfigurationType[] = [
   GPT_5_MINI_MODEL_CONFIG,
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  GEMINI_3_5_FLASH_MODEL_CONFIG,
+  GEMINI_3_8_FLASH_MODEL_CONFIG,
   MISTRAL_SMALL_MODEL_CONFIG,
   GROK_4_6_MODEL_CONFIG,
   GROK_4_5_MODEL_CONFIG,

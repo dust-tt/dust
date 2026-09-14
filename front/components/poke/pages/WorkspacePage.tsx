@@ -144,9 +144,6 @@ export function WorkspacePage() {
     programmaticAlerts,
     usageCapAlert,
     defaultAlerts,
-    programmaticCreditState,
-    programmaticWarningReached,
-    spendLimitRateCapEnabled,
     programmaticRateLimiterState,
     programmaticSpendLimitRateCapCount,
     programmaticEsConsumedAwuCredits,
@@ -389,9 +386,6 @@ export function WorkspacePage() {
                 subscription={activeSubscription}
                 stripeSubscription={stripeSubscription}
                 poolCreditState={poolCreditState}
-                programmaticCreditState={programmaticCreditState}
-                programmaticWarningReached={programmaticWarningReached}
-                spendLimitRateCapEnabled={spendLimitRateCapEnabled}
                 programmaticRateLimiterState={programmaticRateLimiterState}
                 programmaticSpendLimitRateCapCount={
                   programmaticSpendLimitRateCapCount

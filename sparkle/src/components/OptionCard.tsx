@@ -152,7 +152,7 @@ export function OptionCard(props: OptionCardProps) {
           />
         ) : (
           <>
-            <span className="text-sm font-medium tracking-[-0.28px] text-foreground">
+            <span className="text-sm font-medium text-foreground">
               {props.label}
             </span>
             {props.description && (

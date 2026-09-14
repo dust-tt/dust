@@ -15,7 +15,10 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import { isSiteNotFoundError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
-import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
+import {
+  getMimeTypesToSync,
+  resolveMicrosoftMimeType,
+} from "@connectors/connectors/microsoft/temporal/mime_types";
 import {
   deleteAllSheets,
   handleSpreadSheet,
@@ -212,7 +215,7 @@ export async function syncOneFile({
     csvEnabled: providerConfig.csvEnabled || false,
   });
 
-  const mimeType = file.file.mimeType;
+  const mimeType = resolveMicrosoftMimeType(file);
   if (!mimeType || !mimeTypesToSync.includes(mimeType)) {
     localLogger.info("Type not supported, skipping file.");
     return false;
@@ -405,7 +408,7 @@ export async function syncOneFile({
     nodeType: "file",
     name: file.name ?? "",
     parentInternalId,
-    mimeType: file.file.mimeType ?? "",
+    mimeType,
     webUrl: file.webUrl ?? null,
   };
 
@@ -573,7 +576,7 @@ export async function syncOneFile({
               sync_type: isBatchSync ? "batch" : "incremental",
             },
             title: file.name ?? "",
-            mimeType: file.file.mimeType ?? "application/octet-stream",
+            mimeType,
             async: true,
           });
 

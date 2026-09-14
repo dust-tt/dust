@@ -275,7 +275,8 @@
   --color-faint: var(--color-stone-400);
 
   /* Text */
-  --color-foreground: var(--color-stone-950);
+  /* stone-900 (17.9:1 on white) softens the black; stone-950 was 19.8:1. */
+  --color-foreground: var(--color-stone-900);
   --color-muted-foreground: var(--color-stone-600);
   --color-foreground-warning: var(--color-rose-500);
 

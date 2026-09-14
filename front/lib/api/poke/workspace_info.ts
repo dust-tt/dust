@@ -1,6 +1,5 @@
 import { makeProgrammaticSpendLimitAwuCreditsRateLimitKeyForWorkspace } from "@app/lib/api/assistant/rate_limits";
 import config from "@app/lib/api/config";
-import { isWorkspaceProgrammaticWarningReached } from "@app/lib/api/credits/access_control";
 import type { RateLimiterState } from "@app/lib/api/credits/members_usage";
 import { getEsConsumedProgrammaticAwuCredits } from "@app/lib/api/credits/members_usage";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
@@ -28,10 +27,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
 import { getFixedWindowCount } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import type {
-  WorkspacePoolCreditState,
-  WorkspaceProgrammaticCreditState,
-} from "@app/types/credits";
+import type { WorkspacePoolCreditState } from "@app/types/credits";
 import type { ExtensionConfigurationType } from "@app/types/extension";
 import type { SubscriptionType } from "@app/types/plan";
 import type { ProgrammaticUsageConfigurationType } from "@app/types/programmatic_usage";
@@ -94,16 +90,10 @@ export type PokeWorkspaceInfo = {
   // Account-wide default alerts (pool empty/low/critical, seat empty/low),
   // created by the Metronome setup script and shared across all customers.
   defaultAlerts: DefaultMetronomeAlerts;
-  programmaticCreditState: WorkspaceProgrammaticCreditState;
-  programmaticWarningReached: boolean;
-  // Whether the rate-cap enforcement flag is on for this workspace. When true,
-  // the poke programmatic badge must reflect the rate-limiter verdict
-  // (`programmaticRateLimiterState`), not the Metronome `programmaticCreditState`.
-  spendLimitRateCapEnabled: boolean;
-  // The rate-limiter's verdict for the programmatic monthly cap: "capped"
-  // (counter ≥ cap), "near_limit" (≥ 80%), or "ok", from the RL counter vs
-  // `creditUsageConfig.programmaticMonthlyCapAwuCredits`. Null when there's no
-  // cap or the counter couldn't be read. Mirrors the enforcement switch in
+  // The rate-limiter's verdict for the programmatic monthly cap (the poke badge):
+  // "capped" (counter ≥ cap), "near_limit" (≥ 80%), or "ok", from the RL counter
+  // vs `creditUsageConfig.programmaticMonthlyCapAwuCredits`. Null when there's no
+  // cap or the counter couldn't be read. Backs enforcement in
   // `isProgrammaticApiBlocked` (lib/api/credits/access_control.ts).
   programmaticRateLimiterState: RateLimiterState | null;
   // Programmatic spend for the current billing cycle across the three sources,
@@ -196,14 +186,9 @@ export async function getPokeWorkspaceInfo(
       : null;
   }
 
-  // Rate-limiter verdict for the programmatic monthly cap — the badge source
-  // under the flag (the Metronome `programmaticCreditState` must not be read
-  // then). Compare the RL counter to the configured cap; both are in credits
+  // Rate-limiter verdict for the programmatic monthly cap — the poke badge
+  // source. Compare the RL counter to the configured cap; both are in credits
   // here. Mirrors the api-key / member rate-limiter chips.
-  const spendLimitRateCapEnabled = await hasFeatureFlag(
-    auth,
-    "enforce_user_spend_limit_rate_cap"
-  );
   const programmaticCapAwuCredits =
     creditUsageConfig?.programmaticMonthlyCapAwuCredits ?? null;
   let programmaticRateLimiterState: RateLimiterState | null = null;
@@ -327,10 +312,6 @@ export async function getPokeWorkspaceInfo(
     programmaticAlerts,
     usageCapAlert,
     defaultAlerts,
-    programmaticCreditState: workspaceResource.programmaticCreditState,
-    programmaticWarningReached:
-      await isWorkspaceProgrammaticWarningReached(auth),
-    spendLimitRateCapEnabled,
     programmaticRateLimiterState,
     programmaticSpendLimitRateCapCount,
     programmaticEsConsumedAwuCredits,

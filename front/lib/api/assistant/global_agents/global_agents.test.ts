@@ -83,7 +83,7 @@ async function createAuthenticatorWithFlags(flags: WhitelistableFeature[]) {
 }
 
 describe("getGlobalAgents custom model agents", () => {
-  it("routes Dust support intent through the Dust Support skill", async () => {
+  it("makes the Dust Support skill available", async () => {
     const auth = await createAuthenticatorWithFlags([]);
 
     const agents = await getGlobalAgents(
@@ -93,20 +93,8 @@ describe("getGlobalAgents custom model agents", () => {
     );
 
     expect(agents).toHaveLength(1);
-    expect(agents[0].instructions).toContain(
-      'For clear Dust platform support requests, enable the "Dust Support" skill before answering.'
-    );
-    expect(agents[0].instructions).toContain(
-      "This includes Dust usage, capabilities, limits"
-    );
-    expect(agents[0].instructions).toContain(
-      'Do not enable it for generic help requests, non-Dust products, or ambiguous mentions of "dust".'
-    );
-    expect(agents[0].instructions).not.toContain(
-      "https://dust-community.tightknit.community/join"
-    );
-    expect(agents[0].skills).toContain("discover_skills");
-    expect(agents[0].skills).toContain("support");
+    expect(agents[0].codeDefinedSkillIds).toContain("discover_skills");
+    expect(agents[0].codeDefinedSkillIds).toContain("support");
   });
 
   it("reserves Go Deep for explicit deep research requests", async () => {

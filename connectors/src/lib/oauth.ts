@@ -6,9 +6,10 @@ import type { LoggerInterface } from "@dust-tt/client";
 
 /**
  * @cc [label:error-handling] oauth-access-token-or-error
- * Return the retrieved token and connection data from `oauth` on success. Generic `oauth` errors
- * and well-known provider specific error codes throw `ExternalOAuthTokenError`. Other unrecognized
- * OAuth failures throw regular `Error` (generally leading to retries).
+ * This external-service adapter MUST return the retrieved token and connection data from `oauth` on
+ * success. Under the exception in `no-catching-own-errors`, it MUST throw `ExternalOAuthTokenError`
+ * for generic `oauth` errors and well-known provider-specific error codes, and regular `Error` for
+ * other unrecognized OAuth failures (generally leading to retries).
  */
 export async function getOAuthConnectionAccessTokenWithThrow({
   logger,

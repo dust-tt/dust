@@ -1,5 +1,6 @@
 import { agentMentionsCount } from "@app/lib/api/assistant/agent_usage";
 import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
+import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
@@ -22,18 +23,18 @@ describe("agentMentionsCount", () => {
           by_agent: {
             buckets: [
               {
+                key: "agent-456",
+                doc_count: 12,
+                message_count: { value: 2 },
+                conversation_count: { value: 1 },
+                user_count: { value: 1 },
+              },
+              {
                 key: "agent-123",
                 doc_count: 8,
                 message_count: { value: 5 },
                 conversation_count: { value: 3 },
                 user_count: { value: 2 },
-              },
-              {
-                key: "agent-456",
-                doc_count: 4,
-                message_count: { value: 2 },
-                conversation_count: { value: 1 },
-                user_count: { value: 1 },
               },
             ],
           },
@@ -62,6 +63,8 @@ describe("agentMentionsCount", () => {
         bool: {
           filter: expect.arrayContaining([
             { term: { workspace_id: "workspace-sId" } },
+            { terms: { context_origin: USER_USAGE_ORIGINS } },
+            { term: { consumption_type: "llm" } },
             { exists: { field: "agent.attributed_id" } },
             {
               range: {
@@ -81,14 +84,26 @@ describe("agentMentionsCount", () => {
               order: { message_count: "desc" },
               size: 1000,
             },
-            aggs: expect.objectContaining({
+            aggs: {
               message_count: {
                 cardinality: {
                   field: "agent_message_id",
-                  precision_threshold: 40000,
+                  precision_threshold: 3000,
                 },
               },
-            }),
+              conversation_count: {
+                cardinality: {
+                  field: "conversation_id",
+                  precision_threshold: 3000,
+                },
+              },
+              user_count: {
+                cardinality: {
+                  field: "user.id",
+                  precision_threshold: 3000,
+                },
+              },
+            },
           },
         },
         size: 0,

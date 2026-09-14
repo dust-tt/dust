@@ -120,7 +120,9 @@ describe("allowed model tiers permissions", () => {
     });
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
-      expect(result.error.code).toBe("invalid_request_error");
+      // A regular auto group cannot be read without its resource,
+      // so the fetch turns it away before the kind check.
+      expect(result.error.code).toBe("unauthorized");
     }
     expect(await listGroupAllowedTierNames(auth)).toEqual([]);
   });

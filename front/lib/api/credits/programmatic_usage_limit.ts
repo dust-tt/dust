@@ -4,7 +4,6 @@ import {
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
 import { getEsConsumedProgrammaticAwuCredits } from "@app/lib/api/credits/members_usage";
-import { reconcileProgrammatic } from "@app/lib/api/metronome/reconcile_credit_state";
 import type { AuditLogContext } from "@app/lib/api/workos/organization";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -12,13 +11,11 @@ import {
   roundCreditsToMicroCredits,
 } from "@app/lib/credits/units";
 import {
-  clearMetronomeProgrammaticCapAlerts,
-  upsertMetronomeProgrammaticCapAlerts,
+  CRITICAL_BALANCE_OFFSET,
+  LOW_BALANCE_OFFSET,
   WARNING_BALANCE_RATIO,
 } from "@app/lib/metronome/alerts/programmatic_cap";
-import { expectedProgrammaticCreditStateFromUsage } from "@app/lib/metronome/programmatic_credit_state_machine";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
 import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
@@ -56,12 +53,9 @@ export async function getProgrammaticUsageLimit(
 /**
  * Set the workspace's programmatic usage monthly cap.
  *
- * Persists the cap on `credit_usage_configurations` (the source of truth),
- * then derives the Metronome programmatic alerts from it (only for positive
- * caps; a cap of 0 clears the alerts since it is always depleted — no
- * threshold transition can ever fire), and finally reconciles
- * `programmaticCreditState` so usage-status reflects the change immediately
- * without waiting for a webhook.
+ * Persists the cap on `credit_usage_configurations` (the source of truth).
+ * Enforcement reads the cap from the Redis rate-limiter counter at
+ * message-send time.
  *
  * The cap is non-nullable: 0 blocks all programmatic access, a positive value
  * is the monthly cap. Negative inputs are clamped to 0.
@@ -82,10 +76,9 @@ export async function syncProgrammaticUsageLimit({
     );
   }
 
-  // Persist the admin's intent first: the credit-usage configuration column is
-  // the source of truth; the Metronome alerts below are derived enforcement (a
-  // failed sync can be retried and re-derives from this value). The config row
-  // is created lazily, so upsert it. Negative inputs are clamped to 0.
+  // Persist the admin's intent on the credit-usage configuration column, the
+  // source of truth the Redis rate-limiter reads at enforcement time. The
+  // config row is created lazily, so upsert it. Negative inputs are clamped to 0.
   const normalizedCapCredits = Math.max(0, monthlyCapCredits);
   const existingConfig =
     await CreditUsageConfigurationResource.fetchByWorkspaceId(auth);
@@ -100,39 +93,6 @@ export async function syncProgrammaticUsageLimit({
       defaultDiscountPercent: 0,
       usageCapCredits: null,
       programmaticMonthlyCapAwuCredits: normalizedCapCredits,
-    });
-  }
-
-  // Alerts only make sense for a positive cap: a cap of 0 means usage is
-  // always fully depleted, so no threshold transition can ever fire.
-  const alertResult =
-    normalizedCapCredits > 0
-      ? await upsertMetronomeProgrammaticCapAlerts({
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          workspaceId: workspace.sId,
-          monthlyCapCredits: normalizedCapCredits,
-        })
-      : await clearMetronomeProgrammaticCapAlerts({
-          metronomeCustomerId: workspace.metronomeCustomerId,
-          workspaceId: workspace.sId,
-        });
-  if (alertResult.isErr()) {
-    return new Err(
-      new Error(
-        `Failed to sync Metronome programmatic cap alerts: ${alertResult.error.message}`
-      )
-    );
-  }
-
-  // Reconcile programmaticCreditState immediately so /usage-status reflects the
-  // change without waiting for a Metronome webhook.
-  const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
-  if (workspaceResource) {
-    await reconcileProgrammatic({
-      workspace: workspaceResource,
-      metronomeCustomerId: workspace.metronomeCustomerId,
-      metronomeContractId: auth.subscription()?.metronomeContractId ?? null,
-      execute: true,
     });
   }
 
@@ -262,8 +222,8 @@ async function isProgrammaticSpendLimitRateThresholdReached(
  * rate-limiter counter (cycle-to-date programmatic spend) vs the monthly cap —
  * the rate-limiter equivalent of the Metronome-driven programmatic credit state.
  * Used to throttle programmatic request concurrency without reading
- * `workspaces.programmaticCreditState`. Thresholds mirror
- * `expectedProgrammaticCreditStateFromUsage` so the bands match enforcement.
+ * `workspaces.programmaticCreditState`. Thresholds mirror the Metronome
+ * programmatic alert offsets so the bands match enforcement.
  *
  * Returns `"active"` (no throttle) when there is no billing period or on a Redis
  * read error (fail-open), so a transient hiccup never over-throttles.
@@ -291,10 +251,17 @@ export async function getProgrammaticRateLimiterCreditState(
     return "active";
   }
 
-  return expectedProgrammaticCreditStateFromUsage({
-    spentAwuCredits: microCreditsToCredits(count),
-    monthlyCapCredits: cap,
-  });
+  const remaining = cap - microCreditsToCredits(count);
+  if (remaining <= 0) {
+    return "depleted";
+  }
+  if (remaining <= CRITICAL_BALANCE_OFFSET) {
+    return "active_critical_balance";
+  }
+  if (remaining <= LOW_BALANCE_OFFSET) {
+    return "active_low_balance";
+  }
+  return "active";
 }
 
 /**

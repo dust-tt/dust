@@ -1,4 +1,5 @@
 import {
+  addDuration,
   commitmentAmount,
   commitmentMonths,
   commitmentPeriodEnd,
@@ -11,6 +12,28 @@ const start = new Date(Date.UTC(2026, 0, 1));
 const oneYear = new Date(Date.UTC(2027, 0, 1));
 // 42 days after start (Jan 1 → Feb 12): ~1.39 calendar months.
 const sixWeeks = new Date(start.getTime() + 42 * 24 * 60 * 60 * 1000);
+
+describe("addDuration", () => {
+  it("adds whole weeks as 7-day steps", () => {
+    expect(addDuration(start, 2, "weeks")).toEqual(
+      new Date(Date.UTC(2026, 0, 15))
+    );
+  });
+
+  it("adds calendar months and years", () => {
+    expect(addDuration(start, 2, "months")).toEqual(
+      new Date(Date.UTC(2026, 2, 1))
+    );
+    expect(addDuration(start, 1, "years")).toEqual(oneYear);
+  });
+
+  it("clamps month overflow to the last day of the target month", () => {
+    // Jan 31 + 1 month → Feb 28 (2026 is not a leap year).
+    expect(addDuration(new Date(Date.UTC(2026, 0, 31)), 1, "months")).toEqual(
+      new Date(Date.UTC(2026, 1, 28))
+    );
+  });
+});
 
 describe("commitmentPeriodEnd", () => {
   it("uses the end date when set", () => {

@@ -17,10 +17,6 @@ export class SpaceModel extends SoftDeletableWorkspaceAwareModel<SpaceModel> {
   declare name: string;
   declare kind: SpaceKind;
 
-  // This is a bit confusing as "group" means that we use provisioned groups to manage the space members instead of individual members in the UI.
-  // But in both modes we have "groups" associated to the space to hold the members.
-  declare managementMode: CreationOptional<"manual" | "group">;
-
   // The space's instance-level grants in group_permissions, with the grantee `group` nested.
   declare spaceGrants?: NonAttribute<GroupPermissionModel[]>;
 }
@@ -46,11 +42,6 @@ SpaceModel.init(
     kind: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    managementMode: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "manual",
     },
   },
   {

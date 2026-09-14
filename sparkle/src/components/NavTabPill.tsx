@@ -60,6 +60,34 @@ const NavTabPillTrigger = React.forwardRef<
     },
     ref
   ) => {
+    const [tooltipOpen, setTooltipOpen] = React.useState(false);
+    const triggerRef = React.useRef<HTMLElement | null>(null);
+
+    const setRefs = React.useCallback(
+      (node: HTMLElement | null) => {
+        triggerRef.current = node;
+        if (typeof ref === "function") {
+          ref(node as React.ElementRef<typeof TabsPrimitive.Trigger>);
+        } else if (ref) {
+          (
+            ref as React.MutableRefObject<React.ElementRef<
+              typeof TabsPrimitive.Trigger
+            > | null>
+          ).current = node as React.ElementRef<typeof TabsPrimitive.Trigger>;
+        }
+      },
+      [ref]
+    );
+
+    const handleTooltipOpenChange = (open: boolean) => {
+      // Label is already visible on the expanded (active) pill — skip the tooltip.
+      if (open && triggerRef.current?.dataset.state === "active") {
+        setTooltipOpen(false);
+        return;
+      }
+      setTooltipOpen(open);
+    };
+
     const triggerClassName = cn(
       "group flex h-8 items-center justify-center whitespace-nowrap rounded-lg pl-2 group-data-[state=active]:pl-2.5 [&:not([data-state=active])]:pr-2 text-sm",
       "text-muted-foreground",
@@ -75,26 +103,9 @@ const NavTabPillTrigger = React.forwardRef<
       className
     );
 
-    const iconElement = children ? (
-      <TooltipProvider>
-        <TooltipRoot disableHoverableContent>
-          <TooltipTrigger asChild>
-            <span className="flex items-center justify-center group-data-[state=active]:pointer-events-none">
-              <Icon visual={icon} size="sm" />
-            </span>
-          </TooltipTrigger>
-          <TooltipContent className="group-data-[state=active]:hidden">
-            {children}
-          </TooltipContent>
-        </TooltipRoot>
-      </TooltipProvider>
-    ) : (
-      <Icon visual={icon} size="sm" />
-    );
-
     const content = (
       <>
-        {iconElement}
+        <Icon visual={icon} size="sm" />
         <div
           className={cn(
             "relative grid grid-cols-[0fr] transition-[grid-template-columns] duration-200 group-data-[state=active]:grid-cols-[1fr] overflow-hidden motion-reduce:transition-none"
@@ -115,26 +126,48 @@ const NavTabPillTrigger = React.forwardRef<
       </>
     );
 
-    if (href) {
-      return (
-        <TabsPrimitive.Trigger ref={ref} asChild {...props}>
-          <LinkWrapper
-            href={href}
-            target={target}
-            rel={rel}
-            replace={replace}
-            className={triggerClassName}
-          >
-            {content}
-          </LinkWrapper>
-        </TabsPrimitive.Trigger>
-      );
-    }
-
-    return (
-      <TabsPrimitive.Trigger ref={ref} className={triggerClassName} {...props}>
+    const trigger = href ? (
+      <TabsPrimitive.Trigger ref={setRefs} asChild {...props}>
+        <LinkWrapper
+          href={href}
+          target={target}
+          rel={rel}
+          replace={replace}
+          className={triggerClassName}
+        >
+          {content}
+        </LinkWrapper>
+      </TabsPrimitive.Trigger>
+    ) : (
+      <TabsPrimitive.Trigger
+        ref={setRefs}
+        className={triggerClassName}
+        {...props}
+      >
         {content}
       </TabsPrimitive.Trigger>
+    );
+
+    if (!children) {
+      return trigger;
+    }
+
+    // TooltipTrigger sets `data-state` (open/closed). Wrap in a span so that
+    // attribute doesn't overwrite the Tabs trigger's `data-state` (active/
+    // inactive), which drives selected styles and the label expand animation.
+    return (
+      <TooltipProvider delayDuration={300} skipDelayDuration={0}>
+        <TooltipRoot
+          open={tooltipOpen}
+          onOpenChange={handleTooltipOpenChange}
+          disableHoverableContent
+        >
+          <TooltipTrigger asChild>
+            <span className="inline-flex">{trigger}</span>
+          </TooltipTrigger>
+          <TooltipContent>{children}</TooltipContent>
+        </TooltipRoot>
+      </TooltipProvider>
     );
   }
 );

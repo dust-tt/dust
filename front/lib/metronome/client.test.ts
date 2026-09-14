@@ -6,6 +6,7 @@ import {
   createMetronomeContract,
   createMetronomeCredit,
   findSeatCreditSegmentForPeriod,
+  listMetronomeUsageWithGroups,
   updateSubscriptionSeats,
 } from "@app/lib/metronome/client";
 import type { Result } from "@app/types/shared/result";
@@ -34,6 +35,7 @@ function unwrapErr<T>(result: Result<T, Error>): Error {
 const {
   mockCreate,
   mockList,
+  mockListWithGroups,
   mockAddManualBalanceEntry,
   mockContractsCreate,
   mockContractsEdit,
@@ -50,6 +52,7 @@ const {
   return {
     mockCreate: vi.fn(),
     mockList: vi.fn(),
+    mockListWithGroups: vi.fn(),
     mockAddManualBalanceEntry: vi.fn(),
     mockContractsCreate: vi.fn(),
     mockContractsEdit: vi.fn(),
@@ -67,6 +70,7 @@ vi.mock("@metronome/sdk", () => {
         customers: {
           credits: { create: mockCreate, list: mockList },
         },
+        usage: { listWithGroups: mockListWithGroups },
         contracts: {
           addManualBalanceEntry: mockAddManualBalanceEntry,
           create: mockContractsCreate,
@@ -121,6 +125,7 @@ beforeEach(() => {
   mockContractsEdit.mockResolvedValue({ data: { id: "edit-id-1" } });
   mockSetCustomFieldValues.mockReset();
   mockSetCustomFieldValues.mockResolvedValue(undefined);
+  mockListWithGroups.mockReset();
 });
 
 // ---------------------------------------------------------------------------
@@ -629,5 +634,164 @@ describe("updateSubscriptionSeats", () => {
 
     unwrapOk(result);
     expect(mockContractsEdit).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// listMetronomeUsageWithGroups — 200-group-values-per-request chunking
+// ---------------------------------------------------------------------------
+
+describe("listMetronomeUsageWithGroups group-filter chunking", () => {
+  const USAGE_PARAMS = {
+    customerId: "cust-1",
+    billableMetricId: "bm-1",
+    startingOn: "2026-04-01T00:00:00.000Z",
+    endingBefore: "2026-05-01T00:00:00.000Z",
+    windowSize: "NONE" as const,
+    groupKey: ["user_id", "usage_type"],
+  };
+
+  // Echo one entry per queried filter value so results prove every chunk ran
+  // and got concatenated, and the queried values can be asserted.
+  function echoQueriedUserIds() {
+    mockListWithGroups.mockImplementation((args) => {
+      const ids: string[] = args.group_filters?.user_id ?? [];
+      return ids.map((id) => ({
+        starting_on: USAGE_PARAMS.startingOn,
+        ending_before: USAGE_PARAMS.endingBefore,
+        value: 1,
+        group: { user_id: id },
+      }));
+    });
+  }
+
+  function queriedUserIdsPerCall(): string[][] {
+    return mockListWithGroups.mock.calls.map(
+      ([args]) => args.group_filters?.user_id ?? []
+    );
+  }
+
+  it("sends a single request when the filter is within the limit", async () => {
+    echoQueriedUserIds();
+    const userIds = Array.from({ length: 10 }, (_, i) => `u${i}`);
+
+    const result = await listMetronomeUsageWithGroups({
+      ...USAGE_PARAMS,
+      groupFilters: { user_id: userIds },
+    });
+
+    expect(mockListWithGroups).toHaveBeenCalledTimes(1);
+    expect(queriedUserIdsPerCall()[0]).toEqual(userIds);
+    expect(unwrapOk(result)).toHaveLength(10);
+  });
+
+  it("makes a single request at exactly the limit and splits at limit + 1", async () => {
+    echoQueriedUserIds();
+
+    await listMetronomeUsageWithGroups({
+      ...USAGE_PARAMS,
+      groupFilters: {
+        user_id: Array.from({ length: 190 }, (_, i) => `u${i}`),
+      },
+    });
+    expect(mockListWithGroups).toHaveBeenCalledTimes(1);
+
+    mockListWithGroups.mockClear();
+    await listMetronomeUsageWithGroups({
+      ...USAGE_PARAMS,
+      groupFilters: {
+        user_id: Array.from({ length: 191 }, (_, i) => `u${i}`),
+      },
+    });
+    expect(mockListWithGroups).toHaveBeenCalledTimes(2);
+  });
+
+  it("chunks an over-limit filter into <=190 sequential requests covering every value exactly once", async () => {
+    echoQueriedUserIds();
+    const userIds = Array.from({ length: 400 }, (_, i) => `u${i}`);
+
+    const result = await listMetronomeUsageWithGroups({
+      ...USAGE_PARAMS,
+      groupFilters: { user_id: userIds },
+    });
+
+    // ceil(400 / 190) = 3 requests.
+    expect(mockListWithGroups).toHaveBeenCalledTimes(3);
+
+    const perCall = queriedUserIdsPerCall();
+    for (const chunk of perCall) {
+      expect(chunk.length).toBeLessThanOrEqual(190);
+    }
+    // Every value queried exactly once, none dropped or duplicated.
+    expect(perCall.flat().sort()).toEqual([...userIds].sort());
+    // Results from all chunks are concatenated.
+    expect(unwrapOk(result)).toHaveLength(400);
+  });
+
+  it("omits group_filters entirely when none are provided", async () => {
+    mockListWithGroups.mockReturnValue([]);
+
+    await listMetronomeUsageWithGroups(USAGE_PARAMS);
+
+    expect(mockListWithGroups).toHaveBeenCalledTimes(1);
+    expect(mockListWithGroups.mock.calls[0][0]).not.toHaveProperty(
+      "group_filters"
+    );
+  });
+
+  it("de-duplicates filter values so no value is queried in two chunks", async () => {
+    echoQueriedUserIds();
+    const unique = Array.from({ length: 190 }, (_, i) => `u${i}`);
+    // 191 entries, but the last duplicates the first — 190 distinct values.
+    const withDuplicate = [...unique, "u0"];
+
+    const result = await listMetronomeUsageWithGroups({
+      ...USAGE_PARAMS,
+      groupFilters: { user_id: withDuplicate },
+    });
+
+    // De-duped to 190 distinct → within the limit → a single request, no split
+    // that would query "u0" twice.
+    expect(mockListWithGroups).toHaveBeenCalledTimes(1);
+    const allQueried = queriedUserIdsPerCall().flat();
+    expect(allQueried).toHaveLength(new Set(allQueried).size);
+    expect(new Set(allQueried)).toEqual(new Set(unique));
+    // One echoed row per distinct id — no double-count.
+    expect(unwrapOk(result)).toHaveLength(190);
+  });
+
+  it("keeps a small secondary key whole while chunking, never exceeding the limit", async () => {
+    echoQueriedUserIds();
+    const userIds = Array.from({ length: 300 }, (_, i) => `u${i}`);
+    const keyNames = Array.from({ length: 50 }, (_, i) => `k${i}`);
+
+    await listMetronomeUsageWithGroups({
+      ...USAGE_PARAMS,
+      groupFilters: { user_id: userIds, api_key_name: keyNames },
+    });
+
+    // chunkSize = 190 - 50 = 140 → ceil(300 / 140) = 3 requests.
+    const calls = mockListWithGroups.mock.calls;
+    expect(calls).toHaveLength(3);
+    for (const [args] of calls) {
+      const total =
+        (args.group_filters?.user_id?.length ?? 0) +
+        (args.group_filters?.api_key_name?.length ?? 0);
+      expect(total).toBeLessThanOrEqual(190);
+      expect(args.group_filters?.api_key_name).toEqual(keyNames);
+    }
+  });
+
+  it("errors instead of emitting an oversized request when a secondary key alone meets the limit", async () => {
+    echoQueriedUserIds();
+    const result = await listMetronomeUsageWithGroups({
+      ...USAGE_PARAMS,
+      groupFilters: {
+        user_id: Array.from({ length: 300 }, (_, i) => `u${i}`),
+        api_key_name: Array.from({ length: 190 }, (_, i) => `k${i}`),
+      },
+    });
+
+    expect(result.isErr()).toBe(true);
   });
 });

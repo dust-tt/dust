@@ -70,8 +70,6 @@ export type SandboxOnlyMount = SandboxOnlyMountConfig &
   (
     | { kind: "frame_publications"; frameId: string }
     | { kind: "frame_state"; frameId: string }
-    | { kind: "pod_sandbox_functions"; podId: string }
-    | { kind: "pod_state"; podId: string }
   );
 
 export type DustFileSystemErrorCode =

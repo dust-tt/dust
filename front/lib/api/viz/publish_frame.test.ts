@@ -4,22 +4,16 @@
 
 import type { FrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
-import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
-import type { UserResource } from "@app/lib/resources/user_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
-import { frameContentType, sandboxFunctionContentType } from "@app/types/files";
+import { frameContentType } from "@app/types/files";
 import { splitFrameEntryScopedPath } from "@app/types/mount_path";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
-import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { Readable } from "stream";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -111,71 +105,6 @@ async function createFrameFile(
   });
 }
 
-const POD_FUNCTION_SCHEMA: JSONSchema = {
-  type: "object",
-  properties: {},
-};
-
-async function createPodFunction(
-  auth: Parameters<typeof publishFrame>[0],
-  {
-    space,
-    user,
-    slug,
-    inputSchema = POD_FUNCTION_SCHEMA,
-  }: {
-    space: SpaceResource;
-    user: UserResource;
-    slug: string;
-    inputSchema?: JSONSchema;
-  }
-) {
-  const functionFile = await FileFactory.create(auth, user, {
-    contentType: sandboxFunctionContentType,
-    fileName: `${slug}.ts`,
-    fileSize: 100,
-    status: "created",
-    useCase: "project_context",
-    useCaseMetadata: { spaceId: space.sId },
-  });
-
-  return SandboxFunctionResource.makeNew(auth, {
-    space,
-    file: functionFile,
-    slug,
-    description: `Run ${slug}.`,
-    inputSchema,
-    outputSchema: POD_FUNCTION_SCHEMA,
-  });
-}
-
-async function createPodFrameFile(
-  auth: Parameters<typeof publishFrame>[0],
-  space: SpaceResource
-) {
-  return FileFactory.create(auth, null, {
-    contentType: frameContentType,
-    fileName: "Dashboard.tsx",
-    fileSize: 100,
-    status: "ready",
-    useCase: "project_context",
-    useCaseMetadata: { spaceId: space.sId },
-  });
-}
-
-async function setupPodTestContext() {
-  const { workspace, user } = await createResourceTest({ role: "admin" });
-  // `SpaceFactory.project` makes the creator a member of the Pod's editors group, which is what
-  // grants the user access to the Pod -- no extra group membership is needed here.
-  const space = await SpaceFactory.project(workspace, user.id);
-
-  return {
-    auth: await Authenticator.fromUserIdAndWorkspaceId(user.sId, workspace.sId),
-    space,
-    user,
-  };
-}
-
 describe("publishFrame", () => {
   it("builds the source tree into the processed bundle and flips the rendered version", async () => {
     const { authenticator: auth } = await createResourceTest({});
@@ -251,142 +180,6 @@ describe("publishFrame", () => {
     // No bundle built or persisted, and the frame still renders its source.
     expect(uploadBundleSpy).not.toHaveBeenCalled();
     expect(file.getRenderableVersion()).toBe("original");
-  });
-
-  it("publishes when a template-literal Pod function reference is available in the Frame's Pod", async () => {
-    const { auth, space, user } = await setupPodTestContext();
-    const file = await createFrameFile(auth, { spaceId: space.id });
-    await createPodFunction(auth, {
-      space,
-      user,
-      slug: "list-slide-comments",
-      inputSchema: {
-        type: "object",
-        properties: { slideId: { type: "string" } },
-        required: ["slideId"],
-        additionalProperties: false,
-      },
-    });
-
-    vi.spyOn(FileResource.prototype, "getSharedReadStream").mockReturnValue(
-      Readable.from([Buffer.from("self contained", "utf-8")])
-    );
-
-    const result = await publishFrame(auth, {
-      file,
-      reader: inMemoryReader({
-        "Dashboard.tsx": `import { callFunction } from "@dust/react-hooks";
-import { POD_ID } from "./constants";
-
-export default function Dashboard() {
-  const loadComments = () => callFunction(\`${"${POD_ID}"}/list-slide-comments\`, {
-    slideId: "slide-1",
-  });
-  return <button onClick={loadComments}>Load comments</button>;
-}
-`,
-        "constants.ts": `export const POD_ID = ${JSON.stringify(space.sId)};`,
-      }),
-      entryRelPath: "Dashboard.tsx",
-      rootScopedPath: ROOT,
-    });
-
-    expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
-      true
-    );
-  });
-
-  it("blocks publishing when Pod function input does not match its JSON Schema", async () => {
-    const { auth, space, user } = await setupPodTestContext();
-    const file = await createPodFrameFile(auth, space);
-    await createPodFunction(auth, {
-      space,
-      user,
-      slug: "list-slide-comments",
-      inputSchema: {
-        type: "object",
-        properties: { slideId: { type: "string" } },
-        required: ["slideId"],
-        additionalProperties: false,
-      },
-    });
-
-    const result = await publishFrame(auth, {
-      file,
-      reader: inMemoryReader({
-        "Dashboard.tsx": `import { callFunction } from "@dust/react-hooks";
-
-const POD_ID = ${JSON.stringify(space.sId)};
-export default function Dashboard() {
-  const loadComments = () => callFunction(\`${"${POD_ID}"}/list-slide-comments\`, {
-    slideId: 42,
-  });
-  return <button onClick={loadComments}>Load comments</button>;
-}
-`,
-      }),
-      entryRelPath: "Dashboard.tsx",
-      rootScopedPath: ROOT,
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.code).toBe("invalid_pod_function_input");
-    }
-  });
-
-  it("blocks publishing when a Pod function reference is unavailable in the Frame's Pod", async () => {
-    const { auth, space } = await setupPodTestContext();
-    const file = await createPodFrameFile(auth, space);
-    const uploadBundleSpy = vi.spyOn(FileResource.prototype, "uploadProcessed");
-    const uploadOriginalSpy = vi.spyOn(FileResource.prototype, "uploadContent");
-
-    const result = await publishFrame(auth, {
-      file,
-      reader: inMemoryReader({
-        "Dashboard.tsx": `import { callFunction } from "@dust/react-hooks";
-
-const POD_ID = ${JSON.stringify(space.sId)};
-export default function Dashboard() {
-  const loadComments = () => callFunction(\`${"${POD_ID}"}/missing-function\`, {});
-  return <button onClick={loadComments}>Load comments</button>;
-}
-`,
-      }),
-      entryRelPath: "Dashboard.tsx",
-      rootScopedPath: ROOT,
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.code).toBe("pod_function_not_found");
-    }
-    expect(uploadOriginalSpy).not.toHaveBeenCalled();
-    expect(uploadBundleSpy).not.toHaveBeenCalled();
-  });
-
-  it("blocks Pod function references in a Frame without a Pod scope", async () => {
-    const { authenticator: auth } = await createResourceTest({});
-    const file = await createFrameFile(auth);
-
-    const result = await publishFrame(auth, {
-      file,
-      reader: inMemoryReader({
-        "Dashboard.tsx": `import { callFunction } from "@dust/react-hooks";
-
-export default function Dashboard() {
-  return <button onClick={() => callFunction("spc_test/function", {})}>Run</button>;
-}
-`,
-      }),
-      entryRelPath: "Dashboard.tsx",
-      rootScopedPath: ROOT,
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isErr()) {
-      expect(result.error.code).toBe("pod_scope_not_found");
-    }
   });
 
   it("reads only the entry's import graph, ignoring unrelated files in the mount", async () => {

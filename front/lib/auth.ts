@@ -1648,6 +1648,15 @@ export class Authenticator {
   }
 
   /**
+   * @cc [owner:aubin-tchoi,label:security;performance] readable-spaces-from-permissions
+   * Returns the readable space model IDs from the current permission snapshot without fetching;
+   * a type-wide read grant returns `{ kind: "all" }` because it contains no enumerable ID list.
+   */
+  getReadableSpaceModelIds(): ResourcesWithVerb {
+    return this.getResourceIdsWithVerb("space", "read");
+  }
+
+  /**
    * Whether the caller holds `verb` on `target` — i.e. on EVERY access-control list the target
    * declares (a resource may declare multiple ACLs that must all hold). `verb` is a grant verb
    * (instance verbs like read/write/admin, or type-level capabilities like "create").
@@ -1722,6 +1731,24 @@ export class Authenticator {
 
   attributionKeyModelId(): ModelId | null {
     return this._attributionKey?.id ?? null;
+  }
+
+  // The key that usage is charged to: the attribution key when an internal
+  // system-key flow forwarded one (run_agent sub-agents, agent_router,
+  // run_dust_app), the request's own key otherwise. Distinct from
+  // `attributionKey()`, which exposes only the forwarded reference and is null
+  // on a direct call.
+  /**
+   * @cc [owner:fabiencelier,label:product;performance] one-usage-key-identity
+   * Every per-API-key spend-cap read, gate and increment, every persisted usage attribution, and
+   * every api-key field on an observability trace MUST resolve the key through this method.
+   * Authorization checks are the exception and MUST keep using `key()`.
+   */
+  keyForUsageAttribution(): { id: ModelId; name: string } | null {
+    if (this._attributionKey) {
+      return this._attributionKey;
+    }
+    return this._key ? { id: this._key.id, name: this._key.name } : null;
   }
 
   // Returns a copy of this authenticator carrying an attribution-only key
@@ -2139,6 +2166,12 @@ export function getApiKeyNameFromHeaders(headers: {
   return undefined;
 }
 
+/**
+ * @cc [owner:fabiencelier,label:product] forwarded-key-name-prefers-attribution
+ * When `auth` carries an attribution key, the forwarded `x-dust-api-key-name` MUST be that key's
+ * name rather than `auth.key()`'s, so the originating key's name survives nested internal
+ * system-key calls. With neither an attribution key nor a request key, no header is returned.
+ */
 export function getApiKeyNameHeader(auth: Authenticator) {
   // Prefer the attribution key name over the request's own key so the original
   // caller's key name propagates transitively through nested internal system-key

@@ -1,4 +1,5 @@
 import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
+import type { GroupKind } from "@app/types/groups";
 import type { PodFileTab } from "@app/types/pod_file_tab";
 import { PodFileTabsSchema, PodTabsOrderSchema } from "@app/types/pod_file_tab";
 import type { EnrichedSpaceType, PodType, SpaceType } from "@app/types/space";
@@ -46,7 +47,6 @@ export const PatchPodMetadataBodySchema = z.object({
   tabsOrder: PodTabsOrderSchema.optional(),
   defaultAgentId: z.string().nullable().optional(),
   defaultSkillIds: z.array(z.string()).optional(),
-  isAdminControlled: z.boolean().optional(),
 });
 
 export type PatchPodMetadataBodyType = z.infer<
@@ -54,7 +54,7 @@ export type PatchPodMetadataBodyType = z.infer<
 >;
 
 // A new space's members: its manual member list, the groups given access to it, or both. A
-// dimension the request leaves out is simply not seeded, and `managementMode` is ignored (see
+// dimension the request leaves out is simply not seeded (see
 // `PatchSpaceMembersRequestBodySchema` for the same shape on update).
 export const PostSpaceRequestBodySchema = z.object({
   isRestricted: z.boolean(),
@@ -62,7 +62,6 @@ export const PostSpaceRequestBodySchema = z.object({
   spaceKind: z.enum(["regular", "project"]),
   memberIds: z.array(z.string()).optional(),
   groupIds: z.array(z.string()).optional(),
-  managementMode: z.enum(["manual", "group"]).optional(),
 });
 
 export type PostSpaceRequestBodyType = z.infer<
@@ -82,12 +81,24 @@ export type SpaceCategoryInfo = {
   count: number;
 };
 
+/**
+ * A group given access to a space: who it is, what it confers, and since when. The space's members
+ * are its individual members plus the members of these groups.
+ */
+export type SpaceGroupAccessType = {
+  sId: string;
+  name: string;
+  kind: GroupKind;
+  role: "member" | "editor";
+};
+
 export type RichSpaceType = EnrichedSpaceType & {
   categories: { [key: string]: SpaceCategoryInfo };
   canWrite: boolean;
   canRead: boolean;
   isMember: boolean;
   members: SpaceUserType[];
+  groups: SpaceGroupAccessType[];
   isEditor: boolean;
   // Useful in case of projects
   description: string | null;
@@ -98,8 +109,7 @@ export type RichSpaceType = EnrichedSpaceType & {
   pinnedFramePath: string | null;
   frameTabs: PodFileTab[];
   tabsOrder: string[];
-  /** Workspace admins control membership and connected data (project spaces only). */
-  isAdminControlled: boolean;
+  isAdminControlled: false;
 };
 
 export type GetSpaceResponseBody = {

@@ -112,6 +112,19 @@ export const SkillSchema = SkillWithoutInstructionsAndToolsSchema.extend({
 
 export type SkillType = z.infer<typeof SkillSchema>;
 
+// A skill as seen from the agent it is attached to: just enough to identify and label it. Kept
+// deliberately small because agent list endpoints serialize it for every agent of the workspace;
+// fetch the skill itself for its description, tools or instructions.
+const AgentSkillSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
+});
+
+/**
+ * @swaggerschema AgentSkill (swagger_schemas.ts)
+ */
+export type AgentSkillType = z.infer<typeof AgentSkillSchema>;
+
 export type UsedBySkillType = {
   sId: string;
   name: string;

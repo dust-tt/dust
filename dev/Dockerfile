@@ -211,7 +211,40 @@ RUN set -eu \
   && rm /tmp/op.zip \
   && op --version
 
-# Google Cloud SDK — gcloud + GKE plugin + kubectl (dust-us / dust-eu aliases)
+# ngrok — tunnels for Slack/webhook local testing (mprocs `ngrok` proc).
+# Equinox serves the current stable under this URL; pin via sha256 + version check.
+ARG NGROK_VERSION=3.39.11
+RUN set -eu \
+  && case "${TARGETARCH}" in \
+       amd64) ngrok_arch="amd64"; ngrok_sha256="cec0b4997fcc5f529dfc74bac89050354d11a915f968720600039738fdf330cf" ;; \
+       arm64) ngrok_arch="arm64"; ngrok_sha256="3b6ba05a9d9585c34157fa0819fa95cdb13839f5b506b9e63204705cf7f79e29" ;; \
+       *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+     esac \
+  && curl -fsSLo /tmp/ngrok.tgz \
+      "https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-${ngrok_arch}.tgz" \
+  && echo "${ngrok_sha256}  /tmp/ngrok.tgz" | sha256sum -c - \
+  && tar -xzf /tmp/ngrok.tgz -C /usr/local/bin ngrok \
+  && rm /tmp/ngrok.tgz \
+  && chmod 0755 /usr/local/bin/ngrok \
+  && ngrok version | grep -F "${NGROK_VERSION}"
+
+# stripe CLI — webhook forwarding (mprocs `stripe` proc)
+ARG STRIPE_CLI_VERSION=1.50.5
+RUN set -eu \
+  && case "${TARGETARCH}" in \
+       amd64) stripe_arch="x86_64"; stripe_sha256="1fb8d36cc34c528af04d39bc72cb9754a0a7b63299a2b441e90e90d257c61887" ;; \
+       arm64) stripe_arch="arm64"; stripe_sha256="17e02986ce8cdb96c8c8a8a4e2e266b59a2e35a1445e5bd74c0b407547bddcf0" ;; \
+       *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+     esac \
+  && curl -fsSLo /tmp/stripe.tar.gz \
+      "https://github.com/stripe/stripe-cli/releases/download/v${STRIPE_CLI_VERSION}/stripe_${STRIPE_CLI_VERSION}_linux_${stripe_arch}.tar.gz" \
+  && echo "${stripe_sha256}  /tmp/stripe.tar.gz" | sha256sum -c - \
+  && tar -xzf /tmp/stripe.tar.gz -C /usr/local/bin stripe \
+  && rm /tmp/stripe.tar.gz \
+  && chmod 0755 /usr/local/bin/stripe \
+  && stripe version
+
+# Google Cloud SDK — gcloud + GKE plugin + kubectl
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
@@ -226,6 +259,23 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
   && gcloud version \
   && gke-gcloud-auth-plugin --version \
   && kubectl version --client
+
+# pg-schema-diff — migration SQL generator (no GitHub release binaries; build with a temp Go toolchain)
+ARG PG_SCHEMA_DIFF_VERSION=1.0.9
+ARG GO_VERSION=1.25.5
+RUN set -eu \
+  && case "${TARGETARCH}" in \
+       amd64) go_arch="amd64"; go_sha256="9e9b755d63b36acf30c12a9a3fc379243714c1c6d3dd72861da637f336ebb35b" ;; \
+       arm64) go_arch="arm64"; go_sha256="b00b694903d126c588c378e72d3545549935d3982635ba3f7a964c9fa23fe3b9" ;; \
+       *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
+     esac \
+  && curl -fsSLo /tmp/go.tar.gz "https://go.dev/dl/go${GO_VERSION}.linux-${go_arch}.tar.gz" \
+  && echo "${go_sha256}  /tmp/go.tar.gz" | sha256sum -c - \
+  && tar -C /tmp -xzf /tmp/go.tar.gz \
+  && GOPATH=/tmp/gopath GOMODCACHE=/tmp/gomodcache GOBIN=/usr/local/bin \
+       /tmp/go/bin/go install "github.com/stripe/pg-schema-diff/cmd/pg-schema-diff@v${PG_SCHEMA_DIFF_VERSION}" \
+  && rm -rf /tmp/go /tmp/go.tar.gz /tmp/gopath /tmp/gomodcache \
+  && pg-schema-diff --help >/dev/null
 
 # Postgres dev user (databases are created at agent start by init-databases.sh)
 RUN service postgresql start \

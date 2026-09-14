@@ -8,7 +8,6 @@ import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
 } from "@app/types/api/sandbox_functions";
-import { FRAME_SHARE_TOKEN_HEADER } from "@app/types/api/sandbox_functions";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { getSandboxFunctionInvocationErrorStatusCode } from "@front-api/lib/api/sandbox_function_invocation_errors";
 import { redirectToSse } from "@front-api/lib/api/sse/redirect";
@@ -111,8 +110,7 @@ app.post(
 
     const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
-      functionIdOrSlug,
-      ctx.req.header(FRAME_SHARE_TOKEN_HEADER)
+      functionIdOrSlug
     );
     if (!sandboxFunction) {
       return apiError(ctx, {
@@ -185,7 +183,6 @@ app.post(
     const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
       functionIdOrSlug,
-      ctx.req.header(FRAME_SHARE_TOKEN_HEADER),
       { allowInactiveFramePublication: true }
     );
     if (!sandboxFunction) {
@@ -254,7 +251,6 @@ app.post(
     const sandboxFunction = await resolveSandboxFunctionWithCapability(
       auth,
       functionIdOrSlug,
-      ctx.req.header(FRAME_SHARE_TOKEN_HEADER),
       { allowInactiveFramePublication: true }
     );
     if (!sandboxFunction) {

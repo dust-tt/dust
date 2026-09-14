@@ -29,8 +29,14 @@ export function PlanPanelChip({
     conversationId: isPlanModeEnabled ? conversationId : null,
     workspaceId,
   });
-  const { currentPanel, isPanelClosing, openPanel, togglePanel, closePanel } =
-    useConversationSidePanelContext();
+  const {
+    currentPanel,
+    isPanelClosing,
+    openPanel,
+    togglePanel,
+    closePanel,
+    removeFromPanelHistory,
+  } = useConversationSidePanelContext();
   const isMobile = useIsMobile();
   const isPlanPanelOpen = currentPanel === PLAN_SIDE_PANEL_TYPE;
   // The chip unselects as soon as the panel starts closing; the decision below keeps seeing the
@@ -56,6 +62,10 @@ export function PlanPanelChip({
     } else if (action === "close") {
       closePanel();
     }
+    // An archived plan must not come back through the side panel history either.
+    if (next === "empty") {
+      removeFromPanelHistory(PLAN_SIDE_PANEL_TYPE);
+    }
   }, [
     content,
     isMobile,
@@ -63,6 +73,7 @@ export function PlanPanelChip({
     isPlanPanelOpen,
     openPanel,
     closePanel,
+    removeFromPanelHistory,
   ]);
 
   const progress = useMemo(() => countProgress(content), [content]);

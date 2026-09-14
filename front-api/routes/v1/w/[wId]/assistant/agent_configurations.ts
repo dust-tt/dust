@@ -1,3 +1,4 @@
+import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { normalizeAgentView } from "@app/lib/api/v1/backward_compatibility";
@@ -160,7 +161,10 @@ app.get(
     }
 
     return ctx.json({
-      agentConfigurations,
+      agentConfigurations: await toAgentConfigurationsWithSkills(
+        auth,
+        agentConfigurations
+      ),
     });
   }
 );

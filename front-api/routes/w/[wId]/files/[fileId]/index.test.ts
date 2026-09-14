@@ -8,8 +8,10 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
+import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -251,6 +253,105 @@ describe("GET /api/w/:wId/files/:fileId", () => {
       error: {
         type: "file_not_found",
         message: "Published Frame not found.",
+      },
+    });
+  });
+
+  it("redirects a Frames v2 download to its source folder archive", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
+    const frame = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: 128,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+      mountFilePath: `${getConversationFilesBasePath({
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
+      })}My Frame/${FRAME_MANIFEST_FILE}`,
+    });
+
+    const response = await honoApp.request(
+      fileUrl(workspace, frame.sId, "?action=download"),
+      { redirect: "manual" }
+    );
+
+    expect(response.status).toBe(302);
+    const location = response.headers.get("location");
+    expect(location).toBe(
+      `/api/w/${workspace.sId}/files/path/conversation-${conversation.sId}/My%20Frame?archive=zip`
+    );
+
+    // The redirect target must actually serve the Frame sources.
+    const sourcePrefix = `${getConversationFilesBasePath({
+      workspaceId: workspace.sId,
+      conversationId: conversation.sId,
+    })}My Frame/`;
+    const entryPointPath = `${sourcePrefix}index.tsx`;
+    fileStorageMock.setFilesByPrefix((prefix) =>
+      prefix === sourcePrefix
+        ? [
+            {
+              name: entryPointPath,
+              metadata: { contentType: "text/plain", size: "7" },
+            },
+          ]
+        : null
+    );
+    fileStorageMock.setFileExists((path) => path === entryPointPath);
+    fileStorageMock.setFileContent((path) =>
+      path === entryPointPath ? "export;" : null
+    );
+
+    const archiveResponse = await honoApp.request(location ?? "");
+
+    expect(archiveResponse.status).toBe(200);
+    expect(archiveResponse.headers.get("content-type")).toBe("application/zip");
+    expect(archiveResponse.headers.get("content-disposition")).toContain(
+      'filename="My Frame.zip"'
+    );
+  });
+
+  it("returns 404 when a Frames v2 file has no source folder of its own", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [new Date()],
+    });
+    const frame = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: FRAME_MANIFEST_FILE,
+      fileSize: 128,
+      status: "ready",
+      useCase: "conversation",
+      useCaseMetadata: { conversationId: conversation.sId },
+      mountFilePath: `${getConversationFilesBasePath({
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
+      })}${FRAME_MANIFEST_FILE}`,
+    });
+
+    const response = await honoApp.request(
+      fileUrl(workspace, frame.sId, "?action=download"),
+      { redirect: "manual" }
+    );
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "file_not_found",
+        message: "Frame source folder not found.",
       },
     });
   });

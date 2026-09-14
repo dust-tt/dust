@@ -614,6 +614,64 @@ export const ServerSidePagination = () => {
   );
 };
 
+const INITIAL_LOAD_MORE_ROW_COUNT = 2;
+
+/**
+ * "Load more" footer as an alternative to pagination: each click appends a
+ * page after a simulated delay. Once extra rows are revealed, `onShowLess`
+ * adds a "Show less" control that collapses back to the initial rows.
+ * @summary Load more footer with show less.
+ */
+export const DataTableLoadMoreExample = () => {
+  const [visibleCount, setVisibleCount] = React.useState(
+    INITIAL_LOAD_MORE_ROW_COUNT
+  );
+  const [isLoadingMore, setIsLoadingMore] = React.useState(false);
+  const [filter, setFilter] = React.useState<string>("");
+
+  const rows = useMemo(() => data.slice(0, visibleCount), [visibleCount]);
+
+  const handleLoadMore = () => {
+    setIsLoadingMore(true);
+    // Simulate a server round-trip.
+    setTimeout(() => {
+      setVisibleCount((count) => Math.min(count + 2, data.length));
+      setIsLoadingMore(false);
+    }, 600);
+  };
+
+  const handleShowLess = () => {
+    setVisibleCount(INITIAL_LOAD_MORE_ROW_COUNT);
+  };
+
+  return (
+    <div className="w-full max-w-4xl overflow-x-auto">
+      <Input
+        name="filter"
+        placeholder="Filter"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+      />
+      <DataTable
+        className="w-full max-w-4xl overflow-x-auto"
+        data={rows}
+        totalRowCount={data.length}
+        filter={filter}
+        filterColumn="name"
+        onLoadMore={handleLoadMore}
+        onShowLess={
+          visibleCount > INITIAL_LOAD_MORE_ROW_COUNT
+            ? handleShowLess
+            : undefined
+        }
+        isLoadingMore={isLoadingMore}
+        columns={columns}
+        columnsBreakpoints={{ lastUpdated: "sm" }}
+      />
+    </div>
+  );
+};
+
 const createData = (start: number, count: number): TransformedData[] => {
   return Array.from({ length: count }, (_, i) => {
     const index = start + i;

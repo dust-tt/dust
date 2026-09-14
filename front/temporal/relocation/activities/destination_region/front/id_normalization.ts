@@ -12,7 +12,7 @@ import {
   writeToRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
 import { getUserReferencingColumns } from "@app/temporal/relocation/lib/sql/schema/introspection";
-import type { RegionType } from "@app/types/region";
+import type { CellType } from "@app/types/cell";
 import type { ModelId } from "@app/types/shared/model_id";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { Op, QueryTypes } from "sequelize";
@@ -60,13 +60,13 @@ function getStatementColumns({ columns, sql }: RelocationStatement): string[] {
 }
 
 function getDestinationIdNormalizationFileName({
-  destRegion,
-  sourceRegion,
+  destCell,
+  sourceCell,
 }: {
-  destRegion: RegionType;
-  sourceRegion: RegionType;
+  destCell: CellType;
+  sourceCell: CellType;
 }) {
-  return `${sourceRegion}-${destRegion}`;
+  return `${sourceCell}-${destCell}`;
 }
 
 export function buildIdMapping(
@@ -249,14 +249,14 @@ export async function buildDestinationIdNormalization({
 }
 
 export async function writeDestinationIdNormalization({
-  destRegion,
+  destCell,
   normalization,
-  sourceRegion,
+  sourceCell,
   workspaceId,
 }: {
-  destRegion: RegionType;
+  destCell: CellType;
   normalization: DestinationIdNormalization;
-  sourceRegion: RegionType;
+  sourceCell: CellType;
   workspaceId: string;
 }): Promise<void> {
   await writeToRelocationStorage(normalization, {
@@ -264,19 +264,19 @@ export async function writeDestinationIdNormalization({
     type: "front",
     operation: DESTINATION_ID_NORMALIZATION_OPERATION,
     fileName: getDestinationIdNormalizationFileName({
-      destRegion,
-      sourceRegion,
+      destCell,
+      sourceCell,
     }),
   });
 }
 
 export async function readDestinationIdNormalization({
-  destRegion,
-  sourceRegion,
+  destCell,
+  sourceCell,
   workspaceId,
 }: {
-  destRegion: RegionType;
-  sourceRegion: RegionType;
+  destCell: CellType;
+  sourceCell: CellType;
   workspaceId: string;
 }): Promise<DestinationIdNormalization> {
   const dataPath = getRelocationStoragePath({
@@ -284,8 +284,8 @@ export async function readDestinationIdNormalization({
     type: "front",
     operation: DESTINATION_ID_NORMALIZATION_OPERATION,
     fileName: getDestinationIdNormalizationFileName({
-      destRegion,
-      sourceRegion,
+      destCell,
+      sourceCell,
     }),
   });
 

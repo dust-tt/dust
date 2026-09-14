@@ -2,7 +2,7 @@ import { FrameRenderer } from "@app/components/assistant/conversation/interactiv
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { EditTextFn } from "@app/types/assistant/visualization";
 import type { LightWorkspaceType } from "@app/types/user";
-import { cleanup, render } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -99,6 +99,9 @@ vi.mock("@app/lib/swr/files", () => ({
       version: 1,
     },
     mutateFileMetadata: vi.fn(),
+  }),
+  useShareInteractiveContentFile: () => ({
+    fileShare: { shareUrl: "https://dust.tt/share/frame/share-token" },
   }),
 }));
 vi.mock("@app/lib/swr/frames", () => ({
@@ -197,6 +200,29 @@ describe("FrameRenderer", () => {
         isEditable: false,
         onEditText: undefined,
       })
+    );
+  });
+
+  it("opens the frame's share URL in a new tab", () => {
+    const open = vi.spyOn(window, "open").mockReturnValue(null);
+
+    render(
+      <FrameRenderer
+        conversation={conversation}
+        fileId="frame_1"
+        projectId={null}
+        owner={owner}
+        contentHash="frame_1@42"
+        renderMode="v2"
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open in a new tab" }));
+
+    expect(open).toHaveBeenCalledWith(
+      "https://dust.tt/share/frame/share-token",
+      "_blank",
+      "noopener,noreferrer"
     );
   });
 

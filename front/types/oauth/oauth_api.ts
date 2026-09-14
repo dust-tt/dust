@@ -1,4 +1,5 @@
 import { internalFetch } from "@app/lib/api/internal_fetch";
+import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type { ApiKeyCredentialsType } from "@app/types/provider_credential";
 import type {
@@ -72,11 +73,13 @@ export class OAuthAPI {
   async createConnection({
     provider,
     metadata,
+    redirectUri,
     migratedCredentials,
     relatedCredential,
   }: {
     provider: OAuthProvider;
     metadata: Record<string, unknown> | null;
+    redirectUri?: string;
     migratedCredentials?: MigratedCredentialsType;
     relatedCredential?: {
       content: Record<string, unknown>;
@@ -89,6 +92,7 @@ export class OAuthAPI {
     const body: {
       provider: OAuthProvider;
       metadata: Record<string, unknown> | null;
+      redirect_uri?: string;
       migrated_credentials?: MigratedCredentialsType;
       related_credential?: {
         content: Record<string, unknown>;
@@ -101,6 +105,10 @@ export class OAuthAPI {
       provider,
       metadata,
     };
+
+    if (redirectUri) {
+      body.redirect_uri = redirectUri;
+    }
 
     if (migratedCredentials) {
       body.migrated_credentials = migratedCredentials;
@@ -122,17 +130,16 @@ export class OAuthAPI {
 
   async finalizeConnection({
     provider,
-    connectionId,
+    connection,
     code,
-    redirectUri,
   }: {
     provider: OAuthProvider;
-    connectionId: string;
+    connection: OAuthConnectionType;
     code: string;
-    redirectUri: string;
   }): Promise<OAuthAPIResponse<{ connection: OAuthConnectionType }>> {
+    const redirectUri = finalizeUriForProvider({ provider, connection });
     const response = await this._fetchWithError(
-      `${this._url}/connections/${connectionId}/finalize`,
+      `${this._url}/connections/${connection.connection_id}/finalize`,
       {
         method: "POST",
         headers: {

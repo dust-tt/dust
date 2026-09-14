@@ -357,6 +357,10 @@ function UpdateConnectionOAuthModal({
 
   const isDataSourceOwner = editedByUser?.userId === user.sId;
 
+  const connectedAccount = metadata?.connected_account;
+  const microsoftAccount =
+    isMicrosoft && isString(connectedAccount) ? connectedAccount : null;
+
   const permissionsConfigurable =
     getConnectorPermissionsConfigurableBlocked(connectorProvider);
 
@@ -445,6 +449,12 @@ function UpdateConnectionOAuthModal({
                 : "."}
             </div>
           </div>
+          {microsoftAccount && (
+            <div className="copy-sm text-muted-foreground">
+              Authorized with Microsoft account{" "}
+              <span className="font-bold">{microsoftAccount}</span>.
+            </div>
+          )}
           {!isDataSourceOwner && (
             <div className="flex items-center justify-center gap-2">
               <RequestDataSourceModal

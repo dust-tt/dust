@@ -54,18 +54,6 @@ beforeEach(() => {
 
 describe("/api/w/[wId]/usage_settings/default_user_spend_limit", () => {
   describe("auth", () => {
-    it("returns 403 when caller is not an admin", async () => {
-      const { workspace } = await createPrivateApiMockRequest({
-        role: "user",
-      });
-
-      const response = await getRequest(workspace.sId);
-
-      expect(response.status).toBe(403);
-      const data = (await response.json()) as { error: { type: string } };
-      expect(data.error.type).toBe("workspace_auth_error");
-    });
-
     it("returns 403 when workspace is not Metronome-billed", async () => {
       const { workspace } = await createPrivateApiMockRequest({
         role: "admin",
@@ -76,6 +64,32 @@ describe("/api/w/[wId]/usage_settings/default_user_spend_limit", () => {
       expect(response.status).toBe(403);
       const data = (await response.json()) as { error: { type: string } };
       expect(data.error.type).toBe("plan_limit_error");
+    });
+
+    it("returns 403 when caller is a plain member", async () => {
+      const workspace = await makeMetronomeWorkspace();
+      await createPrivateApiMockRequest({
+        role: "user",
+        workspace,
+      });
+
+      const response = await getRequest(workspace.sId);
+
+      expect(response.status).toBe(403);
+      const data = (await response.json()) as { error: { type: string } };
+      expect(data.error.type).toBe("workspace_auth_error");
+    });
+
+    it("allows managers to fetch the default limit", async () => {
+      const workspace = await makeMetronomeWorkspace();
+      await createPrivateApiMockRequest({
+        role: "manager",
+        workspace,
+      });
+
+      const response = await getRequest(workspace.sId);
+
+      expect(response.status).toBe(200);
     });
   });
 
@@ -173,6 +187,21 @@ describe("/api/w/[wId]/usage_settings/default_user_spend_limit", () => {
         expect.anything(),
         expect.objectContaining({ awuCredits: 5000 })
       );
+    });
+
+    it("returns 403 when a manager (non-admin) tries to update the threshold", async () => {
+      const workspace = await makeMetronomeWorkspace();
+      await createPrivateApiMockRequest({
+        role: "manager",
+        workspace,
+      });
+
+      const response = await putRequest(workspace.sId, { awuCredits: 5000 });
+
+      expect(response.status).toBe(403);
+      const data = (await response.json()) as { error: { type: string } };
+      expect(data.error.type).toBe("workspace_auth_error");
+      expect(businessLayer.setDefaultUserSpendLimit).not.toHaveBeenCalled();
     });
 
     it("returns 400 when awuCredits is missing", async () => {

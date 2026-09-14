@@ -216,6 +216,39 @@ describe("buildAndPublishFramePublication", () => {
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
   });
 
+  it("refuses to publish a UI that calls an undeclared function", async () => {
+    const { auth, conversation, frame } = await setup();
+
+    const result = await buildAndPublishFramePublication(auth, {
+      conversation,
+      frame,
+      manifest: uiOnlyManifest,
+      sourceFiles: [
+        {
+          ...sourceFiles[0],
+          content: Buffer.from(
+            'import { usePodFunction } from "@dust/react-hooks";\n' +
+              "export default function App() {\n" +
+              '  usePodFunction("list-tasks", {});\n' +
+              "  return <main>Tasks</main>;\n" +
+              "}\n"
+          ),
+        },
+      ],
+    });
+
+    expect(result.isErr() && result.error).toMatchObject({
+      code: "invalid_function_reference",
+    });
+    // The reference check runs before any build work, so nothing was bundled or stored.
+    expect(fileStorageMock.saveFileCalls).toHaveLength(0);
+    expect(ensureConversationSandboxReadyWithScope).not.toHaveBeenCalled();
+    expect(
+      (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
+        ?.activePublicationId
+    ).toBeUndefined();
+  });
+
   it("builds and publishes the UI without starting a sandbox", async () => {
     const { auth, conversation, frame } = await setup();
 

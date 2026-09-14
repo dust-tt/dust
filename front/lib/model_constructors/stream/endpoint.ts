@@ -14,6 +14,17 @@ export abstract class StreamEndpoint<
   // simply return `I`.
   abstract buildRequestPayload(payload: Payload, config: C): Promise<I> | I;
   abstract streamRaw(input: I): AsyncGenerator<O>;
+  /**
+   * @cc [label:error-handling] single-terminal-model-response-event
+   * The yielded `ModelResponseEvent` sequence must end with exactly one terminal event — either
+   * `success` or `error`, never both — and every `token_usage` event must be emitted before it.
+   *
+   * Consumers (`LLM.streamWithTracing`, `completeStream`) stop at the first terminal event:
+   * anything yielded after it is dropped, and a `success` following an `error` double-counts the
+   * call as both a failure and a success in telemetry. When a provider stop/finish reason maps to
+   * an error, hold the error back until the usage has been yielded, then yield the error and end
+   * the stream.
+   */
   abstract rawStreamOutputToEvents(
     raw: AsyncGenerator<O>
   ): AsyncGenerator<ModelResponseEvent>;

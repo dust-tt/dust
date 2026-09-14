@@ -5,7 +5,8 @@ import {
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import type { GoogleDriveObjectType, ModelId } from "@connectors/types";
 import { cacheWithRedis, FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
-import type { GaxiosError, OAuth2Client } from "googleapis-common";
+import type { OAuth2Client } from "googleapis-common";
+import { GaxiosError } from "googleapis-common";
 
 interface CacheKey {
   connectorId: number;
@@ -38,10 +39,10 @@ async function _getGoogleDriveObject({
 
     return await driveObjectToDustType(connectorId, file, authCredentials);
   } catch (e) {
-    if ((e as GaxiosError).response?.status === 401) {
+    if (e instanceof GaxiosError && e.response?.status === 401) {
       throw new ExternalOAuthTokenError();
     }
-    if ((e as GaxiosError).response?.status === 404) {
+    if (e instanceof GaxiosError && e.response?.status === 404) {
       return null;
     }
     throw e;

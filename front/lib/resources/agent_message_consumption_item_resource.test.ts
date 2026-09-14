@@ -69,6 +69,7 @@ function pendingTool(
 ): PendingToolConsumptionItem {
   return {
     action,
+    attributedSkillIds: ["skill-pending"],
     runUsageModelId,
     outputTokensCount: 12,
     grossAttributedCreditAmountMicro: 400_000,
@@ -84,6 +85,7 @@ function completedTool(
     itemType: "tool",
     runUsageModelId,
     action,
+    attributedSkillIds: ["skill-completed"],
     inputTokensCount: 40,
     outputTokensCount: 12,
     grossAttributedCreditAmountMicro: 2_000_000,
@@ -217,12 +219,21 @@ describe("AgentMessageConsumptionItemResource", () => {
       "Only tool attribution items may be pending"
     );
 
+    item.set({
+      attributedSkillIds: ["skill-invalid"],
+      completedAt: new Date(),
+    });
+    await expect(item.validate()).rejects.toThrow(
+      "Only tool attribution items may contain skill IDs"
+    );
+
     const pendingToolWithResult = AgentMessageConsumptionItemModel.build({
       workspaceId: workspace.id,
       conversationId: context.conversation.id,
       agentMessageId: context.agentMessageModelId,
       runUsageId: context.runUsageModelId,
       agentMCPActionId: context.action.id,
+      attributedSkillIds: ["skill-pending"],
       itemKey: `tool-action:${context.action.id}`,
       itemType: "tool",
       attributionVersion: ATTRIBUTION_VERSION,
@@ -301,6 +312,7 @@ describe("AgentMessageConsumptionItemResource", () => {
       inputTokensCount: 40,
       outputTokensCount: 12,
       directCreditAmountMicro: 1_000_000,
+      attributedSkillIds: ["skill-completed"],
       completedAt: expect.any(Date),
     });
   });
@@ -323,6 +335,7 @@ describe("AgentMessageConsumptionItemResource", () => {
     expect(afterFirstPass[0]).toMatchObject({
       inputTokensCount: null,
       directCreditAmountMicro: null,
+      attributedSkillIds: ["skill-pending"],
       completedAt: null,
     });
 
@@ -349,6 +362,7 @@ describe("AgentMessageConsumptionItemResource", () => {
       outputTokensCount: 12,
       grossAttributedCreditAmountMicro: 2_000_000,
       directCreditAmountMicro: 1_000_000,
+      attributedSkillIds: ["skill-completed"],
       completedAt: expect.any(Date),
     });
   });

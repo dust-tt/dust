@@ -90,15 +90,18 @@ export function makeCoreSearchNodesFilters({
 export async function fetchTableDataSourceConfigurations(
   auth: Authenticator,
   tablesConfiguration: TablesConfigurationToolType
-): Promise<Result<TableDataSourceConfiguration[], Error>> {
+): Promise<Result<TableDataSourceConfiguration[], MCPError>> {
   const results: TableDataSourceConfiguration[] = [];
 
   for (const tableConfiguration of tablesConfiguration) {
     const match = tableConfiguration.uri.match(TABLE_CONFIGURATION_URI_PATTERN);
     if (!match) {
       return new Err(
-        new Error(
-          `Invalid URI for a table configuration: ${tableConfiguration.uri}`
+        new MCPError(
+          `Invalid URI for a table configuration: ${tableConfiguration.uri}`,
+          {
+            tracked: false,
+          }
         )
       );
     }
@@ -110,18 +113,25 @@ export async function fetchTableDataSourceConfigurations(
       const sIdParts = getResourceNameAndIdFromSId(tableConfigId);
       if (!sIdParts) {
         return new Err(
-          new Error(`Invalid table configuration ID: ${tableConfigId}`)
+          new MCPError(`Invalid table configuration ID: ${tableConfigId}`, {
+            tracked: false,
+          })
         );
       }
       if (sIdParts.resourceName !== "table_configuration") {
         return new Err(
-          new Error(`ID is not a table configuration ID: ${tableConfigId}`)
+          new MCPError(`ID is not a table configuration ID: ${tableConfigId}`, {
+            tracked: false,
+          })
         );
       }
       if (sIdParts.workspaceModelId !== auth.getNonNullableWorkspace().id) {
         return new Err(
-          new Error(
-            `Table configuration ${tableConfigId} does not belong to workspace ${sIdParts.workspaceModelId}`
+          new MCPError(
+            `Table configuration ${tableConfigId} does not belong to workspace ${sIdParts.workspaceModelId}`,
+            {
+              tracked: false,
+            }
           )
         );
       }
@@ -136,7 +146,9 @@ export async function fetchTableDataSourceConfigurations(
 
       if (!agentTableConfiguration) {
         return new Err(
-          new Error(`Table configuration ${tableConfigId} not found`)
+          new MCPError(`Table configuration ${tableConfigId} not found`, {
+            tracked: false,
+          })
         );
       }
 
@@ -148,7 +160,7 @@ export async function fetchTableDataSourceConfigurations(
 
       if (dataSourceView.length !== 1) {
         return new Err(
-          new Error(
+          new MCPError(
             `Data source view not found for table configuration ${tableConfigId}`
           )
         );
@@ -168,7 +180,9 @@ export async function fetchTableDataSourceConfigurations(
       });
     } else {
       return new Err(
-        new Error(`Invalid URI format: ${tableConfiguration.uri}`)
+        new MCPError(`Invalid URI format: ${tableConfiguration.uri}`, {
+          tracked: false,
+        })
       );
     }
   }
@@ -251,7 +265,11 @@ export async function getAgentDataSourceConfigurations(
   });
 
   if (configInfosRes.some((res) => res.isErr())) {
-    return new Err(new MCPError("Failed to parse data source configurations."));
+    return new Err(
+      new MCPError("Failed to parse data source configurations.", {
+        tracked: false,
+      })
+    );
   }
 
   const configInfos = removeNulls(
@@ -265,14 +283,20 @@ export async function getAgentDataSourceConfigurations(
       if (!sIdParts) {
         return new Err(
           new MCPError(
-            `Invalid data source configuration ID: ${configInfo.sId}`
+            `Invalid data source configuration ID: ${configInfo.sId}`,
+            {
+              tracked: false,
+            }
           )
         );
       }
       if (sIdParts.resourceName !== "data_source_configuration") {
         return new Err(
           new MCPError(
-            `ID is not a data source configuration ID: ${configInfo.sId}`
+            `ID is not a data source configuration ID: ${configInfo.sId}`,
+            {
+              tracked: false,
+            }
           )
         );
       }
@@ -296,7 +320,10 @@ export async function getAgentDataSourceConfigurations(
   ) {
     return new Err(
       new MCPError(
-        "Failed to fetch data source configurations, mismatched number of configurations found."
+        "Failed to fetch data source configurations, mismatched number of configurations found.",
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -327,7 +354,10 @@ export async function getAgentDataSourceConfigurations(
       if (!sIdParts) {
         return new Err(
           new MCPError(
-            `Invalid data source view ID: ${configInfo.configuration.dataSourceViewId}`
+            `Invalid data source view ID: ${configInfo.configuration.dataSourceViewId}`,
+            {
+              tracked: false,
+            }
           )
         );
       }
@@ -343,7 +373,10 @@ export async function getAgentDataSourceConfigurations(
   if (dataSourceViews.some((dataSourceView) => !dataSourceView.canRead(auth))) {
     return new Err(
       new MCPError(
-        "Failed to fetch data source views, some views are not readable."
+        "Failed to fetch data source views, some views are not readable.",
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -351,7 +384,10 @@ export async function getAgentDataSourceConfigurations(
   if (dataSourceViews.length !== dataSourceViewIDs.size) {
     return new Err(
       new MCPError(
-        "Failed to fetch data source views, mismatched number of views found."
+        "Failed to fetch data source views, mismatched number of views found.",
+        {
+          tracked: false,
+        }
       )
     );
   }
@@ -376,9 +412,7 @@ export async function getAgentDataSourceConfigurations(
         );
         if (!agentConfig) {
           return new Err(
-            new MCPError(
-              `Data source configuration not found: ${configInfo.sId}`
-            )
+            new Error(`Data source configuration not found: ${configInfo.sId}`)
           );
         }
         const dataSourceViewSId = DataSourceViewResource.modelIdToSId({

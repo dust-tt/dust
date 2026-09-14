@@ -10,27 +10,27 @@ import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type { CellType } from "@app/types/cell";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { RegionType } from "@app/types/region";
 
 export async function processDataSourceFolders({
   destIds,
   dataPath,
-  destRegion,
-  sourceRegion,
-  sourceRegionApiBaseUrl,
+  destCell,
+  sourceCell,
+  sourceApiBaseUrl,
   workspaceId,
 }: {
   destIds: CreateDataSourceProjectResult;
   dataPath: string;
-  destRegion: RegionType;
-  sourceRegion: RegionType;
-  sourceRegionApiBaseUrl: string;
+  destCell: CellType;
+  sourceCell: CellType;
+  sourceApiBaseUrl: string;
   workspaceId: string;
 }) {
   const localLogger = logger.child({
-    destRegion,
-    sourceRegion,
+    destCell,
+    sourceCell,
     workspaceId,
   });
 
@@ -46,10 +46,10 @@ export async function processDataSourceFolders({
   const res = await concurrentExecutor(
     data.blobs.folders,
     async (d) => {
-      // If the source URL starts with the source region Dust URL, replace it with the destination region Dust URL.
+      // If the source URL starts with the source cell Dust URL, replace it with the destination cell Dust URL.
       const sourceUrl =
-        d.source_url && d.source_url.startsWith(sourceRegionApiBaseUrl)
-          ? d.source_url.replace(sourceRegionApiBaseUrl, destRegionApiBaseUrl)
+        d.source_url && d.source_url.startsWith(sourceApiBaseUrl)
+          ? d.source_url.replace(sourceApiBaseUrl, destRegionApiBaseUrl)
           : d.source_url;
 
       return coreAPI.upsertDataSourceFolder({

@@ -8,27 +8,27 @@ import type {
   DataSourceCoreIds,
 } from "@app/temporal/relocation/activities/types";
 import { StorageTransferService } from "@app/temporal/relocation/lib/file_storage/transfer";
+import type { CellType } from "@app/types/cell";
 import { getBaseMountPathForWorkspace } from "@app/types/mount_path";
-import type { RegionType } from "@app/types/region";
 
 export async function startTransferFrontPublicFiles({
   destBucket,
-  destRegion,
-  sourceRegion,
+  destCell,
+  sourceCell,
   workspaceId,
 }: {
   destBucket: string;
-  destRegion: RegionType;
-  sourceRegion: RegionType;
+  destCell: CellType;
+  sourceCell: CellType;
   workspaceId: string;
 }): Promise<string> {
   const storageTransferService = new StorageTransferService();
 
   const localLogger = logger.child({
     destBucket,
-    destRegion,
+    destCell,
     path: FileResource.getBaseCloudStorageForWorkspace({ workspaceId }),
-    sourceRegion,
+    sourceCell,
     workspaceId,
   });
 
@@ -41,13 +41,13 @@ export async function startTransferFrontPublicFiles({
     destPath: FileResource.getBaseCloudStorageForWorkspace({
       workspaceId,
     }),
-    destRegion,
+    destCell,
     sourceBucket: fileStorageConfig.getGcsPublicUploadBucket(),
     sourcePath: FileResource.getBaseCloudStorageForWorkspace({
       workspaceId,
     }),
-    sourceProjectId: config.getGcsSourceProjectId(),
-    sourceRegion,
+    transferProjectId: config.getGcsTransferProjectId(),
+    sourceCell,
     workspaceId,
   });
 
@@ -74,22 +74,22 @@ export async function startTransferFrontPublicFiles({
 
 export async function startTransferFrontPrivateFiles({
   destBucket,
-  destRegion,
-  sourceRegion,
+  destCell,
+  sourceCell,
   workspaceId,
 }: {
   destBucket: string;
-  destRegion: RegionType;
-  sourceRegion: RegionType;
+  destCell: CellType;
+  sourceCell: CellType;
   workspaceId: string;
 }): Promise<string> {
   const storageTransferService = new StorageTransferService();
 
   const localLogger = logger.child({
     destBucket,
-    destRegion,
+    destCell,
     path: FileResource.getBaseCloudStorageForWorkspace({ workspaceId }),
-    sourceRegion,
+    sourceCell,
     workspaceId,
   });
 
@@ -100,15 +100,15 @@ export async function startTransferFrontPrivateFiles({
   // Tranfer both private files and content fragments in the same job.
   const transferResult = await storageTransferService.createTransferJob({
     destBucket,
-    destRegion,
+    destCell,
     includePrefixes: [
       FileResource.getBaseCloudStorageForWorkspace({ workspaceId }),
       getContentFragmentBaseCloudStorageForWorkspace(workspaceId),
       getBaseMountPathForWorkspace({ workspaceId }),
     ],
     sourceBucket: fileStorageConfig.getGcsPrivateUploadsBucket(),
-    sourceProjectId: config.getGcsSourceProjectId(),
-    sourceRegion,
+    transferProjectId: config.getGcsTransferProjectId(),
+    sourceCell,
     workspaceId,
   });
 
@@ -142,7 +142,7 @@ export async function isFileStorageTransferComplete({
 
   const result = await storageTransfer.isTransferJobDone({
     jobName,
-    sourceProjectId: config.getGcsSourceProjectId(),
+    transferProjectId: config.getGcsTransferProjectId(),
   });
 
   if (result.isErr()) {
@@ -164,15 +164,15 @@ export async function startTransferCoreTableFiles({
   dataSourceCoreIds,
   destBucket,
   destIds,
-  destRegion,
-  sourceRegion,
+  destCell,
+  sourceCell,
   workspaceId,
 }: {
   dataSourceCoreIds: DataSourceCoreIds;
   destBucket: string;
   destIds: CreateDataSourceProjectResult;
-  destRegion: RegionType;
-  sourceRegion: RegionType;
+  destCell: CellType;
+  sourceCell: CellType;
   workspaceId: string;
 }): Promise<string> {
   const storageTransferService = new StorageTransferService();
@@ -181,9 +181,9 @@ export async function startTransferCoreTableFiles({
 
   const localLogger = logger.child({
     destBucket,
-    destRegion,
+    destCell,
     path: sourcePath,
-    sourceRegion,
+    sourceCell,
     workspaceId,
   });
 
@@ -192,11 +192,11 @@ export async function startTransferCoreTableFiles({
   const transferResult = await storageTransferService.createTransferJob({
     destBucket,
     destPath: makeCoreTableDestPath(destIds),
-    destRegion,
+    destCell,
     sourceBucket: fileStorageConfig.getDustTablesBucket(),
     sourcePath,
-    sourceProjectId: config.getGcsSourceProjectId(),
-    sourceRegion,
+    transferProjectId: config.getGcsTransferProjectId(),
+    sourceCell,
     workspaceId,
   });
 

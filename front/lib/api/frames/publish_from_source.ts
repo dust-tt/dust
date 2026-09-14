@@ -157,6 +157,7 @@ export async function publishFrameFromSource(
       conversation,
       frame,
       manifestPath: normalizedPath,
+      publishedByAgentConfigurationId,
     });
     if (publication.isErr()) {
       return new Err(publication.error);
@@ -431,10 +432,12 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
     conversation,
     frame,
     manifestPath,
+    publishedByAgentConfigurationId,
   }: {
     conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifestPath: string;
+    publishedByAgentConfigurationId?: string;
   }
 ): Promise<
   Result<
@@ -454,6 +457,7 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
     conversation,
     frame,
     ...source.value,
+    publishedByAgentConfigurationId,
   });
 }
 
@@ -463,10 +467,12 @@ export async function publishFrameV2FromSource(
     conversation,
     frame,
     manifestPath,
+    publishedByAgentConfigurationId,
   }: {
     conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifestPath: string;
+    publishedByAgentConfigurationId?: string;
   }
 ): Promise<
   Result<
@@ -494,6 +500,7 @@ export async function publishFrameV2FromSource(
       conversation,
       frame: freshFrame,
       manifestPath,
+      publishedByAgentConfigurationId,
     });
   });
   if (publication.isErr()) {

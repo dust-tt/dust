@@ -137,10 +137,6 @@ const GetSpacesQuerySchema = z.object({
  *                 items:
  *                   type: string
  *                 description: The groups given access to the space. Omitted or empty means no group has access to it.
- *               managementMode:
- *                 type: string
- *                 enum: [manual, group]
- *                 description: Deprecated and ignored. A space's members are its manual member list plus the members of the groups given access to it.
  *     responses:
  *       201:
  *         description: Successfully created space

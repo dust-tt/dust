@@ -21,7 +21,7 @@ socket:
 # ignored by the watcher (header validation). Replica subdirectories are
 # named by database FILENAME: /sandbox-state/replica/{db}.db/ltx/...
 dbs:
-  - dir: /pod-state/databases
+  - dir: /sandbox-state/databases
     pattern: "*.db"
     watch: true
     replica:

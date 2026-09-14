@@ -32,7 +32,7 @@ export class GongOAuthProvider implements BaseOAuthStrategyProvider {
       `&scope=${encodeURIComponent(scopes.join(" "))}` +
       `&response_type=code` +
       `&state=${connection.connection_id}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("gong"))}`
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "gong", connection }))}`
     );
   }
 

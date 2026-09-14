@@ -79,6 +79,7 @@ export const shouldSendNotificationForAgentAnswer = (
       return true;
     case "onboarding_conversation":
     case "agent_sidekick":
+    case "analytics_panel":
     case "reinforced_skill_notification":
     case "reinforcement":
     case "system_activation":

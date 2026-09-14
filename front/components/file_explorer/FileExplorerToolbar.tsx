@@ -38,6 +38,7 @@ function ViewToggle({ value, onValueChange }: ViewToggleProps) {
           variant="outline"
           size="sm"
           icon={value === "grid" ? List : CheckDone01}
+          tooltip="Layout"
           isSelect
         />
       </DropdownMenuTrigger>

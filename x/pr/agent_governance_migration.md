@@ -116,6 +116,12 @@ editor-list, permission, listing, backfill, and cache-related mismatches to reac
 Serve editor lists, permission decisions, and list/manage/archive filtering from grants at the same
 time, behind one operational switch with a single kill-switch fallback to legacy reads.
 
+Use `auth.can("write", agentResource)` for agent authorization, including regular admin API keys via
+the resource ACL. Keep the existing active-status and requested-space checks outside that ACL.
+Remove the legacy admin-key condition in configuration enrichment when flipping and cleaning up.
+`getResourceIdsWithVerb()` only enumerates governance grants, not role-based ACL permissions; account
+for that distinction when using it to filter editable agents.
+
 **Operational gate:** observe the complete read flip before removing the fallback.
 
 ### PR 13: Remove legacy reads and rollout infrastructure

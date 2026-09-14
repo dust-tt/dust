@@ -310,7 +310,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(data.agentConfiguration.instructions).toBeNull();
     expect(data.agentConfiguration.instructionsHtml).toBeNull();
     expect(data.agentConfiguration.actions).toEqual([]);
-    expect(data.agentConfiguration.skills).toEqual([]);
+    expect(data.agentConfiguration.codeDefinedSkillIds).toEqual([]);
   });
 
   it("redacts the private fields of an agent built on a space the admin cannot read", async () => {
@@ -341,7 +341,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(data.agentConfiguration.instructions).toBeNull();
     expect(data.agentConfiguration.instructionsHtml).toBeNull();
     expect(data.agentConfiguration.actions).toEqual([]);
-    expect(data.agentConfiguration.skills).toEqual([]);
+    expect(data.agentConfiguration.codeDefinedSkillIds).toEqual([]);
   });
 
   it("keeps returning not found to a non-admin for an unpublished agent", async () => {

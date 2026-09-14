@@ -186,6 +186,17 @@ export const SwitchContractBodySchema = z.object({
   autoSeatUpgradeEnabled: z.boolean().default(false),
   topUpEnabled: z.boolean().default(false),
   autoInvoiceFinalizationEnabled: z.boolean().default(true),
+  // Optional promotional free period offered at the start of the contract: the
+  // seat commitment invoices are reduced, from the first bill onwards, by the
+  // prorated value of this leading duration (all seats), so the customer pays
+  // nothing for that period. The credit grant is unaffected. Does not apply to
+  // initial credits or scheduled charges.
+  offerFreePeriod: z
+    .object({
+      value: z.number().int().min(1),
+      unit: z.enum(["years", "months", "weeks"]),
+    })
+    .optional(),
 });
 
 export type SwitchContractBody = z.infer<typeof SwitchContractBodySchema>;

@@ -110,9 +110,7 @@ export default function CustomerStoryPage({
         </div>
       )}
       <Head>
-        <title>
-          {story.companyName}: {story.title} | Dust Customer Story
-        </title>
+        <title>{`${story.companyName}: ${story.title} | Dust Customer Story`}</title>
         {preview && <meta name="robots" content="noindex, nofollow" />}
         {story.description && (
           <meta name="description" content={story.description} />

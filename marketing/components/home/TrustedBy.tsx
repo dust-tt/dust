@@ -1,203 +1,26 @@
 // biome-ignore-all lint/plugin/noNextImports: Next.js-specific file
 import { H4 } from "@marketing/components/home/ContentComponents";
+import { LogoBarImage } from "@marketing/components/home/LogoBarImage";
+import { useLogoBar } from "@marketing/components/home/LogoListsContext";
 import { cn } from "@marketing/components/poke/shadcn/lib/utils";
-import { isEUCountry } from "@marketing/lib/geo/eu-detection";
+import type { TrustedByLogoSet } from "@marketing/lib/logo_bars";
+import {
+  fallbackTrustedByRegion,
+  toLogoListRegion,
+  trustedByBarSlug,
+} from "@marketing/lib/logo_bars";
 import { useGeolocation } from "@marketing/lib/swr/geo";
 import { TRACKING_AREAS, trackEvent } from "@marketing/lib/tracking";
 import { useSignUpModal } from "@marketing/hooks/useSignUpModal";
 import { Button } from "@dust-tt/sparkle";
-import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const CASE_STUDIES: Record<string, string> = {
-  alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
-  assembled: "/customers/part-1-assembled-ai-operating-system",
-  backmarket:
-    "/customers/back-markets-fraud-team-builds-ai-detection-system-in-one-week-contributing",
-  blueground: "/customers/customer-support-blueground",
-  clay: "/customers/clay-scaling-gtme-team",
-  doctolib:
-    "/customers/why-doctolib-made-company-wide-enterprise-ai-a-national-cause",
-  fleet: "/customers/how-valentine-head-of-marketing-at-fleet-uses-dust",
-  kyriba: "/customers/kyriba-accelerating-innovation-with-dust",
-  malt: "/customers/malt-customer-support",
-  mirakl: "/customers/why-mirakl-chose-dust-as-its-go-to-agentic-solution",
-  payfit: "/customers/dust-ai-payfit-efficiency",
-  pennylane: "/customers/pennylane-customer-support-journey",
-  persona: "/customers/how-persona-hit-80-ai-agent-adoption-with-dust",
-  profound: "/customers/profound-post-sales-team-reclaimed-1800-hours",
-  qonto: "/customers/qonto-dust-ai-partnership",
-  wakam:
-    "/customers/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust",
-  watershed:
-    "/customers/how-watershed-got-90-of-its-team-to-leverage-dust-agents",
-  vanta:
-    "/customers/how-vantas-gtm-team-saves-thousands-of-hours-annually-with-dust",
-};
-
-const LOGO_SETS = {
-  default: {
-    us: [
-      { name: "datadog", src: "/static/landing/logos/gray/datadog.svg" },
-      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
-      { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
-      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
-      { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
-      { name: "evenup", src: "/static/landing/logos/gray/evenup.svg" },
-      { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
-      { name: "1password", src: "/static/landing/logos/gray/1password.svg" },
-      { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
-      { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
-      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
-      { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
-    ],
-    eu: [
-      { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
-      { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
-      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
-      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
-      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
-      { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
-      { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
-      { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
-      { name: "datadog", src: "/static/landing/logos/gray/datadog.svg" },
-      { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
-      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
-    ],
-  },
-  landing: {
-    us: [
-      { name: "datadog", src: "/static/landing/logos/gray/datadog.svg" },
-      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
-      { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
-      { name: "decagon", src: "/static/landing/logos/gray/decagon.svg" },
-      { name: "evenup", src: "/static/landing/logos/gray/evenup.svg" },
-      { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
-      { name: "1password", src: "/static/landing/logos/gray/1password.svg" },
-      { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
-      { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
-      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
-      { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
-    ],
-    eu: [
-      { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
-      { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
-      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
-      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
-      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
-      { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
-      { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
-      { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
-      { name: "datadog", src: "/static/landing/logos/gray/datadog.svg" },
-      { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
-      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
-    ],
-  },
-  b2bSaas: {
-    us: [
-      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      {
-        name: "contentsquare",
-        src: "/static/landing/logos/gray/contentsquare.svg",
-      },
-      // { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
-      { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
-      { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
-      { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
-    ],
-    eu: [
-      { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      {
-        name: "contentsquare",
-        src: "/static/landing/logos/gray/contentsquare.svg",
-      },
-      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
-      {
-        name: "gitguardian",
-        src: "/static/landing/logos/gray/gitguardian.svg",
-      },
-      { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
-      { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
-    ],
-  },
-  marketplace: {
-    us: [
-      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
-      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
-      { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
-      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
-      {
-        name: "wttj",
-        src: "/static/landing/logos/gray/welcometothejungle.svg",
-      },
-    ],
-    eu: [
-      { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
-      { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
-      { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
-      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
-      {
-        name: "wttj",
-        src: "/static/landing/logos/gray/welcometothejungle.svg",
-      },
-    ],
-  },
-  finance: {
-    us: [
-      { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
-      { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
-      { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
-      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
-    ],
-    eu: [
-      { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
-      { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
-      { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
-      { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
-    ],
-  },
-  insurance: {
-    us: [
-      { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
-      { name: "wakam", src: "/static/landing/logos/gray/wakam.svg" },
-    ],
-    eu: [
-      { name: "alan", src: "/static/landing/logos/gray/alan.svg" },
-      { name: "wakam", src: "/static/landing/logos/gray/wakam.svg" },
-    ],
-  },
-  retail: {
-    us: [
-      { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
-      { name: "fleet", src: "/static/landing/logos/gray/fleet.svg" },
-      { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
-      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
-      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
-      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
-      { name: "profound", src: "/static/landing/logos/gray/profound.svg" },
-    ],
-    eu: [
-      { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
-      { name: "fleet", src: "/static/landing/logos/gray/fleet.svg" },
-      { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
-      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
-      { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
-      { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
-    ],
-  },
-} as const;
-
-type LogoSetKey = keyof typeof LOGO_SETS;
 type SizeKey = "default" | "large";
 
 interface TrustedByProps {
-  logoSet?: LogoSetKey;
+  logoSet?: TrustedByLogoSet;
   size?: SizeKey;
   showTitle?: boolean;
 }
@@ -220,15 +43,36 @@ export default function TrustedBy({
     return () => cancelAnimationFrame(frameId);
   }, []);
 
+  // `?geo=FR` overrides the detected country; `?region=us|eu` is the older,
+  // coarser override and is kept so existing preview links still work. Both
+  // matter to marketing, who cannot otherwise see a bar for a country they are
+  // not sitting in.
+  const geoParam = searchParams?.get("geo");
   const regionParam = searchParams?.get("region");
-  const region =
+  const countryCode = mounted ? geoData?.countryCode : undefined;
+
+  const listRegion = geoParam
+    ? toLogoListRegion(geoParam)
+    : regionParam === "eu"
+      ? "EU"
+      : regionParam === "us"
+        ? "US"
+        : toLogoListRegion(countryCode);
+
+  // Which hardcoded bar to show until this region has a published list. An
+  // explicit `?region=` still wins here so the old preview links keep showing
+  // what they always showed.
+  const fallbackRegion =
     regionParam === "us" || regionParam === "eu"
       ? regionParam
-      : mounted && geoData?.countryCode && isEUCountry(geoData.countryCode)
-        ? "eu"
-        : "us";
+      : fallbackTrustedByRegion(listRegion);
 
-  const logos = LOGO_SETS[logoSet][region];
+  // Contentful-managed if a `logoList` entry exists for this region, else the
+  // hardcoded lineup in lib/logo_bars.ts.
+  const logos = useLogoBar(
+    listRegion,
+    trustedByBarSlug(logoSet, fallbackRegion)
+  );
 
   const isLarge = size === "large";
 
@@ -256,63 +100,50 @@ export default function TrustedBy({
               : "gap-x-6 gap-y-4 sm:gap-x-8 lg:gap-x-10 xl:gap-x-12"
           )}
         >
-          {logos.map((logo, index) => {
-            const caseStudyPath = CASE_STUDIES[logo.name];
-            const caseStudyUrl =
-              caseStudyPath && (logo.name !== "profound" || region === "us")
-                ? caseStudyPath
-                : undefined;
-            return (
+          {logos.map((logo, index) => (
+            <div
+              key={`${logo.name}-${index}`}
+              className={cn(
+                "flex flex-col items-center",
+                isLarge
+                  ? "w-40 sm:w-56 lg:w-52 xl:w-48"
+                  : "w-36 sm:w-48 lg:w-44 xl:w-40"
+              )}
+            >
+              {/* Explicit height, flex-centred, logo scaled down to fit.
+                  The box is flatter than any real logo (at its narrowest,
+                  160x48 = 3.3:1 against a 2.5:1 wordmark), so height always
+                  binds and every logo renders the same height whatever canvas
+                  it was drawn on. */}
               <div
-                key={`${logo.name}-${index}`}
                 className={cn(
-                  "flex flex-col items-center",
-                  isLarge
-                    ? "w-40 sm:w-56 lg:w-52 xl:w-48"
-                    : "w-36 sm:w-48 lg:w-44 xl:w-40"
+                  "flex w-full items-center justify-center",
+                  isLarge ? "h-12 sm:h-14" : "h-10 sm:h-12"
                 )}
               >
-                <div
-                  className={cn(
-                    "flex items-center justify-center",
-                    isLarge ? "h-14 sm:h-16" : "h-12 sm:h-14"
-                  )}
-                >
-                  <Image
-                    alt={logo.name}
-                    src={logo.src}
-                    width={200}
-                    height={80}
-                    className={cn(
-                      "h-auto w-auto object-contain",
-                      isLarge
-                        ? "max-h-20 sm:max-h-24 lg:max-h-28"
-                        : "max-h-16 sm:max-h-20 lg:max-h-24"
-                    )}
-                  />
-                </div>
-                {caseStudyUrl ? (
-                  <Link
-                    href={caseStudyUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="-mt-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                    onClick={() =>
-                      trackEvent({
-                        area: TRACKING_AREAS.HOME,
-                        object: "case_study",
-                        extra: { company: logo.name },
-                      })
-                    }
-                  >
-                    Case study &rarr;
-                  </Link>
-                ) : (
-                  <div className="h-4" />
-                )}
+                <LogoBarImage logo={logo} width={200} height={55} />
               </div>
-            );
-          })}
+              {logo.caseStudyUrl ? (
+                <Link
+                  href={logo.caseStudyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="-mt-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  onClick={() =>
+                    trackEvent({
+                      area: TRACKING_AREAS.HOME,
+                      object: "case_study",
+                      extra: { company: logo.name },
+                    })
+                  }
+                >
+                  Case study &rarr;
+                </Link>
+              ) : (
+                <div className="h-4" />
+              )}
+            </div>
+          ))}
         </div>
       </div>
       <Button

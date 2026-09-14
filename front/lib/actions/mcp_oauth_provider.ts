@@ -30,7 +30,7 @@ export class MCPOAuthProvider implements OAuthClientProvider {
     // required" on any OAuth-gated server. Returning the URI keeps the
     // interactive authorization-code path, where `saveCodeVerifier()` throws to
     // cleanly signal that OAuth is required.
-    return finalizeUriForProvider("mcp");
+    return finalizeUriForProvider({ provider: "mcp", connection: null });
   }
 
   get clientMetadata(): OAuthClientMetadata {
@@ -55,7 +55,9 @@ export class MCPOAuthProvider implements OAuthClientProvider {
         };
 
     return {
-      redirect_uris: [finalizeUriForProvider("mcp")],
+      redirect_uris: [
+        finalizeUriForProvider({ provider: "mcp", connection: null }),
+      ],
       client_name: "Dust",
       ...informationalUris,
       contacts: ["support@dust.com"],

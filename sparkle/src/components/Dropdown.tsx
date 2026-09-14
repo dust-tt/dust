@@ -35,7 +35,7 @@ type ItemVariantType = (typeof ITEM_VARIANTS)[number];
 export const menuStyleClasses = {
   inset: "pl-8",
   container: cn(
-    "rounded-xl border-hovering p-1",
+    "rounded-xl border-hovering",
     "border border-border",
     "bg-overlay-background",
     "text-foreground",
@@ -294,7 +294,7 @@ const DropdownMenuSubContent = React.forwardRef<
         {...props}
       >
         {dropdownHeaders && (
-          <div className="sticky top-0 bg-overlay-background">
+          <div className="sticky top-0 bg-overlay-background px-1 pt-1">
             {dropdownHeaders}
           </div>
         )}
@@ -303,7 +303,7 @@ const DropdownMenuSubContent = React.forwardRef<
           hideScrollBar={false}
           orientation="vertical"
           viewportClassName={cn(
-            "flex-1",
+            "flex-1 p-1",
             "max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
           )}
         >
@@ -519,13 +519,18 @@ const DropdownMenuContent = React.forwardRef<
         onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
       >
-        <div className="sticky top-0 bg-overlay-background">
+        <div
+          className={cn(
+            "sticky top-0 bg-overlay-background",
+            dropdownHeaders && "px-1 pt-1"
+          )}
+        >
           {dropdownHeaders && dropdownHeaders}
         </div>
         <ScrollArea
           className="w-full flex-1"
           viewportClassName={cn(
-            "flex-1",
+            "flex-1 p-1",
             "max-h-[calc(var(--radix-dropdown-menu-content-available-height)-var(--header-height,20px))]"
           )}
           viewportRef={viewportRef}

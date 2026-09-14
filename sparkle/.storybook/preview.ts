@@ -35,7 +35,7 @@ const preview: Preview = {
           "Assets",
           [
             "Logo",
-            "Platform Logos",
+            ["Dust Logo", "Platform Logos"],
             "Icons",
             ["Used in Product", "All Icons"],
             "Avatars",

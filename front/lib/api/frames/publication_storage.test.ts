@@ -729,10 +729,7 @@ describe("activateFramePublication", () => {
       inputSchema: functionArtifacts[0].inputSchema,
       outputSchema: functionArtifacts[0].outputSchema,
     });
-    expect(functions[0]?.frame?.sId).toBe(frame.sId);
-    expect(() => functions[0]?.space).toThrow(
-      "Frame functions do not belong to a Pod space."
-    );
+    expect(functions[0]?.frame.sId).toBe(frame.sId);
   });
 
   it("rejects a modified function bundle before activation", async () => {

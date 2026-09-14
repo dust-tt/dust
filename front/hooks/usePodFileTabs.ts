@@ -2,14 +2,16 @@ import { ConfirmContext } from "@app/components/Confirm";
 import type { CustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdatePodMetadata } from "@app/lib/swr/pods";
-import type { PodFileTab, PodNavVisibility } from "@app/types/pod_file_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
   DEFAULT_POD_FILE_TAB_ICON,
   MAX_POD_FILE_TAB_TITLE_LENGTH,
   MAX_POD_FILE_TABS,
   moveFileTabInTabsOrder,
   normalizeTabsOrder,
+  orderedPodFileTabs,
   podFileTabBasename,
+  reorderFileTabsInTabsOrder,
   sortPodFileTabs,
 } from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -205,20 +207,31 @@ export function usePodFileTabs({
   );
 
   const moveFileTab = useCallback(
-    async (
-      path: string,
-      direction: "left" | "right",
-      visibility: PodNavVisibility
-    ) => {
+    async (path: string, direction: "left" | "right") => {
       if (!isEditor) {
         return false;
       }
 
-      const nextNavOrder = moveFileTabInTabsOrder(
+      const nextNavOrder = moveFileTabInTabsOrder(navOrder, path, direction);
+      if (!nextNavOrder) {
+        return false;
+      }
+
+      return persist(sortedTabs, nextNavOrder);
+    },
+    [isEditor, navOrder, persist, sortedTabs]
+  );
+
+  const reorderFileTab = useCallback(
+    async (draggedPath: string, targetPath: string) => {
+      if (!isEditor) {
+        return false;
+      }
+
+      const nextNavOrder = reorderFileTabsInTabsOrder(
         navOrder,
-        path,
-        direction,
-        visibility
+        draggedPath,
+        targetPath
       );
       if (!nextNavOrder) {
         return false;
@@ -229,8 +242,14 @@ export function usePodFileTabs({
     [isEditor, navOrder, persist, sortedTabs]
   );
 
+  const orderedFileTabs = useMemo(
+    () => orderedPodFileTabs(sortedTabs, navOrder),
+    [navOrder, sortedTabs]
+  );
+
   return {
     fileTabs: sortedTabs,
+    orderedFileTabs,
     tabsOrder: navOrder,
     isFileTab,
     addFileTab,
@@ -238,5 +257,6 @@ export function usePodFileTabs({
     toggleFileTab,
     updateFileTab,
     moveFileTab,
+    reorderFileTab,
   };
 }

@@ -11,15 +11,10 @@ const SvgReplicate = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <g clipPath="url(#Replicate_svg__a)">
-      <path
-        fill="#000"
-        d="M0 4a4 4 0 0 1 4-4h16a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4z"
-      />
+      <rect width={24} height={24} fill="#000" rx={6} />
       <path
         fill="#fff"
-        fillRule="evenodd"
-        d="M18.76 5v1.576H7.765V19H6V5zm0 2.989v1.576h-7.661V19H9.332V7.989zm0 4.564v-1.585h-6.095V19h1.766v-6.447z"
-        clipRule="evenodd"
+        d="M18.76 6.576H7.766V19H6V5h12.76zm0 2.988h-7.661V19H9.332V7.99h9.428zm0 2.989h-4.328V19h-1.767v-8.032h6.095z"
       />
     </g>
     <defs>

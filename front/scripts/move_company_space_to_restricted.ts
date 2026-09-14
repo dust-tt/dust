@@ -24,36 +24,13 @@ makeScript(
       type: "string",
       demandOption: true,
     },
-    managementMode: {
-      alias: "m",
-      describe: "Management mode for the restricted space: 'manual' or 'group'",
-      type: "string",
-      choices: ["manual", "group"],
-      default: "manual",
-    },
     groupIds: {
       alias: "g",
-      describe:
-        "Comma-separated group sIds to add as members (for group management mode)",
+      describe: "Comma-separated group sIds to give access to the space",
       type: "string",
     },
   },
-  async (
-    { managementMode, groupIds, workspaceId, spaceName, execute },
-    scriptLogger
-  ) => {
-    if (managementMode !== "manual" && managementMode !== "group") {
-      throw new Error(
-        `Invalid managementMode: ${managementMode}. Must be 'manual' or 'group'.`
-      );
-    }
-
-    if (managementMode === "group" && !groupIds) {
-      throw new Error(
-        "When using group management mode, --groupIds is required."
-      );
-    }
-
+  async ({ groupIds, workspaceId, spaceName, execute }, scriptLogger) => {
     const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
     const workspace = auth.getNonNullableWorkspace();
 
@@ -86,6 +63,17 @@ makeScript(
     }
     const globalGroup = globalGroupRes.value;
 
+    // The global space's own member group, if it has one (see the member-group resolution in the
+    // transaction below).
+    const existingAutoGroups = await globalSpace.fetchRegularAutoGroups(auth);
+    if (existingAutoGroups.length > 1) {
+      scriptLogger.error(
+        { groupIds: existingAutoGroups.map((group) => group.sId) },
+        "The global space has more than one member group; resolve by hand."
+      );
+      return;
+    }
+
     // Count data source views in the current global space for summary.
     const dataSourceViews = await DataSourceViewModel.findAll({
       where: {
@@ -100,7 +88,7 @@ makeScript(
       {
         dataSourceViewCount,
         globalGroupId: globalGroup.sId,
-        managementMode,
+        groupIds,
       },
       "Pre-flight summary"
     );
@@ -112,15 +100,14 @@ makeScript(
             `Rename global space "${globalSpace.name}" to "${spaceName}"`,
             `Change space kind from "global" to "regular"`,
             `Remove global group from the space`,
-            `Create member group "${SPACE_GROUP_PREFIX} ${spaceName}"`,
+            existingAutoGroups.length > 0
+              ? `Rename member group "${existingAutoGroups[0].name}" to "${SPACE_GROUP_PREFIX} ${spaceName}"`
+              : `Create member group "${SPACE_GROUP_PREFIX} ${spaceName}"`,
             `Link member group to the space`,
-            ...(managementMode === "group" && groupIds
-              ? [
-                  `Link provisioned groups [${groupIds}] to the space`,
-                  `Set managementMode to "group"`,
-                ]
+            ...(groupIds
+              ? [`Link provisioned groups [${groupIds}] to the space`]
               : []),
-            `Create new empty global space "${GLOBAL_SPACE_NAME}"`,
+            `Create new empty global space "${GLOBAL_SPACE_NAME}" with its member group "${SPACE_GROUP_PREFIX} ${GLOBAL_SPACE_NAME}"`,
           ],
         },
         "DRY RUN — planned actions"
@@ -146,24 +133,43 @@ makeScript(
         "Renamed space / changed kind to 'regular'"
       );
 
-      // Create a member group for the restricted space.
-      const memberGroup = await GroupResource.makeNew(
-        {
-          name: `${SPACE_GROUP_PREFIX} ${spaceName}`,
-          kind: "regular_auto",
-          workspaceId: workspace.id,
-        },
-        { transaction: t }
-      );
+      // The member group of the restricted space. The old global space already owns one (created
+      // with the space, or by the `20260908_backfill_global_space_member_group` migration), named
+      // after the global space; it is renamed and reused rather than left behind, because creating
+      // a second `${SPACE_GROUP_PREFIX} ${GLOBAL_SPACE_NAME}` group for the new global space below
+      // would collide with it on the unique (workspaceId, name) group index.
+      const [existingMemberGroup] = existingAutoGroups;
+      const memberGroup =
+        existingMemberGroup ??
+        (await GroupResource.makeNew(
+          {
+            name: `${SPACE_GROUP_PREFIX} ${spaceName}`,
+            kind: "regular_auto",
+            workspaceId: workspace.id,
+          },
+          { transaction: t }
+        ));
+      if (existingMemberGroup) {
+        const renameRes = await memberGroup.dangerouslyUpdateName(
+          `${SPACE_GROUP_PREFIX} ${spaceName}`
+        );
+        if (renameRes.isErr()) {
+          throw renameRes.error;
+        }
+      }
       scriptLogger.info(
-        { groupId: memberGroup.sId, groupName: memberGroup.name },
-        "Created member group"
+        {
+          groupId: memberGroup.sId,
+          groupName: memberGroup.name,
+          reused: !!existingMemberGroup,
+        },
+        "Resolved member group"
       );
 
       const memberGroups: GroupResource[] = [memberGroup];
 
-      // If group management mode, also attach the selected provisioned groups.
-      if (managementMode === "group" && groupIds) {
+      // Attach the selected provisioned groups alongside the member group.
+      if (groupIds) {
         const groupIdsArray = groupIds.split(",").map((id) => id.trim());
         const groupsRes = await GroupResource.fetchByIds(auth, groupIdsArray);
         if (groupsRes.isErr()) {
@@ -172,18 +178,6 @@ makeScript(
           );
         }
         memberGroups.push(...groupsRes.value);
-      }
-
-      // Update management mode if needed.
-      if (managementMode === "group") {
-        await SpaceModel.update(
-          { managementMode: "group" },
-          {
-            where: { id: globalSpace.id, workspaceId: workspace.id },
-            transaction: t,
-          }
-        );
-        scriptLogger.info("Set managementMode to 'group'");
       }
 
       // Rewrite the space's group_permissions for restricted access: drop the global group's grant
@@ -207,7 +201,14 @@ makeScript(
         "Rewrote space group_permissions for restricted access"
       );
 
-      // Create a new global space.
+      // Create a new global space, with its own member group (whose `member` grant is what confers
+      // write on the global space outside the admin/manager roles).
+      const newGlobalSpaceMemberGroup =
+        await SpaceResource.makeGlobalSpaceMemberGroup({
+          workspaceId: workspace.id,
+          spaceName: GLOBAL_SPACE_NAME,
+          transaction: t,
+        });
       const newGlobalSpace = await SpaceResource.makeNew(
         auth,
         {
@@ -215,7 +216,7 @@ makeScript(
           kind: "global",
           workspaceId: workspace.id,
         },
-        { members: [globalGroup] },
+        { members: [globalGroup, newGlobalSpaceMemberGroup] },
         t
       );
       scriptLogger.info(

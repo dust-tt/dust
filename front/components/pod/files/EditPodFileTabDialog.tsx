@@ -1,18 +1,14 @@
 import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
-import type { PodFileTab, PodNavVisibility } from "@app/types/pod_file_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 import {
-  buildPodNavItemsBeforeSettings,
   DEFAULT_POD_FILE_TAB_ICON,
-  DEFAULT_POD_NAV_VISIBILITY,
   MAX_POD_FILE_TAB_TITLE_LENGTH,
 } from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,
-  ArrowLeft,
-  ArrowRight,
   Button,
   Dialog,
   DialogContainer,
@@ -26,7 +22,7 @@ import {
   PopoverRoot,
   PopoverTrigger,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 interface EditPodFileTabDialogProps {
   owner: LightWorkspaceType;
@@ -34,7 +30,6 @@ interface EditPodFileTabDialogProps {
   fileTabs: PodFileTab[];
   tabsOrder?: string[];
   isEditor: boolean;
-  navVisibility?: PodNavVisibility;
   tab: PodFileTab;
   mode?: "create" | "edit";
   isOpen: boolean;
@@ -47,20 +42,13 @@ export function EditPodFileTabDialog({
   fileTabs,
   tabsOrder,
   isEditor,
-  navVisibility = DEFAULT_POD_NAV_VISIBILITY,
   tab,
   mode = "edit",
   isOpen,
   onClose,
 }: EditPodFileTabDialogProps) {
   const isCreate = mode === "create";
-  const {
-    addFileTab,
-    updateFileTab,
-    removeFileTab,
-    moveFileTab,
-    tabsOrder: navOrder,
-  } = usePodFileTabs({
+  const { addFileTab, updateFileTab, removeFileTab } = usePodFileTabs({
     owner,
     podId,
     fileTabs,
@@ -72,18 +60,6 @@ export function EditPodFileTabDialog({
   const [icon, setIcon] = useState(tab.icon);
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isMoving, setIsMoving] = useState(false);
-
-  const navItems = useMemo(
-    () => buildPodNavItemsBeforeSettings(fileTabs, navOrder, navVisibility),
-    [fileTabs, navVisibility, navOrder]
-  );
-  const tabIndex = navItems.findIndex(
-    (item) => item.kind === "file" && item.tab.path === tab.path
-  );
-  const canMoveLeft = !isCreate && isEditor && tabIndex > 0;
-  const canMoveRight =
-    !isCreate && isEditor && tabIndex >= 0 && tabIndex < navItems.length - 1;
 
   const selectedIcon = isCustomResourceIconType(icon)
     ? icon
@@ -125,15 +101,6 @@ export function EditPodFileTabDialog({
     if (ok) {
       onClose();
     }
-  };
-
-  const handleMove = async (direction: "left" | "right") => {
-    if (!isEditor || isCreate) {
-      return;
-    }
-    setIsMoving(true);
-    await moveFileTab(tab.path, direction, navVisibility);
-    setIsMoving(false);
   };
 
   return (
@@ -199,24 +166,6 @@ export function EditPodFileTabDialog({
               placeholder="Tab title"
               containerClassName="flex-1"
             />
-            {(canMoveLeft || canMoveRight) && (
-              <div className="flex shrink-0 items-center gap-0.5">
-                <Button
-                  variant="ghost"
-                  icon={ArrowLeft}
-                  tooltip="Move left"
-                  disabled={!canMoveLeft || isMoving || isSaving}
-                  onClick={() => void handleMove("left")}
-                />
-                <Button
-                  variant="ghost"
-                  icon={ArrowRight}
-                  tooltip="Move right"
-                  disabled={!canMoveRight || isMoving || isSaving}
-                  onClick={() => void handleMove("right")}
-                />
-              </div>
-            )}
           </div>
         </DialogContainer>
         <DialogFooter
@@ -227,14 +176,14 @@ export function EditPodFileTabDialog({
                   label: "Remove tab",
                   variant: "warning",
                   onClick: () => void handleRemove(),
-                  disabled: !isEditor || isSaving || isMoving,
+                  disabled: !isEditor || isSaving,
                 }
           }
           rightButtonProps={{
             label: isCreate ? "Add tab" : "Save",
             variant: "primary",
             onClick: () => void handleSave(),
-            disabled: !isEditor || isSaving || isMoving || !title.trim(),
+            disabled: !isEditor || isSaving || !title.trim(),
             isLoading: isSaving,
           }}
         />

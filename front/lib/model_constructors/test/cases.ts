@@ -213,6 +213,10 @@ export const INPUT_CONFIGURATION_ERROR: ResponseChecker = {
   type: "error",
   contentType: "input_configuration_error",
 };
+export const REFUSAL_ERROR: ResponseChecker = {
+  type: "error",
+  contentType: "refusal_error",
+};
 export const SUCCESS: ResponseChecker = { type: "success" };
 export const TOOL_CALL_CALCULATOR: ResponseChecker = {
   type: "tool_call",

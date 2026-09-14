@@ -4,12 +4,14 @@ import {
   SEAT_TYPE_ICONS,
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
+import type { DefaultUserSpendLimitState } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { MembersUsageTable } from "@app/components/workspace/MembersUsageTable";
 import { getSeatIconColorClass } from "@app/components/workspace/seat_styles";
 import {
   CreditPoolCardsFromCycleData,
   toCreditPoolFetchStatus,
+  useCycleHistoryLimit,
 } from "@app/components/workspace/WorkspaceCreditPoolCards";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -77,6 +79,8 @@ interface PoolCreditCardProps {
 }
 
 function PoolCreditCard({ owner }: PoolCreditCardProps) {
+  const { cycleHistoryLimit, onLoadMoreCycleHistory, onShowLessCycleHistory } =
+    useCycleHistoryLimit();
   const {
     awuPoolCurrentCycle,
     isAwuPoolCurrentCycleLoading,
@@ -85,9 +89,11 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
   const {
     cycleBreakdown: poolCycleBreakdown,
     excessCycleBreakdown,
+    hasMoreCycleHistoryByBreakdown: hasMoreCycleHistory,
     isAwuPoolCycleHistoryLoading,
     isAwuPoolCycleHistoryError,
-  } = usePokeAwuPoolCycleHistory({ owner });
+    isAwuPoolCycleHistoryValidating,
+  } = usePokeAwuPoolCycleHistory({ owner, cycleHistoryLimit });
 
   return (
     <CreditPoolCardsFromCycleData
@@ -102,6 +108,13 @@ function PoolCreditCard({ owner }: PoolCreditCardProps) {
         isAwuPoolCycleHistoryLoading,
         !!isAwuPoolCycleHistoryError
       )}
+      cycleHistoryLoadMore={{
+        hasMoreCycleHistory,
+        isLoading:
+          isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading,
+        onLoadMore: onLoadMoreCycleHistory,
+        onShowLess: onShowLessCycleHistory,
+      }}
     />
   );
 }
@@ -152,10 +165,23 @@ export function PoolUsagePage() {
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
   }, []);
 
-  const { data: workspaceInfo } = usePokeWorkspaceInfo({ owner });
+  const { data: workspaceInfo, isError: isWorkspaceInfoError } =
+    usePokeWorkspaceInfo({ owner });
   const activeSubscription = workspaceInfo?.activeSubscription;
   const hasMetronomeContract =
     !!activeSubscription && isSubscriptionMetronomeBilled(activeSubscription);
+  // Same availability rule as the workspace read endpoint: the default pool
+  // limit only exists for Metronome-only billed workspaces. The value itself
+  // is already part of workspace-info, so no dedicated fetch is needed.
+  const defaultUserSpendLimit: DefaultUserSpendLimitState = !workspaceInfo
+    ? { status: isWorkspaceInfoError ? "error" : "loading" }
+    : hasMetronomeContract
+      ? {
+          status: "ready",
+          awuCredits:
+            workspaceInfo.creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
+        }
+      : { status: "unavailable" };
   const isLegacyPremiumMessagePlan =
     !!activeSubscription && !isCreditPricedPlan(activeSubscription.plan);
   const isLegacyWithoutPoolOrMetronome =
@@ -443,6 +469,7 @@ export function PoolUsagePage() {
         owner={owner}
         groups={groups}
         readOnly
+        defaultUserSpendLimit={defaultUserSpendLimit}
         onClose={() => setSpendLimitRecapMember(null)}
       />
     </main>

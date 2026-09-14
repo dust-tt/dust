@@ -7,21 +7,16 @@ import config from "@app/lib/api/config";
 import {
   generateExecId,
   generateSandboxExecToken,
-  generateSandboxFunctionInvocationToken,
 } from "@app/lib/api/sandbox/access_tokens";
 import { Authenticator } from "@app/lib/auth";
 import { ConversationParticipantModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import {
   getResourceIdFromSId,
   isResourceSId,
 } from "@app/lib/resources/string_ids";
-import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
@@ -289,119 +284,6 @@ async function mintExecToken(
   printEnv({ token, workspaceId: auth.getNonNullableWorkspace().sId });
 }
 
-/**
- * The `/call` endpoint resolves the token's function and invocation claims, so calling a tool
- * needs both rows to exist. Borrow the identity of the pod's most recent invocation rather
- * than writing one: any invocation of any function in the pod satisfies the lookups, and the
- * debug child action is attributed to it. Falls back to placeholder ids, which still list
- * tools (the listing path only resolves the pod space).
- */
-async function resolveInvocationIdentity(
-  auth: Authenticator,
-  pod: SpaceResource,
-  logger: Logger
-): Promise<{
-  sandboxFunctionId: string;
-  invocationId: string;
-  real: boolean;
-}> {
-  const sandboxFunctions = await SandboxFunctionResource.listBySpace(auth, pod);
-
-  // One query per function, bounded by the handful of functions a pod publishes, and it stops
-  // at the first function that has ever been invoked.
-  for (const sandboxFunction of sandboxFunctions) {
-    const [invocation] = await SandboxFunctionInvocationResource.listRecent(
-      auth,
-      { sandboxFunction, limit: 1 }
-    );
-    if (invocation) {
-      return {
-        sandboxFunctionId: sandboxFunction.sId,
-        invocationId: invocation.sId,
-        real: true,
-      };
-    }
-  }
-
-  logger.warn(
-    { podId: pod.sId, functionCount: sandboxFunctions.length },
-    "No pod function invocation to borrow: `dsbx tools` can list, but tool calls will be " +
-      "rejected with `Pod function not found`"
-  );
-
-  return {
-    sandboxFunctionId: generateRandomModelSId(),
-    invocationId: generateRandomModelSId(),
-    real: false,
-  };
-}
-
-async function mintFunctionInvocationToken(
-  adminAuth: Authenticator,
-  {
-    sandbox,
-    spaceModelId,
-    userEmail,
-    expiryMinutes,
-    execute,
-  }: {
-    sandbox: SandboxResource;
-    spaceModelId: number;
-    userEmail: string | undefined;
-    expiryMinutes: number;
-    execute: boolean;
-  },
-  logger: Logger
-): Promise<void> {
-  const [pod] = await SpaceResource.fetchByModelIds(adminAuth, [spaceModelId]);
-  if (!pod) {
-    logger.error("Owning pod space not found");
-    return;
-  }
-
-  const auth = await authForToken(adminAuth, { userEmail }, logger);
-  if (!auth) {
-    return;
-  }
-
-  const identity = await resolveInvocationIdentity(auth, pod, logger);
-  const execId = generateExecId();
-  const sandboxFunction = {
-    sId: identity.sandboxFunctionId,
-    space: { sId: pod.sId },
-  };
-  const { invocationId } = identity;
-
-  logger.info(
-    {
-      podId: pod.sId,
-      sandboxId: sandbox.sId,
-      sandboxFunctionId: sandboxFunction.sId,
-      invocationId,
-      real: identity.real,
-      execId,
-      userId: auth.user()?.sId,
-    },
-    "Resolved function invocation token claims"
-  );
-
-  if (!execute) {
-    return;
-  }
-
-  const token = await generateSandboxFunctionInvocationToken(auth, {
-    sandbox,
-    sandboxFunction,
-    owner: { kind: "pod", spaceId: pod.sId },
-    invocationId,
-    execId,
-    noTools: false,
-    expiryMs: expiryMinutes * 60 * 1000,
-  });
-
-  printEnv({ token, workspaceId: auth.getNonNullableWorkspace().sId });
-}
-
 makeScript(
   {
     sandboxId: {
@@ -465,24 +347,9 @@ makeScript(
       return;
     }
 
-    if (owner.spaceId !== null) {
-      await mintFunctionInvocationToken(
-        adminAuth,
-        {
-          sandbox,
-          spaceModelId: owner.spaceId,
-          userEmail,
-          expiryMinutes,
-          execute,
-        },
-        logger
-      );
-      return;
-    }
-
     logger.error(
       { sandboxId: sandbox.sId },
-      "Sandbox owner link has neither a conversation nor a space"
+      "Sandbox owner link has no conversation: only conversation-owned sandboxes are supported"
     );
   }
 );

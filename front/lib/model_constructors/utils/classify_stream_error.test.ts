@@ -6,7 +6,7 @@ const metadata: EndpointMetadata = {
   lab: "z_ai",
   host: "fireworks",
   region: "global",
-  model: "glm-5p2",
+  model: "glm-5p3",
 };
 
 describe("classifyStreamError", () => {

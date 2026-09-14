@@ -28,18 +28,21 @@ export type {
 // Mounted at /api/w/:wId/spaces/:spaceId/members.
 const app = workspaceApp();
 
-// Members can only be administrated on regular spaces and projects, by their administrators.
+// Members can only be administrated on regular spaces, projects and the global space, by their
+// administrators. On the global space the member list is the write list: everyone reads it, and its
+// members are the people allowed to modify its content (see `SpaceResource.spaceRoleGrants`).
 function membersAdministrationError(
   ctx: Context,
   auth: Authenticator,
   space: SpaceResource
 ) {
-  if (!space.isRegular() && !space.isProject()) {
+  if (!space.isRegular() && !space.isProject() && !space.isGlobal()) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only projects and regular spaces can have members.",
+        message:
+          "Only projects, regular spaces and the global space can have members.",
       },
     });
   }
@@ -66,7 +69,8 @@ type MembersMutationErrorCode =
   | "invalid_id"
   | "group_requirements_not_met"
   | "invalid_group_kind"
-  | "system_or_global_group";
+  | "system_or_global_group"
+  | "invalid_request_error";
 
 // Maps the error codes of the space membership mutations to API errors. POST only produces a
 // subset of PATCH's codes; both go through the same mapping.
@@ -146,6 +150,14 @@ function membersMutationError(ctx: Context, code: MembersMutationErrorCode) {
           type: "invalid_request_error",
           message:
             "Users cannot be added to or removed from system or global groups.",
+        },
+      });
+    case "invalid_request_error":
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "The requested space permissions are not supported.",
         },
       });
     default:

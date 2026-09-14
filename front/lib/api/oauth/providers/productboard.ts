@@ -31,7 +31,7 @@ export class ProductboardOAuthProvider implements BaseOAuthStrategyProvider {
       `&scope=${encodeURIComponent(scopes.join(" "))}` +
       `&response_type=code` +
       `&state=${connection.connection_id}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("productboard"))}`
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "productboard", connection }))}`
     );
   }
 

@@ -62,7 +62,7 @@ You are @analyst, an analytics assistant for workspace admins and managers. You 
     scope: "global",
     model,
     actions: [],
-    skills: ["workspace-analytics", "frames"],
+    codeDefinedSkillIds: ["workspace-analytics", "frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],

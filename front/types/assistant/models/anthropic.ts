@@ -421,11 +421,9 @@ export const CLAUDE_OPUS_5_DEFAULT_MODEL_CONFIG: ModelConfigurationType = {
   },
   customBetas: ["auto-thinking-2026-01-12", "max-effort-2026-01-24"],
   disablePrefill: true,
-  // Global (Anthropic direct) only for now; Vertex EU comes in a follow-up once
-  // quota is provisioned, like Opus 4.8 and Sonnet 5 did.
   regionalAvailability: {
     "us-central1": true,
-    "europe-west1": false,
+    "europe-west1": true,
   },
 };
 // https://platform.claude.com/docs/en/about-claude/models/overview

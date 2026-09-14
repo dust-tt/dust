@@ -65,7 +65,10 @@ export class ShopifyOAuthProvider implements BaseOAuthStrategyProvider {
     const url = new URL(`https://${storeDomain}/admin/oauth/authorize`);
     url.searchParams.set("client_id", config.getOAuthShopifyClientId());
     url.searchParams.set("scope", SHOPIFY_SCOPES.join(","));
-    url.searchParams.set("redirect_uri", finalizeUriForProvider("shopify"));
+    url.searchParams.set(
+      "redirect_uri",
+      finalizeUriForProvider({ provider: "shopify", connection })
+    );
     url.searchParams.set("state", connection.connection_id);
     return url.toString();
   }

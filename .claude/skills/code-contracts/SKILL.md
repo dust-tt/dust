@@ -121,13 +121,22 @@ prose         = prose_line, { NL, prose_line } ;
 ```
 
 `token` is a non-empty sequence without whitespace, commas, colons, or square brackets. Metadata
-keys are extensible; `owner` and `label` are initially well-known. A contract may have multiple
-owners and labels. Prefer `;` to separate values within an attribute instead of repeating its key:
+keys are extensible; `owner`, `notify`, and `label` are well-known. A contract may have multiple
+owners, notification recipients, and labels. Prefer `;` to separate values within an attribute
+instead of repeating its key:
 `[owner:spolu;tdraier,label:product]` instead of
 `[owner:spolu,owner:tdraier,label:product]`, or `label:product;security` for multiple labels.
 Repeated keys remain valid. Semicolon-separated lists are a metadata convention; the parser
 preserves each value as a single token. `prose_line` is any line that does not begin with an `@cc`
 directive.
+
+`owner` lists GitHub usernames to notify when an existing contract is changed or removed. Contract
+introductions do not notify owners. `notify` lists GitHub usernames to notify on every discovered
+violation of that contract.
+For example, `[owner:spolu,notify:spolu;flvndvd,label:product]` notifies `spolu` about contract
+changes and both `spolu` and `flvndvd` about violations. Owners are not automatically notified about
+violations; include them in `notify` if they want both. Review agents split semicolon lists, combine
+repeated keys, and deduplicate usernames.
 
 The prose body is non-empty and extends to the end of the documentation comment, the next `@cc`
 directive in a `CONTRACTS` file, or the end of that file. It may contain any text and span any
@@ -146,13 +155,17 @@ file plus its contract ID.
 
 ## Code contracts workflow
 
+For `$code-contracts verify`, follow [On-demand verification](#on-demand-verification).
+
 ### Discovering contracts
 
-Before changing or reviewing code, identify the contracts that govern the target. You can do so
-manually or with the `cc-check list` command.
+Before changing or reviewing code, identify every local, enclosing-declaration, and ancestor
+`CONTRACTS`-file obligation governing the target, manually or with `cc-check list`. Resolve called
+symbols and inspect their contracts too: a call can violate a contract declared in another file.
 
 Treat all applicable local and directory contracts as simultaneous obligations. Surface conflicting,
-obsolete, or impossible contracts instead of choosing one silently.
+obsolete, or impossible contracts instead of choosing one silently. Documentation examples and
+intentionally malformed test fixtures are not production contract declarations.
 
 ### Writing contracts
 
@@ -166,40 +179,36 @@ within their declaration. Keep `CONTRACTS` IDs unique and stable within that fil
 `CONTRACTS` files. Set `owner` to the current user's GitHub username; use their authenticated
 GitHub identity when available, and ask rather than guessing when it cannot be determined. Multiple
 owners are possible; prefer separating their usernames with `;` in a single `owner` attribute.
-Use the same convention for multiple labels. Preserve established repository metadata conventions.
+Use the same convention for multiple labels and `notify` recipients. Set `notify` only when
+explicitly requested by the user; do not infer it from `owner`. Preserve established repository
+metadata conventions.
 
 Validate contract syntax with `cc-check format`. The command reports malformed syntax and duplicate
 IDs only. It does not prove that the prose is true or that code complies with it. You are responsible
 for verifying contracts' validity and coherence and the code's compliance. Validate contract
 discoverability with `cc-check list`.
 
-Write contract prose so a human or agent reviewer can compare it directly with code:
+Write each contract around a concrete obligation:
 
-- Express one durable obligation per contract. Split independent requirements.
-- Prefer one concise, dense and clear sentence; add another only when a material exception or
-  failure behavior needs stating.
-- Name the subject and the observable behavior, outcome, boundary, or invariant.
-- Use decisive language. Prefer `must`, `never`, or a direct present-tense invariant; use `should`
-  only when discretion is intentional.
-- Name relevant identifiers, states, errors, or boundaries precisely, using backticks where helpful.
-- State preconditions, postconditions, failure behavior, atomicity, ordering, or side effects only
-  when they are part of the expectation.
-- Avoid vague terms such as "properly", "appropriately", "robust", "safe", or "as needed" unless
-  the contract defines what they mean.
-- Avoid rationale, implementation narration, examples, and restating types unless they materially
-  constrain acceptable code.
-- Do not encode speculative behavior or make a contract broader than the evidence or user intent.
+- **Identify the regression it prevents.** Name a plausible change that would violate the
+  requirement. A statement that only describes the function's purpose belongs in ordinary
+  documentation.
+- **State an observable requirement.** Prefer "[condition,] subject MUST/MUST NOT satisfy
+  requirement." Direct invariants are equally valid; normative keywords alone do not make prose
+  precise.
+- **Separate independent obligations.** Use one contract per requirement. Conditional cases
+  defining a single requirement may share a contract.
+- **Make decisive cases explicit.** Include missing-data, fallback, error, or side-effect behavior
+  when it determines compliance. Distinguish returning no result from failing to obtain a result.
+- **Specify the boundary precisely.** Identify the relevant inputs, outputs, fields, states, or
+  effects. Turn phrases such as "workspace-wide" into explicit preconditions or guarantees when
+  intended.
+- **Preserve intent across implementations.** Omit purpose statements, rationale, and algorithm
+  narration unless they impose an actual constraint. Do not promote incidental implementation
+  behavior into a requirement without evidence of intent.
 
-For example, replace “Handles invalid amounts appropriately” with “`createInvoice` rejects a
-non-positive amount with `InvalidAmountError` and does not persist the invoice.”
-
-A well-written contract should read as a specification. It should:
-
-- Be sufficient for consumers of the associated declaration to reason about its behavior.
-- Avoid prescribing implementation details.
-
-Use specification styles such as BCP 14 / RFC 2119, JML, TLA+, EARS, and Gherkin rather than typical
-comments about code behavior.
+Before keeping a contract, check that a reviewer can identify both a concrete violation and an
+alternative implementation that satisfies it.
 
 ### Enforcing contracts
 
@@ -226,3 +235,58 @@ impact of the contract change on consumers of the associated declaration.
 - Never delete or weaken a contract merely to make an implementation appear compliant.
 - Treat a code/contract mismatch as a finding. Fix it or surface it clearly; do not assume either
   side is automatically correct.
+
+### On-demand verification
+
+When invoked as `$code-contracts verify`, or when a review workflow requests this procedure,
+perform a read-only contract review. Read applicable repository instructions. Do not edit files or
+post reviews or notifications unless separately requested.
+
+Use the requested PR, revision range, file, or directory as the scope. Without an explicit scope,
+review the current task's changes, including committed branch changes and staged, unstaged, and
+untracked files. Infer the branch's comparison base from the task or repository context; ask for the
+scope if no target or baseline can be established. A file or directory can be verified against its
+current contracts without a diff. When a workflow supplies captured commits, use that exact
+comparison even if the branch advances.
+
+1. Inspect the diff and surrounding implementation, or the full selected code when no diff applies.
+   For a commit comparison, use `git diff --find-renames <merge_base> <head_sha>` and
+   `git show <merge_base>:<path>` for old code and contracts. Include local changes when in scope.
+   Discover changed files locally even when a supplied file list may be truncated. Inspect additions,
+   modifications, and the effects of deletions. Compare entire contract bodies and metadata;
+   searching added `@cc` lines alone misses prose-only changes and removed contracts.
+2. Apply [Discovering contracts](#discovering-contracts) to the code in scope. Validate relevant
+   contract syntax with `cc-check format`; it checks syntax, not semantic validity or compliance.
+   Use a caller-supplied `cc-check` executable when provided. If tooling is unavailable, inspect
+   contracts manually and disclose any resulting verification limit.
+3. Check each code element against its applicable contracts. Trace actual inputs, guards, errors,
+   outputs, state changes, and side effects. Check contracts for validity and consistency with the
+   implementation and with other applicable contracts. Report contradictions and evidenced
+   mismatches; neither code nor contract is automatically correct. Do not excuse a violation
+   because its contract was weakened or deleted in the same change. Distinguish an intentional,
+   coherent specification change from a hidden regression.
+4. For every introduced, changed, or explicitly targeted contract, inspect the implementing
+   declaration and its consumers, including unchanged callers. Find callers and references with
+   `rg` and source navigation. Trace imports, re-exports, aliases, wrappers, and type/member uses;
+   confirm each match refers to the affected declaration. For directory contracts, inspect the
+   affected code in their subtree and consumers of affected declarations.
+5. At each inspected caller/reference, discover its own applicable contracts using
+   `cc-check list <caller-location>` or manual inspection. Check both that the call respects the
+   callee's contract and that the callee's changed guarantees keep the caller compliant with its
+   own contracts. Follow evidence through wrappers; do not assume consumers are compatible.
+6. Inspect at most 64 distinct callers/references per affected declaration, deduplicating overlapping
+   callers and references. Prioritize changed callers, high-risk behavior, and diverse usage
+   patterns. This also bounds further investigation through callers. Keep caller counts,
+   uninspected scope, search limitations, and uncertain relationships in your working analysis.
+   Disclose limitations that materially affect a conclusion, with the relevant finding when
+   applicable. Never imply exhaustive verification when capped or blocked.
+
+Reuse applicable validation results for the inspected revision. Respect sandbox restrictions; an
+unavailable or failed tool alone is not evidence of a contract violation. Continue source analysis
+and report material verification limits.
+
+Use the invoking workflow's output format when specified. Otherwise, report concise findings with
+the contract ID and declaration/file, exact source location, evidence, and consequence. Include
+pre-existing violations found within scope and identify them as such; avoid speculative or unrelated
+general review findings. If no violations are found, state that for the inspected scope, with any
+material limitations.

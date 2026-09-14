@@ -16,6 +16,7 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type {
   Attributes,
   CreationAttributes,
@@ -537,7 +538,7 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
 
       return new Ok(affectedCount);
     } catch (error) {
-      return new Err(error as Error);
+      return new Err(normalizeError(error));
     }
   }
 

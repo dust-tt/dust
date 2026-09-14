@@ -19,9 +19,9 @@ import { default as commonUtilitiesServer } from "@app/lib/api/actions/servers/c
 import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
 import { default as conversationSidePanelServer } from "@app/lib/api/actions/servers/conversation_side_panel";
+import { default as cursorCloudAgentsServer } from "@app/lib/api/actions/servers/cursor_cloud_agents";
 import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
-import { default as databricksServer } from "@app/lib/api/actions/servers/databricks";
 import { default as exaServer } from "@app/lib/api/actions/servers/exa";
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
 import { default as fathomServer } from "@app/lib/api/actions/servers/fathom";
@@ -62,7 +62,6 @@ import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_
 import { default as salesforceServer } from "@app/lib/api/actions/servers/salesforce";
 import { default as salesloftServer } from "@app/lib/api/actions/servers/salesloft";
 import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
-import { default as sandboxFunctionsServer } from "@app/lib/api/actions/servers/sandbox_functions";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as servicenowServer } from "@app/lib/api/actions/servers/servicenow";
 import { default as shopifyServer } from "@app/lib/api/actions/servers/shopify";
@@ -199,10 +198,10 @@ export async function getInternalMCPServer(
       return conversationFilesServer(auth, toolContext);
     case "conversation_side_panel":
       return conversationSidePanelServer(auth, toolContext);
+    case "cursor_cloud_agents":
+      return cursorCloudAgentsServer(auth, toolContext);
     case "files":
       return filesServer(auth, toolContext);
-    case "databricks":
-      return databricksServer(auth, toolContext);
     case "servicenow":
       return servicenowServer(auth, toolContext);
     case "shopify":
@@ -285,8 +284,6 @@ export async function getInternalMCPServer(
       return statuspageServer(auth, toolContext);
     case "sandbox":
       return sandboxServer(auth, toolContext);
-    case "sandbox_functions":
-      return sandboxFunctionsServer(auth, toolContext);
     case "wakeups":
       return wakeupsServer(auth, toolContext);
     case "plan_mode":

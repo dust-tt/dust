@@ -1,4 +1,4 @@
-import { config } from "@app/lib/api/regions/config";
+import { config } from "@app/lib/api/cells/config";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
 import {
@@ -11,7 +11,7 @@ import * as frontDestinationActivities from "@app/temporal/relocation/activities
 import * as connectorsSourceActivities from "@app/temporal/relocation/activities/source_region/connectors/sql";
 import * as coreSourceActivities from "@app/temporal/relocation/activities/source_region/core";
 import * as frontSourceActivities from "@app/temporal/relocation/activities/source_region/front";
-import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
+import { RELOCATION_QUEUES_PER_CELL } from "@app/temporal/relocation/config";
 import { getTemporalRelocationWorkerConnection } from "@app/temporal/relocation/temporal";
 import type { Context } from "@temporalio/activity";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
@@ -20,7 +20,7 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
 
 export async function runRelocationWorker() {
-  const currentRegion = config.getCurrentRegion();
+  const currentCell = config.getCurrentCell().name;
 
   const { connection, namespace } =
     await getTemporalRelocationWorkerConnection();
@@ -37,7 +37,7 @@ export async function runRelocationWorker() {
       ...frontDestinationActivities,
       ...frontSourceActivities,
     },
-    taskQueue: RELOCATION_QUEUES_PER_REGION[currentRegion],
+    taskQueue: RELOCATION_QUEUES_PER_CELL[currentCell],
     maxConcurrentActivityTaskExecutions: 8,
     connection,
     namespace,

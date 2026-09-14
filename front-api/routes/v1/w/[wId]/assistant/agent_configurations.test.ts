@@ -2,9 +2,10 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { AgentConfigurationWithSkillsType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
@@ -24,7 +25,7 @@ function listAgents(
 async function agentNames(response: Response): Promise<string[]> {
   const {
     agentConfigurations,
-  }: { agentConfigurations: LightAgentConfigurationType[] } =
+  }: { agentConfigurations: AgentConfigurationWithSkillsType[] } =
     await response.json();
 
   return agentConfigurations.map((a) => a.name);
@@ -47,22 +48,65 @@ async function setupTestAgents(workspace: WorkspaceType) {
 
   const restrictedSpace = await SpaceFactory.regular(workspace);
 
-  await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
-    name: "Published Agent",
-    scope: "visible",
-  });
+  const publishedAgent = await AgentConfigurationFactory.createTestAgent(
+    agentOwnerAuth,
+    {
+      name: "Published Agent",
+      scope: "visible",
+    }
+  );
   await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
     name: "Unpublished Agent",
     scope: "hidden",
   });
-  await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
-    name: "Restricted Space Agent",
-    scope: "visible",
-    requestedSpaceIds: [restrictedSpace.id],
+  const restrictedSpaceAgent = await AgentConfigurationFactory.createTestAgent(
+    agentOwnerAuth,
+    {
+      name: "Restricted Space Agent",
+      scope: "visible",
+      requestedSpaceIds: [restrictedSpace.id],
+    }
+  );
+
+  const skill = await SkillFactory.create(agentOwnerAuth, {
+    name: "Support Playbook",
   });
+  for (const agent of [publishedAgent, restrictedSpaceAgent]) {
+    await SkillFactory.linkToAgent(agentOwnerAuth, {
+      skillId: skill.id,
+      agentConfigurationId: agent.id,
+    });
+  }
+
+  return { skill };
 }
 
 describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
+  it.each([
+    "admin",
+    "builder",
+    "user",
+  ] as const)("reports edit permissions for a %s key", async (role) => {
+    const { workspace, key } = await createPublicApiMockRequest({ role });
+    await setupTestAgents(workspace);
+
+    const response = await listAgents(workspace, key, { view: "all" });
+    const {
+      agentConfigurations,
+    }: { agentConfigurations: AgentConfigurationWithSkillsType[] } =
+      await response.json();
+
+    expect(response.status).toBe(200);
+    expect(
+      agentConfigurations.find((a) => a.name === "Published Agent")?.canEdit
+    ).toBe(role === "admin");
+    expect(
+      agentConfigurations
+        .filter((a) => a.scope === "global")
+        .every((a) => !a.canEdit)
+    ).toBe(true);
+  });
+
   it("returns unpublished and restricted space agents with the all_unrestricted view", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
@@ -74,10 +118,20 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
     });
 
     expect(response.status).toBe(200);
-    const names = await agentNames(response);
-    expect(names).toContain("Published Agent");
-    expect(names).toContain("Unpublished Agent");
-    expect(names).toContain("Restricted Space Agent");
+    const {
+      agentConfigurations,
+    }: { agentConfigurations: AgentConfigurationWithSkillsType[] } =
+      await response.json();
+    expect(agentConfigurations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "Published Agent", canEdit: true }),
+        expect.objectContaining({ name: "Unpublished Agent", canEdit: true }),
+        expect.objectContaining({
+          name: "Restricted Space Agent",
+          canEdit: false,
+        }),
+      ])
+    );
   });
 
   it("hides unpublished and restricted space agents with the all view", async () => {
@@ -93,6 +147,33 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
     expect(names).toContain("Published Agent");
     expect(names).not.toContain("Unpublished Agent");
     expect(names).not.toContain("Restricted Space Agent");
+  });
+
+  it("returns the skills attached to each agent", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      role: "admin",
+    });
+    const { skill } = await setupTestAgents(workspace);
+
+    const response = await listAgents(workspace, key, { view: "all" });
+
+    expect(response.status).toBe(200);
+    const {
+      agentConfigurations,
+    }: { agentConfigurations: AgentConfigurationWithSkillsType[] } =
+      await response.json();
+
+    const publishedAgent = agentConfigurations.find(
+      (a) => a.name === "Published Agent"
+    );
+    expect(publishedAgent?.skills).toEqual([
+      { sId: skill.sId, name: "Support Playbook" },
+    ]);
+
+    // Every agent carries the field, so a client can tell "no skills" from "not serialized".
+    expect(agentConfigurations.every((a) => Array.isArray(a.skills))).toBe(
+      true
+    );
   });
 
   it("rejects the all_unrestricted view for non-admin keys", async () => {

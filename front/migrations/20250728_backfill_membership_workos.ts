@@ -1,4 +1,5 @@
 import type { OrganizationMembership } from "@workos-inc/node";
+import { RateLimitExceededException } from "@workos-inc/node";
 
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -107,8 +108,8 @@ async function updateMembershipOriginsForWorkspace(
           }
 
           break;
-        } catch (error: any) {
-          if (error?.status === 429) {
+        } catch (error) {
+          if (error instanceof RateLimitExceededException) {
             retryCount++;
             const retryAfterSeconds = error.retryAfter || 10;
             const retryAfterMs = retryAfterSeconds * 1000;

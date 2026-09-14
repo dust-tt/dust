@@ -9,16 +9,13 @@
   "remoteUser": "root",
   "forwardPorts": [
     3000,
-    3010,
-    3011,
-    3001,
     3007,
-    6333,
-    7233,
+    3010,
+    3011, 
     8233
   ],
   "runArgs": [
-    "--init",
+    "--init"
   ],
   "otherPortsAttributes": {
     "onAutoForward": "ignore"
@@ -72,6 +69,23 @@
           }
         }
       }
+    }
+  },
+  "portsAttributes": {
+    "3000": {
+      "label": "Api"
+    },
+    "3007": {
+      "label": "Viz"
+    },
+    "3010": {
+      "label": "Poke"
+    },
+    "3011": {
+      "label": "App"
+    },
+    "8233": {
+      "label": "Temporal"
     }
   }
 }

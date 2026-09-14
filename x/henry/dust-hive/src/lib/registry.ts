@@ -178,6 +178,22 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     },
     portKey: "storybook",
   },
+  "sqlite-worker": {
+    cwd: "core",
+    needsNvm: false,
+    needsEnvSh: true,
+    // Only needed to power in-conversation SQL table queries; started on demand
+    // rather than with the rest of core since most work never touches it.
+    // DATABASES_STORE_DATABASE_URI is intentionally omitted: the binary now
+    // stores table data in GCS (DUST_TABLES_BUCKET) and no longer reads it.
+    buildCommand: (env) =>
+      `IS_LOCAL_DEV=1 CORE_API_KEY=dust-hive SQLITE_WORKER_PORT=${env.ports.sqliteWorker} cargo run --bin sqlite-worker`,
+    readinessCheck: {
+      type: "http",
+      url: (ports) => `http://localhost:${ports.sqliteWorker}/`,
+    },
+    portKey: "sqliteWorker",
+  },
 };
 
 const registryKeys = Object.keys(SERVICE_REGISTRY) as ServiceName[];
@@ -191,11 +207,15 @@ if (missingKeys.length > 0 || extraKeys.length > 0) {
   );
 }
 
-// Services to start during warm (all services except sparkle, SDK, viz and storybook which start at
-// spawn/manually).
+// Services to start during warm (all services except sparkle, SDK, viz, storybook and
+// sqlite-worker which start at spawn/manually).
 export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter(
   (service) =>
-    service !== "sparkle" && service !== "sdk" && service !== "viz" && service !== "storybook"
+    service !== "sparkle" &&
+    service !== "sdk" &&
+    service !== "viz" &&
+    service !== "storybook" &&
+    service !== "sqlite-worker"
 );
 
 // Build the full shell command for a service

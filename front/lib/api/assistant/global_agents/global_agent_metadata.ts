@@ -465,7 +465,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_PISTACHE,
         name: "dust-pistache",
-        description: "Same as dust but running GLM-5.2.",
+        description: "Same as dust but running GLM-5.3.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM:
@@ -529,7 +529,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG,
         name: "dust-goog",
-        description: "Same as dust but running Gemini 3.5 Flash.",
+        description: "Same as dust but running Gemini 3.8 Flash.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM:
@@ -708,7 +708,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_DEEPSEEK,
         name: "dust-deepseek",
-        description: "Same as dust but running DeepSeek V4 Pro.",
+        description: "Same as dust but running DeepSeek V4.1 Flash.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE:
@@ -739,6 +739,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST,
         name: "dust",
         description: "An agent with context on your company data.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_LEAN:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_LEAN,
+        name: "dust-lean",
+        description:
+          "Dust with no tools, skills, or company knowledge by default. Add capabilities to the conversation as needed.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_HIGH:

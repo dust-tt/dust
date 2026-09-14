@@ -19,7 +19,7 @@ export function useArchivePod({
     const confirmed = await confirm({
       title: "Archive Pod?",
       message:
-        "You'll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. However, existing content can still be used by agents. Unarchive it to get back access to it.",
+        "You'll no longer be able to create new conversations in this Pod and it will be hidden from the sidebar. Triggers targeting this Pod will be disabled. However, existing content can still be used by agents. Unarchive to restore access.",
       validateVariant: "warning",
     });
 

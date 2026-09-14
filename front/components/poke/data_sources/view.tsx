@@ -48,6 +48,7 @@ export function ViewDataSourceTable({
   coreDataSource,
   dataSource,
   dataSourceViews,
+  oauthConnectedAccount,
   owner,
   temporalWorkspace,
   temporalRunningWorkflows,
@@ -56,6 +57,7 @@ export function ViewDataSourceTable({
   coreDataSource: CoreAPIDataSource;
   dataSource: DataSourceType;
   dataSourceViews: DataSourceViewType[];
+  oauthConnectedAccount: string | null;
   owner: WorkspaceType;
   temporalWorkspace: string;
   temporalRunningWorkflows: {
@@ -143,6 +145,12 @@ export function ViewDataSourceTable({
                       : "N/A"}
                   </PokeTableCell>
                 </PokeTableRow>
+                {oauthConnectedAccount && (
+                  <PokeTableRow>
+                    <PokeTableCell>Connected account</PokeTableCell>
+                    <PokeTableCell>{oauthConnectedAccount}</PokeTableCell>
+                  </PokeTableRow>
+                )}
                 <PokeTableRow>
                   <PokeTableCell>Logs</PokeTableCell>
                   <PokeTableCell>

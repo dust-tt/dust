@@ -2,11 +2,14 @@ import { FeatureFlagStageChip } from "@app/components/poke/features/stage_chip";
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { RunPluginDialog } from "@app/components/poke/plugins/RunPluginDialog";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { usePokeFeatureFlagWorkspaces } from "@app/hooks/usePokeFeatureFlagWorkspaces";
-import type { PokeFeatureFlagWorkspace } from "@app/lib/api/poke/feature_flags";
+import type { PokeFeatureFlagWorkspaceWithCell } from "@app/hooks/usePokeFeatureFlagWorkspaces";
+import { usePokeFeatureFlagWorkspacesAllCells } from "@app/hooks/usePokeFeatureFlagWorkspaces";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { useRequiredPathParam } from "@app/lib/platform";
+import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeListPluginForResourceType } from "@app/poke/swr/plugins";
+import type { CellType } from "@app/types/cell";
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
 import {
   isWhitelistableFeature,
@@ -15,6 +18,7 @@ import {
 import { dateToHumanReadable } from "@app/types/shared/utils/date_utils";
 import {
   Button,
+  Chip,
   Dialog,
   DialogContent,
   DialogHeader,
@@ -95,24 +99,46 @@ function WorkspaceTogglePluginDialog({
 }
 
 interface MakeColumnsParams {
-  onToggleFlags: (workspaceId: string) => void;
+  onToggleFlags: (workspaceId: string, cell: CellType) => void;
+  onSwitchCell: (cell: CellType) => void;
 }
 
 function makeColumns({
   onToggleFlags,
-}: MakeColumnsParams): ColumnDef<PokeFeatureFlagWorkspace>[] {
+  onSwitchCell,
+}: MakeColumnsParams): ColumnDef<PokeFeatureFlagWorkspaceWithCell>[] {
   return [
+    {
+      id: "cell",
+      accessorKey: "cell",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Cell" />
+      ),
+      filterFn: (row, id, value) => value.includes(row.getValue(id)),
+      cell: ({ row }) => (
+        <Chip
+          size="mini"
+          color={getCellChipColor(row.original.region)}
+          label={getCellDisplay({
+            name: row.original.cell,
+            region: row.original.region,
+          })}
+        />
+      ),
+    },
     {
       accessorKey: "workspaceName",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Workspace" />
       ),
       cell: ({ row }) => (
-        <LinkWrapper href={`/poke/${row.original.workspaceId}`}>
-          <span className="text-highlight-600 hover:underline">
-            {row.original.workspaceName}
-          </span>
-        </LinkWrapper>
+        <div onClick={() => onSwitchCell(row.original.cell)}>
+          <LinkWrapper href={`/poke/${row.original.workspaceId}`}>
+            <span className="text-highlight-600 hover:underline">
+              {row.original.workspaceName}
+            </span>
+          </LinkWrapper>
+        </div>
       ),
     },
     {
@@ -157,7 +183,9 @@ function makeColumns({
           icon={Pencil01}
           label="Toggle flags"
           tooltip="Open this workspace's Toggle Feature Flag plugin"
-          onClick={() => onToggleFlags(row.original.workspaceId)}
+          onClick={() =>
+            onToggleFlags(row.original.workspaceId, row.original.cell)
+          }
         />
       ),
     },
@@ -169,14 +197,10 @@ export function FeatureFlagDetailPage() {
 
   usePokePageMetadata({ name: flagName });
 
-  const {
-    workspaces,
-    totalCount,
-    globalRolloutPercentage,
-    isLoading,
-    isError,
-    mutate,
-  } = usePokeFeatureFlagWorkspaces({ flagName });
+  const { cells, cellInfo, setCellInfo } = useCellContext();
+
+  const { workspaces, cellRollouts, totalCount, isLoading, isError, mutate } =
+    usePokeFeatureFlagWorkspacesAllCells({ flagName });
 
   // Description and stage are static config, so they need no round trip. A flag name that is not
   // in the config is a legacy row still present in the database.
@@ -188,9 +212,22 @@ export function FeatureFlagDetailPage() {
     string | null
   >(null);
 
+  const switchToCell = useCallback(
+    (cell: CellType) => {
+      const targetCell = cells.find((c) => c.name === cell);
+      if (targetCell && targetCell.name !== cellInfo.name) {
+        setCellInfo(targetCell);
+      }
+    },
+    [cells, cellInfo, setCellInfo]
+  );
+
   const onToggleFlags = useCallback(
-    (workspaceId: string) => setWorkspaceBeingEdited(workspaceId),
-    []
+    (workspaceId: string, cell: CellType) => {
+      switchToCell(cell);
+      setWorkspaceBeingEdited(workspaceId);
+    },
+    [switchToCell]
   );
 
   const handlePluginDialogClose = useCallback(() => {
@@ -199,8 +236,17 @@ export function FeatureFlagDetailPage() {
   }, [mutate]);
 
   const columns = useMemo(
-    () => makeColumns({ onToggleFlags }),
-    [onToggleFlags]
+    () => makeColumns({ onToggleFlags, onSwitchCell: switchToCell }),
+    [onToggleFlags, switchToCell]
+  );
+
+  const cellFacetOptions = useMemo(
+    () =>
+      cells.map((cell) => ({
+        label: getCellDisplay(cell),
+        value: cell.name,
+      })),
+    [cells]
   );
 
   return (
@@ -211,19 +257,35 @@ export function FeatureFlagDetailPage() {
             ← All feature flags
           </span>
         </LinkWrapper>
-        <div className="mt-2 flex items-center gap-3">
+        <div className="mt-2 flex flex-wrap items-center gap-3">
           <h1 className="font-mono text-2xl font-bold">{flagName}</h1>
           <FeatureFlagStageChip flagName={flagName} />
-          {globalRolloutPercentage !== null && (
-            <span className="text-sm text-muted-foreground">
-              global rollout: {globalRolloutPercentage}%
-            </span>
-          )}
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
           {flagConfig?.description ??
             "No longer declared in WHITELISTABLE_FEATURES_CONFIG."}
         </p>
+        {cellRollouts.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Global rollout:
+            </span>
+            {cellRollouts.map((rollout) => {
+              const pctLabel =
+                rollout.globalRolloutPercentage === null
+                  ? "—"
+                  : `${rollout.globalRolloutPercentage}%`;
+              return (
+                <Chip
+                  key={rollout.cell}
+                  size="xs"
+                  color={getCellChipColor(rollout.region)}
+                  label={`${getCellDisplay({ name: rollout.cell, region: rollout.region })}: ${pctLabel} (${rollout.totalCount})`}
+                />
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {isError ? (
@@ -234,14 +296,21 @@ export function FeatureFlagDetailPage() {
         <>
           <p className="mb-2 text-sm text-muted-foreground">
             {workspaces.length === totalCount
-              ? `${totalCount} workspace(s)`
-              : `Showing the ${workspaces.length} most recently enabled of ${totalCount} workspaces.`}
+              ? `${totalCount} workspace(s) across all cells`
+              : `Showing the ${workspaces.length} most recently enabled of ${totalCount} workspaces across all cells.`}
           </p>
           <PokeDataTable
             columns={columns}
             data={workspaces}
             isLoading={isLoading}
             pageSize={50}
+            facets={[
+              {
+                columnId: "cell",
+                title: "Cell",
+                options: cellFacetOptions,
+              },
+            ]}
           />
         </>
       )}

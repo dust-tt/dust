@@ -397,7 +397,7 @@ export async function createDataSourceAndConnectorForProject(
         { error },
         "Failed to create dust_project connector for project"
       );
-      return new Err(error instanceof Error ? error : new Error(String(error)));
+      return new Err(normalizeError(error));
     }
   });
 }

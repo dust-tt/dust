@@ -84,7 +84,6 @@ describe("createSpaceAndGroup", () => {
         name: `${DATABASE_FILE_SYSTEM_POD_PREFIX}Playground`,
         isRestricted: true,
         spaceKind: "project" as const,
-        managementMode: "manual" as const,
         memberIds: [],
       };
 
@@ -118,7 +117,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Regular Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [user1.sId, user2.sId],
       });
 
@@ -127,7 +125,6 @@ describe("createSpaceAndGroup", () => {
         const space = result.value;
         expect(space.name).toBe("Test Regular Space");
         expect(space.kind).toBe("regular");
-        expect(space.managementMode).toBe("manual");
         expect(await space.isRestricted(adminAuth)).toBe(true);
 
         // Verify the space has a group
@@ -153,7 +150,6 @@ describe("createSpaceAndGroup", () => {
         name: "Kind Check Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [user1.sId],
       });
 
@@ -179,7 +175,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Group Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "group",
         groupIds: [provisionedGroup.sId],
       });
 
@@ -188,7 +183,6 @@ describe("createSpaceAndGroup", () => {
         const space = result.value;
         expect(space.name).toBe("Test Group Space");
         expect(space.kind).toBe("regular");
-        expect(space.managementMode).toBe("group");
         expect(await space.isRestricted(adminAuth)).toBe(true);
 
         // Verify groups were associated (from the space's group_permissions grants).
@@ -216,7 +210,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Project With Connector",
         isRestricted: false,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -246,7 +239,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Regular Space No Connector",
         isRestricted: false,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -287,7 +279,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Project Creator Editor",
         isRestricted: true,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -341,7 +332,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Project Live Auth Refresh",
         isRestricted: true,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -381,7 +371,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Project Connector Failure",
         isRestricted: false,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -407,7 +396,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Open Space",
         isRestricted: false,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -434,7 +422,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Open Space With Members",
         isRestricted: false,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [user1.sId],
       });
 
@@ -477,7 +464,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Restricted Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -499,7 +485,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Empty Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -515,7 +500,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Empty Group Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "group",
         groupIds: [],
       });
 
@@ -523,8 +507,6 @@ describe("createSpaceAndGroup", () => {
       if (result.isOk()) {
         const space = result.value;
         expect(space.name).toBe("Test Empty Group Space");
-        // `managementMode` is derived from the groups actually attached.
-        expect(space.managementMode).toBe("manual");
       }
     });
   });
@@ -538,7 +520,6 @@ describe("createSpaceAndGroup", () => {
           name: "Duplicate Name Space",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -552,7 +533,6 @@ describe("createSpaceAndGroup", () => {
           name: "Duplicate Name Space",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -596,7 +576,6 @@ describe("createSpaceAndGroup", () => {
               name: `Test Space ${i}`,
               isRestricted: true,
               spaceKind: "regular",
-              managementMode: "manual",
               memberIds: [],
             },
             { ignoreWorkspaceLimit: false }
@@ -609,7 +588,6 @@ describe("createSpaceAndGroup", () => {
           name: "Limit Exceeded Space",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         });
 
@@ -655,7 +633,6 @@ describe("createSpaceAndGroup", () => {
               name: `Test Space Ignore ${i}`,
               isRestricted: true,
               spaceKind: "regular",
-              managementMode: "manual",
               memberIds: [],
             },
             { ignoreWorkspaceLimit: false }
@@ -670,7 +647,6 @@ describe("createSpaceAndGroup", () => {
             name: "Ignored Limit Space",
             isRestricted: true,
             spaceKind: "regular",
-            managementMode: "manual",
             memberIds: [],
           },
           { ignoreWorkspaceLimit: true }
@@ -718,7 +694,6 @@ describe("createSpaceAndGroup", () => {
               name: `Limit Test Space ${i}`,
               isRestricted: true,
               spaceKind: "regular",
-              managementMode: "manual",
               memberIds: [],
             },
             { ignoreWorkspaceLimit: false }
@@ -731,7 +706,6 @@ describe("createSpaceAndGroup", () => {
           name: "Would Exceed Limit",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         });
         expect(limitResult.isErr()).toBe(true);
@@ -745,7 +719,6 @@ describe("createSpaceAndGroup", () => {
           name: "Project When At Limit",
           isRestricted: false,
           spaceKind: "project",
-          managementMode: "manual",
           memberIds: [],
         });
         expect(projectResult.isOk()).toBe(true);
@@ -764,7 +737,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Invalid Group Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "group",
         groupIds: ["invalid-group-id"],
       });
 
@@ -782,7 +754,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Invalid Member Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: ["invalid-user-id"],
       });
 
@@ -800,7 +771,6 @@ describe("createSpaceAndGroup", () => {
         name: "  Trimmed Space Name  ",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -819,7 +789,6 @@ describe("createSpaceAndGroup", () => {
           name: "Test Space",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -833,7 +802,6 @@ describe("createSpaceAndGroup", () => {
           name: "test space",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -854,7 +822,6 @@ describe("createSpaceAndGroup", () => {
           name: "Whitespace Test",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -868,7 +835,6 @@ describe("createSpaceAndGroup", () => {
           name: "  Whitespace Test  ",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -898,7 +864,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Multi Group Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "group",
         groupIds: [provisionedGroup1.sId, provisionedGroup2.sId],
       });
 
@@ -922,7 +887,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Unrestricted Regular Space",
         isRestricted: false,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -956,7 +920,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Unrestricted Project Space",
         isRestricted: false,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -993,7 +956,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Project",
         isRestricted: false,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
       expect(projectResult.isOk()).toBe(true);
@@ -1009,7 +971,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Regular",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
       expect(regularResult.isOk()).toBe(true);
@@ -1141,7 +1102,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         name: "Test Regular Space With Keys",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -1176,7 +1136,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         name: "Test Project Space With Keys",
         isRestricted: true,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -1206,7 +1165,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         name: "Test Regular Space With Disabled Keys",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -1236,7 +1194,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         name: "Test Regular Space With Global Keys",
         isRestricted: false,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -1277,7 +1234,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         name: "Test Project Space With Global Keys",
         isRestricted: false,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -1317,7 +1273,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Space With Skill Knowledge",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1355,7 +1310,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Space With Tool",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1409,7 +1363,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Manually Selected Space",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1446,7 +1399,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Space With Archived Skill",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1484,7 +1436,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Space With Tool",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1498,7 +1449,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Additional Skill Space",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1547,7 +1497,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Space With Parent Tool",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1561,7 +1510,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Space With Child Tool",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1627,7 +1575,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Space 1",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1641,7 +1588,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Space 2",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }

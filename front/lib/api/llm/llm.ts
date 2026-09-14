@@ -277,6 +277,8 @@ export abstract class LLM<
       { asType: "generation" }
     );
 
+    const attributedKey = this.authenticator.keyForUsageAttribution();
+
     this.generation.updateTrace({
       name: startCase(this.context.operationType),
       metadata: {
@@ -288,9 +290,10 @@ export abstract class LLM<
         ...(this.authenticator.user()?.sId && {
           actualUserId: this.authenticator.user()!.sId,
         }),
-        ...(this.authenticator.key() && {
-          apiKeyId: this.authenticator.key()!.id,
-        }),
+        // The attributed key, so a trace joins to the message analytics and
+        // spend counters for the same run rather than naming the system key an
+        // internal flow re-authenticated with (`authMethod` still shows that).
+        ...(attributedKey && { apiKeyId: attributedKey.id }),
         authMethod: this.authenticator.authMethod() ?? "unknown",
         // Include all context fields (except userId and workspaceId).
         ...pickBy(
@@ -729,6 +732,7 @@ export abstract class LLM<
    */
   private async traceBatchResults(results: BatchResult): Promise<void> {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
+    const attributedKey = this.authenticator.keyForUsageAttribution();
 
     for (const [customId, events] of results) {
       const traceId = createLLMTraceId(randomUUID());
@@ -755,9 +759,7 @@ export abstract class LLM<
           ...(this.authenticator.user()?.sId && {
             actualUserId: this.authenticator.user()!.sId,
           }),
-          ...(this.authenticator.key() && {
-            apiKeyId: this.authenticator.key()!.id,
-          }),
+          ...(attributedKey && { apiKeyId: attributedKey.id }),
           authMethod: this.authenticator.authMethod() ?? "unknown",
           ...pickBy(
             this.context!,

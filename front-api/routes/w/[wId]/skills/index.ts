@@ -4,6 +4,7 @@ import {
   getReferencedSkillSpaceModelIds,
   resolveAdditionalRequestedSpaceModelIds,
 } from "@app/lib/api/skills/space_requirements";
+import { fetchSkillUsageCounts } from "@app/lib/api/skills/usage";
 import { hasFeatureFlag } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -131,7 +132,7 @@ app.get(
     // @deprecated viewType query param is ignored — instructions and tools
     // are never returned from the list endpoint. Use GET /skills/:sId for full details.
     const withRelations = ctx.req.query("withRelations");
-    const withMessageCount = ctx.req.query("withMessageCount") === "true";
+    const withUsage = ctx.req.query("withUsage") === "true";
     const status = ctx.req.query("status");
     const globalSpaceOnly = ctx.req.query("globalSpaceOnly");
     const onlyCustom = ctx.req.query("onlyCustom");
@@ -187,7 +188,7 @@ app.get(
     const traceTags = {
       "skills.status": skillStatus ?? "all",
       "skills.with_relations": withRelations === "true",
-      "skills.with_message_count": withMessageCount,
+      "skills.with_usage": withUsage,
       "skills.bypass_editor_visibility": bypassEditorVisibility,
     };
     const allSkills = await tracer.trace(
@@ -241,12 +242,25 @@ app.get(
         { tags: { ...traceTags, "skills.count": skills.length } },
         async () => {
           const usageMap = await SkillResource.batchFetchUsage(auth, skills);
-          let messageCountMap: Map<string, number> | null = null;
-          if (withMessageCount) {
-            messageCountMap = await SkillResource.batchFetchMessageCounts(
-              auth,
-              skills.filter((skill) => !skill.isSystemSkill)
-            );
+          let usageCountMap: Map<string, number> | null = null;
+          if (withUsage) {
+            const usageCountsResult = await fetchSkillUsageCounts(auth, {
+              skillIds: skills
+                .filter((skill) => !skill.isSystemSkill)
+                .map((skill) => skill.sId),
+              period: { startDate: "now-30d", endDate: "now" },
+            });
+            if (usageCountsResult.isErr()) {
+              logger.error(
+                {
+                  err: usageCountsResult.error,
+                  workspaceId: auth.getNonNullableWorkspace().sId,
+                },
+                "Failed to fetch skill usage counts"
+              );
+            } else {
+              usageCountMap = usageCountsResult.value;
+            }
           }
           const editorsMap = await SkillResource.batchListEditors(auth, skills);
           const editedByUsersMap = await SkillResource.batchFetchEditedByUsers(
@@ -285,11 +299,13 @@ app.get(
 
             return {
               ...skillWithoutInstructionsAndTools,
-              ...(messageCountMap
+              messageCount: null,
+              ...(withUsage
                 ? {
-                    messageCount: sc.isSystemSkill
-                      ? null
-                      : (messageCountMap.get(sc.sId) ?? 0),
+                    usage:
+                      sc.isSystemSkill || usageCountMap === null
+                        ? null
+                        : (usageCountMap.get(sc.sId) ?? 0),
                   }
                 : {}),
               relations: {

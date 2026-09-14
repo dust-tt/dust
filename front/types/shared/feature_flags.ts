@@ -1,9 +1,21 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  dust_lean_agent: {
+    description:
+      "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
+    stage: "dust_only",
+    owner: "aubin-tchoi",
+  },
   stateful_conversation_window: {
     description:
       "Restore agent-loop context windows from the previous model step checkpoint",
     stage: "dust_only",
     owner: "flvndvd",
+  },
+  group_seat_provisioning: {
+    description:
+      "Map workspace groups to seat types so group membership drives members' seats",
+    stage: "dust_only",
+    owner: "tdraier",
   },
   dust_filesystem: {
     description:
@@ -104,11 +116,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
     stage: "self_serve",
     owner: "fontanierh",
-  },
-  fireworks_new_model_feature: {
-    description: "Access to Fireworks new model",
-    stage: "self_serve",
-    owner: "pmilliotte",
   },
   exa_people_and_company: {
     description: "Access to Exa MCP server (search_people, search_companies)",
@@ -233,11 +240,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "frankaloia",
   },
-  databricks_tool: {
-    description: "Databricks MCP tool",
-    stage: "self_serve",
-    owner: "FlagBenett",
-  },
   servicenow_tool: {
     description: "ServiceNow MCP tool",
     stage: "self_serve",
@@ -246,11 +248,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   shopify_tool: {
     description: "Shopify MCP tool",
     stage: "self_serve",
-    owner: "spolu",
-  },
-  sandbox_functions: {
-    description: "Enable Pod Function invocation endpoints",
-    stage: "dust_only",
     owner: "spolu",
   },
   run_tools_from_prompt: {
@@ -339,6 +336,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "tdraier",
   },
+  remote_db_query_identity_labels: {
+    description:
+      "Attach Dust workspace/agent/user sIds as BigQuery job labels and Snowflake QUERY_TAG for remote database cost attribution",
+    stage: "self_serve",
+    owner: "fraggle",
+  },
   restricted_spaces_in_input_bar: {
     description:
       "Allow users to explicitly select Spaces from the conversation input bar.",
@@ -375,18 +378,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "frankaloia",
   },
-  admin_controlled_pods: {
-    description:
-      "Enable admin-controlled Pods: admins manage membership and attach connected data (Space DataSourceViews) to the Pod itself.",
-    stage: "dust_only",
-    owner: "Fraggle",
-  },
-  pod_frame_tabs: {
-    description:
-      "Allow adding previewable Pod files (frames, markdown, and other previews) as custom tabs (title, icon, order) on the pod.",
-    stage: "dust_only",
-    owner: "Fraggle",
-  },
   group_permissions_shadow: {
     description:
       "Admin Governance: evaluate the new group_permissions checks alongside the legacy ones and log mismatches (shadow mode). Serves the legacy result; safe to toggle.",
@@ -404,12 +395,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Warn users about similar existing agents before they create a duplicate in the agent builder.",
     stage: "self_serve",
     owner: "avervaet",
-  },
-  enforce_user_spend_limit_rate_cap: {
-    description:
-      "Enable the Redis fixed-window spend-cap backups (per-user, per-API-key, programmatic, and workspace usage cap): record AWU usage into the counters and enforce them at message send. When off, usage is neither recorded nor enforced.",
-    stage: "ask_owner",
-    owner: "tdraier",
   },
   enforce_premium_model_message_limit: {
     description:
@@ -451,13 +436,19 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Use the consumption analytics ES index instead of the message analytics index for message exports.",
     stage: "ask_owner",
-    owner: "sylvain",
+    owner: "sfriquet",
   },
   enable_new_usage_page: {
     description:
       "Show the new credit-pool usage page (credit pool cards + compact members table) on the front usage page instead of the legacy usage page.",
     stage: "ask_owner",
     owner: "avervaet",
+  },
+  consumption_export_api: {
+    description:
+      "Enable the public API endpoint for raw consumption analytics export (POST /api/v1/w/:wId/analytics/consumption/export).",
+    stage: "ask_owner",
+    owner: "sfriquet",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

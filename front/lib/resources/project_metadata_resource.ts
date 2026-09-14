@@ -176,13 +176,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     return this.update(blob);
   }
 
-  async updateIsAdminControlled(
-    isAdminControlled: boolean,
-    transaction?: Transaction
-  ) {
-    await this.update({ isAdminControlled }, transaction);
-  }
-
   async updatePinnedFramePath(
     pinnedFramePath: string | null,
     transaction?: Transaction
@@ -284,7 +277,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       ),
       defaultAgentId: this.defaultAgentId ?? null,
       defaultSkillIds: this.defaultSkillIds,
-      isAdminControlled: this.isAdminControlled,
     };
   }
 }

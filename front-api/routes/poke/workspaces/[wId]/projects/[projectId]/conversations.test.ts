@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
@@ -15,7 +15,7 @@ describe("GET /api/poke/workspaces/:wId/projects/:projectId/conversations", () =
       auth: initialAuth,
       user,
       workspace,
-    } = await createPrivateApiMockRequest({
+    } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });

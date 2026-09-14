@@ -224,7 +224,9 @@ export class FileResource extends BaseResource<FileModel> {
     }
 
     const frames = await this.model.findAll({
-      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified: the sandbox reaper operates across workspaces and the ids come from workspace-scoped owner links.
+      // WORKSPACE_ISOLATION_BYPASS: The sandbox reaper operates across workspaces; these IDs come
+      // from workspace-scoped sandbox ownership rows.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       where: {
         contentType: frameV2ContentType,
@@ -659,10 +661,7 @@ export class FileResource extends BaseResource<FileModel> {
     for (;;) {
       const sandboxFunctions = await SandboxFunctionModel.findAll({
         attributes: ["id"],
-        where: {
-          workspaceId: workspaceModelId,
-          publicationId: { [Op.ne]: null },
-        },
+        where: { workspaceId: workspaceModelId },
         limit: FRAME_FUNCTION_DELETE_BATCH_SIZE,
       });
       if (sandboxFunctions.length === 0) {
@@ -689,7 +688,6 @@ export class FileResource extends BaseResource<FileModel> {
       where: {
         workspaceId: workspaceModelId,
         fileId: this.id,
-        publicationId: { [Op.ne]: null },
       },
     });
     await FileResource.deleteFrameFunctionModelIds(
@@ -808,6 +806,28 @@ export class FileResource extends BaseResource<FileModel> {
     }
   }
 
+  /**
+   * @cc [owner:davidebbo,label:product] frame-source-directory-is-a-folder
+   * Returns the scoped path of the folder holding this Frames v2 package's sources, and null
+   * unless this file is a `manifest.json` mounted in a folder under a mount root. A manifest
+   * sitting directly at a mount root has no source folder of its own and must return null.
+   */
+  getFrameV2SourceDirectoryPath(auth: Authenticator): string | null {
+    const manifestPath = this.toScopedPath(auth);
+    if (
+      !manifestPath ||
+      path.posix.basename(manifestPath) !== FRAME_MANIFEST_FILE
+    ) {
+      return null;
+    }
+
+    const sourceDirectory = DustFileSystem.normalizeScopedPath(
+      path.posix.dirname(manifestPath)
+    );
+
+    return sourceDirectory?.includes("/") ? sourceDirectory : null;
+  }
+
   private async deleteFrameV2(
     auth: Authenticator
   ): Promise<Result<undefined, Error>> {
@@ -822,14 +842,8 @@ export class FileResource extends BaseResource<FileModel> {
     if (!manifestPath) {
       return new Err(new Error("Frame source path not found."));
     }
-    const sourceDirectory = DustFileSystem.normalizeScopedPath(
-      path.posix.dirname(manifestPath)
-    );
-    if (
-      !sourceDirectory ||
-      !sourceDirectory.includes("/") ||
-      path.posix.basename(manifestPath) !== FRAME_MANIFEST_FILE
-    ) {
+    const sourceDirectory = this.getFrameV2SourceDirectoryPath(auth);
+    if (!sourceDirectory) {
       return new Err(
         new Error("Frame deletion requires its source folder under /files.")
       );
@@ -1060,12 +1074,25 @@ export class FileResource extends BaseResource<FileModel> {
     });
   }
 
+  /**
+   * @cc [owner:davidebbo,label:product;backend] frame-publication-records-agent
+   * When `publishedByAgentConfigurationId` is given, `useCaseMetadata.lastEditedByAgentConfigurationId`
+   * MUST be set to it. The conversation UI reads this field to enable "Ask agent to fix" on a
+   * Frame runtime error; if a publication path omits it, the retry affordance stays silently
+   * unavailable for every publication of that Frame, not just the failing one.
+   */
   async setActiveFramePublication(
     {
       publicationId,
       name,
       description,
-    }: { publicationId: string; name: string; description: string },
+      publishedByAgentConfigurationId,
+    }: {
+      publicationId: string;
+      name: string;
+      description: string;
+      publishedByAgentConfigurationId?: string;
+    },
     transaction?: Transaction
   ) {
     return this.update(
@@ -1075,6 +1102,12 @@ export class FileResource extends BaseResource<FileModel> {
           activePublicationId: publicationId,
           frameName: name,
           frameDescription: description,
+          ...(publishedByAgentConfigurationId
+            ? {
+                lastEditedByAgentConfigurationId:
+                  publishedByAgentConfigurationId,
+              }
+            : {}),
         },
       },
       transaction
@@ -1602,14 +1635,6 @@ export class FileResource extends BaseResource<FileModel> {
     const result = await this.update({ useCaseMetadata: metadata });
     await this.resolveAndSetMountFilePath(auth);
     return result;
-  }
-
-  /**
-   * Public entry point to trigger mount path resolution. Idempotent — no-ops when a path is
-   * already set or when the file's use case isn't mount-eligible. Used by backfill scripts.
-   */
-  async ensureMountFilePath(auth: Authenticator): Promise<void> {
-    await this.resolveAndSetMountFilePath(auth);
   }
 
   // Mount file path logic.

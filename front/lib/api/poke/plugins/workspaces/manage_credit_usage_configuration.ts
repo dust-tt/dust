@@ -73,7 +73,7 @@ export const manageCreditUsageConfigurationPlugin = createPlugin({
         variant: "text",
         label: "Default per-user workspace credit pool monthly limit (credits)",
         description:
-          "Default per-user workspace credit pool monthly limit added on top of each seat's built-in allowance. Can be overridden per user in the members table. Set to 0 to remove pool access.",
+          "Default per-user monthly credit limit from the workspace credit pool. For plans whose seats carry a built-in allowance (pro/business), it is added on top of that allowance; enterprise pooled workspaces have no seat allowance, so it is the user's whole monthly budget. Can be overridden per user in the members table. Set to 0 to remove pool access.",
         async: true,
       },
       programmaticMonthlyCapCredits: {

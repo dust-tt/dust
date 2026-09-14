@@ -14,7 +14,7 @@ const metadata: EndpointMetadata = {
   lab: "z_ai",
   host: "fireworks",
   region: "global",
-  model: "glm-5p2",
+  model: "glm-5p3",
 };
 
 function streamErrorToErrorEvent(metadata: EndpointMetadata, error: unknown) {
@@ -25,7 +25,7 @@ const llmMetadata: LLMClientMetadata = {
   clientId: "fireworks",
   inferenceProvider: "fireworks",
   inferenceRegion: "global",
-  modelId: "accounts/fireworks/models/glm-5p2",
+  modelId: "accounts/fireworks/models/glm-5p3",
 };
 
 describe("streamErrorToErrorEvent", () => {

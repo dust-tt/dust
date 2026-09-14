@@ -1,7 +1,7 @@
 import { resolvePodForRuntimeOwner } from "@app/lib/api/sandbox/owner";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
+import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
 import type {
   EnsureSandboxResult,
   SandboxCreateBlob,
@@ -211,7 +211,7 @@ export class ConversationSandboxAdapter {
       return new Ok(baseEnv);
     }
 
-    const podScopedResult = await PodSandboxAdapter.buildPodScopedEnvVars(
+    const podScopedResult = await SandboxEnvVarResource.loadPodScopedEnv(
       auth,
       podResult.value,
       runtimeOwner

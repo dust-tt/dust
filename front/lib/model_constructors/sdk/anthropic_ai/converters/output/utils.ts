@@ -805,6 +805,11 @@ export async function* rawOutputToEvents(
   let blockState: BlockState | null = null;
   let tokenUsage: BetaMessageDeltaUsage | null = null;
   let stopReason: string | null = null;
+  // A stop reason that maps to an error terminates the turn. Held back so the
+  // usage event is emitted first and the error is the last (and only) terminal
+  // event: consumers stop at the first success/error, so an error yielded
+  // inline would drop the usage that follows it.
+  let terminalError: ErrorEvent | null = null;
   const toolSearchQueriesByToolUseId = new Map<string, string | undefined>();
   // The per-TTL cache-creation breakdown is only emitted on `message_start`;
   // capture it so the trailing `message_delta` usage can be split by TTL.
@@ -919,7 +924,8 @@ export async function* rawOutputToEvents(
           metadata,
           converters
         );
-        outputEvents = events;
+        outputEvents = events.filter((e) => e.type !== "error");
+        terminalError = events.find((e) => e.type === "error") ?? terminalError;
         tokenUsage = usage;
         stopReason = event.delta.stop_reason ?? stopReason;
         break;
@@ -949,6 +955,11 @@ export async function* rawOutputToEvents(
       tokenUsage,
       cacheCreation
     );
+  }
+
+  if (terminalError !== null) {
+    yield terminalError;
+    return;
   }
 
   yield {

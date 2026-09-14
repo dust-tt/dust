@@ -405,14 +405,13 @@ describe("GET /api/w/:wId/groups/:groupId", () => {
     expect((await response.json()).error.type).toBe("workspace_auth_error");
   });
 
-  it("returns 404 for a non-regular_manual group", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+  it("returns 404 for a non-manageable group", async () => {
+    const { workspace, globalGroup } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
     });
-    const group = await GroupFactory.regularAuto(workspace, "Automatic");
 
-    const response = await getGroup(workspace, group.sId);
+    const response = await getGroup(workspace, globalGroup.sId);
 
     expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe("group_not_found");
@@ -470,7 +469,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
     );
   });
 
-  it("clears all members with an empty array", async () => {
+  it("refuses to clear all members with an empty array", async () => {
     const { workspace, user, auth } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
@@ -487,9 +486,12 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
       memberIds: [],
     });
 
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.members).toEqual([]);
+    expect(response.status).toBe(400);
+    const { error } = await response.json();
+    expect(error.type).toBe("invalid_request_error");
+
+    const members = await group.getActiveMembers(auth);
+    expect(members.map((m) => m.sId)).toEqual([user.sId]);
   });
 
   it("renames and sets members in a single request", async () => {
@@ -570,7 +572,7 @@ describe("PATCH /api/w/:wId/groups/:groupId", () => {
       method: "PATCH",
       role: "admin",
     });
-    const group = await GroupFactory.regularAuto(workspace, "Automatic");
+    const group = await GroupFactory.provisioned(workspace, "Automatic");
 
     const response = await patchGroup(workspace, group.sId, {
       name: "New name",
@@ -685,7 +687,7 @@ describe("DELETE /api/w/:wId/groups/:groupId", () => {
       method: "DELETE",
       role: "admin",
     });
-    const group = await GroupFactory.regularAuto(workspace, "Automatic");
+    const group = await GroupFactory.provisioned(workspace, "Automatic");
 
     const response = await deleteGroup(workspace, group.sId);
 

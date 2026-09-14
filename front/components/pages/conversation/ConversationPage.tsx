@@ -37,7 +37,7 @@ export function ConversationPage() {
     conversationId: activeConversationId,
   });
 
-  // Consume ?agent= param: fetch agent, set it in input bar, clean up URL.
+  // Consume ?agent= param: fetch agent, set it in input bar
   useAgentFromSearchParam(owner.sId);
 
   // Consume ?go= param: fetch Contentful template, prefill composer, clean up URL.

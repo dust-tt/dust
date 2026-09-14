@@ -235,6 +235,7 @@ const TAB_NAMES: Record<ServiceName, string> = {
   "front-spa-app": "spa-app",
   viz: "viz",
   storybook: "storybook",
+  "sqlite-worker": "sqlite-worker",
 };
 
 export function getTabName(service: ServiceName): string {

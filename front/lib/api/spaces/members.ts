@@ -2,16 +2,16 @@ import { z } from "zod";
 
 // The space's whole desired membership. Every dimension is optional, and one the request leaves
 // out is emptied, not kept: omitting `groupIds` says no group has access, the same as sending an
-// empty array. `managementMode` is legacy and ignored — a client that sends it also omits the
-// dimension its mode does not cover, and so gets the clearing it expects.
+// empty array.
 export const PatchSpaceMembersRequestBodySchema = z.object({
   isRestricted: z.boolean(),
-  name: z.string(),
+  // Optional: this endpoint never renames a space (PATCH on the space itself does). Omitted by
+  // surfaces with no editable name.
+  name: z.string().optional(),
   memberIds: z.array(z.string()).optional(),
   editorIds: z.array(z.string()).optional(),
   groupIds: z.array(z.string()).optional(),
   editorGroupIds: z.array(z.string()).optional(),
-  managementMode: z.enum(["manual", "group"]).optional(),
 });
 
 export type PatchSpaceMembersRequestBodyType = z.infer<

@@ -637,7 +637,7 @@ function ComposerDemo({
         }}
       >
         <DropdownMenuSubTrigger
-          label="Attach knowledge"
+          label="Attach"
           icon={
             <Icon
               size="xs"
@@ -690,7 +690,7 @@ function ComposerDemo({
             <div className="flex h-full w-full items-center justify-center">
               <div className="flex flex-col items-center justify-center gap-0 text-center text-base font-semibold text-primary-400">
                 <Icon visual={SearchMd} size="sm" />
-                Search knowledge
+                Search
               </div>
             </div>
           )}

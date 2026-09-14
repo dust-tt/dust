@@ -70,6 +70,7 @@ import {
   isPoolDepleted,
   isProgrammaticApiBlocked,
   isUserBlocked,
+  PROGRAMMATIC_CAP_REACHED_MESSAGE,
 } from "@app/lib/api/credits/access_control";
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
 import { getProgrammaticRateLimiterCreditState } from "@app/lib/api/credits/programmatic_usage_limit";
@@ -93,10 +94,7 @@ import {
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
 import { isFreeOrigin } from "@app/lib/metronome/events";
-import {
-  getWorkspaceCreditPoolStatus,
-  getWorkspaceProgrammaticCreditStatus,
-} from "@app/lib/metronome/user_block";
+import { getWorkspaceCreditPoolStatus } from "@app/lib/metronome/user_block";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
@@ -513,6 +511,7 @@ export function isUserMessageContextValid(
     case "wakeup":
     case "onboarding_conversation":
     case "agent_sidekick":
+    case "analytics_panel":
     case "project_kickoff":
     case "reinforced_skill_notification":
     case "reinforcement":
@@ -876,7 +875,7 @@ export async function postUserMessage(
     // this drives api_key_name in usage analytics without affecting authorization.
     const enrichedContext: UserMessageContext = {
       ...context,
-      apiKeyId: auth.attributionKeyModelId() ?? auth.key()?.id ?? null,
+      apiKeyId: auth.keyForUsageAttribution()?.id ?? null,
       authMethod: auth.authMethod(),
     };
 
@@ -2576,6 +2575,7 @@ export async function checkMessagesLimit(
       // message we just unblocked.
       if (user) {
         const upgrade = await maybeAutoUpgradeSeat({
+          auth,
           workspaceId: owner.sId,
           userId: user.sId,
         });
@@ -2599,6 +2599,23 @@ export async function checkMessagesLimit(
     // it reflects membership, not credit state.
     if (!isFreeOrigin(context.origin)) {
       if (blockedReason === "user_cap_reached") {
+        // A seat that has exhausted its cap (a free seat's lifetime allowance,
+        // or a pro seat with its seat balance and pool both spent) is
+        // auto-upgraded one tier (free→pro, pro→max) if the workspace opted in,
+        // so it can proceed with this message. This is the single reactive
+        // driver for all auto-upgrades: it fires exactly when the user is
+        // actually blocked, so we never upgrade a seat that can still spend from
+        // the pool.
+        if (user) {
+          const upgrade = await maybeAutoUpgradeSeat({
+            auth,
+            workspaceId: owner.sId,
+            userId: user.sId,
+          });
+          if (upgrade.isOk() && upgrade.value.upgraded) {
+            return new Ok(undefined);
+          }
+        }
         return new Err({
           status_code: 403,
           api_error: {
@@ -2639,7 +2656,7 @@ export async function checkMessagesLimit(
     if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
       // Per-API-key credit cap. `isApiKeyBlocked` is flag-aware (rate-limiter
       // counter when the flag is on, Metronome per-key credit state otherwise).
-      const key = auth.key();
+      const key = auth.keyForUsageAttribution();
       if (key) {
         if (await isApiKeyBlocked(auth, { keyModelId: key.id })) {
           return new Err({
@@ -2661,8 +2678,7 @@ export async function checkMessagesLimit(
           status_code: 429,
           api_error: {
             type: "rate_limit_error",
-            message:
-              "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.",
+            message: PROGRAMMATIC_CAP_REACHED_MESSAGE,
           },
         });
       }
@@ -2691,13 +2707,8 @@ export async function checkMessagesLimit(
     // counter, bucketed on the UTC calendar month. Admin-set (poke) workspace
     // default, overridable per member. Free origins produce no billable usage,
     // and API keys have no per-user limit (they are gated by the programmatic
-    // caps below). Flag-gated while we validate the counter; usage is recorded
-    // regardless (in credit_cost), so the flag only controls blocking.
-    const featureFlags = await getFeatureFlags(auth);
-    if (
-      featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
-      (await isNonCreditPricedUserSpendLimitReached(auth, { user }))
-    ) {
+    // caps below).
+    if (await isNonCreditPricedUserSpendLimitReached(auth, { user })) {
       return new Err({
         status_code: 403,
         api_error: {
@@ -2821,13 +2832,9 @@ async function checkProgrammaticCreditConcurrencyLimit(
   auth: Authenticator
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
-  // With the rate-cap flag on, the concurrency band comes from the Redis
-  // rate-limiter counter; with it off, from the Metronome programmatic credit
-  // state. Matches the flag-aware enforcement in access_control.
-  const featureFlags = await getFeatureFlags(auth);
-  const status = featureFlags.includes("enforce_user_spend_limit_rate_cap")
-    ? await getProgrammaticRateLimiterCreditState(auth)
-    : await getWorkspaceProgrammaticCreditStatus(owner.sId);
+  // The concurrency band comes from the Redis rate-limiter counter (cycle-to-date
+  // programmatic spend vs the cap). Matches enforcement in access_control.
+  const status = await getProgrammaticRateLimiterCreditState(auth);
 
   const maxConcurrent = PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS[status];
   if (maxConcurrent === undefined) {
@@ -2923,7 +2930,7 @@ async function checkProgrammaticUsageRateLimit(
   // Prevents close-to-0 cap attacks where many messages are sent simultaneously.
   const remainingCapMicroUsd = await getRemainingKeyCapMicroUsd(auth);
   if (remainingCapMicroUsd !== null) {
-    const keyAuth = auth.key();
+    const keyAuth = auth.keyForUsageAttribution();
     if (keyAuth) {
       const remainingCapDollars = remainingCapMicroUsd / 1_000_000;
       const keyMaxMessagesPerMinute = Math.max(
@@ -2984,7 +2991,7 @@ function getMessageRateLimitActor(auth: Authenticator):
     return { type: "user", id: user.id };
   }
 
-  const apiKey = auth.key();
+  const apiKey = auth.keyForUsageAttribution();
   if (apiKey) {
     return { type: "api_key", id: apiKey.id };
   }

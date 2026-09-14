@@ -45,6 +45,7 @@ export function ChildAgentActivityTimeline({
       }
       activeCotContent={activeCotContent}
       isDone={isDone}
+      source="run_agent_details"
       headerLabel={
         isDone ? (
           isError ? (

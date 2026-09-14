@@ -747,7 +747,14 @@ export class UserResource extends BaseResource<UserModel> {
     );
   }
 
-  async deleteMetadata(where: WhereOptions<UserMetadataModel>) {
+  /**
+   * @cc [owner:spolu,label:security;backend] user-metadata-deletion-scope
+   * Deletion MUST affect only this user's metadata in `where.workspaceId`; `null` selects only
+   * global metadata.
+   */
+  async deleteMetadata(
+    where: WhereOptions<UserMetadataModel> & { workspaceId: ModelId | null }
+  ) {
     return UserMetadataModel.destroy({
       where: {
         ...where,

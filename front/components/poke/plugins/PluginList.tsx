@@ -69,26 +69,24 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
   }, [plugins, searchQuery]);
 
   return (
-    <div className="flex min-h-48 flex-col rounded-lg border bg-background">
-      <div className="flex items-center justify-between gap-3 rounded-t-lg border-b border-separator bg-background p-4">
-        <div className="flex items-center gap-3">
-          <h2 className="text-md font-bold">Plugins</h2>
+    <div className="flex flex-col rounded-lg border bg-background @container">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-t-lg border-b border-separator bg-background p-4 @xs:grid-cols-[minmax(0,1fr)_minmax(0,13rem)_auto]">
+        <h2 className="text-md font-bold">Plugins</h2>
+        <div className="col-span-2 row-start-2 min-w-0 @xs:col-span-1 @xs:col-start-2 @xs:row-start-1">
+          <Input
+            placeholder="Search plugins..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className={cn("w-full bg-background", showRuns && "invisible")}
+          />
         </div>
-        <div className="max-w-xs flex-1">
-          <div className="flex flex-row gap-2">
-            <Input
-              placeholder="Search plugins..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className={cn("w-full bg-background", showRuns && "invisible")}
-            />
-            <Button
-              label={showRuns ? "Show Available" : "Show History"}
-              variant={showRuns ? "primary" : "outline"}
-              size="sm"
-              onClick={() => setShowRuns(!showRuns)}
-            />
-          </div>
+        <div className="col-start-2 row-start-1 @xs:col-start-3">
+          <Button
+            label={showRuns ? "Show Available" : "Show History"}
+            variant={showRuns ? "primary" : "outline"}
+            size="sm"
+            onClick={() => setShowRuns(!showRuns)}
+          />
         </div>
       </div>
 
@@ -105,7 +103,7 @@ export function PluginList({ pluginResourceTarget }: PluginListProps) {
               </div>
             ) : (
               <div
-                className="grid w-full gap-3 p-3"
+                className="grid w-full gap-3 p-4"
                 // 11rem is the minimum card width.
                 style={{
                   gridTemplateColumns: "repeat(auto-fill, minmax(11rem, 1fr))",

@@ -13,27 +13,27 @@ import {
   deleteFromRelocationStorage,
   readFromRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type { CellType } from "@app/types/cell";
 import { CoreAPI } from "@app/types/core/core_api";
-import type { RegionType } from "@app/types/region";
 
 export async function processDataSourceDocuments({
   destIds,
   dataPath,
-  destRegion,
-  sourceRegion,
-  sourceRegionApiBaseUrl,
+  destCell,
+  sourceCell,
+  sourceApiBaseUrl,
   workspaceId,
 }: {
   destIds: CreateDataSourceProjectResult;
   dataPath: string;
-  destRegion: RegionType;
-  sourceRegion: RegionType;
-  sourceRegionApiBaseUrl: string;
+  destCell: CellType;
+  sourceCell: CellType;
+  sourceApiBaseUrl: string;
   workspaceId: string;
 }) {
   const localLogger = logger.child({
-    destRegion,
-    sourceRegion,
+    destCell,
+    sourceCell,
     workspaceId,
   });
 
@@ -51,10 +51,10 @@ export async function processDataSourceDocuments({
   const res = await concurrentExecutor(
     data.blobs.documents,
     async (d) => {
-      // If the source URL starts with the source region Dust URL, replace it with the destination region Dust URL.
+      // If the source URL starts with the source cell Dust URL, replace it with the destination cell Dust URL.
       const sourceUrl =
-        d.source_url && d.source_url.startsWith(sourceRegionApiBaseUrl)
-          ? d.source_url.replace(sourceRegionApiBaseUrl, destRegionApiBaseUrl)
+        d.source_url && d.source_url.startsWith(sourceApiBaseUrl)
+          ? d.source_url.replace(sourceApiBaseUrl, destRegionApiBaseUrl)
           : d.source_url;
 
       // There are some issues with the parents field.
@@ -77,7 +77,7 @@ export async function processDataSourceDocuments({
         !d.title || d.title.trim().length === 0 ? UNTITLED_TITLE : d.title;
 
       return coreAPI.upsertDataSourceDocument({
-        // Override the project and data source ids to the ones in the destination region.
+        // Override the project and data source ids to the ones in the destination cell.
         projectId: destIds.dustAPIProjectId,
         dataSourceId: destIds.dustAPIDataSourceId,
         documentId: d.document_id,

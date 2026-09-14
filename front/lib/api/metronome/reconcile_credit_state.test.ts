@@ -1,5 +1,4 @@
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
-import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -10,18 +9,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { reconcileWorkspaceUserCreditStates } from "./reconcile_credit_state";
 
-const {
-  mockListMetronomeSeatBalances,
-  mockFetchPerUserAwuUsage,
-  mockGetCachedDefaultCapThresholdsBySeatType,
-  mockGetSeatAllowancesByNormalizedSeatType,
-  mockSetUserNearLimit,
-} = vi.hoisted(() => ({
+const { mockListMetronomeSeatBalances } = vi.hoisted(() => ({
   mockListMetronomeSeatBalances: vi.fn(),
-  mockFetchPerUserAwuUsage: vi.fn(),
-  mockGetCachedDefaultCapThresholdsBySeatType: vi.fn(),
-  mockGetSeatAllowancesByNormalizedSeatType: vi.fn(),
-  mockSetUserNearLimit: vi.fn(),
 }));
 
 vi.mock("@app/lib/metronome/client", async () => {
@@ -32,42 +21,6 @@ vi.mock("@app/lib/metronome/client", async () => {
     ...actual,
     listMetronomeSeatBalances: mockListMetronomeSeatBalances,
   };
-});
-
-vi.mock("@app/lib/metronome/per_user_usage", async () => {
-  const actual = await vi.importActual<
-    typeof import("@app/lib/metronome/per_user_usage")
-  >("@app/lib/metronome/per_user_usage");
-  return { ...actual, fetchPerUserAwuUsage: mockFetchPerUserAwuUsage };
-});
-
-vi.mock("@app/lib/metronome/alerts/spend_limits", async () => {
-  const actual = await vi.importActual<
-    typeof import("@app/lib/metronome/alerts/spend_limits")
-  >("@app/lib/metronome/alerts/spend_limits");
-  return {
-    ...actual,
-    getCachedDefaultCapThresholdsBySeatType:
-      mockGetCachedDefaultCapThresholdsBySeatType,
-  };
-});
-
-vi.mock("@app/lib/metronome/seat_types", async () => {
-  const actual = await vi.importActual<
-    typeof import("@app/lib/metronome/seat_types")
-  >("@app/lib/metronome/seat_types");
-  return {
-    ...actual,
-    getSeatAllowancesByNormalizedSeatType:
-      mockGetSeatAllowancesByNormalizedSeatType,
-  };
-});
-
-vi.mock("@app/lib/metronome/user_block", async () => {
-  const actual = await vi.importActual<
-    typeof import("@app/lib/metronome/user_block")
-  >("@app/lib/metronome/user_block");
-  return { ...actual, setUserNearLimit: mockSetUserNearLimit };
 });
 
 const METRONOME_CUSTOMER_ID = "cust_test_reconcile";
@@ -88,10 +41,6 @@ function seatBalance(userId: string, balanceAwu: number, startingAwu: number) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockFetchPerUserAwuUsage.mockResolvedValue(new Ok(new Map<string, number>()));
-  mockGetCachedDefaultCapThresholdsBySeatType.mockResolvedValue({});
-  mockGetSeatAllowancesByNormalizedSeatType.mockResolvedValue({});
-  mockSetUserNearLimit.mockResolvedValue(undefined);
 });
 
 describe("reconcileWorkspaceUserCreditStates", () => {
@@ -157,7 +106,7 @@ describe("reconcileWorkspaceUserCreditStates", () => {
     expect(refreshed?.creditState).toBe("on_pool");
   });
 
-  it("leaves a workspace (pool-based) user on_pool and reads balances/usage only once", async () => {
+  it("leaves a workspace (pool-based) user on_pool and reads seat balances only once", async () => {
     const workspace = await WorkspaceFactory.metronome({
       metronomeCustomerId: METRONOME_CUSTOMER_ID,
     });
@@ -183,57 +132,7 @@ describe("reconcileWorkspaceUserCreditStates", () => {
         workspace: renderLightWorkspaceType({ workspace }),
       });
     expect(refreshed?.creditState).toBe("on_pool");
-    // Shared inputs fetched once for the whole workspace, not per user.
+    // Seat balances fetched once for the whole workspace, not per user.
     expect(mockListMetronomeSeatBalances).toHaveBeenCalledTimes(1);
-    expect(mockFetchPerUserAwuUsage).toHaveBeenCalledTimes(1);
-  });
-
-  it("reads seat allowances from the passed contract, not the DB-active one", async () => {
-    const workspace = await WorkspaceFactory.metronome({
-      metronomeCustomerId: METRONOME_CUSTOMER_ID,
-    });
-    const user = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user, {
-      role: "user",
-      seatType: "pro",
-    });
-
-    // The bug: at contract.start the DB-active contract still resolves to the
-    // previous (legacy) contract, whose pro allowance is 0. Passing the started
-    // contract must yield the real 8000 allowance instead — mirror that by
-    // returning the correct allowance only when a contract is provided.
-    mockGetSeatAllowancesByNormalizedSeatType.mockImplementation(
-      async (_workspaceId: string, contract?: unknown) =>
-        contract ? { pro: 8000 } : { pro: 0 }
-    );
-    mockListMetronomeSeatBalances.mockResolvedValue(
-      new Ok([seatBalance(user.sId, 8000, 8000)])
-    );
-    // 5000 consumed: below 80% of the real 8000 cap (6400), but above 80% of
-    // the buggy 0 cap — so the near-limit flag hinges on which cap is used.
-    mockFetchPerUserAwuUsage.mockResolvedValue(
-      new Ok(new Map([[user.sId, 5000]]))
-    );
-
-    const startedContract = { id: "ct_started" } as unknown as CachedContract;
-
-    await reconcileWorkspaceUserCreditStates({
-      workspace: renderLightWorkspaceType({ workspace }),
-      metronomeCustomerId: METRONOME_CUSTOMER_ID,
-      metronomeContractId: METRONOME_CONTRACT_ID,
-      planCode: "CP_BUSINESS_PLAN",
-      contract: startedContract,
-    });
-
-    expect(mockGetSeatAllowancesByNormalizedSeatType).toHaveBeenCalledWith(
-      workspace.sId,
-      startedContract
-    );
-    // With the correct 8000 cap the user is NOT near limit; the bug flagged it.
-    expect(mockSetUserNearLimit).toHaveBeenCalledWith(
-      workspace.sId,
-      user.sId,
-      false
-    );
   });
 });

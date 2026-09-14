@@ -13,8 +13,9 @@ import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
 import type {
   AwuPoolCurrentCycleResponseBody,
+  AwuPoolCycleBreakdown,
+  AwuPoolCycleHistoryOverflow,
   AwuPoolCycleHistoryResponseBody,
-  AwuPoolSummaryResponseBody,
 } from "@app/types/api/credits/awu_pool_summary";
 import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
 import type { PokeListCreditsResponseBody } from "@app/types/api/poke/credits";
@@ -28,6 +29,10 @@ export type PokeCreditsData = {
   rows: PokeListCreditsResponseBody["rows"];
   excessCreditsLast30DaysMicroUsd: number;
 };
+
+const EMPTY_HAS_MORE_CYCLE_HISTORY: AwuPoolCycleHistoryOverflow = Object.freeze(
+  { cycleBreakdown: false, excessCycleBreakdown: false }
+);
 
 export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
   const { fetcher } = useFetcher();
@@ -150,28 +155,6 @@ export function usePokeAwuUsageFromAnalytics({
   };
 }
 
-export function usePokeAwuPoolSummary({
-  owner,
-  disabled,
-}: PokeConditionalFetchProps) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<AwuPoolSummaryResponseBody> = fetcher;
-
-  const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/credits/awu-pool-summary`,
-    fetcherFn,
-    { disabled }
-  );
-
-  return {
-    awuPoolSummary: data ?? null,
-    isAwuPoolSummaryLoading: !error && !data && !disabled,
-    isAwuPoolSummaryError: error,
-    isAwuPoolSummaryValidating: isValidating,
-    mutateAwuPoolSummary: mutate,
-  };
-}
-
 export function usePokeAwuPoolCurrentCycle({
   owner,
   disabled,
@@ -196,20 +179,34 @@ export function usePokeAwuPoolCurrentCycle({
 
 export function usePokeAwuPoolCycleHistory({
   owner,
+  cycleHistoryLimit,
   disabled,
-}: PokeConditionalFetchProps) {
+}: PokeConditionalFetchProps & { cycleHistoryLimit?: number }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<AwuPoolCycleHistoryResponseBody> = fetcher;
 
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    `/api/poke/workspaces/${owner.sId}/credits/awu-pool-cycle-history`,
+    `/api/poke/workspaces/${owner.sId}/credits/awu-pool-cycle-history${
+      cycleHistoryLimit ? `?cycleHistoryLimit=${cycleHistoryLimit}` : ""
+    }`,
     fetcherFn,
-    { disabled }
+    // Keep rows on screen while a larger limit is fetched so "Load more"
+    // appends instead of swapping the table for a spinner.
+    { disabled, keepPreviousData: true }
   );
 
+  const isUsable = !error && !disabled;
+
   return {
-    cycleBreakdown: data?.cycleBreakdown ?? emptyArray(),
-    excessCycleBreakdown: data?.excessCycleBreakdown ?? emptyArray(),
+    cycleBreakdown: isUsable
+      ? (data?.cycleBreakdown ?? emptyArray<AwuPoolCycleBreakdown>())
+      : emptyArray<AwuPoolCycleBreakdown>(),
+    excessCycleBreakdown: isUsable
+      ? (data?.excessCycleBreakdown ?? emptyArray<AwuPoolCycleBreakdown>())
+      : emptyArray<AwuPoolCycleBreakdown>(),
+    hasMoreCycleHistoryByBreakdown: isUsable
+      ? (data?.hasMoreCycleHistoryByBreakdown ?? EMPTY_HAS_MORE_CYCLE_HISTORY)
+      : EMPTY_HAS_MORE_CYCLE_HISTORY,
     isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
     isAwuPoolCycleHistoryError: error,
     isAwuPoolCycleHistoryValidating: isValidating,

@@ -4,6 +4,7 @@ import { FramePublicationSection } from "@app/components/poke/frames/publication
 import { FrameSharingSection } from "@app/components/poke/frames/sharing";
 import { FrameStorageTable } from "@app/components/poke/frames/storage";
 import { ViewFrameTable } from "@app/components/poke/frames/view";
+import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { usePokeFrameDetails } from "@app/poke/swr/frames";
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
@@ -47,6 +48,13 @@ export function FrameV2Page({ frameId }: FrameV2PageProps) {
       </h3>
 
       <ViewFrameTable details={details} owner={owner} />
+      <PluginList
+        pluginResourceTarget={{
+          resourceId: details.frame.sId,
+          resourceType: "files",
+          workspace: owner,
+        }}
+      />
       <FrameSharingSection
         sharing={details.sharing}
         sharingGrants={details.sharingGrants}

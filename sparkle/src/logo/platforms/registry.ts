@@ -7,6 +7,7 @@ import AnthropicLogo from "./Anthropic";
 import ApifyLogo from "./Apify";
 import AsanaLogo from "./Asana";
 import AshbyLogo from "./Ashby";
+import AtlassianLogo from "./Atlassian";
 import AttioLogo from "./Attio";
 import BigQueryLogo from "./BigQuery";
 import CanvaLogo from "./Canva";
@@ -17,6 +18,7 @@ import CohereLogo from "./Cohere";
 import ConfluenceLogo from "./Confluence";
 import ContentsquareLogo from "./Contentsquare";
 import CostoryLogo from "./Costory";
+import CursorLogo from "./Cursor";
 import DatabricksLogo from "./Databricks";
 import DatadogLogo from "./Datadog";
 import DeepseekLogo from "./Deepseek";
@@ -35,12 +37,11 @@ import GammaLogo from "./Gamma";
 import GcalLogo from "./Gcal";
 import GeminiLogo from "./Gemini";
 import GithubLogo from "./Github";
-import GithubMonoLogo from "./GithubMono";
-import GithubWhiteLogo from "./GithubWhite";
 import GitlabLogo from "./Gitlab";
 import GmailLogo from "./Gmail";
 import GongLogo from "./Gong";
 import GoogleLogo from "./Google";
+import GoogleCloudLogo from "./GoogleCloud";
 import GoogleDocLogo from "./GoogleDoc";
 import GooglePdfLogo from "./GooglePdf";
 import GoogleSlideLogo from "./GoogleSlide";
@@ -54,9 +55,9 @@ import HuggingFaceLogo from "./HuggingFace";
 import ImageLogo from "./Image";
 import IntercomLogo from "./Intercom";
 import JiraLogo from "./Jira";
+import LangfuseLogo from "./Langfuse";
 import LemlistLogo from "./Lemlist";
 import LinearLogo from "./Linear";
-import LinearWhiteLogo from "./LinearWhite";
 import LinkedinLogo from "./Linkedin";
 import LumaLogo from "./Luma";
 import MetaLogo from "./Meta";
@@ -77,7 +78,6 @@ import NetSuiteLogo from "./NetSuite";
 import NotionLogo from "./Notion";
 import OfficeLogo from "./Office";
 import OpenaiLogo from "./Openai";
-import OutlookLogo from "./Outlook";
 import PdfLogo from "./Pdf";
 import PowerBiLogo from "./PowerBi";
 import PraizLogo from "./Praiz";
@@ -95,15 +95,17 @@ import StatuspageLogo from "./Statuspage";
 import StripeLogo from "./Stripe";
 import SupabaseLogo from "./Supabase";
 import TableLogo from "./Table";
+import TemporalLogo from "./Temporal";
 import ThinkingMachinesLogo from "./ThinkingMachines";
+import TogetheraiLogo from "./Togetherai";
 import UkgLogo from "./Ukg";
 import ValTownLogo from "./ValTown";
 import VantaLogo from "./Vanta";
 import VideoLogo from "./Video";
+import YoutrustLogo from "./Youtrust";
 import ZaiLogo from "./Zai";
 import ZapierLogo from "./Zapier";
 import ZendeskLogo from "./Zendesk";
-import ZendeskWhiteLogo from "./ZendeskWhite";
 
 type LogoComponent = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -120,6 +122,7 @@ export const PLATFORM_LOGOS = {
   ApifyLogo,
   AsanaLogo,
   AshbyLogo,
+  AtlassianLogo,
   AttioLogo,
   BigQueryLogo,
   CanvaLogo,
@@ -130,6 +133,7 @@ export const PLATFORM_LOGOS = {
   ConfluenceLogo,
   ContentsquareLogo,
   CostoryLogo,
+  CursorLogo,
   DatabricksLogo,
   DatadogLogo,
   DeepseekLogo,
@@ -148,12 +152,11 @@ export const PLATFORM_LOGOS = {
   GcalLogo,
   GeminiLogo,
   GithubLogo,
-  GithubMonoLogo,
-  GithubWhiteLogo,
   GitlabLogo,
   GmailLogo,
   GongLogo,
   GoogleLogo,
+  GoogleCloudLogo,
   GoogleDocLogo,
   GooglePdfLogo,
   GoogleSlideLogo,
@@ -167,9 +170,9 @@ export const PLATFORM_LOGOS = {
   ImageLogo,
   IntercomLogo,
   JiraLogo,
+  LangfuseLogo,
   LemlistLogo,
   LinearLogo,
-  LinearWhiteLogo,
   LinkedinLogo,
   LumaLogo,
   MetaLogo,
@@ -190,7 +193,6 @@ export const PLATFORM_LOGOS = {
   NotionLogo,
   OfficeLogo,
   OpenaiLogo,
-  OutlookLogo,
   PdfLogo,
   PowerBiLogo,
   PraizLogo,
@@ -208,16 +210,44 @@ export const PLATFORM_LOGOS = {
   StripeLogo,
   SupabaseLogo,
   TableLogo,
+  TemporalLogo,
   ThinkingMachinesLogo,
+  TogetheraiLogo,
   UkgLogo,
   ValTownLogo,
   VantaLogo,
   VideoLogo,
+  YoutrustLogo,
   ZaiLogo,
   ZapierLogo,
   ZendeskLogo,
-  ZendeskWhiteLogo,
+
+  // Retired logos, aliased so wire-format payloads still resolve. See below.
+  GithubMonoLogo: GithubLogo,
+  GithubWhiteLogo: GithubLogo,
+  LinearWhiteLogo: LinearLogo,
+  OutlookLogo: MicrosoftOutlookLogo,
+  ZendeskWhiteLogo: ZendeskLogo,
 } as const satisfies Record<string, LogoComponent>;
+
+// GitHub, Linear and Zendesk used to ship a dark-mode (`White`) and a
+// monochrome (`Mono`) cut alongside the canonical mark. They now render a
+// single version everywhere, like every other platform. These aliases keep
+// published consumers compiling for one release and should be deleted, along
+// with the four `PLATFORM_LOGOS` entries above, on the next Sparkle publish.
+/** @deprecated Use `GithubLogo`. */
+export const GithubMonoLogo = GithubLogo;
+/** @deprecated Use `GithubLogo`. */
+export const GithubWhiteLogo = GithubLogo;
+/** @deprecated Use `LinearLogo`. */
+export const LinearWhiteLogo = LinearLogo;
+/** @deprecated Use `ZendeskLogo`. */
+export const ZendeskWhiteLogo = ZendeskLogo;
+
+// `Outlook` was an older cut of the same mark that `MicrosoftOutlook` now
+// carries, and the design source no longer ships it.
+/** @deprecated Use `MicrosoftOutlookLogo`. */
+export const OutlookLogo = MicrosoftOutlookLogo;
 
 export type PlatformLogoName = keyof typeof PLATFORM_LOGOS;
 

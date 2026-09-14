@@ -38,14 +38,4 @@ for db in dust_api dust_databases_store dust_front dust_front_test dust_connecto
   fi
 done
 
-log "Waiting for Elasticsearch at ${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}..."
-for _ in $(seq 1 90); do
-  if curl -sf "http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}" >/dev/null 2>&1; then
-    log "Elasticsearch is ready"
-    exit 0
-  fi
-  sleep 1
-done
-
-log "Elasticsearch did not become ready in time"
-exit 1
+wait_for_elasticsearch

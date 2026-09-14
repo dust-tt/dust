@@ -444,10 +444,13 @@ export async function processToolResults(
                 };
                 break;
               case "sandbox_function":
+                if (!runContext.pod) {
+                  throw new Error(
+                    "This Frame does not run in a Pod, so its tools cannot store files."
+                  );
+                }
                 fileUseCase = "project_context";
-                fileUseCaseMetadata = {
-                  spaceId: runContext.invocation.sandboxFunction.space.sId,
-                };
+                fileUseCaseMetadata = { spaceId: runContext.pod.sId };
                 break;
               default:
                 assertNever(runContext);

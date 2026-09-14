@@ -1,3 +1,4 @@
+import { queryTracker } from "@app/lib/api/query_tracker";
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { statsDMetrics } from "@app/lib/utils/statsd";
@@ -56,6 +57,16 @@ type RouteConcurrencyState = {
 // lifetime. Each route bucket is process-local.
 const routeConcurrencyStates = new Map<string, RouteConcurrencyState>();
 
+/**
+ * @cc [owner:flvndvd,label:api;logging] request-query-tracker-scope
+ * Each Hono request MUST run downstream middleware and handlers within a fresh `queryTracker`
+ * store.
+ */
+/**
+ * @cc [owner:flvndvd,label:api;logging] request-query-tracker-log
+ * Every `Processed request` log MUST report the request store's peak as
+ * `peakConcurrentQueries`.
+ */
 export const requestInstrumentation =
   createMiddleware<RequestInstrumentationEnv>(async (c, next) => {
     // `-1` points at the leaf handler selected by Hono, which is known before
@@ -69,11 +80,12 @@ export const requestInstrumentation =
     };
     c.set("requestContext", reqCtx);
     c.set("queryCache", new RequestQueryCache());
+    const queryTrackerStore = { concurrent: 0, peak: 0 };
 
     if (SKIP_LOGGER_PATHS.has(c.req.path) || c.req.method === "OPTIONS") {
       // Also drop the APM trace so these requests don't show up in Datadog.
       tracer.scope().active()?.setTag("manual.drop", true);
-      return next();
+      return queryTracker.run(queryTrackerStore, next);
     }
 
     const concurrencyKey = `${c.req.method} ${matchedRoute}`;
@@ -100,7 +112,7 @@ export const requestInstrumentation =
 
     const startMs = performance.now();
     try {
-      await next();
+      await queryTracker.run(queryTrackerStore, next);
     } finally {
       routeConcurrencyState.inFlightPeaks.delete(peakRef);
       routeConcurrencyState.activeRequests -= 1;
@@ -158,6 +170,7 @@ export const requestInstrumentation =
           durationMs,
           method: c.req.method,
           peakConcurrency: peakRef.peak,
+          peakConcurrentQueries: queryTrackerStore.peak,
           route,
           sessionId: session?.sessionId ?? "unknown",
           statusCode,

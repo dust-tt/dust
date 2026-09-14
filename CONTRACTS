@@ -96,7 +96,7 @@ function handleStreamEvent(event: AgentMessageEvent): State {
 }
 ```
 
-@cc [label:coding] avoid-quadratic-loops
+@cc [owner:philipperolet,label:coding] avoid-quadratic-loops
 Loops with quadratic O(n²) or worse, cubic O(n³) complexity can severely hurt performance as data
 sizes grow. Common quadratic patterns include nested loops over related datasets, repeated searches
 within loops, and chained array operations that each iterate over the data.
@@ -230,6 +230,8 @@ If a dynamic import is strictly necessary, it must:
 Never access environment variables directly via `process.env`. Instead, use the `@app/lib/api/config`
 module which provides type-safe access to environment variables.
 
+GitHub workflows and action scripts under `.github/` are out of scope and may use `process.env`.
+
 Example:
 
 ```
@@ -351,7 +353,7 @@ const { name, count } = validation.data;
 Reviewer: If you see new `io-ts` imports or codecs introduced by a PR, require the author to
 rewrite them in `zod`.
 
-@cc [label:coding] batch-database-queries
+@cc [owner:flvndvd,label:coding] batch-database-queries
 Avoid database queries or database-only helpers inside loops, which would resolve in an unbounded
 number of SQL queries that will scale with the data (N+1 pattern).
 Also avoid them in `Promise.all` and `concurrentExecutor` if possible, they only make the queries
@@ -383,7 +385,7 @@ Reviewer: If you detect a DB-backed helper or query inside a loop, ask the autho
 No sensitive data should be sent to our servers through URL or query string parameters. HTTP body or
 headers only are acceptable for sensitive data.
 
-@cc [label:security] string-ids-in-api-interfaces
+@cc [owner:flvndvd,label:security] string-ids-in-api-interfaces
 Never expose or accept ModelId in URLs, API endpoints or POST/PATCH payloads. Use string identifiers
 (sId) instead. This applies to all routes, including GET, POST, PATCH, and DELETE methods. ModelIds
 should be strictly internal and never exposed to the client.
@@ -480,32 +482,33 @@ Reviewer: If sandbox code adds or depends on a root-consumed lookup path, requir
 hardening that makes the path root-owned and not group/other writable, plus a regression test that
 attempts to write the attacker-controlled file as the workload user.
 
-@cc [label:error-handling] no-catching-own-errors
-Never catch your own errors. `catch` is authorized around external libraries (whose error handling
-we don't control), but otherwise errors that may alter the execution upstream should be returned
-using our `Result<>` pattern. It is OK to throw errors, since we can't catch them these are
-guaranteed to trigger an internal error (and return a 500).
+@cc [owner:spolu,label:error-handling] no-catching-own-errors
+Repository functions MUST return failures that callers are expected to handle as `Err<E>` values in
+`Result<T, E>`, rather than throw them.
 
-@cc [label:error-handling] normalize-caught-errors
-Never catch and cast what was caught as `Error`. JS allows throwing anything (string, number,
-random object, ...), so the cast may be invalid and hides errors from the logs. Use `normalizeError`
-instead, this function properly checks the content of the caught object and always returns a valid
-`Error` object.
+Applicable local contracts MAY define explicit exceptions to this rule, limited to the boundaries
+and failure cases they specify; callers MAY catch those documented failures using runtime type
+guards. `catch` is also permitted around external-library calls whose exceptions we do not control.
+Outside these exceptions, errors thrown by repository code MUST propagate to the runtime's error
+handler.
 
-Example:
-
-```
-// BAD
+@cc [owner:spolu,label:error-handling] normalize-caught-errors
+Caught values MUST NOT be treated as `Error` or an error subtype through a type assertion. When an
+`Error` is required, code MUST use `normalizeError(caught)` unless a runtime type guard has already
+established the required type. Inspecting a caught value with a type guard or rethrowing it
+unchanged does not require normalization.
+```typescript
+// BAD: A type assertion does not validate the caught value.
 try {
-  // Some code.
+  await externalClient.request();
 } catch (err) {
-  return new Err(err as Err);
+  return new Err(err as Error);
 }
 
-// GOOD
+// GOOD: Normalize the caught value before returning it as an error.
 try {
-  // Some code.
-} catch(err) {
+  await externalClient.request();
+} catch (err) {
   return new Err(normalizeError(err));
 }
 ```

@@ -199,9 +199,11 @@ describe("DELETE /api/w/:wId/members/:uId/groups/:groupId", () => {
       method: "DELETE",
       role: "admin",
     });
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, otherUser, { role: "user" });
     const group = await GroupFactory.regularManual(workspace, "Billing");
     const addRes = await group.dangerouslyAddMembers(auth, {
-      users: [user.toJSON()],
+      users: [user.toJSON(), otherUser.toJSON()],
     });
     if (addRes.isErr()) {
       throw addRes.error;
@@ -213,7 +215,34 @@ describe("DELETE /api/w/:wId/members/:uId/groups/:groupId", () => {
     expect(await response.json()).toEqual({ success: true });
 
     const members = await group.getActiveMembers(auth);
-    expect(members).toEqual([]);
+    expect(members.map((m) => m.sId)).toEqual([otherUser.sId]);
+  });
+
+  it("returns 400 when removing the last member of a manual group", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "admin",
+    });
+    const group = await GroupFactory.regularManual(workspace, "Billing");
+    const addRes = await group.dangerouslyAddMembers(auth, {
+      users: [user.toJSON()],
+    });
+    if (addRes.isErr()) {
+      throw addRes.error;
+    }
+
+    const response = await deleteMemberGroup(workspace, user.sId, group.sId);
+
+    expect(response.status).toBe(400);
+    const { error } = await response.json();
+    expect(error.type).toBe("invalid_request_error");
+    expect(error.message).toBe(
+      "A group must always keep at least one member. To remove everyone, " +
+        "delete the group instead."
+    );
+
+    const members = await group.getActiveMembers(auth);
+    expect(members.map((m) => m.sId)).toEqual([user.sId]);
   });
 
   it("returns 400 when the member is not in the group", async () => {

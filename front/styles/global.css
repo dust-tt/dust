@@ -21,9 +21,8 @@
 
   html {
     touch-action: manipulation;
-    font-feature-settings:
-      "rlig" 1,
-      "calt" 0;
+    /* Geist ships contextual alternates; keep them off. `rlig` is on by default. */
+    font-variant-ligatures: no-contextual;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;

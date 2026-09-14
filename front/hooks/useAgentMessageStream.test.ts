@@ -18,15 +18,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mockUseEventSource = vi.fn();
 const mockMutateContextUsage = vi.fn();
 const mockUseVirtuosoMethods = vi.fn();
-const mockIsAutoScrollEnabledRef = { current: true };
 
 function makeVirtuosoMethodsMock<T>(map: (updater: (message: T) => T) => T[]) {
   return {
     data: {
       map,
-      batch: (callback: () => void) => {
-        callback();
-      },
     },
   };
 }
@@ -329,7 +325,6 @@ describe("useAgentMessageStream", () => {
       useAgentMessageStream({
         agentMessage: currentMessage,
         conversationId: "conv_123",
-        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -396,7 +391,6 @@ describe("useAgentMessageStream", () => {
       useAgentMessageStream({
         agentMessage: currentMessage,
         conversationId: "conv_123",
-        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -517,7 +511,6 @@ describe("useAgentMessageStream", () => {
       useAgentMessageStream({
         agentMessage: currentMessage,
         conversationId: "conv_123",
-        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -614,7 +607,6 @@ describe("useAgentMessageStream", () => {
       useAgentMessageStream({
         agentMessage: currentMessage,
         conversationId: "conv_123",
-        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -714,7 +706,6 @@ describe("useAgentMessageStream", () => {
       useAgentMessageStream({
         agentMessage: currentMessage,
         conversationId: "conv_123",
-        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -863,7 +854,6 @@ describe("useAgentMessageStream", () => {
       useAgentMessageStream({
         agentMessage: currentMessage,
         conversationId: "conv_123",
-        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
         owner: mockOwner,
         streamId: "stream_123",
       })
@@ -1034,7 +1024,6 @@ describe("useAgentMessageStream", () => {
         useAgentMessageStream({
           agentMessage: currentMessage,
           conversationId: "conv_123",
-          isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
           owner: mockOwner,
           streamId: "stream_123",
         })
@@ -1122,7 +1111,6 @@ describe("useAgentMessageStream", () => {
         useAgentMessageStream({
           agentMessage: currentMessage,
           conversationId: "conv_123",
-          isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
           owner: mockOwner,
           streamId: "stream_123",
         })
@@ -1216,7 +1204,6 @@ describe("useAgentMessageStream", () => {
       useAgentMessageStream({
         agentMessage: currentMessage,
         conversationId: "conv_123",
-        isAutoScrollEnabledRef: mockIsAutoScrollEnabledRef,
         owner: mockOwner,
         streamId: "stream_123",
       })

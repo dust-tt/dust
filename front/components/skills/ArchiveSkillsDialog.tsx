@@ -34,7 +34,7 @@ export function ArchiveSkillsDialog({
     skillIds: skills.map((skill) => skill.sId),
   });
   const totalUsage = skills.reduce(
-    (total, skill) => total + (skill.messageCount ?? 0),
+    (total, skill) => total + (skill.usage ?? 0),
     0
   );
   const isSingleSkill = skills.length === 1;

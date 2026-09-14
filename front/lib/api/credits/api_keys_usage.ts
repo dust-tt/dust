@@ -10,13 +10,11 @@ import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { getFixedWindowCount } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
-import type { ApiKeyCreditState } from "@app/types/key";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export type ApiKeyUsageType = {
   name: string;
   isActive: boolean;
-  creditState: ApiKeyCreditState;
   // Elasticsearch-derived AWU consumption for the current billing cycle, summed
   // on `api_key_name`. Caps are per-name (Metronome aggregates spend by name),
   // so keys sharing a name report the same figure.
@@ -29,8 +27,7 @@ export type ApiKeyUsageType = {
   // The rate-limiter's verdict for this key's cap: "capped" (counter ≥ cap),
   // "near_limit" (≥ 80%), or "ok", from `rateLimiterSpendAwuCredits` vs
   // `monthlyCapAwuCredits`. Null when the key has no cap or the counter couldn't
-  // be read. Independent of the enforcement flag (surfaced beside the Metronome
-  // "Credit state" column to spot divergence).
+  // be read.
   rateLimiterState: RateLimiterState | null;
   // Metronome-side per-API-key AWU consumption for the current billing cycle
   // (the value reconcile and the cap alert read). Null when Metronome isn't
@@ -156,7 +153,6 @@ export async function getApiKeysUsage(
     return {
       name: key.name,
       isActive: key.isActive,
-      creditState: key.creditState,
       consumedAwuCredits: consumedByName.get(key.name) ?? 0,
       rateLimiterSpendAwuCredits,
       rateLimiterState,

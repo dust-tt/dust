@@ -1,22 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run database migrations across all production regions via prodbox.
+# Run database migrations across all production cells via prodbox.
 # Usage: run-migrations.sh <pre-deploy|post-deploy|status> [front|connectors]
 #
 # pre-deploy  — apply migrations that must run before deploying new code
 # post-deploy — apply migrations that must run after new code is deployed
-# status      — show pending migrations in every region (continues on failure)
+# status      — show pending migrations in every cell (continues on failure)
+#
+# Requires dust-cell on PATH (dust-infra/scripts/setup_infra.sh).
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=lib/gcp.sh
-source "${SCRIPT_DIR}/lib/gcp.sh"
+# shellcheck source=lib/prodbox.sh
+source "${SCRIPT_DIR}/lib/prodbox.sh"
 
 COMMAND="${1:?Usage: run-migrations.sh <pre-deploy|post-deploy|status> [front|connectors]}"
 COMPONENT="${2:?Usage: run-migrations.sh <pre-deploy|post-deploy|status> [front|connectors]}"
-
-# Extend this list as new regions are added.
-REGIONS=("us-central1" "europe-west1")
 
 # ---------------------------------------------------------------------------
 # Validation
@@ -64,48 +63,34 @@ case "$COMMAND" in
   status) NPM_SCRIPT="migration:status" ;;
 esac
 
-# ---------------------------------------------------------------------------
-# GCP authentication
-# ---------------------------------------------------------------------------
+require_dust_cell
 
-require_commands gcloud kubectl
-ensure_gcloud_auth
-
-# ---------------------------------------------------------------------------
-# Temp kubeconfig cleanup
-# ---------------------------------------------------------------------------
-
-# Each region uses an isolated kubeconfig so we never mutate the caller's
-# active context or the global gcloud configuration.
-TMPFILES=()
-cleanup() {
-  for f in "${TMPFILES[@]:-}"; do
-    rm -f "$f"
-  done
+ORIGINAL_CELL="$(current_dust_cell || true)"
+restore_cell() {
+  if [[ -n "${ORIGINAL_CELL:-}" ]]; then
+    dust-cell "${ORIGINAL_CELL}" >/dev/null || true
+  fi
 }
-trap cleanup EXIT
+trap restore_cell EXIT
 
 # ---------------------------------------------------------------------------
-# Per-region runner
+# Per-cell runner
 # ---------------------------------------------------------------------------
 
-run_in_region() {
-  local region="$1"
-  local tmpkubeconfig pod_name
-
-  tmpkubeconfig=$(mktemp)
-  TMPFILES+=("$tmpkubeconfig")
+run_in_cell() {
+  local cell="$1"
+  local pod_name
 
   echo ""
-  connect_cluster "${region}" "$tmpkubeconfig" || return 1
+  dust-cell "${cell}" || return 1
 
-  pod_name=$(get_prodbox_pod "$tmpkubeconfig") || return 1
+  pod_name=$(get_prodbox_pod) || return 1
 
   echo "   Pod: ${pod_name}"
 
   local pod_branch
-  pod_branch=$(KUBECONFIG="$tmpkubeconfig" kubectl exec "${pod_name}" -- git -C /dust branch --show-current) || {
-    echo "❌ Failed to check /dust branch in ${region}." >&2
+  pod_branch=$(kubectl exec "${pod_name}" -- git -C /dust branch --show-current) || {
+    echo "❌ Failed to check /dust branch in ${cell}." >&2
     return 1
   }
   if [[ -n "$pod_branch" && "$pod_branch" != "main" ]]; then
@@ -115,14 +100,14 @@ run_in_region() {
 
   echo "   → npm run ${NPM_SCRIPT} in /dust/${COMPONENT}"
 
-  if ! KUBECONFIG="$tmpkubeconfig" kubectl exec "${pod_name}" -- bash -c "
+  if ! kubectl exec "${pod_name}" -- bash -c "
     set -euo pipefail
     git -C /dust fetch origin main --quiet
     git -C /dust checkout origin/main --quiet
     cd /dust/${COMPONENT}
     npm --no-update-notifier run ${NPM_SCRIPT}
   "; then
-    echo "❌ Migration command failed in ${region}." >&2
+    echo "❌ Migration command failed in ${cell}." >&2
     return 1
   fi
 
@@ -133,17 +118,26 @@ run_in_region() {
 # Main loop
 # ---------------------------------------------------------------------------
 
+CELLS=()
+while IFS= read -r cell; do
+  [[ -n "$cell" ]] && CELLS+=("$cell")
+done < <(dust-cell --complete)
+if [[ ${#CELLS[@]} -eq 0 ]]; then
+  echo "❌ dust-cell --complete returned no cells." >&2
+  exit 1
+fi
+
 echo ""
-echo "📋 ${COMMAND} / ${COMPONENT} — running across ${#REGIONS[@]} region(s)..."
+echo "📋 ${COMMAND} / ${COMPONENT} — running across ${#CELLS[@]} cell(s)..."
 
-FAILED_REGIONS=()
+FAILED_CELLS=()
 
-for REGION in "${REGIONS[@]}"; do
-  if run_in_region "${REGION}"; then
-    echo "   ✅ ${REGION} done"
+for CELL in "${CELLS[@]}"; do
+  if run_in_cell "${CELL}"; then
+    echo "   ✅ ${CELL} done"
   else
-    FAILED_REGIONS+=("${REGION}")
-    # status is read-only: report all regions before deciding.
+    FAILED_CELLS+=("${CELL}")
+    # status is read-only: report all cells before deciding.
     # pre/post-deploy: fail fast to prevent partial state.
     if [[ "$COMMAND" != "status" ]]; then
       echo "" >&2
@@ -154,9 +148,9 @@ for REGION in "${REGIONS[@]}"; do
 done
 
 echo ""
-if [[ ${#FAILED_REGIONS[@]} -gt 0 ]]; then
-  echo "❌ Completed with failures in: ${FAILED_REGIONS[*]}" >&2
+if [[ ${#FAILED_CELLS[@]} -gt 0 ]]; then
+  echo "❌ Completed with failures in: ${FAILED_CELLS[*]}" >&2
   exit 1
 fi
 
-echo "✅ All regions complete."
+echo "✅ All cells complete."

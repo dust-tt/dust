@@ -1,3 +1,4 @@
+import { normalizeError } from "@dust-tt/client";
 import { stringify } from "csv-stringify/sync";
 import { Parser } from "htmlparser2";
 import type { Readable } from "stream";
@@ -109,17 +110,7 @@ export function transformStreamToCSV(
         parser.write(chunk.toString());
         callback();
       } catch (error) {
-        if (error instanceof Error) {
-          callback(error);
-        } else {
-          callback(
-            new Error(
-              typeof error === "string"
-                ? error
-                : "Unknown error in htmlParsingTransform.transform()"
-            )
-          );
-        }
+        callback(normalizeError(error));
       }
     },
 
@@ -130,17 +121,7 @@ export function transformStreamToCSV(
 
         callback();
       } catch (error) {
-        if (error instanceof Error) {
-          callback(error);
-        } else {
-          callback(
-            new Error(
-              typeof error === "string"
-                ? error
-                : "Unknown error in htmlParsingTransform.flush()"
-            )
-          );
-        }
+        callback(normalizeError(error));
       }
     },
   });

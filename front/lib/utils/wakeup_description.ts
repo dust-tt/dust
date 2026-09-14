@@ -74,7 +74,9 @@ export function formatWakeUpSidebarLabel(timestamp: number): string {
 //   "*/15 * * * *"   -> "every 15 minutes"
 // Cron times are shown verbatim from the schedule's stored timezone — no
 // shift to the viewer's zone, no zone suffix.
-export function describeWakeUpSchedule(wakeUp: WakeUpType): string {
+export function describeWakeUpSchedule(
+  wakeUp: Pick<WakeUpType, "scheduleConfig">
+): string {
   const config = wakeUp.scheduleConfig;
   switch (config.type) {
     case "one_shot":

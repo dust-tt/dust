@@ -42,6 +42,12 @@ export const WakeUpSchema = z.object({
  */
 export type WakeUpType = z.infer<typeof WakeUpSchema>;
 
+/**
+ * A wake-up as served to its own owner: no numeric database identifiers, and no `user` since the
+ * owner is the caller. Produced by `WakeUpResource.toUserListJSON`.
+ */
+export type UserWakeUpType = Omit<WakeUpType, "id" | "user">;
+
 export function isActiveWakeUp(wakeUp: WakeUpType): boolean {
   return ACTIVE_WAKE_UP_STATUSES.includes(wakeUp.status);
 }

@@ -14,8 +14,8 @@ import { RequestCachedQuery } from "@app/types/shared/utils/request_context";
 import type { LightWorkspaceType, WorkspaceType } from "@app/types/user";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
-// Feature flags are a stable snapshot for the request. Mutations become
-// visible on the next request.
+// Feature flags are a stable snapshot for the request. A mutation through this
+// resource refreshes the snapshot, so the same request reads what it just wrote.
 const listForWorkspaceQuery = new RequestCachedQuery<
   ModelId,
   FeatureFlagResource[]
@@ -157,6 +157,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
         }))
       );
       await FeatureFlagResource.listForWorkspaceCache.invalidate(workspace.id);
+      listForWorkspaceQuery.invalidate(workspace.id);
     }
   }
 
@@ -171,6 +172,7 @@ export class FeatureFlagResource extends BaseResource<FeatureFlagModel> {
       },
     });
     await FeatureFlagResource.listForWorkspaceCache.invalidate(workspace.id);
+    listForWorkspaceQuery.invalidate(workspace.id);
   }
 
   // Deletes every row for one flag name, whatever the workspace, and invalidates the affected

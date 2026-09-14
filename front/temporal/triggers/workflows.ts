@@ -6,6 +6,10 @@ import type * as activities from "./activities";
 const { runTriggeredAgentsActivity } = proxyActivities<typeof activities>({
   startToCloseTimeout: "2 minutes",
   retry: {
+    initialInterval: "30 seconds",
+    backoffCoefficient: 2,
+    maximumAttempts: 3,
+    maximumInterval: "5 minutes",
     nonRetryableErrorTypes: ["TriggerNonRetryableError"],
   },
 });

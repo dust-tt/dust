@@ -18,7 +18,10 @@ import type {
 } from "@app/lib/llms/types/filter";
 import { FIREWORKS_MODEL_PREFIX } from "@app/lib/model_constructors/providers/fireworks/constants";
 import type { Host } from "@app/lib/model_constructors/types/hosts";
-import { GOOGLE_AI_STUDIO_HOST } from "@app/lib/model_constructors/types/hosts";
+import {
+  AGENT_PLATFORM_HOST,
+  GOOGLE_AI_STUDIO_HOST,
+} from "@app/lib/model_constructors/types/hosts";
 import type { Lab } from "@app/lib/model_constructors/types/labs";
 import type { Model } from "@app/lib/model_constructors/types/models";
 import { isModel, NOOP_MODEL } from "@app/lib/model_constructors/types/models";
@@ -127,6 +130,17 @@ function getLabAndHostFilter(
 }
 
 // Temporary helper while we have both systems
+/**
+ * @cc [owner:pmilliotte,label:security;product] byok-never-routes-to-dust-hosted-inference
+ * A workspace on a BYOK plan (`plan.isByok`) must only reach endpoints served by the model lab's
+ * own API, using the credentials the workspace provided. Endpoints hosted on Dust's infrastructure
+ * — `agent-platform` (Vertex, keyed by `AGENT_PLATFORM_PROJECT_ID`) today — must be filtered out
+ * here, not merely made unreachable by an endpoint's `endpointFilter`: plan and feature-flag
+ * conditions can change, the BYOK guarantee cannot.
+ *
+ * Any new Dust-hosted `Host` value must be added to that exclusion, and every model reachable by a
+ * BYOK workspace must keep at least one lab-hosted endpoint.
+ */
 export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
   const byok = auth.getNonNullablePlan().isByok;
   const providerIds = getWhitelistedProviderIds(auth);
@@ -134,8 +148,10 @@ export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
   return {
     ...getLabAndHostFilter(providerIds),
     region: getRegionFilter(auth),
-    // We route all non-byok gemini requests to agent platform.
-    ...(byok ? {} : { not: { host: { eq: GOOGLE_AI_STUDIO_HOST } } }),
+    // Conversely we route all non-byok gemini requests to agent platform.
+    ...(byok
+      ? { not: { host: { eq: AGENT_PLATFORM_HOST } } }
+      : { not: { host: { eq: GOOGLE_AI_STUDIO_HOST } } }),
   };
 }
 

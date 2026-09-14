@@ -1,7 +1,8 @@
 import {
   isPoolDepleted,
-  isProgrammaticApiBlocked,
+  PROGRAMMATIC_CAP_REACHED_MESSAGE,
 } from "@app/lib/api/credits/access_control";
+import { notifyAdminsTriggerBlockedByProgrammaticCap } from "@app/lib/api/credits/programmatic_cap_trigger_alert";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { FathomClient } from "@app/lib/api/triggers/built-in-webhooks/fathom/fathom_client";
 import type { Authenticator } from "@app/lib/auth";
@@ -9,6 +10,7 @@ import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { isGCSPreconditionFailedError } from "@app/lib/file_storage/types";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
+import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -17,6 +19,7 @@ import type { RateLimitCheckResult } from "@app/lib/triggers/rate_limits";
 import {
   checkTriggerForExecutionPerDayLimit,
   checkWebhookRequestForRateLimit,
+  isTriggerProgrammaticCapReached,
 } from "@app/lib/triggers/rate_limits";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import { verifySignature } from "@app/lib/webhook_source_server";
@@ -300,21 +303,23 @@ async function checkWorkspaceRateLimit({
           "Your workspace has run out of credits. Please purchase more credits to continue.",
       };
     }
+  }
 
-    // Programmatic monthly cap gate: if the cap is reached, reject early for
-    // triggers charged to the workspace pool.
-    if (
-      !block &&
-      owner.metronomeCustomerId &&
-      trigger.executionMode === "workspace_pool" &&
-      (await isProgrammaticApiBlocked(auth))
-    ) {
-      block = {
-        status: "credits_exhausted",
+  // Programmatic monthly cap gate: if the cap is reached, reject early for
+  // triggers charged to the workspace pool.
+  if (!block && (await isTriggerProgrammaticCapReached(auth, { trigger }))) {
+    block = {
+      status: "credits_exhausted",
+      message: PROGRAMMATIC_CAP_REACHED_MESSAGE,
+    };
+    fireAndForgetNotification(
+      notifyAdminsTriggerBlockedByProgrammaticCap(auth, { trigger }),
+      {
         message:
-          "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.",
-      };
-    }
+          "[ProgrammaticCapTriggerAlert] Failed to notify admins of blocked trigger",
+        context: { workspaceId, webhookRequestId, triggerId: trigger.sId },
+      }
+    );
   }
 
   /**

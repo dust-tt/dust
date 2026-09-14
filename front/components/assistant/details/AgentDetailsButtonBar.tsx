@@ -38,14 +38,12 @@ interface AgentDetailsButtonBarProps {
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
   isAgentConfigurationValidating: boolean;
-  onClose: () => void;
 }
 
 export function AgentDetailsButtonBar({
   agentConfiguration,
   isAgentConfigurationValidating,
   owner,
-  onClose,
 }: AgentDetailsButtonBarProps) {
   const { user, providersHealth } = useAuth();
   const router = useAppRouter();
@@ -76,7 +74,8 @@ export function AgentDetailsButtonBar({
   const agentIsFavorite = agentConfiguration.userFavorite || isFavoriteDisabled;
 
   const handleNewConversation = async () => {
-    onClose();
+    // Navigate only — closing the sheet first does a separate router.push that
+    // races this navigation when opening a new conversation with ?agent=.
     await router.push(
       getConversationRoute(owner.sId, "new", `agent=${agentConfiguration.sId}`)
     );

@@ -1,6 +1,7 @@
 import type { PendingInputText } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
+import { useSearchParam } from "@app/lib/platform";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -49,6 +50,8 @@ const useHandleMentions = ({
 }: UseHandleMentionsOptions) => {
   const stickyMentionsTextContent = useRef<string | null>(null);
   const { setSelectedSingleAgent } = useContext(InputBarContext);
+  // When present, useAgentFromSearchParam owns the selection on the new-conversation page.
+  const agentSearchParam = useSearchParam("agent");
 
   // Priority: draft > sticky mentions > @dust fallback.
   // Also resets when the conversation changes so stale state doesn't leak.
@@ -69,6 +72,13 @@ const useHandleMentions = ({
 
     // An external source (URL param) already set the agent — do not override.
     if (externalAgentSetRef.current) {
+      return;
+    }
+
+    // New conversation with ?agent= in the URL: leave selection to
+    // useAgentFromSearchParam / the selectedAgent effect. Applying draft, sticky,
+    // or @dust here races that path and can overwrite the custom agent in the URL.
+    if (agentSearchParam && !conversation && !isAgentBuilder) {
       return;
     }
 
@@ -116,6 +126,7 @@ const useHandleMentions = ({
       }
     }
   }, [
+    agentSearchParam,
     isAgentBuilder,
     conversation,
     stickyMentions,

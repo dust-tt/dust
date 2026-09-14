@@ -1,5 +1,5 @@
 import * as membersUsage from "@app/lib/api/credits/members_usage";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { makeMemberUsage } from "@app/tests/utils/MemberUsageFactory";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -29,7 +29,7 @@ beforeEach(() => {
 
 describe("GET /api/poke/workspaces/[wId]/credits/members-usage", () => {
   it("returns members usage including the off-pace target, with alert links requested", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });

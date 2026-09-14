@@ -1,7 +1,3 @@
-import {
-  clearPerUserCreditBalanceAlerts,
-  upsertPerUserCreditBalanceAlerts,
-} from "@app/lib/metronome/alerts/per_user_credit_balance";
 import type { SubscriptionSeatState } from "@app/lib/metronome/client";
 import {
   addPerUserCreditToCustomer,
@@ -699,13 +695,11 @@ async function grantFreeSeatCredits({
   metronomeCustomerId,
   workspaceId,
   userIds,
-  alreadyAssignedFreeUserIds,
   startingAt,
 }: {
   metronomeCustomerId: string;
   workspaceId: string;
   userIds: string[];
-  alreadyAssignedFreeUserIds: Set<string>;
   startingAt: Date;
 }): Promise<void> {
   if (userIds.length === 0) {
@@ -763,45 +757,12 @@ async function grantFreeSeatCredits({
     },
     { concurrency: 4 }
   );
-
-  // Ensure the per-user credit-balance alerts for newly-free users — they
-  // drive each user's low-balance / capped transitions as they deplete the
-  // credit (the seat-balance alert can't, since this isn't a seat balance).
-  // Scoped to users Metronome doesn't already show as assigned to the free
-  // subscription: checking every current free user on every sync (this runs
-  // on every membership change) doesn't scale, and — like the ex-free-seat
-  // revoke check — a user whose alert setup was missed here is low-stakes and
-  // self-corrects (e.g. the next time their seat type actually changes).
-  // Best-effort: a failure is logged but not retried until the next sync.
-  const newlyFreeUserIds = userIds.filter(
-    (userId) => !alreadyAssignedFreeUserIds.has(userId)
-  );
-  await concurrentExecutor(
-    newlyFreeUserIds,
-    async (userId) => {
-      const alertResult = await upsertPerUserCreditBalanceAlerts({
-        metronomeCustomerId,
-        workspaceId,
-        userId: toFreeMetronomeUserId(userId),
-        allowanceAwu: FREE_SEAT_LIFETIME_AWU_CREDITS,
-      });
-      if (alertResult.isErr()) {
-        logger.error(
-          { workspaceId, userId, error: alertResult.error },
-          "[Metronome] Failed to upsert per-user free credit alerts"
-        );
-      }
-      await heartbeat();
-    },
-    { concurrency: 4 }
-  );
 }
 
 // Revoke free-seat credits for users who once had one but are no longer on a
 // free seat (e.g. upgraded to pro): end the credit early so it stops drawing
-// against their usage, and drop its low/empty alerts. The grant's uniqueness key
-// is untouched so the user can never re-claim the same credit. Best-effort; runs
-// each sync.
+// against their usage. The grant's uniqueness key is untouched so the user can
+// never re-claim the same credit. Best-effort; runs each sync.
 async function revokeFreeSeatCreditsForExFreeUsers({
   metronomeCustomerId,
   workspaceId,
@@ -852,21 +813,6 @@ async function revokeFreeSeatCreditsForExFreeUsers({
             "[Metronome] Failed to revoke ex-free-seat credit"
           );
         }
-      }
-      // Alerts are created with the free-prefixed user id (see
-      // `grantFreeSeatCredits`'s `upsertPerUserCreditBalanceAlerts` call) —
-      // must clear with the same form or `clearMetronomeAlert` targets a
-      // uniqueness key that was never created.
-      const clearResult = await clearPerUserCreditBalanceAlerts({
-        metronomeCustomerId,
-        workspaceId,
-        userId: toFreeMetronomeUserId(userId),
-      });
-      if (clearResult.isErr()) {
-        logger.error(
-          { workspaceId, userId, error: clearResult.error },
-          "[Metronome] Failed to clear ex-free-seat credit alerts"
-        );
       }
       await heartbeat();
     },
@@ -2021,14 +1967,14 @@ export async function syncSeatCount({
     // billed and may not be an entitled SEAT_BASED subscription on the
     // contract, so this runs independently of the seat-subscription loop
     // above. Best-effort and idempotent. Grant deduped by the grant's uniqueness
-    // key; revoke archives the credit + drops alerts for users who left the free
-    // seat (the uniqueness key stays claimed, so they can't re-claim).
+    // key; revoke archives the credit for users who left the free seat (the
+    // uniqueness key stays claimed, so they can't re-claim).
     //
     // Skipped entirely on a legacy contract: `free` is a CP/AWU-era seat type
     // that a legacy contract never entitles (see `canAssignFreeSeat`), and the
     // invariant that no membership on a legacy contract ever has
-    // `seatType === "free"` holds — so there is nothing to grant, alert, or
-    // revoke here, and no need to even compute `currentFreeUserIds`.
+    // `seatType === "free"` holds — so there is nothing to grant or revoke here,
+    // and no need to even compute `currentFreeUserIds`.
     const freeSeatStartedAt = Date.now();
     let currentFreeUserIds = new Set<string>();
     if (legacy) {
@@ -2050,26 +1996,22 @@ export async function syncSeatCount({
 
       // Metronome's actual "free" subscription assignment (already fetched
       // above, alongside every other subscription's "now" state) — used to
-      // scope both the alert-upsert step below and the revoke check further
-      // down to only the users who actually changed, instead of reprocessing
-      // everyone free on every single sync. Undefined when the contract
-      // doesn't have "free" entitled, or this is the pending-contract
-      // pre-provision pass (no live state to compare against yet).
+      // scope the revoke check further down to only the users who actually
+      // changed, instead of reprocessing everyone free on every single sync.
+      // Undefined when the contract doesn't have "free" entitled, or this is
+      // the pending-contract pre-provision pass (no live state to compare
+      // against yet).
       const freeSubscriptionId = seatSubscriptions.find(
         ({ seatType }) => seatType === "free"
       )?.sub.id;
       const freeSeatState = freeSubscriptionId
         ? seatStateBySubscriptionId.get(freeSubscriptionId)
         : undefined;
-      const alreadyAssignedFreeUserIds = new Set(
-        freeSeatState?.assignedSeatIds ?? []
-      );
 
       await grantFreeSeatCredits({
         metronomeCustomerId,
         workspaceId: workspace.sId,
         userIds: [...currentFreeUserIds],
-        alreadyAssignedFreeUserIds,
         startingAt: new Date(baseMs),
       });
 

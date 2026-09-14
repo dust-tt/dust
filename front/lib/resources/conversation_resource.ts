@@ -1,3 +1,4 @@
+import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/lock";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import {
@@ -41,6 +42,7 @@ import type {
   ConversationListItemType,
   ConversationMCPServerViewType,
   ConversationMetadata,
+  ConversationRefType,
   ConversationUrlAccessMode,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -3002,6 +3004,72 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(updated[0]);
   }
 
+  /**
+   * @cc [owner:philipperolet,label:backend;concurrency] cancel-unavailable-agent-message
+   * After an agent loop loses access to its data, cancel only its workspace-scoped message
+   * version if still created; under the conversation lock, clear the running flag only if
+   * that transition applied and no current agent message is running.
+   */
+  static async cancelUnavailableAgentMessage(
+    auth: Authenticator,
+    {
+      conversationId,
+      agentMessageId,
+      agentMessageVersion,
+    }: {
+      conversationId: string;
+      agentMessageId: string;
+      agentMessageVersion: number;
+    }
+  ): Promise<void> {
+    // Deletion or a permissions change may remove the loop's original access. This internal
+    // cleanup stays scoped to its workspace and message; it never returns conversation content.
+    const conversation = await this.fetchById(auth, conversationId, {
+      includeDeleted: true,
+      dangerouslySkipPermissionFiltering: true,
+    });
+    if (!conversation) {
+      return;
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    await withTransaction(async (transaction) => {
+      await getConversationRankVersionLock(auth, conversation, transaction);
+      const message = await MessageModel.findOne({
+        where: {
+          workspaceId,
+          conversationId: conversation.id,
+          sId: agentMessageId,
+          version: agentMessageVersion,
+        },
+        transaction,
+      });
+      if (!message?.agentMessageId) {
+        return;
+      }
+
+      const [updatedCount] = await AgentMessageModel.update(
+        { status: "cancelled", completedAt: new Date() },
+        {
+          where: { id: message.agentMessageId, workspaceId, status: "created" },
+          transaction,
+        }
+      );
+      if (
+        updatedCount === 0 ||
+        (await conversation.getRunningAgentMessage(auth, { transaction }))
+      ) {
+        return;
+      }
+
+      await this.setIsRunningAgentLoop(auth, {
+        conversation: conversation.toJSON(),
+        isRunningAgentLoop: false,
+        transaction,
+      });
+    });
+  }
+
   static async markAsReadForAuthUser(
     auth: Authenticator,
     {
@@ -5296,7 +5364,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       primaryUserId: ModelId;
       secondaryUserId: ModelId;
     }
-  ): Promise<void> {
+  ): Promise<number> {
     // Find conversations where primary user is already a participant
     const primaryUserParticipations =
       await ConversationParticipantModel.findAll({
@@ -5322,8 +5390,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       });
     }
 
-    // Update remaining secondary user participations to point to primary user
-    await ConversationParticipantModel.update(
+    // Update remaining secondary user participations to point to primary user. The affected-row
+    // count is the number of conversations actually transferred (duplicates the primary already
+    // participated in were deleted above, not transferred).
+    const [transferredCount] = await ConversationParticipantModel.update(
       { userId: primaryUserId },
       {
         where: {
@@ -5332,6 +5402,23 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       }
     );
+
+    return transferredCount;
+  }
+
+  /**
+   * Minimal serialization for listings that only need to name a conversation and link to it, such
+   * as the personal wake-ups list. Uses the same display title as `toListItem`.
+   */
+  toRefJSON(): ConversationRefType {
+    return {
+      sId: this.sId,
+      title: getConversationDisplayTitle({
+        created: this.createdAt.getTime(),
+        forkingData: this.forkingData,
+        title: this.title,
+      }),
+    };
   }
 
   toListItem(): ConversationListItemType {

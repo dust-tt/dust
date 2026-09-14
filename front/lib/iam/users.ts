@@ -238,6 +238,25 @@ export async function createOrUpdateUser({
   return { user: resultUser, created };
 }
 
+// Number of each asset transferred from the secondary user to the primary user during an identity
+// merge. Surfaced by the "merge user identities" poke plugin so support can confirm, in real time,
+// that the secondary user's data moved onto the primary user without waiting for a data warehouse
+// refresh. Counts reflect rows actually re-pointed to the primary user (duplicates that the primary
+// already owned are discarded, not transferred).
+export interface UserIdentityMergeTransferCounts {
+  agentConfigurations: number;
+  conversations: number;
+  userMessages: number;
+  contentFragments: number;
+  files: number;
+  dustAppSecrets: number;
+  agentMemories: number;
+  groupMemberships: number;
+  agentUserRelations: number;
+  keys: number;
+  triggers: number;
+}
+
 export async function mergeUserIdentities({
   auth,
   primaryUserId,
@@ -251,7 +270,14 @@ export async function mergeUserIdentities({
   enforceEmailMatch?: boolean;
   revokeSecondaryUser?: boolean;
 }): Promise<
-  Result<{ primaryUser: UserResource; secondaryUser: UserResource }, Error>
+  Result<
+    {
+      primaryUser: UserResource;
+      secondaryUser: UserResource;
+      transferCounts: UserIdentityMergeTransferCounts;
+    },
+    Error
+  >
 > {
   if (primaryUserId === secondaryUserId) {
     return new Err(new Error("Primary and secondary user IDs are the same."));
@@ -292,7 +318,7 @@ export async function mergeUserIdentities({
   }
 
   // Migrate authorship of agent configurations from the secondary user to the primary user.
-  await AgentConfigurationModel.update(
+  const [agentConfigurationsCount] = await AgentConfigurationModel.update(
     {
       authorId: primaryUser.id,
     },
@@ -315,25 +341,43 @@ export async function mergeUserIdentities({
   };
 
   // Merge conversation participations from secondary user to primary user.
-  await ConversationResource.mergeUserParticipations(workspaceId, {
-    primaryUserId: primaryUser.id,
-    secondaryUserId: secondaryUser.id,
-  });
+  const conversationsCount = await ConversationResource.mergeUserParticipations(
+    workspaceId,
+    {
+      primaryUserId: primaryUser.id,
+      secondaryUserId: secondaryUser.id,
+    }
+  );
   // Migrate authorship of user messages from the secondary user to the primary user.
-  await UserMessageModel.update(userIdValues, userIdOptions);
+  const [userMessagesCount] = await UserMessageModel.update(
+    userIdValues,
+    userIdOptions
+  );
   // Migrate authorship of content fragments from the secondary user to the primary user.
-  await ContentFragmentModel.update(userIdValues, userIdOptions);
+  const [contentFragmentsCount] = await ContentFragmentModel.update(
+    userIdValues,
+    userIdOptions
+  );
   // Migrate authorship of files from the secondary user to the primary user.
-  await FileModel.update(userIdValues, userIdOptions);
-  await DustAppSecretModel.update(userIdValues, userIdOptions);
+  const [filesCount] = await FileModel.update(userIdValues, userIdOptions);
+  const [dustAppSecretsCount] = await DustAppSecretModel.update(
+    userIdValues,
+    userIdOptions
+  );
   // Migrate authorship of agent memories from the secondary user to the primary user.
-  await AgentMemoryModel.update(userIdValues, userIdOptions);
+  const [agentMemoriesCount] = await AgentMemoryModel.update(
+    userIdValues,
+    userIdOptions
+  );
 
   // Migrate group memberships from secondary user to primary user
-  await GroupResource.migrateUserMemberships(auth, {
-    primaryUser,
-    secondaryUser,
-  });
+  const groupMembershipsCount = await GroupResource.migrateUserMemberships(
+    auth,
+    {
+      primaryUser,
+      secondaryUser,
+    }
+  );
 
   // Delete all agent-user relations for the secondary user that already have a relation.
   const agentConfigurations = await AgentUserRelationModel.findAll({
@@ -351,10 +395,13 @@ export async function mergeUserIdentities({
     },
   });
   // Migrate agent-user relations from the secondary user to the primary user.
-  await AgentUserRelationModel.update(userIdValues, userIdOptions);
+  const [agentUserRelationsCount] = await AgentUserRelationModel.update(
+    userIdValues,
+    userIdOptions
+  );
 
   // Migrate authorship of keys from the secondary user to the primary user.
-  await KeyModel.update(userIdValues, userIdOptions);
+  const [keysCount] = await KeyModel.update(userIdValues, userIdOptions);
 
   // Migrate trigger editorship from the secondary user to the primary user. Must run before the
   // revocation below, which deletes every trigger still owned by the secondary user.
@@ -365,6 +412,7 @@ export async function mergeUserIdentities({
   if (triggerTransferResult.isErr()) {
     return new Err(triggerTransferResult.error);
   }
+  const triggersCount = triggerTransferResult.value;
 
   if (
     primaryUser.email === secondaryUser.email &&
@@ -383,5 +431,18 @@ export async function mergeUserIdentities({
   return new Ok({
     primaryUser,
     secondaryUser,
+    transferCounts: {
+      agentConfigurations: agentConfigurationsCount,
+      conversations: conversationsCount,
+      userMessages: userMessagesCount,
+      contentFragments: contentFragmentsCount,
+      files: filesCount,
+      dustAppSecrets: dustAppSecretsCount,
+      agentMemories: agentMemoriesCount,
+      groupMemberships: groupMembershipsCount,
+      agentUserRelations: agentUserRelationsCount,
+      keys: keysCount,
+      triggers: triggersCount,
+    },
   });
 }

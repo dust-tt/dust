@@ -19,7 +19,7 @@ import {
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { ApiKeyCreditState, KeyType } from "@app/types/key";
+import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { redactString } from "@app/types/shared/utils/string_utils";
@@ -105,7 +105,6 @@ export class KeyResource extends BaseResource<KeyModel> {
       role: key.role,
       monthlyCapMicroUsd: key.monthlyCapMicroUsd,
       monthlyCapAwuCredits: key.monthlyCapAwuCredits,
-      creditState: key.creditState,
       workspaceId: key.workspaceId,
       groupIds: key.groupIds,
       userId: key.userId,
@@ -387,7 +386,6 @@ export class KeyResource extends BaseResource<KeyModel> {
       role: this.role,
       monthlyCapMicroUsd: this.monthlyCapMicroUsd,
       monthlyCapAwuCredits: this.monthlyCapAwuCredits,
-      creditState: this.creditState,
       isSpendCapped,
     };
   }
@@ -482,7 +480,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       key.toJSON(
         requestingUserModelId,
         spacesByKeyModelId.get(key.id) ?? [],
-        spendCappedByModelId.get(key.id) ?? key.creditState === "capped"
+        spendCappedByModelId.get(key.id) ?? false
       )
     );
   }
@@ -560,12 +558,5 @@ export class KeyResource extends BaseResource<KeyModel> {
     transaction?: Transaction
   ) {
     await this.update({ monthlyCapAwuCredits }, transaction);
-  }
-
-  async updateCreditState(
-    creditState: ApiKeyCreditState,
-    transaction?: Transaction
-  ) {
-    await this.update({ creditState }, transaction);
   }
 }

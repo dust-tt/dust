@@ -63,6 +63,7 @@ export function getQueueForUserMessageOrigin(
     case "zendesk":
       return "programmatic";
     case "agent_sidekick":
+    case "analytics_panel":
     case "onboarding_conversation":
     case "project_kickoff":
     case "reinforced_skill_notification":

@@ -67,6 +67,7 @@ export class FramePublicationError extends Error {
     readonly code:
       | "invalid_frame"
       | "invalid_function_artifact"
+      | "invalid_function_reference"
       | "invalid_manifest"
       | "invalid_publication"
       | "invalid_source"
@@ -528,9 +529,11 @@ export async function activateFramePublication(
   {
     frame,
     publicationId,
+    publishedByAgentConfigurationId,
   }: {
     frame: FileResource;
     publicationId: string;
+    publishedByAgentConfigurationId?: string;
   }
 ): Promise<Result<void, FramePublicationError>> {
   const descriptor = await loadFramePublicationDescriptor(auth, {
@@ -601,6 +604,7 @@ export async function activateFramePublication(
         publicationId,
         name: descriptor.value.manifest.name,
         description: descriptor.value.manifest.description,
+        publishedByAgentConfigurationId,
       },
       transaction
     );
@@ -651,12 +655,14 @@ export async function publishFramePublication(
     manifest,
     sourceFiles,
     uiBundleCode,
+    publishedByAgentConfigurationId,
   }: {
     frame: FileResource;
     functionArtifacts: FramePublicationFunctionArtifact[];
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
     uiBundleCode: string;
+    publishedByAgentConfigurationId?: string;
   }
 ): Promise<
   Result<
@@ -691,6 +697,7 @@ export async function publishFramePublication(
     const activation = await activateFramePublication(auth, {
       frame,
       publicationId: storedPublication.value.publicationId,
+      publishedByAgentConfigurationId,
     });
     if (activation.isErr()) {
       return activation;

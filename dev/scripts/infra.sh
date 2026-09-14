@@ -62,6 +62,22 @@ wait_for_qdrant() {
 log "Preparing data directories under ${DUST_DATA_ROOT}..."
 bash "${SCRIPT_DIR}/init-data-dirs.sh" || exit 1
 
+# --- Elasticsearch ---
+# Start early so JVM cold boot overlaps Postgres/Redis/Qdrant/Temporal.
+# Dev-only: skip ML native controller and GeoIP DB download (often the hang on
+# Codespace first boot / restricted networks).
+if ! curl -sf "http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}" >/dev/null 2>&1; then
+  if ! id elasticsearch >/dev/null 2>&1; then
+    groupadd -r elasticsearch 2>/dev/null || true
+    useradd -r -g elasticsearch -d /opt/es -s /usr/sbin/nologin elasticsearch 2>/dev/null || true
+  fi
+  mkdir -p "$DUST_ELASTICSEARCH_DATA_DIR" /opt/es/logs
+  chown -R elasticsearch:elasticsearch /opt/es "$DUST_ELASTICSEARCH_DATA_DIR"
+  # sudo drops the env, so path.data has to be interpolated into the command.
+  start_bg elasticsearch sudo -u elasticsearch bash -lc \
+    "ES_JAVA_OPTS=\"-Xms512m -Xmx512m\" /opt/es/bin/elasticsearch -d -p /tmp/es.pid -E discovery.type=single-node -E xpack.security.enabled=false -E xpack.security.http.ssl.enabled=false -E xpack.ml.enabled=false -E ingest.geoip.downloader.enabled=false -E xpack.monitoring.collection.enabled=false -E bootstrap.memory_lock=false -E path.data=${DUST_ELASTICSEARCH_DATA_DIR} -E path.logs=/opt/es/logs"
+fi
+
 # --- Postgres ---
 if ! pgrep -x postgres >/dev/null 2>&1; then
   pg_version="$(ls /etc/postgresql 2>/dev/null | sort -rn | head -1)"
@@ -87,19 +103,6 @@ if ! pgrep -x qdrant >/dev/null 2>&1; then
   log "Starting qdrant..."
   setsid nohup bash -lc "cd /opt/qdrant && exec ./qdrant" \
     </dev/null >"${DUST_INFRA_LOG_DIR}/qdrant.log" 2>&1 &
-fi
-
-# --- Elasticsearch ---
-if ! curl -sf "http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}" >/dev/null 2>&1; then
-  if ! id elasticsearch >/dev/null 2>&1; then
-    groupadd -r elasticsearch 2>/dev/null || true
-    useradd -r -g elasticsearch -d /opt/es -s /usr/sbin/nologin elasticsearch 2>/dev/null || true
-  fi
-  mkdir -p "$DUST_ELASTICSEARCH_DATA_DIR" /opt/es/logs
-  chown -R elasticsearch:elasticsearch /opt/es "$DUST_ELASTICSEARCH_DATA_DIR"
-  # sudo drops the env, so path.data has to be interpolated into the command.
-  start_bg elasticsearch sudo -u elasticsearch bash -lc \
-    "ES_JAVA_OPTS=\"-Xms512m -Xmx512m\" /opt/es/bin/elasticsearch -d -p /tmp/es.pid -E discovery.type=single-node -E xpack.security.enabled=false -E bootstrap.memory_lock=false -E path.data=${DUST_ELASTICSEARCH_DATA_DIR} -E path.logs=/opt/es/logs"
 fi
 
 # --- Temporal (start + namespaces + search attributes; single call) ---

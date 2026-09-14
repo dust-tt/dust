@@ -1,6 +1,5 @@
 import {
   baseUniquenessKey,
-  clearMetronomeAlert,
   findMetronomeAlert,
   upsertMetronomeAlert,
 } from "@app/lib/metronome/alerts";
@@ -33,36 +32,64 @@ function defaultUserCapAlertUniquenessKeyForSeatType(
   seatType: NormalizedPoolLimitSeatType,
   workspaceId: string
 ): string {
-  return `default-user-cap-${seatType}-${workspaceId}`;
+  return `${DEFAULT_USER_CAP_ALERT_KEY_PREFIX}${seatType}-${workspaceId}`;
 }
 
 function defaultUserWarningAlertUniquenessKeyForSeatType(
   seatType: NormalizedPoolLimitSeatType,
   workspaceId: string
 ): string {
-  return `default-user-warning-${seatType}-${workspaceId}`;
+  return `${DEFAULT_USER_WARNING_ALERT_KEY_PREFIX}${seatType}-${workspaceId}`;
 }
+
+// Workspace-independent prefixes for the per-user, per-API-key, per-seat-type
+// default, and per-group spend-cap / warning alert uniqueness keys. Kept as the
+// single source of truth for both the per-workspace builders below and the
+// `isUnusedSpendCapAlertUniquenessKeyAnyWorkspace` matcher. The per-user /
+// per-API-key keys embed the workspace id right after the prefix; the default
+// (seat type is appended) and group keys carry it as the final `-<workspaceId>`
+// segment.
+const PER_USER_CAP_ALERT_KEY_PREFIX = "per-user-cap-";
+const PER_USER_WARNING_ALERT_KEY_PREFIX = "per-user-warning-";
+const PER_API_KEY_CAP_ALERT_KEY_PREFIX = "per-api-key-cap-";
+const DEFAULT_USER_CAP_ALERT_KEY_PREFIX = "default-user-cap-";
+const DEFAULT_USER_WARNING_ALERT_KEY_PREFIX = "default-user-warning-";
+const GROUP_CAP_ALERT_KEY_PREFIX = "group-cap-";
+const GROUP_WARNING_ALERT_KEY_PREFIX = "group-warning-";
 
 function perUserAlertUniquenessKeyPrefix(workspaceId: string): string {
-  return `per-user-cap-${workspaceId}-`;
-}
-
-function perUserAlertUniquenessKey(
-  workspaceId: string,
-  userId: string
-): string {
-  return `${perUserAlertUniquenessKeyPrefix(workspaceId)}${userId}`;
+  return `${PER_USER_CAP_ALERT_KEY_PREFIX}${workspaceId}-`;
 }
 
 function perUserWarningAlertUniquenessKeyPrefix(workspaceId: string): string {
-  return `per-user-warning-${workspaceId}-`;
+  return `${PER_USER_WARNING_ALERT_KEY_PREFIX}${workspaceId}-`;
 }
 
-function perUserWarningAlertUniquenessKey(
-  workspaceId: string,
-  userId: string
-): string {
-  return `${perUserWarningAlertUniquenessKeyPrefix(workspaceId)}${userId}`;
+/**
+ * True when `uniquenessKey` (base key, generation suffix stripped) belongs to
+ * any of the retired per-user / per-API-key / per-seat-type default / per-group
+ * spend-cap or warning alerts, for ANY workspace. Because every one of these
+ * alert types is globally retired, the workspace-id segment need not be
+ * validated — matching the prefix alone is sufficient and correct.
+ *
+ * The cleanup script uses this to archive these alerts, including the ones left
+ * behind by deleted workspaces whose sId is gone from the DB. Still does NOT
+ * match the free-seat per-user credit-balance alerts (`per-user-credit-*`) or
+ * the workspace balance-threshold alert (`workspace-balance-threshold-*`): none
+ * of the prefixes below is a prefix of those.
+ */
+export function isUnusedSpendCapAlertUniquenessKeyAnyWorkspace(
+  uniquenessKey: string
+): boolean {
+  return (
+    uniquenessKey.startsWith(PER_USER_CAP_ALERT_KEY_PREFIX) ||
+    uniquenessKey.startsWith(PER_USER_WARNING_ALERT_KEY_PREFIX) ||
+    uniquenessKey.startsWith(PER_API_KEY_CAP_ALERT_KEY_PREFIX) ||
+    uniquenessKey.startsWith(DEFAULT_USER_CAP_ALERT_KEY_PREFIX) ||
+    uniquenessKey.startsWith(DEFAULT_USER_WARNING_ALERT_KEY_PREFIX) ||
+    uniquenessKey.startsWith(GROUP_CAP_ALERT_KEY_PREFIX) ||
+    uniquenessKey.startsWith(GROUP_WARNING_ALERT_KEY_PREFIX)
+  );
 }
 
 /**
@@ -143,26 +170,6 @@ export async function upsertMetronomeDefaultUserCapAlertForSeatType({
 }
 
 /**
- * Look up the current per-user cap (if any) for a workspace/user pair by
- * matching `uniqueness_key`. Returns the alert id, threshold and current
- * Metronome evaluation state, or `null` if no cap is configured.
- */
-export async function getMetronomePerUserCap({
-  metronomeCustomerId,
-  workspaceId,
-  userId,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-  userId: string;
-}): Promise<Result<CustomerAlert | null, Error>> {
-  return findMetronomeAlert({
-    metronomeCustomerId,
-    uniquenessKey: perUserAlertUniquenessKey(workspaceId, userId),
-  });
-}
-
-/**
  * List per-user caps for a workspace. Returns a `Map<userId, CustomerAlert>`
  * built from all enabled alerts whose `uniqueness_key` matches the per-user
  * cap pattern for this workspace.
@@ -196,45 +203,6 @@ export async function listMetronomePerUserCapsForWorkspace({
       caps.set(userId, entry);
     }
     return new Ok(caps);
-  } catch (err) {
-    return new Err(normalizeError(err));
-  }
-}
-
-/**
- * List per-user 80% warning alerts for a workspace, as a `Map<userId,
- * CustomerAlert>`. Mirrors `listMetronomePerUserCapsForWorkspace` for the
- * companion warning alerts.
- */
-export async function listMetronomePerUserWarningAlertsForWorkspace({
-  metronomeCustomerId,
-  workspaceId,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-}): Promise<Result<Map<string, CustomerAlert>, Error>> {
-  const prefix = perUserWarningAlertUniquenessKeyPrefix(workspaceId);
-  const warnings = new Map<string, CustomerAlert>();
-  try {
-    for await (const entry of listMetronomeAlerts({
-      customer_id: metronomeCustomerId,
-      alert_statuses: ["ENABLED"],
-    })) {
-      const key = entry.alert.uniqueness_key;
-      if (!key) {
-        continue;
-      }
-      const baseKey = baseUniquenessKey(key);
-      if (!baseKey.startsWith(prefix)) {
-        continue;
-      }
-      const userId = baseKey.slice(prefix.length);
-      if (!userId) {
-        continue;
-      }
-      warnings.set(userId, entry);
-    }
-    return new Ok(warnings);
   } catch (err) {
     return new Err(normalizeError(err));
   }
@@ -323,12 +291,6 @@ export const getCachedPerUserCapAlertIds = cacheWithRedis(
   fetchPerUserCapAlertIds,
   spendLimitCacheResolver,
   { ttlMs: SPEND_LIMIT_CACHE_TTL_MS }
-);
-
-const invalidateCachedPerUserCapAlertIds = bestEffortInvalidateCacheWithRedis(
-  fetchPerUserCapAlertIds,
-  spendLimitCacheResolver,
-  "members-usage per-user spend cap alert ids"
 );
 
 /**
@@ -421,117 +383,10 @@ const invalidateCachedDefaultCapThresholdsBySeatType =
     "members-usage default spend caps by seat type"
   );
 
-/**
- * Idempotently ensure a Metronome `spend_threshold_reached` alert exists on
- * the customer for this user, with the given AWU threshold. If an alert
- * with a different threshold already exists, it's archived (with key
- * release) and recreated.
- */
-export async function upsertMetronomePerUserCapAlert({
-  metronomeCustomerId,
-  workspaceId,
-  userId,
-  awuCredits,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-  userId: string;
-  awuCredits: number;
-}): Promise<Result<{ alertId: string }, Error>> {
-  const upsertResult = await upsertMetronomeAlert({
-    alert_type: "spend_threshold_reached",
-    name: `Per-user cap ${workspaceId}-${userId} (${awuCredits} AWU)`,
-    threshold: awuCredits,
-    credit_type_id: getCreditTypeAwuId(),
-    customer_id: metronomeCustomerId,
-    group_values: [{ key: USER_ID_GROUP_KEY, value: userId }],
-    uniqueness_key: perUserAlertUniquenessKey(workspaceId, userId),
-  });
-  if (upsertResult.isErr()) {
-    return new Err(upsertResult.error);
-  }
-
-  logger.info(
-    {
-      workspaceId,
-      userId,
-      metronomeCustomerId,
-      alertId: upsertResult.value.alertId,
-      awuCredits,
-    },
-    "[Metronome PerUserCap] Synced per-user cap alert"
-  );
-  await invalidateCachedPerUserCapAlertIds({
-    metronomeCustomerId,
-    workspaceId,
-  });
-  return new Ok({ alertId: upsertResult.value.alertId });
-}
-
-/**
- * Archive the per-user cap alert for this workspace/user pair, if any.
- * Idempotent — no-op when no matching alert exists.
- */
-export async function clearMetronomePerUserCapAlert({
-  metronomeCustomerId,
-  workspaceId,
-  userId,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-  userId: string;
-}): Promise<Result<void, Error>> {
-  const result = await clearMetronomeAlert({
-    metronomeCustomerId,
-    uniquenessKey: perUserAlertUniquenessKey(workspaceId, userId),
-  });
-  if (result.isErr()) {
-    return new Err(result.error);
-  }
-
-  if (result.value) {
-    logger.info(
-      {
-        workspaceId,
-        userId,
-        metronomeCustomerId,
-        alertId: result.value.alertId,
-      },
-      "[Metronome PerUserCap] Cleared per-user cap alert"
-    );
-  }
-  await invalidateCachedPerUserCapAlertIds({
-    metronomeCustomerId,
-    workspaceId,
-  });
-  return new Ok(undefined);
-}
-
 // ============================================================================
 // 80% warning alerts — same shape as cap alerts, but at USER_AWU_WARNING_PERCENTAGE
 // of the cap. They fire before the hard block to give users advance notice.
 // ============================================================================
-
-/**
- * Look up the per-seat-type default per-user 80% warning alert.
- */
-export async function getMetronomeDefaultUserWarningAlertForSeatType({
-  metronomeCustomerId,
-  workspaceId,
-  seatType,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-  seatType: NormalizedPoolLimitSeatType;
-}): Promise<Result<CustomerAlert | null, Error>> {
-  return findMetronomeAlert({
-    metronomeCustomerId,
-    uniquenessKey: defaultUserWarningAlertUniquenessKeyForSeatType(
-      seatType,
-      workspaceId
-    ),
-  });
-}
 
 /**
  * Idempotently ensure a per-seat-type default per-user 80% warning alert
@@ -580,296 +435,4 @@ export async function upsertMetronomeDefaultUserWarningAlertForSeatType({
     "[Metronome DefaultUserWarning] Synced per-seat-type default per-user warning alert"
   );
   return new Ok({ alertId: upsertResult.value.alertId });
-}
-
-/**
- * Look up the per-user 80% warning alert for a specific user.
- */
-export async function getMetronomePerUserWarningAlert({
-  metronomeCustomerId,
-  workspaceId,
-  userId,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-  userId: string;
-}): Promise<Result<CustomerAlert | null, Error>> {
-  return findMetronomeAlert({
-    metronomeCustomerId,
-    uniquenessKey: perUserWarningAlertUniquenessKey(workspaceId, userId),
-  });
-}
-
-/**
- * Idempotently ensure a per-user 80% warning alert exists for this
- * workspace/user pair. The threshold is floor(capAwuCredits * 0.8).
- */
-export async function upsertMetronomePerUserWarningAlert({
-  metronomeCustomerId,
-  workspaceId,
-  userId,
-  capAwuCredits,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-  userId: string;
-  capAwuCredits: number;
-}): Promise<Result<{ alertId: string } | null, Error>> {
-  const threshold = warningAwuCredits(capAwuCredits);
-  if (threshold <= 0) {
-    return new Ok(null);
-  }
-  const upsertResult = await upsertMetronomeAlert({
-    alert_type: "spend_threshold_reached",
-    name: `Per-user warning ${workspaceId}-${userId} (${threshold} AWU / ${Math.round(USER_AWU_WARNING_PERCENTAGE * 100)}% of ${capAwuCredits})`,
-    threshold,
-    credit_type_id: getCreditTypeAwuId(),
-    customer_id: metronomeCustomerId,
-    group_values: [{ key: USER_ID_GROUP_KEY, value: userId }],
-    uniqueness_key: perUserWarningAlertUniquenessKey(workspaceId, userId),
-  });
-  if (upsertResult.isErr()) {
-    return new Err(upsertResult.error);
-  }
-  logger.info(
-    {
-      workspaceId,
-      userId,
-      metronomeCustomerId,
-      alertId: upsertResult.value.alertId,
-      threshold,
-      capAwuCredits,
-    },
-    "[Metronome PerUserWarning] Synced per-user warning alert"
-  );
-  return new Ok({ alertId: upsertResult.value.alertId });
-}
-
-/**
- * Archive the per-user warning alert for this workspace/user pair, if any.
- * Idempotent — no-op when no matching alert exists.
- */
-export async function clearMetronomePerUserWarningAlert({
-  metronomeCustomerId,
-  workspaceId,
-  userId,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-  userId: string;
-}): Promise<Result<void, Error>> {
-  const result = await clearMetronomeAlert({
-    metronomeCustomerId,
-    uniquenessKey: perUserWarningAlertUniquenessKey(workspaceId, userId),
-  });
-  if (result.isErr()) {
-    return new Err(result.error);
-  }
-  if (result.value) {
-    logger.info(
-      {
-        workspaceId,
-        userId,
-        metronomeCustomerId,
-        alertId: result.value.alertId,
-      },
-      "[Metronome PerUserWarning] Cleared per-user warning alert"
-    );
-  }
-  return new Ok(undefined);
-}
-
-// ============================================================================
-// Per-group cap alerts — one per (group, seat type), using the value-less
-// `user_id` fan-out like the default per-seat-type alerts. Metronome evaluates
-// the threshold (seatAllowance + groupCap) independently for every user; the
-// webhook decides whether it actually applies by comparing the fired threshold
-// to the user's effective cap (a group cap only matters for members for whom it
-// is the highest cap, and never for a user with a personal override). Membership
-// changes therefore need no alert updates — only a change to the group's cap.
-// ============================================================================
-
-function groupCapAlertUniquenessKeyForSeatType(
-  groupId: string,
-  seatType: NormalizedPoolLimitSeatType,
-  workspaceId: string
-): string {
-  return `group-cap-${groupId}-${seatType}-${workspaceId}`;
-}
-
-function groupWarningAlertUniquenessKeyForSeatType(
-  groupId: string,
-  seatType: NormalizedPoolLimitSeatType,
-  workspaceId: string
-): string {
-  return `group-warning-${groupId}-${seatType}-${workspaceId}`;
-}
-
-/**
- * Idempotently ensure a per-(group, seat-type) cap alert exists with the given
- * AWU threshold (seatAllowance + groupCap, computed by the caller). If an alert
- * with a different threshold already exists, it's archived and recreated.
- */
-export async function upsertMetronomeGroupCapAlertForSeatType({
-  metronomeCustomerId,
-  workspaceId,
-  groupId,
-  seatType,
-  awuCredits,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-  groupId: string;
-  seatType: NormalizedPoolLimitSeatType;
-  awuCredits: number;
-}): Promise<Result<{ alertId: string }, Error>> {
-  const upsertResult = await upsertMetronomeAlert({
-    alert_type: "spend_threshold_reached",
-    name: `Group cap ${groupId} ${seatType} ${workspaceId} (${awuCredits} AWU)`,
-    threshold: awuCredits,
-    credit_type_id: getCreditTypeAwuId(),
-    customer_id: metronomeCustomerId,
-    group_values: [{ key: USER_ID_GROUP_KEY }],
-    uniqueness_key: groupCapAlertUniquenessKeyForSeatType(
-      groupId,
-      seatType,
-      workspaceId
-    ),
-  });
-  if (upsertResult.isErr()) {
-    return new Err(upsertResult.error);
-  }
-
-  logger.info(
-    {
-      workspaceId,
-      groupId,
-      seatType,
-      metronomeCustomerId,
-      alertId: upsertResult.value.alertId,
-      awuCredits,
-    },
-    "[Metronome GroupCap] Synced per-group cap alert"
-  );
-  return new Ok({ alertId: upsertResult.value.alertId });
-}
-
-/**
- * Idempotently ensure a per-(group, seat-type) 80% warning alert exists. The
- * threshold is floor(capAwuCredits * 0.8). Skipped if the result would be zero.
- */
-export async function upsertMetronomeGroupWarningAlertForSeatType({
-  metronomeCustomerId,
-  workspaceId,
-  groupId,
-  seatType,
-  capAwuCredits,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-  groupId: string;
-  seatType: NormalizedPoolLimitSeatType;
-  capAwuCredits: number;
-}): Promise<Result<{ alertId: string } | null, Error>> {
-  const threshold = warningAwuCredits(capAwuCredits);
-  if (threshold <= 0) {
-    return new Ok(null);
-  }
-  const upsertResult = await upsertMetronomeAlert({
-    alert_type: "spend_threshold_reached",
-    name: `Group warning ${groupId} ${seatType} ${workspaceId} (${threshold} AWU / ${Math.round(USER_AWU_WARNING_PERCENTAGE * 100)}% of ${capAwuCredits})`,
-    threshold,
-    credit_type_id: getCreditTypeAwuId(),
-    customer_id: metronomeCustomerId,
-    group_values: [{ key: USER_ID_GROUP_KEY }],
-    uniqueness_key: groupWarningAlertUniquenessKeyForSeatType(
-      groupId,
-      seatType,
-      workspaceId
-    ),
-  });
-  if (upsertResult.isErr()) {
-    return new Err(upsertResult.error);
-  }
-  logger.info(
-    {
-      workspaceId,
-      groupId,
-      seatType,
-      metronomeCustomerId,
-      alertId: upsertResult.value.alertId,
-      threshold,
-      capAwuCredits,
-    },
-    "[Metronome GroupWarning] Synced per-group warning alert"
-  );
-  return new Ok({ alertId: upsertResult.value.alertId });
-}
-
-/**
- * Archive the per-(group, seat-type) cap alert, if any. Idempotent.
- */
-export async function clearMetronomeGroupCapAlertForSeatType({
-  metronomeCustomerId,
-  workspaceId,
-  groupId,
-  seatType,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-  groupId: string;
-  seatType: NormalizedPoolLimitSeatType;
-}): Promise<Result<void, Error>> {
-  const result = await clearMetronomeAlert({
-    metronomeCustomerId,
-    uniquenessKey: groupCapAlertUniquenessKeyForSeatType(
-      groupId,
-      seatType,
-      workspaceId
-    ),
-  });
-  if (result.isErr()) {
-    return new Err(result.error);
-  }
-  if (result.value) {
-    logger.info(
-      { workspaceId, groupId, seatType, metronomeCustomerId },
-      "[Metronome GroupCap] Cleared per-group cap alert"
-    );
-  }
-  return new Ok(undefined);
-}
-
-/**
- * Archive the per-(group, seat-type) 80% warning alert, if any. Idempotent.
- */
-export async function clearMetronomeGroupWarningAlertForSeatType({
-  metronomeCustomerId,
-  workspaceId,
-  groupId,
-  seatType,
-}: {
-  metronomeCustomerId: string;
-  workspaceId: string;
-  groupId: string;
-  seatType: NormalizedPoolLimitSeatType;
-}): Promise<Result<void, Error>> {
-  const result = await clearMetronomeAlert({
-    metronomeCustomerId,
-    uniquenessKey: groupWarningAlertUniquenessKeyForSeatType(
-      groupId,
-      seatType,
-      workspaceId
-    ),
-  });
-  if (result.isErr()) {
-    return new Err(result.error);
-  }
-  if (result.value) {
-    logger.info(
-      { workspaceId, groupId, seatType, metronomeCustomerId },
-      "[Metronome GroupWarning] Cleared per-group warning alert"
-    );
-  }
-  return new Ok(undefined);
 }

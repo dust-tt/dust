@@ -221,7 +221,6 @@ function renderAgentMessage({
       triggeringUser={null}
       isOnboardingConversation={false}
       handleSubmit={async () => new Ok(undefined)}
-      isAutoScrollEnabledRef={{ current: true } as { current: boolean }}
     />
   );
 }

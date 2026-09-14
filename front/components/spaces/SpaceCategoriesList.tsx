@@ -152,14 +152,16 @@ export const SpaceCategoriesList = ({
 
   const actionButtons = (
     <>
-      {isAdmin && onButtonClick && space.kind === "regular" && (
-        <Button
-          label="Space settings"
-          icon={Settings01}
-          onClick={onButtonClick}
-          variant="outline"
-        />
-      )}
+      {isAdmin &&
+        onButtonClick &&
+        (space.kind === "regular" || space.kind === "global") && (
+          <Button
+            label="Space settings"
+            icon={Settings01}
+            onClick={onButtonClick}
+            variant="outline"
+          />
+        )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button label="Add data" icon={Plus} />

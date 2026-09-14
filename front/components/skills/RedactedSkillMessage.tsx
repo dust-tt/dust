@@ -32,7 +32,7 @@ export function RedactedSkillMessage({
   const { spaces: allSpaces } = useSpacesAsAdmin({ workspaceId: owner.sId });
   const { user } = useAuth();
   const addSpaceMembers = useAddSpaceMembers({ owner });
-  const { mutateSkill } = useSkill({
+  const { mutateSkillRegardlessOfQueryParams: mutateSkill } = useSkill({
     workspaceId: owner.sId,
     skillId: skill.sId,
     disabled: true, // We only use the hook to mutate the cache

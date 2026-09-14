@@ -44,21 +44,14 @@ async function resolveTableConfigurations(
     tables
   );
   if (tableConfigurationsRes.isErr()) {
-    return new Err(
-      new MCPError(
-        `Error fetching table configurations: ${tableConfigurationsRes.error.message}`
-      )
-    );
+    return tableConfigurationsRes;
   }
 
   const tableConfigurations = tableConfigurationsRes.value;
   if (tableConfigurations.length === 0) {
     return new Ok({
       tableConfigurations: [],
-      dataSourceViewsMap: new Map<
-        string,
-        Awaited<ReturnType<typeof DataSourceViewResource.fetchByIds>>[number]
-      >(),
+      dataSourceViewsMap: new Map<string, DataSourceViewResource>(),
     });
   }
 

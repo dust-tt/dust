@@ -12,10 +12,14 @@ import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
 import { useVisualizationRevert } from "@app/hooks/conversations";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
-import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import {
+  useFileContent,
+  useFileMetadata,
+  useShareInteractiveContentFile,
+} from "@app/lib/swr/files";
 import { useEditFrameText, useFramePermissions } from "@app/lib/swr/frames";
 import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -29,6 +33,7 @@ import {
   CheckCircle,
   CodeBlock,
   Eye,
+  LinkExternal01,
   Maximize01,
   Minimize01,
   RefreshCw01,
@@ -67,8 +72,6 @@ export function FrameRenderer({
   renderMode,
 }: FrameRendererProps) {
   const { vizUrl } = useAuth();
-  const { hasFeature } = useFeatureFlags();
-  const hasFileTabs = hasFeature("pod_frame_tabs");
   const isMobile = useIsMobile();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
@@ -141,6 +144,12 @@ export function FrameRenderer({
   const { fileMetadata, mutateFileMetadata } = useFileMetadata({
     fileId,
     owner,
+  });
+
+  const { fileShare } = useShareInteractiveContentFile({
+    fileId,
+    owner,
+    cacheKey: contentHash,
   });
 
   const sendNotification = useSendNotification();
@@ -368,6 +377,7 @@ export function FrameRenderer({
                 fileId={fileId}
                 fileContent={fileContent ?? null}
                 fileName={fileMetadata?.fileName}
+                contentType={fileMetadata?.contentType}
               />
               <ShareFrameSheet
                 key={contentHash ?? fileId}
@@ -384,18 +394,16 @@ export function FrameRenderer({
                 fileName={fileMetadata?.fileName}
                 hidden={!isFrameInPod}
               />
-              {hasFileTabs && (
-                <PodFileTabButton
-                  owner={owner}
-                  spaceId={projectId ?? ""}
-                  fileTabs={projectInfo?.frameTabs ?? []}
-                  tabsOrder={projectInfo?.tabsOrder ?? []}
-                  isEditor={projectInfo?.isEditor ?? false}
-                  filePath={framePath}
-                  fileName={fileMetadata?.fileName}
-                  hidden={!isFrameInPod}
-                />
-              )}
+              <PodFileTabButton
+                owner={owner}
+                spaceId={projectId ?? ""}
+                fileTabs={projectInfo?.frameTabs ?? []}
+                tabsOrder={projectInfo?.tabsOrder ?? []}
+                isEditor={projectInfo?.isEditor ?? false}
+                filePath={framePath}
+                fileName={fileMetadata?.fileName}
+                hidden={!isFrameInPod}
+              />
               {projectSaveState === "saved" && (
                 <Button
                   icon={CheckCircle}
@@ -432,6 +440,7 @@ export function FrameRenderer({
               fileId={fileId}
               fileContent={fileContent ?? null}
               fileName={fileMetadata?.fileName}
+              contentType={fileMetadata?.contentType}
             />
             <ShareFrameSheet
               key={contentHash ?? fileId}
@@ -487,6 +496,7 @@ export function FrameRenderer({
                 isFullScreen={isFullScreen}
                 exitFullScreen={exitFullScreen}
                 enterFullScreen={enterFullScreen}
+                shareUrl={fileShare?.shareUrl}
                 reloadFile={reloadFile}
               />
             )}
@@ -505,6 +515,7 @@ interface PreviewActionButtonsProps {
   isFullScreen: boolean;
   enterFullScreen: () => void;
   exitFullScreen: () => void;
+  shareUrl?: string;
   reloadFile: () => void;
 }
 
@@ -515,6 +526,7 @@ function PreviewActionButtons({
   isFullScreen,
   enterFullScreen,
   exitFullScreen,
+  shareUrl,
   reloadFile,
 }: PreviewActionButtonsProps) {
   const clientType = useClientType();
@@ -531,6 +543,25 @@ function PreviewActionButtons({
               variant="ghost"
               size="xs"
               onClick={isFullScreen ? exitFullScreen : enterFullScreen}
+            />
+          }
+        />
+      )}
+      {clientType !== "extension" && (
+        <Tooltip
+          label="Open in a new tab"
+          side="left"
+          tooltipTriggerAsChild
+          trigger={
+            <Button
+              aria-label="Open in a new tab"
+              icon={LinkExternal01}
+              variant="ghost"
+              size="xs"
+              disabled={!shareUrl}
+              onClick={() =>
+                window.open(shareUrl, "_blank", "noopener,noreferrer")
+              }
             />
           }
         />

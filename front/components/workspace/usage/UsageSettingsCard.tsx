@@ -1,3 +1,4 @@
+import { parseDefaultLimitInput } from "@app/components/workspace/member_spend_limit_helpers";
 import { LockedSection } from "@app/components/workspace/usage/LockedSection";
 import {
   useDefaultUserSpendLimit,
@@ -6,25 +7,31 @@ import {
   useUsageSettings,
 } from "@app/lib/swr/usage_settings";
 import {
-  MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
-  MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS,
-} from "@app/types/credits";
-import {
   InputWithSave,
   Page,
   SettingsList,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
 
 interface UsageSettingsCardProps {
   workspaceId: string;
   hasPool: boolean;
+  // Whether any seat on the workspace's contract carries a built-in credit
+  // allowance. When it doesn't (e.g. pooled plans with no per-seat allowance),
+  // the pool limit is the user's whole monthly budget rather than a top-up, so
+  // the description drops the "on top of the seat allowance" wording.
+  seatsHaveBuiltInAllowance: boolean;
+}
+
+function validateDefaultLimit(value: string) {
+  const parseResult = parseDefaultLimitInput(value);
+  return parseResult.ok ? null : parseResult.message;
 }
 
 export function UsageSettingsCard({
   workspaceId,
   hasPool,
+  seatsHaveBuiltInAllowance,
 }: UsageSettingsCardProps) {
   const { defaultUserSpendLimit, isDefaultUserSpendLimitLoading } =
     useDefaultUserSpendLimit({ workspaceId });
@@ -36,8 +43,6 @@ export function UsageSettingsCard({
   });
   const { doUpdateUsageSettings, isUpdatingUsageSettings } =
     useUpdateUsageSettings({ workspaceId });
-
-  const [isEditingDefaultLimit, setIsEditingDefaultLimit] = useState(false);
 
   const handleToggleAllowUpgradeRequest = async () => {
     await doUpdateUsageSettings({
@@ -57,20 +62,16 @@ export function UsageSettingsCard({
     });
   };
 
-  const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? 0;
+  const currentDefaultLimit = defaultUserSpendLimit?.awuCredits ?? null;
 
   const handleSaveDefaultLimit = async (newValue: string) => {
-    const parsed = Number(newValue);
-    if (
-      !Number.isInteger(parsed) ||
-      parsed < MIN_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
-      parsed > MAX_DEFAULT_USER_SPEND_LIMIT_AWU_CREDITS ||
-      parsed === currentDefaultLimit
-    ) {
-      // The component reverts to the current value when nothing is persisted.
+    const parseResult = parseDefaultLimitInput(newValue);
+    if (!parseResult.ok || parseResult.awuCredits === currentDefaultLimit) {
+      // Invalid input is caught by `validate` before this runs; an unchanged
+      // value is simply a no-op save.
       return;
     }
-    await doUpdateDefaultUserSpendLimit(parsed);
+    await doUpdateDefaultUserSpendLimit(parseResult.awuCredits);
   };
 
   return (
@@ -81,37 +82,37 @@ export function UsageSettingsCard({
           <SettingsList.Row
             title="Default per-user workspace credit pool monthly limit"
             description={
-              <>
-                Define the workspace credit pool credit limit for users per
-                month in your workspace. This limit is added on top of each
-                seat&apos;s built-in allowance. Can be overridden per user in
-                the members table.{" "}
-                <strong>Set to 0 to remove pool access.</strong>
-              </>
+              seatsHaveBuiltInAllowance ? (
+                <>
+                  Define the workspace credit pool credit limit for users per
+                  month in your workspace. This limit is added on top of each
+                  seat&apos;s built-in allowance. Can be overridden per user in
+                  the members table.{" "}
+                  <strong>Set to 0 to remove pool access.</strong>
+                </>
+              ) : (
+                <>
+                  Define the total amount of credits each user can consume from
+                  the workspace credit pool per month. Can be overridden per
+                  user in the members table.{" "}
+                  <strong>Set to 0 to remove pool access.</strong>
+                </>
+              )
             }
             action={
               <div className="w-60">
                 <InputWithSave
                   inputMode="numeric"
                   pattern="[0-9]*"
-                  placeholder="No access"
-                  value={
-                    currentDefaultLimit === 0
-                      ? ""
-                      : currentDefaultLimit.toLocaleString()
-                  }
-                  unit={
-                    currentDefaultLimit === 0 && !isEditingDefaultLimit
-                      ? undefined
-                      : "credits/month"
-                  }
+                  placeholder="--"
+                  value={currentDefaultLimit?.toLocaleString() ?? ""}
+                  unit="credits/month"
                   normalizeValue={(value) => value.replace(/[^\d]/g, "")}
                   formatValue={(value) =>
                     value ? Number(value).toLocaleString() : value
                   }
+                  validate={validateDefaultLimit}
                   onSave={handleSaveDefaultLimit}
-                  onFocus={() => setIsEditingDefaultLimit(true)}
-                  onBlur={() => setIsEditingDefaultLimit(false)}
                   disabled={isDefaultUserSpendLimitLoading}
                 />
               </div>

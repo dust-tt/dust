@@ -1,3 +1,4 @@
+import * as capTriggerAlert from "@app/lib/api/credits/programmatic_cap_trigger_alert";
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -14,22 +15,37 @@ import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WebhookSourceViewFactory } from "@app/tests/utils/WebhookSourceViewFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockIsApiBlocked, mockCheckWebhookRequestForRateLimit } = vi.hoisted(
-  () => ({
-    mockIsApiBlocked: vi.fn(),
-    mockCheckWebhookRequestForRateLimit: vi.fn(),
-  })
-);
+const {
+  mockIsApiBlocked,
+  mockIsProgrammaticApiBlocked,
+  mockCheckWebhookRequestForRateLimit,
+} = vi.hoisted(() => ({
+  mockIsApiBlocked: vi.fn(),
+  mockIsProgrammaticApiBlocked: vi.fn(),
+  mockCheckWebhookRequestForRateLimit: vi.fn(),
+}));
 
 vi.mock("@app/lib/api/credits/access_control", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@app/lib/api/credits/access_control")
   >()),
   isPoolDepleted: mockIsApiBlocked,
+  isProgrammaticApiBlocked: mockIsProgrammaticApiBlocked,
 }));
+
+vi.mock(
+  "@app/lib/api/credits/programmatic_cap_trigger_alert",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@app/lib/api/credits/programmatic_cap_trigger_alert")
+    >()),
+    notifyAdminsTriggerBlockedByProgrammaticCap: vi.fn(),
+  })
+);
 
 vi.mock("@app/lib/triggers/rate_limits", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@app/lib/triggers/rate_limits")>()),
@@ -60,10 +76,17 @@ describe("processWebhookRequest", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
   let webhookSource: WebhookSourceResource;
+  let webhookSourceViewId: number;
+  let agentId: string;
   let trigger: TriggerResource;
 
   beforeEach(async () => {
+    vi.clearAllMocks();
     mockIsApiBlocked.mockResolvedValue(false);
+    mockIsProgrammaticApiBlocked.mockResolvedValue(false);
+    vi.mocked(
+      capTriggerAlert.notifyAdminsTriggerBlockedByProgrammaticCap
+    ).mockResolvedValue(new Ok(undefined));
     mockCheckWebhookRequestForRateLimit.mockResolvedValue({
       rateLimited: false,
     });
@@ -95,6 +118,8 @@ describe("processWebhookRequest", () => {
       workspace
     ).create(globalSpace);
     webhookSource = webhookSourceView.webhookSource;
+    webhookSourceViewId = webhookSourceView.id;
+    agentId = agent.sId;
 
     trigger = await TriggerFactory.webhook(auth, {
       agentConfigurationId: agent.sId,
@@ -123,9 +148,9 @@ describe("processWebhookRequest", () => {
     });
   }
 
-  async function fetchTriggerRequests() {
+  async function fetchTriggerRequests(forTrigger: TriggerResource = trigger) {
     return fetchRecentWebhookRequestTriggersWithPayload(auth, {
-      trigger: trigger.toJSON(),
+      trigger: forTrigger.toJSON(),
     });
   }
 
@@ -139,6 +164,39 @@ describe("processWebhookRequest", () => {
     expect(requests).toHaveLength(1);
     expect(requests[0].status).toBe("credits_exhausted");
     expect(requests[0].errorMessage).toContain("run out of credits");
+  });
+
+  it("blocks workspace_pool triggers on the programmatic cap and notifies admins", async () => {
+    mockIsProgrammaticApiBlocked.mockResolvedValue(true);
+    const poolTrigger = await TriggerFactory.webhook(auth, {
+      agentConfigurationId: agentId,
+      name: "Pool Webhook Trigger",
+      status: "enabled",
+      webhookSourceViewId,
+      configuration: { includePayload: false },
+      executionMode: "workspace_pool",
+    });
+
+    const result = await postWebhookRequest();
+    expect(result.isOk()).toBe(true);
+
+    const poolRequests = await fetchTriggerRequests(poolTrigger);
+    expect(poolRequests).toHaveLength(1);
+    expect(poolRequests[0].status).toBe("credits_exhausted");
+    expect(poolRequests[0].errorMessage).toContain(
+      "programmatic monthly spending cap"
+    );
+    expect(
+      capTriggerAlert.notifyAdminsTriggerBlockedByProgrammaticCap
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      capTriggerAlert.notifyAdminsTriggerBlockedByProgrammaticCap
+    ).toHaveBeenCalledWith(expect.anything(), {
+      trigger: expect.objectContaining({
+        sId: poolTrigger.sId,
+        kind: "webhook",
+      }),
+    });
   });
 
   it("marks the request as rate_limited when the workspace fair-use limit is reached", async () => {

@@ -6,6 +6,7 @@ import * as temporalClient from "@app/temporal/triggers/schedule_client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { Ok } from "@app/types/shared/result";
@@ -141,6 +142,63 @@ describe("TriggerResource", () => {
       // Clean up mocks
       mockCreateOrUpdateWorkflow.mockRestore();
       mockDeleteWorkflow.mockRestore();
+    });
+  });
+
+  describe("disableAllForSpace", () => {
+    it("disables enabled triggers on that pod and leaves others unchanged", async () => {
+      const { workspace, authenticator, user } = await createResourceTest({
+        plan: "creditPriced",
+        role: "admin",
+      });
+      const projectSpace = await SpaceFactory.project(workspace, user.id);
+      const otherSpace = await SpaceFactory.project(workspace, user.id);
+      await authenticator.refresh();
+
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        authenticator,
+        { name: "Test Agent" }
+      );
+
+      const enabledOnPod = await TriggerFactory.webhook(authenticator, {
+        agentConfigurationId: agentConfig.sId,
+        status: "enabled",
+        spaceId: projectSpace.id,
+      });
+      const alreadyDisabledOnPod = await TriggerFactory.webhook(authenticator, {
+        agentConfigurationId: agentConfig.sId,
+        status: "disabled",
+        spaceId: projectSpace.id,
+      });
+      const enabledOnOtherPod = await TriggerFactory.webhook(authenticator, {
+        agentConfigurationId: agentConfig.sId,
+        status: "enabled",
+        spaceId: otherSpace.id,
+      });
+
+      const result = await TriggerResource.disableAllForSpace(
+        authenticator,
+        projectSpace.id
+      );
+      expect(result.isOk()).toBe(true);
+
+      const reloadedEnabled = await TriggerResource.fetchById(
+        authenticator,
+        enabledOnPod.sId
+      );
+      const reloadedDisabled = await TriggerResource.fetchById(
+        authenticator,
+        alreadyDisabledOnPod.sId
+      );
+      const reloadedOther = await TriggerResource.fetchById(
+        authenticator,
+        enabledOnOtherPod.sId
+      );
+
+      expect(reloadedEnabled?.status).toBe("disabled");
+      expect(reloadedEnabled?.spaceId).toBe(projectSpace.id);
+      expect(reloadedDisabled?.status).toBe("disabled");
+      expect(reloadedOther?.status).toBe("enabled");
     });
   });
 
@@ -708,6 +766,8 @@ describe("TriggerResource", () => {
       });
 
       expect(result.isOk()).toBe(true);
+      // Both the enabled and disabled triggers are re-pointed to the primary user.
+      expect(result.isOk() && result.value).toBe(2);
       for (const trigger of [enabledTrigger, disabledTrigger]) {
         const reloaded = await TriggerResource.fetchById(
           authenticator,
@@ -761,6 +821,8 @@ describe("TriggerResource", () => {
       });
 
       expect(result.isOk()).toBe(true);
+      // The secondary user owns no triggers, so nothing is transferred.
+      expect(result.isOk() && result.value).toBe(0);
       const reloaded = await TriggerResource.fetchById(
         authenticator,
         adminTrigger.sId

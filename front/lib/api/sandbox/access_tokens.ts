@@ -371,9 +371,7 @@ export async function generateSandboxFunctionInvocationToken(
     conversationId?: string;
     sandbox: SandboxResource;
     sandboxFunction: { sId: string };
-    owner:
-      | { kind: "pod"; spaceId: string }
-      | { kind: "frame"; frameId: string; spaceId: string };
+    owner: { kind: "frame"; frameId: string; spaceId: string };
     invocationId: string;
     execId: string;
     // Required rather than defaulted: a minting site that forgets it would silently hand out tool
@@ -389,7 +387,7 @@ export async function generateSandboxFunctionInvocationToken(
     sbId: sandbox.sId,
     execId,
     spaceId: owner.spaceId,
-    ...(owner.kind === "frame" ? { frameId: owner.frameId } : {}),
+    frameId: owner.frameId,
     sandboxFunctionId: sandboxFunction.sId,
     invocationId,
     ...(noTools ? { noTools: true as const } : {}),

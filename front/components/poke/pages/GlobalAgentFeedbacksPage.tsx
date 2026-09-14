@@ -1,8 +1,18 @@
 import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
-import { usePokeGlobalAgentFeedbacks } from "@app/hooks/usePokeGlobalAgentFeedbacks";
-import type { GlobalAgentFeedbackItem } from "@app/lib/api/poke/global_agent_feedbacks";
+import type {
+  CellCursors,
+  GlobalAgentFeedbackItemWithCell,
+} from "@app/hooks/usePokeGlobalAgentFeedbacks";
+import {
+  nextExhaustedCells,
+  nextFeedbackCursors,
+  usePokeGlobalAgentFeedbacksAllCells,
+} from "@app/hooks/usePokeGlobalAgentFeedbacks";
+import { useCellContext } from "@app/lib/auth/CellContext";
+import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
+import type { CellType } from "@app/types/cell";
 import {
   Button,
   CheckboxWithText,
@@ -11,10 +21,34 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
-function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
+interface MakeColumnsParams {
+  onSwitchCell: (cell: CellType) => void;
+}
+
+function makeColumns({
+  onSwitchCell,
+}: MakeColumnsParams): ColumnDef<GlobalAgentFeedbackItemWithCell>[] {
   return [
+    {
+      id: "cell",
+      accessorKey: "cell",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Cell" />
+      ),
+      filterFn: (row, id, value) => value.includes(row.getValue(id)),
+      cell: ({ row }) => (
+        <Chip
+          size="mini"
+          color={getCellChipColor(row.original.region)}
+          label={getCellDisplay({
+            name: row.original.cell,
+            region: row.original.region,
+          })}
+        />
+      ),
+    },
     {
       accessorKey: "createdAt",
       header: ({ column }) => (
@@ -78,11 +112,13 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
       cell: ({ row }) => {
         const feedback = row.original;
         return (
-          <LinkWrapper href={`/poke/${feedback.workspaceId}`}>
-            <span className="text-highlight-600 hover:underline">
-              {feedback.workspaceName}
-            </span>
-          </LinkWrapper>
+          <div onClick={() => onSwitchCell(feedback.cell)}>
+            <LinkWrapper href={`/poke/${feedback.workspaceId}`}>
+              <span className="text-highlight-600 hover:underline">
+                {feedback.workspaceName}
+              </span>
+            </LinkWrapper>
+          </div>
         );
       },
     },
@@ -106,11 +142,13 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
           feedback.workspaceId !== "unknown"
         ) {
           return (
-            <LinkWrapper
-              href={`/poke/${feedback.workspaceId}/conversation/${feedback.conversationId}`}
-            >
-              <span className="text-highlight-600 hover:underline">View</span>
-            </LinkWrapper>
+            <div onClick={() => onSwitchCell(feedback.cell)}>
+              <LinkWrapper
+                href={`/poke/${feedback.workspaceId}/conversation/${feedback.conversationId}`}
+              >
+                <span className="text-highlight-600 hover:underline">View</span>
+              </LinkWrapper>
+            </div>
           );
         }
         return <span className="text-gray-400">-</span>;
@@ -122,32 +160,70 @@ function makeColumns(): ColumnDef<GlobalAgentFeedbackItem>[] {
 export function GlobalAgentFeedbacksPage() {
   usePokePageMetadata({ name: "Global Agent Feedbacks" });
 
+  const { cells, cellInfo, setCellInfo } = useCellContext();
+
   const [includeEmpty, setIncludeEmpty] = useState(false);
-  const [pages, setPages] = useState<number[]>([]);
+  const [cursors, setCursors] = useState<CellCursors>({});
+  const [exhaustedCells, setExhaustedCells] = useState<Set<CellType>>(
+    () => new Set()
+  );
+  const [cursorHistory, setCursorHistory] = useState<CellCursors[]>([]);
+  const [exhaustedHistory, setExhaustedHistory] = useState<Set<CellType>[]>([]);
 
-  const currentLastId = pages.length > 0 ? pages[pages.length - 1] : null;
+  const { feedbacks, hasMore, hasMoreByCell, isLoading } =
+    usePokeGlobalAgentFeedbacksAllCells({
+      includeEmpty,
+      cursors,
+      exhaustedCells,
+    });
 
-  const { feedbacks, hasMore, isLoading } = usePokeGlobalAgentFeedbacks({
-    includeEmpty,
-    lastId: currentLastId,
-  });
+  const switchToCell = useCallback(
+    (cell: CellType) => {
+      const targetCell = cells.find((c) => c.name === cell);
+      if (targetCell && targetCell.name !== cellInfo.name) {
+        setCellInfo(targetCell);
+      }
+    },
+    [cells, cellInfo, setCellInfo]
+  );
 
-  const columns = useMemo(() => makeColumns(), []);
+  const columns = useMemo(
+    () => makeColumns({ onSwitchCell: switchToCell }),
+    [switchToCell]
+  );
+
+  const cellFacetOptions = useMemo(
+    () =>
+      cells.map((cell) => ({
+        label: getCellDisplay(cell),
+        value: cell.name,
+      })),
+    [cells]
+  );
 
   const handleNextPage = () => {
-    if (feedbacks.length > 0) {
-      const lastFeedback = feedbacks[feedbacks.length - 1];
-      setPages((prev) => [...prev, lastFeedback.id]);
-    }
+    setCursorHistory((prev) => [...prev, cursors]);
+    setExhaustedHistory((prev) => [...prev, exhaustedCells]);
+    setCursors(nextFeedbackCursors(feedbacks, cursors, hasMoreByCell));
+    setExhaustedCells(nextExhaustedCells(exhaustedCells, hasMoreByCell));
   };
 
   const handlePrevPage = () => {
-    setPages((prev) => prev.slice(0, -1));
+    const prevCursors = cursorHistory[cursorHistory.length - 1] ?? {};
+    const prevExhausted =
+      exhaustedHistory[exhaustedHistory.length - 1] ?? new Set<CellType>();
+    setCursorHistory((prev) => prev.slice(0, -1));
+    setExhaustedHistory((prev) => prev.slice(0, -1));
+    setCursors(prevCursors);
+    setExhaustedCells(prevExhausted);
   };
 
   const handleIncludeEmptyChange = () => {
     setIncludeEmpty((prev) => !prev);
-    setPages([]);
+    setCursors({});
+    setExhaustedCells(new Set());
+    setCursorHistory([]);
+    setExhaustedHistory([]);
   };
 
   return (
@@ -158,7 +234,7 @@ export function GlobalAgentFeedbacksPage() {
             Global Agent Feedback
           </h1>
           <p className="mt-1 text-sm text-primary-600">
-            User feedback on global agents across all workspaces.
+            User feedback on global agents across all workspaces and cells.
           </p>
         </div>
 
@@ -176,7 +252,18 @@ export function GlobalAgentFeedbacksPage() {
           </div>
         ) : (
           <>
-            <PokeDataTable columns={columns} data={feedbacks} pageSize={25} />
+            <PokeDataTable
+              columns={columns}
+              data={feedbacks}
+              pageSize={25}
+              facets={[
+                {
+                  columnId: "cell",
+                  title: "Cell",
+                  options: cellFacetOptions,
+                },
+              ]}
+            />
 
             <div className="mt-4 flex items-center justify-between">
               <Button
@@ -184,10 +271,10 @@ export function GlobalAgentFeedbacksPage() {
                 size="sm"
                 label="Previous batch"
                 onClick={handlePrevPage}
-                disabled={pages.length === 0}
+                disabled={cursorHistory.length === 0}
               />
               <span className="text-sm text-primary-500">
-                Batch {pages.length + 1}
+                Batch {cursorHistory.length + 1}
                 {hasMore ? " (more available)" : " (last)"}
               </span>
               <Button

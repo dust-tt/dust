@@ -2,6 +2,7 @@ import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stre
 import { AnthropicClaudeFableFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_fable_five_global_anthropic";
 import { AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_haiku_four_dot_five_eu_agent_platform";
 import { AnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_haiku_four_dot_five_global_anthropic";
+import { AnthropicClaudeOpusFiveEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_five_eu_agent_platform";
 import { AnthropicClaudeOpusFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_five_global_anthropic";
 import { AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_four_dot_eight_eu_agent_platform";
 import { AnthropicClaudeOpusFourDotEightGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_opus_four_dot_eight_global_anthropic";
@@ -13,7 +14,7 @@ import { AnthropicClaudeSonnetFiveEuropeAgentPlatformStream } from "@app/lib/mod
 import { AnthropicClaudeSonnetFiveGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_five_global_anthropic";
 import { AnthropicClaudeSonnetFourDotSixEuropeAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_four_dot_six_eu_agent_platform";
 import { AnthropicClaudeSonnetFourDotSixGlobalAnthropicStream } from "@app/lib/model_constructors/stream/endpoints/anthropic_claude_sonnet_four_dot_six_global_anthropic";
-import { DeepSeekDeepSeekV4Flash0731GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/deepseek_deepseek_v4_flash_0731_global_fireworks";
+import { DeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/deepseek_deepseek_v_four_dot_one_flash_global_fireworks";
 import { DeepSeekDeepSeekV4ProGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/deepseek_deepseek_v4_pro_global_fireworks";
 import { GoogleGeminiThreeDotOneFlashLiteGlobalAgentPlatformStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_1_flash_lite_global_agent_platform";
 import { GoogleGeminiThreeDotOneFlashLiteGlobalGoogleAiStudioStream } from "@app/lib/model_constructors/stream/endpoints/google_gemini_3_1_flash_lite_global_google_ai_studio";
@@ -36,7 +37,6 @@ import { MistralCodestralEuropeMistralStream } from "@app/lib/model_constructors
 import { MistralMistralLargeEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_large_eu_mistral";
 import { MistralMistralMedium35EuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_medium_3_5_eu_mistral";
 import { MistralMistralSmallEuropeMistralStream } from "@app/lib/model_constructors/stream/endpoints/mistral_mistral_small_eu_mistral";
-import { MoonshotAiKimiK2Dot6GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k2_dot_six_global_fireworks";
 import { MoonshotAiKimiK3GlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/moonshot_ai_kimi_k3_global_fireworks";
 import { NoopNoopGlobalNoopStream } from "@app/lib/model_constructors/stream/endpoints/noop_noop_global_noop";
 import { OpenAIGptFiveDotFiveEuropeOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_five_eu_openai_responses";
@@ -71,11 +71,13 @@ import { ThinkingMachinesInklingGlobalFireworksStream } from "@app/lib/model_con
 import { XaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_five_global_xai";
 import { XaiGrokFourDotSixGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_six_global_xai";
 import { ZAiGlmFiveDotThreeFlashGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_flash_global_fireworks";
-import { ZAiGlmFiveDotTwoGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_two_global_fireworks";
+import { ZAiGlmFiveDotThreeGlobalFireworksStream } from "@app/lib/model_constructors/stream/endpoints/z_ai_glm_five_dot_three_global_fireworks";
 
 export const STREAM_ENDPOINTS = {
   [AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream.id]:
     AnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream,
+  [AnthropicClaudeOpusFiveEuropeAgentPlatformStream.id]:
+    AnthropicClaudeOpusFiveEuropeAgentPlatformStream,
   [AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream.id]:
     AnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream,
   [AnthropicClaudeOpusFourDotSevenEuropeAgentPlatformStream.id]:
@@ -124,14 +126,12 @@ export const STREAM_ENDPOINTS = {
     AnthropicClaudeSonnetFourDotSixGlobalAnthropicStream,
   [DeepSeekDeepSeekV4ProGlobalFireworksStream.id]:
     DeepSeekDeepSeekV4ProGlobalFireworksStream,
-  [DeepSeekDeepSeekV4Flash0731GlobalFireworksStream.id]:
-    DeepSeekDeepSeekV4Flash0731GlobalFireworksStream,
-  [ZAiGlmFiveDotTwoGlobalFireworksStream.id]:
-    ZAiGlmFiveDotTwoGlobalFireworksStream,
+  [DeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream.id]:
+    DeepSeekDeepSeekVFourDotOneFlashGlobalFireworksStream,
+  [ZAiGlmFiveDotThreeGlobalFireworksStream.id]:
+    ZAiGlmFiveDotThreeGlobalFireworksStream,
   [ZAiGlmFiveDotThreeFlashGlobalFireworksStream.id]:
     ZAiGlmFiveDotThreeFlashGlobalFireworksStream,
-  [MoonshotAiKimiK2Dot6GlobalFireworksStream.id]:
-    MoonshotAiKimiK2Dot6GlobalFireworksStream,
   [MoonshotAiKimiK3GlobalFireworksStream.id]:
     MoonshotAiKimiK3GlobalFireworksStream,
   [ThinkingMachinesInklingGlobalFireworksStream.id]:

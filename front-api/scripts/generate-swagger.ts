@@ -2,14 +2,23 @@ import { readFileSync, writeFileSync } from "node:fs";
 
 import { buildSwaggerSpec } from "@front-api/lib/swagger";
 
-// Generates the static OpenAPI spec from `swagger.json` (which holds the API
-// folder to scan and the base OpenAPI definition) into `public/swagger.json`.
-// Replaces the former `next-swagger-doc-cli` invocation. Any YAML parse errors
-// in `@swagger` annotations are reported to stderr by `swagger-jsdoc`, which the
-// `docs` npm script greps for to fail the build.
+// Generates two static OpenAPI specs from `swagger.json`:
+//   - public/swagger.json          — v1 endpoints only (consumed by Mintlify)
+//   - routes/swagger-private.json  — all endpoints
+//
+// Any YAML parse errors in `@swagger` annotations are reported to stderr by
+// `swagger-jsdoc`, which the `docs` npm script greps for to fail the build.
 const CONFIG_PATH = "swagger.json";
-const OUTPUT_PATH = "public/swagger.json";
+const PUBLIC_OUTPUT_PATH = "public/swagger.json";
+const PRIVATE_OUTPUT_PATH = "routes/swagger-private.json";
 
 const config = JSON.parse(readFileSync(CONFIG_PATH, "utf-8"));
-const spec = buildSwaggerSpec(config);
-writeFileSync(OUTPUT_PATH, JSON.stringify(spec, null, 2));
+
+const publicSpec = buildSwaggerSpec({
+  ...config,
+  apiFolder: "routes/v1",
+});
+writeFileSync(PUBLIC_OUTPUT_PATH, JSON.stringify(publicSpec, null, 2));
+
+const privateSpec = buildSwaggerSpec(config);
+writeFileSync(PRIVATE_OUTPUT_PATH, JSON.stringify(privateSpec, null, 2));

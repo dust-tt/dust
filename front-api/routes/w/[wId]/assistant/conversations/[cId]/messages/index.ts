@@ -2,6 +2,7 @@ import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_re
 import { isSidekickConversation } from "@app/lib/api/actions/servers/helpers";
 import { fetchPrecedingContentFragments } from "@app/lib/api/assistant/content_fragments";
 import { postUserMessage } from "@app/lib/api/assistant/conversation";
+import { promoteAnalyticsPanelConversation } from "@app/lib/api/assistant/conversation/analytics_panel";
 import { addSelectedConversationSpaces } from "@app/lib/api/assistant/conversation/selected_spaces";
 import { fetchConversationMessages } from "@app/lib/api/assistant/messages";
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
@@ -401,6 +402,12 @@ app.post(
     if (messageRes.isErr()) {
       return apiError(ctx, messageRes.error);
     }
+
+    // Fire and forget: this only decides whether the conversation shows up in the user's history,
+    // so it must not fail a message that was already posted.
+    void promoteAnalyticsPanelConversation(auth, {
+      conversation: conversationResource,
+    });
 
     const contentFragments = await fetchPrecedingContentFragments(auth, {
       conversationResource,

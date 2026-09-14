@@ -26,7 +26,7 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.106";
+const DUST_BASE_IMAGE_VERSION = "0.8.107";
 const DSBX_CLI_VERSION = "0.1.57";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
@@ -234,7 +234,7 @@ function getDustStateUserSetupCommand(): string {
 }
 
 function getPodStateSetupCommand(): string {
-  // /pod-state/databases holds the live SQLite files: both agent-proxied
+  // /sandbox-state/databases holds the live SQLite files: both agent-proxied
   // function code (group agent) and the litestream daemon (user dust-state)
   // need rw, so it gets the same setgid + default-ACL treatment as /files.
   // /sandbox-state/replica is the gcsfuse mount point for the litestream replica
@@ -242,11 +242,10 @@ function getPodStateSetupCommand(): string {
   // or tamper with it, so the directory is dust-state-only: 0700 here, no
   // allow_other on the runtime mount.
   return [
-    "install -d -o root -g root -m 755 /pod-state",
-    "install -d -o dust-state -g agent -m 2770 /pod-state/databases",
-    "setfacl -R -d -m g::rwx /pod-state/databases",
-    "setfacl -R -m g::rwx /pod-state/databases",
     "install -d -o root -g root -m 755 /sandbox-state",
+    "install -d -o dust-state -g agent -m 2770 /sandbox-state/databases",
+    "setfacl -R -d -m g::rwx /sandbox-state/databases",
+    "setfacl -R -m g::rwx /sandbox-state/databases",
     "install -d -o dust-state -g dust-state -m 700 /sandbox-state/replica",
   ].join(" && ");
 }

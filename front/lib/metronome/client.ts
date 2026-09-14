@@ -35,6 +35,7 @@ import type { ProductListResponse } from "@metronome/sdk/resources/v1/contracts/
 import type { RateCardRetrieveResponse } from "@metronome/sdk/resources/v1/contracts/rate-cards";
 import type {
   CustomerAlert,
+  CustomerDetail,
   Invoice,
 } from "@metronome/sdk/resources/v1/customers";
 import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
@@ -2532,6 +2533,73 @@ export async function listMetronomeUsage({
   }
 }
 
+// Metronome rejects a `/v1/usage/groups` request that filters on more than 200
+// group values (enforced for compound multi-key billable metrics too). We chunk
+// well under that so callers can pass an unbounded filter list.
+const MAX_GROUP_FILTER_VALUES_PER_REQUEST = 190;
+
+/**
+ * @cc [owner:tdraier,label:backend;performance] usage-groups-filter-value-limit
+ * `listMetronomeUsageWithGroups` must never send more than
+ * `MAX_GROUP_FILTER_VALUES_PER_REQUEST` (< Metronome's 200) group-filter values,
+ * counted ACROSS ALL keys, in a single `/v1/usage/groups` request (Metronome
+ * rejects an oversized request, for compound metrics included). It splits an
+ * over-limit filter into sequential sub-requests and concatenates the results,
+ * so callers may pass an unbounded `groupFilters` value list.
+ *
+ * It splits the one key with the most values into chunks, keeping any other keys
+ * whole in every chunk (all current callers filter on exactly one key), sizing
+ * the chunk so the whole request — chunk + the whole of every other key — stays
+ * within the limit. Values are de-duplicated first, so a value never lands in two
+ * chunks: the chunks query disjoint value subsets, the returned groups are
+ * disjoint, and concatenation never double-counts. A filter whose non-chunked
+ * keys alone meet the limit cannot be satisfied while kept whole; that case
+ * (no caller produces it) throws rather than emit an oversized request.
+ */
+function chunkGroupFilters(
+  groupFilters: Record<string, string[]> | undefined
+): Array<Record<string, string[]> | undefined> {
+  if (!groupFilters) {
+    return [undefined];
+  }
+  // De-duplicate each key's values up front: duplicates would otherwise land in
+  // two different chunks and double-count on concatenation.
+  const entries: Array<[string, string[]]> = Object.entries(groupFilters).map(
+    ([key, values]) => [key, [...new Set(values)]]
+  );
+  const totalValues = entries.reduce(
+    (sum, [, values]) => sum + values.length,
+    0
+  );
+  const deduped = Object.fromEntries(entries);
+  if (totalValues <= MAX_GROUP_FILTER_VALUES_PER_REQUEST) {
+    return [deduped];
+  }
+  const [chunkKey, chunkValues] = entries.reduce((a, b) =>
+    b[1].length > a[1].length ? b : a
+  );
+  const otherEntries = entries.filter(([key]) => key !== chunkKey);
+  const otherValueCount = otherEntries.reduce(
+    (sum, [, values]) => sum + values.length,
+    0
+  );
+  const chunkSize = MAX_GROUP_FILTER_VALUES_PER_REQUEST - otherValueCount;
+  if (chunkSize < 1) {
+    throw new Error(
+      "chunkGroupFilters: the non-chunked group_filters keys alone exceed the " +
+        "per-request value limit; multi-key filters this large are unsupported."
+    );
+  }
+  const requests: Array<Record<string, string[]>> = [];
+  for (let i = 0; i < chunkValues.length; i += chunkSize) {
+    requests.push({
+      ...Object.fromEntries(otherEntries),
+      [chunkKey]: chunkValues.slice(i, i + chunkSize),
+    });
+  }
+  return requests;
+}
+
 export async function listMetronomeUsageWithGroups({
   customerId,
   billableMetricId,
@@ -2564,21 +2632,25 @@ export async function listMetronomeUsageWithGroups({
 
   try {
     const results: MetronomeUsageWithGroupsResponse[] = [];
-    for await (const entry of client.v1.usage.listWithGroups({
-      customer_id: customerId,
-      billable_metric_id: billableMetricId,
-      window_size: windowSize,
-      group_key: groupKey,
-      starting_on: startingOn,
-      ending_before: endingBefore,
-      ...(groupFilters ? { group_filters: groupFilters } : {}),
-    })) {
-      results.push({
-        startingOn: entry.starting_on,
-        endingBefore: entry.ending_before,
-        value: entry.value,
-        group: entry.group ?? null,
-      });
+    // Sequential chunks (Metronome recommends sequential over one large request)
+    // that each stay within the 200-group-values-per-request limit.
+    for (const requestFilters of chunkGroupFilters(groupFilters)) {
+      for await (const entry of client.v1.usage.listWithGroups({
+        customer_id: customerId,
+        billable_metric_id: billableMetricId,
+        window_size: windowSize,
+        group_key: groupKey,
+        starting_on: startingOn,
+        ending_before: endingBefore,
+        ...(requestFilters ? { group_filters: requestFilters } : {}),
+      })) {
+        results.push({
+          startingOn: entry.starting_on,
+          endingBefore: entry.ending_before,
+          value: entry.value,
+          group: entry.group ?? null,
+        });
+      }
     }
     return new Ok(results);
   } catch (err) {
@@ -4215,33 +4287,13 @@ export async function* listMetronomeAlerts(
   }
 }
 
-// Retrieve a single customer alert by its Metronome id, including its enforced
-// `custom_field_filters` and `uniqueness_key`. Returns null when no API key is
-// configured. Used to resolve a per-user credit alert's target user from the
-// `alert_id` carried in the webhook (the payload omits both the filters and the
-// uniqueness key).
-export async function getMetronomeAlertById({
-  metronomeCustomerId,
-  alertId,
-}: {
-  metronomeCustomerId: string;
-  alertId: string;
-}): Promise<Result<CustomerAlert | null, Error>> {
-  if (!config.getMetronomeApiKey()) {
-    return new Ok(null);
-  }
-  try {
-    const response = await getMetronomeClient().v1.customers.alerts.retrieve({
-      customer_id: metronomeCustomerId,
-      alert_id: alertId,
-    });
-    return new Ok(response.data);
-  } catch (err) {
-    const error = normalizeError(err);
-    logger.error(
-      { error, metronomeCustomerId, alertId },
-      "[Metronome] Failed to retrieve alert by id"
-    );
-    return new Err(error);
+// Lazily iterates every Metronome customer, auto-paginating via the SDK. Unlike
+// the DB-driven workspace scan, this reaches customers whose Dust workspace has
+// been deleted (so it never appears in `runOnAllWorkspaces`) but whose Metronome
+// customer — and its alerts — still exist. Used by the unused-alert cleanup
+// script to reach orphaned alerts. Errors surface through the iterator.
+export async function* listMetronomeCustomers(): AsyncGenerator<CustomerDetail> {
+  for await (const customer of getMetronomeClient().v1.customers.list()) {
+    yield customer;
   }
 }

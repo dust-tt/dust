@@ -30,6 +30,7 @@ export const SOURCE_ORIGIN_LABELS: Record<AnalyticsVisibleOrigin, string> = {
   wakeup: "Wake-up",
   onboarding_conversation: "Onboarding",
   agent_sidekick: "Sidekick",
+  analytics_panel: "Analytics panel",
   project_kickoff: "Pod Kickoff",
 };
 
@@ -63,6 +64,7 @@ export const PROGRAMMATIC_ORIGIN_TO_SOURCE: Record<
   wakeup: "wakeup",
   onboarding_conversation: "onboarding_conversation",
   agent_sidekick: "agent_sidekick",
+  analytics_panel: "analytics_panel",
   project_kickoff: "project_kickoff",
 };
 

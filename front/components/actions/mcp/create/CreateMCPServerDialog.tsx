@@ -41,7 +41,11 @@ import {
   useDiscoverOAuthMetadata,
 } from "@app/lib/swr/mcp_servers";
 import datadogLogger from "@app/logger/datadogLogger";
-import { validateOAuthCredentials } from "@app/types/oauth/lib";
+import type { HostDerivedOAuthConfig } from "@app/types/oauth/lib";
+import {
+  getHostDerivedOAuthCredentialInputs,
+  validateOAuthCredentials,
+} from "@app/types/oauth/lib";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -97,6 +101,26 @@ function getSubmitButtonLabel(
     return "Next";
   }
   return "Save";
+}
+
+function getServerErrorDomain(
+  values: CreateMCPServerDialogFormValues,
+  hostDerivedOAuth?: HostDerivedOAuthConfig
+): string {
+  const raw =
+    values.remoteServerUrl ||
+    (hostDerivedOAuth
+      ? values.authCredentials?.[hostDerivedOAuth.hostCredential]
+      : undefined) ||
+    "";
+  if (!raw) {
+    return "the server";
+  }
+  try {
+    return new URL(raw).hostname;
+  } catch {
+    return raw;
+  }
 }
 
 interface CreateMCPServerDialogProps {
@@ -316,7 +340,10 @@ export function CreateMCPServerDialog({
         );
         setServerError({
           message: err.message,
-          domain: new URL(values.remoteServerUrl).hostname,
+          domain: getServerErrorDomain(
+            values,
+            defaultServerConfig?.hostDerivedOAuth
+          ),
           isRemoteServerError: err.isRemoteServerError,
         });
         return;
@@ -394,6 +421,18 @@ export function CreateMCPServerDialog({
     return DEFAULT_MCP_SERVER_ICON;
   }, [internalMCPServer, defaultServerConfig]);
 
+  // Host-derived static-OAuth servers show a single host URL + client ID/secret;
+  // the OAuth endpoints, scope and MCP URL are derived from the host at submit.
+  const credentialInputsOverride = useMemo(
+    () =>
+      defaultServerConfig?.hostDerivedOAuth
+        ? getHostDerivedOAuthCredentialInputs(
+            defaultServerConfig.hostDerivedOAuth
+          )
+        : undefined,
+    [defaultServerConfig]
+  );
+
   const staticFormRef = useRef<StaticCredentialFormHandle>(null);
   const [isStaticFormValid, setIsStaticFormValid] = useState(false);
 
@@ -421,9 +460,10 @@ export function CreateMCPServerDialog({
             provider: authorization.provider,
             useCase: useCase ?? null,
             authCredentials: authCredentials ?? null,
+            credentialInputs: credentialInputsOverride ?? null,
           })
         : null,
-    [authorization, useCase, authCredentials]
+    [authorization, useCase, authCredentials, credentialInputsOverride]
   );
 
   const handleCreateServerAndSubmitStaticCredentials = async () => {
@@ -626,6 +666,7 @@ export function CreateMCPServerDialog({
                     form.setValue("selectedScopes", scopes)
                   }
                   serverId={defaultServerConfig?.id}
+                  credentialInputsOverride={credentialInputsOverride}
                 />
               )}
 

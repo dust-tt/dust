@@ -13,6 +13,7 @@ import {
   INTERNAL_MCP_SERVERS,
   isInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { HeaderRow, MetaRow } from "@app/types/shared/utils/http_headers";
 import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";
@@ -76,11 +77,18 @@ export type MCPServerFormValues = ServerSettings & {
   sharingSettings: Record<string, boolean>;
 };
 
-export function getDefaultInternalToolStakeLevel(
+export function getDefaultToolStakeLevel(
   server: MCPServerViewType["server"],
   toolName: string
 ): MCPToolStakeLevelType {
-  if (isRemoteMCPServerType(server) || !isInternalMCPServerName(server.name)) {
+  if (isRemoteMCPServerType(server)) {
+    return (
+      getDefaultRemoteMCPServerByURL(server.url)?.toolStakes?.[toolName] ??
+      FALLBACK_MCP_TOOL_STAKE_LEVEL
+    );
+  }
+
+  if (!isInternalMCPServerName(server.name)) {
     return FALLBACK_MCP_TOOL_STAKE_LEVEL;
   }
 
@@ -123,8 +131,7 @@ export function getMCPServerFormDefaults(
   for (const tool of view.server.tools ?? []) {
     const metadata = view.toolsMetadata?.find((m) => m.toolName === tool.name);
     const defaultPermission =
-      metadata?.permission ??
-      getDefaultInternalToolStakeLevel(view.server, tool.name);
+      metadata?.permission ?? getDefaultToolStakeLevel(view.server, tool.name);
     toolSettings[tool.name] = {
       enabled: metadata?.enabled ?? true,
       permission: defaultPermission,

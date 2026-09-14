@@ -55,7 +55,7 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
     authUrl.searchParams.set("client_id", clientId);
     authUrl.searchParams.set(
       "redirect_uri",
-      finalizeUriForProvider("ukg_ready")
+      finalizeUriForProvider({ provider: "ukg_ready", connection })
     );
     authUrl.searchParams.set("state", connection.connection_id);
     authUrl.searchParams.set("code_challenge", codeChallenge);

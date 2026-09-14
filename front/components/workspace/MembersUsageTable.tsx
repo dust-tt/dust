@@ -4,7 +4,10 @@ import {
   seatTypeDisplayName,
 } from "@app/components/workspace/billing/seatTypeUtils";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
-import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
+import {
+  buildMemberNameColumn,
+  MemberNameSkeleton,
+} from "@app/components/workspace/member_name_column";
 import {
   AT_POOL_LIMIT_BAR_CLASSES,
   getSeatBarClasses,
@@ -18,6 +21,7 @@ import type {
   MemberFairUseUsage,
   MemberUsageType,
 } from "@app/lib/api/credits/members_usage";
+import { computeSeatUsage } from "@app/lib/api/credits/seat_usage";
 import { formatCredits, formatCreditValue } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import {
@@ -43,7 +47,7 @@ import {
   toBaseSeatType,
 } from "@app/types/memberships";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { MenuItem } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps, MenuItem } from "@dust-tt/sparkle";
 import {
   AlertCircle,
   Button,
@@ -52,6 +56,7 @@ import {
   CoinsStacked03,
   createSelectionColumn,
   DataTable,
+  DataTableSkeleton,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -69,7 +74,7 @@ import type {
   RowSelectionState,
   SortingState,
 } from "@tanstack/react-table";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 
 const EMPTY_USER_MODEL_TIER_SELECTION_BY_USER_ID: Record<
   string,
@@ -124,6 +129,61 @@ type RowData = {
 };
 
 type Info = CellContext<RowData, string>;
+
+function MemberUsageSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
+  switch (columnId) {
+    case "select":
+      return <LoadingBlock className="h-4 w-4 rounded" />;
+    case "name":
+      return <MemberNameSkeleton rowIndex={rowIndex} />;
+    case "groups":
+    case "modelTiers":
+      return <LoadingBlock className="h-3 w-28 max-w-full" />;
+    case "seatType":
+      return (
+        <div className="flex items-center gap-1.5">
+          <LoadingBlock className="h-5 w-5" />
+          <LoadingBlock className="h-3 w-12" />
+        </div>
+      );
+    case "seatsIcon":
+      return <LoadingBlock className="mx-auto h-5 w-8 rounded-lg" />;
+    case "overallUsageTarget":
+      return <LoadingBlock className="mx-auto h-5 w-5" />;
+    case "seatUsage":
+      return <LoadingBlock className="mx-auto h-3 w-8" />;
+    case "consumedFromPoolAwuCredits":
+    case "premiumMessageUsage":
+      return (
+        <div className="flex flex-col gap-1 pr-3">
+          <div className="flex h-4 items-center justify-between">
+            <LoadingBlock className="h-3 w-10" />
+            <LoadingBlock className="h-3 w-10" />
+          </div>
+          <div className="flex h-3 items-center">
+            <LoadingBlock className="h-1 w-full rounded-full" />
+          </div>
+        </div>
+      );
+    case "fairUse":
+      return (
+        <div className="flex flex-col gap-1">
+          <div className="flex h-4 items-center justify-between">
+            <LoadingBlock className="h-3 w-10" />
+            <LoadingBlock className="h-3 w-10" />
+          </div>
+          <LoadingBlock className="h-3 w-full rounded-full" />
+        </div>
+      );
+    case "actions":
+      return <LoadingBlock className="h-8 w-8 rounded-xl" />;
+    default:
+      return null;
+  }
+}
 
 // Builds the tooltip explaining a scheduled seat change, e.g.
 // "This user will be downgraded to Free at the end of the billing period (July 1)".
@@ -261,13 +321,12 @@ export function AwuUsageBar({
   );
   // For free seats: use lifetime consumed (derived from the live Metronome
   // balance) instead of period spend, so the bar reflects remaining credit.
-  const isFreeWithBalance =
-    seatType === "free" &&
-    typeof seatBalanceAwu === "number" &&
-    typeof memberUsageLimit === "number";
-  const lifetimeConsumed = isFreeWithBalance
-    ? Math.max(0, memberUsageLimit - seatBalanceAwu!)
-    : null;
+  const { consumed: seatConsumed, isFreeWithBalance } = computeSeatUsage({
+    seatType,
+    memberUsageLimit,
+    seatBalanceAwu: seatBalanceAwu ?? null,
+    consumedFromAllowanceAwuCredits: consumedFromAllowance,
+  });
   // Unlimited/uncapped is not a supported product state right now: a `null`
   // effective limit is treated as no pool access (capped at the seat
   // allowance), same as an explicit "none" seat.
@@ -277,9 +336,6 @@ export function AwuUsageBar({
   // A seat with no pool (poolLimit === 0) shows no pool section —
   // any spend beyond the seat allowance is overage. Zero-width sections are
   // skipped.
-  const seatConsumed = isFreeWithBalance
-    ? lifetimeConsumed!
-    : consumedFromAllowance;
   const seatRemaining = isFreeWithBalance
     ? seatBalanceAwu!
     : Math.max(0, allowance - seatConsumed);
@@ -455,7 +511,7 @@ export function AwuUsageBar({
   );
 
   const headlineConsumed = isFreeWithBalance
-    ? Math.min(lifetimeConsumed! + overage, allowance)
+    ? Math.min(seatConsumed + overage, allowance)
     : Math.min(consumed, resolvedEffectiveLimit);
   const headlineLimit = isFreeWithBalance ? allowance : resolvedEffectiveLimit;
   const headlineLimitLabel = formatCredits(headlineLimit);
@@ -610,73 +666,16 @@ const seatsIconColumn: ColumnDef<RowData, string> = {
   },
 };
 
-function computeSeatUsage({
-  seatType,
-  memberUsageLimit,
-  seatBalanceAwu,
-  consumedFromAllowanceAwuCredits,
-}: {
-  seatType: MembershipSeatType | null;
-  memberUsageLimit: number | null;
-  seatBalanceAwu: number | null;
-  consumedFromAllowanceAwuCredits: number;
-}): {
-  percent: number;
-  isOverAllowance: boolean;
-  consumed: number;
-  allowance: number;
-} {
-  const allowance = memberUsageLimit ?? 0;
-  const isFreeWithBalance =
-    seatType === "free" &&
-    typeof seatBalanceAwu === "number" &&
-    typeof memberUsageLimit === "number";
-  const consumed = isFreeWithBalance
-    ? Math.max(0, memberUsageLimit - seatBalanceAwu)
-    : consumedFromAllowanceAwuCredits;
-  if (allowance <= 0) {
-    return {
-      percent: consumed > 0 ? 100 : 0,
-      isOverAllowance: consumed > 0,
-      consumed,
-      allowance,
-    };
-  }
-  return {
-    percent: Math.min(100, (consumed / allowance) * 100),
-    isOverAllowance: consumed > allowance,
-    consumed,
-    allowance,
-  };
-}
-
 const seatUsageColumn: ColumnDef<RowData, string> = {
   id: "seatUsage" as const,
   header: "Seat usage",
   enableSorting: true,
   sortDescFirst: true,
-  accessorFn: (row) =>
-    computeSeatUsage({
-      seatType: row.seatType,
-      memberUsageLimit: row.memberUsageLimit,
-      seatBalanceAwu: row.seatBalanceAwu,
-      consumedFromAllowanceAwuCredits: row.consumedFromAllowanceAwuCredits,
-    }).percent.toString(),
+  // Sorting is server-side; the accessor only exists so the header is sortable.
+  accessorFn: (row) => row.memberUsageLimit?.toString() ?? "",
   cell: (info: Info) => {
     const { seatType, memberUsageLimit, seatBalanceAwu, isSeatChangePending } =
       info.row.original;
-    if (
-      isSeatChangePending ||
-      !seatType ||
-      memberUsageLimit === null ||
-      memberUsageLimit <= 0
-    ) {
-      return (
-        <DataTable.CellContent className="justify-center">
-          <span className="text-sm text-muted-foreground">--</span>
-        </DataTable.CellContent>
-      );
-    }
     const { percent, consumed, allowance } = computeSeatUsage({
       seatType,
       memberUsageLimit,
@@ -684,6 +683,13 @@ const seatUsageColumn: ColumnDef<RowData, string> = {
       consumedFromAllowanceAwuCredits:
         info.row.original.consumedFromAllowanceAwuCredits,
     });
+    if (isSeatChangePending || percent === null) {
+      return (
+        <DataTable.CellContent className="justify-center">
+          <span className="text-sm text-muted-foreground">--</span>
+        </DataTable.CellContent>
+      );
+    }
     return (
       <DataTable.CellContent className="justify-center">
         <Tooltip
@@ -956,11 +962,35 @@ const offPaceColumn: ColumnDef<RowData, string> = {
       overallUsageTarget,
       isSpendCapped,
       canUpgradeSeat,
+      seatType,
       onOpenChangeSeatRecap,
       onOpenSpendLimitRecap,
     } = info.row.original;
 
     if (isSpendCapped) {
+      // Free seats have no pool credits to raise (their cap is just the
+      // seat's built-in allowance), so seat upgrade is the only unblock path.
+      const isFreeSeat = seatType === "free";
+
+      if (isFreeSeat) {
+        return (
+          <DataTable.CellContent className="justify-center">
+            <div
+              onClick={(event) => event.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <Button
+                variant="highlight"
+                size="xs"
+                label="Unblock"
+                disabled={!canUpgradeSeat}
+                onClick={onOpenChangeSeatRecap}
+              />
+            </div>
+          </DataTable.CellContent>
+        );
+      }
+
       if (!canUpgradeSeat) {
         return (
           <DataTable.CellContent className="justify-center">
@@ -1120,6 +1150,7 @@ function buildCreditPlanColumns({
   showPremiumMessageUsage,
   premiumMessageWindowDays,
   fairUseWindowDays,
+  showUnblockWidth,
 }: {
   creditsResetAt: string | null;
   variant: MembersUsageTableVariant;
@@ -1127,6 +1158,7 @@ function buildCreditPlanColumns({
   showPremiumMessageUsage: boolean;
   premiumMessageWindowDays: number;
   fairUseWindowDays: number | null;
+  showUnblockWidth: boolean;
 }): ColumnDef<RowData, string>[] {
   return [
     // Premium message plans have no seats: every member is billed per
@@ -1155,8 +1187,19 @@ function buildCreditPlanColumns({
     ...(showPremiumMessageUsage && fairUseWindowDays !== null
       ? [buildFairUseCreditsColumn(fairUseWindowDays)]
       : []),
+    // Icon-wide until an "Unblock" button has shown up, button-wide from then on.
     ...(variant === "compact" && !showPremiumMessageUsage
-      ? [offPaceColumn]
+      ? [
+          showUnblockWidth
+            ? offPaceColumn
+            : {
+                ...offPaceColumn,
+                meta: {
+                  ...offPaceColumn.meta,
+                  className: "hidden @4xl:table-cell @4xl:w-12",
+                },
+              },
+        ]
       : []),
   ];
 }
@@ -1172,6 +1215,7 @@ function buildColumns({
   showPremiumMessageUsage,
   premiumMessageWindowDays,
   fairUseWindowDays,
+  showUnblockWidth,
 }: {
   enableSelection: boolean;
   showGroupsColumn: boolean;
@@ -1183,6 +1227,7 @@ function buildColumns({
   showPremiumMessageUsage: boolean;
   premiumMessageWindowDays: number;
   fairUseWindowDays: number | null;
+  showUnblockWidth: boolean;
 }): ColumnDef<RowData, string>[] {
   return [
     ...(enableSelection ? [createSelectionColumn<RowData>()] : []),
@@ -1197,6 +1242,7 @@ function buildColumns({
           showPremiumMessageUsage,
           premiumMessageWindowDays,
           fairUseWindowDays,
+          showUnblockWidth,
         })
       : []),
     // Every row action belongs to one of these two groups.
@@ -1469,6 +1515,15 @@ export function MembersUsageTable({
   const fairUseWindowDays =
     members.find((m) => m.fairUse)?.fairUse?.windowDays ?? null;
 
+  // Whether a member is blocked is only known page by page, so the off-pace
+  // column latches onto the button width the first time one shows up and
+  // keeps it: widening once beats resizing on every page change.
+  const hasSeenSpendCappedRowRef = useRef(false);
+  if (members.some((m) => m.isSpendCapped)) {
+    hasSeenSpendCappedRowRef.current = true;
+  }
+  const showUnblockWidth = hasSeenSpendCappedRowRef.current;
+
   const columns = useMemo(
     () =>
       buildColumns({
@@ -1482,6 +1537,7 @@ export function MembersUsageTable({
         showPremiumMessageUsage,
         premiumMessageWindowDays,
         fairUseWindowDays,
+        showUnblockWidth,
       }),
     [
       enableSelection,
@@ -1494,15 +1550,27 @@ export function MembersUsageTable({
       premiumMessageWindowDays,
       showPremiumMessageUsage,
       fairUseWindowDays,
+      showUnblockWidth,
     ]
   );
 
   if (isLoading) {
+    const remainingRows =
+      totalRowCount - pagination.pageIndex * pagination.pageSize;
     return (
-      <div className="flex w-full flex-col space-y-2">
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
+      <div className="flex flex-col gap-2">
+        <DataTableSkeleton
+          columns={columns}
+          SkeletonCell={MemberUsageSkeletonCell}
+          rowCount={
+            remainingRows > 0
+              ? Math.min(pagination.pageSize, remainingRows)
+              : pagination.pageSize
+          }
+        />
+        <div className="flex h-8 items-center justify-end px-1">
+          <LoadingBlock className="h-3 w-14" />
+        </div>
       </div>
     );
   }

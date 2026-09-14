@@ -117,7 +117,7 @@ async fn main() -> Result<()> {
 
             println!("\nExecuting test query (SELECT 1)...");
             match remote_db
-                .authorize_and_execute_query(&vec![table], "SELECT 1")
+                .authorize_and_execute_query(&vec![table], "SELECT 1", None)
                 .await
             {
                 Ok((results, _schema, _normalized_query)) => {

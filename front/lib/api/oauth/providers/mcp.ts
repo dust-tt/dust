@@ -83,7 +83,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
     );
     authUrl.searchParams.set(
       "redirect_uri",
-      finalizeUriForProvider(this.provider)
+      finalizeUriForProvider({ provider: this.provider, connection })
     );
     authUrl.searchParams.set("state", connection.connection_id);
 

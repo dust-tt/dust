@@ -94,7 +94,6 @@ import {
   VirtuosoMessageList,
   VirtuosoMessageListLicense,
 } from "@virtuoso.dev/message-list";
-import type { MutableRefObject } from "react";
 import {
   useCallback,
   useContext,
@@ -126,6 +125,8 @@ interface ConversationViewerProps {
   owner: WorkspaceType;
   user: UserType;
   clientSideMCPServerIds?: string[];
+  /** Set while the viewer is mounted but not shown, to skip its fetches. */
+  disabled?: boolean;
 }
 
 function easeOutQuint(x: number): number {
@@ -137,35 +138,6 @@ function customSmoothScroll() {
     animationFrameCount: 30,
     easing: easeOutQuint,
   };
-}
-
-// This function is used to update the auto scroll enabled state based on the scroll location.
-// Goal is to detect when the user is scrolling manually to pause the auto scroll.
-function updateAutoScrollEnabledFromLocation({
-  isAutoScrollEnabledRef,
-  location,
-  prevLocationRef,
-}: {
-  isAutoScrollEnabledRef: MutableRefObject<boolean>;
-  location: Pick<ListScrollLocation, "scrollHeight" | "bottomOffset">;
-  prevLocationRef: MutableRefObject<
-    Pick<ListScrollLocation, "scrollHeight" | "bottomOffset">
-  >;
-}) {
-  const { scrollHeight, bottomOffset } = location;
-  const prev = prevLocationRef.current;
-
-  // Scroll up with out change in content.
-  if (scrollHeight === prev.scrollHeight && bottomOffset > prev.bottomOffset) {
-    isAutoScrollEnabledRef.current = false;
-  }
-
-  // Scroll to bottom with no change in content.
-  if (scrollHeight === prev.scrollHeight && bottomOffset == 0) {
-    isAutoScrollEnabledRef.current = true;
-  }
-
-  prevLocationRef.current = { scrollHeight, bottomOffset };
 }
 
 function makeConversationForkNoticeMessage(
@@ -287,17 +259,13 @@ export const ConversationViewer = ({
   setLimitReachedCode,
   limitReachedCode,
   clientSideMCPServerIds,
+  disabled = false,
 }: ConversationViewerProps) => {
   const virtuosoMessageListRef =
     useRef<
       VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
     >(null);
   const isMobile = useIsMobile();
-  const isAutoScrollEnabledRef = useRef(true);
-  const prevScrollLocationRef = useRef({
-    scrollHeight: 0,
-    bottomOffset: 0,
-  });
   const sendNotification = useSendNotification();
   const { incrementPendingSteeringCount } = useGenerationContext();
   const { peekPendingFirstMessage } = useContext(InputBarContext);
@@ -317,6 +285,7 @@ export const ConversationViewer = ({
     conversationId,
     workspaceId: owner.sId,
     options: {
+      disabled,
       refreshInterval: (data) =>
         data?.conversation.forkingData?.forkedFrom?.fileCopyStatus === "pending"
           ? FORK_PREPARATION_POLL_INTERVAL_MS
@@ -375,6 +344,7 @@ export const ConversationViewer = ({
     conversationId,
     workspaceId: owner.sId,
     limit: DEFAULT_PAGE_LIMIT,
+    disabled,
   });
 
   const { mutateConversationParticipants } = useConversationParticipants({
@@ -1380,12 +1350,6 @@ export const ConversationViewer = ({
 
   const onScroll = useCallback(
     (location: ListScrollLocation) => {
-      updateAutoScrollEnabledFromLocation({
-        isAutoScrollEnabledRef,
-        location,
-        prevLocationRef: prevScrollLocationRef,
-      });
-
       const isLoadingData =
         isLoadingInitialData || isMessagesLoading || isValidating;
 
@@ -1475,7 +1439,6 @@ export const ConversationViewer = ({
       isProjectArchived: !!spaceInfo?.archivedAt,
       projectId: conversation?.spaceId ?? undefined,
       projectSpaceName: spaceInfo?.name,
-      isAutoScrollEnabledRef,
       isNoSeat: limitReachedCode === "no_seat",
       setLimitReachedCode,
     };

@@ -611,7 +611,7 @@ describe("UserResource", () => {
         const key = "delete-key";
         await user.setMetadata(key, "value");
 
-        await user.deleteMetadata({ key });
+        await user.deleteMetadata({ key, workspaceId: null });
 
         const metadata = await user.getMetadata(key);
         expect(metadata).toBeNull();
@@ -624,7 +624,7 @@ describe("UserResource", () => {
         await user.setMetadata(key1, "value1");
         await user.setMetadata(key2, "value2");
 
-        await user.deleteMetadata({ key: key1 });
+        await user.deleteMetadata({ key: key1, workspaceId: null });
 
         expect(await user.getMetadata(key1)).toBeNull();
         expect(await user.getMetadata(key2)).not.toBeNull();

@@ -1,10 +1,38 @@
+import * as userSpendLimit from "@app/lib/api/users/spend_limit";
 import { Authenticator } from "@app/lib/auth";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// The per-user cap is enforced from the Redis rate-limiter counter (over the
+// contract billing cycle, which the test workspaces don't have). Mock that
+// single lever so "capped" scenarios don't need a seeded counter.
+vi.mock("@app/lib/api/users/spend_limit", async () => {
+  const actual = await vi.importActual<typeof userSpendLimit>(
+    "@app/lib/api/users/spend_limit"
+  );
+  return {
+    ...actual,
+    isUserSpendLimitRateCapReached: vi.fn(),
+  };
+});
+
+beforeEach(() => {
+  vi.mocked(userSpendLimit.isUserSpendLimitRateCapReached).mockResolvedValue(
+    false
+  );
+});
+
+// Mark the current member as over their per-user spend cap (the rate limiter's
+// verdict), the way real enforcement blocks them.
+function mockUserRateCapReached() {
+  vi.mocked(userSpendLimit.isUserSpendLimitRateCapReached).mockResolvedValue(
+    true
+  );
+}
 
 function usageStatusUrl(wId: string) {
   return `/api/w/${wId}/usage-status`;
@@ -37,12 +65,12 @@ describe("/api/w/[wId]/usage-status", () => {
 
   it("lets a capped non-admin member request an upgrade", async () => {
     const workspace = await creditPricedWorkspace();
-    const { membership } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
       workspace,
     });
-    await membership.updateCreditState("capped");
+    mockUserRateCapReached();
 
     const response = await honoApp.request(usageStatusUrl(workspace.sId));
 
@@ -55,12 +83,12 @@ describe("/api/w/[wId]/usage-status", () => {
 
   it("flips hasPendingUpgradeRequest once a request exists", async () => {
     const workspace = await creditPricedWorkspace();
-    const { membership } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
       workspace,
     });
-    await membership.updateCreditState("capped");
+    mockUserRateCapReached();
 
     const postResponse = await honoApp.request(
       upgradeRequestsUrl(workspace.sId),
@@ -95,12 +123,12 @@ describe("/api/w/[wId]/usage-status", () => {
       autoSeatUpgradeEnabled: true,
     });
 
-    const { membership } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
       workspace,
     });
-    await membership.updateCreditState("capped");
+    mockUserRateCapReached();
 
     const response = await honoApp.request(usageStatusUrl(workspace.sId));
 
@@ -111,12 +139,12 @@ describe("/api/w/[wId]/usage-status", () => {
 
   it("does not offer upgrade requests to admins", async () => {
     const workspace = await creditPricedWorkspace();
-    const { membership } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
       workspace,
     });
-    await membership.updateCreditState("capped");
+    mockUserRateCapReached();
 
     const response = await honoApp.request(usageStatusUrl(workspace.sId));
 
@@ -140,12 +168,12 @@ describe("/api/w/[wId]/usage-status", () => {
     });
 
     // A capped member no longer sees the CTA.
-    const { membership } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
       workspace,
     });
-    await membership.updateCreditState("capped");
+    mockUserRateCapReached();
 
     const statusResponse = await honoApp.request(usageStatusUrl(workspace.sId));
     expect(statusResponse.status).toBe(200);
@@ -175,12 +203,12 @@ describe("/api/w/[wId]/usage-status", () => {
       requireUpgradeRequestReason: true,
     });
 
-    const { membership } = await createPrivateApiMockRequest({
+    await createPrivateApiMockRequest({
       method: "GET",
       role: "user",
       workspace,
     });
-    await membership.updateCreditState("capped");
+    mockUserRateCapReached();
 
     const response = await honoApp.request(usageStatusUrl(workspace.sId));
 

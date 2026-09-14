@@ -11,6 +11,7 @@ import {
   publishFramePublication,
 } from "@app/lib/api/frames/publication_storage";
 import { withStagedFrameSource } from "@app/lib/api/frames/source_staging";
+import { validateFrameFunctionReferences } from "@app/lib/api/frames/validate_frame_functions";
 import { ensureConversationSandboxReadyWithScope } from "@app/lib/api/sandbox/lifecycle";
 import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
@@ -90,6 +91,15 @@ async function buildFramePublication(
       );
     }
     seenSourcePaths.add(sourceFile.relativePath);
+  }
+
+  // Before any build work: syntactic, and a bad reference can never resolve at run time.
+  const references = validateFrameFunctionReferences({
+    declaredFunctionNames: manifest.functions.map((fn) => fn.name),
+    sourceFiles,
+  });
+  if (references.isErr()) {
+    return references;
   }
 
   const uiBundle = await buildFrameUiBundle({ manifest, sourceFiles });
@@ -230,11 +240,13 @@ export async function buildAndPublishFramePublication(
     frame,
     manifest,
     sourceFiles,
+    publishedByAgentConfigurationId,
   }: {
     conversation: ConversationWithoutContentType;
     frame: FileResource;
     manifest: FrameManifest;
     sourceFiles: FramePublicationSourceFile[];
+    publishedByAgentConfigurationId?: string;
   }
 ): Promise<
   Result<
@@ -257,5 +269,6 @@ export async function buildAndPublishFramePublication(
     manifest,
     sourceFiles,
     uiBundleCode: buildResult.value.uiBundleCode,
+    publishedByAgentConfigurationId,
   });
 }

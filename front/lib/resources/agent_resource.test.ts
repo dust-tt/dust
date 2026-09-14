@@ -2,6 +2,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -126,6 +127,45 @@ describe("AgentResource", () => {
       otherAuth.hasPermission("write", resource),
       otherAuth.hasPermission("admin", resource),
     ]).toEqual([true, true, true]);
+  });
+
+  it.each([
+    "admin",
+    "builder",
+  ] as const)("applies the %s API-key write policy only to workspace custom agents", async (role) => {
+    const { auth, workspace } = await createPublicApiMockRequest({ role });
+    const configuration = {
+      agentId: AGENT_MODEL_ID,
+      authorId: testContext.user.id,
+      sId: "custom-agent",
+      scope: "hidden" as const,
+      workspaceId: workspace.id,
+    };
+
+    expect(
+      auth.can(
+        "write",
+        AgentResource.fromAgentConfigurationModel(configuration)
+      )
+    ).toBe(role === "admin");
+    expect(
+      auth.can(
+        "write",
+        AgentResource.fromAgentConfigurationModel({
+          ...configuration,
+          workspaceId: testContext.workspace.id,
+        })
+      )
+    ).toBe(false);
+    expect(
+      auth.can(
+        "write",
+        AgentResource.fromGlobalAgent({
+          agentId: GLOBAL_AGENTS_SID.HELPER,
+          workspaceModelId: workspace.id,
+        })
+      )
+    ).toBe(false);
   });
 
   it("lets workspace members read visible agents without editing them", async () => {

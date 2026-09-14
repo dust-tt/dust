@@ -2,7 +2,6 @@ import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functio
 import { resolveSandboxFunctionWithCapability } from "@app/lib/api/sandbox_functions/frame_share_capability";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
-import { FRAME_SHARE_TOKEN_HEADER } from "@app/types/api/sandbox_functions";
 import { streamEvents } from "@front-api/lib/api/sse/stream_events";
 import type { Context } from "hono";
 import { z } from "zod";
@@ -25,13 +24,9 @@ export async function streamSandboxFunctionInvocationEventsForRoute(
     lastEventId: string | null;
   }
 ) {
-  // A frame host may present its frame's share token to reach the invocations of the frame's
-  // app's functions (granted to members who may view the frame); the owner-scoped invocation
-  // fetch below still applies.
   const sandboxFunction = await resolveSandboxFunctionWithCapability(
     auth,
     functionId,
-    ctx.req.header(FRAME_SHARE_TOKEN_HEADER),
     { allowInactiveFramePublication: true }
   );
   if (!sandboxFunction) {

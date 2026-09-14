@@ -22,7 +22,9 @@ export type BaseEndpointConfiguration<C extends InputConfig = InputConfig> = {
   // side stays open.
   configSchema: z.ZodType<C, z.ZodTypeDef, unknown>;
 
-  // Pricing
+  // Pricing. Unread today — billing runs off `MODEL_PRICING` — but intentionally
+  // kept: see the DO NOT DELETE note on `TokenPricing` for the migration it is
+  // staged for.
   tokenPricing: TokenPricing;
 
   // Tries with flex processing tier on first call, which has FLEX_DISCOUNT_FACTOR

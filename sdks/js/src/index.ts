@@ -1754,9 +1754,7 @@ export class DustAPI {
       const responseData = await response.json();
       return new Ok(responseData.file);
     } catch (err) {
-      return new Err(
-        new Error(err instanceof Error ? err.message : "Unknown error")
-      );
+      return new Err(normalizeError(err));
     }
   }
 

@@ -5,7 +5,6 @@ import { useSlackUserPrivateChannels } from "@app/lib/swr/assistants";
 import { useConnectorPermissions } from "@app/lib/swr/connectors";
 import type { DataSourceType } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { WorkspaceType } from "@app/types/user";
 import { isAdmin } from "@app/types/user";
 import {
   Button,
@@ -37,7 +36,7 @@ type SlackChannel = {
   sourceUrl?: string | null;
   autoRespondWithoutMention?: boolean;
   autoRespondWithoutMentionSkipThreadReplies?: boolean;
-  isPrivate?: boolean;
+  isPrivate: boolean;
 };
 
 type SheetState = {
@@ -57,11 +56,12 @@ function sheetReducer(state: SheetState, action: SheetAction): SheetState {
     case "sync":
       return {
         localSlackChannels: [...action.channels],
-        autoRespondWithoutMentionEnabled:
-          action.channels[0]?.autoRespondWithoutMention ?? false,
-        skipThreadRepliesEnabled:
-          action.channels[0]?.autoRespondWithoutMentionSkipThreadReplies ??
-          false,
+        autoRespondWithoutMentionEnabled: action.channels.some(
+          (channel) => channel.autoRespondWithoutMention
+        ),
+        skipThreadRepliesEnabled: action.channels.some(
+          (channel) => channel.autoRespondWithoutMentionSkipThreadReplies
+        ),
       };
     case "set_channels":
       return { ...state, localSlackChannels: action.channels };
@@ -84,46 +84,21 @@ function sheetReducer(state: SheetState, action: SheetAction): SheetState {
 }
 
 interface SlackChannelsListProps {
-  disabled?: boolean;
   existingSelection: SlackChannel[];
+  isLoading: boolean;
+  isResourcesError: boolean;
+  mergedChannels: SlackChannel[];
   onSelectionChange: (channels: SlackChannel[]) => void;
-  owner: WorkspaceType;
-  slackDataSource: DataSourceType;
 }
 
 function SlackChannelsList({
-  disabled,
   existingSelection,
+  isLoading,
+  isResourcesError,
+  mergedChannels,
   onSelectionChange,
-  owner,
-  slackDataSource,
 }: SlackChannelsListProps) {
   const [searchQuery, setSearchQuery] = useState("");
-
-  const { resources, isResourcesLoading, isResourcesError } =
-    useConnectorPermissions({
-      dataSource: slackDataSource,
-      disabled,
-      filterPermission: "write",
-      owner,
-      parentId: null,
-      viewType: "all",
-    });
-
-  const { privateChannels, isPrivateChannelsLoading } =
-    useSlackUserPrivateChannels({
-      workspaceId: owner.sId,
-      disabled,
-    });
-
-  const mergedChannels = useMemo(
-    () =>
-      buildDefaultAgentSlackPickerChannels({
-        connectorResources: resources ?? [],
-        privateChannels,
-      }),
-    [resources, privateChannels]
-  );
 
   const filteredChannels = useMemo(() => {
     if (searchQuery.trim() === "") {
@@ -176,8 +151,6 @@ function SlackChannelsList({
       </div>
     );
   }
-
-  const isLoading = isResourcesLoading || isPrivateChannelsLoading;
 
   return (
     <div className="space-y-4">
@@ -274,11 +247,47 @@ export function SlackSettingsSheet({
     dispatch,
   ] = useReducer(sheetReducer, slackChannels ?? [], (channels) => ({
     localSlackChannels: [...channels],
-    autoRespondWithoutMentionEnabled:
-      channels[0]?.autoRespondWithoutMention ?? false,
-    skipThreadRepliesEnabled:
-      channels[0]?.autoRespondWithoutMentionSkipThreadReplies ?? false,
+    autoRespondWithoutMentionEnabled: channels.some(
+      (channel) => channel.autoRespondWithoutMention
+    ),
+    skipThreadRepliesEnabled: channels.some(
+      (channel) => channel.autoRespondWithoutMentionSkipThreadReplies
+    ),
   }));
+
+  const fetchDisabled = !isOpen || !isAdmin(owner);
+
+  const { resources, isResourcesLoading, isResourcesError } =
+    useConnectorPermissions({
+      dataSource: slackDataSource,
+      disabled: fetchDisabled,
+      filterPermission: "write",
+      owner,
+      parentId: null,
+      viewType: "all",
+    });
+
+  const { privateChannels, isPrivateChannelsLoading } =
+    useSlackUserPrivateChannels({
+      workspaceId: owner.sId,
+      disabled: fetchDisabled,
+    });
+
+  const mergedChannels = useMemo(
+    () =>
+      buildDefaultAgentSlackPickerChannels({
+        connectorResources: resources ?? [],
+        privateChannels,
+      }),
+    [resources, privateChannels]
+  );
+
+  const hasPrivateSelected = localSlackChannels.some(
+    (channel) => channel.isPrivate
+  );
+  const canAutoRespond = localSlackChannels.some(
+    (channel) => !channel.isPrivate
+  );
 
   useEffect(() => {
     dispatch({ type: "sync", channels: slackChannels ?? [] });
@@ -289,13 +298,18 @@ export function SlackSettingsSheet({
   };
 
   const onSave = () => {
-    const channelsWithSettings = localSlackChannels.map((channel) => ({
-      ...channel,
-      autoRespondWithoutMention: autoRespondWithoutMentionEnabled,
-      autoRespondWithoutMentionSkipThreadReplies:
-        autoRespondWithoutMentionEnabled ? skipThreadRepliesEnabled : false,
-    }));
-    onChange(channelsWithSettings);
+    onChange(
+      localSlackChannels.map((channel) => ({
+        ...channel,
+        // Private channels never receive unmentioned messages (no message.groups).
+        autoRespondWithoutMention:
+          !channel.isPrivate && autoRespondWithoutMentionEnabled,
+        autoRespondWithoutMentionSkipThreadReplies:
+          !channel.isPrivate &&
+          autoRespondWithoutMentionEnabled &&
+          skipThreadRepliesEnabled,
+      }))
+    );
     onOpenChange();
   };
 
@@ -320,10 +334,12 @@ export function SlackSettingsSheet({
       (id) => !localChannelIds.has(id as string)
     );
 
-    const savedAutoRespond =
-      slackChannels?.[0]?.autoRespondWithoutMention ?? false;
-    const savedSkipThreadReplies =
-      slackChannels?.[0]?.autoRespondWithoutMentionSkipThreadReplies ?? false;
+    const savedAutoRespond = (slackChannels ?? []).some(
+      (channel) => channel.autoRespondWithoutMention
+    );
+    const savedSkipThreadReplies = (slackChannels ?? []).some(
+      (channel) => channel.autoRespondWithoutMentionSkipThreadReplies
+    );
 
     return (
       channelSelectionChanged ||
@@ -377,11 +393,11 @@ export function SlackSettingsSheet({
 
             {isAdmin(owner) && (
               <SlackChannelsList
-                disabled={!isOpen}
                 existingSelection={localSlackChannels}
+                isLoading={isResourcesLoading || isPrivateChannelsLoading}
+                isResourcesError={isResourcesError}
+                mergedChannels={mergedChannels}
                 onSelectionChange={handleSelectionChange}
-                owner={owner}
-                slackDataSource={slackDataSource}
               />
             )}
           </div>
@@ -407,19 +423,25 @@ export function SlackSettingsSheet({
                     Respond to all messages in channel
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    Agent will automatically respond to messages in selected
-                    channels (not just @mentions)
+                    {hasPrivateSelected
+                      ? canAutoRespond
+                        ? "Private channels only reply to @mentions. Auto-respond applies to public channels."
+                        : "Auto-respond isn't available in private Slack channels. The agent will only reply when @Dust is mentioned."
+                      : "Agent will automatically respond to messages in selected channels (not just @mentions)"}
                   </span>
                 </div>
                 <SliderToggle
-                  selected={autoRespondWithoutMentionEnabled}
+                  disabled={!canAutoRespond}
+                  selected={canAutoRespond && autoRespondWithoutMentionEnabled}
                   onClick={() => dispatch({ type: "toggle_auto_respond" })}
                 />
               </div>
               <div className="flex items-center justify-between gap-4">
                 <div
                   className={`flex min-w-0 flex-1 flex-col gap-1 ${
-                    autoRespondWithoutMentionEnabled ? "" : "opacity-50"
+                    canAutoRespond && autoRespondWithoutMentionEnabled
+                      ? ""
+                      : "opacity-50"
                   }`}
                 >
                   <span className="text-sm text-foreground">
@@ -431,8 +453,14 @@ export function SlackSettingsSheet({
                   </span>
                 </div>
                 <Checkbox
-                  checked={skipThreadRepliesEnabled}
-                  disabled={!autoRespondWithoutMentionEnabled}
+                  checked={
+                    canAutoRespond &&
+                    autoRespondWithoutMentionEnabled &&
+                    skipThreadRepliesEnabled
+                  }
+                  disabled={
+                    !canAutoRespond || !autoRespondWithoutMentionEnabled
+                  }
                   onCheckedChange={(checked) =>
                     dispatch({
                       type: "set_skip_thread_replies",

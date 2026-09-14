@@ -39,7 +39,6 @@ import members from "./members";
 import projectContext from "./project_context";
 import projectMetadata from "./project_metadata";
 import projectNotificationPreferences from "./project_notification_preferences";
-import projectRestrictionImpact from "./project_restriction_impact";
 import projectTasks from "./project_tasks";
 import sandbox from "./sandbox";
 import searchConversations from "./search_conversations";
@@ -130,6 +129,21 @@ const app = workspaceApp();
  *                           type: array
  *                           items:
  *                             type: object
+ *                         groups:
+ *                           type: array
+ *                           description: The groups given access to the space, with the role their grant confers.
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               sId:
+ *                                 type: string
+ *                               name:
+ *                                 type: string
+ *                               kind:
+ *                                 type: string
+ *                               role:
+ *                                 type: string
+ *                                 enum: [member, editor]
  *                         description:
  *                           type: string
  *                           nullable: true
@@ -164,9 +178,6 @@ const app = workspaceApp();
  *                           description: Interleaved system tab ids and frame paths before Settings.
  *                           items:
  *                             type: string
- *                         isAdminControlled:
- *                           type: boolean
- *                           description: Whether workspace admins control membership and connected data for this Pod.
  *       401:
  *         description: Unauthorized
  *   patch:
@@ -310,6 +321,10 @@ app.get(
       "sId"
     );
 
+    // The groups given access to the space, alongside its individual members: a space's members
+    // are the two put together.
+    const groups = await space.toGroupAccessesJSON(auth);
+
     const meta = space.isProject()
       ? await ProjectMetadataResource.fetchBySpace(auth, space)
       : undefined;
@@ -327,6 +342,7 @@ app.get(
         isMember: space.isMember(auth),
         isEditor: auth.can("admin", space),
         members: currentMembers,
+        groups,
         description: meta?.description ?? null,
         archivedAt: meta?.archivedAt?.getTime() ?? null,
         // Automated task generation removed; keep fields hardcoded for API compat.
@@ -338,7 +354,7 @@ app.get(
           meta?.tabsOrder ?? [],
           (meta?.frameTabs ?? []).map((tab) => tab.path)
         ),
-        isAdminControlled: meta?.isAdminControlled ?? false,
+        isAdminControlled: false,
       },
     });
   }
@@ -510,7 +526,6 @@ app.route("/members", members);
 app.route("/project_context", projectContext);
 app.route("/project_metadata", projectMetadata);
 app.route("/project_notification_preferences", projectNotificationPreferences);
-app.route("/project_restriction_impact", projectRestrictionImpact);
 app.route("/project_tasks", projectTasks);
 app.route("/sandbox", sandbox);
 app.route("/search_conversations", searchConversations);

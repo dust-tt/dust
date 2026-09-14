@@ -7,6 +7,7 @@ export const GPT_3_5_TURBO_MODEL_ID = "gpt-3.5-turbo" as const;
 // Image generation model IDs (internal-only, not user-selectable)
 export const GPT_IMAGE_1_5_MODEL_ID = "gpt-image-1.5" as const;
 export const GPT_IMAGE_2_MODEL_ID = "gpt-image-2" as const;
+export const GPT_IMAGE_2_5_FLARE_MODEL_ID = "gpt-image-2.5-flare" as const;
 export const GPT_4_TURBO_MODEL_ID = "gpt-4-turbo" as const;
 export const GPT_4O_MODEL_ID = "gpt-4o" as const;
 export const GPT_4_1_MODEL_ID = "gpt-4.1-2025-04-14" as const;

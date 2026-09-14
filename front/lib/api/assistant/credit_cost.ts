@@ -2,6 +2,7 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { getToolNameFromFunctionCallName } from "@app/lib/actions/tool_display_labels";
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
+import { maybeProactivelyAutoUpgradeSeatOnCapReached } from "@app/lib/api/credits/auto_seat_upgrade";
 import { recordProgrammaticSpendLimitUsage } from "@app/lib/api/credits/programmatic_usage_limit";
 import { recordApiKeySpendLimitUsage } from "@app/lib/api/keys/spend_limit";
 import { PostHogServerSideTracking } from "@app/lib/api/posthog";
@@ -188,7 +189,7 @@ export async function computeAndStoreAgentMessageCredits(
   const plan = auth.plan();
   const assistantLimits = plan?.limits.assistant;
 
-  // Feature flags gate the fair-use recording and the spend-cap backups below;
+  // The `disable_fair_use_awu_limit` flag gates the fair-use recording below;
   // fetch once when there is a delta to record.
   const featureFlags = recordedCostDelta > 0 ? await getFeatureFlags(auth) : [];
 
@@ -251,51 +252,56 @@ export async function computeAndStoreAgentMessageCredits(
     }
   }
 
-  // Record against the spend-cap backups (Redis fixed-window counters over the
-  // contract billing cycle).
+  // Record against the spend-cap counters (Redis fixed-window, over the contract
+  // billing cycle) that back enforcement in `lib/api/credits/access_control`.
   if (recordedCostDelta > 0) {
-    if (featureFlags.includes("enforce_user_spend_limit_rate_cap")) {
-      // Per-user cap. Free and paid consumption are kept in separate counters:
-      // free seats accrue only against their lifetime counter, everyone else
-      // only against the per-cycle counter. Recording a free seat's usage into
-      // the per-cycle counter would leak it into their paid cap after a
-      // free→pro switch within the same cycle (mirrors the Metronome
-      // `free-<sId>` user-key split).
-      if (user) {
-        const membership =
-          await MembershipResource.getActiveMembershipOfUserInWorkspace({
-            user,
-            workspace: auth.getNonNullableWorkspace(),
-          });
-        if (membership?.seatType === "free") {
-          await recordFreeSeatLifetimeUsage(auth, {
-            user,
-            incrementBy: recordedCostDelta,
-          });
-        } else {
-          await recordUserSpendLimitUsage(auth, {
-            user,
-            incrementBy: recordedCostDelta,
-            cycle: spendLimitCycleOverrideForAuth(auth),
-          });
-        }
-      }
-
-      // Per-API-key cap, for calls authenticated with an API key.
-      const apiKey = auth.key();
-      if (apiKey) {
-        await recordApiKeySpendLimitUsage(auth, {
-          keyModelId: apiKey.id,
+    // Per-user cap. Free and paid consumption are kept in separate counters:
+    // free seats accrue only against their lifetime counter, everyone else only
+    // against the per-cycle counter. Recording a free seat's usage into the
+    // per-cycle counter would leak it into their paid cap after a free→pro
+    // switch within the same cycle (mirrors the Metronome `free-<sId>` user-key
+    // split).
+    if (user) {
+      const membership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace: auth.getNonNullableWorkspace(),
+        });
+      if (membership?.seatType === "free") {
+        await recordFreeSeatLifetimeUsage(auth, {
+          user,
           incrementBy: recordedCostDelta,
+        });
+      } else {
+        await recordUserSpendLimitUsage(auth, {
+          user,
+          incrementBy: recordedCostDelta,
+          cycle: spendLimitCycleOverrideForAuth(auth),
         });
       }
 
-      // Workspace programmatic cap, for programmatic calls.
-      if (isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin })) {
-        await recordProgrammaticSpendLimitUsage(auth, {
-          incrementBy: recordedCostDelta,
-        });
-      }
+      // Proactively auto-upgrade the moment this message's usage puts the user
+      // at/over their per-user cap, so the next message isn't blocked and the
+      // "limit reached" banner never appears — the proactive counterpart to the
+      // reactive upgrade at message-send. Fire-and-forget: runs off the send
+      // path and never fails it.
+      void maybeProactivelyAutoUpgradeSeatOnCapReached(auth, { user });
+    }
+
+    // Per-API-key cap.
+    const apiKey = auth.keyForUsageAttribution();
+    if (apiKey) {
+      await recordApiKeySpendLimitUsage(auth, {
+        keyModelId: apiKey.id,
+        incrementBy: recordedCostDelta,
+      });
+    }
+
+    // Workspace programmatic cap, for programmatic calls.
+    if (isProgrammaticUsage(auth, { userMessageOrigin: messageOrigin })) {
+      await recordProgrammaticSpendLimitUsage(auth, {
+        incrementBy: recordedCostDelta,
+      });
     }
   }
 

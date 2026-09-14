@@ -381,6 +381,28 @@ export async function resetFairUseAwuCreditsRateLimitForUser({
   });
 }
 
+export async function resetPremiumModelMessageRateLimitForUser({
+  auth,
+  user,
+}: {
+  auth: Authenticator;
+  user: UserType;
+}) {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const resetResult = await expireRateLimiterKey({
+    key: makePremiumModelMessageRateLimitKeyForUser(workspace, user),
+  });
+  if (resetResult.isErr()) {
+    return resetResult;
+  }
+
+  return new Ok({
+    didResetExistingKey: resetResult.value,
+    limit: PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
+  });
+}
+
 export async function getMessageUsageCount(auth: Authenticator): Promise<{
   count: number;
   limit: number;

@@ -1084,7 +1084,6 @@
  *         - sId
  *         - name
  *         - kind
- *         - managementMode
  *       properties:
  *         sId:
  *           type: string
@@ -1093,10 +1092,6 @@
  *         kind:
  *           type: string
  *           enum: [global, system, conversations, regular, project]
- *         managementMode:
- *           type: string
- *           enum: [manual, group]
- *           description: Deprecated. Derived from whether any group has access to the space; a space's members are its manual member list plus the members of those groups.
  *         createdAt:
  *           type: integer
  *         updatedAt:
@@ -1157,9 +1152,6 @@
  *               description: Interleaved system tab ids and frame paths before Settings.
  *               items:
  *                 type: string
- *             isAdminControlled:
- *               type: boolean
- *               description: Whether workspace admins control membership and connected data for this Pod.
  *     PrivateDataSourceView:
  *       type: object
  *       description: A view on a data source within a space.
@@ -1489,7 +1481,7 @@
  *           type: string
  *         origin:
  *           type: string
- *           enum: [web, project_kickoff, extension, agent_sidekick, api, cli, cli_programmatic, email, excel, gsheet, make, n8n, powerpoint, raycast, slack, slack_workflow, teams, transcript, triggered_programmatic, triggered, wakeup, zapier, zendesk, onboarding_conversation]
+ *           enum: [web, project_kickoff, extension, agent_sidekick, analytics_panel, api, cli, cli_programmatic, email, excel, gsheet, make, n8n, powerpoint, raycast, slack, slack_workflow, teams, transcript, triggered_programmatic, triggered, wakeup, zapier, zendesk, onboarding_conversation]
  *         selectedSpaceIds:
  *           type: array
  *           items:

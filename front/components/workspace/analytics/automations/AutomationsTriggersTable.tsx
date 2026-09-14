@@ -199,6 +199,7 @@ interface AutomationsTriggersTableProps {
   period: ConsumptionPeriodSelection;
   filter: AutomationsFilter;
   onFilterChange: (next: AutomationsFilter) => void;
+  onAgentClick: (agentId: string) => void;
 }
 
 export function AutomationsTriggersTable({
@@ -206,6 +207,7 @@ export function AutomationsTriggersTable({
   period,
   filter,
   onFilterChange,
+  onAgentClick,
 }: AutomationsTriggersTableProps) {
   const workspaceId = owner.sId;
   const triggersFilter = useMemo(
@@ -466,6 +468,7 @@ export function AutomationsTriggersTable({
           ),
           onSetExecutionMode: (executionMode: TriggerExecutionMode) =>
             void handleSetExecutionMode(trigger, executionMode),
+          onAgentClick: () => onAgentClick(trigger.agent.agentId),
           onClick: () =>
             setExpandedRowId((current) =>
               current === trigger.triggerId ? null : trigger.triggerId
@@ -480,6 +483,7 @@ export function AutomationsTriggersTable({
       executionModeOverrides,
       pendingExecutionModeIds,
       handleSetExecutionMode,
+      onAgentClick,
     ]
   );
 

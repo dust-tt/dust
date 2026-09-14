@@ -1,10 +1,12 @@
-import { cn } from "@dust-tt/sparkle";
+import { cn, Spinner } from "@dust-tt/sparkle";
 
 interface SummaryCardProps {
   className?: string;
   label: string;
   value: string;
   hint: string | null;
+  // Shows the value is being refreshed while keeping the previous one visible.
+  isRefreshing?: boolean;
 }
 
 export function SummaryCard({
@@ -12,6 +14,7 @@ export function SummaryCard({
   label,
   value,
   hint,
+  isRefreshing = false,
 }: SummaryCardProps) {
   return (
     <div
@@ -25,8 +28,9 @@ export function SummaryCard({
         {label}
       </span>
       <div className="flex flex-col">
-        <span className="truncate text-base font-semibold text-foreground">
-          {value}
+        <span className="flex items-center gap-2 text-base font-semibold text-foreground">
+          <span className="truncate">{value}</span>
+          {isRefreshing && <Spinner size="xs" />}
         </span>
         {hint && <span className="text-xs text-muted-foreground">{hint}</span>}
       </div>

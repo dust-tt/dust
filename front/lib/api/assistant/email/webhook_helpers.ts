@@ -24,12 +24,14 @@ import apiConfig from "@app/lib/api/config";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import { withRetry } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { CellInfo } from "@app/types/cell";
 import { isSupportedFileContentType } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString } from "@app/types/shared/utils/general";
+import assert from "assert";
 import { IncomingForm } from "formidable";
 import { readFile } from "fs/promises";
 
@@ -75,14 +77,21 @@ function isRelayEligibleError(error: EmailTriggerError): boolean {
   return isRelayEligibleErrorType(error.type);
 }
 
-export function shouldRelayToOtherCells({
-  headers,
-  error,
-}: {
-  headers: EmailWebhookHeaders;
-  error: EmailTriggerError;
-}): boolean {
-  return isRelayEligibleError(error) && !isRelayedWebhookRequest(headers);
+/**
+ * @cc [owner:philipperolet,label:product] forward-only-relay
+ * Email relays only visit cells after the current cell in name order, with US first.
+ */
+function getNextEmailRelayCells(): CellInfo[] {
+  const cells = cellsConfig
+    .getAllCells()
+    .sort((a, b) => a.name.localeCompare(b.name));
+  assert(cells[0].name === "cell-00000", "US must come first");
+  const currentCell = cellsConfig.getCurrentCell();
+  return cells.filter((cell) => cell.name > currentCell.name);
+}
+
+export function shouldRelayToOtherCells(error: EmailTriggerError): boolean {
+  return isRelayEligibleError(error) && getNextEmailRelayCells().length > 0;
 }
 
 // Ordered from least to most informative: a user unknown in one cell may still
@@ -95,8 +104,8 @@ const RELAY_ERROR_INFORMATIVENESS: Record<RelayEligibleErrorType, number> = {
 };
 
 /**
- * On a relayed request, cells' lookups have failed and the relayed cell's
- * sends the error reply. The source cell's error type (forwarded via header) may
+ * Carry the most informative lookup error across relay hops, for the final cell's
+ * error reply. The source cell's error type (forwarded via header) may
  * be more informative than the local one — e.g. the sender has a real account with
  * Email Agents disabled in the source cell but no account locally; replying with
  * the local `user_not_found` ("please sign up") would be wrong.
@@ -191,12 +200,21 @@ export async function recordEmailRelay(
   return result === "OK";
 }
 
+/**
+ * @cc [owner:philipperolet,label:product] relay-handoff
+ * Advance to another cell only after an explicit HTTP rejection. On acceptance, the
+ * receiving cell owns further lookup, forwarding, and error replies.
+ */
+/**
+ * @cc [owner:philipperolet,label:product] uncertain-relay-stops
+ * Exhausted transport retries must stop routing, since the target may already be processing.
+ */
 export async function relayEmailToOtherCells(
   email: InboundEmail,
   { sourceError }: { sourceError: EmailTriggerError }
 ): Promise<Result<void, Error>> {
   try {
-    const cells = cellsConfig.getOtherCells();
+    const cells = getNextEmailRelayCells();
 
     const headers = {
       Authorization: `Bearer ${cellsConfig.getLookupApiSecret()}`,
@@ -259,15 +277,24 @@ export async function relayEmailToOtherCells(
         }
       );
 
-      if (responseRes.isErr()) {
-        return responseRes;
-      }
-      if (!responseRes.value.ok) {
-        return new Err(
-          new Error(
-            `Relay to ${cell.name} failed with status ${responseRes.value.status}: ${responseRes.value.statusText}`
-          )
+      if (responseRes.isErr() || !responseRes.value.ok) {
+        logger.error(
+          {
+            error: responseRes.isErr()
+              ? responseRes.error
+              : new Error(
+                  `Relay to ${cell.name} failed with status ${responseRes.value.status}: ${responseRes.value.statusText}`
+                ),
+            sourceCell: cellsConfig.getCurrentCell().name,
+            targetCell: cell.name,
+          },
+          "[email] Failed to relay inbound email to cell"
         );
+        if (responseRes.isErr()) {
+          return responseRes;
+        }
+        // Only an explicit rejection lets us try the next cell.
+        continue;
       }
 
       logger.info(

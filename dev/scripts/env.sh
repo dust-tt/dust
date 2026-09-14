@@ -12,6 +12,8 @@ export DUST_APPS_PROMPT_FILE="${DUST_APPS_PROMPT_FILE:-/tmp/dust-infra/start-app
 # Persistent core/target volume: keep recent artifacts, drop the rest.
 export DUST_CARGO_SWEEP_DAYS="${DUST_CARGO_SWEEP_DAYS:-14}"
 export DUST_CARGO_SWEEP_MAXSIZE="${DUST_CARGO_SWEEP_MAXSIZE:-12GiB}"
+# ES cold start on Codespace first boot often exceeds 90s under contention.
+export DUST_ES_WAIT_SECONDS="${DUST_ES_WAIT_SECONDS:-240}"
 
 # 1Password Environment id for shared cloud-agent / container secrets (not a credential).
 # Cloud agents get it injected as a runtime secret; this default serves local docker runs.
@@ -131,11 +133,20 @@ apply_local_overrides() {
   export CORE_API="http://localhost:3001"
   export DUST_FRONT_API="http://localhost:3000"
   export DUST_FRONT_INTERNAL_API="http://localhost:3000"
-  export DUST_INTERNAL_API_URL="http://localhost:3000"
-  export DUST_CLIENT_FACING_URL="http://localhost:3000"
-  export DUST_PUBLIC_URL="http://localhost:3000"
-  export DUST_AUTH_REDIRECT_BASE_URL="http://localhost:3000"
-  export NEXT_PUBLIC_DUST_API_URL="http://localhost:3000"
-  export NEXT_PUBLIC_DUST_APP_URL="http://localhost:3011"
   export NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL="http://localhost:3000"
+
+  if [[ -n "${CODESPACE_NAME:-}" ]]; then
+    BASE_API_URL="https://${CODESPACE_NAME}-3000.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+    BASE_SPA_URL="https://${CODESPACE_NAME}-3011.${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN}"
+  else
+    BASE_API_URL="http://localhost:3000"
+    BASE_SPA_URL="http://localhost:3011"
+  fi
+  
+  export DUST_INTERNAL_API_URL=${BASE_API_URL}
+  export DUST_CLIENT_FACING_URL=${BASE_SPA_URL}
+  export DUST_PUBLIC_URL=${BASE_SPA_URL}
+  export DUST_AUTH_REDIRECT_BASE_URL=${BASE_API_URL}
+  export NEXT_PUBLIC_DUST_API_URL=${BASE_API_URL}
+  export NEXT_PUBLIC_DUST_APP_URL=${BASE_SPA_URL}
 }

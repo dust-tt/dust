@@ -22,7 +22,8 @@ export interface TextareaProps
 
 const textAreaVariants = cva(
   cn(
-    "flex w-full px-3 py-2 text-sm",
+    // 16px on small viewports so Mobile Safari does not zoom on focus.
+    "flex w-full px-3 py-2 text-base md:text-sm",
     "text-foreground",
     "bg-muted-background",
     "placeholder:text-muted-foreground",
@@ -139,7 +140,7 @@ const ReadOnlyTextArea = ({
       isDisplay
       minRows={minRows}
       className={cn(
-        "copy-sm h-full min-h-60 w-full min-w-0 rounded-xl",
+        "text-base font-normal md:text-sm h-full min-h-60 w-full min-w-0 rounded-xl",
         "resize-none border-border bg-muted-background"
       )}
       defaultValue={content ?? ""}

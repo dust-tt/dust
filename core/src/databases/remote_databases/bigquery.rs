@@ -25,7 +25,7 @@ use crate::{
     search_filter::Filterable,
 };
 
-use super::remote_database::{RemoteDatabase, QUERY_TIMEOUT};
+use super::remote_database::{QueryIdentityContext, RemoteDatabase, QUERY_TIMEOUT};
 
 const SERVICE_ACCOUNT_REQUIRED_FIELDS: [&str; 3] = ["private_key", "client_email", "token_uri"];
 
@@ -120,7 +120,12 @@ impl BigQueryRemoteDatabase {
     pub async fn execute_query(
         &self,
         query: &str,
+        query_identity: Option<&QueryIdentityContext>,
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
+        let labels = query_identity
+            .map(|identity| identity.to_bigquery_labels())
+            .filter(|labels| !labels.is_empty());
+
         let job = Job {
             configuration: Some(JobConfiguration {
                 job_timeout_ms: Some(QUERY_TIMEOUT.as_millis().to_string()),
@@ -129,6 +134,7 @@ impl BigQueryRemoteDatabase {
                     use_legacy_sql: Some(false),
                     ..Default::default()
                 }),
+                labels,
                 ..Default::default()
             }),
             ..Default::default()
@@ -613,6 +619,7 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
         &self,
         tables: &Vec<Table>,
         query: &str,
+        query_identity: Option<&QueryIdentityContext>,
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
         // Ensure that query is a SELECT query and only uses tables that are allowed directly or indirectly in an allowed view.
         let plan = self.get_query_plan(query).await?;
@@ -647,7 +654,7 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
             .await?;
         }
 
-        self.execute_query(query).await
+        self.execute_query(query, query_identity).await
     }
 
     async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<Option<TableSchema>>> {

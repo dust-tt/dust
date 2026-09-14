@@ -50,14 +50,22 @@ export class SpaceFactory {
     const group =
       globalGroup ?? (await GroupFactory.defaults(workspace)).globalGroup;
 
+    const name = "space " + faker.string.alphanumeric(8);
+    // Production also creates the global space's own member group, whose `member` grant is what
+    // confers write on it outside the admin/manager roles.
+    const memberGroup = await SpaceResource.makeGlobalSpaceMemberGroup({
+      workspaceId: workspace.id,
+      spaceName: name,
+    });
+
     return SpaceResource.makeNew(
       await this.internalAuth(workspace),
       {
-        name: "space " + faker.string.alphanumeric(8),
+        name,
         kind: "global",
         workspaceId: workspace.id,
       },
-      { members: [group] }
+      { members: [group, memberGroup] }
     );
   }
 

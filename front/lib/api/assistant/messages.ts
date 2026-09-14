@@ -1,3 +1,5 @@
+import { AGENT_DELEGATION_SERVER_NAME } from "@app/lib/api/actions/servers/agent_delegation/metadata";
+import { RUN_AGENT_SERVER_NAME } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { renderAgentMessageContentView } from "@app/lib/api/assistant/activity_steps";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
@@ -56,6 +58,25 @@ import assert from "assert";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
+function isNestedAgentAction(
+  action: Pick<AgentMCPActionWithOutputType, "internalMCPServerName">
+): boolean {
+  return (
+    action.internalMCPServerName === RUN_AGENT_SERVER_NAME ||
+    action.internalMCPServerName === AGENT_DELEGATION_SERVER_NAME
+  );
+}
+
+/**
+ * @cc [owner:frankaloia,label:product] completion-duration-excludes-idle-wait
+ * Completion duration is `completedTs - created` minus idle wait. Idle wait is
+ * time during which an ordinary tool is waiting to execute (between `createdAt`
+ * and `updatedAt - executionDurationMs`) AND no nested agent is running. Nested
+ * agents (`run_agent`, `agent_delegation`) count their full `createdAt`→`updatedAt`
+ * span as productive; their `executionDurationMs` (last attempt only) MUST NOT be
+ * treated as wait, and ordinary-tool wait overlapping their span runs in parallel
+ * to the child so it MUST NOT be subtracted.
+ */
 export function getCompletionDuration(
   created: number,
   completedTs: number | null,
@@ -65,52 +86,51 @@ export function getCompletionDuration(
     return null;
   }
 
-  // Assumption: Each action has two phases: wait period, then execution period
-  // Action timeline: [createdAt] ----wait---- [executionStart] ----execute---- [updatedAt]
-  // Where executionStart = updatedAt - executionDurationMs
+  // Ordinary tools: [createdAt] ----wait---- [executionStart] ----execute---- [updatedAt]
+  // Nested agents:  [createdAt] ----------------child work---------------- [updatedAt]
   //
-  // Message timeline: [created] ---blank---[action 1] --- blank --- [action 2] --- blank --- [completedTs]
+  // Sweep the wait/busy boundaries once: a slice of time is idle (subtracted)
+  // only while at least one ordinary tool is waiting and no nested agent is busy.
+  const boundaries: Array<{ t: number; waitDelta: number; busyDelta: number }> =
+    [];
+  for (const action of actions) {
+    if (isNestedAgentAction(action)) {
+      if (action.updatedAt > action.createdAt) {
+        boundaries.push({ t: action.createdAt, waitDelta: 0, busyDelta: 1 });
+        boundaries.push({ t: action.updatedAt, waitDelta: 0, busyDelta: -1 });
+      }
+      continue;
+    }
+    if (action.executionDurationMs === null) {
+      continue;
+    }
+    const executionStart = action.updatedAt - action.executionDurationMs;
+    if (executionStart > action.createdAt) {
+      boundaries.push({ t: action.createdAt, waitDelta: 1, busyDelta: 0 });
+      boundaries.push({ t: executionStart, waitDelta: -1, busyDelta: 0 });
+    }
+  }
 
-  const waitRanges: Array<{ start: number; end: number }> = actions
-    .filter((a) => a.executionDurationMs !== null)
-    .map((a) => ({
-      start: a.createdAt,
-      end: a.updatedAt - a.executionDurationMs!,
-    }))
-    .filter((r) => r.end > r.start) // Filter out actions with no wait time
-    .sort((a, b) => a.start - b.start);
-
-  if (waitRanges.length === 0) {
+  if (boundaries.length === 0) {
     return completedTs - created;
   }
 
-  // Merge overlapping wait periods
-  const mergedWaitRanges: Array<{ start: number; end: number }> = [];
-  let currentRange = waitRanges[0];
+  boundaries.sort((a, b) => a.t - b.t);
 
-  for (let i = 1; i < waitRanges.length; i++) {
-    const range = waitRanges[i];
-    if (range.start <= currentRange.end) {
-      // Overlapping or adjacent - merge by extending the end
-      currentRange = {
-        start: currentRange.start,
-        end: Math.max(currentRange.end, range.end),
-      };
-    } else {
-      // Non-overlapping - save current and start new range
-      mergedWaitRanges.push(currentRange);
-      currentRange = range;
+  let waitCount = 0;
+  let busyCount = 0;
+  let idleWaitMs = 0;
+  let prevT = boundaries[0].t;
+  for (const boundary of boundaries) {
+    if (boundary.t > prevT && waitCount > 0 && busyCount === 0) {
+      idleWaitMs += boundary.t - prevT;
     }
+    waitCount += boundary.waitDelta;
+    busyCount += boundary.busyDelta;
+    prevT = boundary.t;
   }
-  mergedWaitRanges.push(currentRange);
 
-  // Calculate total wait time
-  const totalWaitTimeMs = mergedWaitRanges.reduce(
-    (sum, range) => sum + (range.end - range.start),
-    0
-  );
-
-  return completedTs - created - totalWaitTimeMs;
+  return completedTs - created - idleWaitMs;
 }
 
 export function getRichMentionsWithStatusForMessage(

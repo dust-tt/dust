@@ -1,5 +1,5 @@
 import { getStripeCustomer } from "@app/lib/plans/stripe";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { honoApp } from "@front-api/app";
 import type Stripe from "stripe";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -33,7 +33,7 @@ describe("POST /api/poke/stripe/customers/currency", () => {
       address: { country: "FR" },
     } as unknown as Stripe.Customer);
 
-    await createPrivateApiMockRequest({
+    await createPokeApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });
@@ -45,7 +45,7 @@ describe("POST /api/poke/stripe/customers/currency", () => {
   });
 
   it("returns 401 when the user is not a super user", async () => {
-    await createPrivateApiMockRequest({
+    await createPokeApiMockRequest({
       method: "POST",
       isSuperUser: false,
     });
@@ -62,7 +62,7 @@ describe("POST /api/poke/stripe/customers/currency", () => {
   });
 
   it("returns 400 when stripeCustomerId is missing", async () => {
-    await createPrivateApiMockRequest({
+    await createPokeApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });
@@ -78,7 +78,7 @@ describe("POST /api/poke/stripe/customers/currency", () => {
   it("returns 404 when the Stripe customer does not exist", async () => {
     vi.mocked(getStripeCustomer).mockResolvedValue(null);
 
-    await createPrivateApiMockRequest({
+    await createPokeApiMockRequest({
       method: "POST",
       isSuperUser: true,
     });

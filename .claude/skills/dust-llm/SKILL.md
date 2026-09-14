@@ -1,6 +1,6 @@
 ---
 name: dust-llm
-description: Step-by-step guide for adding support for a new LLM in Dust. Use when adding a new model, or updating a previous one.
+description: Step-by-step guide for adding support for a new LLM in Dust, and for deprecating or removing the model it supersedes (including the agent-config repoint migration). Use when adding a new model, updating a previous one, or retiring a decommissioned one.
 ---
 
 # Adding Support for a New LLM Model
@@ -8,6 +8,10 @@ description: Step-by-step guide for adding support for a new LLM in Dust. Use wh
 This skill guides you through adding a newly released LLM to the **model_constructors +
 llms** stack (the endpoint-class router). It replaces the legacy `lib/api/llm/clients/*`
 router, which no longer exists.
+
+Adding a model is usually only half the task: the model it supersedes has to be retired in
+the same PR, and a model the provider has switched off needs its agents repointed. See
+[Deprecating or removing an old model](#deprecating-or-removing-an-old-model).
 
 ## Mental model
 
@@ -67,7 +71,7 @@ Pick the newest sibling (e.g. for "Gemini 3.6 Flash" the sibling is "Gemini 3.5 
 
 | File | What to add |
 |------|-------------|
-| `front/types/assistant/models/{provider}.ts` | `X_MODEL_ID` const + `X_MODEL_CONFIG`. **Set `isLatest: false` on the previous model in the same family** and drop "latest" from its description. |
+| `front/types/assistant/models/{provider}.ts` | `X_MODEL_ID` const + `X_MODEL_CONFIG`. **Set `isLatest: false` on the previous model in the same family** and drop "latest" from its description. **Carry over the predecessor's `availableIfOneOf` / `unavailableIfOneOf`** (see below). |
 | `front/types/assistant/models/models.ts` | Add id to `STATIC_MODEL_IDS` and config to `SUPPORTED_MODEL_CONFIGS` (imports in both alpha blocks). |
 | `front/types/assistant/models/auto.ts` | If the model should participate in `auto`/`auto_fast`/`auto_complex` routing, add a `ModelStreamCandidate`. |
 | `front/lib/model_constructors/types/models.ts` | Add `export const X = "model-id"` and include it in the `MODELS` array (this is the `model_constructors` id type). |
@@ -79,8 +83,49 @@ Adding the id to `STATIC_MODEL_IDS` makes these fail to compile until updated:
 | File | What to add |
 |------|-------------|
 | `front/lib/api/assistant/token_pricing/global.ts` | `CURRENT_MODEL_PRICING` entry (input/output/`cache_read_input_tokens` per 1M) + doc URL comment. |
-| `front/lib/api/assistant/token_pricing/static_model_reasoning_efforts.ts` | `{ none, light, medium, high }` support map. **Must match the config's `supportedReasoningEfforts`** (enforced by `tiers.test.ts`). |
-| `front/lib/api/assistant/token_pricing/tiers.ts` | `STATIC_MODEL_TIERS` entry mapping each supported effort → tier name. |
+| `front/types/assistant/models/static_model_reasoning_efforts.ts` | `{ none, light, medium, high }` support map (`satisfies Record<StaticModelIdType, ReasoningEffortSupport>`). **Must match the config's `supportedReasoningEfforts`** (enforced by `model_tiers.test.ts`). |
+| `front/types/assistant/models/model_tiers.ts` | `STATIC_MODEL_TIERS` entry mapping each supported effort → tier name. |
+
+And one that is **not** compile-forced, so nothing turns red if you skip it:
+
+| File | What to add |
+|------|-------------|
+| `front/lib/api/assistant/token_pricing/eu.ts` | Add the id to `EU_UPLIFT_MODEL_IDS` **if you register a non-global endpoint that prices above its global sibling.** |
+
+> **EU pricing is a second, silent list.** Any endpoint with `region = EUROPE` bills through
+> `inferenceRegion: "eu"` (`inferenceRegionForEndpointRegion` in `front/lib/api/llm/transitionLLM.ts`),
+> and `computeTokensCostForUsageInMicroUsd` then looks the model up in `EU_MODEL_PRICING` —
+> **falling back to the global rate when it is absent.** `EU_UPLIFT_MODEL_IDS` is
+> `satisfies readonly StaticModelIdType[]`, which validates the ids present but does not force
+> completeness, so a missing entry undercharges EU traffic forever with nothing failing.
+>
+> The uplift is per provider and per endpoint, not per model — **compare the two endpoint
+> classes' `tokenPricing` rather than assuming.** Regional agent-platform (Vertex) endpoints
+> charge 10% over global for both Anthropic and Google, so a new Gemini registered on
+> `eu/agent-platform` belongs in the list just as much as a Claude does. OpenAI uplifts only
+> the models whose pricing page lists a data-residency premium (gpt-5.4/5.5/5.6/6 yes,
+> gpt-5/5.1/5.2 no). Mistral's EU endpoints are its native region with no global sibling, so
+> nothing to add.
+>
+> `EU_MODEL_PRICING` derives every field by multiplying the global entry by
+> `EU_PRICING_MULTIPLIER`, so it is only correct when the EU endpoint is a flat 1.1× of global.
+> A non-uniform regional price needs an explicit entry, not the multiplier.
+
+> **Gating is inherited, and lives in two unlinked places.** A new version of a gated model
+> stays gated — being newer is not a reason to release it. Copy the predecessor's
+> `availableIfOneOf` / `unavailableIfOneOf` onto the new `X_MODEL_CONFIG` (gates the picker,
+> via `isModelAvailable`) **and** declare the same flag on every endpoint you add (gates the
+> router, via `isEndpointAvailable`):
+>
+> ```ts
+> static readonly endpointFilter = {
+>   featureFlags: { contains: "fireworks_new_model_feature" as const },
+> };
+> ```
+>
+> Half-gating fails silently either way: hidden but reachable, or pickable but unroutable —
+> and `resolveModel` swaps in a fallback model instead of erroring. Releasing a gated family
+> is a separate, deliberate change.
 
 ### C. `model_constructors` — the endpoint classes (stream)
 
@@ -105,14 +150,46 @@ Adding the id to `STATIC_MODEL_IDS` makes these fail to compile until updated:
 | `front/lib/llms/stream/endpoints/{...}.ts` | One thin dust wrapper per endpoint extending the `model_constructors` class via the dust mixin; call `defineDustStreamEndpoint(...)`. |
 | `front/lib/llms/stream/index.ts` | Register each **available** dust endpoint in `DUST_STREAM_ENDPOINTS` (`satisfies Record<StreamEndpointId, ...>`). |
 
-### F. SDK + UI + marketing mirror
+### F. SDK + UI
 
 | File | What to add |
 |------|-------------|
-| `sdks/js/src/types.ts` | Add the id to the `KnownModelLLMId` union. **Then rebuild the SDK types** (`cd sdks/js && npm run build:types`) so `front`'s `sdk_drift.test.ts` (which reads the built `@dust-tt/client`) passes. |
-| `front/components/providers/model_configs.ts` | Add config to `USED_MODEL_CONFIGS` so it shows in the UI. |
-| `marketing/types/assistant/models/models.ts` | Add `{ modelId, displayName, providerId }` snapshot. |
-| `marketing/lib/api/assistant/token_pricing.ts` | Add the pricing entry (keep in sync with front). |
+| `sdks/js/src/types.ts` | Add the id to the `KnownModelLLMId` union. **Then rebuild the SDK types** (`cd sdks/js && npm run build:types`) — `front`'s `sdk_drift.test.ts` type-imports the built `@dust-tt/client`, so `tsgo` reads stale declarations until you do. |
+| `front/components/providers/model_configs.ts` | Add config to `USED_MODEL_CONFIGS` so it shows in the UI, and **evict the family's older versions down to two** (see below). |
+
+> **At most two versions of a family in `USED_MODEL_CONFIGS`.** The picker groups by maker,
+> so every version left in the list is another near-identical row a user has to read past
+> ("Gemini 3.5 Flash / 3.6 Flash / 3.7 Flash / 3.8 Flash"). When you add a model, keep only
+> it and its immediate predecessor; drop the rest of the family from `USED_MODEL_CONFIGS`.
+> Count families by product line, not by provider — Gemini Flash, Gemini Flash Lite and
+> Gemini Pro are three families, each allowed two.
+>
+> Everything a dropped model needs to stay *callable* lives elsewhere
+> (`SUPPORTED_MODEL_CONFIGS`, the endpoint classes, pricing), so the eviction only removes it
+> from the picker and the agent builder. Then finish the deprecation properly, or the model
+> rots into a stale default years later:
+>
+> - Set `isLegacy: true` + `isLatest: false` on each evicted config. `isLegacy` is also what
+>   drops it from the public credits page, so an evicted-but-not-flagged model keeps being
+>   advertised while being unpickable.
+> - **Repoint every hardcoded reference to it.** `grep -rn X_MODEL_CONFIG front front-api` and
+>   fix the ladders and defaults that name it: `ORDERED_FAST_MODEL_CONFIGS` /
+>   `ORDERED_SMALL_MODEL_CONFIGS` / `ORDERED_LARGE_MODEL_CONFIGS` in
+>   `front/lib/api/assistant/models.ts`, `getFastModelConfig` in
+>   `front/lib/api/assistant/conversation/title.ts`, `preferredModelConfiguration` on the
+>   `dust-*` global agents, and `MODEL_STREAMS` candidates in
+>   `front/types/assistant/models/auto.ts`. These are hand-maintained lists that no type
+>   checks — nothing goes red when they point at a legacy model.
+>
+> A legacy model still referenced by one of those lists is the failure mode this rule exists
+> for: conversation titles ran on Gemini 3.5 Flash for three releases after 3.6/3.7/3.8
+> shipped, purely because `getFastModelConfig` was never revisited.
+
+> **No marketing mirror.** The public credits page fetches `/api/marketing/model-credits`,
+> which `front/lib/api/marketing/model_credits.ts` derives at request time from
+> `SUPPORTED_MODEL_CONFIGS` + `MODEL_PRICING`. Nothing to copy into `marketing/` — but the
+> model only appears there once it has a `MODEL_PRICING` entry, is not `isLegacy`, and is
+> released (no `availableIfOneOf.featureFlag`).
 
 > **Batch** endpoints (`.../batch/...`) are a curated subset — only add them if the model
 > needs batch. They are NOT completeness-enforced. Set `supportsBatchProcessing` to the real
@@ -276,12 +353,109 @@ npx tsgo --noEmit                        # whole-project type check
 NODE_ENV=test npm run test -- \
   types/assistant/models/sdk_drift.test.ts \
   types/assistant/models/types.test.ts \
-  lib/api/assistant/token_pricing/tiers.test.ts
+  types/assistant/models/model_tiers.test.ts
 ```
 
 - `tsgo` clean over the files you touched (the `satisfies Record<...>` maps and `STREAM_ENDPOINT_SETUPS` are your completeness guardrails).
-- `sdk_drift.test.ts` green ⇒ front ⊆ SDK (rebuild `sdks/js` types if it names your id).
-- `tiers.test.ts` green ⇒ reasoning-effort maps in sync with the configs.
+- `sdk_drift.test.ts` is a **compile-time** guard: its `it()` body always passes, and the
+  `Exclude<StaticModelIdType, KnownModelLLMId>` assertion only fails under `tsgo`. So a green
+  vitest run proves nothing here — `tsgo` is what enforces front ⊆ SDK. Rebuild the SDK types
+  first, or `tsgo` reads a stale `@dust-tt/client` and passes on a drifted id.
+- `model_tiers.test.ts` green ⇒ reasoning-effort maps and tier maps in sync with the configs.
+
+## Deprecating or removing an old model
+
+Adding a model is normally paired with retiring the one it supersedes. There are two
+distinct paths — pick by whether the provider still serves the old model.
+
+### Path 1: deprecate (superseded, but still served)
+
+Hide it from new work and leave everything else standing, so agents already pinned to it
+keep working and historical token accounting stays exact. Worked example: Kimi K2.6
+added / K2.5 deprecated (`f2824da5c5e`, #28834).
+
+| File | What to change |
+|------|----------------|
+| `front/types/assistant/models/{provider}.ts` | Set `isLegacy: true` + `isLatest: false` on the old config, and strip "flagship"/"latest" from its `description`. |
+| `front/components/providers/model_configs.ts` | Remove it from `USED_MODEL_CONFIGS` — that is what drops it from the model picker, the workspace model-providers page, and `workspace_capabilities`. |
+| `front/types/assistant/models/auto.ts` | Replace it in any `MODEL_STREAMS` candidate list with the new model. |
+| `front/lib/api/assistant/models.ts` | Replace it in `ORDERED_FAST_MODEL_CONFIGS` / `ORDERED_SMALL_MODEL_CONFIGS` / `ORDERED_LARGE_MODEL_CONFIGS` — the whitelisted-model ladders behind `getFastestWhitelistedModel` & co. |
+| `front/lib/api/assistant/conversation/title.ts` | Replace it in `getFastModelConfig`, the per-provider ladder picking the model that names conversations. |
+| `front/lib/api/assistant/global_agents/configurations/dust/dust.ts` | Repoint every `preferredModelConfiguration` naming it (e.g. the `dust-kimi*` family). |
+| `front/lib/api/assistant/global_agents/global_agent_metadata.ts` | Update the agent `description` strings that name the old model version. |
+| `front/lib/api/assistant/global_agents/global_agents.ts` | If the old model had its **own** global agent (rather than a `dust-*` agent you just repointed), add its `GLOBAL_AGENTS_SID` to `RETIRED_GLOBAL_AGENTS_SID`. |
+
+Retiring a global agent that way keeps it resolvable so past conversations still render,
+while `getGlobalAgents` filters it out of list views and `isRetiredGlobalAgent` gates it out
+of new conversations. **Do not delete the `GLOBAL_AGENTS_SID` member** — the enum values are
+the `sId`s persisted in historical messages.
+
+**Keep** the id in `STATIC_MODEL_IDS`, `SUPPORTED_MODEL_CONFIGS`, `CURRENT_MODEL_PRICING`,
+`STATIC_MODEL_TIERS`, `STATIC_MODEL_SUPPORTED_REASONING_EFFORTS`, and keep its endpoint
+classes registered. Nothing to do for marketing: `isLegacy` is what excludes it from the
+public credits list (`front/lib/api/marketing/model_credits.ts`).
+
+A deprecated model needs no agent-config migration — that is the point of the path.
+
+### Path 2: remove (provider decommissioned it)
+
+Nothing can run on the model any more, so it comes out of the codebase entirely **and every
+agent still pinned to it must be repointed**. Worked example: DeepSeek R1 removal
+(`3ca8d834527`, #26958). Do Path 1's picker/global-agent repointing first, then:
+
+- **Model config + registry**: delete the `X_MODEL_ID` const and `X_MODEL_CONFIG` from
+  `front/types/assistant/models/{provider}.ts`, and their entries in
+  `front/types/assistant/models/models.ts` (`STATIC_MODEL_IDS`, `SUPPORTED_MODEL_CONFIGS`).
+- **The compile-forced trio** (§B) then goes red — remove the entries from
+  `static_model_reasoning_efforts.ts` and `model_tiers.ts`. For pricing, **move** the entry
+  from `CURRENT_MODEL_PRICING` into `LEGACY_MODEL_PRICING` in the same
+  `token_pricing/global.ts` (a `Record<string, PricingEntry>`, so it survives the id leaving
+  `StaticModelIdType`); that block exists precisely so historical runs still cost out.
+  Deleting the pricing outright silently zeroes past usage.
+- **`model_constructors` + `llms`**: delete the endpoint classes, config mixins, and
+  `test/endpoints/*.test.ts`; unregister from `stream/index.ts`, `setups.ts` and
+  `llms/stream/index.ts`; drop the id from the `MODELS` array in
+  `front/lib/model_constructors/types/models.ts`.
+- **Its global agent, if it had one**: retire it via `RETIRED_GLOBAL_AGENTS_SID` as in Path 1
+  — that is the normal answer even here, and it keeps historical conversations rendering.
+  Only tear the agent out completely when it must stop resolving at all: delete the factory
+  (`global_agents/configurations/{provider}.ts`) and the `GLOBAL_AGENTS_SID` member in
+  `front/types/assistant/assistant.ts`, which turns every exhaustive reference red — the
+  `getGlobalAgent` switch and the flag filters in `global_agents.ts`,
+  `global_agent_metadata.ts`, `prompt_context.ts` (`Record<GLOBAL_AGENTS_SID, …>`) and
+  `getGlobalAgentAuthorName`. Deleting the member abandons the `sId`s stored in past
+  messages, so justify it explicitly. (DeepSeek R1 did this in `3ca8d834527`, before
+  `RETIRED_GLOBAL_AGENTS_SID` existed — prefer retirement now.)
+- **Feature flag**: drop the model's flag from `front/types/shared/feature_flags.ts` once
+  nothing else references it.
+- **SDK**: removing an id from `KnownModelLLMId` in `sdks/js/src/types.ts` **narrows a
+  public API type — a breaking change.** Get explicit sign-off first (see the
+  `dust-breaking-changes` skill), then rebuild (`cd sdks/js && npm run build:types`).
+
+### Migrating agent configurations
+
+A removal orphans every `AgentConfiguration` row still pinned to the dead model, so ship a
+repoint script in the same PR: `front/migrations/YYYYMMDD_migrate_<model>_models.ts`, built
+on `makeScript`. Template: `front/migrations/20260608_migrate_deepseek_r1_models.ts`.
+
+- **Hardcode both source and target model ids as string literals when the source config is
+  being deleted in this PR.** The script must stay a frozen snapshot: importing the consts
+  breaks the moment they are gone, and importing a "latest model" pointer would silently
+  retarget the migration when the next model lands. (A pure repoint that leaves the model in
+  the codebase — e.g. `20260810_migrate_sonnet46_medium_to_auto.ts` — can import the consts.)
+- Scan with `AgentConfigurationModel.findAll({ where: { modelId, status: "active" } })`
+  through a `ModelStaticWorkspaceAware` alias, with
+  `dangerouslyBypassWorkspaceIsolationSecurity: true` plus the `WORKSPACE_ISOLATION_BYPASS`
+  comment and `biome-ignore lint/plugin/noUnverifiedWorkspaceBypass` the linter requires —
+  migrations run across all workspaces.
+- Log every matched agent (`sId`, `version`, `workspaceId`, from → to) on the dry run, and
+  gate all writes on `execute`.
+- **Write once, batched**: a single
+  `update({ providerId, modelId }, { where: { id: agents.map((a) => a.id) } })` over the ids
+  already gathered — not `agent.update()` per row. Scoped to those ids, the update needs no
+  isolation bypass of its own (the cross-workspace scan already happened in the `findAll`).
+- Set `providerId` alongside `modelId` — the replacement often sits on a different provider.
+  Reset `reasoningEffort` too if the target does not support the effort the agent was on.
 
 ## Model config properties (quick ref)
 
@@ -303,6 +477,8 @@ NODE_ENV=test npm run test -- \
 - [ ] Model config added; previous family model `isLatest: false`
 - [ ] `STATIC_MODEL_IDS` + `SUPPORTED_MODEL_CONFIGS` + `model_constructors/types/models.ts`
 - [ ] Pricing/tiers/reasoning trio updated (compile-forced)
+- [ ] `EU_UPLIFT_MODEL_IDS` updated if a registered EU endpoint prices above its global sibling
+      (NOT compile-forced — a miss silently bills EU traffic at global rates)
 - [ ] `model_constructors`: config mixin + endpoint class(es) + `stream/index.ts`
 - [ ] Tests: `.test.ts` per endpoint + `setups.ts`
 - [ ] TDD loop run live: widened schema → all cases `null` → full red run → narrowed schema
@@ -313,15 +489,30 @@ NODE_ENV=test npm run test -- \
       models rather than a bespoke schema on the new one
 - [ ] Every endpoint sharing the config mixin re-run green (all regions / provider APIs)
 - [ ] `llms` dust layer: dust mixin + endpoint(s) + `llms/stream/index.ts`
-- [ ] SDK union updated **and rebuilt**; UI `model_configs.ts`; marketing mirror
-- [ ] `tsgo` clean; `sdk_drift` / `types` / `tiers` tests green
+- [ ] UI `model_configs.ts`; SDK union updated **and types rebuilt before `tsgo`**
+- [ ] `USED_MODEL_CONFIGS` holds at most two versions of the family; every model evicted by
+      that rule is `isLegacy: true` + `isLatest: false` and no longer named by any hardcoded
+      ladder (`ORDERED_*_MODEL_CONFIGS`, `getFastModelConfig`, `dust-*` global agents,
+      `MODEL_STREAMS`)
+- [ ] `tsgo` clean; `types` / `model_tiers` tests green
 - [ ] Live endpoint test passes (or limitation flagged for follow-up)
+
+Retiring the superseded model (same PR):
+
+- [ ] Superseded model `isLegacy: true` + `isLatest: false`, dropped from `USED_MODEL_CONFIGS`
+- [ ] `MODEL_STREAMS` candidates and `dust-*` global agents repointed to the new model,
+      global-agent descriptions updated
+- [ ] If **decommissioned**: config + registry + trio + endpoints + global agent + feature
+      flag removed; pricing **moved** to `LEGACY_MODEL_PRICING`, not deleted
+- [ ] SDK `KnownModelLLMId` narrowing signed off as a breaking change before removal
+- [ ] Agent-config repoint migration written with hardcoded ids, batched update, dry-run
+      output reviewed before `--execute`
 
 ## Troubleshooting
 
-- **`sdk_drift.test.ts` names your id** → add it to `KnownModelLLMId` in `sdks/js/src/types.ts`, then `cd sdks/js && npm run build:types` (the test reads the built `@dust-tt/client`).
+- **`tsgo` fails on `sdk_drift.test.ts` naming your id** → add it to `KnownModelLLMId` in `sdks/js/src/types.ts`, then `cd sdks/js && npm run build:types` (it type-imports the built `@dust-tt/client` declarations, so the rebuild must come first).
 - **`tsgo` on `setups.ts` / index files** → you added an endpoint to `STREAM_ENDPOINTS` without a matching setup, or vice-versa. Register both.
-- **`tiers.test.ts` fails** → `static_model_reasoning_efforts.ts` disagrees with the config's `supportedReasoningEfforts`.
+- **`model_tiers.test.ts` fails** → `static_model_reasoning_efforts.ts` disagrees with the config's `supportedReasoningEfforts`, or `STATIC_MODEL_TIERS` is missing an effort the config supports.
 - **Model not in UI** → missing from `USED_MODEL_CONFIGS`.
 - **Live test rejects a config** → check the bucket first (§4). A provider `invalid_request_error` means narrow `configSchema` and mark the case `INPUT_CONFIGURATION_ERROR`; an `input_configuration_error` under the widened scaffold means a converter or base client is rejecting it, not the API.
 - **A case you expected to fail passes** → the model accepts that input. Fix the expectation (and any comment claiming otherwise) rather than keeping the marker.

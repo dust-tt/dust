@@ -7,6 +7,7 @@ import {
   stopAllReinforcementWorkspaceSchedules as stopAllReinforcementWorkspaceSchedules,
   stopEnsureReinforcementSchedulesWorkflow as stopEnsureReinforcementSchedulesWorkflow,
 } from "@app/temporal/reinforcement/client";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import parseArgs from "minimist";
 
 function usage() {
@@ -111,7 +112,7 @@ main()
     process.exit(0);
   })
   .catch((err) => {
-    console.error("\x1b[31m%s\x1b[0m", `Error: ${err.message}`);
+    console.error("\x1b[31m%s\x1b[0m", `Error: ${normalizeError(err).message}`);
     console.log(err);
     process.exit(1);
   });

@@ -4,6 +4,7 @@ import {
   getApiKeyNameFromHeaders,
   getSessionFromBearerToken,
 } from "@app/lib/auth";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getClientIp } from "@app/lib/utils/request";
 import type { APIErrorWithContentfulStatusCode } from "@app/types/error";
@@ -95,8 +96,7 @@ function applyClientIp(auth: Authenticator, headers: HeaderRecord): void {
 /**
  * Authenticates a public-API request (Authorization header required:
  * sandbox token, OAuth bearer, or API key) and stashes the resolved
- * `Authenticator` on the Hono context under `auth`. Mirrors
- * `withPublicAPIAuthentication` in `front/lib/api/auth_wrappers.ts`.
+ * `Authenticator` on the Hono context under `auth`.
  */
 export const publicApiAuth = createMiddleware<PublicApiCtx>(
   async (ctx, next) => {
@@ -212,18 +212,23 @@ export const publicApiAuth = createMiddleware<PublicApiCtx>(
         )) ?? workspaceAuth;
     }
 
-    // x-api-key-name: system-key-only key name override (for analytics).
+    // x-dust-api-key-name: system-key-only usage attribution, see
+    // `Authenticator.keyForUsageAttribution`. Must stay after the
+    // x-api-user-email exchange above, which rebuilds the Authenticator without
+    // carrying the attribution key over.
     const apiKeyNameFromHeader = getApiKeyNameFromHeaders(headers);
     const key = workspaceAuth.key();
     if (apiKeyNameFromHeader && key && key.isSystem) {
-      workspaceAuth = workspaceAuth.exchangeKey({
-        id: key.id,
-        isSystem: key.isSystem,
-        monthlyCapMicroUsd: key.monthlyCapMicroUsd,
+      const attributionKey = await KeyResource.fetchByName(workspaceAuth, {
         name: apiKeyNameFromHeader,
-        role: key.role,
-        userModelId: key.userModelId,
+        onlyActive: true,
       });
+      if (attributionKey && !attributionKey.isSystem) {
+        workspaceAuth = workspaceAuth.withAttributionKey({
+          id: attributionKey.id,
+          name: attributionKey.name,
+        });
+      }
     }
 
     applyClientIp(workspaceAuth, headers);

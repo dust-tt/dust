@@ -1,8 +1,22 @@
-@cc [label:backend] api-routes-use-resources
+@cc [owner:spolu,notify:spolu;flvndvd,label:security;backend] workspace-isolation
+Code MUST NOT allow a workspace to read or modify another workspace's data.
+
+@cc [owner:spolu,notify:spolu;flvndvd,label:security;backend] workspace-aware-models
+Models storing workspace-specific data MUST inherit from `WorkspaceAwareModel`.
+
+Inheritance exceptions (workspace isolation still applies): `WorkspaceModel`, `UserModel`,
+`UserMetadataModel`, `PluginRunModel`, `PlanModel`, `TemplateModel`, `CouponModel`,
+`GlobalFeatureFlagModel`, `KillSwitchModel`, `ModelDegradationModel`, `AcademyChapterVisitModel`,
+and `AcademyQuizAttemptModel`.
+
+Every use of `dangerouslyBypassWorkspaceIsolationSecurity` MUST have a preceding
+`WORKSPACE_ISOLATION_BYPASS:` comment explaining why the bypass is necessary.
+
+@cc [owner:flvndvd,label:backend] api-routes-use-resources
 API routes must not interact with Sequelize models directly. Use `lib/api/*` interfaces (creating
 them if missing). Direct Resource interactions are acceptable.
 
-@cc [label:backend] business-interfaces-hide-models
+@cc [owner:flvndvd,label:backend] business-interfaces-hide-models
 Interfaces in `lib/api/*` must not expose ModelId or Sequelize model objects.
 
 Example:
@@ -17,16 +31,24 @@ function doWorkspace({ id }: { id: ModelId }) { }
 function doWorkspace({ workspace }: { workspace: WorkspaceType }) { }
 ```
 
-@cc [label:backend] models-behind-resources
-Sequelize models must not be used directly outside Resources.
+@cc [owner:flvndvd,label:backend] models-behind-resources
+Runtime application code must access Sequelize models through Resources. This includes API
+handlers, application services, and background workers.
 
-Any new model should be abstracted to the rest of the codebase through a pre-existing or new
+Non-runtime code (tests, test factories, one-off scripts and backfills) should reuse existing
+Resource APIs when their semantics fit, but may access Sequelize models directly when they do not.
+
+Any new model used by runtime application code should be exposed through a pre-existing or new
 `Resource`.
 
-@cc [label:backend] resource-interfaces-hide-models
+@cc [owner:philipperolet,label:architecture] non-runtime-code-stays-local
+Keep code used only by tests, test factories, or one-off scripts and backfills in those contexts.
+Do not add runtime APIs or abstractions solely to support non-runtime code.
+
+@cc [owner:flvndvd,label:backend] resource-interfaces-hide-models
 Resource interfaces must not expose Sequelize model objects; accept Resources or Types instead.
 
-@cc [label:backend] business-functions-use-resources
+@cc [owner:flvndvd,label:backend] business-functions-use-resources
 Any newly introduced function in `lib/api/*` should rely on Resources and not models directly.
 
 @cc [label:backend] use-concurrent-executor
@@ -67,7 +89,7 @@ if (isString(aId)) {
 const r = someFunction(aId);
 ```
 
-@cc [label:backend] resource-identifier-naming
+@cc [owner:flvndvd,label:backend] resource-identifier-naming
 Resource identifiers must follow this naming convention:
 
 - For the string identifier of a resource (`sId` field): use `<resourceName>Id` (e.g., `agentId`,
@@ -96,7 +118,7 @@ const agentModelId = agent.id;       // Numeric ModelId
 
 This naming convention also implies that no variable should follow the naming `xxxSId` or `<resourceName>sId`.
 
-@cc [label:backend] sequelize-model-suffix
+@cc [owner:flvndvd,label:backend] sequelize-model-suffix
 When creating a new Resource that wraps a Sequelize model, the model should be renamed to include
 the "Model" suffix for clarity (e.g., `Conversation` becomes `ConversationModel`).
 This naming convention helps distinguish between the Resource interface and
@@ -182,7 +204,7 @@ Follow these steps based on the type of change:
   - First: Update all client code to stop relying on the removed value
   - Stop returning the enum value from the backend only after a period of time
 
-@cc [label:backend] index-foreign-keys
+@cc [owner:flvndvd,label:backend] index-foreign-keys
 When adding a foreign key `B.a` on table `B` to a deletable object from table `A` (pretty much all
 objects in the context of scrubbing a workspace) make sure to add an index on `B.a` to avoid table
 scans when deleting objects from table `A`.
@@ -234,7 +256,7 @@ export type UserTypeWithWorkspaces = UserType & {
 };
 ```
 
-@cc [label:backend] resource-owned-serialization
+@cc [owner:flvndvd,label:backend] resource-owned-serialization
 Some objects have both a back-end (Resource class) and a front-end representation (Type interface).
 The back-end representation is a Resource class that wraps a Sequelize model.
 The front-end representation is a Type interface that is the result of serializing the back-end Resource, extracting the
@@ -494,13 +516,16 @@ When introducing new endpoints or modifying existing endpoints, introduce functi
 tests are functional and focus at the endpoint level for now. Unit tests are not required nor
 desired.
 
-@cc [label:testing] test-setup-through-factories
+@cc [owner:Fraggle,label:testing] test-setup-through-factories
 Test state setup should be done through factories. Factories should return Resources whenever
 possible.
 
-@cc [label:testing] tests-use-resources
+@cc [owner:flvndvd,label:testing] tests-use-resources
 Direct use of Sequelize models in tests should be avoided in favor of Resources. This includes test
 setup and assertions.
+
+When existing Resource APIs cannot express a required fixture or assertion, direct model access
+is allowed under the `models-behind-resources` contract; do not add test-only Resource APIs.
 
 @cc [label:react] component-props-interfaces
 Components props should always be typed using an `interface`.
@@ -653,3 +678,27 @@ switch (event.type) {
 
 Reviewer: If you see `assertNever` used in frontend component or hook code, require the author to
 switch to `assertNeverAndIgnore`.
+
+@cc [label:product;backend] image-models-priced-before-use
+Every id added to `IMAGE_MODEL_IDS` must get an `IMAGE_MODEL_PRICING` entry in
+`lib/api/assistant/token_pricing/global.ts`, with the provider pricing URL and verification date
+in a comment, before any code path can select it. A missing entry never fails: lookup falls back
+to `DEFAULT_PRICING` (a text model's rates), so every generation on that model is silently
+mispriced.
+Never delete the entry of a model that has run — move it to `LEGACY_MODEL_PRICING` so historical
+usage still costs out.
+
+Reviewer: for a new image model, check the pricing entry exists and its numbers match the linked
+provider page.
+
+@cc [owner:avervaet,label:coding] date-fns-over-moment
+New code must not import `moment` (or `moment-timezone`). Use `date-fns` instead, extending the
+helpers in `lib/utils/timestamps.ts` for relative-time / calendar-style formatting when the
+existing ones don't cover a pattern. Files that already import `moment` may keep doing so; migrate
+them to `date-fns` opportunistically when touched for unrelated reasons, rather than as a
+dedicated migration.
+See https://github.com/dust-tt/decisions/issues/1009.
+This is enforced by a lefthook hook and a dangerfile check (grep the repo for "MOMENT-BAN"); once
+no file imports `moment` anymore, remove this contract along with those.
+
+Reviewer: if a file that did not previously import `moment` starts to, require `date-fns` instead.

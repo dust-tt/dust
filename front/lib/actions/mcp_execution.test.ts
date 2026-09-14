@@ -725,6 +725,7 @@ describe("processToolResults", () => {
         contextType: "sandbox_function",
         action,
         invocation,
+        pod: podSpace,
         toolConfiguration: action.toolConfiguration,
       },
     };

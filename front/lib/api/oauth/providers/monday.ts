@@ -22,7 +22,7 @@ export class MondayOAuthProvider implements BaseOAuthStrategyProvider {
       `https://auth.monday.com/oauth2/authorize` +
       `?client_id=${config.getOAuthMondayClientId()}` +
       `&state=${connection.connection_id}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("monday"))}`
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "monday", connection }))}`
     );
   }
 

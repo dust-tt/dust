@@ -5,11 +5,13 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   BookOpen01,
   Button,
+  cn,
   DataTable,
-  DataTableLoadingSkeleton,
+  DataTableSkeleton,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -18,6 +20,7 @@ import {
   DialogTitle,
   Edit04,
   Input,
+  LoadingBlock,
   Page,
   Plus,
   SearchInput,
@@ -337,6 +340,31 @@ interface SecretsTableProps {
   searchQuery: string;
 }
 
+function SecretSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return (
+        <div className="flex items-center gap-2">
+          <LoadingBlock
+            className={cn(
+              "h-3 max-w-full",
+              ["w-56", "w-64", "w-48", "w-60", "w-52"][rowIndex % 5]
+            )}
+          />
+          <LoadingBlock className="h-6 w-6 shrink-0 rounded-lg" />
+        </div>
+      );
+    case "actions":
+      // Edit and delete only appear on hover in the loaded table.
+      return null;
+    default:
+      return null;
+  }
+}
+
 function SecretsTable({
   isLoading,
   isError,
@@ -344,7 +372,9 @@ function SecretsTable({
   searchQuery,
 }: SecretsTableProps) {
   if (isLoading) {
-    return <DataTableLoadingSkeleton showSelectionColumn={false} />;
+    return (
+      <DataTableSkeleton columns={columns} SkeletonCell={SecretSkeletonCell} />
+    );
   }
 
   if (isError) {

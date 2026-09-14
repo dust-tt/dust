@@ -4,7 +4,6 @@ import { framesSkill } from "@app/lib/resources/skill/code_defined/global/frames
 import { goDeepSkill } from "@app/lib/resources/skill/code_defined/global/go_deep";
 import { jobSkill } from "@app/lib/resources/skill/code_defined/global/job";
 import { mentionUsersSkill } from "@app/lib/resources/skill/code_defined/global/mention_users";
-import { podFunctionsSkill } from "@app/lib/resources/skill/code_defined/global/pod_functions";
 import { pptxSkill } from "@app/lib/resources/skill/code_defined/global/pptx";
 import { projectsSkill } from "@app/lib/resources/skill/code_defined/global/projects";
 import { sandboxSkill } from "@app/lib/resources/skill/code_defined/global/sandbox";
@@ -21,7 +20,6 @@ export const GLOBAL_SKILLS_ARRAY = ensureUniqueSIds([
   goDeepSkill,
   jobSkill,
   mentionUsersSkill,
-  podFunctionsSkill,
   pptxSkill,
   projectsSkill,
   sandboxSkill,

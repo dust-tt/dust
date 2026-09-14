@@ -1239,6 +1239,38 @@ describe("rawOutputToEvents", () => {
     });
   });
 
+  it("ends a refused turn on the error event, after usage and with no success", async () => {
+    // Consumers stop at the first success/error event: the error must be last so
+    // the usage is not dropped, and no success may follow a terminal error.
+    const events = await collect(
+      rawOutputToEvents(
+        streamOf([
+          {
+            type: "message_start",
+            message: { id: "msg_1" },
+          } as BetaRawMessageStartEvent,
+          {
+            type: "message_delta",
+            delta: { stop_reason: "refusal", stop_sequence: null },
+            usage: tokenUsage,
+          } as BetaRawMessageStreamEvent,
+          { type: "message_stop" } as BetaRawMessageStreamEvent,
+        ]),
+        metadata,
+        realConverters
+      )
+    );
+
+    expect(events.map((e) => e.type)).toEqual([
+      "response_id",
+      "token_usage",
+      "error",
+    ]);
+    expect(events.at(-1)).toMatchObject({
+      content: { type: "refusal_error" },
+    });
+  });
+
   it("splits cache creation by TTL using the cache_creation breakdown from message_start", async () => {
     // Anthropic only emits the per-TTL split on message_start; the trailing
     // message_delta usage carries the flat cache_creation_input_tokens. The

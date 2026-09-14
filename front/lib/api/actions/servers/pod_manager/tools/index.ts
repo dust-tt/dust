@@ -316,7 +316,6 @@ export function createProjectManagerTools(
               pod
             );
             const updatePermissionsRes = await pod.updatePermissions(auth, {
-              name: pod.name,
               isRestricted: newIsRestricted,
               memberIds,
               editorIds,

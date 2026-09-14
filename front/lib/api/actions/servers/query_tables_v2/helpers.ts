@@ -22,8 +22,10 @@ import { toCsv } from "@app/lib/api/csv";
 import { writeToToolOutputsFolder } from "@app/lib/api/files/action_output_fs";
 import { makeFileName } from "@app/lib/api/files/action_output_fs/naming";
 import type { Authenticator } from "@app/lib/auth";
+import { hasFeatureFlag } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import logger from "@app/logger/logger";
+import type { CoreAPIQueryIdentity } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { ConnectorProvider } from "@app/types/data_source";
 import type { Result } from "@app/types/shared/result";
@@ -100,6 +102,38 @@ export function verifyDataSourceViewReadAccess(
     );
   }
   return null;
+}
+
+/**
+ * When the workspace opts in, attach opaque Dust sIds so warehouse owners can attribute
+ * query cost to workspace / agent / user in their own billing logs.
+ */
+export async function buildQueryIdentity(
+  auth: Authenticator,
+  runContext: ToolRunContext
+): Promise<CoreAPIQueryIdentity | undefined> {
+  if (!(await hasFeatureFlag(auth, "remote_db_query_identity_labels"))) {
+    return undefined;
+  }
+
+  const identity: CoreAPIQueryIdentity = {
+    workspace_id: auth.getNonNullableWorkspace().sId,
+  };
+
+  switch (runContext.contextType) {
+    case "agent_loop":
+      identity.agent_id = runContext.agentConfiguration.sId;
+      identity.user_id =
+        runContext.userMessage.user?.sId ?? auth.user()?.sId ?? undefined;
+      break;
+    case "sandbox_function":
+      identity.user_id = auth.user()?.sId ?? undefined;
+      break;
+    default:
+      assertNever(runContext);
+  }
+
+  return identity;
 }
 
 async function generateAgentLoopQueryResultFiles(
@@ -246,10 +280,12 @@ export async function executeQuery(
     connectorProvider: ConnectorProvider | null;
   }
 ) {
+  const queryIdentity = await buildQueryIdentity(auth, runContext);
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const queryResult = await coreAPI.queryDatabase({
     tables,
     query,
+    queryIdentity,
   });
   if (queryResult.isErr()) {
     return new Err(

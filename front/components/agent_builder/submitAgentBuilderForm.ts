@@ -573,14 +573,12 @@ export async function submitAgentBuilderForm({
     // Make the call even if slackChannels is empty, since if the user deselects all channels,
     // the call need to be made to unlink them.
     if (slackProvider && areSlackChannelsChanged) {
-      const autoRespondWithoutMention =
-        slackChannels.length > 0
-          ? slackChannels[0].autoRespondWithoutMention
-          : false;
-      const autoRespondWithoutMentionSkipThreadReplies =
-        slackChannels.length > 0
-          ? slackChannels[0].autoRespondWithoutMentionSkipThreadReplies
-          : false;
+      const autoRespondWithoutMention = slackChannels.some(
+        (channel) => channel.autoRespondWithoutMention
+      );
+      const autoRespondWithoutMentionSkipThreadReplies = slackChannels.some(
+        (channel) => channel.autoRespondWithoutMentionSkipThreadReplies
+      );
       const slackRequestBody = JSON.stringify({
         provider: slackProvider,
         slack_channel_internal_ids: slackChannels.map(

@@ -81,10 +81,6 @@ makeScript(
     { destinationCell, sourceCell, step, workspaceId, execute },
     logger
   ) => {
-    logger.warn(
-      "Note: the relocation script does NOT support moving between cells within the same region."
-    );
-
     if (!isCellType(sourceCell) || !isCellType(destinationCell)) {
       logger.error("Invalid cell.");
       return;
@@ -162,15 +158,15 @@ makeScript(
           // 5) Launch the relocation workflow.
           await launchWorkspaceRelocationWorkflow({
             workspaceId: owner.sId,
-            sourceRegion: cellConfig.getCellInfo(sourceCell).region,
-            destRegion: cellConfig.getCellInfo(destinationCell).region,
+            sourceCell,
+            destCell: destinationCell,
           });
           break;
 
         case "cutover":
           assertCurrentCell(sourceCell);
 
-          // 1) Set the workspace in the source region as relocated.
+          // 1) Set the workspace in the source cell as relocated.
           const workspaceRelocatedRes = await setWorkspaceRelocated(owner);
           if (workspaceRelocatedRes.isErr()) {
             logger.error(
@@ -218,7 +214,7 @@ makeScript(
             return;
           }
 
-          // 3) Unpause all webcrawler connectors in the destination region.
+          // 3) Unpause all webcrawler connectors in the destination cell.
           const unpauseDestConnectorsRes = await unpauseAllManagedDataSources(
             auth,
             ["webcrawler"]
@@ -263,7 +259,7 @@ makeScript(
         case "rollback":
           assertCurrentCell(sourceCell);
 
-          // 1) Clear workspace maintenance metadata in source region.
+          // 1) Clear workspace maintenance metadata in source cell.
           const clearSrcWorkspaceMetadataRes = await updateWorkspaceMetadata(
             owner,
             {
@@ -277,7 +273,7 @@ makeScript(
             return;
           }
 
-          // 2) Unpause all connectors in the source region.
+          // 2) Unpause all connectors in the source cell.
           const unpauseSrcConnectorsRes =
             await unpauseAllManagedDataSources(auth);
           if (unpauseSrcConnectorsRes.isErr()) {
@@ -341,7 +337,7 @@ makeScript(
             return;
           }
 
-          // 2) Delete the workspace in the source region.
+          // 2) Delete the workspace in the source cell.
           const deleteWorkspaceRes = await deleteWorkspace(owner, {
             workspaceHasBeenRelocated: true,
           });
@@ -352,10 +348,10 @@ makeScript(
             return;
           }
 
-          logger.info("Workspace marked for deletion in source region.");
+          logger.info("Workspace marked for deletion in the source cell.");
           break;
 
-        // Can be run from any region.
+        // Can be run from any cell.
         case "compute-statistics":
           const statsRes = await computeWorkspaceStatistics(auth);
           if (statsRes.isErr()) {

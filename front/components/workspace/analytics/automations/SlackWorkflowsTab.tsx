@@ -12,10 +12,12 @@ import { timeAgoFrom } from "@app/lib/utils";
 import type { SlackWorkflowType } from "@app/types/api/slack/workflows";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   Button,
+  cn,
   DataTable,
-  DataTableLoadingSkeleton,
+  DataTableSkeleton,
   LoadingBlock,
   Plus,
   SearchInput,
@@ -271,6 +273,40 @@ interface SlackWorkflowsTableBodyProps {
   setPagination: (pagination: PaginationState) => void;
 }
 
+function SlackWorkflowSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
+  switch (columnId) {
+    case "botName":
+      return (
+        <LoadingBlock
+          className={cn(
+            "h-3 max-w-full",
+            ["w-36", "w-44", "w-32", "w-40", "w-48"][rowIndex % 5]
+          )}
+        />
+      );
+    case "spaceNames":
+      return (
+        <LoadingBlock
+          className={cn(
+            "h-3 max-w-full",
+            ["w-24", "w-40", "w-32", "w-48", "w-28"][rowIndex % 5]
+          )}
+        />
+      );
+    case "createdAt":
+      return <LoadingBlock className="h-3 w-20 max-w-full" />;
+    case "revoke":
+      return (
+        <LoadingBlock className="ml-auto h-6 w-6 rounded-lg pointer-fine:invisible" />
+      );
+    default:
+      return null;
+  }
+}
+
 function SlackWorkflowsTableBody({
   columns,
   rows,
@@ -282,7 +318,18 @@ function SlackWorkflowsTableBody({
 }: SlackWorkflowsTableBodyProps) {
   if (isLoading) {
     return (
-      <DataTableLoadingSkeleton showSelectionColumn={false} showTrailingCell />
+      <div className="flex flex-col gap-2 overflow-x-auto">
+        <DataTableSkeleton
+          columns={columns}
+          SkeletonCell={SlackWorkflowSkeletonCell}
+        />
+        <div
+          aria-hidden="true"
+          className="flex h-8 items-center justify-end px-1"
+        >
+          <LoadingBlock className="h-3 w-14" />
+        </div>
+      </div>
     );
   }
 

@@ -96,6 +96,7 @@ export const CLIENT_MESSAGE_ORIGINS = [
   "project_kickoff",
   "extension",
   "agent_sidekick",
+  "analytics_panel",
   "reinforced_skill_notification",
 ] as const;
 
@@ -124,9 +125,9 @@ export type UserMessageOrigin =
   | "wakeup"
   | "zapier"
   | "zendesk"
-  // TODO onboarding_conversation, agent_sidekick, and project_kickoff aren't message origins. They
-  // have been used as a hack but should be removed and most likely handled as message metadata
-  // (to be created).
+  // TODO onboarding_conversation, agent_sidekick, analytics_panel, and project_kickoff aren't
+  // message origins. They have been used as a hack but should be removed and most likely handled
+  // as message metadata (to be created).
   | "onboarding_conversation"
   // for internal use, for reinforced agent batch LLM operations
   | "reinforcement"
@@ -580,6 +581,15 @@ export type ConversationForkedChildType = {
   sourceMessageId: string;
   branchedAt: number;
   user: UserType;
+};
+
+/**
+ * Minimal reference to a conversation: enough to name it and link to it. Used by listings of other
+ * resources that only need to point at their conversation.
+ */
+export type ConversationRefType = {
+  sId: string;
+  title: string | null;
 };
 
 /**

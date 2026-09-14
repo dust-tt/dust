@@ -6,7 +6,6 @@ import {
 } from "@app/lib/api/content_nodes";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { normalizeUrlForSourceUrlSearch } from "@app/lib/connectors";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -110,10 +109,8 @@ export async function handleSearch(
 ): Promise<Result<SearchResult, SearchError>> {
   let spaces;
   if (allowAdminSearch) {
-    const featureFlags = await getFeatureFlags(auth);
-    const allowPods = featureFlags.includes("admin_controlled_pods");
     const allWorkspaceSpaces = await SpaceResource.listWorkspaceSpaces(auth, {
-      includeProjectSpaces: allowPods,
+      includeProjectSpaces: false,
     });
     spaces = allWorkspaceSpaces.filter(
       (space) => auth.can("admin", space) || auth.can("read", space)

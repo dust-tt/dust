@@ -1,3 +1,7 @@
+import {
+  ElasticsearchError,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
 import {
   SkillFileAttachmentModel,
@@ -8,7 +12,6 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { discoverToolsSkill } from "@app/lib/resources/skill/code_defined/system/discover_tools";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
@@ -29,8 +32,14 @@ import type {
   SkillWithoutInstructionsAndToolsWithRelationsType,
 } from "@app/types/assistant/skill_configuration";
 import type { MembershipRoleType } from "@app/types/memberships";
+import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock(import("@app/lib/api/elasticsearch"), async (importOriginal) => {
+  const mod = await importOriginal();
+  return { ...mod, searchConsumptionAnalytics: vi.fn() };
+});
 
 async function setupTest(role: MembershipRoleType = "user") {
   return createPrivateApiMockRequest({ role });
@@ -892,57 +901,91 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     ]);
   });
 
-  it("should return the number of messages using each skill", async () => {
+  it("returns recent skill activation calls with withUsage", async () => {
     const { workspace, user } = await setupTest();
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    const skill = await SkillFactory.create(auth, { name: "Used Skill" });
+    const unusedSkill = await SkillFactory.create(auth, {
+      name: "Unused Skill",
+    });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValueOnce(
+      new Ok({
+        took: 1,
+        timed_out: false,
+        _shards: { total: 1, successful: 1, skipped: 0, failed: 0 },
+        hits: { hits: [] },
+        aggregations: {
+          by_skill: {
+            buckets: [
+              { key: skill.sId, doc_count: 12 },
+              { key: "frames", doc_count: 4 },
+            ],
+          },
+        },
+      })
+    );
 
+    const response = await getSkills(workspace, {
+      withRelations: "true",
+      withUsage: "true",
+    });
+
+    expect(response.status).toBe(200);
+    const responseBody: GetSkillsWithRelationsResponseBody =
+      await response.json();
+    const counts = new Map(responseBody.skills.map((s) => [s.sId, s.usage]));
+    expect(counts.get(skill.sId)).toBe(12);
+    expect(counts.get("frames")).toBe(4);
+    expect(counts.get(unusedSkill.sId)).toBe(0);
+    expect(counts.get("discover_tools")).toBeNull();
+    for (const listedSkill of responseBody.skills) {
+      expect(listedSkill.messageCount).toBeNull();
+    }
+
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(1);
+    const [query, options] = vi.mocked(searchConsumptionAnalytics).mock
+      .calls[0];
+    const requestedSkillIds = responseBody.skills
+      .filter((s) => s.usage !== null)
+      .map((s) => s.sId);
+    expect(query).toEqual({
+      bool: {
+        filter: [
+          { term: { workspace_id: workspace.sId } },
+          { range: { completed_at: { gte: "now-30d", lt: "now" } } },
+          { terms: { "tool.attributed_skill_ids": requestedSkillIds } },
+          { term: { consumption_type: "tool" } },
+          { term: { "tool.name": "enable_skill" } },
+          { term: { "tool.server_name": "skill_management" } },
+        ],
+      },
+    });
+    // Include restricts the buckets too: an attributed call can mention other skills.
+    expect(options).toEqual({
+      size: 0,
+      aggregations: {
+        by_skill: {
+          terms: {
+            field: "tool.attributed_skill_ids",
+            include: requestedSkillIds,
+            size: requestedSkillIds.length,
+          },
+        },
+      },
+    });
+  });
+
+  it("ignores the legacy withMessageCount parameter", async () => {
+    const { workspace, user } = await setupTest();
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId
     );
     const skill = await SkillFactory.create(auth, {
-      name: "Skill Used In Messages",
-    });
-    const agent = await AgentConfigurationFactory.createTestAgent(auth);
-    const conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agent.sId,
-      messagesCreatedAt: [],
-    });
-
-    await skill.enableForAgent(auth, {
-      agentConfiguration: agent,
-      conversation,
-    });
-
-    const firstAgentMessage =
-      await ConversationFactory.createAgentMessageWithRank({
-        workspace,
-        conversationId: conversation.id,
-        rank: 0,
-        agentConfigurationId: agent.sId,
-      });
-    if (!firstAgentMessage.agentMessageId) {
-      throw new Error("Expected an agent message");
-    }
-    await SkillResource.snapshotConversationSkillsForMessage(auth, {
-      agentConfigurationId: agent.sId,
-      agentMessageId: firstAgentMessage.agentMessageId,
-      conversationId: conversation.id,
-    });
-
-    const secondAgentMessage =
-      await ConversationFactory.createAgentMessageWithRank({
-        workspace,
-        conversationId: conversation.id,
-        rank: 1,
-        agentConfigurationId: agent.sId,
-      });
-    if (!secondAgentMessage.agentMessageId) {
-      throw new Error("Expected an agent message");
-    }
-    await SkillResource.snapshotConversationSkillsForMessage(auth, {
-      agentConfigurationId: agent.sId,
-      agentMessageId: secondAgentMessage.agentMessageId,
-      conversationId: conversation.id,
+      name: "Skill Requested By Legacy Client",
     });
 
     const response = await getSkills(workspace, {
@@ -953,16 +996,55 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
     expect(response.status).toBe(200);
     const responseBody: GetSkillsWithRelationsResponseBody =
       await response.json();
-    const skillResult = responseBody.skills.find(
-      (listedSkill) => listedSkill.sId === skill.sId
+    expect(responseBody.skills.some((s) => s.sId === skill.sId)).toBe(true);
+    for (const listedSkill of responseBody.skills) {
+      expect(listedSkill.messageCount).toBeNull();
+      expect(listedSkill).not.toHaveProperty("usage");
+    }
+    expect(searchConsumptionAnalytics).not.toHaveBeenCalled();
+  });
+
+  it("keeps skills available when consumption analytics fails", async () => {
+    const { workspace, user } = await setupTest();
+    const auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
     );
-    const systemSkillResult = responseBody.skills.find(
-      (listedSkill) => listedSkill.sId === "discover_tools"
+    const skill = await SkillFactory.create(auth, {
+      name: "Skill Without Analytics",
+    });
+    vi.mocked(searchConsumptionAnalytics).mockResolvedValueOnce(
+      new Err(
+        new ElasticsearchError("connection_error", "Analytics unavailable")
+      )
     );
 
-    expect(skillResult?.messageCount).toBe(2);
-    expect(systemSkillResult).toBeDefined();
-    expect(systemSkillResult?.messageCount).toBeNull();
+    const response = await getSkills(workspace, {
+      withRelations: "true",
+      withUsage: "true",
+    });
+
+    expect(response.status).toBe(200);
+    const responseBody: GetSkillsWithRelationsResponseBody =
+      await response.json();
+    expect(
+      responseBody.skills.find((s) => s.sId === skill.sId)?.usage
+    ).toBeNull();
+  });
+
+  it("skips consumption analytics when there are no skills to count", async () => {
+    const { workspace } = await setupTest();
+    const response = await getSkills(workspace, {
+      onlyCustom: "true",
+      withRelations: "true",
+      withUsage: "true",
+    });
+
+    expect(response.status).toBe(200);
+    const responseBody: GetSkillsWithRelationsResponseBody =
+      await response.json();
+    expect(responseBody.skills).toEqual([]);
+    expect(searchConsumptionAnalytics).not.toHaveBeenCalled();
   });
 
   it("should return skills with usage when linked to agents", async () => {
@@ -1073,7 +1155,9 @@ describe("GET /api/w/:wId/skills?withRelations=true", () => {
         usage: { count: 0, agents: [], skills: [] },
       },
     });
-    expect(skillResult).not.toHaveProperty("messageCount");
+    expect(skillResult).not.toHaveProperty("usage");
+    expect(skillResult.messageCount).toBeNull();
+    expect(searchConsumptionAnalytics).not.toHaveBeenCalled();
   });
 
   it("should return child skills", async () => {

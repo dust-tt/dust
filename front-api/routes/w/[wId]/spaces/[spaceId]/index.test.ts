@@ -1,6 +1,7 @@
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentMCPServerConfigurationFactory } from "@app/tests/utils/AgentMCPServerConfigurationFactory";
+import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -14,6 +15,18 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 function getSpace(workspace: { sId: string }, spaceId: string) {
   return honoApp.request(`/api/w/${workspace.sId}/spaces/${spaceId}`);
+}
+
+function patchSpace(
+  workspace: { sId: string },
+  spaceId: string,
+  body: unknown
+) {
+  return honoApp.request(`/api/w/${workspace.sId}/spaces/${spaceId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 describe("GET /api/w/:wId/spaces/:spaceId", () => {
@@ -69,6 +82,46 @@ describe("GET /api/w/:wId/spaces/:spaceId", () => {
     ).toEqual([agent.sId]);
   });
 
+  it("lists the groups given access to the space, with their role", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await SpaceFactory.defaults(auth);
+    const pod = await SpaceFactory.project(workspace, user.id);
+
+    const memberGroup = await GroupFactory.provisioned(workspace, "Dev team");
+    const editorGroup = await GroupFactory.regularManual(workspace, "Leads");
+    await GroupFactory.withMembers(auth, editorGroup, [user]);
+
+    const updateRes = await pod.updatePermissions(auth, {
+      isRestricted: true,
+      editorIds: [user.sId],
+      groupIds: [memberGroup.sId],
+      editorGroupIds: [editorGroup.sId],
+    });
+    assert(updateRes.isOk(), "Failed to attach the groups to the Pod.");
+
+    const response = await getSpace(workspace, pod.sId);
+    expect(response.status).toBe(200);
+    const { space } = await response.json();
+
+    // A group brings members to the space, so its name, kind and role are all listed.
+    expect(
+      space.groups
+        .map(({ name, kind, role }: Record<string, unknown>) => ({
+          name,
+          kind,
+          role,
+        }))
+        .sort((a: { name: string }, b: { name: string }) =>
+          a.name.localeCompare(b.name)
+        )
+    ).toEqual([
+      { name: "Dev team", kind: "provisioned", role: "member" },
+      { name: "Leads", kind: "regular_manual", role: "editor" },
+    ]);
+  });
+
   it("excludes auto-provisioned tools from the Tools usage row, even in the global space", async () => {
     const { workspace, auth, globalSpace } = await createPrivateApiMockRequest({
       role: "admin",
@@ -97,5 +150,26 @@ describe("GET /api/w/:wId/spaces/:spaceId", () => {
     expect(space.categories.actions.count).toBe(0);
     expect(space.categories.actions.usage.count).toBe(0);
     expect(space.categories.actions.usage.skills).toEqual([]);
+  });
+});
+
+describe("PATCH /api/w/:wId/spaces/:spaceId", () => {
+  it("renames a regular space but never the global one", async () => {
+    const { workspace, globalSpace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const regularSpace = await SpaceFactory.regular(workspace);
+
+    const regularResponse = await patchSpace(workspace, regularSpace.sId, {
+      name: "Renamed space",
+    });
+    expect(regularResponse.status).toBe(200);
+
+    // The global space is always displayed as "Company Data" and its member group is named after
+    // it, so it cannot be renamed.
+    const globalResponse = await patchSpace(workspace, globalSpace.sId, {
+      name: "Not Company Data",
+    });
+    expect(globalResponse.status).toBe(400);
   });
 });

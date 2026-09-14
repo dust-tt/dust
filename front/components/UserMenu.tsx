@@ -53,6 +53,7 @@ import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types/user";
 import { isOnlyAdmin, isOnlyManager, isOnlyUser } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
+  Announcement01,
   Avatar,
   BarChart01,
   Beaker02,
@@ -508,6 +509,14 @@ export function UserMenu({
                 onClick={() => trackUserMenuEvent("chrome_extension")}
               />
             ))}
+
+          <DropdownMenuItem
+            label="Changelog"
+            icon={Announcement01}
+            href="https://docs.dust.tt/docs/changelog"
+            target="_blank"
+            onClick={() => trackUserMenuEvent("changelog")}
+          />
 
           {subscription?.plan.limits.canUseProduct && (
             <>

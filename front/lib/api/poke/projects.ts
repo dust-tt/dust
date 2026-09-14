@@ -18,12 +18,3 @@ export type PokeListProjectKnowledgeFromConnectors = {
 export type PokeListProjectTasks = {
   tasks: PodTaskType[];
 };
-
-export type PokePodDatabase = {
-  name: string;
-  sizeBytes: number;
-};
-
-export type PokeListProjectPodDatabases = {
-  items: PokePodDatabase[];
-};

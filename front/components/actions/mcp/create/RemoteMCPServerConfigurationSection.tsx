@@ -102,7 +102,7 @@ export function RemoteMCPServerConfigurationSection({
         </div>
       )}
 
-      {!defaultServerConfig?.url && (
+      {!defaultServerConfig?.url && !defaultServerConfig?.hostDerivedOAuth && (
         <div className="space-y-2">
           <Label htmlFor="url">URL</Label>
           <div className="flex space-x-2">
@@ -216,7 +216,12 @@ export function RemoteMCPServerConfigurationSection({
           {!defaultServerConfig && authMethod === "oauth-static" && (
             <div className="text-xs text-muted-foreground">
               The redirect URI to allow is{" "}
-              <strong>{finalizeUriForProvider("mcp_static")}</strong>
+              <strong>
+                {finalizeUriForProvider({
+                  provider: "mcp_static",
+                  connection: null,
+                })}
+              </strong>
             </div>
           )}
         </div>

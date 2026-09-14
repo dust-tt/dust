@@ -26,6 +26,7 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type {
+  GroupGrantableRole,
   GroupKind,
   GroupType,
   UserVisibleGroupKind,
@@ -33,11 +34,14 @@ import type {
 import {
   AGENT_GROUP_PREFIX,
   CAP_ELIGIBLE_GROUP_KINDS,
+  GROUP_GRANTABLE_ROLES,
   GROUP_KINDS,
   isAgentEditorGroupKind,
+  isManageableGroupKind,
   isRegularManualGroupKind,
   USER_VISIBLE_GROUP_KINDS,
 } from "@app/types/groups";
+import type { MembershipRoleType } from "@app/types/memberships";
 import type { AccessControlList } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -45,7 +49,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import { MANAGER_ROLE_NAME } from "@app/types/user";
+import {
+  highestRole,
+  isMorePrivilegedRole,
+  MANAGER_ROLE_NAME,
+} from "@app/types/user";
 import type { DirectoryGroup } from "@workos-inc/node";
 import assert from "assert";
 import type {
@@ -58,22 +66,8 @@ import type {
 } from "sequelize";
 import { col, fn, Op, QueryTypes } from "sequelize";
 
-export const ADMIN_GROUP_NAME = "dust-admins";
-export const MANAGER_GROUP_NAME = "dust-managers";
-
-/**
- * ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
- * ┃                                                                         ┃
- * ┃  IMPORTANT: GroupResource DOES NOT and SHOULD NOT have permissions      ┃
- * ┃  management of its own.                                                 ┃
- * ┃                                                                         ┃
- * ┃  Groups are designed to be used within the context of other resources   ┃
- * ┃  (e.g., SpaceResource, AgentConfigurationResource). The permissions     ┃
- * ┃  should be managed at the junction with parent resource level,          ┃
- * ┃  not at the group level.                                                ┃
- * ┃                                                                         ┃
- * ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
- */
+const LAST_GROUP_MEMBER_ERROR_MESSAGE =
+  "A group must always keep at least one member. To remove everyone, delete the group instead.";
 
 type CachedGroup = {
   id: ModelId;
@@ -82,6 +76,7 @@ type CachedGroup = {
   workspaceId: ModelId;
   workOSGroupId: string | null;
   poolCapAwuCredits: number | null;
+  grantedRole: GroupGrantableRole | null;
   createdAt: number;
   updatedAt: number;
 };
@@ -132,6 +127,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: g.workspaceId,
       workOSGroupId: g.workOSGroupId,
       poolCapAwuCredits: g.poolCapAwuCredits,
+      grantedRole: g.grantedRole,
       createdAt: g.createdAt.getTime(),
       updatedAt: g.updatedAt.getTime(),
     }));
@@ -172,6 +168,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       workspaceId: data.workspaceId,
       workOSGroupId: data.workOSGroupId,
       poolCapAwuCredits: data.poolCapAwuCredits,
+      grantedRole: data.grantedRole,
       createdAt: new Date(data.createdAt),
       updatedAt: new Date(data.updatedAt),
     });
@@ -313,7 +310,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       primaryUser: UserResource;
       secondaryUser: UserResource;
     }
-  ): Promise<void> {
+  ): Promise<number> {
     const workspace = auth.getNonNullableWorkspace();
     const primaryMemberships = await GroupMembershipModel.findAll({
       where: { userId: primaryUser.id, workspaceId: workspace.id },
@@ -331,7 +328,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     }
 
-    await GroupMembershipModel.update(
+    // The affected-row count is the number of group memberships actually transferred (memberships
+    // the primary already had were deleted above, not transferred).
+    const [transferredCount] = await GroupMembershipModel.update(
       { userId: primaryUser.id },
       { where: { userId: secondaryUser.id, workspaceId: workspace.id } }
     );
@@ -341,6 +340,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       [{ user: { id: primaryUser.id }, workspace: { id: workspace.id } }],
       [{ user: { id: secondaryUser.id }, workspace: { id: workspace.id } }],
     ]);
+
+    return transferredCount;
   }
 
   static async makeNew(
@@ -1487,7 +1488,8 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   static async getActiveMembershipsForGroups(
     auth: Authenticator,
-    groups: GroupResource[]
+    groups: GroupResource[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Record<ModelId, ModelId[]>> {
     const owner = auth.getNonNullableWorkspace();
     if (groups.length === 0) {
@@ -1502,6 +1504,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         startAt: { [Op.lte]: new Date() },
         [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
       },
+      transaction,
     });
 
     return res.reduce<Record<ModelId, ModelId[]>>((acc, m) => {
@@ -1643,6 +1646,13 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * WARNING: Permissions are not checked inside this function and must be checked before calling it.
    */
+  /**
+   * @cc [owner:tdraier,label:security] sync-role-on-add
+   * When this group grants a workspace role (`grantedRole` is non-null), each
+   * successfully added user's workspace role MUST be resynced via
+   * `recomputeAndSyncWorkspaceRolesForUsers`, so joining a role-granting group
+   * takes effect (including the SCIM/directory-sync path).
+   */
   async dangerouslyAddMembers(
     auth: Authenticator,
     {
@@ -1752,6 +1762,15 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     });
 
+    // Joining a role-granting group may upgrade the members' workspace role.
+    if (this.grantedRole !== null) {
+      await GroupResource.recomputeAndSyncWorkspaceRolesForUsers(
+        auth,
+        userResources,
+        { transaction }
+      );
+    }
+
     return new Ok(undefined);
   }
 
@@ -1790,6 +1809,13 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   /**
    * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
+  /**
+   * @cc [owner:tdraier,label:security] sync-role-on-remove
+   * When this group grants a workspace role (`grantedRole` is non-null), each
+   * successfully removed user's workspace role MUST be resynced via
+   * `recomputeAndSyncWorkspaceRolesForUsers`, so leaving a role-granting group
+   * downgrades the user unless another role-granting group still grants it.
    */
   async dangerouslyRemoveMembers(
     auth: Authenticator,
@@ -1902,6 +1928,16 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     });
 
+    // Leaving a role-granting group may downgrade the members' workspace role
+    // (unless another role-granting group still grants it).
+    if (this.grantedRole !== null) {
+      await GroupResource.recomputeAndSyncWorkspaceRolesForUsers(
+        auth,
+        userResources,
+        { transaction }
+      );
+    }
+
     return new Ok(undefined);
   }
 
@@ -1995,71 +2031,6 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     return new Ok({ addedUsers: usersToAdd, removedUsers: usersToRemove });
-  }
-
-  /**
-   * Ends all active memberships of this group, exactly as removing every member would.
-   * Returns array of affected user ModelIds.
-   *
-   * Only regular_auto groups: it is how a space clears its manual members when it switches to
-   * group management mode. Memberships used to be suspended (kept on record but inert) so that
-   * the switch could be undone; they are now ended, so the manual member list does not come back
-   * when the space switches back to manual mode.
-   *
-   * Dangerous: no permission check — the owning space authorizes the
-   * management-mode switch.
-   */
-  async dangerouslyEndAllMemberships(
-    auth: Authenticator,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<ModelId[]> {
-    assert(
-      this.isRegularAuto(),
-      `You can't end the memberships of ${this.kind} groups.`
-    );
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const affectedMemberships = await GroupMembershipModel.findAll({
-      where: {
-        groupId: this.id,
-        workspaceId,
-        status: "active",
-        startAt: { [Op.lte]: new Date() },
-        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-      },
-      attributes: ["userId"],
-      transaction,
-    });
-    const affectedUserIds = [
-      ...new Set(affectedMemberships.map((m) => m.userId)),
-    ];
-
-    // Same mutation as `dangerouslyRemoveMembers`: `endAt` set in the past, `status` untouched.
-    await GroupMembershipModel.update(
-      { endAt: new Date() },
-      {
-        where: {
-          groupId: this.id,
-          workspaceId,
-          status: "active",
-          startAt: { [Op.lte]: new Date() },
-          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-        },
-        transaction,
-      }
-    );
-
-    if (affectedUserIds.length > 0) {
-      invalidateCacheAfterCommit(transaction, async () => {
-        await GroupResource.batchInvalidateGroupIdsCacheForUsers(
-          affectedUserIds.map((userId) => [
-            { user: { id: userId }, workspace: { id: workspaceId } },
-          ])
-        );
-      });
-    }
-
-    return affectedUserIds;
   }
 
   /**
@@ -2181,11 +2152,9 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Restores all suspended members of this group.
    * Returns array of affected user ModelIds.
    *
-   * Transitional: nothing suspends memberships any more (a space switching to group management
-   * mode ends them, see `dangerouslyEndAllMemberships`), so this only reactivates the rows left
-   * suspended by the previous behaviour. It becomes a no-op once the backfill
-   * (`20260904_end_suspended_group_memberships`) has run, and is removed with the `status`
-   * column.
+   * Transitional: nothing suspends memberships any more, so this only reactivates the rows left
+   * suspended by the former behaviours (see `20260904_end_suspended_group_memberships` and
+   * `20260828_restore_skill_editor_memberships`). Removed with the `status` column.
    *
    * regular_auto only, and dangerous for the same reason as its former counterpart: no
    * permission check, the owning space authorizes the switch.
@@ -2275,6 +2244,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  /**
+   * @cc [owner:fabiencelier,label:product] manual-group-never-emptied
+   * A `regular_manual` group MUST keep at least one active member: an empty `memberIds` list
+   * MUST fail with `last_group_member`.
+   */
   async updateRegularManualGroup(
     auth: Authenticator,
     { name, memberIds }: { name?: string; memberIds?: string[] }
@@ -2289,6 +2263,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         | "user_already_member"
         | "group_not_found"
         | "group_requirements_not_met"
+        | "last_group_member"
         | "system_or_global_group"
       >
     >
@@ -2305,6 +2280,27 @@ export class GroupResource extends BaseResource<GroupModel> {
           "unauthorized",
           `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
         )
+      );
+    }
+
+    // Changing the members of an admin-granting group escalates/de-escalates
+    // admins, so it is restricted to workspace admins.
+    if (
+      memberIds !== undefined &&
+      !this.canManageMembersGivenGrantedRole(auth)
+    ) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Only workspace admins can manage members of a group that grants the admin role."
+        )
+      );
+    }
+
+    // Checked before any mutation so a rejected update leaves both name and members untouched.
+    if (memberIds !== undefined && memberIds.length === 0) {
+      return new Err(
+        new DustError("last_group_member", LAST_GROUP_MEMBER_ERROR_MESSAGE)
       );
     }
 
@@ -2352,7 +2348,43 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
+   * Whether applying `addUserIds` then `removeUserIds` could leave the group without any active
+   * member. `addUserIds` and `removeUserIds` must be deduplicated; a user in both lists ends up
+   * removed, since members are added first and removed second.
+   *
+   * Only reads the current members when the answer is not already settled by the two lists, so
+   * the common add-only and add-and-remove cases cost no query.
+   */
+  private async wouldBeEmptyAfterMemberChange(
+    auth: Authenticator,
+    {
+      addUserIds,
+      removeUserIds,
+    }: { addUserIds: string[]; removeUserIds: string[] }
+  ): Promise<boolean> {
+    // Removing nothing can only grow the group.
+    if (removeUserIds.length === 0) {
+      return false;
+    }
+
+    // Any added user that is not removed again survives the change.
+    const removedUserIds = new Set(removeUserIds);
+    if (addUserIds.some((userId) => !removedUserIds.has(userId))) {
+      return false;
+    }
+
+    const currentMembers = await this.getActiveMembers(auth);
+    return currentMembers.every((member) => removedUserIds.has(member.sId));
+  }
+
+  /**
    * Adds and/or removes members of a manually-managed group, leaving the other members untouched.
+   */
+  /**
+   * @cc [owner:fabiencelier,label:product] manual-group-never-emptied
+   * A `regular_manual` group MUST keep at least one active member: when the requested
+   * add/remove combination would leave the group with no active member, the whole update MUST
+   * fail with `last_group_member` and no membership change MUST be persisted.
    */
   async updateRegularManualGroupMembers(
     auth: Authenticator,
@@ -2370,6 +2402,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         | "user_not_member"
         | "user_already_member"
         | "group_requirements_not_met"
+        | "last_group_member"
         | "system_or_global_group"
       >
     >
@@ -2385,6 +2418,17 @@ export class GroupResource extends BaseResource<GroupModel> {
         new DustError(
           "unauthorized",
           `Only workspace admins and ${MANAGER_ROLE_NAME}s can update groups.`
+        )
+      );
+    }
+
+    // Changing the members of an admin-granting group escalates/de-escalates
+    // admins, so it is restricted to workspace admins.
+    if (!this.canManageMembersGivenGrantedRole(auth)) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Only workspace admins can manage members of a group that grants the admin role."
         )
       );
     }
@@ -2409,6 +2453,18 @@ export class GroupResource extends BaseResource<GroupModel> {
     ) {
       return new Err(
         new DustError("user_not_found", "Some users were not found.")
+      );
+    }
+
+    // Checked before any mutation so a rejected update leaves the members untouched.
+    if (
+      await this.wouldBeEmptyAfterMemberChange(auth, {
+        addUserIds: uniqueAddUserIds,
+        removeUserIds: uniqueRemoveUserIds,
+      })
+    ) {
+      return new Err(
+        new DustError("last_group_member", LAST_GROUP_MEMBER_ERROR_MESSAGE)
       );
     }
 
@@ -2568,18 +2624,15 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Permissions
 
   /**
-   * Returns the requested permissions for this resource.
-   *
-   * Configures two types of access:
-   * 1. Group-based: The group's members get read access
-   * 2. Role-based: Workspace admins get read and write access
-   *
-   * For agent_editors groups, the permissions are:
-   * 1. Group-based: The group's members get full access
-   * 2. Role-based: Workspace admins get read and admin access. All users can
-   *    read "agent_editors" groups.
-   *    Admin do not have write access, they can however add themselves to
-   *    groups to gain it.
+   * The ACLs a caller has to satisfy to hold a verb on this group, by kind:
+   * - regular_manual: read, write and admin for admins and managers, read for everyone else.
+   * - global, provisioned: read for every workspace member, and nothing else — their
+   *   membership is not editable in app. Global membership is implicit, and provisioned
+   *   membership comes from directory sync.
+   * - regular_auto: nothing. These groups only carry the membership of the resource
+   *   they are linked to, so the permission is checked on that resource and never on the
+   *   group itself.
+   * - system: nothing, it is internal to the workspace.
    *
    * CAUTION: if / when editing, note that for role permissions, permissions are
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"
@@ -2589,35 +2642,6 @@ export class GroupResource extends BaseResource<GroupModel> {
    * configuration
    */
   getAccessControlLists(auth: Authenticator): AccessControlList[] {
-    // TODO(2026-09-03 regular-auto-acl): temporary probe, remove once regular_auto stops
-    // granting permissions. These groups are only reachable through the resource that owns
-    // them, so no caller should be permission-checking one; the stack tells us where to look
-    // if any does.
-    if (this.isRegularAuto()) {
-      logger.warn(
-        {
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          groupId: this.sId,
-          authRole: auth.role(),
-          isKey: auth.isKey(),
-          stack_trace: new Error().stack,
-        },
-        "[GroupResource.getAccessControlLists] Permission checked on a regular_auto group"
-      );
-
-      return [
-        {
-          roles: [
-            { role: "admin", permissions: ["read"] },
-            { role: "manager", permissions: ["read"] },
-            { role: "user", permissions: ["read"] },
-            { role: "builder", permissions: ["read"] },
-          ],
-          workspaceId: this.workspaceId,
-        },
-      ];
-    }
-
     // regular_manual: admins and managers manage the group; everyone can read.
     if (this.isRegularManual()) {
       return [
@@ -2647,8 +2671,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       ];
     }
 
-    // system: internal group — no one can read or write. The single empty grant
-    // denies every verb (an empty ACL array would instead vacuously allow).
+    // system, regular_auto: no permission for anyone. Access to a regular_auto group is
+    // decided on the resource it is linked to, and its owner fetches it without an ACL check.
     return [
       {
         roles: [],
@@ -2690,33 +2714,346 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Checks if dust-admins, dust-managers groups exist and are actively provisioned in the workspace.
-   * This indicates that role management should be restricted in the UI.
+   * @cc [owner:tdraier,label:security] admin-group-membership-admin-only
+   * Membership of a group that grants the admin role (`grantedRole === "admin"`)
+   * MUST only be mutated by workspace admins. Adding a member to such a group
+   * escalates them to admin, so managers (who otherwise have `write` on manual
+   * groups) MUST NOT be able to add or remove its members — mirroring the
+   * members UI, where managers cannot assign the admin role.
+   *
+   * Returns true when `auth` is allowed to change this group's membership given
+   * the role it grants. Callers must still enforce the base `canWrite` check.
    */
-  static async listRoleProvisioningGroupsForWorkspace(
+  canManageMembersGivenGrantedRole(auth: Authenticator): boolean {
+    return this.grantedRole !== "admin" || auth.isAdmin();
+  }
+
+  /**
+   * Lists the groups that grant a workspace role (admin or manager) to their
+   * members, i.e. those with a non-null `grantedRole`. The presence of such
+   * groups means member roles are (partly) managed through group membership, so
+   * the members UI restricts manual role editing.
+   */
+  static async listRoleGrantingGroupsForWorkspace(
     auth: Authenticator
   ): Promise<GroupResource[]> {
-    const owner = auth.getNonNullableWorkspace();
-
-    // Check if workspace has WorkOS organization ID (required for provisioning)
-    if (!owner.workOSOrganizationId) {
-      return [];
-    }
-
-    const provisionedGroups = await this.baseFetch(auth, {
+    const groups = await this.baseFetch(auth, {
       where: {
-        kind: "provisioned",
-        name: {
-          [Op.in]: [ADMIN_GROUP_NAME, MANAGER_GROUP_NAME],
+        grantedRole: {
+          [Op.ne]: null,
         },
       },
     });
 
-    const readableGroups = provisionedGroups.filter((group) =>
-      group.canRead(auth)
+    return groups.filter((group) => group.canRead(auth));
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security] max-granted-role
+   * The returned role MUST be the highest role granted by any group the user is
+   * an active member of (precedence admin > manager), considering every group
+   * kind except `system`, and "user" when no such group grants a role. A group
+   * grants a role iff its `grantedRole` is non-null.
+   *
+   * Computes the workspace role a user should hold based solely on their
+   * role-granting group memberships. When the user belongs to several
+   * role-granting groups, the highest role wins (admin > manager). Users in no
+   * role-granting group resolve to "user".
+   *
+   * This intentionally reads across every non-system group kind (not only
+   * `provisioned` ones): an admin can map a manually-managed group to a role in
+   * the governance page, and that mapping must grant the role too.
+   */
+  static async computeUserRoleFromGroups(
+    auth: Authenticator,
+    user: UserResource,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<MembershipRoleType> {
+    const userGroups = await this.dangerouslyListAllUserGroupsInWorkspace({
+      auth,
+      user,
+      groupKinds: GROUP_KINDS.filter(
+        (k): k is Exclude<GroupKind, "system"> => k !== "system"
+      ),
+      transaction,
+    });
+
+    return this.roleFromGrantedRoles(
+      removeNulls(userGroups.map((group) => group.grantedRole))
+    );
+  }
+
+  // The workspace role granted by a set of role-granting groups: the highest
+  // granted role (admin > manager per the shared `ROLES` ordering), or "user"
+  // when no group grants a role.
+  private static roleFromGrantedRoles(
+    grantedRoles: GroupGrantableRole[]
+  ): MembershipRoleType {
+    return grantedRoles.reduce<MembershipRoleType>(
+      (max, role) => highestRole(max, role),
+      "user"
+    );
+  }
+
+  // Builds `userModelId -> granted roles` for the whole workspace by loading the
+  // role-granting groups (those with a non-null `grantedRole`) and their active
+  // memberships once. No `canRead` filtering: role provisioning must consider
+  // every role-granting group regardless of the caller's read access.
+  private static async listGrantedRolesByUserInWorkspace(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Map<ModelId, GroupGrantableRole[]>> {
+    const roleGrantingGroups = await this.baseFetch(
+      auth,
+      { where: { grantedRole: { [Op.ne]: null } } },
+      transaction
     );
 
-    return readableGroups;
+    const membershipsByGroup = await this.getActiveMembershipsForGroups(
+      auth,
+      roleGrantingGroups,
+      { transaction }
+    );
+
+    const grantedRolesByUser = new Map<ModelId, GroupGrantableRole[]>();
+    for (const group of roleGrantingGroups) {
+      const grantedRole = group.grantedRole;
+      if (!grantedRole) {
+        continue;
+      }
+      for (const userModelId of membershipsByGroup[group.id] ?? []) {
+        const roles = grantedRolesByUser.get(userModelId);
+        if (roles) {
+          roles.push(grantedRole);
+        } else {
+          grantedRolesByUser.set(userModelId, [grantedRole]);
+        }
+      }
+    }
+
+    return grantedRolesByUser;
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security] role-sync-admin-role-actor-guard
+   * This sync MUST NOT change a user's role to or from "admin" unless the acting
+   * `auth` is a workspace admin or a Poke super user — mirroring the direct
+   * role-change guard (`members/[uId]` PATCH). A manager triggering a role-
+   * granting group membership change (add/remove on a manager-granting group,
+   * which managers may edit) MUST NOT be able to demote an admin as a side
+   * effect.
+   */
+  /**
+   * @cc [owner:tdraier,label:security] role-sync-no-self-downgrade
+   * This sync MUST NOT downgrade the acting user (`auth.user()`, when present):
+   * a user must not lose their own role through their own group action. Another
+   * admin, or SSO directory sync (which runs without an acting user), still can.
+   *
+   * Recomputes the workspace role of each given user from their role-granting
+   * group memberships and persists it when it changed. `allowLastAdminRemoval`
+   * is set because this is a system-driven sync (mirroring directory-sync
+   * behaviour): a member losing the admin-granting group must be downgraded even
+   * if they are the last admin.
+   *
+   * `protectRoles` lists roles that must not be stripped from a member even when
+   * the group-derived role is lower. It is used when a group's role mapping is
+   * changed or cleared to protect a role that no longer has any granting group
+   * left (removing the *last* group for a role must not leave the workspace with
+   * nobody in that role). When a role still has another granting group, its
+   * holders are recomputed normally (a member who is no longer in any granting
+   * group is downgraded).
+   *
+   * The acting user (`auth.user()`, when present) is never downgraded by this
+   * sync: a user must not lose their own role through their own group action
+   * (another admin, or SSO directory sync — which runs without an acting user —
+   * still can). This is a self-lockout guard, not a general manual-role guard.
+   *
+   * `updateMembershipRole` records the change via the structured audit log; the
+   * triggering action (group membership change, directory sync, or mapping edit)
+   * is itself audited by its own call-site (e.g. `scim.group_user_*` events).
+   * This method does not emit a WorkOS audit event or product tracking, because
+   * `group_resource` cannot import `workos_audit` / `tracking` without creating
+   * an import cycle (it sits in the `auth` import chain).
+   */
+  static async recomputeAndSyncWorkspaceRolesForUsers(
+    auth: Authenticator,
+    users: UserResource[],
+    {
+      transaction,
+      protectRoles,
+    }: {
+      transaction?: Transaction;
+      protectRoles?: Set<MembershipRoleType>;
+    } = {}
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    const actingUser = auth.user();
+    const author = actingUser?.toJSON() ?? "no-author";
+
+    // Only admins (and Poke super users) may change the admin role — mirroring
+    // the direct role-change guard. Without this, a manager could demote an
+    // admin (even the last admin) by adding them to / removing them from a
+    // manager-granting group, bypassing that guard.
+    const canModifyAdminRole = auth.isAdmin() || auth.isDustSuperUser();
+
+    // Load the workspace's role-granting groups (and their active memberships)
+    // once, then derive each user's roles from that, rather than refetching a
+    // user's groups per member.
+    const grantedRolesByUser = await this.listGrantedRolesByUserInWorkspace(
+      auth,
+      { transaction }
+    );
+
+    for (const user of users) {
+      const currentMembership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user,
+          workspace,
+          transaction,
+        });
+      if (!currentMembership) {
+        continue;
+      }
+
+      const newRole = this.roleFromGrantedRoles(
+        grantedRolesByUser.get(user.id) ?? []
+      );
+      if (newRole === currentMembership.role) {
+        continue;
+      }
+
+      // A non-admin actor must never change a user who currently holds, or would
+      // be set to, the admin role.
+      if (
+        !canModifyAdminRole &&
+        (currentMembership.role === "admin" || newRole === "admin")
+      ) {
+        continue;
+      }
+
+      // Never strip a protected role, and never downgrade the acting user: keep
+      // the current role when downgrading would remove a role that has no
+      // granting group left, or would downgrade the user performing the action
+      // (no self-lockout by one's own group change).
+      if (
+        isMorePrivilegedRole(currentMembership.role, newRole) &&
+        (protectRoles?.has(currentMembership.role) ||
+          user.id === actingUser?.id)
+      ) {
+        continue;
+      }
+
+      const updateResult = await MembershipResource.updateMembershipRole({
+        user,
+        workspace,
+        newRole,
+        allowLastAdminRemoval: true,
+        transaction,
+        author,
+      });
+      if (updateResult.isErr()) {
+        if (updateResult.error.type === "already_on_role") {
+          continue;
+        }
+        throw new Error(
+          `Failed to sync role for user ${user.sId} in workspace ${workspace.sId}: ${updateResult.error.type}`
+        );
+      }
+
+      logger.info(
+        {
+          workspaceId: workspace.sId,
+          userId: user.sId,
+          previousRole: updateResult.value.previousRole,
+          newRole: updateResult.value.newRole,
+        },
+        "Synced workspace role from group membership"
+      );
+    }
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security] sync-members-on-mapping-change
+   * On any change to `grantedRole` (set or clear), every current active member's
+   * workspace role MUST be recomputed. A role that has no granting group left
+   * after the change (its last group was cleared/remapped) MUST NOT be stripped
+   * from its current holders; a role still granted by another group is recomputed
+   * normally (a member no longer in any granting group is downgraded). The admin
+   * performing the change MUST NOT be downgraded by it (configuring a mapping
+   * must not strip the acting admin's own role). Only manageable group kinds
+   * (provisioned, regular_manual) may carry a granted role, and only workspace
+   * admins may change it.
+   *
+   * Sets (or clears, with null) the workspace role this group grants to its
+   * members, then re-syncs their roles. A role that no longer has any granting
+   * group after the change (its last group was just cleared/remapped) is
+   * protected: its current holders keep it. A role still granted by another
+   * group is recomputed normally. Only "provisioned" and "regular_manual" groups
+   * can carry a granted role.
+   */
+  async setGrantedRole(
+    auth: Authenticator,
+    grantedRole: GroupGrantableRole | null
+  ): Promise<
+    Result<undefined, DustError<"unauthorized" | "invalid_group_kind">>
+  > {
+    if (!auth.isAdmin()) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "Only workspace admins can map a group to a role."
+        )
+      );
+    }
+
+    if (!isManageableGroupKind(this.kind)) {
+      return new Err(
+        new DustError(
+          "invalid_group_kind",
+          "Only provisioned and manually-managed groups can be mapped to a role."
+        )
+      );
+    }
+
+    if (this.grantedRole === grantedRole) {
+      return new Ok(undefined);
+    }
+
+    await this.update({ grantedRole });
+    await GroupResource.invalidateWorkspaceGroupsFromSystemKeyCache(
+      this.workspaceId
+    );
+
+    // Roles that no longer have any granting group after this change must not be
+    // stripped from their current holders (don't leave the workspace with nobody
+    // in that role). Roles still granted by another group are recomputed
+    // normally.
+    const grantedRolesLeft = await GroupResource.listGrantedRolesForWorkspace(
+      this.workspaceId
+    );
+    const protectRoles = new Set<MembershipRoleType>(
+      GROUP_GRANTABLE_ROLES.filter((role) => !grantedRolesLeft.has(role))
+    );
+
+    // The acting admin is never downgraded (self-lockout guard lives in the sync
+    // itself); configuring a mapping cannot strip the acting admin's own role.
+    const members = await this.getActiveMembers(auth);
+    await GroupResource.recomputeAndSyncWorkspaceRolesForUsers(auth, members, {
+      protectRoles,
+    });
+
+    return new Ok(undefined);
+  }
+
+  // Distinct non-null `grantedRole` values across all groups in the workspace.
+  private static async listGrantedRolesForWorkspace(
+    workspaceId: ModelId
+  ): Promise<Set<GroupGrantableRole>> {
+    const groups = await GroupModel.findAll({
+      attributes: ["grantedRole"],
+      where: { workspaceId, grantedRole: { [Op.ne]: null } },
+    });
+    return new Set(removeNulls(groups.map((g) => g.grantedRole)));
   }
 
   /**
@@ -2773,6 +3110,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: this.kind,
       memberCount: 0, // Default value, use toJSONWithMemberCount for actual count
       poolCapAwuCredits: this.poolCapAwuCredits,
+      grantedRole: this.grantedRole,
     };
   }
 
@@ -2786,6 +3124,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       kind: this.kind,
       memberCount,
       poolCapAwuCredits: this.poolCapAwuCredits,
+      grantedRole: this.grantedRole,
     };
   }
 

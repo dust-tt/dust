@@ -13,7 +13,7 @@ vi.mock("@app/lib/api/audit/workos_audit", async () => {
 
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { ConnectorsAPI } from "@app/types/connectors/connectors_api";
 import { Err, Ok } from "@app/types/shared/result";
@@ -40,7 +40,7 @@ async function setupTest({
 }: {
   isSuperUser?: boolean;
 } = {}) {
-  const setup = await createPrivateApiMockRequest({
+  const setup = await createPokeApiMockRequest({
     isSuperUser,
     role: "admin",
   });

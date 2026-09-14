@@ -10,48 +10,36 @@ const SvgSlab = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <g clipPath="url(#Slab_svg__a)">
-      <mask
-        id="Slab_svg__b"
-        width={20}
-        height={20}
-        x={2}
-        y={2}
-        maskUnits="userSpaceOnUse"
-        style={{
-          maskType: "luminance",
-        }}
-      >
-        <path fill="#fff" d="M2 2h20v20H2z" />
-      </mask>
-      <g fillRule="evenodd" clipRule="evenodd" mask="url(#Slab_svg__b)">
-        <path
-          fill="#50C5DC"
-          d="M11.994 8.625h10V6.709c0-2.6-2.238-4.709-5-4.709H7.29c2.618.15 4.703 6.625 4.703 6.625"
-        />
-        <path
-          fill="#FCB415"
-          d="M12 12H2V6.888C2 4.188 4.238 2 7 2h9.703c-2.618.156-4.72 2.279-4.72 4.876z"
-        />
-        <path
-          fill="#741448"
-          d="M12.006 15.475h-10v1.916c0 2.6 2.238 4.709 5 4.709h9.703c-2.619-.15-4.703-6.625-4.703-6.625"
-        />
-        <path
-          fill="#FF4143"
-          d="M12 12h10v5.113c0 2.7-2.238 4.887-5 4.887H7.297c2.618-.156 4.72-2.279 4.72-4.876z"
-        />
-        <path
-          fill="#fff"
-          d="M3.938 10.155h6.106V9.34H3.937zm0-1.857h6.106v-.816H3.937zm0-1.858h6.106v-.815H3.937zm9.974 8.25h6.107v-.815h-6.106zm0 1.858h6.107v-.815h-6.106zm0 1.857h6.107v-.815h-6.106z"
-        />
-      </g>
-    </g>
-    <defs>
-      <clipPath id="Slab_svg__a">
-        <path fill="#fff" d="M2 2h20v20H2z" />
-      </clipPath>
-    </defs>
+    <path
+      fill="#50C5DC"
+      fillRule="evenodd"
+      d="M11.797 8.673H22.01v-1.93C22.01 4.124 19.725 2 16.904 2H6.995c2.673.151 4.802 6.673 4.802 6.673"
+      clipRule="evenodd"
+    />
+    <path
+      fill="#FCB415"
+      fillRule="evenodd"
+      d="M12 12.01H1.99V6.892C1.99 4.19 4.23 2 6.995 2h9.712c-2.62.156-4.725 2.281-4.725 4.881z"
+      clipRule="evenodd"
+    />
+    <path
+      fill="#741448"
+      fillRule="evenodd"
+      d="M12.006 15.488H1.996v1.919c0 2.602 2.24 4.713 5.005 4.713h9.712c-2.62-.15-4.707-6.632-4.707-6.632"
+      clipRule="evenodd"
+    />
+    <path
+      fill="#FF4143"
+      fillRule="evenodd"
+      d="M12 12.01h10.01v5.118c0 2.702-2.24 4.892-5.005 4.892H7.293c2.62-.157 4.725-2.281 4.725-4.881z"
+      clipRule="evenodd"
+    />
+    <path
+      fill="#fff"
+      fillRule="evenodd"
+      d="M3.93 10.163h6.112v-.816H3.93zm0-1.86h6.112v-.815H3.93zm0-1.859h6.112V5.63H3.93zm9.984 8.259h6.113v-.816h-6.113zm0 1.859h6.113v-.816h-6.113zm0 1.86h6.113v-.817h-6.113z"
+      clipRule="evenodd"
+    />
   </svg>
 );
 export default SvgSlab;

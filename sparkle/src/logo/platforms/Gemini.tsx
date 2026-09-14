@@ -11,10 +11,7 @@ const SvgGemini = (props: SVGProps<SVGSVGElement>) => (
     {...props}
   >
     <g clipPath="url(#Gemini_svg__a)">
-      <path
-        fill="#000"
-        d="M0 4a4 4 0 0 1 4-4h16a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4z"
-      />
+      <rect width={24} height={24} fill="#000" rx={6} />
       <path
         fill="url(#Gemini_svg__b)"
         d="M12 2c0 5.523 4.477 10 10 10-5.523 0-10 4.477-10 10 0-5.523-4.477-10-10-10 5.523 0 10-4.477 10-10"

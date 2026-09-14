@@ -1,4 +1,3 @@
-import { AlertChip } from "@app/components/poke/credits/AlertChip";
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
 import { GrantFreeCreditsButton } from "@app/components/poke/credits/GrantFreeCreditsButton";
 import { MemberConsumptionExportButton } from "@app/components/poke/credits/MemberConsumptionExportButton";
@@ -8,7 +7,6 @@ import { ResetFairUseButton } from "@app/components/poke/credits/ResetFairUseBut
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { MemberUsageType } from "@app/lib/api/credits/members_usage";
 import { formatCredits, formatCreditsPrecise } from "@app/lib/client/credits";
-import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getMetronomeAlertUrl } from "@app/lib/metronome/urls";
 import { usePokeMembersUsage } from "@app/poke/swr/credits";
 import type {
@@ -125,41 +123,11 @@ const DEFAULT_PAGE_SIZE = 25;
 
 const USER_CREDIT_STATE_CHIP_COLOR: Record<
   UserCreditState,
-  "success" | "warning" | "warning" | "info"
+  "success" | "info"
 > = {
   user_seat: "info",
-  user_seat_low_balance: "warning",
-  normal: "success",
   on_pool: "success",
-  on_pool_low_balance: "warning",
-  capped: "warning",
 };
-
-// Free seats hold a per-user credit with two balance alerts: "low" (≤20%) and
-// "empty" (0). Both are shown beside the balance via the shared `AlertChip`,
-// colored by each alert's Metronome status (ok = green, in alarm = red) and
-// deep-linked. Other seat types draw from the pool and have no such alerts.
-interface FreeSeatBalanceBadgesProps {
-  seatType: MembershipSeatType | null;
-  lowAlert: MetronomeAlertRef | null;
-  emptyAlert: MetronomeAlertRef | null;
-}
-
-function FreeSeatBalanceBadges({
-  seatType,
-  lowAlert,
-  emptyAlert,
-}: FreeSeatBalanceBadgesProps) {
-  if (seatType !== "free") {
-    return null;
-  }
-  return (
-    <>
-      <AlertChip alert={lowAlert} label="low" />
-      <AlertChip alert={emptyAlert} label="empty" />
-    </>
-  );
-}
 
 interface PokeMembersUsageTableProps {
   owner: WorkspaceType;
@@ -167,6 +135,11 @@ interface PokeMembersUsageTableProps {
   // columns (user cap, seat balance/allowance, credit state), which are
   // meaningless for non-credit workspaces.
   isCreditBased: boolean;
+  // Reveals the "User cap" column on non-credit-priced (legacy) workspaces that
+  // enforce a per-member credit limit — the Redis rate-limiter cap still
+  // applies there even though the Metronome credit columns don't. Defaults to
+  // `false`; ignored (superseded) when `isCreditBased` is true.
+  showUserCap?: boolean;
 }
 
 function makeColumns({
@@ -177,6 +150,7 @@ function makeColumns({
   onToggleSort,
   showFairUse,
   showCreditColumns,
+  showUserCap,
 }: {
   owner: WorkspaceType;
   onReconciled: () => void;
@@ -185,6 +159,7 @@ function makeColumns({
   onToggleSort: (column: OrderColumn) => void;
   showFairUse: boolean;
   showCreditColumns: boolean;
+  showUserCap: boolean;
 }): ColumnDef<MemberUsageType>[] {
   const columns: ColumnDef<MemberUsageType>[] = [
     {
@@ -342,13 +317,7 @@ function makeColumns({
       header: "Seat balance / allowance",
       enableSorting: false,
       cell: ({ row }) => {
-        const {
-          memberUsageLimit,
-          seatBalanceAwu,
-          seatType,
-          freeCreditLowAlert,
-          freeCreditEmptyAlert,
-        } = row.original;
+        const { memberUsageLimit, seatBalanceAwu } = row.original;
         if (memberUsageLimit === null) {
           return <span>-</span>;
         }
@@ -357,11 +326,6 @@ function makeColumns({
             {seatBalanceAwu !== null ? formatCredits(seatBalanceAwu) : "-"}
             {" / "}
             {formatCredits(memberUsageLimit)}
-            <FreeSeatBalanceBadges
-              seatType={seatType}
-              lowAlert={freeCreditLowAlert}
-              emptyAlert={freeCreditEmptyAlert}
-            />
           </span>
         );
       },
@@ -379,7 +343,7 @@ function makeColumns({
       ),
       enableSorting: false,
       cell: ({ row }) => {
-        const { creditState, nearLimit, sId } = row.original;
+        const { creditState, sId } = row.original;
         return (
           <span className="inline-flex items-center gap-2">
             <Chip
@@ -387,7 +351,6 @@ function makeColumns({
               color={USER_CREDIT_STATE_CHIP_COLOR[creditState] ?? "info"}
               label={creditState}
             />
-            {nearLimit && <Chip size="xs" color="warning" label="near limit" />}
             <CreditStateLogsLink
               machine="user"
               workspaceId={owner.sId}
@@ -451,11 +414,13 @@ function makeColumns({
     if (key === "fairUse") {
       return showFairUse;
     }
-    if (
-      key === "spendLimitAwuCredits" ||
-      key === "memberUsageLimit" ||
-      key === "creditState"
-    ) {
+    // The user cap applies to credit-priced workspaces and to legacy
+    // workspaces that set a per-member credit limit; the remaining credit
+    // columns are Metronome-only.
+    if (key === "spendLimitAwuCredits") {
+      return showCreditColumns || showUserCap;
+    }
+    if (key === "memberUsageLimit" || key === "creditState") {
       return showCreditColumns;
     }
     return true;
@@ -465,6 +430,7 @@ function makeColumns({
 export function PokeMembersUsageTable({
   owner,
   isCreditBased,
+  showUserCap = false,
 }: PokeMembersUsageTableProps) {
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
@@ -555,6 +521,7 @@ export function PokeMembersUsageTable({
         onToggleSort: toggleSort,
         showFairUse,
         showCreditColumns: isCreditBased,
+        showUserCap: isCreditBased || showUserCap,
       }),
     [
       owner,
@@ -564,6 +531,7 @@ export function PokeMembersUsageTable({
       toggleSort,
       showFairUse,
       isCreditBased,
+      showUserCap,
     ]
   );
 

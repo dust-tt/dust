@@ -32,7 +32,6 @@ import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
-import type { MutableRefObject } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -147,7 +146,6 @@ export type VirtuosoMessageListContext = {
   isProjectArchived?: boolean;
   projectId?: string;
   projectSpaceName?: string;
-  isAutoScrollEnabledRef: MutableRefObject<boolean>;
   isNoSeat?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
 };
@@ -177,7 +175,7 @@ export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   return (
     (isUserMessage(message) &&
       (isHiddenMessageOrigin(message.context.origin) ||
-        isSidekickBootstrapMessage(message))) ||
+        isBootstrapMessage(message))) ||
     isHandoverUserMessage(message)
   );
 };
@@ -283,10 +281,18 @@ export const isAtInitialStreamState = (
   );
 };
 
-const isSidekickBootstrapMessage = (
+const BOOTSTRAP_MESSAGE_ORIGINS: UserMessageOrigin[] = [
+  "agent_sidekick",
+  "analytics_panel",
+];
+
+const isBootstrapMessage = (
   message: UserMessageTypeWithContentFragments
 ): boolean => {
-  return message.context.origin === "agent_sidekick" && message.rank === 0;
+  return (
+    message.rank === 0 &&
+    BOOTSTRAP_MESSAGE_ORIGINS.includes(message.context.origin)
+  );
 };
 
 export const convertLightMessageTypeToVirtuosoMessages = (

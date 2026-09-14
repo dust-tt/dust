@@ -2,11 +2,13 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { CapabilitiesPickerItemsList } from "@app/components/assistant/CapabilitiesPicker";
 import { ConfirmContext } from "@app/components/Confirm";
 import { MarkdownFileEditor } from "@app/components/editor/MarkdownFileEditor";
-import { AdminControlledPodTile } from "@app/components/pod/settings/AdminControlledPodTile";
 import { DeletePodDialog } from "@app/components/pod/settings/DeletePodDialog";
+import { ManagePodGroupsPanel } from "@app/components/pod/settings/ManagePodGroupsPanel";
+import { PodGroupMembersTable } from "@app/components/pod/settings/PodGroupMembersTable";
 import { PodMembersTable } from "@app/components/pod/settings/PodMembersTable";
 import { PodNetworkSection } from "@app/components/pod/settings/PodNetworkSection";
 import { PodSettingsOptionLabel } from "@app/components/pod/settings/PodSettingsOptionLabel";
+import { PodTabsCustomizationSection } from "@app/components/pod/settings/PodTabsCustomizationSection";
 import { SandboxEnvVarsSection } from "@app/components/sandbox/SandboxEnvVarsSection";
 import { usePodConversationsSummary } from "@app/hooks/conversations";
 import { useArchivePod } from "@app/hooks/useArchivePod";
@@ -17,18 +19,17 @@ import {
 } from "@app/lib/api/projects/constants";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import { spaceMembershipProperties } from "@app/lib/spaces_utils";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useCheckPodName,
   usePodMetadata,
-  usePodRestrictionImpact,
   useUpdatePodMetadata,
 } from "@app/lib/swr/pods";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { areOpenPodsAllowed } from "@app/lib/workspace_policies";
-import { POD_RESTRICTION_IMPACT_WINDOW_DAYS } from "@app/types/api/projects/restriction_impact";
 import type {
   PatchPodMetadataBodyType,
   RichSpaceType,
@@ -86,7 +87,12 @@ export function PodSettingsTab({
   pod: pod,
   onOpenMembersPanel,
 }: PodSettingsTabProps) {
-  const { members: podMembers, isEditor: isPodEditor, isRestricted } = pod;
+  const {
+    members: podMembers,
+    groups: podGroups,
+    isEditor: isPodEditor,
+    isRestricted,
+  } = pod;
   const isOpen = !isRestricted;
   const areWorkspaceOpenPodsAllowed = areOpenPodsAllowed(owner);
   const isPrivatePodAndOpenPodsDisallowed =
@@ -94,12 +100,12 @@ export function PodSettingsTab({
   const isVisibilityToggleDisabled =
     !isPodEditor || isPrivatePodAndOpenPodsDisallowed;
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
+  const [isGroupsPanelOpen, setIsGroupsPanelOpen] = useState(false);
 
   const confirm = useContext(ConfirmContext);
   const { hasFeature } = useFeatureFlags();
   const { isAdmin } = useAuth();
   const hasWorkspaceDefaultAgentFeature = hasFeature("workspace_default_agent");
-  const hasAdminControlledPodsFeature = hasFeature("admin_controlled_pods");
   // The pod env vars section stays workspace-admin only (matching the API,
   // which keeps env-vars admin-only). Mirrors that gate — change both together.
   const isPodSandboxAdminEnabled = isAdmin && hasFeature("frames_v2");
@@ -118,17 +124,6 @@ export function PodSettingsTab({
     owner,
     podId: pod.sId,
   });
-
-  // Pod function callers who would lose access if the Pod were restricted. Only fetched on the
-  // path where it can be acted on: an editor looking at a Pod that is still open.
-  const { restrictionImpact, mutateRestrictionImpact } =
-    usePodRestrictionImpact({
-      workspaceId: owner.sId,
-      podId: pod.sId,
-      disabled: !isPodEditor || isRestricted,
-    });
-  const [isCheckingRestrictionImpact, setIsCheckingRestrictionImpact] =
-    useState(false);
 
   // Default agent for new conversations started in this pod. Stored on pod metadata
   // (shared across pod members). Resolved downstream in `useHandleMentions`, falling
@@ -373,8 +368,7 @@ export function PodSettingsTab({
       pod,
       {
         isRestricted,
-        memberIds: podMembers.filter((m) => !m.isEditor).map((m) => m.sId),
-        editorIds: podMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        ...spaceMembershipProperties(pod),
         name: newPodName,
       },
       {
@@ -417,40 +411,9 @@ export function PodSettingsTab({
     const newIsOpen = !isOpen;
     const title = newIsOpen ? "Switch to open?" : "Switch to restricted?";
 
-    // Restricting can break non-members who drive this Pod's functions from their own Frames, so
-    // warn with the count before it happens. Read fresh at the decision point, and awaited when
-    // the background fetch has not landed yet, so the dialog never silently omits the warning.
-    let impact = restrictionImpact;
-    if (!newIsOpen && !impact) {
-      setIsCheckingRestrictionImpact(true);
-      try {
-        const refreshed = await mutateRestrictionImpact();
-        impact = refreshed?.restrictionImpact ?? null;
-      } finally {
-        setIsCheckingRestrictionImpact(false);
-      }
-    }
-    const breakingImpact =
-      !newIsOpen && impact && impact.brokenUserCount > 0 ? impact : null;
-
-    const message = newIsOpen ? (
-      "All workspace members will be able to join and see everything in the Pod — including existing conversations and files."
-    ) : (
-      <>
-        <div>Access will be limited to invited members only.</div>
-        {breakingImpact && (
-          <div>
-            {breakingImpact.brokenInvocationCount} Pod function{" "}
-            {breakingImpact.brokenInvocationCount === 1 ? "call" : "calls"} in
-            the last {POD_RESTRICTION_IMPACT_WINDOW_DAYS} days came from{" "}
-            {breakingImpact.brokenUserCount}{" "}
-            {breakingImpact.brokenUserCount === 1 ? "person" : "people"} who{" "}
-            {breakingImpact.brokenUserCount === 1 ? "is" : "are"} not a member
-            of this Pod. Those calls will stop working.
-          </div>
-        )}
-      </>
-    );
+    const message = newIsOpen
+      ? "All workspace members will be able to join and see everything in the Pod — including existing conversations and files."
+      : "Access will be limited to invited members only.";
 
     const confirmed = await confirm({
       title,
@@ -466,8 +429,7 @@ export function PodSettingsTab({
       pod,
       {
         isRestricted: !newIsOpen,
-        memberIds: podMembers.filter((m) => !m.isEditor).map((m) => m.sId),
-        editorIds: podMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        ...spaceMembershipProperties(pod),
         name: pod.name,
       },
       {
@@ -479,16 +441,7 @@ export function PodSettingsTab({
     if (updated) {
       await mutatePodInfo();
     }
-  }, [
-    confirm,
-    doUpdate,
-    isOpen,
-    mutateRestrictionImpact,
-    podMembers,
-    pod,
-    mutatePodInfo,
-    restrictionImpact,
-  ]);
+  }, [confirm, doUpdate, isOpen, pod, mutatePodInfo]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
@@ -765,25 +718,25 @@ export function PodSettingsTab({
                   <SliderToggle
                     selected={isOpen}
                     onClick={handleVisibilityToggle}
-                    disabled={
-                      isVisibilityToggleDisabled || isCheckingRestrictionImpact
-                    }
+                    disabled={isVisibilityToggleDisabled}
                   />
                 )}
               </div>
             </div>
-
-            {hasAdminControlledPodsFeature && (
-              <div className="border-t border-border">
-                <AdminControlledPodTile owner={owner} pod={pod} />
-              </div>
-            )}
           </div>
         </div>
 
+        <PodTabsCustomizationSection
+          owner={owner}
+          podId={pod.sId}
+          fileTabs={pod.frameTabs ?? []}
+          tabsOrder={pod.tabsOrder}
+          isEditor={isPodEditor}
+        />
+
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <h3 className="heading-lg flex-1">Members</h3>
+            <h3 className="heading-lg flex-1">Individual members</h3>
             {isPodEditor && onOpenMembersPanel && (
               <Button
                 label="Manage"
@@ -814,6 +767,40 @@ export function PodSettingsTab({
             </>
           )}
         </div>
+
+        {/* The Pod's members are the individual list above plus the members of these groups. */}
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <h3 className="heading-lg flex-1">Group members</h3>
+            {isPodEditor && (
+              <Button
+                label="Manage"
+                variant="outline"
+                icon={Users01}
+                onClick={() => setIsGroupsPanelOpen(true)}
+              />
+            )}
+          </div>
+          {podGroups.length > 0 && (
+            <ScrollArea className="h-full" orientation="horizontal">
+              <PodGroupMembersTable
+                owner={owner}
+                pod={pod}
+                groups={podGroups}
+                isEditor={isPodEditor}
+                mutatePodInfo={() => mutatePodInfo()}
+              />
+            </ScrollArea>
+          )}
+        </div>
+
+        <ManagePodGroupsPanel
+          isOpen={isGroupsPanelOpen}
+          setIsOpen={setIsGroupsPanelOpen}
+          owner={owner}
+          pod={pod}
+          onSuccess={() => mutatePodInfo()}
+        />
 
         {canViewPodNetwork && (
           <PodNetworkSection

@@ -11,7 +11,7 @@ import type {
   FileExplorerMenuAction,
   FolderEntry,
 } from "@app/components/file_explorer/types";
-import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
+import { useFileExplorerDownload } from "@app/components/file_explorer/useFileExplorerDownload";
 import {
   isFilePreviewableContentType,
   joinMountRelativePath,
@@ -27,7 +27,6 @@ import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
 import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
 import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
-import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
 import {
   downloadFile,
@@ -272,8 +271,6 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
 
   const isArchived = !!pod.archivedAt;
   const isEditor = pod.isEditor;
-  const { hasFeature } = useFeatureFlags();
-  const hasFileTabs = hasFeature("pod_frame_tabs");
   const { togglePin, isPinned } = usePinPodBanner({
     owner,
     podId: pod.sId,
@@ -324,7 +321,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         entry.kind === "frame_package" ||
         (entry.contentType !== frameV2ContentType &&
           isFilePreviewableContentType(entry.contentType));
-      if (hasFileTabs && canBeTab) {
+      if (canBeTab) {
         const asTab = isFileTab(entry.path);
         items.push({
           label: asTab ? "Remove from Pod tabs" : "Add as Pod tab",
@@ -349,15 +346,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
 
       return items;
     },
-    [
-      hasFileTabs,
-      isArchived,
-      isEditor,
-      isFileTab,
-      isPinned,
-      removeFileTab,
-      togglePin,
-    ]
+    [isArchived, isEditor, isFileTab, isPinned, removeFileTab, togglePin]
   );
 
   const canManuallyManagePodKnowledge =
@@ -635,7 +624,7 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
     [owner]
   );
 
-  const onFileDownload = useFileDownload({ getFileResponse });
+  const onDownload = useFileExplorerDownload({ owner, getFileResponse });
 
   const handleCloseOverlay = useCallback(() => {
     setActiveOverlay(null);
@@ -862,13 +851,13 @@ function PodFileExplorerContent({ owner, pod }: PodFileExplorerProps) {
         contentClassName="max-w-4xl mx-auto w-full"
         contentNodes={contentNodeEntries}
         defaultViewMode="list"
-        displayFramePackages={hasFeature("frames_v2")}
+        displayFramePackages={true}
         emptyState={hasFiles ? undefined : emptyState}
         files={podGCSFiles}
         getFileUrl={getFileUrl}
         currentFolderPath={currentFolderPath}
         onCurrentFolderChange={setCurrentFolderPath}
-        onFileDownload={onFileDownload}
+        onDownload={onDownload}
         onDelete={!isArchived ? onDelete : undefined}
         onMoveFile={!isArchived ? onMoveFile : undefined}
         onRename={!isArchived ? onRename : undefined}

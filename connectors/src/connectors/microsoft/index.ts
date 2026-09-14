@@ -10,6 +10,7 @@ import {
 import {
   getDriveAsContentNode,
   getFolderAsContentNode,
+  getListAsContentNode,
   getMicrosoftNodeAsContentNode,
   getSiteAsContentNode,
 } from "@connectors/connectors/microsoft/lib/content_nodes";
@@ -18,6 +19,7 @@ import {
   getAllPaginatedEntities,
   getDrives,
   getFilesAndFolders,
+  getLists,
   getSites,
   getSubSites,
 } from "@connectors/connectors/microsoft/lib/graph_api";
@@ -76,7 +78,7 @@ import {
   Ok,
   removeNulls,
 } from "@dust-tt/client";
-import { Client } from "@microsoft/microsoft-graph-client";
+import { Client, GraphError } from "@microsoft/microsoft-graph-client";
 import type { Site } from "@microsoft/microsoft-graph-types";
 import { decodeJwt } from "jose";
 
@@ -433,9 +435,17 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           const drives = await getAllPaginatedEntities((nextLink) =>
             getDrives(logger, client, parentInternalId, nextLink)
           );
+          const lists = await getAllPaginatedEntities((nextLink) =>
+            getLists(logger, client, parentInternalId, nextLink)
+          );
+          const { itemAPIPath: siteItemAPIPath } =
+            typeAndPathFromInternalId(parentInternalId);
           nodes.push(
             ...subSites.map((n) => getSiteAsContentNode(n, parentInternalId)),
-            ...drives.map((n) => getDriveAsContentNode(n, parentInternalId))
+            ...drives.map((n) => getDriveAsContentNode(n, parentInternalId)),
+            ...lists.map((n) =>
+              getListAsContentNode(n, parentInternalId, siteItemAPIPath)
+            )
           );
           break;
         }
@@ -454,6 +464,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         case "page":
         case "message":
         case "worksheet":
+        case "list":
           throw new Error(
             `Unexpected node type ${nodeType} for retrievePermissions`
           );
@@ -480,7 +491,12 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
       }
       return new Ok(nodesWithPermissions);
     } catch (e) {
-      if (e instanceof ExternalOAuthTokenError) {
+      if (
+        e instanceof ExternalOAuthTokenError ||
+        (e instanceof GraphError &&
+          e.statusCode === 401 &&
+          e.code === "accessDenied")
+      ) {
         return new Err(
           new ConnectorManagerError(
             "EXTERNAL_OAUTH_TOKEN_ERROR",
@@ -840,7 +856,7 @@ export async function retrieveChildrenNodes(
   microsoftNode: MicrosoftNodeResource,
   expandWorksheet: boolean
 ): Promise<Result<ContentNode[], Error>> {
-  const nodeType: MicrosoftNodeType[] = ["file", "folder", "drive"];
+  const nodeType: MicrosoftNodeType[] = ["file", "folder", "drive", "list"];
   if (expandWorksheet) {
     nodeType.push("worksheet");
   }

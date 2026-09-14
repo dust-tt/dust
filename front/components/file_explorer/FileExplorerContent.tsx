@@ -9,6 +9,7 @@ import {
 import type {
   ContentNodeEntry,
   FileEntry,
+  FileExplorerDownloadEntry,
   FileExplorerEntry,
   FileExplorerMenuAction,
   FileSystemTreeNode,
@@ -34,7 +35,7 @@ interface FileExplorerContentProps {
   onFolderNavigate: (node: FileSystemTreeNode) => void;
   onFileOpen: (entry: FileEntry) => void;
   onFramePackageOpen: (entry: FramePackageEntry) => void;
-  onFileDownload: (entry: FileEntry) => Promise<void>;
+  onDownload: (entry: FileExplorerDownloadEntry) => Promise<void>;
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
   onNodeOpen: (entry: ContentNodeEntry) => void;
   getFileMenuItems?: (entry: FileExplorerEntry) => FileExplorerMenuAction[];
@@ -53,7 +54,7 @@ export function FileExplorerContent({
   onFolderNavigate,
   onFileOpen,
   onFramePackageOpen,
-  onFileDownload,
+  onDownload,
   onMoveFileDrop,
   onNodeOpen,
   getFileMenuItems,
@@ -71,6 +72,7 @@ export function FileExplorerContent({
           key={`dir:${node.path}`}
           node={node}
           viewMode={viewMode}
+          onDownload={() => onDownload(folderEntry)}
           onNavigate={onFolderNavigate}
           onMoveFileDrop={onMoveFileDrop}
           extraMenuItems={getFileMenuItems?.(folderEntry)}
@@ -104,7 +106,7 @@ export function FileExplorerContent({
             searchFolderPath={searchFolderPath}
             viewMode={viewMode}
             onOpen={onFileOpen}
-            onDownload={onFileDownload}
+            onDownload={onDownload}
             extraMenuItems={getFileMenuItems?.(entry)}
           />
         );
@@ -116,6 +118,7 @@ export function FileExplorerContent({
             entry={entry}
             searchFolderPath={searchFolderPath}
             viewMode={viewMode}
+            onDownload={() => onDownload(entry)}
             onOpen={onFramePackageOpen}
             extraMenuItems={getFileMenuItems?.(entry)}
           />
@@ -148,7 +151,7 @@ export function FileExplorerContent({
 
   return (
     <ScrollArea className="min-h-0 flex-1">
-      <div className="flex flex-col gap-5 px-4 pb-4">
+      <div className="flex flex-col gap-5 px-4 pb-4" data-layout={viewMode}>
         {viewMode === "list" ? (
           <div className="flex flex-col gap-0.5">{items}</div>
         ) : (

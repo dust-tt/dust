@@ -406,6 +406,23 @@ export const getFilePathDownloadUrl = (
   return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}?download=1`;
 };
 
+export async function prepareFolderArchiveDownload({
+  owner,
+  canonicalPath,
+}: {
+  owner: LightWorkspaceType;
+  canonicalPath: string;
+}): Promise<string> {
+  const url = `${getFilePathViewUrl(owner, canonicalPath)}?archive=zip`;
+  const response = await clientFetch(url, { method: "HEAD" });
+  if (!response.ok) {
+    throw new Error(
+      `Failed to prepare folder archive (HTTP ${response.status}).`
+    );
+  }
+  return url;
+}
+
 export async function downloadFile(
   owner: LightWorkspaceType,
   canonicalPath: string

@@ -1,7 +1,7 @@
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { faker } from "@faker-js/faker";
@@ -16,7 +16,7 @@ function searchRequest(query: string) {
 
 describe("GET /api/poke/search - phone number", () => {
   it("returns workspace when searching by phone number in E.164 format", async () => {
-    const { auth } = await createPrivateApiMockRequest({
+    const { auth } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -44,7 +44,7 @@ describe("GET /api/poke/search - phone number", () => {
   });
 
   it("returns workspace when searching by phone number without +", async () => {
-    const { auth } = await createPrivateApiMockRequest({
+    const { auth } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -73,7 +73,7 @@ describe("GET /api/poke/search - phone number", () => {
   });
 
   it("returns no results for unverified phone numbers", async () => {
-    const { auth } = await createPrivateApiMockRequest({
+    const { auth } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -100,7 +100,7 @@ describe("GET /api/poke/search - phone number", () => {
   });
 
   it("returns both workspace and phone trial when digits match both", async () => {
-    const { workspace, auth } = await createPrivateApiMockRequest({
+    const { workspace, auth } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -133,7 +133,7 @@ describe("GET /api/poke/search - phone number", () => {
   });
 
   it("returns no results for random non-phone strings", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await searchRequest("hello world");
 
@@ -145,7 +145,7 @@ describe("GET /api/poke/search - phone number", () => {
 
 describe("GET /api/poke/search - data source", () => {
   it("returns the data source when searching by dustAPIProjectId", async () => {
-    const { workspace, globalSpace } = await createPrivateApiMockRequest({
+    const { workspace, globalSpace } = await createPokeApiMockRequest({
       isSuperUser: true,
       role: "admin",
     });
@@ -175,7 +175,7 @@ describe("GET /api/poke/search - data source", () => {
   });
 
   it("returns no data source for an unknown dustAPIProjectId", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await searchRequest(faker.string.numeric(9));
 
@@ -187,7 +187,7 @@ describe("GET /api/poke/search - data source", () => {
 
 describe("GET /api/poke/search - resource sId", () => {
   it("returns the data source view when searching by its sId", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true, role: "admin" });
+    await createPokeApiMockRequest({ isSuperUser: true, role: "admin" });
 
     // The resource lives in a different workspace than the poke session's:
     // the search must re-scope on the workspace embedded in the sId.
@@ -209,7 +209,7 @@ describe("GET /api/poke/search - resource sId", () => {
   });
 
   it("returns the data source when searching by its sId", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true, role: "admin" });
+    await createPokeApiMockRequest({ isSuperUser: true, role: "admin" });
 
     const workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);
@@ -229,7 +229,7 @@ describe("GET /api/poke/search - resource sId", () => {
   });
 
   it("returns the space when searching by its sId", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true, role: "admin" });
+    await createPokeApiMockRequest({ isSuperUser: true, role: "admin" });
 
     const workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);
@@ -250,7 +250,7 @@ describe("GET /api/poke/search - resource sId", () => {
   });
 
   it("returns the group when searching by its sId", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true, role: "admin" });
+    await createPokeApiMockRequest({ isSuperUser: true, role: "admin" });
 
     const workspace = await WorkspaceFactory.basic();
     await GroupFactory.defaults(workspace);

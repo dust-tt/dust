@@ -49,6 +49,16 @@ export function lowestRole(a: RoleType, b: RoleType): RoleType {
   return ROLES.indexOf(a) >= ROLES.indexOf(b) ? a : b;
 }
 
+// `ROLES` is ordered from most to least privileged.
+export function highestRole<T extends RoleType>(a: T, b: T): T {
+  return ROLES.indexOf(a) <= ROLES.indexOf(b) ? a : b;
+}
+
+// Whether `a` is strictly more privileged than `b` (per `ROLES` ordering).
+export function isMorePrivilegedRole(a: RoleType, b: RoleType): boolean {
+  return ROLES.indexOf(a) < ROLES.indexOf(b);
+}
+
 export const ActiveRoleSchema = z.enum(ACTIVE_ROLES);
 
 export type ActiveRoleType = z.infer<typeof ActiveRoleSchema>;

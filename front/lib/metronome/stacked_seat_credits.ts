@@ -62,7 +62,7 @@ import { Err, Ok } from "@app/types/shared/result";
 
 // A credit-bearing tier's recurring credit, resolved to its materialized credit
 // id + segment for the current period.
-interface TierCredit {
+export interface TierCredit {
   seatType: MembershipSeatType;
   recurringCreditId: string;
   // Materialized credit id for the current segment (matches seat.credits[].id).
@@ -183,6 +183,65 @@ export async function buildSeatCreditTierMap({
   return new Ok(tierByCreditId);
 }
 
+// A seat's balance on one of its recognized seat-credit tiers.
+interface MappedSeatTierCredit {
+  balanceAwu: number;
+  tier: TierCredit;
+}
+
+// Resolve a seat's balance on each of its recognized (AWU) seat-credit tiers.
+// A credit id absent from `tierByCreditId` (excess/pool/unrecognized) or of a
+// non-AWU credit type is dropped.
+function mappedSeatTierCredits(
+  seat: MetronomeSeatBalance,
+  tierByCreditId: Map<string, TierCredit>
+): MappedSeatTierCredit[] {
+  const awuCreditTypeId = getCreditTypeAwuId();
+  return (seat.credits ?? []).flatMap((c) => {
+    if (c.credit_type_id !== awuCreditTypeId) {
+      return [];
+    }
+    const tier = tierByCreditId.get(c.id);
+    return tier ? [{ balanceAwu: c.balance, tier }] : [];
+  });
+}
+
+/**
+ * @cc [owner:tdraier,label:performance;backend] stacked-seat-usage-scoping
+ * The seats whose stacked-credit correction can require per-user usage: those
+ * currently carrying a stray credit slice (a slice for a tier other than the
+ * seat's own), of ANY balance. A seat that never changed tier this period has
+ * no such slice, so the debounced segment-start reconcile can skip the
+ * `/v1/usage/groups` read (bounded by Metronome's 200-value cap) entirely when
+ * this returns empty. Drained (balance 0) strays are included on purpose: the
+ * credit row stays in `credits[]`, and the seat's home credit may still need a
+ * usage-based carry for consumption that leaked onto the drained stray.
+ */
+export function computeSeatIdsWithStrays({
+  seatBalances,
+  currentSeatTypeBySeatId,
+  tierByCreditId,
+}: {
+  seatBalances: MetronomeSeatBalance[];
+  currentSeatTypeBySeatId: Map<string, MembershipSeatType>;
+  tierByCreditId: Map<string, TierCredit>;
+}): string[] {
+  const seatIds: string[] = [];
+  for (const seat of seatBalances) {
+    const homeSeatType = currentSeatTypeBySeatId.get(seat.seat_id);
+    if (!homeSeatType) {
+      continue;
+    }
+    const hasStray = mappedSeatTierCredits(seat, tierByCreditId).some(
+      (m) => m.tier.seatType !== homeSeatType
+    );
+    if (hasStray) {
+      seatIds.push(seat.seat_id);
+    }
+  }
+  return seatIds;
+}
+
 /**
  * Pure detection. For each seat, empty every stray seat credit fully and drive
  * the home credit to `max(0, homeAllocation − usage)`. A credit id absent from
@@ -204,7 +263,6 @@ export function computeStackedSeatCreditAdjustments({
   // home credit to its correct balance; a missing entry is treated as 0 usage.
   usageBySeatId: Map<string, number>;
 }): SeatCreditAdjustment[] {
-  const awuCreditTypeId = getCreditTypeAwuId();
   const adjustments: SeatCreditAdjustment[] = [];
 
   for (const seat of seatBalances) {
@@ -213,14 +271,7 @@ export function computeStackedSeatCreditAdjustments({
       continue;
     }
 
-    // Resolve the seat's balance on each of its recognized seat-credit tiers.
-    const mapped = (seat.credits ?? []).flatMap((c) => {
-      if (c.credit_type_id !== awuCreditTypeId) {
-        return [];
-      }
-      const tier = tierByCreditId.get(c.id);
-      return tier ? [{ balanceAwu: c.balance, tier }] : [];
-    });
+    const mapped = mappedSeatTierCredits(seat, tierByCreditId);
 
     const strays = mapped.filter(
       (m) => m.tier.seatType !== homeSeatType && m.balanceAwu > 0
@@ -420,6 +471,7 @@ export async function correctStackedSeatCreditsFromBalances({
   seatBalances,
   currentSeatTypeBySeatId,
   usageBySeatId,
+  tierByCreditId,
   execute,
   logger,
   pace = NO_PACING,
@@ -431,24 +483,31 @@ export async function correctStackedSeatCreditsFromBalances({
   seatBalances: MetronomeSeatBalance[];
   currentSeatTypeBySeatId: Map<string, MembershipSeatType>;
   usageBySeatId: Map<string, number>;
+  // Prebuilt tier map, reused when the caller already resolved it (e.g. to scope
+  // the usage read). Built here when omitted.
+  tierByCreditId?: Map<string, TierCredit>;
   execute: boolean;
   logger: Logger;
   pace?: PaceFn;
 }): Promise<Result<StackedSeatCreditsSummary, Error>> {
-  const tierMapRes = await buildSeatCreditTierMap({
-    metronomeCustomerId,
-    metronomeContractId,
-    contract,
-    logger,
-    pace,
-  });
-  if (tierMapRes.isErr()) {
-    return new Err(tierMapRes.error);
+  let resolvedTierByCreditId = tierByCreditId;
+  if (!resolvedTierByCreditId) {
+    const tierMapRes = await buildSeatCreditTierMap({
+      metronomeCustomerId,
+      metronomeContractId,
+      contract,
+      logger,
+      pace,
+    });
+    if (tierMapRes.isErr()) {
+      return new Err(tierMapRes.error);
+    }
+    resolvedTierByCreditId = tierMapRes.value;
   }
   const adjustments = computeStackedSeatCreditAdjustments({
     seatBalances,
     currentSeatTypeBySeatId,
-    tierByCreditId: tierMapRes.value,
+    tierByCreditId: resolvedTierByCreditId,
     usageBySeatId,
   });
   const totals = summarizeAdjustments(adjustments);

@@ -1,14 +1,19 @@
-import { buildMemberNameColumn } from "@app/components/workspace/member_name_column";
+import {
+  buildMemberNameColumn,
+  MemberNameSkeleton,
+} from "@app/components/workspace/member_name_column";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { timeAgoFrom } from "@app/lib/utils";
 import type {
   MembershipSeatType,
   MembershipUpgradeRequestType,
 } from "@app/types/memberships";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   Button,
   Check,
   DataTable,
+  DataTableSkeleton,
   LoadingBlock,
   Spinner,
   XClose,
@@ -30,6 +35,30 @@ type RowData = {
 };
 
 type Info = CellContext<RowData, string>;
+
+function UpgradeRequestSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return <MemberNameSkeleton rowIndex={rowIndex} />;
+    case "reason":
+      return <LoadingBlock className="h-3 w-40 max-w-full" />;
+    case "requested":
+      return <LoadingBlock className="h-3 w-20" />;
+    case "actions":
+      return (
+        <div className="flex items-center justify-end gap-2">
+          <LoadingBlock className="h-8 w-20 rounded-xl" />
+          <LoadingBlock className="h-8 w-32 rounded-xl" />
+          <LoadingBlock className="h-8 w-24 rounded-xl" />
+        </div>
+      );
+    default:
+      return null;
+  }
+}
 
 const nameColumn = buildMemberNameColumn<RowData>();
 
@@ -205,11 +234,10 @@ export function UpgradeRequestsTable({
 
   if (isLoading) {
     return (
-      <div className="flex w-full flex-col space-y-2">
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-        <LoadingBlock className="h-8 w-full rounded-xl" />
-      </div>
+      <DataTableSkeleton
+        columns={columns}
+        SkeletonCell={UpgradeRequestSkeletonCell}
+      />
     );
   }
 

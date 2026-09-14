@@ -1,7 +1,7 @@
 import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
-import { ONE_DAY_MS } from "@app/lib/api/analytics/time_utils";
 import { formatCredits } from "@app/lib/client/credits";
+import { MAX_CYCLE_HISTORY_LIMIT } from "@app/lib/credits/awu_purchase_constants";
 import {
   useAwuPoolCurrentCycle,
   useAwuPoolCycleHistory,
@@ -9,18 +9,23 @@ import {
 import type {
   AwuPoolCurrentCycleResponseBody,
   AwuPoolCycleBreakdown,
+  AwuPoolCycleHistoryOverflow,
 } from "@app/types/api/credits/awu_pool_summary";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType } from "@app/types/user";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   AlertCircle,
   ContentMessage,
   cn,
   DataTable,
+  DataTableSkeleton,
+  LoadingBlock,
   Page,
-  Spinner,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useCallback, useState } from "react";
 
 export type CreditPoolFetchStatus = "loading" | "error" | "ready";
 
@@ -55,6 +60,23 @@ function formatCycleDayLabel(
   return `Day ${elapsedDays}/${totalDays}`;
 }
 
+function formatProgrammaticUsageShare(
+  programmaticConsumedCredits: number | null,
+  consumedCredits: number | null
+): string | null {
+  if (
+    typeof programmaticConsumedCredits !== "number" ||
+    typeof consumedCredits !== "number" ||
+    consumedCredits <= 0
+  ) {
+    return null;
+  }
+  const percentage = Math.round(
+    Math.min(100, (programmaticConsumedCredits / consumedCredits) * 100)
+  );
+  return `${percentage}% of the usage`;
+}
+
 interface WorkspaceCreditUsageValueCardsProps {
   showPoolCard: boolean;
   totalRemainingCredits: number;
@@ -63,6 +85,7 @@ interface WorkspaceCreditUsageValueCardsProps {
   currentCycleEndMs: number | null;
   programmaticConsumedCredits: number | null;
   isLoading: boolean;
+  isRefreshing: boolean;
 }
 
 export function WorkspaceCreditUsageValueCards({
@@ -73,7 +96,23 @@ export function WorkspaceCreditUsageValueCards({
   currentCycleEndMs,
   programmaticConsumedCredits,
   isLoading,
+  isRefreshing,
 }: WorkspaceCreditUsageValueCardsProps) {
+  if (isLoading) {
+    return (
+      <div
+        className={cn(
+          "grid gap-4",
+          showPoolCard ? "grid-cols-3" : "grid-cols-2"
+        )}
+      >
+        {Array.from({ length: showPoolCard ? 3 : 2 }, (_, index) => (
+          <LoadingBlock key={index} className="h-24 rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
   const cycleDayLabel = formatCycleDayLabel(
     currentCycleStartMs,
     currentCycleEndMs
@@ -87,6 +126,7 @@ export function WorkspaceCreditUsageValueCards({
           label="Remaining credits in the pool"
           value={formatCredits(totalRemainingCredits)}
           hint={null}
+          isRefreshing={isRefreshing}
         />
       )}
       <SummaryCard
@@ -97,6 +137,7 @@ export function WorkspaceCreditUsageValueCards({
             : "—"
         }
         hint={cycleDayLabel}
+        isRefreshing={isRefreshing}
       />
       <SummaryCard
         label="Programmatic usage this cycle"
@@ -105,14 +146,28 @@ export function WorkspaceCreditUsageValueCards({
             ? formatCredits(programmaticConsumedCredits)
             : "—"
         }
-        hint={null}
+        hint={formatProgrammaticUsageShare(
+          programmaticConsumedCredits,
+          consumedCredits
+        )}
+        isRefreshing={isRefreshing}
       />
     </div>
   );
 }
 
+// Travels untouched from the data hooks down to the table.
+export interface CycleHistoryLoadMore {
+  hasMore: boolean;
+  isLoading: boolean;
+  onLoadMore: () => void;
+  // Absent while only the initial rows are shown.
+  onShowLess?: () => void;
+}
+
 interface WorkspaceCreditPoolCycleHistoryTableProps {
   cycleBreakdown: AwuPoolCycleBreakdown[];
+  cycleHistoryLoadMore: CycleHistoryLoadMore;
 }
 
 type CycleHistoryRowData = {
@@ -143,12 +198,28 @@ const CYCLE_HISTORY_COLUMNS: ColumnDef<CycleHistoryRowData, string>[] = [
   },
 ];
 
+export const INITIAL_CYCLE_HISTORY_ROW_COUNT = 2;
+export const CYCLE_HISTORY_LOAD_MORE_COUNT = 5;
+
+function CycleHistorySkeletonCell({ columnId }: DataTableSkeletonCellProps) {
+  switch (columnId) {
+    case "cycle":
+      return <LoadingBlock className="h-3 w-56 max-w-full" />;
+    case "consumedCredits":
+      return <LoadingBlock className="ml-auto h-3 w-16" />;
+    default:
+      return null;
+  }
+}
+
 export function WorkspaceCreditPoolCycleHistoryTable({
   cycleBreakdown,
+  cycleHistoryLoadMore,
 }: WorkspaceCreditPoolCycleHistoryTableProps) {
   if (cycleBreakdown.length === 0) {
     return null;
   }
+
   const rows: CycleHistoryRowData[] = cycleBreakdown.map((cycle) => ({
     cycle:
       cycle.cycleStartMs && cycle.cycleEndMs
@@ -156,10 +227,21 @@ export function WorkspaceCreditPoolCycleHistoryTable({
         : "Unknown cycle",
     consumedCredits: formatCredits(Math.round(cycle.consumedCredits)),
   }));
+
   return (
     <>
-      <Page.H variant="h5">Previous cycles</Page.H>
-      <DataTable data={rows} columns={CYCLE_HISTORY_COLUMNS} />
+      <DataTable
+        data={rows}
+        columns={CYCLE_HISTORY_COLUMNS}
+        // The true total is unknown while more cycles remain; once everything
+        // is loaded, the total lets the footer hide its control.
+        totalRowCount={
+          cycleHistoryLoadMore.hasMore ? undefined : cycleBreakdown.length
+        }
+        onLoadMore={cycleHistoryLoadMore.onLoadMore}
+        onShowLess={cycleHistoryLoadMore.onShowLess}
+        isLoadingMore={cycleHistoryLoadMore.isLoading}
+      />
     </>
   );
 }
@@ -167,6 +249,7 @@ export function WorkspaceCreditPoolCycleHistoryTable({
 interface WorkspaceCreditPoolHistoryProps {
   tableStatus: CreditPoolFetchStatus;
   cycleBreakdown: AwuPoolCycleBreakdown[];
+  cycleHistoryLoadMore: CycleHistoryLoadMore;
 }
 
 // Table area rendered under the value cards. Kept separate so a slow cycle
@@ -174,6 +257,7 @@ interface WorkspaceCreditPoolHistoryProps {
 function WorkspaceCreditPoolHistory({
   tableStatus,
   cycleBreakdown,
+  cycleHistoryLoadMore,
 }: WorkspaceCreditPoolHistoryProps) {
   switch (tableStatus) {
     case "error":
@@ -188,13 +272,24 @@ function WorkspaceCreditPoolHistory({
       );
     case "loading":
       return (
-        <div className="flex justify-center py-4">
-          <Spinner />
+        <div className="flex flex-col gap-2">
+          <DataTableSkeleton
+            columns={CYCLE_HISTORY_COLUMNS}
+            SkeletonCell={CycleHistorySkeletonCell}
+            rowCount={INITIAL_CYCLE_HISTORY_ROW_COUNT}
+          />
+          <div className="flex h-6 items-center justify-between px-1">
+            <LoadingBlock className="h-3 w-16" />
+            <LoadingBlock className="h-3 w-14" />
+          </div>
         </div>
       );
     case "ready":
       return (
-        <WorkspaceCreditPoolCycleHistoryTable cycleBreakdown={cycleBreakdown} />
+        <WorkspaceCreditPoolCycleHistoryTable
+          cycleBreakdown={cycleBreakdown}
+          cycleHistoryLoadMore={cycleHistoryLoadMore}
+        />
       );
     default:
       assertNeverAndIgnore(tableStatus);
@@ -204,6 +299,8 @@ function WorkspaceCreditPoolHistory({
 
 interface WorkspaceCreditPoolSectionProps {
   cardsStatus: CreditPoolFetchStatus;
+  // Background refresh of already displayed cards (e.g. right after a purchase).
+  isCardsRefreshing: boolean;
   tableStatus: CreditPoolFetchStatus;
   showPoolCard: boolean;
   isVisible: boolean;
@@ -213,10 +310,12 @@ interface WorkspaceCreditPoolSectionProps {
   currentCycleEndMs: number | null;
   cycleBreakdown: AwuPoolCycleBreakdown[];
   programmaticConsumedCredits: number | null;
+  cycleHistoryLoadMore: CycleHistoryLoadMore;
 }
 
 export function WorkspaceCreditPoolSection({
   cardsStatus,
+  isCardsRefreshing,
   tableStatus,
   showPoolCard,
   isVisible,
@@ -226,15 +325,14 @@ export function WorkspaceCreditPoolSection({
   currentCycleEndMs,
   cycleBreakdown,
   programmaticConsumedCredits,
+  cycleHistoryLoadMore,
 }: WorkspaceCreditPoolSectionProps) {
   if (cardsStatus === "ready" && !isVisible) {
     return null;
   }
 
   return (
-    <Page.Vertical gap="xs" align="stretch">
-      <Page.H variant="h4">Credit consumption</Page.H>
-
+    <Page.Vertical align="stretch" gap="xl">
       {cardsStatus === "error" ? (
         <ContentMessage
           title="Failed to load Workspace Credits Pool"
@@ -243,10 +341,6 @@ export function WorkspaceCreditPoolSection({
         >
           An error occurred while loading the workspace&apos;s credit pool data.
         </ContentMessage>
-      ) : cardsStatus === "loading" ? (
-        <div className="flex justify-center py-8">
-          <Spinner />
-        </div>
       ) : (
         <>
           <WorkspaceCreditUsageValueCards
@@ -256,11 +350,13 @@ export function WorkspaceCreditPoolSection({
             currentCycleStartMs={currentCycleStartMs}
             currentCycleEndMs={currentCycleEndMs}
             programmaticConsumedCredits={programmaticConsumedCredits}
-            isLoading={false}
+            isLoading={cardsStatus === "loading"}
+            isRefreshing={isCardsRefreshing}
           />
           <WorkspaceCreditPoolHistory
-            tableStatus={tableStatus}
+            tableStatus={cardsStatus === "loading" ? "loading" : tableStatus}
             cycleBreakdown={cycleBreakdown}
+            cycleHistoryLoadMore={cycleHistoryLoadMore}
           />
         </>
       )}
@@ -268,19 +364,64 @@ export function WorkspaceCreditPoolSection({
   );
 }
 
+// Reveals cycle history a page at a time, re-fetching a growing
+// `cycleHistoryLimit` from the backend rather than paginating client-side,
+// since the backend itself caps how many cycles it will ever return
+// (`MAX_CYCLE_HISTORY_LIMIT`). The limit counts cycles with consumption, so
+// each step reveals a full page of rows whenever that many exist.
+export function useCycleHistoryLimit() {
+  const [cycleHistoryLimit, setCycleHistoryLimit] = useState(
+    INITIAL_CYCLE_HISTORY_ROW_COUNT
+  );
+
+  const onLoadMoreCycleHistory = useCallback(() => {
+    setCycleHistoryLimit((limit) =>
+      Math.min(MAX_CYCLE_HISTORY_LIMIT, limit + CYCLE_HISTORY_LOAD_MORE_COUNT)
+    );
+  }, []);
+
+  const onShowLessCycleHistory = useCallback(() => {
+    setCycleHistoryLimit(INITIAL_CYCLE_HISTORY_ROW_COUNT);
+  }, []);
+
+  return {
+    cycleHistoryLimit,
+    onLoadMoreCycleHistory,
+    // Collapsing back is only offered once extra rows have been revealed.
+    onShowLessCycleHistory:
+      cycleHistoryLimit > INITIAL_CYCLE_HISTORY_ROW_COUNT
+        ? onShowLessCycleHistory
+        : undefined,
+  };
+}
+
+// The backend tracks "more history" separately per breakdown since only one of the two is ever
+// rendered for a given workspace (see `hasPool` below); resolving `hasMore` happens here, once
+// that choice is made, rather than upstream where it isn't known yet.
+export type CycleHistoryLoadMoreByBreakdown = Omit<
+  CycleHistoryLoadMore,
+  "hasMore"
+> & {
+  hasMoreCycleHistory: AwuPoolCycleHistoryOverflow;
+};
+
 interface CreditPoolCardsFromCycleDataProps {
   awuPoolCurrentCycle: AwuPoolCurrentCycleResponseBody | null;
   cardsStatus: CreditPoolFetchStatus;
+  isCardsRefreshing?: boolean;
   poolCycleBreakdown: AwuPoolCycleBreakdown[];
   excessCycleBreakdown: AwuPoolCycleBreakdown[];
   tableStatus: CreditPoolFetchStatus;
+  cycleHistoryLoadMore: CycleHistoryLoadMoreByBreakdown;
 }
 export function CreditPoolCardsFromCycleData({
   awuPoolCurrentCycle,
   cardsStatus,
+  isCardsRefreshing = false,
   poolCycleBreakdown,
   excessCycleBreakdown,
   tableStatus,
+  cycleHistoryLoadMore,
 }: CreditPoolCardsFromCycleDataProps) {
   const {
     totalRemainingCredits,
@@ -304,11 +445,18 @@ export function CreditPoolCardsFromCycleData({
   const hasExcessData =
     excessConsumedCredits !== null || excessCycleBreakdown.length > 0;
 
+  const { hasMoreCycleHistory, ...restCycleHistoryLoadMore } =
+    cycleHistoryLoadMore;
+
   return (
     <WorkspaceCreditPoolSection
       cardsStatus={cardsStatus}
+      isCardsRefreshing={isCardsRefreshing}
       tableStatus={tableStatus}
-      showPoolCard={hasPool}
+      // Reserve the three-card layout until the pool response is available.
+      showPoolCard={
+        hasPool || (cardsStatus === "loading" && !awuPoolCurrentCycle)
+      }
       isVisible={hasPool || hasExcessData}
       totalRemainingCredits={totalRemainingCredits}
       consumedCredits={
@@ -318,6 +466,12 @@ export function CreditPoolCardsFromCycleData({
       currentCycleEndMs={currentCycleEndMs}
       cycleBreakdown={hasPool ? poolCycleBreakdown : excessCycleBreakdown}
       programmaticConsumedCredits={programmaticConsumedCredits}
+      cycleHistoryLoadMore={{
+        ...restCycleHistoryLoadMore,
+        hasMore: hasPool
+          ? hasMoreCycleHistory.cycleBreakdown
+          : hasMoreCycleHistory.excessCycleBreakdown,
+      }}
     />
   );
 }
@@ -327,17 +481,26 @@ interface CreditPoolCardsProps {
   disabled: boolean;
 }
 export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
+  const { cycleHistoryLimit, onLoadMoreCycleHistory, onShowLessCycleHistory } =
+    useCycleHistoryLimit();
   const {
     awuPoolCurrentCycle,
     isAwuPoolCurrentCycleLoading,
     isAwuPoolCurrentCycleError,
+    isAwuPoolCurrentCycleValidating,
   } = useAwuPoolCurrentCycle({ workspaceId: owner.sId, disabled });
   const {
     cycleBreakdown: poolCycleBreakdown,
     excessCycleBreakdown,
+    hasMoreCycleHistoryByBreakdown: hasMoreCycleHistory,
     isAwuPoolCycleHistoryLoading,
     isAwuPoolCycleHistoryError,
-  } = useAwuPoolCycleHistory({ workspaceId: owner.sId, disabled });
+    isAwuPoolCycleHistoryValidating,
+  } = useAwuPoolCycleHistory({
+    workspaceId: owner.sId,
+    cycleHistoryLimit,
+    disabled,
+  });
 
   return (
     <CreditPoolCardsFromCycleData
@@ -346,12 +509,22 @@ export function CreditPoolCards({ owner, disabled }: CreditPoolCardsProps) {
         isAwuPoolCurrentCycleLoading,
         !!isAwuPoolCurrentCycleError
       )}
+      isCardsRefreshing={
+        isAwuPoolCurrentCycleValidating && !isAwuPoolCurrentCycleLoading
+      }
       poolCycleBreakdown={poolCycleBreakdown}
       excessCycleBreakdown={excessCycleBreakdown}
       tableStatus={toCreditPoolFetchStatus(
         isAwuPoolCycleHistoryLoading,
         !!isAwuPoolCycleHistoryError
       )}
+      cycleHistoryLoadMore={{
+        hasMoreCycleHistory,
+        isLoading:
+          isAwuPoolCycleHistoryValidating && !isAwuPoolCycleHistoryLoading,
+        onLoadMore: onLoadMoreCycleHistory,
+        onShowLess: onShowLessCycleHistory,
+      }}
     />
   );
 }
