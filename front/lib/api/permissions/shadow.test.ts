@@ -89,8 +89,26 @@ describe.each([false, true])("shadowCompare (reverse: %s)", (reverse) => {
 
     expect(result).toBe("legacy");
     expect(error).toHaveBeenCalledWith(
-      expect.objectContaining({ check: "test" }),
+      expect.objectContaining({
+        check: "test",
+        servedSource: reverse ? "grants" : "legacy",
+      }),
       "group_permissions_shadow_candidate_error"
     );
+  });
+
+  it("keeps async comparison arguments in legacy/grant order", async () => {
+    await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
+    const equals = vi.fn(async () => true);
+    const result = await shadowCompare({
+      auth,
+      reverse,
+      legacy: reverse ? "grants" : "legacy",
+      candidate: async () => (reverse ? "legacy" : "grants"),
+      context: { check: "test" },
+      equals,
+    });
+    expect(result).toBe(reverse ? "grants" : "legacy");
+    expect(equals).toHaveBeenCalledWith("legacy", "grants");
   });
 });
