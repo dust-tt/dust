@@ -4,7 +4,6 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { verifyWorkspaceOAuthConnectionForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
-import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -38,6 +37,7 @@ import { SnowflakeOAuthProvider } from "@app/lib/api/oauth/providers/snowflake";
 import { UkgReadyOAuthProvider } from "@app/lib/api/oauth/providers/ukg_ready";
 import { VantaOAuthProvider } from "@app/lib/api/oauth/providers/vanta";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
+import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import logger from "@app/logger/logger";

@@ -47,4 +47,3 @@ describe("getSandboxApiBaseUrl", () => {
     expect(config.getSandboxApiBaseUrl()).toBe(PUBLIC_URL);
   });
 });
-
