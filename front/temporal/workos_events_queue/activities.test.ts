@@ -1,13 +1,36 @@
 import * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { processWorkOSEventActivity } from "@app/temporal/workos_events_queue/activities";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { OrganizationDomainDeletedEvent } from "@workos-inc/node";
+import { faker } from "@faker-js/faker";
+import type {
+  DsyncGroupUserRemovedEvent,
+  OrganizationDomainDeletedEvent,
+} from "@workos-inc/node";
 import {
+  NotFoundException,
   OrganizationDomainState,
   OrganizationDomainVerificationStrategy,
 } from "@workos-inc/node";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const { mockGetGroup, mockListDirectories, mockListUsers } = vi.hoisted(() => ({
+  mockGetGroup: vi.fn(),
+  mockListDirectories: vi.fn(),
+  mockListUsers: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/workos/client", () => ({
+  getWorkOS: () => ({
+    directorySync: {
+      getGroup: mockGetGroup,
+      listDirectories: mockListDirectories,
+    },
+    userManagement: { listUsers: mockListUsers },
+  }),
+}));
 
 vi.mock("@app/lib/api/audit/workos_audit", async () => {
   const actual = await vi.importActual("@app/lib/api/audit/workos_audit");
@@ -71,6 +94,116 @@ describe("processWorkOSEventActivity", () => {
       targets: [{ type: "workspace", id: workspace.sId, name: workspace.name }],
       context: { location: "system" },
       metadata: { domain },
+    });
+  });
+  describe("dsync.group.user_removed", () => {
+    const directoryId = "directory_test";
+    const groupId = "directory_group_test";
+
+    beforeEach(() => {
+      vi.clearAllMocks();
+      mockListDirectories.mockResolvedValue({ data: [{ id: directoryId }] });
+    });
+
+    async function setupMemberWithWorkOSUser() {
+      const workspace = await WorkspaceFactory.enterprise();
+      const organizationId = workspace.workOSOrganizationId;
+      if (!organizationId) {
+        throw new Error("Expected a workspace with a WorkOS organization");
+      }
+      const workOSUserId = faker.string.uuid();
+      const user = await UserFactory.withWorkOSId(workOSUserId);
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      mockListUsers.mockResolvedValue({
+        data: [{ id: workOSUserId, email: user.email }],
+      });
+
+      return { organizationId, user };
+    }
+
+    function makeUserRemovedEvent(
+      organizationId: string,
+      email: string
+    ): DsyncGroupUserRemovedEvent {
+      const now = new Date().toISOString();
+      return {
+        id: "evt_group_user_removed",
+        event: "dsync.group.user_removed",
+        context: undefined,
+        createdAt: now,
+        data: {
+          directoryId,
+          user: {
+            object: "directory_user",
+            id: "directory_user_test",
+            directoryId,
+            organizationId,
+            rawAttributes: {},
+            customAttributes: {},
+            idpId: "idp_user_test",
+            firstName: "Test",
+            lastName: "User",
+            email,
+            emails: [{ primary: true, value: email }],
+            username: email,
+            jobTitle: null,
+            state: "active",
+            createdAt: now,
+            updatedAt: now,
+          },
+          group: {
+            id: groupId,
+            idpId: "idp_group_test",
+            directoryId,
+            organizationId,
+            name: "Deleted group",
+            createdAt: now,
+            updatedAt: now,
+            rawAttributes: {},
+          },
+        },
+      };
+    }
+
+    it("skips the removal when the group is gone locally and in WorkOS", async () => {
+      const { organizationId, user } = await setupMemberWithWorkOSUser();
+      mockGetGroup.mockRejectedValue(
+        new NotFoundException({
+          path: `/directory_groups/${groupId}`,
+          requestID: "req_test",
+        })
+      );
+
+      await expect(
+        processWorkOSEventActivity({
+          eventPayload: makeUserRemovedEvent(organizationId, user.email),
+        })
+      ).resolves.toBeUndefined();
+
+      expect(mockGetGroup).toHaveBeenCalledWith(groupId);
+      expect(workosAudit.emitAuditLogEventDirect).not.toHaveBeenCalled();
+    });
+
+    it("still fails when the group is missing locally but exists in WorkOS", async () => {
+      const { organizationId, user } = await setupMemberWithWorkOSUser();
+      mockGetGroup.mockResolvedValue({ id: groupId });
+
+      await expect(
+        processWorkOSEventActivity({
+          eventPayload: makeUserRemovedEvent(organizationId, user.email),
+        })
+      ).rejects.toThrow(`Group not found for workOSId "${groupId}"`);
+    });
+
+    it("rethrows unexpected WorkOS errors from the group lookup", async () => {
+      const { organizationId, user } = await setupMemberWithWorkOSUser();
+      mockGetGroup.mockRejectedValue(new Error("WorkOS unavailable"));
+
+      await expect(
+        processWorkOSEventActivity({
+          eventPayload: makeUserRemovedEvent(organizationId, user.email),
+        })
+      ).rejects.toThrow("WorkOS unavailable");
     });
   });
 });
