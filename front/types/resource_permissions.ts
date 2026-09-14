@@ -5,17 +5,6 @@ import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
 
 /**
- * A group and the verbs it is granted on a resource.
- *
- * @property id - The group's model id
- * @property permissions - Grant verbs the group holds
- */
-export type GroupGrant = {
-  id: ModelId;
-  permissions: GrantVerb[];
-};
-
-/**
  * A role and the verbs it is granted on a resource.
  *
  * @property role - The workspace role
@@ -33,24 +22,19 @@ export type RoleGrant = {
  * optional and an absent source contributes nothing, so an ACL with no matching source denies
  * (fail-closed) — a missing field is intent, not a bug.
  *
- * The three sources:
+ * The two sources:
  * - `roles`: the caller passes if their workspace role grants the verb (only within the ACL's
  *   workspace).
  * - `grantedVerbs`: the caller's own verbs on the resource, already resolved from their governance
  *   grants (`Authenticator.getGrantedVerbs`). Caller-scoped and pre-filtered, so the checker uses it
  *   directly with no group-membership step. This is the shape governance-sourced ACLs use.
- * - `groups`: legacy group→verb listing. The checker filters it by the caller's group membership at
- *   check time, so it also handles ACLs that enumerate every group (e.g. the cross-space
- *   conversation checks). An ACL is a check artifact, not a complete "who has access" listing.
  *
  * @property roles - Role-based grants: a caller whose workspace role matches gets its verbs
- * @property groups - Legacy group-based grants, filtered by the caller's membership at check time
  * @property grantedVerbs - The caller's pre-resolved governance verbs on the resource
  * @property workspaceId - The resource's workspace; checks only apply within the caller's workspace
  */
 export type AccessControlList = {
   roles?: RoleGrant[];
-  groups?: GroupGrant[];
   grantedVerbs?: GrantVerb[];
   workspaceId: ModelId;
 };

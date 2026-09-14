@@ -76,21 +76,12 @@ async function backfillWorkspaceSpaceGroupPermissions(
   await concurrentExecutor(
     spaces,
     async (space) => {
-      const desiredGrants = space
-        .getAccessControlLists(auth)
-        .flatMap((permission) => permission.groups ?? [])
-        .map((grant) => ({
-          groupId: grant.id,
-          permissions: grant.permissions,
-        }));
-
       if (!execute) {
         logger.info(
           {
             workspaceId: workspace.sId,
             spaceId: space.sId,
             kind: space.kind,
-            desiredGrants,
           },
           "Dry-run: would reconcile space group permissions"
         );
@@ -110,7 +101,6 @@ async function backfillWorkspaceSpaceGroupPermissions(
           workspaceId: workspace.sId,
           spaceId: space.sId,
           kind: space.kind,
-          grantCount: desiredGrants.length,
         },
         "Reconciled space group permissions"
       );
