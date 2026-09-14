@@ -4,16 +4,21 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { CustomerAlert } from "@metronome/sdk/resources/v1/customers";
 
+// Shared prefix of all four programmatic-cap alert keys (cap / warning / low /
+// critical) — `programmatic-cap-<...>-<workspaceId>`. The `-warning-`,
+// `-low-` and `-critical-` variants all begin with it too.
+const PROGRAMMATIC_CAP_ALERT_KEY_PREFIX = "programmatic-cap-";
+
 function programmaticCapUniquenessKey(workspaceId: string): string {
-  return `programmatic-cap-${workspaceId}`;
+  return `${PROGRAMMATIC_CAP_ALERT_KEY_PREFIX}${workspaceId}`;
 }
 
 function programmaticCapWarningUniquenessKey(workspaceId: string): string {
-  return `programmatic-cap-warning-${workspaceId}`;
+  return `${PROGRAMMATIC_CAP_ALERT_KEY_PREFIX}warning-${workspaceId}`;
 }
 
 function programmaticCapLowUniquenessKey(workspaceId: string): string {
-  return `programmatic-cap-low-${workspaceId}`;
+  return `${PROGRAMMATIC_CAP_ALERT_KEY_PREFIX}low-${workspaceId}`;
 }
 
 // The uniqueness keys for the four programmatic alerts, keyed by slot. Exported
@@ -33,7 +38,20 @@ export function programmaticCapUniquenessKeys(workspaceId: string): {
 }
 
 function programmaticCapCriticalUniquenessKey(workspaceId: string): string {
-  return `programmatic-cap-critical-${workspaceId}`;
+  return `${PROGRAMMATIC_CAP_ALERT_KEY_PREFIX}critical-${workspaceId}`;
+}
+
+/**
+ * Workspace-independent matcher for the four now-retired programmatic-cap alert
+ * uniqueness keys. Matches the shared `programmatic-cap-` prefix for ANY
+ * workspace, so the cleanup script can archive alerts left behind by deleted
+ * workspaces without knowing their sId. All four programmatic alert types are
+ * retired, so prefix matching alone is sufficient and correct.
+ */
+export function isProgrammaticCapAlertUniquenessKeyAnyWorkspace(
+  uniquenessKey: string
+): boolean {
+  return uniquenessKey.startsWith(PROGRAMMATIC_CAP_ALERT_KEY_PREFIX);
 }
 
 // Early-warning threshold (as a fraction of the monthly cap) fires a

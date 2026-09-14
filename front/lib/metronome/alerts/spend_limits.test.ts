@@ -2,6 +2,7 @@ import * as alerts from "@app/lib/metronome/alerts";
 import {
   getMetronomeDefaultUserCapAlertForSeatType,
   isUnusedSpendCapAlertUniquenessKey,
+  isUnusedSpendCapAlertUniquenessKeyAnyWorkspace,
   upsertMetronomeDefaultUserCapAlertForSeatType,
 } from "@app/lib/metronome/alerts/spend_limits";
 import { getCreditTypeAwuId } from "@app/lib/metronome/constants";
@@ -115,6 +116,35 @@ describe("isUnusedSpendCapAlertUniquenessKey", () => {
         WORKSPACE_ID
       )
     ).toBe(false);
+  });
+});
+
+describe("isUnusedSpendCapAlertUniquenessKeyAnyWorkspace", () => {
+  it("matches every retired spend-cap family regardless of workspace", () => {
+    for (const key of [
+      "per-user-cap-any_wks-usr_123",
+      "per-user-warning-any_wks-usr_123",
+      "per-api-key-cap-any_wks-thomas",
+      "default-user-cap-pro-any_wks",
+      "default-user-warning-max-any_wks",
+      "group-cap-grp_1-any_wks",
+      "group-warning-grp_1-any_wks",
+    ]) {
+      expect(isUnusedSpendCapAlertUniquenessKeyAnyWorkspace(key)).toBe(true);
+    }
+  });
+
+  it("does not match still-in-use free-seat, workspace balance, or PAYG usage-cap keys", () => {
+    for (const key of [
+      "per-user-credit-exhausted-any_wks-usr_123",
+      "per-user-credit-low-any_wks-usr_123",
+      "workspace-balance-threshold-any_wks",
+      "payg-cap-any_wks",
+      "default-low-seat-balance-zero-awu",
+      "programmatic-cap-any_wks",
+    ]) {
+      expect(isUnusedSpendCapAlertUniquenessKeyAnyWorkspace(key)).toBe(false);
+    }
   });
 });
 

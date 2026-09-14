@@ -42,27 +42,31 @@ function defaultUserWarningAlertUniquenessKeyForSeatType(
   return `${DEFAULT_USER_WARNING_ALERT_KEY_PREFIX}${seatType}-${workspaceId}`;
 }
 
-function perUserAlertUniquenessKeyPrefix(workspaceId: string): string {
-  return `per-user-cap-${workspaceId}-`;
-}
-
-function perUserWarningAlertUniquenessKeyPrefix(workspaceId: string): string {
-  return `per-user-warning-${workspaceId}-`;
-}
-
-function perApiKeyCapAlertUniquenessKeyPrefix(workspaceId: string): string {
-  return `per-api-key-cap-${workspaceId}-`;
-}
-
-// Prefixes for the per-seat-type default and per-group cap/warning alert
-// uniqueness keys. Unlike the per-user keys, these carry the workspace id as
-// their final `-<workspaceId>` segment. Kept as the single source of truth for
-// `isUnusedSpendCapAlertUniquenessKey` below (the default builders append the
-// seat type; the group builders were removed with their now-unused writers).
+// Workspace-independent prefixes for the per-user, per-API-key, per-seat-type
+// default, and per-group spend-cap / warning alert uniqueness keys. Kept as the
+// single source of truth for both the per-workspace builders below and the two
+// `isUnusedSpendCapAlertUniquenessKey*` matchers. The per-user / per-API-key
+// keys embed the workspace id right after the prefix; the default (seat type is
+// appended) and group keys carry it as the final `-<workspaceId>` segment.
+const PER_USER_CAP_ALERT_KEY_PREFIX = "per-user-cap-";
+const PER_USER_WARNING_ALERT_KEY_PREFIX = "per-user-warning-";
+const PER_API_KEY_CAP_ALERT_KEY_PREFIX = "per-api-key-cap-";
 const DEFAULT_USER_CAP_ALERT_KEY_PREFIX = "default-user-cap-";
 const DEFAULT_USER_WARNING_ALERT_KEY_PREFIX = "default-user-warning-";
 const GROUP_CAP_ALERT_KEY_PREFIX = "group-cap-";
 const GROUP_WARNING_ALERT_KEY_PREFIX = "group-warning-";
+
+function perUserAlertUniquenessKeyPrefix(workspaceId: string): string {
+  return `${PER_USER_CAP_ALERT_KEY_PREFIX}${workspaceId}-`;
+}
+
+function perUserWarningAlertUniquenessKeyPrefix(workspaceId: string): string {
+  return `${PER_USER_WARNING_ALERT_KEY_PREFIX}${workspaceId}-`;
+}
+
+function perApiKeyCapAlertUniquenessKeyPrefix(workspaceId: string): string {
+  return `${PER_API_KEY_CAP_ALERT_KEY_PREFIX}${workspaceId}-`;
+}
 
 /**
  * True when `uniquenessKey` (a base key with any generation suffix already
@@ -98,6 +102,35 @@ export function isUnusedSpendCapAlertUniquenessKey(
     return false;
   }
   return (
+    uniquenessKey.startsWith(DEFAULT_USER_CAP_ALERT_KEY_PREFIX) ||
+    uniquenessKey.startsWith(DEFAULT_USER_WARNING_ALERT_KEY_PREFIX) ||
+    uniquenessKey.startsWith(GROUP_CAP_ALERT_KEY_PREFIX) ||
+    uniquenessKey.startsWith(GROUP_WARNING_ALERT_KEY_PREFIX)
+  );
+}
+
+/**
+ * Workspace-independent variant of `isUnusedSpendCapAlertUniquenessKey`: true
+ * when `uniquenessKey` (base key, generation suffix stripped) belongs to any of
+ * the retired per-user / per-API-key / per-seat-type default / per-group
+ * spend-cap or warning alerts, for ANY workspace. Because every one of these
+ * alert types is globally retired, the workspace-id segment need not be
+ * validated — matching the prefix alone is sufficient and correct.
+ *
+ * The cleanup script uses this to archive alerts left behind by deleted
+ * workspaces, whose sId is gone from the DB (so the workspace-scoped matcher
+ * can't be built). Still does NOT match the free-seat per-user credit-balance
+ * alerts (`per-user-credit-*`) or the workspace balance-threshold alert
+ * (`workspace-balance-threshold-*`): none of the prefixes below is a prefix of
+ * those.
+ */
+export function isUnusedSpendCapAlertUniquenessKeyAnyWorkspace(
+  uniquenessKey: string
+): boolean {
+  return (
+    uniquenessKey.startsWith(PER_USER_CAP_ALERT_KEY_PREFIX) ||
+    uniquenessKey.startsWith(PER_USER_WARNING_ALERT_KEY_PREFIX) ||
+    uniquenessKey.startsWith(PER_API_KEY_CAP_ALERT_KEY_PREFIX) ||
     uniquenessKey.startsWith(DEFAULT_USER_CAP_ALERT_KEY_PREFIX) ||
     uniquenessKey.startsWith(DEFAULT_USER_WARNING_ALERT_KEY_PREFIX) ||
     uniquenessKey.startsWith(GROUP_CAP_ALERT_KEY_PREFIX) ||
