@@ -5,7 +5,6 @@ const REFRESH_INTERVAL_MS = 60 * 1000;
 
 const isLegacyAclsKillSwitchEnabled = makeCachedKillSwitch("use_legacy_acls", {
   refreshIntervalMs: REFRESH_INTERVAL_MS,
-  initialValue: true,
 });
 
 /**

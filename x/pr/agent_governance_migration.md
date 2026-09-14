@@ -127,7 +127,7 @@ legacy/grant log fields stable. Split the read flip into four stacked PRs:
 
 **Deployment gate:** enable `use_legacy_acls` before deploying the first part and keep it enabled
 until all four parts are deployed. Only then disable it after satisfying the operational gate below,
-so all reads switch together. New pods serve legacy reads until the switch's value loads.
+so all reads switch together.
 
 Serve editor lists, permission decisions, and list/manage/archive filtering from grants together
 when `use_legacy_acls` is disabled. This switches all workspaces together; enabling the switch
