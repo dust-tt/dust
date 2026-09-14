@@ -4,7 +4,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { estypes } from "@elastic/elasticsearch";
 import { Client, errors as esErrors } from "@elastic/elasticsearch";
-import moment from "moment-timezone";
+import { formatInTimeZone } from "date-fns-tz";
 
 let esClient: Client | null = null;
 
@@ -166,7 +166,7 @@ export function formatUTCDateFromMillis(ms: number): string {
 }
 
 export function formatDateFromMillis(ms: number, timezone: string): string {
-  return moment.tz(ms, timezone).format("YYYY-MM-DD");
+  return formatInTimeZone(ms, timezone, "yyyy-MM-dd");
 }
 
 /**
