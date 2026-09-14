@@ -33,7 +33,7 @@
     "icon": {
       "type": "keyword"
     },
-    "edited_by": {
+    "last_edited_by_user_id": {
       "type": "long"
     },
     "editor_group_ids": {
@@ -49,10 +49,10 @@
       "type": "text",
       "analyzer": "icu_analyzer"
     },
-    "tools": {
+    "mcp_server_view_ids": {
       "type": "keyword"
     },
-    "active_users": {
+    "active_users_count": {
       "type": "integer"
     },
     "favorite_count": {
@@ -61,7 +61,7 @@
     "is_default": {
       "type": "boolean"
     },
-    "editors": {
+    "editor_ids": {
       "type": "keyword"
     }
   }
