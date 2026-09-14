@@ -1,7 +1,6 @@
 import * as alerts from "@app/lib/metronome/alerts";
 import {
   getMetronomeDefaultUserCapAlertForSeatType,
-  isUnusedSpendCapAlertUniquenessKey,
   isUnusedSpendCapAlertUniquenessKeyAnyWorkspace,
   upsertMetronomeDefaultUserCapAlertForSeatType,
 } from "@app/lib/metronome/alerts/spend_limits";
@@ -27,96 +26,6 @@ const WORKSPACE_ID = "wks_test_xxx";
 beforeEach(() => {
   vi.mocked(alerts.findMetronomeAlert).mockReset();
   vi.mocked(alerts.upsertMetronomeAlert).mockReset();
-});
-
-describe("isUnusedSpendCapAlertUniquenessKey", () => {
-  it("matches per-user cap and warning keys", () => {
-    expect(
-      isUnusedSpendCapAlertUniquenessKey(
-        `per-user-cap-${WORKSPACE_ID}-usr_123`,
-        WORKSPACE_ID
-      )
-    ).toBe(true);
-    expect(
-      isUnusedSpendCapAlertUniquenessKey(
-        `per-user-warning-${WORKSPACE_ID}-usr_123`,
-        WORKSPACE_ID
-      )
-    ).toBe(true);
-  });
-
-  it("matches per-API-key cap keys", () => {
-    expect(
-      isUnusedSpendCapAlertUniquenessKey(
-        `per-api-key-cap-${WORKSPACE_ID}-thomas`,
-        WORKSPACE_ID
-      )
-    ).toBe(true);
-  });
-
-  it("matches per-seat-type default and per-group cap / warning keys", () => {
-    expect(
-      isUnusedSpendCapAlertUniquenessKey(
-        `default-user-cap-pro-${WORKSPACE_ID}`,
-        WORKSPACE_ID
-      )
-    ).toBe(true);
-    expect(
-      isUnusedSpendCapAlertUniquenessKey(
-        `default-user-warning-pro-${WORKSPACE_ID}`,
-        WORKSPACE_ID
-      )
-    ).toBe(true);
-    expect(
-      isUnusedSpendCapAlertUniquenessKey(
-        `group-cap-grp_1-${WORKSPACE_ID}`,
-        WORKSPACE_ID
-      )
-    ).toBe(true);
-    expect(
-      isUnusedSpendCapAlertUniquenessKey(
-        `group-warning-grp_1-${WORKSPACE_ID}`,
-        WORKSPACE_ID
-      )
-    ).toBe(true);
-  });
-
-  it("does not match keys for a different workspace", () => {
-    expect(
-      isUnusedSpendCapAlertUniquenessKey(
-        `per-api-key-cap-other_wks-thomas`,
-        WORKSPACE_ID
-      )
-    ).toBe(false);
-    expect(
-      isUnusedSpendCapAlertUniquenessKey(
-        `per-user-cap-other_wks-usr_123`,
-        WORKSPACE_ID
-      )
-    ).toBe(false);
-  });
-
-  it("does not match still-in-use free-seat, workspace balance, or PAYG usage-cap keys", () => {
-    expect(
-      isUnusedSpendCapAlertUniquenessKey(
-        `per-user-credit-${WORKSPACE_ID}-usr_123`,
-        WORKSPACE_ID
-      )
-    ).toBe(false);
-    expect(
-      isUnusedSpendCapAlertUniquenessKey(
-        `workspace-balance-threshold-${WORKSPACE_ID}`,
-        WORKSPACE_ID
-      )
-    ).toBe(false);
-    // PAYG global-consumption spend alert — still in use, must never be archived.
-    expect(
-      isUnusedSpendCapAlertUniquenessKey(
-        `payg-cap-${WORKSPACE_ID}`,
-        WORKSPACE_ID
-      )
-    ).toBe(false);
-  });
 });
 
 describe("isUnusedSpendCapAlertUniquenessKeyAnyWorkspace", () => {

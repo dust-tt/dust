@@ -44,10 +44,11 @@ function defaultUserWarningAlertUniquenessKeyForSeatType(
 
 // Workspace-independent prefixes for the per-user, per-API-key, per-seat-type
 // default, and per-group spend-cap / warning alert uniqueness keys. Kept as the
-// single source of truth for both the per-workspace builders below and the two
-// `isUnusedSpendCapAlertUniquenessKey*` matchers. The per-user / per-API-key
-// keys embed the workspace id right after the prefix; the default (seat type is
-// appended) and group keys carry it as the final `-<workspaceId>` segment.
+// single source of truth for both the per-workspace builders below and the
+// `isUnusedSpendCapAlertUniquenessKeyAnyWorkspace` matcher. The per-user /
+// per-API-key keys embed the workspace id right after the prefix; the default
+// (seat type is appended) and group keys carry it as the final `-<workspaceId>`
+// segment.
 const PER_USER_CAP_ALERT_KEY_PREFIX = "per-user-cap-";
 const PER_USER_WARNING_ALERT_KEY_PREFIX = "per-user-warning-";
 const PER_API_KEY_CAP_ALERT_KEY_PREFIX = "per-api-key-cap-";
@@ -64,65 +65,18 @@ function perUserWarningAlertUniquenessKeyPrefix(workspaceId: string): string {
   return `${PER_USER_WARNING_ALERT_KEY_PREFIX}${workspaceId}-`;
 }
 
-function perApiKeyCapAlertUniquenessKeyPrefix(workspaceId: string): string {
-  return `${PER_API_KEY_CAP_ALERT_KEY_PREFIX}${workspaceId}-`;
-}
-
 /**
- * True when `uniquenessKey` (a base key with any generation suffix already
- * stripped) identifies one of the per-user, per-seat-type default, or per-group
- * spend-cap / warning alerts for `workspaceId`. These alerts are no longer used
- * for enforcement (the caps are read from the Redis rate-limiter counter against
- * the DB-persisted values), so the archive script uses this to select them for
- * deletion.
- *
- * Does NOT match the free-seat per-user credit-balance alerts
- * (`per-user-credit-*`) or the workspace balance-threshold alert
- * (`workspace-balance-threshold-*`), which are still in use.
- */
-export function isUnusedSpendCapAlertUniquenessKey(
-  uniquenessKey: string,
-  workspaceId: string
-): boolean {
-  // Per-user cap / warning and per-API-key cap: workspace id is embedded in the
-  // prefix, followed by the user id (resp. the api key name).
-  if (
-    uniquenessKey.startsWith(perUserAlertUniquenessKeyPrefix(workspaceId)) ||
-    uniquenessKey.startsWith(
-      perUserWarningAlertUniquenessKeyPrefix(workspaceId)
-    ) ||
-    uniquenessKey.startsWith(perApiKeyCapAlertUniquenessKeyPrefix(workspaceId))
-  ) {
-    return true;
-  }
-
-  // Per-seat-type default and per-group cap / warning: the workspace id is the
-  // final `-<workspaceId>` segment.
-  if (!uniquenessKey.endsWith(`-${workspaceId}`)) {
-    return false;
-  }
-  return (
-    uniquenessKey.startsWith(DEFAULT_USER_CAP_ALERT_KEY_PREFIX) ||
-    uniquenessKey.startsWith(DEFAULT_USER_WARNING_ALERT_KEY_PREFIX) ||
-    uniquenessKey.startsWith(GROUP_CAP_ALERT_KEY_PREFIX) ||
-    uniquenessKey.startsWith(GROUP_WARNING_ALERT_KEY_PREFIX)
-  );
-}
-
-/**
- * Workspace-independent variant of `isUnusedSpendCapAlertUniquenessKey`: true
- * when `uniquenessKey` (base key, generation suffix stripped) belongs to any of
- * the retired per-user / per-API-key / per-seat-type default / per-group
+ * True when `uniquenessKey` (base key, generation suffix stripped) belongs to
+ * any of the retired per-user / per-API-key / per-seat-type default / per-group
  * spend-cap or warning alerts, for ANY workspace. Because every one of these
  * alert types is globally retired, the workspace-id segment need not be
  * validated — matching the prefix alone is sufficient and correct.
  *
- * The cleanup script uses this to archive alerts left behind by deleted
- * workspaces, whose sId is gone from the DB (so the workspace-scoped matcher
- * can't be built). Still does NOT match the free-seat per-user credit-balance
- * alerts (`per-user-credit-*`) or the workspace balance-threshold alert
- * (`workspace-balance-threshold-*`): none of the prefixes below is a prefix of
- * those.
+ * The cleanup script uses this to archive these alerts, including the ones left
+ * behind by deleted workspaces whose sId is gone from the DB. Still does NOT
+ * match the free-seat per-user credit-balance alerts (`per-user-credit-*`) or
+ * the workspace balance-threshold alert (`workspace-balance-threshold-*`): none
+ * of the prefixes below is a prefix of those.
  */
 export function isUnusedSpendCapAlertUniquenessKeyAnyWorkspace(
   uniquenessKey: string
