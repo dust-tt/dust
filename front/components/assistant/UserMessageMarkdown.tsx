@@ -88,6 +88,9 @@ export const UserMessageMarkdown = ({
           label={name}
           icon={icon ?? null}
           getIcon={getToolIcon}
+          onClick={() =>
+            togglePanel({ type: TOOL_SIDE_PANEL_TYPE, toolId: id })
+          }
         />
       ),
       project_task: getTaskDirectiveBlock(owner),
