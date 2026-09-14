@@ -1159,7 +1159,7 @@ const InputBarContainer = ({
       if (node.type.name === "dataSourceLink") {
         const nodeId = node.attrs.nodeId;
         if (
-          typeof nodeId === "string" &&
+          isString(nodeId) &&
           !hasAnotherAttachedNode(
             currentEditor,
             "dataSourceLink",
