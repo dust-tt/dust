@@ -1,5 +1,6 @@
 import Custom404 from "@dust-tt/front/components/pages/Custom404";
 import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
+import { AgentSurfaceRouterLayout } from "@spa/app/layouts/AgentSurfaceRouterLayout";
 import { AppContentRouterLayout } from "@spa/app/layouts/AppContentRouterLayout";
 import { RootRouterLayout } from "@spa/app/layouts/RootRouterLayout";
 import { UnauthenticatedPage } from "@spa/app/layouts/UnauthenticatedPage";
@@ -8,6 +9,7 @@ import { IndexPage } from "@spa/app/pages/IndexPage";
 import { adminFullPageRoutes, adminRoutes } from "@spa/app/routes/adminRoutes";
 import { appsRoutes } from "@spa/app/routes/appsRoutes";
 import {
+  builderAgentSurfaceRoutes,
   builderContentRoutes,
   builderFullPageRoutes,
   builderRedirectRoutes,
@@ -62,15 +64,23 @@ export const routes: RouteObject[] = [
           {
             element: <AppContentRouterLayout />,
             children: [
-              ...conversationRoutes,
+              // Surfaces that share the agent sidebar. They hang off a single layout route so
+              // the sidebar is mounted once and survives navigation between them.
+              {
+                element: <AgentSurfaceRouterLayout />,
+                children: [
+                  ...conversationRoutes,
+                  ...podsRoutes,
+                  ...getStartedRoutes,
+                  ...builderAgentSurfaceRoutes,
+                  ...labsRoutes,
+                ],
+              },
               ...adminRoutes,
-              ...labsRoutes,
               ...spacesRoutes,
               ...appsRoutes,
               ...builderContentRoutes,
               ...spacesRedirectRoutes,
-              ...podsRoutes,
-              ...getStartedRoutes,
             ],
           },
 

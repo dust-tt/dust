@@ -1,8 +1,6 @@
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import {
   useSetContentWidth,
-  useSetNavChildren,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import {
@@ -13,7 +11,6 @@ import {
 import type { LabsFeatureItemType } from "@app/types/labs";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { ContextItem, Eye, Icon, Page } from "@dust-tt/sparkle";
-import { useMemo } from "react";
 
 const LABS_FEATURES: LabsFeatureItemType[] = [
   {
@@ -41,14 +38,8 @@ export function LabsPage() {
 
   const visibleFeatures = getVisibleFeatures(featureFlags);
 
-  const navChildren = useMemo(
-    () => <AgentSidebarMenu owner={owner} />,
-    [owner]
-  );
-
   useSetContentWidth("centered");
   useSetPageTitle("Dust - Exploratory features");
-  useSetNavChildren(navChildren);
 
   return (
     <>

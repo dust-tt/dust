@@ -1,4 +1,4 @@
-import { AssistantLayout } from "@app/components/assistant/AssistantLayout";
+import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { ErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
 import { FileDropProvider } from "@app/components/assistant/conversation/FileUploaderContext";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
@@ -8,7 +8,6 @@ import {
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useActivePodId } from "@app/hooks/useActivePodId";
-import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { ReactNode } from "react";
@@ -16,10 +15,9 @@ import type { ReactNode } from "react";
 interface PodLayoutProps {
   children: ReactNode;
   owner: LightWorkspaceType;
-  user: AuthContextValue["user"];
 }
 
-export function PodLayout({ children, owner, user }: PodLayoutProps) {
+export function PodLayout({ children, owner }: PodLayoutProps) {
   const activePodId = useActivePodId();
 
   const { spaceInfo } = useSpaceInfo({
@@ -33,7 +31,7 @@ export function PodLayout({ children, owner, user }: PodLayoutProps) {
   useSetPageTitle(pageTitle);
 
   return (
-    <AssistantLayout owner={owner} user={user}>
+    <BlockedActionsProvider owner={owner}>
       <ErrorBoundary fallback={<UncaughtPodErrorFallback />}>
         <div className="flex h-panel w-full flex-col">
           <FileDropProvider>
@@ -41,7 +39,7 @@ export function PodLayout({ children, owner, user }: PodLayoutProps) {
           </FileDropProvider>
         </div>
       </ErrorBoundary>
-    </AssistantLayout>
+    </BlockedActionsProvider>
   );
 }
 

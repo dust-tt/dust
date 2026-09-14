@@ -1,5 +1,5 @@
 import { PodLayout } from "@dust-tt/front/components/pages/pod/PodLayout";
-import { useAuth, useWorkspace } from "@dust-tt/front/lib/auth/AuthContext";
+import { useWorkspace } from "@dust-tt/front/lib/auth/AuthContext";
 import { Outlet } from "react-router-dom";
 
 /**
@@ -8,10 +8,9 @@ import { Outlet } from "react-router-dom";
  */
 export function PodRouterLayout() {
   const owner = useWorkspace();
-  const { user } = useAuth();
 
   return (
-    <PodLayout owner={owner} user={user}>
+    <PodLayout owner={owner}>
       <Outlet />
     </PodLayout>
   );

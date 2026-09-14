@@ -53,11 +53,16 @@ const ManageSkillsPage = withSuspense(
   "ManageSkillsPage"
 );
 
-// Builder routes inside AppContentLayout (with sidebar)
-export const builderContentRoutes: RouteObject[] = [
+// Management routes: inside AppContentLayout and sharing the agent sidebar, so they hang off
+// AgentSurfaceRouterLayout alongside the conversation and Pod routes.
+export const builderAgentSurfaceRoutes: RouteObject[] = [
   { path: "builder/agents", element: <ManageAgentsPage /> },
-  { path: "builder/agents/create", element: <CreateAgentPage /> },
   { path: "builder/skills", element: <ManageSkillsPage /> },
+];
+
+// Builder routes inside AppContentLayout but without the agent sidebar.
+export const builderContentRoutes: RouteObject[] = [
+  { path: "builder/agents/create", element: <CreateAgentPage /> },
 ];
 
 // Builder routes outside AppContentLayout (full-page editors without sidebar)

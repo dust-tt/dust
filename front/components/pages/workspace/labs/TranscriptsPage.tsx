@@ -1,11 +1,9 @@
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { DeleteProviderDialog } from "@app/components/labs/transcripts/DeleteProviderDialog";
 import { ProcessingConfiguration } from "@app/components/labs/transcripts/ProcessingConfiguration";
 import { ProviderSelection } from "@app/components/labs/transcripts/ProviderSelection";
 import { StorageConfiguration } from "@app/components/labs/transcripts/StorageConfiguration";
 import {
   useSetContentWidth,
-  useSetNavChildren,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -18,7 +16,7 @@ import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types/oauth/lib";
 import { Breadcrumbs, Page, Spinner } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 export function TranscriptsPage() {
   const owner = useWorkspace();
@@ -105,14 +103,8 @@ export function TranscriptsPage() {
     isTranscriptsConfigurationLoading ||
     !featureFlags.includes("labs_transcripts");
 
-  const navChildren = useMemo(
-    () => <AgentSidebarMenu owner={owner} />,
-    [owner]
-  );
-
   useSetContentWidth("centered");
   useSetPageTitle("Dust - Transcripts processing");
-  useSetNavChildren(navChildren);
 
   return (
     <>

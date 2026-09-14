@@ -1,4 +1,3 @@
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import type {
   AvailabilityFilter,
@@ -26,7 +25,6 @@ import {
 import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
 import {
   useSetContentWidth,
-  useSetNavChildren,
   useSetPageTitle,
 } from "@app/components/sparkle/AppLayoutContext";
 import { useHashParam } from "@app/hooks/useHashParams";
@@ -369,14 +367,8 @@ export function ManageSkillsPage() {
     };
   }, [isImportDialogOpen]);
 
-  const navChildren = useMemo(
-    () => <AgentSidebarMenu owner={owner} />,
-    [owner]
-  );
-
   useSetContentWidth("wide");
   useSetPageTitle("Dust - Manage Skills");
-  useSetNavChildren(navChildren);
 
   const isActiveTabEmpty = skillsByTab[activeTab].length === 0;
 

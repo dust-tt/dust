@@ -1,5 +1,4 @@
 import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
-import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import type { AgentModelFilterType } from "@app/components/assistant/ModelsFilterMenu";
 import { ModelsFilterMenu } from "@app/components/assistant/ModelsFilterMenu";
@@ -7,10 +6,7 @@ import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTab
 import { NoArchivedAgentsCTA } from "@app/components/assistant/manager/NoArchivedAgentsCTA";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
 import { getModelLogoByModelId } from "@app/components/providers/types";
-import {
-  useSetContentWidth,
-  useSetNavChildren,
-} from "@app/components/sparkle/AppLayoutContext";
+import { useSetContentWidth } from "@app/components/sparkle/AppLayoutContext";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -282,13 +278,7 @@ export function ManageAgentsPage() {
     };
   }, []);
 
-  const navChildren = useMemo(
-    () => <AgentSidebarMenu owner={owner} />,
-    [owner]
-  );
-
   useSetContentWidth("wide");
-  useSetNavChildren(navChildren);
 
   const isLoading =
     isAgentConfigurationsLoading || isArchivedAgentConfigurationsLoading;
