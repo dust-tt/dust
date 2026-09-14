@@ -31,11 +31,6 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-// TODO(spend-limit-modal-rollout): remove `EditSpendLimitModal`
-// once the usage page has fully rolled onto this
-// component, so there's a single spend-limit editing implementation again.
-// The bulk edit modal stays: it covers a different flow.
-
 // Fetched by the caller since the customer-facing app and poke reach the
 // value through different routes. "unavailable" means the workspace has no
 // default pool limit at all, so the field is not shown.
@@ -56,6 +51,10 @@ interface EditMemberSpendLimitModalProps {
   // to admins even where managers may edit personal and group limits.
   canEditDefaultLimit?: boolean;
   defaultUserSpendLimit: DefaultUserSpendLimitState;
+  onSavingChange?: (memberId: string, isSaving: boolean) => void;
+  // Fired once the limits have been persisted successfully (not on cancel or
+  // a load error). Used to resolve a linked upgrade request as approved.
+  onSaved?: () => void;
 }
 
 interface MemberSpendLimitFormProps {
@@ -66,6 +65,8 @@ interface MemberSpendLimitFormProps {
   canEditDefaultLimit: boolean;
   defaultUserSpendLimit: DefaultUserSpendLimitState;
   onClose: () => void;
+  onSavingChange?: (memberId: string, isSaving: boolean) => void;
+  onSaved?: () => void;
 }
 
 function MemberSpendLimitForm({
@@ -76,6 +77,8 @@ function MemberSpendLimitForm({
   canEditDefaultLimit,
   defaultUserSpendLimit,
   onClose,
+  onSavingChange,
+  onSaved,
 }: MemberSpendLimitFormProps) {
   const { doUpdateSpendLimit } = useUpdateUserSpendLimit({
     workspaceId: owner.sId,
@@ -237,6 +240,7 @@ function MemberSpendLimitForm({
     }
 
     setIsSaving(true);
+    onSavingChange?.(member.sId, true);
     try {
       const tasks: Array<() => Promise<unknown>> = [];
       if (newDefaultLimit !== null) {
@@ -267,10 +271,12 @@ function MemberSpendLimitForm({
         concurrency: 8,
       });
       if (results.every((result) => result !== null)) {
+        onSaved?.();
         onClose();
       }
     } finally {
       setIsSaving(false);
+      onSavingChange?.(member.sId, false);
     }
   }
 
@@ -399,6 +405,8 @@ export function EditMemberSpendLimitModal({
   readOnly = false,
   canEditDefaultLimit = false,
   defaultUserSpendLimit,
+  onSavingChange,
+  onSaved,
 }: EditMemberSpendLimitModalProps) {
   const lastMemberRef = useRef<MemberUsageType | null>(null);
   useEffect(() => {
@@ -427,6 +435,8 @@ export function EditMemberSpendLimitModal({
           canEditDefaultLimit={canEditDefaultLimit}
           defaultUserSpendLimit={defaultUserSpendLimit}
           onClose={onClose}
+          onSavingChange={onSavingChange}
+          onSaved={onSaved}
         />
       </DialogContent>
     </Dialog>

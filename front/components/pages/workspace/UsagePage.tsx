@@ -12,7 +12,6 @@ import {
 import { ChangeSeatModal } from "@app/components/workspace/ChangeSeatModal";
 import type { DefaultUserSpendLimitState } from "@app/components/workspace/EditMemberSpendLimitModal";
 import { EditMemberSpendLimitModal } from "@app/components/workspace/EditMemberSpendLimitModal";
-import { EditSpendLimitModal } from "@app/components/workspace/EditSpendLimitModal";
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
 import { GroupsUsageTable } from "@app/components/workspace/GroupsUsageTable";
 import { MembersSelectionBanner } from "@app/components/workspace/MembersSelectionBanner";
@@ -313,8 +312,6 @@ export function UsagePage() {
       }),
     []
   );
-  const [editSpendLimitMember, setEditSpendLimitMember] =
-    useState<MemberUsageType | null>(null);
   const [spendLimitRecapMember, setSpendLimitRecapMember] =
     useState<MemberUsageType | null>(null);
   const hasMetronomeContract = isSubscriptionMetronomeBilled(subscription);
@@ -403,11 +400,7 @@ export function UsagePage() {
   const handleEditSpendLimitFromTable = useCallback(
     (member: MemberUsageType) => {
       setPendingApproveRequestId(null);
-      if (isNewUsagePage) {
-        setSpendLimitRecapMember(member);
-      } else {
-        setEditSpendLimitMember(member);
-      }
+      setSpendLimitRecapMember(member);
     },
     []
   );
@@ -437,7 +430,7 @@ export function UsagePage() {
   const handleEditLimitRequest = useCallback(
     (request: MembershipUpgradeRequestType) => {
       setPendingApproveRequestId(request.sId);
-      setEditSpendLimitMember(memberFromUpgradeRequest(request));
+      setSpendLimitRecapMember(memberFromUpgradeRequest(request));
     },
     []
   );
@@ -1410,27 +1403,20 @@ export function UsagePage() {
           seatManagedByGroup={isSeatManagedByGroup(changeSeatMember)}
         />
 
-        <EditSpendLimitModal
-          isOpen={editSpendLimitMember !== null}
-          onClose={() => {
-            setEditSpendLimitMember(null);
-            setPendingApproveRequestId(null);
-          }}
-          member={editSpendLimitMember}
-          owner={owner}
-          onSavingChange={handleUsagePendingChange}
-          onSaved={handleApproveOnModalSaved}
-        />
-
         <EditMemberSpendLimitModal
           isOpen={spendLimitRecapMember !== null}
-          onClose={() => setSpendLimitRecapMember(null)}
+          onClose={() => {
+            setSpendLimitRecapMember(null);
+            setPendingApproveRequestId(null);
+          }}
           member={spendLimitRecapMember}
           owner={owner}
           groups={groups}
           readOnly={!isManager(owner)}
           canEditDefaultLimit={isWorkspaceAdmin}
           defaultUserSpendLimit={defaultUserSpendLimitState}
+          onSavingChange={handleUsagePendingChange}
+          onSaved={handleApproveOnModalSaved}
         />
 
         <BulkEditSpendLimitModal
