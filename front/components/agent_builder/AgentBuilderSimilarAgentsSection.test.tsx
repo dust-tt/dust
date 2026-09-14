@@ -37,9 +37,9 @@ vi.mock("@app/lib/auth/AuthContext", () => ({
   }),
 }));
 
-let descriptionMock = "";
+let instructionsMock = "";
 vi.mock("react-hook-form", () => ({
-  useWatch: () => descriptionMock,
+  useWatch: () => instructionsMock,
 }));
 
 const getSimilarAgentsMock = vi.fn();
@@ -83,13 +83,13 @@ function makeAgent(sId: string, name: string): LightAgentConfigurationType {
 describe("AgentBuilderSimilarAgentsSection", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    descriptionMock = "";
+    instructionsMock = "";
     agentConfigurationsMock = [makeAgent("agent_1", "HR Assistant")];
     isSimilarAgentsCheckEnabledMock = true;
   });
 
-  it("does not fetch while the description is too short", async () => {
-    descriptionMock = "short";
+  it("does not fetch while the instructions are too short", async () => {
+    instructionsMock = "short";
 
     render(<AgentBuilderSimilarAgentsSection agentConfigurationId={null} />);
 
@@ -101,13 +101,15 @@ describe("AgentBuilderSimilarAgentsSection", () => {
     expect(getSimilarAgentsMock).not.toHaveBeenCalled();
   });
 
-  it("fetches similar agents once the description is long enough, after the debounce", async () => {
+  it("fetches similar agents once the instructions are long enough, after the debounce", async () => {
     getSimilarAgentsMock.mockResolvedValue(new Ok(["agent_1"]));
-    descriptionMock = "Answer questions about HR policies";
+    instructionsMock = "Answer questions about HR policies";
 
     render(<AgentBuilderSimilarAgentsSection agentConfigurationId={null} />);
 
-    await waitFor(() => expect(getSimilarAgentsMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(getSimilarAgentsMock).toHaveBeenCalledTimes(1), {
+      timeout: 3000,
+    });
     expect(getSimilarAgentsMock).toHaveBeenCalledWith(
       "Answer questions about HR policies",
       expect.anything()
@@ -118,26 +120,54 @@ describe("AgentBuilderSimilarAgentsSection", () => {
   it("debounces rapid successive changes into a single request", async () => {
     getSimilarAgentsMock.mockResolvedValue(new Ok([]));
 
-    descriptionMock = "Answer questions about HR poli";
+    instructionsMock = "Answer questions about HR poli";
     const { rerender } = render(
       <AgentBuilderSimilarAgentsSection agentConfigurationId={null} />
     );
 
-    descriptionMock = "Answer questions about HR polic";
+    instructionsMock = "Answer questions about HR polic";
     rerender(<AgentBuilderSimilarAgentsSection agentConfigurationId={null} />);
 
-    descriptionMock = "Answer questions about HR policies";
+    instructionsMock = "Answer questions about HR policies";
     rerender(<AgentBuilderSimilarAgentsSection agentConfigurationId={null} />);
 
-    await waitFor(() => expect(getSimilarAgentsMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(getSimilarAgentsMock).toHaveBeenCalledTimes(1), {
+      timeout: 3000,
+    });
     expect(getSimilarAgentsMock).toHaveBeenCalledWith(
       "Answer questions about HR policies",
       expect.anything()
     );
   });
 
+  it("does not re-fetch when the instructions settle back to an already-checked value", async () => {
+    getSimilarAgentsMock.mockResolvedValue(new Ok([]));
+
+    instructionsMock = "Answer questions about HR policies";
+    const { rerender } = render(
+      <AgentBuilderSimilarAgentsSection agentConfigurationId={null} />
+    );
+
+    await waitFor(() => expect(getSimilarAgentsMock).toHaveBeenCalledTimes(1), {
+      timeout: 3000,
+    });
+
+    // Undo back to the exact same instructions already checked.
+    instructionsMock = "Answer questions about HR policie";
+    rerender(<AgentBuilderSimilarAgentsSection agentConfigurationId={null} />);
+    instructionsMock = "Answer questions about HR policies";
+    rerender(<AgentBuilderSimilarAgentsSection agentConfigurationId={null} />);
+
+    // Give the debounce a chance to fire again; it shouldn't re-call the API.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 1300));
+    });
+
+    expect(getSimilarAgentsMock).toHaveBeenCalledTimes(1);
+  });
+
   it("does not fetch when editing an existing agent", async () => {
-    descriptionMock = "Answer questions about HR policies";
+    instructionsMock = "Answer questions about HR policies";
 
     render(
       <AgentBuilderSimilarAgentsSection agentConfigurationId="agent_config_1" />
@@ -150,7 +180,7 @@ describe("AgentBuilderSimilarAgentsSection", () => {
 
   it("does not fetch when the similar_agents_check feature flag is disabled", async () => {
     isSimilarAgentsCheckEnabledMock = false;
-    descriptionMock = "Answer questions about HR policies";
+    instructionsMock = "Answer questions about HR policies";
 
     const { container } = render(
       <AgentBuilderSimilarAgentsSection agentConfigurationId={null} />

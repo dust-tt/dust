@@ -1,6 +1,7 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
+import { AgentBuilderSimilarAgentsSection } from "@app/components/agent_builder/AgentBuilderSimilarAgentsSection";
 import { AdvancedSettings } from "@app/components/agent_builder/instructions/AdvancedSettings";
 import { AgentBuilderInstructionsEditor } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsEditor";
 import { AgentInstructionsHistory } from "@app/components/agent_builder/instructions/AgentInstructionsHistory";
@@ -130,6 +131,9 @@ export function AgentBuilderInstructionsBlock({
           </AgentBuilderInstructionsEditor.ToolbarSlot>
         )}
       </AgentBuilderInstructionsEditor>
+      <AgentBuilderSimilarAgentsSection
+        agentConfigurationId={agentConfigurationId}
+      />
     </AgentBuilderSectionContainer>
   );
 }

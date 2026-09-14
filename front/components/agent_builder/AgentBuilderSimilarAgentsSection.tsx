@@ -9,12 +9,14 @@ import {
 } from "@app/lib/swr/assistants";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { Avatar, Icon, InfoCircle, Spinner } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { Avatar, cn, Spinner } from "@dust-tt/sparkle";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useWatch } from "react-hook-form";
 
-const DEBOUNCE_DELAY_MS = 250;
-const MIN_DESCRIPTION_LENGTH = 10;
+// getSimilarAgents runs an LLM call under the hood, so the debounce needs to
+// be long enough to not fire on every pause while drafting instructions.
+const DEBOUNCE_DELAY_MS = 1_000;
+const MIN_INSTRUCTIONS_LENGTH = 30;
 
 type State = {
   similarAgents: LightAgentConfigurationType[];
@@ -75,10 +77,9 @@ export function AgentBuilderSimilarAgentsSection({
   const isSimilarAgentsCheckEnabled = hasFeature("similar_agents_check");
   const [displayedAgentId, setDisplayedAgentId] = useState<string | null>(null);
 
-  const description = useWatch<
-    AgentBuilderFormData,
-    "agentSettings.description"
-  >({ name: "agentSettings.description" });
+  const instructions = useWatch<AgentBuilderFormData, "instructions">({
+    name: "instructions",
+  });
 
   const { getSimilarAgents } = useSimilarAgents({ owner });
   const { agentConfigurations } = useAgentConfigurations({
@@ -89,17 +90,30 @@ export function AgentBuilderSimilarAgentsSection({
   const [state, dispatch] = useReducer(reducer, initialState);
   const { similarAgents, isLoading, hasError } = state;
 
+  // Avoids re-fetching (an LLM call) when the debounced value is unchanged
+  // from the last one actually sent, e.g. after an undo/redo round-trip.
+  const lastFetchedInstructionsRef = useRef<string | null>(null);
+
   const fetchSimilarAgents = useCallback(
-    async (naturalDescription: string, signal: AbortSignal) => {
-      if (naturalDescription.length < MIN_DESCRIPTION_LENGTH) {
+    async (currentInstructions: string, signal: AbortSignal) => {
+      if (currentInstructions.length < MIN_INSTRUCTIONS_LENGTH) {
+        lastFetchedInstructionsRef.current = null;
         dispatch({ type: "reset" });
         return;
       }
 
+      if (currentInstructions === lastFetchedInstructionsRef.current) {
+        dispatch({ type: "fetch_settled" });
+        return;
+      }
+      lastFetchedInstructionsRef.current = currentInstructions;
+
       dispatch({ type: "fetch_start" });
 
       try {
-        const result = await getSimilarAgents(naturalDescription, { signal });
+        const result = await getSimilarAgents(currentInstructions, {
+          signal,
+        });
 
         if (signal.aborted) {
           return;
@@ -114,12 +128,14 @@ export function AgentBuilderSimilarAgentsSection({
             ),
           });
         } else {
+          lastFetchedInstructionsRef.current = null;
           dispatch({ type: "fetch_settled" });
         }
       } catch {
         if (signal.aborted) {
           return;
         }
+        lastFetchedInstructionsRef.current = null;
         dispatch({ type: "fetch_error" });
       }
     },
@@ -135,20 +151,20 @@ export function AgentBuilderSimilarAgentsSection({
       return;
     }
 
-    const naturalDescription = description ?? "";
+    const currentInstructions = instructions ?? "";
 
     // Reflect the pending state immediately so the "Checking..." indicator
     // shows up as soon as typing stops, rather than only once the debounce
     // delay has elapsed and the request has actually started.
-    if (naturalDescription.length < MIN_DESCRIPTION_LENGTH) {
+    if (currentInstructions.length < MIN_INSTRUCTIONS_LENGTH) {
       dispatch({ type: "reset" });
     } else {
       dispatch({ type: "fetch_start" });
     }
 
-    triggerSimilarAgentsFetch(naturalDescription);
+    triggerSimilarAgentsFetch(currentInstructions);
   }, [
-    description,
+    instructions,
     isCreatingNew,
     isSimilarAgentsCheckEnabled,
     triggerSimilarAgentsFetch,
@@ -187,26 +203,26 @@ export function AgentBuilderSimilarAgentsSection({
       </div>
       <div className="space-y-3">
         {similarAgents.map((agent) => (
-          <div key={agent.sId} className="flex items-start gap-3">
+          <button
+            key={agent.sId}
+            type="button"
+            onClick={() => setDisplayedAgentId(agent.sId)}
+            className={cn(
+              "group flex w-full cursor-pointer items-start gap-3 rounded-md text-left",
+              "outline-hidden ring-offset-background",
+              "focus-visible:ring-2 focus-visible:ring-highlight-300 focus-visible:ring-offset-1"
+            )}
+          >
             <Avatar visual={agent.pictureUrl} size="sm" />
             <div className="flex flex-col">
-              <div className="flex items-center gap-1">
-                <span className="text-sm font-medium text-foreground">
-                  {agent.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setDisplayedAgentId(agent.sId)}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <Icon visual={InfoCircle} size="xs" />
-                </button>
-              </div>
+              <span className="text-sm font-medium text-foreground pointer-fine:group-hover:underline">
+                {agent.name}
+              </span>
               <span className="line-clamp-1 text-xs text-muted-foreground">
                 {agent.description}
               </span>
             </div>
-          </div>
+          </button>
         ))}
       </div>
       <AgentDetailsSheet
