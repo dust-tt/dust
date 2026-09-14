@@ -133,6 +133,15 @@ const config = {
       config.getApiBaseUrl()
     );
   },
+  // Remote MCP clients can be registered with the legacy regional callback.
+  // Built-in integrations use getAppUrl() instead.
+  getRemoteMCPOAuthRedirectBaseUrl: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable(
+        "DUST_OAUTH_REDIRECT_BASE_URL"
+      ) ?? config.getAppUrl()
+    );
+  },
   getDustInviteTokenSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_INVITE_TOKEN_SECRET");
   },

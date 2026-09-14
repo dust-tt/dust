@@ -1,5 +1,5 @@
 import config from "@app/lib/api/config";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const PUBLIC_URL = "https://eu.dust.tt";
 const INTERNAL_URL = "http://front-internal-service";
@@ -45,5 +45,37 @@ describe("getSandboxApiBaseUrl", () => {
     process.env.SBX_DEV_FRONT_URL = "https://tunnel.example.com";
 
     expect(config.getSandboxApiBaseUrl()).toBe(PUBLIC_URL);
+  });
+});
+
+describe("getRemoteMCPOAuthRedirectBaseUrl", () => {
+  beforeEach(() => {
+    // Each deployment reads its environment once through EnvironmentConfig.
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    "https://dust.tt",
+    "https://eu.dust.tt",
+  ])("preserves the configured legacy callback base %s", async (legacyBaseUrl) => {
+    vi.stubEnv("NEXT_PUBLIC_DUST_APP_URL", "https://app.dust.tt");
+    vi.stubEnv("DUST_OAUTH_REDIRECT_BASE_URL", legacyBaseUrl);
+    const { default: config } = await import("@app/lib/api/config");
+
+    expect(config.getRemoteMCPOAuthRedirectBaseUrl()).toBe(legacyBaseUrl);
+  });
+
+  it("uses the app URL when the legacy override is empty", async () => {
+    vi.stubEnv("NEXT_PUBLIC_DUST_APP_URL", "https://app.dust.tt");
+    vi.stubEnv("DUST_OAUTH_REDIRECT_BASE_URL", "");
+    const { default: config } = await import("@app/lib/api/config");
+
+    expect(config.getRemoteMCPOAuthRedirectBaseUrl()).toBe(
+      "https://app.dust.tt"
+    );
   });
 });
