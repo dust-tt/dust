@@ -14,8 +14,10 @@ import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
+import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email/constants";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useSpaces } from "@app/lib/swr/spaces";
+import { useEmailAgentFooter } from "@app/lib/swr/user";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -33,8 +35,12 @@ import {
   Button,
   Chip,
   ContentMessage,
+  ContentMessageAction,
+  ContentMessageInline,
   InfoCircle,
   Lock01,
+  Mail01,
+  Markdown,
   RefreshCw02,
   Sheet,
   SheetContainer,
@@ -47,6 +53,7 @@ import {
   TabsList,
   TabsTrigger,
   Users01,
+  XClose,
 } from "@dust-tt/sparkle";
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useCallback, useEffect, useState } from "react";
@@ -137,6 +144,9 @@ export function AgentDetailsSheet({
   const [triggerEditMode, setTriggerEditMode] = useState<SheetMode | null>(
     null
   );
+  const { showEmailFooter, dismissFooter, isDismissing } = useEmailAgentFooter({
+    disabled: !agentId,
+  });
 
   const {
     agentConfiguration,
@@ -435,6 +445,36 @@ export function AgentDetailsSheet({
                 </ContentMessage>
               )}
             </SheetContainer>
+            {showEmailFooter &&
+              agentConfiguration?.status === "active" &&
+              agentConfiguration.canRead &&
+              !(
+                Array.isArray(owner.metadata?.emailBlacklistedAgentIds) &&
+                owner.metadata.emailBlacklistedAgentIds.includes(
+                  agentConfiguration.sId
+                )
+              ) && (
+                <div className="px-5 pb-4">
+                  <ContentMessageInline
+                    variant="primary"
+                    icon={Mail01}
+                    className="py-1"
+                  >
+                    <Markdown
+                      content={`Forward emails to this agent at \`${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}\`. Learn more [here](https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents).`}
+                      forcedTextSize="text-xs"
+                      optimizeForStreaming={false}
+                    />
+                    <ContentMessageAction
+                      variant="ghost"
+                      icon={XClose}
+                      tooltip="Dismiss email tip for all agents"
+                      onClick={dismissFooter}
+                      isLoading={isDismissing}
+                    />
+                  </ContentMessageInline>
+                </div>
+              )}
           </>
         )}
       </SheetContent>
