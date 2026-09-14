@@ -53,16 +53,22 @@ it.each([
     expectedEditorIds
   );
 
-  if (grants) {
-    expect(warn).not.toHaveBeenCalled();
-  } else {
-    expect(warn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        check: "agent_editors",
-        legacyResult: [user.id],
-        candidateResult: [],
-      }),
-      "group_permissions_shadow_mismatch"
-    );
-  }
+  expect(warn).toHaveBeenCalledWith(
+    expect.objectContaining({
+      check: "agent_editors",
+      legacyResult: [user.id],
+      candidateResult: [],
+      servedSource: grants ? "grants" : "legacy",
+    }),
+    "group_permissions_shadow_mismatch"
+  );
+  expect(warn).toHaveBeenCalledWith(
+    expect.objectContaining({
+      check: "agent_editors_batch",
+      legacyResult: [[agent.sId, [user.id]]],
+      candidateResult: [[agent.sId, []]],
+      servedSource: grants ? "grants" : "legacy",
+    }),
+    "group_permissions_shadow_mismatch"
+  );
 });
