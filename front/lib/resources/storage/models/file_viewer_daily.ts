@@ -12,6 +12,11 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
  * File and workspace foreign keys MUST restrict deletion while viewer rows remain.
  * Cleanup MUST explicitly remove viewer rows before deleting their file or workspace.
  */
+/**
+ * @cc [owner:flvndvd,label:backend] viewer-parent-id-changes
+ * File and workspace foreign keys MUST reject parent ID changes while viewer rows
+ * reference them.
+ */
 export class FileViewerDailyModel extends WorkspaceAwareModel<FileViewerDailyModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -41,6 +46,7 @@ FileViewerDailyModel.init(
   },
   {
     modelName: "file_viewer_daily",
+    workspaceForeignKeyOnUpdate: "RESTRICT",
     sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId", "fileId", "email", "viewedOn"], unique: true },
@@ -52,7 +58,9 @@ FileViewerDailyModel.init(
 FileModel.hasMany(FileViewerDailyModel, {
   foreignKey: { name: "fileId", allowNull: false },
   onDelete: "RESTRICT",
+  onUpdate: "RESTRICT",
 });
 FileViewerDailyModel.belongsTo(FileModel, {
   foreignKey: { name: "fileId", allowNull: false },
+  onUpdate: "RESTRICT",
 });

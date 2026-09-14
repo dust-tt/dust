@@ -65,28 +65,28 @@ SET SESSION lock_timeout = 3000;
 ALTER SEQUENCE "public"."file_viewer_dailies_id_seq" OWNED BY "public"."file_viewer_dailies"."id";
 
 /*
-Statement 112
+Statement 97
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."file_viewer_dailies" ADD CONSTRAINT "file_viewer_dailies_fileId_fkey" FOREIGN KEY ("fileId") REFERENCES files(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
+ALTER TABLE "public"."file_viewer_dailies" ADD CONSTRAINT "file_viewer_dailies_fileId_fkey" FOREIGN KEY ("fileId") REFERENCES files(id) ON UPDATE RESTRICT ON DELETE RESTRICT NOT VALID;
 
 /*
-Statement 113
+Statement 98
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
 ALTER TABLE "public"."file_viewer_dailies" VALIDATE CONSTRAINT "file_viewer_dailies_fileId_fkey";
 
 /*
-Statement 188
+Statement 172
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."file_viewer_dailies" ADD CONSTRAINT "file_viewer_dailies_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES workspaces(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
+ALTER TABLE "public"."file_viewer_dailies" ADD CONSTRAINT "file_viewer_dailies_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES workspaces(id) ON UPDATE RESTRICT ON DELETE RESTRICT NOT VALID;
 
 /*
-Statement 189
+Statement 173
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;

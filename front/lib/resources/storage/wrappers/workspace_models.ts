@@ -158,6 +158,7 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
     attributes: ModelAttributes<InstanceType<MS>>,
     options: InitOptions<InstanceType<MS>> & {
       relationship?: "hasMany" | "hasOne";
+      workspaceForeignKeyOnUpdate?: "CASCADE" | "RESTRICT";
       softDeletable?: boolean;
     }
   ): MS {
@@ -173,7 +174,11 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
       },
     };
 
-    const { relationship = "hasMany", ...restOptions } = options;
+    const {
+      relationship = "hasMany",
+      workspaceForeignKeyOnUpdate = "CASCADE",
+      ...restOptions
+    } = options;
 
     // Define a hook to ensure all find queries are properly scoped to a workspace.
     const hooks: Partial<
@@ -205,16 +210,19 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
       WorkspaceModel.hasOne(model, {
         foreignKey: { allowNull: false },
         onDelete: "RESTRICT",
+        onUpdate: workspaceForeignKeyOnUpdate,
       });
     } else {
       WorkspaceModel.hasMany(model, {
         foreignKey: { allowNull: false },
         onDelete: "RESTRICT",
+        onUpdate: workspaceForeignKeyOnUpdate,
       });
     }
 
     model.belongsTo(WorkspaceModel, {
       foreignKey: { allowNull: false },
+      onUpdate: workspaceForeignKeyOnUpdate,
     });
 
     return model;
