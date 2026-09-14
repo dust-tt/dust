@@ -196,26 +196,40 @@ export type RelativeDateBucket =
   | "Last 12 Months"
   | "Older";
 
+/**
+ * Builds a bucketing function with the thresholds computed once, for callers that
+ * classify many dates against the same reference point.
+ */
+export const makeRelativeDateBucketer = (
+  now: Date = new Date()
+): ((date: Date | number) => RelativeDateBucket) => {
+  const thresholds: [number, RelativeDateBucket][] = [
+    [startOfDay(now).getTime(), "Today"],
+    [startOfDay(subDays(now, 1)).getTime(), "Yesterday"],
+    [startOfDay(subWeeks(now, 1)).getTime(), "Last Week"],
+    [startOfDay(subMonths(now, 1)).getTime(), "Last Month"],
+    [startOfDay(subYears(now, 1)).getTime(), "Last 12 Months"],
+  ];
+
+  return (date) => {
+    const dateObj = toDate(date);
+    if (!isValid(dateObj)) {
+      // An invalid date silently sorts as "Older" rather than throwing mid-render,
+      // for consistency with the other formatters in this module.
+      return "Older";
+    }
+
+    const timeMs = dateObj.getTime();
+    for (const [thresholdMs, bucket] of thresholds) {
+      if (timeMs >= thresholdMs) {
+        return bucket;
+      }
+    }
+    return "Older";
+  };
+};
+
 export const getRelativeDateBucket = (
   date: Date | number,
   now: Date = new Date()
-): RelativeDateBucket => {
-  const timeMs = toDate(date).getTime();
-
-  if (timeMs >= startOfDay(now).getTime()) {
-    return "Today";
-  }
-  if (timeMs >= startOfDay(subDays(now, 1)).getTime()) {
-    return "Yesterday";
-  }
-  if (timeMs >= startOfDay(subWeeks(now, 1)).getTime()) {
-    return "Last Week";
-  }
-  if (timeMs >= startOfDay(subMonths(now, 1)).getTime()) {
-    return "Last Month";
-  }
-  if (timeMs >= startOfDay(subYears(now, 1)).getTime()) {
-    return "Last 12 Months";
-  }
-  return "Older";
-};
+): RelativeDateBucket => makeRelativeDateBucketer(now)(date);

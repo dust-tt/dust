@@ -59,6 +59,7 @@ import {
   getPodRoute,
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
+import type { RelativeDateBucket } from "@app/lib/utils/timestamps";
 import { formatWakeUpSidebarLabel } from "@app/lib/utils/wakeup_description";
 import type {
   ConversationListItemType,
@@ -125,14 +126,6 @@ interface AgentSidebarMenuProps {
   hideActions?: boolean;
   hideInAppBanner?: boolean;
 }
-
-type GroupLabel =
-  | "Today"
-  | "Yesterday"
-  | "Last Week"
-  | "Last Month"
-  | "Last 12 Months"
-  | "Older";
 
 interface SearchPodItemProps {
   pod: PodType;
@@ -1713,12 +1706,13 @@ function NavigationListWithInbox({
         conversations: readConversations,
         titleFilter,
       })
-    : ({} as Record<GroupLabel, ConversationListItemType[]>);
+    : ({} as Record<RelativeDateBucket, ConversationListItemType[]>);
 
   // Empty groups render nothing, so the first non-empty one is the first the
   // user actually sees — that's the one that skips the top padding.
   const nonEmptyDateLabels = Object.keys(conversationsByDate).filter(
-    (dateLabel) => conversationsByDate[dateLabel as GroupLabel].length > 0
+    (dateLabel) =>
+      conversationsByDate[dateLabel as RelativeDateBucket].length > 0
   );
 
   const conversationsContent = (
@@ -1726,7 +1720,7 @@ function NavigationListWithInbox({
       {nonEmptyDateLabels.map((dateLabel, index) => (
         <ConversationList
           key={dateLabel}
-          conversations={conversationsByDate[dateLabel as GroupLabel]}
+          conversations={conversationsByDate[dateLabel as RelativeDateBucket]}
           dateLabel={dateLabel}
           isFirstGroup={index === 0}
           isMultiSelect={isMultiSelect}

@@ -1,6 +1,9 @@
-import { getGroupConversationsByUnreadAndActionRequired } from "@app/components/assistant/conversation/utils";
+import {
+  getGroupConversationsByDate,
+  getGroupConversationsByUnreadAndActionRequired,
+} from "@app/components/assistant/conversation/utils";
 import type { ConversationListItemType } from "@app/types/assistant/conversation";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 function makeConversation(
   overrides: Partial<ConversationListItemType> & { sId: string }
@@ -76,5 +79,61 @@ describe("getGroupConversationsByUnreadAndActionRequired", () => {
 
     expect(triggeredConversations.map((c) => c.sId)).toEqual(["active"]);
     expect(inboxConversations).toEqual([]);
+  });
+});
+
+describe("getGroupConversationsByDate", () => {
+  const NOW = new Date(2026, 8, 10, 15, 0, 0);
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("buckets conversations by their updated (or created) date", () => {
+    const today = new Date(2026, 8, 10, 9, 0, 0).getTime();
+    const yesterday = new Date(2026, 8, 9, 9, 0, 0).getTime();
+    const lastWeek = new Date(2026, 8, 6, 9, 0, 0).getTime();
+    const lastMonth = new Date(2026, 7, 20, 9, 0, 0).getTime();
+    const lastYear = new Date(2026, 2, 10, 9, 0, 0).getTime();
+    const older = new Date(2024, 8, 10, 9, 0, 0).getTime();
+
+    const groups = getGroupConversationsByDate({
+      conversations: [
+        makeConversation({ sId: "today", updated: today }),
+        makeConversation({ sId: "yesterday", updated: yesterday }),
+        makeConversation({ sId: "lastWeek", updated: lastWeek }),
+        makeConversation({ sId: "lastMonth", updated: lastMonth }),
+        makeConversation({ sId: "lastYear", updated: lastYear }),
+        makeConversation({ sId: "older", updated: older }),
+      ],
+      titleFilter: "",
+    });
+
+    expect(groups["Today"].map((c) => c.sId)).toEqual(["today"]);
+    expect(groups["Yesterday"].map((c) => c.sId)).toEqual(["yesterday"]);
+    expect(groups["Last Week"].map((c) => c.sId)).toEqual(["lastWeek"]);
+    expect(groups["Last Month"].map((c) => c.sId)).toEqual(["lastMonth"]);
+    expect(groups["Last 12 Months"].map((c) => c.sId)).toEqual(["lastYear"]);
+    expect(groups["Older"].map((c) => c.sId)).toEqual(["older"]);
+  });
+
+  it("filters out conversations not matching the title filter", () => {
+    const groups = getGroupConversationsByDate({
+      conversations: [
+        makeConversation({ sId: "match", title: "Foo" }),
+        makeConversation({ sId: "no-match", title: "Bar" }),
+      ],
+      titleFilter: "foo",
+    });
+
+    const allSIds = Object.values(groups)
+      .flat()
+      .map((c) => c.sId);
+    expect(allSIds).toEqual(["match"]);
   });
 });
