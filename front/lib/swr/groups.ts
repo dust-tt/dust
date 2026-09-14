@@ -1,5 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { GetWorkspaceGrantedRolesResponseBody } from "@app/lib/api/workspace";
+import type {
+  GetWorkspaceGrantedRolesResponseBody,
+  GetWorkspaceGrantedSeatTypesResponseBody,
+} from "@app/lib/api/workspace";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { invalidateMembersUsage } from "@app/lib/swr/memberships";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
@@ -11,9 +15,14 @@ import type {
   PostGroupResponseBody,
   PostMemberGroupResponseBody,
   PutGroupGrantedRoleResponseBody,
+  PutGroupGrantedSeatTypeResponseBody,
 } from "@app/types/api/groups/manage";
 import type { PutGroupSpendLimitResponseBody } from "@app/types/api/groups/spend_limit";
-import type { GroupGrantableRole, GroupKind } from "@app/types/groups";
+import type {
+  GroupGrantableRole,
+  GroupGrantableSeatType,
+  GroupKind,
+} from "@app/types/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -96,6 +105,44 @@ export function useWorkspaceGrantedRoles({
     grantedRoles: data?.grantedRoles ?? emptyArray<GroupGrantableRole>(),
     isGrantedRolesLoading: !error && !data && !disabled,
     isGrantedRolesError: error,
+  };
+}
+
+// Base seat types (workspace/pro/max) granted by at least one group in the
+// workspace, i.e. (partly) managed through group membership. Used to restrict
+// manual seat editing in the members UI.
+function grantedSeatTypesUrl(workspaceId: string): string {
+  return `/api/w/${workspaceId}/granted-seat-types`;
+}
+
+export function useWorkspaceGrantedSeatTypes({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const { hasFeature } = useFeatureFlags();
+  const grantedSeatTypesFetcher: Fetcher<GetWorkspaceGrantedSeatTypesResponseBody> =
+    fetcher;
+
+  // Skip the request entirely when the feature is off: the endpoint returns an
+  // empty list in that case, so there is nothing to fetch and no reason to lock
+  // seat editing in the members UI.
+  const isDisabled = disabled || !hasFeature("group_seat_provisioning");
+
+  const { data, error } = useSWRWithDefaults(
+    grantedSeatTypesUrl(workspaceId),
+    grantedSeatTypesFetcher,
+    { disabled: isDisabled }
+  );
+
+  return {
+    grantedSeatTypes:
+      data?.grantedSeatTypes ?? emptyArray<GroupGrantableSeatType>(),
+    isGrantedSeatTypesLoading: !error && !data && !isDisabled,
+    isGrantedSeatTypesError: error,
   };
 }
 
@@ -682,4 +729,84 @@ export function useUpdateGroupGrantedRole({
   );
 
   return { doUpdateGroupGrantedRole, isUpdating };
+}
+
+export function useUpdateGroupGrantedSeatType({
+  owner,
+}: {
+  owner: LightWorkspaceType;
+}) {
+  const sendNotification = useSendNotification();
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const doUpdateGroupGrantedSeatType = useCallback(
+    async ({
+      groupId,
+      groupName,
+      grantedSeatType,
+    }: {
+      groupId: string;
+      groupName: string;
+      grantedSeatType: GroupGrantableSeatType | null;
+    }): Promise<PutGroupGrantedSeatTypeResponseBody | null> => {
+      setIsUpdating(true);
+      try {
+        const res = await clientFetch(
+          `/api/w/${owner.sId}/groups/${groupId}/granted_seat_type`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ grantedSeatType }),
+          }
+        );
+
+        if (!res.ok) {
+          const error = await res.json();
+          sendNotification({
+            type: "error",
+            title: "Failed to update group seat",
+            description:
+              error?.error?.message ?? "An unexpected error occurred.",
+          });
+          return null;
+        }
+
+        const body: PutGroupGrantedSeatTypeResponseBody = await res.json();
+
+        sendNotification({
+          type: "success",
+          title: "Group seat updated",
+          description: grantedSeatType
+            ? `Members of ${groupName} now get a ${grantedSeatType} seat.`
+            : `${groupName} no longer grants a seat.`,
+        });
+
+        // Changing the mapping re-syncs member seats, so refresh the groups
+        // list, anything derived from seat-granting groups, and the Usage
+        // members table (members' seats just changed).
+        await invalidateWorkspaceGroups(owner.sId);
+        await mutate(grantedSeatTypesUrl(owner.sId));
+        await invalidateMembersUsage(owner.sId);
+
+        return body;
+      } catch (err) {
+        // Report request failures (e.g. a rejected `clientFetch`) too, not just
+        // non-success HTTP responses.
+        sendNotification({
+          type: "error",
+          title: "Failed to update group seat",
+          description:
+            err instanceof Error
+              ? err.message
+              : "An unexpected error occurred.",
+        });
+        return null;
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [owner.sId, sendNotification]
+  );
+
+  return { doUpdateGroupGrantedSeatType, isUpdating };
 }

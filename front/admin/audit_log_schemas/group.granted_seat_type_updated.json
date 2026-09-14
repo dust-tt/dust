@@ -1,0 +1,15 @@
+{
+  "action": "group.granted_seat_type_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "group"
+    }
+  ],
+  "metadata": {
+    "previous_seat_type": "string",
+    "new_seat_type": "string"
+  }
+}

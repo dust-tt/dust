@@ -1,7 +1,11 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { GroupGrantableRole, GroupKind } from "@app/types/groups";
+import type {
+  GroupGrantableRole,
+  GroupGrantableSeatType,
+  GroupKind,
+} from "@app/types/groups";
 import { isGlobalGroupKind, isSystemGroupKind } from "@app/types/groups";
 import type { CreationOptional, Transaction } from "sequelize";
 
@@ -22,6 +26,11 @@ export class GroupModel extends WorkspaceAwareModel<GroupModel> {
   // Workspace role granted to this group's active members ("admin" or
   // "manager"), or null when the group grants no role.
   declare grantedRole: CreationOptional<GroupGrantableRole | null>;
+
+  // Billable seat type granted to this group's active members — a full paid seat
+  // type including cadence (e.g. "pro" or "pro_yearly"), or null when the group
+  // grants no seat.
+  declare grantedSeatType: CreationOptional<GroupGrantableSeatType | null>;
 }
 
 GroupModel.init(
@@ -53,6 +62,10 @@ GroupModel.init(
       allowNull: true,
     },
     grantedRole: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    grantedSeatType: {
       type: DataTypes.STRING,
       allowNull: true,
     },

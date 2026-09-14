@@ -146,6 +146,10 @@ export type GroupType = {
   // Workspace role granted to this group's active members (admin or manager),
   // or null when the group grants no role.
   grantedRole: GroupGrantableRole | null;
+  // Billable seat type granted to this group's active members — a full paid seat
+  // type including cadence (e.g. `pro` or `pro_yearly`), or null when the group
+  // grants no seat.
+  grantedSeatType: GroupGrantableSeatType | null;
   // Member sIds, only populated when explicitly requested
   memberIds?: string[];
 };
