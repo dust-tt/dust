@@ -297,7 +297,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   plan_mode: {
     description:
       "Enable the Plan Mode skill: agents maintain a live plan.md for genuinely multi-step tasks, with an optional human-approval checkpoint.",
-    stage: "dust_only",
+    stage: "self_serve",
     owner: "PopDaph",
   },
   admin_can_see_private_entities: {
