@@ -6,7 +6,7 @@ import {
   getWorksheetContent,
   getWorksheetInternalId,
   getWorksheets,
-  getWorksheetUsedRangeRowCount,
+  getWorksheetUsedRangeDimensions,
   wrapMicrosoftGraphAPIWithResult,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
@@ -39,6 +39,11 @@ import type { WorkbookWorksheet } from "@microsoft/microsoft-graph-types";
 import { stringify } from "csv-stringify/sync";
 
 const MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS = 50000;
+// Cap total cells (rows * columns) too: a sheet within the row limit but very
+// wide still materializes rowCount * columnCount cells as text (plus a full CSV
+// copy) and can OOM the worker. ~5M cells keeps a single sheet's load well under
+// the per-activity memory budget at the worker's concurrency.
+const MAXIMUM_NUMBER_OF_EXCEL_SHEET_CELLS = 5_000_000;
 
 async function upsertSpreadsheetInDb(
   connector: ConnectorResource,
@@ -161,26 +166,26 @@ async function processSheet({
 
   // Reject oversized sheets before fetching their content: getWorksheetContent
   // returns every cell as text and materializes the whole sheet in memory, so a
-  // sheet with hundreds of thousands of rows can OOM the worker before the
-  // post-load guard below ever runs. The row-count probe is a cheap metadata
-  // call, and we must never fall through to the content fetch without a known
-  // row count (see the reject-oversized-before-load contract on
+  // sheet that is too tall (many rows) or too wide (many columns) can OOM the
+  // worker before the post-load guard below ever runs. The dimensions probe is a
+  // cheap metadata call, and we must never fall through to the content fetch
+  // without known dimensions (see the reject-oversized-before-load contract on
   // getWorksheetContent).
-  const rowCountRes = await wrapMicrosoftGraphAPIWithResult(() =>
-    getWorksheetUsedRangeRowCount(localLogger, client, worksheetInternalId)
+  const dimensionsRes = await wrapMicrosoftGraphAPIWithResult(() =>
+    getWorksheetUsedRangeDimensions(localLogger, client, worksheetInternalId)
   );
 
-  if (rowCountRes.isErr()) {
+  if (dimensionsRes.isErr()) {
     localLogger.error(
-      { ...loggerArgs, error: rowCountRes.error },
-      "[Spreadsheet] Failed to fetch sheet row count."
+      { ...loggerArgs, error: dimensionsRes.error },
+      "[Spreadsheet] Failed to fetch sheet dimensions."
     );
 
     // A 504 on the used-range endpoint is persistent for this sheet; mark it
     // skipped like the content fetch below rather than retrying forever.
     if (
-      rowCountRes.error instanceof GraphError &&
-      rowCountRes.error.statusCode === 504
+      dimensionsRes.error instanceof GraphError &&
+      dimensionsRes.error.statusCode === 504
     ) {
       await markInternalIdAsSkipped({
         internalId: worksheetInternalId,
@@ -194,18 +199,23 @@ async function processSheet({
     // Return the failure as a Result (rather than loading the content or
     // throwing from this helper) so the activity boundary reports it
     // (temporal-activity-failure-boundary).
-    return rowCountRes;
+    return dimensionsRes;
   }
 
-  if (rowCountRes.value > MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS) {
+  const { rowCount, columnCount } = dimensionsRes.value;
+  const cellCount = rowCount * columnCount;
+  if (
+    rowCount > MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS ||
+    cellCount > MAXIMUM_NUMBER_OF_EXCEL_SHEET_CELLS
+  ) {
     localLogger.info(
-      { ...loggerArgs, rowCount: rowCountRes.value },
-      `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}, skipping further processing.`
+      { ...loggerArgs, rowCount, columnCount, cellCount },
+      `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS} rows or ${MAXIMUM_NUMBER_OF_EXCEL_SHEET_CELLS} cells, skipping further processing.`
     );
 
     return new Err(
       new Error(
-        `Too many rows in sheet ${worksheet.name}, rows=${rowCountRes.value}, max=${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}`
+        `Sheet ${worksheet.name} too large: rows=${rowCount}, columns=${columnCount}, cells=${cellCount}, maxRows=${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}, maxCells=${MAXIMUM_NUMBER_OF_EXCEL_SHEET_CELLS}`
       )
     );
   }

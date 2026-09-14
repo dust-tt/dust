@@ -457,10 +457,10 @@ export async function getWorksheets(
 
 /**
  * @cc [owner:tdraier,label:performance] reject-oversized-before-load
- * This fetches the worksheet's entire used range as text and materializes it in
- * memory. Callers MUST reject sheets whose used-range row count exceeds
- * MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS (probed via getWorksheetUsedRangeRowCount)
- * before calling this, so an oversized sheet cannot OOM the worker.
+ * This fetches the worksheet's entire used range as text and materializes every
+ * cell in memory. Callers MUST reject sheets whose used-range dimensions exceed
+ * the row and cell limits (probed via getWorksheetUsedRangeDimensions) before
+ * calling this, so a tall or wide oversized sheet cannot OOM the worker.
  */
 export async function getWorksheetContent(
   logger: LoggerInterface,
@@ -483,28 +483,29 @@ export async function getWorksheetContent(
   return res;
 }
 
-// `$select=rowCount` returns only the used-range dimensions, not the cell
-// contents, so this is a cheap way to know a sheet's size before fetching (and
-// materializing in memory) the full `text` payload via getWorksheetContent.
-export async function getWorksheetUsedRangeRowCount(
+// `$select=rowCount,columnCount` returns only the used-range dimensions, not the
+// cell contents, so this is a cheap way to know a sheet's size (rows *and*
+// columns) before fetching (and materializing in memory) the full `text` payload
+// via getWorksheetContent. A sheet can be oversized by height or by width.
+export async function getWorksheetUsedRangeDimensions(
   logger: LoggerInterface,
   client: Client,
   internalId: string
-): Promise<number> {
+): Promise<{ rowCount: number; columnCount: number }> {
   const { nodeType, itemAPIPath: itemApiPath } =
     typeAndPathFromInternalId(internalId);
 
   if (nodeType !== "worksheet") {
     throw new Error(
-      `Invalid node type: ${nodeType} for getWorksheetUsedRangeRowCount, expected worksheet`
+      `Invalid node type: ${nodeType} for getWorksheetUsedRangeDimensions, expected worksheet`
     );
   }
   const res: WorkbookRange = await clientApiGet(
     logger,
     client,
-    `${itemApiPath}/usedRange?$select=rowCount`
+    `${itemApiPath}/usedRange?$select=rowCount,columnCount`
   );
-  return res.rowCount ?? 0;
+  return { rowCount: res.rowCount ?? 0, columnCount: res.columnCount ?? 0 };
 }
 
 export async function getMessagesFromConversation(
