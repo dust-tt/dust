@@ -78,6 +78,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function isWorkOSNotFoundException(error: unknown): error is NotFoundException {
+  return error instanceof NotFoundException;
+}
+
 /**
  * Verify if workspace exist, if it does will call the callback with the found workspace.
  * Otherwise will return undefined
@@ -524,7 +528,7 @@ async function handleGroupUpsert(
     try {
       await getWorkOS().directorySync.getGroup(eventData.id);
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (isWorkOSNotFoundException(error)) {
         // Group doesn't exist, just ignore the event.
         return;
       }
@@ -547,7 +551,7 @@ async function handleGroupUpsert(
         groupByName.workOSGroupId
       );
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (isWorkOSNotFoundException(error)) {
         logger.info(
           {
             workOsGroupId: groupByName.workOSGroupId,
@@ -842,7 +846,7 @@ async function handleUserRemovedFromGroup(
     try {
       await getWorkOS().directorySync.getGroup(eventData.group.id);
     } catch (error) {
-      if (error instanceof NotFoundException) {
+      if (isWorkOSNotFoundException(error)) {
         logger.info(
           {
             workspaceId: workspace.sId,
