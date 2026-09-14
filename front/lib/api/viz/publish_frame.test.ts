@@ -175,6 +175,8 @@ describe("publishFrame", () => {
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.code).toBe("invalid_syntax");
+      expect(result.error.message).toContain("Dashboard.tsx:");
+      expect(result.error.message).toContain("Line 2, Column 13: error TS1109");
     }
 
     // No bundle built or persisted, and the frame still renders its source.
