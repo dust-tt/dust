@@ -42,6 +42,13 @@ import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { FileViewerSummary } from "@app/lib/resources/file_viewer_queries";
+import {
+  deleteFileViews,
+  deleteFileViewsForWorkspace,
+  getFileViewerSummaries,
+  recordFileView,
+} from "@app/lib/resources/file_viewer_queries";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -60,6 +67,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { copyContent } from "@app/lib/utils/files";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -169,6 +177,30 @@ export class FileResource extends BaseResource<FileModel> {
     blob: Attributes<FileModel>
   ) {
     super(FileModel, blob);
+  }
+
+  /**
+   * @cc [owner:flvndvd,label:security] authorized-verified-viewer
+   * Callers MUST authorize the file access and resolve verifiedEmail from a trusted
+   * identity before recording. A viewer record MUST NOT confer access to the file.
+   */
+  async recordView({
+    verifiedEmail,
+    viewedAt,
+  }: {
+    verifiedEmail: string;
+    viewedAt: Date;
+  }): Promise<void> {
+    return recordFileView(this, { verifiedEmail, viewedAt });
+  }
+
+  /**
+   * @cc [owner:flvndvd,label:security] viewer-summary-read-permission
+   * Callers MUST verify permission to manage file sharing before listing viewer
+   * emails. A share token or an external viewer session alone is insufficient.
+   */
+  async getViewerSummaries(): Promise<FileViewerSummary[]> {
+    return getFileViewerSummaries(this);
   }
 
   static async makeNew(
@@ -565,6 +597,7 @@ export class FileResource extends BaseResource<FileModel> {
     const owner = auth.getNonNullableWorkspace();
     const workspaceModelId = owner.id;
 
+    await deleteFileViewsForWorkspace(auth);
     await FrameSandboxAdapter.deleteAllForWorkspace(auth);
     await this.deleteAllFrameFunctionsForWorkspace(workspaceModelId);
     await getPrivateUploadBucket().deleteByPrefix(
@@ -728,6 +761,11 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
+  /**
+   * @cc [owner:flvndvd,label:backend;concurrency] explicit-file-viewer-cleanup
+   * Viewer rows and their file MUST be deleted in the same transaction. The file
+   * row MUST be locked before viewer cleanup to block concurrent viewer inserts.
+   */
   private async deleteAfterSandboxCleanup(
     auth: Authenticator
   ): Promise<Result<undefined, Error>> {
@@ -793,11 +831,22 @@ export class FileResource extends BaseResource<FileModel> {
         });
       }
 
-      await this.model.destroy({
-        where: {
+      await withTransaction(async (transaction) => {
+        const where: WhereOptions<InferAttributes<FileModel>> = {
           id: this.id,
           workspaceId: this.workspaceId,
-        },
+        };
+        // Lock the file before clearing its viewer rows. A concurrent view insert
+        // waits on its foreign key check, then fails once deletion commits, instead
+        // of adding a row between the two deletes and making file deletion fail.
+        await this.model.findOne({
+          attributes: ["id"],
+          where,
+          transaction,
+          lock: transaction.LOCK.UPDATE,
+        });
+        await deleteFileViews(this, { transaction });
+        await this.model.destroy({ where, transaction });
       });
 
       return new Ok(undefined);
