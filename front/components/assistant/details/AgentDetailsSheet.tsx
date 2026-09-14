@@ -133,7 +133,7 @@ type AgentDetailsSheetProps = {
 };
 
 /** @cc [owner:philipperolet,label:product] email-agent-footer
- * Active, readable agents not blocked from email show the same forwarding/cc tip regardless of
+ * Active, readable agents not blocked from email show the same forwarding tip regardless of
  * workspace email enablement, unless the user has dismissed it. The email address is not a link.
  */
 export function AgentDetailsSheet({
@@ -462,10 +462,10 @@ export function AgentDetailsSheet({
                   <ContentMessageInline
                     variant="primary"
                     icon={Mail01}
-                    className="py-2"
+                    className="py-1"
                   >
                     <Markdown
-                      content={`Forward emails or cc this agent at \`${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}\`. Learn more [here](https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents).`}
+                      content={`Forward emails to this agent at \`${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}\`. Learn more [here](https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents).`}
                       forcedTextSize="text-xs"
                       optimizeForStreaming={false}
                     />
