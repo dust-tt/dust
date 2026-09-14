@@ -4,6 +4,7 @@ import {
   accumulatedReasoningToReasoningEvent,
   accumulatedTextToTextEvent,
   accumulatedToolCallToToolCallEvent,
+  streamErrorToErrorEvent as baseStreamErrorToErrorEvent,
   inputJsonDeltaToToolCallDeltaEvent,
   invalidJsonToolCallToToolCallEvent,
   messageDeltaUsageToTokenUsageEvent,
@@ -11,10 +12,10 @@ import {
   reasoningDeltaToReasoningDeltaEvent,
   serverToolBlockToProviderPassthroughEvent,
   stopReasonToErrorEvent,
-  streamErrorToErrorEvent,
   textDeltaToTextDeltaEvent,
   toolUseBlockStartToToolCallStartedEvent,
 } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/output/utils";
+import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 
 type AbstractConstructor<T> = abstract new (...args: any[]) => T;
 
@@ -42,7 +43,20 @@ export function WithAnthropicAIOutputConverter<
       serverToolBlockToProviderPassthroughEvent;
     messageDeltaUsageToTokenUsageEvent = messageDeltaUsageToTokenUsageEvent;
     stopReasonToErrorEvent = stopReasonToErrorEvent;
-    streamErrorToErrorEvent = streamErrorToErrorEvent;
+
+    // Anthropic reports a rejected tool schema by index into the `tools` it was
+    // sent, so the error converter needs the request's tool names. `streamRaw`
+    // records them; they live for the duration of one request.
+    private requestToolNames: string[] | undefined;
+
+    protected recordRequestToolNames(
+      tools: readonly { name: string }[] | undefined
+    ): void {
+      this.requestToolNames = tools?.map((tool) => tool.name);
+    }
+
+    streamErrorToErrorEvent = (metadata: EndpointMetadata, error: unknown) =>
+      baseStreamErrorToErrorEvent(metadata, error, this.requestToolNames);
   }
 
   return WithAnthropicAIOutputConverter;

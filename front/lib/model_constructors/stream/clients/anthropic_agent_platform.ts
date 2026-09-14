@@ -88,6 +88,8 @@ export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputC
   async *streamRaw(
     input: MessageCreateParamsNonStreaming
   ): AsyncGenerator<BetaRawMessageStreamEvent> {
+    this.recordRequestToolNames(input.tools);
+
     const streamingInput: BetaMessageStreamParams = { ...input };
     const stream = this.client.beta.messages.stream(streamingInput);
 
