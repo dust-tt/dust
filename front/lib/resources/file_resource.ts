@@ -2084,6 +2084,40 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
+  /**
+   * @cc [owner:pmilliotte;davidebbo,label:product;security] shared-frame-with-functions-needs-workspace-user
+   * A Frame v2 whose active publication declares functions must not be served to a viewer who is
+   * not an authenticated workspace user. Invocation is fail-closed on
+   * `getAuthenticatedWorkspaceUser`, so such a viewer would only ever see a Frame whose every
+   * function call errors. Every public entry point onto a shared Frame — the share metadata
+   * endpoint and the frame payload endpoint — must gate on this predicate and 404, giving the
+   * viewer the same page an unshared link gives them. Gating the payload endpoint alone is not
+   * enough: the share page renders its 404 off the metadata endpoint.
+   *
+   * Whether this Frame's *active* publication declares any function. Scoped to the active
+   * publication because a Frame keeps every past publication's function rows: a plain per-file
+   * count would keep reporting functions for a Frame since republished without any.
+   *
+   * Takes no `Authenticator`: the public share endpoints resolve a Frame from its share token and
+   * have no workspace auth to pass.
+   */
+  async hasActiveFrameFunctions(): Promise<boolean> {
+    const publicationId = this.useCaseMetadata?.activePublicationId;
+    if (!this.isFrameV2 || !publicationId) {
+      return false;
+    }
+
+    const count = await SandboxFunctionModel.count({
+      where: {
+        workspaceId: this.workspaceId,
+        fileId: this.id,
+        publicationId,
+      },
+    });
+
+    return count > 0;
+  }
+
   static async revokePublicSharingInWorkspace(
     auth: Authenticator,
     { newPolicy }: { newPolicy: WorkspaceSharingPolicy }

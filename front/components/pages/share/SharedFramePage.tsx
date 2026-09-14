@@ -19,6 +19,11 @@ import { useCookies } from "react-cookie";
 // We hide the header for embedded origins.
 const EMBEDDED_ORIGINS = ["https://dust.tt/blog/"];
 
+function buildLoginUrl() {
+  const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  return `${config.getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(returnTo)}`;
+}
+
 export function SharedFramePage() {
   const token = usePathParam("token");
   const posthog = usePostHog();
@@ -164,7 +169,20 @@ export function SharedFramePage() {
   }
 
   if (!token || shareMetadataError || !shareMetadata) {
-    return <Custom404 />;
+    // A Frame hidden from this viewer and a token that never existed must render the same page,
+    // so the sign-in affordance has to live on the 404 rather than replace it: a logged-out
+    // workspace member reaches a Frame with functions only by signing in from here.
+    return hasSession ? (
+      <Custom404 />
+    ) : (
+      <CustomErrorPage
+        title="404: Page not found"
+        description="If you have access to this page, sign in to open it."
+        href={buildLoginUrl()}
+        label="Sign in"
+        icon={LogIn01}
+      />
+    );
   }
 
   // Show email verification form when scope requires it and user isn't authorized yet.
@@ -184,14 +202,11 @@ export function SharedFramePage() {
     }
 
     if (!hasSession || userError || !user) {
-      const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-      const loginUrl = `${config.getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(returnTo)}`;
-
       return (
         <CustomErrorPage
           title="Sign in to open this Frame"
           description="Sign in with an account that has access. We’ll bring you back here."
-          href={loginUrl}
+          href={buildLoginUrl()}
           label="Sign in"
           icon={LogIn01}
         />

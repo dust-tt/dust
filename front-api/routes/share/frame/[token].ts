@@ -10,6 +10,7 @@ import { createHono } from "@front-api/lib/hono";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { resolveOptionalAuth } from "@front-api/routes/v1/public/frames/shared_auth";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -88,6 +89,23 @@ app.get(
       shareScope === "public" &&
       !workspace.canShareInteractiveContentPublicly
     ) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+
+    const [hasActiveFrameFunctions, auth] = await Promise.all([
+      file.hasActiveFrameFunctions(),
+      resolveOptionalAuth(ctx, workspace.sId),
+    ]);
+
+    // A Frame whose active publication declares functions is unusable without a workspace
+    // session, so it must look unshared to everyone else.
+    if (hasActiveFrameFunctions && !auth) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {

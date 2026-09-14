@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   isUserError: null as unknown,
   isUserLoading: false,
   requiresEmailVerification: false,
+  shareMetadataError: null as unknown,
   user: null as { sId: string } | null,
 }));
 
@@ -88,7 +89,7 @@ vi.mock("@app/lib/swr/share", () => ({
       workspaceId: "w_123",
       workspaceName: "Acme",
     },
-    shareMetadataError: null,
+    shareMetadataError: mocks.shareMetadataError,
   }),
 }));
 
@@ -124,6 +125,7 @@ afterEach(() => {
   mocks.isUserError = null;
   mocks.isUserLoading = false;
   mocks.requiresEmailVerification = false;
+  mocks.shareMetadataError = null;
   mocks.user = null;
   window.history.replaceState({}, "", "/");
 });
@@ -188,5 +190,29 @@ describe("SharedFramePage", () => {
 
     expect(screen.getByText("frame content")).toBeDefined();
     expect(screen.queryByText("Sign in to open this Frame")).toBeNull();
+  });
+
+  it("offers sign-in on the 404 a logged-out viewer gets from the metadata endpoint", () => {
+    mocks.shareMetadataError = new Error("not found");
+    window.history.replaceState({}, "", "/share/frame/share-token");
+
+    render(<SharedFramePage />);
+
+    expect(screen.getByText("404: Page not found")).toBeDefined();
+    expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
+      "href",
+      "https://dust.tt/api/workos/login?returnTo=%2Fshare%2Fframe%2Fshare-token"
+    );
+  });
+
+  it("keeps the bare 404 for a signed-in viewer denied by the metadata endpoint", () => {
+    mocks.shareMetadataError = new Error("not found");
+    mocks.hasSession = true;
+    mocks.user = { sId: "usr_123" };
+
+    render(<SharedFramePage />);
+
+    expect(screen.getByText("404")).toBeDefined();
+    expect(screen.queryByRole("link", { name: "Sign in" })).toBeNull();
   });
 });
