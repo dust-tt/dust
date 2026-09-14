@@ -5,7 +5,7 @@
 //
 // Generic bundling (resolution, externals, async/multi-level loading, diamond dedup, JSON, error
 // cases, non-JSX entries) is covered by the engine suite in `lib/api/bundler/bundle_module.test.ts`.
-// This file covers only what the frame wrapper adds: JSX source-location tagging and viz options.
+// This file covers source syntax validation, JSX source-location tagging, and viz options.
 
 import type { FrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { buildFrameBundle } from "@app/lib/api/viz/build_frame_bundle";
@@ -89,6 +89,53 @@ describe("buildFrameBundle", () => {
     expect(result.isOk()).toBe(true);
     if (result.isOk()) {
       expect(result.value.code).toContain("data-source=");
+    }
+  });
+
+  it("rejects malformed TSX with source diagnostics before JSX tagging", async () => {
+    const result = await build({
+      "dashboard.tsx": "export default () => <div><span>Hello</div>;",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("invalid_syntax");
+      expect(result.error.message).toContain("dashboard.tsx:");
+      expect(result.error.message).toContain(
+        "TypeScript syntax errors detected"
+      );
+      expect(result.error.message).toContain(
+        "Line 1, Column 28: error TS17008"
+      );
+    }
+  });
+
+  it("rejects syntax errors in imported sources with their original locations", async () => {
+    const result = await build({
+      "dashboard.tsx":
+        'import { value } from "./value"; export default () => <div>{value}</div>;',
+      "value.ts": "// Imported data.\nexport const value = ;",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("invalid_syntax");
+      expect(result.error.message).toContain("value.ts:");
+      expect(result.error.message).toContain("Line 2, Column 22: error TS1109");
+    }
+  });
+
+  it("skips syntax validation for assets and unrelated sources", async () => {
+    const result = await build({
+      "dashboard.tsx":
+        'import data from "./data.json"; export default () => <div>{data.title}</div>;',
+      "data.json": '{"title":"Sales"}',
+      "unrelated.tsx": "export default () => <div>broken",
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.code).toContain("Sales");
     }
   });
 });

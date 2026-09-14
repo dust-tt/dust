@@ -464,7 +464,12 @@ describe("buildAndPublishFramePublication", () => {
     expect(reloaded?.useCaseMetadata?.activePublicationId).toBeUndefined();
   });
 
-  it("keeps the active publication when the UI build fails", async () => {
+  it.each([
+    { operation: "validation", build: validateFramePublication },
+    { operation: "publishing", build: buildAndPublishFramePublication },
+  ])("keeps the active publication when UI $operation fails", async ({
+    build,
+  }) => {
     const { auth, conversation, frame } = await setup();
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";
     await frame.setActiveFramePublication({
@@ -473,7 +478,7 @@ describe("buildAndPublishFramePublication", () => {
       description: "Track tasks.",
     });
 
-    const result = await buildAndPublishFramePublication(auth, {
+    const result = await build(auth, {
       conversation,
       frame,
       manifest,
@@ -487,6 +492,9 @@ describe("buildAndPublishFramePublication", () => {
     });
 
     expect(result.isErr() && result.error.code).toBe("ui_build_failed");
+    expect(result.isErr() && result.error.message).toMatch(
+      /Failed to build Frame UI: index\.tsx:\nTypeScript syntax errors detected[\s\S]*Line 1, Column \d+: error TS/
+    );
     expect(ensureConversationSandboxReadyWithScope).not.toHaveBeenCalled();
     expect(buildSandboxFunctionOnReadySandbox).not.toHaveBeenCalled();
     expect(fileStorageMock.saveFileCalls).toHaveLength(0);
