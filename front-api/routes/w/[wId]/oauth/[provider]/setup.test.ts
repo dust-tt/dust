@@ -210,6 +210,11 @@ describe("OAuth setup handler", () => {
       callbackBase: "https://eu.dust.tt",
     },
     {
+      provider: "mcp_static",
+      legacyBase: "https://legacy.example.com",
+      callbackBase: "https://legacy.example.com",
+    },
+    {
       provider: "gmail",
       legacyBase: "https://eu.dust.tt",
       callbackBase: "https://app.dust.tt",
@@ -231,6 +236,14 @@ describe("OAuth setup handler", () => {
       method: "GET",
       role: "admin",
     });
+    const callbackResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/oauth/${provider}/redirect_uri`
+    );
+    expect(callbackResponse.status).toBe(200);
+    const advertisedCallback = await callbackResponse.json();
+    expect(advertisedCallback.redirectUri).toBe(
+      `${callbackBase}/oauth/${provider}/finalize`
+    );
     const params = new URLSearchParams({
       useCase: "platform_actions",
       extraConfig: JSON.stringify({
@@ -264,6 +277,17 @@ describe("OAuth setup handler", () => {
       expectedRedirect
     );
     expect(authorizationUrl.searchParams.get("client_id")).toBe("new-client");
+  });
+
+  it("rejects unknown providers when reading the callback", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/oauth/unknown/redirect_uri`
+    );
+    expect(response.status).toBe(400);
   });
 
   it("returns a 404 when the workspace connection for the MCP server is missing", async () => {

@@ -1,7 +1,7 @@
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
+import { useOAuthRedirectUri } from "@app/lib/swr/oauth";
 import {
   Button,
   DropdownMenu,
@@ -48,13 +48,23 @@ function getBearerPlaceholder(
 }
 
 interface RemoteMCPServerConfigurationSectionProps {
+  workspaceId: string;
+  isOpen: boolean;
   defaultServerConfig?: DefaultRemoteMCPServerConfig;
   // Callback to update authorization state in the parent dialog.
   // Authorization is workflow state (useState), not form state.
   onAuthorizationChange: (authorization: AuthorizationInfo | null) => void;
 }
 
+/**
+ * @cc [owner:flvndvd,label:product] server-callback-instructions
+ * All remote Static OAuth setup forms MUST display the server-advertised
+ * callback. While loading or on failure, they MUST NOT substitute a URL
+ * computed from browser configuration.
+ */
 export function RemoteMCPServerConfigurationSection({
+  workspaceId,
+  isOpen,
   defaultServerConfig,
   onAuthorizationChange,
 }: RemoteMCPServerConfigurationSectionProps) {
@@ -71,6 +81,20 @@ export function RemoteMCPServerConfigurationSection({
   });
 
   const authMethod = authMethodField.value;
+
+  const isStaticOAuth =
+    authMethod === "oauth-static" ||
+    defaultServerConfig?.authMethod === "oauth-static";
+  const {
+    redirectUri,
+    isOAuthRedirectUriLoading,
+    isOAuthRedirectUriError,
+    mutateOAuthRedirectUri,
+  } = useOAuthRedirectUri({
+    workspaceId,
+    provider: "mcp_static",
+    disabled: !isOpen || !isStaticOAuth,
+  });
 
   const authMethodLabel = getAuthMethodLabel(authMethod, defaultServerConfig);
 
@@ -213,16 +237,31 @@ export function RemoteMCPServerConfigurationSection({
               />
             </div>
           )}
-          {!defaultServerConfig && authMethod === "oauth-static" && (
-            <div className="text-xs text-muted-foreground">
-              The redirect URI to allow is{" "}
-              <strong>
-                {finalizeUriForProvider({
-                  provider: "mcp_static",
-                  connection: null,
-                })}
-              </strong>
+        </div>
+      )}
+      {isOpen && isStaticOAuth && (
+        <div className="text-xs text-muted-foreground">
+          {isOAuthRedirectUriError ? (
+            <div role="alert" className="flex items-center gap-2">
+              Could not load the redirect URI.
+              <Button
+                variant="ghost"
+                size="xs"
+                label="Retry"
+                onClick={() =>
+                  void mutateOAuthRedirectUri(undefined, {
+                    throwOnError: false,
+                  })
+                }
+              />
             </div>
+          ) : isOAuthRedirectUriLoading || !redirectUri ? (
+            <span role="status">Loading redirect URI…</span>
+          ) : (
+            <>
+              In your OAuth app, allow this redirect URI:{" "}
+              <strong className="break-all">{redirectUri}</strong>
+            </>
           )}
         </div>
       )}

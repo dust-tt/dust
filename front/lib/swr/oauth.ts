@@ -1,7 +1,10 @@
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetSlackClientIdResponseBody } from "@app/types/api/credentials/slack_is_legacy";
-import type { GetOAuthSetupResponseBody } from "@app/types/api/oauth";
+import type {
+  GetOAuthRedirectUriResponseBody,
+  GetOAuthSetupResponseBody,
+} from "@app/types/api/oauth";
 import type { APIError, WithAPIErrorResponse } from "@app/types/error";
 import { isAPIErrorResponse } from "@app/types/error";
 import type {
@@ -122,5 +125,30 @@ export function useOAuthSetup({
     redirectUrl: data?.redirectUrl,
     isOAuthSetupLoading: isLoading && !disabled,
     isOAuthSetupError: error,
+  };
+}
+
+export function useOAuthRedirectUri({
+  workspaceId,
+  provider,
+  disabled,
+}: {
+  workspaceId: string;
+  provider: OAuthProvider;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const redirectUriFetcher: Fetcher<GetOAuthRedirectUriResponseBody> = fetcher;
+  const { data, error, isLoading, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/oauth/${provider}/redirect_uri`,
+    redirectUriFetcher,
+    { disabled }
+  );
+
+  return {
+    redirectUri: data?.redirectUri,
+    isOAuthRedirectUriLoading: isLoading && !disabled,
+    isOAuthRedirectUriError: !!error,
+    mutateOAuthRedirectUri: mutate,
   };
 }

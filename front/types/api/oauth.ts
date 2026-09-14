@@ -52,3 +52,7 @@ export type PostCheckBigQueryLocationsResponseBody = {
 export interface GetOAuthSetupResponseBody {
   redirectUrl: string;
 }
+
+export interface GetOAuthRedirectUriResponseBody {
+  redirectUri: string;
+}
