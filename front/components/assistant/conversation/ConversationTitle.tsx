@@ -88,7 +88,8 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   const isProjectConversation = !!spaceId;
   const isLoading = isProjectConversation && !spaceInfo;
   const forkedFrom = conversation?.forkingData?.forkedFrom;
-  const isMobileForkedConversation = isMobile && !!forkedFrom;
+  const isForkedConversation = !!forkedFrom;
+  const isMobileForkedConversation = isMobile && isForkedConversation;
 
   const breadcrumbItems: BreadcrumbsItem[] = [];
 
@@ -129,7 +130,8 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
                 className={
                   isMobile
                     ? "shrink-0 dd-privacy-mask [&>span]:sr-only"
-                    : "max-w-44 shrink-0 dd-privacy-mask"
+                    : // Icon only until the title bar is wide enough for the label.
+                      "max-w-44 shrink-0 dd-privacy-mask [&>span]:sr-only @lg:[&>span]:not-sr-only @lg:[&>span]:truncate"
                 }
                 color="primary"
                 href={getConversationRoute(
@@ -148,7 +150,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
   };
 
   return (
-    <AppLayoutTitle>
+    <AppLayoutTitle className="@container">
       <div
         className="grid h-full min-w-0 max-w-full grid-cols-[1fr_auto] items-center gap-3"
         onPointerDownCapture={handleRightPointerDown}
@@ -156,16 +158,16 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
       >
         <div
           className={
-            isMobileForkedConversation
-              ? "flex min-w-0 items-center gap-2 overflow-hidden scrollbar-hide"
+            isForkedConversation
+              ? "flex min-w-0 items-center gap-2 overflow-hidden"
               : "flex min-w-0 items-center gap-2 overflow-x-auto scrollbar-hide"
           }
         >
           <div
             className={
-              isMobileForkedConversation
-                ? "flex min-w-0 flex-1 items-center overflow-hidden"
-                : "flex shrink-0 items-center"
+              isForkedConversation
+                ? "flex min-w-0 items-center overflow-hidden"
+                : "flex min-w-0 items-center"
             }
           >
             <Breadcrumbs
