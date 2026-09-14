@@ -78,9 +78,8 @@ export function ToolSetupCard({
     [mcpServers]
   );
 
-  const installedMCPServer = useMemo(
-    () => mcpServers.find((s) => matchesInternalMCPServerName(s.sId, toolId)),
-    [mcpServers, toolId]
+  const installedMCPServer = mcpServers.find((s) =>
+    matchesInternalMCPServerName(s.sId, toolId)
   );
 
   // Find the matching MCP server for the tool we want to activate.
