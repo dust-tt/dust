@@ -268,7 +268,7 @@ export function PluginForm({
                                 // snapping back to 0, which made it impossible to
                                 // clear the value and type a new one.
                                 if (raw === "") {
-                                  field.onChange(raw);
+                                  field.onChange(undefined);
                                   return;
                                 }
                                 const parsed = Number(raw);
