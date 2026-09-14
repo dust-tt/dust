@@ -1348,7 +1348,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   async setFavorite(
     auth: Authenticator,
-    isFavorite: boolean
+    isFavorite: boolean,
+    { transaction: existingTransaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     const user = auth.user();
     if (!user) {
@@ -1362,41 +1363,45 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const workspace = auth.getNonNullableWorkspace();
-    const favorites = await SkillUserFavoriteModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        userId: user.id,
-      },
-    });
-
-    const wasFavorite = favorites?.skillIds.includes(this.sId) ?? false;
-    if (wasFavorite === isFavorite) {
-      return new Ok(undefined);
-    }
-
-    if (favorites) {
-      await favorites.update({
-        skillIds: isFavorite
-          ? [...favorites.skillIds, this.sId]
-          : favorites.skillIds.filter((skillId) => skillId !== this.sId),
+    await withTransaction(async (transaction) => {
+      const where = { workspaceId: workspace.id, userId: user.id };
+      // Removing a favorite must not create an otherwise unused preferences row.
+      if (isFavorite) {
+        // ON CONFLICT avoids findOrCreate's nested savepoint, preserving caller rollbacks.
+        await SkillUserFavoriteModel.bulkCreate([{ ...where, skillIds: [] }], {
+          ignoreDuplicates: true,
+          transaction,
+        });
+      }
+      // Serialize updates to this user's list before deciding whether the count changes.
+      const favorites = await SkillUserFavoriteModel.findOne({
+        where,
+        transaction,
+        lock: transaction.LOCK.UPDATE,
       });
-    } else {
-      await SkillUserFavoriteModel.create({
-        workspaceId: workspace.id,
-        userId: user.id,
-        skillIds: [this.sId],
-      });
-    }
-
-    if (!this.globalSId) {
-      await this.model.increment("favoriteCount", {
-        by: isFavorite ? 1 : -1,
-        where: {
-          id: this.id,
-          workspaceId: workspace.id,
+      if (!favorites) {
+        return false;
+      }
+      if (favorites.skillIds.includes(this.sId) === isFavorite) {
+        return false;
+      }
+      await favorites.update(
+        {
+          skillIds: isFavorite
+            ? [...favorites.skillIds, this.sId]
+            : favorites.skillIds.filter((skillId) => skillId !== this.sId),
         },
-      });
-    }
+        { transaction }
+      );
+      if (!this.globalSId) {
+        await this.model.increment("favoriteCount", {
+          by: isFavorite ? 1 : -1,
+          where: { id: this.id, workspaceId: workspace.id },
+          transaction,
+        });
+      }
+      return true;
+    }, existingTransaction);
 
     return new Ok(undefined);
   }
@@ -2621,7 +2626,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    *
    * Returns null for code-defined global/system skills, which have no editors.
    */
-  async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
+  async listEditors(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<UserResource[] | null> {
     // Code-defined global/system skills have no editors at all.
     if (this.globalSId) {
       return null;
@@ -2632,14 +2640,16 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         grantType: SKILL_EDITOR_GRANT_TYPE,
         resourceType: "skill",
         resourceId: this.id,
+        transaction,
       });
 
-    return grantGroup ? grantGroup.getActiveMembers(auth) : [];
+    return grantGroup ? grantGroup.getActiveMembers(auth, { transaction }) : [];
   }
 
   async upsertEditors(
     auth: Authenticator,
-    users: UserResource[]
+    users: UserResource[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<void, Error>> {
     if (users.length === 0) {
       return new Ok(undefined);
@@ -2651,7 +2661,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    const existingEditors = await this.listEditors(auth);
+    const existingEditors = await this.listEditors(auth, { transaction });
     const existingEditorIds = new Set(existingEditors?.map((u) => u.id) ?? []);
     const usersToAdd = users.filter((u) => !existingEditorIds.has(u.id));
 
@@ -2659,7 +2669,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return new Ok(undefined);
     }
 
-    const addResult = await this.addEditors(auth, usersToAdd);
+    const addResult = await this.addEditors(auth, usersToAdd, { transaction });
     if (addResult.isErr()) {
       return new Err(new Error(addResult.error.message));
     }
@@ -2674,7 +2684,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   async addEditors(
     auth: Authenticator,
-    users: UserResource[]
+    users: UserResource[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError<"unauthorized" | "user_not_found">>> {
     if (users.length === 0) {
       return new Ok(undefined);
@@ -2689,7 +2700,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    return this.writeEditorUserGrants(auth, users, "grant");
+    const result = await this.writeEditorUserGrants(auth, users, "grant", {
+      transaction,
+    });
+    return result;
   }
 
   /**
@@ -2698,7 +2712,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   async removeEditors(
     auth: Authenticator,
-    users: UserResource[]
+    users: UserResource[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError<"unauthorized" | "user_not_found">>> {
     if (users.length === 0) {
       return new Ok(undefined);
@@ -2713,7 +2728,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    return this.writeEditorUserGrants(auth, users, "revoke");
+    const result = await this.writeEditorUserGrants(auth, users, "revoke", {
+      transaction,
+    });
+    return result;
   }
 
   // Editors are per-user grants: `grantToUser` holds them in one regular_auto group per skill, and
@@ -2721,36 +2739,42 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   private async writeEditorUserGrants(
     auth: Authenticator,
     users: UserResource[],
-    operation: "grant" | "revoke"
+    operation: "grant" | "revoke",
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, DustError<"unauthorized" | "user_not_found">>> {
-    for (const user of users) {
-      const spec = {
-        user: user.toJSON(),
-        grantType: SKILL_EDITOR_GRANT_TYPE,
-        resourceType: "skill" as const,
-        resourceId: this.id,
-      };
-
-      const result =
-        operation === "grant"
-          ? await GroupPermissionResource.grantToUser(auth, spec)
-          : await GroupPermissionResource.revokeFromUser(auth, spec);
-
-      if (result.isErr()) {
-        return new Err(new DustError("user_not_found", result.error.message));
-      }
+    const spec = {
+      users: users.map((user) => user.toJSON()),
+      grantType: SKILL_EDITOR_GRANT_TYPE,
+      resourceType: "skill" as const,
+      resourceId: this.id,
+      transaction,
+    };
+    const result =
+      operation === "grant"
+        ? await GroupPermissionResource.grantToUsers(auth, spec)
+        : await GroupPermissionResource.revokeFromUsers(auth, spec);
+    if (result.isErr()) {
+      return new Err(new DustError("user_not_found", result.error.message));
     }
 
     return new Ok(undefined);
   }
 
-  private async upsertCurrentUserAsEditor(auth: Authenticator): Promise<void> {
+  private async upsertCurrentUserAsEditor(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
     const user = auth.user();
     if (!user) {
       return;
     }
 
-    await this.upsertEditors(auth, [user]);
+    const result = await this.writeEditorUserGrants(auth, [user], "grant", {
+      transaction,
+    });
+    if (result.isErr()) {
+      throw result.error;
+    }
   }
 
   async fetchEditedByUser(auth: Authenticator): Promise<UserResource | null> {
@@ -3235,6 +3259,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return { affectedCount };
   }
 
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;concurrency] atomic-skill-update
+   * Skill updates, attachments and editor grants share the caller's transaction and roll back together.
+   */
+
   async updateSkill(
     auth: Authenticator,
     {
@@ -3273,7 +3302,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       sourceMetadata?: SkillSourceMetadata;
       status?: SkillStatus;
       userFacingDescription: string;
-    }
+    },
+    { transaction: existingTransaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     assert(this.canWrite(auth), "User is not authorized to update this skill");
 
@@ -3378,13 +3408,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         { previousRequestedSpaceIds },
         { transaction }
       );
-    });
-
-    if (fileAttachments) {
-      await this.setFileAttachments(auth, fileAttachments);
-    }
-
-    await this.upsertCurrentUserAsEditor(auth);
+      if (fileAttachments) {
+        await this.setFileAttachments(auth, fileAttachments, { transaction });
+      }
+      await this.upsertCurrentUserAsEditor(auth, { transaction });
+    }, existingTransaction);
   }
 
   /**
@@ -3885,7 +3913,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   private async setFileAttachments(
     auth: Authenticator,
-    fileAttachments: FileResource[]
+    fileAttachments: FileResource[],
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -3894,6 +3923,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         skillConfigurationId: this.id,
         workspaceId: workspace.id,
       },
+      transaction,
     });
 
     const desiredFileModelIds = new Set(fileAttachments.map((f) => f.id));
@@ -3911,6 +3941,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           id: { [Op.in]: toRemove.map((a) => a.id) },
           workspaceId: workspace.id,
         },
+        transaction,
       });
     }
 
@@ -3925,7 +3956,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           skillConfigurationId: this.id,
           fileId: file.id,
           fileName: file.fileName,
-        }))
+        })),
+        { transaction }
       );
     }
 

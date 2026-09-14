@@ -265,16 +265,21 @@ export class GroupPermissionResource extends BaseResource<GroupPermissionModel> 
         );
       }
 
-      const [row] = await GroupPermissionModel.findOrCreate({
-        where: {
-          workspaceId,
-          groupId: group.id,
-          grantType,
-          resourceType,
-          resourceId,
-        },
+      const where = {
+        workspaceId,
+        groupId: group.id,
+        grantType,
+        resourceType,
+        resourceId,
+      };
+      // Like grantMany, let the unique index make insertion idempotent. findOrCreate opens
+      // another savepoint, which in Sequelize v6 changes the caller savepoint's rollback name.
+      await GroupPermissionModel.bulkCreate([where], {
+        ignoreDuplicates: true,
         transaction: t,
       });
+      const row = await GroupPermissionModel.findOne({ where, transaction: t });
+      assert(row, "The grant must exist after insertion.");
 
       await this.invalidateGroupGrantsAfterCommit(auth, [group.id], t);
 
