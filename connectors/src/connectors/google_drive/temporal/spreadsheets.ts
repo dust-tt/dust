@@ -125,6 +125,19 @@ function findDataRangeAndSelectRows(allRows: string[][]): string[][] {
 }
 
 function getValidRows(allRows: string[][], localLogger: Logger): string[][] {
+  // The batchGet range is capped at MAXIMUM_NUMBER_OF_GSHEET_ROWS + 1 rows, so
+  // receiving more raw rows than the limit means the sheet exceeds it. Check the
+  // raw count before blank-row filtering below, which would otherwise mask the
+  // overflow and silently import a truncated sheet.
+  if (allRows.length > MAXIMUM_NUMBER_OF_GSHEET_ROWS) {
+    localLogger.info(
+      { rowCount: allRows.length },
+      `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_GSHEET_ROWS}, skipping further processing.`
+    );
+
+    return [];
+  }
+
   const filteredRows = findDataRangeAndSelectRows(allRows);
 
   const maxCols = filteredRows.reduce(
@@ -150,16 +163,6 @@ function getValidRows(allRows: string[][], localLogger: Logger): string[][] {
 
       return row;
     });
-
-    if (validRows.length > MAXIMUM_NUMBER_OF_GSHEET_ROWS) {
-      localLogger.info(
-        { rowCount: validRows.length },
-        `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_GSHEET_ROWS}, skipping further processing.`
-      );
-
-      // If the sheet has too many rows, return an empty array to ignore it.
-      return [];
-    }
 
     return validRows;
   } catch (err) {
@@ -240,7 +243,8 @@ async function processSheet(
  * Every value range requested here MUST be capped at
  * MAXIMUM_NUMBER_OF_GSHEET_ROWS + 1 rows so an oversized sheet is never fully
  * materialized in memory (which can OOM the worker). The +1 lets getValidRows
- * still detect and skip sheets that hit the limit.
+ * detect the overflow from the raw fetched row count and skip the sheet before
+ * blank-row filtering, which would otherwise mask it.
  */
 async function batchGetSheets(
   sheetsAPI: sheets_v4.Sheets,
@@ -252,7 +256,7 @@ async function batchGetSheets(
   // Cap each range at MAXIMUM_NUMBER_OF_GSHEET_ROWS + 1 rows: without an explicit
   // range the API returns the whole used range, which materializes an oversized
   // sheet in memory before getValidRows can reject it (and can OOM the worker).
-  // The +1 lets getValidRows still detect and skip sheets that hit the limit.
+  // The +1 lets getValidRows detect the overflow from the raw fetched row count.
   const sheetRangeKeys = [...sheetRanges.keys()].map(
     (k) => `'${k}'!1:${MAXIMUM_NUMBER_OF_GSHEET_ROWS + 1}`
   );

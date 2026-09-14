@@ -163,27 +163,50 @@ async function processSheet({
   // returns every cell as text and materializes the whole sheet in memory, so a
   // sheet with hundreds of thousands of rows can OOM the worker before the
   // post-load guard below ever runs. The row-count probe is a cheap metadata
-  // call. On probe failure we fall back to the existing content path unchanged.
-  const rowCountRes = await wrapMicrosoftGraphAPIWithResult(() =>
-    getWorksheetUsedRangeRowCount(localLogger, client, worksheetInternalId)
-  );
-  if (rowCountRes.isOk()) {
-    if (rowCountRes.value > MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS) {
-      localLogger.info(
-        { ...loggerArgs, rowCount: rowCountRes.value },
-        `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}, skipping further processing.`
-      );
+  // call, and we must never fall through to the content fetch without a known
+  // row count (see the reject-oversized-before-load contract on
+  // getWorksheetContent).
+  let rowCount: number;
+  try {
+    rowCount = await getWorksheetUsedRangeRowCount(
+      localLogger,
+      client,
+      worksheetInternalId
+    );
+  } catch (error) {
+    localLogger.error(
+      { ...loggerArgs, error },
+      "[Spreadsheet] Failed to fetch sheet row count."
+    );
 
-      return new Err(
-        new Error(
-          `Too many rows in sheet ${worksheet.name}, rows=${rowCountRes.value}, max=${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}`
-        )
-      );
+    // A 504 on the used-range endpoint is persistent for this sheet; mark it
+    // skipped like the content fetch below rather than retrying forever.
+    if (error instanceof GraphError && error.statusCode === 504) {
+      await markInternalIdAsSkipped({
+        internalId: worksheetInternalId,
+        connectorId: connector.id,
+        parentInternalId: spreadsheetInternalId,
+        reason: "error_fetching_content",
+        file: spreadsheet,
+      });
+      return new Err(error);
     }
-  } else {
-    localLogger.warn(
-      { ...loggerArgs, error: rowCountRes.error },
-      "[Spreadsheet] Failed to fetch sheet row count; proceeding to content fetch."
+
+    // Propagate other failures (e.g. throttling) so the Temporal interceptor can
+    // apply its retry policy; do not silently load the sheet's full content.
+    throw error;
+  }
+
+  if (rowCount > MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS) {
+    localLogger.info(
+      { ...loggerArgs, rowCount },
+      `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}, skipping further processing.`
+    );
+
+    return new Err(
+      new Error(
+        `Too many rows in sheet ${worksheet.name}, rows=${rowCount}, max=${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}`
+      )
     );
   }
 
