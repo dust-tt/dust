@@ -24,7 +24,7 @@ function sameModelIds(left: number[], right: number[]): boolean {
   );
 }
 
-async function shadowAgentEditors(
+export async function getAgentEditorsShadowed(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType,
   legacyEditors: UserResource[],
@@ -91,10 +91,10 @@ export async function getAgentEditors(
     agentConfiguration
   );
   if (editorGroupRes.isErr()) {
-    await shadowAgentEditors(auth, agentConfiguration, [], callSite);
+    await getAgentEditorsShadowed(auth, agentConfiguration, [], callSite);
     return editorGroupRes;
   }
-  const editors = await shadowAgentEditors(
+  const editors = await getAgentEditorsShadowed(
     auth,
     agentConfiguration,
     await editorGroupRes.value.getActiveMembers(auth),
