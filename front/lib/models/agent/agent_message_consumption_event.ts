@@ -2,18 +2,10 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { AgentMessageStatus } from "@app/types/assistant/conversation";
+import { AGENT_MESSAGE_STATUSES } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { CreationOptional } from "sequelize";
-
-const AGENT_MESSAGE_STATUSES = [
-  "created",
-  "succeeded",
-  "failed",
-  "cancelled",
-  "interrupted",
-  "gracefully_stopped",
-] as const satisfies readonly AgentMessageStatus[];
 
 function validateConsumptionEventShape(
   this: AgentMessageConsumptionEventModel

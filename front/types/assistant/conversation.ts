@@ -273,13 +273,16 @@ export function isVisibleMessage(m: LightMessageType): boolean {
 /**
  * Agent messages
  */
-export type AgentMessageStatus =
-  | "created"
-  | "succeeded"
-  | "failed"
-  | "cancelled"
-  | "interrupted"
-  | "gracefully_stopped";
+export const AGENT_MESSAGE_STATUSES = [
+  "created",
+  "succeeded",
+  "failed",
+  "cancelled",
+  "interrupted",
+  "gracefully_stopped",
+] as const;
+
+export type AgentMessageStatus = (typeof AGENT_MESSAGE_STATUSES)[number];
 
 export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
   // Message can be in "created" status when we stop the loop to ask for user permission for instance.
