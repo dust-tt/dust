@@ -1,0 +1,18 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g transform="translate(0 5) scale(0.12)">
+<path d="M66.666 38.8889H133.333V0H101.488C82.2562 0 66.666 0 66.666 20.3924V38.8889Z" fill="url(#paint0_linear_stackone)"/>
+<path d="M133.333 77.7773H66.666V116.666H98.5105C117.742 116.666 133.333 116.666 133.333 96.2738V77.7773Z" fill="url(#paint1_linear_stackone)"/>
+<path d="M133.333 0H66.8889H0L3.26502e-06 77.7778H66.8889V38.8959L66.8796 37.2487C66.7622 16.7113 83.3783 0 103.916 0H133.333Z" fill="#00AF66"/>
+<path d="M66.666 116.666H133.11H199.999V38.8887H133.11V77.7705L133.12 79.4177C133.237 99.9552 116.621 116.666 96.0834 116.666H66.666Z" fill="#00AF66"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_stackone" x1="133.333" y1="19.4444" x2="66.666" y2="19.4444" gradientUnits="userSpaceOnUse">
+<stop stop-color="#00AF66"/>
+<stop offset="1" stop-color="#285C4D"/>
+</linearGradient>
+<linearGradient id="paint1_linear_stackone" x1="66.666" y1="97.2218" x2="133.333" y2="97.2218" gradientUnits="userSpaceOnUse">
+<stop stop-color="#00AF66"/>
+<stop offset="1" stop-color="#285C4D"/>
+</linearGradient>
+</defs>
+</svg>
