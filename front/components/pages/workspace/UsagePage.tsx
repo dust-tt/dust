@@ -888,22 +888,12 @@ export function UsagePage() {
   }, [seatPlans]);
 
   // Grantable seat tiers the contract bills — one entry per tier
-  // (workspace/pro/max), regardless of cadence, ordered by tier. A group grants
-  // a tier (monthly by default), so cadences are collapsed here: a Pro row shows
-  // whether the contract bills pro, pro_yearly, or both.
-  const grantableSeatTypes = useMemo<GroupGrantableSeatType[]>(() => {
-    const tiers = new Set<GroupGrantableSeatType>();
-    for (const key of Object.keys(seatPlans)) {
-      if (!isMembershipSeatType(key)) {
-        continue;
-      }
-      const tier = toBaseSeatType(key);
-      if (isGroupGrantableSeatType(tier)) {
-        tiers.add(tier);
-      }
-    }
-    return [...tiers].sort((a, b) => SEAT_TYPE_ORDER[a] - SEAT_TYPE_ORDER[b]);
-  }, [seatPlans]);
+  // (workspace/pro/max), regardless of cadence, ordered by tier. Derived from the
+  // already-ordered `seatFilterOptions` (base tiers), so cadences are collapsed:
+  // a Pro row shows whether the contract bills pro, pro_yearly, or both.
+  const grantableSeatTypes: GroupGrantableSeatType[] = seatFilterOptions.filter(
+    isGroupGrantableSeatType
+  );
 
   const { usageSettings } = useUsageSettings({
     workspaceId: owner.sId,

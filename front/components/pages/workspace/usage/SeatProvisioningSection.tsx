@@ -5,31 +5,14 @@ import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeU
 import { useGroups, useUpdateGroupGrantedSeatType } from "@app/lib/swr/groups";
 import type { GroupGrantableSeatType, GroupType } from "@app/types/groups";
 import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
-import { toBaseSeatType } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
-import { LayersThree01 } from "@dust-tt/sparkle";
+import { LayersThree01, Spinner } from "@dust-tt/sparkle";
 
-// A seat's row label: the tier name, plus a cadence suffix only when the
-// contract offers both cadences of that tier (so a single-cadence contract stays
-// clean, e.g. just "Pro", while a dual-cadence one disambiguates "Pro (monthly)"
-// vs "Pro (annual)").
-function seatRowLabel(
-  seatType: GroupGrantableSeatType,
-  availableSeatTypes: GroupGrantableSeatType[]
-): string {
-  const name = seatTypeDisplayName(seatType);
-  const base = toBaseSeatType(seatType);
-  const hasBothCadences =
-    availableSeatTypes.some(
-      (s) => toBaseSeatType(s) === base && s.endsWith("_yearly")
-    ) &&
-    availableSeatTypes.some(
-      (s) => toBaseSeatType(s) === base && !s.endsWith("_yearly")
-    );
-  if (!hasBothCadences) {
-    return name;
-  }
-  return `${name} (${seatType.endsWith("_yearly") ? "annual" : "monthly"})`;
+interface SeatProvisioningRowProps {
+  owner: LightWorkspaceType;
+  seatType: GroupGrantableSeatType;
+  label: string;
+  groups: GroupType[];
 }
 
 // One row per seat type the contract bills. Adding a group to a row grants that
@@ -41,12 +24,7 @@ function SeatProvisioningRow({
   seatType,
   label,
   groups,
-}: {
-  owner: LightWorkspaceType;
-  seatType: GroupGrantableSeatType;
-  label: string;
-  groups: GroupType[];
-}) {
+}: SeatProvisioningRowProps) {
   const { doUpdateGroupGrantedSeatType, isUpdating } =
     useUpdateGroupGrantedSeatType({ owner });
 
@@ -73,19 +51,19 @@ function SeatProvisioningRow({
         .map((groupId) => ({ groupId, grantedSeatType: null })),
     ];
 
-    await Promise.all(
-      updates.map(({ groupId, grantedSeatType }) => {
-        const group = groupById.get(groupId);
-        if (!group) {
-          return undefined;
-        }
-        return doUpdateGroupGrantedSeatType({
-          groupId,
-          groupName: group.name,
-          grantedSeatType,
-        });
-      })
-    );
+    // Apply sequentially: the selector emits one delta at a time, and a bounded
+    // loop keeps us clear of `Promise.all` on a dynamically sized array.
+    for (const { groupId, grantedSeatType } of updates) {
+      const group = groupById.get(groupId);
+      if (!group) {
+        continue;
+      }
+      await doUpdateGroupGrantedSeatType({
+        groupId,
+        groupName: group.name,
+        grantedSeatType,
+      });
+    }
   };
 
   return (
@@ -105,16 +83,18 @@ function SeatProvisioningRow({
   );
 }
 
+interface SeatProvisioningSectionProps {
+  owner: LightWorkspaceType;
+  // The seat tiers the workspace contract bills, already ordered. Only these are
+  // offered as mapping targets.
+  availableSeatTypes: GroupGrantableSeatType[];
+}
+
 export function SeatProvisioningSection({
   owner,
   availableSeatTypes,
-}: {
-  owner: LightWorkspaceType;
-  // The seat types the workspace contract actually bills (full types including
-  // cadence), already ordered. Only these are offered as mapping targets.
-  availableSeatTypes: GroupGrantableSeatType[];
-}) {
-  const { groups } = useGroups({
+}: SeatProvisioningSectionProps) {
+  const { groups, isGroupsLoading } = useGroups({
     owner,
     kinds: [...MANAGEABLE_GROUP_KINDS],
   });
@@ -125,15 +105,21 @@ export function SeatProvisioningSection({
 
   return (
     <GovernanceSettingSection label="Group seats" icon={LayersThree01}>
-      {availableSeatTypes.map((seatType) => (
-        <SeatProvisioningRow
-          key={seatType}
-          owner={owner}
-          seatType={seatType}
-          label={seatRowLabel(seatType, availableSeatTypes)}
-          groups={groups}
-        />
-      ))}
+      {isGroupsLoading ? (
+        <div className="flex justify-center p-4">
+          <Spinner size="sm" />
+        </div>
+      ) : (
+        availableSeatTypes.map((seatType) => (
+          <SeatProvisioningRow
+            key={seatType}
+            owner={owner}
+            seatType={seatType}
+            label={seatTypeDisplayName(seatType)}
+            groups={groups}
+          />
+        ))
+      )}
     </GovernanceSettingSection>
   );
 }
