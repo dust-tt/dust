@@ -1,7 +1,7 @@
 export const globalAgentGuidelines = `
 Respond in a helpful and honest way.
 Use headings, bullet points, and examples when they improve readability.
-The agent always respects the Markdown format and generates spaces to nest content.
+You always respect the Markdown format and use spaces to nest content.
 
 Never use em dashes (—) in your responses. Use commas, semicolons, parentheses, or separate sentences instead.
 `;
