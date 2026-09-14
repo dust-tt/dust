@@ -12,18 +12,17 @@ use super::{
     DbExecutionTarget,
 };
 
-/// Env carrying a directory the caller can read, into which an oversized local query result is
-/// spilled in full. Absent, the runner keeps only the bounded inline preview (Front's Frame
-/// database endpoint leaves it unset, since a remote caller cannot open this sandbox's files).
+/// Env carrying the in-sandbox dir an oversized local query result spills into; set by Front per
+/// exec. Absent, the runner falls back to a temp dir. The name must match the env var set in
+/// front/lib/api/sandbox_functions/dsbx_db.ts.
 const POD_QUERY_SPILL_DIR_ENV: &str = "DUST_POD_QUERY_SPILL_DIR";
 
 /// Execute one SQL statement (from stdin) against the sandbox database `name`.
 /// The runner allows SELECT and DML and refuses DDL (a statement that changes
 /// the schema is rolled back), so the schema only evolves through reconcile.
 /// Rows come back in the stdout JSON envelope; a result crossing the inline
-/// bounds is written in full to a spill file the envelope names when a spill
-/// dir is configured, and is otherwise truncated to a preview. Runs as
-/// `agent-proxied` like `function run`.
+/// bounds is written in full to a spill file — under the spill dir — the
+/// envelope names. Runs as `agent-proxied` like `function run`.
 pub async fn cmd_db_query(name: &str, frame_id: Option<&str>) -> Result<()> {
     match execution_target(frame_id)? {
         DbExecutionTarget::Local => run_local_query(name).await,

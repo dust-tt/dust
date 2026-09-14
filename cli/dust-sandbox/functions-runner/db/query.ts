@@ -1,5 +1,6 @@
 import { Database, type Statement } from "bun:sqlite";
 import { closeSync, existsSync, mkdirSync, openSync, writeSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Err, Ok, type Result } from "#result.ts";
 import { applyWritePragmas, DbCommandError } from "./common.ts";
@@ -21,8 +22,8 @@ export function runQuery(
   sql: string,
   // Omitted only by tests that don't exercise the quota; runner.ts always passes it.
   maxSizeBytes?: number,
-  // Directory a caller that can read this sandbox's files gets the full result spilled into.
-  // Absent, an oversized result is truncated to the bounded inline preview.
+  // Directory the spill file is written to — a pod file, so the caller can read the full result
+  // set. runner.ts passes the pod-files dir from Rust; tests omit it and fall back to a temp dir.
   spillDir?: string
 ): Result<QueryOutcome, DbCommandError> {
   const trimmed = sql.trim();
@@ -218,8 +219,7 @@ function execute(
   });
 }
 
-// Execute a result-returning statement. Beyond the inline bounds the full result set is spilled
-// to `spillDir` when given, otherwise only the preview is kept and remaining rows are counted.
+// Execute a result-returning statement, spilling beyond the inline bounds.
 function collectRows(
   statement: Statement,
   spillDir: string | undefined
@@ -230,13 +230,9 @@ function collectRows(
   let rowCount = 0;
   let spillFd: number | null = null;
   let spillPath: string | null = null;
-  let previewTruncated = false;
   try {
     for (const row of statement.iterate()) {
       rowCount++;
-      if (previewTruncated) {
-        continue;
-      }
       const rowJson = JSON.stringify(row, jsonReplacer);
       if (spillFd === null) {
         if (
@@ -249,13 +245,10 @@ function collectRows(
           previewJson.push(rowJson);
           continue;
         }
-        if (spillDir === undefined) {
-          previewTruncated = true;
-          continue;
-        }
-        // The spill dir is not pre-created.
-        mkdirSync(spillDir, { recursive: true });
-        spillPath = join(spillDir, `dsbx-query-${crypto.randomUUID()}.jsonl`);
+        const dir = spillDir ?? tmpdir();
+        // The pod-files spill dir (e.g. /files/pod-<id>/.tool_outputs/db) is not pre-created.
+        mkdirSync(dir, { recursive: true });
+        spillPath = join(dir, `dsbx-query-${crypto.randomUUID()}.jsonl`);
         spillFd = openSync(spillPath, "w");
         for (const line of previewJson) {
           writeSync(spillFd, `${line}\n`);
@@ -271,22 +264,17 @@ function collectRows(
     }
   }
 
-  let note: string | null = null;
-  if (rowCount > preview.length) {
-    const previewNote = `${rowCount} rows total; the first ${preview.length} are shown here as a preview. `;
-    note =
-      spillPath !== null
-        ? `${previewNote}The complete result set is in ${spillPath}, one JSON object per line.`
-        : `${previewNote}Refine the query with LIMIT and OFFSET to inspect the remaining rows.`;
-  }
-
   return new Ok({
     columns: statement.columnNames,
     rows: preview,
     row_count: rowCount,
     changes: null,
     results_file: spillPath,
-    note,
+    note:
+      spillPath === null
+        ? null
+        : `${rowCount} rows total; the first ${preview.length} are shown here as a preview. ` +
+          `The complete result set is in ${spillPath}, one JSON object per line.`,
   });
 }
 
