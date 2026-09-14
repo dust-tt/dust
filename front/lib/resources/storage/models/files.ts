@@ -272,6 +272,7 @@ SharingGrantModel.init(
       defaultValue: null,
     },
     domain: {
+      // DNS names allow 253 ASCII characters without the trailing dot.
       type: DataTypes.STRING(253),
       allowNull: true,
       defaultValue: null,
