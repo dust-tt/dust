@@ -3,15 +3,11 @@ import type { OAuthConnectionType } from "@app/types/oauth/lib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const config = vi.hoisted(() => ({
-  getOAuthRedirectBaseUrl: vi.fn(),
   getDevOAuthRedirectBaseUrl: vi.fn(),
   getAppUrl: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/config", () => ({ default: config }));
-
-const PRE_CUTOFF = new Date("2026-01-01").getTime();
-const POST_CUTOFF = new Date("2029-01-01").getTime();
 
 function connection(
   created: number,
@@ -29,7 +25,6 @@ function connection(
 
 describe("finalizeUriForProvider", () => {
   beforeEach(() => {
-    config.getOAuthRedirectBaseUrl.mockReturnValue("https://eu.dust.tt");
     config.getAppUrl.mockReturnValue("https://app.dust.tt");
     config.getDevOAuthRedirectBaseUrl.mockReturnValue(undefined);
   });
@@ -50,27 +45,18 @@ describe("finalizeUriForProvider", () => {
       finalizeUriForProvider({
         provider: "github",
         connection: connection(
-          PRE_CUTOFF,
+          new Date("2026-01-01").getTime(),
           "https://us-api.dust.tt/oauth/github/finalize"
         ),
       })
     ).toBe("https://us-api.dust.tt/oauth/github/finalize");
   });
 
-  it("keeps the historical base for pre-cutoff connections without a stored URI", () => {
+  it("sends connections without a stored URI to the app URL", () => {
     expect(
       finalizeUriForProvider({
         provider: "github",
-        connection: connection(PRE_CUTOFF, null),
-      })
-    ).toBe("https://eu.dust.tt/oauth/github/finalize");
-  });
-
-  it("sends post-cutoff connections without a stored URI to the app URL", () => {
-    expect(
-      finalizeUriForProvider({
-        provider: "github",
-        connection: connection(POST_CUTOFF, null),
+        connection: connection(new Date("2026-01-01").getTime(), null),
       })
     ).toBe("https://app.dust.tt/oauth/github/finalize");
   });
