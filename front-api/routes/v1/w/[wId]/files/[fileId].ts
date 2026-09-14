@@ -161,7 +161,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can delete files.",
+          "Only users that are `managers` for the current workspace can delete files.",
       },
     });
   }
@@ -218,7 +218,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `builders` for the current workspace can modify files.",
+          "Only users that are `managers` for the current workspace can modify files.",
       },
     });
   }
