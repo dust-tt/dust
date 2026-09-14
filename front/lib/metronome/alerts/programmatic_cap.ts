@@ -36,6 +36,24 @@ function programmaticCapCriticalUniquenessKey(workspaceId: string): string {
   return `programmatic-cap-critical-${workspaceId}`;
 }
 
+// Shared prefix of all four programmatic-cap alert keys (cap / warning / low /
+// critical) — `programmatic-cap-<...>-<workspaceId>`. The `-warning-`,
+// `-low-` and `-critical-` variants all begin with it too.
+const PROGRAMMATIC_CAP_ALERT_KEY_PREFIX = "programmatic-cap-";
+
+/**
+ * Workspace-independent matcher for the four now-retired programmatic-cap alert
+ * uniqueness keys. Matches the shared `programmatic-cap-` prefix for ANY
+ * workspace, so the cleanup script can archive alerts left behind by deleted
+ * workspaces without knowing their sId. All four programmatic alert types are
+ * retired, so prefix matching alone is sufficient and correct.
+ */
+export function isProgrammaticCapAlertUniquenessKeyAnyWorkspace(
+  uniquenessKey: string
+): boolean {
+  return uniquenessKey.startsWith(PROGRAMMATIC_CAP_ALERT_KEY_PREFIX);
+}
+
 // Early-warning threshold (as a fraction of the monthly cap) fires a
 // notification — no state-machine transition, no throttling. Lets admins
 // react before the workspace enters the close-to-cap throttle band.

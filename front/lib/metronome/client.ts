@@ -35,6 +35,7 @@ import type { ProductListResponse } from "@metronome/sdk/resources/v1/contracts/
 import type { RateCardRetrieveResponse } from "@metronome/sdk/resources/v1/contracts/rate-cards";
 import type {
   CustomerAlert,
+  CustomerDetail,
   Invoice,
 } from "@metronome/sdk/resources/v1/customers";
 import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
@@ -4283,5 +4284,16 @@ export async function* listMetronomeAlerts(
     params
   )) {
     yield entry;
+  }
+}
+
+// Lazily iterates every Metronome customer, auto-paginating via the SDK. Unlike
+// the DB-driven workspace scan, this reaches customers whose Dust workspace has
+// been deleted (so it never appears in `runOnAllWorkspaces`) but whose Metronome
+// customer — and its alerts — still exist. Used by the unused-alert cleanup
+// script to reach orphaned alerts. Errors surface through the iterator.
+export async function* listMetronomeCustomers(): AsyncGenerator<CustomerDetail> {
+  for await (const customer of getMetronomeClient().v1.customers.list()) {
+    yield customer;
   }
 }
