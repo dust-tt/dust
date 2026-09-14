@@ -17,9 +17,9 @@ export const CONVERSATION_SEARCH_ALIAS_NAME = "front.conversation_search";
 export const SKILL_SEARCH_ALIAS_NAME = "front.skills";
 
 /**
- * @cc [owner:aubin-tchoi,label:backend] registered-index-files
- * Every registered index must have matching [name]_[version].mappings.json and
- * [name]_[version].settings.[region].json files in its directory for each region.
+ * Registry of front-owned indices: where the settings/mappings files live and
+ * the current version. A version bump here must ship with the matching
+ * [name]_[version].settings.[region].json and [name]_[version].mappings.json.
  */
 export const INDEX_REGISTRY: Record<
   string,
