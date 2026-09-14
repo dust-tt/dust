@@ -28,12 +28,25 @@ export async function getAgentEditorsShadowed(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType,
   legacyEditors: UserResource[],
-  callSite: string
+  callSite: string,
+  reverse = false
 ): Promise<UserResource[]> {
   await shadowCompare({
     auth,
+    reverse,
     legacy: sortedUserModelIds(legacyEditors),
     candidate: async () => {
+      if (reverse) {
+        const editors = await getAgentEditors(
+          auth,
+          agentConfiguration,
+          callSite,
+          {
+            legacyOnly: true,
+          }
+        );
+        return sortedUserModelIds(editors.isOk() ? editors.value : []);
+      }
       const resource = AgentResource.fromAgentConfiguration(
         auth,
         agentConfiguration
@@ -68,7 +81,8 @@ export const getAuthors = async (
 export async function getAgentEditors(
   auth: Authenticator,
   agentConfiguration: LightAgentConfigurationType,
-  callSite: string
+  callSite: string,
+  { legacyOnly = false } = {}
 ): Promise<
   Result<
     UserResource[],
@@ -77,19 +91,35 @@ export async function getAgentEditors(
     >
   >
 > {
-  if (agentConfiguration.scope !== "global" && !isLegacyAclsEnabled()) {
-    const resource = await AgentResource.fetchByAgentConfiguration(
+  if (
+    !legacyOnly &&
+    agentConfiguration.scope !== "global" &&
+    !isLegacyAclsEnabled()
+  ) {
+    const resource = AgentResource.fromAgentConfiguration(
       auth,
       agentConfiguration
     );
     const editors = await resource.listEditors(auth);
     assert(editors !== null);
+    await getAgentEditorsShadowed(
+      auth,
+      agentConfiguration,
+      editors,
+      callSite,
+      true
+    );
     return new Ok(editors);
   }
   const editorGroupRes = await GroupResource.findEditorGroupForAgent(
     auth,
     agentConfiguration
   );
+  if (legacyOnly) {
+    return editorGroupRes.isErr()
+      ? editorGroupRes
+      : new Ok(await editorGroupRes.value.getActiveMembers(auth));
+  }
   if (editorGroupRes.isErr()) {
     await getAgentEditorsShadowed(auth, agentConfiguration, [], callSite);
     return editorGroupRes;
@@ -118,7 +148,8 @@ export const getEditors = async (
 async function shadowAgentEditorsBatch(
   auth: Authenticator,
   agents: LightAgentConfigurationType[],
-  legacyEditors: Record<string, UserType[]>
+  legacyEditors: Record<string, UserType[]>,
+  reverse = false
 ): Promise<void> {
   const customAgents = agents.filter((agent) => agent.scope !== "global");
   const normalizedLegacyEditors = customAgents
@@ -130,8 +161,20 @@ async function shadowAgentEditorsBatch(
 
   await shadowCompare({
     auth,
+    reverse,
     legacy: normalizedLegacyEditors,
     candidate: async () => {
+      if (reverse) {
+        const editors = await getAgentsEditors(auth, customAgents, {
+          legacyOnly: true,
+        });
+        return customAgents
+          .map(
+            (agent) =>
+              [agent.sId, sortedUserModelIds(editors[agent.sId] ?? [])] as const
+          )
+          .sort(([left], [right]) => left.localeCompare(right));
+      }
       const resources = AgentResource.fromAgentConfigurations(
         auth,
         customAgents
@@ -173,10 +216,11 @@ async function shadowAgentEditorsBatch(
  */
 export const getAgentsEditors = async (
   auth: Authenticator,
-  agentConfigurations: LightAgentConfigurationType[]
+  agentConfigurations: LightAgentConfigurationType[],
+  { legacyOnly = false } = {}
 ): Promise<Record<string, UserType[]>> => {
-  if (!isLegacyAclsEnabled()) {
-    const resources = await AgentResource.fetchByAgentConfigurations(
+  if (!legacyOnly && !isLegacyAclsEnabled()) {
+    const resources = AgentResource.fromAgentConfigurations(
       auth,
       agentConfigurations.filter((agent) => agent.scope !== "global")
     );
@@ -184,12 +228,14 @@ export const getAgentsEditors = async (
       auth,
       resources
     );
-    return Object.fromEntries(
+    const result = Object.fromEntries(
       [...editorsByAgentId].map(([agentId, editors]) => {
         assert(editors !== null);
         return [agentId, editors.map((editor) => editor.toJSON())];
       })
     );
+    await shadowAgentEditorsBatch(auth, agentConfigurations, result, true);
+    return result;
   }
   const editorGroups = await GroupResource.findEditorGroupsForAgents(
     auth,
@@ -228,7 +274,9 @@ export const getAgentsEditors = async (
     }
   }
 
-  await shadowAgentEditorsBatch(auth, agentConfigurations, result);
+  if (!legacyOnly) {
+    await shadowAgentEditorsBatch(auth, agentConfigurations, result);
+  }
 
   return result;
 };
