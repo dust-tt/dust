@@ -33,7 +33,7 @@ interface ShadowCompareArgs<T> {
   // Structured fields identifying the call site, logged on mismatch.
   context: ShadowContext;
   // Custom equality when T is not comparable with ===.
-  equals?: (legacy: T, candidate: T) => boolean;
+  equals?: (legacy: T, candidate: T) => boolean | Promise<boolean>;
 }
 
 export async function shadowCompare<T>({
@@ -53,7 +53,7 @@ export async function shadowCompare<T>({
   try {
     const candidateResult = await candidate();
     const matches = equals
-      ? equals(legacy, candidateResult)
+      ? await equals(legacy, candidateResult)
       : legacy === candidateResult;
     if (!matches) {
       logger.warn(

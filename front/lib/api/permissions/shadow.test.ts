@@ -88,4 +88,25 @@ describe("shadowCompare", () => {
       "group_permissions_shadow_candidate_error"
     );
   });
+
+  it("serves the legacy result when an async comparison fails", async () => {
+    await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
+    const error = vi.spyOn(logger, "error");
+
+    expect(
+      await shadowCompare({
+        auth,
+        legacy: "legacy",
+        candidate: async () => "candidate",
+        equals: async () => {
+          throw new Error("comparison failed");
+        },
+        context: { check: "test" },
+      })
+    ).toBe("legacy");
+    expect(error).toHaveBeenCalledWith(
+      expect.objectContaining({ check: "test" }),
+      "group_permissions_shadow_candidate_error"
+    );
+  });
 });
