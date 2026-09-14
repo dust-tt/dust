@@ -2,7 +2,6 @@ import {
   Archive,
   Avatar,
   Bell01,
-  Brackets,
   Breadcrumbs,
   Inbox01,
   Button,
@@ -31,14 +30,13 @@ import {
   Edit04,
   Eye,
   File02,
-  FolderOpen,
   Heart,
   Icon,
   IntersectDust,
+  LayersThree01,
   Lightbulb04,
   Link01,
   LogOut01,
-  MagicWand02,
   MessageChatSquare,
   MessageCircle01,
   MessagePlusCircle,
@@ -49,13 +47,10 @@ import {
   NavTabPill,
   NavTabPillList,
   NavTabPillTrigger,
-  Planet,
   Plus,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  PuzzlePiece01,
-  Robot,
   ScrollArea,
   ScrollBar,
   SearchInput,
@@ -80,6 +75,7 @@ import {
 } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
+import { BuildNav } from "../components/BuildNav";
 import {
   ConversationActions,
   isFileView,
@@ -112,7 +108,9 @@ import {
   type Agent,
   type Conversation,
   createConversationsWithMessages,
+  createMockTriggers,
   createSpace,
+  createTriggeredConversations,
   getAgentById,
   getMembersBySpaceId,
   getRandomAgents,
@@ -125,6 +123,7 @@ import {
   mockUsers,
   MY_POD_SPACE,
   type Space,
+  type Trigger,
   type User,
 } from "../data";
 import {
@@ -270,6 +269,7 @@ function PeopleAgent() {
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
   >([]);
+  const [triggers, setTriggers] = useState<Trigger[]>([]);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
 
   useEffect(() => {
@@ -296,6 +296,9 @@ function PeopleAgent() {
       new Set(randomSpaces.slice(0, 2).map((space) => space.id))
     );
     setConversationsWithMessages(createConversationsWithMessages(u.id));
+    // Every trigger belongs to whoever opened the playground, since automated
+    // work only ever lists the runs you own.
+    setTriggers(createMockTriggers(u.id));
   }, []);
 
   // ── Navigation state ──────────────────────────────────────────────────────
@@ -343,7 +346,7 @@ function PeopleAgent() {
   } | null>(null);
 
   // ── Sidebar UI state ──────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
+  const [activeTab, setActiveTab] = useState<"chat" | "build" | "admin">(
     "chat"
   );
   const [searchText, setSearchText] = useState("");
@@ -407,9 +410,15 @@ function PeopleAgent() {
   }, [spaces, lastCreatedSpaceId]);
 
   // ── Derived data ──────────────────────────────────────────────────────────
+  // Automated work is nothing but the runs of your triggers, so it joins the
+  // conversations from the trigger list rather than from a coin flip.
   const allConversations = useMemo(
-    () => [...conversationsWithMessages, ...mockConversations],
-    [conversationsWithMessages]
+    () => [
+      ...conversationsWithMessages,
+      ...mockConversations,
+      ...createTriggeredConversations(triggers),
+    ],
+    [conversationsWithMessages, triggers]
   );
 
   const unreadCount = useMemo(() => {
@@ -1239,6 +1248,7 @@ function PeopleAgent() {
           conversations={allConversations}
           users={mockUsers}
           agents={mockAgents}
+          triggers={triggers}
           currentUserId={user.id}
           personalSectionLabel="Conversations"
           selectedConversationId={
@@ -1336,6 +1346,7 @@ function PeopleAgent() {
           showComposer={false}
           hideConversationFilters
           currentUserId={user.id}
+          triggers={triggers}
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
           }
@@ -1798,14 +1809,14 @@ function PeopleAgent() {
   const navTopBar = (
     <NavTabPill
       value={activeTab}
-      onValueChange={(v) => setActiveTab(v as "chat" | "spaces" | "admin")}
+      onValueChange={(v) => setActiveTab(v as "chat" | "build" | "admin")}
     >
       <NavTabPillList>
         <NavTabPillTrigger value="chat" icon={IntersectDust}>
           Work
         </NavTabPillTrigger>
-        <NavTabPillTrigger value="spaces" icon={Planet}>
-          Spaces
+        <NavTabPillTrigger value="build" icon={LayersThree01}>
+          Build
         </NavTabPillTrigger>
         <NavTabPillTrigger value="admin" icon={Settings01}>
           Admin
@@ -1847,100 +1858,6 @@ function PeopleAgent() {
             </div>
 
             <NavigationList className="mx-sidebar-side-spacing pt-1">
-              <NavigationListItem
-                icon={Robot}
-                label="Agents"
-                keepHoverOnMoreMenu
-                moreMenu={
-                  <div
-                    className={cn(
-                      "absolute right-2 top-1.5",
-                      "transition-opacity",
-                      "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                      "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                      "has-[[data-state=open]]:opacity-100"
-                    )}
-                  >
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="xs"
-                          icon={Plus}
-                          label="New"
-                          variant="ghost-secondary"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        side="bottom"
-                        align="center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <DropdownMenuLabel label="New agent" />
-                        <DropdownMenuItem icon={File02} label="From scratch" />
-                        <DropdownMenuItem
-                          icon={MagicWand02}
-                          label="From template"
-                          onClick={() => {
-                            setP2View({ kind: "templates" });
-                            setP3View(null);
-                          }}
-                        />
-                        <DropdownMenuItem icon={Brackets} label="From YAML" />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                }
-              />
-              <NavigationListItem
-                icon={PuzzlePiece01}
-                label="Skills"
-                keepHoverOnMoreMenu
-                moreMenu={
-                  <div
-                    className={cn(
-                      "absolute right-2 top-1.5",
-                      "transition-opacity",
-                      "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                      "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                      "has-[[data-state=open]]:opacity-100"
-                    )}
-                  >
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="xs"
-                          icon={Plus}
-                          label="New"
-                          variant="ghost-secondary"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        side="bottom"
-                        align="center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <DropdownMenuLabel label="New skill" />
-                        <DropdownMenuItem
-                          icon={PuzzlePiece01}
-                          label="From scratch"
-                        />
-                        <DropdownMenuItem
-                          icon={FolderOpen}
-                          label="From existing"
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                }
-              />
               <NavigationListItem
                 label="Inbox"
                 icon={Inbox01}
@@ -2445,12 +2362,13 @@ function PeopleAgent() {
         </div>
       )}
 
-      {activeTab === "spaces" && (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex flex-1 items-center justify-center text-muted-foreground">
-            Spaces — TBD
-          </div>
-        </div>
+      {activeTab === "build" && (
+        <BuildNav
+          onNewAgentFromTemplate={() => {
+            setP2View({ kind: "templates" });
+            setP3View(null);
+          }}
+        />
       )}
       {activeTab === "admin" && (
         <div className="flex min-h-0 flex-1 flex-col">

@@ -119,8 +119,18 @@ export interface ConversationListItemProps {
   leadingVisual?: ReactNode;
   /** Icon shown before the title, for lists whose rows are labelled by a category. */
   titleIcon?: React.ComponentType<{ className?: string }>;
+  /**
+   * Content above the title line, for a label the whole row answers to — a chip
+   * saying which list it came from, say.
+   */
+  label?: ReactNode;
   /** Formatted timestamp displayed on the right of the title. */
-  time: string;
+  time?: string;
+  /**
+   * Replaces the timestamp, for rows whose right side carries its own state and
+   * actions rather than when the conversation last moved.
+   */
+  trailing?: ReactNode;
   /** Slot for reply/unread/mention counts — use the ReplySection component. */
   replySection?: ReactNode;
   /** Called when the row is clicked (e.g. to open the thread). */
@@ -136,7 +146,10 @@ export interface ConversationListItemProps {
  * A list row summarising a conversation: title and description, a timestamp,
  * and a leading avatar (direct) or creator portrait (group), replaceable by a
  * leadingVisual, with an optional titleIcon before the title and an optional
- * replySection for reply/unread/mention counts. Use it to render an inbox or
+ * replySection for reply/unread/mention counts. The timestamp gives way to a
+ * trailing node when the right side carries its own state and actions instead,
+ * and a label sits above the title line when the row has to be labelled as a
+ * whole. Use it to render an inbox or
  * activity feed of conversations, grouping rows inside ListGroup so dividers
  * and spacing stay consistent.
  * @summary Conversation summary row for inbox lists.
@@ -148,7 +161,9 @@ export function ConversationListItem({
   creator,
   leadingVisual,
   titleIcon,
+  label,
   time,
+  trailing,
   replySection,
   onClick,
   showFocus = false,
@@ -211,6 +226,7 @@ export function ConversationListItem({
         />
       ) : null}
       <div className="mb-0.5 flex min-w-0 grow flex-col gap-1">
+        {label}
         <div className="heading-sm flex w-full items-center justify-between gap-2 text-foreground">
           <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
             {titleIcon && (
@@ -232,7 +248,7 @@ export function ConversationListItem({
             )}
           </div>
           <div className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
-            <span className="font-mono font-normal">{time}</span>
+            {trailing ?? <span className="font-normal">{time}</span>}
             {unread && (
               <div className="h-2 w-2 flex-shrink-0 rounded-full bg-highlight-500" />
             )}

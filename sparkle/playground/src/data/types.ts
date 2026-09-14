@@ -145,6 +145,11 @@ export interface Conversation {
   messages?: ConversationItem[];
   description?: string;
   spaceId?: string;
+  /**
+   * The trigger whose run opened this conversation. Set only on automated
+   * work, which nothing but a trigger can start.
+   */
+  triggerId?: string;
 }
 
 export interface Space {
@@ -353,6 +358,40 @@ export interface Trigger {
   schedule?: TriggerSchedule;
   /** Set on webhook triggers. */
   webhook?: TriggerWebhook;
+  /** How many times it has fired over the period the table reports on. */
+  runCount: number;
+  /** What those runs cost, in credits. */
+  credits: number;
   createdAt: Date;
   lastRunAt?: Date;
+}
+
+// ── Wake-ups ─────────────────────────────────────────────────────────────────
+// An agent scheduling itself back into a conversation it is already in: "check
+// again at 17:30". A wake-up is always a schedule, never an event, and it never
+// leaves the conversation it was set in — which is why the list that shows them
+// is a list of conversations.
+
+export interface WakeUpSchedule {
+  /** Whether it fires once and is done, or keeps coming back. */
+  kind: "once" | "recurring";
+  /** The schedule in prose, the way the conversation banner reads it. */
+  label: string;
+  nextFireAt: Date;
+}
+
+export interface WakeUp {
+  id: string;
+  /** The conversation it was set in, and the one it will post back into. */
+  conversationId: string;
+  /** The agent that scheduled it, and that the firing re-invokes. */
+  agentId: string;
+  /** Its owner: nobody else can cancel it. */
+  userId: string;
+  /** The short, user-facing why, shown next to the schedule. */
+  reason: string;
+  schedule: WakeUpSchedule;
+  fireCount: number;
+  maxFires: number;
+  createdAt: Date;
 }

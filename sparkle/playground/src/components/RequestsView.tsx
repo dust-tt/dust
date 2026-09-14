@@ -1,38 +1,25 @@
 import {
-  Avatar,
+  Bell01,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
   CheckDouble,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSearchbar,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-  DropdownMenuTrigger,
-  FilterLines,
   ListGroup,
   ListItemSection,
   MessageQuestionCircle,
-  XClose,
+  User01,
 } from "@dust-tt/sparkle";
-import { cn } from "@sparkle/lib/utils";
-import {
-  type ComponentType,
-  Fragment,
-  type ReactNode,
-  useMemo,
-  useState,
-} from "react";
+import { Fragment, useMemo, useState } from "react";
 
 import { getRequestTypeIcon, REQUEST_TYPE_LABELS } from "../data/requests";
-import type { AdminRequest, RequestType } from "../data/types";
-import { getUserById } from "../data/users";
+import {
+  type DateBucket,
+  DATE_BUCKET_ORDER,
+  getDateBucket,
+} from "../data/time";
+import type { AdminRequest } from "../data/types";
 import { EmptyState } from "./EmptyState";
+import { collectUsers, FilterMenu, type FilterSelection } from "./FilterMenu";
 import { getRowDate, RequestListItem } from "./RequestListItem";
 
 /** A request is "done"; the tab that lists the done ones is History. */
@@ -53,47 +40,6 @@ interface RequestsViewProps {
   onRequestClick?: (request: AdminRequest) => void;
 }
 
-type DateBucketKey = "Today" | "Yesterday" | "Last Week" | "Last Month";
-
-const DATE_BUCKET_ORDER: DateBucketKey[] = [
-  "Today",
-  "Yesterday",
-  "Last Week",
-  "Last Month",
-];
-
-/**
- * Only one thing is filtered at a time, so the queue holds a single selection
- * rather than a filter per category.
- */
-type ActiveFilter =
-  | { kind: "type"; value: RequestType }
-  | { kind: "member"; value: string }
-  | null;
-
-// Same buckets as the pod conversation list.
-function getDateBucket(date: Date): DateBucketKey {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const lastWeek = new Date(today);
-  lastWeek.setDate(lastWeek.getDate() - 7);
-
-  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-  if (day.getTime() >= today.getTime()) {
-    return "Today";
-  }
-  if (day.getTime() >= yesterday.getTime()) {
-    return "Yesterday";
-  }
-  if (day.getTime() >= lastWeek.getTime()) {
-    return "Last Week";
-  }
-  return "Last Month";
-}
-
 /**
  * The requests queue. "Pending" is the shared work list — anyone eligible can
  * pick a row up — and "History" is the audit trail of who decided what, and
@@ -109,7 +55,7 @@ export function RequestsView({
   selectedRequestId = null,
   onRequestClick,
 }: RequestsViewProps) {
-  const [filter, setFilter] = useState<ActiveFilter>(null);
+  const [filter, setFilter] = useState<FilterSelection>(null);
 
   const isHistory = activeTab === "history";
 
@@ -179,7 +125,7 @@ export function RequestsView({
   }, [tabRequests, filter, isHistory]);
 
   const bucketedRequests = useMemo(() => {
-    const buckets = new Map<DateBucketKey, AdminRequest[]>();
+    const buckets = new Map<DateBucket, AdminRequest[]>();
     for (const request of filteredRequests) {
       const bucket = getDateBucket(getRowDate(request, isHistory));
       buckets.set(bucket, [...(buckets.get(bucket) ?? []), request]);
@@ -221,28 +167,43 @@ export function RequestsView({
         />
       </ButtonsSwitchList>
 
-      <RequestFilterMenu
-        filter={filter}
-        typeOptions={typeOptions.map((type) => ({
-          value: type,
-          label: REQUEST_TYPE_LABELS[type],
-          icon: getRequestTypeIcon(type),
-        }))}
-        memberOptions={memberOptions}
-        onFilterChange={setFilter}
-      />
+      <div className="ml-auto flex items-center gap-2">
+        {!isHistory && handledRowCount > 0 && (
+          <Button
+            size="sm"
+            variant="outline"
+            icon={CheckDouble}
+            label="Clear handled"
+            tooltip="Remove the requests you just handled from Pending."
+            onClick={onClearHandled}
+          />
+        )}
 
-      {!isHistory && handledRowCount > 0 && (
-        <Button
-          size="sm"
-          variant="outline"
-          icon={CheckDouble}
-          label="Clear handled"
-          tooltip="Remove the requests you just handled from Pending."
-          className="ml-auto"
-          onClick={onClearHandled}
+        <FilterMenu
+          filter={filter}
+          groups={[
+            {
+              kind: "type",
+              label: "Request",
+              icon: Bell01,
+              options: typeOptions.map((type) => ({
+                value: type,
+                label: REQUEST_TYPE_LABELS[type],
+                icon: getRequestTypeIcon(type),
+              })),
+            },
+            {
+              kind: "member",
+              label: "Member",
+              icon: User01,
+              options: memberOptions,
+            },
+          ]}
+          onFilterChange={setFilter}
+          searchName="request-filter-search"
+          searchPlaceholder="Filter by request or member"
         />
-      )}
+      </div>
     </div>
   );
 
@@ -305,178 +266,4 @@ export function RequestsView({
       </div>
     </div>
   );
-}
-
-interface FilterOption {
-  value: string;
-  label: string;
-  icon?: ComponentType<{ className?: string }> | ReactNode;
-}
-
-/**
- * One filter at a time, picked from one menu: a category to drill into, or a
- * search that reaches across every category at once.
- */
-function RequestFilterMenu({
-  filter,
-  typeOptions,
-  memberOptions,
-  onFilterChange,
-}: {
-  filter: ActiveFilter;
-  typeOptions: FilterOption[];
-  memberOptions: FilterOption[];
-  onFilterChange: (filter: ActiveFilter) => void;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState("");
-
-  const query = search.trim().toLowerCase();
-  const matches = (options: FilterOption[]) =>
-    options.filter((option) => option.label.toLowerCase().includes(query));
-  const matchingTypes = query ? matches(typeOptions) : [];
-  const matchingMembers = query ? matches(memberOptions) : [];
-
-  const activeLabel = filter
-    ? (filter.kind === "type" ? typeOptions : memberOptions).find(
-        (option) => option.value === filter.value
-      )?.label
-    : undefined;
-
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (!open) {
-      setSearch("");
-    }
-  };
-
-  const select = (next: ActiveFilter) => {
-    onFilterChange(next);
-    handleOpenChange(false);
-  };
-
-  const renderOptions = (kind: "type" | "member", options: FilterOption[]) =>
-    options.map((option) => (
-      <DropdownMenuItem
-        key={`${kind}-${option.value}`}
-        label={option.label}
-        icon={option.icon}
-        onClick={() =>
-          select(
-            kind === "type"
-              ? { kind, value: option.value as RequestType }
-              : { kind, value: option.value }
-          )
-        }
-      />
-    ));
-
-  return (
-    <DropdownMenu open={isOpen} onOpenChange={handleOpenChange}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          size="sm"
-          variant="outline"
-          icon={FilterLines}
-          label={activeLabel ?? "Filter"}
-          isSelect
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="start"
-        // The menu is as tall as what it holds, up to a cap the search scrolls
-        // within, rather than the fixed height a header otherwise imposes.
-        className="h-auto max-h-96 w-auto min-w-[240px] max-w-[320px] xs:h-auto"
-        dropdownHeaders={
-          <>
-            {filter && (
-              <>
-                <DropdownMenuItem
-                  icon={XClose}
-                  label="Clear filtering"
-                  onClick={() => select(null)}
-                />
-                <DropdownMenuSeparator />
-              </>
-            )}
-            <DropdownMenuSearchbar
-              autoFocus
-              name="request-filter-search"
-              placeholder="Filter by type or member"
-              value={search}
-              onChange={setSearch}
-            />
-          </>
-        }
-      >
-        {query ? (
-          <>
-            {matchingTypes.length > 0 && (
-              <>
-                <DropdownMenuLabel label="Type" />
-                {renderOptions("type", matchingTypes)}
-              </>
-            )}
-            {matchingMembers.length > 0 && (
-              <>
-                <DropdownMenuLabel label="Member" />
-                {renderOptions("member", matchingMembers)}
-              </>
-            )}
-            {matchingTypes.length === 0 && matchingMembers.length === 0 && (
-              <div className="flex h-16 items-center justify-center px-3 text-sm text-muted-foreground">
-                No match
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger label="Type" />
-              <DropdownMenuSubContent>
-                {renderOptions("type", typeOptions)}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger label="Member" />
-              <DropdownMenuSubContent>
-                {renderOptions("member", memberOptions)}
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-/** Dedupe a list of user ids into filter options, sorted by name. */
-function collectUsers(ids: (string | undefined)[]): FilterOption[] {
-  const seen = new Set<string>();
-  const options: FilterOption[] = [];
-
-  for (const id of ids) {
-    if (!id || seen.has(id)) {
-      continue;
-    }
-    seen.add(id);
-    const user = getUserById(id);
-    if (!user) {
-      continue;
-    }
-    options.push({
-      value: id,
-      label: user.fullName,
-      icon: (
-        <Avatar
-          name={user.fullName}
-          visual={user.portrait}
-          size="xs"
-          isRounded
-        />
-      ),
-    });
-  }
-
-  return options.sort((a, b) => a.label.localeCompare(b.label));
 }

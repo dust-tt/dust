@@ -37,6 +37,7 @@ import {
   MagicWand02,
   MessageChatSquare,
   ReplySection,
+  Robot,
   SearchInput,
   SearchInputWithPopover,
   Sheet,
@@ -51,10 +52,9 @@ import {
   TypingAnimation,
   Umbrella03,
   Upload01,
+  User01,
   Users01,
   XClose,
-  Zap,
-  ZapOff,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import { cn } from "@sparkle/lib/utils";
@@ -83,11 +83,13 @@ import {
   isTriggeredConversation,
 } from "../data/myPod";
 import { formatRowTime } from "../data/time";
+import { getTriggerById } from "../data/triggers";
 import type {
   Agent,
   Conversation,
   DataSource,
   Space,
+  Trigger,
   User,
 } from "../data/types";
 import { getUserById } from "../data/users";
@@ -96,6 +98,13 @@ import {
   type PodTabCustomizationItem,
 } from "./PodCustomizationSection";
 import { EmptyState } from "./EmptyState";
+import {
+  collectAgents,
+  collectUsers,
+  FilterMenu,
+  type FilterGroup,
+  type FilterSelection,
+} from "./FilterMenu";
 import { DataTable } from "./DataTableDnd";
 import { FilePreviewPanel } from "./FilePreviewPanel";
 import { FilesBrowser } from "./FilesBrowser";
@@ -107,6 +116,7 @@ import {
 import { InputBar, type InputBarTaskCommand } from "./InputBar";
 import { SuggestionBox } from "./SuggestionBox";
 import { TaskItem } from "./TaskItem";
+import { TriggerRunAvatar } from "./TriggerRunAvatar";
 import { TodoInputBar } from "./TodoInputBar";
 
 interface GroupConversationViewProps {
@@ -139,6 +149,8 @@ interface GroupConversationViewProps {
   showComposer?: boolean;
   hideConversationFilters?: boolean;
   currentUserId?: string;
+  /** The triggers behind automated rows, which name their agent and type. */
+  triggers?: Trigger[];
   podTabCustomization?: {
     tabs: PodTabCustomizationItem[];
     addableFiles: DataSource[];
@@ -362,13 +374,19 @@ function generateConversationsWithDates(
       createdAt.getDate() - Math.floor(seededRandom(rowSeed, 5) * 5)
     );
 
+    // A run is named by the trigger that started it, so repeats of the same
+    // automation keep that name instead of borrowing a human thread's.
+    const isRun = baseConversation.triggerId !== undefined;
+
     generated.push({
       ...baseConversation,
       id: `${baseConversation.id}-${i}`,
       updatedAt,
       createdAt,
-      title,
-      description: descriptionTemplate.replace("{title}", title.toLowerCase()),
+      title: isRun ? baseConversation.title : title,
+      description: isRun
+        ? baseConversation.description
+        : descriptionTemplate.replace("{title}", title.toLowerCase()),
     });
   }
 
@@ -1325,6 +1343,7 @@ export function GroupConversationView({
   showComposer = true,
   hideConversationFilters = false,
   currentUserId,
+  triggers = [],
   podTabCustomization,
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
@@ -1338,6 +1357,8 @@ export function GroupConversationView({
   const [goodToKnowFilter, setGoodToKnowFilter] = useState<
     "all" | "shared" | "mine"
   >("all");
+  const [conversationFilter, setConversationFilter] =
+    useState<FilterSelection>(null);
   const [todoSearchText, setTodoSearchText] = useState("");
   const [todoReassignSearchText, setTodoReassignSearchText] = useState("");
   const [todoSuggestionStatus, setTodoSuggestionStatus] =
@@ -1518,6 +1539,39 @@ export function GroupConversationView({
     users,
   ]);
 
+  // The conversations the tab holds before the filter narrows them, so the
+  // options never drop out of the menu they were picked from.
+  const filterSourceConversations =
+    podVariant === "personal"
+      ? myPodEnrichedConversations
+      : expandedConversations;
+
+  const conversationFilterGroups = useMemo(
+    (): FilterGroup[] => [
+      {
+        kind: "member",
+        label: "Member",
+        icon: User01,
+        options: collectUsers(
+          filterSourceConversations.flatMap(
+            (conversation) => conversation.userParticipants
+          )
+        ),
+      },
+      {
+        kind: "agent",
+        label: "Agent",
+        icon: Robot,
+        options: collectAgents(
+          filterSourceConversations.flatMap(
+            (conversation) => conversation.agentParticipants
+          )
+        ),
+      },
+    ],
+    [filterSourceConversations]
+  );
+
   const visibleConversations = useMemo(() => {
     const source =
       podVariant === "personal"
@@ -1525,6 +1579,15 @@ export function GroupConversationView({
         : expandedConversations;
 
     return source.filter((conversation) => {
+      if (conversationFilter) {
+        const matches =
+          conversationFilter.kind === "member"
+            ? conversation.userParticipants.includes(conversationFilter.value)
+            : conversation.agentParticipants.includes(conversationFilter.value);
+        if (!matches) {
+          return false;
+        }
+      }
       if (podVariant === "personal" && !hideConversationFilters) {
         if (isTriggeredConversation(conversation)) {
           return false;
@@ -1551,6 +1614,7 @@ export function GroupConversationView({
       return true;
     });
   }, [
+    conversationFilter,
     currentUserId,
     expandedConversations,
     goodToKnowFilter,
@@ -1805,6 +1869,7 @@ export function GroupConversationView({
         replyCount: number;
         time: string;
         unread: boolean;
+        trigger?: Trigger;
       }
     >();
 
@@ -1832,11 +1897,14 @@ export function GroupConversationView({
         replyCount,
         time: formatRowTime(conversation.updatedAt),
         unread: seededRandom(rowSeed, 3) < unreadOdds,
+        trigger: conversation.triggerId
+          ? getTriggerById(triggers, conversation.triggerId)
+          : undefined,
       });
     });
 
     return itemMap;
-  }, [agents, space.id, users, visibleConversations]);
+  }, [agents, space.id, triggers, users, visibleConversations]);
 
   const getAutoCheckRationales = (
     summary: OngoingSummary,
@@ -3214,7 +3282,7 @@ export function GroupConversationView({
   const showMineGroupAll =
     !hideConversationFilters &&
     (podVariant === "personal" || spaceMemberIds.length > 1);
-  const showTriggeredToggle =
+  const canHideTriggered =
     !hideConversationFilters && podVariant !== "personal";
 
   return (
@@ -3250,58 +3318,40 @@ export function GroupConversationView({
           )}
           {hasHistory && (
             <div className="flex w-full flex-wrap items-center gap-2">
-              {(showMineGroupAll || showTriggeredToggle) && (
+              {showMineGroupAll && (
                 <div className="flex flex-none flex-nowrap items-center gap-2">
-                  {showMineGroupAll && (
-                    <ButtonsSwitchList
-                      defaultValue={goodToKnowFilter}
-                      onValueChange={(value) => {
-                        if (
-                          value === "all" ||
-                          value === "shared" ||
-                          value === "mine"
-                        ) {
-                          setGoodToKnowFilter(value);
-                        }
-                      }}
-                    >
-                      <ButtonsSwitch
-                        value="mine"
-                        label="Mine"
-                        tooltip="Conversations where you have sent a message."
-                      />
-                      <ButtonsSwitch
-                        value="shared"
-                        label="Group"
-                        tooltip="Conversations with more than one person"
-                      />
-                      <ButtonsSwitch
-                        value="all"
-                        label="All"
-                        tooltip="Every conversation in this Pod."
-                      />
-                    </ButtonsSwitchList>
-                  )}
-                  {showTriggeredToggle && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      icon={hideTriggeredConversations ? ZapOff : Zap}
-                      tooltip={
-                        hideTriggeredConversations
-                          ? "Show triggered"
-                          : "Hide triggered"
+                  <ButtonsSwitchList
+                    defaultValue={goodToKnowFilter}
+                    onValueChange={(value) => {
+                      if (
+                        value === "all" ||
+                        value === "shared" ||
+                        value === "mine"
+                      ) {
+                        setGoodToKnowFilter(value);
                       }
-                      className="shrink-0"
-                      onClick={() =>
-                        setHideTriggeredConversations((current) => !current)
-                      }
+                    }}
+                  >
+                    <ButtonsSwitch
+                      value="mine"
+                      label="Mine"
+                      tooltip="Conversations where you have sent a message."
                     />
-                  )}
+                    <ButtonsSwitch
+                      value="shared"
+                      label="Group"
+                      tooltip="Conversations with more than one person"
+                    />
+                    <ButtonsSwitch
+                      value="all"
+                      label="All"
+                      tooltip="Every conversation in this Pod."
+                    />
+                  </ButtonsSwitchList>
                 </div>
               )}
               <div className="flex min-w-[20rem] flex-1 items-center gap-2">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 max-w-80 flex-1">
                   <SearchInputWithPopover
                     name="conversation-search"
                     value={searchText}
@@ -3327,12 +3377,31 @@ export function GroupConversationView({
                     )}
                   />
                 </div>
+                <FilterMenu
+                  filter={conversationFilter}
+                  groups={conversationFilterGroups}
+                  onFilterChange={setConversationFilter}
+                  toggles={
+                    canHideTriggered
+                      ? [
+                          {
+                            id: "hide-triggered",
+                            label: "Hide triggered",
+                            checked: hideTriggeredConversations,
+                            onChange: setHideTriggeredConversations,
+                          },
+                        ]
+                      : []
+                  }
+                  searchName="conversation-filter-search"
+                  searchPlaceholder="Filter by member or agent"
+                />
                 <Button
                   size="sm"
                   variant="outline"
                   icon={CheckDouble}
                   label="Mark all as read"
-                  className="shrink-0"
+                  className="ml-auto shrink-0"
                 />
               </div>
             </div>
@@ -3370,6 +3439,12 @@ export function GroupConversationView({
                             id: baseConversationId,
                           };
 
+                          // The row that opened what is on screen, rather than
+                          // every row of that conversation: the same thread can
+                          // appear more than once in this list.
+                          const isSelected =
+                            selectedConversationRow?.rowId === conversation.id;
+
                           return (
                             <div
                               id={getConversationRowDomId(conversation.id)}
@@ -3378,7 +3453,17 @@ export function GroupConversationView({
                               <ConversationListItem
                                 conversation={conversation}
                                 creator={listItem.creator || undefined}
-                                className="border-t-0 border-b-0 rounded-2xl hover:bg-hover"
+                                leadingVisual={
+                                  listItem.trigger ? (
+                                    <TriggerRunAvatar
+                                      trigger={listItem.trigger}
+                                    />
+                                  ) : undefined
+                                }
+                                className={cn(
+                                  "border-t-0 border-b-0 rounded-2xl hover:bg-hover",
+                                  isSelected && "bg-highlight-50"
+                                )}
                                 time={listItem.time}
                                 unread={listItem.unread}
                                 showFocus={
@@ -3393,9 +3478,9 @@ export function GroupConversationView({
                                         : 0
                                     }
                                     mentionCount={
-                                      listItem.unread
-                                        ? listItem.mentionCount
-                                        : 0
+                                      listItem.trigger || !listItem.unread
+                                        ? 0
+                                        : listItem.mentionCount
                                     }
                                     avatars={listItem.avatarProps}
                                     lastMessageBy={
@@ -3540,7 +3625,7 @@ export function GroupConversationView({
                   value={todoSearchText}
                   onChange={setTodoSearchText}
                   placeholder="Search tasks..."
-                  className="w-full"
+                  className="w-full min-w-0 max-w-80"
                 />
               </div>
               {hasDisplayedTodoItems ? (
@@ -4079,7 +4164,7 @@ export function GroupConversationView({
                   value={membersSearchText}
                   onChange={setMembersSearchText}
                   placeholder="Search members..."
-                  className="w-full"
+                  className="w-full min-w-0 max-w-80"
                 />
                 <DataTable
                   columns={memberColumns}

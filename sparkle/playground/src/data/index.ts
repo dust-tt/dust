@@ -13,3 +13,4 @@ export * from "./spaceMembers";
 export * from "./time";
 export * from "./triggers";
 export * from "./users";
+export * from "./wakeups";

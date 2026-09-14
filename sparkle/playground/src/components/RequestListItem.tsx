@@ -1,5 +1,6 @@
 import { Avatar, ConversationListItem } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
+import type { ReactNode } from "react";
 
 import {
   getBeneficiary,
@@ -102,6 +103,10 @@ interface RequestListItemProps {
   isHistory?: boolean;
   isSelected?: boolean;
   currentUserId?: string;
+  /** Sits above the title line, for lists that label their rows with a type. */
+  label?: ReactNode;
+  /** A request you have read drops its unread dot, as a conversation does. */
+  isRead?: boolean;
   onClick?: () => void;
 }
 
@@ -115,6 +120,8 @@ export function RequestListItem({
   isHistory = false,
   isSelected = false,
   currentUserId,
+  label,
+  isRead = false,
   onClick,
 }: RequestListItemProps) {
   const requester = getUserById(request.requesterId);
@@ -151,7 +158,8 @@ export function RequestListItem({
           />
         ) : undefined
       }
-      unread={isPending}
+      unread={isPending && !isRead}
+      label={label}
       time={formatRowTime(date)}
       className={cn(
         "px-3 rounded-2xl border-transparent!",

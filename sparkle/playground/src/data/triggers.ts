@@ -2,7 +2,12 @@ import { Clock, SyncCloud02 } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 import { getPlatformLogo } from "./requests";
-import type { Trigger, TriggerStatus } from "./types";
+import type {
+  Conversation,
+  Trigger,
+  TriggerKind,
+  TriggerStatus,
+} from "./types";
 
 // The triggers a member owns: the schedules and webhooks that run an agent on
 // their behalf. The product manages these from the Automations dialog, and the
@@ -20,6 +25,29 @@ export const TRIGGER_POOL_LABELS: Record<Trigger["pool"], string> = {
   member: "Member",
   workspace: "Workspace",
 };
+
+/**
+ * What kind of trigger fired, said the way a reader thinks of it: a clock, or
+ * something that happened elsewhere. Wherever a run shows its type — the
+ * Automations list, the Inbox, a Pod's conversations — it uses these words.
+ */
+export const TRIGGER_KIND_LABELS: Record<TriggerKind, string> = {
+  schedule: "Scheduled",
+  webhook: "Event",
+};
+
+/** Credits as the table shows them: short enough to sit in a narrow column. */
+export function formatCreditsCompact(credits: number): string {
+  return credits.toLocaleString("en-US", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  });
+}
+
+/** Credits in full, for the tooltip that spells out what the column rounded. */
+export function formatCredits(credits: number): string {
+  return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
+}
 
 /** A clock stands for every schedule; a webhook wears its platform's logo. */
 export function getTriggerIcon(
@@ -46,6 +74,42 @@ export function getTriggerDescription(trigger: Trigger): string {
   return event ? `Triggered by ${event} events ${on}` : `Triggered ${on}`;
 }
 
+export function getTriggerById(
+  triggers: Trigger[],
+  triggerId: string
+): Trigger | undefined {
+  return triggers.find((trigger) => trigger.id === triggerId);
+}
+
+/**
+ * The conversations automated work is made of: one per trigger that has
+ * already fired. A run is an agent talking to nobody, so it carries no human
+ * participant — its trigger is what says who ran and why.
+ */
+export function createTriggeredConversations(
+  triggers: Trigger[]
+): Conversation[] {
+  return triggers.flatMap((trigger) => {
+    if (!trigger.lastRunAt) {
+      return [];
+    }
+
+    return [
+      {
+        id: `trigger-run-${trigger.id}`,
+        title: trigger.name,
+        description: getTriggerDescription(trigger),
+        createdAt: trigger.lastRunAt,
+        updatedAt: trigger.lastRunAt,
+        userParticipants: [],
+        agentParticipants: [trigger.agentId],
+        spaceId: trigger.spaceId,
+        triggerId: trigger.id,
+      },
+    ];
+  });
+}
+
 function hoursAgo(hours: number): Date {
   return new Date(Date.now() - hours * 60 * 60 * 1000);
 }
@@ -55,11 +119,31 @@ function daysAgo(days: number): Date {
 }
 
 /**
+ * What each trigger has done over the period the Automations table reports on.
+ * Kept apart from the catalog below so a trigger's definition stays about what
+ * makes it fire rather than what it has spent.
+ */
+const TRIGGER_USAGE: Record<string, { runCount: number; credits: number }> = {
+  "trigger-1": { runCount: 30, credits: 672 },
+  "trigger-2": { runCount: 22, credits: 436 },
+  "trigger-3": { runCount: 148, credits: 2410 },
+  "trigger-4": { runCount: 96, credits: 1840 },
+  "trigger-5": { runCount: 4, credits: 210 },
+  "trigger-6": { runCount: 61, credits: 944 },
+  "trigger-7": { runCount: 1, credits: 46 },
+  "trigger-8": { runCount: 0, credits: 0 },
+  "trigger-9": { runCount: 12, credits: 128 },
+  "trigger-10": { runCount: 0, credits: 0 },
+  "trigger-11": { runCount: 8, credits: 96 },
+  "trigger-12": { runCount: 0, credits: 0 },
+};
+
+/**
  * The catalog of triggers, all owned by whoever is looking at the playground so
  * the list is never empty, with timestamps relative to now.
  */
 export function createMockTriggers(editorId: string): Trigger[] {
-  return [
+  const triggers: Omit<Trigger, "runCount" | "credits">[] = [
     {
       id: "trigger-1",
       name: "Morning news digest",
@@ -264,4 +348,9 @@ export function createMockTriggers(editorId: string): Trigger[] {
       lastRunAt: daysAgo(46),
     },
   ];
+
+  return triggers.map((trigger) => ({
+    ...trigger,
+    ...(TRIGGER_USAGE[trigger.id] ?? { runCount: 0, credits: 0 }),
+  }));
 }

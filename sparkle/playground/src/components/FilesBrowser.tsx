@@ -478,42 +478,44 @@ export function FilesBrowser({
 
   return (
     <div className="flex min-h-0 flex-col gap-3">
-      {/* Toolbar: search stretches, view selection, Create on the right. */}
+      {/* Toolbar: search on the left, view selection and Create on the right. */}
       <div className="flex items-center gap-2">
         <SearchInput
           name="files-search"
           value={searchText}
           onChange={setSearchText}
           placeholder="Search files..."
-          className="flex-1"
+          className="w-full min-w-0 max-w-80"
         />
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              icon={viewMode === "list" ? CheckDone01 : List}
-              isSelect
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuRadioGroup
-              value={viewMode}
-              onValueChange={(value) => {
-                if (value === "list" || value === "grid") {
-                  setViewMode(value);
-                }
-              }}
-            >
-              <DropdownMenuRadioItem
-                value="list"
-                label="List"
-                icon={CheckDone01}
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                icon={viewMode === "list" ? CheckDone01 : List}
+                isSelect
               />
-              <DropdownMenuRadioItem value="grid" label="Grid" icon={List} />
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <CreateFilesMenu />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuRadioGroup
+                value={viewMode}
+                onValueChange={(value) => {
+                  if (value === "list" || value === "grid") {
+                    setViewMode(value);
+                  }
+                }}
+              >
+                <DropdownMenuRadioItem
+                  value="list"
+                  label="List"
+                  icon={CheckDone01}
+                />
+                <DropdownMenuRadioItem value="grid" label="Grid" icon={List} />
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <CreateFilesMenu />
+        </div>
       </div>
 
       {foldersEnabled && !isSearchActive && currentFolderId !== null && (

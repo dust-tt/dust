@@ -2,11 +2,11 @@ import {
   Archive,
   Avatar,
   Bell01,
-  Brackets,
   Breadcrumbs,
   Button,
   CheckDone01,
   ChevronDown,
+  Clock,
   Cube01,
   CubeOutline,
   Dialog,
@@ -27,15 +27,14 @@ import {
   Edit04,
   Eye,
   File02,
-  FolderOpen,
   Heart,
   Icon,
   Inbox01,
   IntersectDust,
+  LayersThree01,
   Lightbulb04,
   Link01,
   LogOut01,
-  MagicWand02,
   MessageChatSquare,
   MessageCircle01,
   MessageLightning01,
@@ -48,13 +47,10 @@ import {
   NavTabPill,
   NavTabPillList,
   NavTabPillTrigger,
-  Planet,
   Plus,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  PuzzlePiece01,
-  Robot,
   ScrollArea,
   ScrollBar,
   SearchInput,
@@ -79,7 +75,7 @@ import {
 } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
-import { AutomationsManageView } from "../components/AutomationsManageView";
+import { BuildNav } from "../components/BuildNav";
 import {
   ConversationActions,
   conversationFilesFor,
@@ -93,6 +89,7 @@ import {
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
+import { InboxAltView } from "../components/InboxAltView";
 import { InboxView } from "../components/InboxView";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import {
@@ -112,6 +109,8 @@ import { ProfilePanel } from "../components/Profile";
 import { RequestDetailView } from "../components/RequestDetailView";
 import type { RequestsTab } from "../components/RequestsView";
 import { RequestsView } from "../components/RequestsView";
+import { TriggersManageView } from "../components/TriggersManageView";
+import { WakeUpsManageView } from "../components/WakeUpsManageView";
 import {
   type AdminRequest,
   type Agent,
@@ -119,7 +118,9 @@ import {
   createConversationsWithMessages,
   createMockRequests,
   createMockTriggers,
+  createMockWakeUps,
   createSpace,
+  createTriggeredConversations,
   type DataSource,
   type DataSourceFileType,
   getAgentById,
@@ -136,7 +137,9 @@ import {
   type RequestOutcome,
   type Space,
   type Trigger,
+  type TriggerPool,
   type User,
+  type WakeUp,
 } from "../data";
 import {
   getDataSourceIcon,
@@ -163,6 +166,12 @@ type Collaborator =
   | { type: "person"; data: User };
 
 type SpaceNotificationPreference = "never" | "mentions" | "all";
+
+/**
+ * What Automated work shows: the runs themselves, the triggers that start them,
+ * or the wake-ups agents set for themselves inside a conversation.
+ */
+type AutomatedWorkTab = "conversations" | "triggers" | "wakeups";
 
 type PodTabsState = {
   mainTabOrder: string[];
@@ -235,10 +244,16 @@ function Inbox() {
     setStarredSpaceIds(
       new Set(randomSpaces.slice(0, 2).map((space) => space.id))
     );
-    setConversationsWithMessages(createConversationsWithMessages(u.id));
-    // Every trigger belongs to whoever opened the playground, since the
-    // Manage tab only ever lists the ones you own.
-    setTriggers(createMockTriggers(u.id));
+    const conversations = createConversationsWithMessages(u.id);
+    setConversationsWithMessages(conversations);
+    // Every trigger and wake-up belongs to whoever opened the playground, since
+    // the Manage tabs only ever list the ones you own.
+    const userTriggers = createMockTriggers(u.id);
+    setTriggers(userTriggers);
+    setTriggeredConversations(createTriggeredConversations(userTriggers));
+    setWakeUps(
+      createMockWakeUps([...conversations, ...mockConversations], u.id)
+    );
   }, []);
 
   // ── Navigation state ──────────────────────────────────────────────────────
@@ -246,6 +261,7 @@ function Inbox() {
   type P2View =
     | { kind: "welcome" }
     | { kind: "inbox" }
+    | { kind: "inboxAlt" }
     | { kind: "requests" }
     | { kind: "conversations" }
     | { kind: "automations" }
@@ -272,10 +288,21 @@ function Inbox() {
   const [spaceActiveTab, setSpaceActiveTab] = useState("conversations");
   const [requestsActiveTab, setRequestsActiveTab] =
     useState<RequestsTab>("pending");
-  const [automatedWorkTab, setAutomatedWorkTab] = useState<
-    "conversations" | "manage"
-  >("conversations");
+  const [automatedWorkTab, setAutomatedWorkTab] =
+    useState<AutomatedWorkTab>("conversations");
   const [triggers, setTriggers] = useState<Trigger[]>([]);
+  // A run that already happened is history: switching its trigger off or moving
+  // it to another pool does not rewrite it. Keeping these conversations in
+  // state rather than deriving them from `triggers` is what stops a toggle from
+  // rebuilding every list that shows a conversation.
+  const [triggeredConversations, setTriggeredConversations] = useState<
+    Conversation[]
+  >([]);
+  const [wakeUps, setWakeUps] = useState<WakeUp[]>([]);
+  // The inbox rows you have read, conversations and requests alike. Ones read
+  // during a visit to the Inbox keep their place there; the next visit starts
+  // without them.
+  const [readRowIds, setReadRowIds] = useState<Set<string>>(new Set());
   const [requests, setRequests] = useState<AdminRequest[]>(createMockRequests);
   // Requests handled since the list was last refreshed. They stay in Pending,
   // showing their outcome, instead of vanishing under the cursor.
@@ -298,7 +325,7 @@ function Inbox() {
   } | null>(null);
 
   // ── Sidebar UI state ──────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
+  const [activeTab, setActiveTab] = useState<"chat" | "build" | "admin">(
     "chat"
   );
   const [searchText, setSearchText] = useState("");
@@ -359,9 +386,15 @@ function Inbox() {
   }, [spaces, lastCreatedSpaceId]);
 
   // ── Derived data ──────────────────────────────────────────────────────────
+  // Automated work is nothing but the runs of your triggers, so it joins the
+  // conversations from the trigger list rather than from a coin flip.
   const allConversations = useMemo(
-    () => [...conversationsWithMessages, ...mockConversations],
-    [conversationsWithMessages]
+    () => [
+      ...conversationsWithMessages,
+      ...mockConversations,
+      ...triggeredConversations,
+    ],
+    [conversationsWithMessages, triggeredConversations]
   );
 
   const unreadCount = useMemo(() => {
@@ -493,6 +526,10 @@ function Inbox() {
     setStickyRequestIds(new Set());
   }, []);
 
+  const handleRowsRead = useCallback((rowIds: string[]) => {
+    setReadRowIds((prev) => new Set([...prev, ...rowIds]));
+  }, []);
+
   const handleToggleTrigger = useCallback(
     (triggerId: string, enabled: boolean) => {
       setTriggers((prev) =>
@@ -505,6 +542,22 @@ function Inbox() {
     },
     []
   );
+
+  const handleSetTriggerPool = useCallback(
+    (triggerId: string, pool: TriggerPool) => {
+      setTriggers((prev) =>
+        prev.map((trigger) =>
+          trigger.id === triggerId ? { ...trigger, pool } : trigger
+        )
+      );
+    },
+    []
+  );
+
+  // A wake-up has no off switch: dismissing it is the end of it.
+  const handleDismissWakeUp = useCallback((wakeUpId: string) => {
+    setWakeUps((prev) => prev.filter((wakeUp) => wakeUp.id !== wakeUpId));
+  }, []);
 
   // ── Pod context & tab state ───────────────────────────────────────────────
   const podContext = useMemo(
@@ -1099,6 +1152,7 @@ function Inbox() {
   // ── P2 content ────────────────────────────────────────────────────────────
   const p2Label = (() => {
     if (p2View.kind === "inbox") return "Inbox";
+    if (p2View.kind === "inboxAlt") return "Inbox Alt";
     if (p2View.kind === "requests") return "Requests";
     if (p2View.kind === "conversations") return "Conversations";
     if (p2View.kind === "automations") return "Automated work";
@@ -1120,6 +1174,7 @@ function Inbox() {
           users={mockUsers}
           agents={mockAgents}
           requests={requests}
+          triggers={triggers}
           currentUserId={user.id}
           personalSectionLabel="Conversations"
           selectedConversationId={
@@ -1128,6 +1183,8 @@ function Inbox() {
           selectedRequestId={
             p3View?.kind === "request" ? p3View.requestId : null
           }
+          readRowIds={readRowIds}
+          onRowsRead={handleRowsRead}
           onConversationClick={(conversation) => {
             setP3View({
               kind: "conversation",
@@ -1158,6 +1215,35 @@ function Inbox() {
           onAutomationsClick={() => {
             setP2View({ kind: "automations" });
             setP3View(null);
+            setP4View(null);
+          }}
+        />
+      );
+    if (p2View.kind === "inboxAlt")
+      return (
+        <InboxAltView
+          spaces={spaces}
+          conversations={allConversations}
+          requests={requests}
+          triggers={triggers}
+          currentUserId={user.id}
+          selectedConversationId={
+            p3View?.kind === "conversation" ? p3View.conversationId : null
+          }
+          selectedRequestId={
+            p3View?.kind === "request" ? p3View.requestId : null
+          }
+          readRowIds={readRowIds}
+          onRowsRead={handleRowsRead}
+          onConversationClick={(conversation) => {
+            setP3View({
+              kind: "conversation",
+              conversationId: conversation.id,
+            });
+            setP4View(null);
+          }}
+          onRequestClick={(request) => {
+            setP3View({ kind: "request", requestId: request.id });
             setP4View(null);
           }}
         />
@@ -1202,14 +1288,33 @@ function Inbox() {
           }}
         />
       );
-    if (p2View.kind === "automations")
-      return automatedWorkTab === "manage" ? (
-        <AutomationsManageView
-          triggers={triggers}
-          currentUserId={user.id}
-          onToggleTrigger={handleToggleTrigger}
-        />
-      ) : (
+    if (p2View.kind === "automations") {
+      if (automatedWorkTab === "triggers")
+        return (
+          <TriggersManageView
+            triggers={triggers}
+            currentUserId={user.id}
+            onToggleTrigger={handleToggleTrigger}
+            onSetTriggerPool={handleSetTriggerPool}
+          />
+        );
+      if (automatedWorkTab === "wakeups")
+        return (
+          <WakeUpsManageView
+            wakeUps={wakeUps}
+            conversations={allConversations}
+            currentUserId={user.id}
+            onDismissWakeUp={handleDismissWakeUp}
+            onConversationClick={(conversation) => {
+              setP3View({
+                kind: "conversation",
+                conversationId: conversation.id,
+              });
+              setP4View(null);
+            }}
+          />
+        );
+      return (
         <GroupConversationView
           space={MY_POD_SPACE}
           conversations={allConversations.filter(isTriggeredConversation)}
@@ -1227,11 +1332,13 @@ function Inbox() {
           showComposer={false}
           hideConversationFilters
           currentUserId={user.id}
+          triggers={triggers}
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
           }
         />
       );
+    }
     if (podContext)
       return (
         <GroupConversationView
@@ -1585,6 +1692,14 @@ function Inbox() {
           hasLighterFont
         />
       );
+    if (p2View.kind === "inboxAlt")
+      return (
+        <Breadcrumbs
+          items={[{ label: "Inbox Alt", icon: LayersThree01 }]}
+          size="sm"
+          hasLighterFont
+        />
+      );
     if (p2View.kind === "requests")
       return (
         <Breadcrumbs
@@ -1606,23 +1721,30 @@ function Inbox() {
         <NavTabPill
           value={automatedWorkTab}
           onValueChange={(value) =>
-            setAutomatedWorkTab(value as "conversations" | "manage")
+            setAutomatedWorkTab(value as AutomatedWorkTab)
           }
         >
           <NavTabPillList>
             <NavTabPillTrigger
               value="conversations"
               icon={MessageLightning01}
-              aria-label="Conversations"
+              aria-label="Triggered Conversations"
             >
-              Conversations
+              Triggered Conversations
             </NavTabPillTrigger>
             <NavTabPillTrigger
-              value="manage"
+              value="triggers"
               icon={Zap}
-              aria-label="Manage Automations"
+              aria-label="Manage Triggers"
             >
-              Manage Automations
+              Manage Triggers
+            </NavTabPillTrigger>
+            <NavTabPillTrigger
+              value="wakeups"
+              icon={Clock}
+              aria-label="Planned Wake-ups"
+            >
+              Planned Wake-ups
             </NavTabPillTrigger>
           </NavTabPillList>
         </NavTabPill>
@@ -1687,14 +1809,14 @@ function Inbox() {
   const navTopBar = (
     <NavTabPill
       value={activeTab}
-      onValueChange={(v) => setActiveTab(v as "chat" | "spaces" | "admin")}
+      onValueChange={(v) => setActiveTab(v as "chat" | "build" | "admin")}
     >
       <NavTabPillList>
         <NavTabPillTrigger value="chat" icon={IntersectDust}>
           Work
         </NavTabPillTrigger>
-        <NavTabPillTrigger value="spaces" icon={Planet}>
-          Spaces
+        <NavTabPillTrigger value="build" icon={LayersThree01}>
+          Build
         </NavTabPillTrigger>
         <NavTabPillTrigger value="admin" icon={Settings01}>
           Admin
@@ -1737,106 +1859,22 @@ function Inbox() {
 
             <NavigationList className="mx-sidebar-side-spacing pt-1">
               <NavigationListItem
-                icon={Robot}
-                label="Agents"
-                keepHoverOnMoreMenu
-                moreMenu={
-                  <div
-                    className={cn(
-                      "absolute right-2 top-1.5",
-                      "transition-opacity",
-                      "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                      "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                      "has-[[data-state=open]]:opacity-100"
-                    )}
-                  >
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="xs"
-                          icon={Plus}
-                          label="New"
-                          variant="ghost-secondary"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        side="bottom"
-                        align="center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <DropdownMenuLabel label="New agent" />
-                        <DropdownMenuItem icon={File02} label="From scratch" />
-                        <DropdownMenuItem
-                          icon={MagicWand02}
-                          label="From template"
-                          onClick={() => {
-                            setP2View({ kind: "templates" });
-                            setP3View(null);
-                          }}
-                        />
-                        <DropdownMenuItem icon={Brackets} label="From YAML" />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                }
-              />
-              <NavigationListItem
-                icon={PuzzlePiece01}
-                label="Skills"
-                keepHoverOnMoreMenu
-                moreMenu={
-                  <div
-                    className={cn(
-                      "absolute right-2 top-1.5",
-                      "transition-opacity",
-                      "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                      "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                      "has-[[data-state=open]]:opacity-100"
-                    )}
-                  >
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="xs"
-                          icon={Plus}
-                          label="New"
-                          variant="ghost-secondary"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        side="bottom"
-                        align="center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <DropdownMenuLabel label="New skill" />
-                        <DropdownMenuItem
-                          icon={PuzzlePiece01}
-                          label="From scratch"
-                        />
-                        <DropdownMenuItem
-                          icon={FolderOpen}
-                          label="From existing"
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                }
-              />
-              <NavigationListItem
                 label="Inbox"
                 icon={Inbox01}
                 selected={p2View.kind === "inbox"}
                 count={unreadCount > 0 ? unreadCount : undefined}
                 onClick={() => {
                   setP2View({ kind: "inbox" });
+                  setP3View(null);
+                  setP4View(null);
+                }}
+              />
+              <NavigationListItem
+                label="Inbox Alt"
+                icon={LayersThree01}
+                selected={p2View.kind === "inboxAlt"}
+                onClick={() => {
+                  setP2View({ kind: "inboxAlt" });
                   setP3View(null);
                   setP4View(null);
                 }}
@@ -2065,12 +2103,13 @@ function Inbox() {
         </div>
       )}
 
-      {activeTab === "spaces" && (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex flex-1 items-center justify-center text-muted-foreground">
-            Spaces — TBD
-          </div>
-        </div>
+      {activeTab === "build" && (
+        <BuildNav
+          onNewAgentFromTemplate={() => {
+            setP2View({ kind: "templates" });
+            setP3View(null);
+          }}
+        />
       )}
       {activeTab === "admin" && (
         <div className="flex min-h-0 flex-1 flex-col">

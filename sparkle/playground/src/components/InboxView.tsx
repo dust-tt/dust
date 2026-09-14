@@ -1,39 +1,63 @@
 import {
   Avatar,
+  Bell01,
   Button,
   Check,
-  Collapsible,
-  CollapsibleContent,
+  CheckDouble,
   ConversationListItem,
   Cube01,
   CubeOutline,
+  DotsHorizontal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Icon,
   Inbox01,
   ListGroup,
   MessageChatSquare,
   MessageQuestionCircle,
   ReplySection,
+  Robot,
   SearchInputWithPopover,
   UniversalSearchItem,
+  User01,
   Zap,
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import {
+  type ComponentType,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import { getAgentById } from "../data/agents";
 import { getRandomInboxGreetingForName } from "../data/greetings";
 import { isTriggeredConversation } from "../data/myPod";
+import { getRequestTypeIcon, REQUEST_TYPE_LABELS } from "../data/requests";
 import { formatRowTime } from "../data/time";
+import { getTriggerById } from "../data/triggers";
 import type {
   AdminRequest,
   Agent,
   Conversation,
   Space,
+  Trigger,
   User,
 } from "../data/types";
 import { getUserById } from "../data/users";
 import { EmptyState } from "./EmptyState";
+import {
+  collectAgents,
+  collectUsers,
+  FilterMenu,
+  type FilterGroup,
+  type FilterSelection,
+} from "./FilterMenu";
 import { RequestListItem } from "./RequestListItem";
+import { TriggerRunAvatar } from "./TriggerRunAvatar";
 
 type InboxConversationSearchItem = {
   type: "conversation";
@@ -51,8 +75,15 @@ interface InboxViewProps {
   agents: Agent[];
   /** The requests queue; only the pending ones surface here. */
   requests?: AdminRequest[];
+  /** The triggers behind the automated work rows, which name their agent and type. */
+  triggers?: Trigger[];
   selectedConversationId?: string | null;
   selectedRequestId?: string | null;
+  /** The rows already read — conversations and requests — which lose their
+   * unread state here. */
+  readRowIds?: Set<string>;
+  /** Reports rows as read, either by dwelling on one or by clearing. */
+  onRowsRead?: (rowIds: string[]) => void;
   currentUserId?: string;
   onConversationClick?: (conversation: Conversation) => void;
   onRequestClick?: (request: AdminRequest) => void;
@@ -188,14 +219,20 @@ function getInboxPodSectionIcon(space: Space) {
   return isRestricted ? CubeOutline : Cube01;
 }
 
+/** How long a conversation has to stay open before it counts as read. */
+const READ_DWELL_MS = 3000;
+
 export function InboxView({
   spaces,
   conversations,
   users,
   agents,
   requests,
+  triggers,
   selectedConversationId = null,
   selectedRequestId = null,
+  readRowIds,
+  onRowsRead,
   currentUserId,
   onConversationClick,
   onRequestClick,
@@ -212,24 +249,16 @@ export function InboxView({
   useEffect(() => {
     setGreeting(getRandomInboxGreetingForName(currentUserFirstName));
   }, [currentUserFirstName]);
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
-    new Set()
+  // Read before this visit means dealt with, so those rows are gone. What gets
+  // read during the visit keeps its place rather than vanishing under the
+  // cursor, which is why the snapshot is taken once, on arrival.
+  const [hiddenConversationIds, setHiddenConversationIds] = useState(
+    () => new Set(readRowIds)
   );
   const [conversationSearchText, setConversationSearchText] = useState("");
   const [isConversationSearchOpen, setIsConversationSearchOpen] =
     useState(false);
-
-  const toggleSectionCollapse = (sectionKey: string) => {
-    setCollapsedSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(sectionKey)) {
-        next.delete(sectionKey);
-      } else {
-        next.add(sectionKey);
-      }
-      return next;
-    });
-  };
+  const [filter, setFilter] = useState<FilterSelection>(null);
 
   const myConversations = useMemo(() => {
     const now = new Date();
@@ -332,9 +361,113 @@ export function InboxView({
     return result;
   }, [unreadConversations]);
 
-  const spacesWithUnread = useMemo(() => {
-    return spaces.filter((space) => conversationsBySpace.has(space.id));
-  }, [spaces, conversationsBySpace]);
+  // Filtering a conversation by request type, or by an agent for a request,
+  // matches nothing, so those sections drop out on their own.
+  const matchesConversationFilter = useCallback(
+    (conversation: Conversation) => {
+      if (!filter) {
+        return true;
+      }
+      if (filter.kind === "member") {
+        return conversation.userParticipants.includes(filter.value);
+      }
+      if (filter.kind === "agent") {
+        return conversation.agentParticipants.includes(filter.value);
+      }
+      return false;
+    },
+    [filter]
+  );
+
+  const matchesRequestFilter = useCallback(
+    (request: AdminRequest) => {
+      if (!filter) {
+        return true;
+      }
+      if (filter.kind === "member") {
+        return (
+          request.requesterId === filter.value ||
+          request.resolvedByUserId === filter.value
+        );
+      }
+      if (filter.kind === "type") {
+        return request.type === filter.value;
+      }
+      return false;
+    },
+    [filter]
+  );
+
+  // Cleared rows and the filter are applied here rather than inside the memos
+  // above: those draw their rows at random, so re-running them on every clear
+  // or filter change would reshuffle what is left.
+  const visibleMyConversations = useMemo(
+    () =>
+      myConversations.filter(
+        (conversation) =>
+          !hiddenConversationIds.has(conversation.id) &&
+          matchesConversationFilter(conversation)
+      ),
+    [myConversations, hiddenConversationIds, matchesConversationFilter]
+  );
+
+  const visibleAutomationConversations = useMemo(
+    () =>
+      automationConversations.filter(
+        (conversation) =>
+          !hiddenConversationIds.has(conversation.id) &&
+          matchesConversationFilter(conversation)
+      ),
+    [automationConversations, hiddenConversationIds, matchesConversationFilter]
+  );
+
+  const visibleConversationsBySpace = useMemo(() => {
+    const result = new Map<string, Conversation[]>();
+    conversationsBySpace.forEach((spaceConversations, spaceId) => {
+      const visible = spaceConversations.filter(
+        (conversation) =>
+          !hiddenConversationIds.has(conversation.id) &&
+          matchesConversationFilter(conversation)
+      );
+      if (visible.length > 0) {
+        result.set(spaceId, visible);
+      }
+    });
+    return result;
+  }, [conversationsBySpace, hiddenConversationIds, matchesConversationFilter]);
+
+  const spacesWithConversations = useMemo(
+    () => spaces.filter((space) => visibleConversationsBySpace.has(space.id)),
+    [spaces, visibleConversationsBySpace]
+  );
+
+  const visibleConversations = useMemo(
+    () => [
+      ...visibleMyConversations,
+      ...visibleAutomationConversations,
+      ...Array.from(visibleConversationsBySpace.values()).flat(),
+    ],
+    [
+      visibleAutomationConversations,
+      visibleConversationsBySpace,
+      visibleMyConversations,
+    ]
+  );
+
+  // Clearing is reading in bulk: the rows go now, and stay gone on the next
+  // visit because they leave as read.
+  const clearConversations = useCallback(
+    (conversationIds: string[]) => {
+      if (conversationIds.length === 0) {
+        return;
+      }
+      onRowsRead?.(conversationIds);
+      setHiddenConversationIds(
+        (prev) => new Set([...prev, ...conversationIds])
+      );
+    },
+    [onRowsRead]
+  );
 
   // Stabilize the random per-conversation display data (participants, creator,
   // reply/message/mention counts) so unrelated re-renders don't reshuffle the
@@ -391,41 +524,107 @@ export function InboxView({
     [requests]
   );
 
-  const hasConversationContent =
-    myConversations.length > 0 ||
-    automationConversations.length > 0 ||
-    spacesWithUnread.length > 0 ||
-    pendingRequests.length > 0;
+  const visibleRequests = useMemo(
+    () => pendingRequests.filter(matchesRequestFilter),
+    [matchesRequestFilter, pendingRequests]
+  );
 
-  const allConversationSectionsCollapsed = useMemo(() => {
-    if (!hasConversationContent) return true;
+  const visibleRowIds = useMemo(
+    () =>
+      new Set([
+        ...visibleConversations.map((conversation) => conversation.id),
+        ...visibleRequests.map((request) => request.id),
+      ]),
+    [visibleConversations, visibleRequests]
+  );
 
-    // Requests are out of reach of "Mark as read", so they keep the Inbox from
-    // ever reading as empty.
-    if (pendingRequests.length > 0) return false;
+  // Three seconds on a row is reading it rather than glancing at it, whether it
+  // is a conversation or a request. Leaving before then, or hopping to another
+  // row, calls it off.
+  const selectedRowId = selectedConversationId ?? selectedRequestId;
 
-    const myConversationsCollapsed =
-      myConversations.length === 0 || collapsedSections.has("my-conversations");
+  useEffect(() => {
+    if (
+      !selectedRowId ||
+      !visibleRowIds.has(selectedRowId) ||
+      readRowIds?.has(selectedRowId)
+    ) {
+      return;
+    }
 
-    const automationsCollapsed =
-      automationConversations.length === 0 ||
-      collapsedSections.has("automations");
-
-    const allSpacesCollapsed =
-      spacesWithUnread.length === 0 ||
-      spacesWithUnread.every((space) => collapsedSections.has(space.id));
-
-    return (
-      myConversationsCollapsed && automationsCollapsed && allSpacesCollapsed
+    const timeout = setTimeout(
+      () => onRowsRead?.([selectedRowId]),
+      READ_DWELL_MS
     );
+    return () => clearTimeout(timeout);
+  }, [onRowsRead, readRowIds, selectedRowId, visibleRowIds]);
+
+  // Options come from the rows the Inbox holds before the filter narrows them,
+  // so a pick never empties the menu it came from.
+  const filterGroups = useMemo((): FilterGroup[] => {
+    const listedConversations = [
+      ...myConversations,
+      ...automationConversations,
+      ...Array.from(conversationsBySpace.values()).flat(),
+    ];
+
+    return [
+      {
+        kind: "member",
+        label: "Member",
+        icon: User01,
+        options: collectUsers([
+          ...listedConversations.flatMap(
+            (conversation) => conversation.userParticipants
+          ),
+          ...pendingRequests.flatMap((request) => [
+            request.requesterId,
+            request.resolvedByUserId,
+          ]),
+        ]),
+      },
+      {
+        kind: "agent",
+        label: "Agent",
+        icon: Robot,
+        options: collectAgents(
+          listedConversations.flatMap(
+            (conversation) => conversation.agentParticipants
+          )
+        ),
+      },
+      {
+        kind: "type",
+        label: "Request",
+        icon: Bell01,
+        options: Array.from(
+          new Set(pendingRequests.map((request) => request.type))
+        ).map((type) => ({
+          value: type,
+          label: REQUEST_TYPE_LABELS[type],
+          icon: getRequestTypeIcon(type),
+        })),
+      },
+    ];
   }, [
-    automationConversations.length,
-    collapsedSections,
-    hasConversationContent,
-    myConversations.length,
-    pendingRequests.length,
-    spacesWithUnread,
+    automationConversations,
+    conversationsBySpace,
+    myConversations,
+    pendingRequests,
   ]);
+
+  // Requests are out of reach of clearing, so a queue of them keeps the Inbox
+  // from ever reading as empty.
+  const isEmpty =
+    visibleConversations.length === 0 && visibleRequests.length === 0;
+
+  const clearableReadIds = useMemo(
+    () =>
+      visibleConversations
+        .filter((conversation) => readRowIds?.has(conversation.id))
+        .map((conversation) => conversation.id),
+    [readRowIds, visibleConversations]
+  );
 
   const handleConversationSearchSelect = (
     item: InboxConversationSearchItem
@@ -471,16 +670,6 @@ export function InboxView({
     );
   };
 
-  const handleMarkAllConversationsAsRead = () => {
-    setCollapsedSections((prev) => {
-      const next = new Set(prev);
-      next.add("my-conversations");
-      next.add("automations");
-      spacesWithUnread.forEach((space) => next.add(space.id));
-      return next;
-    });
-  };
-
   const renderConversationsToolbar = () => (
     <div className="flex items-center gap-2">
       <SearchInputWithPopover
@@ -495,7 +684,7 @@ export function InboxView({
         open={isConversationSearchOpen}
         onOpenChange={setIsConversationSearchOpen}
         placeholder="Search in Inbox"
-        className="w-full"
+        className="w-full min-w-0 max-w-80"
         items={conversationSearchResults}
         availableHeight
         noResults={
@@ -508,14 +697,46 @@ export function InboxView({
           renderConversationSearchItem(item, selected)
         }
       />
-      <Button
-        label="Mark all as read"
-        icon={Check}
-        size="sm"
-        variant="outline"
-        tooltip="Mark all as read"
-        onClick={handleMarkAllConversationsAsRead}
+      <FilterMenu
+        filter={filter}
+        groups={filterGroups}
+        onFilterChange={setFilter}
+        searchName="inbox-filter-search"
+        searchPlaceholder="Filter by member, agent or request"
       />
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        {clearableReadIds.length > 0 && (
+          <Button
+            label="Clear read"
+            icon={CheckDouble}
+            size="sm"
+            variant="outline"
+            tooltip="Remove the conversations you have already read."
+            onClick={() => clearConversations(clearableReadIds)}
+          />
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={DotsHorizontal}
+              size="sm"
+              variant="outline"
+              tooltip="Inbox options"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent collisionPadding={8}>
+            <DropdownMenuItem
+              label="Clear all conversations"
+              icon={CheckDouble}
+              onClick={() =>
+                clearConversations(
+                  visibleConversations.map((conversation) => conversation.id)
+                )
+              }
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 
@@ -528,7 +749,7 @@ export function InboxView({
     label: string;
     icon?: ComponentType<{ className?: string }>;
     onHeaderClick?: () => void;
-    /** Sections nothing can mark as read — requests — leave this out. */
+    /** Sections nothing can clear — requests — leave this out. */
     action?: { label: string; onAction: () => void };
   }) => (
     <div
@@ -566,24 +787,35 @@ export function InboxView({
     const messageCount = display?.messageCount ?? 0;
     const mentionCount = display?.mentionCount ?? 0;
     const isSelected = selectedConversationId === conversation.id;
+    // A conversation you have stayed on is read: the row keeps its place until
+    // you leave the Inbox, but it stops calling for attention.
+    const isRead = readRowIds?.has(conversation.id) ?? false;
+
+    // A run is an agent working alone, so it wears the agent badged with what
+    // made it fire, and nobody in it can have mentioned you.
+    const trigger = conversation.triggerId
+      ? getTriggerById(triggers ?? [], conversation.triggerId)
+      : undefined;
 
     return (
       <ConversationListItem
         key={conversation.id}
         conversation={conversation}
         creator={creator || undefined}
+        leadingVisual={
+          trigger ? <TriggerRunAvatar trigger={trigger} /> : undefined
+        }
         className={cn(
           "px-3 rounded-2xl border-transparent!",
           isSelected && "bg-highlight-50"
         )}
         time={time}
-        // Everything the Inbox lists is waiting to be read.
-        unread={messageCount > 0}
+        unread={!isRead && messageCount > 0}
         replySection={
           <ReplySection
             replyCount={replyCount}
-            unreadCount={messageCount}
-            mentionCount={mentionCount}
+            unreadCount={isRead ? 0 : messageCount}
+            mentionCount={trigger || isRead ? 0 : mentionCount}
             avatars={avatarProps}
             lastMessageBy={avatarProps[0]?.name || "Unknown"}
           />
@@ -598,11 +830,6 @@ export function InboxView({
   const renderEmptyState = (title: string, description: React.ReactNode) => (
     <EmptyState icon={Inbox01} title={title} description={description} />
   );
-
-  // Nothing left to read, whether the Inbox came in empty or was just cleared.
-  // It then has nothing to search, mark as read, or greet you about either, so
-  // the empty state gets the panel to itself.
-  const isEmpty = !hasConversationContent || allConversationSectionsCollapsed;
 
   const renderConversationsTab = () => {
     if (isEmpty) {
@@ -620,121 +847,77 @@ export function InboxView({
       <div className="flex flex-col gap-3">
         {renderConversationsToolbar()}
         <div className="flex flex-col">
-          {myConversations.length > 0 && (
-            <Collapsible
-              key="my-conversations"
-              open={!collapsedSections.has("my-conversations")}
-              onOpenChange={(open) => {
-                if (!open) {
-                  setCollapsedSections((prev) =>
-                    new Set(prev).add("my-conversations")
-                  );
-                } else {
-                  setCollapsedSections((prev) => {
-                    const next = new Set(prev);
-                    next.delete("my-conversations");
-                    return next;
-                  });
-                }
-              }}
-              className="flex flex-col"
-            >
-              <CollapsibleContent>
-                <div className="flex flex-col gap-1">
-                  {renderInboxSectionHeader({
-                    label: personalSectionLabel,
-                    icon: MessageChatSquare,
-                    onHeaderClick: onMyPodClick,
-                    action: {
-                      label: "Mark as read",
-                      onAction: () => toggleSectionCollapse("my-conversations"),
-                    },
-                  })}
-                  <ListGroup className="border-transparent! gap-0.5">
-                    {myConversations.map(renderInboxConversationItem)}
-                  </ListGroup>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+          {visibleMyConversations.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {renderInboxSectionHeader({
+                label: personalSectionLabel,
+                icon: MessageChatSquare,
+                onHeaderClick: onMyPodClick,
+                action: {
+                  label: "Mark as read & clear",
+                  onAction: () =>
+                    clearConversations(
+                      visibleMyConversations.map(
+                        (conversation) => conversation.id
+                      )
+                    ),
+                },
+              })}
+              <ListGroup className="border-transparent! gap-0.5">
+                {visibleMyConversations.map(renderInboxConversationItem)}
+              </ListGroup>
+            </div>
           )}
-          {automationConversations.length > 0 && (
-            <Collapsible
-              key="automations"
-              open={!collapsedSections.has("automations")}
-              onOpenChange={(open) => {
-                if (!open) {
-                  setCollapsedSections((prev) =>
-                    new Set(prev).add("automations")
-                  );
-                } else {
-                  setCollapsedSections((prev) => {
-                    const next = new Set(prev);
-                    next.delete("automations");
-                    return next;
-                  });
-                }
-              }}
-              className="flex flex-col"
-            >
-              <CollapsibleContent>
-                <div className="flex flex-col gap-1">
-                  {renderInboxSectionHeader({
-                    label: "Automated work",
-                    icon: Zap,
-                    onHeaderClick: onAutomationsClick,
-                    action: {
-                      label: "Mark as read",
-                      onAction: () => toggleSectionCollapse("automations"),
-                    },
-                  })}
-                  <ListGroup className="border-transparent! gap-0.5">
-                    {automationConversations.map(renderInboxConversationItem)}
-                  </ListGroup>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+          {visibleAutomationConversations.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {renderInboxSectionHeader({
+                label: "Automated work",
+                icon: Zap,
+                onHeaderClick: onAutomationsClick,
+                action: {
+                  label: "Mark as read & clear",
+                  onAction: () =>
+                    clearConversations(
+                      visibleAutomationConversations.map(
+                        (conversation) => conversation.id
+                      )
+                    ),
+                },
+              })}
+              <ListGroup className="border-transparent! gap-0.5">
+                {visibleAutomationConversations.map(
+                  renderInboxConversationItem
+                )}
+              </ListGroup>
+            </div>
           )}
-          {spacesWithUnread.map((space) => {
-            const spaceConversations = conversationsBySpace.get(space.id) || [];
-            if (spaceConversations.length === 0) return null;
+          {spacesWithConversations.map((space) => {
+            const spaceConversations =
+              visibleConversationsBySpace.get(space.id) ?? [];
 
             return (
-              <Collapsible
-                key={space.id}
-                open={!collapsedSections.has(space.id)}
-                onOpenChange={(open) => {
-                  if (!open) {
-                    setCollapsedSections((prev) => new Set(prev).add(space.id));
-                  } else {
-                    setCollapsedSections((prev) => {
-                      const next = new Set(prev);
-                      next.delete(space.id);
-                      return next;
-                    });
-                  }
-                }}
-                className="flex flex-col"
-              >
-                <CollapsibleContent>
-                  <div className="flex flex-col gap-1">
-                    {renderInboxSectionHeader({
-                      label: space.name,
-                      icon: getInboxPodSectionIcon(space),
-                      onHeaderClick: () => onSpaceClick?.(space),
-                      action: {
-                        label: "Mark as read",
-                        onAction: () => toggleSectionCollapse(space.id),
-                      },
-                    })}
-                    <ListGroup className="border-transparent! gap-0.5">
-                      {spaceConversations.map(renderInboxConversationItem)}
-                    </ListGroup>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+              <div className="flex flex-col gap-1" key={space.id}>
+                {renderInboxSectionHeader({
+                  label: space.name,
+                  icon: getInboxPodSectionIcon(space),
+                  onHeaderClick: () => onSpaceClick?.(space),
+                  action: {
+                    label: "Mark as read & clear",
+                    onAction: () =>
+                      clearConversations(
+                        spaceConversations.map(
+                          (conversation) => conversation.id
+                        )
+                      ),
+                  },
+                })}
+                <ListGroup className="border-transparent! gap-0.5">
+                  {spaceConversations.map(renderInboxConversationItem)}
+                </ListGroup>
+              </div>
             );
           })}
-          {pendingRequests.length > 0 && (
+          {visibleRequests.length > 0 && (
             <div className="flex flex-col gap-1">
               {renderInboxSectionHeader({
                 label: "Requests",
@@ -742,12 +925,13 @@ export function InboxView({
                 onHeaderClick: onRequestsClick,
               })}
               <ListGroup className="border-transparent! gap-0.5">
-                {pendingRequests.map((request) => (
+                {visibleRequests.map((request) => (
                   <RequestListItem
                     key={request.id}
                     request={request}
                     isSelected={selectedRequestId === request.id}
                     currentUserId={currentUserId}
+                    isRead={readRowIds?.has(request.id) ?? false}
                     onClick={() => onRequestClick?.(request)}
                   />
                 ))}
