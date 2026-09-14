@@ -3638,6 +3638,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SlabLogo"
   | "SlackLogo"
   | "SnowflakeLogo"
+  | "StackOneLogo"
   | "StatuspageLogo"
   | "StripeLogo"
   | "SupabaseLogo"

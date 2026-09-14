@@ -114,6 +114,7 @@ export function hasNullUnicodeCharacter(text: string): boolean {
 const SPECIAL_CASES = {
   github: "GitHub",
   hubspot: "HubSpot",
+  "stack one": "StackOne",
   mcp: "MCP",
   webbrowser: "Web browsing",
   websearch: "Web search",

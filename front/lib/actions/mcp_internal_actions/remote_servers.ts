@@ -2373,6 +2373,37 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       genie_get_query_result: "never_ask",
     },
   },
+  {
+    id: 10032,
+    name: "StackOne",
+    description:
+      "StackOne unified MCP gateway — connect agents to HR, ATS, CRM, and other enterprise SaaS tools through a single managed integration.",
+    url: "https://mcp.stackone.com/mcp",
+    icon: "StackOneLogo",
+    documentationUrl: "https://docs.stackone.com/mcp",
+    connectionInstructions:
+      "StackOne uses OAuth with dynamic client registration. You will be prompted to sign in with your StackOne account in a browser window to authorize access.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      stackone_list_accounts: "never_ask",
+      stackone_search_actions: "never_ask",
+      stackone_execute_action: "high",
+    },
+    toolDisplayLabels: {
+      stackone_list_accounts: {
+        running: "Listing accounts on StackOne",
+        done: "Listed accounts on StackOne",
+      },
+      stackone_search_actions: {
+        running: "Searching actions on StackOne",
+        done: "Searched actions on StackOne",
+      },
+      stackone_execute_action: {
+        running: "Executing action on StackOne",
+        done: "Executed action on StackOne",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (
