@@ -18,8 +18,10 @@ import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -87,6 +89,8 @@ it.each([
   );
   const selected = mode === "grants" ? grantAgent : legacyAgent;
   const excluded = mode === "grants" ? legacyAgent : grantAgent;
+  await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
+  const warn = vi.spyOn(logger, "warn");
 
   expect(
     (await getEditors(auth, selected)).some((editor) => editor.id === member.id)
@@ -151,6 +155,16 @@ it.each([
     });
     expect(agents.map((agent) => agent.sId)).toContain(selected.sId);
     expect(agents.map((agent) => agent.sId)).not.toContain(excluded.sId);
+    await vi.waitFor(() =>
+      expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          check: "agent_view",
+          view,
+          servedSource: mode,
+        }),
+        "group_permissions_shadow_mismatch"
+      )
+    );
   }
   await archiveAgentConfiguration(authorAuth, legacyAgent.sId);
   await archiveAgentConfiguration(authorAuth, grantAgent.sId);
@@ -160,6 +174,50 @@ it.each([
     variant: "light",
   });
   expect(archived.map((agent) => agent.sId)).toEqual([selected.sId]);
+  await vi.waitFor(() =>
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        check: "agent_view",
+        view: "archived",
+        servedSource: mode,
+      }),
+      "group_permissions_shadow_mismatch"
+    )
+  );
+  for (const check of [
+    "agent_editors",
+    "agent_editors_batch",
+    "agent_permissions",
+    "agent_permission",
+    "editable_agents",
+    "agent_usage_filter",
+  ]) {
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ check, servedSource: mode }),
+      "group_permissions_shadow_mismatch"
+    );
+  }
+  const error = vi.spyOn(logger, "error");
+  const failedLegacyRead = shadowCanAdminAgent(
+    auth,
+    legacyAgent,
+    async () => {
+      throw new Error("legacy read failed");
+    },
+    "test"
+  );
+  if (mode === "grants") {
+    await expect(failedLegacyRead).resolves.toBe(false);
+    expect(error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        check: "agent_permission",
+        servedSource: mode,
+      }),
+      "group_permissions_shadow_candidate_error"
+    );
+  } else {
+    await expect(failedLegacyRead).rejects.toThrow("legacy read failed");
+  }
 });
 
 it("keeps author access and admin redaction when grants are enabled", async () => {
