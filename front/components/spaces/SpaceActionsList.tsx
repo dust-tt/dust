@@ -21,7 +21,13 @@ import { isDevelopment } from "@app/types/shared/env";
 import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import { DataTable, Spinner } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
+import {
+  AvatarCellSkeleton,
+  DataTable,
+  DataTableSkeleton,
+  TextCellSkeleton,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type { ParsedUrlQuery } from "querystring";
 import * as React from "react";
@@ -46,6 +52,33 @@ interface SpaceActionsListProps {
   isAdmin: boolean;
   owner: LightWorkspaceType;
   space: SpaceType;
+}
+
+function SpaceActionSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return (
+        <AvatarCellSkeleton
+          className="py-3"
+          avatarClassName="h-9 w-9 rounded-lg"
+        >
+          <TextCellSkeleton
+            className={rowIndex % 2 === 0 ? "h-4 w-28" : "h-4 w-36"}
+          />
+        </AvatarCellSkeleton>
+      );
+    case "description":
+      return (
+        <TextCellSkeleton
+          className={rowIndex % 2 === 0 ? "h-4 w-3/4" : "h-4 w-1/2"}
+        />
+      );
+    default:
+      return null;
+  }
 }
 
 export const SpaceActionsList = ({
@@ -170,15 +203,19 @@ export const SpaceActionsList = ({
     containerId: ACTION_BUTTONS_CONTAINER_ID,
   });
 
+  const columns = getTableColumns();
+
   if (isMCPServerViewsLoading) {
     return (
-      <div className="mt-8 flex justify-center">
-        <Spinner size="lg" />
+      <div className="pb-4">
+        <DataTableSkeleton
+          columns={columns}
+          SkeletonCell={SpaceActionSkeletonCell}
+          rowHeight={60}
+        />
       </div>
     );
   }
-
-  const columns = getTableColumns();
 
   const isEmpty = rows.length === 0;
 
