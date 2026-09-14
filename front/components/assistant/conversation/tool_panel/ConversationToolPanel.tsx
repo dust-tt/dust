@@ -21,11 +21,7 @@ interface ToolPanelBodyProps {
   isError: boolean;
 }
 
-function ToolPanelBody({
-  owner,
-  serverView,
-  isError,
-}: ToolPanelBodyProps) {
+function ToolPanelBody({ owner, serverView, isError }: ToolPanelBodyProps) {
   if (!serverView) {
     return (
       <div className="flex h-full items-center justify-center">
