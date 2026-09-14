@@ -839,6 +839,23 @@ async function handleUserRemovedFromGroup(
     eventData.group.id
   );
   if (!group) {
+    try {
+      await getWorkOS().directorySync.getGroup(eventData.group.id);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        logger.info(
+          {
+            workspaceId: workspace.sId,
+            groupId: eventData.group.id,
+            userId: eventData.user.id,
+          },
+          "Group no longer exists in WorkOS, skipping user removal"
+        );
+        return;
+      }
+      throw error;
+    }
+
     throw new Error(
       `Group not found for workOSId "${eventData.group.id}" in workspace "${workspace.sId}"`
     );
