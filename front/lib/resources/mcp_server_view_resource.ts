@@ -2060,11 +2060,6 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
    * Light serialization for list surfaces, including space, account and editor metadata.
    * Surfaces needing full remote tools fetch the server on demand.
    */
-  /**
-   * @cc [owner:aubin-tchoi,label:backend;performance] light-serialization-no-heavy-attributes
-   * Serialization MUST NOT require remote heavy attributes. Remote tools MUST be empty;
-   * internal tools MUST contain only names and descriptions.
-   */
   toJSONLight(): MCPServerViewLightType {
     let server: MCPServerLightType;
     if (this.serverType === "remote") {
