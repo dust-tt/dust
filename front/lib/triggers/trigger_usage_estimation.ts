@@ -81,8 +81,8 @@ export async function computeFilteredWebhookTriggerForecast(
     async (webhookRequest) => {
       const gcsPath = WebhookRequestResource.getGcsPath({
         workspaceId: owner.sId,
-        webhookSourceId: webhookSource.id,
-        webRequestId: webhookRequest.id,
+        webhookSourceModelId: webhookSource.id,
+        webhookRequestModelId: webhookRequest.id,
       });
 
       const file = bucket.file(gcsPath);

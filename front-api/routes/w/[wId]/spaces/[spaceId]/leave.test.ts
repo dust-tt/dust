@@ -20,23 +20,18 @@ async function addUserToProject(
   user: UserResource,
   options: { asEditor?: boolean } = {}
 ) {
-  const groups = await project.fetchGroupResources(adminAuth, {
-    groupReferences: project.groups.filter(
-      (group) => group.isRegularAuto() || group.groupKind === "space_editors"
-    ),
+  const memberGroup = await project.fetchManualMemberGroup(adminAuth);
+  await memberGroup.dangerouslyAddMembers(adminAuth, {
+    users: [user.toJSON()],
   });
-  const memberGroup = groups.find((group) => group.kind === "regular_auto");
-  const editorGroup = groups.find((group) => group.kind === "space_editors");
 
-  if (memberGroup) {
-    await memberGroup.dangerouslyAddMembers(adminAuth, {
-      users: [user.toJSON()],
-    });
-  }
-  if (options.asEditor && editorGroup) {
-    await editorGroup.dangerouslyAddMembers(adminAuth, {
-      users: [user.toJSON()],
-    });
+  if (options.asEditor) {
+    const editorGroup = await project.fetchManualEditorGroup(adminAuth);
+    if (editorGroup) {
+      await editorGroup.dangerouslyAddMembers(adminAuth, {
+        users: [user.toJSON()],
+      });
+    }
   }
 }
 
@@ -51,11 +46,8 @@ describe("POST /api/w/:wId/spaces/:spaceId/leave", () => {
       );
 
       const regularSpace = await SpaceFactory.regular(workspace);
-      const [memberGroup] = await regularSpace.fetchGroupResources(adminAuth, {
-        groupReferences: regularSpace.groups.filter((group) =>
-          group.isRegularAuto()
-        ),
-      });
+      const [memberGroup] =
+        await regularSpace.fetchRegularAutoGroups(adminAuth);
       if (memberGroup) {
         await memberGroup.dangerouslyAddMembers(adminAuth, {
           users: [user.toJSON()],
@@ -131,11 +123,7 @@ describe("POST /api/w/:wId/spaces/:spaceId/leave", () => {
       expect(response.status).toBe(200);
       expect((await response.json()).success).toBe(true);
 
-      const [memberGroup] = await project.fetchGroupResources(adminAuth, {
-        groupReferences: project.groups.filter((group) =>
-          group.isRegularAuto()
-        ),
-      });
+      const [memberGroup] = await project.fetchRegularAutoGroups(adminAuth);
       if (memberGroup) {
         const isMember = await memberGroup.isMember(user);
         expect(isMember).toBe(false);

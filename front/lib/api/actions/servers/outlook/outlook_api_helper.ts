@@ -18,6 +18,21 @@ const OutlookCalendarSchema = z.object({
     .nullish(),
 });
 
+// Subset of Graph's patternedRecurrence that we surface to the model.
+// https://learn.microsoft.com/en-us/graph/api/resources/patternedrecurrence
+const OutlookRecurrenceSchema = z.object({
+  pattern: z
+    .object({
+      type: z.string().optional(),
+      interval: z.number().optional(),
+      daysOfWeek: z.array(z.string()).optional(),
+      index: z.string().optional(),
+      dayOfMonth: z.number().optional(),
+      month: z.number().optional(),
+    })
+    .nullish(),
+});
+
 export const OutlookEventSchema = z.object({
   id: z.string(),
   subject: z.string().optional(),
@@ -73,7 +88,16 @@ export const OutlookEventSchema = z.object({
   importance: z.string().optional(),
   sensitivity: z.string().optional(),
   showAs: z.string().optional(),
-  recurrence: z.any().optional(),
+  // The fields below are informational: they get rendered for the model but
+  // nothing branches on them. A shape we did not anticipate must degrade the
+  // field to `undefined` rather than fail the whole event — a single event that
+  // fails to parse takes down the entire listEvents batch with it.
+  categories: z.array(z.string()).optional().catch(undefined),
+  // Graph returns `null` on non-recurring events.
+  recurrence: OutlookRecurrenceSchema.nullish().catch(undefined),
+  // singleInstance | occurrence | exception | seriesMaster
+  type: z.string().optional().catch(undefined),
+  seriesMasterId: z.string().nullish().catch(undefined),
 });
 
 type OutlookCalendar = z.infer<typeof OutlookCalendarSchema>;

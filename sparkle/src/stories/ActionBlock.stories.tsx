@@ -1,16 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { fn } from "storybook/test";
 
 import {
   ActionCardBlock,
-  type ActionCardBlockSize,
   Avatar,
-  Button,
-  DiffBlock,
-  Eye,
   GmailLogo,
   Markdown,
-  Edit04,
   SlackLogo,
 } from "../index_with_tw_base";
 
@@ -19,7 +15,7 @@ const meta = {
   tags: ["a11y-issues"],
   component: ActionCardBlock,
   parameters: {
-    layout: "fullscreen",
+    layout: "padded",
     docs: {
       description: {
         component: `An inline, actionable card rendered inside an agent message to propose a change and let the user accept or reject it. Built on **ActionCardBlock**, it tracks a \`state\` (\`active\`, \`disabled\`, \`accepted\`, \`rejected\`) and swaps in \`acceptedTitle\` / \`rejectedTitle\` once resolved, with **cardVariant** (\`highlight\`, \`warning\`, \`secondary\`), a **size** (\`default\` / \`compact\`), and **actionsPosition** (\`header\` / \`footer\`) for the accept/reject buttons.
@@ -40,95 +36,74 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-type ActionCardState = "active" | "disabled" | "accepted" | "rejected";
-
-const StatefulActionCard = (
-  props: Omit<
-    React.ComponentProps<typeof ActionCardBlock>,
-    "state" | "onClickAccept" | "onClickReject"
-  > & { initialState?: ActionCardState }
-) => {
-  const [state, setState] = React.useState<ActionCardState>(
-    props.initialState ?? "active"
-  );
-  return (
-    <ActionCardBlock
-      {...props}
-      state={state}
-      onClickAccept={() => setState("accepted")}
-      onClickReject={() => setState("rejected")}
+const renameProposal = {
+  title: "Update agent name and avatar",
+  acceptedTitle: "Agent name and avatar updated",
+  rejectedTitle: "Agent name and avatar update rejected",
+  applyLabel: "Update",
+  rejectLabel: "Reject",
+  cardVariant: "highlight",
+  actionsPosition: "header",
+  visual: <Avatar size="sm" emoji="👋" backgroundColor="bg-blue-100" />,
+  description:
+    "The current name is too generic. A descriptive name helps users pick the right agent faster.",
+  collapsibleContent: (
+    <Markdown
+      forcedTextSize="sm"
+      content={`- Set the agent name to "Concise Researcher"\n- Update the avatar to a clean, blue icon`}
     />
-  );
+  ),
+  collapsibleLabel: "Suggestion details",
+} as const;
+
+/**
+ * The canonical active proposal: header accept/reject actions, and optional
+ * detail tucked behind `collapsibleContent` instead of crowding the
+ * description.
+ *
+ * @summary Active proposal with collapsible details.
+ */
+export const ProposedChangeWithDetails: Story = {
+  args: {
+    ...renameProposal,
+    state: "active",
+    onClickAccept: fn(),
+    onClickReject: fn(),
+  },
 };
 
-const cardExamples: Omit<
-  React.ComponentProps<typeof StatefulActionCard>,
-  "size"
->[] = [
-  {
-    title: "Update agent name and avatar",
-    acceptedTitle: "Agent name and avatar updated",
-    rejectedTitle: "Agent name and avatar update rejected",
-    applyLabel: "Update",
-    rejectLabel: "Reject",
-    cardVariant: "highlight",
-    actionsPosition: "header",
-    visual: <Avatar size="sm" emoji="👋" backgroundColor="bg-blue-100" />,
-    description:
-      "The current name is too generic. A descriptive name helps users pick the right agent faster.",
-    collapsibleContent: (
-      <Markdown
-        forcedTextSize="sm"
-        content={`- Set the agent name to "Concise Researcher"\n- Update the avatar to a clean, blue icon`}
-      />
-    ),
-    collapsibleLabel: "Suggestion details",
-  },
-  {
+/**
+ * Use `cardVariant="warning"` for destructive or risky proposals so the
+ * card visually signals caution before the user accepts.
+ *
+ * @summary Warning variant for a destructive proposal.
+ */
+export const DestructiveProposal: Story = {
+  args: {
     title: "Remove Slack tool",
     acceptedTitle: "Slack tool removed",
     rejectedTitle: "Slack tool removal rejected",
     applyLabel: "Remove",
     rejectLabel: "Reject",
-    cardVariant: "warning" as const,
+    cardVariant: "warning",
+    actionsPosition: "header",
     visual: <Avatar size="sm" icon={SlackLogo} backgroundColor="bg-white" />,
-    actionsPosition: "header" as const,
     description:
       "Disable the Slack tool to prevent the agent from posting or reading channel messages by default.",
+    state: "active",
+    onClickAccept: fn(),
+    onClickReject: fn(),
   },
-  {
-    title: "Add Gmail tool",
-    acceptedTitle: "Gmail tool added",
-    rejectedTitle: "Gmail tool addition rejected",
-    applyLabel: "Add",
-    rejectLabel: "Reject",
-    cardVariant: "highlight",
-    initialState: "disabled" as ActionCardState,
-    visual: <Avatar size="sm" icon={GmailLogo} backgroundColor="bg-white" />,
-    description:
-      "Enable the Gmail tool so the agent can read and send emails when users ask to draft replies.",
-  },
-  {
-    title: "Invite editors",
-    acceptedTitle: "Editors invited",
-    rejectedTitle: "Invite editors rejected",
-    visual: (
-      <Avatar.Stack
-        avatars={[
-          { name: "Ava Chen", emoji: "👩‍💻", isRounded: true },
-          { name: "Noah Patel", emoji: "🧑‍🔧", isRounded: true },
-          { name: "Maya Lopez", emoji: "👩‍🎨", isRounded: true },
-          { name: "Theo Martin", emoji: "🧑‍💼", isRounded: true },
-        ]}
-        nbVisibleItems={4}
-      />
-    ),
-    applyLabel: "Invite",
-    rejectLabel: "Skip",
-    cardVariant: "highlight",
-    description: "Add four editors to collaborate on this agent.",
-  },
-  {
+};
+
+/**
+ * `hasCheck` / `checkLabel` add an "always allow" checkbox for permission
+ * requests that the user may want to grant permanently.
+ *
+ * @summary Permission request with an "always allow" checkbox.
+ */
+export const WithAlwaysAllowCheck: Story = {
+  args: {
     title: "Agent wants to use Gmail",
     acceptedTitle: "Gmail request approved",
     rejectedTitle: "Gmail request denied",
@@ -138,26 +113,92 @@ const cardExamples: Omit<
     hasCheck: true,
     checkLabel: "Always allow",
     visual: <Avatar size="sm" icon={GmailLogo} backgroundColor="bg-white" />,
-    description: "Details about the action",
+    description: "Allow the agent to read and send emails on your behalf.",
+    state: "active",
+    onClickAccept: fn(),
+    onClickReject: fn(),
   },
-];
+};
 
-const ExamplesView = () => (
-  <div className="flex w-full gap-6 p-6">
-    {(["default", "compact"] as ActionCardBlockSize[]).map((size) => (
-      <div key={size} className="flex flex-1 flex-col gap-3">
-        <h2 className="heading-base capitalize">{size}</h2>
-        {cardExamples.map((card, i) => (
-          <StatefulActionCard key={i} {...card} size={size} />
-        ))}
-      </div>
-    ))}
-  </div>
-);
-
-export const Examples: Story = {
+/**
+ * `state="disabled"` keeps the proposal visible but not actionable, e.g.
+ * while a prerequisite step is pending.
+ *
+ * @summary Disabled proposal awaiting a prerequisite.
+ */
+export const DisabledState: Story = {
   args: {
-    title: "Action block examples",
+    title: "Add Gmail tool",
+    acceptedTitle: "Gmail tool added",
+    rejectedTitle: "Gmail tool addition rejected",
+    applyLabel: "Add",
+    rejectLabel: "Reject",
+    cardVariant: "highlight",
+    visual: <Avatar size="sm" icon={GmailLogo} backgroundColor="bg-white" />,
+    description:
+      "Enable the Gmail tool so the agent can read and send emails when users ask to draft replies.",
+    state: "disabled",
+    onClickAccept: fn(),
+    onClickReject: fn(),
   },
-  render: () => <ExamplesView />,
+};
+
+/**
+ * Once resolved, the card swaps its title for `acceptedTitle` (or
+ * `rejectedTitle`) and hides the action buttons.
+ *
+ * @summary Resolved card after the user accepted.
+ */
+export const AcceptedState: Story = {
+  args: {
+    ...renameProposal,
+    state: "accepted",
+    onClickAccept: fn(),
+    onClickReject: fn(),
+  },
+};
+
+/**
+ * `size="compact"` for dense conversation contexts.
+ *
+ * @summary Compact size for dense layouts.
+ */
+export const CompactSize: Story = {
+  args: {
+    ...renameProposal,
+    size: "compact",
+    state: "active",
+    onClickAccept: fn(),
+    onClickReject: fn(),
+  },
+};
+
+const LifecycleDemo = () => {
+  const [state, setState] = React.useState<
+    "active" | "disabled" | "accepted" | "rejected"
+  >("active");
+  return (
+    <ActionCardBlock
+      {...renameProposal}
+      state={state}
+      onClickAccept={() => setState("accepted")}
+      onClickReject={() => setState("rejected")}
+    />
+  );
+};
+
+/**
+ * The full flow wired up: accepting or rejecting advances `state`, which is
+ * exactly how product code should drive the card.
+ *
+ * @summary Interactive accept/reject lifecycle.
+ */
+export const InteractiveLifecycle: Story = {
+  args: {
+    ...renameProposal,
+    state: "active",
+    onClickAccept: fn(),
+    onClickReject: fn(),
+  },
+  render: () => <LifecycleDemo />,
 };

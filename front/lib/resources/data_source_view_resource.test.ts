@@ -3,7 +3,6 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -33,7 +32,7 @@ describe("DataSourceViewResource", () => {
       const { globalGroup } = await GroupFactory.defaults(workspace1);
       const user1 = await UserFactory.superUser();
       await MembershipFactory.associate(workspace1, user1, { role: "user" });
-      await GroupSpaceFactory.associate(space1, globalGroup);
+      await SpaceFactory.attachGroup(space1, globalGroup);
 
       const auth = await Authenticator.fromUserIdAndWorkspaceId(
         user1.sId,

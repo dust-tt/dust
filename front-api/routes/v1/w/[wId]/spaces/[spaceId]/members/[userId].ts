@@ -41,18 +41,16 @@ app.delete(
       });
     }
 
-    if (
-      space.managementMode === "group" ||
-      space.groups.some((group) => group.isGlobal())
-    ) {
+    // Members are editable on regular spaces and projects only — not global, system or conversations
+    // spaces — regardless of whether the space is open or restricted (an open space keeps an explicit
+    // member group whose grant confers write beyond the workspace-wide read). Group-managed spaces
+    // draw their membership from provisioned (IdP-owned) groups, so members can't be edited by API.
+    if (!space.isRegular() && !space.isProject()) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
           type: "space_not_found",
-          message:
-            space.managementMode === "group"
-              ? "Space is managed by provisioned group access, members can't be edited by API."
-              : "Non-restricted space's members can't be edited.",
+          message: "The space was not found.",
         },
       });
     }

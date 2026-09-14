@@ -1,8 +1,8 @@
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import {
   expandTiersUpTo,
   getMaxTierName,
 } from "@app/lib/model_tiers/tier_order";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 
 export type ModelTierResolutionSource = "workspace" | "groups" | "user";
 

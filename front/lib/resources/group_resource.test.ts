@@ -70,12 +70,8 @@ vi.mock("@app/lib/utils/cache", async (importOriginal) => {
   };
 });
 
-import type { Authenticator } from "@app/lib/auth";
-import {
-  BUILDER_GROUP_NAME,
-  GroupResource,
-  MANUAL_BUILDERS_GROUP_NAME,
-} from "@app/lib/resources/group_resource";
+import { Authenticator } from "@app/lib/auth";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -86,11 +82,12 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
 
 function getCacheKeyForUser(userId: number, workspaceId: number): string {
   // The function name is empty because an anonymous arrow function is passed to cacheWithRedis
-  return `cacheWithRedis--groups:user:${userId}:workspace:${workspaceId}`;
+  return `cacheWithRedis--groups:v2:user:${userId}:workspace:${workspaceId}`;
 }
 
 function getCacheKeyForWorkspaceGroupsFromSystemKey(
@@ -117,6 +114,47 @@ describe("GroupResource", () => {
     inMemoryCache.clear();
   });
 
+  describe("getActiveMembershipsForGroups", () => {
+    it("returns no memberships without querying for empty groups", async () => {
+      const onQuery = vi.fn();
+      frontSequelize.addHook("afterQuery", "empty-groups", onQuery);
+      try {
+        expect(
+          await GroupResource.getActiveMembershipsForGroups(authenticator, [])
+        ).toEqual({});
+        expect(onQuery).not.toHaveBeenCalled();
+      } finally {
+        frontSequelize.removeHook("afterQuery", "empty-groups");
+      }
+    });
+  });
+
+  describe("fetchByModelIds", () => {
+    it("filters on group kind when asked", async () => {
+      const autoGroup = await GroupResource.makeNew({
+        name: "Auto Group",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      const ids = [autoGroup.id, globalGroup.id, systemGroup.id];
+
+      const all = await GroupResource.dangerouslyFetchByModelIds(
+        authenticator,
+        ids
+      );
+      expect(all.map((g) => g.id).sort()).toEqual([...ids].sort());
+
+      const autoOnly = await GroupResource.dangerouslyFetchByModelIds(
+        authenticator,
+        ids,
+        {
+          groupKinds: ["regular_auto"],
+        }
+      );
+      expect(autoOnly.map((g) => g.id)).toEqual([autoGroup.id]);
+    });
+  });
+
   describe("dangerouslyListUserGroupsForAuth", () => {
     it("returns global group and explicit groups for a workspace member", async () => {
       const regularGroup = await GroupResource.makeNew({
@@ -128,26 +166,30 @@ describe("GroupResource", () => {
         users: [user.toJSON()],
       });
 
-      const groupIds = await GroupResource.dangerouslyListUserGroupsForAuth({
-        user,
-        workspace,
-      });
+      const { globalGroupModelId, groupModelIds } =
+        await GroupResource.dangerouslyListUserGroupsForAuth({
+          user,
+          workspace,
+        });
 
-      expect(groupIds.length).toBe(2);
-      expect(groupIds).toContain(globalGroup.id);
-      expect(groupIds).toContain(regularGroup.id);
+      expect(groupModelIds.length).toBe(2);
+      expect(groupModelIds).toContain(globalGroup.id);
+      expect(groupModelIds).toContain(regularGroup.id);
+      expect(globalGroupModelId).toBe(globalGroup.id);
     });
 
     it("returns global group for non-member (no membership check)", async () => {
       const nonMember = await UserFactory.basic();
 
-      const groupIds = await GroupResource.dangerouslyListUserGroupsForAuth({
-        user: nonMember,
-        workspace,
-      });
+      const { globalGroupModelId, groupModelIds } =
+        await GroupResource.dangerouslyListUserGroupsForAuth({
+          user: nonMember,
+          workspace,
+        });
 
-      expect(groupIds.length).toBe(1);
-      expect(groupIds).toContain(globalGroup.id);
+      expect(groupModelIds.length).toBe(1);
+      expect(groupModelIds).toContain(globalGroup.id);
+      expect(globalGroupModelId).toBe(globalGroup.id);
     });
 
     it("throws when global group is missing", async () => {
@@ -176,7 +218,7 @@ describe("GroupResource", () => {
   });
 
   describe("listGroupNamesByUserModelIdInWorkspace", () => {
-    it("returns regular + provisioned group names per user, sorted, excluding global", async () => {
+    it("returns regular manual + provisioned group names per user, sorted, excluding global", async () => {
       const user2 = await UserFactory.basic();
       await MembershipFactory.associate(workspace, user2, { role: "user" });
       const user3 = await UserFactory.basic();
@@ -185,7 +227,7 @@ describe("GroupResource", () => {
       const sales = await GroupResource.makeNew({
         name: "Sales",
         workspaceId: workspace.id,
-        kind: "regular_auto",
+        kind: "regular_manual",
       });
       await sales.dangerouslyAddMembers(authenticator, {
         users: [user.toJSON()],
@@ -203,8 +245,9 @@ describe("GroupResource", () => {
 
       const result = await GroupResource.listGroupNamesByUserModelIdInWorkspace(
         {
-          workspace,
+          auth: authenticator,
           userModelIds: [user.id, user2.id, user3.id],
+          groupKinds: [...MANAGEABLE_GROUP_KINDS],
         }
       );
 
@@ -217,8 +260,9 @@ describe("GroupResource", () => {
     it("returns an empty map when no user ids are given", async () => {
       const result = await GroupResource.listGroupNamesByUserModelIdInWorkspace(
         {
-          workspace,
+          auth: authenticator,
           userModelIds: [],
+          groupKinds: [...MANAGEABLE_GROUP_KINDS],
         }
       );
 
@@ -272,8 +316,8 @@ describe("GroupResource", () => {
       });
 
       const inFebruary = await GroupResource.listUserGroupsInWorkspace({
+        auth: authenticator,
         user: member,
-        workspace,
         groupKinds: ["regular_manual"],
         at: FEBRUARY,
       });
@@ -281,8 +325,8 @@ describe("GroupResource", () => {
 
       // Omitting `at` defaults to now, after the membership ended.
       const today = await GroupResource.listUserGroupsInWorkspace({
+        auth: authenticator,
         user: member,
-        workspace,
         groupKinds: ["regular_manual"],
       });
       expect(today).toEqual([]);
@@ -319,8 +363,8 @@ describe("GroupResource", () => {
       // left in March is still resolvable in February. This is what analytics
       // reindexing of their past messages depends on.
       const inFebruary = await GroupResource.listUserGroupsInWorkspace({
+        auth: authenticator,
         user: member,
-        workspace,
         groupKinds: ["regular_manual"],
         at: FEBRUARY,
       });
@@ -328,8 +372,8 @@ describe("GroupResource", () => {
 
       // Today they are no longer a workspace member.
       const today = await GroupResource.listUserGroupsInWorkspace({
+        auth: authenticator,
         user: member,
-        workspace,
         groupKinds: ["regular_manual"],
       });
       expect(today).toEqual([]);
@@ -356,8 +400,8 @@ describe("GroupResource", () => {
       });
 
       const inJanuary = await GroupResource.listUserGroupsInWorkspace({
+        auth: authenticator,
         user: member,
-        workspace,
         groupKinds: ["regular_manual"],
         at: JANUARY,
       });
@@ -377,14 +421,15 @@ describe("GroupResource", () => {
         users: [user.toJSON()],
       });
 
-      const groupIds = await GroupResource.dangerouslyListUserGroupsForAuth({
-        user,
-        workspace,
-      });
+      const { groupModelIds } =
+        await GroupResource.dangerouslyListUserGroupsForAuth({
+          user,
+          workspace,
+        });
 
-      expect(groupIds.length).toBe(2);
-      expect(groupIds).toContain(globalGroup.id);
-      expect(groupIds).toContain(regularGroup.id);
+      expect(groupModelIds.length).toBe(2);
+      expect(groupModelIds).toContain(globalGroup.id);
+      expect(groupModelIds).toContain(regularGroup.id);
     });
 
     it("populates cache on first call", async () => {
@@ -446,59 +491,97 @@ describe("GroupResource", () => {
     });
   });
 
-  describe("suspendMembers", () => {
-    it("suspends active members and returns affected user IDs", async () => {
-      const regularGroup = await GroupResource.makeNew({
-        name: "Suspend Test Group",
+  describe("manual groups keep at least one member", () => {
+    async function makeManualGroup(members: UserResource[]) {
+      const group = await GroupResource.makeNew({
+        name: "Last Member Test Group",
         workspaceId: workspace.id,
-        kind: "regular_auto",
+        kind: "regular_manual",
       });
-      await regularGroup.dangerouslyAddMembers(authenticator, {
-        users: [user.toJSON()],
+      await group.dangerouslyAddMembers(authenticator, {
+        users: members.map((m) => m.toJSON()),
+      });
+      return group;
+    }
+
+    it("refuses to remove the last member", async () => {
+      const group = await makeManualGroup([user]);
+
+      const res = await group.updateRegularManualGroupMembers(authenticator, {
+        addUserIds: [],
+        removeUserIds: [user.sId],
       });
 
-      const membership = await GroupMembershipModel.findOne({
-        where: {
-          groupId: regularGroup.id,
-          userId: user.id,
-          workspaceId: workspace.id,
-        },
-      });
-      expect(membership?.status).toBe("active");
-
-      const affectedUserIds = await regularGroup.suspendMembers(authenticator);
-
-      expect(affectedUserIds).toContain(user.id);
-
-      const updatedMembership = await GroupMembershipModel.findOne({
-        where: {
-          groupId: regularGroup.id,
-          userId: user.id,
-          workspaceId: workspace.id,
-        },
-      });
-      expect(updatedMembership?.status).toBe("suspended");
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("last_group_member");
+      }
+      expect(
+        (await group.getActiveMembers(authenticator)).map((m) => m.sId)
+      ).toEqual([user.sId]);
     });
 
-    it("invalidates cache for all affected users", async () => {
-      const regularGroup = await GroupResource.makeNew({
-        name: "Cache Invalidation Test",
-        workspaceId: workspace.id,
-        kind: "regular_auto",
+    it("allows removing a member when others remain", async () => {
+      const other = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, other, { role: "user" });
+      const group = await makeManualGroup([user, other]);
+
+      const res = await group.updateRegularManualGroupMembers(authenticator, {
+        addUserIds: [],
+        removeUserIds: [user.sId],
       });
-      await regularGroup.dangerouslyAddMembers(authenticator, {
-        users: [user.toJSON()],
+
+      expect(res.isOk()).toBe(true);
+      expect(
+        (await group.getActiveMembers(authenticator)).map((m) => m.sId)
+      ).toEqual([other.sId]);
+    });
+
+    it("allows swapping the last member out for a new one", async () => {
+      const other = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, other, { role: "user" });
+      const group = await makeManualGroup([user]);
+
+      const res = await group.updateRegularManualGroupMembers(authenticator, {
+        addUserIds: [other.sId],
+        removeUserIds: [user.sId],
       });
 
-      await GroupResource.dangerouslyListUserGroupsForAuth({ user, workspace });
-      const cacheKey = getCacheKeyForUser(user.id, workspace.id);
-      expect(inMemoryCache.has(cacheKey)).toBe(true);
+      expect(res.isOk()).toBe(true);
+      expect(
+        (await group.getActiveMembers(authenticator)).map((m) => m.sId)
+      ).toEqual([other.sId]);
+    });
 
-      await regularGroup.suspendMembers(authenticator);
+    it("refuses an empty memberIds list", async () => {
+      const group = await makeManualGroup([user]);
 
-      expect(inMemoryCache.has(cacheKey)).toBe(false);
+      const res = await group.updateRegularManualGroup(authenticator, {
+        memberIds: [],
+      });
+
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("last_group_member");
+      }
+
+      const refetched = await GroupResource.fetchById(authenticator, group.sId);
+      if (refetched.isErr()) {
+        throw refetched.error;
+      }
+      expect(
+        (await group.getActiveMembers(authenticator)).map((m) => m.sId)
+      ).toEqual([user.sId]);
     });
   });
+
+  // Nothing suspends memberships any more, so the tests below suspend the row by hand.
+  async function suspendMemberships(group: GroupResource) {
+    await GroupMembershipModel.update(
+      { status: "suspended" },
+      { where: { groupId: group.id, workspaceId: workspace.id } }
+    );
+  }
 
   describe("restoreMembers", () => {
     it("restores suspended members and returns affected user IDs", async () => {
@@ -511,7 +594,7 @@ describe("GroupResource", () => {
         users: [user.toJSON()],
       });
 
-      await regularGroup.suspendMembers(authenticator);
+      await suspendMemberships(regularGroup);
       const suspendedMembership = await GroupMembershipModel.findOne({
         where: {
           groupId: regularGroup.id,
@@ -521,7 +604,8 @@ describe("GroupResource", () => {
       });
       expect(suspendedMembership?.status).toBe("suspended");
 
-      const affectedUserIds = await regularGroup.restoreMembers(authenticator);
+      const affectedUserIds =
+        await regularGroup.dangerouslyRestoreMembers(authenticator);
 
       expect(affectedUserIds).toContain(user.id);
 
@@ -545,13 +629,13 @@ describe("GroupResource", () => {
         users: [user.toJSON()],
       });
 
-      await regularGroup.suspendMembers(authenticator);
+      await suspendMemberships(regularGroup);
 
       await GroupResource.dangerouslyListUserGroupsForAuth({ user, workspace });
       const cacheKey = getCacheKeyForUser(user.id, workspace.id);
       expect(inMemoryCache.has(cacheKey)).toBe(true);
 
-      await regularGroup.restoreMembers(authenticator);
+      await regularGroup.dangerouslyRestoreMembers(authenticator);
 
       expect(inMemoryCache.has(cacheKey)).toBe(false);
     });
@@ -582,10 +666,14 @@ describe("GroupResource", () => {
       });
       expect(membershipBefore).not.toBeNull();
 
-      await GroupResource.migrateUserMemberships(authenticator, {
-        primaryUser: user,
-        secondaryUser: secondaryUser,
-      });
+      const transferredCount = await GroupResource.migrateUserMemberships(
+        authenticator,
+        {
+          primaryUser: user,
+          secondaryUser: secondaryUser,
+        }
+      );
+      expect(transferredCount).toBe(1);
 
       const membershipAfter = await GroupMembershipModel.findOne({
         where: {
@@ -625,10 +713,15 @@ describe("GroupResource", () => {
         users: [secondaryUser.toJSON()],
       });
 
-      await GroupResource.migrateUserMemberships(authenticator, {
-        primaryUser: user,
-        secondaryUser: secondaryUser,
-      });
+      // The membership the primary already had is deleted, not transferred, so nothing is counted.
+      const transferredCount = await GroupResource.migrateUserMemberships(
+        authenticator,
+        {
+          primaryUser: user,
+          secondaryUser: secondaryUser,
+        }
+      );
+      expect(transferredCount).toBe(0);
 
       const primaryMembership = await GroupMembershipModel.findOne({
         where: {
@@ -814,11 +907,11 @@ describe("GroupResource", () => {
       const regularGroup = await GroupResource.makeNew({
         name: "Pool Cap Group",
         workspaceId: workspace.id,
-        kind: "regular_auto",
+        kind: "regular_manual",
       });
       expect(regularGroup.poolCapAwuCredits).toBeNull();
 
-      const setResult = await regularGroup.updatePoolCap(authenticator, 5000);
+      const setResult = await regularGroup.updatePoolCap(5000);
       expect(setResult.isOk()).toBe(true);
 
       const afterSet = await GroupResource.fetchById(
@@ -830,7 +923,7 @@ describe("GroupResource", () => {
       }
       expect(afterSet.value.poolCapAwuCredits).toBe(5000);
 
-      const clearResult = await regularGroup.updatePoolCap(authenticator, null);
+      const clearResult = await regularGroup.updatePoolCap(null);
       expect(clearResult.isOk()).toBe(true);
 
       const afterClear = await GroupResource.fetchById(
@@ -844,7 +937,7 @@ describe("GroupResource", () => {
     });
   });
 
-  describe("listMaxPoolCapAwuCreditsByUserModelIdInWorkspace", () => {
+  describe("listMaxPoolCapGroupByUserModelIdInWorkspace", () => {
     it("returns the highest cap across a user's provisioned groups, ignoring uncapped and non-provisioned groups", async () => {
       const user2 = await UserFactory.basic();
       await MembershipFactory.associate(workspace, user2, { role: "user" });
@@ -859,7 +952,7 @@ describe("GroupResource", () => {
         },
         { memberIds: [user.id] }
       );
-      await capped500.updatePoolCap(authenticator, 500);
+      await capped500.updatePoolCap(500);
 
       const capped800 = await GroupResource.makeNew(
         {
@@ -870,7 +963,7 @@ describe("GroupResource", () => {
         },
         { memberIds: [user.id] }
       );
-      await capped800.updatePoolCap(authenticator, 800);
+      await capped800.updatePoolCap(800);
 
       // Uncapped group: user2 belongs only here, so they have no group cap.
       await GroupResource.makeNew(
@@ -893,20 +986,63 @@ describe("GroupResource", () => {
         },
         { memberIds: [user.id, user2.id] }
       );
-      await regularGroup.updatePoolCap(authenticator, 10_000);
+      await regularGroup.updatePoolCap(10_000);
 
       const result =
-        await GroupResource.listMaxPoolCapAwuCreditsByUserModelIdInWorkspace({
+        await GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
           workspace,
           userModelIds: [user.id, user2.id],
         });
 
       // user is in both capped provisioned groups → the highest cap wins; the
       // regular group's higher cap is ignored.
-      expect(result.get(user.id)).toBe(800);
+      expect(result.get(user.id)).toEqual({
+        capAwuCredits: 800,
+        groupName: "Capped 800",
+        groupId: capped800.id,
+      });
       // user2 is only in uncapped/non-eligible groups → absent (falls back to
       // the workspace default).
       expect(result.has(user2.id)).toBe(false);
+    });
+
+    it("breaks equal-cap ties deterministically by lowest groupId", async () => {
+      const groupA = await GroupResource.makeNew(
+        {
+          name: "Tie A",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-tie-a",
+        },
+        { memberIds: [user.id] }
+      );
+      await groupA.updatePoolCap(500);
+
+      const groupB = await GroupResource.makeNew(
+        {
+          name: "Tie B",
+          workspaceId: workspace.id,
+          kind: "provisioned",
+          workOSGroupId: "fake-tie-b",
+        },
+        { memberIds: [user.id] }
+      );
+      await groupB.updatePoolCap(500);
+
+      const [lower, higher] = [groupA, groupB].sort((a, b) => a.id - b.id);
+
+      const result =
+        await GroupResource.listMaxPoolCapGroupByUserModelIdInWorkspace({
+          workspace,
+          userModelIds: [user.id],
+        });
+
+      expect(result.get(user.id)).toEqual({
+        capAwuCredits: 500,
+        groupName: lower.name,
+        groupId: lower.id,
+      });
+      expect(result.get(user.id)?.groupId).not.toEqual(higher.id);
     });
   });
 
@@ -1007,10 +1143,8 @@ describe("GroupResource", () => {
       await GroupResource.listWorkspaceGroupsFromKey(key);
       expect(inMemoryCache.has(cacheKey)).toBe(true);
 
-      const updateResult = await regularGroup.updateName(
-        authenticator,
-        "Name After"
-      );
+      const updateResult =
+        await regularGroup.dangerouslyUpdateName("Name After");
       expect(updateResult.isOk()).toBe(true);
 
       expect(inMemoryCache.has(cacheKey)).toBe(true);
@@ -1053,160 +1187,411 @@ describe("GroupResource", () => {
     });
   });
 
-  describe("syncBuilderGroupMembership", () => {
-    it("creates a regular_manual Builders group with the user when they become a builder", async () => {
-      await GroupResource.syncBuilderGroupMembership({
-        workspace,
-        user,
-        isBuilder: true,
-      });
-
-      const group = await GroupResource.fetchByName(
-        authenticator,
-        MANUAL_BUILDERS_GROUP_NAME
-      );
-      expect(group).not.toBeNull();
-      expect(group?.kind).toBe("regular_manual");
-
-      const members = await group?.getActiveMembers(authenticator);
-      expect(members?.map((m) => m.id)).toEqual([user.id]);
-    });
-
-    it("does not create the group when the user is not a builder", async () => {
-      await GroupResource.syncBuilderGroupMembership({
-        workspace,
-        user,
-        isBuilder: false,
-      });
-
-      const group = await GroupResource.fetchByName(
-        authenticator,
-        MANUAL_BUILDERS_GROUP_NAME
-      );
-      expect(group).toBeNull();
-    });
-
-    it("adds then removes the user as the builder role comes and goes", async () => {
-      const group = await GroupResource.makeNew({
-        name: MANUAL_BUILDERS_GROUP_NAME,
+  describe("role-granting groups", () => {
+    async function makeRoleGroup(
+      name: string,
+      grantedRole: "admin" | "manager" | null,
+      kind: "provisioned" | "regular_manual" = "provisioned"
+    ) {
+      return GroupResource.makeNew({
+        name,
         workspaceId: workspace.id,
-        kind: "regular_manual",
+        kind,
+        ...(kind === "provisioned" ? { workOSGroupId: `workos-${name}` } : {}),
+        grantedRole,
+      });
+    }
+
+    async function roleOf(member: UserResource) {
+      const membership =
+        await MembershipResource.getActiveMembershipOfUserInWorkspace({
+          user: member,
+          workspace,
+        });
+      return membership?.role;
+    }
+
+    describe("computeUserRoleFromGroups", () => {
+      let member: UserResource;
+
+      beforeEach(async () => {
+        member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
       });
 
-      await GroupResource.syncBuilderGroupMembership({
-        workspace,
-        user,
-        isBuilder: true,
+      it("returns 'user' when in no role-granting group", async () => {
+        expect(
+          await GroupResource.computeUserRoleFromGroups(authenticator, member)
+        ).toBe("user");
       });
-      let members = await group.getActiveMembers(authenticator);
-      expect(members.map((m) => m.id)).toEqual([user.id]);
 
-      await GroupResource.syncBuilderGroupMembership({
-        workspace,
-        user,
-        isBuilder: false,
+      it("grants 'admin' from an admin-granting group", async () => {
+        const group = await makeRoleGroup("g-admin", "admin");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+
+        expect(
+          await GroupResource.computeUserRoleFromGroups(authenticator, member)
+        ).toBe("admin");
       });
-      members = await group.getActiveMembers(authenticator);
-      expect(members).toEqual([]);
+
+      it("grants 'manager' from a manager-granting group", async () => {
+        const group = await makeRoleGroup("g-manager", "manager");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+
+        expect(
+          await GroupResource.computeUserRoleFromGroups(authenticator, member)
+        ).toBe("manager");
+      });
+
+      it("prefers 'admin' over 'manager'", async () => {
+        const adminGroup = await makeRoleGroup("g-admin", "admin");
+        const managerGroup = await makeRoleGroup("g-manager", "manager");
+        await adminGroup.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+        await managerGroup.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+
+        expect(
+          await GroupResource.computeUserRoleFromGroups(authenticator, member)
+        ).toBe("admin");
+      });
     });
 
-    it("is idempotent", async () => {
-      await GroupResource.syncBuilderGroupMembership({
-        workspace,
-        user,
-        isBuilder: true,
-      });
-      await GroupResource.syncBuilderGroupMembership({
-        workspace,
-        user,
-        isBuilder: true,
+    describe("membership role sync", () => {
+      it("upgrades a member's role when added to a role-granting group", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup("g-admin", "admin");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+
+        expect(await roleOf(member)).toBe("admin");
       });
 
-      const group = await GroupResource.fetchByName(
-        authenticator,
-        MANUAL_BUILDERS_GROUP_NAME
-      );
-      const membershipCount = await GroupMembershipModel.count({
-        where: {
-          groupId: group?.id,
-          userId: user.id,
+      it("downgrades a member's role when removed from a role-granting group", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup("g-manager", "manager");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+        expect(await roleOf(member)).toBe("manager");
+
+        await group.dangerouslyRemoveMembers(authenticator, {
+          users: [member.toJSON()],
+          allowProvisionedGroups: true,
+        });
+        expect(await roleOf(member)).toBe("user");
+      });
+
+      it("does not change roles for groups that grant no role", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup("g-none", null, "regular_manual");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+        });
+
+        expect(await roleOf(member)).toBe("user");
+      });
+    });
+
+    describe("setGrantedRole", () => {
+      it("backfills members' roles when a mapping is set", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup("g-manual", null, "regular_manual");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+        });
+        expect(await roleOf(member)).toBe("user");
+
+        const setRes = await group.setGrantedRole(authenticator, "manager");
+        expect(setRes.isOk()).toBe(true);
+        expect(await roleOf(member)).toBe("manager");
+      });
+
+      it("does not downgrade members when the mapping is cleared (last group keeps the role)", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup("g-manual", null, "regular_manual");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+        });
+
+        await group.setGrantedRole(authenticator, "manager");
+        expect(await roleOf(member)).toBe("manager");
+
+        // Clearing the only manager-granting group must not strip the role.
+        const clearRes = await group.setGrantedRole(authenticator, null);
+        expect(clearRes.isOk()).toBe(true);
+        expect(await roleOf(member)).toBe("manager");
+      });
+
+      it("downgrades members of a cleared group when another group still grants the role", async () => {
+        const user1 = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, user1, { role: "user" });
+        const user2 = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, user2, { role: "user" });
+
+        const groupA = await makeRoleGroup("g-a", "admin", "regular_manual");
+        await groupA.dangerouslyAddMembers(authenticator, {
+          users: [user1.toJSON()],
+        });
+        const groupB = await makeRoleGroup("g-b", "admin", "regular_manual");
+        await groupB.dangerouslyAddMembers(authenticator, {
+          users: [user2.toJSON()],
+        });
+        expect(await roleOf(user1)).toBe("admin");
+        expect(await roleOf(user2)).toBe("admin");
+
+        // Remove groupB from admin. groupA still grants admin, so user2 (only in
+        // groupB) is downgraded while user1 stays admin.
+        const res = await groupB.setGrantedRole(authenticator, null);
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(user1)).toBe("admin");
+        expect(await roleOf(user2)).toBe("user");
+      });
+
+      it("does not downgrade admins when the mapping is lowered to manager", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup("g-manual", null, "regular_manual");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+        });
+
+        await group.setGrantedRole(authenticator, "admin");
+        expect(await roleOf(member)).toBe("admin");
+
+        const res = await group.setGrantedRole(authenticator, "manager");
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(member)).toBe("admin");
+      });
+
+      it("does not downgrade the acting admin, but downgrades other members", async () => {
+        // `user`/`authenticator` is the acting admin. Keep admin still granted by
+        // another group so the last-group protection does not apply, isolating the
+        // acting-admin protection.
+        const otherAdmin = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, otherAdmin, {
+          role: "admin",
+        });
+        const adminGroupY = await makeRoleGroup(
+          "g-admin-y",
+          "admin",
+          "regular_manual"
+        );
+        await adminGroupY.dangerouslyAddMembers(authenticator, {
+          users: [otherAdmin.toJSON()],
+        });
+
+        const memberZ = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, memberZ, { role: "user" });
+
+        const groupX = await makeRoleGroup("g-x", "admin", "regular_manual");
+        await groupX.dangerouslyAddMembers(authenticator, {
+          users: [user.toJSON(), memberZ.toJSON()],
+        });
+        expect(await roleOf(user)).toBe("admin");
+        expect(await roleOf(memberZ)).toBe("admin");
+
+        // Remap X to manager. Admin is still granted by Y, so only the acting
+        // admin (`user`) is kept; the other member is downgraded.
+        const res = await groupX.setGrantedRole(authenticator, "manager");
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(user)).toBe("admin");
+        expect(await roleOf(memberZ)).toBe("manager");
+      });
+
+      it("rejects mapping a non-manageable group kind", async () => {
+        const autoGroup = await GroupResource.makeNew({
+          name: "g-auto",
           workspaceId: workspace.id,
-        },
-      });
-      expect(membershipCount).toBe(1);
+          kind: "regular_auto",
+        });
 
-      await GroupResource.syncBuilderGroupMembership({
-        workspace,
-        user,
-        isBuilder: false,
+        const res = await autoGroup.setGrantedRole(authenticator, "admin");
+        expect(res.isErr()).toBe(true);
       });
-      await GroupResource.syncBuilderGroupMembership({
-        workspace,
-        user,
-        isBuilder: false,
-      });
-      const members = await group?.getActiveMembers(authenticator);
-      expect(members).toEqual([]);
     });
 
-    it("coexists with a provisioned dust-builders group", async () => {
-      const provisionedGroup = await GroupResource.makeNew({
-        name: BUILDER_GROUP_NAME,
-        workspaceId: workspace.id,
-        kind: "provisioned",
-        workOSGroupId: "workos-group-dust-builders",
+    describe("admin-granting group membership is admin-only", () => {
+      it("lets an admin add a member to an admin-granting group", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup(
+          "g-admin-manual",
+          "admin",
+          "regular_manual"
+        );
+
+        const res = await group.updateRegularManualGroupMembers(authenticator, {
+          addUserIds: [member.sId],
+          removeUserIds: [],
+        });
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(member)).toBe("admin");
       });
 
-      await GroupResource.syncBuilderGroupMembership({
-        workspace,
-        user,
-        isBuilder: true,
+      it("blocks a manager from adding a member to an admin-granting group", async () => {
+        const manager = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, manager, {
+          role: "manager",
+        });
+        const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          manager.sId,
+          workspace.sId
+        );
+
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeRoleGroup(
+          "g-admin-manual",
+          "admin",
+          "regular_manual"
+        );
+
+        const res = await group.updateRegularManualGroupMembers(managerAuth, {
+          addUserIds: [member.sId],
+          removeUserIds: [],
+        });
+        expect(res.isErr()).toBe(true);
+        if (res.isErr()) {
+          expect(res.error.code).toBe("unauthorized");
+        }
+        expect(await roleOf(member)).toBe("user");
       });
 
-      const manualGroup = await GroupResource.fetchByName(
-        authenticator,
-        MANUAL_BUILDERS_GROUP_NAME
-      );
-      expect(manualGroup?.kind).toBe("regular_manual");
-      const members = await manualGroup?.getActiveMembers(authenticator);
-      expect(members?.map((m) => m.id)).toEqual([user.id]);
+      it("lets a manager add a member to a manager-granting group", async () => {
+        const manager = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, manager, {
+          role: "manager",
+        });
+        const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          manager.sId,
+          workspace.sId
+        );
 
-      const provisionedMembers =
-        await provisionedGroup.getActiveMembers(authenticator);
-      expect(provisionedMembers).toEqual([]);
-    });
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
 
-    it("does not create the group when createIfMissing is false", async () => {
-      await GroupResource.syncBuilderGroupMembership({
-        workspace,
-        user,
-        isBuilder: true,
-        createIfMissing: false,
+        const group = await makeRoleGroup(
+          "g-manager-manual",
+          "manager",
+          "regular_manual"
+        );
+
+        const res = await group.updateRegularManualGroupMembers(managerAuth, {
+          addUserIds: [member.sId],
+          removeUserIds: [],
+        });
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(member)).toBe("manager");
       });
 
-      const group = await GroupResource.fetchByName(
-        authenticator,
-        MANUAL_BUILDERS_GROUP_NAME
-      );
-      expect(group).toBeNull();
-    });
+      it("does not downgrade an admin who removes themselves from the last admin group", async () => {
+        // `authenticator`/`user` is the acting admin and the only member of the
+        // only admin-granting group.
+        const adminGroup = await makeRoleGroup(
+          "g-admin",
+          "admin",
+          "regular_manual"
+        );
+        await adminGroup.dangerouslyAddMembers(authenticator, {
+          users: [user.toJSON()],
+        });
+        expect(await roleOf(user)).toBe("admin");
 
-    it("adds the user to an existing group when createIfMissing is false", async () => {
-      const group = await GroupResource.makeNew({
-        name: MANUAL_BUILDERS_GROUP_NAME,
-        workspaceId: workspace.id,
-        kind: "regular_manual",
+        // Removing themselves must not strip their own admin (no self-lockout).
+        await adminGroup.dangerouslyRemoveMembers(authenticator, {
+          users: [user.toJSON()],
+        });
+        expect(await roleOf(user)).toBe("admin");
       });
 
-      await GroupResource.syncBuilderGroupMembership({
-        workspace,
-        user,
-        isBuilder: true,
-        createIfMissing: false,
+      it("lets another admin downgrade an admin by removing them from the admin group", async () => {
+        const otherAdmin = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, otherAdmin, {
+          role: "admin",
+        });
+        const otherAdminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          otherAdmin.sId,
+          workspace.sId
+        );
+
+        const target = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, target, { role: "user" });
+
+        const adminGroup = await makeRoleGroup(
+          "g-admin",
+          "admin",
+          "regular_manual"
+        );
+        await adminGroup.dangerouslyAddMembers(otherAdminAuth, {
+          users: [target.toJSON()],
+        });
+        expect(await roleOf(target)).toBe("admin");
+
+        // Another admin removing `target` (not the acting user) downgrades them.
+        await adminGroup.dangerouslyRemoveMembers(otherAdminAuth, {
+          users: [target.toJSON()],
+        });
+        expect(await roleOf(target)).toBe("user");
       });
 
-      const members = await group.getActiveMembers(authenticator);
-      expect(members.map((m) => m.id)).toEqual([user.id]);
+      it("does not let a manager demote an admin via a manager-granting group", async () => {
+        const manager = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, manager, {
+          role: "manager",
+        });
+        const managerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+          manager.sId,
+          workspace.sId
+        );
+
+        const targetAdmin = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, targetAdmin, {
+          role: "admin",
+        });
+
+        const group = await makeRoleGroup(
+          "g-manager-manual",
+          "manager",
+          "regular_manual"
+        );
+
+        // A manager may edit a manager-granting group, but adding an admin to it
+        // must not downgrade that admin to manager (would bypass the admin-role
+        // change guard).
+        const res = await group.updateRegularManualGroupMembers(managerAuth, {
+          addUserIds: [targetAdmin.sId],
+          removeUserIds: [],
+        });
+        expect(res.isOk()).toBe(true);
+        expect(await roleOf(targetAdmin)).toBe("admin");
+      });
     });
   });
 });

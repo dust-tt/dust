@@ -540,6 +540,13 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
       );
     }
 
+    // An archived skill is frozen: restoring it is the only change it accepts.
+    if (skill.status === "archived") {
+      return new Err(
+        new MCPError("This skill is archived and cannot be updated.")
+      );
+    }
+
     // Resolve the new instructions: undefined keeps the existing ones, a full
     // string replaces them, and a targeted edit applies a str-replace on the
     // current instructions (mirroring the Files MCP edit pattern).
@@ -625,6 +632,7 @@ const handlers: ToolHandlers<typeof SKILL_AUTHORING_TOOLS_METADATA> = {
           : skill.instructionsHtml,
       mcpServerViews: skill.mcpServerViews,
       name: trimmedName,
+      manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
       requestedSpaceIds: skill.requestedSpaceIds,
       userFacingDescription:
         userFacingDescription ?? skill.userFacingDescription,

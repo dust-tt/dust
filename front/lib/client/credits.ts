@@ -9,8 +9,27 @@ export function formatCredits(credits: number): string {
   return credits.toLocaleString("en-US", { maximumFractionDigits: 1 });
 }
 
+// Format AWU credits with exactly one decimal (e.g. "310.0"), so values in
+// per-message average columns stay visually consistent.
+export function formatAvgCredits(credits: number): string {
+  return credits.toLocaleString("en-US", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
+
+// Format AWU credits with full fractional precision (up to 6 decimals,
+// trailing zeros trimmed). Used by Poke debugging views that surface
+// microcredit-derived figures (e.g. the rate-limiter counter), where an
+// integer-rounded display would hide fractional-credit divergence.
+export function formatCreditsPrecise(credits: number): string {
+  return credits.toLocaleString("en-US", { maximumFractionDigits: 6 });
+}
+
 export function formatCreditValue(credits: number): string {
-  return `${formatCredits(credits)} credit${pluralize(credits)}`;
+  const formattedCredits = formatCredits(credits);
+  const displayedCredits = Number(formattedCredits.replaceAll(",", ""));
+  return `${formattedCredits} credit${pluralize(displayedCredits)}`;
 }
 
 export function toolUsageLabel(callCount: number): string {
@@ -35,6 +54,35 @@ export function formatFairUseTimeframe(
       assertNeverAndIgnore(timeframe);
       return "";
   }
+}
+
+export function formatLimitTimeframe(
+  timeframe: MaxAwuCreditsTimeframeType,
+  variant: "sentence" | "compact" = "sentence"
+): string {
+  let windowLabel: string;
+  switch (timeframe) {
+    case "day":
+      windowLabel = "24 hours";
+      break;
+    case "week":
+      windowLabel = "7 days";
+      break;
+    case "month":
+      windowLabel = "30 days";
+      break;
+    case "lifetime":
+      return variant === "compact"
+        ? "on your current plan"
+        : "for your current plan";
+    default:
+      assertNeverAndIgnore(timeframe);
+      return "";
+  }
+
+  return variant === "compact"
+    ? `in the last ${windowLabel}`
+    : `over the past ${windowLabel}`;
 }
 
 export function formatCreditsCompact(credits: number): string {

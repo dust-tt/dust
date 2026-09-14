@@ -36,6 +36,11 @@ export class RequestCachedQuery<Key, Value> {
     const cache = getRequestStorage()?.queryCache;
     return cache ? cache.get(this, key, query) : query();
   }
+
+  /** Forgets the memoized value for one key, so the next read in this request reloads. */
+  invalidate(key: Key): void {
+    getRequestStorage()?.queryCache.invalidate(this, key);
+  }
 }
 
 export class RequestQueryCache {
@@ -65,6 +70,13 @@ export class RequestQueryCache {
     const value = load();
     values.set(key, value);
     return value;
+  }
+
+  invalidate<Key, Value>(
+    query: RequestCachedQuery<Key, Value>,
+    key: Key
+  ): void {
+    this.valuesByQuery.get(query.cacheId)?.delete(key);
   }
 }
 

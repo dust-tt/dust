@@ -16,15 +16,21 @@ const diffLineVariants = cva("rounded px-1", {
 });
 
 export type DiffChange = {
+  /** Removed content (may span multiple lines). */
   old?: string;
+  /** Added content (may span multiple lines). */
   new?: string;
 };
 
 export type DiffBlockProps = {
+  /** Controls rendered in the block's action slot (e.g. a "view changes" Button). */
   actions?: ReactElement;
   className?: string;
+  /** Number of lines shown before the diff collapses behind a "Show more" toggle (default 6). */
   collapsedLines?: number;
+  /** The edits to display as removal/addition line pairs; ignored when children is provided. */
   changes?: DiffChange[];
+  /** Custom content rendered instead of the changes array. */
   children?: React.ReactNode;
 };
 
@@ -35,6 +41,14 @@ function getEstimatedCollapsedHeight(collapsedLines: number) {
   return `calc(${collapsedLines} * 1.5em + 1rem)`;
 }
 
+/**
+ * Renders a set of code edits as a line-by-line diff inside an agent message,
+ * taking a changes array of { old, new } pairs; large diffs collapse to a
+ * preview with a "Show more" toggle, and an actions slot holds extra
+ * controls. Use it to contrast previous and new content an agent proposes or
+ * applied; for plain (non-diff) code rendering, use CodeBlock.
+ * @summary Collapsible line-by-line code diff.
+ */
 export function DiffBlock({
   changes,
   children,

@@ -1,3 +1,4 @@
+import { Authenticator } from "@app/lib/auth";
 import { PlanModel } from "@app/lib/models/plan";
 import { upsertFreePlans } from "@app/lib/plans/free_plans";
 import {
@@ -9,6 +10,7 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -16,6 +18,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { PlanFactory } from "@app/tests/utils/PlanFactory";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
 import { faker } from "@faker-js/faker";
 import { expect } from "vitest";
@@ -164,6 +167,34 @@ export class WorkspaceFactory {
     // GroupFactory.defaults() manually. Idempotent if already created.
     await GroupResource.makeDefaultsForWorkspace(workspaceType);
 
+    // Every workspace reads its own skills: the global group holds `reader` on `skill:-1`, seeded by
+    // `seedWorkspaceCapabilities` in real provisioning. Without it `SkillResource.canRead` denies
+    // and no test could fetch a skill. The action-gating capabilities are deliberately left unset,
+    // so a test that needs one grants it explicitly (see `grantWorkspacePermission`) and the suites
+    // asserting denial keep their baseline.
+    const auth = await Authenticator.internalAdminForWorkspace(
+      workspaceType.sId
+    );
+    await GroupPermissionResource.setForEverybody(auth, {
+      grantType: "reader",
+      resourceType: "skill",
+    });
+
     return workspaceType;
+  }
+}
+
+export type TestWorkspacePlan = "basic" | "creditPriced";
+
+export async function workspaceForPlan(
+  plan: TestWorkspacePlan
+): Promise<WorkspaceType> {
+  switch (plan) {
+    case "basic":
+      return WorkspaceFactory.basic();
+    case "creditPriced":
+      return WorkspaceFactory.creditPriced();
+    default:
+      assertNever(plan);
   }
 }

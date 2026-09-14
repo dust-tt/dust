@@ -7,32 +7,16 @@ import {
 import {
   useDismissWorkspaceEgressRequest,
   useUpdateWorkspaceEgressPolicy,
-  useUpdateWorkspaceSandboxAgentEgressRequests,
   useWorkspaceEgressPolicy,
 } from "@app/lib/swr/sandbox";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
-import {
-  ContentMessage,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  InfoCircle,
-  Page,
-  SliderToggle,
-  Spinner,
-} from "@dust-tt/sparkle";
-import { useState } from "react";
+import { ContentMessage, InfoCircle, Page, Spinner } from "@dust-tt/sparkle";
 
 export function NetworkSection() {
   const owner = useWorkspace();
   const { isAdmin } = useAuth();
   const { featureFlags } = useFeatureFlags();
   const hasSandboxAdmin = isComputerFeatureEnabled(featureFlags);
-  const [isEnableAgentRequestsDialogOpen, setIsEnableAgentRequestsDialogOpen] =
-    useState(false);
 
   const {
     policy,
@@ -47,27 +31,6 @@ export function NetworkSection() {
     useUpdateWorkspaceEgressPolicy({ owner });
   const { dismissWorkspaceEgressRequest, isDismissingRequest } =
     useDismissWorkspaceEgressRequest({ owner });
-  const {
-    allowAgentEgressRequests,
-    updateWorkspaceSandboxAgentEgressRequests,
-    isUpdatingWorkspaceSandboxAgentEgressRequests,
-  } = useUpdateWorkspaceSandboxAgentEgressRequests({ owner });
-
-  const handleToggleAgentEgressRequests = async () => {
-    if (allowAgentEgressRequests) {
-      await updateWorkspaceSandboxAgentEgressRequests(false);
-      return;
-    }
-
-    setIsEnableAgentRequestsDialogOpen(true);
-  };
-
-  const handleConfirmEnableAgentEgressRequests = async () => {
-    const success = await updateWorkspaceSandboxAgentEgressRequests(true);
-    if (success) {
-      setIsEnableAgentRequestsDialogOpen(false);
-    }
-  };
 
   const renderBody = () => {
     if (!isAdmin) {
@@ -104,27 +67,6 @@ export function NetworkSection() {
 
     return (
       <Page.Vertical align="stretch" gap="lg">
-        <div className="flex items-center justify-between gap-4 border-y border-border py-4">
-          <div className="flex min-w-0 flex-col">
-            <div className="heading-sm text-foreground">
-              Agent-requested domains
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Allow agents using the Computer to ask for additional domains, one
-              approval per domain, during the conversation. When disabled,
-              agents cannot request new domains and should only rely on the
-              domains listed below.
-            </div>
-          </div>
-          <SliderToggle
-            selected={allowAgentEgressRequests}
-            onClick={() => {
-              void handleToggleAgentEgressRequests();
-            }}
-            disabled={isUpdatingWorkspaceSandboxAgentEgressRequests}
-          />
-        </div>
-
         <Page.SectionHeader
           title="Allowed domains"
           description="These domains apply to every Computer in this workspace. Hostnames are matched exactly. To allow both example.com and www.example.com, add each separately. A wildcard such as *.example.com allows subdomains, but not example.com itself. Changes are picked up by egress proxy cache refreshes, typically within 60 seconds."
@@ -151,47 +93,5 @@ export function NetworkSection() {
     );
   };
 
-  return (
-    <>
-      <Dialog
-        open={isEnableAgentRequestsDialogOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsEnableAgentRequestsDialogOpen(false);
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              Allow agents to request additional domains?
-            </DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            When enabled, any agent running in the Computer can ask the user to
-            allow additional domains during the conversation. Each request is
-            approval-gated, but a non-admin user in this workspace can grant
-            network access to a domain you have not pre-approved. Domains added
-            this way last only for the current Computer.
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => setIsEnableAgentRequestsDialogOpen(false),
-            }}
-            rightButtonProps={{
-              label: "Enable",
-              onClick: () => {
-                void handleConfirmEnableAgentEgressRequests();
-              },
-              isLoading: isUpdatingWorkspaceSandboxAgentEgressRequests,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {renderBody()}
-    </>
-  );
+  return renderBody();
 }

@@ -1,12 +1,10 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   SkillConfigurationModel,
   SkillDataSourceConfigurationModel,
 } from "@app/lib/models/skill";
-import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SkillUserFavoriteModel } from "@app/lib/models/skill/skill_user_favorite";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -22,7 +20,7 @@ import { serializeSkillTag } from "@app/lib/skills/format";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -32,13 +30,11 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
+import type { MembershipRoleType } from "@app/types/memberships";
 import type { ModelId } from "@app/types/shared/model_id";
 import assert from "assert";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/api/permissions/legacy_acls", () => ({
-  isLegacyAclsEnabled: vi.fn(() => false),
-}));
 
 describe("SkillResource", () => {
   let testContext: Awaited<ReturnType<typeof createResourceTest>>;
@@ -65,75 +61,125 @@ describe("SkillResource", () => {
       // role ("user") must be allowed here — there is no role distinction left to gate on.
       const key = await KeyFactory.readOnly(testContext.globalGroup);
 
-      const auth = (await Authenticator.fromKey(key, testContext.workspace.sId))
-        .workspaceAuth;
+      const auth = await Authenticator.fromKey(key, testContext.workspace.sId);
 
       expect(skill.canWrite(auth)).toBe(true);
       expect(skill.canAdministrate(auth)).toBe(true);
     });
   });
 
-  describe("group_permissions dual-write", () => {
-    // The grants held on a skill by its editor group, straight from the table.
-    async function fetchSkillGrants(
-      editorGroupModelId: ModelId,
-      skillModelId: ModelId
-    ) {
-      return GroupPermissionResource.listForGroups(
-        testContext.authenticator.getNonNullableWorkspace(),
+  describe("read grants", () => {
+    it("reads a skill through the global group's workspace-wide reader grant", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With A Read Grant",
+      });
+
+      const grants = await GroupPermissionResource.listForResource(
+        testContext.authenticator,
+        { resourceType: "skill", resourceId: skill.id }
+      );
+
+      expect(
+        grants.some(
+          (grant) =>
+            grant.groupId === testContext.globalGroup.id &&
+            grant.grantType === "reader" &&
+            grant.resourceId === WHOLE_TYPE_RESOURCE_ID
+        )
+      ).toBe(true);
+
+      const auth = await Authenticator.fromUserIdAndWorkspaceId(
+        testContext.user.sId,
+        testContext.workspace.sId
+      );
+      expect(skill.canRead(auth)).toBe(true);
+    });
+
+    it("lets any workspace member read a skill they did not create", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill Read By Anyone",
+      });
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        testContext.workspace.sId
+      );
+
+      // Not an editor, so no `editor` grant: read comes from the role grants until they are
+      // dropped, and from the global group's workspace-wide `reader` grant after that.
+      expect(skill.canRead(otherAuth)).toBe(true);
+      expect(skill.canWrite(otherAuth)).toBe(false);
+
+      const fetched = await SkillResource.fetchById(otherAuth, skill.sId);
+      expect(fetched?.sId).toBe(skill.sId);
+    });
+  });
+
+  describe("editor grants", () => {
+    // The per-user grants on a skill, straight from the table.
+    async function fetchSkillGrants(skillModelId: ModelId) {
+      const group = await GroupPermissionResource.findRegularAutoGroupForGrant(
+        testContext.authenticator,
         {
-          groupModelIds: [editorGroupModelId],
+          grantType: "editor",
           resourceType: "skill",
           resourceId: skillModelId,
         }
       );
+
+      return group
+        ? group.getActiveMembers(testContext.authenticator)
+        : ([] as UserResource[]);
     }
 
-    it("writes an editor grant for the editor group when a skill is created", async () => {
+    it("grants the creator on creation", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Grants",
       });
-      const editorGroupModelId = skill.editorGroup?.id;
-      assert(editorGroupModelId, "skill should have an editor group");
 
-      const grants = await fetchSkillGrants(editorGroupModelId, skill.id);
-
-      expect(grants).toHaveLength(1);
-      expect(grants[0].grantType).toBe("editor");
-      expect(grants[0].resourceId).toBe(skill.id);
+      const editors = await fetchSkillGrants(skill.id);
+      expect(editors.map((editor) => editor.sId)).toContain(
+        testContext.user.sId
+      );
     });
 
     it("clears the grants when the skill is deleted", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill To Delete With Grants",
       });
-      const editorGroupModelId = skill.editorGroup?.id;
-      assert(editorGroupModelId, "skill should have an editor group");
-      expect(await fetchSkillGrants(editorGroupModelId, skill.id)).toHaveLength(
-        1
-      );
+      expect(await fetchSkillGrants(skill.id)).toHaveLength(1);
 
       const result = await skill.delete(testContext.authenticator);
       expect(result.isOk()).toBe(true);
 
-      expect(await fetchSkillGrants(editorGroupModelId, skill.id)).toHaveLength(
-        0
-      );
+      expect(await fetchSkillGrants(skill.id)).toHaveLength(0);
     });
 
-    it("is idempotent: reconciling twice leaves a single grant", async () => {
+    it("is idempotent: granting the same editor twice keeps one member", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
-        name: "Skill Reconciled Twice",
+        name: "Skill Granted Twice",
       });
-      const editorGroupModelId = skill.editorGroup?.id;
-      assert(editorGroupModelId, "skill should have an editor group");
 
-      await skill.reconcileGroupPermissions(testContext.authenticator);
-      await skill.reconcileGroupPermissions(testContext.authenticator);
+      const editor = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, editor, {
+        role: "user",
+      });
 
-      expect(await fetchSkillGrants(editorGroupModelId, skill.id)).toHaveLength(
-        1
-      );
+      expect(
+        (await skill.addEditors(testContext.authenticator, [editor])).isOk()
+      ).toBe(true);
+      expect(
+        (await skill.addEditors(testContext.authenticator, [editor])).isOk()
+      ).toBe(true);
+
+      const editors = await fetchSkillGrants(skill.id);
+      expect(
+        editors.filter((member) => member.sId === editor.sId)
+      ).toHaveLength(1);
     });
   });
 
@@ -652,6 +698,7 @@ describe("SkillResource", () => {
         availability: "users_and_agents",
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [],
       });
 
@@ -673,6 +720,7 @@ describe("SkillResource", () => {
         availability: "workspace_users",
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [],
       });
 
@@ -716,6 +764,7 @@ describe("SkillResource", () => {
         icon: skillResource.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [restrictedSpace.id],
       });
 
@@ -761,6 +810,7 @@ describe("SkillResource", () => {
         icon: skillResource.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [restrictedSpace.id],
       });
 
@@ -776,8 +826,8 @@ describe("SkillResource", () => {
     it("should remove space from agent when skill no longer requires it", async () => {
       const space1 = await SpaceFactory.regular(testContext.workspace);
       const space2 = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space1, testContext.globalGroup);
-      await GroupSpaceFactory.associate(space2, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space1, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space2, testContext.globalGroup);
 
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
@@ -811,6 +861,7 @@ describe("SkillResource", () => {
         icon: skillResource.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [space1.id],
       });
 
@@ -826,11 +877,8 @@ describe("SkillResource", () => {
     it("should keep space on agent if another skill still requires it", async () => {
       const sharedSpace = await SpaceFactory.regular(testContext.workspace);
       const skill1OnlySpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(sharedSpace, testContext.globalGroup);
-      await GroupSpaceFactory.associate(
-        skill1OnlySpace,
-        testContext.globalGroup
-      );
+      await SpaceFactory.attachGroup(sharedSpace, testContext.globalGroup);
+      await SpaceFactory.attachGroup(skill1OnlySpace, testContext.globalGroup);
 
       const skill1 = await SkillFactory.create(testContext.authenticator, {
         name: "Skill 1",
@@ -870,6 +918,7 @@ describe("SkillResource", () => {
         icon: skill1.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [skill1OnlySpace.id],
       });
 
@@ -936,6 +985,7 @@ describe("SkillResource", () => {
         icon: parentSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: parentSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: parentSkill.requestedSpaceIds,
       });
 
@@ -989,6 +1039,7 @@ describe("SkillResource", () => {
         icon: parentSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [restrictedSpace.id],
       });
 
@@ -1018,6 +1069,7 @@ describe("SkillResource", () => {
         icon: parentSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: parentSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: parentSkill.requestedSpaceIds,
       });
 
@@ -1043,6 +1095,8 @@ describe("SkillResource", () => {
         icon: updatedParentSkill!.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds:
+          updatedParentSkill!.manuallyRequestedSpaceIds,
         requestedSpaceIds: updatedParentSkill!.requestedSpaceIds,
       });
 
@@ -1070,6 +1124,7 @@ describe("SkillResource", () => {
         icon: skill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: skill.manuallyRequestedSpaceIds,
         requestedSpaceIds: skill.requestedSpaceIds,
       });
 
@@ -1101,6 +1156,7 @@ describe("SkillResource", () => {
         icon: childSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [restrictedSpace.id],
       });
 
@@ -1122,6 +1178,7 @@ describe("SkillResource", () => {
         icon: childSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: [],
         requestedSpaceIds: [],
       });
 
@@ -1155,6 +1212,7 @@ describe("SkillResource", () => {
         icon: childSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: childSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: childSkill.requestedSpaceIds,
         status: "archived",
       });
@@ -1176,6 +1234,7 @@ describe("SkillResource", () => {
         icon: childSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: childSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: childSkill.requestedSpaceIds,
         status: "active",
       });
@@ -1210,6 +1269,7 @@ describe("SkillResource", () => {
         icon: newIcon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: childSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: childSkill.requestedSpaceIds,
       });
 
@@ -1339,6 +1399,7 @@ describe("SkillResource", () => {
         icon: parentSkill.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds: parentSkill.manuallyRequestedSpaceIds,
         requestedSpaceIds: parentSkill.requestedSpaceIds,
       });
 
@@ -1385,7 +1446,7 @@ describe("SkillResource", () => {
     it("rejects a caller without the publish permission, even an editor", async () => {
       const builder = await UserFactory.basic();
       await MembershipFactory.associate(testContext.workspace, builder, {
-        role: "builder",
+        role: "user",
       });
       const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
         builder.sId,
@@ -1431,6 +1492,7 @@ describe("SkillResource", () => {
           availability: "users_and_agents",
           mcpServerViews: [],
           attachedKnowledge: [],
+          manuallyRequestedSpaceIds: [],
           requestedSpaceIds: [],
         })
       ).rejects.toThrow(
@@ -1440,53 +1502,76 @@ describe("SkillResource", () => {
   });
 
   describe("archive and restore", () => {
-    it("suspends editor group memberships when archiving and restores them when restoring", async () => {
+    it("keeps the editor grants active when archiving, so editors are still listed", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill To Archive",
       });
-      expect(skill.editorGroup).not.toBeNull();
-      const editorGroup = skill.editorGroup!;
 
-      const membershipsBeforeArchive = await GroupMembershipModel.findAll({
-        where: {
-          groupId: editorGroup.id,
-          workspaceId: testContext.workspace.id,
-        },
-      });
-      expect(membershipsBeforeArchive.length).toBeGreaterThan(0);
-      expect(membershipsBeforeArchive.every((m) => m.status === "active")).toBe(
-        true
-      );
+      // Editors live in the regular_auto group holding the skill's `editor` grant.
+      const grantGroup =
+        await GroupPermissionResource.findRegularAutoGroupForGrant(
+          testContext.authenticator,
+          { grantType: "editor", resourceType: "skill", resourceId: skill.id }
+        );
+      expect(grantGroup).not.toBeNull();
+
+      const memberships = async () =>
+        GroupMembershipModel.findAll({
+          where: {
+            groupId: grantGroup!.id,
+            workspaceId: testContext.workspace.id,
+          },
+        });
+
+      const before = await memberships();
+      expect(before.length).toBeGreaterThan(0);
+      expect(before.every((m) => m.status === "active")).toBe(true);
 
       const { affectedCount: archiveCount } = await skill.archive(
         testContext.authenticator
       );
       expect(archiveCount).toBe(1);
 
-      const membershipsAfterArchive = await GroupMembershipModel.findAll({
-        where: {
-          groupId: editorGroup.id,
-          workspaceId: testContext.workspace.id,
-        },
-      });
+      // Archiving leaves the memberships alone: an archived skill keeps its editors, both on the
+      // in-memory resource and on a freshly fetched one.
+      expect((await memberships()).every((m) => m.status === "active")).toBe(
+        true
+      );
       expect(
-        membershipsAfterArchive.every((m) => m.status === "suspended")
-      ).toBe(true);
+        (await skill.listEditors(testContext.authenticator))?.map((e) => e.id)
+      ).toEqual([testContext.user.id]);
 
-      const { affectedCount: restoreCount } = await skill.restore(
+      const archivedSkill = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId
+      );
+      assert(archivedSkill);
+      expect(
+        (await archivedSkill.listEditors(testContext.authenticator))?.map(
+          (e) => e.id
+        )
+      ).toEqual([testContext.user.id]);
+
+      const editorsMap = await SkillResource.batchListEditors(
+        testContext.authenticator,
+        [archivedSkill]
+      );
+      expect(editorsMap.get(skill.sId)?.map((e) => e.id)).toEqual([
+        testContext.user.id,
+      ]);
+
+      const { affectedCount: restoreCount } = await archivedSkill.restore(
         testContext.authenticator
       );
       expect(restoreCount).toBe(1);
-
-      const membershipsAfterRestore = await GroupMembershipModel.findAll({
-        where: {
-          groupId: editorGroup.id,
-          workspaceId: testContext.workspace.id,
-        },
-      });
-      expect(membershipsAfterRestore.every((m) => m.status === "active")).toBe(
+      expect((await memberships()).every((m) => m.status === "active")).toBe(
         true
       );
+      expect(
+        (await archivedSkill.listEditors(testContext.authenticator))?.map(
+          (e) => e.id
+        )
+      ).toEqual([testContext.user.id]);
     });
 
     it("archives multiple skills sharing the same name without a unique constraint violation", async () => {
@@ -1495,7 +1580,14 @@ describe("SkillResource", () => {
       // renames the previously archived one with a timestamped suffix; a third
       // archive on the same day must not collide with the earlier rename
       // target. We fake the clock so each archive lands on a distinct time of
-      // the same day.
+      // the same day. The faked day sits after the real one: the test workspace
+      // memberships start "now", and creating a skill grants the creator their
+      // editor grant, which requires an active membership — a faked day in the
+      // past would make those memberships look not yet started.
+      const fakeDay = new Date(Date.now() + 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
+
       vi.useFakeTimers({ toFake: ["Date"] });
       try {
         const archiveSameNameSkillAt = async (isoTime: string) => {
@@ -1506,10 +1598,10 @@ describe("SkillResource", () => {
           return skill.archive(testContext.authenticator);
         };
 
-        await archiveSameNameSkillAt("2026-07-26T12:00:00Z");
-        await archiveSameNameSkillAt("2026-07-26T12:01:00Z");
+        await archiveSameNameSkillAt(`${fakeDay}T12:00:00Z`);
+        await archiveSameNameSkillAt(`${fakeDay}T12:01:00Z`);
         const { affectedCount } = await archiveSameNameSkillAt(
-          "2026-07-26T12:02:00Z"
+          `${fakeDay}T12:02:00Z`
         );
         expect(affectedCount).toBe(1);
       } finally {
@@ -1519,10 +1611,7 @@ describe("SkillResource", () => {
 
     it("removes the skill's space requirements from agents when archiving and adds them back when restoring", async () => {
       const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(
-        restrictedSpace,
-        testContext.globalGroup
-      );
+      await SpaceFactory.attachGroup(restrictedSpace, testContext.globalGroup);
 
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Space To Archive",
@@ -1567,7 +1656,7 @@ describe("SkillResource", () => {
 
     it("keeps a space on the agent when archiving a skill if another active skill still requires it", async () => {
       const sharedSpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(sharedSpace, testContext.globalGroup);
+      await SpaceFactory.attachGroup(sharedSpace, testContext.globalGroup);
 
       const skill1 = await SkillFactory.create(testContext.authenticator, {
         name: "Skill 1 Sharing Space",
@@ -1656,6 +1745,8 @@ describe("SkillResource", () => {
         icon: archivedParentSkill!.icon,
         mcpServerViews: [],
         attachedKnowledge: [],
+        manuallyRequestedSpaceIds:
+          archivedParentSkill!.manuallyRequestedSpaceIds,
         requestedSpaceIds: archivedParentSkill!.requestedSpaceIds,
       });
 
@@ -1688,55 +1779,38 @@ describe("SkillResource", () => {
   });
 
   describe("delete", () => {
-    it("should delete the skill and its associated editor group", async () => {
+    it("should delete the skill and its editor grant group", async () => {
       const skillResource = await SkillFactory.create(
         testContext.authenticator,
         { name: "Skill To Delete" }
       );
 
-      // Verify the skill and its editor group exist.
-      const groupSkillBefore = await GroupSkillModel.findOne({
-        where: {
-          skillConfigurationId: skillResource.id,
-          workspaceId: testContext.workspace.id,
-        },
-      });
-      expect(groupSkillBefore).not.toBeNull();
+      const grantGroup =
+        await GroupPermissionResource.findRegularAutoGroupForGrant(
+          testContext.authenticator,
+          {
+            grantType: "editor",
+            resourceType: "skill",
+            resourceId: skillResource.id,
+          }
+        );
+      expect(grantGroup).not.toBeNull();
 
-      const editorGroupModelId = groupSkillBefore!.groupId;
-      const [editorGroupBefore] = await GroupResource.fetchByModelIds(
-        testContext.authenticator,
-        [editorGroupModelId]
-      );
-      expect(editorGroupBefore).not.toBeNull();
-      expect(editorGroupBefore!.kind).toBe("skill_editors");
-
-      // Delete the skill.
       const result = await skillResource.delete(testContext.authenticator);
       expect(result.isOk()).toBe(true);
 
-      // Verify the skill is deleted.
       const skillAfter = await SkillResource.fetchByModelIdWithAuth(
         testContext.authenticator,
         skillResource.id
       );
       expect(skillAfter).toBeNull();
 
-      // Verify the GroupSkillModel entry is deleted.
-      const groupSkillAfter = await GroupSkillModel.findOne({
-        where: {
-          skillConfigurationId: skillResource.id,
-          workspaceId: testContext.workspace.id,
-        },
-      });
-      expect(groupSkillAfter).toBeNull();
-
-      // Verify the editor group is deleted.
-      const editorGroupsAfter = await GroupResource.fetchByModelIds(
+      // The grant group existed only to hold this skill's grant, so it goes too.
+      const groupsAfter = await GroupResource.dangerouslyFetchByModelIds(
         testContext.authenticator,
-        [editorGroupModelId]
+        [grantGroup!.id]
       );
-      expect(editorGroupsAfter).toHaveLength(0);
+      expect(groupsAfter).toHaveLength(0);
     });
 
     it("should delete agent-skill links when deleting a skill", async () => {
@@ -1805,10 +1879,120 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("listByAgentConfigurations", () => {
+    it("maps each agent to its own skills", async () => {
+      const [firstAgent, secondAgent, skillLessAgent] = await Promise.all([
+        AgentConfigurationFactory.createTestAgent(testContext.authenticator, {
+          name: "First Agent",
+        }),
+        AgentConfigurationFactory.createTestAgent(testContext.authenticator, {
+          name: "Second Agent",
+        }),
+        AgentConfigurationFactory.createTestAgent(testContext.authenticator, {
+          name: "Skill-less Agent",
+        }),
+      ]);
+
+      const [firstSkill, sharedSkill] = await Promise.all([
+        SkillFactory.create(testContext.authenticator, { name: "First Skill" }),
+        SkillFactory.create(testContext.authenticator, {
+          name: "Shared Skill",
+        }),
+      ]);
+      for (const [agent, skill] of [
+        [firstAgent, firstSkill],
+        [firstAgent, sharedSkill],
+        [secondAgent, sharedSkill],
+      ] as const) {
+        await SkillFactory.linkToAgent(testContext.authenticator, {
+          skillId: skill.id,
+          agentConfigurationId: agent.id,
+        });
+      }
+
+      const pairs = await SkillResource.listByAgentConfigurations(
+        testContext.authenticator,
+        [firstAgent, secondAgent, skillLessAgent]
+      );
+
+      const skillModelIdsByAgentId = new Map<string, number[]>();
+      for (const { agentConfiguration, skill } of pairs) {
+        const skillModelIds =
+          skillModelIdsByAgentId.get(agentConfiguration.sId) ?? [];
+        skillModelIds.push(skill.id);
+        skillModelIdsByAgentId.set(agentConfiguration.sId, skillModelIds);
+      }
+
+      expect(skillModelIdsByAgentId.get(firstAgent.sId)?.sort()).toEqual(
+        [firstSkill.id, sharedSkill.id].sort()
+      );
+      expect(skillModelIdsByAgentId.get(secondAgent.sId)).toEqual([
+        sharedSkill.id,
+      ]);
+      expect(skillModelIdsByAgentId.has(skillLessAgent.sId)).toBe(false);
+    });
+
+    it("resolves global skills attached to a workspace agent", async () => {
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent With A Global Skill" }
+      );
+      await SkillFactory.linkGlobalSkillToAgent(testContext.authenticator, {
+        globalSkillId: "frames",
+        agentConfigurationId: agent.id,
+      });
+
+      const pairs = await SkillResource.listByAgentConfigurations(
+        testContext.authenticator,
+        [agent]
+      );
+
+      expect(pairs.map(({ skill }) => skill.sId)).toEqual(["frames"]);
+    });
+
+    it("returns nothing for no agents", async () => {
+      expect(
+        await SkillResource.listByAgentConfigurations(
+          testContext.authenticator,
+          []
+        )
+      ).toEqual([]);
+    });
+
+    it("does not return skills the caller cannot read", async () => {
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Agent With A Restricted Skill" }
+      );
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Restricted Skill",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skill.id,
+        agentConfigurationId: agent.id,
+      });
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        testContext.workspace.sId
+      );
+
+      expect(
+        await SkillResource.listByAgentConfigurations(otherAuth, [agent])
+      ).toEqual([]);
+    });
+  });
+
   describe("listByMCPServerViewIds", () => {
     it("should return skills that use any of the given MCP server view IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const server = await RemoteMCPServerFactory.create(testContext.workspace);
       const serverView = await MCPServerViewFactory.create(
@@ -1857,7 +2041,7 @@ describe("SkillResource", () => {
   describe("listByDataSourceViewIds", () => {
     it("should return skills that use any of the given data source view IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const dsv1 = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -1913,7 +2097,7 @@ describe("SkillResource", () => {
   describe("listByDataSourceIds", () => {
     it("should return skills that use any of the given data source IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const dsv1 = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -1967,9 +2151,9 @@ describe("SkillResource", () => {
 
     it("should return skills configured through any view of the given data source", async () => {
       const ownerSpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(ownerSpace, testContext.globalGroup);
+      await SpaceFactory.attachGroup(ownerSpace, testContext.globalGroup);
       const otherSpace = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(otherSpace, testContext.globalGroup);
+      await SpaceFactory.attachGroup(otherSpace, testContext.globalGroup);
 
       const defaultView = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -2053,6 +2237,179 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("fetchByModelIds", () => {
+    it("returns active skills only unless a status is given", async () => {
+      const activeSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Active Skill",
+      });
+      const archivedSkill = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Archived Skill", status: "archived" }
+      );
+      const modelIds = [activeSkill.id, archivedSkill.id];
+
+      const defaultFetch = await SkillResource.fetchByModelIds(
+        testContext.authenticator,
+        modelIds
+      );
+      expect(defaultFetch.map((skill) => skill.id)).toEqual([activeSkill.id]);
+
+      const withArchived = await SkillResource.fetchByModelIds(
+        testContext.authenticator,
+        modelIds,
+        { status: ["active", "archived"] }
+      );
+      expect(withArchived.map((skill) => skill.id).sort()).toEqual(
+        [...modelIds].sort()
+      );
+    });
+  });
+
+  describe("permission filtering modes", () => {
+    // A skill owned by another member and built on a restricted space the test admin is not a
+    // member of.
+    async function createRestrictedSkill() {
+      const owner = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, owner, {
+        role: "user",
+      });
+      const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        owner.sId,
+        testContext.workspace.sId
+      );
+      const restrictedSpace = await SpaceFactory.regular(testContext.workspace);
+      await restrictedSpace.addMembers(testContext.authenticator, {
+        userIds: [owner.sId],
+      });
+      const skill = await SkillFactory.create(ownerAuth, {
+        name: "Restricted Space Skill",
+        instructions: "Secret guidelines",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      return { skill, ownerAuth };
+    }
+
+    it("returns a readable skill as is", async () => {
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Readable Skill",
+        instructions: "Public guidelines",
+      });
+
+      const fetched = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId,
+        { permissionFiltering: "redact_unreadable" }
+      );
+
+      expect(fetched).not.toBeNull();
+      expect(fetched!.canRead(testContext.authenticator)).toBe(true);
+      expect(fetched!.toJSON(testContext.authenticator).instructions).toBe(
+        "Public guidelines"
+      );
+    });
+
+    it("returns a redacted skill to an admin who cannot read it", async () => {
+      const { skill } = await createRestrictedSkill();
+      expect(
+        await SkillResource.fetchById(testContext.authenticator, skill.sId)
+      ).toBeNull();
+
+      const fetched = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId,
+        { permissionFiltering: "redact_unreadable" }
+      );
+
+      expect(fetched).not.toBeNull();
+      expect(fetched!.canRead(testContext.authenticator)).toBe(false);
+      // Administration is a role matter, unrelated to reading the spaces.
+      expect(fetched!.canAdministrate(testContext.authenticator)).toBe(true);
+      const json = fetched!.toJSON(testContext.authenticator);
+      expect(json.name).toBe("Restricted Space Skill");
+      expect(json.canRead).toBe(false);
+      expect(json.instructions).toBeNull();
+      expect(json.instructionsHtml).toBeNull();
+      expect(json.tools).toEqual([]);
+      expect(json.fileAttachments).toEqual([]);
+    });
+
+    it("refuses the option to a non-admin, who gets null without it", async () => {
+      const { skill } = await createRestrictedSkill();
+      const builder = await UserFactory.basic();
+      await MembershipFactory.associate(testContext.workspace, builder, {
+        role: "builder",
+      });
+      const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        builder.sId,
+        testContext.workspace.sId
+      );
+
+      await expect(
+        SkillResource.fetchById(builderAuth, skill.sId, {
+          permissionFiltering: "redact_unreadable",
+        })
+      ).rejects.toThrow("Only admins");
+      await expect(
+        SkillResource.listByWorkspace(builderAuth, {
+          permissionFiltering: "redact_unreadable",
+        })
+      ).rejects.toThrow("Only admins");
+      expect(await SkillResource.fetchById(builderAuth, skill.sId)).toBeNull();
+    });
+
+    it("returns the full skill to an admin with the admin_can_see_private_entities flag", async () => {
+      // Enabled first: the workspace flags are cached once read.
+      await FeatureFlagFactory.basic(
+        testContext.authenticator,
+        "admin_can_see_private_entities"
+      );
+      const { skill } = await createRestrictedSkill();
+
+      const fetched = await SkillResource.fetchById(
+        testContext.authenticator,
+        skill.sId,
+        { permissionFiltering: "redact_unreadable" }
+      );
+
+      expect(fetched).not.toBeNull();
+      expect(fetched!.canRead(testContext.authenticator)).toBe(true);
+      expect(fetched!.toJSON(testContext.authenticator).instructions).toBe(
+        "Secret guidelines"
+      );
+    });
+
+    it("returns null for an unknown skill", async () => {
+      expect(
+        await SkillResource.fetchById(
+          testContext.authenticator,
+          "skl_does_not_exist",
+          { permissionFiltering: "redact_unreadable" }
+        )
+      ).toBeNull();
+    });
+
+    it("listByWorkspace with redact_unreadable only redacts the skills the caller cannot read", async () => {
+      const { skill: restrictedSkill } = await createRestrictedSkill();
+      const readableSkill = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Readable Skill" }
+      );
+
+      const skills = await SkillResource.listByWorkspace(
+        testContext.authenticator,
+        { onlyCustom: true, permissionFiltering: "redact_unreadable" }
+      );
+
+      const bySId = new Map(skills.map((s) => [s.sId, s]));
+      expect(
+        bySId.get(restrictedSkill.sId)!.canRead(testContext.authenticator)
+      ).toBe(false);
+      expect(
+        bySId.get(readableSkill.sId)!.canRead(testContext.authenticator)
+      ).toBe(true);
+    });
+  });
+
   describe("fetchByIds", () => {
     it("skips heavy hydration when it is not requested", async () => {
       const server = await RemoteMCPServerFactory.create(testContext.workspace);
@@ -2089,6 +2446,28 @@ describe("SkillResource", () => {
       });
       expect(fetchedSkill.mcpServerViews).toEqual([]);
       expect(fetchByModelIdsSpy).not.toHaveBeenCalled();
+    });
+
+    it("skips the dynamic instructions of a code-defined skill", async () => {
+      const [full] = await SkillResource.fetchByIds(testContext.authenticator, [
+        "frames",
+      ]);
+      const [labelsOnly] = await SkillResource.fetchByIds(
+        testContext.authenticator,
+        ["frames"],
+        {
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+        }
+      );
+
+      // `frames` builds its instructions through a callback, and some of those callbacks write
+      // (`discover_tools` ensures the workspace's auto MCP server views exist), so a read path
+      // that only needs to name a skill must not run them.
+      expect(full.instructions).not.toBe("");
+      expect(labelsOnly.instructions).toBe("");
+      expect(labelsOnly.name).toBe(full.name);
     });
 
     it("filters code-defined skills disabled for the current agent loop", async () => {
@@ -2374,7 +2753,7 @@ describe("SkillResource", () => {
   describe("getAttachedKnowledge", () => {
     it("should return attached knowledge from data source configurations", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const dsv = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -2415,7 +2794,7 @@ describe("SkillResource", () => {
   describe("computeRequestedSpaceIds", () => {
     it("should compute space IDs from attached knowledge", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+      await SpaceFactory.attachGroup(space, testContext.globalGroup);
 
       const dsv = await DataSourceViewFactory.folder(
         testContext.workspace,
@@ -2483,8 +2862,7 @@ describe("SkillResource", () => {
       expect(stillExistsSkill2?.id).toBe(skill2.id);
     });
 
-    it("should delete all skills and their associated editor groups", async () => {
-      // Create multiple skills.
+    it("should delete all skills and their editor grant groups", async () => {
       const skill1 = await SkillFactory.create(testContext.authenticator, {
         name: "Skill 1 For Bulk Delete",
       });
@@ -2492,50 +2870,43 @@ describe("SkillResource", () => {
         name: "Skill 2 For Bulk Delete",
       });
 
-      // Get the editor group IDs before deletion.
-      const groupSkills = await GroupSkillModel.findAll({
-        where: { workspaceId: testContext.workspace.id },
-      });
-      const editorGroupModelIds = groupSkills.map((gs) => gs.groupId);
-      expect(editorGroupModelIds.length).toBeGreaterThanOrEqual(2);
+      const grantGroups =
+        await GroupPermissionResource.findRegularAutoGroupsForGrants(
+          testContext.authenticator,
+          {
+            grants: [skill1, skill2].map((skill) => ({
+              grantType: "editor" as const,
+              resourceType: "skill" as const,
+              resourceId: skill.id,
+            })),
+          }
+        );
+      expect(grantGroups.size).toBe(2);
 
-      // Verify editor groups exist.
-      const editorGroupsBefore = await GroupResource.fetchByModelIds(
-        testContext.authenticator,
-        editorGroupModelIds
-      );
-      expect(editorGroupsBefore.length).toBe(editorGroupModelIds.length);
-      expect(editorGroupsBefore.every((g) => g.kind === "skill_editors")).toBe(
-        true
-      );
-
-      // Delete all skills for the workspace.
       await SkillResource.deleteAllForWorkspace(testContext.authenticator);
 
-      // Verify skills are deleted.
-      const skill1After = await SkillResource.fetchByModelIdWithAuth(
-        testContext.authenticator,
-        skill1.id
-      );
-      const skill2After = await SkillResource.fetchByModelIdWithAuth(
-        testContext.authenticator,
-        skill2.id
-      );
-      expect(skill1After).toBeNull();
-      expect(skill2After).toBeNull();
+      for (const skill of [skill1, skill2]) {
+        expect(
+          await SkillResource.fetchByModelIdWithAuth(
+            testContext.authenticator,
+            skill.id
+          )
+        ).toBeNull();
+      }
 
-      // Verify GroupSkillModel entries are deleted.
-      const groupSkillsAfter = await GroupSkillModel.findAll({
-        where: { workspaceId: testContext.workspace.id },
-      });
-      expect(groupSkillsAfter).toHaveLength(0);
-
-      // Verify editor groups are deleted.
-      const editorGroupsAfter = await GroupResource.fetchByModelIds(
-        testContext.authenticator,
-        editorGroupModelIds
-      );
-      expect(editorGroupsAfter).toHaveLength(0);
+      // No grant rows left, so no grant group is resolvable any more.
+      const grantGroupsAfter =
+        await GroupPermissionResource.findRegularAutoGroupsForGrants(
+          testContext.authenticator,
+          {
+            grants: [skill1, skill2].map((skill) => ({
+              grantType: "editor" as const,
+              resourceType: "skill" as const,
+              resourceId: skill.id,
+            })),
+          }
+        );
+      expect(grantGroupsAfter.size).toBe(0);
     });
   });
 
@@ -2697,6 +3068,11 @@ describe("SkillResource", () => {
       const usageB = usageMap.get(skillB.sId)!;
       expect(usageB.count).toBe(1);
       expect(usageB.agents[0].name).toBe("Agent 1");
+
+      const singleUsageA = await skillA.fetchUsage(testContext.authenticator);
+      const singleUsageB = await skillB.fetchUsage(testContext.authenticator);
+      expect(singleUsageA).toEqual(usageA);
+      expect(singleUsageB).toEqual(usageB);
     });
 
     it("returns empty map for empty input", async () => {
@@ -2708,104 +3084,8 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("batchFetchMessageCounts", () => {
-    it("returns an empty map for empty input", async () => {
-      const messageCountMap = await SkillResource.batchFetchMessageCounts(
-        testContext.authenticator,
-        []
-      );
-
-      expect(messageCountMap.size).toBe(0);
-    });
-
-    it("counts distinct messages for custom and global skills", async () => {
-      const customSkill = await SkillFactory.create(testContext.authenticator, {
-        name: "Custom Skill With Messages",
-      });
-      const globalSkill = await SkillResource.fetchById(
-        testContext.authenticator,
-        "frames"
-      );
-      if (!globalSkill) {
-        throw new Error("Expected frames global skill to exist.");
-      }
-
-      const agent = await AgentConfigurationFactory.createTestAgent(
-        testContext.authenticator,
-        { name: "Agent With Skill Messages" }
-      );
-      const conversation = await ConversationFactory.create(
-        testContext.authenticator,
-        { agentConfigurationId: agent.sId, messagesCreatedAt: [] }
-      );
-
-      await customSkill.enableForAgent(testContext.authenticator, {
-        agentConfiguration: agent,
-        conversation,
-      });
-      await globalSkill.enableForAgent(testContext.authenticator, {
-        agentConfiguration: agent,
-        conversation,
-      });
-
-      const firstMessage = await ConversationFactory.createAgentMessageWithRank(
-        {
-          workspace: testContext.workspace,
-          conversationId: conversation.id,
-          rank: 0,
-          agentConfigurationId: agent.sId,
-        }
-      );
-      const secondMessage =
-        await ConversationFactory.createAgentMessageWithRank({
-          workspace: testContext.workspace,
-          conversationId: conversation.id,
-          rank: 1,
-          agentConfigurationId: agent.sId,
-        });
-      if (!firstMessage.agentMessageId || !secondMessage.agentMessageId) {
-        throw new Error("Expected agent messages to exist.");
-      }
-
-      await SkillResource.snapshotConversationSkillsForMessage(
-        testContext.authenticator,
-        {
-          agentConfigurationId: agent.sId,
-          agentMessageId: firstMessage.agentMessageId,
-          conversationId: conversation.id,
-        }
-      );
-      // Simulate a finalization retry after the first snapshot insert succeeds.
-      await SkillResource.snapshotConversationSkillsForMessage(
-        testContext.authenticator,
-        {
-          agentConfigurationId: agent.sId,
-          agentMessageId: firstMessage.agentMessageId,
-          conversationId: conversation.id,
-        }
-      );
-      await SkillResource.snapshotConversationSkillsForMessage(
-        testContext.authenticator,
-        {
-          agentConfigurationId: agent.sId,
-          agentMessageId: secondMessage.agentMessageId,
-          conversationId: conversation.id,
-        }
-      );
-
-      const messageCountMap = await SkillResource.batchFetchMessageCounts(
-        testContext.authenticator,
-        [customSkill, globalSkill]
-      );
-
-      expect(messageCountMap.size).toBe(2);
-      expect(messageCountMap.get(customSkill.sId)).toBe(2);
-      expect(messageCountMap.get(globalSkill.sId)).toBe(2);
-    });
-  });
-
   describe("batchListEditors", () => {
-    it("returns editors for skills with editor groups", async () => {
+    it("returns editors for skills with an editor grant", async () => {
       const skill = await SkillFactory.create(testContext.authenticator, {
         name: "Skill With Editor",
       });
@@ -2837,6 +3117,30 @@ describe("SkillResource", () => {
 
       expect(editorsMap.get(skillA.sId)).not.toBeNull();
       expect(editorsMap.get(skillB.sId)).not.toBeNull();
+    });
+
+    it("returns editors for a mix of active and archived skills", async () => {
+      const activeSkill = await SkillFactory.create(testContext.authenticator, {
+        name: "Active Skill Editors",
+      });
+      const skillToArchive = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Archived Skill Editors" }
+      );
+      await skillToArchive.archive(testContext.authenticator);
+
+      const editorsMap = await SkillResource.batchListEditors(
+        testContext.authenticator,
+        [activeSkill, skillToArchive]
+      );
+
+      // Archiving keeps the editor memberships, so the archived skill still lists its editors.
+      expect(editorsMap.get(activeSkill.sId)?.map((e) => e.id)).toEqual([
+        testContext.user.id,
+      ]);
+      expect(editorsMap.get(skillToArchive.sId)?.map((e) => e.id)).toEqual([
+        testContext.user.id,
+      ]);
     });
 
     it("returns empty map for empty input", async () => {
@@ -2905,7 +3209,7 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("group_permissions as the source of truth", () => {
+  describe("editors from group_permissions", () => {
     // A skill's editor group grants [read, write, admin] through its group_permissions row; a
     // "user" role grants only read, so write and admin flow purely through the grant.
     //
@@ -2949,10 +3253,8 @@ describe("SkillResource", () => {
       expect(skill.canAdministrate(editorAuth)).toBe(true);
     });
 
-    it("denies an editor whose grant is missing, despite group membership", async () => {
-      // The decision now comes from group_permissions alone: dropping the row revokes access even
-      // though the user is still a member of the editor group.
-      const { skill, editor, buildEditorAuth } =
+    it("denies an editor whose grant was revoked", async () => {
+      const { skill, buildEditorAuth } =
         await setupSkillWithEditor("Ungranted Skill");
       await GroupPermissionResource.deleteAllForResource(
         testContext.authenticator,
@@ -2961,37 +3263,18 @@ describe("SkillResource", () => {
 
       const editorAuth = await buildEditorAuth();
 
-      // Membership is untouched — only the grant is gone.
-      const members = await skill.editorGroup!.getActiveMembers(editorAuth);
-      expect(members.map((m) => m.sId)).toContain(editor.sId);
+      expect(await skill.listEditors(editorAuth)).toEqual([]);
       expect(skill.canWrite(editorAuth)).toBe(false);
       expect(skill.canAdministrate(editorAuth)).toBe(false);
     });
 
-    it("dual-writes editor changes to the per-user grant group", async () => {
-      const { skill, editor } = await setupSkillWithEditor("Dual Write Skill");
-
-      const grantSpec = {
-        grantType: "editor" as const,
-        resourceType: "skill" as const,
-        resourceId: skill.id,
-      };
-      const grantGroupMembers = async () => {
-        const group =
-          await GroupPermissionResource.findRegularAutoGroupForGrant(
-            testContext.authenticator,
-            grantSpec
-          );
-        if (!group) {
-          return null;
-        }
-        const members = await group.getActiveMembers(testContext.authenticator);
-        return members.map((m) => m.sId);
-      };
+    it("adds and removes editors through their grants", async () => {
+      const { skill, editor } = await setupSkillWithEditor("Grant Write Skill");
 
       // upsertEditors granted the editor, and makeNew granted the creator.
-      expect(await grantGroupMembers()).toContain(editor.sId);
-      expect(await grantGroupMembers()).toContain(testContext.user.sId);
+      const editorsBefore = await skill.listEditors(testContext.authenticator);
+      expect(editorsBefore?.map((e) => e.sId)).toContain(editor.sId);
+      expect(editorsBefore?.map((e) => e.sId)).toContain(testContext.user.sId);
 
       const removeResult = await skill.removeEditors(
         testContext.authenticator,
@@ -2999,37 +3282,15 @@ describe("SkillResource", () => {
       );
       expect(removeResult.isOk()).toBe(true);
 
-      // Both sides drop the editor.
-      expect(await grantGroupMembers()).not.toContain(editor.sId);
-      const legacyMembers = await skill.editorGroup!.getActiveMembers(
-        testContext.authenticator
-      );
-      expect(legacyMembers.map((m) => m.sId)).not.toContain(editor.sId);
-    });
-
-    it("falls back to the editor group when the use_legacy_acls kill switch is on", async () => {
-      const { skill, buildEditorAuth } = await setupSkillWithEditor(
-        "Legacy Switch Skill"
-      );
-      await GroupPermissionResource.deleteAllForResource(
-        testContext.authenticator,
-        { resourceType: "skill", resourceId: skill.id }
-      );
-      const editorAuth = await buildEditorAuth();
-
-      // No grant row: the table-backed path denies.
-      expect(skill.canWrite(editorAuth)).toBe(false);
-
-      // The kill-switch restores the pre-migration decision, taken from group membership.
-      vi.mocked(isLegacyAclsEnabled).mockReturnValue(true);
-      expect(skill.canWrite(editorAuth)).toBe(true);
-      expect(skill.canAdministrate(editorAuth)).toBe(true);
+      const editorsAfter = await skill.listEditors(testContext.authenticator);
+      expect(editorsAfter?.map((e) => e.sId)).not.toContain(editor.sId);
+      expect(editorsAfter?.map((e) => e.sId)).toContain(testContext.user.sId);
     });
 
     it("keeps a non-editor out, and lets a workspace admin administrate but not write", async () => {
       const { skill } = await setupSkillWithEditor("Role Rules Skill");
 
-      const authFor = async (role: "user" | "admin") => {
+      const authFor = async (role: MembershipRoleType) => {
         const user = await UserFactory.basic();
         await MembershipFactory.associate(testContext.workspace, user, {
           role,

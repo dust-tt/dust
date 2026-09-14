@@ -1,15 +1,9 @@
-import type {
-  EffortStop,
-  ModelLockReason,
-} from "@app/components/model_picker/modelPickerUtils";
-import {
-  getEffortStopTooltip,
-  getModelLockTooltip,
-  getReasoningEffortLabel,
-} from "@app/components/model_picker/modelPickerUtils";
+import type { EffortStop } from "@app/components/model_picker/modelPickerUtils";
+import { getEffortStopTooltip } from "@app/components/model_picker/modelPickerUtils";
 import { classNames } from "@app/lib/utils";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
-import { SliderSteps, Tooltip } from "@dust-tt/sparkle";
+import { SliderSteps } from "@dust-tt/sparkle";
+import capitalize from "lodash/capitalize";
 
 interface ReasoningEffortSliderProps {
   stops: EffortStop[];
@@ -18,10 +12,10 @@ interface ReasoningEffortSliderProps {
 }
 
 // A stepped slider for reasoning effort. It always shows the three canonical
-// levels (Light/Medium/High); efforts the model does not support or the
-// workspace's tier does not grant are rendered locked (padlock) and skipped
-// when snapping. When at most one level is selectable there is nothing to
-// choose, so the whole slider is disabled and a tooltip explains why.
+// levels (Light/Medium/High). Unsupported efforts render with a slash; efforts
+// outside the member's access render with a padlock. Both are skipped when
+// snapping. When at most one level is selectable there is nothing to choose,
+// so the whole slider is disabled.
 export function ReasoningEffortSlider({
   stops,
   value,
@@ -32,30 +26,32 @@ export function ReasoningEffortSlider({
     0
   );
   const lockedSteps = stops.flatMap((stop, index) =>
-    stop.locked ? [index] : []
+    stop.unavailabilityReason !== null &&
+    stop.unavailabilityReason !== "unsupported"
+      ? [index]
+      : []
+  );
+  const unavailableSteps = stops.flatMap((stop, index) =>
+    stop.unavailabilityReason === "unsupported" ? [index] : []
   );
   const lastIndex = Math.max(stops.length - 1, 1);
-  const unlockedStops = stops.filter((stop) => !stop.locked);
-  // With a single (or no) selectable level there is nothing to slide, so the
-  // slider is shown disabled with an explanatory tooltip.
-  const isDisabled = unlockedStops.length <= 1;
-  const planLockReason: ModelLockReason | undefined = stops.some(
-    (stop) => stop.lockedReason === "premium"
-  )
-    ? "premium"
-    : stops.some((stop) => stop.lockedReason === "model_tier")
-      ? "model_tier"
-      : undefined;
-
-  const stopTooltip = (stop: EffortStop) => getEffortStopTooltip(stop);
+  const availableStops = stops.filter(
+    (stop) => stop.unavailabilityReason === null
+  );
+  // With a single (or no) selectable level there is nothing to slide.
+  const isDisabled = availableStops.length <= 1;
 
   const selectStop = (stop: EffortStop) => {
-    if (!isDisabled && !stop.locked && stop.effort !== value) {
+    if (
+      !isDisabled &&
+      stop.unavailabilityReason === null &&
+      stop.effort !== value
+    ) {
       onChange(stop.effort);
     }
   };
 
-  const slider = (
+  return (
     <div
       className="flex flex-col gap-1.5 px-2 py-1.5"
       // The slider lives inside a dropdown item region; stop the click from
@@ -66,8 +62,9 @@ export function ReasoningEffortSlider({
         stepCount={stops.length}
         value={valueIndex}
         lockedSteps={lockedSteps}
+        unavailableSteps={unavailableSteps}
         disabled={isDisabled}
-        stepTooltips={isDisabled ? undefined : stops.map(stopTooltip)}
+        stepTooltips={stops.map(getEffortStopTooltip)}
         onChange={(index) => {
           const next = stops[index];
           if (next) {
@@ -81,8 +78,9 @@ export function ReasoningEffortSlider({
         {stops.map((stop, index) => {
           const isFirst = index === 0;
           const isLast = index === stops.length - 1;
-          const buttonDisabled = stop.locked || isDisabled;
-          const labelButton = (
+          const buttonDisabled =
+            stop.unavailabilityReason !== null || isDisabled;
+          return (
             <button
               key={stop.effort}
               type="button"
@@ -97,7 +95,7 @@ export function ReasoningEffortSlider({
                 stop.effort === value
                   ? "font-medium text-foreground"
                   : "text-muted-foreground",
-                stop.locked ? "opacity-50" : ""
+                stop.unavailabilityReason !== null ? "opacity-50" : ""
               )}
               style={{
                 left: `${(index / lastIndex) * 100}%`,
@@ -108,42 +106,11 @@ export function ReasoningEffortSlider({
                     : "translateX(-50%)",
               }}
             >
-              {getReasoningEffortLabel(stop.effort)}
+              {capitalize(stop.effort)}
             </button>
-          );
-
-          // When the whole slider is disabled it is already wrapped in the
-          // explanatory tooltip below; adding per-effort tooltips here would
-          // nest them, so only surface the blurbs on an interactive slider.
-          if (isDisabled) {
-            return labelButton;
-          }
-
-          return (
-            <Tooltip
-              key={stop.effort}
-              tooltipTriggerAsChild
-              trigger={labelButton}
-              label={stopTooltip(stop)}
-            />
           );
         })}
       </div>
     </div>
-  );
-
-  if (!isDisabled) {
-    return slider;
-  }
-
-  const soleEffort = unlockedStops[0]?.effort;
-  const tooltipLabel = planLockReason
-    ? getModelLockTooltip(planLockReason)
-    : soleEffort
-      ? `${getReasoningEffortLabel(soleEffort)} is the only reasoning effort available for this model.`
-      : "Reasoning effort can't be adjusted for this model.";
-
-  return (
-    <Tooltip tooltipTriggerAsChild trigger={slider} label={tooltipLabel} />
   );
 }

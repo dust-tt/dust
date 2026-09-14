@@ -43,7 +43,7 @@ export const getAccessibleSourcesAndAppsForActions = async (
       await SpaceResource.listWorkspaceSpaces(auth, {
         includeProjectSpaces: true,
       })
-    ).filter((space) => !space.isSystem() && space.canRead(auth));
+    ).filter((space) => !space.isSystem() && auth.can("read", space));
 
     const [dsViews, allMCPServerViews] = await Promise.all([
       DataSourceViewResource.listBySpaces(auth, accessibleSpaces, {

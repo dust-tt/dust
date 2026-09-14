@@ -5,8 +5,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
-import { normalizeTabsOrder, sortPodFrameTabs } from "@app/types/pod_frame_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
+import { normalizeTabsOrder, sortPodFileTabs } from "@app/types/pod_file_tab";
 import type { PodMetadataType } from "@app/types/project_metadata";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -176,48 +176,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     return this.update(blob);
   }
 
-  async updateLastTodoAnalysisAt(
-    lastTodoAnalysisAt: Date | null,
-    transaction?: Transaction
-  ) {
-    await this.update({ lastTodoAnalysisAt }, transaction);
-  }
-
-  /** Sets last analysis time and clears one-time first-sync lookback (if any). */
-  async recordTodoAnalysisComplete(
-    documentsLastFetchedAt: Date,
-    transaction?: Transaction
-  ) {
-    await this.update(
-      {
-        lastTodoAnalysisAt: documentsLastFetchedAt,
-        initialTodoAnalysisLookback: null,
-      },
-      transaction
-    );
-  }
-
-  async updateTodoGenerationEnabled(
-    todoGenerationEnabled: boolean,
-    transaction?: Transaction
-  ) {
-    await this.update({ todoGenerationEnabled }, transaction);
-  }
-
-  async updateIsAdminControlled(
-    isAdminControlled: boolean,
-    transaction?: Transaction
-  ) {
-    await this.update({ isAdminControlled }, transaction);
-  }
-
-  async updateInitialTodoAnalysisLookback(
-    initialTodoAnalysisLookback: string | null,
-    transaction?: Transaction
-  ) {
-    await this.update({ initialTodoAnalysisLookback }, transaction);
-  }
-
   async updatePinnedFramePath(
     pinnedFramePath: string | null,
     transaction?: Transaction
@@ -225,8 +183,8 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
     await this.update({ pinnedFramePath }, transaction);
   }
 
-  async updateFrameTabs(
-    frameTabs: PodFrameTab[],
+  async updateFileTabs(
+    frameTabs: PodFileTab[],
     tabsOrder: string[],
     transaction?: Transaction
   ) {
@@ -306,10 +264,11 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       }),
       description: this.description,
       archivedAt: this.archivedAt?.getTime() ?? null,
-      todoGenerationEnabled: this.todoGenerationEnabled,
-      lastTodoAnalysisAt: this.lastTodoAnalysisAt?.getTime() ?? null,
+      // Automated task generation removed; keep fields hardcoded for API compat.
+      todoGenerationEnabled: false,
+      lastTodoAnalysisAt: null,
       pinnedFramePath: this.pinnedFramePath ?? null,
-      frameTabs: sortPodFrameTabs(this.frameTabs ?? []).map(
+      frameTabs: sortPodFileTabs(this.frameTabs ?? []).map(
         ({ path, title, icon }) => ({ path, title, icon })
       ),
       tabsOrder: normalizeTabsOrder(
@@ -318,7 +277,6 @@ export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> 
       ),
       defaultAgentId: this.defaultAgentId ?? null,
       defaultSkillIds: this.defaultSkillIds,
-      isAdminControlled: this.isAdminControlled,
     };
   }
 }

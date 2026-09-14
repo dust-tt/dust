@@ -1,6 +1,7 @@
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import { USAGE_TYPE_PROGRAMMATIC } from "@app/lib/metronome/constants";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
@@ -178,7 +179,10 @@ export async function consumeRunStream({
     useWorkspaceCredentials: !useDustCredentials,
   });
 
-  await run.recordRunUsage(auth, usages);
+  // App runs are invoked through the public API, so their usage is programmatic.
+  await run.recordRunUsage(auth, usages, {
+    usageType: USAGE_TYPE_PROGRAMMATIC,
+  });
   return { usages, traces, dustRunId };
 }
 

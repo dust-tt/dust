@@ -5,7 +5,7 @@ use thiserror::Error;
 
 use crate::{
     databases::{
-        remote_databases::remote_database::get_remote_database,
+        remote_databases::remote_database::{get_remote_database, QueryIdentityContext},
         table::{get_table_type_for_tables, LocalTable, Table, TableType},
         table_schema::TableSchema,
         transient_database::{
@@ -62,6 +62,7 @@ pub async fn execute_query(
     query: &str,
     store: Box<dyn Store + Sync + Send>,
     databases_store: Box<dyn DatabasesStore + Sync + Send>,
+    query_identity: Option<&QueryIdentityContext>,
 ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError> {
     match get_table_type_for_tables(tables.iter().collect()) {
         Err(e) => Err(QueryDatabaseError::GenericError(anyhow!(
@@ -70,7 +71,11 @@ pub async fn execute_query(
         ))),
         Ok(TableType::Remote(credential_or_connection_id)) => {
             match get_remote_database(&credential_or_connection_id).await {
-                Ok(remote_db) => remote_db.authorize_and_execute_query(&tables, query).await,
+                Ok(remote_db) => {
+                    remote_db
+                        .authorize_and_execute_query(&tables, query, query_identity)
+                        .await
+                }
                 Err(e) => Err(QueryDatabaseError::GenericError(anyhow!(
                     "Failed to get remote database: {}",
                     e

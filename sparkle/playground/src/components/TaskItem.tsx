@@ -2,7 +2,7 @@ import { Checkbox, Tooltip, cn } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import { useEffect, useRef, type ReactNode } from "react";
 
-const taskItemTextVariants = cva("min-h-6 text-base", {
+const taskItemTextVariants = cva("min-h-6 text-base text-left", {
   variants: {
     editable: {
       true: "cursor-text outline-hidden focus:outline-hidden",
@@ -241,7 +241,7 @@ export function TaskItem({
           />
         )}
         {visual}
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col text-left">
           {title && (
             <div className="text-xs text-muted-foreground">{title}</div>
           )}
@@ -251,7 +251,9 @@ export function TaskItem({
             <Tooltip trigger={textElement} label={text} />
           )}
           {isChecked && autoCheckRationale ? (
-            <div className="text-xs text-faint">{autoCheckRationale}</div>
+            <div className="text-xs text-faint text-left">
+              {autoCheckRationale}
+            </div>
           ) : null}
           {relatedConversations.length > 0 ? (
             <div className="text-xs text-muted-foreground">

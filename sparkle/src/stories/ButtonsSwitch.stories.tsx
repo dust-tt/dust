@@ -27,6 +27,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * Uncontrolled usage: the list owns the selection via `defaultValue`.
+ * The most common form — reach for it when nothing else needs to react
+ * to the selected value.
+ *
+ * @summary Uncontrolled switch with a default selection.
+ */
 export const Default: Story = {
   render: () => (
     <div className="w-[360px] p-4">
@@ -38,16 +45,34 @@ export const Default: Story = {
   ),
 };
 
-export const Controlled: Story = {
-  render: () => (
-    <ButtonsSwitchList defaultValue="time">
+const ControlledExample = () => {
+  const [mode, setMode] = React.useState("time");
+  return (
+    <ButtonsSwitchList value={mode} onValueChange={setMode}>
       <ButtonsSwitch value="time" label="Time range" />
       <ButtonsSwitch value="version" label="Version" />
       <ButtonsSwitch value="other" label="Other" />
     </ButtonsSwitchList>
-  ),
+  );
 };
 
+/**
+ * Controlled usage: pass `value` and `onValueChange` and keep the selected
+ * value in your own state. Use when the selection drives other UI (filters,
+ * view switches) or must be set programmatically.
+ *
+ * @summary Controlled switch driven by external state.
+ */
+export const Controlled: Story = {
+  render: () => <ControlledExample />,
+};
+
+/**
+ * The three sizes side by side: `xs` for dense toolbars, `sm` as the
+ * default, `md` where the switch is a primary control.
+ *
+ * @summary The xs / sm / md size scale.
+ */
 export const Sizes: Story = {
   render: () => (
     <div className="flex flex-col gap-4 p-4">

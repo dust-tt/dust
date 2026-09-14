@@ -1,0 +1,64 @@
+{
+  "__": [
+    "This is a SKELETON, not data. It documents the shape of a workspace export.",
+    "No export is committed: the real file holds every agent's full instructions",
+    "plus group-level usage, so assets/agents_*.json is gitignored.",
+    "",
+    "To produce one, run scripts/export_workspace_agents.ts against a workspace",
+    "(see README.md, 'Producing an export'). It writes agents_<wId>.json; drop it",
+    "in this directory and point scripts/ingest.mjs at it."
+  ],
+  "workspaceId": "0000000000",
+  "workspaceName": "Example Workspace",
+  "generatedAt": "2026-08-25T15:47:51.665Z",
+  "usagePeriodDays": 30,
+  "agentCount": 1,
+  "agents": [
+    {
+      "sId": "abcdef0123",
+      "name": "SupportTriage",
+      "description": "Triages incoming support tickets and drafts a first reply.",
+      "instructions": "You are a support triage agent. Classify the ticket, then draft a reply...",
+      "scope": "visible",
+      "status": "active",
+      "tags": ["support"],
+      "templateId": null,
+      "author": "someone@example.com",
+      "editors": ["someone@example.com", "someone-else@example.com"],
+      "requestedSpaceIds": ["vlt_AAAAAAAAAAAA", "vlt_BBBBBBBBBBBB"],
+      "spaces": [
+        { "sId": "vlt_AAAAAAAAAAAA", "name": "Company Data", "kind": "global" },
+        {
+          "sId": "vlt_BBBBBBBBBBBB",
+          "name": "Support Knowledge",
+          "kind": "project"
+        }
+      ],
+      "nonPodSpaceIds": ["vlt_AAAAAAAAAAAA"],
+      "podSpaceIds": ["vlt_BBBBBBBBBBBB"],
+      "usage": {
+        "periodDays": 30,
+        "messages": 43,
+        "conversations": 21,
+        "users": 7,
+        "credits": 1204,
+        "feedbacksUp": 2,
+        "feedbacksDown": 0,
+        "byGroup": [
+          {
+            "groupId": "grp_AAAAAAAAAAAA",
+            "groupName": "support",
+            "messages": 31,
+            "users": 5
+          },
+          {
+            "groupId": "grp_BBBBBBBBBBBB",
+            "groupName": "team-eu",
+            "messages": 12,
+            "users": 2
+          }
+        ]
+      }
+    }
+  ]
+}

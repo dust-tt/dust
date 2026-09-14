@@ -216,9 +216,9 @@ export async function softDeleteDataSourceAndLaunchScrubWorkflow(
 > {
   const owner = auth.getNonNullableWorkspace();
   const isAuthorized =
-    dataSource.space.canWrite(auth) ||
+    auth.can("write", dataSource.space) ||
     // Only allow to remote database connectors if the user is an admin.
-    (dataSource.space.canAdministrate(auth) && isRemoteDatabase(dataSource));
+    (auth.can("admin", dataSource.space) && isRemoteDatabase(dataSource));
 
   if (!isAuthorized) {
     return new Err({

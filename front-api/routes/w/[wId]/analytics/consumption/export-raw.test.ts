@@ -1,27 +1,16 @@
+import { buildConsumptionExportGcsPrefix } from "@app/temporal/analytics_queue/activities/consumption_export";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { describeWorkflowMock, startWorkflowMock, listWorkflowMock } =
-  vi.hoisted(() => ({
-    describeWorkflowMock: vi.fn().mockResolvedValue({
-      status: { name: "COMPLETED" },
-    }),
-    startWorkflowMock: vi.fn().mockResolvedValue(undefined),
-    listWorkflowMock: vi.fn(),
-  }));
-
-function asyncIterableOf<T>(items: T[]) {
-  return {
-    [Symbol.asyncIterator]: async function* () {
-      for (const item of items) {
-        yield item;
-      }
-    },
-  };
-}
+const { describeWorkflowMock, startWorkflowMock } = vi.hoisted(() => ({
+  describeWorkflowMock: vi.fn().mockResolvedValue({
+    status: { name: "COMPLETED" },
+  }),
+  startWorkflowMock: vi.fn().mockResolvedValue(undefined),
+}));
 
 vi.mock("@app/lib/temporal", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@app/lib/temporal")>();
@@ -31,7 +20,6 @@ vi.mock("@app/lib/temporal", async (importOriginal) => {
       workflow: {
         start: startWorkflowMock,
         getHandle: vi.fn().mockReturnValue({ describe: describeWorkflowMock }),
-        list: listWorkflowMock,
       },
     }),
   };
@@ -40,7 +28,6 @@ vi.mock("@app/lib/temporal", async (importOriginal) => {
 beforeEach(() => {
   describeWorkflowMock.mockResolvedValue({ status: { name: "COMPLETED" } });
   startWorkflowMock.mockResolvedValue(undefined);
-  listWorkflowMock.mockReturnValue(asyncIterableOf([]));
   // No cached export by default, so POST tests exercise the actual workflow start.
   fileStorageMock.setFileExists(() => false);
 });
@@ -53,8 +40,15 @@ async function setupTest({
   return createPrivateApiMockRequest({ role });
 }
 
-function getExportRawRequest(wId: string) {
-  return honoApp.request(`/api/w/${wId}/analytics/consumption/export-raw`);
+function postExportStatusRequest(wId: string, body: Record<string, unknown>) {
+  return honoApp.request(
+    `/api/w/${wId}/analytics/consumption/export-raw/status`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }
+  );
 }
 
 function postExportRawRequest(wId: string, body: Record<string, unknown>) {
@@ -72,34 +66,46 @@ function getDownloadRequest(wId: string, name: string) {
   );
 }
 
-describe("GET /api/w/:wId/analytics/consumption/export-raw", () => {
-  it("returns an empty list and not-generating when nothing exists", async () => {
+describe("POST /api/w/:wId/analytics/consumption/export-raw/status", () => {
+  it("is refused to non-managers by default", async () => {
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await postExportStatusRequest(workspace.sId, {});
+
+    expect(response.status).toBe(403);
+  });
+
+  it("returns an empty list and not-generating/not-ready when nothing exists", async () => {
     fileStorageMock.setFilesByPrefix(() => []);
     const { workspace } = await setupTest();
 
-    const response = await getExportRawRequest(workspace.sId);
+    const response = await postExportStatusRequest(workspace.sId, {});
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ exports: [], isGenerating: false });
+    const body = await response.json();
+    expect(body.exports).toEqual([]);
+    expect(body.isGenerating).toBe(false);
+    expect(body.isReady).toBe(false);
+    expect(typeof body.exportId).toBe("string");
   });
 
   it("lists past exports for the workspace, newest first", async () => {
     const { workspace } = await setupTest();
-    const prefix = `w/${workspace.sId}/consumption_exports/`;
+    const prefix = buildConsumptionExportGcsPrefix(workspace.sId);
     fileStorageMock.setFilesByPrefix((requestedPrefix) => {
       if (requestedPrefix !== prefix) {
         return null;
       }
       return [
         {
-          name: `${prefix}1000.zip`,
+          name: `${prefix}1000.csv`,
           metadata: {
             timeCreated: "2026-08-01T00:00:00.000Z",
             size: "100",
           },
         },
         {
-          name: `${prefix}2000.zip`,
+          name: `${prefix}2000.csv`,
           metadata: {
             timeCreated: "2026-08-02T00:00:00.000Z",
             size: "200",
@@ -108,34 +114,65 @@ describe("GET /api/w/:wId/analytics/consumption/export-raw", () => {
       ];
     });
 
-    const response = await getExportRawRequest(workspace.sId);
+    const response = await postExportStatusRequest(workspace.sId, {});
 
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.isGenerating).toBe(false);
     expect(body.exports).toEqual([
       {
-        name: "2000.zip",
+        name: "2000.csv",
         createdAt: "2026-08-02T00:00:00.000Z",
         sizeBytes: 200,
       },
       {
-        name: "1000.zip",
+        name: "1000.csv",
         createdAt: "2026-08-01T00:00:00.000Z",
         sizeBytes: 100,
       },
     ]);
   });
 
-  it("reports isGenerating when the workspace's export workflow is running", async () => {
-    listWorkflowMock.mockReturnValue(asyncIterableOf([{}]));
+  it("reports isGenerating when the workflow for this exact period+filter is running", async () => {
+    describeWorkflowMock.mockResolvedValue({ status: { name: "RUNNING" } });
     fileStorageMock.setFilesByPrefix(() => []);
     const { workspace } = await setupTest();
 
-    const response = await getExportRawRequest(workspace.sId);
+    const response = await postExportStatusRequest(workspace.sId, {});
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({ exports: [], isGenerating: true });
+    const body = await response.json();
+    expect(body.exports).toEqual([]);
+    expect(body.isGenerating).toBe(true);
+  });
+
+  it("reports isReady when a cached export exists for this exact period+filter", async () => {
+    fileStorageMock.setFileExists(() => true);
+    fileStorageMock.setFilesByPrefix(() => []);
+    const { workspace } = await setupTest();
+
+    const response = await postExportStatusRequest(workspace.sId, {});
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.isReady).toBe(true);
+  });
+});
+
+describe("personal consumption exports", () => {
+  it("does not mount export routes", async () => {
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/me/analytics/consumption/export-raw/status`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      }
+    );
+
+    expect(response.status).toBe(404);
   });
 });
 
@@ -143,7 +180,7 @@ describe("GET /api/w/:wId/analytics/consumption/export-raw/:name/download", () =
   it("redirects to a freshly signed download url", async () => {
     const { workspace } = await setupTest();
 
-    const response = await getDownloadRequest(workspace.sId, "2000.zip");
+    const response = await getDownloadRequest(workspace.sId, "2000.csv");
 
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe("https://signed-url.test");
@@ -154,7 +191,7 @@ describe("GET /api/w/:wId/analytics/consumption/export-raw/:name/download", () =
 
     const response = await getDownloadRequest(
       workspace.sId,
-      "..%2f..%2fother-workspace%2f2000.zip"
+      "..%2f..%2fother-workspace%2f2000.csv"
     );
 
     expect(response.status).toBe(404);
@@ -163,7 +200,7 @@ describe("GET /api/w/:wId/analytics/consumption/export-raw/:name/download", () =
   it("is refused to non-managers", async () => {
     const { workspace } = await setupTest({ role: "user" });
 
-    const response = await getDownloadRequest(workspace.sId, "2000.zip");
+    const response = await getDownloadRequest(workspace.sId, "2000.csv");
 
     expect(response.status).toBe(403);
   });
@@ -178,6 +215,19 @@ describe("POST /api/w/:wId/analytics/consumption/export-raw", () => {
     expect(response.status).toBe(202);
     expect(await response.json()).toEqual({ isGenerating: true });
     expect(startWorkflowMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns the cached export's name instead of starting a new workflow when one already exists", async () => {
+    fileStorageMock.setFileExists(() => true);
+    const { workspace } = await setupTest({ role: "admin" });
+
+    const response = await postExportRawRequest(workspace.sId, {});
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.isGenerating).toBe(false);
+    expect(body.name).toMatch(/^[A-Za-z0-9_-]+\.csv$/);
+    expect(startWorkflowMock).not.toHaveBeenCalled();
   });
 
   it("is refused to non-managers", async () => {

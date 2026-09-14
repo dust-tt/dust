@@ -402,16 +402,13 @@ describe("computeAuthorizedFileAccess", () => {
         workspaceId: globalGroup.workspaceId,
         isSystem: false,
         status: "active",
-        role: "builder",
+        role: "user",
         userId: user.id,
       },
       [globalGroup]
     );
 
-    const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
-      key,
-      workspace.sId
-    );
+    const apiKeyAuth = await Authenticator.fromKey(key, workspace.sId);
     expect(apiKeyAuth.user()).toBeNull();
 
     const conversation = await ConversationFactory.create(userAuth, {

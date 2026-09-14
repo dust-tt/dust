@@ -181,6 +181,7 @@ app.patch(
         case "user_not_member":
         case "user_already_member":
         case "group_requirements_not_met":
+        case "last_group_member":
         case "system_or_global_group":
           return apiError(ctx, {
             status_code: 400,

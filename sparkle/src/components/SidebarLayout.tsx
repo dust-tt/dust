@@ -46,8 +46,14 @@ export interface SidebarLayoutRef {
 }
 
 /**
- * SidebarLayout component provides a resizable sidebar layout using Allotment.
- * Supports pixel-based sizing, toggle functionality, and hover reveal when collapsed.
+ * An app-shell layout pairing a collapsible, drag-resizable side panel (built on
+ * Allotment) with a main content area. It exposes an imperative handle
+ * (`SidebarLayoutRef`) with `toggle` / `collapse` / `expand`, and reveals the collapsed
+ * sidebar as an overlay when hovering the left edge. Use it for top-level page
+ * scaffolding that needs a persistent sidebar next to a main region, composing the
+ * sidebar from `NavigationList` items and wrapping long content in `ScrollArea`.
+ *
+ * @summary Collapsible resizable sidebar layout.
  */
 export const SidebarLayout = React.forwardRef<
   SidebarLayoutRef,

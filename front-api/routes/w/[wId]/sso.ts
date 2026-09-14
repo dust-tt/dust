@@ -9,7 +9,6 @@ import {
   getWorkOSOrganizationSSOConnections,
 } from "@app/lib/api/workos/organization";
 import type { GetWorkspaceResponseBody } from "@app/lib/api/workspace";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
@@ -56,8 +55,7 @@ async function checkAccess(ctx: Context) {
   }
 
   const plan = auth.getNonNullablePlan();
-  const hasSSOFeatureFlag = await hasFeatureFlag(auth, "allow_sso");
-  if (!plan.limits.users.isSSOAllowed && !hasSSOFeatureFlag) {
+  if (!plan.limits.users.isSSOAllowed) {
     return apiError(ctx, {
       status_code: 403,
       api_error: {

@@ -1,13 +1,12 @@
-import { normalizeEgressPolicyDomain } from "@app/types/sandbox/egress_policy";
+import { DomainBadge } from "@app/components/sandbox/DomainBadge";
+import { DomainInputForm } from "@app/components/sandbox/DomainInputForm";
 import {
   Button,
+  Chip,
   ContentMessage,
-  Input,
-  Plus,
   Trash01,
   XClose,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
 
 interface EgressDomainListEditorProps {
   allowedDomains: string[];
@@ -20,12 +19,18 @@ interface EgressDomainListEditorProps {
   pendingRequests?: { domain: string }[];
   onApproveRequest?: (domain: string) => void;
   onRejectRequest?: (domain: string) => void;
+  // Read-only viewers (non-admin pod members) see the domains and any pending
+  // requests, but no remove/approve/reject controls.
+  readOnly?: boolean;
+  // When set (only meaningful with readOnly), the add input stays but submits a
+  // domain request for admin review instead of writing the allowlist.
+  onRequestDomain?: (domain: string) => Promise<boolean>;
 }
 
 // Add/remove editor for a sandbox egress allowlist, shared by the workspace
-// Network section and the Pod network section. Domain validation, dedupe, and
-// the input + list rendering live here; surface-specific chrome (headers,
-// toggles, load/error states) stays in the caller.
+// Network section and the Pod network section. The input and row chrome are
+// shared with the multi-Pod view (DomainInputForm, DomainBadge); surface
+// chrome (headers, toggles, load/error states) stays in the caller.
 export function EgressDomainListEditor({
   allowedDomains,
   onSave,
@@ -34,39 +39,13 @@ export function EgressDomainListEditor({
   pendingRequests,
   onApproveRequest,
   onRejectRequest,
+  readOnly = false,
+  onRequestDomain,
 }: EgressDomainListEditorProps) {
-  const [domainInput, setDomainInput] = useState("");
-
-  const hasDomainInput = domainInput.trim().length > 0;
-  const domainInputResult = hasDomainInput
-    ? normalizeEgressPolicyDomain(domainInput)
-    : null;
-  const normalizedDomain =
-    domainInputResult?.isOk() === true ? domainInputResult.value : null;
-  const isDuplicate =
-    normalizedDomain !== null && allowedDomains.includes(normalizedDomain);
-  const domainInputMessage =
-    domainInputResult?.isErr() === true
-      ? domainInputResult.error.message
-      : isDuplicate
-        ? "This domain is already allowed."
-        : normalizedDomain
-          ? `Will be saved as ${normalizedDomain}.`
-          : "Use an exact domain such as api.openai.com or a wildcard such as *.mistral.ai.";
-  const isDomainInputInvalid =
-    domainInputResult?.isErr() === true || isDuplicate;
-  const canAddDomain = normalizedDomain !== null && !isDuplicate && !isUpdating;
-
-  const handleAddDomain = async () => {
-    if (!canAddDomain || normalizedDomain === null) {
-      return;
-    }
-
-    const success = await onSave([...allowedDomains, normalizedDomain]);
-    if (success) {
-      setDomainInput("");
-    }
-  };
+  // Members can't edit the allowlist, but may submit a domain request when the
+  // caller provides onRequestDomain — the input stays, everything else hides.
+  const isRequestMode = readOnly && onRequestDomain !== undefined;
+  const showDomainInput = !readOnly || isRequestMode;
 
   const handleRemoveDomain = async (domain: string) => {
     await onSave(allowedDomains.filter((d) => d !== domain));
@@ -74,34 +53,30 @@ export function EgressDomainListEditor({
 
   return (
     <>
-      <form
-        className="flex flex-col gap-3 sm:flex-row sm:items-start"
-        onSubmit={(event) => {
-          event.preventDefault();
-          void handleAddDomain();
-        }}
-      >
-        <div className="grow">
-          <Input
-            label="Domain"
-            name="domain"
-            placeholder="e.g. api.openai.com or *.mistral.ai"
-            value={domainInput}
-            message={domainInputMessage}
-            messageStatus={isDomainInputInvalid ? "error" : "info"}
-            onChange={(event) => setDomainInput(event.target.value)}
-            disabled={isUpdating}
-          />
-        </div>
-        <Button
-          type="submit"
-          label="Add domain"
-          icon={Plus}
-          disabled={!canAddDomain}
-          isLoading={isUpdating}
-          className="mt-0 sm:mt-7"
+      {showDomainInput && (
+        <DomainInputForm
+          isUpdating={isUpdating}
+          submitLabel={isRequestMode ? "Request domain" : "Add domain"}
+          duplicateMessage={(domain) =>
+            allowedDomains.includes(domain)
+              ? "This domain is already allowed."
+              : isRequestMode &&
+                  (pendingRequests?.some((r) => r.domain === domain) ?? false)
+                ? "This domain has already been requested."
+                : null
+          }
+          validMessage={(domain) =>
+            isRequestMode
+              ? `Will be requested as ${domain}.`
+              : `Will be saved as ${domain}.`
+          }
+          onSubmit={(domain) =>
+            isRequestMode && onRequestDomain
+              ? onRequestDomain(domain)
+              : onSave([...allowedDomains, domain])
+          }
         />
-      </form>
+      )}
 
       {allowedDomains.length === 0 && (pendingRequests?.length ?? 0) === 0 ? (
         <ContentMessage variant="outline" size="lg">
@@ -111,56 +86,49 @@ export function EgressDomainListEditor({
         <div className="flex w-full flex-col divide-y divide-separator">
           {pendingRequests?.map((request) => (
             <div key={request.domain} className="flex items-center gap-3 py-3">
-              <div
-                title={request.domain}
-                className="flex min-w-0 grow items-center gap-2 overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2"
-              >
-                <span className="font-mono text-sm text-foreground">
-                  {request.domain}
-                </span>
-                <span className="shrink-0 rounded-full bg-golden-100 px-2 py-0.5 text-xs font-medium text-golden-800">
-                  Pending approval
-                </span>
-              </div>
-              <Button
-                variant="highlight"
-                size="mini"
-                label="Approve"
-                tooltip={`Add ${request.domain} to the allowlist`}
-                disabled={isUpdating}
-                onClick={() => onApproveRequest?.(request.domain)}
-                className="shrink-0"
-              />
-              <Button
-                variant="ghost"
-                size="mini"
-                icon={XClose}
-                tooltip={`Reject ${request.domain}`}
-                disabled={isUpdating}
-                onClick={() => onRejectRequest?.(request.domain)}
-                className="shrink-0"
-              />
+              <DomainBadge domain={request.domain}>
+                <Chip size="xs" color="warning" label="Pending approval" />
+              </DomainBadge>
+              {!readOnly && (
+                <>
+                  <Button
+                    variant="highlight"
+                    size="mini"
+                    label="Approve"
+                    tooltip={`Add ${request.domain} to the allowlist`}
+                    disabled={isUpdating}
+                    onClick={() => onApproveRequest?.(request.domain)}
+                    className="shrink-0"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="mini"
+                    icon={XClose}
+                    tooltip={`Reject ${request.domain}`}
+                    disabled={isUpdating}
+                    onClick={() => onRejectRequest?.(request.domain)}
+                    className="shrink-0"
+                  />
+                </>
+              )}
             </div>
           ))}
           {allowedDomains.map((domain) => (
             <div key={domain} className="flex items-center gap-3 py-3">
-              <pre
-                title={domain}
-                className="min-w-0 grow overflow-x-auto whitespace-nowrap rounded bg-muted-background p-2 text-sm text-foreground"
-              >
-                {domain}
-              </pre>
-              <Button
-                variant="warning"
-                size="mini"
-                icon={Trash01}
-                tooltip={`Remove ${domain}`}
-                disabled={isUpdating}
-                onClick={() => {
-                  void handleRemoveDomain(domain);
-                }}
-                className="shrink-0"
-              />
+              <DomainBadge domain={domain} />
+              {!readOnly && (
+                <Button
+                  variant="warning"
+                  size="mini"
+                  icon={Trash01}
+                  tooltip={`Remove ${domain}`}
+                  disabled={isUpdating}
+                  onClick={() => {
+                    void handleRemoveDomain(domain);
+                  }}
+                  className="shrink-0"
+                />
+              )}
             </div>
           ))}
         </div>

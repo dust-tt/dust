@@ -1,4 +1,5 @@
 import { clientEventSource, clientFetch } from "@app/lib/egress/client";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Transport } from "@modelcontextprotocol/sdk/shared/transport.js";
 import type { JSONRPCMessage } from "@modelcontextprotocol/sdk/types.js";
 import type { EventSourcePolyfill } from "event-source-polyfill";
@@ -229,7 +230,7 @@ export class BrowserMCPTransport implements Transport {
         "[BrowserMCPTransport] Failed to start MCP transport:",
         error
       );
-      this.onerror?.(error instanceof Error ? error : new Error(String(error)));
+      this.onerror?.(normalizeError(error));
       throw error;
     }
   }

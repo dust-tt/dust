@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import memoizer from "lru-memoizer";
 
 const DEEP_DIVE_DISABLED_TTL_MS = 3 * 1000; // 3 seconds
@@ -19,7 +20,7 @@ const _isDeepDiveDisabledByAdmin = memoizer<Authenticator, boolean>({
       .then((settings) =>
         callback(null, settings?.status === "disabled_by_admin")
       )
-      .catch((err: Error) => callback(err));
+      .catch((err: unknown) => callback(normalizeError(err)));
   },
 
   hash: (auth: Authenticator) =>

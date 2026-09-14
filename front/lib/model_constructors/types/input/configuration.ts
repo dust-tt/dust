@@ -38,9 +38,19 @@ export const toolSpecificationSchema = z.object({
 });
 export type ToolSpecification = z.infer<typeof toolSpecificationSchema>;
 
+// Provider-agnostic processing tier: `default` is whatever standard path the
+// provider picks for us, `flex` trades latency for a cheaper rate. Labs expose
+// richer vocabularies of their own (OpenAI also has `auto`, `scale`,
+// `priority`); each client translates in both directions, so the tier a
+// provider reports having served on is normalized back to these two.
+const serviceTierSchema = z.enum(["default", "flex"]);
+
+export type ServiceTier = z.infer<typeof serviceTierSchema>;
+
 export const inputConfigSchema = z.object({
   temperature: temperatureSchema.optional(),
   reasoning: reasoningSchema.optional(),
+  conciseReasoningSummary: z.boolean().optional(),
   tools: z.array(toolSpecificationSchema).optional(),
   forceTool: z.string().optional(),
   // When true, the tools are sent but the model is forbidden from calling them
@@ -52,6 +62,7 @@ export const inputConfigSchema = z.object({
   toolSearchEnabled: z.boolean().optional(),
   outputFormat: outputFormatSchema.optional(),
   cacheKey: z.string().optional(),
+  serviceTier: serviceTierSchema.optional(),
 });
 export type InputConfig = z.infer<typeof inputConfigSchema>;
 

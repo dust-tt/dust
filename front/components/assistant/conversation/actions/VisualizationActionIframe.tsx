@@ -10,11 +10,9 @@ import type {
 import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
-import type { PodFunctionScope } from "@app/types/api/pod_function_reference";
-import {
-  podFunctionScopeFromFramePath,
-  resolvePodFunctionReference,
-} from "@app/types/api/pod_function_reference";
+import type { FrameFunctionReferenceScope } from "@app/types/api/frame_function_reference";
+import { resolveFrameFunctionReference } from "@app/types/api/frame_function_reference";
+import type { GetFramePermissionsResponseBody } from "@app/types/api/frame_permissions";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   PostSandboxFunctionInvocationResponseBody,
@@ -96,6 +94,7 @@ export function getFrameRuntimeAccess(
       ? {
           isAuthenticated: true,
           isWorkspaceMember: true,
+          isFrameAuthor: false,
           isPodEditor: scopedUserIdentity.isPodEditor ?? false,
           isPodMember: scopedUserIdentity.isPodMember ?? false,
           user: scopedUserIdentity.user,
@@ -103,6 +102,7 @@ export function getFrameRuntimeAccess(
       : {
           isAuthenticated: false,
           isWorkspaceMember: false,
+          isFrameAuthor: false,
           isPodEditor: false,
           isPodMember: false,
           user: null,
@@ -112,6 +112,57 @@ export function getFrameRuntimeAccess(
     canInvokeFunctions: canInvokeFunctions && userIdentity.isWorkspaceMember,
     userIdentity,
   };
+}
+
+export function getSandboxFunctionInvocationAccessError(
+  scope: FrameFunctionReferenceScope,
+  canInvokeFunctions: boolean,
+  isWorkspaceMember: boolean
+): SandboxFunctionCallError | null {
+  if (canInvokeFunctions) {
+    return null;
+  }
+  return scope.kind === "v2" && !isWorkspaceMember
+    ? {
+        code: "user_authentication_required",
+        message:
+          "This Frame function requires a logged-in user from its workspace.",
+      }
+    : {
+        code: "not_supported",
+        message: "Function calls are not available in this Frame.",
+      };
+}
+
+async function resolveFrameUserIdentity({
+  frameId,
+  userIdentity,
+  workspaceId,
+}: {
+  frameId: string | undefined;
+  userIdentity: UserIdentityState;
+  workspaceId: string;
+}): Promise<UserIdentityState> {
+  if (!frameId || !userIdentity.isAuthenticated) {
+    return userIdentity;
+  }
+
+  try {
+    const response = await clientFetch(
+      `/api/w/${workspaceId}/frames/${encodeURIComponent(frameId)}/permissions`
+    );
+    if (!response.ok) {
+      return userIdentity;
+    }
+
+    const permissions: GetFramePermissionsResponseBody = await response.json();
+    return {
+      ...userIdentity,
+      isFrameAuthor: permissions.isFrameAuthor === true,
+    };
+  } catch {
+    return userIdentity;
+  }
 }
 
 const sendResponseToIframe = <T extends VisualizationRPCCommand>(
@@ -388,13 +439,13 @@ function useVisualizationDataHandler({
   createSandboxFunctionInvocation,
   getFileBlob,
   onEditText,
-  podFunctionScope,
+  functionReferenceScope,
   setCodeDrawerOpened,
   setContentHeight,
   setErrorMessage,
   visualization,
   vizIframeRef,
-  userIdentity,
+  resolveUserIdentity,
   waitForSandboxFunctionInvocationResult,
   workspaceId,
 }: {
@@ -406,14 +457,14 @@ function useVisualizationDataHandler({
     Result<PostSandboxFunctionInvocationResponseBody, SandboxFunctionCallError>
   >;
   getFileBlob: (fileId: string) => Promise<Blob | null>;
-  podFunctionScope: PodFunctionScope | null;
+  functionReferenceScope: FrameFunctionReferenceScope;
   onEditText?: EditTextFn;
   setCodeDrawerOpened: (v: SetStateAction<boolean>) => void;
   setContentHeight: (v: SetStateAction<number>) => void;
   setErrorMessage: (v: SetStateAction<string | null>) => void;
   visualization: Visualization;
   vizIframeRef: React.MutableRefObject<HTMLIFrameElement | null>;
-  userIdentity: UserIdentityState;
+  resolveUserIdentity: () => Promise<UserIdentityState>;
   waitForSandboxFunctionInvocationResult: (params: {
     functionId: string;
     invocationId: string;
@@ -476,11 +527,11 @@ function useVisualizationDataHandler({
 
       switch (data.command) {
         case "callFunction": {
-          // A Frame in an app folder may name its own functions by bare slug; qualify it here, the
-          // only layer that both knows which Frame is calling and is trusted about it.
-          const referenceRes = resolvePodFunctionReference(
+          // Qualify bare function names in the trusted host. Frames v2 bind to stable identity;
+          // legacy Frames keep their existing Pod app-folder resolution.
+          const referenceRes = resolveFrameFunctionReference(
             data.params.functionIdOrSlug,
-            podFunctionScope
+            functionReferenceScope
           );
           if (referenceRes.isErr()) {
             sendErrorToIframe(
@@ -531,7 +582,7 @@ function useVisualizationDataHandler({
         }
 
         case "getUserIdentity":
-          sendResponseToIframe(data, userIdentity, event.source);
+          sendResponseToIframe(data, await resolveUserIdentity(), event.source);
           break;
 
         case "getFile":
@@ -603,13 +654,13 @@ function useVisualizationDataHandler({
     downloadFileFromBlob,
     getFileBlob,
     onEditText,
-    podFunctionScope,
+    functionReferenceScope,
     setContentHeight,
     setErrorMessage,
     setCodeDrawerOpened,
     visualization.identifier,
     vizIframeRef,
-    userIdentity,
+    resolveUserIdentity,
     sendNotification,
     waitForSandboxFunctionInvocationResult,
     workspaceId,
@@ -656,6 +707,8 @@ export interface VisualizationActionIframeProps {
    * bare name; without it, relative references are refused.
    */
   framePath?: string | null;
+  /** Stable identity of a Frames v2 resource. Omit for legacy Frames and raw visualizations. */
+  frameId?: string;
   isEditable?: boolean;
   isInDrawer?: boolean;
   onEditText?: EditTextFn;
@@ -680,11 +733,12 @@ export const VisualizationActionIframe = forwardRef<
   const [isCodeDrawerOpen, setCodeDrawerOpened] = useState(false);
   const vizIframeRef = useRef<HTMLIFrameElement | null>(null);
 
-  // Only Pod hosts pass a frame path, so only Frames in an app folder get a scope; everything else
-  // resolves to null and must use fully qualified references.
-  const podFunctionScope = useMemo(
-    () => podFunctionScopeFromFramePath(props.framePath),
-    [props.framePath]
+  const functionReferenceScope = useMemo<FrameFunctionReferenceScope>(
+    () =>
+      props.frameId
+        ? { kind: "v2", frameId: props.frameId }
+        : { kind: "legacy" },
+    [props.frameId]
   );
 
   // In-flight sandbox function invocations. Each entry mounts a
@@ -810,6 +864,16 @@ export const VisualizationActionIframe = forwardRef<
     );
   }, [canInvokeFunctions, scopedUserIdentity, workspaceId]);
 
+  const resolveUserIdentity = useCallback(
+    () =>
+      resolveFrameUserIdentity({
+        frameId: props.frameId,
+        userIdentity: runtimeAccess.userIdentity,
+        workspaceId,
+      }),
+    [props.frameId, runtimeAccess.userIdentity, workspaceId]
+  );
+
   const isPublic = visualization.accessToken !== undefined;
 
   const getFileBlob = useCallback(
@@ -865,11 +929,13 @@ export const VisualizationActionIframe = forwardRef<
       >
     > => {
       try {
-        if (!runtimeAccess.canInvokeFunctions) {
-          return new Err({
-            code: "not_supported",
-            message: "Function calls are not available in this Frame.",
-          });
+        const accessError = getSandboxFunctionInvocationAccessError(
+          functionReferenceScope,
+          runtimeAccess.canInvokeFunctions,
+          runtimeAccess.userIdentity.isWorkspaceMember
+        );
+        if (accessError) {
+          return new Err(accessError);
         }
 
         const body: PostSandboxFunctionInvocationRequestBody = {
@@ -884,9 +950,7 @@ export const VisualizationActionIframe = forwardRef<
           `/api/w/${workspaceId}/sandbox-functions/${encodedFunctionIdOrSlug}/invocations`,
           {
             method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
           }
         );
@@ -914,7 +978,12 @@ export const VisualizationActionIframe = forwardRef<
         });
       }
     },
-    [runtimeAccess.canInvokeFunctions, workspaceId]
+    [
+      functionReferenceScope,
+      runtimeAccess.canInvokeFunctions,
+      runtimeAccess.userIdentity.isWorkspaceMember,
+      workspaceId,
+    ]
   );
 
   useVisualizationDataHandler({
@@ -922,13 +991,13 @@ export const VisualizationActionIframe = forwardRef<
     createSandboxFunctionInvocation,
     getFileBlob,
     onEditText,
-    podFunctionScope,
+    functionReferenceScope,
     setCodeDrawerOpened,
     setContentHeight,
     setErrorMessage,
     visualization,
     vizIframeRef,
-    userIdentity: runtimeAccess.userIdentity,
+    resolveUserIdentity,
     waitForSandboxFunctionInvocationResult,
     workspaceId,
   });

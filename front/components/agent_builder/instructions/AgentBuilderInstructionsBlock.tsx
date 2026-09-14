@@ -18,6 +18,31 @@ import { format } from "date-fns/format";
 import React, { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
+const DEFAULT_INSTRUCTIONS_HISTORY_LIMIT = 50;
+const INSTRUCTIONS_HISTORY_LIMIT_STORAGE_KEY =
+  "dust_instructions_history_limit";
+
+function readInstructionsHistoryLimit(): number {
+  if (typeof window === "undefined") {
+    return DEFAULT_INSTRUCTIONS_HISTORY_LIMIT;
+  }
+  try {
+    const raw = localStorage.getItem(INSTRUCTIONS_HISTORY_LIMIT_STORAGE_KEY);
+    const parsed = Number.parseInt(raw ?? "", 10);
+
+    return parsed > 0 ? parsed : DEFAULT_INSTRUCTIONS_HISTORY_LIMIT;
+  } catch {
+    // localStorage unavailable.
+    return DEFAULT_INSTRUCTIONS_HISTORY_LIMIT;
+  }
+}
+
+// Escape hatch for users who want a higher limit They can run e.g.
+// localStorage.setItem("dust_instructions_history_limit", "100")
+// And to go back to default:
+// localStorage.removeItem("dust_instructions_history_limit")
+const INSTRUCTIONS_HISTORY_LIMIT = readInstructionsHistoryLimit();
+
 interface AgentBuilderInstructionsBlockProps {
   agentConfigurationId: string | null;
 }
@@ -35,7 +60,7 @@ export function AgentBuilderInstructionsBlock({
     workspaceId: owner.sId,
     agentConfigurationId,
     disabled: !agentConfigurationId,
-    limit: 30,
+    limit: INSTRUCTIONS_HISTORY_LIMIT,
   });
 
   const restoreVersion = () => {

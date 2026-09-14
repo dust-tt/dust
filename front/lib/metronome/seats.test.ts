@@ -1012,13 +1012,62 @@ describe("computeSeatCreditTransfers", () => {
     ).toEqual([]);
   });
 
-  it("is idempotent: skips an already-emptied origin credit", () => {
-    // After a prior transfer the old credit is at 0 → nothing to carry over.
+  it("carries the full allocation when the origin was fully consumed (remaining 0)", () => {
+    // 8000/8000 spent on pro → the whole allocation must carry over so max ends
+    // at 8000/40000 (remaining 32000), NOT a fresh 40000 on top of the 8000
+    // already spent (which would let the user spend 48000). A zero balance is a
+    // fully-consumed origin, not a signal to skip.
+    const transfers = computeSeatCreditTransfers({
+      metronomeSeatByUser: new Map([["u1", "pro"]]),
+      desiredSeatByUser: new Map([["u1", "max"]]),
+      balanceByUser: new Map([["u1", 0]]),
+      allocationBySeatType: ALLOCATIONS,
+    });
+    expect(transfers).toEqual([
+      {
+        userSId: "u1",
+        oldSeatType: "pro",
+        newSeatType: "max",
+        oldCreditName: PRO_SEAT_CREDIT_NAME,
+        newCreditName: MAX_SEAT_CREDIT_NAME,
+        remaining: 0,
+        consumed: 8000,
+      },
+    ]);
+  });
+
+  it("carries an overdrawn origin (negative remaining)", () => {
+    // Overspent pro by 500 (remaining -500) → consumed is 8500, so max ends at
+    // 40000 − 8500 = 31500.
+    const transfers = computeSeatCreditTransfers({
+      metronomeSeatByUser: new Map([["u1", "pro"]]),
+      desiredSeatByUser: new Map([["u1", "max"]]),
+      balanceByUser: new Map([["u1", -500]]),
+      allocationBySeatType: ALLOCATIONS,
+    });
+    expect(transfers).toEqual([
+      {
+        userSId: "u1",
+        oldSeatType: "pro",
+        newSeatType: "max",
+        oldCreditName: PRO_SEAT_CREDIT_NAME,
+        newCreditName: MAX_SEAT_CREDIT_NAME,
+        remaining: -500,
+        consumed: 8500,
+      },
+    ]);
+  });
+
+  it("skips a user with no balance reading (undefined): consumption can't be derived", () => {
+    // Idempotency lives in seat reassignment + the absolute destination
+    // reconcile, so a genuinely already-transferred move is caught by the
+    // seat-match check above — not by the balance. An undefined balance is the
+    // only case we skip here, because we cannot compute `consumed`.
     expect(
       computeSeatCreditTransfers({
         metronomeSeatByUser: new Map([["u1", "pro"]]),
         desiredSeatByUser: new Map([["u1", "max"]]),
-        balanceByUser: new Map([["u1", 0]]),
+        balanceByUser: new Map(),
         allocationBySeatType: ALLOCATIONS,
       })
     ).toEqual([]);
@@ -1111,23 +1160,23 @@ describe("computeSeatCreditTransfers", () => {
 // Regression tests for the Metronome 429 storm of 2026-08: the seat-data cache
 // must dedupe fetches fleet-wide (distributed lock + skipIfLocked) and surface
 // loader failures instead of returning empty data. The lock/skip semantics of
-// cacheWithRedis itself are covered by lib/utils/cache.test.ts; vite.setup.ts
-// replaces cacheWithRedis with a passthrough here, so we pin the registration
-// options rather than the runtime behavior.
+// cacheWithRedisResult itself are covered by lib/utils/cache.test.ts;
+// vite.setup.ts replaces cacheWithRedisResult with a passthrough here, so we
+// pin the registration options rather than the runtime behavior.
 describe("getCachedSeatDataByUserId", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("registers the seat-data cache with fleet-wide fetch dedup", async () => {
-    // Re-import so the module-level cacheWithRedis registration call is
+    // Re-import so the module-level cacheWithRedisResult registration call is
     // recorded on a fresh mock (earlier clearAllMocks wiped the original).
     vi.resetModules();
     const cache = await import("@app/lib/utils/cache");
     await import("@app/lib/metronome/seats");
 
     const registration = vi
-      .mocked(cache.cacheWithRedis)
+      .mocked(cache.cacheWithRedisResult)
       .mock.calls.find((call) => call[0]?.name === "fetchSeatDataRecord");
     // Coupled to the loader's function name: if this is undefined after a
     // rename in seats.ts, update the string above (the dedup is likely fine).
@@ -1143,11 +1192,14 @@ describe("getCachedSeatDataByUserId", () => {
       new Err(new Error("429 rate limit exceeded"))
     );
 
-    await expect(
-      getCachedSeatDataByUserId({
-        metronomeCustomerId: "cust_err",
-        contractId: "contract_1",
-      })
-    ).rejects.toThrow("429");
+    const result = await getCachedSeatDataByUserId({
+      metronomeCustomerId: "cust_err",
+      contractId: "contract_1",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("429");
+    }
   });
 });

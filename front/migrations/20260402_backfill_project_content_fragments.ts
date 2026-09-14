@@ -60,8 +60,7 @@ async function backfillProjectContentFragmentsForWorkspace(
   const perSpaceStats = await concurrentExecutor(
     projectSpaces,
     async (spaceModel) => {
-      // fromModel expects `groups` included on the Sequelize instance; plain findAll does not load it.
-      const space = new SpaceResource(SpaceModel, spaceModel.get(), []);
+      const space = SpaceResource.fromModel(spaceModel);
       const files = await FileResource.listByProject(baseAuth, {
         projectId: space.sId,
       });

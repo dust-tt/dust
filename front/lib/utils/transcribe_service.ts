@@ -13,14 +13,28 @@ import fs from "fs";
 
 const TRANSCRIPTION_TIMEOUT_SECONDS = 5 * 60; // 5 minutes.
 
-async function getElevenLabs() {
+export const REGION_TO_ELEVENLABS_ENVIRONMENT = {
+  "europe-west1": {
+    environment: ElevenLabsEnvironment.ProductionEu,
+    apiUrl: "https://api.eu.residency.elevenlabs.io",
+    websocketUrl: "wss://api.eu.residency.elevenlabs.io",
+  },
+  "us-central1": {
+    environment: ElevenLabsEnvironment.ProductionUs,
+    apiUrl: "https://api.elevenlabs.io",
+    websocketUrl: "wss://api.elevenlabs.io",
+  },
+};
+
+export function getElevenLabs() {
   const credentials = dustManagedServiceCredentials();
+  const apiKey = credentials.ELEVENLABS_API_KEY;
+  const region = regionsConfig.getCurrentRegion();
+
   const elevenLabsEnvironment =
-    regionsConfig.getCurrentRegion() === "europe-west1"
-      ? ElevenLabsEnvironment.ProductionEu
-      : ElevenLabsEnvironment.ProductionUs;
+    REGION_TO_ELEVENLABS_ENVIRONMENT[region].environment;
   return new ElevenLabsClient({
-    apiKey: credentials.ELEVENLABS_API_KEY,
+    apiKey: apiKey,
     environment: elevenLabsEnvironment,
     timeoutInSeconds: TRANSCRIPTION_TIMEOUT_SECONDS,
   });
@@ -41,7 +55,7 @@ export async function transcribeFile(
   input: FormidableFileLike
 ): Promise<Result<string, Error>> {
   try {
-    const el = await getElevenLabs();
+    const el = getElevenLabs();
     const file = await toReadable(input);
     const response = (await el.speechToText.convert({
       modelId: _ELEVENLABS_TRANSCRIBE_MODEL,

@@ -6,6 +6,15 @@ interface SettingsListProps {
   className?: string;
 }
 
+/**
+ * A vertically stacked list of settings, where each `SettingsList.Row` pairs a `title`
+ * and optional `description` with a trailing `action` control; the container handles
+ * dividers and spacing. Use it for a settings or preferences panel where each row exposes
+ * a single labelled control. For list rows that need a leading visual or hover-revealed
+ * controls, use `ContextItem` instead.
+ *
+ * @summary Stacked list of settings rows.
+ */
 export function SettingsList({ children, className }: SettingsListProps) {
   return (
     <div
@@ -22,6 +31,7 @@ export function SettingsList({ children, className }: SettingsListProps) {
 interface SettingsListRowProps {
   title: ReactNode;
   description?: ReactNode;
+  /** Trailing control for the row, e.g. a `SliderToggle` or `Input`. */
   action?: ReactNode;
   className?: string;
 }

@@ -103,9 +103,19 @@ const normalizeKey = (rawKey: string) => {
 
 export interface KeyboardShortcutProps
   extends React.HTMLAttributes<HTMLSpanElement> {
+  /** Shortcut with parts joined by `+` (e.g. "Cmd+K"); modifier and arrow names are normalized to platform symbols. */
   shortcut: string;
 }
 
+/**
+ * Renders a keyboard shortcut as styled key caps, normalizing modifier and
+ * arrow names (Cmd, Shift, ArrowUp, ...) to platform symbols (⌘, ⇧, ↑). Use it
+ * to surface the keyboard accelerator for an action, e.g. next to a menu item
+ * or in a hint; inside a dropdown, prefer DropdownMenuShortcut, which wraps
+ * this component.
+ *
+ * @summary Styled keyboard shortcut key caps.
+ */
 export const KeyboardShortcut = ({
   shortcut,
   className,

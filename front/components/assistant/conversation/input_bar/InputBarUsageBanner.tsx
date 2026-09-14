@@ -16,6 +16,7 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
     hasPendingUpgradeRequest,
     userBlockedReason,
     willAutoUpgrade,
+    requireReason,
   } = useWorkspaceUsageStatus({
     owner,
   });
@@ -39,6 +40,7 @@ export function InputBarUsageBanner({ owner }: InputBarUsageBannerProps) {
               owner={owner}
               hasPendingUpgradeRequest={hasPendingUpgradeRequest}
               isManager={isManager}
+              requireReason={requireReason}
             />
           </div>
         )}

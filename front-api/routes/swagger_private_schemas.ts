@@ -566,8 +566,8 @@
  *         modelResolutionMethod:
  *           type: string
  *           nullable: true
- *           enum: [agent, user, auto]
- *           description: How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy).
+ *           enum: [agent, user, auto, auto_fast, auto_complex, fair_use_downgrade]
+ *           description: How resolvedModel was chosen - agent (configured model), user (per-message picker), auto/auto_fast/auto_complex (routed through a model stream), or fair_use_downgrade (premium allowance spent, ran the Standard stream instead). Null (legacy).
  *     PrivateLightAgentMessage:
  *       type: object
  *       description: A lighter agent message used in paginated message list responses.
@@ -691,8 +691,8 @@
  *         modelResolutionMethod:
  *           type: string
  *           nullable: true
- *           enum: [agent, user, auto]
- *           description: How resolvedModel was chosen - agent (configured model), user (per-message picker), or auto (routed through the auto model). Null (legacy).
+ *           enum: [agent, user, auto, auto_fast, auto_complex, fair_use_downgrade]
+ *           description: How resolvedModel was chosen - agent (configured model), user (per-message picker), auto/auto_fast/auto_complex (routed through a model stream), or fair_use_downgrade (premium allowance spent, ran the Standard stream instead). Null (legacy).
  *         activitySteps:
  *           type: array
  *           items:
@@ -1084,9 +1084,6 @@
  *         - sId
  *         - name
  *         - kind
- *         - groupIds
- *         - isRestricted
- *         - managementMode
  *       properties:
  *         sId:
  *           type: string
@@ -1095,15 +1092,6 @@
  *         kind:
  *           type: string
  *           enum: [global, system, conversations, regular, project]
- *         groupIds:
- *           type: array
- *           items:
- *             type: string
- *         isRestricted:
- *           type: boolean
- *         managementMode:
- *           type: string
- *           enum: [manual, group]
  *         createdAt:
  *           type: integer
  *         updatedAt:
@@ -1115,6 +1103,12 @@
  *         - $ref: '#/components/schemas/PrivateSpace'
  *         - type: object
  *           properties:
+ *             groupIds:
+ *               type: array
+ *               items:
+ *                 type: string
+ *             isRestricted:
+ *               type: boolean
  *             description:
  *               type: string
  *               nullable: true
@@ -1158,9 +1152,6 @@
  *               description: Interleaved system tab ids and frame paths before Settings.
  *               items:
  *                 type: string
- *             isAdminControlled:
- *               type: boolean
- *               description: Whether workspace admins control membership and connected data for this Pod.
  *     PrivateDataSourceView:
  *       type: object
  *       description: A view on a data source within a space.
@@ -1490,7 +1481,7 @@
  *           type: string
  *         origin:
  *           type: string
- *           enum: [web, project_kickoff, extension, agent_sidekick, api, cli, cli_programmatic, email, excel, gsheet, make, n8n, powerpoint, raycast, slack, slack_workflow, teams, transcript, triggered_programmatic, triggered, wakeup, zapier, zendesk, onboarding_conversation]
+ *           enum: [web, project_kickoff, extension, agent_sidekick, analytics_panel, api, cli, cli_programmatic, email, excel, gsheet, make, n8n, powerpoint, raycast, slack, slack_workflow, teams, transcript, triggered_programmatic, triggered, wakeup, zapier, zendesk, onboarding_conversation]
  *         selectedSpaceIds:
  *           type: array
  *           items:

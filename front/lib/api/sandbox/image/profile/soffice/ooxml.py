@@ -36,7 +36,9 @@ def resolve_rel_target(rels_path: str, target: str) -> str:
     into an absolute path within the zip."""
     if target.startswith("/"):
         return target.lstrip("/")
-    base = rels_path.rsplit("/_rels/", 1)[0]
+    # The package's own `_rels/.rels` has no parent directory, so splitting on
+    # "/_rels/" would leave the rels path itself as the base.
+    base = rels_path.rsplit("/_rels/", 1)[0] if "/_rels/" in rels_path else ""
     parts = (base.split("/") if base else []) + target.split("/")
     resolved = []
     for p in parts:

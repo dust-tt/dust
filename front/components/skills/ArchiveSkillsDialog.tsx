@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  Trash01,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -35,7 +34,7 @@ export function ArchiveSkillsDialog({
     skillIds: skills.map((skill) => skill.sId),
   });
   const totalUsage = skills.reduce(
-    (total, skill) => total + (skill.messageCount ?? 0),
+    (total, skill) => total + (skill.usage ?? 0),
     0
   );
   const isSingleSkill = skills.length === 1;
@@ -45,10 +44,9 @@ export function ArchiveSkillsDialog({
     <Dialog>
       <DialogTrigger asChild>
         <Button
-          size="xs"
+          size="sm"
           variant="warning"
-          icon={Trash01}
-          label="Archive selection"
+          label="Archive"
           disabled={disabled}
         />
       </DialogTrigger>

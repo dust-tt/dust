@@ -9,6 +9,7 @@ import type {
   FileSystemDirectoryEntry,
   FileSystemEntry,
 } from "@app/types/api/file_system/types";
+import { getFrameDatabaseReplicasBasePath } from "@app/types/api/frame_storage";
 import type { FileSystemMount, SandboxOnlyMount } from "@app/types/file_system";
 import {
   DustFileSystemError,
@@ -26,7 +27,10 @@ import { isString } from "@app/types/shared/utils/general";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
-import type { FileSystemBackend } from "./file_system_backend";
+import type {
+  FileSystemBackend,
+  FileSystemNodeIdentity,
+} from "./file_system_backend";
 
 // ---------------------------------------------------------------------------
 // Scoped-path helpers
@@ -387,7 +391,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     scopedPath: string,
     content: Buffer | string | Readable,
     contentType: string
-  ): Promise<Result<void, DustFileSystemError>> {
+  ): Promise<Result<FileSystemNodeIdentity, DustFileSystemError>> {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
       return new Err(
@@ -411,7 +415,7 @@ export class GCSFileSystemBackend implements FileSystemBackend {
         );
       }
 
-      return new Ok(undefined);
+      return new Ok({ nodeId: null });
     } catch (err) {
       return new Err(
         new DustFileSystemError("internal", normalizeError(err).message)
@@ -421,7 +425,12 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
   async mkdir(
     scopedPath: string
-  ): Promise<Result<FileSystemDirectoryEntry, DustFileSystemError>> {
+  ): Promise<
+    Result<
+      { entry: FileSystemDirectoryEntry } & FileSystemNodeIdentity,
+      DustFileSystemError
+    >
+  > {
     const gcsPath = this.toGCSPath(scopedPath);
     if (!gcsPath) {
       return new Err(
@@ -451,11 +460,14 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
       const fileName = gcsPath.split("/").pop() ?? "";
       return new Ok({
-        isDirectory: true as const,
-        fileName,
-        path: scopedPath,
-        sizeBytes: 0,
-        lastModifiedMs: Date.now(),
+        entry: {
+          isDirectory: true as const,
+          fileName,
+          path: scopedPath,
+          sizeBytes: 0,
+          lastModifiedMs: Date.now(),
+        },
+        nodeId: null,
       });
     } catch (err) {
       return new Err(
@@ -593,6 +605,43 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
   }
 
+  async move({
+    src,
+    dest,
+  }: {
+    src: string;
+    dest: string;
+  }): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
+    const destExists = await this.exists(dest);
+    if (destExists.isErr()) {
+      return destExists;
+    }
+    if (destExists.value) {
+      return new Err(
+        new DustFileSystemError(
+          "already_exists",
+          "File name already exists in the destination directory."
+        )
+      );
+    }
+
+    const copyResult = await this.copy({ src, dest });
+    if (copyResult.isErr()) {
+      return copyResult;
+    }
+
+    const deleteResult = await this.delete(src);
+    if (deleteResult.isErr()) {
+      logger.error(
+        { err: deleteResult.error, src, dest },
+        "GCS move left the source after copying the destination"
+      );
+      return new Ok({ sourceDeletionFailed: true });
+    }
+
+    return new Ok({ sourceDeletionFailed: false });
+  }
+
   async getDownloadUrl(
     scopedPath: string,
     opts?: { expiresInMs?: number; fileName?: string }
@@ -608,6 +657,13 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     }
 
     try {
+      const [exists] = await getPrivateUploadBucket().file(gcsPath).exists();
+      if (!exists) {
+        return new Err(
+          new DustFileSystemError("not_found", `Path not found: ${scopedPath}`)
+        );
+      }
+
       const url = await getCachedPrivateUploadSignedUrl(gcsPath, {
         expirationDelayMs: opts?.expiresInMs,
       });
@@ -656,14 +712,17 @@ export class GCSFileSystemBackend implements FileSystemBackend {
 
   private sandboxOnlyMountGCSPrefix(mount: SandboxOnlyMount): string {
     switch (mount.kind) {
-      case "pod_sandbox_functions":
-        return `w/${this.workspaceId}/pods/${mount.id}/sandbox-functions`;
+      case "frame_publications":
+        return `w/${this.workspaceId}/frames/${mount.frameId}/publications`;
 
-      case "pod_state":
-        return `w/${this.workspaceId}/pods/${mount.id}/state`;
+      case "frame_state":
+        return getFrameDatabaseReplicasBasePath({
+          workspaceId: this.workspaceId,
+          frameId: mount.frameId,
+        }).replace(/\/$/, "");
 
       default:
-        assertNever(mount.kind);
+        assertNever(mount);
     }
   }
 
@@ -671,14 +730,14 @@ export class GCSFileSystemBackend implements FileSystemBackend {
     mount: SandboxOnlyMount
   ): GCSMountTarget["mountProfile"] {
     switch (mount.kind) {
-      case "pod_sandbox_functions":
-        return "pod_sandbox_functions";
+      case "frame_publications":
+        return "frame_publications";
 
-      case "pod_state":
-        return "pod_state_replica";
+      case "frame_state":
+        return "sandbox_state_replica";
 
       default:
-        assertNever(mount.kind);
+        assertNever(mount);
     }
   }
 }

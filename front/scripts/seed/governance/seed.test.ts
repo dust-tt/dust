@@ -1,9 +1,10 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { SeedContext } from "@app/scripts/seed/factories";
 import {
-  seedAgents,
+  seedAgent,
   seedSkill,
   seedSpace,
   seedUsers,
@@ -25,6 +26,7 @@ const ALFRED_USER_ID = "SeedUserAlfred";
 const BOB_USER_ID = "SeedUserBob";
 const CHARLY_USER_ID = "SeedUserCharly";
 const RESTRICTED_SPACE_NAME = "Governance Restricted Space";
+const PRIVATE_SPACE_NAME = "Governance Private Space";
 
 // Load assets from JSON files (same as seed.ts)
 function loadAssets(): Assets {
@@ -75,10 +77,20 @@ describe("governance seed script integration test", () => {
       name: RESTRICTED_SPACE_NAME,
       members: [bob!],
     });
+    const privateSpace = await seedSpace(ctx, {
+      name: PRIVATE_SPACE_NAME,
+      members: [alfred!],
+      withContextUser: false,
+    });
 
     const alfredSkill = await seedSkill(ctx, assets.skills.alfredSkill, {
       owner: alfred,
     });
+    const alfredPrivateSpaceSkill = await seedSkill(
+      ctx,
+      assets.skills.alfredPrivateSpaceSkill,
+      { owner: alfred, spaces: privateSpace ? [privateSpace] : [] }
+    );
     const currentUserSkill = await seedSkill(
       ctx,
       assets.skills.currentUserSkill,
@@ -87,9 +99,28 @@ describe("governance seed script integration test", () => {
         spaces: restrictedSpace ? [restrictedSpace] : [],
       }
     );
-    const createdAgents = await seedAgents(ctx, assets.agents, {
-      skills: alfredSkill ? [alfredSkill] : [],
-    });
+    const incidentReporter = await seedAgent(
+      ctx,
+      assets.agents.incidentReporter,
+      {
+        skills: alfredSkill ? [alfredSkill] : [],
+      }
+    );
+    const alfredUnpublishedAgent = await seedAgent(
+      ctx,
+      assets.agents.alfredUnpublishedAgent,
+      { owner: alfred }
+    );
+    const alfredPrivateSpaceAgent = await seedAgent(
+      ctx,
+      assets.agents.alfredPrivateSpaceAgent,
+      { owner: alfred, spaces: privateSpace ? [privateSpace] : [] }
+    );
+    const alfredUnpublishedPrivateSpaceAgent = await seedAgent(
+      ctx,
+      assets.agents.alfredUnpublishedPrivateSpaceAgent,
+      { owner: alfred, spaces: privateSpace ? [privateSpace] : [] }
+    );
 
     // The groups hold the expected members, with the expected kinds.
     for (const [name, kind, expectedMembers] of [
@@ -109,7 +140,7 @@ describe("governance seed script integration test", () => {
 
     // The restricted space holds the current user and Bob.
     expect(restrictedSpace).toBeDefined();
-    expect(restrictedSpace!.isRegularAndRestricted()).toBe(true);
+    expect(await restrictedSpace!.isRestricted(authenticator)).toBe(true);
     const spaceMembers =
       await restrictedSpace!.fetchDistinctActiveManualGroupMembers(
         authenticator
@@ -121,12 +152,29 @@ describe("governance seed script integration test", () => {
     // The current user's skill requires the restricted space and has Bob and Alfred as editors.
     // Alfred is not a member of the space, which is what the skill builder warns about.
     expect(currentUserSkill!.requestedSpaceIds).toEqual([restrictedSpace!.id]);
-    const skillEditors =
-      await currentUserSkill!.editorGroup!.getActiveMembers(authenticator);
+    const skillEditors = (await currentUserSkill!.listEditors(authenticator))!;
     expect(new Set(skillEditors.map((e) => e.sId))).toEqual(
       new Set([user.sId, bob!.sId, alfred!.sId])
     );
     expect(spaceMembers.map((m) => m.sId)).not.toContain(alfred!.sId);
+
+    // Alfred's published skill requires the private space the current user is not a member of.
+    expect(alfredPrivateSpaceSkill).toBeDefined();
+    expect(alfredPrivateSpaceSkill!.requestedSpaceIds).toEqual([
+      privateSpace!.id,
+    ]);
+    expect(alfredPrivateSpaceSkill!.availability).toBe("workspace_users");
+
+    // Reseeding reuses the private-space skill even though the context user cannot read it.
+    expect(
+      await SkillResource.fetchById(authenticator, alfredPrivateSpaceSkill!.sId)
+    ).toBeNull();
+    const reseededPrivateSpaceSkill = await seedSkill(
+      ctx,
+      assets.skills.alfredPrivateSpaceSkill,
+      { owner: alfred, spaces: privateSpace ? [privateSpace] : [] }
+    );
+    expect(reseededPrivateSpaceSkill?.sId).toBe(alfredPrivateSpaceSkill!.sId);
 
     // Both skills are created with the availability from the assets.
     expect(alfredSkill).toBeDefined();
@@ -142,12 +190,10 @@ describe("governance seed script integration test", () => {
     );
 
     // The agent is created and uses Alfred's skill.
-    expect(createdAgents.size).toBe(assets.agents.length);
-    const agent = createdAgents.get(assets.agents[0].name);
-    expect(agent).toBeDefined();
+    expect(incidentReporter).toBeDefined();
 
     const agentConfiguration = await getAgentConfiguration(authenticator, {
-      agentId: agent!.sId,
+      agentId: incidentReporter!.sId,
       variant: "full",
     });
     expect(agentConfiguration).toBeDefined();
@@ -156,5 +202,57 @@ describe("governance seed script integration test", () => {
       agentConfiguration!
     );
     expect(agentSkills.map((s) => s.sId)).toEqual([alfredSkill!.sId]);
+
+    // The private space holds Alfred only: the current user is not a member.
+    expect(privateSpace).toBeDefined();
+    expect(await privateSpace!.isRestricted(authenticator)).toBe(true);
+    const privateSpaceMembers =
+      await privateSpace!.fetchDistinctActiveManualGroupMembers(authenticator);
+    expect(new Set(privateSpaceMembers.map((m) => m.sId))).toEqual(
+      new Set([alfred!.sId])
+    );
+
+    // Alfred's three agents are authored by Alfred: unpublished for the first one, requiring the
+    // private space for the second one, and both for the third one. None shows up in the current
+    // user's list view.
+    expect(alfredUnpublishedAgent).toBeDefined();
+    expect(alfredPrivateSpaceAgent).toBeDefined();
+    expect(alfredUnpublishedPrivateSpaceAgent).toBeDefined();
+
+    const alfredAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      alfred!.sId,
+      workspace.sId
+    );
+    const unpublishedConfiguration = await getAgentConfiguration(alfredAuth, {
+      agentId: alfredUnpublishedAgent!.sId,
+      variant: "light",
+    });
+    expect(unpublishedConfiguration!.scope).toBe("hidden");
+    expect(unpublishedConfiguration!.versionAuthorId).toBe(alfred!.id);
+
+    const privateSpaceConfiguration = await getAgentConfiguration(alfredAuth, {
+      agentId: alfredPrivateSpaceAgent!.sId,
+      variant: "light",
+    });
+    expect(privateSpaceConfiguration!.scope).toBe("visible");
+    expect(privateSpaceConfiguration!.versionAuthorId).toBe(alfred!.id);
+    expect(privateSpaceConfiguration!.requestedSpaceIds).toEqual([
+      privateSpace!.sId,
+    ]);
+
+    const unpublishedPrivateSpaceConfiguration = await getAgentConfiguration(
+      alfredAuth,
+      {
+        agentId: alfredUnpublishedPrivateSpaceAgent!.sId,
+        variant: "light",
+      }
+    );
+    expect(unpublishedPrivateSpaceConfiguration!.scope).toBe("hidden");
+    expect(unpublishedPrivateSpaceConfiguration!.versionAuthorId).toBe(
+      alfred!.id
+    );
+    expect(unpublishedPrivateSpaceConfiguration!.requestedSpaceIds).toEqual([
+      privateSpace!.sId,
+    ]);
   });
 });

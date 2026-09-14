@@ -31,10 +31,10 @@ vi.mock("@app/lib/api/assistant/conversation/content_fragment", () => ({
 
 // Avoid UDP socket usage from StatsD in tests
 vi.mock("@app/lib/utils/statsd", () => ({
-  getStatsDClient: () => ({
+  statsDMetrics: {
     increment: vi.fn(),
     distribution: vi.fn(),
-  }),
+  },
 }));
 
 vi.mock("@app/lib/file_storage", async (importOriginal) => {
@@ -80,7 +80,7 @@ function postWebhook(
 async function makeTriggerEditorAuth(workspace: WorkspaceType) {
   const triggerEditor = await UserFactory.basic();
   await MembershipFactory.associate(workspace, triggerEditor, {
-    role: "builder",
+    role: "user",
   });
 
   return Authenticator.fromUserIdAndWorkspaceId(
@@ -251,7 +251,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
   });
 
   it("stores payload when a matched trigger includes payload", async () => {
-    const { workspace } = await createPublicApiMockRequest();
+    const { workspace } = await createPublicApiMockRequest({
+      plan: "creditPriced",
+    });
 
     const webhookSource = await createWebhookSourceAndTrigger(workspace, {
       includePayload: true,
@@ -270,7 +272,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
   });
 
   it("does not store payload when matched triggers do not include payload", async () => {
-    const { workspace } = await createPublicApiMockRequest();
+    const { workspace } = await createPublicApiMockRequest({
+      plan: "creditPriced",
+    });
 
     const webhookSource = await createWebhookSourceAndTrigger(workspace, {
       includePayload: false,
@@ -289,7 +293,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
   });
 
   it("stores payload when no triggers match if a trigger includes payload", async () => {
-    const { workspace } = await createPublicApiMockRequest();
+    const { workspace } = await createPublicApiMockRequest({
+      plan: "creditPriced",
+    });
 
     const webhookSource = await createWebhookSourceAndTrigger(workspace, {
       includePayload: true,
@@ -309,7 +315,9 @@ describe("POST /api/v1/w/[wId]/triggers/hooks/[webhookSourceId]/[webhookSourceUr
   });
 
   it("does not store payload when no enabled triggers include payload", async () => {
-    const { workspace } = await createPublicApiMockRequest();
+    const { workspace } = await createPublicApiMockRequest({
+      plan: "creditPriced",
+    });
 
     const webhookSource = await createWebhookSourceAndTrigger(workspace, {
       includePayload: false,

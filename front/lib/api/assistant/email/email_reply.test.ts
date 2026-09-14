@@ -11,7 +11,7 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import { getAgentLoopDataWithAuth } from "@app/types/assistant/agent_run";
+import { getAgentLoopRuntimeDataWithAuth } from "@app/types/assistant/agent_run";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/assistant/configuration/agent", () => ({
@@ -49,7 +49,7 @@ vi.mock("@app/lib/utils/router", () => ({
 }));
 
 vi.mock("@app/types/assistant/agent_run", () => ({
-  getAgentLoopDataWithAuth: vi.fn(),
+  getAgentLoopRuntimeDataWithAuth: vi.fn(),
 }));
 
 import { sendEmailReplyOnCompletion } from "@app/lib/api/assistant/email/email_reply";
@@ -91,7 +91,7 @@ describe("sendEmailReplyOnCompletion", () => {
       replyCc: ["security@dust.tt"],
     } as never);
 
-    vi.mocked(getAgentLoopDataWithAuth).mockResolvedValue({
+    vi.mocked(getAgentLoopRuntimeDataWithAuth).mockResolvedValue({
       isErr: () => false,
       value: {
         agentMessage: {
@@ -138,7 +138,7 @@ describe("sendEmailReplyOnCompletion", () => {
       workspaceId: "workspace-1",
       conversationId: "conversation-1",
     } as never);
-    vi.mocked(getAgentLoopDataWithAuth).mockResolvedValue({
+    vi.mocked(getAgentLoopRuntimeDataWithAuth).mockResolvedValue({
       isErr: () => false,
       value: {
         agentMessage: {

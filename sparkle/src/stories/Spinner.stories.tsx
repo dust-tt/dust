@@ -31,7 +31,7 @@ const meta = {
 - Use **light** on dark or colored backgrounds; **dark** forces a near-black arc regardless of theme.
 - Use a custom color variant (e.g. \`rose300\`) to tint the spinner to match a surface.
 - For long waits, pair the spinner with explanatory text.
-- Use **xl** or **2xl** for full-page or modal loading states — their stroke scales proportionally with size.`,
+- Use **lg** (the largest size) for full-page or modal loading states — the stroke scales proportionally with size.`,
       },
     },
   },
@@ -59,7 +59,12 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * Interactive spinner — tweak size, type, and variant from the Controls panel.
+ * @summary Interactive playground.
+ */
 export const Playground: Story = {
+  tags: ["!manifest"],
   args: {
     size: "md",
     variant: "mono",
@@ -67,86 +72,42 @@ export const Playground: Story = {
   },
 };
 
-// ─── Size stories ─────────────────────────────────────────────────────────────
-
-export const Small: Story = {
-  args: { size: "sm", variant: "mono" },
-};
-
-export const Large: Story = {
-  args: { size: "lg", variant: "mono" },
-};
-
-export const Display: Story = {
-  name: "Display (xl / 2xl)",
-  render: () => (
-    <div className="flex items-end gap-12">
-      <div className="flex flex-col items-center gap-3">
-        <Spinner size="lg" variant="mono" />
-        <span className="text-xs text-muted-foreground">xl — 128px</span>
-      </div>
-    </div>
-  ),
-};
-
-// ─── Type stories ─────────────────────────────────────────────────────────────
-
-export const MonoVariant: Story = {
+/**
+ * The standard loading indicator: the worm (arc) type in the theme-adaptive
+ * mono variant. Scale it with **size** — xs/sm for inline "Saving…" rows,
+ * md for buttons and menus, lg for card, modal, or full-page loading states.
+ * @summary Default theme-adaptive spinner.
+ */
+export const Default: Story = {
   args: { size: "md", variant: "mono", type: "worm" },
 };
 
-export const ShapesVariant: Story = {
-  name: "Shapes type (morphing)",
-  render: () => (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-end gap-6">
-        {(["xs", "sm", "md", "lg"] as const).map((size) => (
-          <div key={size} className="flex flex-col items-center gap-2">
-            <Spinner size={size} type="shapes" variant="mono" />
-            <span className="text-xs text-muted-foreground">{size}</span>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-6 rounded-xl bg-slate-900 p-6">
-        <div className="flex flex-col items-center gap-2">
-          <Spinner size="lg" type="shapes" variant="light" />
-          <span className="text-xs text-slate-400">light</span>
-        </div>
-        <div className="flex flex-col items-center gap-2">
-          <Spinner size="lg" type="shapes" variant="rose300" />
-          <span className="text-xs text-slate-400">rose300</span>
-        </div>
-      </div>
-    </div>
-  ),
+/**
+ * The shapes type morphs through square → circle → triangle for a more
+ * playful loading treatment. Works at every size and with every color
+ * variant, just like the worm type.
+ * @summary Morphing shapes animation.
+ */
+export const ShapesType: Story = {
+  args: { size: "md", variant: "mono", type: "shapes" },
 };
 
-export const TriVariant: Story = {
-  name: "Tri type (legacy Lottie)",
-  render: () => (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-end gap-6">
-        {(["xs", "sm", "md", "lg"] as const).map((size) => (
-          <div key={size} className="flex flex-col items-center gap-2">
-            <Spinner size={size} type="tri" variant="mono" />
-            <span className="text-xs text-muted-foreground">{size}</span>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-6 rounded-xl bg-slate-900 p-6">
-        <div className="flex flex-col items-center gap-2">
-          <Spinner size="lg" type="tri" variant="light" />
-          <span className="text-xs text-slate-400">light</span>
-        </div>
-        <div className="flex flex-col items-center gap-2">
-          <Spinner size="lg" type="tri" variant="rose300" />
-          <span className="text-xs text-slate-400">rose300</span>
-        </div>
-      </div>
-    </div>
-  ),
+/**
+ * The tri type is the legacy Dust Lottie spinner, kept for surfaces that
+ * still use the original branded animation. Prefer worm or shapes for new
+ * work.
+ * @summary Legacy Lottie animation.
+ */
+export const TriType: Story = {
+  args: { size: "md", variant: "mono", type: "tri" },
 };
 
+/**
+ * Variants suited to dark or colored surfaces: **light** forces a white arc,
+ * **revert** flips the theme adaptation, and custom colors like **rose300**
+ * tint the spinner to match the surface.
+ * @summary Variants for dark backgrounds.
+ */
 export const OnDark: Story = {
   name: "On dark background",
   render: () => (
@@ -167,73 +128,13 @@ export const OnDark: Story = {
   ),
 };
 
-// ─── Use case stories ─────────────────────────────────────────────────────────
-
-export const InlineWithText: Story = {
-  name: "Inline with text",
-  render: () => (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-2 text-sm text-foreground">
-        <Spinner size="xs" variant="mono" />
-        <span>Saving changes…</span>
-      </div>
-      <div className="flex items-center gap-2 text-sm text-foreground">
-        <Spinner size="sm" variant="mono" />
-        <span>Loading messages…</span>
-      </div>
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Spinner size="xs" variant="dark" />
-        <span>Syncing data…</span>
-      </div>
-    </div>
-  ),
-};
-
-export const CardLoading: Story = {
-  name: "Card / section loading",
-  render: () => (
-    <div className="flex h-48 w-80 items-center justify-center rounded-xl border border-border bg-background">
-      <div className="flex flex-col items-center gap-3">
-        <Spinner size="lg" variant="mono" />
-        <span className="text-sm text-muted-foreground">Loading content…</span>
-      </div>
-    </div>
-  ),
-};
-
-export const PageLoading: Story = {
-  name: "Full-page loading",
-  render: () => (
-    <div className="flex h-96 w-full items-center justify-center rounded-xl bg-background">
-      <div className="flex flex-col items-center gap-4">
-        <Spinner size="lg" variant="mono" />
-        <span className="text-base text-muted-foreground">
-          Loading workspace…
-        </span>
-      </div>
-    </div>
-  ),
-};
-
-export const ModalLoading: Story = {
-  name: "Modal / overlay loading",
-  render: () => (
-    <div className="relative flex h-64 w-80 items-center justify-center overflow-hidden rounded-xl border border-border">
-      <div className="absolute inset-0 flex flex-col gap-3 p-4 opacity-30">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-4 w-full rounded bg-muted-background" />
-        ))}
-      </div>
-      <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-        <Spinner size="lg" variant="mono" />
-      </div>
-    </div>
-  ),
-};
-
-// ─── Full matrix ──────────────────────────────────────────────────────────────
-
-export const SpinnerExample: Story = {
+/**
+ * Visual reference: every size crossed with each type/variant combination,
+ * for design review only.
+ * @summary Visual matrix of all sizes, types, and variants.
+ */
+export const FullMatrix: Story = {
+  tags: ["!manifest"],
   render: () => {
     const sizes = SPINNER_SIZES;
     const combos = [
@@ -274,8 +175,4 @@ export const SpinnerExample: Story = {
       </div>
     );
   },
-};
-
-export const BasicSpinner: Story = {
-  args: { size: "md" },
 };

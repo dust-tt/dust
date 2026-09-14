@@ -1,13 +1,13 @@
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
 async function createGroupWithMember() {
-  const { workspace, auth, user } = await createPrivateApiMockRequest({
+  const { workspace, auth, user } = await createPokeApiMockRequest({
     isSuperUser: true,
     role: "admin",
   });

@@ -3,11 +3,16 @@ import {
   Attachment01,
   Button,
   cn,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   File02,
   Icon,
   Image01,
   ImageZoomDialog,
   Microphone01,
+  Planet,
   Plus,
   Robot,
   Sheet,
@@ -15,9 +20,10 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  Tool02,
+  ShapesPlus,
   XClose,
 } from "@dust-tt/sparkle";
+import { OpenaiLogo } from "@dust-tt/sparkle/logo/platforms";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
@@ -27,6 +33,13 @@ import {
 } from "./NewCitation";
 import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
 import { TaskItem } from "./TaskItem";
+
+const INPUT_BAR_PILL_SURFACE_CLASSNAME =
+  "border-[0.5px] border-border-dark bg-background dark:bg-stone-725 " +
+  "shadow-[inset_2px_-2px_7px_0px_rgba(0,0,0,0.02),0px_0.5px_0.5px_0px_rgba(0,0,0,0.04)]";
+
+const INPUT_BAR_PILL_HOVER_CLASSNAME =
+  "hover:bg-primary-100 dark:hover:bg-[oklch(0.393_0.013_76.451)]";
 
 type DroppedFile = { id: string; file: File; objectUrl?: string };
 
@@ -47,17 +60,23 @@ interface InputBarProps {
   instructionReference?: { start: number; end: number } | null;
   taskCommand?: InputBarTaskCommand | null;
   variant?: "default" | "embedded";
+  isFloating?: boolean;
+  autoFocus?: boolean;
+  beforeSendButton?: React.ReactNode;
   onInstructionInserted?: () => void;
   onClose?: () => void;
   onSend?: () => void;
 }
 
 export function InputBar({
-  placeholder = "Get work done",
+  placeholder = "What are we working on?",
   className,
   instructionReference,
   taskCommand,
   variant = "default",
+  isFloating = true,
+  autoFocus = false,
+  beforeSendButton,
   onInstructionInserted,
   onClose,
   onSend,
@@ -96,6 +115,15 @@ export function InputBar({
 
   const handleFocus = () => {
     setIsFocused(true);
+  };
+
+  // Clear the focus ring only when focus leaves the whole input (keyboard
+  // Tab-out, Escape blur, click outside). Keeps it set when moving focus to an
+  // inner control (e.g. the toolbar buttons).
+  const handleBlur = (event: React.FocusEvent<HTMLDivElement>) => {
+    if (!containerRef.current?.contains(event.relatedTarget as Node | null)) {
+      setIsFocused(false);
+    }
   };
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
@@ -200,14 +228,30 @@ export function InputBar({
     <div
       ref={containerRef}
       onClick={handleFocus}
+      onBlur={handleBlur}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       className={cn(
-        variant === "default" && "bg-primary-50/70 backdrop-blur-md",
-        variant === "embedded" && "bg-primary-50",
-        variant === "default" && (showFocusStyle ? "" : "border-border"),
+        "relative overflow-hidden",
+        variant === "embedded" && "rounded-2xl bg-primary-50",
+        variant === "default" &&
+          cn(
+            "rounded-squircle-40 w-full",
+            "border",
+            showFocusStyle
+              ? "border-border-dark bg-stone-25 dark:border-stone-750 dark:bg-[oklch(0.310_0.007_75)]"
+              : "border-border bg-[oklch(0.988_0_89.876)] dark:bg-[oklch(0.294_0.008_84.593)]",
+            "transition-colors duration-100 ease-emphasized motion-reduce:transition-none",
+            isFloating &&
+              cn(
+                "md:border-white/90",
+                "md:shadow-[0px_-1px_1px_-0.5px_rgba(0,0,0,0.05),0px_0px_0px_1.5px_rgba(0,0,0,0.04),0px_1px_1px_-0.5px_rgba(0,0,0,0.07),0px_6px_6px_-3px_rgba(0,0,0,0.06)]",
+                "md:dark:border-transparent",
+                "md:dark:shadow-[inset_0px_1px_0px_0px_rgba(255,255,255,0.02),inset_0px_0px_0px_1px_rgba(255,255,255,0.04),0px_0px_0px_1.5px_rgba(0,0,0,0.14),0px_1px_1px_-0.5px_rgba(0,0,0,0.18),0px_3px_3px_-1.5px_rgba(0,0,0,0.18),0px_6px_6px_-3px_rgba(0,0,0,0.18)]"
+              )
+          ),
         className
       )}
     >
@@ -271,6 +315,7 @@ export function InputBar({
         <RichTextArea
           ref={richTextAreaRef}
           placeholder={placeholder}
+          autoFocus={autoFocus}
           onFocus={handleFocus}
           defaultValue={taskCommand ? "Let's start working on this task." : ""}
           variant="compact"
@@ -301,43 +346,60 @@ export function InputBar({
           showAskSidekickMenu={false}
           className="placeholder:text-muted-foreground"
         />
-        <div className="flex w-full gap-2 p-2 pl-4">
-          <Button
-            variant="outline"
-            icon={Plus}
-            size="sm"
-            tooltip="Attach a document"
-            className="md:hidden"
-          />
-          <div className="hidden gap-0 md:flex">
+        <div className="flex min-h-7 w-full items-center px-3 pt-2 pb-3">
+          <div className="flex items-center gap-1.5">
             <Button
               variant="ghost-secondary"
               icon={Robot}
               size="xs"
-              label="Dust"
+              label="Agent"
               tooltip="Mention an Agent"
+              isRounded
+              className={cn(
+                INPUT_BAR_PILL_SURFACE_CLASSNAME,
+                INPUT_BAR_PILL_HOVER_CLASSNAME
+              )}
             />
-            <Button
-              variant="ghost-secondary"
-              icon={Attachment01}
-              size="xs"
-              tooltip="Attach a document"
-            />
-            <Button
-              variant="ghost-secondary"
-              icon={Tool02}
-              size="xs"
-              tooltip="Add functionality"
-            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost-secondary"
+                  icon={Plus}
+                  size="xs"
+                  isRounded
+                  tooltip="More"
+                  className={cn(
+                    INPUT_BAR_PILL_SURFACE_CLASSNAME,
+                    INPUT_BAR_PILL_HOVER_CLASSNAME
+                  )}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  icon={Attachment01}
+                  label="Attach a document"
+                />
+                <DropdownMenuItem icon={ShapesPlus} label="Add tools" />
+                <DropdownMenuItem icon={Planet} label="Spaces" />
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <div className="grow" />
-          <div className="flex items-center gap-2 md:gap-1">
+          <div className="flex items-center gap-2.5">
+            <Button
+              variant="ghost-secondary"
+              icon={OpenaiLogo}
+              size="xs"
+              tooltip="Model picker"
+              className="px-2"
+            />
             <Button
               variant="ghost-secondary"
               icon={Microphone01}
               size="xs"
               isRounded
             />
+            {beforeSendButton}
             <Button
               variant="highlight"
               icon={ArrowUp}

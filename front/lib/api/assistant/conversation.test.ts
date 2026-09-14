@@ -89,7 +89,6 @@ import { runOnRedis } from "@app/lib/api/redis";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
-import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -118,14 +117,8 @@ async function fetchRegularAutoGroup(
   space: SpaceResource,
   auth: Authenticator
 ) {
-  const groupReference = space.groups.find((group) => group.isRegularAuto());
-  if (!groupReference) {
-    return null;
-  }
-  const [group] = await space.fetchGroupResources(auth, {
-    groupReferences: [groupReference],
-  });
-  return group;
+  const [group] = await space.fetchRegularAutoGroups(auth);
+  return group ?? null;
 }
 
 async function createActiveProgrammaticCredit(
@@ -544,10 +537,7 @@ describe("retryAgentMessage", () => {
 
   it("should use the actor api key for rate limiting", async () => {
     const systemKey = await KeyFactory.system(globalGroup);
-    const { workspaceAuth: systemKeyAuth } = await Authenticator.fromKey(
-      systemKey,
-      workspace.sId
-    );
+    const systemKeyAuth = await Authenticator.fromKey(systemKey, workspace.sId);
 
     const rateLimiterSpy = vi
       .spyOn(rateLimiterModule, "rateLimiter")
@@ -567,6 +557,38 @@ describe("retryAgentMessage", () => {
     expect(rateLimiterSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         key: `workspace:${workspace.sId}:api_key:${systemKey.id}:post_user_message`,
+      })
+    );
+
+    rateLimiterSpy.mockRestore();
+  });
+
+  it("should use the attributed key for rate limiting over the system key", async () => {
+    // A run_agent sub-agent re-authenticates with the system key but carries the
+    // originating key as attribution, so its messages must share that key's
+    // bucket instead of pooling every key's sub-agent traffic under the system
+    // key. No user here: the key branch is only reached when auth has none.
+    const systemKey = await KeyFactory.system(globalGroup);
+    const originatingKey = await KeyFactory.regular(globalGroup);
+    const subAgentAuth = (
+      await Authenticator.fromKey(systemKey, workspace.sId)
+    ).withAttributionKey({
+      id: originatingKey.id,
+      name: originatingKey.name,
+    });
+
+    const rateLimiterSpy = vi
+      .spyOn(rateLimiterModule, "rateLimiter")
+      .mockResolvedValue(0);
+
+    await retryAgentMessage(subAgentAuth, {
+      conversationResource,
+      message: agentMessage,
+    });
+
+    expect(rateLimiterSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: `workspace:${workspace.sId}:api_key:${originatingKey.id}:post_user_message`,
       })
     );
 
@@ -2583,13 +2605,10 @@ describe("postUserMessage", () => {
     });
 
     it("should reject posting a message without an auth user to a restricted Pod even when user association is disabled", async () => {
-      expect(projectSpace.isOpen()).toBe(false);
+      expect(await projectSpace.isRestricted(auth)).toBe(true);
 
       const apiKey = await KeyFactory.regular(globalGroup);
-      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
-        apiKey,
-        workspace.sId
-      );
+      const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
 
       expect(apiKeyAuth.user()).toBeNull();
       const restrictedPod = await SpaceResource.fetchById(
@@ -2597,7 +2616,7 @@ describe("postUserMessage", () => {
         projectSpace.sId
       );
       expect(restrictedPod).not.toBeNull();
-      expect(restrictedPod?.isOpen()).toBe(false);
+      expect(await restrictedPod?.isRestricted(apiKeyAuth)).toBe(true);
 
       const result = await postUserMessage(apiKeyAuth, {
         conversationResource: projectConversationResource,
@@ -2626,19 +2645,14 @@ describe("postUserMessage", () => {
     });
 
     it("should allow posting a message without an auth user to an open Pod when user association is disabled", async () => {
-      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
+      await SpaceFactory.attachGroup(
+        projectSpace,
+        globalGroup,
+        "project_viewer"
       );
-      await GroupSpaceViewerResource.makeNew(internalAdminAuth, {
-        group: globalGroup,
-        space: projectSpace,
-      });
 
       const apiKey = await KeyFactory.regular(globalGroup);
-      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
-        apiKey,
-        workspace.sId
-      );
+      const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
 
       expect(apiKeyAuth.user()).toBeNull();
       const openPod = await SpaceResource.fetchById(
@@ -2646,7 +2660,7 @@ describe("postUserMessage", () => {
         projectSpace.sId
       );
       expect(openPod).not.toBeNull();
-      expect(openPod?.isOpen()).toBe(true);
+      expect(await openPod?.isRestricted(apiKeyAuth)).toBe(false);
 
       const result = await postUserMessage(apiKeyAuth, {
         conversationResource: projectConversationResource,
@@ -2674,19 +2688,14 @@ describe("postUserMessage", () => {
     });
 
     it("should reject posting a message without an auth user to an open Pod when user association is enabled", async () => {
-      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
+      await SpaceFactory.attachGroup(
+        projectSpace,
+        globalGroup,
+        "project_viewer"
       );
-      await GroupSpaceViewerResource.makeNew(internalAdminAuth, {
-        group: globalGroup,
-        space: projectSpace,
-      });
 
       const apiKey = await KeyFactory.regular(globalGroup);
-      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
-        apiKey,
-        workspace.sId
-      );
+      const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
 
       expect(apiKeyAuth.user()).toBeNull();
       const openPod = await SpaceResource.fetchById(
@@ -2694,7 +2703,7 @@ describe("postUserMessage", () => {
         projectSpace.sId
       );
       expect(openPod).not.toBeNull();
-      expect(openPod?.isOpen()).toBe(true);
+      expect(await openPod?.isRestricted(apiKeyAuth)).toBe(false);
 
       const result = await postUserMessage(apiKeyAuth, {
         conversationResource: projectConversationResource,
@@ -2816,10 +2825,7 @@ describe("postUserMessage", () => {
       expect(updateResult.isOk()).toBe(true);
 
       const apiKey = await KeyFactory.regular(globalGroup);
-      const { workspaceAuth: apiKeyAuth } = await Authenticator.fromKey(
-        apiKey,
-        workspace.sId
-      );
+      const apiKeyAuth = await Authenticator.fromKey(apiKey, workspace.sId);
 
       const result = await postUserMessage(apiKeyAuth, {
         conversationResource,
@@ -3688,10 +3694,7 @@ describe("editUserMessage", () => {
     // A key has no `auth.user()` either, so the author check used to compare
     // null against null and let this through.
     const systemKey = await KeyFactory.system(globalGroup);
-    const { workspaceAuth: keyAuth } = await Authenticator.fromKey(
-      systemKey,
-      workspace.sId
-    );
+    const keyAuth = await Authenticator.fromKey(systemKey, workspace.sId);
 
     const result = await editUserMessage(keyAuth, {
       conversationResource,

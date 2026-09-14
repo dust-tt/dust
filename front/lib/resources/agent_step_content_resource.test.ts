@@ -58,6 +58,42 @@ async function createAgentMessages(
 }
 
 describe("AgentStepContentResource.fetchByAgentMessages", () => {
+  it("fetches only the requested step", async () => {
+    const { authenticator, workspace } = await createResourceTest({});
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Single Step Fetch Agent" }
+    );
+    const [agentMessage] = await createAgentMessages(authenticator, {
+      count: 1,
+      agentConfigurationId: agent.sId,
+      agentConfigurationVersion: agent.version,
+    });
+    await AgentStepContentModel.bulkCreate(
+      [0, 1].map((step) => ({
+        workspaceId: workspace.id,
+        agentMessageId: agentMessage.id,
+        step,
+        index: 0,
+        version: 0,
+        type: "text_content" as const,
+        value: makeTextContent(`step-${step}`),
+      }))
+    );
+
+    const stepContents =
+      await AgentStepContentResource.fetchByAgentMessageModelIdsAtStep(
+        authenticator,
+        {
+          agentMessageModelIds: [agentMessage.id],
+          step: 1,
+        }
+      );
+
+    expect(stepContents.map(({ step }) => step)).toEqual([1]);
+    expect(stepContents[0].value).toEqual(makeTextContent("step-1"));
+  });
+
   it("returns latest versions for every agent message when the input exceeds the chunk size", async () => {
     const { authenticator, workspace } = await createResourceTest({});
     const agent = await AgentConfigurationFactory.createTestAgent(

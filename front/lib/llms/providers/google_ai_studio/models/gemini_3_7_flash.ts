@@ -9,7 +9,7 @@ export function WithDustGoogleGeminiThreeDotSevenFlashConfig<
   abstract class DustGoogleGeminiThreeDotSevenFlash extends Base {
     static readonly displayName = "Gemini 3.7 Flash";
     static readonly description =
-      "Google's latest fast large context model (1m context).";
+      "Google's fast large context model (1m context).";
     static readonly byok = true;
 
     // Nest the legacy model config under a single `modelConfig` static (see

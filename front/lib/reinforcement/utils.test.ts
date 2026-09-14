@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 describe("getAuthForWorkspace", () => {
   it("returns an auth that can edit skills", async () => {
     const { workspace, authenticator } = await createResourceTest({
-      role: "builder",
+      role: "user",
     });
     const skill = await SkillFactory.create(authenticator);
 

@@ -1,8 +1,11 @@
-import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
+import {
+  getMcpServerViewDescription,
+  getMcpServerViewDisplayName,
+} from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { MCPServerType } from "@app/lib/api/mcp";
-import { filterMCPServer } from "@app/lib/mcp";
-import { useAvailableMCPServers } from "@app/lib/swr/mcp_servers";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { filterMCPServerView } from "@app/lib/mcp";
+import { useMCPServerViewsNotActivated } from "@app/lib/swr/mcp_servers";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
@@ -17,25 +20,25 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-type SpaceManagedActionsViewsModelProps = {
+interface SpaceManagedActionsViewsModelProps {
   owner: LightWorkspaceType;
   space: SpaceType;
-  onAddServer: (server: MCPServerType) => void;
+  onAddServerView: (serverView: MCPServerViewType) => void;
   shouldOpenMenu?: boolean;
   onOpenMenuHandled?: () => void;
-};
+}
 
 export default function SpaceManagedActionsViewsModel({
   owner,
   space,
-  onAddServer,
+  onAddServerView,
   shouldOpenMenu,
   onOpenMenuHandled,
 }: SpaceManagedActionsViewsModelProps) {
   const [searchText, setSearchText] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
-  const { availableMCPServers, isAvailableMCPServersLoading } =
-    useAvailableMCPServers({
+  const { serverViews, isMCPServerViewsLoading } =
+    useMCPServerViewsNotActivated({
       owner,
       space,
       disabled: !menuOpen,
@@ -75,31 +78,28 @@ export default function SpaceManagedActionsViewsModel({
             name="search"
             value={searchText}
             onChange={setSearchText}
-            disabled={isAvailableMCPServersLoading}
+            disabled={isMCPServerViewsLoading}
           />
         }
       >
-        {isAvailableMCPServersLoading && (
+        {isMCPServerViewsLoading && (
           <div className="flex justify-center py-4">
             <Spinner size="sm" />{" "}
           </div>
         )}
-        {!isAvailableMCPServersLoading && availableMCPServers.length <= 0 && (
+        {!isMCPServerViewsLoading && serverViews.length <= 0 && (
           <DropdownMenuItem label="No more tools to add" disabled />
         )}
-        {availableMCPServers
-          .filter((s) => filterMCPServer(s, searchText))
-          .sort((a, b) =>
-            getMcpServerDisplayName(a).localeCompare(getMcpServerDisplayName(b))
-          )
-          .map((server) => (
+        {serverViews
+          .filter((serverView) => filterMCPServerView(serverView, searchText))
+          .map((serverView) => (
             <DropdownMenuItem
-              key={server.sId}
-              label={getMcpServerDisplayName(server)}
-              icon={() => getAvatar(server, "xs")}
-              description={server.description}
+              key={serverView.sId}
+              label={getMcpServerViewDisplayName(serverView)}
+              icon={() => getAvatar(serverView.server, "xs")}
+              description={getMcpServerViewDescription(serverView)}
               onClick={() => {
-                onAddServer(server);
+                onAddServerView(serverView);
               }}
             />
           ))}

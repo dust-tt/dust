@@ -45,11 +45,20 @@ const ColorSwatch = ({ color, onClick, isSelected }: ColorSwatchProps) => {
 };
 
 export interface IconPickerProps {
+  /** Icons to offer, keyed by name; the name is passed to `onIconSelect`. */
   icons: Record<string, React.ComponentType>;
+  /** Called with the icon's name when a swatch is clicked. */
   onIconSelect: (iconName: string) => void;
+  /** Name of the currently selected icon. */
   selectedIcon: string;
 }
 
+/**
+ * A scrollable grid of named icon swatches for choosing an icon, e.g. when
+ * customising an entity (agent avatar, folder, label). It renders the grid
+ * only; mount it inside a PopoverRoot / PopoverContent triggered by a Button.
+ * @summary Grid picker for icons.
+ */
 export const IconPicker: React.FC<IconPickerProps> = ({
   icons,
   onIconSelect,
@@ -73,11 +82,20 @@ export const IconPicker: React.FC<IconPickerProps> = ({
 };
 
 export interface ColorPickerProps {
+  /** Palette to offer, as background utility classes (e.g. "bg-blue-500"). */
   colors: string[];
+  /** Called with the color's class when a swatch is clicked. */
   onColorSelect: (color: string) => void;
+  /** Class of the currently selected color. */
   selectedColor: string;
 }
 
+/**
+ * A grid of color swatches for choosing an accent colour, e.g. when
+ * customising an entity (agent avatar, folder, label). It renders the grid
+ * only; mount it inside a PopoverRoot / PopoverContent triggered by a Button.
+ * @summary Grid picker for colors.
+ */
 export const ColorPicker: React.FC<ColorPickerProps> = ({
   colors,
   onColorSelect,

@@ -6,7 +6,7 @@ import { RegionalModelsOnlyToggle } from "@app/components/pages/workspace/model_
 import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { isModelAvailable } from "@app/lib/assistant";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { useAppRouter } from "@app/lib/platform";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
 import type {
@@ -37,8 +37,8 @@ export function ModelProvidersPageContent({
 }: ModelProvidersPageContentProps) {
   const { subscription } = useAuth();
   const { plan } = subscription;
-  const { featureFlags, hasFeature } = useFeatureFlags();
-  const { regionInfo } = useRegionContext();
+  const { featureFlags } = useFeatureFlags();
+  const { cellInfo } = useCellContext();
   const router = useAppRouter();
 
   // Filter models based on feature flags and build modelProviders dynamically
@@ -50,7 +50,7 @@ export function ModelProvidersPageContent({
         featureFlags,
         plan,
         regionalModelsOnly: workspace.regionalModelsOnly,
-        region: regionInfo.name,
+        region: cellInfo.region,
       })
   );
 
@@ -85,26 +85,24 @@ export function ModelProvidersPageContent({
         </>
       )}
       <EmbeddingModelSelect workspace={workspace} />
-      {hasFeature("models_picker") && (
-        <div className="flex flex-col gap-2 p-3">
-          <div className="font-semibold">Model access tiers</div>
-          <div className="flex items-center justify-between gap-4">
-            <div className="text-sm text-muted-foreground">
-              Model access tiers let members use models up to their highest
-              allowed tier — set per workspace, group, or member.
-            </div>
-            <Button
-              label="Manage in Usage"
-              variant="highlight-ghost"
-              size="sm"
-              iconRight={ArrowRight}
-              onClick={() => {
-                void router.push(`/w/${workspace.sId}/usage`);
-              }}
-            />
+      <div className="flex flex-col gap-2 p-3">
+        <div className="font-semibold">Model access tiers</div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="text-sm text-muted-foreground">
+            Model access tiers let members use models up to their highest
+            allowed tier — set per workspace, group, or member.
           </div>
+          <Button
+            label="Manage in Usage"
+            variant="highlight-ghost"
+            size="sm"
+            iconRight={ArrowRight}
+            onClick={() => {
+              void router.push(`/w/${workspace.sId}/usage`);
+            }}
+          />
         </div>
-      )}
+      </div>
     </div>
   );
 }

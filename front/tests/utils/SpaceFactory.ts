@@ -1,6 +1,8 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import {
@@ -11,6 +13,7 @@ import {
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
 import { faker } from "@faker-js/faker";
+import assert from "assert";
 
 export class SpaceFactory {
   // The factories take a `WorkspaceType`, not an `Authenticator`, but `SpaceResource.makeNew` needs
@@ -40,14 +43,29 @@ export class SpaceFactory {
   }
 
   static async global(workspace: WorkspaceType, globalGroup?: GroupResource) {
+    // Production always attaches the workspace global group (see
+    // `SpaceResource.makeDefaultsForWorkspace`), and that group's `reader` grant is what confers
+    // read on the global space. Default to it so a factory-built global space is readable the same
+    // way. `GroupFactory.defaults` reuses the workspace's existing groups.
+    const group =
+      globalGroup ?? (await GroupFactory.defaults(workspace)).globalGroup;
+
+    const name = "space " + faker.string.alphanumeric(8);
+    // Production also creates the global space's own member group, whose `member` grant is what
+    // confers write on it outside the admin/manager roles.
+    const memberGroup = await SpaceResource.makeGlobalSpaceMemberGroup({
+      workspaceId: workspace.id,
+      spaceName: name,
+    });
+
     return SpaceResource.makeNew(
       await this.internalAuth(workspace),
       {
-        name: "space " + faker.string.alphanumeric(8),
+        name,
         kind: "global",
         workspaceId: workspace.id,
       },
-      { members: removeNulls([globalGroup]) } // TODO: Add groups
+      { members: [group, memberGroup] }
     );
   }
 
@@ -94,8 +112,11 @@ export class SpaceFactory {
     );
   }
 
-  static async project(workspace: WorkspaceType, creatorId?: number) {
-    const name = "project " + faker.string.alphanumeric(8);
+  static async project(
+    workspace: WorkspaceType,
+    creatorId?: number,
+    { name = "project " + faker.string.alphanumeric(8) }: { name?: string } = {}
+  ) {
     const group = await GroupResource.makeNew({
       name: `${PROJECT_GROUP_PREFIX} ${name}`,
       workspaceId: workspace.id,
@@ -108,7 +129,7 @@ export class SpaceFactory {
       {
         name: `${PROJECT_EDITOR_GROUP_PREFIX} ${name}`,
         workspaceId: workspace.id,
-        kind: "space_editors",
+        kind: "regular_auto",
       },
       {
         memberIds: [creatorId ?? defaultCreator.id],
@@ -124,5 +145,47 @@ export class SpaceFactory {
       },
       { members: [group], editors: [editorGroup] }
     );
+  }
+
+  // Grant a group access to an existing space in tests. Access is modeled by `group_permissions`
+  // (the sole source of truth), so this reads the space's current member/editor set from its grants
+  // (`admin` grant = editor, everything else = member), adds `group` to the bucket implied by
+  // `kind`, and re-writes the grants via the same `writeGroupPermissions` path production uses.
+  // `project_viewer` (the global group on an open space) goes in `members`; only editors are told
+  // apart.
+  static async attachGroup(
+    space: SpaceResource,
+    group: GroupResource,
+    kind: "member" | "project_editor" | "project_viewer" = "member"
+  ): Promise<void> {
+    const workspace = await WorkspaceResource.fetchByModelId(space.workspaceId);
+    assert(workspace, `Workspace ${space.workspaceId} not found.`);
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+    const grants = await GroupPermissionModel.findAll({
+      where: {
+        workspaceId: space.workspaceId,
+        resourceType: "space",
+        resourceId: space.id,
+      },
+    });
+    const editorGroupIds = new Set(
+      grants.filter((g) => g.grantType === "admin").map((g) => g.groupId)
+    );
+    const memberGroupIds = new Set(
+      grants.filter((g) => g.grantType !== "admin").map((g) => g.groupId)
+    );
+    if (kind === "project_editor") {
+      editorGroupIds.add(group.id);
+    } else {
+      memberGroupIds.add(group.id);
+    }
+
+    const [members, editors] = await Promise.all([
+      GroupResource.dangerouslyFetchByModelIds(auth, [...memberGroupIds]),
+      GroupResource.dangerouslyFetchByModelIds(auth, [...editorGroupIds]),
+    ]);
+
+    await space.writeGroupPermissions(auth, { members, editors });
   }
 }

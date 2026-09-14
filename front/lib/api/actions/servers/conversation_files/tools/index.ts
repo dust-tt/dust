@@ -19,7 +19,10 @@ import {
 } from "@app/lib/api/actions/servers/files/tools/grep_regex";
 import { searchFunction } from "@app/lib/api/actions/servers/search/tools";
 import type { DataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
+import { getAttachmentCapabilityContext } from "@app/lib/api/assistant/conversation/attachment_capabilities";
+import type { AttachmentUsageHints } from "@app/lib/api/assistant/conversation/attachments";
 import {
+  attachmentUsageHintsFor,
   conversationAttachmentId,
   isContentNodeAttachmentType,
   renderAttachmentXml,
@@ -51,7 +54,10 @@ const MAX_CONTENT_SIZE_FOR_LIST_FILES = 1024 * 256; // 256KB.
 
 export const contentFromAttachments = (
   attachments: ConversationAttachmentType[],
-  snippetContent?: string
+  {
+    usage,
+    snippetContent,
+  }: { usage: AttachmentUsageHints; snippetContent?: string }
 ) => {
   let content = "";
 
@@ -65,7 +71,11 @@ export const contentFromAttachments = (
       } else {
         content += "\n";
       }
-      content += renderAttachmentXml({ attachment, content: snippetContent });
+      content += renderAttachmentXml({
+        attachment,
+        content: snippetContent,
+        usage,
+      });
     });
 
   // Project context attached files.
@@ -78,14 +88,18 @@ export const contentFromAttachments = (
       } else {
         content += "\n";
       }
-      content += renderAttachmentXml({ attachment, content: snippetContent });
+      content += renderAttachmentXml({
+        attachment,
+        content: snippetContent,
+        usage,
+      });
     });
   return content;
 };
 
 // Shared list handler used under two action names: the legacy `list` (all attachments) and the
-// file-system-mode `list_content_nodes_and_tables` (narrowed). Filtering is driven by the
-// conversation's `useFileSystem` flag so the same handler is correct under either name.
+// file-system-mode `list_content_nodes` (narrowed). Filtering is driven by the conversation's
+// `useFileSystem` flag so the same handler is correct under either name.
 const listAttachmentsHandler: ToolHandlers<
   typeof CONVERSATION_FILES_TOOLS_METADATA
 >[typeof CONVERSATION_LIST_FILES_ACTION_NAME] = async (
@@ -95,15 +109,13 @@ const listAttachmentsHandler: ToolHandlers<
   assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
 
   const conversation = runContext.conversation;
+  const capabilities = await getAttachmentCapabilityContext(auth, conversation);
   const allAttachments = await listAttachments(auth, { conversation });
 
-  // When the conversation uses the new file system, regular files are surfaced via the
-  // `files` server. Only list content nodes and queryable attachments (tables) here.
-  const useFileSystem = conversation.metadata?.useFileSystem === true;
-  const attachments = useFileSystem
-    ? allAttachments.filter(
-        (a) => isContentNodeAttachmentType(a) || a.isQueryable
-      )
+  // When the conversation uses the new file system, regular files are surfaced via the `files`
+  // server, so only content nodes remain listable here.
+  const attachments = capabilities.isNewFileExplorer
+    ? allAttachments.filter(isContentNodeAttachmentType)
     : allAttachments;
 
   if (attachments.length === 0) {
@@ -115,10 +127,14 @@ const listAttachmentsHandler: ToolHandlers<
     ]);
   }
 
-  let content = contentFromAttachments(attachments);
+  const usage = attachmentUsageHintsFor(capabilities);
+  let content = contentFromAttachments(attachments, { usage });
 
   if (content.length > MAX_CONTENT_SIZE_FOR_LIST_FILES) {
-    content = contentFromAttachments(attachments, "Snippet content too large.");
+    content = contentFromAttachments(attachments, {
+      usage,
+      snippetContent: "Snippet content too large.",
+    });
   }
 
   return new Ok([
@@ -363,9 +379,12 @@ async function getFileFromConversation(
   const attachment = attachments.find(
     (a) => conversationAttachmentId(a) === fileId
   );
+  // In file system mode only content nodes stay includable: regular files are read by path through
+  // the `files` server.
   if (!attachment || !attachment.isIncludable) {
     return new Err(`File \`${fileId}\` not found in conversation`);
   }
+
   if (attachment.contentFragmentVersion === "superseded") {
     return new Ok({
       fileId,

@@ -1,7 +1,7 @@
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionBaseStatus } from "@app/lib/actions/statuses";
 import type { ToolOutputItemType } from "@app/lib/actions/types";
-import type { PokePodFunctionMCPAction } from "@app/lib/api/poke/projects";
+import type { PokeSandboxFunctionMCPAction } from "@app/lib/api/poke/sandbox_functions";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import {
@@ -11,8 +11,6 @@ import {
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
-import type { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
-import { SandboxFunctionInvocationModel } from "@app/lib/resources/storage/models/sandbox_function";
 import { SandboxFunctionMCPActionModel } from "@app/lib/resources/storage/models/sandbox_function_mcp_action";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -483,29 +481,24 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
     );
   }
 
-  static async deleteAllForSandboxFunction(
-    sandboxFunction: SandboxFunctionResource,
+  static async deleteAllForInvocationModelIds(
+    {
+      workspaceModelId,
+      invocationModelIds,
+    }: {
+      workspaceModelId: ModelId;
+      invocationModelIds: ModelId[];
+    },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<number> {
-    const invocationIds = (
-      await SandboxFunctionInvocationModel.findAll({
-        attributes: ["id"],
-        where: {
-          sandboxFunctionId: sandboxFunction.id,
-          workspaceId: sandboxFunction.workspaceId,
-        },
-        transaction,
-      })
-    ).map((invocation) => invocation.id);
-
-    if (invocationIds.length === 0) {
+    if (invocationModelIds.length === 0) {
       return 0;
     }
 
     return this.deleteAllWithOutputs(
       {
-        workspaceId: sandboxFunction.workspaceId,
-        sandboxFunctionInvocationId: invocationIds,
+        workspaceId: workspaceModelId,
+        sandboxFunctionInvocationId: invocationModelIds,
       },
       { transaction }
     );
@@ -563,7 +556,7 @@ export class SandboxFunctionMCPActionResource extends BaseResource<SandboxFuncti
   // been deleted. The output itself stays behind `readOutput`, poke fetches it on demand.
   toPokeJSON(
     mcpServerView: MCPServerViewResource | null
-  ): PokePodFunctionMCPAction {
+  ): PokeSandboxFunctionMCPAction {
     return {
       ...this.toJSON(),
       mcpServerViewId: mcpServerView?.sId ?? null,

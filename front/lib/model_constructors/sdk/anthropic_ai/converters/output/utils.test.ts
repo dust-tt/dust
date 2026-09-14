@@ -1,7 +1,9 @@
 import {
   AnthropicError,
   APIConnectionError,
+  APIConnectionTimeoutError,
   APIError,
+  APIUserAbortError,
 } from "@anthropic-ai/sdk";
 import type { BetaMessageBatchResult } from "@anthropic-ai/sdk/resources/beta/messages/batches";
 import type {
@@ -140,7 +142,11 @@ function makeStubConverters(): OutputEventConverters {
     stopReasonToErrorEvent: vi.fn(() => null),
     streamErrorToErrorEvent: vi.fn(() => ({
       type: "error" as const,
-      content: { type: "unknown_error" as const, message: "stub-error" },
+      content: {
+        type: "unknown_error" as const,
+        message: "stub-error",
+        errorSource: "unknown" as const,
+      },
       metadata,
     })),
   };
@@ -503,16 +509,34 @@ describe("streamErrorToErrorEvent", () => {
   it("maps invalid tool JSON to a retryable model_output_error", () => {
     const result = streamErrorToErrorEvent(metadata, apiInvalidToolJsonError());
     expect(result.content.type).toBe("model_output_error");
+    expect(result.content.errorSource).toBe("unknown");
   });
 
   it("maps APIConnectionError to network_error", () => {
     const err = new APIConnectionError({ message: "connection reset" });
     const result = streamErrorToErrorEvent(metadata, err);
     expect(result.content.type).toBe("network_error");
+    expect(result.content.errorSource).toBe("unknown");
     expect(result.content.originalError).toBe(err);
   });
 
-  it("maps file download failures to server_error", () => {
+  it("maps APIConnectionTimeoutError to timeout_error", () => {
+    const err = new APIConnectionTimeoutError({ message: "request timed out" });
+    const result = streamErrorToErrorEvent(metadata, err);
+    expect(result.content.type).toBe("timeout_error");
+    expect(result.content.errorSource).toBe("unknown");
+  });
+
+  it("does not attribute a client abort to the provider", () => {
+    const result = streamErrorToErrorEvent(
+      metadata,
+      new APIUserAbortError({ message: "Request was aborted." })
+    );
+    expect(result.content.type).toBe("unknown_error");
+    expect(result.content.errorSource).toBe("unknown");
+  });
+
+  it("maps file download failures to a retryable Dust server_error", () => {
     const err = new APIError(
       400,
       {
@@ -529,35 +553,33 @@ describe("streamErrorToErrorEvent", () => {
     expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
       "server_error"
     );
+    expect(streamErrorToErrorEvent(metadata, err).content.errorSource).toBe(
+      "dust"
+    );
   });
 
   it.each([
-    [400, "invalid_request_error"],
-    [422, "invalid_request_error"],
-    [401, "authentication_error"],
-    [403, "permission_error"],
-    [404, "not_found_error"],
-    [429, "rate_limit_error"],
-    [503, "overloaded_error"],
-  ] as const)("maps HTTP %i to %s", (status, expectedType) => {
+    [400, "invalid_request_error", "dust"],
+    [422, "invalid_request_error", "dust"],
+    [401, "authentication_error", "dust"],
+    [403, "permission_error", "dust"],
+    [404, "not_found_error", "dust"],
+    [413, "invalid_request_error", "dust"],
+    [418, "invalid_request_error", "dust"],
+    [429, "rate_limit_error", "dust"],
+    [503, "overloaded_error", "provider"],
+  ] as const)("maps HTTP %i to %s from %s", (status, expectedType, errorSource) => {
     const err = new APIError(status, {}, "http failure", undefined, null);
-    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
-      expectedType
-    );
+    const result = streamErrorToErrorEvent(metadata, err);
+    expect(result.content.type).toBe(expectedType);
+    expect(result.content.errorSource).toBe(errorSource);
   });
 
   it("maps a generic 5xx status to server_error", () => {
     const err = new APIError(500, {}, "kaboom", undefined, null);
-    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
-      "server_error"
-    );
-  });
-
-  it("maps an unrecognized status to unknown_error", () => {
-    const err = new APIError(418, {}, "teapot", undefined, null);
-    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
-      "unknown_error"
-    );
+    const result = streamErrorToErrorEvent(metadata, err);
+    expect(result.content.type).toBe("server_error");
+    expect(result.content.errorSource).toBe("provider");
   });
 
   // An `APIError` raised mid-stream from an SSE `error` event carries no HTTP
@@ -576,38 +598,25 @@ describe("streamErrorToErrorEvent", () => {
     );
   });
 
-  // The SDK rewraps any non-APIError stream-body failure (connection drop, SSE
-  // parse failure, stream-invariant violation) into a bare `AnthropicError`.
-  // The old router substring-matched these to keep transient failures retryable;
-  // we replicate that classification (see `bareStreamErrorToErrorEvent`).
-  it.each([
-    ["terminated", "network_error"],
-    ["other side closed", "network_error"],
-    ["socket hang up, connection reset", "network_error"],
-    ["ECONNREFUSED", "network_error"],
-    ["too many requests", "rate_limit_error"],
-    ["Overloaded", "overloaded_error"],
-    ["request timed out", "timeout_error"],
-    ["stream interrupted", "stream_error"],
-    ["internal server error", "server_error"],
-  ] as const)("classifies bare AnthropicError %j as %s (old-router parity)", (message, expectedType) => {
-    const err = new AnthropicError(message);
-    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
-      expectedType
-    );
+  it("maps a bare AnthropicError with an undici socket code to network_error", () => {
+    const err = new AnthropicError("terminated");
+    Object.assign(err, {
+      cause: Object.assign(new Error("other side closed"), {
+        code: "UND_ERR_SOCKET",
+      }),
+    });
+    const result = streamErrorToErrorEvent(metadata, err);
+    expect(result.content.type).toBe("network_error");
+    expect(result.content.errorSource).toBe("unknown");
   });
 
-  it("maps an unclassifiable bare error to unknown_error", () => {
-    const err = new AnthropicError("something inexplicable happened");
-    expect(streamErrorToErrorEvent(metadata, err).content.type).toBe(
-      "unknown_error"
+  it("does not classify a bare AnthropicError from message text", () => {
+    const result = streamErrorToErrorEvent(
+      metadata,
+      new AnthropicError("Overloaded")
     );
-  });
-
-  it("maps a non-SDK error with no matchable message to unknown_error", () => {
-    expect(streamErrorToErrorEvent(metadata, "boom").content.type).toBe(
-      "unknown_error"
-    );
+    expect(result.content.type).toBe("unknown_error");
+    expect(result.content.errorSource).toBe("unknown");
   });
 });
 
@@ -1230,6 +1239,38 @@ describe("rawOutputToEvents", () => {
     });
   });
 
+  it("ends a refused turn on the error event, after usage and with no success", async () => {
+    // Consumers stop at the first success/error event: the error must be last so
+    // the usage is not dropped, and no success may follow a terminal error.
+    const events = await collect(
+      rawOutputToEvents(
+        streamOf([
+          {
+            type: "message_start",
+            message: { id: "msg_1" },
+          } as BetaRawMessageStartEvent,
+          {
+            type: "message_delta",
+            delta: { stop_reason: "refusal", stop_sequence: null },
+            usage: tokenUsage,
+          } as BetaRawMessageStreamEvent,
+          { type: "message_stop" } as BetaRawMessageStreamEvent,
+        ]),
+        metadata,
+        realConverters
+      )
+    );
+
+    expect(events.map((e) => e.type)).toEqual([
+      "response_id",
+      "token_usage",
+      "error",
+    ]);
+    expect(events.at(-1)).toMatchObject({
+      content: { type: "refusal_error" },
+    });
+  });
+
   it("splits cache creation by TTL using the cache_creation breakdown from message_start", async () => {
     // Anthropic only emits the per-TTL split on message_start; the trailing
     // message_delta usage carries the flat cache_creation_input_tokens. The
@@ -1635,7 +1676,11 @@ describe("batchResultToEvents", () => {
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       type: "error",
-      content: { type: "server_error", message: "upstream blew up" },
+      content: {
+        type: "server_error",
+        message: "Server error from Anthropic: upstream blew up",
+        errorSource: "provider",
+      },
     });
   });
 

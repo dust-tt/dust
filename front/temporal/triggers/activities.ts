@@ -5,18 +5,27 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
+import { resolvedModelFromUserMessageRow } from "@app/lib/api/assistant/models";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import {
+  PROGRAMMATIC_CAP_REACHED_MESSAGE,
+  PROGRAMMATIC_MONTHLY_CAP_BLOCK_REASON,
+} from "@app/lib/api/credits/access_control";
+import { notifyAdminsTriggerBlockedByProgrammaticCap } from "@app/lib/api/credits/programmatic_cap_trigger_alert";
+import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
+import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
+import { isTriggerProgrammaticCapReached } from "@app/lib/triggers/rate_limits";
 import { getWebhookRequestPayloadFromGCS } from "@app/lib/triggers/webhook";
 import logger from "@app/logger/logger";
 import { makeTriggerScheduleId } from "@app/temporal/triggers/schedule_client";
@@ -33,8 +42,6 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-
-class TriggerNonRetryableError extends Error {}
 
 async function createConversationForAgentConfiguration({
   auth,
@@ -54,7 +61,7 @@ async function createConversationForAgentConfiguration({
   let spaceModelId: ModelId | null = null;
   if (trigger.spaceId) {
     const pod = await SpaceResource.fetchById(auth, trigger.spaceId);
-    if (pod && pod.isProject() && (pod.isOpen() || pod.isMember(auth))) {
+    if (pod && pod.isProject() && auth.can("read", pod)) {
       spaceModelId = pod.id;
     } else {
       logger.warn(
@@ -78,7 +85,7 @@ async function createConversationForAgentConfiguration({
     email: auth.getNonNullableUser().email,
     profilePictureUrl: null,
     origin:
-      trigger.kind === "webhook" && trigger.executionMode === "programmatic"
+      trigger.executionMode === "workspace_pool"
         ? "triggered_programmatic"
         : "triggered",
     lastTriggerRunAt: lastRunAt?.getTime() ?? null,
@@ -159,6 +166,25 @@ async function createConversationForAgentConfiguration({
   });
 
   if (messageRes.isErr()) {
+    const { type: errorType } = messageRes.error.api_error;
+    if (
+      errorType === "plan_message_limit_exceeded" ||
+      errorType === "credits_exhausted" ||
+      errorType === "user_cap_reached" ||
+      errorType === "rate_limit_error" ||
+      errorType === "no_seat"
+    ) {
+      PostHogServerSideTracking.trackEvent({
+        distinctId: auth.getNonNullableUser().sId,
+        event: "trigger_blocked",
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        extra: {
+          trigger_id: trigger.sId,
+          error_type: errorType,
+        },
+      });
+    }
+
     logger.error(
       {
         agentConfigurationId: trigger.agentConfigurationId,
@@ -191,23 +217,32 @@ export async function runTriggeredAgentsActivity({
     workspaceId
   );
 
+  // Expected terminal states (workspace, user, trigger or agent gone by the
+  // time the schedule or webhook fires): there is nothing left to run, so the
+  // activity logs and returns instead of failing the workflow.
   if (!auth.workspace() || !auth.user()) {
-    throw new TriggerNonRetryableError(
+    logger.info(
+      { triggerId, userId, workspaceId },
       "Invalid authentication. Missing workspaceId or userId."
     );
+    return;
   }
 
   if (!auth.isUser()) {
-    throw new TriggerNonRetryableError(
+    logger.info(
+      { triggerId, userId, workspaceId },
       "Invalid authentication. Missing user permissions."
     );
+    return;
   }
 
   const triggerResource = await TriggerResource.fetchById(auth, triggerId);
   if (!triggerResource) {
-    throw new TriggerNonRetryableError(
+    logger.info(
+      { triggerId, workspaceId },
       `Trigger with ID ${triggerId} not found.`
     );
+    return;
   }
 
   const trigger = triggerResource.toJSON();
@@ -227,9 +262,7 @@ export async function runTriggeredAgentsActivity({
       "Disabling trigger: agent configuration not found."
     );
     await triggerResource.disable(auth);
-    throw new TriggerNonRetryableError(
-      `Agent configuration with ID ${trigger.agentConfigurationId} not found in workspace ${auth.getNonNullableWorkspace().id}.`
-    );
+    return;
   }
 
   void emitAuditLogEvent({
@@ -295,6 +328,49 @@ export async function runTriggeredAgentsActivity({
     default: {
       assertNever(trigger);
     }
+  }
+
+  // Programmatic monthly cap: webhook requests are gated at ingestion, schedule
+  // runs only here.
+  if (await isTriggerProgrammaticCapReached(auth, { trigger })) {
+    logger.info(
+      {
+        triggerId: trigger.sId,
+        agentConfigurationId: trigger.agentConfigurationId,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        blockReason: PROGRAMMATIC_MONTHLY_CAP_BLOCK_REASON,
+      },
+      "Trigger run skipped: programmatic monthly cap reached."
+    );
+    PostHogServerSideTracking.trackEvent({
+      distinctId: auth.getNonNullableUser().sId,
+      event: "trigger_blocked",
+      workspaceId: auth.getNonNullableWorkspace().sId,
+      extra: {
+        trigger_id: trigger.sId,
+        error_type: "credits_exhausted",
+        block_reason: PROGRAMMATIC_MONTHLY_CAP_BLOCK_REASON,
+      },
+    });
+    fireAndForgetNotification(
+      notifyAdminsTriggerBlockedByProgrammaticCap(auth, { trigger }),
+      {
+        message:
+          "[ProgrammaticCapTriggerAlert] Failed to notify admins of blocked trigger",
+        context: {
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          triggerId: trigger.sId,
+        },
+      }
+    );
+    if (webhookRequest) {
+      await webhookRequest.markRelatedTrigger({
+        trigger,
+        status: "credits_exhausted",
+        errorMessage: PROGRAMMATIC_CAP_REACHED_MESSAGE,
+      });
+    }
+    return;
   }
 
   // Create a single conversation for the editor.
@@ -439,10 +515,12 @@ export async function runWakeUpActivity({
     return;
   }
 
-  const clientSideMCPServerIds =
-    await conversationResource.getClientSideMCPServerIdsFromLatestNonWakeUpUserMessage(
-      auth
-    );
+  const { clientSideMCPServerIds, ...latestUserMessageModel } =
+    await conversationResource.getContextFromLatestNonWakeUpUserMessage(auth);
+
+  const requestedModel = resolvedModelFromUserMessageRow(
+    latestUserMessageModel
+  );
 
   const postMessageResult = await postUserMessage(auth, {
     conversationResource: conversationResource,
@@ -458,6 +536,7 @@ export async function runWakeUpActivity({
       clientSideMCPServerIds,
     },
     skipToolsValidation: false,
+    modelSelection: requestedModel ?? undefined,
   });
 
   if (postMessageResult.isErr()) {

@@ -8,14 +8,23 @@ export function extractPlanTitle(content: string | null): string {
   return match ? match[1].trim() : "Untitled plan";
 }
 
-// Short, content-sensitive key (djb2) so the Markdown remounts on any edit without using the full
-// content string as a React key.
-export function contentHash(content: string): string {
-  let hash = 5381;
-  for (let i = 0; i < content.length; i++) {
-    hash = (hash * 33) ^ content.charCodeAt(i);
+// Task markers: numbered `1. [ ]` items (current template) or bulleted `- [ ]` ones (older plans).
+// Total counts every marker, done counts only checked boxes. `[!]` was an older "blocked"
+// convention (not GFM, no longer taught to the agent); it still counts as not done so existing
+// plans keep their progress.
+const TASK_TOTAL_REGEX = /^\s*(?:-|\d+\.)\s*\[[ xX!]\]/gm;
+const TASK_DONE_REGEX = /^\s*(?:-|\d+\.)\s*\[[xX]\]/gm;
+
+export function countProgress(content: string | null): {
+  done: number;
+  total: number;
+} {
+  if (!content) {
+    return { done: 0, total: 0 };
   }
-  return (hash >>> 0).toString(36);
+  const total = (content.match(TASK_TOTAL_REGEX) ?? []).length;
+  const done = (content.match(TASK_DONE_REGEX) ?? []).length;
+  return { done, total };
 }
 
 export type PlanPresence = "unknown" | "empty" | "present";

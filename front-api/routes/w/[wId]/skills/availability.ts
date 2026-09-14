@@ -6,6 +6,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { rejectArchivedSkills } from "@front-api/routes/w/[wId]/skills/guards";
 import uniq from "lodash/uniq";
 import { z } from "zod";
 
@@ -73,7 +74,12 @@ app.patch(
       });
     }
 
-    const skills = await SkillResource.fetchByIds(auth, skillIds);
+    // Admins can change the availability of the skills built on spaces they are not a member of
+    // (listed to them redacted), so those are fetched too.
+    const permissionFiltering = auth.isAdmin() ? "redact_unreadable" : "strict";
+    const skills = await SkillResource.fetchByIds(auth, skillIds, {
+      permissionFiltering,
+    });
 
     const foundSkillIds = new Set(skills.map((skill) => skill.sId));
     const missingSkillIds = skillIds.filter(
@@ -87,6 +93,11 @@ app.patch(
           message: `Skills not found: ${missingSkillIds.join(", ")}.`,
         },
       });
+    }
+
+    const archivedError = rejectArchivedSkills(ctx, skills);
+    if (archivedError) {
+      return archivedError;
     }
 
     // Changing an already auto-discoverable skill's availability also requires the
@@ -109,7 +120,9 @@ app.patch(
     await SkillResource.updateAvailabilities(auth, skills, availability);
 
     // Re-fetch: the bulk update does not refresh the in-memory resources.
-    const updatedSkills = await SkillResource.fetchByIds(auth, skillIds);
+    const updatedSkills = await SkillResource.fetchByIds(auth, skillIds, {
+      permissionFiltering,
+    });
 
     return ctx.json({
       skills: updatedSkills.map((skill) => skill.toJSON(auth)),

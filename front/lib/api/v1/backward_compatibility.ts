@@ -23,6 +23,7 @@ import {
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { isContentFragmentType } from "@app/types/content_fragment";
 import {
+  isFrameV2ContentType,
   isInteractiveContentType,
   isSandboxFunctionContentType,
 } from "@app/types/files";
@@ -100,6 +101,7 @@ function filterOutInternalFileContentTypes(
   const result: ContentFragmentPublicType[] = [];
   for (const m of c) {
     if (
+      isFrameV2ContentType(m.contentType) ||
       isInteractiveContentType(m.contentType) ||
       isSandboxFunctionContentType(m.contentType)
     ) {

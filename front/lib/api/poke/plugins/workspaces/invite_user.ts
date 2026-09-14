@@ -85,7 +85,7 @@ export const inviteUser = createPlugin({
 
     const invitationRes = await handleMembershipInvitations(auth, {
       owner: auth.getNonNullableWorkspace(),
-      user: auth.getNonNullableUser().toJSON(),
+      user: auth.toPokeUserJSON(),
       subscription,
       force: args.force,
       invitationRequests: emails.map((email) => ({ email, role })),

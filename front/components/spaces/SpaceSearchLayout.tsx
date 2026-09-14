@@ -46,7 +46,7 @@ import type {
   DataSourceViewType,
 } from "@app/types/data_source_view";
 import type { APIError } from "@app/types/error";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 // biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
 import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
@@ -63,7 +63,7 @@ interface BaseSpaceSearchInputProps {
   children: React.ReactNode;
   owner: LightWorkspaceType;
   dataSourceView: DataSourceViewType | undefined;
-  space: SpaceType;
+  space: EnrichedSpaceType;
   parentId: string | undefined;
   category: DataSourceViewCategory | undefined;
   /**
@@ -182,7 +182,7 @@ interface FullBackendSearchProps extends BackendSearchProps {
   searchContextValue: SpaceSearchContextType;
   targetDataSourceViews: DataSourceViewType[];
   viewType: ContentNodesViewType;
-  space: SpaceType;
+  space: EnrichedSpaceType;
 }
 
 const PAGE_SIZE = 25;

@@ -28,6 +28,20 @@ export function currentCalendarMonthCycleUtc(
 }
 
 /**
+ * The "cycle" the free-seat lifetime spend limiter sums over: from well before
+ * any Dust usage existed to the far future. It anchors the ES seed window for
+ * the lifetime counter — combined with the `is_free_seat` filter it yields a
+ * seat's all-time consumption. Not a real billing cycle; a fixed, never-rolling
+ * window that pairs with `makeSpendLimitLifetimeWindowBounds`.
+ */
+export function lifetimeSpendCycleUtc(): BillingCycle {
+  return {
+    cycleStart: new Date(Date.UTC(2020, 0, 1, 0, 0, 0, 0)),
+    cycleEnd: new Date(Date.UTC(2100, 0, 1, 0, 0, 0, 0)),
+  };
+}
+
+/**
  * The cycle to force on the per-user spend-cap helpers for this workspace, or
  * `undefined` to let them resolve the Metronome contract billing period as usual.
  *

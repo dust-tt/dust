@@ -1,4 +1,4 @@
-import { config } from "@app/lib/api/regions/config";
+import { config } from "@app/lib/api/cells/config";
 import type { Authenticator } from "@app/lib/auth";
 import { CouponResource } from "@app/lib/resources/coupon_resource";
 import logger from "@app/logger/logger";
@@ -8,7 +8,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 export function canCreateCoupon(): boolean {
-  return config.isMainRegion() || isDevelopment();
+  return config.isMainCell() || isDevelopment();
 }
 
 type CreateCouponError =
@@ -16,7 +16,7 @@ type CreateCouponError =
   | { type: "creation_failed"; message: string }
   | { type: "sync_failed" };
 
-export async function createCouponAndPushToOtherRegion(
+export async function createCoupon(
   auth: Authenticator,
   body: CreateCouponBody
 ): Promise<Result<CouponResource, CreateCouponError>> {
@@ -32,7 +32,7 @@ export async function createCouponAndPushToOtherRegion(
 
   const coupon = result.value;
 
-  const pushResult = await pushCouponToOtherRegion(coupon.toJSON());
+  const pushResult = await pushCouponToOtherCells(coupon.toJSON());
   if (pushResult.isErr()) {
     logger.error(
       { couponId: coupon.sId },
@@ -45,34 +45,35 @@ export async function createCouponAndPushToOtherRegion(
   return new Ok(coupon);
 }
 
-type PushCouponError = "other_region_push_failed";
+type PushCouponError = "other_cell_push_failed";
 
-export async function pushCouponToOtherRegion(
+export async function pushCouponToOtherCells(
   coupon: CouponType
 ): Promise<Result<void, PushCouponError>> {
   if (isDevelopment()) {
     return new Ok(undefined);
   }
 
-  const { url } = config.getOtherRegionInfo();
-  const secret = config.getLookupApiSecret();
+  for (const cell of config.getOtherCells()) {
+    const secret = config.getLookupApiSecret();
 
-  // eslint-disable-next-line no-restricted-globals
-  const response = await fetch(`${url}/api/lookup/coupons/sync`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${secret}`,
-    },
-    body: JSON.stringify(coupon),
-  });
+    // eslint-disable-next-line no-restricted-globals
+    const response = await fetch(`${cell.url}/api/lookup/coupons/sync`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${secret}`,
+      },
+      body: JSON.stringify(coupon),
+    });
 
-  if (!response.ok) {
-    logger.error(
-      { statusCode: response.status, couponId: coupon.sId },
-      "[CouponSync] Failed to push coupon to other region"
-    );
-    return new Err("other_region_push_failed");
+    if (!response.ok) {
+      logger.error(
+        { statusCode: response.status, couponId: coupon.sId },
+        "[CouponSync] Failed to push coupon to other cell"
+      );
+      return new Err("other_cell_push_failed");
+    }
   }
 
   return new Ok(undefined);

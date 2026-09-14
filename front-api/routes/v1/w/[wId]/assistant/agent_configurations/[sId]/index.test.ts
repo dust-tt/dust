@@ -1,19 +1,34 @@
 import { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-async function setupTest({
-  role = "builder",
-  scope = "visible",
-}: {
-  role?: "user" | "builder" | "admin";
-  scope?: "visible" | "hidden";
-} = {}) {
+beforeEach(() => {
+  vi.spyOn(logger, "warn");
+});
+
+afterEach(() => {
+  try {
+    expect(logger.warn).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        check: "agent_permissions",
+        authMethod: "api_key",
+      }),
+      "group_permissions_shadow_mismatch"
+    );
+  } finally {
+    vi.mocked(logger.warn).mockRestore();
+  }
+});
+
+async function setupTest(role: "admin" | "builder" | "user" = "builder") {
   const { workspace, key } = await createPublicApiMockRequest({ role });
 
   await SpaceFactory.defaults(
@@ -21,17 +36,16 @@ async function setupTest({
   );
 
   const user = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, user, { role: "admin" });
+  await MembershipFactory.associate(workspace, user, { role: "builder" });
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
     workspace.sId
   );
 
-  const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
-    scope,
-  });
+  const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+  await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
 
-  return { workspace, key, agentConfig };
+  return { workspace, key, agentConfig, auth, user };
 }
 
 function getAgentConfiguration(
@@ -70,6 +84,170 @@ function patchAgentConfiguration(
 }
 
 describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
+  it("keeps an agent created and edited with an admin key editable on subsequent reads", async () => {
+    const { workspace, key, user } = await setupTest("admin");
+    const imported = await honoApp.request(
+      `/api/v1/w/${workspace.sId}/assistant/agent_configurations/import`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${key.secret}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          agent: {
+            handle: "API-created agent",
+            description: "Created through the API",
+            scope: "visible",
+            avatar_url: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+            max_steps_per_run: 8,
+            visualization_enabled: false,
+          },
+          instructions: "Initial instructions",
+          generation_settings: {
+            model_id: "gpt-5-mini",
+            provider_id: "openai",
+            temperature: 0.7,
+            reasoning_effort: "medium",
+          },
+          tags: [],
+          editors: [user.email],
+          toolset: [],
+        }),
+      }
+    );
+    const importedData = await imported.json();
+    expect(imported.status, JSON.stringify(importedData)).toBe(200);
+    const agentId = importedData.agentConfiguration.sId;
+
+    const patched = await patchAgentConfiguration(workspace, key, agentId, {
+      instructions: "Updated instructions",
+    });
+    expect(patched.status).toBe(200);
+
+    const response = await getAgentConfiguration(workspace, key, agentId);
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.agentConfiguration.canEdit).toBe(true);
+    expect(data.agentConfiguration.instructions).toBe("Updated instructions");
+  });
+
+  it("returns the skills attached to the agent", async () => {
+    const { workspace, key, agentConfig, auth } = await setupTest("admin");
+    const skill = await SkillFactory.create(auth, {
+      name: "Support Playbook",
+    });
+    await SkillFactory.linkToAgent(auth, {
+      skillId: skill.id,
+      agentConfigurationId: agentConfig.id,
+    });
+
+    const response = await getAgentConfiguration(
+      workspace,
+      key,
+      agentConfig.sId
+    );
+    const data = await response.json();
+
+    expect(response.status, JSON.stringify(data)).toBe(200);
+    expect(data.agentConfiguration.skills).toEqual([
+      { sId: skill.sId, name: "Support Playbook" },
+    ]);
+  });
+
+  it("returns an empty skills array for an agent without skills", async () => {
+    const { workspace, key, agentConfig } = await setupTest("admin");
+
+    const response = await getAgentConfiguration(
+      workspace,
+      key,
+      agentConfig.sId
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.agentConfiguration.skills).toEqual([]);
+  });
+
+  it.each([
+    "admin",
+    "builder",
+    "user",
+  ] as const)("reports edit permissions for a %s key on a published agent", async (role) => {
+    const { workspace, key, agentConfig } = await setupTest(role);
+    const response = await getAgentConfiguration(
+      workspace,
+      key,
+      agentConfig.sId
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.agentConfiguration.canEdit).toBe(role === "admin");
+
+    const patchResponse = await patchAgentConfiguration(
+      workspace,
+      key,
+      agentConfig.sId,
+      { instructions: "Updated through the API" }
+    );
+    // The PATCH endpoint still accepts legacy builder keys independently of `canEdit`.
+    expect(patchResponse.status).toBe(role === "user" ? 403 : 200);
+  });
+
+  it.each([
+    "admin",
+    "builder",
+  ] as const)("reports whether a %s key can patch an unpublished agent", async (role) => {
+    const { workspace, key, auth } = await setupTest(role);
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: "Unpublished Agent",
+      scope: "hidden",
+    });
+    const response = await getAgentConfiguration(workspace, key, agent.sId);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.agentConfiguration.canRead).toBe(false);
+    expect(data.agentConfiguration.canEdit).toBe(role === "admin");
+
+    const patchResponse = await patchAgentConfiguration(
+      workspace,
+      key,
+      agent.sId,
+      {
+        instructions: "Updated through the API",
+      }
+    );
+    expect(patchResponse.status).toBe(role === "admin" ? 200 : 404);
+  });
+
+  it("does not report global or archived agents as editable with an admin key", async () => {
+    const { workspace, key, agentConfig } = await setupTest("admin");
+    const archiveResponse = await honoApp.request(
+      `/api/v1/w/${workspace.sId}/assistant/agent_configurations/${agentConfig.sId}`,
+      { method: "DELETE", headers: { authorization: `Bearer ${key.secret}` } }
+    );
+    expect(archiveResponse.status).toBe(200);
+
+    for (const agentId of ["dust", agentConfig.sId]) {
+      const response = await getAgentConfiguration(workspace, key, agentId);
+      const data = await response.json();
+      expect(response.status).toBe(200);
+      expect(data.agentConfiguration.canEdit).toBe(false);
+
+      const patchResponse = await patchAgentConfiguration(
+        workspace,
+        key,
+        agentId,
+        {
+          instructions: "Updated through the API",
+        }
+      );
+      expect(patchResponse.status).toBe(400);
+    }
+  });
+
   it("returns 404 for a retired global agent (e.g. gpt-4)", async () => {
     const { workspace, key } = await setupTest();
 
@@ -77,60 +255,11 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
 
     expect(response.status).toBe(404);
   });
-
-  it("returns a published (visible) agent to a non-admin key", async () => {
-    const { workspace, key, agentConfig } = await setupTest({
-      role: "builder",
-      scope: "visible",
-    });
-
-    const response = await getAgentConfiguration(
-      workspace,
-      key,
-      agentConfig.sId
-    );
-
-    const data = await response.json();
-    expect(response.status, JSON.stringify(data)).toBe(200);
-    expect(data.agentConfiguration.sId).toBe(agentConfig.sId);
-  });
-
-  it("returns 403 for an unpublished (hidden) agent to a non-admin key", async () => {
-    const { workspace, key, agentConfig } = await setupTest({
-      role: "builder",
-      scope: "hidden",
-    });
-
-    const response = await getAgentConfiguration(
-      workspace,
-      key,
-      agentConfig.sId
-    );
-
-    expect(response.status).toBe(403);
-  });
-
-  it("returns an unpublished (hidden) agent to an admin key", async () => {
-    const { workspace, key, agentConfig } = await setupTest({
-      role: "admin",
-      scope: "hidden",
-    });
-
-    const response = await getAgentConfiguration(
-      workspace,
-      key,
-      agentConfig.sId
-    );
-
-    const data = await response.json();
-    expect(response.status, JSON.stringify(data)).toBe(200);
-    expect(data.agentConfiguration.sId).toBe(agentConfig.sId);
-  });
 });
 
 describe("PATCH /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
   it("applies configuration patch fields beyond userFavorite (regression dust-tt/dust#26698)", async () => {
-    const { workspace, key, agentConfig } = await setupTest({ role: "admin" });
+    const { workspace, key, agentConfig } = await setupTest();
 
     const response = await patchAgentConfiguration(
       workspace,
@@ -146,7 +275,7 @@ describe("PATCH /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
   });
 
   it("returns 404 when the agent configuration does not exist", async () => {
-    const { workspace, key } = await setupTest({ role: "admin" });
+    const { workspace, key } = await setupTest();
 
     const response = await patchAgentConfiguration(workspace, key, "unknown", {
       instructions: "Updated instructions",

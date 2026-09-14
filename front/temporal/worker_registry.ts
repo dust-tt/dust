@@ -1,5 +1,6 @@
 import { runPokeWorker } from "@app/poke/temporal/worker";
 import { runActivationSchedulerWorker } from "@app/temporal/activation_scheduler/worker";
+import { runAgentInactivityWorker } from "@app/temporal/agent_inactivity/worker";
 import {
   runAgentLoopBatchWorker,
   runAgentLoopInteractiveWorker,
@@ -17,9 +18,9 @@ import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker"
 import { runMentionsCountWorker } from "@app/temporal/mentions_count_queue/worker";
 import { runMentionsQueueWorker } from "@app/temporal/mentions_queue/worker";
 import { runMetronomeEventsWorker } from "@app/temporal/metronome_events_queue/worker";
+import { runModelHealthWorker } from "@app/temporal/model_health/worker";
 import { runNotificationsQueueWorker } from "@app/temporal/notifications_queue/worker";
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
-import { runProjectTaskWorker } from "@app/temporal/project_task/worker";
 import { runReinforcementWorker } from "@app/temporal/reinforcement/worker";
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import { runRemoteToolsSyncWorker } from "@app/temporal/remote_tools/worker";
@@ -35,6 +36,7 @@ import { runWorkOSEventsWorker } from "@app/temporal/workos_events_queue/worker"
 
 export type WorkerName =
   | "activation_scheduler"
+  | "agent_inactivity"
   | "agent_loop_batch"
   | "agent_loop_interactive"
   | "agent_loop_programmatic"
@@ -43,7 +45,6 @@ export type WorkerName =
   | "agent_trigger_webhook"
   | "analytics_queue"
   | "conversation_fork_queue"
-  | "project_task"
   | "credit_alerts"
   | "data_retention"
   | "es_indexation_queue"
@@ -53,6 +54,7 @@ export type WorkerName =
   | "mentions_count"
   | "mentions_queue"
   | "metronome_events_queue"
+  | "model_health"
   | "notifications_queue"
   | "poke"
   | "production_checks"
@@ -69,6 +71,7 @@ export type WorkerName =
 
 export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   activation_scheduler: runActivationSchedulerWorker,
+  agent_inactivity: runAgentInactivityWorker,
   agent_loop_batch: runAgentLoopBatchWorker,
   agent_loop_interactive: runAgentLoopInteractiveWorker,
   agent_loop_programmatic: runAgentLoopProgrammaticWorker,
@@ -85,11 +88,11 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   mentions_count: runMentionsCountWorker,
   mentions_queue: runMentionsQueueWorker,
   metronome_events_queue: runMetronomeEventsWorker,
+  model_health: runModelHealthWorker,
   notifications_queue: runNotificationsQueueWorker,
   poke: runPokeWorker,
   production_checks: runProductionChecksWorker,
   reinforcement: runReinforcementWorker,
-  project_task: runProjectTaskWorker,
   relocation: runRelocationWorker,
   sandbox_functions: runSandboxFunctionsWorker,
   sandbox_reaper: runSandboxReaperWorker,

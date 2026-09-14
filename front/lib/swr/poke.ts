@@ -4,10 +4,9 @@ import type {
   GetPokeWorkspaceAuthContextResponseType,
 } from "@app/lib/api/poke/auth_context";
 import type { GetPokeMetronomePackagesResponseBody } from "@app/lib/api/poke/metronome";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import { isRegionRedirect } from "@app/lib/swr/workspaces";
 import type { GetDataSourcePermissionsResponseBody } from "@app/types/api/data_sources/managed_permissions";
 import type {
   GetPokeCouponRedemptionsResponseBody,
@@ -16,7 +15,6 @@ import type {
 import type { GetPokeFeaturesResponseBody } from "@app/types/api/poke/features";
 import type { GetPokePlansResponseBody } from "@app/types/api/poke/plans";
 import type { PostPokeStripeCustomerCurrencyResponseBody } from "@app/types/api/poke/stripe_customers";
-import type { GetRegionResponseType } from "@app/types/api/regions/config";
 import type { ConnectorPermission } from "@app/types/connectors/connectors_api";
 import type { DataSourceType } from "@app/types/data_source";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
@@ -25,19 +23,7 @@ import type { LightWorkspaceType } from "@app/types/user";
 import { useEffect } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
-
-export function usePokeRegion() {
-  const { fetcher } = useFetcher();
-  const regionFetcher: Fetcher<GetRegionResponseType> = fetcher;
-
-  const { data, error } = useSWRWithDefaults("/api/poke/region", regionFetcher);
-
-  return {
-    regionData: data,
-    isRegionLoading: !error && !data,
-    isRegionError: error,
-  };
-}
+import { isCellRedirectError } from "./workspaces";
 
 export function usePokeConnectorPermissions({
   owner,
@@ -279,7 +265,7 @@ export function usePokeWorkOSDSyncStatus({
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/poke/workspaces/${owner.sId}/dsync`,
     fetcher,
-    { disabled }
+    { disabled: disabled || !owner.workOSOrganizationId }
   );
 
   return {
@@ -313,7 +299,7 @@ export function usePokeAuthContext(
 ) {
   const { fetcher } = useFetcher();
   const { workspaceId, disabled } = options;
-  const regionContext = useRegionContext();
+  const { setCellInfo } = useCellContext();
 
   const url = workspaceId
     ? `/api/poke/workspaces/${workspaceId}/auth-context`
@@ -325,28 +311,23 @@ export function usePokeAuthContext(
     | GetPokeWorkspaceAuthContextResponseType
   >(url, fetcher, { disabled });
 
-  const isRegionRedirectResponse = error && isRegionRedirect(error.error);
-  const regionRedirect = isRegionRedirectResponse
+  const cellRedirect = isCellRedirectError(error)
     ? error.error.redirect
     : undefined;
-  const isAuthenticated =
-    !isRegionRedirectResponse && !!data?.user && data.isSuperUser;
+  const isAuthenticated = !cellRedirect && !!data?.user && data.isSuperUser;
 
-  // Handle region redirect.
+  // Handle cell redirect.
   useEffect(() => {
-    if (regionRedirect) {
-      regionContext.setRegionInfo({
-        name: regionRedirect.region,
-        url: regionRedirect.url,
-      });
+    if (cellRedirect) {
+      setCellInfo(cellRedirect);
       void mutate();
     }
-  }, [regionRedirect, mutate, regionContext]);
+  }, [cellRedirect, mutate, setCellInfo]);
 
   return {
-    authContext: isRegionRedirectResponse ? undefined : data,
+    authContext: cellRedirect ? undefined : data,
     isAuthenticated,
-    isAuthContextLoading: isLoading || !!isRegionRedirectResponse,
+    isAuthContextLoading: isLoading || !!cellRedirect,
     authContextError: error,
   };
 }

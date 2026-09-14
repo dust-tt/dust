@@ -46,7 +46,7 @@ import type {
 } from "@app/types/data_source_view";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType, SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -127,7 +127,7 @@ export default function SpaceSideBarMenu({
 
   // Function to render space items.
   const renderSpaceItems = (
-    spaces: SpaceType[],
+    spaces: EnrichedSpaceType[],
     spacesAsUser: SpaceType[],
     owner: LightWorkspaceType
   ) => {
@@ -386,7 +386,7 @@ const SpaceMenu = ({
   hasFeature,
 }: {
   owner: LightWorkspaceType;
-  space: SpaceType;
+  space: EnrichedSpaceType;
   isMember: boolean;
   hasFeature: ReturnType<typeof useFeatureFlags>["hasFeature"];
 }) => {
@@ -409,7 +409,7 @@ const SpaceMenuItem = ({
   hasFeature,
 }: {
   owner: LightWorkspaceType;
-  space: SpaceType;
+  space: EnrichedSpaceType;
   isMember: boolean;
   hasFeature: ReturnType<typeof useFeatureFlags>["hasFeature"];
 }) => {

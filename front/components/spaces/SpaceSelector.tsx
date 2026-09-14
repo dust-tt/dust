@@ -3,7 +3,7 @@ import {
   getSpaceName,
   groupSpacesForDisplay,
 } from "@app/lib/spaces";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType, SpaceType } from "@app/types/space";
 import {
   cn,
   Dialog,
@@ -23,7 +23,7 @@ import React, { useState } from "react";
 interface SpaceSelectorProps {
   allowedSpaces?: SpaceType[];
   defaultSpace: string | undefined;
-  spaces: SpaceType[];
+  spaces: EnrichedSpaceType[];
   renderChildren: (space?: SpaceType) => React.ReactNode;
 }
 export function SpaceSelector({

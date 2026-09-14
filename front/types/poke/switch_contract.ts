@@ -11,7 +11,11 @@ export const paymentScheduleSchema = z
     frequency: z
       .enum(["one_time", "monthly", "quarterly", "semi_annually", "annually"])
       .default("one_time"),
-    periods: z.number().int().min(2).max(60).optional(),
+    // Number of invoice installments. May be 1 (a single upfront invoice) when
+    // the commitment period is too short to fit more than one period of the
+    // chosen frequency — e.g. a quarterly schedule on a six-week contract. The
+    // server clamps larger values down to what fits (see `maxInvoicePeriods`).
+    periods: z.number().int().min(1).max(60).optional(),
   })
   .refine(
     (s) => s.frequency === "one_time" || s.periods !== undefined,
@@ -52,23 +56,40 @@ const recurringFreeCreditSchema = z
   .min(1, "Recurring free credit must be at least 1 credit");
 
 // Per-seat-type settings for a contract switch, keyed by seat type (see
-// `SwitchContractBodySchema.seats`). `minSeats` is the billing floor
-// persisted to `workspace_seat_limits`. `rate` is the per-seat rate in the
-// currency's MAJOR units (dollars / euros); the server converts it to
-// Metronome's fiat unit via `metronomeAmount`. When `commitmentPrice` is set
-// (also in major units), a contract prepaid commit is created granting
-// `minSeats * rate` of contract credit, invoiced at `commitmentPrice`.
-const seatEntrySchema = z.object({
-  // Whether the seat is entitled on the new contract. `true` (the default,
-  // for backward compatibility) entitles and configures the seat; `false`
-  // disables a seat the package would otherwise sell. The dialog submits
-  // every known seat so deselections can be turned into disable overrides.
-  selected: z.boolean().default(true),
-  minSeats: z.number().int().min(0, "Min seats must be ≥ 0"),
-  rate: z.number().min(0, "Rate must be ≥ 0"),
-  commitmentPrice: z.number().min(0, "Commitment price must be ≥ 0").optional(),
-  paymentSchedule: paymentScheduleSchema,
-});
+// `SwitchContractBodySchema.seats`). `minSeats` is the billing floor and
+// `maxSeats` the hard assignment cap (omitted = no cap), both persisted to
+// `workspace_seat_limits`. `rate` is the per-seat rate in the currency's MAJOR
+// units (dollars / euros); the server converts it to Metronome's fiat unit via
+// `metronomeAmount`. When `commitmentPrice` is set (also in major units), a
+// contract prepaid commit is created granting enough contract credit to cover
+// the seat subscription charges over the commitment period, matching Metronome's
+// per-hour proration (see `commitmentAmount`), and invoiced at `commitmentPrice`
+// — which the dialog defaults to that same prorated amount.
+const seatEntrySchema = z
+  .object({
+    // Whether the seat is entitled on the new contract. `true` (the default,
+    // for backward compatibility) entitles and configures the seat; `false`
+    // disables a seat the package would otherwise sell. The dialog submits
+    // every known seat so deselections can be turned into disable overrides.
+    selected: z.boolean().default(true),
+    minSeats: z.number().int().min(0, "Min seats must be ≥ 0"),
+    maxSeats: z.number().int().min(1, "Max seats must be ≥ 1").optional(),
+    rate: z.number().min(0, "Rate must be ≥ 0"),
+    commitmentPrice: z
+      .number()
+      .min(0, "Commitment price must be ≥ 0")
+      .optional(),
+    paymentSchedule: paymentScheduleSchema,
+  })
+  // The cap can't be below the commitment floor. Enforced here so the form and
+  // endpoint reject it upfront rather than failing later at the resource layer.
+  .refine(
+    ({ minSeats, maxSeats }) => maxSeats === undefined || maxSeats >= minSeats,
+    {
+      path: ["maxSeats"],
+      message: "Max seats must be greater than or equal to commitment",
+    }
+  );
 
 export const SwitchContractBodySchema = z.object({
   planCode: z.string().min(1, "Required"),
@@ -165,6 +186,17 @@ export const SwitchContractBodySchema = z.object({
   autoSeatUpgradeEnabled: z.boolean().default(false),
   topUpEnabled: z.boolean().default(false),
   autoInvoiceFinalizationEnabled: z.boolean().default(true),
+  // Optional promotional free period offered at the start of the contract: the
+  // seat commitment invoices are reduced, from the first bill onwards, by the
+  // prorated value of this leading duration (all seats), so the customer pays
+  // nothing for that period. The credit grant is unaffected. Does not apply to
+  // initial credits or scheduled charges.
+  offerFreePeriod: z
+    .object({
+      value: z.number().int().min(1),
+      unit: z.enum(["years", "months", "weeks"]),
+    })
+    .optional(),
 });
 
 export type SwitchContractBody = z.infer<typeof SwitchContractBodySchema>;

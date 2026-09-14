@@ -1,8 +1,14 @@
 import {
+  shadowCanAdminAgent,
+  shadowEditableAgents,
+} from "@app/lib/api/assistant/agent_permissions";
+import {
   enrichAgentConfigurations,
   getModelForAgentConfiguration,
   isSelfHostedImageWithValidContentType,
+  redactPrivateAgentConfigurationFields,
 } from "@app/lib/api/assistant/configuration/helpers";
+import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
 import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_authors";
 import {
@@ -21,18 +27,18 @@ import {
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfigurationModel,
+  AgentModel,
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { AgentUserRelationResource } from "@app/lib/resources/agent_user_relation_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import {
-  createAccessControlListFromSpacesWithMap,
-  createSpaceIdToGroupsMap,
-} from "@app/lib/resources/permission_utils";
+import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -105,9 +111,17 @@ export async function createPendingAgentConfiguration(
   const { defaultModel } = await getModelsForAuth(auth);
 
   await withTransaction(async (t) => {
+    const agentIdentity = await AgentModel.create(
+      {
+        sId,
+        workspaceId: owner.id,
+      },
+      { transaction: t }
+    );
     const agent = await AgentConfigurationModel.create(
       {
         sId,
+        agentId: agentIdentity.id,
         version: 0,
         status: "pending",
         scope: "hidden",
@@ -129,21 +143,15 @@ export async function createPendingAgentConfiguration(
       { transaction: t }
     );
 
-    const group = await GroupResource.makeNewAgentEditorsGroup(auth, agent, {
+    await GroupResource.makeNewAgentEditorsGroup(auth, agent, {
       transaction: t,
       authorId: user.id,
     });
-    await auth.refresh({ transaction: t });
-    if (!group.canWrite(auth)) {
-      throw new DustError(
-        "unauthorized",
-        "User does not have write permission for the agent editors group."
-      );
-    }
-    await group.dangerouslySetMembers(auth, {
-      users: [user.toJSON()],
+    await AgentResource.fromAgentConfigurationModel(agent).grantEditors(auth, {
+      editors: [user.toJSON()],
       transaction: t,
     });
+    await auth.refresh({ transaction: t });
   });
 
   return new Ok({ sId });
@@ -290,6 +298,30 @@ async function fetchLatestWorkspaceAgentModels(
 }
 
 /**
+ * When each agent first appeared. Not the active row's `createdAt`: upgrading inserts a new row, so
+ * that date is really the last edit.
+ */
+export async function fetchFirstVersionCreatedAtByAgentId(
+  auth: Authenticator,
+  agentIds: string[]
+): Promise<Map<string, Date>> {
+  if (agentIds.length === 0) {
+    return new Map();
+  }
+
+  const firstVersions = await AgentConfigurationModel.findAll({
+    attributes: ["sId", "createdAt"],
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      sId: { [Op.in]: agentIds },
+      version: 0,
+    },
+  });
+
+  return new Map(firstVersions.map(({ sId, createdAt }) => [sId, createdAt]));
+}
+
+/**
  * Get the latest versions of multiple agents.
  */
 export async function getAgentConfigurations<V extends AgentFetchVariant>(
@@ -407,12 +439,64 @@ export async function getAgentConfiguration<V extends AgentFetchVariant>(
   });
 }
 
+/**
+ * Retrieves the latest version of an agent for the caller's details view. Callers only get agents
+ * they can read, except admins: they can list every agent of the workspace (see the
+ * `manage_unrestricted` view), so they get the ones they cannot read too, with the private fields
+ * redacted (see `redactPrivateAgentConfigurationFields`). Returns null when the agent does not
+ * exist or is not readable by a non-admin caller.
+ */
+export async function getAgentConfigurationForDetails(
+  auth: Authenticator,
+  { agentId }: { agentId: string }
+): Promise<AgentConfigurationType | null> {
+  const agent = await getAgentConfiguration(auth, {
+    agentId,
+    variant: "full",
+  });
+  if (agent?.canRead) {
+    return agent;
+  }
+
+  if (!auth.isAdmin()) {
+    return null;
+  }
+
+  // Either not readable (unpublished, not an editor) or filtered out by a space the admin is not a
+  // member of. With the `admin_can_see_private_entities` feature flag the admin gets it in full;
+  // otherwise it is refetched without the space filtering to be redacted.
+  if (await canAdminSeePrivateEntities(auth)) {
+    const fullAgent =
+      agent ??
+      (await getAgentConfiguration(auth, {
+        agentId,
+        variant: "full",
+        dangerouslySkipPermissionFiltering: true,
+      }));
+    return fullAgent ? { ...fullAgent, canRead: true } : null;
+  }
+
+  // The light variant is enough, the full one only adds fields the redaction drops.
+  const restrictedAgent =
+    agent ??
+    (await getAgentConfiguration(auth, {
+      agentId,
+      variant: "light",
+      dangerouslySkipPermissionFiltering: true,
+    }));
+
+  return restrictedAgent
+    ? redactPrivateAgentConfigurationFields(restrictedAgent)
+    : null;
+}
+
 type AgentLabel = {
   sId: string;
   authorModelId: ModelId;
   name: string;
   pictureUrl: string | null;
   model: AgentModelConfigurationType;
+  scope: Exclude<AgentConfigurationScope, "global">;
 };
 
 export async function getAgentLabelsByIds(
@@ -435,6 +519,7 @@ export async function getAgentLabelsByIds(
     authorModelId: agent.authorId,
     pictureUrl: agent.pictureUrl,
     model: getModelForAgentConfiguration(agent),
+    scope: agent.scope,
   }));
 }
 
@@ -560,8 +645,8 @@ export async function createAgentConfiguration(
 
   let userFavorite = false;
 
-  // For hidden agents, track previous editors to disable triggers when editors are removed.
-  let previousEditorIds: Set<ModelId> = new Set();
+  // Track removed editors so their triggers can be disabled if this save leaves the agent hidden.
+  let removedEditors: UserType[] = [];
   // The scope the agent has before this write. A new agent starts hidden, so saving it
   // visible counts as publishing.
   let currentScope: AgentConfigurationScope = "hidden";
@@ -572,16 +657,6 @@ export async function createAgentConfiguration(
     });
     if (existingAgent) {
       currentScope = existingAgent.scope;
-      if (scope === "hidden") {
-        const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-          auth,
-          existingAgent
-        );
-        if (editorGroupRes.isOk()) {
-          const members = await editorGroupRes.value.getActiveMembers(auth);
-          previousEditorIds = new Set(members.map((m) => m.id));
-        }
-      }
     }
   }
 
@@ -618,6 +693,7 @@ export async function createAgentConfiguration(
               workspaceId: owner.id,
             },
             attributes: [
+              "agentId",
               "scope",
               "version",
               "id",
@@ -645,6 +721,12 @@ export async function createAgentConfiguration(
         existingAgent = agentConfiguration;
 
         if (existingAgent) {
+          if (existingAgent.status === "archived") {
+            throw new Error(
+              "An archived agent cannot be updated. Restore it first."
+            );
+          }
+
           // Handle pending agent: update in place (don't bump version, preserve id for FK relationships)
           // Otherwise: archive old versions and bump version
           if (existingAgent.status === "pending") {
@@ -695,6 +777,22 @@ export async function createAgentConfiguration(
 
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const sId = agentConfigurationId || generateRandomModelSId();
+      let agentModelId = existingAgent?.agentId;
+      if (!agentModelId) {
+        const [agentIdentity] = await AgentModel.findOrCreate({
+          where: { sId, workspaceId: owner.id },
+          defaults: { sId, workspaceId: owner.id },
+          transaction: t,
+        });
+        agentModelId = agentIdentity.id;
+        await AgentConfigurationModel.update(
+          { agentId: agentModelId },
+          {
+            where: { sId, workspaceId: owner.id },
+            transaction: t,
+          }
+        );
+      }
 
       // Create or update Agent config.
       let agentConfigurationInstance: AgentConfigurationModel;
@@ -748,6 +846,7 @@ export async function createAgentConfiguration(
         agentConfigurationInstance = await AgentConfigurationModel.create(
           {
             sId,
+            agentId: agentModelId,
             version,
             status,
             scope,
@@ -837,10 +936,13 @@ export async function createAgentConfiguration(
           );
           await auth.refresh({ transaction: t });
           // No need to check on permission here since it was done a few lines above.
-          await group.dangerouslySetMembers(auth, {
+          const setMembersRes = await group.dangerouslySetMembers(auth, {
             users: editors,
             transaction: t,
           });
+          if (setMembersRes.isErr()) {
+            throw setMembersRes.error;
+          }
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
             auth,
@@ -871,19 +973,8 @@ export async function createAgentConfiguration(
             }
           }
 
-          if (!group.canAdministrate(auth) && auth.user()) {
-            logger.error(
-              {
-                workspaceId: owner.sId,
-                agentConfigurationId: existingAgent.sId,
-              },
-              `Error setting members to agent ${existingAgent.sId}: You are not authorized to manage the editors of this agent`
-            );
-            throw new DustError(
-              "unauthorized",
-              "You are not authorized to manage the editors of this agent"
-            );
-          }
+          // Authorization is enforced by the `editors.some(...) || isAdmin(owner)`
+          // assertion earlier in this transaction; no need to re-check here.
           const setMembersRes = await group.dangerouslySetMembers(auth, {
             users: editors,
             transaction: t,
@@ -898,7 +989,17 @@ export async function createAgentConfiguration(
             );
             throw setMembersRes.error;
           }
+          removedEditors = setMembersRes.value.removedUsers;
         }
+
+        const agentResource = AgentResource.fromAgentConfigurationModel(
+          agentConfigurationInstance
+        );
+        await agentResource.grantEditors(auth, { editors, transaction: t });
+        await agentResource.revokeEditors(auth, {
+          editors: removedEditors,
+          transaction: t,
+        });
       }
 
       return agentConfigurationInstance;
@@ -946,32 +1047,25 @@ export async function createAgentConfiguration(
     });
 
     // Disable triggers for editors who were removed from a hidden agent.
-    if (previousEditorIds.size > 0 && scope === "hidden") {
-      const newEditorIds = new Set(editors.map((e) => e.id));
-      const removedEditorIds = Array.from(previousEditorIds).filter(
-        (id) => !newEditorIds.has(id)
-      );
-
-      if (removedEditorIds.length > 0) {
-        const triggersToDisableRes =
-          await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
-            agentConfigurationId: agent.sId,
-            editorIds: removedEditorIds,
-          });
-        if (triggersToDisableRes.isOk()) {
-          for (const trigger of triggersToDisableRes.value) {
-            const disableResult = await trigger.disable(auth);
-            if (disableResult.isErr()) {
-              logger.error(
-                {
-                  workspaceId: owner.sId,
-                  agentConfigurationId: agent.sId,
-                  triggerId: trigger.sId,
-                  error: disableResult.error,
-                },
-                `Failed to disable trigger ${trigger.sId} when removing editor from agent ${agent.sId}`
-              );
-            }
+    if (removedEditors.length > 0 && scope === "hidden") {
+      const triggersToDisableRes =
+        await TriggerResource.listByAgentConfigurationIdAndEditors(auth, {
+          agentConfigurationId: agent.sId,
+          editorIds: removedEditors.map((editor) => editor.id),
+        });
+      if (triggersToDisableRes.isOk()) {
+        for (const trigger of triggersToDisableRes.value) {
+          const disableResult = await trigger.disable(auth);
+          if (disableResult.isErr()) {
+            logger.error(
+              {
+                workspaceId: owner.sId,
+                agentConfigurationId: agent.sId,
+                triggerId: trigger.sId,
+                error: disableResult.error,
+              },
+              `Failed to disable trigger ${trigger.sId} when removing editor from agent ${agent.sId}`
+            );
           }
         }
       }
@@ -1050,9 +1144,14 @@ async function cancelWakeUpsForAgent(
   );
 }
 
+type ArchiveAgentConfigurationOptions = {
+  dangerouslySkipPermissionFiltering?: boolean;
+};
+
 export async function archiveAgentConfiguration(
   auth: Authenticator,
-  agentConfigurationId: string
+  agentConfigurationId: string,
+  { dangerouslySkipPermissionFiltering }: ArchiveAgentConfigurationOptions = {}
 ): Promise<boolean> {
   const owner = auth.workspace();
   if (!owner) {
@@ -1062,6 +1161,7 @@ export async function archiveAgentConfiguration(
   const agentConfig = await getAgentConfiguration(auth, {
     agentId: agentConfigurationId,
     variant: "light",
+    dangerouslySkipPermissionFiltering,
   });
 
   if (!agentConfig) {
@@ -1100,16 +1200,7 @@ export async function archiveAgentConfiguration(
     }
   );
 
-  // Suspend all editor group memberships for this agent
   if (updated[0] > 0) {
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-      auth,
-      agentConfig
-    );
-    if (editorGroupRes.isOk()) {
-      await editorGroupRes.value.suspendMembers(auth);
-    }
-
     void emitAuditLogEvent({
       auth,
       action: "agent.archived",
@@ -1200,15 +1291,8 @@ export async function restoreAgentConfiguration(
     }
   );
 
-  // Restore all editor group memberships (set suspended → active) and re-enable triggers
+  // Re-enable triggers.
   if (updated[0] > 0) {
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(auth, {
-      id: latestConfig.id,
-    } as LightAgentConfigurationType);
-    if (editorGroupRes.isOk()) {
-      await editorGroupRes.value.restoreMembers(auth);
-    }
-
     const triggers = await TriggerResource.listByAgentConfigurationId(
       auth,
       agentConfigurationId
@@ -1330,6 +1414,28 @@ export async function cleanupAgentScopedResourcesForHardDeletion(
   await AgentUserRelationResource.deleteForAgent(auth, agentConfigurationId);
 }
 
+async function deleteAgentIdentityIfUnused(
+  auth: Authenticator,
+  agent: AgentResource,
+  transaction: Transaction
+): Promise<void> {
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const remainingConfiguration = await AgentConfigurationModel.findOne({
+    where: { sId: agent.sId, workspaceId },
+    attributes: ["id"],
+    transaction,
+  });
+  if (remainingConfiguration) {
+    return;
+  }
+
+  await agent.destroyPermissionsAndGroups(auth, { transaction });
+  await AgentModel.destroy({
+    where: { sId: agent.sId, workspaceId },
+    transaction,
+  });
+}
+
 // Should only be called when we need to clean up the agent configuration
 // right after creating it due to an error.
 export async function unsafeHardDeleteAgentConfiguration(
@@ -1339,6 +1445,12 @@ export async function unsafeHardDeleteAgentConfiguration(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   await withTransaction(async (t) => {
+    const agentResource = await AgentResource.fetchByAgentConfiguration(
+      auth,
+      agentConfiguration,
+      { transaction: t }
+    );
+
     // Clean up MCP server configurations and their children first
     const mcpConfigs = await AgentMCPServerConfigurationModel.findAll({
       where: {
@@ -1415,6 +1527,8 @@ export async function unsafeHardDeleteAgentConfiguration(
       },
       transaction: t,
     });
+
+    await deleteAgentIdentityIfUnused(auth, agentResource, t);
   });
 }
 
@@ -1422,38 +1536,63 @@ export async function unsafeHardDeleteAgentConfiguration(
  * Batch-deletes pending agent configurations and their editor groups.
  */
 export async function batchHardDeletePendingAgentConfigurations(
-  agents: AgentConfigurationModel[],
-  workspaceId: number
+  auth: Authenticator,
+  agents: AgentConfigurationModel[]
 ) {
-  const agentIds = agents.map((a) => a.id);
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  const agentConfigurationModelIds = agents.map((agent) => agent.id);
+  const agentModelIds = [...new Set(agents.map((agent) => agent.agentId))];
 
   // Find all editor group IDs for this batch.
   const groupAgents = await GroupAgentModel.findAll({
-    where: { agentConfigurationId: agentIds, workspaceId },
+    where: {
+      agentConfigurationId: agentConfigurationModelIds,
+      workspaceId,
+    },
   });
-  const groupIds = groupAgents.map((ga) => ga.groupId);
+  const editorGroupModelIds = groupAgents.map(
+    (groupAgent) => groupAgent.groupId
+  );
 
   await withTransaction(async (t) => {
-    if (groupIds.length > 0) {
+    const grantGroups =
+      await GroupPermissionResource.listRegularAutoGroupsForResources(auth, {
+        resourceType: "agent",
+        resourceIds: agentModelIds,
+        transaction: t,
+      });
+    await GroupPermissionResource.deleteAllForResources(auth, {
+      resourceType: "agent",
+      resourceIds: agentModelIds,
+      transaction: t,
+    });
+
+    const groupModelIds = [
+      ...new Set([
+        ...editorGroupModelIds,
+        ...grantGroups.map((group) => group.id),
+      ]),
+    ];
+    if (groupModelIds.length > 0) {
       await GroupMembershipModel.destroy({
-        where: { groupId: groupIds, workspaceId },
+        where: { groupId: groupModelIds, workspaceId },
         transaction: t,
       });
 
       await GroupAgentModel.destroy({
-        where: { groupId: groupIds, workspaceId },
+        where: { groupId: groupModelIds, workspaceId },
         transaction: t,
       });
 
       await GroupModel.destroy({
-        where: { id: groupIds, workspaceId },
+        where: { id: groupModelIds, workspaceId },
         transaction: t,
       });
     }
 
     // Delete agent suggestions before agents (FK constraint)
     await AgentSuggestionModel.destroy({
-      where: { agentConfigurationId: agentIds, workspaceId },
+      where: { agentConfigurationId: agentConfigurationModelIds, workspaceId },
       transaction: t,
     });
 
@@ -1463,7 +1602,14 @@ export async function batchHardDeletePendingAgentConfigurations(
     );
 
     await AgentConfigurationModel.destroy({
-      where: { id: agentIds, workspaceId },
+      where: { id: agentConfigurationModelIds, workspaceId },
+      transaction: t,
+    });
+
+    // Pending configurations are the only version of their logical agent. The FK protects this
+    // invariant by rolling the transaction back if another configuration still uses an identity.
+    await AgentModel.destroy({
+      where: { id: agentModelIds, workspaceId },
       transaction: t,
     });
   });
@@ -1496,9 +1642,19 @@ export async function updateAgentPermissions(
       | "user_not_member"
       | "user_already_member"
       | "group_requirements_not_met"
+      | "invalid_request_error"
     >
   >
 > {
+  if (agent.status === "archived") {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "An archived agent cannot be updated. Restore it first."
+      )
+    );
+  }
+
   const editorGroupRes = await GroupResource.findEditorGroupForAgent(
     auth,
     agent
@@ -1507,11 +1663,25 @@ export async function updateAgentPermissions(
     return editorGroupRes;
   }
 
+  const canAdministrate = await shadowCanAdminAgent(
+    auth,
+    agent,
+    auth.isAdmin() ||
+      (await editorGroupRes.value.isMember(auth.getNonNullableUser())),
+    "updateAgentPermissions"
+  );
+
   try {
     const transactionResult = await withTransaction(async (t) => {
+      const agentResource = await AgentResource.fetchByAgentConfiguration(
+        auth,
+        agent,
+        { transaction: t }
+      );
+
       if (usersToAdd.length > 0) {
-        // Check authorization for agent_editors groups (allowing members and admins)
-        if (!editorGroupRes.value.canAdministrate(auth)) {
+        // TODO(governance) serve the AgentResource permission after shadow verification.
+        if (!canAdministrate) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -1526,11 +1696,16 @@ export async function updateAgentPermissions(
         if (addRes.isErr()) {
           return addRes;
         }
+
+        await agentResource.grantEditors(auth, {
+          editors: usersToAdd,
+          transaction: t,
+        });
       }
 
       if (usersToRemove.length > 0) {
-        // Check authorization for agent_editors groups (allowing members and admins)
-        if (!editorGroupRes.value.canAdministrate(auth)) {
+        // TODO(governance) serve the AgentResource permission after shadow verification.
+        if (!canAdministrate) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -1548,6 +1723,11 @@ export async function updateAgentPermissions(
         if (removeRes.isErr()) {
           return removeRes;
         }
+
+        await agentResource.revokeEditors(auth, {
+          editors: usersToRemove,
+          transaction: t,
+        });
       }
       return new Ok(undefined);
     });
@@ -1555,6 +1735,30 @@ export async function updateAgentPermissions(
     if (transactionResult.isErr()) {
       return transactionResult;
     }
+
+    // Editors get access to the agent's private data (prompt, skills, knowledge), so editor changes
+    // are audited as soon as they are committed, whatever happens to the triggers below.
+    // `actor_added_self` flags an admin granting themselves that access.
+    const actorUserId = auth.user()?.sId;
+    void emitAuditLogEvent({
+      auth,
+      action: "agent.editors_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("agent", agent),
+      ],
+      context: getAuditLogContext(auth),
+      metadata: {
+        agent_name: agent.name,
+        scope: agent.scope,
+        added_editor_ids: usersToAdd.map((u) => u.sId).join(","),
+        removed_editor_ids: usersToRemove.map((u) => u.sId).join(","),
+        actor_added_self: String(
+          actorUserId !== undefined &&
+            usersToAdd.some((u) => u.sId === actorUserId)
+        ),
+      },
+    });
 
     // If the agent is hidden and editors were removed, disable their triggers.
     // Removed editors can no longer access the hidden agent, so their triggers would fail.
@@ -1635,13 +1839,31 @@ export async function updateAgentConfigurationsScope(
     return new Ok(undefined);
   }
 
+  // Admins may publish or unpublish any agent of the workspace, including the ones built on
+  // spaces they cannot read (the manage agents page lists those behind "Show hidden agents").
+  // Changing the scope touches nothing the spaces protect.
   const agentConfigs = await getAgentConfigurations(auth, {
     agentIds,
     variant: "light",
+    dangerouslySkipPermissionFiltering: auth.isAdmin(),
   });
 
-  const editableAgents = agentConfigs.filter(
-    (a) => a.canEdit || auth.isAdmin()
+  const archivedAgentNames = agentConfigs
+    .filter((agent) => agent.status === "archived")
+    .map((agent) => agent.name);
+  if (archivedAgentNames.length > 0) {
+    return new Err(
+      new Error(
+        `Archived agents cannot be updated: ${archivedAgentNames.join(", ")}. Restore them first.`
+      )
+    );
+  }
+
+  const editableAgents = await shadowEditableAgents(
+    auth,
+    agentConfigs,
+    agentConfigs.filter((agent) => agent.canEdit || auth.isAdmin()),
+    "updateAgentConfigurationsScope"
   );
   if (editableAgents.length === 0) {
     return new Ok(undefined);
@@ -1776,25 +1998,12 @@ export async function filterAgentsByRequestedSpaces(
   );
 
   const spaces = await SpaceResource.fetchByModelIds(auth, uniqSpaceIds);
-  const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
+  const spaceById = new Map(spaces.map((s) => [s.id, s]));
 
-  // Filter out agents that reference missing/deleted spaces.
-  // When a space is deleted, mcp actions are removed, and requestedSpaceIds are updated.
-  const foundSpaceIds = new Set(spaces.map((s) => s.id));
-  const validAgents = agents.filter((c) =>
-    c.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
+  // Keep only agents whose every requested space is readable. A missing/deleted space is treated
+  // as not readable (see `canReadRequestedSpaces`), so agents referencing one are dropped here too —
+  // when a space is deleted its mcp actions are removed and `requestedSpaceIds` updated.
+  return agents.filter((agent) =>
+    canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
   );
-
-  const allowedBySpaceIds = validAgents.filter((agent) =>
-    auth.hasPermissionForAcls(
-      "read",
-      createAccessControlListFromSpacesWithMap(
-        spaceIdToGroupsMap,
-        agent.requestedSpaceIds,
-        auth.getNonNullableWorkspace().id
-      )
-    )
-  );
-
-  return allowedBySpaceIds;
 }

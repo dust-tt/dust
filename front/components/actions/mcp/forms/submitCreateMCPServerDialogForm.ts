@@ -1,18 +1,24 @@
 import type { CreateMCPServerDialogFormValues } from "@app/components/actions/mcp/forms/types";
 import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
+import { getDefaultRemoteMCPServerById } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
   CreateMCPServerResponseBody,
   MCPServerType,
   MCPServerViewNameConflict,
+  MCPServerViewNameConflictDetails,
 } from "@app/lib/api/mcp";
 import { isMCPServerViewNameConflict } from "@app/lib/api/mcp";
 import type { MCPConnectionType } from "@app/lib/swr/mcp_servers";
 import { isMCPCreateServerError } from "@app/lib/swr/mcp_servers";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
+import type { CellInfo } from "@app/types/cell";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
-import type { RegionInfo } from "@app/types/region";
+import {
+  getHostDerivedMcpServerUrl,
+  getHostDerivedOAuthExtraConfig,
+} from "@app/types/oauth/lib";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { sanitizeHeadersArray } from "@app/types/shared/utils/http_headers";
@@ -33,6 +39,7 @@ type CreateMCPServerDialogSubmitResult =
   | {
       type: "name_conflict";
       name: string;
+      conflictDetails?: MCPServerViewNameConflictDetails;
       oauthConnectionId: string | null;
       remoteMCPServerOAuthDiscoveryDone: boolean;
     };
@@ -121,7 +128,7 @@ interface SubmitCreateMCPServerDialogFormParams {
   createWithURL: CreateRemoteMCPServerFn;
   createInternalMCPServer: CreateInternalMCPServerFn;
   onBeforeCreateServer: () => void;
-  regionInfo: RegionInfo | null;
+  cellInfo: CellInfo | null;
 }
 
 export async function submitCreateMCPServerDialogForm({
@@ -136,7 +143,7 @@ export async function submitCreateMCPServerDialogForm({
   createWithURL,
   createInternalMCPServer,
   onBeforeCreateServer,
-  regionInfo,
+  cellInfo,
 }: SubmitCreateMCPServerDialogFormParams): Promise<
   Result<CreateMCPServerDialogSubmitResult, Error>
 > {
@@ -217,6 +224,15 @@ export async function submitCreateMCPServerDialogForm({
           .join(" ")
       : authorization?.scope;
 
+  // Host-derived static-OAuth servers collect a single host
+  // URL + client ID/secret; the OAuth endpoints, scope and MCP server URL are
+  // all derived from that host.
+  const defaultConfig =
+    defaultServerId !== undefined
+      ? getDefaultRemoteMCPServerById(defaultServerId)
+      : null;
+  const hostDerivedOAuth = defaultConfig?.hostDerivedOAuth;
+
   if (authorization && oauthUseCase) {
     if (oauthConnectionId) {
       oauthConnection = {
@@ -224,16 +240,23 @@ export async function submitCreateMCPServerDialogForm({
         connectionId: oauthConnectionId,
       };
     } else {
+      const derivedExtraConfig = hostDerivedOAuth
+        ? getHostDerivedOAuthExtraConfig({
+            hostConfig: hostDerivedOAuth,
+            authCredentials: values.authCredentials,
+          })
+        : null;
+
       const cRes = await setupOAuthConnection({
         owner,
         provider: authorization.provider,
         // During setup, the use case is always "platform_actions".
         useCase: "platform_actions",
-        extraConfig: {
+        extraConfig: derivedExtraConfig ?? {
           ...(values.authCredentials ?? {}),
           ...(effectiveScope ? { scope: effectiveScope } : {}),
         },
-        regionInfo,
+        cellInfo,
       });
 
       if (cRes.isErr()) {
@@ -255,6 +278,12 @@ export async function submitCreateMCPServerDialogForm({
   }
 
   onBeforeCreateServer();
+  const effectiveRemoteServerUrl = hostDerivedOAuth
+    ? (getHostDerivedMcpServerUrl({
+        hostConfig: hostDerivedOAuth,
+        authCredentials: values.authCredentials,
+      }) ?? values.remoteServerUrl)
+    : values.remoteServerUrl;
 
   let server: MCPServerType | undefined;
 
@@ -313,10 +342,10 @@ export async function submitCreateMCPServerDialogForm({
     server = createRes.value.server;
   }
 
-  if (values.remoteServerUrl) {
+  if (effectiveRemoteServerUrl) {
     const viewName = values.viewName?.trim();
     const createRes = await createWithURL({
-      url: values.remoteServerUrl,
+      url: effectiveRemoteServerUrl,
       defaultServerId,
       includeGlobal: true,
       ...(viewName ? { viewName } : {}),
@@ -334,6 +363,7 @@ export async function submitCreateMCPServerDialogForm({
         return new Ok({
           type: "name_conflict",
           name: err.nameConflict,
+          conflictDetails: err.conflictDetails,
           oauthConnectionId: oauthConnection?.connectionId ?? null,
           remoteMCPServerOAuthDiscoveryDone:
             nextRemoteMCPServerOAuthDiscoveryDone,

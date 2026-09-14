@@ -34,6 +34,15 @@ import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
+import { removeAwuContractExcessCreditsForContract } from "@app/lib/metronome/payg_excess_credits";
+import {
+  addDuration,
+  commitmentAmount,
+  commitmentPeriodEnd,
+  invoicePeriodWeights,
+  maxInvoicePeriods,
+  PAYMENT_FREQUENCY_MONTHS,
+} from "@app/lib/metronome/seat_commitment";
 import {
   remapMembershipSeatTypesForContract,
   syncSeatCount,
@@ -126,83 +135,52 @@ function validatePlanPackageCompat(
   return { ok: true };
 }
 
-/**
- * First-period seat commitment bounds.
- *
- * - `contract_start_date` anchor: billing periods run from the contract start,
- *   so the first period is always full. Returns fraction=1 and periodEnd one
- *   period after `startingAt`.
- * - `first_billing_period` anchor: billing periods align to calendar month
- *   boundaries (1st → 1st). The first period is a partial stub from contract
- *   start to the next 1st-of-month. Returns the remaining fraction and the
- *   next 1st-of-month as periodEnd.
- */
-function firstPeriodCommitment(
-  startingAt: Date,
-  frequency: "MONTHLY" | "ANNUAL",
-  billingAnchor: "contract_start_date" | "first_billing_period"
-): { fraction: number; periodEnd: Date } {
-  const year = startingAt.getUTCFullYear();
-  const month = startingAt.getUTCMonth();
-  if (billingAnchor === "contract_start_date") {
-    const hh = startingAt.getUTCHours();
-    const mm = startingAt.getUTCMinutes();
-    const ss = startingAt.getUTCSeconds();
-
-    // Clamp day to the last day of the target month to avoid overflow:
-    // e.g. Jan 31 + 1 month must land on Feb 28/29, not Mar 3.
-    const clampToMonth = (y: number, m: number, d: number): number =>
-      Math.min(d, new Date(Date.UTC(y, m + 1, 0)).getUTCDate());
-
-    const [ty, tm] =
-      frequency === "ANNUAL" ? [year + 1, month] : [year, month + 1];
-    const periodEnd = new Date(
-      Date.UTC(
-        ty,
-        tm,
-        clampToMonth(ty, tm, startingAt.getUTCDate()),
-        hh,
-        mm,
-        ss
-      )
-    );
-    return { fraction: 1, periodEnd };
-  }
-
-  // first_billing_period: prorate from contract start to next 1st-of-month.
-  const HOUR_MS = 60 * 60 * 1000;
-  const periodStartMs = Date.UTC(year, month, 1);
-  const periodEndMs =
-    frequency === "ANNUAL"
-      ? Date.UTC(year + 1, month, 1)
-      : Date.UTC(year, month + 1, 1);
-  const totalHours = Math.round((periodEndMs - periodStartMs) / HOUR_MS);
-  const remainingHours = Math.round(
-    (periodEndMs - startingAt.getTime()) / HOUR_MS
+// Timestamp of the i-th invoice installment: `i * monthsPerPeriod` months after
+// the contract start, on the start's day for the first installment and the 1st
+// of the month thereafter, keeping the start's time of day. Month overflow is
+// clamped to the last day of the target month.
+function installmentTimestamp(
+  alignedStart: Date,
+  i: number,
+  monthsPerPeriod: number
+): Date {
+  const totalMonths = alignedStart.getUTCMonth() + i * monthsPerPeriod;
+  const targetYear =
+    alignedStart.getUTCFullYear() + Math.floor(totalMonths / 12);
+  const targetMonth = ((totalMonths % 12) + 12) % 12;
+  const lastDayOfMonth = new Date(
+    Date.UTC(targetYear, targetMonth + 1, 0)
+  ).getUTCDate();
+  const day = i === 0 ? Math.min(alignedStart.getUTCDate(), lastDayOfMonth) : 1;
+  return new Date(
+    Date.UTC(
+      targetYear,
+      targetMonth,
+      day,
+      alignedStart.getUTCHours(),
+      alignedStart.getUTCMinutes(),
+      alignedStart.getUTCSeconds(),
+      alignedStart.getUTCMilliseconds()
+    )
   );
-  const fraction = Math.max(0, Math.min(1, remainingHours / totalHours));
-  return { fraction, periodEnd: new Date(periodEndMs) };
 }
-
-const MONTHS_PER_PAYMENT_FREQUENCY: Record<
-  "monthly" | "quarterly" | "semi_annually" | "annually",
-  number
-> = {
-  monthly: 1,
-  quarterly: 3,
-  semi_annually: 6,
-  annually: 12,
-};
 
 function buildInvoiceScheduleItems({
   invoiceAmountCents,
   resolvedCurrency,
   alignedStart,
+  commitmentEnd,
   paymentSchedule,
+  fullInstallmentCents,
+  reduceFrontCents,
 }: {
   invoiceAmountCents: number;
   resolvedCurrency: SupportedCurrency;
   alignedStart: Date;
+  // End of the commitment period. Installments are clamped so none is ever
+  // scheduled at or past it (a 3rd monthly invoice on a 6-week contract would
+  // never be raised).
+  commitmentEnd: Date;
   paymentSchedule: {
     frequency:
       | "one_time"
@@ -212,49 +190,78 @@ function buildInvoiceScheduleItems({
       | "annually";
     periods?: number;
   };
+  // List amount (cents) of one full payment period. When set, each installment
+  // bills this full amount and the last takes the remainder — a full month of a
+  // yearly seat is its nominal monthly rate (annual / 12), not the prorated
+  // total split evenly. When omitted (initial credits, scheduled charges, which
+  // have no per-period list rate), the total is split by prorated period weight.
+  fullInstallmentCents?: number;
+  // Promotional reduction (cents) applied to the installments from the first
+  // bill onwards, each floored at 0 and carrying the leftover to the next — so a
+  // free leading period zeroes the earliest bills. Defaults to 0.
+  reduceFrontCents?: number;
 }): { unitPrice: number; quantity: number; timestamp: Date }[] {
-  const { frequency, periods } = paymentSchedule;
+  const { frequency } = paymentSchedule;
+  const periods =
+    frequency === "one_time" || !paymentSchedule.periods
+      ? paymentSchedule.periods
+      : Math.min(
+          paymentSchedule.periods,
+          maxInvoicePeriods(alignedStart, commitmentEnd, frequency)
+        );
+  // Per-installment amounts (cents) and their timestamps, before the reduction.
+  const installments: { amountCents: number; timestamp: Date }[] = [];
   if (frequency === "one_time" || !periods || periods <= 1) {
-    return [
-      {
-        unitPrice: metronomeAmount(invoiceAmountCents, resolvedCurrency),
-        quantity: 1,
-        timestamp: alignedStart,
-      },
-    ];
-  }
-  const monthsPerPeriod = MONTHS_PER_PAYMENT_FREQUENCY[frequency];
-  const perPeriodCents = Math.floor(invoiceAmountCents / periods);
-  const remainderCents = invoiceAmountCents - perPeriodCents * periods;
-  return Array.from({ length: periods }, (_, i) => {
-    const totalMonths = alignedStart.getUTCMonth() + i * monthsPerPeriod;
-    const targetYear =
-      alignedStart.getUTCFullYear() + Math.floor(totalMonths / 12);
-    const targetMonth = ((totalMonths % 12) + 12) % 12;
-    const lastDayOfMonth = new Date(
-      Date.UTC(targetYear, targetMonth + 1, 0)
-    ).getUTCDate();
-    const day =
-      i === 0 ? Math.min(alignedStart.getUTCDate(), lastDayOfMonth) : 1;
-    const ts = new Date(
-      Date.UTC(
-        targetYear,
-        targetMonth,
-        day,
-        alignedStart.getUTCHours(),
-        alignedStart.getUTCMinutes(),
-        alignedStart.getUTCSeconds(),
-        alignedStart.getUTCMilliseconds()
-      )
+    installments.push({
+      amountCents: invoiceAmountCents,
+      timestamp: alignedStart,
+    });
+  } else {
+    const monthsPerPeriod = PAYMENT_FREQUENCY_MONTHS[frequency];
+    // With a known per-period list amount, bill it in full each period (clamped
+    // to what's left) and put the remainder on the last, so full periods invoice
+    // at list price. Otherwise distribute the total by the prorated fraction of
+    // each period (whole periods equal, partial last).
+    const weights = invoicePeriodWeights(
+      alignedStart,
+      commitmentEnd,
+      frequency,
+      periods
     );
-    const amountCents =
-      i === 0 ? perPeriodCents + remainderCents : perPeriodCents;
-    return {
-      unitPrice: metronomeAmount(amountCents, resolvedCurrency),
-      quantity: 1,
-      timestamp: ts,
-    };
-  });
+    const weightSum = weights.reduce((sum, w) => sum + w, 0);
+    let allocatedCents = 0;
+    for (let i = 0; i < periods; i++) {
+      const amountCents =
+        i === periods - 1
+          ? invoiceAmountCents - allocatedCents
+          : fullInstallmentCents !== undefined
+            ? Math.min(
+                fullInstallmentCents,
+                invoiceAmountCents - allocatedCents
+              )
+            : Math.round(invoiceAmountCents * (weights[i] / weightSum));
+      allocatedCents += amountCents;
+      installments.push({
+        amountCents,
+        timestamp: installmentTimestamp(alignedStart, i, monthsPerPeriod),
+      });
+    }
+  }
+  // Apply the promotional free-period reduction from the first bill onwards.
+  let remainingReduction = reduceFrontCents ?? 0;
+  for (const installment of installments) {
+    if (remainingReduction <= 0) {
+      break;
+    }
+    const applied = Math.min(installment.amountCents, remainingReduction);
+    installment.amountCents -= applied;
+    remainingReduction -= applied;
+  }
+  return installments.map((installment) => ({
+    unitPrice: metronomeAmount(installment.amountCents, resolvedCurrency),
+    quantity: 1,
+    timestamp: installment.timestamp,
+  }));
 }
 
 // ─── Pre-provision helper functions ──────────────────────────────────────────
@@ -479,11 +486,13 @@ async function persistSeatFloors(
     if (!isMembershipSeatType(seatType)) {
       continue;
     }
-    if (seat.selected && seat.minSeats > 0) {
+    const maxSeats = seat.maxSeats ?? null;
+    if (seat.selected && (seat.minSeats > 0 || maxSeats !== null)) {
       const result = await WorkspaceSeatLimitResource.upsert({
         workspace,
         seatType,
         minSeats: seat.minSeats,
+        maxSeats,
       });
       if (result.isErr()) {
         return new Err(
@@ -625,6 +634,7 @@ async function stepContractEdits({
   metronomeCustomerId,
   metronomeContractId,
   alignedStart,
+  endingAtDate,
   resolvedCurrency,
   pkg,
   pkgSeatByType,
@@ -638,6 +648,11 @@ async function stepContractEdits({
   const addScheduledCharges: NonNullable<
     ContractEditParams["add_scheduled_charges"]
   > = [];
+
+  // The commitment period bounds every prepaid commit and invoice schedule on
+  // this contract: it runs to the contract end, or one year out when the
+  // contract is open-ended.
+  const commitmentEnd = commitmentPeriodEnd(alignedStart, endingAtDate);
 
   // Optional recurring free AWU credit pool, granted directly on this
   // contract (not baked into the package) — e.g. the Partner Demo shared
@@ -671,6 +686,7 @@ async function stepContractEdits({
       invoiceAmountCents,
       resolvedCurrency,
       alignedStart,
+      commitmentEnd,
       paymentSchedule: body.initialCredits.paymentSchedule,
     });
     const initialCreditsEndingBefore = floorToHourISO(
@@ -715,6 +731,7 @@ async function stepContractEdits({
       invoiceAmountCents: chargeAmountCents,
       resolvedCurrency,
       alignedStart,
+      commitmentEnd,
       paymentSchedule: body.scheduledCharge.paymentSchedule,
     });
     addScheduledCharges.push({
@@ -755,18 +772,65 @@ async function stepContractEdits({
       pkgSeat
     ) {
       const fiatCreditTypeId = CURRENCY_TO_CREDIT_TYPE_ID[resolvedCurrency];
-      const { fraction, periodEnd } = firstPeriodCommitment(
-        alignedStart,
-        billingFrequency,
-        pkg.billingAnchor
-      );
+      // The grant covers the seat subscription charges over the commitment
+      // period, matching Metronome's per-hour proration (see `commitmentAmount`)
+      // so it fully offsets them. The customer is invoiced `commitmentPrice`,
+      // which the dialog defaults to this same amount.
       const accessAmountNative =
-        Math.round(seat.minSeats * rateNative * fraction * 100) / 100;
+        Math.round(
+          commitmentAmount({
+            minSeats: seat.minSeats,
+            ratePerPeriod: rateNative,
+            isAnnual: billingFrequency === "ANNUAL",
+            start: alignedStart,
+            end: commitmentEnd,
+          }) * 100
+        ) / 100;
+      // A full payment period bills the committed seats at their list rate for
+      // that period: the seat's monthly rate (annual / 12 for a yearly seat)
+      // times the months per payment period. The last installment takes the
+      // prorated remainder.
+      const seatMonthlyRate =
+        billingFrequency === "ANNUAL" ? seat.rate / 12 : seat.rate;
+      const paymentMonths =
+        seat.paymentSchedule.frequency === "one_time"
+          ? 1
+          : PAYMENT_FREQUENCY_MONTHS[seat.paymentSchedule.frequency];
+      // Optional promotional free period: reduce the seat's earliest bills by
+      // the prorated value of the leading offered duration (never beyond the
+      // contract end). The grant is left untouched — this is a pure discount.
+      // Use the seat's major-unit `rate` (not `rateNative`) so the reduction is
+      // in the same cents basis as `invoiceAmountCents` (commitmentPrice * 100).
+      const offerReductionCents = body.offerFreePeriod
+        ? Math.round(
+            commitmentAmount({
+              minSeats: seat.minSeats,
+              ratePerPeriod: seat.rate,
+              isAnnual: billingFrequency === "ANNUAL",
+              start: alignedStart,
+              end: new Date(
+                Math.min(
+                  addDuration(
+                    alignedStart,
+                    body.offerFreePeriod.value,
+                    body.offerFreePeriod.unit
+                  ).getTime(),
+                  commitmentEnd.getTime()
+                )
+              ),
+            }) * 100
+          )
+        : 0;
       const seatScheduleItems = buildInvoiceScheduleItems({
         invoiceAmountCents: Math.round(seat.commitmentPrice * 100),
         resolvedCurrency,
         alignedStart,
+        commitmentEnd,
         paymentSchedule: seat.paymentSchedule,
+        fullInstallmentCents: Math.round(
+          seat.minSeats * seatMonthlyRate * paymentMonths * 100
+        ),
+        reduceFrontCents: offerReductionCents,
       });
       addCommits.push({
         product_id: getProductSeatSubscriptionCommitId(),
@@ -780,7 +844,7 @@ async function stepContractEdits({
             {
               amount: accessAmountNative,
               starting_at: floorToHourISO(alignedStart),
-              ending_before: floorToHourISO(periodEnd),
+              ending_before: floorToHourISO(commitmentEnd),
             },
           ],
         },
@@ -867,6 +931,31 @@ async function stepContractEdits({
   });
   if (result.isErr()) {
     return `contract_edits: ${result.error.message}`;
+  }
+  return null;
+}
+
+// The excess "buffer" recurring credit is baked into every credit-priced
+// package, so a freshly provisioned contract always carries it. With PAYG
+// enabled we don't want that buffer to exist at all (over-consumption must bill
+// as PAYG, not be silently absorbed), so remove it from the new contract right
+// after provisioning. No-op when PAYG is off — the package-default buffer stays.
+async function stepDisableExcessCreditsForPayg({
+  metronomeCustomerId,
+  metronomeContractId,
+  workspaceId,
+  body,
+}: PostProvisionCtx): Promise<string | null> {
+  if (!body.paygEnabled) {
+    return null;
+  }
+  const result = await removeAwuContractExcessCreditsForContract({
+    metronomeCustomerId,
+    workspaceId,
+    metronomeContractId,
+  });
+  if (result.isErr()) {
+    return `excess_credits: ${result.error.message}`;
   }
   return null;
 }
@@ -1061,6 +1150,7 @@ async function stepScheduleContractEnd({
  *
  * Post-provision (best-effort — failures collected as warnings):
  *   - Net payment terms, initial credits, pending subscription
+ *   - Excess-credit buffer removal when PAYG is enabled
  *   - Stripe cancellation schedule, seat configuration, seat remap/sync
  *   - Contract end date
  *
@@ -1236,6 +1326,7 @@ export async function switchContract({
   };
 
   warn(await stepContractEdits(ctx));
+  warn(await stepDisableExcessCreditsForPayg(ctx));
   warn(await stepSeatRemap(ctx));
   warn(await stepSeatSync(ctx));
   warn(await stepPendingSubscription(ctx));

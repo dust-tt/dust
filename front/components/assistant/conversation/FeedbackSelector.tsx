@@ -341,7 +341,7 @@ export function FeedbackSelector({
                           </Label>
                           <span className="text-xs text-muted-foreground">
                             {isGlobalAgent
-                              ? `Helps the Dust team improve @${agentName}`
+                              ? `Helps the Dust team improve ${agentName}`
                               : "Helps editors improve the agent"}
                           </span>
                         </div>

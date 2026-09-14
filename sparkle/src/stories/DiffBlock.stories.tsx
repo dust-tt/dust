@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { fn } from "storybook/test";
 
 import { Button, DiffBlock, Eye } from "../index_with_tw_base";
 
@@ -71,6 +72,12 @@ const longDiffExample = [
   },
 ];
 
+/**
+ * A short diff of single-line edits, with the `actions` slot holding a
+ * "view changes" button — the shape of an agent's proposed code edit in a
+ * conversation.
+ * @summary Short diff with an actions-slot button.
+ */
 export const Default: Story = {
   args: {
     changes: diffExample,
@@ -80,12 +87,18 @@ export const Default: Story = {
         size="xs"
         icon={Eye}
         tooltip="View changes"
-        onClick={() => {}}
+        onClick={fn()}
       />
     ),
   },
 };
 
+/**
+ * A diff tall enough to collapse: when the rendered content exceeds
+ * `collapsedLines` lines (default 6), the block clamps to a preview and
+ * shows an expand control.
+ * @summary Long diff collapsed to a preview.
+ */
 export const CollapsedPreview: Story = {
   args: {
     changes: longDiffExample,

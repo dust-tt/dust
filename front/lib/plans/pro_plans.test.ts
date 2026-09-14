@@ -20,6 +20,8 @@ describe("upsertProPlans", () => {
     expect(afterPlan).not.toBeNull();
     expect(afterPlan?.code).toBe(PRO_PLAN_SEAT_29_CODE);
     expect(afterPlan?.name).toBe("Pro");
+    expect(afterPlan?.maxAwuCredits).toBe(20_000);
+    expect(afterPlan?.maxAwuCreditsTimeframe).toBe("week");
   });
 
   it("updates plans when they already exist", async () => {

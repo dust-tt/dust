@@ -1,6 +1,7 @@
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
+import type { ErrorSource } from "@app/lib/model_constructors/types/output/events";
 import type { AgentErrorCategory } from "@app/types/assistant/agent";
 import type { ModelProviderIdType } from "@app/types/assistant/models/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -33,6 +34,7 @@ export interface LLMErrorInfo {
   message: string;
   isRetryable: boolean;
   originalError?: unknown;
+  errorSource: ErrorSource;
 }
 
 export function handleGenericError(
@@ -40,6 +42,15 @@ export function handleGenericError(
   metadata: LLMClientMetadata
 ): LLMEvent {
   return new EventError(categorizeLLMError(error, metadata), metadata);
+}
+
+function providerError(info: Omit<LLMErrorInfo, "errorSource">): LLMErrorInfo {
+  return { ...info, errorSource: "provider" };
+}
+
+// Generally treating any 4xx-class errors as attributed to Dust as opposed to the model provider
+function dustError(info: Omit<LLMErrorInfo, "errorSource">): LLMErrorInfo {
+  return { ...info, errorSource: "dust" };
 }
 
 /**
@@ -69,12 +80,12 @@ export function categorizeLLMError(
     errorMessage.includes("terminated") ||
     errorMessage.includes("other side closed")
   ) {
-    return {
+    return providerError({
       type: "terminated_error",
       message: `Terminated error for ${metadata.clientId}/${metadata.modelId}. ${normalized.message}`,
       isRetryable: true,
       originalError: error,
-    };
+    });
   }
 
   if (
@@ -83,12 +94,12 @@ export function categorizeLLMError(
     errorMessage.includes("quota exceeded") ||
     errorMessage.includes("too many requests")
   ) {
-    return {
+    return dustError({
       type: "rate_limit_error",
       message: `Rate limit exceeded for ${metadata.clientId}/${metadata.modelId}. ${normalized.message}`,
       isRetryable: true,
       originalError: error,
-    };
+    });
   }
 
   // Check for overloaded/capacity errors (503).
@@ -98,12 +109,12 @@ export function categorizeLLMError(
     errorMessage.includes("capacity") ||
     errorMessage.includes("service unavailable")
   ) {
-    return {
+    return providerError({
       type: "overloaded_error",
       message: `${metadata.clientId} service is overloaded. ${normalized.message}`,
       isRetryable: true,
       originalError: error,
-    };
+    });
   }
 
   // Check for context length errors.
@@ -114,12 +125,12 @@ export function categorizeLLMError(
     errorMessage.includes("context window") ||
     errorMessage.includes("too large")
   ) {
-    return {
+    return dustError({
       type: "context_length_exceeded",
       message: `Context length exceeded for ${metadata.clientId}/${metadata.modelId}. ${normalized.message}`,
       isRetryable: false,
       originalError: error,
-    };
+    });
   }
 
   if (
@@ -128,12 +139,12 @@ export function categorizeLLMError(
     errorMessage.includes("authentication") ||
     errorMessage.includes("api key")
   ) {
-    return {
+    return dustError({
       type: "authentication_error",
       message: `Authentication failed for ${metadata.clientId}. ${normalized.message}`,
       isRetryable: false,
       originalError: error,
-    };
+    });
   }
 
   if (
@@ -141,21 +152,21 @@ export function categorizeLLMError(
     errorMessage.includes("forbidden") ||
     errorMessage.includes("permission")
   ) {
-    return {
+    return dustError({
       type: "permission_error",
       message: `Permission denied for ${metadata.clientId}. ${normalized.message}`,
       isRetryable: false,
       originalError: error,
-    };
+    });
   }
 
   if (statusCode === 404 || errorMessage.includes("not found")) {
-    return {
+    return dustError({
       type: "not_found_error",
       message: `Resource not found for ${metadata.clientId}. ${normalized.message}`,
       isRetryable: false,
       originalError: error,
-    };
+    });
   }
 
   if (
@@ -164,12 +175,12 @@ export function categorizeLLMError(
     errorMessage.includes("bad request") ||
     errorMessage.includes("validation error")
   ) {
-    return {
+    return dustError({
       type: "invalid_request_error",
       message: `Invalid request to ${metadata.clientId}. ${normalized.message}`,
       isRetryable: false,
       originalError: error,
-    };
+    });
   }
 
   // Check for network errors.
@@ -180,22 +191,22 @@ export function categorizeLLMError(
     errorMessage.includes("enotfound") ||
     errorMessage.includes("etimedout")
   ) {
-    return {
+    return providerError({
       type: "network_error",
       message: `Network error connecting to ${metadata.clientId}. ${normalized.message}`,
       isRetryable: true,
       originalError: error,
-    };
+    });
   }
 
   // Check for timeout errors.
   if (errorMessage.includes("timeout") || errorMessage.includes("timed out")) {
-    return {
+    return providerError({
       type: "timeout_error",
       message: `Request timeout for ${metadata.clientId}. ${normalized.message}`,
       isRetryable: true,
       originalError: error,
-    };
+    });
   }
 
   // Check for stream-specific errors.
@@ -204,12 +215,12 @@ export function categorizeLLMError(
     errorMessage.includes("streaming") ||
     errorMessage.includes("interrupted")
   ) {
-    return {
+    return providerError({
       type: "stream_error",
       message: `Stream error from ${metadata.clientId}. ${normalized.message}`,
       isRetryable: true,
       originalError: error,
-    };
+    });
   }
 
   if (
@@ -217,12 +228,12 @@ export function categorizeLLMError(
     errorMessage.includes("internal server error") ||
     errorMessage.includes("server error")
   ) {
-    return {
+    return providerError({
       type: "server_error",
       message: `Server error from ${metadata.clientId}. ${normalized.message}`,
       isRetryable: true,
       originalError: error,
-    };
+    });
   }
 
   return {
@@ -230,6 +241,7 @@ export function categorizeLLMError(
     message: `Unknown error from ${metadata.clientId}: ${normalized.message}`,
     isRetryable: false,
     originalError: error,
+    errorSource: "unknown",
   };
 }
 

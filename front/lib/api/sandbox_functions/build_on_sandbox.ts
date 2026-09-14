@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
 import { shellEscape } from "@app/lib/api/sandbox/shell";
 import type { SandboxFunctionErrorCode } from "@app/lib/api/sandbox_functions/errors";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
@@ -10,7 +9,7 @@ import {
   verifyStagingContent,
 } from "@app/lib/api/sandbox_functions/staging_integrity";
 import type { Authenticator } from "@app/lib/auth";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
+import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SandboxFunctionUserIdentityPolicy } from "@app/types/api/sandbox_functions";
 import { SANDBOX_FUNCTION_USER_IDENTITY_POLICIES } from "@app/types/api/sandbox_functions";
 import type { Result } from "@app/types/shared/result";
@@ -20,11 +19,11 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 
 const DSBX_BIN_PATH = "/opt/bin/dsbx";
-// Non-mounted scratch root, so a build never writes into the pod files mount.
+// Non-mounted scratch root, so a build never writes into the owner's files mount.
 const BUILD_STAGING_ROOT = "/tmp/dust-sandbox-function-builds";
 const BUILD_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
 
-interface SandboxFunctionBuildResult {
+export interface SandboxFunctionBuildResult {
   bundleCode: string;
   userIdentity: SandboxFunctionUserIdentityPolicy;
   inputSchema: JSONSchema;
@@ -68,34 +67,23 @@ function mapBuildErrorKind(kind: string): SandboxFunctionErrorCode {
 }
 
 /**
- * Build a sandbox function on the pod sandbox: ensure the pod's sandbox is up, bundle the source at
- * `srcSandboxPath` (absolute, under the pod mount) via `dsbx function build`, then read back the
- * bundle and its extracted I/O contract from a non-mounted scratch dir.
+ * Build a sandbox function: bundle the source at `srcSandboxPath` (absolute, under the owner's
+ * mount) via `dsbx function build`, then read back the bundle and its extracted I/O contract from
+ * a non-mounted scratch dir.
  *
  * Runs as `agent-proxied` (the egress-controlled invocation user) because extracting the schema
  * imports the module and runs its untrusted top-level code.
  */
-export async function buildSandboxFunctionOnSandbox(
+export async function buildSandboxFunctionOnReadySandbox(
   auth: Authenticator,
   {
-    space,
+    sandbox,
     srcSandboxPath,
   }: {
-    space: SpaceResource;
+    sandbox: SandboxResource;
     srcSandboxPath: string;
   }
 ): Promise<Result<SandboxFunctionBuildResult, SandboxFunctionError>> {
-  const ensureResult = await ensurePodSandboxReady(auth, space);
-  if (ensureResult.isErr()) {
-    return new Err(
-      new SandboxFunctionError(
-        "sandbox_unavailable",
-        ensureResult.error.message
-      )
-    );
-  }
-  const { sandbox } = ensureResult.value;
-
   const buildDir = path.posix.join(BUILD_STAGING_ROOT, randomUUID());
   const bundlePath = path.posix.join(buildDir, "bundle.js");
   const schemaPath = path.posix.join(buildDir, "schema.json");

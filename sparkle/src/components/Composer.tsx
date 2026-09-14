@@ -7,17 +7,32 @@ export const COMPOSER_VARIANTS = ["floating", "flat"] as const;
 export type ComposerVariantType = (typeof COMPOSER_VARIANTS)[number];
 
 interface ComposerProps {
+  /** Main content, typically a ComposerInput. */
   children?: React.ReactNode;
+  /** Attached files (e.g. Citations), rendered in a grid above the input. */
   attachments?: React.ReactNode;
+  /** Chips (e.g. selected tools or agents) rendered under the input. */
   chips?: React.ReactNode;
+  /** Actions anchored to the bottom-left (agent picker, attach, tools). */
   leftActions?: React.ReactNode;
+  /** Actions anchored to the bottom-right (voice, send). */
   rightActions?: React.ReactNode;
+  /** Surface style: `floating` (elevated card) or `flat` (bordered). */
   variant?: ComposerVariantType;
+  /** Apply the focused surface treatment (stronger shadow/border). */
   isFocused?: boolean;
+  /** Invoked when the content area is clicked, typically to focus the input. */
   onContentClick?: () => void;
   className?: string;
 }
 
+/**
+ * The message composer shell, mirroring the product input bar: it lays out an input
+ * area with attachments above, chips below, and left/right action slots (agent
+ * picker, capabilities, attachments, voice recording, send) built from Sparkle
+ * primitives. Use it as the container of a conversation input surface.
+ * @summary Message composer shell.
+ */
 export function Composer({
   children,
   attachments,

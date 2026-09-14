@@ -1,21 +1,29 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
-import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
+import type { AuthenticatorType } from "@app/lib/auth";
+import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { DurationRecorder } from "@app/lib/duration_recorder";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
-import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import {
+  finalizeUnavailableAgentLoop,
+  updateResourceAndPublishEvent,
+} from "@app/temporal/agent_loop/activities/common";
 import {
   AGENT_LOOP_COST_HARD_CAP_USD,
   AGENT_LOOP_SUBAGENT_HARD_CAP,
   checkCostAndSubagentsThresholds,
 } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
-import { RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS } from "@app/temporal/agent_loop/config";
+import {
+  MODEL_ACTIVITY_HEARTBEAT_INTERVAL_MS,
+  RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS,
+} from "@app/temporal/agent_loop/config";
+import { prepareAgentLoopContextProvider } from "@app/temporal/agent_loop/lib/agent_loop_context_provider/checkpointed";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
@@ -23,15 +31,12 @@ import { runModel } from "@app/temporal/agent_loop/lib/run_model";
 import { getMaxActionsPerStep } from "@app/types/assistant/agent";
 import type {
   AgentLoopArgsWithTiming,
-  AgentLoopExecutionData,
+  AgentLoopRuntimeData,
 } from "@app/types/assistant/agent_run";
-import {
-  getAgentLoopData,
-  isAgentLoopDataSoftDeleteError,
-} from "@app/types/assistant/agent_run";
+import { isAgentLoopDataSoftDeleteError } from "@app/types/assistant/agent_run";
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation } from "@langfuse/tracing";
-import { Context } from "@temporalio/activity";
+import { Context, heartbeat } from "@temporalio/activity";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
@@ -79,15 +84,27 @@ export async function runModelAndCreateActionsActivity({
   step: number;
   forceDisableToolUse?: boolean;
 }): Promise<RunModelAndCreateActionsResult | null> {
-  return tracer.trace("runModelAndCreateActionsActivity", async () =>
-    _runModelAndCreateActionsActivity({
-      authType,
-      checkForResume,
-      runAgentArgs,
-      runIds,
-      step,
-      forceDisableToolUse,
-    })
+  // The pre-stream setup (agent data loading, MCP tools listing, conversation rendering) can
+  // stall past the heartbeat timeout, e.g. on a hung MCP server's tools/list call: heartbeat
+  // immediately and periodically for the whole activity. The LLM stream adds its own heartbeats.
+  heartbeat();
+
+  return withPeriodicHeartbeat(
+    () =>
+      tracer.trace("runModelAndCreateActionsActivity", async () =>
+        _runModelAndCreateActionsActivity({
+          authType,
+          checkForResume,
+          runAgentArgs,
+          runIds,
+          step,
+          forceDisableToolUse,
+        })
+      ),
+    {
+      intervalMs: MODEL_ACTIVITY_HEARTBEAT_INTERVAL_MS,
+      heartbeatFn: () => heartbeat(),
+    }
   );
 }
 
@@ -109,12 +126,20 @@ async function _runModelAndCreateActionsActivity({
   const activityTimeoutDeadlineMs = getActivityTimeoutDeadlineMs();
   const durationRecorder = DurationRecorder.create([]);
 
-  const runAgentDataRes = await startActiveObservation(
+  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+  const featureFlags = await getFeatureFlags(auth);
+  const contextProviderRes = await startActiveObservation(
     "get-agent-loop-data",
-    () => getAgentLoopData(authType, runAgentArgs)
+    () =>
+      prepareAgentLoopContextProvider(auth, runAgentArgs, {
+        featureFlags,
+        isActivityRetry: Context.current().info.attempt > 1,
+        step,
+      })
   );
-  if (runAgentDataRes.isErr()) {
-    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+  if (contextProviderRes.isErr()) {
+    if (isAgentLoopDataSoftDeleteError(contextProviderRes.error)) {
+      await finalizeUnavailableAgentLoop(authType, runAgentArgs);
       logger.info(
         {
           conversationId: runAgentArgs.conversationId,
@@ -124,10 +149,11 @@ async function _runModelAndCreateActionsActivity({
       );
       return null;
     }
-    throw runAgentDataRes.error;
+    throw contextProviderRes.error;
   }
 
-  const { auth, ...runAgentData } = runAgentDataRes.value;
+  const contextProvider = contextProviderRes.value;
+  const runAgentData = contextProvider.runtimeData;
   const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
@@ -219,7 +245,6 @@ async function _runModelAndCreateActionsActivity({
   }
 
   // Tool test run: bypass LLM and directly execute tool commands.
-  const featureFlags = await getFeatureFlags(auth);
   if (featureFlags.includes("run_tools_from_prompt")) {
     const result = await handlePromptCommand(auth, runAgentData, step, runIds);
     if (result !== "not_a_command") {
@@ -250,7 +275,7 @@ async function _runModelAndCreateActionsActivity({
 
   // 1. Run model.
   const modelResult = await runModel(auth, {
-    runAgentData,
+    contextProvider,
     runIds,
     step,
     functionCallStepContentIds,
@@ -326,7 +351,7 @@ async function publishAgentLoopGuardrailExceededError(
     errorCode,
     errorMetadata,
   }: {
-    runAgentData: AgentLoopExecutionData;
+    runAgentData: AgentLoopRuntimeData;
     runIds: string[];
     step: number;
     errorCode: string;
@@ -358,7 +383,7 @@ async function publishAgentLoopGuardrailExceededError(
  */
 async function getExistingActionsAndBlobs(
   auth: Authenticator,
-  runAgentArgs: AgentLoopExecutionData,
+  runAgentArgs: AgentLoopRuntimeData,
   step: number
 ): Promise<{
   actionBlobs: ActionBlob[];

@@ -46,6 +46,9 @@ struct RelatedCredentialPayload {
 struct ConnectionCreatePayload {
     provider: ConnectionProvider,
     metadata: serde_json::Value,
+    // The finalize URI the flow will use, stored so the connection stays
+    // self-describing across redirect base changes.
+    redirect_uri: Option<String>,
     // Optionally present secret fields (migration case).
     migrated_credentials: Option<MigratedCredentials>,
     // Optionally present related credential for creating a new credential.
@@ -109,6 +112,7 @@ async fn connections_create(
         state.store.clone(),
         payload.provider,
         payload.metadata,
+        payload.redirect_uri,
         payload.migrated_credentials,
         related_credential_id,
     )
@@ -131,6 +135,7 @@ async fn connections_create(
                         "provider": c.provider(),
                         "status": c.status(),
                         "metadata": c.metadata(),
+                        "redirect_uri": c.redirect_uri(),
                     },
                 })),
             }),
@@ -199,6 +204,7 @@ async fn connections_finalize(
                             "provider": c.provider(),
                             "status": c.status(),
                             "metadata": c.metadata(),
+                            "redirect_uri": c.redirect_uri(),
                             "related_credential_id": c.related_credential_id(),
                         },
                     })),

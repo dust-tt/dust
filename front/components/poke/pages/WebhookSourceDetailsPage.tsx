@@ -49,7 +49,8 @@ export function WebhookSourceDetailsPage() {
     );
   }
 
-  const { webhookSource, views, triggers, requestStats } = details;
+  const { webhookSource, views, triggers, requestStats, payloadsGcsUrl } =
+    details;
 
   return (
     <>
@@ -63,13 +64,19 @@ export function WebhookSourceDetailsPage() {
         {/* Left column: Overview table */}
         <div className="flex flex-col space-y-8">
           <div className="flex justify-between gap-3">
-            <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
+            <div className="my-4 flex flex-grow flex-col rounded-lg border p-4">
               <h2 className="text-md pb-4 font-bold">Overview</h2>
               <PokeTable>
                 <PokeTableBody>
                   <PokeTableRow>
                     <PokeTableHead>sId</PokeTableHead>
                     <PokeTableCellWithCopy label={webhookSource.sId} />
+                  </PokeTableRow>
+                  <PokeTableRow>
+                    <PokeTableHead>Id</PokeTableHead>
+                    <PokeTableCellWithCopy
+                      label={webhookSource.id.toString()}
+                    />
                   </PokeTableRow>
                   <PokeTableRow>
                     <PokeTableHead>Name</PokeTableHead>
@@ -124,6 +131,18 @@ export function WebhookSourceDetailsPage() {
                     </PokeTableCell>
                   </PokeTableRow>
                   <PokeTableRow>
+                    <PokeTableHead>Payloads (GCS)</PokeTableHead>
+                    <PokeTableCell>
+                      <LinkWrapper
+                        href={payloadsGcsUrl}
+                        target="_blank"
+                        className="text-xs text-highlight-400"
+                      >
+                        Open bucket
+                      </LinkWrapper>
+                    </PokeTableCell>
+                  </PokeTableRow>
+                  <PokeTableRow>
                     <PokeTableHead>Created At</PokeTableHead>
                     <PokeTableCell>
                       {formatTimestampToFriendlyDate(webhookSource.createdAt)}
@@ -138,7 +157,7 @@ export function WebhookSourceDetailsPage() {
         {/* Right column: Views, Triggers, Request Stats */}
         <div className="mt-4 flex grow flex-col gap-4">
           {/* Views */}
-          <div className="border-material-200 flex flex-col rounded-lg border p-4">
+          <div className="flex flex-col rounded-lg border p-4">
             <h2 className="text-md pb-4 font-bold">Views ({views.length})</h2>
             {views.length === 0 ? (
               <p className="text-sm text-muted-foreground">No views found.</p>
@@ -166,7 +185,7 @@ export function WebhookSourceDetailsPage() {
           </div>
 
           {/* Connected Triggers */}
-          <div className="border-material-200 flex flex-col rounded-lg border p-4">
+          <div className="flex flex-col rounded-lg border p-4">
             <h2 className="text-md pb-4 font-bold">
               Connected Triggers ({triggers.length})
             </h2>
@@ -204,7 +223,7 @@ export function WebhookSourceDetailsPage() {
           </div>
 
           {/* Request Volume Stats */}
-          <div className="border-material-200 flex flex-col rounded-lg border p-4">
+          <div className="flex flex-col rounded-lg border p-4">
             <h2 className="text-md pb-4 font-bold">Request Volume</h2>
             <div className="flex gap-6">
               <div className="flex flex-col items-center">

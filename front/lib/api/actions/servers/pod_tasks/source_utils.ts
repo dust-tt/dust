@@ -4,6 +4,7 @@ import type {
 } from "@app/types/project_task";
 
 const CONVERSATION_PATH_RE = /\/w\/[^/]+\/conversation\/([^/?#]+)/;
+const NOTION_HOSTS = ["notion.so", "notion.site", "app.notion.com"];
 
 function inferSourceTypeFromHostname(hostname: string): PodTaskSourceType {
   if (hostname.includes("slack.com")) {
@@ -12,7 +13,11 @@ function inferSourceTypeFromHostname(hostname: string): PodTaskSourceType {
   if (hostname.includes("github.com")) {
     return "github";
   }
-  if (hostname.includes("notion.so") || hostname.includes("notion.site")) {
+  if (
+    NOTION_HOSTS.some(
+      (host) => hostname === host || hostname.endsWith(`.${host}`)
+    )
+  ) {
     return "notion";
   }
   if (hostname.includes("atlassian.net") || hostname.includes("confluence")) {

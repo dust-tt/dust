@@ -1,8 +1,10 @@
+import { buildConsumptionScopeQuery } from "@app/lib/api/analytics/consumption/scope";
 import type { Authenticator } from "@app/lib/auth";
 import { getCachedMetronomeCurrentBillingPeriod } from "@app/lib/metronome/contracts";
 import logger from "@app/logger/logger";
 import { isCreditPricedPlan } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 
 /**
@@ -118,4 +120,19 @@ export async function resolveConsumptionPeriod(
     default:
       assertNever(input);
   }
+}
+
+// Shared by the "last N days" export endpoints (agents, users, source, ...):
+// resolves the trailing window and scopes a consumption-index query to it in
+// one call, so each caller doesn't redo the same two-step wiring.
+export async function buildDaysConsumptionScopeQuery(
+  auth: Authenticator,
+  days: number
+): Promise<estypes.QueryDslQueryContainer> {
+  const period = await resolveConsumptionPeriod(auth, { kind: "days", days });
+  return buildConsumptionScopeQuery({
+    auth,
+    startDate: period.startDate,
+    endDate: period.endDate,
+  });
 }

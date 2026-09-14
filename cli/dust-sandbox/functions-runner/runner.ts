@@ -24,7 +24,7 @@ import { serve } from "./serve.ts";
 
 // Everything this process creates — including files the function body creates
 // itself — must stay group-writable. The shared sandbox directories are setgid
-// with a `g::rwx` default ACL (`/pod-state/databases`, `/files`), but a default
+// with a `g::rwx` default ACL (`/sandbox-state/databases`, `/files`), but a default
 // ACL only masks the mode a process asks for; it cannot add bits the umask
 // stripped. With the inherited 022/027 umask, a SQLite database a function
 // opens directly lands at 0644/0640 owned by `agent-proxied:agent`, and
@@ -90,7 +90,8 @@ function emitDbBadArgs(usage: string): number {
 }
 
 // The db helpers return Result; expected refusals are the Err branch. Unexpected throws are
-// bugs — we don't catch our own errors (ERR1); they surface as an internal error at the
+// bugs — we don't catch our own errors (no-catching-own-errors); they surface as an internal error
+// at the
 // front boundary (a runner that emits no envelope).
 async function dbReconcileHandler(args: string[]): Promise<number> {
   const [dbPath, schemaFile] = args;

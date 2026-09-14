@@ -1,18 +1,22 @@
+import { PokeWorkspaceUsageChart } from "@app/components/poke/analytics/PokeWorkspaceUsageChart";
 import { AlertChip } from "@app/components/poke/credits/AlertChip";
 import { CreditStateLogsLink } from "@app/components/poke/credits/CreditStateLogsLink";
+import { PokeApiKeysUsageTable } from "@app/components/poke/credits/PokeApiKeysUsageTable";
 import { PokeAwuUsageFromAnalyticsChart } from "@app/components/poke/credits/PokeAwuUsageFromAnalyticsChart";
 import { PokeMembersUsageTable } from "@app/components/poke/credits/PokeMembersUsageTable";
 import { PokeTopUpsHistoryTable } from "@app/components/poke/credits/PokeTopUpsHistoryTable";
+import { RateLimiterStateChip } from "@app/components/poke/credits/RateLimiterStateChip";
 import { ReconcileCreditStateButton } from "@app/components/poke/credits/ReconcileCreditStateButton";
+import type { RateLimiterState } from "@app/lib/api/credits/members_usage";
 import type {
   PokeCreditUsageConfig,
   PokeProgrammaticAlerts,
   PokeStripeSubscriptionWire,
 } from "@app/lib/api/poke/workspace_info";
-import { formatCredits } from "@app/lib/client/credits";
+import { formatCredits, formatCreditsPrecise } from "@app/lib/client/credits";
 import type { DefaultMetronomeAlerts } from "@app/lib/metronome/alerts/default_alerts";
 import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
-import { usePokeAwuPoolSummary } from "@app/poke/swr/credits";
+import { usePokeAwuPoolCurrentCycle } from "@app/poke/swr/credits";
 import type {
   WorkspacePoolCreditState,
   WorkspaceProgrammaticCreditState,
@@ -20,20 +24,57 @@ import type {
 import type { SubscriptionType } from "@app/types/plan";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { WorkspaceType } from "@app/types/user";
-import { AlertCircle, Chip, ContentMessage, Spinner } from "@dust-tt/sparkle";
+import {
+  AlertCircle,
+  Chip,
+  ContentMessage,
+  ProgressBar,
+  Spinner,
+  ValueCard,
+} from "@dust-tt/sparkle";
 
 interface PokeUsageTabProps {
   owner: WorkspaceType;
+  hasMetronomeBillingUsage: boolean;
   subscription: SubscriptionType;
   stripeSubscription: PokeStripeSubscriptionWire | null;
   poolCreditState: WorkspacePoolCreditState;
-  programmaticCreditState: WorkspaceProgrammaticCreditState;
-  programmaticWarningReached: boolean;
+  programmaticRateLimiterState: RateLimiterState | null;
+  programmaticSpendLimitRateCapCount: number | null;
+  programmaticEsConsumedAwuCredits: number | null;
+  programmaticMetronomeConsumedAwuCredits: number | null;
   creditUsageConfig: PokeCreditUsageConfig | null;
   poolAlert: MetronomeAlertRef | null;
   programmaticAlerts: PokeProgrammaticAlerts;
   usageCapAlert: MetronomeAlertRef | null;
   defaultAlerts: DefaultMetronomeAlerts;
+}
+
+interface SpendCountersInlineProps {
+  esConsumedAwuCredits: number | null;
+  rateLimiterAwuCredits: number | null;
+  metronomeConsumedAwuCredits: number | null;
+}
+
+const formatCreditsOrDash = (value: number | null): string =>
+  value !== null ? formatCreditsPrecise(value) : "—";
+
+// The three spend figures for a cap dimension shown together to spot
+// divergence: ES = Elasticsearch-derived, RL = Redis rate-limiter counter (the
+// value enforcement reads), MT = Metronome-derived. Mirrors the
+// "Consumed (ES / RL / MT)" column in the members table.
+function SpendCountersInline({
+  esConsumedAwuCredits,
+  rateLimiterAwuCredits,
+  metronomeConsumedAwuCredits,
+}: SpendCountersInlineProps) {
+  return (
+    <span className="text-xs text-muted-foreground">
+      ES {formatCreditsOrDash(esConsumedAwuCredits)} / RL{" "}
+      {formatCreditsOrDash(rateLimiterAwuCredits)} / MT{" "}
+      {formatCreditsOrDash(metronomeConsumedAwuCredits)}
+    </span>
+  );
 }
 
 type CreditStateChipColor = "success" | "warning" | "warning" | "info";
@@ -63,18 +104,24 @@ function creditStateChipColor(
 
 interface PokeCreditStatesCardProps {
   owner: WorkspaceType;
+  creditUsageConfig: PokeCreditUsageConfig | null;
   poolCreditState: WorkspacePoolCreditState;
-  programmaticCreditState: WorkspaceProgrammaticCreditState;
-  programmaticWarningReached: boolean;
+  programmaticRateLimiterState: RateLimiterState | null;
+  programmaticSpendLimitRateCapCount: number | null;
+  programmaticEsConsumedAwuCredits: number | null;
+  programmaticMetronomeConsumedAwuCredits: number | null;
   poolAlert: MetronomeAlertRef | null;
   programmaticAlerts: PokeProgrammaticAlerts;
 }
 
 function PokeCreditStatesCard({
   owner,
+  creditUsageConfig,
   poolCreditState,
-  programmaticCreditState,
-  programmaticWarningReached,
+  programmaticRateLimiterState,
+  programmaticSpendLimitRateCapCount,
+  programmaticEsConsumedAwuCredits,
+  programmaticMetronomeConsumedAwuCredits,
   poolAlert,
   programmaticAlerts,
 }: PokeCreditStatesCardProps) {
@@ -97,14 +144,24 @@ function PokeCreditStatesCard({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Programmatic</span>
-          <Chip
-            size="xs"
-            color={creditStateChipColor(programmaticCreditState)}
-            label={programmaticCreditState}
+          {/* The rate-limiter is authoritative; its verdict already encodes
+              near-limit, so there is no separate warning chip. */}
+          <RateLimiterStateChip
+            rateLimiterState={programmaticRateLimiterState}
           />
-          {programmaticWarningReached && (
-            <Chip size="xs" color="warning" label="near limit" />
-          )}
+          <span className="text-xs text-muted-foreground">
+            cap:{" "}
+            {creditUsageConfig
+              ? `${formatCredits(creditUsageConfig.programmaticMonthlyCapAwuCredits)} credits`
+              : "—"}
+          </span>
+          <SpendCountersInline
+            esConsumedAwuCredits={programmaticEsConsumedAwuCredits}
+            rateLimiterAwuCredits={programmaticSpendLimitRateCapCount}
+            metronomeConsumedAwuCredits={
+              programmaticMetronomeConsumedAwuCredits
+            }
+          />
           <AlertChip alert={programmaticAlerts.cap} label="cap alert" />
           <AlertChip alert={programmaticAlerts.warning} label="warning (80%)" />
           <AlertChip alert={programmaticAlerts.low} label="low (-100)" />
@@ -113,7 +170,6 @@ function PokeCreditStatesCard({
             label="critical (-10)"
           />
           <CreditStateLogsLink machine="programmatic" workspaceId={owner.sId} />
-          <ReconcileCreditStateButton owner={owner} target="programmatic" />
         </div>
       </div>
     </div>
@@ -212,15 +268,46 @@ function PokeDefaultAlertsCard({ defaultAlerts }: PokeDefaultAlertsCardProps) {
   );
 }
 
+interface PokeLegacyPerMemberCapCardProps {
+  capAwuCredits: number | null;
+}
+
+// Non-credit-priced (legacy) workspaces have no Metronome credit-state machine,
+// but can still enforce a single workspace-wide per-member credit cap via the
+// "Set Per-Member Credit Limit (Legacy Plans)" poke plugin. Enforcement runs off
+// a UTC-calendar-month Redis rate-limiter counter (see
+// `isNonCreditPricedUserSpendLimitReached`); this card surfaces the configured
+// cap so it isn't invisible in poke.
+function PokeLegacyPerMemberCapCard({
+  capAwuCredits,
+}: PokeLegacyPerMemberCapCardProps) {
+  return (
+    <ValueCard
+      title="Per-member credit limit (legacy)"
+      subtitle="Enforced per member, per calendar month"
+      content={
+        <span className="heading-lg text-foreground">
+          {capAwuCredits !== null
+            ? `${formatCredits(capAwuCredits)} credits`
+            : "No limit set"}
+        </span>
+      }
+    />
+  );
+}
+
 interface PokeCreditPoolCardProps {
   owner: WorkspaceType;
 }
 
 function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
-  const { awuPoolSummary, isAwuPoolSummaryLoading, isAwuPoolSummaryError } =
-    usePokeAwuPoolSummary({ owner });
+  const {
+    awuPoolCurrentCycle,
+    isAwuPoolCurrentCycleLoading,
+    isAwuPoolCurrentCycleError,
+  } = usePokeAwuPoolCurrentCycle({ owner });
 
-  if (isAwuPoolSummaryLoading) {
+  if (isAwuPoolCurrentCycleLoading) {
     return (
       <div className="flex justify-center py-8">
         <Spinner />
@@ -228,7 +315,7 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
     );
   }
 
-  if (isAwuPoolSummaryError || !awuPoolSummary) {
+  if (isAwuPoolCurrentCycleError || !awuPoolCurrentCycle) {
     return (
       <ContentMessage
         title="Failed to load Workspace Credits Pool"
@@ -241,7 +328,7 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
   }
 
   const { totalActiveCredits, totalRemainingCredits, overageCredits } =
-    awuPoolSummary;
+    awuPoolCurrentCycle;
   const consumed = Math.max(0, totalActiveCredits - totalRemainingCredits);
   const consumedPct =
     totalActiveCredits > 0
@@ -259,12 +346,13 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
           credits
         </span>
       </div>
-      <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted-foreground/10">
-        <div
-          className="h-full shrink-0 bg-highlight transition-all"
-          style={{ width: `${consumedPct}%` }}
-        />
-      </div>
+      <ProgressBar
+        className="h-2 w-full bg-muted-foreground/10"
+        values={[
+          { value: consumedPct, className: "bg-highlight" },
+          { value: 100 - consumedPct, className: "bg-transparent" },
+        ]}
+      />
       <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
         <span>{formatCredits(totalRemainingCredits)} credits remaining</span>
         {overageCredits !== null && overageCredits > 0 && (
@@ -277,17 +365,47 @@ function PokeCreditPoolCard({ owner }: PokeCreditPoolCardProps) {
 
 export function PokeUsageTab({
   owner,
+  hasMetronomeBillingUsage,
   subscription,
   stripeSubscription,
   poolCreditState,
-  programmaticCreditState,
-  programmaticWarningReached,
+  programmaticRateLimiterState,
+  programmaticSpendLimitRateCapCount,
+  programmaticEsConsumedAwuCredits,
+  programmaticMetronomeConsumedAwuCredits,
   creditUsageConfig,
   poolAlert,
   programmaticAlerts,
   usageCapAlert,
   defaultAlerts,
 }: PokeUsageTabProps) {
+  if (!hasMetronomeBillingUsage) {
+    // Non-credit-based workspaces (no Metronome contract) have no credit
+    // diagnostics, but fair-use AWU limits still apply to them (free/trial), so
+    // the members table — which surfaces per-user fair-use usage — is shown
+    // alongside the activity chart. Legacy plans may also enforce a
+    // workspace-wide per-member credit cap (`defaultPoolCapAwuCredits`), so its
+    // configured value and the per-member rate-limiter state are surfaced too.
+    const legacyPerMemberCapAwuCredits =
+      creditUsageConfig?.defaultPoolCapAwuCredits &&
+      creditUsageConfig.defaultPoolCapAwuCredits > 0
+        ? creditUsageConfig.defaultPoolCapAwuCredits
+        : null;
+    return (
+      <div className="flex flex-col gap-4">
+        <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />
+        <PokeLegacyPerMemberCapCard
+          capAwuCredits={legacyPerMemberCapAwuCredits}
+        />
+        <PokeMembersUsageTable
+          owner={owner}
+          isCreditBased={hasMetronomeBillingUsage}
+          showUserCap={legacyPerMemberCapAwuCredits !== null}
+        />
+      </div>
+    );
+  }
+
   const billingCycleStartDay = stripeSubscription?.current_period_start
     ? new Date(stripeSubscription.current_period_start * 1000).getDate()
     : subscription.startDate
@@ -296,11 +414,17 @@ export function PokeUsageTab({
 
   return (
     <div className="flex flex-col gap-4">
+      <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />
       <PokeCreditStatesCard
         owner={owner}
+        creditUsageConfig={creditUsageConfig}
         poolCreditState={poolCreditState}
-        programmaticCreditState={programmaticCreditState}
-        programmaticWarningReached={programmaticWarningReached}
+        programmaticRateLimiterState={programmaticRateLimiterState}
+        programmaticSpendLimitRateCapCount={programmaticSpendLimitRateCapCount}
+        programmaticEsConsumedAwuCredits={programmaticEsConsumedAwuCredits}
+        programmaticMetronomeConsumedAwuCredits={
+          programmaticMetronomeConsumedAwuCredits
+        }
         poolAlert={poolAlert}
         programmaticAlerts={programmaticAlerts}
       />
@@ -311,7 +435,11 @@ export function PokeUsageTab({
       <PokeDefaultAlertsCard defaultAlerts={defaultAlerts} />
       <PokeCreditPoolCard owner={owner} />
       <PokeTopUpsHistoryTable owner={owner} />
-      <PokeMembersUsageTable owner={owner} />
+      <PokeMembersUsageTable
+        owner={owner}
+        isCreditBased={hasMetronomeBillingUsage}
+      />
+      <PokeApiKeysUsageTable owner={owner} />
       {billingCycleStartDay && (
         <PokeAwuUsageFromAnalyticsChart
           owner={owner}

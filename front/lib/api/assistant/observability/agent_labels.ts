@@ -5,6 +5,7 @@ import {
 import { getAgentModelDisplayName } from "@app/lib/api/assistant/observability/credit_labels";
 import type { Authenticator } from "@app/lib/auth";
 import { UserResource } from "@app/lib/resources/user_resource";
+import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 export type AnalyticsAgentLabel = {
@@ -13,6 +14,7 @@ export type AnalyticsAgentLabel = {
   modelId: string;
   modelDisplayName: string;
   description: string;
+  scope: AgentConfigurationScope;
 };
 
 const PRIVATE_AGENT_DESCRIPTION = "Private agent: description unavailable";
@@ -79,6 +81,7 @@ export async function resolveAnalyticsAgentLabels(
         description: agent.canRead
           ? agent.description
           : privateAgentDescription(authorEmail),
+        scope: agent.scope,
       });
       continue;
     }
@@ -93,6 +96,7 @@ export async function resolveAnalyticsAgentLabels(
         description: privateAgentDescription(
           authorEmailByModelId.get(fallback.authorModelId)
         ),
+        scope: fallback.scope,
       });
     }
   }

@@ -1,4 +1,5 @@
 import type { UsageType } from "@app/lib/metronome/types";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
@@ -96,13 +97,11 @@ export class RunUsageModel extends WorkspaceAwareModel<RunUsageModel> {
 
   declare costMicroUsd: number;
   declare isBatch: boolean;
+  declare serviceTier: ServiceTier;
 
-  // Billing usage type (free / user / programmatic). Internal/utility LLM
-  // operations are tagged free at creation (they are never billed); agent
-  // conversation runs are tagged by the usage queue from the triggering
-  // message's origin via getUsageType. Nullable: agent conversation rows are
-  // briefly null between creation and the usage queue, and legacy/app runs are
-  // never tagged.
+  // Immutable billing usage type (free / user / programmatic), set when the
+  // usage row is created. Nullable only for legacy rows written before every
+  // creation path supplied the classification.
   declare usageType: UsageType | null;
   // Pending and unavailable rows represent provider attempts for which usage has not been
   // reported. Null is accepted during the rolling deployment.
@@ -161,6 +160,11 @@ RunUsageModel.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       allowNull: false,
+    },
+    serviceTier: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "default",
     },
     usageType: {
       type: DataTypes.STRING,

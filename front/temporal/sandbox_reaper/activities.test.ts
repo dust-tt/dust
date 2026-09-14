@@ -1,18 +1,22 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import type { ensurePodStateHealthOnSleep } from "@app/lib/api/sandbox/db";
+import type { ensureSandboxStateHealthOnSleep } from "@app/lib/api/sandbox/db";
+import type { Authenticator } from "@app/lib/auth";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
-import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { reapSandboxPhaseActivity } from "@app/temporal/sandbox_reaper/activities";
 import { SLEEP_THRESHOLD_MS } from "@app/temporal/sandbox_reaper/config";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { frameV2ContentType } from "@app/types/files";
 import { Ok } from "@app/types/shared/result";
+import type { LightWorkspaceType } from "@app/types/user";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
-  mockEnsurePodStateHealthOnSleep,
+  mockEnsureSandboxStateHealthOnSleep,
   mockExecuteWithLock,
   mockGetSandboxImage,
   mockGetSandboxProvider,
@@ -20,7 +24,7 @@ const {
   mockProviderDestroy,
   mockProviderSleep,
 } = vi.hoisted(() => ({
-  mockEnsurePodStateHealthOnSleep: vi.fn(),
+  mockEnsureSandboxStateHealthOnSleep: vi.fn(),
   mockExecuteWithLock: vi.fn(),
   mockGetSandboxImage: vi.fn(),
   mockGetSandboxProvider: vi.fn(),
@@ -41,21 +45,36 @@ vi.mock("@app/lib/api/sandbox/image", () => ({
   getSandboxImage: mockGetSandboxImage,
 }));
 
-// The pod pre-sleep health check execs into the sandbox, and the provider
-// here is a stub. The reaper contract is only that the check gates the pod
+// The pre-sleep state health check execs into the sandbox, and the provider
+// here is a stub. The reaper contract is only that the check gates the
 // sleep.
 vi.mock("@app/lib/api/sandbox/db", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@app/lib/api/sandbox/db")>();
   return {
     ...actual,
-    ensurePodStateHealthOnSleep: mockEnsurePodStateHealthOnSleep,
+    ensureSandboxStateHealthOnSleep: mockEnsureSandboxStateHealthOnSleep,
   };
 });
 
 vi.mock("@app/lib/lock", () => ({
   executeWithLock: mockExecuteWithLock,
 }));
+
+async function createFrameInPod(
+  authenticator: Authenticator,
+  workspace: LightWorkspaceType
+) {
+  const pod = await SpaceFactory.project(workspace);
+  return FileFactory.create(authenticator, null, {
+    contentType: frameV2ContentType,
+    fileName: "manifest.json",
+    fileSize: 1,
+    status: "created",
+    useCase: "project_context",
+    useCaseMetadata: { spaceId: pod.sId },
+  });
+}
 
 describe("reapSandboxPhaseActivity", () => {
   beforeEach(() => {
@@ -65,8 +84,8 @@ describe("reapSandboxPhaseActivity", () => {
     mockExecuteWithLock.mockImplementation(
       async (_key: string, fn: () => Promise<unknown>) => fn()
     );
-    mockEnsurePodStateHealthOnSleep.mockImplementation(
-      async (...args: Parameters<typeof ensurePodStateHealthOnSleep>) => {
+    mockEnsureSandboxStateHealthOnSleep.mockImplementation(
+      async (...args: Parameters<typeof ensureSandboxStateHealthOnSleep>) => {
         const refreshMountCredential = args[2]?.refreshMountCredential;
         if (!refreshMountCredential) {
           throw new Error("Expected a mount credential refresh callback.");
@@ -83,7 +102,7 @@ describe("reapSandboxPhaseActivity", () => {
     vi.useRealTimers();
   });
 
-  it("sleeps stale conversation and pod sandboxes", async () => {
+  it("sleeps stale conversation and Frame sandboxes", async () => {
     mockGetSandboxImage.mockReturnValue(
       new Ok({
         toCreateConfig: () => ({
@@ -98,7 +117,7 @@ describe("reapSandboxPhaseActivity", () => {
       create: vi
         .fn()
         .mockResolvedValueOnce(new Ok({ providerId: "conversation-provider" }))
-        .mockResolvedValueOnce(new Ok({ providerId: "pod-provider" })),
+        .mockResolvedValueOnce(new Ok({ providerId: "frame-provider" })),
       sleep: mockProviderSleep.mockResolvedValue(new Ok(undefined)),
     });
     const { authenticator, workspace } = await createResourceTest({
@@ -110,21 +129,21 @@ describe("reapSandboxPhaseActivity", () => {
       agentConfigurationId: agentConfig.sId,
       messagesCreatedAt: [new Date()],
     });
-    const pod = await SpaceFactory.project(workspace);
+    const frame = await createFrameInPod(authenticator, workspace);
     const conversationSandboxResult =
       await ConversationSandboxAdapter.ensureSandboxActive(
         authenticator,
         conversation
       );
-    const podSandboxResult = await PodSandboxAdapter.ensureSandboxActive(
+    const frameSandboxResult = await FrameSandboxAdapter.ensureSandboxActive(
       authenticator,
-      pod
+      frame
     );
     if (conversationSandboxResult.isErr()) {
       throw conversationSandboxResult.error;
     }
-    if (podSandboxResult.isErr()) {
-      throw podSandboxResult.error;
+    if (frameSandboxResult.isErr()) {
+      throw frameSandboxResult.error;
     }
     vi.advanceTimersByTime(SLEEP_THRESHOLD_MS + 1);
 
@@ -143,11 +162,11 @@ describe("reapSandboxPhaseActivity", () => {
     expect(mockProviderSleep).toHaveBeenCalledWith("conversation-provider", {
       workspaceId: workspace.sId,
     });
-    expect(mockProviderSleep).toHaveBeenCalledWith("pod-provider", {
+    expect(mockProviderSleep).toHaveBeenCalledWith("frame-provider", {
       workspaceId: workspace.sId,
     });
-    // Pod sleeps run the pre-sleep state health check; conversations don't.
-    expect(mockEnsurePodStateHealthOnSleep).toHaveBeenCalledTimes(1);
+    // Frame sleeps run the pre-sleep state health check; conversations don't.
+    expect(mockEnsureSandboxStateHealthOnSleep).toHaveBeenCalledTimes(1);
     expect(DustFileSystem.prototype.refreshSandboxMount).toHaveBeenCalledTimes(
       1
     );
@@ -165,22 +184,24 @@ describe("reapSandboxPhaseActivity", () => {
       })
     );
     mockGetSandboxProvider.mockReturnValue({
-      create: vi.fn().mockResolvedValue(new Ok({ providerId: "pod-provider" })),
+      create: vi
+        .fn()
+        .mockResolvedValue(new Ok({ providerId: "frame-provider" })),
       destroy: mockProviderDestroy.mockResolvedValue(new Ok(undefined)),
     });
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
-    const pod = await SpaceFactory.project(workspace);
-    const podSandboxResult = await PodSandboxAdapter.ensureSandboxActive(
+    const frame = await createFrameInPod(authenticator, workspace);
+    const frameSandboxResult = await FrameSandboxAdapter.ensureSandboxActive(
       authenticator,
-      pod
+      frame
     );
-    if (podSandboxResult.isErr()) {
-      throw podSandboxResult.error;
+    if (frameSandboxResult.isErr()) {
+      throw frameSandboxResult.error;
     }
     vi.advanceTimersByTime(SLEEP_THRESHOLD_MS + 1);
-    await podSandboxResult.value.sandbox.requestKill();
+    await frameSandboxResult.value.sandbox.requestKill();
 
     const runningResult = await reapSandboxPhaseActivity({
       cursor: null,
@@ -200,14 +221,68 @@ describe("reapSandboxPhaseActivity", () => {
       skippedCount: 0,
       succeededCount: 1,
     });
-    expect(mockProviderDestroy).toHaveBeenCalledWith("pod-provider", {
+    expect(mockProviderDestroy).toHaveBeenCalledWith("frame-provider", {
       workspaceId: workspace.sId,
     });
     expect(DustFileSystem.prototype.refreshSandboxMount).toHaveBeenCalledTimes(
       1
     );
-    const sandbox = await PodSandboxAdapter.fetchSandbox(authenticator, pod);
+    const sandbox = await FrameSandboxAdapter.fetchSandbox(
+      authenticator,
+      frame
+    );
     expect(sandbox?.status).toBe("deleted");
+  });
+
+  it("sleeps a stale Frame sandbox", async () => {
+    mockGetSandboxImage.mockReturnValue(
+      new Ok({
+        toCreateConfig: () => ({
+          imageId: { imageName: "test-image", tag: "0.0.1" },
+          envVars: {},
+          network: { egress: "restricted" },
+          resources: { cpu: 1, memoryMB: 512 },
+        }),
+      })
+    );
+    mockGetSandboxProvider.mockReturnValue({
+      create: vi
+        .fn()
+        .mockResolvedValue(new Ok({ providerId: "frame-provider" })),
+      sleep: mockProviderSleep.mockResolvedValue(new Ok(undefined)),
+    });
+    const { authenticator, workspace } = await createResourceTest({
+      role: "admin",
+    });
+    const frame = await createFrameInPod(authenticator, workspace);
+    const sandboxResult = await FrameSandboxAdapter.ensureSandboxActive(
+      authenticator,
+      frame
+    );
+    if (sandboxResult.isErr()) {
+      throw sandboxResult.error;
+    }
+    vi.advanceTimersByTime(SLEEP_THRESHOLD_MS + 1);
+
+    const result = await reapSandboxPhaseActivity({
+      cursor: null,
+      phase: "running",
+    });
+
+    expect(result).toEqual({
+      failedCount: 0,
+      nextCursor: null,
+      processedCount: 1,
+      skippedCount: 0,
+      succeededCount: 1,
+    });
+    expect(mockProviderSleep).toHaveBeenCalledWith("frame-provider", {
+      workspaceId: workspace.sId,
+    });
+    expect(mockEnsureSandboxStateHealthOnSleep).toHaveBeenCalledTimes(1);
+    expect(DustFileSystem.prototype.refreshSandboxMount).toHaveBeenCalledTimes(
+      1
+    );
   });
 
   it("skips kill-requested sleeping sandboxes in the awake kill phase", async () => {
@@ -222,22 +297,24 @@ describe("reapSandboxPhaseActivity", () => {
       })
     );
     mockGetSandboxProvider.mockReturnValue({
-      create: vi.fn().mockResolvedValue(new Ok({ providerId: "pod-provider" })),
+      create: vi
+        .fn()
+        .mockResolvedValue(new Ok({ providerId: "frame-provider" })),
       destroy: mockProviderDestroy.mockResolvedValue(new Ok(undefined)),
     });
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
-    const pod = await SpaceFactory.project(workspace);
-    const podSandboxResult = await PodSandboxAdapter.ensureSandboxActive(
+    const frame = await createFrameInPod(authenticator, workspace);
+    const frameSandboxResult = await FrameSandboxAdapter.ensureSandboxActive(
       authenticator,
-      pod
+      frame
     );
-    if (podSandboxResult.isErr()) {
-      throw podSandboxResult.error;
+    if (frameSandboxResult.isErr()) {
+      throw frameSandboxResult.error;
     }
-    await podSandboxResult.value.sandbox.updateStatus("sleeping");
-    await podSandboxResult.value.sandbox.requestKill();
+    await frameSandboxResult.value.sandbox.updateStatus("sleeping");
+    await frameSandboxResult.value.sandbox.requestKill();
 
     const awakeResult = await reapSandboxPhaseActivity({
       cursor: null,
@@ -258,10 +335,13 @@ describe("reapSandboxPhaseActivity", () => {
       skippedCount: 0,
       succeededCount: 1,
     });
-    expect(mockProviderDestroy).toHaveBeenCalledWith("pod-provider", {
+    expect(mockProviderDestroy).toHaveBeenCalledWith("frame-provider", {
       workspaceId: workspace.sId,
     });
-    const sandbox = await PodSandboxAdapter.fetchSandbox(authenticator, pod);
+    const sandbox = await FrameSandboxAdapter.fetchSandbox(
+      authenticator,
+      frame
+    );
     expect(sandbox?.status).toBe("deleted");
   });
 });

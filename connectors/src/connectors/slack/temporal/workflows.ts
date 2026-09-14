@@ -29,10 +29,22 @@ function getSlackActivities() {
     saveSuccessSyncActivity,
     syncChannelMetadata,
     reportInitialSyncProgressActivity,
-    getChannelsToGarbageCollect,
     deleteChannelsFromConnectorDb,
   } = proxyActivities<typeof activities>({
     startToCloseTimeout: "10 minutes",
+  });
+
+  // Bounded on purpose: listing all channels can hit Slack rate limits, and an
+  // unbounded retry would keep the garbage collector workflow stuck (and eating
+  // the connector's Slack budget) forever. Better to fail; the workflow is
+  // relaunched after each sync. Timeout is large because pagination is
+  // throttled to respect Slack rate limits.
+  const { getChannelsToGarbageCollect } = proxyActivities<typeof activities>({
+    startToCloseTimeout: "30 minutes",
+    heartbeatTimeout: "10 minutes",
+    retry: {
+      maximumAttempts: 25,
+    },
   });
 
   const { attemptChannelJoinActivity } = proxyActivities<typeof activities>({

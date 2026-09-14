@@ -1,7 +1,3 @@
-import {
-  clearPerUserCreditBalanceAlerts,
-  upsertPerUserCreditBalanceAlerts,
-} from "@app/lib/metronome/alerts/per_user_credit_balance";
 import type { SubscriptionSeatState } from "@app/lib/metronome/client";
 import {
   addPerUserCreditToCustomer,
@@ -40,7 +36,10 @@ import {
   PRO_SEAT_CREDIT_NAME,
   USAGE_TAG,
 } from "@app/lib/metronome/setup_common";
-import type { BillingFrequency } from "@app/lib/metronome/types";
+import type {
+  BillingFrequency,
+  MetronomeSeatBalance,
+} from "@app/lib/metronome/types";
 import { isCreditPricedPlanPrefix } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -50,7 +49,7 @@ import { heartbeat } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   bestEffortInvalidateCacheWithRedis,
-  cacheWithRedis,
+  cacheWithRedisResult,
 } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -696,13 +695,11 @@ async function grantFreeSeatCredits({
   metronomeCustomerId,
   workspaceId,
   userIds,
-  alreadyAssignedFreeUserIds,
   startingAt,
 }: {
   metronomeCustomerId: string;
   workspaceId: string;
   userIds: string[];
-  alreadyAssignedFreeUserIds: Set<string>;
   startingAt: Date;
 }): Promise<void> {
   if (userIds.length === 0) {
@@ -760,45 +757,12 @@ async function grantFreeSeatCredits({
     },
     { concurrency: 4 }
   );
-
-  // Ensure the per-user credit-balance alerts for newly-free users — they
-  // drive each user's low-balance / capped transitions as they deplete the
-  // credit (the seat-balance alert can't, since this isn't a seat balance).
-  // Scoped to users Metronome doesn't already show as assigned to the free
-  // subscription: checking every current free user on every sync (this runs
-  // on every membership change) doesn't scale, and — like the ex-free-seat
-  // revoke check — a user whose alert setup was missed here is low-stakes and
-  // self-corrects (e.g. the next time their seat type actually changes).
-  // Best-effort: a failure is logged but not retried until the next sync.
-  const newlyFreeUserIds = userIds.filter(
-    (userId) => !alreadyAssignedFreeUserIds.has(userId)
-  );
-  await concurrentExecutor(
-    newlyFreeUserIds,
-    async (userId) => {
-      const alertResult = await upsertPerUserCreditBalanceAlerts({
-        metronomeCustomerId,
-        workspaceId,
-        userId: toFreeMetronomeUserId(userId),
-        allowanceAwu: FREE_SEAT_LIFETIME_AWU_CREDITS,
-      });
-      if (alertResult.isErr()) {
-        logger.error(
-          { workspaceId, userId, error: alertResult.error },
-          "[Metronome] Failed to upsert per-user free credit alerts"
-        );
-      }
-      await heartbeat();
-    },
-    { concurrency: 4 }
-  );
 }
 
 // Revoke free-seat credits for users who once had one but are no longer on a
 // free seat (e.g. upgraded to pro): end the credit early so it stops drawing
-// against their usage, and drop its low/empty alerts. The grant's uniqueness key
-// is untouched so the user can never re-claim the same credit. Best-effort; runs
-// each sync.
+// against their usage. The grant's uniqueness key is untouched so the user can
+// never re-claim the same credit. Best-effort; runs each sync.
 async function revokeFreeSeatCreditsForExFreeUsers({
   metronomeCustomerId,
   workspaceId,
@@ -849,21 +813,6 @@ async function revokeFreeSeatCreditsForExFreeUsers({
             "[Metronome] Failed to revoke ex-free-seat credit"
           );
         }
-      }
-      // Alerts are created with the free-prefixed user id (see
-      // `grantFreeSeatCredits`'s `upsertPerUserCreditBalanceAlerts` call) —
-      // must clear with the same form or `clearMetronomeAlert` targets a
-      // uniqueness key that was never created.
-      const clearResult = await clearPerUserCreditBalanceAlerts({
-        metronomeCustomerId,
-        workspaceId,
-        userId: toFreeMetronomeUserId(userId),
-      });
-      if (clearResult.isErr()) {
-        logger.error(
-          { workspaceId, userId, error: clearResult.error },
-          "[Metronome] Failed to clear ex-free-seat credit alerts"
-        );
       }
       await heartbeat();
     },
@@ -918,14 +867,21 @@ type SeatCreditTransfer = {
  * immediate moves between two recurring-credit seats (e.g. `pro` → `max`).
  *
  * A transfer is needed when a user is still assigned to one allowance seat in
- * Metronome but the DB has already moved them to a different allowance seat,
- * and the old seat credit still has a positive balance. The caller then empties
- * the old credit (by `remaining`) and debits the new one (by `consumed`), so
- * the move carries usage over instead of resetting it — e.g. 2000/8000 used on
- * `pro` becomes 2000/40000 used on `max` (remaining 6000 → 38000).
+ * Metronome but the DB has already moved them to a different allowance seat.
+ * The caller then empties the old credit's unused balance (`remaining`, when
+ * positive) and reconciles the new one to `allocation − consumed`, so the move
+ * carries usage over instead of resetting it — e.g. 2000/8000 used on `pro`
+ * becomes 2000/40000 used on `max` (remaining 6000 → 38000). This holds even
+ * when the origin is fully consumed: 8000/8000 on `pro` becomes 8000/40000 on
+ * `max` (remaining 0 → 32000), NOT a fresh 40000 on top of the 8000 already
+ * spent (which would let the user spend 48000).
  *
- * Keying the trigger on "old credit still has a balance" makes the whole thing
- * idempotent: once the old credit is emptied, a re-run finds nothing to do.
+ * Idempotency does NOT come from the origin balance — it comes from two other
+ * places: once the sync reassigns the user to the new seat,
+ * `metronomeSeatByUser` matches `desiredSeatByUser` and no transfer is
+ * detected; and the destination adjustment reconciles to an absolute target
+ * (`allocation − consumed`), so re-running before the reassignment propagates
+ * converges to the same balance rather than double-debiting.
  *
  * Also covers same-allowance moves between billing frequencies (e.g. `max` →
  * `max_yearly`): they share a credit name but are distinct recurring credits,
@@ -964,9 +920,12 @@ export function computeSeatCreditTransfers({
       continue;
     }
     const remaining = balanceByUser.get(userSId);
-    // No balance left → nothing to carry over (fresh seat, or already
-    // transferred on a prior run).
-    if (remaining === undefined || remaining <= 0) {
+    // No balance reading for this user → we can't derive how much was consumed,
+    // so skip rather than guess. A zero or negative (overdrawn) balance is NOT
+    // skipped: a fully-consumed origin is exactly when the consumed amount must
+    // be carried onto the new seat — otherwise the new seat keeps its full fresh
+    // allowance on top of what was already spent.
+    if (remaining === undefined) {
       continue;
     }
     const allocation = allocationBySeatType.get(oldSeatType);
@@ -1057,7 +1016,10 @@ async function resolveSeatAdjustmentTimestamp({
  * Detect users who moved between two recurring-credit seats (Metronome still
  * has them on the old seat, the DB on the new one) and empty their old seat
  * credit. Returns the transfers whose old credit was successfully emptied, so
- * the caller can credit the new seat once it's been assigned.
+ * the caller can credit the new seat once it's been assigned. Origins with no
+ * unused balance (fully consumed or overdrawn) are returned without an
+ * adjustment — there is nothing to reclaim, but their consumed amount is still
+ * carried onto the new seat.
  *
  * Runs BEFORE seat reconciliation while the old seat is still assigned: a
  * manual ledger entry requires the seat to be active at the adjustment
@@ -1159,6 +1121,14 @@ async function emptyOriginSeatCreditsForTransfers({
   const emptied: SeatCreditTransfer[] = [];
   for (const t of transfers) {
     await heartbeat();
+    // A fully-consumed (or overdrawn) origin has no unused balance to reclaim,
+    // so there is nothing to empty — but the consumed amount must still be
+    // carried onto the new seat. Keep it in the returned transfers and skip the
+    // origin adjustment.
+    if (t.remaining <= 0) {
+      emptied.push(t);
+      continue;
+    }
     const recurringCreditId = recurringCreditIdBySeatType.get(t.oldSeatType);
     if (!recurringCreditId) {
       logger.warn(
@@ -1997,14 +1967,14 @@ export async function syncSeatCount({
     // billed and may not be an entitled SEAT_BASED subscription on the
     // contract, so this runs independently of the seat-subscription loop
     // above. Best-effort and idempotent. Grant deduped by the grant's uniqueness
-    // key; revoke archives the credit + drops alerts for users who left the free
-    // seat (the uniqueness key stays claimed, so they can't re-claim).
+    // key; revoke archives the credit for users who left the free seat (the
+    // uniqueness key stays claimed, so they can't re-claim).
     //
     // Skipped entirely on a legacy contract: `free` is a CP/AWU-era seat type
     // that a legacy contract never entitles (see `canAssignFreeSeat`), and the
     // invariant that no membership on a legacy contract ever has
-    // `seatType === "free"` holds — so there is nothing to grant, alert, or
-    // revoke here, and no need to even compute `currentFreeUserIds`.
+    // `seatType === "free"` holds — so there is nothing to grant or revoke here,
+    // and no need to even compute `currentFreeUserIds`.
     const freeSeatStartedAt = Date.now();
     let currentFreeUserIds = new Set<string>();
     if (legacy) {
@@ -2026,26 +1996,22 @@ export async function syncSeatCount({
 
       // Metronome's actual "free" subscription assignment (already fetched
       // above, alongside every other subscription's "now" state) — used to
-      // scope both the alert-upsert step below and the revoke check further
-      // down to only the users who actually changed, instead of reprocessing
-      // everyone free on every single sync. Undefined when the contract
-      // doesn't have "free" entitled, or this is the pending-contract
-      // pre-provision pass (no live state to compare against yet).
+      // scope the revoke check further down to only the users who actually
+      // changed, instead of reprocessing everyone free on every single sync.
+      // Undefined when the contract doesn't have "free" entitled, or this is
+      // the pending-contract pre-provision pass (no live state to compare
+      // against yet).
       const freeSubscriptionId = seatSubscriptions.find(
         ({ seatType }) => seatType === "free"
       )?.sub.id;
       const freeSeatState = freeSubscriptionId
         ? seatStateBySubscriptionId.get(freeSubscriptionId)
         : undefined;
-      const alreadyAssignedFreeUserIds = new Set(
-        freeSeatState?.assignedSeatIds ?? []
-      );
 
       await grantFreeSeatCredits({
         metronomeCustomerId,
         workspaceId: workspace.sId,
         userIds: [...currentFreeUserIds],
-        alreadyAssignedFreeUserIds,
         startingAt: new Date(baseMs),
       });
 
@@ -2296,9 +2262,9 @@ async function reconcileSeatBasedSegment({
 export type SeatData = {
   awuAllocation: number;
   billingFrequency: BillingFrequency | null;
-  // ISO timestamp of the next credit reset. Null when no current billing period
-  // is available. Equals billing_periods.current.ending_before since credits
-  // are now anchored to the contract start date (same as the billing period).
+  // ISO timestamp of the next per-seat AWU credit renewal (recurs MONTHLY even
+  // on annually-billed seats — see `getNextSeatCreditRenewalDate`). Null when
+  // the seat carries no recurring credit or no recurrence anchor is available.
   nextCreditResetAt: string | null;
 };
 
@@ -2378,8 +2344,17 @@ export async function buildSeatDataByUserId({
       const assignedSeatIds = seatStateResult.value.assignedSeatIds;
 
       const freq = sub.subscription_rate.billing_frequency;
+      // Per-seat AWU credits recur MONTHLY even on annually-billed seats, so the
+      // reset date must follow the credit's recurrence grid — not the billing
+      // period's `ending_before`, which on an annual seat points up to a year
+      // out (see `getNextSeatCreditRenewalDate`).
       const nextCreditResetAt =
-        sub.billing_periods?.current?.ending_before ?? null;
+        getNextSeatCreditRenewalDate({
+          contract,
+          seatType,
+          productSeatTypes,
+          now: new Date(),
+        })?.toISOString() ?? null;
       return new Ok({
         seatIds: assignedSeatIds,
         awuAllocation,
@@ -2410,7 +2385,7 @@ export async function buildSeatDataByUserId({
   return new Ok(seatDataByUserId);
 }
 
-const SEAT_DATA_CACHE_TTL_MS = 60 * 1000;
+const SEAT_DATA_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const seatDataCacheResolver = ({
   metronomeCustomerId,
@@ -2423,13 +2398,12 @@ const seatDataCacheResolver = ({
 async function fetchSeatDataRecord(args: {
   metronomeCustomerId: string;
   contractId: string;
-}): Promise<Record<string, SeatData>> {
+}): Promise<Result<Record<string, SeatData>, Error>> {
   const seatDataResult = await buildSeatDataByUserId(args);
-  // Throw at the cache boundary so a transient fetch failure is not cached.
   if (seatDataResult.isErr()) {
-    throw seatDataResult.error;
+    return new Err(seatDataResult.error);
   }
-  return Object.fromEntries(seatDataResult.value);
+  return new Ok(Object.fromEntries(seatDataResult.value));
 }
 
 // At most one Metronome fan-out in flight per contract fleet-wide: concurrent
@@ -2437,10 +2411,11 @@ async function fetchSeatDataRecord(args: {
 // their own contract + per-subscription seat reads. Best-effort past the
 // distributed lock's 5s TTL: a fan-out slower than that lets a second fetcher
 // start, so the bound is "a couple in flight", never a storm.
-export const getCachedSeatDataByUserId = cacheWithRedis(
+export const getCachedSeatDataByUserId = cacheWithRedisResult(
   fetchSeatDataRecord,
   seatDataCacheResolver,
   {
+    cacheId: fetchSeatDataRecord.name,
     ttlMs: SEAT_DATA_CACHE_TTL_MS,
     useDistributedLock: true,
     skipIfLocked: true,
@@ -2451,4 +2426,43 @@ const invalidateCachedSeatDataByUserId = bestEffortInvalidateCacheWithRedis(
   fetchSeatDataRecord,
   seatDataCacheResolver,
   "members-usage seat data"
+);
+
+const SEAT_BALANCES_CACHE_TTL_MS = 10 * 60 * 1000;
+
+const seatBalancesCacheResolver = ({
+  metronomeCustomerId,
+  metronomeContractId,
+  seatIds,
+}: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  seatIds: string[];
+}) =>
+  `${metronomeCustomerId}-${metronomeContractId}-${[...seatIds].sort().join(",")}`;
+
+async function fetchSeatBalances(args: {
+  metronomeCustomerId: string;
+  metronomeContractId: string;
+  seatIds: string[];
+}): Promise<Result<MetronomeSeatBalance[], Error>> {
+  const balancesResult = await listMetronomeSeatBalances(args);
+  if (balancesResult.isErr()) {
+    return new Err(balancesResult.error);
+  }
+  return new Ok(balancesResult.value);
+}
+
+// Same fleet-wide single-flight rationale as `getCachedSeatDataByUserId`: concurrent
+// misses on other processes get null (callers degrade) instead of each firing their
+// own Metronome seat-balances fan-out for the same page of members.
+export const getCachedSeatBalances = cacheWithRedisResult(
+  fetchSeatBalances,
+  seatBalancesCacheResolver,
+  {
+    cacheId: fetchSeatBalances.name,
+    ttlMs: SEAT_BALANCES_CACHE_TTL_MS,
+    useDistributedLock: true,
+    skipIfLocked: true,
+  }
 );

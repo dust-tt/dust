@@ -2,6 +2,7 @@ import type { ImportFormValues } from "@app/components/skills/import/formSchema"
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { ImportSkillsResponseBody } from "@app/lib/api/skills/detection/github/import_skills";
+import { useAppRouter } from "@app/lib/platform";
 import type {
   DetectedSkillSummary,
   DetectSkillsResponseBody,
@@ -46,6 +47,8 @@ export function useSkill(options: {
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
+  // Also refreshes the other variants of the skill fetch (with/without relations).
+  mutateSkillRegardlessOfQueryParams: () => void;
 };
 export function useSkill(options: {
   workspaceId: string;
@@ -57,6 +60,8 @@ export function useSkill(options: {
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
+  // Also refreshes the other variants of the skill fetch (with/without relations).
+  mutateSkillRegardlessOfQueryParams: () => void;
 };
 export function useSkill({
   workspaceId,
@@ -73,6 +78,8 @@ export function useSkill({
   isSkillLoading: boolean;
   isSkillError: boolean;
   mutateSkill: () => void;
+  // Also refreshes the other variants of the skill fetch (with/without relations).
+  mutateSkillRegardlessOfQueryParams: () => void;
 } {
   const { fetcher } = useFetcher();
   const skillFetcher: Fetcher<
@@ -83,17 +90,15 @@ export function useSkill({
     ? `/api/w/${workspaceId}/skills/${skillId}${withRelations ? "?withRelations=true" : ""}`
     : null;
 
-  const { data, error, isLoading, mutate } = useSWRWithDefaults(
-    url,
-    skillFetcher,
-    { disabled }
-  );
+  const { data, error, isLoading, mutate, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(url, skillFetcher, { disabled });
 
   return {
     skill: data?.skill ?? null,
     isSkillLoading: isLoading,
     isSkillError: !!error,
     mutateSkill: mutate,
+    mutateSkillRegardlessOfQueryParams: mutateRegardlessOfQueryParams,
   };
 }
 
@@ -165,7 +170,7 @@ export function useSkillsWithRelations({
   status,
   onlyCustom,
   bypassEditorVisibility,
-  withMessageCount,
+  withUsage,
 }: {
   owner: LightWorkspaceType;
   disabled?: boolean;
@@ -174,7 +179,7 @@ export function useSkillsWithRelations({
   // Admin-only: bypass the editor-visibility rule and also list unpublished
   // (editors-only) skills the caller does not edit.
   bypassEditorVisibility?: boolean;
-  withMessageCount?: boolean;
+  withUsage?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const skillsFetcher: Fetcher<GetSkillsWithRelationsResponseBody> = fetcher;
@@ -189,8 +194,8 @@ export function useSkillsWithRelations({
   if (bypassEditorVisibility) {
     queryParams.set("bypassEditorVisibility", "true");
   }
-  if (withMessageCount) {
-    queryParams.set("withMessageCount", "true");
+  if (withUsage) {
+    queryParams.set("withUsage", "true");
   }
 
   const { data, isLoading, mutate, mutateRegardlessOfQueryParams } =
@@ -410,6 +415,7 @@ export function useUpdateSkillFavorite({
 }) {
   const { fetcher } = useFetcher();
   const sendNotification = useSendNotification();
+  const router = useAppRouter();
 
   const { mutateSkills: mutateActiveSkills } = useSkills({
     owner,
@@ -443,7 +449,15 @@ export function useUpdateSkillFavorite({
             description: skill.name,
             action: {
               label: "View",
-              href: `${getManageSkillsRoute(owner.sId)}#?selectedTab=favorites`,
+              onClick: () => {
+                void router
+                  .push(
+                    `${getManageSkillsRoute(owner.sId)}#?selectedTab=favorites`
+                  )
+                  .then(() =>
+                    window.dispatchEvent(new HashChangeEvent("hashchange"))
+                  );
+              },
             },
           });
         }
@@ -464,6 +478,7 @@ export function useUpdateSkillFavorite({
       mutateActiveSkills,
       mutateActiveSkillsWithRelations,
       owner.sId,
+      router,
       sendNotification,
     ]
   );

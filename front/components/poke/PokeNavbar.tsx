@@ -1,21 +1,21 @@
+import { PokeCellDropdown } from "@app/components/poke/PokeCellDropdown";
 import {
   PokeFavoriteButton,
   PokeFavoritesCommandGroups,
 } from "@app/components/poke/PokeFavorites";
-import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
+import { PokeThemeSelector } from "@app/components/poke/PokeThemeSelector";
 import {
   PokeCommandDialog,
   PokeCommandInput,
   PokeCommandItem,
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
-import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
-import { usePokeRegion } from "@app/lib/swr/poke";
+import { useCellContext } from "@app/lib/auth/CellContext";
+import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import { classNames } from "@app/lib/utils";
-import { usePokeSearchAllRegions } from "@app/poke/swr/search";
+import { usePokeSearchAllCells } from "@app/poke/swr/search";
+import type { CellInfo } from "@app/types/cell";
 import type { PokeItemBase } from "@app/types/poke";
-import type { RegionType } from "@app/types/region";
 import { isDevelopment } from "@app/types/shared/env";
 import {
   Button,
@@ -30,8 +30,8 @@ import { useCallback, useEffect, useState } from "react";
 const MIN_SEARCH_CHARACTERS = 2;
 
 interface PokeNavbarProps {
-  regionUrls?: Record<RegionType, string>;
-  showRegionPicker?: boolean;
+  cells?: CellInfo[];
+  showCellPicker?: boolean;
 }
 
 function getPokeItemChipColor(
@@ -60,7 +60,8 @@ function getPokeItemChipColor(
   }
 }
 
-function PokeNavbar({ regionUrls, showRegionPicker = false }: PokeNavbarProps) {
+function PokeNavbar({ showCellPicker = false }: PokeNavbarProps) {
+  const { cells } = useCellContext();
   return (
     <nav
       className={classNames(
@@ -77,6 +78,11 @@ function PokeNavbar({ regionUrls, showRegionPicker = false }: PokeNavbarProps) {
           <Button href="/poke/coupons" variant="ghost" label="Coupons" />
           <Button href="/poke/templates" variant="ghost" label="Templates" />
           <Button href="/poke/plugins" variant="ghost" label="Plugins" />
+          <Button
+            href="/poke/feature-flags"
+            variant="ghost"
+            label="Feature Flags"
+          />
           <Button href="/poke/kill" variant="ghost" label="Kill Switches" />
           <Button href="/poke/cache" variant="ghost" label="Cache" />
           <Button href="/poke/pokefy" variant="ghost" label="Pokefy URL" />
@@ -93,8 +99,9 @@ function PokeNavbar({ regionUrls, showRegionPicker = false }: PokeNavbarProps) {
         </div>
       </div>
       <div className="items-right flex items-center gap-4">
+        <PokeThemeSelector />
         <PokeFavoriteButton />
-        {showRegionPicker && <PokeRegionDropdown regionUrls={regionUrls} />}
+        {showCellPicker && <PokeCellDropdown cells={cells} />}
         <PokeSearchCommand />
       </div>
     </nav>
@@ -107,25 +114,23 @@ function PokeSearchCommand() {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { regionInfo, setRegionInfo } = useRegionContext();
-  const { regionData } = usePokeRegion();
-  const regionUrls = regionData?.regionUrls ?? null;
+  const { cells, cellInfo, setCellInfo } = useCellContext();
 
-  const { isError, isLoading, results } = usePokeSearchAllRegions({
+  const { isError, isLoading, results } = usePokeSearchAllCells({
     disabled: searchTerm.length < MIN_SEARCH_CHARACTERS,
     search: searchTerm,
-    regionUrls,
+    cells,
   });
 
   const handleItemClick = useCallback(
     (item: PokeItemBase) => {
-      // Switch region if the item is from a different region.
-      if (item.region && item.region !== regionInfo.name && regionUrls) {
-        setRegionInfo({ name: item.region, url: regionUrls[item.region] });
+      const targetCell = cells?.find((cell) => cell.name === item.cell);
+      if (targetCell && targetCell.name !== cellInfo.name) {
+        setCellInfo(targetCell);
       }
       setOpen(false);
     },
-    [regionInfo, setRegionInfo, regionUrls]
+    [cellInfo, setCellInfo, cells]
   );
 
   return (
@@ -138,7 +143,7 @@ function PokeSearchCommand() {
       isLoading={isLoading}
       isError={isError}
       onItemClick={handleItemClick}
-      showRegion
+      showCell
     />
   );
 }
@@ -152,7 +157,7 @@ interface PokeSearchCommandUIProps {
   isLoading: boolean;
   isError: boolean;
   onItemClick: (item: PokeItemBase) => void;
-  showRegion: boolean;
+  showCell: boolean;
 }
 
 /**
@@ -167,7 +172,7 @@ function PokeSearchCommandUI({
   isLoading,
   isError,
   onItemClick,
-  showRegion,
+  showCell,
 }: PokeSearchCommandUIProps) {
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -269,9 +274,12 @@ function PokeSearchCommandUI({
                     <span className="font-mono text-xs text-muted-foreground">
                       (id: {item.id})
                     </span>
-                    {showRegion && item.region && (
-                      <Chip size="xs" color={getRegionChipColor(item.region)}>
-                        {getRegionDisplay(item.region)}
+                    {showCell && item.region && item.cell && (
+                      <Chip size="xs" color={getCellChipColor(item.region)}>
+                        {getCellDisplay({
+                          name: item.cell,
+                          region: item.region,
+                        })}
                       </Chip>
                     )}
                   </div>
@@ -280,7 +288,7 @@ function PokeSearchCommandUI({
               </PokeCommandItem>
             );
 
-            const key = `${item.region ?? "default"}-${item.id}`;
+            const key = `${item.cell ?? item.region ?? "default"}-${item.id}`;
 
             return item.link ? (
               <div key={key} onClick={() => onItemClick(item)}>

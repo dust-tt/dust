@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { fn } from "storybook/test";
 
 import { CHIP_COLORS, CHIP_SIZES } from "@sparkle/components/Chip";
 
@@ -67,73 +68,94 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Basic example with controls
-export const Basic: Story = {
+/**
+ * The resting chip: a short, read-only label for a status or category.
+ *
+ * @summary Resting read-only chip.
+ */
+export const Default: Story = {
   args: {
-    label: "Example Chip",
+    label: "Marketing",
+    size: "sm",
+    color: "primary",
+    isBusy: false,
+  },
+};
+
+/**
+ * `isBusy` adds a breathing animation for transient processing states, such
+ * as an agent that is thinking or searching.
+ *
+ * @summary Breathing busy animation.
+ */
+export const Busy: Story = {
+  args: {
+    label: "Thinking, Searching",
     size: "sm",
     color: "primary",
     isBusy: true,
-    onRemove: undefined,
   },
 };
 
-export const MiniChip: Story = {
+/**
+ * A leading `icon` reinforces what the chip represents (here, a group of
+ * users).
+ *
+ * @summary Chip with a leading icon.
+ */
+export const WithIcon: Story = {
   args: {
-    label: "label",
-    size: "mini",
+    label: "Team",
+    size: "sm",
     color: "primary",
-    isBusy: false,
-    onRemove: undefined,
+    icon: Users01,
   },
 };
 
-export const ThinkingChip: Story = {
-  render: () => (
-    <Chip
-      size="sm"
-      label="Thinking, Searching"
-      isBusy
-      onClick={() => console.log()}
-    />
-  ),
+/**
+ * `onRemove` adds a dismiss affordance — use it when the chip represents
+ * something the user can clear, like an active filter.
+ *
+ * @summary Dismissible chip with a remove button.
+ */
+export const Removable: Story = {
+  args: {
+    label: "Active filter",
+    size: "sm",
+    color: "info",
+    onRemove: fn(),
+  },
 };
 
-export const RemovableChip: Story = {
+/**
+ * Every chip size side by side, from `mini` (dense inline metadata) up.
+ *
+ * @summary All sizes side by side.
+ */
+export const Sizes: Story = {
   render: () => (
-    <div className="space-x-2">
-      <Chip
-        size="mini"
-        color="info"
-        label="Remove me"
-        href="https://notion.so"
-        onRemove={() => alert("Removed")}
-      />
-      <Chip
-        size="xs"
-        color="info"
-        label="Remove me"
-        onRemove={() => alert("Removed")}
-      />
-      <Chip
-        size="sm"
-        color="info"
-        label="Remove me"
-        onRemove={() => alert("Removed")}
-      />
+    <div className="flex items-center gap-2">
+      {CHIP_SIZES.map((size) => (
+        <Chip key={size} size={size} color="primary" label={size} />
+      ))}
     </div>
   ),
 };
 
+/**
+ * Visual reference: every color, plain and with click/remove affordances. For
+ * design review — not a usage example.
+ *
+ * @summary Visual reference of all colors.
+ */
 export const AllColors: Story = {
+  tags: ["!manifest"],
   render: () => (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
-        <Chip size="sm" color="primary" label="Primary" />
-        <Chip size="sm" color="success" label="Success" />
-        <Chip size="sm" color="warning" label="Warning" />
-        <Chip size="sm" color="info" label="Info" />
-        <Chip size="sm" color="highlight" label="Highlight" />
+        {CHIP_COLORS.map((color) => (
+          <Chip key={color} size="sm" color={color} label={color} />
+        ))}
       </div>
       <div className="flex flex-wrap gap-2">
         {CHIP_COLORS.map((color) => (
@@ -142,8 +164,8 @@ export const AllColors: Story = {
             size="sm"
             color={color}
             label={color}
-            onClick={() => alert("Clicked")}
-            onRemove={() => alert("Removed")}
+            onClick={fn()}
+            onRemove={fn()}
           />
         ))}
       </div>

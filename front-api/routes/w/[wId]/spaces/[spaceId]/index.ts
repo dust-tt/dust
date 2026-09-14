@@ -10,13 +10,14 @@ import {
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   GetSpaceResponseBody,
   PatchSpaceResponseBody,
 } from "@app/types/api/spaces";
 import { PatchSpaceRequestBodySchema } from "@app/types/api/spaces";
-import { normalizeTabsOrder, sortPodFrameTabs } from "@app/types/pod_frame_tab";
+import { normalizeTabsOrder, sortPodFileTabs } from "@app/types/pod_file_tab";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { SpaceUserType } from "@app/types/user";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -38,7 +39,6 @@ import members from "./members";
 import projectContext from "./project_context";
 import projectMetadata from "./project_metadata";
 import projectNotificationPreferences from "./project_notification_preferences";
-import projectRestrictionImpact from "./project_restriction_impact";
 import projectTasks from "./project_tasks";
 import sandbox from "./sandbox";
 import searchConversations from "./search_conversations";
@@ -95,6 +95,12 @@ const app = workspaceApp();
  *                     - $ref: '#/components/schemas/PrivateSpace'
  *                     - type: object
  *                       properties:
+ *                         groupIds:
+ *                           type: array
+ *                           items:
+ *                             type: string
+ *                         isRestricted:
+ *                           type: boolean
  *                         categories:
  *                           type: object
  *                           additionalProperties:
@@ -123,6 +129,21 @@ const app = workspaceApp();
  *                           type: array
  *                           items:
  *                             type: object
+ *                         groups:
+ *                           type: array
+ *                           description: The groups given access to the space, with the role their grant confers.
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               sId:
+ *                                 type: string
+ *                               name:
+ *                                 type: string
+ *                               kind:
+ *                                 type: string
+ *                               role:
+ *                                 type: string
+ *                                 enum: [member, editor]
  *                         description:
  *                           type: string
  *                           nullable: true
@@ -157,9 +178,6 @@ const app = workspaceApp();
  *                           description: Interleaved system tab ids and frame paths before Settings.
  *                           items:
  *                             type: string
- *                         isAdminControlled:
- *                           type: boolean
- *                           description: Whether workspace admins control membership and connected data for this Pod.
  *       401:
  *         description: Unauthorized
  *   patch:
@@ -267,7 +285,7 @@ app.get(
     const shouldIncludeAllMembers =
       ctx.req.query("includeAllMembers") === "true";
 
-    const { groupsToProcess, allGroupMemberships } =
+    const { groupsToProcess, allGroupMemberships, editorGroupModelId } =
       await space.fetchManualGroupsMemberships(auth, {
         shouldIncludeAllMembers,
       });
@@ -293,7 +311,7 @@ app.get(
             const groupMemberships = membershipMap.get(group.id);
             return groupMembers.map((member) => ({
               ...member.toJSON(),
-              isEditor: group.kind === "space_editors",
+              isEditor: group.id === editorGroupModelId,
               joinedAt: groupMemberships?.get(member.id),
             }));
           },
@@ -303,30 +321,40 @@ app.get(
       "sId"
     );
 
+    // The groups given access to the space, alongside its individual members: a space's members
+    // are the two put together.
+    const groups = await space.toGroupAccessesJSON(auth);
+
     const meta = space.isProject()
       ? await ProjectMetadataResource.fetchBySpace(auth, space)
       : undefined;
 
+    const [enrichedSpace] = await SpaceResource.enrichSpacesWithAccess(auth, [
+      space,
+    ]);
+
     return ctx.json({
       space: {
-        ...space.toJSON(),
+        ...enrichedSpace,
         categories,
-        canWrite: space.canWrite(auth),
-        canRead: space.canRead(auth),
+        canWrite: auth.can("write", space),
+        canRead: auth.can("read", space),
         isMember: space.isMember(auth),
-        isEditor: space.canAdministrate(auth),
+        isEditor: auth.can("admin", space),
         members: currentMembers,
+        groups,
         description: meta?.description ?? null,
         archivedAt: meta?.archivedAt?.getTime() ?? null,
-        todoGenerationEnabled: meta?.todoGenerationEnabled ?? false,
-        lastTodoAnalysisAt: meta?.lastTodoAnalysisAt?.getTime() ?? null,
+        // Automated task generation removed; keep fields hardcoded for API compat.
+        todoGenerationEnabled: false,
+        lastTodoAnalysisAt: null,
         pinnedFramePath: meta?.pinnedFramePath ?? null,
-        frameTabs: sortPodFrameTabs(meta?.frameTabs ?? []),
+        frameTabs: sortPodFileTabs(meta?.frameTabs ?? []),
         tabsOrder: normalizeTabsOrder(
           meta?.tabsOrder ?? [],
           (meta?.frameTabs ?? []).map((tab) => tab.path)
         ),
-        isAdminControlled: meta?.isAdminControlled ?? false,
+        isAdminControlled: false,
       },
     });
   }
@@ -340,7 +368,7 @@ app.patch(
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
-    if (!space.canAdministrate(auth)) {
+    if (!auth.can("admin", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -409,7 +437,16 @@ app.patch(
     }
 
     if (name) {
-      await space.updateName(auth, name);
+      const nameRes = await space.updateName(auth, name);
+      if (nameRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: nameRes.error.message,
+          },
+        });
+      }
     }
     return ctx.json({ space: space.toJSON() });
   }
@@ -422,7 +459,7 @@ app.delete(
     const auth = ctx.get("auth");
     const space = ctx.get("space");
 
-    if (!space.canAdministrate(auth)) {
+    if (!auth.can("admin", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -489,7 +526,6 @@ app.route("/members", members);
 app.route("/project_context", projectContext);
 app.route("/project_metadata", projectMetadata);
 app.route("/project_notification_preferences", projectNotificationPreferences);
-app.route("/project_restriction_impact", projectRestrictionImpact);
 app.route("/project_tasks", projectTasks);
 app.route("/sandbox", sandbox);
 app.route("/search_conversations", searchConversations);

@@ -146,7 +146,6 @@ const MultiPageDialogDemo = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleSave = () => {
-    alert("Changes saved!");
     setIsOpen(false);
   };
 
@@ -179,20 +178,28 @@ const MultiPageDialogDemo = () => {
   );
 };
 
+/**
+ * Baseline setup: three static pages (profile / documents / settings) with the
+ * built-in header navigation, a Cancel `leftButton`, and a Save `rightButton`.
+ * The parent controls `currentPageId` and `open` state.
+ * @summary Basic three-page dialog with footer buttons.
+ */
 export const Default: Story = {
   render: () => <MultiPageDialogDemo />,
 };
 
-// Simple two-button example (like your screenshot)
+/**
+ * A single-page dialog used as a picker: header navigation is hidden
+ * (`showHeaderNavigation={false}`) and the primary button's label and disabled
+ * state react to the current selection.
+ * @summary Single-page tool picker with selection-aware confirm button.
+ */
 export const SimpleToolDialog: Story = {
   render: () => {
     const [isOpen, setIsOpen] = useState(false);
     const [selectedTools, setSelectedTools] = useState<string[]>([]);
 
     const handleAddTools = () => {
-      alert(
-        `Adding ${selectedTools.length} tools: ${selectedTools.join(", ")}`
-      );
       setIsOpen(false);
     };
 
@@ -325,7 +332,14 @@ export const SimpleToolDialog: Story = {
   },
 };
 
-export const InteractiveContent: Story = {
+/**
+ * A three-step wizard where form state gates progression: unlike `Default`'s
+ * static pages, each page writes into shared `formData` and the Next button is
+ * disabled until the current step is valid. The footer swaps between
+ * Previous / Next / Complete depending on the step.
+ * @summary Wizard with per-page form state and gated Next button.
+ */
+export const WizardWithFormState: Story = {
   render: () => {
     const [currentPageId, setCurrentPageId] = useState("step1");
     const [isOpen, setIsOpen] = useState(false);
@@ -337,7 +351,6 @@ export const InteractiveContent: Story = {
     });
 
     const handleSave = () => {
-      alert(`Setup completed! Data: ${JSON.stringify(formData, null, 2)}`);
       setIsOpen(false);
     };
 
@@ -546,6 +559,13 @@ export const InteractiveContent: Story = {
   },
 };
 
+/**
+ * Two-step configuration flow with per-step validation rules (a selection is
+ * required on step 1, a description on step 2) and custom `footerContent`
+ * showing live progress next to the buttons, separated by
+ * `addFooterSeparator`.
+ * @summary Conditional navigation with custom footer content.
+ */
 export const WithConditionalNavigation: Story = {
   render: () => {
     const [currentPageId, setCurrentPageId] = useState("data-selection");
@@ -554,9 +574,6 @@ export const WithConditionalNavigation: Story = {
     const [description, setDescription] = useState("");
 
     const handleSave = () => {
-      alert(
-        `Configuration saved! Selected: ${selectedItems.join(", ")}, Description: ${description}`
-      );
       setIsOpen(false);
     };
 
@@ -730,6 +747,12 @@ export const WithConditionalNavigation: Story = {
   },
 };
 
+/**
+ * A page with tall content demonstrates that the dialog keeps a fixed height
+ * (`height="xl"`) and scrolls internally, while the page's `fixedContent`
+ * (here a SearchInput) stays pinned above the scrolling area.
+ * @summary Scrollable page body with pinned fixedContent.
+ */
 export const ScrollableContent: Story = {
   render: () => {
     const [currentPageId, setCurrentPageId] = useState("long-form");
@@ -737,7 +760,6 @@ export const ScrollableContent: Story = {
     const [searchTerm, setSearchTerm] = useState("");
 
     const handleSave = () => {
-      alert("Long form submitted!");
       setIsOpen(false);
     };
 
@@ -909,6 +931,12 @@ export const ScrollableContent: Story = {
   },
 };
 
+/**
+ * The tool-approval pattern: `isAlertDialog` with `hideCloseButton` forces an
+ * explicit Allow / Decline choice for each queued validation request, with
+ * async loading state on the buttons and paging through pending requests.
+ * @summary Alert-dialog mode for sequential tool approvals.
+ */
 export const ActionValidation: Story = {
   render: () => {
     const [isOpen, setIsOpen] = useState(false);

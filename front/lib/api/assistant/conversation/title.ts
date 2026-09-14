@@ -11,7 +11,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
-  getAgentLoopData,
+  getAgentLoopRuntimeData,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type {
@@ -22,7 +22,7 @@ import type {
 import { ConversationError } from "@app/types/assistant/conversation";
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
-import { GEMINI_3_5_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
+import { GEMINI_3_8_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { GPT_5_1_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
@@ -66,7 +66,10 @@ export async function ensureConversationTitleFromAgentLoop(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<string | null> {
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  const runAgentDataRes = await getAgentLoopRuntimeData(
+    authType,
+    agentLoopArgs
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
       logger.info(
@@ -130,7 +133,7 @@ export async function ensureConversationTitle(
     return null;
   }
 
-  const title = (conversation.triggerId ? "⚡" : "") + titleRes.value;
+  const title = (conversation.triggerId ? "⚡ " : "") + titleRes.value;
   const updateRes = await updateConversationTitle(auth, {
     conversationId: conversation.sId,
     title,
@@ -265,7 +268,7 @@ function getFastModelConfig(
     return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
   }
   if (providers.has("google_ai_studio")) {
-    return GEMINI_3_5_FLASH_MODEL_CONFIG;
+    return GEMINI_3_8_FLASH_MODEL_CONFIG;
   }
 
   return getSmallWhitelistedModel(auth);

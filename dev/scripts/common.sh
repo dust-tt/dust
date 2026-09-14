@@ -1,0 +1,339 @@
+#!/usr/bin/env bash
+# Shared helpers for the Dust in-container / cloud-agent dev environment.
+
+DUST_REPO_ROOT="${DUST_REPO_ROOT:-$(
+  cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd
+)}"
+export DUST_REPO_ROOT
+
+DUST_INFRA_LOG_DIR="${DUST_INFRA_LOG_DIR:-/tmp/dust-infra}"
+mkdir -p "$DUST_INFRA_LOG_DIR"
+
+log() {
+  echo "[${DUST_DEV_SCRIPT_NAME:-dust-dev}] $*"
+}
+
+install_mprocs_config() {
+  if [ -f "${DUST_REPO_ROOT}/dev/config/mprocs.yaml" ]; then
+    mkdir -p "${HOME}/.config/mprocs"
+    cp "${DUST_REPO_ROOT}/dev/config/mprocs.yaml" "${HOME}/.config/mprocs/mprocs.yaml"
+  fi
+}
+
+# Chrome in Cursor Cloud is launched by computer-use, not by our Dockerfile.
+# Managed policies are the supported Linux way to disable the password manager
+# and history-based omnibox suggestions (see AGENTS.md).
+install_chrome_policies() {
+  local src="${DUST_REPO_ROOT}/dev/config/chrome-policies.json"
+  local dest_dir="/etc/opt/chrome/policies/managed"
+  if [ ! -f "$src" ]; then
+    return 0
+  fi
+  mkdir -p "$dest_dir"
+  cp "$src" "${dest_dir}/dust-cloud.json"
+  chmod 644 "${dest_dir}/dust-cloud.json"
+}
+
+ensure_node_path() {
+  if command -v node >/dev/null 2>&1; then
+    return 0
+  fi
+  log "node not found on PATH"
+  return 1
+}
+
+resolve_temporal_bin() {
+  if command -v temporal >/dev/null 2>&1; then
+    command -v temporal
+    return 0
+  fi
+  for candidate in /usr/local/bin/temporal /root/.temporalio/bin/temporal; do
+    if [ -x "$candidate" ]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+  log "temporal CLI not found (rebuild dev/Dockerfile or install to /usr/local/bin)"
+  return 1
+}
+
+# Migrations import @dust-tt/client (main: sdks/js/dist/index.js). npm install is owned by install.sh.
+ensure_client_built() {
+  ensure_node_path
+  cd "$DUST_REPO_ROOT"
+
+  if [ ! -f node_modules/@dust-tt/client/package.json ]; then
+    log "node_modules missing; run: bash dev/scripts/install.sh"
+    return 1
+  fi
+
+  if [ ! -f sdks/js/dist/index.js ]; then
+    log "Building @dust-tt/client (sdks/js)..."
+    npm -w @dust-tt/client run build
+  fi
+}
+
+wait_for_elasticsearch() {
+  local host="${ELASTICSEARCH_HOST:-localhost}"
+  local port="${ELASTICSEARCH_PORT:-9200}"
+  local url="${ELASTICSEARCH_URL:-http://${host}:${port}}"
+  local max_attempts="${DUST_ES_WAIT_SECONDS:-240}"
+  local attempt=0
+
+  log "Waiting for Elasticsearch at ${url} (up to ${max_attempts}s)..."
+  until curl -sf "$url" >/dev/null 2>&1; do
+    attempt=$((attempt + 1))
+    if [ "$attempt" -gt "$max_attempts" ]; then
+      log "Elasticsearch did not become ready in time"
+      return 1
+    fi
+    if [ "$attempt" -eq 1 ] || [ $((attempt % 15)) -eq 0 ]; then
+      log "Waiting for Elasticsearch at ${url} (${attempt}s)..."
+    fi
+    sleep 1
+  done
+  log "Elasticsearch is ready"
+}
+
+elasticsearch_create_index_bin() {
+  echo "${DUST_REPO_ROOT}/core/target/debug/elasticsearch_create_index"
+}
+
+ensure_elasticsearch_create_index_built() {
+  local bin
+  bin="$(elasticsearch_create_index_bin)"
+  if [ -x "$bin" ]; then
+    return 0
+  fi
+  if ! command -v cargo >/dev/null 2>&1; then
+    log "cargo not found on PATH; rebuild dev/Dockerfile or source dev/scripts/env.sh"
+    return 1
+  fi
+  log "Building elasticsearch_create_index (core)..."
+  (
+    cd "${DUST_REPO_ROOT}/core"
+    cargo build --bin elasticsearch_create_index
+  )
+  if [ ! -x "$bin" ]; then
+    log "elasticsearch_create_index binary missing after cargo build"
+    return 1
+  fi
+}
+
+qdrant_create_collection_bin() {
+  echo "${DUST_REPO_ROOT}/core/target/debug/qdrant_create_collection"
+}
+
+ensure_qdrant_create_collection_built() {
+  local bin
+  bin="$(qdrant_create_collection_bin)"
+  if [ -x "$bin" ]; then
+    return 0
+  fi
+  if ! command -v cargo >/dev/null 2>&1; then
+    log "cargo not found on PATH; rebuild dev/Dockerfile or source dev/scripts/env.sh"
+    return 1
+  fi
+  log "Building qdrant_create_collection (core)..."
+  (
+    cd "${DUST_REPO_ROOT}/core"
+    cargo build --bin qdrant_create_collection
+  )
+  if [ ! -x "$bin" ]; then
+    log "qdrant_create_collection binary missing after cargo build"
+    return 1
+  fi
+}
+
+# GCP_SERVICE_ACCOUNT_B64 in 1Password is base64-encoded JSON (shell-safe). Decode to the
+# path Google clients read via SERVICE_ACCOUNT.
+write_gcp_service_account_file() {
+  if [ -z "${GCP_SERVICE_ACCOUNT_B64:-}" ]; then
+    return 0
+  fi
+  local path="${SERVICE_ACCOUNT:-/tmp/dust-dev-sa.json}"
+  if ! printf '%s' "$GCP_SERVICE_ACCOUNT_B64" | base64 -d >"$path" 2>/dev/null; then
+    log "GCP_SERVICE_ACCOUNT_B64 is not valid base64 (expected base64-encoded service account JSON)"
+    rm -f "$path"
+    return 1
+  fi
+  chmod 600 "$path"
+  export SERVICE_ACCOUNT="$path"
+}
+
+# Materialized 1Password env for every shell (see BASH_ENV / dev/bashrc).
+DUST_OP_ENV_FILE="${DUST_OP_ENV_FILE:-/tmp/dust-op-environment.env}"
+DUST_SHELL_ENV_FILE="${DUST_SHELL_ENV_FILE:-/tmp/dust-shell-env.sh}"
+DUST_ENV_SCRIPT="${DUST_ENV_SCRIPT:-${DUST_REPO_ROOT}/dev/scripts/env.sh}"
+
+# `op environment read` requires 1Password CLI >= 2.33.0-beta.02 (Environments feature).
+op_cli_supports_environments() {
+  local current="${1:-$(op --version 2>/dev/null | head -1 | tr -d '[:space:]')}"
+  local minimum="2.33.0-beta.02"
+
+  if [ -z "$current" ]; then
+    return 1
+  fi
+
+  # sort -V: if minimum sorts first, current is >= minimum.
+  [ "$(printf '%s\n' "$minimum" "$current" | sort -V | head -1)" = "$minimum" ]
+}
+
+require_op_credentials() {
+  if [ -z "${OP_SERVICE_ACCOUNT_TOKEN:-}" ]; then
+    log "OP_SERVICE_ACCOUNT_TOKEN is not set (add it as a runtime secret)"
+    return 1
+  fi
+  if [ -z "${OP_ENVIRONMENT_ID:-}" ]; then
+    log "OP_ENVIRONMENT_ID is not set"
+    return 1
+  fi
+  if ! op_cli_supports_environments; then
+    log "op CLI is too old ($(op --version 2>/dev/null || echo unknown)); need >= 2.33.0-beta.02 with op environment read (rebuild dev/Dockerfile)"
+    return 1
+  fi
+  return 0
+}
+
+write_shell_env_loader() {
+  cat >"$DUST_SHELL_ENV_FILE" <<EOF
+# Auto-generated by Dust dev start scripts. Sourced via BASH_ENV and dev/bashrc.
+# Loads the full 1Password Environment, then soft defaults + apply_local_overrides.
+if [ -n "\${DUST_SHELL_ENV_LOADING:-}" ]; then
+  return 0 2>/dev/null || true
+fi
+DUST_SHELL_ENV_LOADING=1
+_dust_bash_env_saved="\${BASH_ENV-}"
+unset BASH_ENV
+
+if [ -f "${DUST_OP_ENV_FILE}" ]; then
+  set -a
+  # shellcheck disable=SC1091
+  . "${DUST_OP_ENV_FILE}"
+  set +a
+fi
+if [ -f "${DUST_ENV_SCRIPT}" ]; then
+  # shellcheck disable=SC1091
+  . "${DUST_ENV_SCRIPT}"
+  apply_local_overrides
+fi
+
+if [ -n "\${_dust_bash_env_saved}" ]; then
+  export BASH_ENV="\${_dust_bash_env_saved}"
+fi
+unset _dust_bash_env_saved DUST_SHELL_ENV_LOADING
+EOF
+  chmod 644 "$DUST_SHELL_ENV_FILE"
+}
+
+# Back-compat name used by seed / ES init scripts.
+export_local_dev_infra() {
+  # shellcheck disable=SC1091
+  source "${DUST_ENV_SCRIPT}"
+  apply_local_overrides
+}
+
+# Install /root shell rc so interactive login shells get secrets + prompt.
+# Interactive bash does NOT load BASH_ENV — only non-interactive bash does.
+# zsh never loads BASH_ENV. Both rc files source the materialized env directly.
+# Infra scripts stay bash; only interactive terminals are zsh.
+write_root_shell_rc() {
+  cat >/root/.bashrc <<EOF
+# Dust shared dev container — kept in sync by materialize_dev_environment.
+export BASH_ENV=${DUST_SHELL_ENV_FILE}
+
+# Interactive bash skips BASH_ENV; load materialized 1Password + local overrides here.
+if [ -f ${DUST_SHELL_ENV_FILE} ]; then
+  # shellcheck disable=SC1091
+  . ${DUST_SHELL_ENV_FILE}
+fi
+
+if [ -f /workspace/dev/bashrc ]; then
+  # shellcheck disable=SC1091
+  . /workspace/dev/bashrc
+fi
+EOF
+
+  # Prefer bash_profile for login shells that skip .profile.
+  cat >/root/.bash_profile <<'EOF'
+# Dust shared dev container login shell (bash).
+if [ -f ~/.bashrc ]; then
+  # shellcheck disable=SC1091
+  . ~/.bashrc
+fi
+EOF
+
+  cat >/root/.zshrc <<EOF
+# Dust shared dev container — kept in sync by materialize_dev_environment.
+export SHELL=/bin/zsh
+
+if [ -f ${DUST_SHELL_ENV_FILE} ]; then
+  # shellcheck disable=SC1091
+  . ${DUST_SHELL_ENV_FILE}
+fi
+
+if [ -f /workspace/dev/zshrc ]; then
+  # shellcheck disable=SC1091
+  . /workspace/dev/zshrc
+fi
+EOF
+}
+
+# Ensure BASH_ENV is set for child bash processes even on images built before the
+# Dockerfile ENV landed.
+ensure_bash_env_global() {
+  export BASH_ENV="${DUST_SHELL_ENV_FILE}"
+  write_root_shell_rc
+
+  if [ -f /root/.profile ] && ! grep -qF "BASH_ENV=${DUST_SHELL_ENV_FILE}" /root/.profile 2>/dev/null; then
+    printf '\n# Dust materialized secrets for non-interactive bash\nexport BASH_ENV=%s\n' \
+      "$DUST_SHELL_ENV_FILE" >>/root/.profile
+  fi
+}
+
+# Fetch the full 1Password Environment once and persist it for all shells/commands.
+# New secrets added in 1Password appear on the next materialize (start / refresh) with no script edits.
+materialize_dev_environment() {
+  write_shell_env_loader
+
+  if require_op_credentials; then
+    local tmp
+    tmp="$(mktemp /tmp/dust-op-env.XXXXXX)"
+    if ! op environment read "$OP_ENVIRONMENT_ID" >"$tmp"; then
+      rm -f "$tmp"
+      log "Failed to read 1Password environment $OP_ENVIRONMENT_ID"
+      ensure_bash_env_global
+      return 1
+    fi
+    chmod 600 "$tmp"
+    mv "$tmp" "$DUST_OP_ENV_FILE"
+    log "Materialized 1Password env ($(grep -cE '^[A-Za-z_][A-Za-z0-9_]*=' "$DUST_OP_ENV_FILE" | tr -d ' ') vars) -> ${DUST_OP_ENV_FILE}"
+    set -a
+    # shellcheck disable=SC1090
+    . "$DUST_OP_ENV_FILE"
+    set +a
+  else
+    log "Skipping 1Password materialize (credentials missing); local overrides only"
+    rm -f "$DUST_OP_ENV_FILE"
+  fi
+
+  # Base64 GCP key from 1Password → JSON path Google clients actually read.
+  write_gcp_service_account_file
+  ensure_bash_env_global
+  return 0
+}
+
+load_op_environment() {
+  if [ ! -f "$DUST_SHELL_ENV_FILE" ]; then
+    materialize_dev_environment || return 1
+  fi
+  # shellcheck disable=SC1090
+  source "$DUST_SHELL_ENV_FILE"
+  return 0
+}
+
+# If env was already materialized, pull it into any script that sources common.sh.
+if [ -f "${DUST_SHELL_ENV_FILE:-/tmp/dust-shell-env.sh}" ] && [ -z "${DUST_SHELL_ENV_LOADING:-}" ] && [ -z "${DUST_COMMON_SKIP_SHELL_ENV:-}" ]; then
+  # shellcheck disable=SC1090
+  source "${DUST_SHELL_ENV_FILE:-/tmp/dust-shell-env.sh}"
+fi

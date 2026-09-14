@@ -2,10 +2,11 @@ import { AuthenticatedVisualizationActionIframe } from "@app/components/assistan
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
-import { PodFrameTabButton } from "@app/components/pod/files/PodFrameTabButton";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import { getFrameFunctionReferenceKind } from "@app/types/api/frame_function_reference";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 import type { WorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -28,7 +29,7 @@ interface PodFrameSheetProps {
   fileName?: string;
   podId: string;
   pinnedFramePath: string | null;
-  frameTabs: PodFrameTab[];
+  fileTabs: PodFileTab[];
   tabsOrder?: string[];
   isEditor: boolean;
   isMember: boolean;
@@ -44,7 +45,7 @@ export function PodFrameSheet({
   fileName,
   podId,
   pinnedFramePath,
-  frameTabs,
+  fileTabs,
   tabsOrder,
   isEditor,
   isMember,
@@ -54,8 +55,6 @@ export function PodFrameSheet({
   owner,
 }: PodFrameSheetProps) {
   const { vizUrl } = useAuth();
-  const { hasFeature } = useFeatureFlags();
-  const hasFrameTabs = hasFeature("pod_frame_tabs");
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -65,10 +64,15 @@ export function PodFrameSheet({
     config: { disabled: !isOpen || !fileId },
   });
 
-  const { fileMetadata, isFileMetadataLoading } = useFileMetadata({
-    fileId,
-    owner,
-  });
+  const { fileMetadata, isFileMetadataLoading, isFileMetadataError } =
+    useFileMetadata({
+      fileId,
+      owner,
+      disabled: !isOpen || !fileId,
+    });
+  const functionReferenceKind = getFrameFunctionReferenceKind(
+    fileMetadata?.contentType
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -101,6 +105,7 @@ export function PodFrameSheet({
                   fileId={fileId}
                   fileContent={fileContent ?? null}
                   fileName={fileMetadata?.fileName}
+                  contentType={fileMetadata?.contentType}
                 />
                 <ShareFrameSheet fileId={fileId} owner={owner} />
                 <PinPodBannerButton
@@ -112,18 +117,16 @@ export function PodFrameSheet({
                   fileName={fileName}
                   hidden={isArchived}
                 />
-                {hasFrameTabs && (
-                  <PodFrameTabButton
-                    owner={owner}
-                    spaceId={podId}
-                    frameTabs={frameTabs}
-                    tabsOrder={tabsOrder}
-                    isEditor={isEditor}
-                    framePath={framePath}
-                    fileName={fileName}
-                    hidden={isArchived}
-                  />
-                )}
+                <PodFileTabButton
+                  owner={owner}
+                  spaceId={podId}
+                  fileTabs={fileTabs}
+                  tabsOrder={tabsOrder}
+                  isEditor={isEditor}
+                  filePath={framePath}
+                  fileName={fileName}
+                  hidden={isArchived}
+                />
                 <Button
                   icon={isFullscreen ? Minimize01 : Maximize01}
                   variant="ghost"
@@ -141,7 +144,15 @@ export function PodFrameSheet({
           </div>
         </SheetHeader>
         <div className="flex-1 overflow-hidden">
-          {isFileMetadataLoading || !fileContent ? (
+          {isFileMetadataLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <Spinner />
+            </div>
+          ) : isFileMetadataError || !fileMetadata || !functionReferenceKind ? (
+            <div className="flex h-full items-center justify-center p-8 text-center text-sm text-muted-foreground">
+              This frame is no longer available in the Pod files.
+            </div>
+          ) : !fileContent ? (
             <div className="flex h-full items-center justify-center">
               <Spinner />
             </div>
@@ -164,6 +175,7 @@ export function PodFrameSheet({
                 conversationId={null}
                 spaceId={fileMetadata?.useCaseMetadata.spaceId}
                 framePath={framePath}
+                frameId={functionReferenceKind === "v2" ? fileId : undefined}
                 isInDrawer={true}
                 isPodEditor={isEditor}
                 isPodMember={isMember}

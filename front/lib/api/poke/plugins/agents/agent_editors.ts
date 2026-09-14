@@ -147,6 +147,6 @@ export const updateEditorsPlugin = createPlugin({
     if (!resource) {
       return false;
     }
-    return resource.status === "active" || resource.status === "archived";
+    return resource.status === "active";
   },
 });

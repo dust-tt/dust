@@ -6,7 +6,6 @@ import {
 } from "@app/lib/api/content_nodes";
 import { getCursorPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { normalizeUrlForSourceUrlSearch } from "@app/lib/connectors";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -20,6 +19,7 @@ import { DATA_SOURCE_NODE_ID } from "@app/types/core/content_node";
 import type { SearchWarningCode } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { APIError } from "@app/types/error";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -38,28 +38,35 @@ type SearchError = {
   error: APIError;
 };
 
-function getSpaceAccessPriority(space: SpaceResource) {
+function getSpaceAccessPriority(
+  space: SpaceResource,
+  isOpen: boolean,
+  hasAttachedGroups: boolean
+) {
   // Global spaces have highest priority.
   if (space.isGlobal()) {
     return 3;
   }
 
   // Open spaces have second highest priority.
-  if (space.isRegularAndOpen()) {
+  if (space.isRegular() && isOpen) {
     return 2;
   }
 
-  // For restricted spaces: provisioned groups get higher priority than manual membership.
-  if (space.groups.some((g) => g.isProvisioned())) {
+  // For restricted spaces: access through a directory group (provisioned or manual) gets higher
+  // priority than a hand-picked member list.
+  if (hasAttachedGroups) {
     return 1;
   }
 
-  // Restricted spaces with manual membership have the lowest priority.
+  // Restricted spaces with manual membership only have the lowest priority.
   return 0;
 }
 
 function selectHighestPriorityDataSourceView(
-  views: DataSourceViewResource[]
+  views: DataSourceViewResource[],
+  openSpaceIds: Set<ModelId>,
+  spaceIdsWithAttachedGroups: Set<ModelId>
 ): DataSourceViewResource {
   if (views.length <= 1) {
     return views[0];
@@ -67,7 +74,11 @@ function selectHighestPriorityDataSourceView(
 
   const viewsWithPriority = views.map((view) => ({
     view,
-    priority: getSpaceAccessPriority(view.space),
+    priority: getSpaceAccessPriority(
+      view.space,
+      openSpaceIds.has(view.space.id),
+      spaceIdsWithAttachedGroups.has(view.space.id)
+    ),
     spaceName: view.space.name,
   }));
 
@@ -98,13 +109,11 @@ export async function handleSearch(
 ): Promise<Result<SearchResult, SearchError>> {
   let spaces;
   if (allowAdminSearch) {
-    const featureFlags = await getFeatureFlags(auth);
-    const allowPods = featureFlags.includes("admin_controlled_pods");
     const allWorkspaceSpaces = await SpaceResource.listWorkspaceSpaces(auth, {
-      includeProjectSpaces: allowPods,
+      includeProjectSpaces: false,
     });
     spaces = allWorkspaceSpaces.filter(
-      (s) => s.canAdministrate(auth) || s.canRead(auth)
+      (space) => auth.can("admin", space) || auth.can("read", space)
     );
   } else {
     spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
@@ -134,6 +143,16 @@ export async function handleSearch(
   const spacesToSearch = spaces.filter(
     (s) => !spaceIds || spaceIds.includes(s.sId)
   );
+
+  const openSpaceIds = await SpaceResource.listOpenSpaceModelIds(
+    auth,
+    spacesToSearch
+  );
+  const spaceIdsWithAttachedGroups =
+    await SpaceResource.listSpaceModelIdsWithAttachedGroups(
+      auth,
+      spacesToSearch
+    );
 
   const allDatasourceViews = await DataSourceViewResource.listBySpaces(
     auth,
@@ -241,7 +260,13 @@ export async function handleSearch(
       }
 
       const selectedViews = prioritizeSpaceAccess
-        ? [selectHighestPriorityDataSourceView(matchingViews)]
+        ? [
+            selectHighestPriorityDataSourceView(
+              matchingViews,
+              openSpaceIds,
+              spaceIdsWithAttachedGroups
+            ),
+          ]
         : matchingViews;
 
       return {

@@ -1,4 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
+import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
+import type { UsageType } from "@app/lib/metronome/types";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { RunUsageModel } from "@app/lib/resources/storage/models/runs";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
@@ -13,11 +15,13 @@ export class RunFactory {
       outputTokens = 20,
       reasoningTokens,
       modelId = GPT_5_MINI_MODEL_CONFIG.modelId,
+      usageType = USAGE_TYPE_USER,
     }: {
       inputTokens?: number;
       outputTokens?: number;
       reasoningTokens?: number;
       modelId?: ModelIdType;
+      usageType?: UsageType | null;
     } = {}
   ) {
     const workspace = auth.getNonNullableWorkspace();
@@ -36,7 +40,8 @@ export class RunFactory {
         reasoningTokens,
         totalTokens: inputTokens + outputTokens,
       },
-      modelId
+      modelId,
+      { usageType: usageType ?? USAGE_TYPE_USER }
     );
 
     const runUsage = await RunUsageModel.findOne({
@@ -44,6 +49,12 @@ export class RunFactory {
     });
     if (!runUsage) {
       throw new Error("Run usage not found after recording token usage");
+    }
+    if (usageType === null) {
+      await RunUsageModel.update(
+        { usageType: null },
+        { where: { id: runUsage.id, workspaceId: workspace.id } }
+      );
     }
 
     return { run, runUsageModelId: runUsage.id };

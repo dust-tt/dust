@@ -1,56 +1,30 @@
 import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import {
-  ConsumptionBodySchema,
+  ConsumptionTimeseriesBodySchema,
   toConsumptionPeriodInput,
 } from "@app/lib/api/analytics/consumption/schema";
-import {
-  CONSUMPTION_METRICS,
-  CONSUMPTION_SCOPE_DIMENSIONS,
-  DEFAULT_CONSUMPTION_METRIC,
-} from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/consumption/timeseries";
-import {
-  DEFAULT_CONSUMPTION_BREAKDOWN_COUNT,
-  fetchConsumptionTimeseries,
-} from "@app/lib/api/analytics/consumption/timeseries";
+import { fetchConsumptionTimeseries } from "@app/lib/api/analytics/consumption/timeseries";
 import logger from "@app/logger/logger";
-import { workspaceApp } from "@front-api/middlewares/ctx";
-import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { z } from "zod";
+import { consumptionAnalyticsApp } from "./context";
 
 export type { GetConsumptionTimeseriesResponse };
 
-const BodySchema = ConsumptionBodySchema.extend({
-  granularity: z.enum(["day", "week", "month"]).optional().default("day"),
-  mode: z.enum(["daily", "cumulative"]).optional().default("daily"),
-  metric: z
-    .enum(CONSUMPTION_METRICS)
-    .optional()
-    .default(DEFAULT_CONSUMPTION_METRIC),
-  // Absent means a single total series. Every dimension the query can be
-  // filtered on can also be broken down by.
-  breakdownBy: z.enum(CONSUMPTION_SCOPE_DIMENSIONS).optional(),
-  breakdownCount: z
-    .number()
-    .int()
-    .positive()
-    .max(50)
-    .optional()
-    .default(DEFAULT_CONSUMPTION_BREAKDOWN_COUNT),
-});
-
 // Mounted at /api/w/:wId/analytics/consumption/timeseries.
-const app = workspaceApp();
+// Also mounted at /api/w/:wId/me/analytics/consumption/timeseries.
+// Also mounted at /api/w/:wId/assistant/agent_configurations/:aId/analytics/consumption/timeseries.
+const app = consumptionAnalyticsApp();
 
 /** @ignoreswagger */
 app.post(
   "/",
-  ensureIsManager(),
-  validate("json", BodySchema),
+  validate("json", ConsumptionTimeseriesBodySchema),
   async (ctx): HandlerResult<GetConsumptionTimeseriesResponse> => {
     const auth = ctx.get("auth");
+    const userId = ctx.get("consumptionUserId");
+    const agentId = ctx.get("consumptionAgentId");
     const {
       granularity,
       mode,
@@ -60,6 +34,28 @@ app.post(
       filter,
       ...periodQuery
     } = ctx.req.valid("json");
+
+    if (userId && (breakdownBy === "user" || breakdownBy === "group")) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Personal consumption analytics do not support user or group breakdowns.",
+        },
+      });
+    }
+
+    if (agentId && breakdownBy === "agent") {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message:
+            "Agent consumption analytics do not support agent breakdowns.",
+        },
+      });
+    }
 
     const period = await resolveConsumptionPeriod(
       auth,
@@ -73,7 +69,12 @@ app.post(
       metric,
       breakdownBy,
       breakdownCount,
-      filter,
+      includeWorkspaceContext: userId === undefined && agentId === undefined,
+      filter: {
+        ...filter,
+        ...(userId ? { users: [userId] } : {}),
+        ...(agentId ? { agents: [agentId] } : {}),
+      },
     });
     if (result.isErr()) {
       logger.error(

@@ -15,7 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  EyeOff,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -37,7 +36,7 @@ export function UnpublishAssistantsDialog({
   const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
     useAgentConfigurations({
       workspaceId: owner.sId,
-      agentsGetView: null,
+      agentsGetView: "list", // Any view works; the concrete key is used to invalidate all views.
       disabled: true,
     });
 
@@ -52,9 +51,8 @@ export function UnpublishAssistantsDialog({
     <Dialog>
       <DialogTrigger asChild>
         <Button
-          size="xs"
-          variant="outline"
-          icon={EyeOff}
+          size="sm"
+          variant="primary"
           label="Unpublish"
           disabled={disabled}
         />

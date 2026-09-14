@@ -307,7 +307,7 @@ export const fetchTables = async ({
 
     return new Ok(removeNulls(remoteDBTables));
   } catch (error) {
-    return new Err(error instanceof Error ? error : new Error(String(error)));
+    return new Err(normalizeError(error));
   }
 };
 

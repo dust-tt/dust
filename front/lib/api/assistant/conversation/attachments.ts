@@ -1,5 +1,12 @@
 // All mime types are okay to use from the public API.
 
+import { DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME } from "@app/lib/actions/constants";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
+  CONVERSATION_CAT_FILE_ACTION_NAME,
+  CONVERSATION_FILES_SERVER_NAME,
+  CONVERSATION_SEARCH_FILES_ACTION_NAME,
+} from "@app/lib/api/actions/servers/conversation_files/metadata";
 import {
   isConversationIncludableFileContentType,
   isQueryableContentType,
@@ -9,6 +16,7 @@ import { isPastedFile } from "@app/lib/files";
 import logger from "@app/logger/logger";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type {
+  AttachmentCapabilityContext,
   AttachmentCreator,
   BaseConversationAttachmentType,
   ContentNodeAttachmentType,
@@ -65,26 +73,34 @@ export function conversationAttachmentId(
   return attachment.contentFragmentId;
 }
 
-export function getAttachmentFromContentFragment(
-  cf: ContentFragmentType
-): ConversationAttachmentType | null {
+export function getAttachmentFromContentFragment({
+  cf,
+  capabilities,
+}: {
+  cf: ContentFragmentType;
+  capabilities: AttachmentCapabilityContext;
+}): ConversationAttachmentType | null {
   // Expired content fragments cannot be converted to attachments
   if (isExpiredContentFragment(cf)) {
     return null;
   }
 
   if (isContentNodeContentFragment(cf)) {
-    return getAttachmentFromContentNodeContentFragment(cf);
+    // Content nodes are not files: they live outside the file mount and are reached through the
+    // conversation tools in every mode, so their capabilities do not depend on the context.
+    return getAttachmentFromContentNodeContentFragment({ cf });
   }
   if (isFileContentFragment(cf)) {
-    return getAttachmentFromFileContentFragment(cf);
+    return getAttachmentFromFileContentFragment({ cf, capabilities });
   }
   assertNever(cf);
 }
 
-export function getAttachmentFromContentNodeContentFragment(
-  cf: ContentNodeContentFragmentType & { expiredReason: null }
-): ContentNodeAttachmentType {
+export function getAttachmentFromContentNodeContentFragment({
+  cf,
+}: {
+  cf: ContentNodeContentFragmentType & { expiredReason: null };
+}): ContentNodeAttachmentType {
   const isQueryable =
     isQueryableContentType(cf.contentType) || cf.nodeType === "table";
   const isIncludable =
@@ -134,6 +150,11 @@ export function getAttachmentFromContentNodeContentFragment(
   };
 }
 
+/**
+ * `skipFileProcessing` files were uploaded raw for the Computer, so they have no table to query and
+ * no processed text to read. The project-context exemption only bites in legacy conversations: Pods
+ * always use the file explorer, which turns every flag off before we get here.
+ */
 function shouldSuppressTabularAttachmentHints({
   contentType,
   isInProjectContext,
@@ -150,9 +171,63 @@ function shouldSuppressTabularAttachmentHints({
   );
 }
 
-export function getAttachmentFromFileContentFragment(
-  cf: FileContentFragmentType
-): FileAttachmentType | null {
+/**
+ * Capability flags for file attachments. Gated early so callers (JIT, Use: lines, tools) can
+ * trust the booleans without re-checking file-explorer / Computer availability.
+ *
+ * In file explorer mode every flag is off: files are reached by path through the `files` MCP server
+ * and tabular files are analyzed by the Computer, so none of the conversation_files JIT tools apply.
+ */
+function computeFileAttachmentCapabilityFlags({
+  contentType,
+  snippet,
+  isInProjectContext,
+  skipFileProcessing,
+  capabilities: { isNewFileExplorer, hasSandboxTools },
+}: {
+  contentType: SupportedContentFragmentType;
+  snippet: string | null;
+  isInProjectContext: boolean;
+  skipFileProcessing: boolean;
+  capabilities: AttachmentCapabilityContext;
+}): {
+  isQueryable: boolean;
+  isIncludable: boolean;
+  isSearchable: boolean;
+} {
+  // snippet !== null distinguishes pre-JIT attachments (no snippet) from newer ones.
+  // Pasted files and the new file explorer do not use conversation_files JIT for regular files.
+  const canDoJIT =
+    snippet !== null && !isPastedFile(contentType) && !isNewFileExplorer;
+  if (!canDoJIT) {
+    return { isQueryable: false, isIncludable: false, isSearchable: false };
+  }
+
+  const shouldSuppressTabularHints = shouldSuppressTabularAttachmentHints({
+    contentType,
+    isInProjectContext,
+    skipFileProcessing,
+  });
+
+  return {
+    isQueryable:
+      !shouldSuppressTabularHints &&
+      isQueryableContentType(contentType) &&
+      !hasSandboxTools, // Only use query_tables_v2 if Computer is not available.
+    isIncludable:
+      !shouldSuppressTabularHints &&
+      isConversationIncludableFileContentType(contentType),
+    isSearchable: isSearchableContentType(contentType),
+  };
+}
+
+export function getAttachmentFromFileContentFragment({
+  cf,
+  capabilities,
+}: {
+  cf: FileContentFragmentType;
+  capabilities: AttachmentCapabilityContext;
+}): FileAttachmentType | null {
   const fileId = cf.fileId;
   if (!fileId) {
     logger.warn(
@@ -164,25 +239,16 @@ export function getAttachmentFromFileContentFragment(
     );
     return null;
   }
-
-  // Here, snippet not null is actually to detect file attachments that are prior to the JIT
-  // actions, and differentiate them from the newer file attachments that do have a snippet.
-  // Former ones cannot be used in JIT. For pasted files, we also do not support JIT actions.
-  const canDoJIT = cf.snippet !== null && !isPastedFile(cf.contentType);
   const isInProjectContext = cf.isInProjectContext === true;
-  const shouldSuppressTabularHints = shouldSuppressTabularAttachmentHints({
-    contentType: cf.contentType,
-    isInProjectContext,
-    skipFileProcessing: cf.skipFileProcessing === true,
-  });
-  const isQueryable =
-    !shouldSuppressTabularHints &&
-    canDoJIT &&
-    isQueryableContentType(cf.contentType);
-  const isIncludable =
-    !shouldSuppressTabularHints &&
-    isConversationIncludableFileContentType(cf.contentType);
-  const isSearchable = canDoJIT && isSearchableContentType(cf.contentType);
+
+  const { isQueryable, isIncludable, isSearchable } =
+    computeFileAttachmentCapabilityFlags({
+      contentType: cf.contentType,
+      snippet: cf.snippet,
+      isInProjectContext,
+      skipFileProcessing: cf.skipFileProcessing === true,
+      capabilities,
+    });
 
   const creator: AttachmentCreator | null = cf.context.fullName
     ? {
@@ -235,6 +301,7 @@ export function makeFileAttachment({
   hideFromUser,
   path = null,
   creator = null,
+  capabilities,
 }: {
   fileId: string;
   source: "agent" | "user" | null;
@@ -247,12 +314,17 @@ export function makeFileAttachment({
   hideFromUser: boolean;
   path?: string | null;
   creator?: AttachmentCreator | null;
+  capabilities: AttachmentCapabilityContext;
 }): FileAttachmentType {
-  // For pasted files, we also do not support JIT actions.
-  const canDoJIT = snippet !== null && !isPastedFile(contentType);
-  const isIncludable = isConversationIncludableFileContentType(contentType);
-  const isQueryable = canDoJIT && isQueryableContentType(contentType);
-  const isSearchable = canDoJIT && isSearchableContentType(contentType);
+  const { isQueryable, isIncludable, isSearchable } =
+    computeFileAttachmentCapabilityFlags({
+      contentType,
+      snippet,
+      isInProjectContext,
+      // Agent generated files are never sandbox raw uploads: they always go through processing.
+      skipFileProcessing: false,
+      capabilities,
+    });
 
   return {
     fileId,
@@ -296,22 +368,69 @@ export function renderLargePasteXml({
   return `<pastedContent ${attrs.join(" ")}>${content}</pastedContent>`;
 }
 
+/**
+ * Which conversation tools the `Use:` line may point the model at. A capability flag says what the
+ * attachment supports; this says what is callable in this conversation. They differ in file system
+ * mode, where `conversation_files` only registers `list_content_nodes_and_tables` and `cat`.
+ */
+export type AttachmentUsageHints = {
+  hasSemanticSearchTool: boolean;
+};
+
+export function attachmentUsageHintsFor({
+  isNewFileExplorer,
+}: AttachmentCapabilityContext): AttachmentUsageHints {
+  return { hasSemanticSearchTool: !isNewFileExplorer };
+}
+
+function renderAttachmentUsageLine(
+  attachment: ConversationAttachmentType,
+  { hasSemanticSearchTool }: AttachmentUsageHints
+): string | null {
+  const clauses: string[] = [];
+
+  if (attachment.isIncludable) {
+    clauses.push(
+      `read with \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_CAT_FILE_ACTION_NAME)}\``
+    );
+  }
+  if (attachment.isQueryable) {
+    clauses.push(
+      `query tabular data with \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\``
+    );
+  }
+  if (attachment.isSearchable && hasSemanticSearchTool) {
+    clauses.push(
+      `semantic search with \`${getPrefixedToolName(CONVERSATION_FILES_SERVER_NAME, CONVERSATION_SEARCH_FILES_ACTION_NAME)}\``
+    );
+  }
+
+  if (clauses.length === 0) {
+    return null;
+  }
+
+  return `Use: ${clauses.join("; ")}.`;
+}
+
+/**
+ * `usage` is null when the caller already inlines the attachment's full content: there is nothing
+ * left to retrieve, and a usage line would both contradict the content and shift the offsets
+ * callers compute over the rendered text.
+ */
 export function renderAttachmentXml({
   attachment,
   content = null,
+  usage,
 }: {
   attachment: ConversationAttachmentType;
   content?: string | null;
+  usage: AttachmentUsageHints | null;
 }): string {
   const params = [
     `id="${conversationAttachmentId(attachment)}"`,
     `type="${attachment.contentType}"`,
     `title="${attachment.title}"`,
     `version="${attachment.contentFragmentVersion}"`,
-    `isInProjectContext="${attachment.isInProjectContext}"`,
-    `isIncludable="${attachment.isIncludable}"`,
-    `isQueryable="${attachment.isQueryable}"`,
-    `isSearchable="${attachment.isSearchable}"`,
   ];
 
   if (isContentNodeAttachmentType(attachment)) {
@@ -321,15 +440,15 @@ export function renderAttachmentXml({
     }
   }
 
-  let tag = `<attachment ${params.join(" ")}`;
-
+  const usageLine = usage ? renderAttachmentUsageLine(attachment, usage) : null;
   const contentToRender = content ?? attachment.snippet;
+  const bodyParts = [usageLine, contentToRender].filter(
+    (part): part is string => part != null && part !== ""
+  );
 
-  if (contentToRender) {
-    tag += `>${contentToRender}\n</attachment>`;
-  } else {
-    tag += "/>";
+  if (bodyParts.length > 0) {
+    return `<attachment ${params.join(" ")}>${bodyParts.join("\n")}\n</attachment>`;
   }
 
-  return tag;
+  return `<attachment ${params.join(" ")}/>`;
 }

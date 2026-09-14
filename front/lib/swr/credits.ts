@@ -5,7 +5,13 @@ import type { GetAwuPurchaseInfoResponseBody } from "@app/lib/credits/awu_purcha
 import type { GetAwuPurchaseStatusResponseBody } from "@app/lib/credits/awu_purchase_status";
 import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
-import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import type {
+  AwuPoolCurrentCycleResponseBody,
+  AwuPoolCycleBreakdown,
+  AwuPoolCycleHistoryOverflow,
+  AwuPoolCycleHistoryResponseBody,
+  AwuPoolSummaryResponseBody,
+} from "@app/types/api/credits/awu_pool_summary";
 import type { GetMembersSeatsResponseBody } from "@app/types/api/credits/members_seats";
 import type { GetMyTopConversationsResponseBody } from "@app/types/api/credits/my_top_conversations";
 import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
@@ -18,6 +24,10 @@ import type { Fetcher } from "swr";
 
 // Global state for tracking purchase loading status per workspace
 const purchaseLoadingState = new Map<string, boolean>();
+
+const EMPTY_HAS_MORE_CYCLE_HISTORY: AwuPoolCycleHistoryOverflow = Object.freeze(
+  { cycleBreakdown: false, excessCycleBreakdown: false }
+);
 const purchaseLoadingListeners = new Set<() => void>();
 
 function setPurchaseLoading(workspaceId: string, loading: boolean) {
@@ -202,26 +212,6 @@ export function useCreditPurchaseInfo({
   };
 }
 
-const awuPostPurchaseRefreshState = new Map<string, number>();
-const awuPostPurchaseRefreshListeners = new Set<() => void>();
-
-function getAwuPostPurchaseRefreshCount(workspaceId: string): number {
-  return awuPostPurchaseRefreshState.get(workspaceId) ?? Infinity;
-}
-
-function incrementAwuPostPurchaseRefreshCount(workspaceId: string): void {
-  const current = awuPostPurchaseRefreshState.get(workspaceId) ?? Infinity;
-  if (current < 5) {
-    awuPostPurchaseRefreshState.set(workspaceId, current + 1);
-    awuPostPurchaseRefreshListeners.forEach((listener) => listener());
-  }
-}
-
-export function resetAwuPostPurchaseRefreshCount(workspaceId: string): void {
-  awuPostPurchaseRefreshState.set(workspaceId, 0);
-  awuPostPurchaseRefreshListeners.forEach((listener) => listener());
-}
-
 export function useAwuPoolSummary({
   workspaceId,
   disabled,
@@ -235,17 +225,7 @@ export function useAwuPoolSummary({
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/credits/awu-pool-summary`,
     awuFetcher,
-    {
-      disabled,
-      refreshInterval: () => {
-        const count = getAwuPostPurchaseRefreshCount(workspaceId);
-        if (count < 5) {
-          incrementAwuPostPurchaseRefreshCount(workspaceId);
-          return 5000;
-        }
-        return 0;
-      },
-    }
+    { disabled }
   );
 
   return {
@@ -258,6 +238,73 @@ export function useAwuPoolSummary({
     isAwuPoolSummaryError: error,
     isAwuPoolSummaryValidating: isValidating,
     mutateAwuPoolSummary: mutate,
+  };
+}
+
+export function useAwuPoolCurrentCycle({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const awuFetcher: Fetcher<AwuPoolCurrentCycleResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/credits/awu-pool-current-cycle`,
+    awuFetcher,
+    { disabled }
+  );
+
+  return {
+    awuPoolCurrentCycle: data ?? null,
+    isAwuPoolCurrentCycleLoading: !error && !data && !disabled,
+    isAwuPoolCurrentCycleError: error,
+    isAwuPoolCurrentCycleValidating: isValidating,
+    mutateAwuPoolCurrentCycle: mutate,
+  };
+}
+
+export function useAwuPoolCycleHistory({
+  workspaceId,
+  cycleHistoryLimit,
+  disabled,
+}: {
+  workspaceId: string;
+  cycleHistoryLimit?: number;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const awuFetcher: Fetcher<AwuPoolCycleHistoryResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutateRegardlessOfQueryParams } =
+    useSWRWithDefaults(
+      `/api/w/${workspaceId}/credits/awu-pool-cycle-history${
+        cycleHistoryLimit ? `?cycleHistoryLimit=${cycleHistoryLimit}` : ""
+      }`,
+      awuFetcher,
+      // Keep rows on screen while a larger limit is fetched so "Load more"
+      // appends instead of swapping the table for a spinner.
+      { disabled, keepPreviousData: true }
+    );
+
+  const isUsable = !error && !disabled;
+
+  return {
+    cycleBreakdown: isUsable
+      ? (data?.cycleBreakdown ?? emptyArray<AwuPoolCycleBreakdown>())
+      : emptyArray<AwuPoolCycleBreakdown>(),
+    excessCycleBreakdown: isUsable
+      ? (data?.excessCycleBreakdown ?? emptyArray<AwuPoolCycleBreakdown>())
+      : emptyArray<AwuPoolCycleBreakdown>(),
+    hasMoreCycleHistoryByBreakdown: isUsable
+      ? (data?.hasMoreCycleHistoryByBreakdown ?? EMPTY_HAS_MORE_CYCLE_HISTORY)
+      : EMPTY_HAS_MORE_CYCLE_HISTORY,
+    isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
+    isAwuPoolCycleHistoryError: error,
+    isAwuPoolCycleHistoryValidating: isValidating,
+    mutateAwuPoolCycleHistory: mutateRegardlessOfQueryParams,
   };
 }
 
@@ -383,7 +430,6 @@ export function useRedeemPoolTopupCoupon({
           return { status: "error", message };
         }
 
-        resetAwuPostPurchaseRefreshCount(workspaceId);
         void mutateAwuPoolSummary();
 
         return { status: "success" };
@@ -412,11 +458,17 @@ export function useMyUsage({
   const { data, error } = useSWRWithDefaults(
     `/api/w/${workspaceId}/credits/my-usage`,
     myUsageFetcher,
-    { disabled }
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60_000,
+      disabled,
+    }
   );
 
   return {
     myUsage: data?.member ?? null,
+    premiumModelUsage: data?.premiumModelUsage ?? null,
     creditUsageStatus: data?.creditUsageStatus ?? null,
     nextCreditResetAt: data?.member?.nextCreditResetAt ?? null,
     isMyUsageLoading: !error && !data && !disabled,

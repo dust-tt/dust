@@ -1,12 +1,12 @@
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Icon, LinkWrapper } from "@dust-tt/sparkle";
 
 interface RequestedSpacesListProps {
   owner?: LightWorkspaceType;
   requestedSpaceIds: string[];
-  spacesById: Map<string, SpaceType>;
+  spacesById: Map<string, EnrichedSpaceType>;
 }
 
 export function RequestedSpacesList({

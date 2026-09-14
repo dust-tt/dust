@@ -310,10 +310,22 @@ export class MembershipInvitationResource extends BaseResource<MembershipInvitat
     workspace: LightWorkspaceType;
     transaction?: Transaction;
   }): Promise<number> {
+    // Only count invitations whose 7-day acceptance token has not expired yet, mirroring
+    // isExpired(): not expired if max(reminderSentAt, createdAt) is still within the window.
+    const notExpiredSinceMs = new Date(
+      Date.now() - INVITATION_EXPIRATION_TIME_MS
+    );
     return this.model.count({
       where: {
         workspaceId: workspace.id,
         status: "pending",
+        [Op.or]: [
+          { reminderSentAt: { [Op.gte]: notExpiredSinceMs } },
+          {
+            reminderSentAt: { [Op.eq]: null },
+            createdAt: { [Op.gte]: notExpiredSinceMs },
+          },
+        ],
       },
       transaction,
     });

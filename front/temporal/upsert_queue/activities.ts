@@ -6,7 +6,7 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import { cleanTimestamp } from "@app/lib/utils/timestamps";
 import mainLogger from "@app/logger/logger";
 import { CoreAPI } from "@app/types/core/core_api";
@@ -51,10 +51,6 @@ export async function upsertDocumentActivity(
   if (!DUST_UPSERT_QUEUE_BUCKET) {
     throw new Error("DUST_UPSERT_QUEUE_BUCKET is not set");
   }
-  if (!SERVICE_ACCOUNT) {
-    throw new Error("SERVICE_ACCOUNT is not set");
-  }
-
   const storage = new Storage({ keyFilename: SERVICE_ACCOUNT });
   const bucket = storage.bucket(DUST_UPSERT_QUEUE_BUCKET);
   // GCS bucket.file().download() returns a `DownloadResponse = [Buffer]` — it's defined as a tuple with exactly one element.
@@ -143,12 +139,8 @@ export async function upsertDocumentActivity(
       },
       "[UpsertQueue] Failed document upsert"
     );
-    getStatsDClient().increment(
-      "upsert_queue_document_error.count",
-      1,
-      statsDTags
-    );
-    getStatsDClient().distribution(
+    statsDMetrics.increment("upsert_queue_document_error.count", 1, statsDTags);
+    statsDMetrics.distribution(
       "upsert_queue_upsert_document_error.duration.distribution",
       Date.now() - upsertTimestamp,
       []
@@ -170,17 +162,13 @@ export async function upsertDocumentActivity(
     },
     "[UpsertQueue] Successful document upsert"
   );
-  getStatsDClient().increment(
-    "upsert_queue_document_success.count",
-    1,
-    statsDTags
-  );
-  getStatsDClient().distribution(
+  statsDMetrics.increment("upsert_queue_document_success.count", 1, statsDTags);
+  statsDMetrics.distribution(
     "upsert_queue_upsert_document_success.duration.distribution",
     Date.now() - upsertTimestamp,
     []
   );
-  getStatsDClient().distribution(
+  statsDMetrics.distribution(
     "upsert_queue_document.duration.distribution",
     Date.now() - enqueueTimestamp,
     []

@@ -26,9 +26,18 @@ import { cva } from "class-variance-authority";
 import * as React from "react";
 
 interface NavigationListProps {
+  /** Ref to the underlying scroll viewport element, e.g. for scroll position control. */
   viewportRef?: React.RefObject<HTMLDivElement>;
 }
 
+/**
+ * A vertical, scrollable list of navigation entries for sidebars, composed
+ * with NavigationListItem, NavigationListLabel / NavigationListCompactLabel,
+ * and NavigationListCollapsibleSection. Use it for the primary sidebar
+ * navigation of an app (conversations, projects, spaces); for breadcrumb-style
+ * hierarchy or tabbed content switching, use Breadcrumbs or Tabs instead.
+ * @summary Scrollable sidebar navigation list.
+ */
 const NavigationList = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> &
@@ -48,6 +57,11 @@ const NavigationList = React.forwardRef<
 });
 NavigationList.displayName = "NavigationList";
 
+/**
+ * Status of a navigation item, rendered as a colored dot: `idle` shows
+ * nothing, `unread` a highlight dot, `blocked` an info dot, `error` a
+ * warning dot.
+ */
 export type NavigationListItemStatus = "idle" | "unread" | "blocked" | "error";
 
 interface NavigationListItemProps
@@ -56,18 +70,32 @@ interface NavigationListItemProps
   selected?: boolean;
   disabled?: boolean;
   label?: string;
+  /** How the label renders: `none` plain text, `typing` a one-shot typing animation, `streaming` a shimmering animated text. */
   labelAnimation?: "none" | "typing" | "streaming";
+  /** Called when the `typing` label animation finishes. */
   onTypingAnimationComplete?: () => void;
   icon?: React.ComponentType;
+  /** Avatar element rendered before the label, as an alternative to `icon`. */
   avatar?: React.ReactNode;
+  /** Per-item actions slot (typically a DropdownMenu triggered by NavigationListItemAction), revealed on hover/focus. */
   moreMenu?: React.ReactNode;
+  /** Keep the row's hover styling while the more menu is open. */
   keepHoverOnMoreMenu?: boolean;
+  /** Status dot shown at the end of the row (hidden while hovering when a `moreMenu` is present). */
   status?: NavigationListItemStatus;
+  /** Count badge shown at the end of the row; hidden when 0 or undefined. */
   count?: number;
+  /** Bold the label to signal recent activity. */
   hasActivity?: boolean;
+  /** Custom trailing content, shown instead of growing the label to full width. */
   suffix?: React.ReactNode;
 }
 
+/**
+ * A single navigation entry: label with optional icon or avatar, selected
+ * state, status dot, count badge, and a hover-revealed actions slot.
+ * @summary Single sidebar navigation entry.
+ */
 const NavigationListItem = React.forwardRef<
   HTMLDivElement,
   NavigationListItemProps
@@ -222,9 +250,15 @@ NavigationListItem.displayName = "NavigationListItem";
 interface NavigationListItemActionProps
   extends React.HTMLAttributes<HTMLDivElement> {
   showOnHover?: boolean;
+  /** Always show the action button instead of revealing it on hover/focus. */
   forceVisible?: boolean;
 }
 
+/**
+ * The hover-revealed "more" button anchored to an item's right edge,
+ * typically used as the trigger inside a NavigationListItem's `moreMenu`.
+ * @summary Hover-revealed per-item action trigger.
+ */
 const NavigationListItemAction = React.forwardRef<
   HTMLDivElement,
   NavigationListItemActionProps
@@ -257,10 +291,17 @@ interface NavigationListLabelProps
   extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   icon?: React.ComponentType;
+  /** Action element (e.g. a Button) rendered at the right end of the label row. */
   action?: React.ReactNode;
+  /** Pin the label to the top of the scroll viewport while its section scrolls. */
   isSticky?: boolean;
 }
 
+/**
+ * A group label for always-visible sections of a NavigationList, with an
+ * optional icon, action slot, and sticky positioning.
+ * @summary Group label for navigation sections.
+ */
 const NavigationListLabel = React.forwardRef<
   HTMLDivElement,
   NavigationListLabelProps
@@ -290,9 +331,14 @@ NavigationListLabel.displayName = "NavigationListLabel";
 interface NavigationListCompactLabelProps
   extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
+  /** Pin the label to the top of the scroll viewport while its section scrolls. */
   isSticky?: boolean;
 }
 
+/**
+ * A small, uppercase group label variant for dense NavigationList sections.
+ * @summary Compact uppercase group label.
+ */
 const NavigationListCompactLabel = React.forwardRef<
   HTMLDivElement,
   NavigationListCompactLabelProps
@@ -323,11 +369,15 @@ interface NavigationListCollapsibleSectionProps
   icon?: React.ComponentType;
   /** Count badge shown next to the label (e.g. number of unread items). */
   count?: number;
+  /** Action element (e.g. a menu button) rendered at the right end of the header row. */
   action?: React.ReactNode;
+  /** Only reveal the `action` on hover/focus (default true). */
   actionOnHover?: boolean;
   defaultOpen?: boolean;
   open?: boolean;
+  /** Called when the user expands or collapses the section (only for `type="collapse"`). */
   onOpenChange?: (open: boolean) => void;
+  /** `collapse` makes the header a toggle that expands/collapses the section; `static` renders an always-open section. */
   type?: "static" | "collapse";
   children: React.ReactNode;
   /** Number of children to show when partially collapsed. undefined = show all (current behavior). */
@@ -367,6 +417,14 @@ const collapseableStyles = cva(
   }
 );
 
+/**
+ * A labeled section of a NavigationList that can be collapsible
+ * (`type="collapse"`) or always open (`type="static"`), with optional partial
+ * collapse via `visibleItems` and a "Show all" overflow control. Use it for
+ * sections users may want to expand/collapse; use NavigationListLabel for
+ * plain always-visible grouping.
+ * @summary Collapsible group of navigation items.
+ */
 const NavigationListCollapsibleSection = React.forwardRef<
   HTMLDivElement | React.ElementRef<typeof Collapsible>,
   NavigationListCollapsibleSectionProps

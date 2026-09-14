@@ -4,7 +4,6 @@ import type {
   Conversation,
   ConversationItem,
   ConversationMessage,
-  ConversationPendingValidation,
 } from "./types";
 import { mockUsers } from "./users";
 
@@ -567,6 +566,8 @@ Impact estimate:
 - Draft interaction states for desktop + mobile
 - Define the suggestion ranking rules
 - Partner with analytics on success metrics
+
+I based the discoverability estimate on :file[search-usability-audit.pdf]{type=pdf id=usability-audit}.
 `;
 
   const exampleLongRoadmap = `
@@ -590,6 +591,19 @@ Phase 3: Quality + performance
 Risks:
 - Suggestion relevance might lag without feedback loop
 - Mobile layout needs careful input sizing
+`;
+
+  // Demonstrates inline file inserts (the `:file[...]` directive): a
+  // deliverables list plus an in-sentence reference. Clicking a chip opens the
+  // preview sheet in ConversationView.
+  const exampleDeliverables = `
+I packaged everything from the search redesign review into three files:
+
+- **Design proposal:** :file[Search_Redesign_Proposal.docx]{type=doc id=search-proposal}
+- **Interaction spec:** :file[search-interaction-states.xlsx]{type=xlsx id=search-states}
+- **Summary notes:** :file[search_review_summary.md]{type=md id=search-summary}
+
+I also dropped the annotated mockup :file[top-nav-search.png]{type=image id=topnav-mockup} so you can reference it while reviewing. The full rationale lives in the proposal.
 `;
 
   // Conversation 1: Story-like assets
@@ -1017,6 +1031,7 @@ Risks:
       citations: [
         { id: "table", icon: "table", title: "Scene-by-scene pacing map" },
         { id: "notion", icon: "notion", title: "Alternate endings draft" },
+        { id: "frame", icon: "frame", title: "Season 8 pacing dashboard" },
       ],
     },
     {
@@ -1038,51 +1053,6 @@ Risks:
         isRounded: true,
       },
     },
-    {
-      kind: "pendingValidation",
-      id: "pending-validation-finale-rewrite",
-      userMessage: {
-        kind: "message",
-        id: "pending-user-finale",
-        content:
-          "Can you draft the 2-3 beat montage of letters to the realm? I want to include it in the next revision.",
-        timestamp: new Date(conv1Start.getTime() + 32 * 60 * 1000),
-        ownerId: locutorId,
-        ownerType: "user",
-        type: "user",
-        group: {
-          id: "group-locutor-pending-finale",
-          type: "locutor",
-          timestamp: "09:32",
-        },
-      } as ConversationMessage,
-      agentMessage: {
-        kind: "message",
-        id: "pending-agent-finale",
-        markdown: `**Letters montage (draft)**
-
-- **Winterfell**: Sansa announces Bran's coronation, calls for unity
-- **Dorne**: Prince acknowledges new order, pledges fealty
-- **Iron Islands**: Yara secures independence, warns of future threats
-
-Each beat ~30 seconds. Ready for your review.`,
-        timestamp: new Date(conv1Start.getTime() + 33 * 60 * 1000),
-        ownerId: agent1.id,
-        ownerType: "agent",
-        type: "agent",
-        group: {
-          id: "group-agent-pending-finale",
-          type: "agent",
-          name: agent1.name,
-          timestamp: "09:32",
-          completionStatus: "Completed in 15 sec",
-          avatar: {
-            emoji: agent1.emoji,
-            backgroundColor: agent1.backgroundColor,
-          },
-        },
-      } as ConversationMessage,
-    } as ConversationPendingValidation,
   ];
 
   const conversation1: Conversation = {
@@ -1278,71 +1248,36 @@ Each beat ~30 seconds. Ready for your review.`,
     },
     {
       kind: "message",
-      id: "agent-created-task-suggestions",
-      content:
-        "I created the first tasks from the breakdown. I also found a few related tasks you may want to add.",
-      timestamp: new Date(conv2Start.getTime() + 51 * 60 * 1000),
+      id: "msg-2-8b",
+      timestamp: new Date(conv2Start.getTime() + 50 * 60 * 1000),
       ownerId: agent2.id,
       ownerType: "agent",
       type: "agent",
       group: {
-        id: "group-agent-task-suggestions",
+        id: "group-agent-review",
         type: "agent",
         name: agent2.name,
-        timestamp: "11:08",
-        completionStatus: "Completed in 8 sec",
+        timestamp: "11:02",
+        completionStatus: "Completed in 24 sec",
         avatar: {
           emoji: agent2.emoji,
           backgroundColor: agent2.backgroundColor,
         },
       },
-      taskSuggestionBoxes: [
+      markdown: exampleDeliverables,
+      citations: [
         {
-          id: "product-review-created-tasks",
-          title: "Tasks created",
-          variant: "created",
-          items: [
-            {
-              id: "created-search-ux",
-              groupTitle: "Santiago Martínez",
-              groupUserId: user3.id,
-              text: "Move search to the top navigation and add inline suggestions.",
-            },
-            {
-              id: "created-empty-state",
-              groupTitle: "Mia Jensen",
-              groupUserId: locutorId,
-              text: "Build the guided empty state with example queries.",
-            },
-            {
-              id: "created-analytics",
-              groupTitle: "Santiago Martínez",
-              groupUserId: user3.id,
-              text: "Define success metrics for suggestion ranking.",
-            },
-          ],
+          id: "search-revamp-dashboard",
+          icon: "frame",
+          title: "Search revamp dashboard",
         },
         {
-          id: "product-review-suggested-tasks",
-          title: "Suggestions",
-          variant: "suggestions",
-          items: [
-            {
-              id: "suggested-copy-review",
-              groupTitle: "Mia Jensen",
-              groupUserId: locutorId,
-              text: "Review the empty-state copy with Support before implementation.",
-            },
-            {
-              id: "suggested-instrumentation",
-              groupTitle: "Santiago Martínez",
-              groupUserId: user3.id,
-              text: "Add tracking for accepted and dismissed inline suggestions.",
-            },
-          ],
+          id: "search-rollout-plan",
+          icon: "document",
+          title: "Rollout plan",
         },
       ],
-    } as ConversationMessage,
+    },
   ];
 
   const conversation2: Conversation = {

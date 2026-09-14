@@ -1,24 +1,45 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { ConfirmContext } from "@app/components/Confirm";
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import type {
   FileEntry,
+  FileExplorerEntry,
+  FileExplorerMenuAction,
   FileExplorerPathEntry,
+  FileExplorerVirtualScopeRoot,
 } from "@app/components/file_explorer/types";
-import { useFileDownload } from "@app/components/file_explorer/useFileDownload";
+import { useFileExplorerDownload } from "@app/components/file_explorer/useFileExplorerDownload";
 import { withVirtualExplorerPath } from "@app/components/file_explorer/utils";
+import { EditPodFileTabDialog } from "@app/components/pod/files/EditPodFileTabDialog";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { useConversationSandboxFiles } from "@app/hooks/conversations/useConversationSandboxFiles";
 import { useFolderPathUrlState } from "@app/hooks/useFolderPathUrlState";
-import { downloadFile, getFilePathViewUrl } from "@app/lib/swr/files";
+import { usePinPodBanner } from "@app/hooks/usePinPodBanner";
+import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
+import {
+  downloadFile,
+  getFilePathViewUrl,
+  useDeleteFileByPath,
+} from "@app/lib/swr/files";
 import { usePodFiles } from "@app/lib/swr/pods";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isPodConversation } from "@app/types/assistant/conversation";
 import { opensInSidePanel } from "@app/types/files";
+import type { PodFileTab } from "@app/types/pod_file_tab";
+import {
+  DEFAULT_POD_FILE_TAB_ICON,
+  MAX_POD_FILE_TAB_TITLE_LENGTH,
+  podFileTabBasename,
+} from "@app/types/pod_file_tab";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, XClose } from "@dust-tt/sparkle";
-import { useCallback, useMemo } from "react";
+import { Button, LayoutAlt02, Pin02, XClose } from "@dust-tt/sparkle";
+import { useCallback, useContext, useMemo, useState } from "react";
 
-const POD_CONVERSATION_SCOPE_ROOTS = ["conversation", "pod"] as const;
+function isFramePackageEntry(entry: FileExplorerEntry): boolean {
+  return entry.kind === "frame_package";
+}
 
 interface ConversationFileExplorerProps {
   conversation: ConversationWithoutContentType;
@@ -30,16 +51,41 @@ export function ConversationFileExplorer({
   owner,
 }: ConversationFileExplorerProps) {
   const { closePanel, openPanel } = useConversationSidePanelContext();
+  const { hasFeature } = useFeatureFlags();
+  const confirm = useContext(ConfirmContext);
   const isPod = isPodConversation(conversation);
+
+  const virtualScopeRoots = useMemo<
+    readonly FileExplorerVirtualScopeRoot[] | undefined
+  >(() => {
+    if (!isPod) {
+      return undefined;
+    }
+
+    return [
+      {
+        path: "conversation",
+        canonicalPath: `conversation-${conversation.sId}`,
+      },
+      { path: "pod", canonicalPath: `pod-${conversation.spaceId}` },
+    ];
+  }, [conversation, isPod]);
 
   const [currentFolderPath, setCurrentFolderPath] = useFolderPathUrlState();
 
-  const { sandboxFiles, isSandboxFilesLoading } = useConversationSandboxFiles({
-    conversationId: conversation.sId,
-    owner,
-  });
+  const { sandboxFiles, isSandboxFilesLoading, mutateSandboxFiles } =
+    useConversationSandboxFiles({
+      conversationId: conversation.sId,
+      owner,
+    });
 
-  const { files: podFiles, isPodFilesLoading } = usePodFiles({
+  const deleteFileByPath = useDeleteFileByPath({ owner });
+
+  const {
+    files: podFiles,
+    isPodFilesLoading,
+    mutatePodFiles,
+  } = usePodFiles({
     owner,
     podId: isPod ? conversation.spaceId : "",
     disabled: !isPod,
@@ -56,6 +102,87 @@ export function ConversationFileExplorer({
     ];
   }, [isPod, podFiles, sandboxFiles]);
 
+  const { spaceInfo: podInfo } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: isPod ? conversation.spaceId : null,
+  });
+
+  const canEditPod =
+    isPod && (podInfo?.isEditor ?? false) && !podInfo?.archivedAt;
+
+  const { togglePin, isPinned } = usePinPodBanner({
+    owner,
+    podId: isPod ? conversation.spaceId : "",
+    pinnedFramePath: podInfo?.pinnedFramePath ?? null,
+    isEditor: canEditPod,
+  });
+
+  const { removeFileTab, isFileTab } = usePodFileTabs({
+    owner,
+    podId: isPod ? conversation.spaceId : "",
+    fileTabs: podInfo?.frameTabs ?? [],
+    tabsOrder: podInfo?.tabsOrder ?? [],
+    isEditor: canEditPod,
+  });
+
+  const [createFileTabDraft, setCreateFileTabDraft] =
+    useState<PodFileTab | null>(null);
+
+  const getExtraFileMenuItems = useCallback(
+    (entry: FileExplorerEntry): FileExplorerMenuAction[] => {
+      if (
+        !canEditPod ||
+        entry.kind !== "frame_package" ||
+        !entry.path.startsWith(`pod-${conversation.spaceId}/`)
+      ) {
+        return [];
+      }
+
+      const pinned = isPinned(entry.path);
+      const items: FileExplorerMenuAction[] = [
+        {
+          label: pinned ? "Unpin from banner" : "Pin as Pod banner",
+          icon: Pin02,
+          onClick: (e) => {
+            e.stopPropagation();
+            void togglePin(entry.path, { fileName: entry.fileName });
+          },
+        },
+      ];
+
+      const asTab = isFileTab(entry.path);
+      items.push({
+        label: asTab ? "Remove from Pod tabs" : "Add as Pod tab",
+        icon: LayoutAlt02,
+        onClick: (e) => {
+          e.stopPropagation();
+          if (asTab) {
+            void removeFileTab(entry.path, { fileName: entry.fileName });
+            return;
+          }
+          setCreateFileTabDraft({
+            path: entry.path,
+            title: podFileTabBasename(entry.fileName).slice(
+              0,
+              MAX_POD_FILE_TAB_TITLE_LENGTH
+            ),
+            icon: DEFAULT_POD_FILE_TAB_ICON,
+          });
+        },
+      });
+
+      return items;
+    },
+    [
+      canEditPod,
+      conversation.spaceId,
+      isFileTab,
+      isPinned,
+      removeFileTab,
+      togglePin,
+    ]
+  );
+
   const getFileUrl = useCallback(
     (path: string) => getFilePathViewUrl(owner, path),
     [owner]
@@ -66,7 +193,7 @@ export function ConversationFileExplorer({
     [owner]
   );
 
-  const onFileDownload = useFileDownload({ getFileResponse });
+  const onDownload = useFileExplorerDownload({ owner, getFileResponse });
 
   const onOpenInteractive = useCallback(
     (entry: { fileId: string }) =>
@@ -83,6 +210,34 @@ export function ConversationFileExplorer({
       return false;
     },
     [openPanel]
+  );
+
+  // Only Frame packages get a Delete item here (see `canDelete`); other conversation files stay
+  // non-deletable as before.
+  const onDelete = useCallback(
+    async (entry: FileExplorerEntry) => {
+      if (entry.kind !== "frame_package") {
+        return;
+      }
+      const confirmed = await confirm({
+        title: "Delete Frame?",
+        message:
+          `Are you sure you want to delete the Frame "${entry.fileName}"? Its source, ` +
+          "functions, databases and share links will be permanently removed. " +
+          "This action cannot be undone.",
+        validateLabel: "Delete",
+        validateVariant: "warning",
+      });
+      if (confirmed) {
+        // The package entry carries the manifest path; deleting the manifest runs the
+        // package-aware Frame deletion server-side.
+        const result = await deleteFileByPath(entry.path);
+        if (result.isOk()) {
+          await Promise.all([mutateSandboxFiles(), mutatePodFiles()]);
+        }
+      }
+    },
+    [confirm, deleteFileByPath, mutatePodFiles, mutateSandboxFiles]
   );
 
   return (
@@ -105,7 +260,9 @@ export function ConversationFileExplorer({
         <FileExplorer
           currentFolderPath={currentFolderPath}
           defaultViewMode={isPod ? "list" : "grid"}
+          displayFramePackages={hasFeature("frames_v2")}
           files={files}
+          getExtraFileMenuItems={getExtraFileMenuItems}
           hideBreadcrumbAtRoot={!isPod}
           isLoading={
             isPod
@@ -114,13 +271,30 @@ export function ConversationFileExplorer({
           }
           getFileUrl={getFileUrl}
           onCurrentFolderChange={setCurrentFolderPath}
-          onFileDownload={onFileDownload}
+          onDelete={hasFeature("frames_v2") ? onDelete : undefined}
+          canDelete={isFramePackageEntry}
+          onDownload={onDownload}
           onOpenInteractive={onOpenInteractive}
           onOpenInPanel={onOpenInPanel}
           owner={owner}
-          virtualScopeRoots={isPod ? POD_CONVERSATION_SCOPE_ROOTS : undefined}
+          virtualScopeRoots={virtualScopeRoots}
         />
       </div>
+
+      {createFileTabDraft && (
+        <EditPodFileTabDialog
+          key={createFileTabDraft.path}
+          owner={owner}
+          podId={isPod ? conversation.spaceId : ""}
+          fileTabs={podInfo?.frameTabs ?? []}
+          tabsOrder={podInfo?.tabsOrder ?? []}
+          isEditor={canEditPod}
+          tab={createFileTabDraft}
+          mode="create"
+          isOpen
+          onClose={() => setCreateFileTabDraft(null)}
+        />
+      )}
     </div>
   );
 }

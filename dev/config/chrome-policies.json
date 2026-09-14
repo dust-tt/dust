@@ -1,0 +1,8 @@
+{
+  "PasswordManagerEnabled": false,
+  "PasswordLeakDetectionEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false,
+  "SearchSuggestEnabled": false,
+  "SavingBrowserHistoryDisabled": true
+}

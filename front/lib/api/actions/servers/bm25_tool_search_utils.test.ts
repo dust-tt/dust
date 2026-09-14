@@ -7,9 +7,9 @@ import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_uti
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { CONVERSATION_SIDE_PANEL_SERVER } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
+import { CURSOR_CLOUD_AGENTS_SERVER } from "@app/lib/api/actions/servers/cursor_cloud_agents/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
-import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
 import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
@@ -52,6 +52,7 @@ import {
 import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
 import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadata";
 import { SERVICENOW_SERVER } from "@app/lib/api/actions/servers/servicenow/metadata";
+import { SHOPIFY_SERVER } from "@app/lib/api/actions/servers/shopify/metadata";
 import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
@@ -65,7 +66,6 @@ import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata"
 import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
 import { WAKEUPS_SERVER } from "@app/lib/api/actions/servers/wakeups/metadata";
 import { WEB_SEARCH_BROWSE_SERVER } from "@app/lib/api/actions/servers/web_search_browse/metadata";
-import { WORKDAY_SERVER } from "@app/lib/api/actions/servers/workday/metadata";
 import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type { JSONSchema7 } from "json-schema";
@@ -128,6 +128,10 @@ const SERVER_SOURCES: Array<{
     name: "conversation_side_panel",
     tools: CONVERSATION_SIDE_PANEL_SERVER.tools,
   },
+  {
+    name: "cursor_cloud_agents",
+    tools: CURSOR_CLOUD_AGENTS_SERVER.tools,
+  },
   { name: "google_drive", tools: GOOGLE_DRIVE_SERVER.tools },
   { name: "google_sheets", tools: GOOGLE_SHEETS_SERVER.tools },
   { name: "microsoft_drive", tools: MICROSOFT_DRIVE_SERVER.tools },
@@ -149,6 +153,7 @@ const SERVER_SOURCES: Array<{
   { name: "salesforce", tools: SALESFORCE_SERVER.tools },
   { name: "salesloft", tools: SALESLOFT_SERVER.tools },
   { name: "servicenow", tools: SERVICENOW_SERVER.tools },
+  { name: "shopify", tools: SHOPIFY_SERVER.tools },
   { name: "slab", tools: SLAB_SERVER.tools },
   { name: "sound_studio", tools: SOUND_STUDIO_SERVER.tools },
   { name: "speech_generator", tools: SPEECH_GENERATOR_SERVER.tools },
@@ -165,7 +170,6 @@ const SERVER_SOURCES: Array<{
   { name: "pod_manager", tools: POD_MANAGER_SERVER.tools },
   { name: "productboard", tools: PRODUCTBOARD_SERVER.tools },
   { name: "sound_studio", tools: SOUND_STUDIO_SERVER.tools },
-  { name: "workday", tools: WORKDAY_SERVER.tools },
   { name: "speech_generator", tools: SPEECH_GENERATOR_SERVER.tools },
   { name: "statuspage", tools: STATUSPAGE_SERVER.tools },
   { name: "val_town", tools: VAL_TOWN_SERVER.tools },
@@ -201,7 +205,6 @@ const SERVER_SOURCES: Array<{
   { name: "exa_people_and_company", tools: EXA_SERVER.tools },
   { name: "microsoft_excel", tools: MICROSOFT_EXCEL_SERVER.tools },
   { name: "openai_usage", tools: OPENAI_USAGE_SERVER.tools },
-  { name: "databricks", tools: DATABRICKS_SERVER.tools },
   {
     name: "data_sources_file_system",
     tools: DATA_SOURCES_FILE_SYSTEM_SERVER.tools,

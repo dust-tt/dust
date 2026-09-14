@@ -34,9 +34,15 @@ vi.mock("@app/lib/api/sandbox/egress", () => ({
   mintEgressInvalidationJwt: mockMintEgressInvalidationJwt,
 }));
 
-vi.mock("@app/lib/file_storage", () => ({
-  getBucketInstance: mockGetBucketInstance,
-}));
+vi.mock("@app/lib/file_storage", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("@app/lib/file_storage")>();
+
+  return {
+    ...original,
+    getBucketInstance: mockGetBucketInstance,
+  };
+});
 
 import {
   addOwnerPolicyDomain,
@@ -46,6 +52,7 @@ import {
   parseExactEgressDomain,
   readOwnerPolicy,
   readWorkspacePolicy,
+  removeOwnerPolicyDomain,
   requestOwnerPolicyDomain,
   writeOwnerPolicy,
   writeWorkspacePolicy,
@@ -277,6 +284,29 @@ describe("owner egress policy storage", () => {
     expect(result.isErr()).toBe(true);
     expect(mockFetchFileContent).not.toHaveBeenCalled();
     expect(mockUploadRawContentToBucket).not.toHaveBeenCalled();
+  });
+
+  it("removes a stored wildcard domain from an owner policy", async () => {
+    setGcsObjects({
+      [OWNER_PATH]: { allowedDomains: ["*.example.com", "keep.example.org"] },
+    });
+
+    const result = await removeOwnerPolicyDomain(mockAuth, {
+      ownerId: "owner-sid",
+      domain: "*.example.com",
+    });
+
+    expect(result).toEqual(
+      new Ok({
+        policy: { allowedDomains: ["keep.example.org"] },
+        removedDomain: "*.example.com",
+      })
+    );
+    expect(mockUploadRawContentToBucket).toHaveBeenCalledWith({
+      content: JSON.stringify({ allowedDomains: ["keep.example.org"] }),
+      contentType: "application/json",
+      filePath: OWNER_PATH,
+    });
   });
 
   it("rejects owner policies over the domain cap", async () => {

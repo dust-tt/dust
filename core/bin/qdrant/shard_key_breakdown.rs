@@ -16,7 +16,7 @@ use anyhow::{anyhow, Error, Result};
 use clap::Parser;
 use dust::data_sources::{
     data_source::DataSourceConfig,
-    qdrant::{env_var_prefix_for_cluster, DustQdrantClient, QdrantClients, QdrantCluster},
+    qdrant::{env_var_prefix_for_cluster, QdrantClients, QdrantCluster, QdrantTenant},
 };
 use dust::stores::{postgres::PostgresStore, store::Store};
 use regex::Regex;
@@ -466,14 +466,17 @@ async fn gather_data_source_counts(
             }
         };
 
-        let shard_key_id = match DustQdrantClient::shard_key_id_from_internal_id(&internal_id) {
-            Ok(shard_key_id) => shard_key_id,
+        let tenant = QdrantTenant {
+            internal_id: &internal_id,
+            shard_keys: &config.qdrant_config.shard_keys,
+        };
+        let shard_key = match qdrant_client.shard_key_name(&tenant) {
+            Ok(shard_key) => shard_key,
             Err(_) => {
                 skipped += 1;
                 continue;
             }
         };
-        let shard_key = format!("{}_{}", qdrant_client.shard_key_prefix(), shard_key_id);
 
         let collection = qdrant_client.collection_name(&config.embedder_config.embedder);
         *counts.entry((collection, shard_key.clone())).or_insert(0) += 1;

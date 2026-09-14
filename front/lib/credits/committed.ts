@@ -19,7 +19,7 @@ import {
   voidInvoiceWithReason,
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { Result } from "@app/types/shared/result";
@@ -52,7 +52,7 @@ export async function startCreditFromProOneOffInvoice({
       },
       "[Credit Purchase] Invalid credit amount in invoice metadata"
     );
-    getStatsDClient().increment("credits.top_up.error", 1, [
+    statsDMetrics.increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:committed",
       "customer:pro",
@@ -73,7 +73,7 @@ export async function startCreditFromProOneOffInvoice({
       },
       "[Credit Purchase] Credit not found for invoice"
     );
-    getStatsDClient().increment("credits.top_up.error", 1, [
+    statsDMetrics.increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:committed",
       "customer:pro",
@@ -93,14 +93,14 @@ export async function startCreditFromProOneOffInvoice({
       },
       "[Credit Purchase] Error starting credit"
     );
-    getStatsDClient().increment("credits.top_up.error", 1, [
+    statsDMetrics.increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:committed",
       "customer:pro",
     ]);
     return new Err(startResult.error);
   }
-  getStatsDClient().increment("credits.top_up.success", 1, [
+  statsDMetrics.increment("credits.top_up.success", 1, [
     `workspace_id:${workspace.sId}`,
     "type:committed",
     "customer:pro",
@@ -159,7 +159,7 @@ export async function startCreditFromEnterpriseOneOffInvoice({
       },
       "[Credit Purchase] Invalid credit amount in invoice metadata"
     );
-    getStatsDClient().increment("credits.top_up.error", 1, [
+    statsDMetrics.increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:committed",
       "customer:enterprise",
@@ -181,7 +181,7 @@ export async function startCreditFromEnterpriseOneOffInvoice({
       },
       "[Credit Purchase] Credit not found for paid enterprise invoice"
     );
-    getStatsDClient().increment("credits.top_up.error", 1, [
+    statsDMetrics.increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:committed",
       "customer:enterprise",
@@ -217,14 +217,14 @@ export async function startCreditFromEnterpriseOneOffInvoice({
       },
       "[Credit Purchase] Error starting enterprise credit from webhook"
     );
-    getStatsDClient().increment("credits.top_up.error", 1, [
+    statsDMetrics.increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:committed",
       "customer:enterprise",
     ]);
     return new Err(startResult.error);
   }
-  getStatsDClient().increment("credits.top_up.success", 1, [
+  statsDMetrics.increment("credits.top_up.success", 1, [
     `workspace_id:${workspace.sId}`,
     "type:committed",
     "customer:enterprise",
@@ -428,7 +428,7 @@ export async function createEnterpriseCreditPurchase({
       },
       "[Credit Purchase] Failed to start credit after creation"
     );
-    getStatsDClient().increment("credits.top_up.error", 1, [
+    statsDMetrics.increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:committed",
       "customer:enterprise",
@@ -436,7 +436,7 @@ export async function createEnterpriseCreditPurchase({
     return new Err(startResult.error);
   }
 
-  getStatsDClient().increment("credits.top_up.success", 1, [
+  statsDMetrics.increment("credits.top_up.success", 1, [
     `workspace_id:${workspace.sId}`,
     "type:committed",
     "customer:enterprise",

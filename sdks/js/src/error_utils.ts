@@ -8,6 +8,11 @@ export function errorToString(error: unknown): string {
   return JSON.stringify(error);
 }
 
+/**
+ * @cc [owner:spolu,label:error-handling] normalized-error-identity
+ * Error inputs MUST be returned unchanged, preserving their subtype, stack, cause, and custom fields.
+ * Other inputs MUST be wrapped using errorToString; serialization failures MUST propagate.
+ */
 export function normalizeError(error: unknown): Error {
   if (error instanceof Error) {
     return error;

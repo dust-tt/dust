@@ -23,7 +23,7 @@ import {
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import {
   useCreateMCPServerConnection,
   useDiscoverOAuthMetadata,
@@ -32,6 +32,7 @@ import {
 import datadogLogger from "@app/logger/datadogLogger";
 import {
   OAUTH_PROVIDER_NAMES,
+  providerUsesWellKnownOAuthDiscovery,
   validateOAuthCredentials,
 } from "@app/types/oauth/lib";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -63,7 +64,7 @@ export function ConnectMCPServerDialog({
   setIsOpen,
 }: ConnectMCPServerDialogProps) {
   const sendNotification = useSendNotification();
-  const regionContext = useRegionContext();
+  const cellContext = useCellContext();
 
   const defaultValues = getConnectMCPServerDialogDefaultValues();
   const form = useForm<MCPServerOAuthFormValues>({
@@ -130,9 +131,11 @@ export function ConnectMCPServerDialog({
           mcpServerView.server.url &&
           !remoteMCPServerOAuthDiscoveryDone
         ) {
-          // For static OAuth servers, skip discovery entirely — their credentials
-          // are manually provided by the admin and there is no .well-known endpoint.
-          if (mcpServerView.server.authorization?.provider === "mcp_static") {
+          // Skip discovery for providers whose endpoints are not discovered via
+          // `.well-known` — their credentials are admin-provided and their
+          // endpoints are known or derived.
+          const provider = mcpServerView.server.authorization?.provider;
+          if (provider && !providerUsesWellKnownOAuthDiscovery(provider)) {
             setAuthorization(mcpServerView.server.authorization);
             setRemoteMCPServerOAuthDiscoveryDone(true);
             setIsLoading(false);
@@ -226,7 +229,7 @@ export function ConnectMCPServerDialog({
       createMCPServerConnection,
       updateServerView,
       onBeforeAssociateConnection: () => setExternalIsLoading(true),
-      regionInfo: regionContext.regionInfo,
+      cellInfo: cellContext.cellInfo,
     });
 
     if (submitRes.isErr()) {

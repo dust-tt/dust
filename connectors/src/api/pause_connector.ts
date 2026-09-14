@@ -1,9 +1,9 @@
 import { getConnectorManager } from "@connectors/connectors";
-import { errorFromAny } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 import type { Request, Response } from "express";
 
 type ConnectorPauseResBody = WithConnectorsAPIErrorReponse<{
@@ -45,7 +45,7 @@ const _pauseConnectorAPIHandler = async (
 
     return res.sendStatus(204);
   } catch (e) {
-    logger.error(errorFromAny(e), "Failed to pause the connector");
+    logger.error(normalizeError(e), "Failed to pause the connector");
     return apiError(req, res, {
       status_code: 500,
       api_error: {

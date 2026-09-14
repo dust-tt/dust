@@ -40,6 +40,7 @@ import type { Logger } from "@app/logger/logger";
 import type { FileUseCase, FileUseCaseMetadata } from "@app/types/files";
 import {
   extensionsForContentType,
+  getFileDisplayName,
   isSupportedFileContentType,
 } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -443,10 +444,13 @@ export async function processToolResults(
                 };
                 break;
               case "sandbox_function":
+                if (!runContext.pod) {
+                  throw new Error(
+                    "This Frame does not run in a Pod, so its tools cannot store files."
+                  );
+                }
                 fileUseCase = "project_context";
-                fileUseCaseMetadata = {
-                  spaceId: runContext.invocation.sandboxFunction.space.sId,
-                };
+                fileUseCaseMetadata = { spaceId: runContext.pod.sId };
                 break;
               default:
                 assertNever(runContext);
@@ -552,7 +556,7 @@ export async function processToolResults(
           contentType: c.file.contentType,
           fileId: c.file.sId,
           snippet: c.file.snippet,
-          title: c.file.fileName,
+          title: getFileDisplayName(c.file),
           createdAt: c.file.createdAt.getTime(),
           updatedAt: c.file.updatedAt.getTime(),
           isInProjectContext: c.file.useCase === "project_context",

@@ -229,6 +229,13 @@ def test_extent_grows_one_line_title_overflow():
     assert h > shape.height  # genuinely larger, so the overlap with #142 surfaces
 
 
+def test_fit_estimate_falls_back_when_the_face_is_not_installed():
+    est = G._fit_estimate(FakeShape(5, 3), 12.0, "NoSuchFaceAnywhere")
+    assert est is not None
+    assert est.measured is False
+    assert est.chars_per_line > 0
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]

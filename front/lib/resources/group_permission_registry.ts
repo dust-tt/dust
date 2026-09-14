@@ -22,9 +22,16 @@ import assert from "assert";
  *
  * A role is a named bundle of verbs, valid at one or more levels. Instance-level roles bundle the
  * verbs the product grants and revokes as a unit (e.g. a space `member` is `read` + `write`).
- * Type-level capability roles are singletons — their name equals their single verb — because the
- * Governance page toggles capabilities one verb at a time; a multi-verb type-level role would make
- * a single toggle revoke verbs it did not touch.
+ * Type-level roles are singletons — one verb — because the Governance page toggles capabilities one
+ * verb at a time; a multi-verb type-level role would make a single toggle revoke verbs it did not
+ * touch.
+ *
+ * Naming follows what the role is for. A role named after its verb (`create`, `publish`, `invite`,
+ * `use`, `make_discoverable`, `use_workspace_pool`) is a governance capability: an action that is
+ * inherently workspace-wide, stays type-level, and is never granted per instance — which is why the
+ * name and the verb can be the same word. A role named for what its holder is (`reader`, `member`,
+ * `editor`, `admin`) describes access to a resource; it may be granted type-wide today and per
+ * instance later, so it keeps a role name even when its only level is `type`.
  *
  * A grant row stores the role name (see `@app/types/group_permissions`); `assertValidGrant` checks
  * a grant type is a role defined for its resource type at the required level. Translating a
@@ -56,11 +63,15 @@ export const ROLE_REGISTRY: Record<
     admin: { verbs: ["read", "write", "admin"], levels: ["instance"] },
   },
   agent: {
-    editor: { verbs: ["read", "write"], levels: ["instance"] },
+    editor: { verbs: ["read", "write", "admin"], levels: ["instance"] },
     create: { verbs: ["create"], levels: ["type"] },
     publish: { verbs: ["publish"], levels: ["type"] },
   },
   skill: {
+    // Type-level for now — the workspace global group holds it on `skill:-1`, which is what makes
+    // every skill readable — but named as a role rather than after its verb: unlike a governance
+    // capability, readership is expected to become per-skill.
+    reader: { verbs: ["read"], levels: ["type"] },
     editor: { verbs: ["read", "write", "admin"], levels: ["instance"] },
     create: { verbs: ["create"], levels: ["type"] },
     publish: { verbs: ["publish"], levels: ["type"] },
@@ -81,6 +92,9 @@ export const ROLE_REGISTRY: Record<
   },
   dust_app: {
     admin: { verbs: ["admin"], levels: ["type"] },
+  },
+  trigger: {
+    use_workspace_pool: { verbs: ["use_workspace_pool"], levels: ["type"] },
   },
 };
 
@@ -148,28 +162,28 @@ export function grantTypesForVerb(
   });
 }
 
-// Verbs a grant type confers at `level`; empty when the role is not valid at that level, or the
-// resource type is unknown (e.g. a stale grant row for a removed type).
-export function verbsForGrantAtLevel(
+// Verbs a grant type confers at any of `levels`; empty when the role is not valid at those levels,
+// or the resource type is unknown (e.g. a stale grant row for a removed type).
+export function verbsForGrantAtLevels(
   grantType: ConcreteGrantType,
   resourceType: ConcreteResourceType,
-  level: GrantLevel
+  levels: ReadonlySet<GrantLevel>
 ): GrantVerb[] {
   const role = ROLE_REGISTRY[resourceType]?.[grantType];
-  if (!role || !role.levels.includes(level)) {
+  if (!role || !role.levels.some((level) => levels.has(level))) {
     return [];
   }
   return [...role.verbs];
 }
 
-// Every verb valid at `level` on `resourceType` — used to expand a "*" grant.
-function allVerbsForResourceAtLevel(
+// Every verb valid at any of `levels` on `resourceType` — used to expand a "*" grant.
+function allVerbsForResourceAtLevels(
   resourceType: ConcreteResourceType,
-  level: GrantLevel
+  levels: ReadonlySet<GrantLevel>
 ): GrantVerb[] {
   const verbs = new Set<GrantVerb>();
   for (const role of Object.values(ROLE_REGISTRY[resourceType] ?? {})) {
-    if (role.levels.includes(level)) {
+    if (role.levels.some((level) => levels.has(level))) {
       for (const verb of role.verbs) {
         verbs.add(verb);
       }
@@ -183,9 +197,9 @@ export function allWorkspacePermissions(): WorkspacePermissions {
   const permissions = emptyWorkspacePermissions();
   for (const resourceType of GROUP_PERMISSION_RESOURCE_TYPES) {
     if (isConcreteResourceType(resourceType)) {
-      permissions[resourceType] = allVerbsForResourceAtLevel(
+      permissions[resourceType] = allVerbsForResourceAtLevels(
         resourceType,
-        "type"
+        new Set<GrantLevel>(["type"])
       );
     }
   }
@@ -216,7 +230,7 @@ function maskToVerbs(mask: number): GrantVerb[] {
 // full resource and to keep the reference type-only.
 type GrantRow = Pick<
   GroupPermissionResource,
-  "groupId" | "grantType" | "resourceType" | "resourceId"
+  "grantType" | "resourceType" | "resourceId"
 >;
 
 // JSON-serializable form of GroupPermissions, embedded in a serialized Authenticator so it can be
@@ -237,6 +251,13 @@ interface SerializedGroupPermissions {
     >
   >;
 }
+
+// What the caller may act on for a given verb: a concrete instance list, or every instance of the
+// type when a type-wide (-1) grant confers it. Callers must handle "all" — that is the point of the
+// union (see `GroupPermissions.resourceIdsWithVerb`).
+export type ResourcesWithVerb =
+  | { kind: "all" }
+  | { kind: "ids"; resourceIds: number[] };
 
 /**
  * The governance grants the *caller* holds, resolved once at auth construction. Keyed by
@@ -298,9 +319,12 @@ export class GroupPermissions {
     };
 
     for (const { grantType, resourceType, resourceId } of grants) {
-      // A "*" grant / -1 resourceId are always type-wide; concrete ids are instance-level.
-      const level: GrantLevel =
-        resourceId === WHOLE_TYPE_RESOURCE_ID ? "type" : "instance";
+      // A whole-type grant applies both to the type itself and to all its instances.
+      const levels = new Set<GrantLevel>(
+        resourceId === WHOLE_TYPE_RESOURCE_ID
+          ? ["type", "instance"]
+          : ["instance"]
+      );
       const resourceTypes =
         resourceType === "*"
           ? GROUP_PERMISSION_RESOURCE_TYPES.filter(isConcreteResourceType)
@@ -313,8 +337,8 @@ export class GroupPermissions {
         }
         const verbs =
           grantType === "*"
-            ? allVerbsForResourceAtLevel(rt, level)
-            : verbsForGrantAtLevel(grantType, rt, level);
+            ? allVerbsForResourceAtLevels(rt, levels)
+            : verbsForGrantAtLevels(grantType, rt, levels);
         add(rt, resourceId, verbsToMask(verbs));
       }
     }
@@ -366,6 +390,40 @@ export class GroupPermissions {
       mask |= byId.get(key) ?? 0;
     }
     return maskToVerbs(mask);
+  }
+
+  // The instances of `resourceType` on which the caller holds `verb` — the reverse of
+  // resolvedVerbsForResource, for callers that enumerate what they may act on ("which spaces am I a
+  // member of") rather than checking one id.
+  //
+  // A type-wide (-1) grant confers the verb on every instance and names none, so it cannot be
+  // returned as a list. It is reported as "all" rather than folded away: `resolvedVerbsForResource`
+  // does fold -1 in, so dropping it here would answer yes for a single id and no for the
+  // enumeration of the same verb.
+  resourceIdsWithVerb(
+    resourceType: ConcreteResourceType,
+    verb: GrantVerb
+  ): ResourcesWithVerb {
+    const bit = VERB_BIT.get(verb) ?? 0;
+    const byId = this.grants.get(resourceType);
+    if (!byId || bit === 0) {
+      return { kind: "ids", resourceIds: [] };
+    }
+
+    if (((byId.get(WHOLE_TYPE_RESOURCE_ID) ?? 0) & bit) !== 0) {
+      return { kind: "all" };
+    }
+
+    const resourceIds: number[] = [];
+    for (const [resourceId, mask] of byId) {
+      if (resourceId === WHOLE_TYPE_RESOURCE_ID) {
+        continue;
+      }
+      if ((mask & bit) !== 0) {
+        resourceIds.push(resourceId);
+      }
+    }
+    return { kind: "ids", resourceIds };
   }
 
   // The type-wide (-1) verbs the caller's grants confer per resource type — the flat record for the

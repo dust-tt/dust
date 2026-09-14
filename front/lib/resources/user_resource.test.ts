@@ -1,4 +1,5 @@
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
+import type { Result } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const inMemoryCache = vi.hoisted(() => new Map<string, string>());
@@ -32,6 +33,19 @@ vi.mock("@app/lib/utils/cache", () => ({
           const result = await fn(...args);
           inMemoryCache.set(key, JSON.stringify(result));
           return result;
+        };
+      }
+    ),
+  cacheWithRedisResult: vi
+    .fn()
+    .mockImplementation(
+      <T, E, Args extends unknown[]>(
+        fn: (...args: Args) => Promise<Result<JsonSerializable<T>, E>>
+      ) => {
+        return async (
+          ...args: Args
+        ): Promise<Result<JsonSerializable<T>, E>> => {
+          return fn(...args);
         };
       }
     ),
@@ -91,6 +105,7 @@ vi.mock("@app/lib/utils/cache", () => ({
 }));
 
 import { Authenticator } from "@app/lib/auth";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -111,6 +126,24 @@ describe("UserResource", () => {
     workspace = await WorkspaceFactory.basic();
     user = await UserFactory.basic();
     auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  });
+
+  describe("fetchByModelIds", () => {
+    it("returns no users without querying for empty ids", async () => {
+      const onQuery = vi.fn();
+      frontSequelize.addHook("afterQuery", "empty-user-ids", onQuery);
+      try {
+        expect(await UserResource.fetchByModelIds([])).toEqual([]);
+        expect(onQuery).not.toHaveBeenCalled();
+      } finally {
+        frontSequelize.removeHook("afterQuery", "empty-user-ids");
+      }
+    });
+
+    it("returns users for non-empty ids", async () => {
+      const users = await UserResource.fetchByModelIds([user.id]);
+      expect(users.map((u) => u.id)).toEqual([user.id]);
+    });
   });
 
   describe("searchUsers", () => {
@@ -578,7 +611,7 @@ describe("UserResource", () => {
         const key = "delete-key";
         await user.setMetadata(key, "value");
 
-        await user.deleteMetadata({ key });
+        await user.deleteMetadata({ key, workspaceId: null });
 
         const metadata = await user.getMetadata(key);
         expect(metadata).toBeNull();
@@ -591,7 +624,7 @@ describe("UserResource", () => {
         await user.setMetadata(key1, "value1");
         await user.setMetadata(key2, "value2");
 
-        await user.deleteMetadata({ key: key1 });
+        await user.deleteMetadata({ key: key1, workspaceId: null });
 
         expect(await user.getMetadata(key1)).toBeNull();
         expect(await user.getMetadata(key2)).not.toBeNull();

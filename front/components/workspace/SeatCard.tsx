@@ -12,10 +12,12 @@ import { SEAT_PRODUCT_YEARLY_SUFFIX } from "@app/lib/metronome/constants";
 import type { SupportedCurrency } from "@app/types/currency";
 import { CURRENCY_SYMBOLS } from "@app/types/currency";
 import type { MembershipSeatType } from "@app/types/memberships";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import {
   AlertCircle,
   Card,
+  CoinsStacked01,
   cn,
   Icon,
   LayerSingle,
@@ -140,8 +142,6 @@ function formatAwuCredits(info: SeatTypeInfo): string {
   }`;
 }
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
 // Preview endpoints return a monthly-equivalent figure for every cadence
 // (e.g. annual price / 12), treating it as a steady-state run rate. Seats
 // don't actually bill that way at any cadence: every seat subscription is
@@ -175,13 +175,13 @@ function prorateAmountForCurrentPeriod({
 }): { amountCents: number; daysRemaining: number } | null {
   const startMs = new Date(currentBillingPeriod.startsAt).getTime();
   const endMs = new Date(currentBillingPeriod.endsAt).getTime();
-  const totalDays = (endMs - startMs) / MS_PER_DAY;
+  const totalDays = (endMs - startMs) / ONE_DAY_MS;
   if (!(totalDays > 0)) {
     return null;
   }
   const daysRemaining = Math.min(
     totalDays,
-    Math.max(0, (endMs - Date.now()) / MS_PER_DAY)
+    Math.max(0, (endMs - Date.now()) / ONE_DAY_MS)
   );
   return {
     amountCents: Math.round(amountCents * (daysRemaining / totalDays)),
@@ -366,6 +366,9 @@ interface SeatCardProps {
   isSelected: boolean;
   badge: React.ReactNode;
   onClick: () => void;
+  // When set, the card can't be selected (e.g. the seat type is at its
+  // `maxSeats` cap). Clicks are ignored and the card is visually muted.
+  disabled?: boolean;
 }
 
 export function SeatCard({
@@ -374,6 +377,7 @@ export function SeatCard({
   isSelected,
   badge,
   onClick,
+  disabled = false,
 }: SeatCardProps) {
   const seatIcon = SEAT_TYPE_ICONS[seatType];
   // Same treatment as PlanCard (SubscriptionPlans.tsx): seat tiers without a
@@ -389,31 +393,40 @@ export function SeatCard({
       variant="primary"
       size="sm"
       selected={isSelected}
-      onClick={onClick}
-      className="w-full flex-col items-stretch gap-2"
+      onClick={disabled ? undefined : onClick}
+      className={cn(
+        "w-full flex-col items-stretch gap-2 ring-0",
+        disabled && "cursor-not-allowed opacity-60"
+      )}
     >
-      <div className="flex w-full items-center justify-between">
-        <div className="flex min-w-0 basis-1/2 items-center gap-2">
-          <div
-            className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-lg",
-              iconBackgroundClass
-            )}
-          >
-            <Icon
-              visual={seatIcon}
-              size="sm"
-              className={getSeatIconColorClass(seatType)}
-            />
-          </div>
-          <span className="text-base font-semibold text-foreground">
-            {stripYearlySuffix(info.name)}
-          </span>
+      <div className="flex w-full items-center gap-2">
+        <div
+          className={cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg",
+            iconBackgroundClass
+          )}
+        >
+          <Icon
+            visual={seatIcon}
+            size="sm"
+            className={getSeatIconColorClass(seatType)}
+          />
         </div>
-        <div className="flex min-w-0 basis-1/2 justify-end">{badge}</div>
+        <span className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
+          {stripYearlySuffix(info.name)}
+        </span>
       </div>
+      {/* On its own row rather than beside the name: the price/included-seats
+          badge is often too long to share a row with the name at this card
+          width without wrapping onto (and overlapping) the icon. */}
+      <div>{badge}</div>
       {info.awuCredits > 0 && (
         <div className="flex items-center gap-2 text-muted-foreground">
+          <Icon
+            visual={CoinsStacked01}
+            size="xs"
+            className="text-muted-foreground"
+          />
           <span className="text-xs">{formatAwuCredits(info)}</span>
         </div>
       )}

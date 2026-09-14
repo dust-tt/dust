@@ -22,12 +22,13 @@ import type {
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
+import { ONE_DAY_MS, ONE_HOUR_MS } from "@app/types/shared/utils/date_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 
 import type { SeedContext } from "./types";
 
 /**
- * Seeds the consumption index the "Analytics (new)" page reads, with the
+ * Seeds the consumption index the "Analytics" page reads, with the
  * documents the attribution pipeline would have produced for billed LLM steps
  * and tool calls.
  *
@@ -42,8 +43,6 @@ const SEED_CONSUMPTION_KEY_PREFIX = "seed-consumption";
 const DEFAULT_DAYS_BACK = 90;
 const DEFAULT_MESSAGES_PER_DAY = 12;
 const BULK_CHUNK_SIZE = 500;
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-const MS_PER_HOUR = 60 * 60 * 1000;
 
 const LLM_CREDIT_RANGE = { min: 0.2, max: 8 };
 const TOOL_DIRECT_CREDIT_RANGE = { min: 0.01, max: 0.4 };
@@ -63,6 +62,7 @@ const ORIGIN_WEIGHTS: { origin: UserMessageOrigin; weight: number }[] = [
   { origin: "web", weight: 40 },
   { origin: "triggered", weight: 22 },
   { origin: "slack", weight: 12 },
+  { origin: "slack_workflow", weight: 5 },
   { origin: "triggered_programmatic", weight: 8 },
   { origin: "api", weight: 7 },
   { origin: "extension", weight: 5 },
@@ -188,6 +188,7 @@ async function loadConsumptionPools(
     users: catalog.user.map((entry) => ({
       id: entry.value,
       group_ids: [...(groupIdsByUserId.get(entry.value) ?? [])].sort(),
+      seat_type: "pro",
     })),
     models: removeNulls(
       catalog.model.map((entry) => getModelConfigByModelId(entry.value) ?? null)
@@ -216,6 +217,7 @@ function makeAgent(
   parentAgentId?: string
 ): AgentMessageConsumptionAnalyticsAgent {
   return {
+    attributed_id: agentId,
     id: agentId,
     version: "0",
     tag_ids: [],
@@ -247,7 +249,7 @@ function planDayMessages(
     const index = startIndex + messages.length;
     const completedAtMs = Math.min(
       dayStartMs +
-        randomInt(random, FIRST_HOUR_UTC, LAST_HOUR_UTC) * MS_PER_HOUR +
+        randomInt(random, FIRST_HOUR_UTC, LAST_HOUR_UTC) * ONE_HOUR_MS +
         randomInt(random, 0, 59) * 60 * 1000,
       nowMs
     );
@@ -305,6 +307,7 @@ type SeedConsumptionBaseFields = Pick<
   | "message_version"
   | "model"
   | "normalized_origin"
+  | "parent_message_id"
   | "run_usage_id"
   | "space_id"
   | "status"
@@ -344,6 +347,7 @@ function makeBaseFields(
       resolution_method: "agent",
     },
     normalized_origin: normalizeOrigin(message.origin),
+    parent_message_id: null,
     run_usage_id: consumptionKey,
     space_id: null,
     status: "succeeded",
@@ -375,6 +379,7 @@ function makeLlmDocument(
     }),
     consumption_type: "llm",
     credit_micro: creditMicro,
+    micro_usd: creditMicro,
     gross_credit_micro: {
       system: systemCreditMicro,
       input:
@@ -425,6 +430,7 @@ function makeToolDocument(
     }),
     consumption_type: "tool",
     credit_micro: creditMicro,
+    micro_usd: null,
     gross_credit_micro: {
       system: 0,
       input: null,
@@ -497,12 +503,12 @@ function planDocuments(
 ): AgentMessageConsumptionAnalyticsData[] {
   const random = makeRandom(daysBack * 1000 + messagesPerDay);
   const nowMs = Date.now();
-  const todayStartMs = Math.floor(nowMs / MS_PER_DAY) * MS_PER_DAY;
+  const todayStartMs = Math.floor(nowMs / ONE_DAY_MS) * ONE_DAY_MS;
   const documents: AgentMessageConsumptionAnalyticsData[] = [];
   let messageIndex = 0;
 
   for (let dayOffset = daysBack - 1; dayOffset >= 0; dayOffset--) {
-    const dayStartMs = todayStartMs - dayOffset * MS_PER_DAY;
+    const dayStartMs = todayStartMs - dayOffset * ONE_DAY_MS;
     const dayOfWeek = new Date(dayStartMs).getUTCDay();
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     // A trend and a weekly rhythm, rather than noise around a flat line.

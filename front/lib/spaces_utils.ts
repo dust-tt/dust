@@ -1,7 +1,8 @@
+import type { RichSpaceType } from "@app/types/api/spaces";
 import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { PlanType } from "@app/types/plan";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType, SpaceType } from "@app/types/space";
 import type { WorkspaceType } from "@app/types/user";
 import groupBy from "lodash/groupBy";
 
@@ -20,7 +21,7 @@ export const dustAppsListUrl = (
   return `/w/${owner.sId}/spaces/${space.sId}/categories/apps`;
 };
 
-export const groupSpacesForDisplay = (spaces: SpaceType[]) => {
+export const groupSpacesForDisplay = (spaces: EnrichedSpaceType[]) => {
   // Conversations space should never be displayed
   const spacesWithoutConversations = spaces.filter(
     (space) => space.kind !== "conversations"
@@ -62,3 +63,17 @@ export const isPrivateSpacesLimitReached = (
   plan.limits.vaults.maxVaults !== -1 &&
   spaces.filter((s) => s.kind === "regular").length >=
     plan.limits.vaults.maxVaults;
+
+/**
+ * @cc [owner:fabiencelier,label:product] membership-properties-mirror-space
+ * Returns the space's four membership properties as the update endpoint takes them, so a caller
+ * that spreads the result and overrides only the properties it edits leaves the others unchanged.
+ */
+export const spaceMembershipProperties = (space: RichSpaceType) => ({
+  memberIds: space.members.filter((m) => !m.isEditor).map((m) => m.sId),
+  editorIds: space.members.filter((m) => m.isEditor).map((m) => m.sId),
+  groupIds: space.groups.filter((g) => g.role === "member").map((g) => g.sId),
+  editorGroupIds: space.groups
+    .filter((g) => g.role === "editor")
+    .map((g) => g.sId),
+});

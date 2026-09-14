@@ -17,13 +17,14 @@ import { Icon } from "./Icon";
 const NOTIFICATION_DELAY_MS = 5000;
 
 export type NotificationType = {
+  /** Optional action button shown under the message; clicking it also dismisses the toast. */
   action?: {
-    href?: string;
     label: string;
-    onClick?: () => void;
+    onClick: () => void;
   };
   title?: string;
   description?: string;
+  /** Outcome variant driving the icon and its color. */
   type: "success" | "error" | "info" | "warning" | "hello";
 };
 
@@ -48,23 +49,47 @@ function resolveIcon(type: NotificationType["type"]): React.FC {
   }
 }
 
-function resolveIconColor(type: NotificationType["type"]): string {
+function resolveSurface(type: NotificationType["type"]): string {
   switch (type) {
     case "success":
-      return "text-success-500";
+      return "bg-success-50 border-success-200 dark:bg-green-950 dark:border-green-900";
     case "error":
-      return "text-warning-500";
+      return "bg-red-50 border-rose-100 dark:bg-red-950 dark:border-red-900";
     case "info":
-      return "text-info-700";
+      return "bg-highlight-50 border-highlight-100 dark:bg-blue-950 dark:border-blue-900";
     case "warning":
-      return "text-amber-500";
+      return "bg-orange-50 border-orange-100 dark:bg-golden-950 dark:border-golden-900";
     case "hello":
-      return "text-primary-500";
+      return "bg-stone-50 border-stone-150 dark:bg-stone-950 dark:border-stone-800";
     default:
       return assertNever(type);
   }
 }
 
+function resolveForeground(type: NotificationType["type"]): string {
+  switch (type) {
+    case "success":
+      return "text-success-800 dark:text-green-100";
+    case "error":
+      return "text-red-800 dark:text-red-100";
+    case "info":
+      return "text-highlight-800 dark:text-blue-100";
+    case "warning":
+      return "text-orange-800 dark:text-golden-100";
+    case "hello":
+      return "text-stone-800 dark:text-stone-50";
+    default:
+      return assertNever(type);
+  }
+}
+
+/**
+ * The presentational card of a toast notification: icon, title, description,
+ * optional action button, and optional dismiss control. Use it directly for
+ * inline previews; in product code dispatch toasts with useSendNotification
+ * instead.
+ * @summary Presentational notification card.
+ */
 export function NotificationContent({
   type,
   title,
@@ -73,38 +98,34 @@ export function NotificationContent({
   onDismiss,
 }: NotificationType & { onDismiss?: () => void }) {
   const icon = resolveIcon(type);
-  const iconColor = resolveIconColor(type);
+  const foreground = resolveForeground(type);
 
   return (
     <div
       className={cn(
-        "pointer-events-auto relative flex w-[246px] flex-col overflow-clip",
-        "rounded-xl border border-border bg-background p-2",
-        "shadow-[0px_0.5px_1px_0px_rgba(0,0,0,0.04),0px_1px_1px_0px_rgba(0,0,0,0.06),inset_2px_-2px_7px_0px_rgba(0,0,0,0.01),inset_0px_4px_4px_0px_rgba(255,255,255,0.08)]",
-        "dark:shadow-[0px_2px_8px_0px_rgba(0,0,0,0.45),inset_0px_-1px_0px_0px_rgba(255,255,255,0.08)]",
-        "dark:border-stone-800/60",
-        "animate-in fade-in-0 zoom-in-95 duration-200 ease-emphasized",
-        "origin-bottom-right motion-reduce:animate-none"
+        "pointer-events-auto relative flex w-[264px] flex-col gap-2 overflow-clip",
+        "rounded-xl border p-3",
+        resolveSurface(type),
+        "[&>*]:transition-opacity [&>*]:duration-400 [&>*]:ease-enter",
+        "[[data-expanded=false][data-front=false]_&>*]:opacity-0"
       )}
     >
-      <div className="flex items-start justify-between gap-1">
-        <div className="flex min-w-0 flex-1 items-start gap-1">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-1 items-start gap-2">
           <div className="mt-[2px] shrink-0">
             <Icon
               visual={icon}
               size="xs"
-              className={iconColor}
+              className={foreground}
               aria-hidden="true"
             />
           </div>
-          <div className="flex min-w-0 flex-col">
+          <div className="flex min-w-0 flex-col gap-0.5">
             {title && (
-              <span className="text-sm font-medium leading-5 tracking-[-0.02em] text-foreground">
-                {title}
-              </span>
+              <span className={cn("label-sm", foreground)}>{title}</span>
             )}
             {description && (
-              <span className="text-xs leading-4 text-muted-foreground">
+              <span className={cn("copy-xs opacity-80", foreground)}>
                 {description}
               </span>
             )}
@@ -114,7 +135,10 @@ export function NotificationContent({
           <button
             type="button"
             onClick={onDismiss}
-            className="mt-[2px] shrink-0 cursor-pointer text-muted-foreground transition-colors hover:text-foreground"
+            className={cn(
+              "mt-[2px] shrink-0 cursor-pointer opacity-60 transition-opacity hover:opacity-100",
+              foreground
+            )}
             aria-label="Dismiss notification"
           >
             <Icon visual={XClose} size="xs" />
@@ -122,14 +146,13 @@ export function NotificationContent({
         )}
       </div>
       {action && (
-        <div className="mt-1 pl-5">
+        <div className="pl-6">
           <Button
             size="xs"
-            variant="ghost"
+            variant="outline"
             label={action.label}
-            href={action.href}
             onClick={() => {
-              action.onClick?.();
+              action.onClick();
               onDismiss?.();
             }}
           />
@@ -139,6 +162,14 @@ export function NotificationContent({
   );
 }
 
+/**
+ * A transient toast system that confirms the outcome of an action. Mount a
+ * single Notification.Area near the app root, then dispatch toasts
+ * imperatively with the useSendNotification hook. Use it for brief,
+ * self-dismissing feedback after an action completes; for persistent, inline
+ * status attached to a region, use ContentMessage instead.
+ * @summary Toast notifications dispatched via hook.
+ */
 export const Notification = {
   Area: ({ children }: { children: React.ReactNode }) => {
     const sendNotification = React.useCallback(
@@ -167,7 +198,7 @@ export const Notification = {
         <Toaster
           className="flex flex-col items-end"
           duration={NOTIFICATION_DELAY_MS}
-          visibleToasts={5}
+          visibleToasts={3}
           closeButton={false}
           expand={false}
           invert={false}
@@ -182,4 +213,9 @@ export const Notification = {
   },
 };
 
+/**
+ * Returns the function that dispatches a toast notification, provided by the
+ * nearest Notification.Area.
+ * @summary Hook to dispatch toast notifications.
+ */
 export const useSendNotification = () => React.useContext(NotificationsContext);

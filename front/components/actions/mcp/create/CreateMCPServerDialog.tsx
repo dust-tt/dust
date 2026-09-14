@@ -29,8 +29,11 @@ import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { getTokenFieldLabel } from "@app/lib/actions/mcp_internal_actions/server_token_labels";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
-import type { MCPServerType } from "@app/lib/api/mcp";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import type {
+  MCPServerType,
+  MCPServerViewNameConflictDetails,
+} from "@app/lib/api/mcp";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import {
   useCreateInternalMCPServer,
   useCreateMCPServerConnection,
@@ -38,7 +41,11 @@ import {
   useDiscoverOAuthMetadata,
 } from "@app/lib/swr/mcp_servers";
 import datadogLogger from "@app/logger/datadogLogger";
-import { validateOAuthCredentials } from "@app/types/oauth/lib";
+import type { HostDerivedOAuthConfig } from "@app/types/oauth/lib";
+import {
+  getHostDerivedOAuthCredentialInputs,
+  validateOAuthCredentials,
+} from "@app/types/oauth/lib";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceType } from "@app/types/user";
 import {
@@ -96,6 +103,26 @@ function getSubmitButtonLabel(
   return "Save";
 }
 
+function getServerErrorDomain(
+  values: CreateMCPServerDialogFormValues,
+  hostDerivedOAuth?: HostDerivedOAuthConfig
+): string {
+  const raw =
+    values.remoteServerUrl ||
+    (hostDerivedOAuth
+      ? values.authCredentials?.[hostDerivedOAuth.hostCredential]
+      : undefined) ||
+    "";
+  if (!raw) {
+    return "the server";
+  }
+  try {
+    return new URL(raw).hostname;
+  } catch {
+    return raw;
+  }
+}
+
 interface CreateMCPServerDialogProps {
   owner: WorkspaceType;
   internalMCPServer?: MCPServerType;
@@ -118,7 +145,7 @@ export function CreateMCPServerDialog({
   existingViewNames = [],
 }: CreateMCPServerDialogProps) {
   const sendNotification = useSendNotification();
-  const regionContext = useRegionContext();
+  const cellContext = useCellContext();
 
   // Determine if this is a multi-instance server that already has an existing instance.
   const needsCustomName = useMemo(
@@ -184,6 +211,7 @@ export function CreateMCPServerDialog({
 
   const [nameConflict, setNameConflict] = useState<{
     name: string;
+    conflictDetails?: MCPServerViewNameConflictDetails;
     oauthConnectionId: string | null;
   } | null>(null);
 
@@ -192,6 +220,7 @@ export function CreateMCPServerDialog({
     viewName,
     needsCustomName,
     nameConflict: nameConflict?.name ?? null,
+    conflictDetails: nameConflict?.conflictDetails ?? null,
     existingViewNames,
   });
 
@@ -298,7 +327,7 @@ export function CreateMCPServerDialog({
       createWithURL,
       createInternalMCPServer,
       onBeforeCreateServer: () => setExternalIsLoading(true),
-      regionInfo: regionContext.regionInfo,
+      cellInfo: cellContext.cellInfo,
     });
 
     if (submitRes.isErr()) {
@@ -311,7 +340,10 @@ export function CreateMCPServerDialog({
         );
         setServerError({
           message: err.message,
-          domain: new URL(values.remoteServerUrl).hostname,
+          domain: getServerErrorDomain(
+            values,
+            defaultServerConfig?.hostDerivedOAuth
+          ),
           isRemoteServerError: err.isRemoteServerError,
         });
         return;
@@ -349,6 +381,7 @@ export function CreateMCPServerDialog({
     if (submitRes.value.type === "name_conflict") {
       setNameConflict({
         name: submitRes.value.name,
+        conflictDetails: submitRes.value.conflictDetails,
         oauthConnectionId: submitRes.value.oauthConnectionId,
       });
       setExternalIsLoading(false);
@@ -388,6 +421,18 @@ export function CreateMCPServerDialog({
     return DEFAULT_MCP_SERVER_ICON;
   }, [internalMCPServer, defaultServerConfig]);
 
+  // Host-derived static-OAuth servers show a single host URL + client ID/secret;
+  // the OAuth endpoints, scope and MCP URL are derived from the host at submit.
+  const credentialInputsOverride = useMemo(
+    () =>
+      defaultServerConfig?.hostDerivedOAuth
+        ? getHostDerivedOAuthCredentialInputs(
+            defaultServerConfig.hostDerivedOAuth
+          )
+        : undefined,
+    [defaultServerConfig]
+  );
+
   const staticFormRef = useRef<StaticCredentialFormHandle>(null);
   const [isStaticFormValid, setIsStaticFormValid] = useState(false);
 
@@ -415,9 +460,10 @@ export function CreateMCPServerDialog({
             provider: authorization.provider,
             useCase: useCase ?? null,
             authCredentials: authCredentials ?? null,
+            credentialInputs: credentialInputsOverride ?? null,
           })
         : null,
-    [authorization, useCase, authCredentials]
+    [authorization, useCase, authCredentials, credentialInputsOverride]
   );
 
   const handleCreateServerAndSubmitStaticCredentials = async () => {
@@ -620,6 +666,7 @@ export function CreateMCPServerDialog({
                     form.setValue("selectedScopes", scopes)
                   }
                   serverId={defaultServerConfig?.id}
+                  credentialInputsOverride={credentialInputsOverride}
                 />
               )}
 

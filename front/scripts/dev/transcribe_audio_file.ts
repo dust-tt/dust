@@ -90,7 +90,8 @@ async function transcribeAudioFile(
 
   const text = transcribeResult.value;
   if (text && text.trim().length > 0) {
-    // Log the transcript. Keep as info so it is captured by the app logger (GEN8).
+    // Log the transcript. Keep as info so it is captured by the app logger
+    // (use-application-logger).
     logger.info(
       { file: filename, length: text.length },
       "Transcription completed."

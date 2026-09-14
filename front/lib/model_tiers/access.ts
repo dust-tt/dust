@@ -1,17 +1,18 @@
 import type { Authenticator } from "@app/lib/auth";
-import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
+import { getAgentAllowedTierNamesOverride } from "@app/lib/model_tiers/agent_tier_overrides";
+import { resolveAllowedTierNames } from "@app/lib/model_tiers/allowed_tiers";
 import type {
   AgentConfigurationScope,
   GenericErrorContent,
 } from "@app/types/assistant/agent";
 import { isModelStreamId } from "@app/types/assistant/models/auto";
+import { getTierForModel } from "@app/types/assistant/models/model_tiers";
 import type {
   ModelConfigurationType,
   ModelResolutionMethodType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import { getMinimumReasoningEffort } from "@app/types/assistant/models/types";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { areRestrictedModelsAllowedForPublishedAgents } from "@app/types/user";
 
 const MODEL_TIER_NOT_ENABLED_ERROR_CODE = "model_tier_not_enabled";
@@ -34,25 +35,22 @@ function buildModelTierAccessDeniedError(
 export async function getModelTierAccessErrorForAgentConfiguration(
   auth: Authenticator,
   {
+    agentSId,
     agentName,
     model,
     reasoningEffort,
-    featureFlags,
     agentScope,
     modelResolutionMethod,
   }: {
+    // Left out when the agent has no sId yet (creation): no agent override applies.
+    agentSId?: string;
     agentName: string;
     model: ModelConfigurationType;
     reasoningEffort?: ReasoningEffort;
-    featureFlags: WhitelistableFeature[];
     agentScope?: AgentConfigurationScope;
     modelResolutionMethod?: ModelResolutionMethodType | null;
   }
 ): Promise<GenericErrorContent | null> {
-  if (!featureFlags.includes("models_picker")) {
-    return null;
-  }
-
   // Workspace admins can allow members to run published agents whose model
   // tier is above the member's own access.
   if (
@@ -68,8 +66,8 @@ export async function getModelTierAccessErrorForAgentConfiguration(
   // tiered as the tier it is named after, at its only effort (`none`).
   const tierName =
     modelResolutionMethod && isModelStreamId(modelResolutionMethod)
-      ? ModelsTierResource.getTierForModel(modelResolutionMethod, "none")
-      : ModelsTierResource.getTierForModel(
+      ? getTierForModel(modelResolutionMethod, "none")
+      : getTierForModel(
           model.modelId,
           reasoningEffort ??
             getMinimumReasoningEffort(model.supportedReasoningEfforts)
@@ -79,8 +77,11 @@ export async function getModelTierAccessErrorForAgentConfiguration(
     return null;
   }
 
-  const { tiers: allowedTierNames } =
-    await ModelsTierResource.resolveAllowedTierNames(auth);
+  const allowedTierNamesOverride = agentSId
+    ? getAgentAllowedTierNamesOverride(agentSId)
+    : null;
+  const allowedTierNames =
+    allowedTierNamesOverride ?? (await resolveAllowedTierNames(auth)).tiers;
 
   if (allowedTierNames.includes(tierName)) {
     return null;

@@ -174,7 +174,8 @@ through the Stripe Customer Portal.
 | Visa / card last 4 | Same as above — Stripe `customer.invoice_settings.default_payment_method.card.last4`. |
 | "Change" button | `POST /api/stripe/portal` returns `{ portalUrl }`; redirect. |
 
-Per `[BACK16]` keep the new endpoint thin: it should live in `lib/api/billing/*` (new folder) and
+Per `[thin-api-handlers]` keep the new endpoint thin: it should live in `lib/api/billing/*` (new
+folder) and
 return domain values, not `APIErrorWithStatusCode`.
 
 ### 3.5 "Invoices" list
@@ -269,7 +270,8 @@ is to expose the Stripe hosted URL.
 
 ## 5. Backend gaps to fill before the UI is fully wired
 
-These are the only meaningful backend deltas — keep them small and per `[BACK16]`/`[BACK18]`
+These are the only meaningful backend deltas — keep them small and per
+`[thin-api-handlers]`/`[transport-independent-business-results]`
 keep business logic in `lib/api/*` and HTTP shaping in handlers.
 
 1. **Billing eligibility** (for client-side route/sidebar/Usage gating):

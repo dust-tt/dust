@@ -10,10 +10,17 @@ const SvgAsana = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path
-      fill="#F06A6A"
-      d="M7 12.6A3.9 3.9 0 1 1 7 20.4 3.9 3.9 0 0 1 7 12.6M17 12.6a3.9 3.9 0 1 1 0 7.801 3.9 3.9 0 0 1 0-7.801M12 3.6a3.9 3.9 0 1 1 0 7.801A3.9 3.9 0 0 1 12 3.6"
-    />
+    <g clipPath="url(#Asana_svg__a)">
+      <rect width={24} height={24} fill="#F7F7F7" rx={6} />
+      <circle cx={12} cy={7.5} r={4} fill="#F06A6A" />
+      <circle cx={17} cy={16.5} r={4} fill="#F06A6A" />
+      <circle cx={7} cy={16.5} r={4} fill="#F06A6A" />
+    </g>
+    <defs>
+      <clipPath id="Asana_svg__a">
+        <path fill="#fff" d="M0 0h24v24H0z" />
+      </clipPath>
+    </defs>
   </svg>
 );
 export default SvgAsana;

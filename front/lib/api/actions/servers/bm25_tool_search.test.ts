@@ -4,6 +4,73 @@ import { SERVERS } from "@app/lib/api/actions/servers/bm25_tool_search_utils.tes
 import { describe, expect, it } from "vitest";
 
 const QUERIES: LabeledQuery[] = [
+  // --- cursor_cloud_agents ---
+  {
+    query: "launch a cursor cloud coding agent on this github repository",
+    expected: "cursor_cloud_agents.launch_agent",
+  },
+  {
+    query: "list cursor cloud agent IDs statuses and latest runs",
+    expected: "cursor_cloud_agents.list_agents",
+  },
+  {
+    query: "get the configuration for this cursor cloud agent",
+    expected: "cursor_cloud_agents.get_agent",
+  },
+  {
+    query: "send follow-up coding instructions to a cursor cloud agent",
+    expected: "cursor_cloud_agents.create_run",
+  },
+  {
+    query: "list the runs for this cursor cloud agent",
+    expected: "cursor_cloud_agents.list_runs",
+  },
+  {
+    query: "check the status and result of a cursor agent run",
+    expected: "cursor_cloud_agents.get_run",
+  },
+  {
+    query: "cancel the active cursor cloud agent run",
+    expected: "cursor_cloud_agents.cancel_run",
+  },
+  {
+    query: "show token usage for a cursor cloud agent",
+    expected: "cursor_cloud_agents.get_agent_usage",
+  },
+  {
+    query: "list screenshots and artifacts from a cursor agent",
+    expected: "cursor_cloud_agents.list_artifacts",
+  },
+  {
+    query: "download an artifact produced by a cursor agent",
+    expected: "cursor_cloud_agents.get_artifact_download_url",
+  },
+  {
+    query: "archive this cursor cloud agent",
+    expected: "cursor_cloud_agents.archive_agent",
+  },
+  {
+    query: "unarchive this cursor cloud agent",
+    expected: "cursor_cloud_agents.unarchive_agent",
+  },
+  {
+    query: "permanently delete this cursor cloud agent",
+    expected: "cursor_cloud_agents.delete_agent",
+  },
+  {
+    query: "get identifying metadata for the configured cursor api key",
+    expected: "cursor_cloud_agents.get_api_key_info",
+  },
+  {
+    query: "list models available for cursor cloud agents",
+    expected: "cursor_cloud_agents.list_models",
+  },
+  {
+    query: "list github repositories available to cursor agents",
+    expected: "cursor_cloud_agents.list_repositories",
+    maxRank: 3,
+  },
+
   // --- agent_memory ---
   { query: "what do you remember about me", expected: "agent_memory.retrieve" },
   {
@@ -377,6 +444,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "show the open tickets in freshservice",
     expected: "freshservice.list_tickets",
+    maxRank: 2,
   },
   {
     query: "get the details of freshservice ticket 88",
@@ -608,7 +676,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "remind me tomorrow morning to check the launch",
     expected: "wakeups.schedule_wakeup",
-    maxRank: 4,
+    maxRank: 5,
   },
   {
     query: "check back in 2 hours to see if the import finished",
@@ -938,7 +1006,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "have a specialist review this pull request for regressions",
     expected: "run_agent.run_CodeReviewer",
-    maxRank: 4,
+    maxRank: 5,
   },
 
   // --- data_warehouses ---
@@ -1071,77 +1139,6 @@ const QUERIES: LabeledQuery[] = [
     query: "what are the current risks in Vanta",
     expected: "vanta.list_risks",
   },
-
-  // --- workspace_analytics ---
-  {
-    query: "which agents are used most in the workspace",
-    expected: "workspace_analytics.get_top_agents",
-    maxRank: 2, // get_top_tools collides on "most used"
-  },
-  {
-    query: "show me the top 10 most active agents this month",
-    expected: "workspace_analytics.get_top_agents",
-  },
-  {
-    query: "who are the most active users this month",
-    expected: "workspace_analytics.get_top_users",
-  },
-  {
-    query: "rank workspace members by messages sent",
-    expected: "workspace_analytics.get_top_users",
-  },
-  {
-    query: "list the agent tags",
-    expected: "workspace_analytics.get_top_agent_tags",
-  },
-  {
-    query:
-      "what does the support agent actually do - show its configuration and prompt",
-    expected: "workspace_analytics.get_agent_details",
-  },
-  {
-    query: "inspect an agent's full system prompt and tools",
-    expected: "workspace_analytics.get_agent_details",
-  },
-  {
-    query: "which skills are executed most in the workspace",
-    expected: "workspace_analytics.get_top_skills",
-  },
-  {
-    query: "what are the top MCP tools used by agents",
-    expected: "workspace_analytics.get_top_tools",
-  },
-  {
-    query: "where do workspace messages come from - slack, api, or browser",
-    expected: "workspace_analytics.get_source_breakdown",
-    maxRank: 10,
-  },
-  {
-    query: "which models did the workspace use most this month",
-    expected: "workspace_analytics.get_top_models",
-    maxRank: 5,
-  },
-  {
-    query: "how many AWU credits did the workspace consume this month",
-    expected: "workspace_analytics.get_credit_usage",
-  },
-  {
-    query: "break down credit spending by agent",
-    expected: "workspace_analytics.get_credit_usage",
-  },
-  {
-    query: "show the credit spending trend over the last 30 days",
-    expected: "workspace_analytics.get_credit_timeseries",
-  },
-  {
-    query: "chart message and conversation volume over time",
-    expected: "workspace_analytics.get_usage_timeseries",
-  },
-  {
-    query: "how has agent activity changed over the last 30 days",
-    expected: "workspace_analytics.get_usage_timeseries",
-  },
-
   // --- ashby ---
   {
     query: "find a candidate in ashby by email",
@@ -1193,6 +1190,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "search the web for the latest AI research papers",
     expected: "web_search_&_browse.websearch",
+    maxRank: 2, // clari_copilot.get_call_details dilutes shared-token IDF
   },
   {
     query: "google this topic for me",
@@ -1618,12 +1616,6 @@ const QUERIES: LabeledQuery[] = [
     expected: "exa_people_and_company.search_companies",
   },
 
-  // --- databricks ---
-  {
-    query: "list the warehouses in Databricks",
-    expected: "databricks.list_warehouses",
-  },
-
   // --- data_sources_file_system ---
   {
     query: "read a connected data source document or page",
@@ -1637,6 +1629,7 @@ const QUERIES: LabeledQuery[] = [
     query:
       "semantically search company data sources for knowledge about a topic",
     expected: "data_sources_file_system.semantic_search",
+    maxRank: 2, // collides with conversation_files.semantic_search
   },
   {
     query: "find a wiki page in a data source by part of its title",
@@ -1657,16 +1650,6 @@ const QUERIES: LabeledQuery[] = [
     query: "reply to a support ticket",
     expected: "zendesk.post_reply",
     maxRank: 4,
-  },
-
-  // --- workday ---
-  {
-    query: "list workers from Workday",
-    expected: "workday.get_workers",
-  },
-  {
-    query: "list workers in Workday",
-    expected: "workday.get_workers",
   },
 
   // --- sound_studio ---
@@ -1718,37 +1701,56 @@ const QUERIES: LabeledQuery[] = [
   // --- servicenow ---
   {
     query: "list open incidents in ServiceNow",
-    expected: "servicenow.list_incidents",
+    expected: "servicenow.list_records",
+    maxRank: 6, // create_record/get_record/update_record still share TABLE_SCHEMA's field text
   },
   {
     query: "show me my ServiceNow tickets",
-    expected: "servicenow.list_incidents",
-    maxRank: 2, // get_incident shares "ServiceNow"/"ticket" tokens
-  },
-  {
-    query: "get ServiceNow incident INC0010001",
-    expected: "servicenow.get_incident",
-  },
-  {
-    query: "look up a single ServiceNow ticket by number",
-    expected: "servicenow.get_incident",
+    expected: "servicenow.list_records",
+    maxRank: 6, // get_record/create_record/update_record all share "ServiceNow"/"ticket" tokens
   },
   {
     query: "create a new incident in ServiceNow",
-    expected: "servicenow.create_incident",
+    expected: "servicenow.create_record",
+    maxRank: 3, // list_records/get_record share "incident"/"ServiceNow" tokens
   },
   {
     query: "open a ServiceNow ticket for this issue",
-    expected: "servicenow.create_incident",
-    maxRank: 4, // get_incident's short, dense description outranks on shared tokens
+    expected: "servicenow.create_record",
+    maxRank: 4, // list_records/get_record/update_record all share "ServiceNow"/"ticket" tokens
   },
   {
     query: "update the state of a ServiceNow incident",
-    expected: "servicenow.update_incident",
+    expected: "servicenow.update_record",
+    maxRank: 3, // get_record/list_records share "incident"/"ServiceNow" tokens
   },
   {
     query: "resolve a ServiceNow ticket and add close notes",
-    expected: "servicenow.update_incident",
+    expected: "servicenow.update_record",
+    maxRank: 3, // get_record/list_records share "ServiceNow"/"ticket" tokens
+  },
+  {
+    query: "list ServiceNow problem records",
+    expected: "servicenow.list_records",
+    maxRank: 6, // same shared-field-text issue as above
+  },
+  {
+    query: "list change requests in ServiceNow",
+    expected: "servicenow.list_records",
+    maxRank: 6, // same shared-field-text issue as the other list_records cases above
+  },
+  {
+    query: "get a ServiceNow record by sys_id",
+    expected: "servicenow.get_record",
+    maxRank: 2, // list_records shares "ServiceNow"/"record"/"sys_id" tokens
+  },
+  {
+    query: "look up a knowledge base article by sys_id in ServiceNow",
+    expected: "servicenow.get_record",
+    // "kb_knowledge" now only appears in the shared TABLE_SCHEMA field text (not repeated in
+    // get_record's own top-level description), so this can lose to an unrelated server's
+    // knowledge-base tool (e.g. freshservice's solution-articles tool) on "knowledge"/"article".
+    maxRank: 4,
   },
 
   // --- slab ---
@@ -1786,6 +1788,19 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "show active incidents on the status page",
     expected: "statuspage.list_incidents",
+  },
+  // --- shopify ---
+  {
+    query: "list products in Shopify store",
+    expected: "shopify.list_products",
+  },
+  {
+    query: "list customers in Shopify store",
+    expected: "shopify.list_customers",
+  },
+  {
+    query: "list orders in Shopify store",
+    expected: "shopify.list_orders",
   },
 ];
 

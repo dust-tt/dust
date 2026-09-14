@@ -24,6 +24,7 @@ import { renderLightContentFragmentForModel } from "@app/lib/resources/content_f
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AttachmentCapabilityContext } from "@app/types/api/assistant/conversation/attachments";
 import type {
   AgentContentItemType,
   AgentErrorContentType,
@@ -95,7 +96,8 @@ function toolResultStatusNotice(
  * text view this returns, in which a non-text result falls back to its JSON serialization.
  */
 export function renderToolResultForModelAsText(
-  action: AgentMCPActionWithOutputType
+  action: AgentMCPActionWithOutputType,
+  capabilities: AttachmentCapabilityContext
 ): string {
   const notice = toolResultStatusNotice(action.status);
   if (notice !== null) {
@@ -103,7 +105,9 @@ export function renderToolResultForModelAsText(
   }
 
   const outputItems = removeNulls(
-    action.output?.map(rewriteContentForModel) ?? []
+    action.output?.map((content) =>
+      rewriteContentForModel(content, capabilities)
+    ) ?? []
   );
   if (outputItems.length === 0) {
     return "Successfully executed action, no output.";
@@ -201,7 +205,13 @@ async function renderActionForMultiActionsModel(
   auth: Authenticator,
   action: AgentMCPActionWithOutputType,
   model: ModelConfigurationType,
-  { conversationId }: { conversationId: string }
+  {
+    conversationId,
+    capabilities,
+  }: {
+    conversationId: string;
+    capabilities: AttachmentCapabilityContext;
+  }
 ): Promise<FunctionMessageTypeModel> {
   const notice = toolResultStatusNotice(action.status);
   if (notice !== null) {
@@ -214,7 +224,9 @@ async function renderActionForMultiActionsModel(
   }
 
   const outputItems = removeNulls(
-    action.output?.map(rewriteContentForModel) ?? []
+    action.output?.map((content) =>
+      rewriteContentForModel(content, capabilities)
+    ) ?? []
   );
 
   // When the user edited the tool inputs before approving, the result is prepended with a note so
@@ -271,7 +283,7 @@ async function renderActionForMultiActionsModel(
     };
   }
 
-  const resultText = renderToolResultForModelAsText(action);
+  const resultText = renderToolResultForModelAsText(action, capabilities);
 
   return {
     role: "function" as const,
@@ -295,6 +307,7 @@ export async function getSteps(
     conversationId,
     onMissingAction,
     enabledSkillById,
+    capabilities,
   }: {
     model: ModelConfigurationType;
     message: AgentMessageType;
@@ -302,6 +315,7 @@ export async function getSteps(
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
     enabledSkillById: ReadonlyMap<string, EnabledSkill>;
+    capabilities: AttachmentCapabilityContext;
   }
 ): Promise<Step[]> {
   const supportedModel = getSupportedModelConfig(model);
@@ -326,6 +340,7 @@ export async function getSteps(
       action,
       result: await renderActionForMultiActionsModel(auth, action, model, {
         conversationId,
+        capabilities,
       }),
       enabledSkillMessages: renderEnabledSkillMessagesForAction(action, {
         enabledSkillById,
@@ -593,10 +608,10 @@ export async function renderContentFragment(
   model: ModelConfigurationType,
   {
     excludeImages,
-    useFileSystem,
+    capabilities,
   }: {
     excludeImages: boolean;
-    useFileSystem: boolean;
+    capabilities: AttachmentCapabilityContext;
   }
 ): Promise<ModelMessageTypeMultiActions | null> {
   const renderedContentFragment = await renderLightContentFragmentForModel(
@@ -605,7 +620,7 @@ export async function renderContentFragment(
     model,
     {
       excludeImages: Boolean(excludeImages),
-      useFileSystem,
+      capabilities,
     }
   );
   return renderedContentFragment;

@@ -142,6 +142,11 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     return { memberships: orderedResourcesFromModels(rows), total: count };
   }
 
+  /**
+   * @cc [owner:philipperolet,label:performance] empty-users-skip-membership-queries
+   * With a workspace, empty users return no memberships without querying. This does not
+   * apply to undefined/null users.
+   */
   static async getActiveMemberships({
     users,
     workspace,
@@ -155,6 +160,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }): Promise<MembershipsWithTotal> {
     if (!workspace && !users?.length) {
       throw new Error("At least one of workspace or userIds must be provided.");
+    }
+
+    if (users?.length === 0) {
+      return { memberships: [], total: 0, nextPageParams: undefined };
     }
 
     const whereClause: WhereOptions<InferAttributes<MembershipModel>> = {
@@ -1039,9 +1048,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
-   * Caller of this method should call `ServerSideTracking.trackCreateMembership` and
-   * `GroupResource.syncBuilderGroupMembership` (builder role deprecation). Prefer
-   * `createAndTrackMembership` from `@app/lib/api/membership` which handles both.
+   * Caller of this method should call `ServerSideTracking.trackCreateMembership`. Prefer
+   * `createAndTrackMembership` from `@app/lib/api/membership` which handles it.
    */
   static async createMembership({
     user,
@@ -1275,9 +1283,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
   }
 
   /**
-   * Caller of this method should call `ServerSideTracking.trackUpdateMembershipRole` and
-   * `GroupResource.syncBuilderGroupMembership` (builder role deprecation). Prefer
-   * `updateMembershipRoleAndTrack` from `@app/lib/api/membership` which handles both.
+   * Caller of this method should call `ServerSideTracking.trackUpdateMembershipRole`. Prefer
+   * `updateMembershipRoleAndTrack` from `@app/lib/api/membership` which handles it.
    */
   static async updateMembershipRole({
     user,
@@ -1396,8 +1403,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auditLog(
       {
         author,
-        userId: user.id,
-        workspaceId: workspace.id,
+        userId: user.sId,
+        workspaceId: workspace.sId,
         previousRole,
         newRole,
       },
@@ -1488,8 +1495,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auditLog(
       {
         author,
-        userId: user.id,
-        workspaceId: workspace.id,
+        userId: user.sId,
+        workspaceId: workspace.sId,
         previousOrigin,
         newOrigin,
       },
@@ -1539,8 +1546,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auditLog(
       {
         author,
-        userId: user.id,
-        workspaceId: workspace.id,
+        userId: user.sId,
+        workspaceId: workspace.sId,
         previousSeatType,
         newSeatType,
       },
@@ -1707,8 +1714,8 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auditLog(
       {
         author,
-        userId: user.id,
-        workspaceId: workspace.id,
+        userId: user.sId,
+        workspaceId: workspace.sId,
         previousSeatType,
         newSeatType,
         scheduledAt: scheduledAt.toISOString(),
@@ -1748,7 +1755,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auditLog(
       {
         author,
-        userId: user.id,
+        userId: user.sId,
         workspaceId: workspace.sId,
       },
       "Membership scheduled seat change cancelled"

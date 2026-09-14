@@ -1,6 +1,6 @@
 import * as projectsContext from "@app/lib/api/projects/context";
+import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
@@ -177,8 +177,10 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
     });
 
     it("returns 403 when the user lacks write permission", async () => {
-      vi.spyOn(SpaceResource.prototype, "canWrite").mockReturnValue(false);
       const { workspace, project } = await setupProject();
+      vi.spyOn(Authenticator.prototype, "can").mockImplementation(
+        (verb) => verb !== "write"
+      );
       const response = await fileRequest(
         workspace,
         project.sId,
@@ -248,8 +250,10 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
     });
 
     it("returns 403 when the user lacks write permission", async () => {
-      vi.spyOn(SpaceResource.prototype, "canWrite").mockReturnValue(false);
       const { workspace, project } = await setupProject();
+      vi.spyOn(Authenticator.prototype, "can").mockImplementation(
+        (verb) => verb !== "write"
+      );
       const response = await fileRequest(
         workspace,
         project.sId,
@@ -315,8 +319,10 @@ describe("/api/w/:wId/spaces/:spaceId/files/<rel>", () => {
     });
 
     it("returns 404 when the user lacks write permission (requireCanWrite)", async () => {
-      vi.spyOn(SpaceResource.prototype, "canWrite").mockReturnValue(false);
       const { workspace, project } = await setupProject();
+      vi.spyOn(Authenticator.prototype, "can").mockImplementation(
+        (verb) => verb !== "write"
+      );
       const response = await fileRequest(
         workspace,
         project.sId,

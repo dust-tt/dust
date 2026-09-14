@@ -1,6 +1,6 @@
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataTypes } from "@app/lib/resources/storage/data_types";
-import type { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import type { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { SoftDeletableWorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { SpaceKind } from "@app/types/space";
 import { isUniqueSpaceKind } from "@app/types/space";
@@ -17,11 +17,8 @@ export class SpaceModel extends SoftDeletableWorkspaceAwareModel<SpaceModel> {
   declare name: string;
   declare kind: SpaceKind;
 
-  // This is a bit confusing as "group" means that we use provisioned groups to manage the space members instead of individual members in the UI.
-  // But in both modes we have "groups" associated to the space to hold the members.
-  declare managementMode: CreationOptional<"manual" | "group">;
-
-  declare groupSpaces: NonAttribute<GroupSpaceModel[]>;
+  // The space's instance-level grants in group_permissions, with the grantee `group` nested.
+  declare spaceGrants?: NonAttribute<GroupPermissionModel[]>;
 }
 SpaceModel.init(
   {
@@ -45,11 +42,6 @@ SpaceModel.init(
     kind: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    managementMode: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "manual",
     },
   },
   {

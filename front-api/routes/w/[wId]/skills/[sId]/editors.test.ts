@@ -40,14 +40,44 @@ function get(workspace: { sId: string }, sId: string) {
 }
 
 describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
-  it("allows adding builder as editor", async () => {
+  it("refuses to change the editors of an archived skill", async () => {
+    const { workspace, auth } = await setup();
+
+    const skill = await SkillFactory.create(auth);
+    const builderUser = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, builderUser, {
+      role: "user",
+    });
+
+    await skill.archive(auth);
+
+    const response = await patch(workspace, skill.sId, {
+      addEditorIds: [builderUser.sId],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived skill cannot be updated. Restore it first.",
+      },
+    });
+
+    const editorsResponse = await get(workspace, skill.sId);
+    const editors = (await editorsResponse.json()).editors;
+    expect(editors.map((e: { sId: string }) => e.sId)).not.toContain(
+      builderUser.sId
+    );
+  });
+
+  it("allows adding a workspace member as editor", async () => {
     const { workspace, auth } = await setup();
 
     const skill = await SkillFactory.create(auth);
 
     const builderUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, builderUser, {
-      role: "builder",
+      role: "user",
     });
 
     const response = await patch(workspace, skill.sId, {
@@ -87,7 +117,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
 
     const builderUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, builderUser, {
-      role: "builder",
+      role: "user",
     });
     const builderAuth = await Authenticator.fromUserIdAndWorkspaceId(
       builderUser.sId,
@@ -125,14 +155,14 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     expect(data.editors).toHaveLength(2); // admin + regular user
   });
 
-  it("allows a mixed batch (builder + user)", async () => {
+  it("allows a mixed batch of members", async () => {
     const { workspace, auth } = await setup();
 
     const skill = await SkillFactory.create(auth);
 
     const builderUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, builderUser, {
-      role: "builder",
+      role: "user",
     });
 
     const regularUser = await UserFactory.basic();
@@ -181,7 +211,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     });
 
     const outsider = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, outsider, { role: "builder" });
+    await MembershipFactory.associate(workspace, outsider, { role: "user" });
 
     const response = await patch(workspace, skill.sId, {
       addEditorIds: [outsider.sId],
@@ -207,7 +237,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     const space = await SpaceFactory.regular(workspace);
 
     const peer = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, peer, { role: "builder" });
+    await MembershipFactory.associate(workspace, peer, { role: "user" });
     await space.addMembers(adminAuth, { userIds: [user.sId, peer.sId] });
 
     const skill = await SkillFactory.create(auth, {
@@ -231,7 +261,7 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     });
 
     const outsider = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, outsider, { role: "builder" });
+    await MembershipFactory.associate(workspace, outsider, { role: "user" });
 
     const response = await patch(workspace, skill.sId, {
       addEditorIds: [outsider.sId],
@@ -251,5 +281,34 @@ describe("PATCH /api/w/:wId/skills/:sId/editors", () => {
     const data = await response.json();
     expect(data.editors).toHaveLength(1); // Creator is editor
     expect(data.editors[0].sId).toBe(user.sId);
+  });
+
+  it("GET endpoint lists the editors of a skill built on a space the admin cannot read", async () => {
+    const { workspace } = await setup();
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, { role: "user" });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(internalAdminAuth, {
+      userIds: [skillOwner.sId],
+    });
+    const skill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const response = await get(workspace, skill.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.editors.map((e: { sId: string }) => e.sId)).toEqual([
+      skillOwner.sId,
+    ]);
   });
 });

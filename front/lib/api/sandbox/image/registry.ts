@@ -26,8 +26,8 @@ import fs from "fs";
 import path from "path";
 
 const DUST_BEDROCK_IMAGE_VERSION = "1.11.0";
-const DUST_BASE_IMAGE_VERSION = "0.8.84";
-const DSBX_CLI_VERSION = "0.1.50";
+const DUST_BASE_IMAGE_VERSION = "0.8.107";
+const DSBX_CLI_VERSION = "0.1.57";
 // Identity, not coverage list: agent-proxied is a specific Linux user. The
 // nftables ruleset covers SANDBOX_EGRESS_CONTROLLED_UIDS; this constant is
 // the stable identity used when creating the workload account.
@@ -53,7 +53,7 @@ const SNOWFLAKE_CLI_DEB_SHA256 =
 // machine and not another. This assumes an Ubuntu base and build-time egress to
 // launchpad.net; if PPAs are blocked, install the TDF .deb bundle instead.
 const LIBREOFFICE_PPA = "ppa:libreoffice/ppa";
-// Litestream (Apache-2.0) replicates the pod-state SQLite databases to the
+// Litestream (Apache-2.0) replicates the sandbox-state SQLite databases to the
 // GCS replica mount.
 const LITESTREAM_VERSION = "0.5.13";
 const EGRESS_LOCAL_DIR = path.resolve(__dirname, "egress");
@@ -99,6 +99,11 @@ const PYTHON_LIBRARIES: PythonLibrary[] = [
     description: "HTML/XML parsing",
   },
   { name: "lxml", version: "6.0.2", description: "XML processing" },
+  {
+    name: "fonttools",
+    version: "4.63.0",
+    description: "Font file inspection and rewriting",
+  },
   { name: "pillow", version: "12.1.1", description: "Image processing" },
   { name: "sympy", version: "1.14.0", description: "Symbolic mathematics" },
   {
@@ -229,19 +234,19 @@ function getDustStateUserSetupCommand(): string {
 }
 
 function getPodStateSetupCommand(): string {
-  // /pod-state/databases holds the live SQLite files: both agent-proxied
+  // /sandbox-state/databases holds the live SQLite files: both agent-proxied
   // function code (group agent) and the litestream daemon (user dust-state)
   // need rw, so it gets the same setgid + default-ACL treatment as /files.
-  // /pod-state/replica is the gcsfuse mount point for the litestream replica
+  // /sandbox-state/replica is the gcsfuse mount point for the litestream replica
   // — the durable copy of pod state. Untrusted workload code must never read
   // or tamper with it, so the directory is dust-state-only: 0700 here, no
   // allow_other on the runtime mount.
   return [
-    "install -d -o root -g root -m 755 /pod-state",
-    "install -d -o dust-state -g agent -m 2770 /pod-state/databases",
-    "setfacl -R -d -m g::rwx /pod-state/databases",
-    "setfacl -R -m g::rwx /pod-state/databases",
-    "install -d -o dust-state -g dust-state -m 700 /pod-state/replica",
+    "install -d -o root -g root -m 755 /sandbox-state",
+    "install -d -o dust-state -g agent -m 2770 /sandbox-state/databases",
+    "setfacl -R -d -m g::rwx /sandbox-state/databases",
+    "setfacl -R -m g::rwx /sandbox-state/databases",
+    "install -d -o dust-state -g dust-state -m 700 /sandbox-state/replica",
   ].join(" && ");
 }
 
@@ -362,9 +367,11 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
   // fallback. Without these, a Calibri/Cambria deck (the PowerPoint defaults)
   // reflows under a non-metric fallback and the QA misses real text collisions.
   // fc-cache rebuilds the fontconfig cache so the new fonts resolve at runtime.
+  // libeot decodes the EOT fonts PowerPoint embeds in a deck, which pptx_fonts
+  // extracts; libreoffice-core already depends on it, this pins it as ours.
   .runCmd(
     "apt-get update && apt-get install -y jq pandoc imagemagick ffmpeg unzip file " +
-      "sqlite3 libreoffice poppler-utils qpdf " +
+      "sqlite3 libreoffice libeot0 poppler-utils qpdf " +
       "fonts-crosextra-carlito fonts-crosextra-caladea fonts-liberation2 " +
       "fonts-noto-core && fc-cache -f",
     { user: "root" }
@@ -550,7 +557,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
       "chown root:root /opt/bin/litestream && chmod 755 /opt/bin/litestream",
     { user: "root" }
   )
-  // Litestream unit + STATIC config (all paths are pod-state contract
+  // Litestream unit + STATIC config (all paths are sandbox-state contract
   // constants), both baked at build. The unit is deliberately NOT enabled:
   // front starts it at runtime AFTER the replica gcsfuse mount and the
   // cold-start restore — at boot the daemon would write to the unmounted
@@ -576,7 +583,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     name: POD_PACKAGE_NAME,
     version: POD_PACKAGE_VERSION,
     description:
-      "Pod database access: db(name) returns a drizzle instance over the pod's SQLite database",
+      "Frame and Pod database access: db(name) returns a Drizzle instance over the sandbox owner's SQLite database",
     runtime: "node",
   })
   .runCmd(`mkdir -p ${PROFILE_DIR}`, { user: "root" })
@@ -850,6 +857,16 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     runtime: "system",
     isDustTool: true,
   })
+  // --- pptx_fonts: install the faces a deck actually asks for ---
+  .registerTool({
+    name: "pptx_fonts",
+    description:
+      "Report the fonts a .pptx needs and install them: the faces embedded in the deck first, Google Fonts for the rest. A substituted face is ~10% off, so the render and the fit warnings both mislead",
+    usage: "pptx_fonts <file> [--install]",
+    returns: "One line per family: extracted, fetched, or still substituted",
+    runtime: "system",
+    isDustTool: true,
+  })
   // --- docx_inspect: structural inspection of .docx documents ---
   .registerTool({
     name: "docx_inspect",
@@ -863,6 +880,7 @@ const DUST_BASE_IMAGE = SandboxImage.fromDocker(
     isDustTool: true,
   })
   .withCapability("gcsfuse")
+  .withCapability("dust_filesystem")
   .withResources({ vcpu: 2, memoryMb: 2048 })
   .withNetwork(PROXY_ONLY_NETWORK_POLICY)
   .setWorkdir("/home/agent")

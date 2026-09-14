@@ -1,17 +1,18 @@
 name: Deploy
-run-name: Deploy ${{ inputs.component }} to ${{ inputs.regions }}
+run-name: Deploy ${{ inputs.component }} to ${{ inputs.cells }}
 
 on:
   workflow_dispatch:
     inputs:
-      regions:
-        description: "Regions to deploy to"
+      cells:
+        description: "Cells to deploy to (cell-00000 is us-central1, cell-00001 europe-west1)"
         required: true
         default: "all"
         type: choice
         options:
-          - "us-central1"
-          - "europe-west1"
+          - "cell-00000"
+          - "cell-00001"
+          - "cell-00002"
           - "all"
       component:
         description: "Name of the component to deploy"
@@ -42,7 +43,7 @@ on:
       depot_region:
         description: "Depot region to use for building"
         required: true
-        default: "us"
+        default: "eu"
         type: choice
         options:
           - "us"
@@ -59,6 +60,7 @@ on:
         type: boolean
 
 permissions:
+  actions: read # the deploy card lists in-flight deploy runs
   contents: read
   pull-requests: write
 
@@ -102,26 +104,37 @@ jobs:
     needs: [prepare]
     runs-on: ubuntu-latest
     outputs:
-      thread_ts: ${{ steps.build_message.outputs.thread_ts }}
+      thread_ts: ${{ steps.card.outputs.thread_ts }}
+      card: ${{ steps.card.outputs.card }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           sparse-checkout: |
             /.authors
-            /.github/actions/slack-notify/
+            /.github/actions/deploy-card/
             /.github/actions/slack-check-deployment-blocked/
           sparse-checkout-cone-mode: false
 
-      - name: Notify Build And Deploy Start
-        id: build_message
-        uses: ./.github/actions/slack-notify
+      # Reads dust-infra's versions files for what each cell runs today.
+      - name: Generate infra token
+        id: infra-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
         with:
-          step: "start"
-          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          client-id: ${{ secrets.INFRA_DISPATCH_APP_ID }}
+          private-key: ${{ secrets.INFRA_DISPATCH_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: dust-infra
+
+      - name: Post the deployment card
+        id: card
+        uses: ./.github/actions/deploy-card
+        with:
           component: ${{ inputs.component }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.regions }}
+          cells: ${{ inputs.cells }}
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          infra_token: ${{ steps.infra-token.outputs.token }}
 
       - name: Slack Check Deployment Blocked
         if: ${{ inputs.check_deployment_blocked == 'check' }}
@@ -139,18 +152,69 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          if [ "${{ inputs.regions }}" = "all" ]; then
-            echo "matrix=[\"us-central1\",\"europe-west1\"]" >> "$GITHUB_OUTPUT"
-          else
-            echo "matrix=[\"${{ inputs.regions }}\"]" >> "$GITHUB_OUTPUT"
-          fi
+          # Marketing builds per region, and only the legacy cells have one.
+          CELLS="${{ inputs.cells }}"
+          if [ "$CELLS" = "all" ]; then CELLS="cell-00000,cell-00001"; fi
+          REGIONS=$(tr ',' '\n' <<< "$CELLS" \
+            | sed -n 's/^cell-00000$/us-central1/p; s/^cell-00001$/europe-west1/p' \
+            | jq -R . | jq -sc 'unique')
+          echo "matrix=$REGIONS" >> "$GITHUB_OUTPUT"
+
+  # Components on the build-once path: one build, pushed to the global registry.
+  # Marketing stays on the regional matrix: next build inlines region-specific
+  # NEXT_PUBLIC_* values into its client bundle.
+  build-once:
+    permissions:
+      contents: read
+      id-token: write
+    needs: [prepare, notify-start, verify-sandbox-images]
+    if: ${{ !failure() && !cancelled() && contains(fromJSON('["front","front-edge","front-sse","connectors","core","oauth","viz","prodbox","dante","egress-proxy","sparkle-storybook"]'), inputs.component) && (needs.verify-sandbox-images.result == 'success' || needs.verify-sandbox-images.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 50 # Fetch last 50 commits for commit diff functionality
+
+      - name: Build Image
+        id: build
+        uses: ./.github/actions/build-image
+        with:
+          commit_sha_long: ${{ needs.prepare.outputs.long_sha }}
+          commit_sha: ${{ needs.prepare.outputs.short_sha }}
+          component: ${{ inputs.component == 'front-sse' && 'front' || inputs.component }}
+          dd_api_key: ${{ secrets.DD_API_KEY }}
+          dd_client_token: ${{ secrets.DD_CLIENT_TOKEN }}
+          depot_eu_project_id: ${{ secrets.DEPOT_EU_PROJECT_ID }}
+          depot_eu_token: ${{ secrets.DEPOT_EU_PROJECT_TOKEN }}
+          depot_region: ${{ inputs.depot_region }}
+          depot_us_project_id: ${{ secrets.DEPOT_PROJECT_ID }}
+          depot_us_token: ${{ secrets.DEPOT_PROJECT_TOKEN }}
+          # Global registry, lives in the dust-infra project next to the helm charts.
+          project_id: dust-infra
+          region: us-central1
+          virtuoso_license_key: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
+          contentful_space_id: ${{ secrets.CONTENTFUL_SPACE_ID }}
+          contentful_access_token: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
+          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+
+      - name: Notify Failure
+        if: failure()
+        uses: ./.github/actions/slack-notify
+        with:
+          step: "failure"
+          channel: ${{ secrets.SLACK_CHANNEL_ID }}
+          component: ${{ inputs.component }}
+          image_tag: ${{ needs.prepare.outputs.short_sha }}
+          region: ${{ inputs.cells }}
+          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
+          thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
   build:
     permissions:
       contents: read
       id-token: write
     needs: [prepare, notify-start, create-matrix, verify-sandbox-images]
-    if: ${{ !failure() && !cancelled() && (needs.verify-sandbox-images.result == 'success' || needs.verify-sandbox-images.result == 'skipped') }}
+    if: ${{ !failure() && !cancelled() && !contains(fromJSON('["front","front-edge","front-sse","connectors","core","oauth","viz","prodbox","dante","egress-proxy","sparkle-storybook"]'), inputs.component) && (needs.verify-sandbox-images.result == 'success' || needs.verify-sandbox-images.result == 'skipped') }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -192,20 +256,6 @@ jobs:
           contentful_access_token: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
 
-      - name: Notify build success
-        uses: ./.github/actions/slack-notify
-        with:
-          step: "build_success"
-          channel: ${{ secrets.SLACK_CHANNEL_ID }}
-          thread_ts: ${{ needs.notify-start.outputs.thread_ts }}
-          component: ${{ inputs.component }}
-          image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ matrix.region }}
-          slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
-          current_version: ${{ steps.build.outputs.current_version }}
-          commit_diff: ${{ steps.build.outputs.commit_diff }}
-          commit_count: ${{ steps.build.outputs.commit_count }}
-
       - name: Notify Failure
         if: failure()
         uses: ./.github/actions/slack-notify
@@ -214,7 +264,7 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.regions }}
+          region: ${{ inputs.cells }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 
@@ -224,6 +274,7 @@ jobs:
         prepare,
         notify-start,
         build,
+        build-once,
         deploy-app,
         deploy-poke,
         verify-sandbox-images,
@@ -249,10 +300,11 @@ jobs:
         env:
           OWNER: ${{ github.repository_owner }}
           COMPONENT: ${{ inputs.component }}
-          REGIONS: ${{ inputs.regions }}
+          CELLS: ${{ inputs.cells }}
           IMAGE_TAG: ${{ needs.prepare.outputs.short_sha }}
           SLACK_THREAD_TS: ${{ needs.notify-start.outputs.thread_ts }}
           SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL_ID }}
+          CARD: ${{ needs.notify-start.outputs.card }}
           DEPLOY_SPA_APP: ${{ inputs.deploy_spa_app }}
           DEPLOY_SPA_POKE: ${{ inputs.deploy_spa_poke }}
           SPA_APP_VERSION_ID: ${{ needs.deploy-app.outputs.version_id }}
@@ -268,11 +320,12 @@ jobs:
             const deploySpaAppPoke = process.env.DEPLOY_SPA_POKE === 'true';
 
             const payload = {
-              regions: process.env.REGIONS,
+              cells: process.env.CELLS,
               component,
               image_tag: process.env.IMAGE_TAG,
               slack_thread_ts: process.env.SLACK_THREAD_TS,
               slack_channel: process.env.SLACK_CHANNEL,
+              card: process.env.CARD,
               playwright_sha: process.env.PLAYWRIGHT_SHA,
             };
 
@@ -314,7 +367,7 @@ jobs:
           channel: ${{ secrets.SLACK_CHANNEL_ID }}
           component: ${{ inputs.component }}
           image_tag: ${{ needs.prepare.outputs.short_sha }}
-          region: ${{ inputs.regions }}
+          region: ${{ inputs.cells }}
           slack_token: ${{ secrets.SLACK_BOT_TOKEN }}
           thread_ts: "${{ needs.notify-start.outputs.thread_ts }}"
 

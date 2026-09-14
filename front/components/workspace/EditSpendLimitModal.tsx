@@ -58,6 +58,13 @@ export function EditSpendLimitModal({
   }
   const displayedMember = member ?? lastMemberRef.current;
 
+  // `memberUsageLimit` is this member's built-in seat allowance (0 when the seat
+  // carries none, e.g. pooled enterprise). When there is no allowance, the pool
+  // limit is the member's whole budget, so drop the "on top of the seat
+  // allowance" wording.
+  const seatsHaveBuiltInAllowance =
+    (displayedMember?.memberUsageLimit ?? 0) > 0;
+
   const {
     spendLimit,
     isSpendLimitLoading,
@@ -207,9 +214,18 @@ export function EditSpendLimitModal({
                 Edit spend limit for {displayedMember?.name}
               </DialogTitle>
               <p className="text-sm text-muted-foreground">
-                Maximum pool credits this member can consume during a billing
-                cycle. This limit is added on top of the seat&apos;s built-in
-                allowance.
+                {seatsHaveBuiltInAllowance ? (
+                  <>
+                    Maximum pool credits this member can consume during a
+                    billing cycle. This limit is added on top of the seat&apos;s
+                    built-in allowance.
+                  </>
+                ) : (
+                  <>
+                    Total credits this member can consume from the workspace
+                    credit pool during a billing cycle.
+                  </>
+                )}
               </p>
             </div>
           </div>

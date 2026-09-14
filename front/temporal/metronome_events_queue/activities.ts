@@ -1,7 +1,10 @@
 import { getAuditLogContext } from "@app/lib/api/audit/workos_audit";
 import { updateMembershipSeatAndTrack } from "@app/lib/api/membership";
 import { processMetronomeWebhook } from "@app/lib/api/metronome/process_webhook";
-import { reconcileWorkspaceUserCreditStates } from "@app/lib/api/metronome/reconcile_credit_state";
+import {
+  reconcileStackedSeatCreditsForWorkspace,
+  reconcileWorkspaceUserCreditStates,
+} from "@app/lib/api/metronome/reconcile_credit_state";
 import { setUserSpendLimit } from "@app/lib/api/users/spend_limit";
 import { Authenticator } from "@app/lib/auth";
 import type { MetronomeWebhookEvent } from "@app/lib/metronome/webhook_events";
@@ -247,8 +250,19 @@ export async function reconcileWorkspaceUserCreditStatesActivity({
   if (!subscription?.metronomeContractId) {
     return;
   }
+  const lightWorkspace = renderLightWorkspaceType({ workspace });
   await reconcileWorkspaceUserCreditStates({
-    workspace: renderLightWorkspaceType({ workspace }),
+    workspace: lightWorkspace,
+    metronomeCustomerId: workspace.metronomeCustomerId,
+    metronomeContractId: subscription.metronomeContractId,
+    planCode: subscription.getPlan().code,
+  });
+
+  // Empty any per-seat credit stranded by a mid-period seat change once its
+  // segment starts (the event that debounced us here). Reuses the same debounced,
+  // workspace-scoped execution so it runs once per period boundary, not per event.
+  await reconcileStackedSeatCreditsForWorkspace({
+    workspace: lightWorkspace,
     metronomeCustomerId: workspace.metronomeCustomerId,
     metronomeContractId: subscription.metronomeContractId,
     planCode: subscription.getPlan().code,

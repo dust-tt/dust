@@ -65,6 +65,15 @@ pre-commit:
       run: scripts/check-package-lock-sync.sh
       priority: 1
 
+    # MOMENT-BAN: remove this block once no file imports `moment` anymore
+    # (grep the repo for "MOMENT-BAN" to find the rest).
+    # Block new `moment` usage; see https://github.com/dust-tt/decisions/issues/1009
+    # (skip with LEFTHOOK_EXCLUDE=no-new-moment-usage)
+    no-new-moment-usage:
+      glob: "*.{js,jsx,ts,tsx}"
+      run: scripts/check-no-new-moment-usage.sh {staged_files}
+      priority: 1
+
     # Optional: actionlint for GitHub Actions workflow files (skip with LEFTHOOK_EXCLUDE=actionlint)
     actionlint:
       glob: ".github/{workflows,actions}/**/*.{yml,yaml}"

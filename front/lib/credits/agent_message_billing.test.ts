@@ -214,4 +214,52 @@ describe("buildAgentMessageBillingPlan", () => {
       }),
     ]);
   });
+
+  it("makes subsequent calls free after one MCP server reaches 20 credits", () => {
+    const cappedServerActions = Array.from({ length: 8 }, () => ({
+      toolName: "custom_tool",
+      mcpServerId: "capped_server",
+      internalMCPServerName: null,
+      status: "succeeded" as const,
+    }));
+    const plan = buildAgentMessageBillingPlan({
+      actions: [
+        ...cappedServerActions,
+        {
+          toolName: "custom_tool",
+          mcpServerId: "other_server",
+          internalMCPServerName: null,
+          status: "succeeded",
+        },
+      ],
+      contextOrigin: "web",
+      runUsages: [],
+    });
+
+    expect(plan.tools.map(({ billedCredits }) => billedCredits)).toEqual([
+      3, 3, 3, 3, 3, 3, 3, 0, 3,
+    ]);
+    expect(plan.tools[7]?.billingDisposition).toBe("free_mcp_server_cap");
+    expect(plan.totals.toolBilledCredits).toBe(24);
+  });
+
+  it("makes the call after an exact 20-credit total free", () => {
+    const plan = buildAgentMessageBillingPlan({
+      actions: Array.from({ length: 21 }, () => ({
+        toolName: "websearch",
+        mcpServerId: "basic_server",
+        internalMCPServerName: "web_search_&_browse" as const,
+        status: "succeeded" as const,
+      })),
+      contextOrigin: "web",
+      runUsages: [],
+    });
+
+    expect(plan.tools[19]?.billedCredits).toBe(1);
+    expect(plan.tools[20]).toMatchObject({
+      billedCredits: 0,
+      billingDisposition: "free_mcp_server_cap",
+    });
+    expect(plan.totals.toolBilledCredits).toBe(20);
+  });
 });

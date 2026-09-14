@@ -1,10 +1,13 @@
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { RecentWebhookRequests } from "@app/components/agent_builder/triggers/RecentWebhookRequests";
 import { TriggerPodSelector } from "@app/components/agent_builder/triggers/TriggerPodSelector";
+import { TriggerPoolSelector } from "@app/components/agent_builder/triggers/TriggerPoolSelector";
 import { TriggerStatusToggle } from "@app/components/agent_builder/triggers/TriggerStatusToggle";
 import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/triggers/triggerViewsSheetFormSchema";
 import { WebhookEditionFilters } from "@app/components/agent_builder/triggers/webhook/WebhookEditionFilters";
-import type { TriggerExecutionMode } from "@app/types/assistant/triggers";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { isCreditPricedPlan } from "@app/types/plan";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 import type {
@@ -13,7 +16,6 @@ import type {
 } from "@app/types/triggers/webhooks_source_preset";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
-  AlertCircle,
   Button,
   Checkbox,
   ContentMessage,
@@ -59,39 +61,67 @@ function WebhookEditionNameInput({ isEditor }: WebhookEditionNameInputProps) {
   );
 }
 
+function getQuotaDescription({
+  isCreditPooled,
+  executionMode,
+}: {
+  isCreditPooled: boolean;
+  executionMode: "user_pool" | "workspace_pool";
+}) {
+  if (isCreditPooled) {
+    switch (executionMode) {
+      case "user_pool":
+        return "personal credit pool.";
+      case "workspace_pool":
+        return "workspace's credit pool.";
+      default:
+        return assertNever(executionMode);
+    }
+  } else {
+    switch (executionMode) {
+      case "user_pool":
+        return "personal fair use limits.";
+      case "workspace_pool":
+        return "workspace's programmatic usage.";
+      default:
+        return assertNever(executionMode);
+    }
+  }
+}
+
 interface WebhookEditionExecutionLimitProps {
-  executionMode: TriggerExecutionMode;
+  isEditor: boolean;
 }
 
 function WebhookEditionExecutionLimit({
-  executionMode,
+  isEditor,
 }: WebhookEditionExecutionLimitProps) {
   const { control } = useFormContext<TriggerViewsSheetFormValues>();
+  const { subscription } = useAuth();
   const {
-    field: { value: executionLimit },
+    field: limitField,
+    fieldState: { error },
   } = useController({
     control,
     name: "webhook.executionPerDayLimitOverride",
   });
+  const {
+    field: { value: executionMode },
+  } = useController({ control, name: "webhook.executionMode" });
 
   return (
     <div className="flex flex-col space-y-1">
       <Label htmlFor="execution-limit">Rate limits</Label>
-      <p>Limits are set on a 24-hour window. </p>
-      <ContentMessage
-        variant="info"
-        size="lg"
-        icon={AlertCircle}
-        title={`Up to ${executionLimit} requests per day`}
-      >
-        This trigger can send a limited number of messages per day. This
-        prevents a single trigger from using up your workspace's message fair
-        use quota. This trigger is currently running on your workspace's{" "}
-        {executionMode === "fair_use" ? "fair use" : "programmatic usage"}{" "}
-        quota.
-        <br /> (
+      <p className="text-sm text-muted-foreground">
+        Maximum number of runs over a 24-hour window. This will count towards
+        your{" "}
+        {getQuotaDescription({
+          isCreditPooled: isCreditPricedPlan(subscription.plan),
+          executionMode,
+        })}{" "}
+        (
         <LinkWrapper
-          href="https://docs.dust.tt/docs/rate-limiting#/"
+          href="https://docs.dust.tt/docs/user-documentation/agents/triggers/credits-usage"
           target="_blank"
           rel="noreferrer"
           className="underline"
@@ -99,7 +129,20 @@ function WebhookEditionExecutionLimit({
           Learn more
         </LinkWrapper>
         )
-      </ContentMessage>
+      </p>
+      <Input
+        id="execution-limit"
+        type="number"
+        className="w-32"
+        disabled={!isEditor}
+        name={limitField.name}
+        value={String(limitField.value)}
+        onChange={(event) => limitField.onChange(event.target.valueAsNumber)}
+        onBlur={limitField.onBlur}
+        isError={!!error}
+        message={error?.message}
+        messageStatus="error"
+      />
     </div>
   );
 }
@@ -312,9 +355,13 @@ export function WebhookEditionSheetContent({
 
         <Separator />
 
-        <WebhookEditionExecutionLimit
-          executionMode={trigger?.executionMode ?? "fair_use"}
+        <TriggerPoolSelector
+          name="webhook.executionMode"
+          currentExecutionMode={trigger?.executionMode ?? null}
+          isEditor={isEditor}
         />
+
+        <WebhookEditionExecutionLimit isEditor={isEditor} />
 
         <Separator />
 

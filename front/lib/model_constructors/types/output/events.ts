@@ -1,4 +1,5 @@
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type { Lab } from "@app/lib/model_constructors/types/labs";
 
 export type ResponseIdContent = { responseId: string };
@@ -100,6 +101,9 @@ export type TokenUsageContent = {
   // Optional reasoning and thinking subset of totalOutput. Never add it to
   // totalOutput for persistence or billing.
   reasoning?: number;
+  // Processing tier the provider reports having served this response on, which
+  // is what it bills for. Absent for providers that do not report one.
+  serviceTier?: ServiceTier;
 };
 export interface TokenUsageEvent {
   type: "token_usage";
@@ -136,10 +140,16 @@ export const ERROR_TYPES = [
   "unknown_error",
 ] as const;
 export type ErrorType = (typeof ERROR_TYPES)[number];
+
+// Fault domain of the failure, not the code layer that happened to catch it.
+export const ERROR_SOURCES = ["provider", "dust", "unknown"] as const;
+export type ErrorSource = (typeof ERROR_SOURCES)[number];
+
 export type ErrorContent = {
   type: ErrorType;
   message: string;
   originalError?: unknown;
+  errorSource: ErrorSource;
 };
 export interface ErrorEvent {
   type: "error";

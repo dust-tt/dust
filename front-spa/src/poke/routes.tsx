@@ -1,4 +1,5 @@
 import Custom404 from "@dust-tt/front/components/pages/Custom404";
+import { AnalyticsPage } from "@dust-tt/front/components/poke/pages/AnalyticsPage";
 import { AppPage } from "@dust-tt/front/components/poke/pages/AppPage";
 import { AssistantDetailsPage } from "@dust-tt/front/components/poke/pages/AssistantDetailsPage";
 import { AssistantInstructionsPage } from "@dust-tt/front/components/poke/pages/AssistantInstructionsPage";
@@ -12,6 +13,9 @@ import { DataSourceQueryPage } from "@dust-tt/front/components/poke/pages/DataSo
 import { DataSourceSearchPage } from "@dust-tt/front/components/poke/pages/DataSourceSearchPage";
 import { DataSourceViewPage } from "@dust-tt/front/components/poke/pages/DataSourceViewPage";
 import { EmailTemplatesPage } from "@dust-tt/front/components/poke/pages/EmailTemplatesPage";
+import { FeatureFlagDetailPage } from "@dust-tt/front/components/poke/pages/FeatureFlagDetailPage";
+import { FeatureFlagsPage } from "@dust-tt/front/components/poke/pages/FeatureFlagsPage";
+import { FrameFunctionPage } from "@dust-tt/front/components/poke/pages/FrameFunctionPage";
 import { FramePage } from "@dust-tt/front/components/poke/pages/FramePage";
 import { GlobalAgentFeedbacksPage } from "@dust-tt/front/components/poke/pages/GlobalAgentFeedbacksPage";
 import { GroupPage } from "@dust-tt/front/components/poke/pages/GroupPage";
@@ -22,8 +26,8 @@ import { MembershipsPage } from "@dust-tt/front/components/poke/pages/Membership
 import { NotionRequestsPage } from "@dust-tt/front/components/poke/pages/NotionRequestsPage";
 import { PlansPage } from "@dust-tt/front/components/poke/pages/PlansPage";
 import { PluginsPage } from "@dust-tt/front/components/poke/pages/PluginsPage";
-import { PodFunctionPage } from "@dust-tt/front/components/poke/pages/PodFunctionPage";
 import { PokefyPage } from "@dust-tt/front/components/poke/pages/PokefyPage";
+import { PoolUsagePage } from "@dust-tt/front/components/poke/pages/PoolUsagePage";
 import { ProductionChecksPage } from "@dust-tt/front/components/poke/pages/ProductionChecksPage";
 import { SkillDetailsPage } from "@dust-tt/front/components/poke/pages/SkillDetailsPage";
 import { SkillSuggestionDetailsPage } from "@dust-tt/front/components/poke/pages/SkillSuggestionDetailsPage";
@@ -76,6 +80,11 @@ export const routes: RouteObject[] = [
           { path: "plans", element: <PlansPage /> },
           { path: "coupons", element: <CouponsPage /> },
           { path: "pokefy", element: <PokefyPage /> },
+          { path: "feature-flags", element: <FeatureFlagsPage /> },
+          {
+            path: "feature-flags/:flagName",
+            element: <FeatureFlagDetailPage />,
+          },
           { path: "production-checks", element: <ProductionChecksPage /> },
           { path: "email-templates", element: <EmailTemplatesPage /> },
           {
@@ -97,6 +106,8 @@ export const routes: RouteObject[] = [
         element: <PokeWorkspacePage />,
         children: [
           { index: true, element: <WorkspacePage /> },
+          { path: "analytics", element: <AnalyticsPage /> },
+          { path: "pool-usage", element: <PoolUsagePage /> },
           { path: "memberships", element: <MembershipsPage /> },
           { path: "llm-traces/:runId", element: <LLMTracePage /> },
           {
@@ -132,6 +143,10 @@ export const routes: RouteObject[] = [
           },
           { path: "groups/:groupId", element: <GroupPage /> },
           { path: "files/:sId", element: <FramePage /> },
+          {
+            path: "files/:sId/functions/:functionId",
+            element: <FrameFunctionPage />,
+          },
           { path: "skills/:sId", element: <SkillDetailsPage /> },
           {
             path: "suggestions/:suggestionId",
@@ -146,10 +161,6 @@ export const routes: RouteObject[] = [
           {
             path: "spaces/:spaceId/mcp_server_views/:svId",
             element: <MCPServerViewPage />,
-          },
-          {
-            path: "spaces/:spaceId/pod_functions/:functionId",
-            element: <PodFunctionPage />,
           },
           {
             path: "webhook-sources/:wsId",

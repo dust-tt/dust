@@ -20,10 +20,10 @@ vi.mock("@app/logger/logger", () => ({
 }));
 
 vi.mock("@app/lib/utils/statsd", () => ({
-  getStatsDClient: () => ({
+  statsDMetrics: {
     increment: vi.fn(),
     decrement: vi.fn(),
-  }),
+  },
 }));
 
 describe("getRedisStreamClient", () => {

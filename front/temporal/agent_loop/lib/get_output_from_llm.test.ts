@@ -2,8 +2,23 @@ import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import {
   getToolCallStartDeduplicationKeys,
   resolveStableToolCallName,
+  withPeriodicHeartbeat,
 } from "@app/temporal/agent_loop/lib/get_output_from_llm";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const shutdownMock = vi.hoisted(() => ({ controller: new AbortController() }));
+
+vi.mock("@app/lib/shutdown_signal", () => ({
+  DUST_WORKER_SHUTDOWN_ABORT_REASON: "DUST_WORKER_SHUTDOWN_ABORT",
+  getShutdownSignal: () => shutdownMock.controller.signal,
+  markShuttingDownWithDelayedAbort: vi.fn(),
+}));
+
+vi.mock("@temporalio/activity", () => ({
+  CancelledFailure: class CancelledFailure extends Error {},
+  heartbeat: vi.fn(),
+  sleep: vi.fn().mockResolvedValue(undefined),
+}));
 
 const specifications: AgentActionSpecification[] = [
   {
@@ -58,5 +73,107 @@ describe("getToolCallStartDeduplicationKeys", () => {
         stableToolName: "create_interactive_content_file",
       })
     ).toEqual(["name:create_interactive_content_file"]);
+  });
+});
+
+describe("withPeriodicHeartbeat", () => {
+  beforeEach(() => {
+    shutdownMock.controller = new AbortController();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("passes stream values through and closes the stream when done", async () => {
+    const returnFn = vi.fn().mockResolvedValue({ done: true });
+    const values = ["a", "b"][Symbol.iterator]();
+    const stream: AsyncIterator<string> = {
+      next: async () => {
+        const { value, done } = values.next();
+        return done ? { value: undefined, done: true } : { value, done: false };
+      },
+      return: returnFn,
+    };
+
+    const collected: string[] = [];
+    for await (const value of withPeriodicHeartbeat(
+      stream,
+      Date.now() + 600_000
+    )) {
+      collected.push(value);
+    }
+
+    expect(collected).toEqual(["a", "b"]);
+    expect(returnFn).toHaveBeenCalled();
+  });
+
+  it("fails fast on worker shutdown even when the provider stream is stalled", async () => {
+    // next() never resolves (stalled provider read) and return() never settles either: the
+    // async generator method queue would block cleanup behind the in-flight next().
+    const returnFn = vi.fn(() => new Promise<IteratorResult<string>>(() => {}));
+    const stalledStream: AsyncIterator<string> = {
+      next: () => new Promise(() => {}),
+      return: returnFn,
+    };
+
+    const generator = withPeriodicHeartbeat(
+      stalledStream,
+      Date.now() + 600_000
+    );
+    const pending = generator.next();
+    const assertion = expect(pending).rejects.toThrow(
+      "Model activity interrupted by worker shutdown"
+    );
+
+    shutdownMock.controller.abort("DUST_WORKER_SHUTDOWN_ABORT");
+
+    // The bounded cleanup (2s) is the only wait: well within the 10s shutdown buffer.
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    await assertion;
+    expect(returnFn).toHaveBeenCalled();
+  });
+
+  it("times out while waiting for a subsequent event", async () => {
+    const returnFn = vi.fn().mockResolvedValue({ done: true });
+    let calls = 0;
+    const stream: AsyncIterator<string> = {
+      next: () => {
+        calls += 1;
+        if (calls === 1) {
+          return Promise.resolve({ value: "first", done: false });
+        }
+        return new Promise(() => {});
+      },
+      return: returnFn,
+    };
+
+    const generator = withPeriodicHeartbeat(stream, Date.now() + 600_000);
+    expect((await generator.next()).value).toBe("first");
+
+    const pending = generator.next();
+    const assertion = expect(pending).rejects.toThrow(
+      /timeout after \d+s waiting for event/
+    );
+
+    await vi.advanceTimersByTimeAsync(2 * 60 * 1000 + 1);
+
+    await assertion;
+    expect(returnFn).toHaveBeenCalled();
+  });
+
+  it("times out when the activity time budget is already exhausted", async () => {
+    const returnFn = vi.fn().mockResolvedValue({ done: true });
+    const stream: AsyncIterator<string> = {
+      next: () => new Promise(() => {}),
+      return: returnFn,
+    };
+
+    const generator = withPeriodicHeartbeat(stream, Date.now() - 1);
+
+    await expect(generator.next()).rejects.toThrow(/activity time budget/);
+    expect(returnFn).toHaveBeenCalled();
   });
 });

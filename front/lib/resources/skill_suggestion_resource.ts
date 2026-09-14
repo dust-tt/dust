@@ -43,7 +43,6 @@ export interface SkillSuggestionResource
 export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> {
   static model: ModelStatic<SkillSuggestionModel> = SkillSuggestionModel;
 
-  readonly editorsGroupId: ModelId | null;
   readonly skillConfigurationSId: string;
   readonly updatedBy: SkillSuggestionUpdatedBy | null;
   readonly notificationConversationId: string | null;
@@ -53,13 +52,11 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
   constructor(
     model: ModelStatic<SkillSuggestionModel>,
     blob: Attributes<SkillSuggestionModel>,
-    editorsGroupId: ModelId | null,
     skillConfigurationSId: string,
     updatedBy: SkillSuggestionUpdatedBy | null,
     notificationConversationId: string | null
   ) {
     super(SkillSuggestionModel, blob);
-    this.editorsGroupId = editorsGroupId;
     this.skillConfigurationSId = skillConfigurationSId;
     this.updatedBy = updatedBy;
     this.notificationConversationId = notificationConversationId;
@@ -72,10 +69,10 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     if (auth.isAdmin()) {
       return true;
     }
-    if (this.editorsGroupId === null) {
-      return false;
-    }
-    return auth.hasGroupByModelId(this.editorsGroupId);
+    // Editors of a skill hold its `editor` grant, which resolves to write (see ROLE_REGISTRY).
+    return auth
+      .getGrantedVerbs("skill", this.skillConfigurationId)
+      .includes("write");
   }
 
   static async createSuggestionForSkill(
@@ -101,7 +98,6 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     return new this(
       SkillSuggestionModel,
       suggestion.get(),
-      skill.editorGroup?.id ?? null,
       skill.sId,
       null,
       null
@@ -189,7 +185,6 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
         return new this(
           SkillSuggestionModel,
           suggestion.get(),
-          skillResource.editorGroup?.id ?? null,
           skillResource.sId,
           updatedBy,
           suggestion.notificationConversation?.sId ?? null

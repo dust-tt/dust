@@ -71,6 +71,18 @@ describe("Grok 4.6 model configuration", () => {
     expect(payload.prompt_cache_key).toBe("workspace:agent");
   });
 
+  it("retains automatic reasoning summaries", () => {
+    const endpoint = new XaiGrokFourDotSixGlobalXaiStream({
+      XAI_API_KEY: "test",
+    });
+    const payload = endpoint.buildRequestPayload(
+      { conversation: { system: [], messages: [] } },
+      XaiGrokFourDotSixGlobalXaiStream.configSchema.parse({})
+    );
+
+    expect(payload.reasoning?.summary).toBe("auto");
+  });
+
   it("keeps short and long-context pricing in sync", () => {
     expect(XaiGrokFourDotSixGlobalXaiStream.tokenPricing).toEqual({
       cacheHit: 0.5,

@@ -30,6 +30,9 @@ const meta: Meta<typeof ImageZoomDialog> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// Open-state scaffolding only: ImageZoomDialog is a controlled component
+// (open / onOpenChange), so stories need a trigger button and local open state
+// to be usable. The wrapper is not part of the component's API.
 const ImageZoomDialogDemo = ({
   image,
   navigation,
@@ -63,6 +66,12 @@ const ImageZoomDialogDemo = ({
   );
 };
 
+/**
+ * The base case: a single image with `src`, `alt`, and `title` — no download
+ * affordance, no gallery navigation. Click the trigger button to open the
+ * full-screen viewer.
+ * @summary Single image viewer, no extras.
+ */
 export const Default: Story = {
   render: () => (
     <ImageZoomDialogDemo
@@ -75,6 +84,11 @@ export const Default: Story = {
   ),
 };
 
+/**
+ * Providing `downloadUrl` makes the dialog render a download affordance — use
+ * this whenever the viewed asset should be savable (e.g. generated images).
+ * @summary Viewer with a download affordance.
+ */
 export const WithDownload: Story = {
   render: () => (
     <ImageZoomDialogDemo
@@ -88,6 +102,12 @@ export const WithDownload: Story = {
   ),
 };
 
+/**
+ * The `isLoading` state, for when the image is still being generated or
+ * fetched: the dialog opens immediately and shows a loading treatment instead
+ * of the final asset.
+ * @summary Loading state while the image is not ready.
+ */
 export const Loading: Story = {
   render: () => (
     <ImageZoomDialogDemo
@@ -101,11 +121,18 @@ export const Loading: Story = {
   ),
 };
 
+/**
+ * Gallery browsing via the `navigation` prop: the parent owns the current
+ * index and passes `onPrevious` / `onNext` plus `hasPrevious` / `hasNext` to
+ * enable the arrows at the ends. This story manages the index inline (instead
+ * of using the shared demo wrapper) because the image swaps as you navigate.
+ * @summary Previous/next navigation through a gallery.
+ */
 export const WithNavigation: Story = {
   render: () => {
     const images = [
-      "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
-      "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+      "https://dust.tt/static/droidavatar/Droid_Lime_1.jpg",
+      "https://dust.tt/static/droidavatar/Droid_Lime_2.jpg",
       "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
     ];
     const [open, setOpen] = useState(false);

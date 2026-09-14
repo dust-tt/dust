@@ -163,7 +163,9 @@ app.patch(
         workspace: owner,
         id,
       });
-      return ctx.json({ key: (updated ?? key).toJSON(user.id) });
+      return ctx.json({
+        key: await (updated ?? key).toJSONWithSpaces(auth, user.id),
+      });
     }
 
     // Legacy USD monthly cap.
@@ -216,7 +218,7 @@ app.patch(
     });
 
     return ctx.json({
-      key: key.toJSON(user.id),
+      key: await key.toJSONWithSpaces(auth, user.id),
     });
   }
 );

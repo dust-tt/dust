@@ -203,7 +203,7 @@ export function InlineActivitySteps({
       : undefined;
 
   const extraBelowCollapse =
-    showActiveWriting && agentMessage.content ? (
+    !isDone && agentMessage.content ? (
       <div className="mt-3">
         <AgentMessageMarkdown
           content={agentMessage.content}
@@ -221,6 +221,7 @@ export function InlineActivitySteps({
       activeCotContent={showActiveThinking ? chainOfThought : ""}
       isDone={isDone}
       headerLabel={headerLabel ?? <AnimatedText>Thinking…</AnimatedText>}
+      source="message"
       onActionClick={openBreakdownPanel}
       showTrailingSpinner={showTrailingSpinner}
       terminalRow={terminalRow}

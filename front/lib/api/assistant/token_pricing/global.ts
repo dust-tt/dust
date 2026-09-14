@@ -20,12 +20,34 @@ export type PricingEntry = TokenPricingRates & {
 // Pricing for current models (USD per million tokens - equivalent to micro-USD per token)
 // This record contains all static model IDs. Custom models use default pricing.
 const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
-  // https://openai.com/api/pricing
+  // Verified 2026-09-05: https://developers.openai.com/api/docs/pricing
+  "gpt-6-astra": {
+    input: 10.0,
+    output: 50.0,
+    cache_creation_input_tokens: 12.5,
+    cache_read_input_tokens: 1.0,
+    long_context: {
+      prompt_token_threshold: 272_001,
+      input: 20.0,
+      output: 75.0,
+      cache_creation_input_tokens: 25.0,
+      cache_read_input_tokens: 2.0,
+    },
+  },
+  // Verified 2026-08-26: https://developers.openai.com/api/docs/pricing
+  // Promotional pricing is available at least through 2026-11-21; re-verify after that date.
   "gpt-5.6-sol": {
-    input: 5.0,
-    output: 30.0,
-    cache_creation_input_tokens: 6.25,
-    cache_read_input_tokens: 0.5,
+    input: 4.0,
+    output: 20.0,
+    cache_creation_input_tokens: 5.0,
+    cache_read_input_tokens: 0.4,
+    long_context: {
+      prompt_token_threshold: 272_001,
+      input: 8.0,
+      output: 30.0,
+      cache_creation_input_tokens: 10.0,
+      cache_read_input_tokens: 0.8,
+    },
   },
   // https://openai.com/api/pricing
   "gpt-5.6-terra": {
@@ -33,6 +55,29 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 12.0,
     cache_creation_input_tokens: 2.5,
     cache_read_input_tokens: 0.2,
+    long_context: {
+      prompt_token_threshold: 272_001,
+      input: 4.0,
+      output: 18.0,
+      cache_creation_input_tokens: 5.0,
+      cache_read_input_tokens: 0.4,
+    },
+  },
+  // Verified 2026-08-19: https://developers.openai.com/api/docs/models/gpt-5.6-terra
+  // Prompts above 272K input tokens cost 2x input and 1.5x output for the full request.
+  "gpt-5.6-terra-long-context": {
+    input: 2.0,
+    output: 12.0,
+    cache_creation_input_tokens: 2.5,
+    cache_read_input_tokens: 0.2,
+    long_context: {
+      // `computeTokensCostForUsageInMicroUsd` switches tiers inclusively.
+      prompt_token_threshold: 272_001,
+      input: 4.0,
+      output: 18.0,
+      cache_creation_input_tokens: 5.0,
+      cache_read_input_tokens: 0.4,
+    },
   },
   // https://openai.com/api/pricing
   "gpt-5.6-luna": {
@@ -40,17 +85,37 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 1.2,
     cache_creation_input_tokens: 0.25,
     cache_read_input_tokens: 0.02,
+    long_context: {
+      prompt_token_threshold: 272_001,
+      input: 0.4,
+      output: 1.8,
+      cache_creation_input_tokens: 0.5,
+      cache_read_input_tokens: 0.04,
+    },
   },
-  // https://openai.com/api/pricing
+  // Verified 2026-08-21: https://developers.openai.com/api/docs/models/gpt-5.5
   "gpt-5.5": {
     input: 5.0,
     output: 30.0,
     cache_read_input_tokens: 0.5,
+    long_context: {
+      prompt_token_threshold: 272_001,
+      input: 10.0,
+      output: 45.0,
+      cache_read_input_tokens: 1.0,
+    },
   },
+  // Verified 2026-08-21: https://developers.openai.com/api/docs/models/gpt-5.4
   "gpt-5.4": {
     input: 2.5,
     output: 15.0,
     cache_read_input_tokens: 0.25,
+    long_context: {
+      prompt_token_threshold: 272_001,
+      input: 5.0,
+      output: 22.5,
+      cache_read_input_tokens: 0.5,
+    },
   },
   // https://openai.com/api/pricing/
   "gpt-5.4-mini": {
@@ -290,17 +355,29 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     input: 0.9,
     output: 2.8,
   },
-  // Conservative: pricing is 2/12 for first 200k tokens
-  // then 4/18 beyond that.
+  // https://ai.google.dev/gemini-api/docs/pricing: 2/12 up to 200k input tokens,
+  // 4/18 beyond that.
   "gemini-3-pro-preview": {
-    input: 4,
-    output: 18,
+    input: 2,
+    output: 12,
+    long_context: {
+      prompt_token_threshold: 200_001,
+      input: 4,
+      output: 18,
+    },
   },
-  // Gemini 3.1 Pro: same pricing structure as 3 Pro (2/12 for <=200k, 4/18 for >200k)
-  // Using conservative pricing for the higher tier
+  // Gemini 3.1 Pro: same pricing structure as 3 Pro (2/12 for <=200k, 4/18 for >200k).
+  // Verified 2026-09-11: https://ai.google.dev/gemini-api/docs/pricing
   "gemini-3.1-pro-preview": {
-    input: 4,
-    output: 18,
+    input: 2,
+    output: 12,
+    cache_read_input_tokens: 0.2,
+    long_context: {
+      prompt_token_threshold: 200_001,
+      input: 4,
+      output: 18,
+      cache_read_input_tokens: 0.4,
+    },
   },
   "gemini-3-flash-preview": {
     input: 0.5,
@@ -325,6 +402,13 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   // 3.6 Flash. Promotional pricing through 2026-12-31; reverts to
   // $1.50/$7.50/$0.15 on 2027-01-01 — update this then.
   "gemini-3.7-flash": {
+    input: 0.75,
+    output: 3.75,
+    cache_read_input_tokens: 0.075,
+  },
+  // https://ai.google.dev/gemini-api/docs/pricing (2026-09-04): promotional
+  // pricing through 2026-12-31; changes to $1.50/$7.50/$0.15 on 2027-01-01.
+  "gemini-3.8-flash": {
     input: 0.75,
     output: 3.75,
     cache_read_input_tokens: 0.075,
@@ -369,11 +453,11 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 1.68,
     cache_read_input_tokens: 0.28,
   },
-  // https://fireworks.ai/models/deepseek-ai/deepseek-v4-flash-0731
-  "accounts/fireworks/models/deepseek-v4-flash-0731": {
-    input: 0.14,
-    output: 0.28,
-    cache_read_input_tokens: 0.028,
+  // Verified 2026-09-11: https://fireworks.ai/models/deepseek-ai/deepseek-v4p1-flash
+  "accounts/fireworks/models/deepseek-v4p1-flash": {
+    input: 0.22,
+    output: 0.66,
+    cache_read_input_tokens: 0.007,
   },
   // https://fireworks.ai/models/fireworks/deepseek-v4-pro
   "accounts/fireworks/models/deepseek-v4-pro": {
@@ -393,12 +477,6 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 3.0,
     cache_read_input_tokens: 0.1,
   },
-  // https://fireworks.ai/models/fireworks/kimi-k2p6
-  "accounts/fireworks/models/kimi-k2p6": {
-    input: 0.95,
-    output: 4.0,
-    cache_read_input_tokens: 0.16,
-  },
   // https://docs.fireworks.ai/serverless/pricing
   "accounts/fireworks/models/kimi-k3": {
     input: 3.75,
@@ -417,11 +495,17 @@ const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
     output: 0.2,
     cache_read_input_tokens: 0.002,
   },
-  // https://fireworks.ai/models/fireworks/glm-5p2
-  "accounts/fireworks/models/glm-5p2": {
+  // Verified 2026-09-11: https://fireworks.ai/models/fireworks/glm-5p3
+  "accounts/fireworks/models/glm-5p3": {
     input: 1.4,
     output: 4.4,
     cache_read_input_tokens: 0.26,
+  },
+  // Verified 2026-08-31: https://fireworks.ai/models/fireworks/glm-5p3-flash
+  "accounts/fireworks/models/glm-5p3-flash": {
+    input: 0.15,
+    output: 0.5,
+    cache_read_input_tokens: 0.029,
   },
   // Verified 2026-08-14: https://fireworks.ai/models/fireworks/inkling
   "accounts/fireworks/models/inkling": {
@@ -526,11 +610,42 @@ const IMAGE_MODEL_PRICING: Record<string, PricingEntry> = {
     input: 8.0,
     output: 30.0,
   },
+  // Verified 2026-09-09: https://developers.openai.com/api/docs/pricing
+  "gpt-image-2.5-flare": {
+    input: 8.0,
+    output: 30.0,
+  },
 };
 
 // Pricing for legacy/deprecated models that are no longer in BaseModelIdType.
 // These are kept to ensure we can still compute token usage for historical runs.
 const LEGACY_MODEL_PRICING: Record<string, PricingEntry> = {
+  // Decommissioned, superseded by GLM-5.3. Kept so historical token
+  // accounting stays exact.
+  "accounts/fireworks/models/kimi-k2p6": {
+    input: 0.95,
+    output: 4.0,
+    cache_read_input_tokens: 0.16,
+  },
+  // Fireworks decommissioned the glm-5p2 serverless endpoint on 2026-09-25;
+  // superseded by GLM-5.3. Kept so historical token accounting stays exact.
+  "accounts/fireworks/models/glm-5p2": {
+    input: 1.4,
+    output: 4.4,
+    cache_read_input_tokens: 0.26,
+  },
+  // Decommissioned by Fireworks, superseded by DeepSeek V4.1 Flash.
+  "accounts/fireworks/models/deepseek-v4-flash-0731": {
+    input: 0.14,
+    output: 0.28,
+    cache_read_input_tokens: 0.028,
+  },
+  // Decommissioned by Fireworks, superseded by DeepSeek V4.1 Flash.
+  "accounts/fireworks/models/deepseek-v4-pro-0813": {
+    input: 1.32,
+    output: 3.96,
+    cache_read_input_tokens: 0.044,
+  },
   "gpt-4-32k": {
     input: 60.0,
     output: 120.0,

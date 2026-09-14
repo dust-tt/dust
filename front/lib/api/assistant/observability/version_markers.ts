@@ -1,4 +1,13 @@
-import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
+import { resolveConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import {
+  buildConsumptionScopeQuery,
+  COMPLETED_AT_FIELD,
+} from "@app/lib/api/analytics/consumption/scope";
+import {
+  bucketsToArray,
+  searchConsumptionAnalytics,
+} from "@app/lib/api/elasticsearch";
+import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { estypes } from "@elastic/elasticsearch";
@@ -21,27 +30,45 @@ type VersionMarkersAggs = {
   by_version?: estypes.AggregationsMultiBucketAggregateBase<VersionBucket>;
 };
 
-export async function fetchVersionMarkers(
-  baseQuery: estypes.QueryDslQueryContainer
-): Promise<Result<AgentVersionMarker[], Error>> {
+export async function fetchVersionMarkers({
+  auth,
+  agentId,
+  days,
+}: {
+  auth: Authenticator;
+  agentId: string;
+  days: number;
+}): Promise<Result<AgentVersionMarker[], Error>> {
+  const period = await resolveConsumptionPeriod(auth, { kind: "days", days });
+
+  const query = buildConsumptionScopeQuery({
+    auth,
+    startDate: period.startDate,
+    endDate: period.endDate,
+    filter: { agents: [agentId] },
+  });
+
   const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
     by_version: {
       terms: {
-        field: "agent_version",
+        field: "agent.version",
         size: MAX_VERSIONS_TO_FETCH,
       },
       aggs: {
         first_seen: {
-          min: { field: "timestamp" },
+          min: { field: COMPLETED_AT_FIELD },
         },
       },
     },
   };
 
-  const result = await searchAnalytics<never, VersionMarkersAggs>(baseQuery, {
-    aggregations: aggs,
-    size: 0,
-  });
+  const result = await searchConsumptionAnalytics<never, VersionMarkersAggs>(
+    query,
+    {
+      aggregations: aggs,
+      size: 0,
+    }
+  );
 
   if (result.isErr()) {
     return new Err(new Error(result.error.message));

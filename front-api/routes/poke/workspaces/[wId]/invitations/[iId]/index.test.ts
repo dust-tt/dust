@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { MembershipInvitationFactory } from "@app/tests/utils/MembershipInvitationFactory";
 import { honoApp } from "@front-api/app";
 import sgMail from "@sendgrid/mail";
@@ -26,7 +26,7 @@ beforeEach(() => {
 
 describe("PATCH /api/poke/workspaces/:wId/invitations/:iId", () => {
   it("revokes the old invitation and creates a new one with a fresh createdAt", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       method: "PATCH",
       isSuperUser: true,
       role: "admin",

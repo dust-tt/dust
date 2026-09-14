@@ -1,12 +1,11 @@
+import { lookupShareTokenInOtherCells } from "@app/lib/api/cells/lookup";
 import config from "@app/lib/api/config";
-import { config as regionConfig } from "@app/lib/api/regions/config";
-import { lookupShareToken } from "@app/lib/api/regions/lookup";
 import { getWorkspaceBrandingPublicUrls } from "@app/lib/api/workspace_branding";
+import { formatFilenameForDisplay } from "@app/lib/files";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { GetShareFrameMetadataResponseBody } from "@app/types/api/files/share";
-import { isInteractiveContentType } from "@app/types/files";
 import { createHono } from "@front-api/lib/hono";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -29,8 +28,8 @@ app.get(
     const result = await FileResource.fetchByShareToken(token);
     if (result.isErr()) {
       if (result.error.code === "file_not_found") {
-        // Not found locally — check other region.
-        const lookupResult = await lookupShareToken(token);
+        // Not found locally — check other cells.
+        const lookupResult = await lookupShareTokenInOtherCells(token);
         if (lookupResult.isErr()) {
           logger.error(
             { err: lookupResult.error },
@@ -38,16 +37,12 @@ app.get(
           );
         }
         if (lookupResult.isOk() && lookupResult.value) {
-          const region = lookupResult.value;
           return ctx.json(
             {
               error: {
-                type: "workspace_in_different_region",
-                message: "File is located in a different region",
-                redirect: {
-                  region,
-                  url: regionConfig.getRegionUrl(region),
-                },
+                type: "workspace_in_different_cell",
+                message: "File is located in a different cell",
+                redirect: lookupResult.value,
               },
             },
             400
@@ -67,7 +62,7 @@ app.get(
     const { file, shareScope } = result.value;
 
     // Only allow Frame files.
-    if (!isInteractiveContentType(file.contentType)) {
+    if (!file.isShareableFrame) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
@@ -130,7 +125,11 @@ app.get(
       requiresEmailVerification,
       shareUrl,
       showSignUpCta: !isBrandedWorkspace,
-      title: file.fileName,
+      // A Frame v2's file is its manifest, so its display name comes from the active
+      // publication rather than the file name.
+      title:
+        file.useCaseMetadata?.frameName ??
+        formatFilenameForDisplay(file.fileName),
       vizUrl: config.getVizPublicUrl(),
       workspaceId: workspace.sId,
       workspaceName: workspace.name,

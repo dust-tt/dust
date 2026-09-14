@@ -84,7 +84,7 @@ export const deleteDataSourcePlugin = createPlugin({
       metadata: {
         data_source_name: dataSource.name,
         provider: dataSource.connectorProvider ?? "folder",
-        deleted_by: auth.getNonNullableUser().email,
+        deleted_by: auth.getPokePrincipal().email,
       },
     });
 

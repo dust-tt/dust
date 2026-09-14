@@ -4,7 +4,7 @@ import {
 } from "@app/components/poke/credits/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import type { PokeStripeSubscriptionWire } from "@app/lib/api/poke/workspace_info";
-import { safeLazy, Tooltip } from "@dust-tt/sparkle";
+import { LoadingBlock, safeLazy, Tooltip } from "@dust-tt/sparkle";
 import { Suspense } from "react";
 
 const PokeProgrammaticCostChart = safeLazy(() =>
@@ -16,7 +16,7 @@ const PokeProgrammaticCostChart = safeLazy(() =>
 );
 
 function PokeChartFallback() {
-  return <div className="h-96 animate-pulse rounded-lg bg-muted-background" />;
+  return <LoadingBlock className="h-96 rounded-lg" />;
 }
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";

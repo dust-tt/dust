@@ -26,7 +26,7 @@ import { honoApp } from "@front-api/app";
 
 async function setup() {
   const { workspace, auth } = await createPrivateApiMockRequest({
-    role: "builder",
+    role: "user",
   });
   const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
     name: "Test Agent",

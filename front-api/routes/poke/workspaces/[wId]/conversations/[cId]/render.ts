@@ -19,12 +19,16 @@ import { constructProjectContext } from "@app/lib/resources/skill/code_defined/g
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { tokenCountForTexts } from "@app/lib/tokenization";
+import type { AgentModelConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
   UserMessageType,
 } from "@app/types/assistant/conversation";
-import { isUserMessageType } from "@app/types/assistant/conversation";
+import {
+  isAgentMessageType,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
 import { removeNulls } from "@app/types/shared/utils/general";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
@@ -47,6 +51,7 @@ export type PostRenderConversationResponseBody = {
   tokensUsed: number;
   modelConversation: unknown;
   modelContextSizeUsed: number;
+  modelIdUsed: string;
   promptTokenCountApprox: number;
   systemPrompt: string;
   toolsTokenCountApprox: number;
@@ -98,25 +103,38 @@ app.post(
       });
     }
 
+    // The agent's configured model can be a model stream (`auto`, `auto_fast`,
+    // `auto_complex`): a sentinel that never names a concrete model and has no
+    // endpoint of its own. The agent's last message in this conversation stores
+    // the model it actually ran on, so use that when we have it.
+    const lastAgentMessage = conversation.content
+      .map((versions) => versions.at(-1))
+      .filter((m): m is AgentMessageType => !!m && isAgentMessageType(m))
+      .findLast((m) => m.configuration.sId === agentId);
+    const modelConfiguration: AgentModelConfigurationType = {
+      ...agentConfiguration.model,
+      ...lastAgentMessage?.resolvedModel,
+    };
+
     const endpoint = await getStreamEndpointFromLegacyModelId(
       auth,
-      agentConfiguration.model.modelId
+      modelConfiguration.modelId
     );
     if (!endpoint) {
       return apiError(ctx, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: `Model ${agentConfiguration.model.modelId} is not supported for rendering.`,
+          message: `Model ${modelConfiguration.modelId} is not supported for rendering.`,
         },
       });
     }
     const modelInfo = {
       endpoint,
-      temperature: agentConfiguration.model.temperature,
-      reasoningEffort: agentConfiguration.model.reasoningEffort,
+      temperature: modelConfiguration.temperature,
+      reasoningEffort: modelConfiguration.reasoningEffort,
       responseFormat: endpoint.modelConfig.supportsResponseFormat
-        ? agentConfiguration.model.responseFormat
+        ? modelConfiguration.responseFormat
         : undefined,
     };
     const model = endpoint.modelConfig;
@@ -307,6 +325,7 @@ app.post(
       tokensUsed,
       modelConversation,
       modelContextSizeUsed: contextSize,
+      modelIdUsed: model.modelId,
       promptTokenCountApprox,
       systemPrompt: prompt,
       toolsTokenCountApprox,

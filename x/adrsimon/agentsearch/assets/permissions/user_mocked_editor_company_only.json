@@ -1,0 +1,20 @@
+{
+  "scenario": "editor with company space only",
+  "workspaceId": "w_mocked",
+  "workspaceName": "Permission model",
+  "generatedAt": "2026-08-27T00:00:00.000Z",
+  "user": { "sId": "usr_editor_company", "email": "editor@example.com", "fullName": "Editor company" },
+  "role": "user",
+  "groupIds": [],
+  "groups": [],
+  "readableNonPodSpaces": [
+    { "sId": "vlt_company", "name": "Company", "kind": "global" }
+  ],
+  "readablePodSpaces": [],
+  "expectedAgentIds": [
+    "agt_global_none",
+    "agt_hidden_editor_none",
+    "agt_visible_company",
+    "agt_visible_none"
+  ]
+}

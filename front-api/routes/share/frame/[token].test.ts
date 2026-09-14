@@ -3,7 +3,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type { FileShareScope } from "@app/types/files";
-import { frameContentType } from "@app/types/files";
+import { frameContentType, frameV2ContentType } from "@app/types/files";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -120,5 +120,49 @@ describe("GET /api/share/frame/:token - requiresEmailVerification", () => {
 
     expect(response.status).toBe(200);
     expect((await response.json()).requiresEmailVerification).toBe(false);
+  });
+});
+
+describe("GET /api/share/frame/:token - title", () => {
+  let auth: Authenticator;
+  let user: UserResource;
+
+  beforeEach(async () => {
+    const resources = await createResourceTest({ role: "admin" });
+    auth = resources.authenticator;
+    user = resources.user;
+  });
+
+  it("uses the formatted file name for a legacy Frame", async () => {
+    const { token } = await createFrameWithScope(auth, user, "public");
+
+    const response = await getShareFrame(token);
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).title).toBe("Test");
+  });
+
+  it("uses the published Frame name for a Frame v2", async () => {
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 100,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: {
+        activePublicationId: "publication-1",
+        frameName: "Task List",
+        frameDescription: "Track tasks.",
+      },
+    });
+    await file.setShareScope(auth, "public");
+    const shareInfo = await file.getShareInfo();
+    assert(shareInfo, "Share info should be available");
+    const token = shareInfo.shareUrl.split("/").at(-1)!;
+
+    const response = await getShareFrame(token);
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).title).toBe("Task List");
   });
 });

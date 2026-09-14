@@ -2,7 +2,6 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  getElevenLabsClient,
   resolveDefaultVoiceId,
   streamToBase64,
 } from "@app/lib/api/actions/servers/elevenlabs/utils";
@@ -10,6 +9,7 @@ import {
   isAllowedAudioUrl,
   SPEECH_GENERATOR_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/speech_generator/metadata";
+import { getElevenLabs } from "@app/lib/utils/transcribe_service";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
@@ -30,7 +30,7 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
     }
 
     try {
-      const client = getElevenLabsClient();
+      const client = getElevenLabs();
 
       const result = await client.speechToText.convert({
         ...(audio_url
@@ -61,7 +61,7 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
     name = "speech",
   }) => {
     try {
-      const client = getElevenLabsClient();
+      const client = getElevenLabs();
 
       const voiceId = await resolveDefaultVoiceId({
         language,
@@ -106,7 +106,7 @@ const handlers: ToolHandlers<typeof SPEECH_GENERATOR_TOOLS_METADATA> = {
 
   text_to_dialogue: async ({ dialogues, name = "dialogue" }) => {
     try {
-      const client = getElevenLabsClient();
+      const client = getElevenLabs();
 
       // resolveDefaultVoiceId is called once (cached after first call), so
       // sequential resolution here avoids redundant API fetches on cold start.

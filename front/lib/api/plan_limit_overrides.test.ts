@@ -24,6 +24,9 @@ const PLAN_MAX_LIFETIME_FREE_USERS = 3;
 const PLAN_MAX_VAULTS = 5;
 const PLAN_MAX_DATA_SOURCES = 6;
 const PLAN_MAX_CONNECTIONS = 3;
+// One gate off and one on, so overrides can be tested in both directions.
+const PLAN_IS_SSO_ALLOWED = false;
+const PLAN_IS_SCIM_ALLOWED = true;
 
 describe("workspace plan limit overrides", () => {
   let workspace: LightWorkspaceType;
@@ -37,6 +40,8 @@ describe("workspace plan limit overrides", () => {
       maxVaultsInWorkspace: PLAN_MAX_VAULTS,
       maxDataSourcesCount: PLAN_MAX_DATA_SOURCES,
       maxConnectionsCount: PLAN_MAX_CONNECTIONS,
+      isSSOAllowed: PLAN_IS_SSO_ALLOWED,
+      isSCIMAllowed: PLAN_IS_SCIM_ALLOWED,
     });
     workspace = await WorkspaceFactory.fromPlan(plan);
     auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
@@ -68,6 +73,58 @@ describe("workspace plan limit overrides", () => {
     expect(limits.vaults.maxVaults).toBe(PLAN_MAX_VAULTS);
     expect(limits.dataSources.count).toBe(PLAN_MAX_DATA_SOURCES);
     expect(limits.connections.count).toBe(PLAN_MAX_CONNECTIONS);
+    expect(limits.users.isSSOAllowed).toBe(PLAN_IS_SSO_ALLOWED);
+    expect(limits.users.isSCIMAllowed).toBe(PLAN_IS_SCIM_ALLOWED);
+  });
+
+  it("grants SSO to a workspace whose plan does not allow it", async () => {
+    const res = await setWorkspacePlanLimitOverrides(
+      auth,
+      override({ isSSOAllowed: true })
+    );
+    expect(res.isOk()).toBe(true);
+
+    const limits = await effectiveUserLimits();
+    expect(limits.isSSOAllowed).toBe(true);
+    // Not overridden: still the plan value.
+    expect(limits.isSCIMAllowed).toBe(PLAN_IS_SCIM_ALLOWED);
+  });
+
+  it("denies SCIM to a workspace whose plan allows it", async () => {
+    const res = await setWorkspacePlanLimitOverrides(
+      auth,
+      override({ isSCIMAllowed: false })
+    );
+    expect(res.isOk()).toBe(true);
+
+    expect((await effectiveUserLimits()).isSCIMAllowed).toBe(false);
+  });
+
+  it("persists a `false` gate override rather than treating it as cleared", async () => {
+    await setWorkspacePlanLimitOverrides(
+      auth,
+      override({ isSCIMAllowed: false })
+    );
+
+    // `false` is a real override, so the row must survive the round-trip.
+    expect(await getWorkspacePlanLimitOverrides(auth)).toEqual(
+      override({ isSCIMAllowed: false })
+    );
+  });
+
+  it("clears a gate override and falls back to the plan value", async () => {
+    await setWorkspacePlanLimitOverrides(
+      auth,
+      override({ isSSOAllowed: true })
+    );
+    expect((await effectiveUserLimits()).isSSOAllowed).toBe(true);
+
+    await setWorkspacePlanLimitOverrides(auth, EMPTY_PLAN_LIMIT_OVERRIDE);
+
+    expect(await getWorkspacePlanLimitOverrides(auth)).toBeNull();
+    expect((await effectiveUserLimits()).isSSOAllowed).toBe(
+      PLAN_IS_SSO_ALLOWED
+    );
   });
 
   it("applies the space, data-source and connection overrides", async () => {

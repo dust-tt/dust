@@ -542,6 +542,8 @@ export async function createConversationFork(
         requestedSpaceIds: [...parentConversation.requestedSpaceIds],
         metadata: {
           useFileSystem: parentConversation.metadata?.useFileSystem ?? false,
+          useDatabaseFileSystem:
+            parentConversation.metadata?.useDatabaseFileSystem === true,
         },
       },
       parentConversation.space,

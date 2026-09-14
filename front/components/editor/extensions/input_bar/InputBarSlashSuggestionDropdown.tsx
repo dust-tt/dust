@@ -1,4 +1,7 @@
-import { buildInputBarSlashCommandItems } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionItems";
+import {
+  filterInputBarSlashCommandItems,
+  getInputBarSlashCommandItems,
+} from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionItems";
 import type { InputBarSlashCommand } from "@app/components/editor/extensions/input_bar/InputBarSlashSuggestionTypes";
 import { AttachContextSubMenuDropdown } from "@app/components/editor/extensions/shared/slash_suggestion/AttachContextSubMenuDropdown";
 import { applyAttachContextSelection } from "@app/components/editor/extensions/shared/slash_suggestion/applyAttachContextSelection";
@@ -13,6 +16,7 @@ import {
   ATTACH_CONTEXT_SUB_MENU_ID,
   clearSlashSubMenuStack,
   PICK_MODEL_SUB_MENU_ID,
+  resolveSlashSubMenuFromQuery,
 } from "@app/components/editor/extensions/shared/slash_suggestion/slashMenuNavigation";
 import { SLASH_COMMAND_CAPABILITIES_LOADING_MESSAGE } from "@app/components/editor/extensions/shared/slash_suggestion/slashSuggestionUtils";
 import { useInputBarSlashCommandCapabilities } from "@app/components/editor/extensions/shared/slash_suggestion/useSlashCommandCapabilities";
@@ -76,10 +80,11 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
   ) => {
     const dropdownRef = useRef<SlashCommandDropdownRef>(null);
     const subMenuRef = useRef<SlashCommandDropdownRef>(null);
-    const { activeFrame, pop, storage } = useSlashMenuStack(
-      editor,
-      "inputBarSlashSuggestion"
-    );
+    const {
+      activeFrame: stackFrame,
+      pop,
+      storage,
+    } = useSlashMenuStack(editor, "inputBarSlashSuggestion");
 
     const isNodeAttached = useCallback(
       (node: DataSourceViewContentNode) => {
@@ -124,16 +129,35 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
       [editor, onClose, onModelSelectRef, range, storage]
     );
 
-    const commandItems = useMemo(
+    const allCommandItems = useMemo(
       () =>
-        buildInputBarSlashCommandItems({
+        getInputBarSlashCommandItems({
           commands: slashCommandsRef.current ?? [],
           includeAttachKnowledge: includeAttachKnowledgeRef.current ?? false,
           includePickModel: includePickModelRef.current ?? false,
-          query,
         }),
-      [includeAttachKnowledgeRef, includePickModelRef, query, slashCommandsRef]
+      [includeAttachKnowledgeRef, includePickModelRef, slashCommandsRef]
     );
+
+    const commandItems = useMemo(
+      () => filterInputBarSlashCommandItems(allCommandItems, query),
+      [allCommandItems, query]
+    );
+
+    // "/model fab" opens the model sub-menu with "fab" as its query without pushing a frame.
+    // Back then relies on `pop` deleting the text after "/", not on the (empty) stack.
+    const queryFrame = useMemo(
+      () =>
+        stackFrame
+          ? null
+          : resolveSlashSubMenuFromQuery({
+              commandItems: allCommandItems,
+              query,
+            }),
+      [allCommandItems, query, stackFrame]
+    );
+    const activeFrame = stackFrame ?? queryFrame?.frame ?? null;
+    const subMenuQuery = queryFrame?.query ?? query;
 
     const { capabilityItems, isLoading } = useInputBarSlashCommandCapabilities({
       owner,
@@ -163,6 +187,11 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
             activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID ||
             activeFrame?.subMenuId === PICK_MODEL_SUB_MENU_ID
           ) {
+            // The command text is still in the editor: let Backspace edit it.
+            if (queryFrame && event.key === "Backspace") {
+              return false;
+            }
+
             return subMenuRef.current?.onKeyDown({ event }) ?? false;
           }
 
@@ -183,7 +212,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           return dropdownRef.current?.onKeyDown({ event }) ?? false;
         },
       }),
-      [activeFrame?.subMenuId, flatItems.length, onClose, query]
+      [activeFrame?.subMenuId, flatItems.length, onClose, query, queryFrame]
     );
 
     if (activeFrame?.subMenuId === ATTACH_CONTEXT_SUB_MENU_ID) {
@@ -199,7 +228,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           onClose={onClose}
           onSelect={handleAttachContextSelect}
           owner={owner}
-          query={query}
+          query={subMenuQuery}
           range={range}
           spaceId={spaceIdRef.current ?? null}
           useCase="conversation-input"
@@ -218,7 +247,7 @@ export const InputBarSlashSuggestionDropdown = forwardRef<
           onClose={onClose}
           onSelect={handleModelSelect}
           owner={owner}
-          query={query}
+          query={subMenuQuery}
           range={range}
         />
       );

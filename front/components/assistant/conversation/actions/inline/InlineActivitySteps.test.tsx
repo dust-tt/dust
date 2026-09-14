@@ -74,6 +74,35 @@ const mockAgentMessage: LightAgentMessageType = {
 };
 
 describe("InlineActivitySteps", () => {
+  it.each([
+    "thinking",
+    "acting",
+  ] as const)("keeps the latest generated text visible while %s", (agentState) => {
+    render(
+      <InlineActivitySteps
+        agentMessage={mockAgentMessage}
+        lastAgentStateClassification={agentState}
+        completedSteps={[
+          {
+            type: "thinking",
+            content: "Historical reasoning step",
+            id: "thinking-1",
+          },
+        ]}
+        pendingToolCalls={[]}
+        owner={mockOwner}
+        isLastMessage
+      />
+    );
+
+    expect(screen.getByText("Live final answer")).toBeVisible();
+
+    fireEvent.click(screen.getByRole("button", { name: /Thinking/i }));
+
+    expect(screen.getByText("Historical reasoning step")).not.toBeVisible();
+    expect(screen.getByText("Live final answer")).toBeVisible();
+  });
+
   it("keeps the live answer visible when collapsing during writing", () => {
     render(
       <InlineActivitySteps

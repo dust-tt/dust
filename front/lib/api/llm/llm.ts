@@ -3,7 +3,19 @@ import {
   contributeFreeUsageCostForUser,
   isFreeUsageContext,
 } from "@app/lib/api/llm/free_usage";
+import { recordLLMAttempt } from "@app/lib/api/llm/health/counters";
 import { LLMRunLifecycle } from "@app/lib/api/llm/run_lifecycle";
+import type {
+  LLMAttemptOutcome,
+  LLMAttemptOutcomeTelemetry,
+} from "@app/lib/api/llm/telemetry";
+import {
+  emitLLMDurationMs,
+  emitLLMTimeToFirstEventMs,
+  emitLLMTimeToFirstTokenMs,
+  llmAttemptLogFields,
+  requestedReasoningEffortTag,
+} from "@app/lib/api/llm/telemetry";
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
@@ -28,13 +40,17 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
+import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
 import { USAGE_TYPE_FREE } from "@app/lib/metronome/constants";
+import { getUsageType } from "@app/lib/metronome/events";
+import type { UsageType } from "@app/lib/metronome/types";
+import type { Host } from "@app/lib/model_constructors/types/hosts";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types/assistant/creativity";
 
@@ -46,6 +62,7 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { LangfuseGeneration } from "@langfuse/tracing";
 import { startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
@@ -67,6 +84,7 @@ export abstract class LLM<
   protected responseFormat: string | null;
   protected bypassFeatureFlag: boolean;
   protected metadata: LLMClientMetadata;
+  protected host: Host;
   // Temporary during the router migration; "new" is set by BaseTransition.
   protected readonly router: "legacy" | "new" = "legacy";
 
@@ -89,6 +107,7 @@ export abstract class LLM<
   ) {
     const modelConfig = modelInfo.endpoint.modelConfig;
     this.modelId = modelConfig.modelId;
+    this.host = modelInfo.endpoint.host;
     this.modelConfig = modelConfig;
     this.temperature =
       modelInfo.temperature ?? AGENT_CREATIVITY_LEVEL_TEMPERATURES["balanced"];
@@ -128,11 +147,94 @@ export abstract class LLM<
           message: `LLM did not complete successfully for ${this.metadata.clientId}/${this.metadata.modelId}.`,
           isRetryable: true,
           originalError: { lastEventType: currentEvent?.type },
+          // Closing without a terminal event does not prove the provider caused
+          // the gap. Keep this unknown so the outage fallback cannot relabel it.
+          errorSource: "unknown",
         },
         this.metadata
       );
       yield currentEvent;
     }
+  }
+
+  // Identity tags for attempt counters. Adding a tag here splits existing
+  // Datadog series for llm_interaction.count, llm_success.count, and
+  // llm_error.count.
+  private getTelemetryTags({
+    surface,
+  }: {
+    surface: "stream" | "batch";
+  }): string[] {
+    return [
+      `model_id:${this.modelId}`,
+      `provider_id:${this.modelConfig.providerId}`,
+      `client_id:${this.metadata.clientId}`,
+      `inference_provider:${this.metadata.inferenceProvider}`,
+      ...(this.metadata.region ? [`region:${this.metadata.region}`] : []),
+      `operation_type:${this.context?.operationType ?? "unknown"}`,
+      `surface:${surface}`,
+    ];
+  }
+
+  private getLatencyTelemetryTags({
+    surface,
+  }: {
+    surface: "stream" | "batch";
+  }): string[] {
+    return [
+      ...this.getTelemetryTags({ surface }),
+      requestedReasoningEffortTag(this.reasoningEffort),
+    ];
+  }
+
+  private emitStreamAttemptTelemetry({
+    durationMs,
+    timeToFirstEventMs,
+    timeToFirstTokenMs,
+    ...outcomeTelemetry
+  }: {
+    durationMs: number;
+    timeToFirstEventMs: number | undefined;
+    timeToFirstTokenMs: number | undefined;
+  } & LLMAttemptOutcomeTelemetry): void {
+    const baseTags = this.getTelemetryTags({ surface: "stream" });
+    const latencyTags = this.getLatencyTelemetryTags({ surface: "stream" });
+
+    void recordLLMAttempt({
+      endpoint: {
+        modelId: this.modelId,
+        providerId: this.modelConfig.providerId,
+        host: this.host,
+      },
+      outcome: outcomeTelemetry,
+    });
+
+    switch (outcomeTelemetry.outcome) {
+      case "error":
+        statsDMetrics.increment("llm_error.count", 1, [
+          ...baseTags,
+          `error_type:${outcomeTelemetry.errorType}`,
+          `error_source:${outcomeTelemetry.errorSource}`,
+        ]);
+        break;
+      case "success":
+        statsDMetrics.increment("llm_success.count", 1, baseTags);
+        break;
+      case "success_without_usage":
+        statsDMetrics.increment("llm_success.count", 1, baseTags);
+        statsDMetrics.increment("llm_success_without_usage.count", 1, baseTags);
+        break;
+      default:
+        assertNever(outcomeTelemetry);
+    }
+
+    emitLLMDurationMs({
+      durationMs,
+      tags: latencyTags,
+      ...outcomeTelemetry,
+    });
+    emitLLMTimeToFirstEventMs(timeToFirstEventMs, latencyTags);
+    emitLLMTimeToFirstTokenMs(timeToFirstTokenMs, latencyTags);
   }
 
   /**
@@ -175,6 +277,8 @@ export abstract class LLM<
       { asType: "generation" }
     );
 
+    const attributedKey = this.authenticator.keyForUsageAttribution();
+
     this.generation.updateTrace({
       name: startCase(this.context.operationType),
       metadata: {
@@ -186,9 +290,10 @@ export abstract class LLM<
         ...(this.authenticator.user()?.sId && {
           actualUserId: this.authenticator.user()!.sId,
         }),
-        ...(this.authenticator.key() && {
-          apiKeyId: this.authenticator.key()!.id,
-        }),
+        // The attributed key, so a trace joins to the message analytics and
+        // spend counters for the same run rather than naming the system key an
+        // internal flow re-authenticated with (`authMethod` still shows that).
+        ...(attributedKey && { apiKeyId: attributedKey.id }),
         authMethod: this.authenticator.authMethod() ?? "unknown",
         // Include all context fields (except userId and workspaceId).
         ...pickBy(
@@ -218,28 +323,32 @@ export abstract class LLM<
       });
     }
 
-    // Track LLM interaction metric
-    const metricTags = [
-      `model_id:${this.modelId}`,
-      `client_id:${this.metadata.clientId}`,
-      `inference_provider:${this.metadata.inferenceProvider}`,
-      ...(this.metadata.region ? [`region:${this.metadata.region}`] : []),
-      `operation_type:${this.context.operationType}`,
-    ];
+    const metricTags = this.getTelemetryTags({ surface: "stream" });
 
-    getStatsDClient().increment("llm_interaction.count", 1, metricTags);
+    statsDMetrics.increment("llm_interaction.count", 1, metricTags);
 
     let currentEvent: LLMEvent | null = null;
-    let timeToFirstEventMs: number | undefined = undefined;
+    let timeToFirstEventMs: number | undefined;
+    let timeToFirstTokenMs: number | undefined;
 
     try {
       for await (const event of this.completeStream(
         streamParameters,
         metadata
       )) {
-        if (currentEvent === null) {
-          timeToFirstEventMs = Date.now() - startTime;
+        const elapsedMs = Date.now() - startTime;
+
+        if (timeToFirstEventMs === undefined) {
+          timeToFirstEventMs = elapsedMs;
         }
+
+        if (
+          timeToFirstTokenMs === undefined &&
+          (event.type === "text_delta" || event.type === "reasoning_delta")
+        ) {
+          timeToFirstTokenMs = elapsedMs;
+        }
+
         currentEvent = event;
         buffer.addEvent(currentEvent);
 
@@ -248,7 +357,9 @@ export abstract class LLM<
         if (currentEvent.type === "token_usage") {
           emitTokenUsageMetrics(currentEvent.content, [
             ...metricTags,
-            "surface:stream",
+            ...(currentEvent.content.serviceTier
+              ? [`service_tier:${currentEvent.content.serviceTier}`]
+              : []),
           ]);
         }
 
@@ -271,12 +382,34 @@ export abstract class LLM<
           continue;
         }
 
-        // Logging before it gets stopped and retried downstream
+        const durationMs = Date.now() - startTime;
+        const { tokenUsage, ...rest } = buffer.currentOutput;
+        const timingLogFields = llmAttemptLogFields({
+          durationMs,
+          timeToFirstEventMs,
+          timeToFirstTokenMs,
+          requestedReasoningEffort: this.reasoningEffort,
+          surface: "stream",
+        });
+
         if (currentEvent.type === "error") {
-          // Temporary: track LLM error metric
-          getStatsDClient().increment("llm_error.count", 1, metricTags);
+          const errorType = currentEvent.content.type;
+          const errorSource = currentEvent.content.errorSource;
+
+          this.emitStreamAttemptTelemetry({
+            outcome: "error",
+            durationMs,
+            timeToFirstEventMs,
+            timeToFirstTokenMs,
+            errorType,
+            errorSource,
+          });
           this.generation.updateTrace({
-            tags: ["isError:true", `errorType:${currentEvent.content.type}`],
+            tags: [
+              "isError:true",
+              `errorType:${errorType}`,
+              `errorSource:${errorSource}`,
+            ],
           });
 
           logger.error(
@@ -289,36 +422,71 @@ export abstract class LLM<
               region: this.metadata.region,
               context: this.context,
               traceId: this.traceId,
+              errorType,
+              errorSource,
+              ...timingLogFields,
             },
             "LLM Error"
           );
         }
 
         if (currentEvent.type === "success") {
-          // Temporary: track LLM success metric
-          getStatsDClient().increment("llm_success.count", 1, metricTags);
+          const outcome: LLMAttemptOutcome = tokenUsage
+            ? "success"
+            : "success_without_usage";
 
-          logger.info(
-            {
-              llmEventType: "success",
-              router: this.router,
-              modelId: this.modelId,
-              inferenceProvider: this.metadata.inferenceProvider,
-              region: this.metadata.region,
-              context: this.context,
-              traceId: this.traceId,
-            },
-            "LLM Success"
-          );
+          this.emitStreamAttemptTelemetry({
+            outcome,
+            durationMs,
+            timeToFirstEventMs,
+            timeToFirstTokenMs,
+          });
+
+          const logContext = {
+            router: this.router,
+            modelId: this.modelId,
+            inferenceProvider: this.metadata.inferenceProvider,
+            region: this.metadata.region,
+            context: this.context,
+            traceId: this.traceId,
+            ...timingLogFields,
+          };
+
+          if (tokenUsage) {
+            logger.info(
+              { llmEventType: "success", ...logContext },
+              "LLM Success"
+            );
+          } else {
+            this.generation.updateTrace({
+              tags: ["success_without_usage:true"],
+            });
+            this.generation.update({
+              level: "WARNING",
+              statusMessage:
+                "LLM completed successfully without reporting token usage.",
+            });
+            logger.warn(
+              {
+                llmEventType: "success_without_usage",
+                ...logContext,
+                outputContentLength: rest.content?.length ?? 0,
+                reasoningLength: rest.reasoning?.length ?? 0,
+                toolCallCount: rest.toolCalls?.length ?? 0,
+              },
+              "LLM Success without usage"
+            );
+          }
         }
 
-        const durationMs = Date.now() - startTime;
-
         buffer
-          .writeToGCS({ durationMs, startTime, timeToFirstEventMs })
+          .writeToGCS({
+            durationMs,
+            startTime,
+            timeToFirstEventMs,
+            timeToFirstTokenMs,
+          })
           .catch(() => {});
-
-        const { tokenUsage, ...rest } = buffer.currentOutput;
 
         this.generation.update({
           output: { ...rest },
@@ -353,8 +521,9 @@ export abstract class LLM<
             level: "ERROR",
             statusMessage: buffer.error.message,
             metadata: {
-              errorType: buffer.error.type,
+              errorType: buffer.error.content.type,
               errorMessage: buffer.error.message,
+              errorSource: buffer.error.content.errorSource,
             },
           });
         }
@@ -523,6 +692,7 @@ export abstract class LLM<
     results: BatchResult
   ): Promise<BatchResultWithRunIds> {
     const enrichedResults: BatchResultWithRunIds = new Map();
+    const usageType = this.getUsageType();
 
     for (const [customId, events] of results) {
       const traceId = createLLMTraceId(randomUUID());
@@ -542,7 +712,11 @@ export abstract class LLM<
             this.authenticator,
             event.content,
             this.modelId,
-            { isBatch: true, inferenceRegion: this.metadata.inferenceRegion }
+            {
+              isBatch: true,
+              inferenceRegion: this.metadata.inferenceRegion,
+              usageType,
+            }
           );
         }
       }
@@ -558,6 +732,7 @@ export abstract class LLM<
    */
   private async traceBatchResults(results: BatchResult): Promise<void> {
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
+    const attributedKey = this.authenticator.keyForUsageAttribution();
 
     for (const [customId, events] of results) {
       const traceId = createLLMTraceId(randomUUID());
@@ -584,9 +759,7 @@ export abstract class LLM<
           ...(this.authenticator.user()?.sId && {
             actualUserId: this.authenticator.user()!.sId,
           }),
-          ...(this.authenticator.key() && {
-            apiKeyId: this.authenticator.key()!.id,
-          }),
+          ...(attributedKey && { apiKeyId: attributedKey.id }),
           authMethod: this.authenticator.authMethod() ?? "unknown",
           ...pickBy(
             this.context!,
@@ -597,38 +770,63 @@ export abstract class LLM<
         userId: workspaceId,
       });
 
-      const metricTags = [
-        `model_id:${this.modelId}`,
-        `client_id:${this.metadata.clientId}`,
-        `inference_provider:${this.metadata.inferenceProvider}`,
-        ...(this.metadata.region ? [`region:${this.metadata.region}`] : []),
-        `operation_type:${this.context!.operationType}`,
-      ];
+      const metricTags = this.getTelemetryTags({ surface: "batch" });
 
       let hasError = false;
       for (const event of events) {
         buffer.addEvent(event);
 
         if (event.type === "token_usage") {
-          emitTokenUsageMetrics(event.content, [
-            ...metricTags,
-            "surface:batch",
-          ]);
+          emitTokenUsageMetrics(event.content, metricTags);
         }
 
         if (event.type === "error") {
           hasError = true;
-          getStatsDClient().increment("llm_error.count", 1, metricTags);
+          const errorType = event.content.type;
+          const errorSource = event.content.errorSource;
+          statsDMetrics.increment("llm_error.count", 1, [
+            ...metricTags,
+            `error_type:${errorType}`,
+            `error_source:${errorSource}`,
+          ]);
           generation.updateTrace({
-            tags: ["isError:true", `errorType:${event.content.type}`],
+            tags: [
+              "isError:true",
+              `errorType:${errorType}`,
+              `errorSource:${errorSource}`,
+            ],
           });
+          logger.error(
+            {
+              llmEventType: "error",
+              router: this.router,
+              errorContent: event.content,
+              modelId: this.modelId,
+              inferenceProvider: this.metadata.inferenceProvider,
+              region: this.metadata.region,
+              context: this.context,
+              traceId,
+              errorType,
+              errorSource,
+              ...llmAttemptLogFields({
+                requestedReasoningEffort: this.reasoningEffort,
+                surface: "batch",
+              }),
+            },
+            "LLM Error"
+          );
         }
       }
 
       if (!hasError) {
-        getStatsDClient().increment("llm_success.count", 1, metricTags);
+        statsDMetrics.increment("llm_success.count", 1, metricTags);
       }
-      getStatsDClient().increment("llm_interaction.count", 1, metricTags);
+      statsDMetrics.increment("llm_interaction.count", 1, metricTags);
+
+      // batch attempts deliberately do not feed the model health counters.
+      // A batch job is submitted then polled over hours, so its error surfaces
+      // at a timestamp unrelated to when the provider was unhealthy, and folding
+      // that into a five-minute window would smear it.
 
       const { tokenUsage, ...rest } = buffer.currentOutput;
 
@@ -661,8 +859,9 @@ export abstract class LLM<
           level: "ERROR",
           statusMessage: buffer.error.message,
           metadata: {
-            errorType: buffer.error.type,
+            errorType: buffer.error.content.type,
             errorMessage: buffer.error.message,
+            errorSource: buffer.error.content.errorSource,
           },
         });
       }
@@ -751,11 +950,27 @@ export abstract class LLM<
     }
   }
 
-  private getUsageType() {
-    // Calls without tracing context cannot be attributed to a billable agent conversation,
-    // so keep them free until the caller provides that context.
-    return !this.context || isFreeUsageContext(this.context)
-      ? USAGE_TYPE_FREE
-      : undefined;
+  private getUsageType(): UsageType {
+    // Calls without tracing context and non-agent utility calls are free.
+    if (!this.context || isFreeUsageContext(this.context)) {
+      return USAGE_TYPE_FREE;
+    }
+
+    const userMessageOrigin = this.context.userMessageOrigin;
+    if (!userMessageOrigin) {
+      throw new Error(
+        "Agent conversation LLM context is missing userMessageOrigin"
+      );
+    }
+
+    return getUsageType(
+      isProgrammaticUsageFromContext({
+        authMethod: this.authenticator.authMethod(),
+        userMessageOrigin,
+        userId: this.context.userId,
+        messageAuthMethod: this.context.userMessageAuthMethod,
+      }),
+      userMessageOrigin
+    );
   }
 }

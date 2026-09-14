@@ -14,7 +14,11 @@ import type {
 } from "@app/types/api/spaces";
 import { PostSpaceRequestBodySchema } from "@app/types/api/spaces";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import { type PodType, SPACE_KINDS, type SpaceType } from "@app/types/space";
+import {
+  type EnrichedSpaceType,
+  type PodType,
+  SPACE_KINDS,
+} from "@app/types/space";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -115,7 +119,6 @@ const GetSpacesQuerySchema = z.object({
  *               - isRestricted
  *               - name
  *               - spaceKind
- *               - managementMode
  *             properties:
  *               isRestricted:
  *                 type: boolean
@@ -124,19 +127,16 @@ const GetSpacesQuerySchema = z.object({
  *               spaceKind:
  *                 type: string
  *                 enum: [regular, project]
- *               managementMode:
- *                 type: string
- *                 enum: [manual, group]
  *               memberIds:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Required when managementMode is manual
+ *                 description: The space's manual member list. Omitted or empty means the space starts with no manual member.
  *               groupIds:
  *                 type: array
  *                 items:
  *                   type: string
- *                 description: Required when managementMode is group
+ *                 description: The groups given access to the space. Omitted or empty means no group has access to it.
  *     responses:
  *       201:
  *         description: Successfully created space
@@ -181,9 +181,8 @@ app.get(
     const nonProjectSpaces = spaces.filter((s) => s.kind !== "project");
     const projectSpaces = spaces.filter((s) => s.kind === "project");
 
-    const nonProjectsJson: SpaceType[] = nonProjectSpaces.map((s) =>
-      s.toJSON()
-    );
+    const nonProjectsJson: EnrichedSpaceType[] =
+      await SpaceResource.enrichSpacesWithAccess(auth, nonProjectSpaces);
     const projectsJson: PodType[] =
       projectSpaces.length > 0
         ? await enrichProjectsWithMetadata(auth, projectSpaces)
@@ -243,6 +242,14 @@ app.post(
             status_code: 500,
             api_error: {
               type: "internal_server_error",
+              message: spaceRes.error.message,
+            },
+          });
+        case "invalid_request_error":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
               message: spaceRes.error.message,
             },
           });

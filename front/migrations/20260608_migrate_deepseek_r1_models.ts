@@ -54,7 +54,7 @@ makeScript({}, async ({ execute }, logger) => {
     }
 
     if (execute && agents.length > 0) {
-      // Single batched UPDATE instead of one query per row (GEN14). Scoped to
+      // Single batched UPDATE instead of one query per row (batch-database-queries). Scoped to
       // the exact ids gathered above, so no workspace isolation bypass is
       // needed (the cross-workspace scan happened in the findAll).
       await AgentConfigurationModelWithBypass.update(

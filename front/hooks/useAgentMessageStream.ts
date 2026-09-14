@@ -21,7 +21,6 @@ import type { LightWorkspaceType } from "@app/types/user";
 import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import throttle from "lodash/throttle";
-import type { MutableRefObject } from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
 const TOKEN_BUFFER_THRESHOLD_MS = 500;
@@ -31,47 +30,7 @@ type VirtuosoMethods = VirtuosoMessageListMethods<
   VirtuosoMessageListContext
 >;
 
-function createAutoScrollToBottomBehavior(
-  isAutoScrollEnabledRef: MutableRefObject<boolean>
-) {
-  return ({
-    scrollLocation,
-    scrollInProgress,
-  }: {
-    scrollLocation: { bottomOffset: number };
-    scrollInProgress: boolean;
-  }) => {
-    if (!isAutoScrollEnabledRef.current || scrollInProgress) {
-      return false;
-    }
-
-    if (scrollLocation.bottomOffset < 0) {
-      return false;
-    }
-
-    return {
-      index: "LAST" as const,
-      align: "end" as const,
-      behavior: "smooth" as const,
-    };
-  };
-}
-
-function batchMapMessagesWithAutoScroll(
-  methods: VirtuosoMethods,
-  isAutoScrollEnabledRef: MutableRefObject<boolean>,
-  mapFn: (message: VirtuosoMessage, index: number) => VirtuosoMessage
-) {
-  methods.data.batch(
-    () => methods.data.map(mapFn),
-    createAutoScrollToBottomBehavior(isAutoScrollEnabledRef)
-  );
-}
-
-function createUpdateMessageThrottled(
-  isAutoScrollEnabledRef: MutableRefObject<boolean>,
-  methods: VirtuosoMethods
-) {
+function createUpdateMessageThrottled(methods: VirtuosoMethods) {
   return throttle(
     ({
       chainOfThought,
@@ -82,15 +41,8 @@ function createUpdateMessageThrottled(
       content: string;
       sId: string;
     }) => {
-      batchMapMessagesWithAutoScroll(methods, isAutoScrollEnabledRef, (m) => {
+      methods.data.map((m) => {
         if (isAgentMessageWithStreaming(m) && m.sId === sId) {
-          // Enable auto scroll if we are starting to receive content or chain of thought.
-          if (
-            (!m.content && content) ||
-            (!m.chainOfThought && chainOfThought)
-          ) {
-            isAutoScrollEnabledRef.current = true;
-          }
           return {
             ...m,
             content,
@@ -305,7 +257,6 @@ function flushPendingSegment({
 interface UseAgentMessageStreamParams {
   agentMessage: AgentMessageWithStreaming;
   conversationId: string | null;
-  isAutoScrollEnabledRef: MutableRefObject<boolean>;
   owner: LightWorkspaceType;
   onEventCallback?: (event: {
     eventId: string;
@@ -317,7 +268,6 @@ interface UseAgentMessageStreamParams {
 export function useAgentMessageStream({
   agentMessage,
   conversationId,
-  isAutoScrollEnabledRef,
   owner,
   onEventCallback: customOnEventCallback,
   streamId,
@@ -335,15 +285,8 @@ export function useAgentMessageStream({
   >();
 
   const updateMessageThrottled = useMemo(
-    () => createUpdateMessageThrottled(isAutoScrollEnabledRef, methods),
-    [isAutoScrollEnabledRef, methods]
-  );
-
-  const mapMessagesWithAutoScroll = useCallback(
-    (mapFn: (message: VirtuosoMessage, index: number) => VirtuosoMessage) => {
-      batchMapMessagesWithAutoScroll(methods, isAutoScrollEnabledRef, mapFn);
-    },
-    [methods, isAutoScrollEnabledRef]
+    () => createUpdateMessageThrottled(methods),
+    [methods]
   );
 
   // Short-circuit reconnect replays within this mount (useEventSource reconnects
@@ -451,7 +394,7 @@ export function useAgentMessageStream({
             lastCoTTraceId.current = null;
             retryCoTBuffer.current = null;
             currentStep.current = null;
-            mapMessagesWithAutoScroll((m) => {
+            methods.data.map((m) => {
               if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
                 return m;
               }
@@ -492,7 +435,7 @@ export function useAgentMessageStream({
                   currentStep.current !== null &&
                   eventStep === currentStep.current
                 ) {
-                  mapMessagesWithAutoScroll((m) => {
+                  methods.data.map((m) => {
                     if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
                       return m;
                     }
@@ -524,7 +467,7 @@ export function useAgentMessageStream({
               updateMessageThrottled.cancel();
               const newAgentState =
                 classification === "tokens" ? "writing" : "thinking";
-              mapMessagesWithAutoScroll((m) => {
+              methods.data.map((m) => {
                 if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
                   return m;
                 }
@@ -552,7 +495,7 @@ export function useAgentMessageStream({
               classification === "tokens"
             ) {
               // First tokens event in inline mode — set agentState to writing.
-              mapMessagesWithAutoScroll((m) => {
+              methods.data.map((m) => {
                 if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
                   return m;
                 }
@@ -598,7 +541,7 @@ export function useAgentMessageStream({
         case "agent_action_success":
           const action = eventPayload.data.action;
           const actionStep = eventPayload.data.step;
-          mapMessagesWithAutoScroll((m) => {
+          methods.data.map((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
@@ -646,7 +589,7 @@ export function useAgentMessageStream({
         case "tool_params":
           updateMessageThrottled.cancel();
           const toolParams = eventPayload.data;
-          mapMessagesWithAutoScroll((m) => {
+          methods.data.map((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
@@ -678,7 +621,7 @@ export function useAgentMessageStream({
 
         case "tool_notification":
           const toolNotification = eventPayload.data;
-          mapMessagesWithAutoScroll((m) =>
+          methods.data.map((m) =>
             isAgentMessageWithStreaming(m) && m.sId === sId
               ? updateProgress(m, toolNotification)
               : m
@@ -690,7 +633,7 @@ export function useAgentMessageStream({
           if (toolCallStarted.type !== "tool_call_started") {
             break;
           }
-          mapMessagesWithAutoScroll((m) => {
+          methods.data.map((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
@@ -717,7 +660,7 @@ export function useAgentMessageStream({
           isStreamTerminated.current = true;
           updateMessageThrottled.cancel();
           const error = eventPayload.data.error;
-          mapMessagesWithAutoScroll((m) => {
+          methods.data.map((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
@@ -746,7 +689,7 @@ export function useAgentMessageStream({
           break;
 
         case "agent_context_pruned":
-          mapMessagesWithAutoScroll((m) =>
+          methods.data.map((m) =>
             isAgentMessageWithStreaming(m) && m.sId === sId
               ? {
                   ...m,
@@ -763,7 +706,7 @@ export function useAgentMessageStream({
           if (cancelData.type !== "agent_generation_cancelled") {
             break;
           }
-          mapMessagesWithAutoScroll((m) => {
+          methods.data.map((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
@@ -802,7 +745,7 @@ export function useAgentMessageStream({
           // back to the server's full message (its content/chainOfThought) and
           // keep the live-built steps; this self-heals on the next reload.
           const contentView = messageSuccess.contentView;
-          mapMessagesWithAutoScroll((m) => {
+          methods.data.map((m) => {
             if (!isAgentMessageWithStreaming(m) || m.sId !== sId) {
               return m;
             }
@@ -838,7 +781,7 @@ export function useAgentMessageStream({
     },
     [
       customOnEventCallback,
-      mapMessagesWithAutoScroll,
+      methods,
       sId,
       mutateContextUsage,
       updateMessageThrottled,

@@ -26,7 +26,7 @@ const GCS_MAX_RETRIES = 3; // Same as the SDK default.
 const GCS_EXTRA_RETRYABLE_ERROR_MESSAGE_REGEX = /socket hang up/i;
 // GCS generations are object versions. Matching generation 0 means "create only
 // if the object does not already exist", which makes the create safe to retry.
-const GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH = 0;
+export const GCS_OBJECT_DOES_NOT_EXIST_GENERATION_MATCH = 0;
 
 export const DEFAULT_SIGNED_URL_EXPIRATION_DELAY_MS = 5 * 60 * 1000; // 5 minutes.
 
@@ -549,7 +549,33 @@ export class FileStorage {
   async deleteByPrefix(prefix: string): Promise<void> {
     await this.bucket.deleteFiles({ prefix });
   }
+
+  /**
+   * Concatenates `sourcePaths` (in order) into `destinationPath`, entirely server-side: no
+   * bytes are downloaded to or uploaded from this process. GCS caps a single compose call
+   * at `GCS_COMPOSE_MAX_SOURCES` source objects; callers with more sources than that must
+   * batch across multiple calls themselves (e.g. composing into intermediate objects first).
+   *
+   * Not retried by the SDK's built-in autoRetry (no precondition is set), so retried at the
+   * application level instead: since the same sources produce the same destination bytes,
+   * retrying from scratch is safe.
+   */
+  async composeFiles(
+    sourcePaths: string[],
+    destinationPath: string
+  ): Promise<void> {
+    await withRetryOnTransientGCSError(
+      () => this.bucket.combine(sourcePaths, this.file(destinationPath)),
+      {
+        operationName: "file compose",
+        logContext: { destinationPath, sourceCount: sourcePaths.length },
+      }
+    );
+  }
 }
+
+// GCS hard limit: https://cloud.google.com/storage/docs/json_api/v1/objects/compose
+export const GCS_COMPOSE_MAX_SOURCES = 32;
 
 const bucketInstances = new Map();
 
@@ -571,6 +597,9 @@ export const getPublicUploadBucket = (options?: FileStorageOptions) =>
 
 export const getUpsertQueueBucket = (options?: FileStorageOptions) =>
   getBucketInstance(config.getGcsUpsertQueueBucket(), options);
+
+export const getTmpWorkloadsBucket = (options?: FileStorageOptions) =>
+  getBucketInstance(config.getGcsTmpWorkloadsBucket(), options);
 
 export const getDustDataSourcesBucket = (options?: FileStorageOptions) =>
   getBucketInstance(config.getDustDataSourcesBucket(), options);

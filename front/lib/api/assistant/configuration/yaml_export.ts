@@ -9,6 +9,7 @@ import {
 import { AgentYAMLConverter } from "@app/lib/agent_yaml_converter/converter";
 import type { AgentYAMLConfig } from "@app/lib/agent_yaml_converter/schemas";
 import { getAgentConfigurationContext } from "@app/lib/api/assistant/configuration/context";
+import { canAdminSeePrivateEntities } from "@app/lib/api/assistant/configuration/private_entities";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -26,12 +27,27 @@ export async function getAgentConfigurationAsYAMLConfig(
   auth: Authenticator,
   agentId: string
 ): Promise<Result<AgentYAMLConfig, APIErrorWithContentfulStatusCode>> {
-  const contextResult = await getAgentConfigurationContext(auth, agentId);
+  // Admins with the `admin_can_see_private_entities` feature flag export the agents they cannot
+  // read too (unpublished, or built on spaces they are not a member of), skills included.
+  const seePrivateEntities = await canAdminSeePrivateEntities(auth);
+  const contextResult = await getAgentConfigurationContext(auth, agentId, {
+    dangerouslySkipPermissionFiltering: seePrivateEntities,
+  });
   if (contextResult.isErr()) {
     return contextResult;
   }
 
   const { agentConfiguration, editorUsers, skills } = contextResult.value;
+
+  if (!agentConfiguration.canRead && !seePrivateEntities) {
+    return new Err({
+      status_code: 404,
+      api_error: {
+        type: "agent_configuration_not_found",
+        message: "The agent configuration you requested was not found.",
+      },
+    });
+  }
 
   const { dataSourceViews, mcpServerViews } =
     await getAccessibleSourcesAndAppsForActions(auth);
@@ -56,8 +72,11 @@ export async function getAgentConfigurationAsYAMLConfig(
   const editors: UserType[] = editorUsers.map((m) => m.toJSON());
 
   let slackProvider: "slack" | "slack_bot" | null = null;
-  let slackChannels: { slackChannelId: string; slackChannelName: string }[] =
-    [];
+  let slackChannels: {
+    slackChannelId: string;
+    slackChannelName: string;
+    isPrivate: boolean;
+  }[] = [];
 
   const [slackDs] = await DataSourceResource.listByConnectorProvider(
     auth,
@@ -99,6 +118,7 @@ export async function getAgentConfigurationAsYAMLConfig(
         .map((ch) => ({
           slackChannelId: ch.slackChannelId,
           slackChannelName: ch.slackChannelName,
+          isPrivate: ch.isPrivate,
         }));
     }
   }

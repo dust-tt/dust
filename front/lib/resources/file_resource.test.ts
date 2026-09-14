@@ -4,11 +4,13 @@ import { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import {
   AuthorizedFileAccessModel,
   FileModel,
 } from "@app/lib/resources/storage/models/files";
 import { copyContent } from "@app/lib/utils/files";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
@@ -17,6 +19,8 @@ import type { MockFileVersion } from "@app/tests/utils/mocks/file_storage";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
+import { getFramePublicationUiBundlePath } from "@app/types/api/frame_storage";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type {
   AllSupportedFileContentType,
@@ -24,11 +28,67 @@ import type {
 } from "@app/types/files";
 import {
   frameContentType,
+  frameV2ContentType,
   isUnverifiableFrameFileRefsShareError,
   sandboxFunctionContentType,
 } from "@app/types/files";
+import { getConversationFilesBasePath } from "@app/types/mount_path";
 import { Readable } from "stream";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
+
+async function createFrameWithFunction(
+  auth: Authenticator,
+  publicationId: string,
+  { withSource = false }: { withSource?: boolean } = {}
+): Promise<FileResource> {
+  const owner = auth.getNonNullableWorkspace();
+  const conversation = withSource
+    ? await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      })
+    : null;
+  const frame = await FileFactory.create(auth, null, {
+    contentType: frameV2ContentType,
+    fileName: "manifest.json",
+    fileSize: 100,
+    status: "created",
+    useCase: "conversation",
+    useCaseMetadata: {
+      conversationId: conversation?.sId ?? "conv-frame-delete",
+    },
+    mountFilePath: conversation
+      ? `${getConversationFilesBasePath({
+          workspaceId: owner.sId,
+          conversationId: conversation.sId,
+        })}Frame/${FRAME_MANIFEST_FILE}`
+      : null,
+  });
+  await withTransaction((transaction) =>
+    SandboxFunctionResource.createForFramePublication(
+      auth,
+      {
+        frame,
+        publicationId,
+        functions: [
+          {
+            name: "delete-task",
+            description: "Delete a task.",
+            userIdentity: "workspace_user_required",
+            executionMode: "durable",
+            defaultStake: "low",
+            bundleCode: "export default async function run() {}",
+            inputSchema: { type: "object" },
+            outputSchema: { type: "object" },
+          },
+        ],
+      },
+      transaction
+    )
+  );
+
+  return frame;
+}
 
 // Mock copyContent from utils/files.ts
 vi.mock("@app/lib/utils/files", () => ({
@@ -94,6 +154,44 @@ describe("FileResource", () => {
       expect(result).not.toBeNull();
       expect(result?.file.id).toBe(frameFile.id);
       expect(result?.content).toEqual(expectedContent);
+    });
+
+    it("returns the active Frames v2 publication", async () => {
+      const { authenticator: auth, workspace } = await createResourceTest({
+        role: "admin",
+      });
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+        messagesCreatedAt: [new Date()],
+      });
+      const publicationId = "active-publication";
+      const frameFile = await FileFactory.create(auth, null, {
+        contentType: frameV2ContentType,
+        fileName: "manifest.json",
+        fileSize: 1000,
+        status: "ready",
+        useCase: "conversation",
+        useCaseMetadata: {
+          activePublicationId: publicationId,
+          conversationId: conversation.sId,
+        },
+      });
+      fileStorageMock.setObject(
+        getFramePublicationUiBundlePath({
+          workspaceId: workspace.sId,
+          frameId: frameFile.sId,
+          publicationId,
+        }),
+        expectedContent
+      );
+      const shareInfo = await frameFile.getShareInfo();
+      const token = shareInfo?.shareUrl.split("/").at(-1);
+      assert(token, "Share token should be defined");
+
+      const result = await FileResource.fetchByShareTokenWithContent(token);
+
+      expect(result?.file.id).toBe(frameFile.id);
+      expect(result?.content).toBe(expectedContent);
     });
 
     it("should return null for soft-deleted conversation", async () => {
@@ -1668,5 +1766,82 @@ describe("FileResource", () => {
         await FileModel.count({ where: { workspaceId: otherWorkspace.id } })
       ).toBe(1);
     });
+
+    it("deletes Frames v2 function rows before workspace files", async () => {
+      const { authenticator: auth } = await createResourceTest({
+        role: "admin",
+      });
+      const frame = await createFrameWithFunction(auth, "workspace-delete");
+      expect(
+        await SandboxFunctionResource.listByFramePublication(auth, {
+          frame,
+          publicationId: "workspace-delete",
+        })
+      ).toHaveLength(1);
+
+      const deletedCount = await FileResource.deleteAllForWorkspace(auth);
+
+      expect(deletedCount).toBe(1);
+      expect(await FileResource.fetchById(auth, frame.sId)).toBeNull();
+    });
+  });
+
+  it("deletes Frames v2 function rows before the Frame file", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "admin",
+    });
+    const frame = await createFrameWithFunction(auth, "frame-delete", {
+      withSource: true,
+    });
+    expect(
+      await SandboxFunctionResource.listByFramePublication(auth, {
+        frame,
+        publicationId: "frame-delete",
+      })
+    ).toHaveLength(1);
+
+    const result = await frame.delete(auth);
+
+    expect(result.isOk(), result.isErr() ? result.error.message : "").toBe(
+      true
+    );
+    expect(await FileResource.fetchById(auth, frame.sId)).toBeNull();
+  });
+
+  it("rejects Frame deletion from another workspace", async () => {
+    const { authenticator: frameAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const { authenticator: otherAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const frame = await createFrameWithFunction(frameAuth, "frame-delete");
+    const result = await frame.delete(otherAuth);
+
+    expect(result.isErr()).toBe(true);
+    expect(await FileResource.fetchById(frameAuth, frame.sId)).not.toBeNull();
+  });
+
+  it("keeps Frame functions and identity when source deletion fails", async () => {
+    const { authenticator: auth } = await createResourceTest({
+      role: "admin",
+    });
+    const frame = await createFrameWithFunction(auth, "frame-delete-failure");
+    const deletedPrefixes: string[] = [];
+    fileStorageMock.setOnDeleteByPrefix((prefix) =>
+      deletedPrefixes.push(prefix)
+    );
+
+    const result = await frame.delete(auth);
+
+    expect(result.isErr()).toBe(true);
+    expect(
+      await SandboxFunctionResource.listByFramePublication(auth, {
+        frame,
+        publicationId: "frame-delete-failure",
+      })
+    ).toHaveLength(1);
+    expect(await FileResource.fetchById(auth, frame.sId)).not.toBeNull();
+    expect(deletedPrefixes).toEqual([]);
   });
 });

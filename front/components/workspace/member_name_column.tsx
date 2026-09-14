@@ -1,5 +1,9 @@
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
-import { DataTable } from "@dust-tt/sparkle";
+import {
+  AvatarCellSkeleton,
+  DataTable,
+  TextCellSkeleton,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 
 // The minimal row shape the name column needs.
@@ -7,6 +11,21 @@ interface MemberNameRow {
   name: string;
   email: string | null;
   image: string | null;
+}
+
+interface MemberNameSkeletonProps {
+  rowIndex: number;
+}
+
+export function MemberNameSkeleton({ rowIndex }: MemberNameSkeletonProps) {
+  return (
+    <AvatarCellSkeleton rounded className="h-9">
+      <TextCellSkeleton
+        className={["w-28", "w-36", "w-24", "w-40", "w-32"][rowIndex % 5]}
+      />
+      <TextCellSkeleton className="w-40" />
+    </AvatarCellSkeleton>
+  );
 }
 
 export function buildMemberNameColumn<TRow extends MemberNameRow>(): ColumnDef<

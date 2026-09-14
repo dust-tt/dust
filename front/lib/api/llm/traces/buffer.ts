@@ -14,7 +14,7 @@ import type {
 import type { SystemPromptInput } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
 import { getLLMTracesBucket } from "@app/lib/file_storage";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import type { ModelConversationTypeMultiActions } from "@app/types/assistant/generation";
@@ -197,19 +197,15 @@ export class LLMTraceBuffer {
 
     const { cacheCreationTokens, cachedTokens, inputTokens } = tokenUsage;
     if (cachedTokens) {
-      getStatsDClient().distribution(
-        "llm_cache.tokens_read",
-        cachedTokens,
-        tags
-      );
-      getStatsDClient().distribution(
+      statsDMetrics.distribution("llm_cache.tokens_read", cachedTokens, tags);
+      statsDMetrics.distribution(
         "llm_cache.token_hit_ratio",
         cachedTokens / inputTokens,
         tags
       );
     }
     if (cacheCreationTokens) {
-      getStatsDClient().distribution(
+      statsDMetrics.distribution(
         "llm_cache.tokens_written",
         cacheCreationTokens,
         tags
@@ -278,11 +274,13 @@ export class LLMTraceBuffer {
     endTimestamp,
     startTimestamp,
     timeToFirstEventMs,
+    timeToFirstTokenMs,
   }: {
     durationMs: number;
     endTimestamp: string;
     startTimestamp: string;
     timeToFirstEventMs?: number;
+    timeToFirstTokenMs?: number;
   }): LLMTrace {
     const trace: LLMTrace = {
       context: this.context,
@@ -293,6 +291,7 @@ export class LLMTraceBuffer {
         modelId: this.input?.modelId ?? this.modelId,
         startTimestamp,
         timeToFirstEventMs,
+        timeToFirstTokenMs,
       },
       traceId: this.traceId,
       workspaceId: this.workspaceId,
@@ -360,10 +359,12 @@ export class LLMTraceBuffer {
     startTime,
     durationMs,
     timeToFirstEventMs,
+    timeToFirstTokenMs,
   }: {
     startTime: number;
     durationMs: number;
     timeToFirstEventMs?: number;
+    timeToFirstTokenMs?: number;
   }): Promise<void> {
     const startTimestamp = new Date(startTime).toISOString();
     const endTimestamp = new Date(startTime + durationMs).toISOString();
@@ -374,6 +375,7 @@ export class LLMTraceBuffer {
         endTimestamp,
         startTimestamp,
         timeToFirstEventMs,
+        timeToFirstTokenMs,
       });
       const bucket = getLLMTracesBucket();
 

@@ -2,6 +2,10 @@ import {
   canUserAccessConversation,
   rebuildConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
+import {
+  fileSystemStorageModeForPod,
+  fileSystemStorageModeForStandaloneConversation,
+} from "@app/lib/api/file_system/storage_mode";
 import { Authenticator } from "@app/lib/auth";
 import type { DustErrorCode } from "@app/lib/error";
 import { DustError } from "@app/lib/error";
@@ -76,6 +80,7 @@ export async function moveConversationToProject(
       | "conversation_not_found"
       | "space_not_found"
       | "conversation_agent_running"
+      | "invalid_request_error"
     >
   >
 > {
@@ -107,6 +112,14 @@ export async function moveConversationToProject(
       )
     );
   }
+  if (fileSystemStorageModeForPod(project) === "database") {
+    return new Err(
+      new DustError(
+        "invalid_request_error",
+        "Conversations cannot be moved into or out of a Pod that uses the database-backed filesystem yet."
+      )
+    );
+  }
 
   // One lifecycle-lock hold covers source validation, the strict sandbox
   // destroy, and the database move — validated against the conversation as
@@ -123,10 +136,27 @@ export async function moveConversationToProject(
       ): Promise<
         Result<
           undefined,
-          DustError<"internal_error" | "space_not_found" | "unauthorized">
+          DustError<
+            | "internal_error"
+            | "invalid_request_error"
+            | "space_not_found"
+            | "unauthorized"
+          >
         >
       > => {
         const sourceSpaceId = freshConversation.spaceSId;
+        if (
+          !sourceSpaceId &&
+          fileSystemStorageModeForStandaloneConversation(freshConversation) ===
+            "database"
+        ) {
+          return new Err(
+            new DustError(
+              "invalid_request_error",
+              "A standalone conversation using the database-backed filesystem cannot be moved into a Pod yet."
+            )
+          );
+        }
         if (sourceSpaceId === project.sId) {
           return new Err(
             new DustError(
@@ -145,7 +175,15 @@ export async function moveConversationToProject(
               new DustError("space_not_found", "Previous project not found")
             );
           }
-          if (!previousProject.canAdministrate(auth)) {
+          if (fileSystemStorageModeForPod(previousProject) === "database") {
+            return new Err(
+              new DustError(
+                "invalid_request_error",
+                "Conversations cannot be moved into or out of a Pod that uses the database-backed filesystem yet."
+              )
+            );
+          }
+          if (!auth.can("admin", previousProject)) {
             return new Err(
               new DustError(
                 "unauthorized",
@@ -235,6 +273,7 @@ export async function moveConversationOutOfProject(
       | "unauthorized"
       | "conversation_not_found"
       | "space_not_found"
+      | "invalid_request_error"
     >
   >
 > {
@@ -258,7 +297,12 @@ export async function moveConversationOutOfProject(
             oldUpdatedAt: Date;
             participants: (UserType & { lastReadAt: Date | null })[];
           },
-          DustError<"internal_error" | "space_not_found" | "unauthorized">
+          DustError<
+            | "internal_error"
+            | "invalid_request_error"
+            | "space_not_found"
+            | "unauthorized"
+          >
         >
       > => {
         const sourceSpaceId = freshConversation.spaceSId;
@@ -271,7 +315,15 @@ export async function moveConversationOutOfProject(
         if (!project) {
           return new Err(new DustError("space_not_found", "Project not found"));
         }
-        if (!project.canAdministrate(auth)) {
+        if (fileSystemStorageModeForPod(project) === "database") {
+          return new Err(
+            new DustError(
+              "invalid_request_error",
+              "Conversations cannot be moved into or out of a Pod that uses the database-backed filesystem yet."
+            )
+          );
+        }
+        if (!auth.can("admin", project)) {
           return new Err(
             new DustError(
               "unauthorized",
@@ -501,23 +553,36 @@ export async function toPodConversationListItem(
         })
       );
 
+      let unreadMessageCount =
+        rawMessagesByConversationId[conv.id]?.filter(
+          (message) =>
+            (message.agentMessage?.completedAt?.getTime() ??
+              message.updatedAt.getTime()) > (convJSON.lastReadMs ?? 0)
+        ).length ?? 0;
+
+      // The official rule for unread conversation is that it's updated AFTER the last read time as we don't look at individual messages timings.
+      // However, as here we are retrieving the exact count of unread messages, we DO look at the individual messages timings.
+      // In certain case, the user marked the conversation as read after the last message completion but something updated the conversation after that without adding a new message (for example, a title update).
+      // In this case, we force a unread count of 1 to make sure the conversation is displayed as unread in the Pod converations list.
+      if (
+        unreadMessageCount === 0 &&
+        conv.updatedAt > new Date(convJSON.lastReadMs ?? 0)
+      ) {
+        unreadMessageCount = 1;
+      }
+
       return {
         id: conv.sId,
         title: getConversationDisplayTitle(convJSON),
         created: conv.createdAt.getTime(),
         updated: conv.updatedAt.getTime(),
         replyCount: (rawMessagesByConversationId[conv.id]?.length ?? 1) - 1,
-        unreadMessageCount:
-          rawMessagesByConversationId[conv.id]?.filter(
-            (message) =>
-              (message.agentMessage?.completedAt?.getTime() ??
-                message.updatedAt.getTime()) >
-              (convJSON.lastReadMs ?? Date.now())
-          ).length ?? 0,
+        unreadMessageCount,
         description: firstUserMessage?.userMessage?.content ?? "",
         creator: avatars[0],
         avatars: uniqBy(avatars.slice(1).reverse(), "name"),
         isRunningAgentLoop: conv.isRunningAgentLoop,
+        isParticipant: convJSON.isParticipant,
       };
     })
   );

@@ -15,7 +15,10 @@ import {
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
 import { isSiteNotFoundError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
-import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
+import {
+  getMimeTypesToSync,
+  resolveMicrosoftMimeType,
+} from "@connectors/connectors/microsoft/temporal/mime_types";
 import {
   deleteAllSheets,
   handleSpreadSheet,
@@ -212,7 +215,7 @@ export async function syncOneFile({
     csvEnabled: providerConfig.csvEnabled || false,
   });
 
-  const mimeType = file.file.mimeType;
+  const mimeType = resolveMicrosoftMimeType(file);
   if (!mimeType || !mimeTypesToSync.includes(mimeType)) {
     localLogger.info("Type not supported, skipping file.");
     return false;
@@ -256,12 +259,11 @@ export async function syncOneFile({
   const allowedLabels = providerConfig.allowedSensitivityLabels ?? [];
 
   if (!url || !fields) {
-    if (!url) {
-      statsDClient.increment("microsoft.file.missing_download_url");
-    }
-    if (!fields) {
-      statsDClient.increment("microsoft.file.missing_fields");
-    }
+    // The delta projection is lean and never carries the download URL or list-item
+    // fields (see DRIVE_ITEM_DELTA_SELECTS), so hydrating them here is the expected
+    // path for incrementally-synced files rather than an anomaly. This counter tracks
+    // the resulting extra Graph calls so we can monitor the API-volume tradeoff.
+    statsDClient.increment("microsoft.file.metadata_hydration");
 
     let item: DriveItem;
     try {
@@ -406,7 +408,7 @@ export async function syncOneFile({
     nodeType: "file",
     name: file.name ?? "",
     parentInternalId,
-    mimeType: file.file.mimeType ?? "",
+    mimeType,
     webUrl: file.webUrl ?? null,
   };
 
@@ -574,7 +576,7 @@ export async function syncOneFile({
               sync_type: isBatchSync ? "batch" : "incremental",
             },
             title: file.name ?? "",
-            mimeType: file.file.mimeType ?? "application/octet-stream",
+            mimeType,
             async: true,
           });
 

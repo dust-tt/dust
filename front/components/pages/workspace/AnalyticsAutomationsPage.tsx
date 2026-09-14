@@ -1,68 +1,151 @@
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
+import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { AutomationsOverview } from "@app/components/workspace/analytics/automations/AutomationsOverview";
 import { AutomationsTriggersTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersTable";
+import { SlackWorkflowsTab } from "@app/components/workspace/analytics/automations/SlackWorkflowsTab";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
+import { useQueryParams } from "@app/hooks/useQueryParams";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
-import { useFeatureFlags, useWorkspace } from "@app/lib/auth/AuthContext";
-import { cn, Page } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
+import { isCreditPricedPlan } from "@app/types/plan";
+import type { LightWorkspaceType } from "@app/types/user";
+import { isAdmin } from "@app/types/user";
+import {
+  Page,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@dust-tt/sparkle";
+import { useEffect, useState } from "react";
+
+type AutomationsTab = "triggers" | "slack-workflows";
 
 export function AnalyticsAutomationsPage() {
   const owner = useWorkspace();
-  const { hasFeature } = useFeatureFlags();
-  const isEnabled = hasFeature("enable_analytics_automations");
+  const { subscription, user } = useAuth();
+  const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
   );
   const [filter, setFilter] = useState<AutomationsFilter>({});
+  const { tab: tabParam } = useQueryParams(["tab"]);
+  const tab: AutomationsTab =
+    tabParam.value === "slack-workflows" ? "slack-workflows" : "triggers";
+  const setTab = (next: AutomationsTab) =>
+    tabParam.setParam(next === "triggers" ? undefined : next);
 
-  if (!isEnabled) {
-    return (
-      <Page.Vertical align="stretch" gap="xl">
-        <Page.Header title={<Page.H variant="h3">Automations</Page.H>} />
-        <div
-          className={cn(
-            "flex flex-col gap-2 rounded-xl border p-6",
-            "border-border bg-muted"
-          )}
-        >
-          <p className="text-sm text-muted-foreground">
-            This page is not enabled for this workspace.
-          </p>
-        </div>
-      </Page.Vertical>
-    );
-  }
+  const canManageSlackWorkflows =
+    isAdmin(owner) && isCreditPricedPlan(subscription.plan);
+
+  useEffect(() => {
+    trackEvent({
+      area: TRACKING_AREAS.ANALYTICS,
+      object: "automations_page",
+      action: TRACKING_ACTIONS.VIEW,
+      extra: { workspace_id: owner.sId },
+    });
+  }, [owner.sId]);
 
   return (
-    <Page.Vertical align="stretch" gap="none">
-      <Page.Header
-        title={
-          <div className="flex w-full flex-row justify-between gap-4">
-            <div className="flex max-w-[700px] flex-col gap-1">
-              <Page.H variant="h3">Automations</Page.H>
-              <Page.P variant="secondary">
-                Everything that runs on its own: what it costs, how often, and
-                who set it up.
-              </Page.P>
-            </div>
-            <ConsumptionPeriodSelector
-              period={period}
-              onPeriodChange={setPeriod}
-            />
-          </div>
-        }
+    <AdminPageContainer>
+      <AgentDetailsSheet
+        owner={owner}
+        user={user}
+        agentId={agentDetailsId}
+        onClose={() => setAgentDetailsId(null)}
       />
-      <div className="flex flex-col gap-8 pb-8 pt-4">
-        <AutomationsOverview workspaceId={owner.sId} period={period} />
-        <AutomationsTriggersTable
-          owner={owner}
-          period={period}
-          filter={filter}
-          onFilterChange={setFilter}
+      <Page.Vertical align="stretch" gap="xl">
+        <Page.Header
+          title={
+            <div className="flex w-full flex-row justify-between">
+              <div className="flex flex-col gap-1">
+                <Page.H variant="h3">Automations</Page.H>
+                <Page.P variant="secondary">
+                  Everything that runs on its own: who set it up, how often it
+                  runs, what it costs.
+                </Page.P>
+              </div>
+              <ConsumptionPeriodSelector
+                period={period}
+                onPeriodChange={setPeriod}
+              />
+            </div>
+          }
         />
-      </div>
-    </Page.Vertical>
+
+        {canManageSlackWorkflows ? (
+          <Tabs
+            value={tab}
+            onValueChange={(value) =>
+              setTab(
+                value === "slack-workflows" ? "slack-workflows" : "triggers"
+              )
+            }
+          >
+            <TabsList className="mb-4">
+              <TabsTrigger value="triggers" label="Triggers" />
+              <TabsTrigger value="slack-workflows" label="Slack workflows" />
+            </TabsList>
+            <TabsContent value="triggers">
+              <TriggersSection
+                owner={owner}
+                period={period}
+                filter={filter}
+                onFilterChange={setFilter}
+                onAgentClick={setAgentDetailsId}
+              />
+            </TabsContent>
+            <TabsContent value="slack-workflows">
+              <SlackWorkflowsTab owner={owner} period={period} />
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <TriggersSection
+            owner={owner}
+            period={period}
+            filter={filter}
+            onFilterChange={setFilter}
+            onAgentClick={setAgentDetailsId}
+          />
+        )}
+      </Page.Vertical>
+    </AdminPageContainer>
+  );
+}
+
+interface TriggersSectionProps {
+  owner: LightWorkspaceType;
+  period: ConsumptionPeriodSelection;
+  filter: AutomationsFilter;
+  onFilterChange: (filter: AutomationsFilter) => void;
+  onAgentClick: (agentId: string) => void;
+}
+
+function TriggersSection({
+  owner,
+  period,
+  filter,
+  onFilterChange,
+  onAgentClick,
+}: TriggersSectionProps) {
+  return (
+    <div className="flex flex-col gap-4">
+      <AutomationsOverview owner={owner} period={period} />
+      <AutomationsTriggersTable
+        owner={owner}
+        period={period}
+        filter={filter}
+        onFilterChange={onFilterChange}
+        onAgentClick={onAgentClick}
+      />
+    </div>
   );
 }

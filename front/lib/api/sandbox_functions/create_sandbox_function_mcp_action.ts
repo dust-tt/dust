@@ -81,7 +81,8 @@ async function resolveSandboxFunctionTool(
       // Null for remote servers, matching the agent path (see `configuration/actions.ts`).
       internalMCPServerId: view.internalMCPServerId,
     },
-    [{ name: tool.name, description: tool.description }]
+    [{ name: tool.name, description: tool.description }],
+    view.remoteMCPServerUrl
   );
   if (toolConfigurationsRes.isErr()) {
     return new Err(
@@ -116,14 +117,14 @@ export async function createSandboxFunctionMCPAction(
   {
     sandboxFunctionId,
     invocationId,
-    podSpaceId,
+    runtimeSpaceId,
     serverViewId,
     toolName,
     rawInputs,
   }: {
     sandboxFunctionId: string;
     invocationId: string;
-    podSpaceId: string;
+    runtimeSpaceId: string;
     serverViewId: string;
     toolName: string;
     rawInputs: Record<string, unknown>;
@@ -149,11 +150,11 @@ export async function createSandboxFunctionMCPAction(
     ],
   });
   // `fetchById` is workspace-scoped, so reproduce the listing endpoint's confinement: the view
-  // must be in the pod or global space (the spaces the listing queries) AND readable by the
-  // caller. The permission check keeps this correct if pod access is revoked within the token
+  // must be in the function's runtime or global space (the spaces the listing queries) AND
+  // readable by the caller. The permission check keeps this correct if access is revoked within the token
   // TTL; on its own it would not confine, since an admin can administrate any space. Out-of-scope
   // ids report as not-found so the sandbox cannot probe other spaces.
-  const inScope = view?.space.sId === podSpaceId || view?.space.isGlobal();
+  const inScope = view?.space.sId === runtimeSpaceId || view?.space.isGlobal();
   if (!view || !inScope || !view.canReadOrAdministrate(auth)) {
     return new Err(
       new SandboxFunctionMCPActionError(
@@ -172,15 +173,21 @@ export async function createSandboxFunctionMCPAction(
     return toolConfigurationRes;
   }
 
-  const sandboxFunction = await SandboxFunctionResource.fetchById(
+  // Execution-side resolution: a sandbox-token auth cannot carry the invoker's original grant
+  // (e.g. a frame share token). The id comes from signature-verified sandbox JWT claims minted
+  // at execution start, so the space filter is deliberately skipped.
+  const sandboxFunction = await SandboxFunctionResource.fetchByIdForExecution(
     auth,
-    sandboxFunctionId
+    {
+      sandboxFunctionId,
+      invocationId,
+    }
   );
   if (!sandboxFunction) {
     return new Err(
       new SandboxFunctionMCPActionError(
         "invocation_not_found",
-        "Pod function not found."
+        "Sandbox function not found."
       )
     );
   }
@@ -194,7 +201,7 @@ export async function createSandboxFunctionMCPAction(
     return new Err(
       new SandboxFunctionMCPActionError(
         "invocation_not_found",
-        "Pod function invocation not found."
+        "Sandbox function invocation not found."
       )
     );
   }

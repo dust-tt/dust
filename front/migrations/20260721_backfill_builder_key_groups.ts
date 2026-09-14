@@ -1,3 +1,4 @@
+/*
 import { QueryTypes } from "sequelize";
 
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -10,6 +11,7 @@ import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 
 const WORKSPACE_CONCURRENCY = 8;
+*/
 
 /**
  * Backfill: give every active, non-system, builder-role API key membership in its
@@ -20,6 +22,7 @@ const WORKSPACE_CONCURRENCY = 8;
  * creation route and `KeyResource.updateRole`. See dust-tt/tasks#9710.
  */
 
+/*
 async function reconcileWorkspace(
   workspaceModelId: number,
   execute: boolean,
@@ -98,3 +101,4 @@ makeScript({}, async ({ execute }, logger) => {
       : "Builder key group backfill dry run complete"
   );
 });
+*/

@@ -61,7 +61,7 @@ jobs:
             - Never make changes to the codebase that the user did not ask for.
             - Unless explicitly requested to modify code, output must remain strictly conversational.
             - Always make the minimal changes required—never more.
-            - Follow all **CODING_RULES.md** files in each project directory (core, front). Review them before altering code.
+            - Follow all **CONTRACTS** files in each project directory (core, front). Review them before altering code.
             - Avoid "defensive" patterns (default values, removing tests, non-null assertions).
             - Add comments **only** for complex, non-obvious logic; wrap at ~100 characters.
             - Write code that fails fast and explicitly; assume valid inputs.
@@ -125,7 +125,7 @@ jobs:
             - For Rust projects, run `cargo check` before committing
             - SDK is pre-built; rebuild only if you modify it
             - Never run servers or execute applications, only build/lint/typecheck
-            - Follow all CODING_RULES.md files in each project directory
+            - Follow all CONTRACTS files in each project directory
             - Let exceptions propagate, avoid defensive patterns
             - Make minimal changes required
             - Use normalizeError() instead of `err as Error`"

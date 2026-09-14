@@ -255,7 +255,7 @@ export function createProjectManagerTools(
 
         const { pod } = contextRes.value;
 
-        if (!pod.canAdministrate(auth)) {
+        if (!auth.can("admin", pod)) {
           return new Err(
             new MCPError(
               "You do not have permission to edit this Pod's information",
@@ -309,16 +309,14 @@ export function createProjectManagerTools(
           }
 
           const newIsRestricted = access !== "open";
-          const currentlyRestricted = !pod.isOpen();
+          const currentlyRestricted = await pod.isRestricted(auth);
           if (newIsRestricted !== currentlyRestricted) {
             const { editorIds, memberIds } = await getPodMemberAndEditorSIds(
               auth,
               pod
             );
             const updatePermissionsRes = await pod.updatePermissions(auth, {
-              name: pod.name,
               isRestricted: newIsRestricted,
-              managementMode: "manual",
               memberIds,
               editorIds,
             });
@@ -367,7 +365,7 @@ export function createProjectManagerTools(
 
         const { pod } = contextRes.value;
 
-        if (!pod.canAdministrate(auth)) {
+        if (!auth.can("admin", pod)) {
           return new Err(
             new MCPError(
               "You do not have permission to edit this Pod's information",
@@ -423,7 +421,7 @@ export function createProjectManagerTools(
 
         const { pod } = contextRes.value;
 
-        if (!pod.canAdministrate(auth)) {
+        if (!auth.can("admin", pod)) {
           return new Err(
             new MCPError(
               "You do not have permission to edit this Pod's default agent",
@@ -498,7 +496,7 @@ export function createProjectManagerTools(
 
         const { pod } = contextRes.value;
 
-        if (!pod.canAdministrate(auth)) {
+        if (!auth.can("admin", pod)) {
           return new Err(
             new MCPError("You do not have permission to update Pod members", {
               tracked: false,
@@ -703,7 +701,7 @@ export function createProjectManagerTools(
               id: pod.sId,
               name: pod.name,
               url: projectUrl,
-              access: pod.isOpen() ? "open" : "restricted",
+              access: (await pod.isRestricted(auth)) ? "restricted" : "open",
               description: metadata?.description ?? null,
               pinnedFramePath: metadata?.pinnedFramePath ?? null,
               defaultAgent,
@@ -748,7 +746,7 @@ export function createProjectManagerTools(
           );
         }
 
-        const { groupsToProcess, allGroupMemberships } =
+        const { groupsToProcess, allGroupMemberships, editorGroupModelId } =
           await pod.fetchManualGroupsMemberships(auth, {
             shouldIncludeAllMembers: true,
           });
@@ -774,7 +772,7 @@ export function createProjectManagerTools(
           const previous = membershipByUserId.get(membership.userId);
           membershipByUserId.set(membership.userId, {
             isEditor:
-              Boolean(previous?.isEditor) || group.kind === "space_editors",
+              Boolean(previous?.isEditor) || group.id === editorGroupModelId,
             isActive:
               Boolean(previous?.isActive) || membership.status === "active",
             joinedAtMs: Math.min(
@@ -973,8 +971,6 @@ export function createProjectManagerTools(
           name: params.title,
           isRestricted: params.access !== "open",
           spaceKind: "project",
-          managementMode: "manual",
-          memberIds: [],
         });
 
         if (createSpaceRes.isErr()) {
@@ -1107,7 +1103,7 @@ export function createProjectManagerTools(
             pod: {
               id: pod.sId,
               title: pod.name,
-              access: pod.isOpen() ? "open" : "restricted",
+              access: (await pod.isRestricted(auth)) ? "restricted" : "open",
               dustPod: {
                 uri: makePodConfigurationURI(owner.sId, pod.sId),
                 mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_POD,

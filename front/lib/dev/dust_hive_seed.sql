@@ -91,53 +91,26 @@ inserted_global_group AS (
 
 -- Step 4a: Create system space
 inserted_system_space AS (
-  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "createdAt", "updatedAt")
-  SELECT id, 'System', 'system', 'manual',NOW(), NOW()
+  INSERT INTO vaults ("workspaceId", name, kind, "createdAt", "updatedAt")
+  SELECT id, 'System', 'system', NOW(), NOW()
   FROM inserted_workspace
   RETURNING id, "workspaceId"
 ),
 
 -- Step 4b: Create global space
 inserted_global_space AS (
-  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "createdAt", "updatedAt")
-  SELECT id, 'Company Data', 'global', 'manual', NOW(), NOW()
+  INSERT INTO vaults ("workspaceId", name, kind, "createdAt", "updatedAt")
+  SELECT id, 'Company Data', 'global', NOW(), NOW()
   FROM inserted_workspace
   RETURNING id, "workspaceId"
 ),
 
 -- Step 4c: Create conversations space
 inserted_conversations_space AS (
-  INSERT INTO vaults ("workspaceId", name, kind, "managementMode", "createdAt", "updatedAt")
-  SELECT id, 'Conversations', 'conversations', 'manual', NOW(), NOW()
+  INSERT INTO vaults ("workspaceId", name, kind, "createdAt", "updatedAt")
+  SELECT id, 'Conversations', 'conversations', NOW(), NOW()
   FROM inserted_workspace
   RETURNING id, "workspaceId"
-),
-
--- Step 5a: Link system group to system space
-link_system AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
-  SELECT sg."workspaceId", sg.id, 'system', ss.id, NOW(), NOW()
-  FROM inserted_system_group sg
-  CROSS JOIN inserted_system_space ss
-  RETURNING "vaultId"
-),
-
--- Step 5b: Link global group to global space
-link_global AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
-  SELECT gg."workspaceId", gg.id, 'global', gs.id, NOW(), NOW()
-  FROM inserted_global_group gg
-  CROSS JOIN inserted_global_space gs
-  RETURNING "vaultId"
-),
-
--- Step 5c: Link global group to conversations space
-link_conversations AS (
-  INSERT INTO group_vaults ("workspaceId", "groupId", "groupKind", "vaultId", "createdAt", "updatedAt")
-  SELECT gg."workspaceId", gg.id, 'global', cs.id, NOW(), NOW()
-  FROM inserted_global_group gg
-  CROSS JOIN inserted_conversations_space cs
-  RETURNING "vaultId"
 ),
 
 -- Step 5d: Seed default governance capabilities (type-wide -1 grants on the global group).
@@ -156,8 +129,33 @@ inserted_group_permissions AS (
       ('create', 'agent'),
       ('publish', 'agent'),
       ('invite', 'frame'),
-      ('publish', 'frame')
+      ('publish', 'frame'),
+      ('reader', 'skill')
   ) AS capability(grant_type, resource_type)
+  RETURNING id
+),
+
+-- Step 5e: Seed instance-level space group_permissions for the default spaces. Mirrors
+-- SpaceResource.writeGroupPermissions / spaceGroupRoles (front/lib/resources/space_resource.ts),
+-- which real space provisioning runs but this raw-SQL seed bypasses. Without these rows, space
+-- access resolves to nothing once use_legacy_acls is off (the default post-migration). Keep in sync
+-- with spaceGroupRoles: system space => system group 'member'; global and conversations spaces =>
+-- global group 'reader'.
+inserted_space_group_permissions AS (
+  INSERT INTO group_permissions (
+    "workspaceId", "groupId", "grantType", "resourceType", "resourceId", "createdAt", "updatedAt"
+  )
+  SELECT sg."workspaceId", sg.id, 'member', 'space', ss.id, NOW(), NOW()
+  FROM inserted_system_group sg
+  CROSS JOIN inserted_system_space ss
+  UNION ALL
+  SELECT gg."workspaceId", gg.id, 'reader', 'space', gs.id, NOW(), NOW()
+  FROM inserted_global_group gg
+  CROSS JOIN inserted_global_space gs
+  UNION ALL
+  SELECT gg."workspaceId", gg.id, 'reader', 'space', cs.id, NOW(), NOW()
+  FROM inserted_global_group gg
+  CROSS JOIN inserted_conversations_space cs
   RETURNING id
 ),
 

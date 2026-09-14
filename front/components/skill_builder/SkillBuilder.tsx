@@ -20,6 +20,7 @@ import {
   SkillVersionComparisonProvider,
   useSkillVersionComparisonContext,
 } from "@app/components/skill_builder/SkillBuilderVersionContext";
+import { SkillCreatedDialog } from "@app/components/skill_builder/SkillCreatedDialog";
 import {
   SkillSpaceRestrictionsProvider,
   useSkillSpaceRestrictionsContext,
@@ -32,7 +33,10 @@ import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkil
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
+import {
+  useAreSkillSuggestionsEnabled,
+  useSkillSuggestions,
+} from "@app/hooks/useSkillSuggestions";
 import { useIsSelfImprovementAvailable } from "@app/lib/client/self_improvement";
 import { useAppRouter } from "@app/lib/platform";
 import { useSkillHistory } from "@app/lib/swr/skill_configurations";
@@ -40,9 +44,10 @@ import {
   useSkillEditors,
   useUpdateSkillEditors,
 } from "@app/lib/swr/skill_editors";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { isString } from "@app/types/shared/utils/general";
 import type { WorkspaceType } from "@app/types/user";
 import {
   BarFooter,
@@ -70,8 +75,8 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
+  const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
   const [isAddingSelfAsEditor, setIsAddingSelfAsEditor] = useState(false);
-  const isMobile = useIsMobile();
 
   const { editors, isEditorsError, isEditorsLoading, mutateEditors } =
     useSkillEditors({
@@ -91,12 +96,13 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   });
 
   const hasSelfImprovingSkills = useIsSelfImprovementAvailable();
+  const areSuggestionsEnabled = useAreSkillSuggestionsEnabled();
 
   const { suggestions } = useSkillSuggestions({
     skillId: skill?.sId ?? null,
     states: ["pending"],
     workspaceId: owner.sId,
-    disabled: !skill || !hasSelfImprovingSkills,
+    disabled: !skill || !areSuggestionsEnabled,
   });
 
   const hasPendingSuggestions = suggestions.length > 0;
@@ -142,6 +148,21 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
     !!skill && !isEditorsLoading && !isEditorsError && !isCurrentUserEditor;
 
   useNavigationLock(isDirty && !isSaving);
+
+  useEffect(() => {
+    const createdParam = router.query.showCreatedDialog;
+    const shouldOpenDialog =
+      Boolean(skill) &&
+      isString(createdParam) &&
+      (createdParam === "1" || createdParam === "true");
+
+    if (!shouldOpenDialog) {
+      return;
+    }
+
+    setIsCreatedDialogOpen(true);
+    void removeParamFromRouter(router, "showCreatedDialog");
+  }, [router, router.query.showCreatedDialog, skill]);
 
   const handleAddSelfAsEditor = async () => {
     if (!skill || isAddingSelfAsEditor) {
@@ -208,7 +229,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
     onSaved();
 
     if (isCreatingNew && savedSkill.sId) {
-      const newUrl = `/w/${owner.sId}/builder/skills/${savedSkill.sId}`;
+      const newUrl = `/w/${owner.sId}/builder/skills/${savedSkill.sId}?showCreatedDialog=1`;
       await router.replace(newUrl, undefined, { shallow: true });
     } else {
       form.reset(form.getValues(), { keepValues: true });
@@ -257,7 +278,7 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   };
 
   const showSuggestionsPanel =
-    skill && !isMobile && hasSelfImprovingSkills && hasPendingSuggestions;
+    skill && areSuggestionsEnabled && hasPendingSuggestions;
 
   const leftPanel = (
     <div className="flex h-full w-full flex-col">
@@ -338,6 +359,15 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   return (
     <SkillBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
+        {skill && (
+          <SkillCreatedDialog
+            open={isCreatedDialogOpen}
+            onOpenChange={setIsCreatedDialogOpen}
+            skillName={skill.name}
+            skillId={skill.sId}
+            owner={owner}
+          />
+        )}
         <SkillVersionComparisonProvider>
           <SkillSpaceRestrictionsProvider
             initialRequestedSpaceIds={skill?.requestedSpaceIds}

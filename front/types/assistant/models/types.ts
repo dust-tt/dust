@@ -37,17 +37,25 @@ export type ResolvedRequestedModel = {
 
 // How an agent message's model was resolved: "agent" (ran the agent's own
 // configured model, no override), "user" (ran a per-message model picked from
-// the input-bar picker), "auto" (resolved through the auto model), or
-// "auto_fast" / "auto_complex" (resolved through a curated stream tier).
+// the input-bar picker), "auto" (resolved through the auto model),
+// "auto_fast" / "auto_complex" (resolved through a curated stream tier), or
+// "fair_use_downgrade" (premium was asked for but the user's weekly premium
+// allowance was spent, so the message ran the Standard stream instead).
 export const MODEL_RESOLUTION_METHODS = [
   "agent",
   "user",
   "auto",
   "auto_fast",
   "auto_complex",
+  "fair_use_downgrade",
 ] as const;
 export type ModelResolutionMethodType =
   (typeof MODEL_RESOLUTION_METHODS)[number];
+
+export const isModelResolutionMethod = (
+  value: string
+): value is ModelResolutionMethodType =>
+  MODEL_RESOLUTION_METHODS.includes(value as ModelResolutionMethodType);
 
 // z.object (not z.record) so every reasoning effort key is required.
 const ReasoningEffortSupportSchema = z.object({
@@ -68,6 +76,10 @@ const WhitelistableFeatureSchema = z.custom<WhitelistableFeature>(
 const AvailabilityConditionSchema = z.object({
   creditPricedPlan: z.boolean().optional(),
   plansWithAdvancedModels: z.boolean().optional(),
+  featureFlag: WhitelistableFeatureSchema.optional(),
+});
+
+const UnavailabilityConditionSchema = z.object({
   featureFlag: WhitelistableFeatureSchema.optional(),
 });
 
@@ -128,6 +140,7 @@ export const ModelConfigurationSchema = z.object({
   // Specify if the model is available in specific regions.
   regionalAvailability: z.record(z.enum(SUPPORTED_REGIONS), z.boolean()),
   availableIfOneOf: AvailabilityConditionSchema.optional(),
+  unavailableIfOneOf: UnavailabilityConditionSchema.optional(),
   customAvailableIf: CustomAvailabilityConditionSchema.optional(),
 });
 
@@ -157,6 +170,9 @@ export type ModelConfigurationType = Omit<
     // If set to true, model is available for plans with advanced models access.
     plansWithAdvancedModels?: boolean;
     // If set, model is available if feature flag is enabled.
+    featureFlag?: WhitelistableFeature;
+  };
+  unavailableIfOneOf?: {
     featureFlag?: WhitelistableFeature;
   };
   // Pre-requisite: must be available.

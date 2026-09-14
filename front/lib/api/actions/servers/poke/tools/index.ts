@@ -7,6 +7,7 @@ import {
 import { agentHandlers } from "@app/lib/api/actions/servers/poke/tools/agents";
 import { connectorHandlers } from "@app/lib/api/actions/servers/poke/tools/connectors";
 import { conversationHandlers } from "@app/lib/api/actions/servers/poke/tools/conversations";
+import { feedbackHandlers } from "@app/lib/api/actions/servers/poke/tools/feedbacks";
 import { skillHandlers } from "@app/lib/api/actions/servers/poke/tools/skills";
 import { userHandlers } from "@app/lib/api/actions/servers/poke/tools/users";
 import {
@@ -76,6 +77,7 @@ const handlers: ToolHandlers<typeof POKE_TOOLS_METADATA> = {
   ...userHandlers,
   ...agentHandlers,
   ...skillHandlers,
+  ...feedbackHandlers,
 };
 
 export const TOOLS = buildTools(POKE_TOOLS_METADATA, handlers);

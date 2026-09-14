@@ -184,9 +184,8 @@ async function startForward(): Promise<ForwardHandle> {
     await waitForListen(LISTEN_ADDR, FORWARD_READY_TIMEOUT_MS);
   } catch (err) {
     const stderr = await stop();
-    throw new Error(
-      `${(err as Error).message}\ndsbx forward stderr:\n${stderr}`
-    );
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`${message}\ndsbx forward stderr:\n${stderr}`);
   }
   return { stop };
 }

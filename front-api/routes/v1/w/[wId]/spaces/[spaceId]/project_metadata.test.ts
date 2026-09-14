@@ -117,11 +117,10 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
       defaultAgentId: null,
       defaultSkillIds: [],
       description: "Test project description",
-      isAdminControlled: false,
       lastTodoAnalysisAt: null,
       pinnedFramePath: null,
       frameTabs: [],
-      tabsOrder: ["conversations", "tasks", "files", "apps", "connected_data"],
+      tabsOrder: ["conversations", "files", "tasks"],
       sId: expect.anything(),
       spaceId: space.sId,
       todoGenerationEnabled: false,
@@ -150,9 +149,7 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_metadata", () => {
     const member2 = await UserFactory.basic();
     await MembershipFactory.associate(workspace, member2, { role: "user" });
 
-    const [projectGroup] = await space.fetchGroupResources(adminAuth, {
-      groupReferences: space.groups.filter((group) => group.isRegularAuto()),
-    });
+    const [projectGroup] = await space.fetchRegularAutoGroups(adminAuth);
     if (!projectGroup) {
       throw new Error("Expected the project member group to exist.");
     }

@@ -36,6 +36,7 @@ import {
   STRIPE_PRODUCT_ID_CUSTOM_FIELD_KEY,
   SUBSCRIPTION_SWAP_HANDLED_INLINE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
+import { isMetronomeConflictError } from "@app/lib/metronome/errors";
 import { invalidateProductSeatTypesCache } from "@app/lib/metronome/seat_types";
 import type {
   PackageDef,
@@ -1529,11 +1530,9 @@ const CUSTOM_FIELD_KEYS: Array<{
     key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   },
   // Stamped per-instance on each free-seat per-user credit, carrying the seat's
-  // user sId (see `addPerUserCreditToCustomer`). Lets a per-user
-  // `low_remaining_contract_credit_balance_reached` alert filter on the
-  // custom field (the only filter a credit-balance alert supports — presentation
-  // specifiers can't be filtered) so it fires as each free user depletes their
-  // individual credit.
+  // user sId (see `addPerUserCreditToCustomer`). Lets us list a customer's
+  // per-user credits keyed by user, since a credit's presentation specifier
+  // can't be filtered on.
   {
     entity: "contract_credit",
     key: PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,
@@ -1842,8 +1841,7 @@ async function syncAlerts(): Promise<void> {
       // alert is NOT updated — its custom_field_filters stay whatever they were
       // at creation. To apply changed filters, archive the alert first (for the
       // pool defaults: re-run with --recreate-pool-defaults).
-      const status = (err as { status?: number })?.status;
-      if (status === 409) {
+      if (isMetronomeConflictError(err)) {
         console.log(
           `  ✓ ${desired.name} — already exists (uniqueness_key="${desired.uniqueness_key}"), NOT updated (existing filters kept). ` +
             `Re-run with --recreate-pool-defaults --execute to apply current filters to pool defaults.`

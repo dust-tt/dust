@@ -56,7 +56,7 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchCleanMetronomeInvoiceWorkflow } from "@app/temporal/metronome_events_queue/client";
@@ -1068,7 +1068,7 @@ export async function processStripeWebhookEvent({
       );
 
       if (validStatus.isErr()) {
-        getStatsDClient().increment("stripe.subscription.invalid", 1, [
+        statsDMetrics.increment("stripe.subscription.invalid", 1, [
           "event_type:customer.subscription.created",
         ]);
 
@@ -1427,7 +1427,7 @@ export async function processStripeWebhookEvent({
       // on the odd chance the change is not compatible with our logic, we panic
       const validStatus = assertStripeSubscriptionIsValid(stripeSubscription);
       if (validStatus.isErr()) {
-        getStatsDClient().increment("stripe.subscription.invalid", 1, [
+        statsDMetrics.increment("stripe.subscription.invalid", 1, [
           "event_type:customer.subscription.updated",
         ]);
 

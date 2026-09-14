@@ -47,7 +47,7 @@ describe("CreditCostPopover accessibility", () => {
     });
   });
 
-  it("restores focus on Escape but not when opening conversation credits", async () => {
+  it("restores focus on Escape but not when opening credit usage", async () => {
     const user = userEvent.setup();
     render(
       <CreditCostPopover
@@ -73,7 +73,7 @@ describe("CreditCostPopover accessibility", () => {
     await user.keyboard("{Enter}");
 
     expect(
-      await screen.findByRole("dialog", { name: "Message credits" })
+      await screen.findByRole("dialog", { name: "Message consumption" })
     ).toBeInTheDocument();
     expect(trigger).toHaveAttribute("aria-expanded", "true");
 
@@ -81,23 +81,23 @@ describe("CreditCostPopover accessibility", () => {
 
     await waitFor(() => {
       expect(
-        screen.queryByRole("dialog", { name: "Message credits" })
+        screen.queryByRole("dialog", { name: "Message consumption" })
       ).not.toBeInTheDocument();
       expect(trigger).toHaveFocus();
     });
 
     await user.keyboard("{Enter}");
     await user.click(
-      await screen.findByRole("button", { name: "Conversation credits" })
+      await screen.findByRole("button", { name: "Credit usage" })
     );
 
     await waitFor(() => {
       expect(
-        screen.queryByRole("dialog", { name: "Message credits" })
+        screen.queryByRole("dialog", { name: "Message consumption" })
       ).not.toBeInTheDocument();
       expect(trigger).not.toHaveFocus();
       expect(
-        screen.queryByText("View credit breakdown")
+        screen.queryByText("View consumption breakdown")
       ).not.toBeInTheDocument();
     });
     expect(mockOpenPanel).toHaveBeenCalledWith({ type: "credits" });

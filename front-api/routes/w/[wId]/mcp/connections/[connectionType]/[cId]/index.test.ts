@@ -1,5 +1,7 @@
 import { Authenticator } from "@app/lib/auth";
+import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerConnectionFactory } from "@app/tests/utils/MCPServerConnectionFactory";
@@ -258,6 +260,32 @@ describe("MCP connections handler", () => {
       { connectionType: "personal" }
     );
     expect(remainingPersonal).toHaveLength(0);
+  });
+
+  it("DELETE workspace connection clears the pinned OAuth scope when the server has no admin-defined scopes", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      method: "DELETE",
+      role: "admin",
+    });
+
+    const server = await InternalMCPServerInMemoryResource.makeNew(auth, {
+      name: "gmail",
+      useCase: "personal_actions",
+      oauthScope: "https://www.googleapis.com/auth/gmail.readonly",
+    });
+    const workspaceConnection = await MCPServerConnectionFactory.internal(
+      auth,
+      server.id,
+      "workspace"
+    );
+
+    const response = await del(workspace, "workspace", workspaceConnection.sId);
+
+    expect(response.status).toBe(200);
+
+    const views = await MCPServerViewResource.listByMCPServer(auth, server.id);
+    expect(views.length).toBeGreaterThan(0);
+    expect(views.map((view) => view.oauthScope)).toEqual(views.map(() => null));
   });
 
   it("GET a non-existing connection should return 404", async () => {

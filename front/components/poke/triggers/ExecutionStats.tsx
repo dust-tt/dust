@@ -18,7 +18,7 @@ export function ExecutionStats({ owner, triggerId }: ExecutionStatsProps) {
 
   if (isLoading) {
     return (
-      <div className="border-material-200 flex flex-col rounded-lg border p-4">
+      <div className="flex flex-col rounded-lg border p-4">
         <h2 className="text-md pb-4 font-bold">Execution Stats</h2>
         <div className="flex items-center justify-center py-4">
           <Spinner size="sm" />
@@ -29,7 +29,7 @@ export function ExecutionStats({ owner, triggerId }: ExecutionStatsProps) {
 
   if (isError || !data) {
     return (
-      <div className="border-material-200 flex flex-col rounded-lg border p-4">
+      <div className="flex flex-col rounded-lg border p-4">
         <h2 className="text-md pb-4 font-bold">Execution Stats</h2>
         <p className="text-sm text-muted-foreground">
           Error loading execution stats.
@@ -51,7 +51,7 @@ export function ExecutionStats({ owner, triggerId }: ExecutionStatsProps) {
   );
 
   return (
-    <div className="border-material-200 flex flex-col rounded-lg border p-4">
+    <div className="flex flex-col rounded-lg border p-4">
       <h2 className="text-md pb-4 font-bold">Execution Stats</h2>
 
       {/* Status Breakdown */}

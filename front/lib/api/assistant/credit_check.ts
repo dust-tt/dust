@@ -1,10 +1,10 @@
-import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
-import type { Authenticator } from "@app/lib/auth";
 import {
-  isApiBlocked,
+  isPoolDepleted,
   isProgrammaticApiBlocked,
   isUserBlocked,
-} from "@app/lib/metronome/user_block";
+} from "@app/lib/api/credits/access_control";
+import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
+import type { Authenticator } from "@app/lib/auth";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 
@@ -19,7 +19,7 @@ const DO_NOT_STOP: CreditCheckResult = { shouldStop: false, reason: null };
  * programmatic usage, the monthly cap) is exhausted. Fails open, non-blocking for callers.
  *
  * Deliberately reuses the exact same Redis-cached, DB-backed state already checked once before
- * the message was sent (`isUserBlocked` / `isApiBlocked` / `isProgrammaticApiBlocked`) rather than
+ * the message was sent (`isUserBlocked` / `isPoolDepleted` / `isProgrammaticApiBlocked`) rather than
  * reading a live Metronome balance. This keeps Metronome out of the agent loop entirely, at the
  * accepted cost of an expensive multi-step message being able to exceed the cap before the state
  * it last read catches up.
@@ -37,8 +37,8 @@ export async function checkPoolCreditGate(
 
   const user = auth.user();
   const blocked = user
-    ? (await isUserBlocked(owner, user)) !== null
-    : await isApiBlocked(owner.sId);
+    ? (await isUserBlocked(auth, user)) !== null
+    : await isPoolDepleted(auth);
   if (blocked) {
     return { shouldStop: true, reason: "credits_exhausted" };
   }
@@ -46,7 +46,7 @@ export async function checkPoolCreditGate(
   if (
     userMessageOrigin &&
     isProgrammaticUsage(auth, { userMessageOrigin }) &&
-    (await isProgrammaticApiBlocked(owner.sId))
+    (await isProgrammaticApiBlocked(auth))
   ) {
     return { shouldStop: true, reason: "credits_exhausted" };
   }

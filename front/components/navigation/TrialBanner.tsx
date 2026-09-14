@@ -5,13 +5,12 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType } from "@app/types/plan";
 import { isCreditPricedPlan } from "@app/types/plan";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { Button, cn } from "@dust-tt/sparkle";
 import { useMemo, useRef } from "react";
 
 const SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS = 30;
-const THRESHOLD_MS =
-  SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS * 24 * 60 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
+const THRESHOLD_MS = SUBSCRIPTION_BANNER_DISPLAY_THRESHOLD_DAYS * ONE_DAY_MS;
 
 function isSubscriptionManagementRoute(path: string) {
   return (
@@ -57,7 +56,7 @@ export function SubscriptionEndBanner({
     }
 
     const hasEnded = endDate < now;
-    const daysRemaining = Math.max(0, Math.ceil((endDate - now) / DAY_MS));
+    const daysRemaining = Math.max(0, Math.ceil((endDate - now) / ONE_DAY_MS));
 
     return { hasEnded, daysRemaining };
   }, [endDate]);

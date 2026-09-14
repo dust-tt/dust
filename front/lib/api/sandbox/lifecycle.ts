@@ -1,29 +1,32 @@
 import { DustFileSystem } from "@app/lib/api/file_system/dust_file_system";
-import { setupPodStateOnColdStart } from "@app/lib/api/sandbox/db";
+import { setupSandboxStateOnColdStart } from "@app/lib/api/sandbox/db";
 import {
   ensureSandboxEgressOnExec,
   prepareSandboxEgressBeforeMount,
 } from "@app/lib/api/sandbox/egress";
+import { frameSandboxOnlyMounts } from "@app/lib/api/sandbox/frame_mounts";
 import { getSandboxImage } from "@app/lib/api/sandbox/image";
 import {
   recordSandboxStartupTotal,
   traceSandboxStartupPhase,
 } from "@app/lib/api/sandbox/instrumentation";
 import type { SandboxRuntimeOwner } from "@app/lib/api/sandbox/owner";
-import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import { startTelemetry } from "@app/lib/api/sandbox/telemetry";
 import type { Authenticator } from "@app/lib/auth";
+import type { ConversationSandboxScope } from "@app/lib/resources/conversation_sandbox_adapter";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
-import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
+import type { FileResource } from "@app/lib/resources/file_resource";
+import type { FrameSandboxScope } from "@app/lib/resources/frame_sandbox_adapter";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import type {
   EnsureSandboxResult,
   SandboxResource,
 } from "@app/lib/resources/sandbox_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
-import type { ConversationType } from "@app/types/assistant/conversation";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const SANDBOX_RUNTIME_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -31,6 +34,9 @@ export interface EnsureSandboxReadyResult {
   sandbox: SandboxResource;
   freshlyCreated: boolean;
 }
+
+export type EnsureSandboxReadyWithScopeResult<TScope> =
+  EnsureSandboxReadyResult & { scope: TScope };
 
 type SandboxReadyConfig<TScope> = {
   ensureActive: () => Promise<Result<EnsureSandboxResult<TScope>, Error>>;
@@ -43,14 +49,23 @@ type SandboxReadyConfig<TScope> = {
     getFileSystem: () => Promise<Result<DustFileSystem, Error>>;
     runtimeOwner: SandboxRuntimeOwner;
     // Which owner policy file (`w/{wId}/sandboxes/{ownerId}.json`) this
-    // sandbox's egress is scoped to — the owner's own sId (conversation or
-    // pod space).
+    // sandbox's egress is scoped to — the owner's own sId.
     egressPolicyOwnerId: string;
-    // Inherited pod policy layer for conversation sandboxes running inside a
-    // pod; pod-owned sandboxes carry none (their ownerId already is the pod).
+    // Inherited pod policy layer for a sandbox running inside a pod.
     egressPolicyPodId?: string;
   };
 };
+
+function sandboxOwnerHasPersistentState(owner: SandboxRuntimeOwner): boolean {
+  switch (owner.kind) {
+    case "conversation":
+      return false;
+    case "frame":
+      return true;
+    default:
+      assertNever(owner);
+  }
+}
 
 // /!\ All sandbox-touching tools must use the owner-specific ready helper rather than calling
 // the owner adapter directly, otherwise the GCS FUSE mount and egress forwarder bring-up will be
@@ -58,7 +73,7 @@ type SandboxReadyConfig<TScope> = {
 async function ensureOwnerSandboxReady<TScope>(
   auth: Authenticator,
   { ensureActive, deriveConfig }: SandboxReadyConfig<TScope>
-): Promise<Result<EnsureSandboxReadyResult, Error>> {
+): Promise<Result<EnsureSandboxReadyWithScopeResult<TScope>, Error>> {
   const startMs = performance.now();
   // cold is unknown until ensureActive returns; if it errors first (rare) we
   // record the failure as a warm attempt.
@@ -100,7 +115,7 @@ async function ensureOwnerSandboxReady<TScope>(
       }
 
       if (!shouldRefreshRuntime) {
-        return new Ok({ sandbox, freshlyCreated });
+        return new Ok({ sandbox, freshlyCreated, scope });
       }
 
       // Synchronous and cheap: not worth a span (it would always read ~0ms).
@@ -169,14 +184,13 @@ async function ensureOwnerSandboxReady<TScope>(
         }
       }
 
-      // Pod state bring-up must run strictly AFTER the mounts (restore reads
+      // Durable SQLite bring-up must run strictly AFTER the mounts (restore reads
       // through the replica mount) and is awaited: `invoke` awaits
-      // ensurePodSandboxReady, which is what guarantees no function runs
-      // before the restore + daemon start completed. Only runs for pod
-      // owners.
-      if (freshlyCreated && runtimeOwner.kind === "pod") {
-        const podStateResult = await setupPodStateOnColdStart(auth, sandbox);
-        if (podStateResult.isErr()) {
+      // the owner-specific ready helper, which guarantees no function runs
+      // before restore and daemon startup complete. Conversation sandboxes do not own state.
+      if (freshlyCreated && sandboxOwnerHasPersistentState(runtimeOwner)) {
+        const stateResult = await setupSandboxStateOnColdStart(auth, sandbox);
+        if (stateResult.isErr()) {
           // status=running was already committed by ensureActive, and this
           // block only runs when freshlyCreated — a plain Err would make the
           // NEXT call take the warm path and happily serve a half-initialized
@@ -184,12 +198,12 @@ async function ensureOwnerSandboxReady<TScope>(
           // kill instead: ensureActive's kill-requested branch destroys and
           // recreates on the next access, re-running this setup from scratch.
           logger.error(
-            { err: podStateResult.error, sandboxId: sandbox.sId },
-            "Pod state cold start failed — requesting sandbox kill so the next access recreates it."
+            { err: stateResult.error, sandboxId: sandbox.sId },
+            "Sandbox SQLite state cold start failed — requesting sandbox kill so the next access recreates it."
           );
           await sandbox.requestKill();
           status = "error";
-          return podStateResult;
+          return stateResult;
         }
       }
 
@@ -210,7 +224,7 @@ async function ensureOwnerSandboxReady<TScope>(
 
       await sandbox.updateLastRuntimeRefreshAt(new Date());
 
-      return new Ok({ sandbox, freshlyCreated });
+      return new Ok({ sandbox, freshlyCreated, scope });
     });
   } finally {
     recordSandboxStartupTotal(performance.now() - startMs, { cold }, status);
@@ -219,8 +233,17 @@ async function ensureOwnerSandboxReady<TScope>(
 
 export async function ensureConversationSandboxReady(
   auth: Authenticator,
-  conversation: ConversationType
+  conversation: ConversationWithoutContentType
 ): Promise<Result<EnsureSandboxReadyResult, Error>> {
+  return ensureConversationSandboxReadyWithScope(auth, conversation);
+}
+
+export async function ensureConversationSandboxReadyWithScope(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<
+  Result<EnsureSandboxReadyWithScopeResult<ConversationSandboxScope>, Error>
+> {
   // Only the conversation's identity is trusted from the caller: it is
   // typically an agent-loop snapshot, and a move — possibly issued by this
   // very agent — can change the pod association mid-loop. The adapter
@@ -252,25 +275,28 @@ export async function ensureConversationSandboxReady(
   });
 }
 
-export async function ensurePodSandboxReady(
+export async function ensureFrameSandboxReady(
   auth: Authenticator,
-  pod: SpaceResource,
+  frame: FileResource,
   { requireRunning = false }: { requireRunning?: boolean } = {}
-): Promise<Result<EnsureSandboxReadyResult, Error>> {
+): Promise<
+  Result<EnsureSandboxReadyWithScopeResult<FrameSandboxScope>, Error>
+> {
   return ensureOwnerSandboxReady(auth, {
     ensureActive: () =>
-      PodSandboxAdapter.ensureSandboxActive(auth, pod, { requireRunning }),
-    // Pods are their own scope and cannot move — the config is static.
-    deriveConfig: () => ({
+      FrameSandboxAdapter.ensureSandboxActive(auth, frame, { requireRunning }),
+    deriveConfig: (scope) => ({
       getFileSystem: () =>
-        DustFileSystem.forPod(auth, pod, {
-          sandboxOnlyMounts: podSandboxOnlyMounts(pod),
+        DustFileSystem.forFrameSandboxProvisioning(auth, frame, {
+          sandboxOnlyMounts: frameSandboxOnlyMounts(frame),
         }),
       runtimeOwner: {
-        kind: "pod",
-        spaceId: pod.sId,
+        kind: "frame",
+        frameId: frame.sId,
+        spaceId: scope.spaceId,
       },
-      egressPolicyOwnerId: pod.sId,
+      egressPolicyOwnerId: frame.sId,
+      egressPolicyPodId: scope.spaceId ?? undefined,
     }),
   });
 }

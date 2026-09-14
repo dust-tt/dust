@@ -1,4 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -10,13 +11,18 @@ interface SeedSkillOptions {
   // Create the skill on behalf of this user, making them its only editor. Defaults to the
   // context user.
   owner?: UserResource;
-  // Users added to the skill's editor group on top of the owner.
+  // Users granted the skill's `editor` grant on top of the owner.
   editors?: UserResource[];
   // Spaces the skill requires access to. Members of the skill that are not members of
   // these spaces cannot view or use it.
   spaces?: SpaceResource[];
 }
 
+/**
+ * @cc [label:product] seed-skill-idempotency
+ * If an active skill with the same name exists in the workspace, return it without creating another,
+ * even when the context user cannot read its required spaces.
+ */
 export async function seedSkill(
   ctx: SeedContext,
   skillAsset: SkillAsset,
@@ -24,10 +30,22 @@ export async function seedSkill(
 ): Promise<SkillResource | null> {
   const { auth, workspace, execute, logger } = ctx;
 
-  const existingSkills = await SkillResource.listByWorkspace(auth, {
-    status: "active",
+  // Looked up on the model rather than through the context user's view: seeded skills may require
+  // spaces the context user is not a member of, and a re-run must still find them (skill names are
+  // unique among a workspace's active skills).
+  const existingSkillRow = await SkillConfigurationModel.findOne({
+    attributes: ["id"],
+    where: {
+      workspaceId: workspace.id,
+      name: skillAsset.name,
+      status: "active",
+    },
   });
-  const existingSkill = existingSkills.find((s) => s.name === skillAsset.name);
+  const [existingSkill] = existingSkillRow
+    ? await SkillResource.fetchByModelIds(auth, [existingSkillRow.id], {
+        permissionFiltering: "dangerously_skip",
+      })
+    : [];
 
   if (existingSkill) {
     logger.info(
@@ -76,25 +94,18 @@ async function addSkillEditors(
   skill: SkillResource,
   editors: UserResource[]
 ): Promise<void> {
-  const { editorGroup } = skill;
-  if (!editorGroup) {
-    throw new Error(`Skill ${skill.sId} has no editor group`);
-  }
-
-  // The owner is already in the group, and adding an existing member is an error.
-  const activeMemberIds = new Set(
+  // The owner already holds the grant from creating the skill.
+  const existingEditorIds = new Set(
     ((await skill.listEditors(auth)) ?? []).map((member) => member.sId)
   );
   const usersToAdd = editors.filter(
-    (editor) => !activeMemberIds.has(editor.sId)
+    (editor) => !existingEditorIds.has(editor.sId)
   );
   if (usersToAdd.length === 0) {
     return;
   }
 
-  const addResult = await editorGroup.dangerouslyAddMembers(auth, {
-    users: usersToAdd.map((editor) => editor.toJSON()),
-  });
+  const addResult = await skill.addEditors(auth, usersToAdd);
   if (addResult.isErr()) {
     throw new Error(`Failed to add skill editors: ${addResult.error.message}`);
   }

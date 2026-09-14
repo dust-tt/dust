@@ -8,16 +8,22 @@ type ResizeDirectionType = (typeof RESIZE_DIRECTIONS)[number];
 
 export interface TextareaProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  /** User-resize handle direction: "none" | "vertical" | "horizontal" | "both" (defaults to "both"). */
   resize?: ResizeDirectionType;
+  /** Validation error; a non-empty value switches the field to warning styling. */
   error?: string | null;
+  /** Renders the `error` message below the field. */
   showErrorLabel?: boolean;
+  /** Initial height of the field, in rows (defaults to 10). */
   minRows?: number;
+  /** Read-only display rendering for showing static text (pair with `disabled`). */
   isDisplay?: boolean;
 }
 
 const textAreaVariants = cva(
   cn(
-    "flex w-full px-3 py-2 text-sm",
+    // 16px on small viewports so Mobile Safari does not zoom on focus.
+    "flex w-full px-3 py-2 text-base md:text-sm",
     "text-foreground",
     "bg-muted-background",
     "placeholder:text-muted-foreground",
@@ -70,6 +76,15 @@ const textAreaVariants = cva(
   }
 );
 
+/**
+ * A multi-line text field for longer freeform input such as a prompt, instructions, or a
+ * comment, with validation via `error` / `showErrorLabel`, a `disabled` state, and a
+ * read-only `isDisplay` rendering. Use it to collect or display text spanning multiple
+ * lines; for a single line of text such as a name or email use `Input`, and for search
+ * use `SearchInput`.
+ *
+ * @summary Multi-line text field.
+ */
 const TextArea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
   (
     {
@@ -125,7 +140,7 @@ const ReadOnlyTextArea = ({
       isDisplay
       minRows={minRows}
       className={cn(
-        "copy-sm h-full min-h-60 w-full min-w-0 rounded-xl",
+        "text-base font-normal md:text-sm h-full min-h-60 w-full min-w-0 rounded-xl",
         "resize-none border-border bg-muted-background"
       )}
       defaultValue={content ?? ""}

@@ -9,8 +9,7 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 // and across user turns (each turn is a fresh workflow). The short TTL matches
 // the lifetime of Anthropic's diagnostics fingerprint and the prompt cache
 // itself: once it expires, the previous id is worthless anyway, so we stop
-// sending it and the key cleans itself up. Sunsetting the feature needs no
-// migration: flip the flag off and the keys expire on their own.
+// sending it and the key cleans itself up.
 const CACHE_DIAGNOSTICS_TTL_SECONDS = 600;
 
 export interface CacheDiagnosticsKey {

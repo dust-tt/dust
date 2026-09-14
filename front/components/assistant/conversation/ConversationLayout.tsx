@@ -21,14 +21,12 @@ import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { useAppRouter } from "@app/lib/platform";
-import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type {
   ConversationError,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { ResizablePanel, ResizablePanelGroup } from "@dust-tt/sparkle";
 import type React from "react";
 import { useMemo } from "react";
 
@@ -151,8 +149,6 @@ function ConversationInnerLayout({
   conversationError,
   activeConversationId,
 }: ConversationInnerLayoutProps) {
-  const isMobile = useIsMobile();
-
   const conversationMain = (
     <>
       {activeConversationId && !conversationError && (
@@ -170,32 +166,9 @@ function ConversationInnerLayout({
 
   return (
     <ErrorBoundary fallback={<UncaughtConversationErrorFallback />}>
-      {isMobile ? (
-        <div className="relative flex w-full flex-col">
-          {conversationMain}
-          <ConversationSidePanelContainer
-            owner={owner}
-            conversation={conversation}
-          />
-        </div>
-      ) : (
-        <div className="flex h-full w-full flex-col">
-          <ResizablePanelGroup
-            animateLayoutChanges
-            direction="horizontal"
-            className="flex h-full w-full flex-1 @container"
-          >
-            <ResizablePanel defaultSize={100}>
-              <div className="flex h-panel flex-col">{conversationMain}</div>
-            </ResizablePanel>
-
-            <ConversationSidePanelContainer
-              owner={owner}
-              conversation={conversation}
-            />
-          </ResizablePanelGroup>
-        </div>
-      )}
+      <ConversationSidePanelContainer owner={owner} conversation={conversation}>
+        {conversationMain}
+      </ConversationSidePanelContainer>
     </ErrorBoundary>
   );
 }

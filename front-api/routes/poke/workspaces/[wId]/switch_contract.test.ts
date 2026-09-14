@@ -9,6 +9,7 @@ import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
+import { removeAwuContractExcessCreditsForContract } from "@app/lib/metronome/payg_excess_credits";
 import {
   remapMembershipSeatTypesForContract,
   syncSeatCount,
@@ -26,7 +27,7 @@ import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usag
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
@@ -64,6 +65,16 @@ vi.mock("@app/lib/metronome/seats", async () => {
     ...actual,
     remapMembershipSeatTypesForContract: vi.fn(),
     syncSeatCount: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/metronome/payg_excess_credits", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/metronome/payg_excess_credits")
+  >("@app/lib/metronome/payg_excess_credits");
+  return {
+    ...actual,
+    removeAwuContractExcessCreditsForContract: vi.fn(),
   };
 });
 
@@ -296,6 +307,9 @@ beforeEach(() => {
   vi.mocked(provisionMetronomeContract).mockResolvedValue(
     new Ok({ metronomeContractId: NEW_CONTRACT_ID, recovered: false })
   );
+  vi.mocked(removeAwuContractExcessCreditsForContract).mockResolvedValue(
+    new Ok({ archivedCredits: 0 })
+  );
   vi.mocked(remapMembershipSeatTypesForContract).mockResolvedValue(
     new Ok(undefined)
   );
@@ -315,7 +329,7 @@ beforeEach(() => {
 describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () => {
   it("provisions a future-scheduled contract and leaves the DB subscription for contract.start", async () => {
     await ensureEnterprisePlan();
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -342,7 +356,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
 
   it("starts immediately when startingAt is omitted", async () => {
     await ensureEnterprisePlan();
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -365,7 +379,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
 
   it("accepts a startingAt in the past (backdated) and schedules at the next hour boundary", async () => {
     await ensureEnterprisePlan();
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -392,7 +406,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
       address: { country: "FR" },
     } as unknown as Stripe.Customer);
 
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -409,7 +423,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Enterprise", () =>
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", () => {
   it("provisions a Pro contract at the current hour and leaves the DB subscription for contract.start", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -434,7 +448,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
   });
 
   it("provisions a Business contract at the current hour", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -452,7 +466,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
   });
 
   it("accepts startingAt and schedules at the next hour boundary", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -472,7 +486,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
   });
 
   it("provisions the first Pro contract when the workspace has no current Metronome contract", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     // No Stripe sub + no Metronome contract: with Metronome billing enabled
@@ -491,7 +505,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
   });
 
   it("stages a created_backend_only subscription for contract.start to activate", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -517,7 +531,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
   });
 
   it("supersedes a prior pending subscription on a second schedule", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -564,7 +578,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — Pro / Business", (
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
   it("rejects when plan tier doesn't match package tier", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -581,7 +595,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
   });
 
   it("rejects when target plan tier does not match the package tier (pro pkg, free plan)", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -598,7 +612,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
 
   it("schedules the Stripe subscription to cancel at the swap moment when the workspace is Stripe-billed", async () => {
     const STRIPE_SUB_ID = "sub_stripe_xxx";
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID, {
@@ -617,7 +631,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
   });
 
   it("does not call scheduleSubscriptionCancellation when the workspace has no Stripe subscription", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -626,13 +640,15 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
 
     expect(response.status).toBe(200);
     expect(scheduleSubscriptionCancellation).not.toHaveBeenCalled();
+    // PAYG off: the package-default excess buffer is left in place.
+    expect(removeAwuContractExcessCreditsForContract).not.toHaveBeenCalled();
   });
 });
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
   it("persists usageCapCredits and syncs the Metronome alert when switching to enterprise with PAYG enabled", async () => {
     await ensureEnterprisePlan();
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -643,6 +659,10 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     );
 
     expect(response.status).toBe(200);
+    // PAYG on: the excess buffer is removed from the newly provisioned contract.
+    expect(removeAwuContractExcessCreditsForContract).toHaveBeenCalledWith(
+      expect.objectContaining({ metronomeContractId: NEW_CONTRACT_ID })
+    );
 
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
@@ -653,7 +673,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
   });
 
   it("persists usageCapCredits when switching to business with PAYG enabled", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -674,7 +694,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
   });
 
   it("rejects PAYG on a pro contract", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -692,7 +712,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
 
   it("accepts paygEnabled without a usage cap (no alert)", async () => {
     await ensureEnterprisePlan();
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -714,7 +734,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
   });
 
   it("preserves usageCapCredits when paygEnabled is toggled off", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -744,7 +764,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
 
 describe("POST /api/poke/workspaces/[wId]/switch_contract — no Stripe customer", () => {
   it("provisions a contract with no Stripe billing config when stripeCustomerId is blank", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);
@@ -765,7 +785,7 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — no Stripe customer
   });
 
   it("accepts a package in any currency when stripeCustomerId is blank", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace } = await createPokeApiMockRequest({
       isSuperUser: true,
     });
     await makeSubscriptionMetronomeBilled(workspace, EXISTING_CONTRACT_ID);

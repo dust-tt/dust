@@ -245,6 +245,7 @@ export async function storeAgentAnalytics(
       return {
         actionResource,
         internalMCPServerName: action.internalMCPServerName,
+        mcpServerId: action.mcpServerId,
         status: action.status,
         toolName: getToolNameFromFunctionCallName(
           actionResource.functionCallName

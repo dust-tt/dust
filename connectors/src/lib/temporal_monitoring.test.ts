@@ -1,3 +1,4 @@
+import { BigQueryCastKnownErrorsInterceptor } from "@connectors/connectors/bigquery/temporal/cast_known_errors";
 import { Context, type Info } from "@temporalio/activity";
 import {
   noopMetricMeter,
@@ -64,6 +65,7 @@ vi.mock("dd-trace", () => ({
 import logger from "@connectors/logger/logger";
 
 import {
+  ExternalOAuthTokenError,
   RemoteDatabaseConnectionNotReadonlyError,
   ThirdPartyConfigurationError,
 } from "./error";
@@ -78,7 +80,7 @@ const temporalLogger = {
   warn: vi.fn(),
 } satisfies TemporalLogger;
 
-function makeActivityContext() {
+function makeActivityContext(workflowType = "snowflakeSyncWorkflow") {
   const info = {
     activityId: "activity-id",
     activityNamespace: "default",
@@ -98,7 +100,7 @@ function makeActivityContext() {
       workflowId: "workflow-id",
     },
     workflowNamespace: "default",
-    workflowType: "snowflakeSyncWorkflow",
+    workflowType,
   } satisfies Info;
 
   return new Context(
@@ -131,6 +133,37 @@ describe("ActivityInboundLogInterceptor", () => {
         setTag: vi.fn(),
       })
     );
+  });
+
+  it("marks Google Drive OAuth failures and pauses the connector", async () => {
+    mocks.fetchById.mockResolvedValue({
+      dataSourceId: "data-source-id",
+      id: 42,
+      type: "google_drive",
+      workspaceId: "workspace-id",
+    });
+    const interceptor = new ActivityInboundLogInterceptor(
+      makeActivityContext("googleDriveIncrementalSyncV2"),
+      logger,
+      "google_drive"
+    );
+    const error = new ExternalOAuthTokenError(
+      new Error("admin_policy_enforced")
+    );
+    const input = {
+      args: [],
+      headers: {},
+    } satisfies ActivityExecuteInput;
+    const next = vi.fn(async () => {
+      throw error;
+    }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+
+    await expect(interceptor.execute(input, next)).rejects.toBe(error);
+
+    expect(mocks.syncFailed).toHaveBeenCalledWith(42, "oauth_token_revoked");
+    expect(mocks.pauseAndStop).toHaveBeenCalledWith({
+      reason: "Stopped on ExternalOAuthTokenError",
+    });
   });
 
   it("marks Snowflake read-only failures and pauses the connector", async () => {
@@ -192,6 +225,48 @@ describe("ActivityInboundLogInterceptor", () => {
     );
     expect(mocks.pauseAndStop).toHaveBeenCalledWith({
       reason: "Stopped on workspace_can_use_product_required_error",
+    });
+  });
+
+  it("pauses BigQuery when its activity encounters a policy violation", async () => {
+    mocks.fetchById.mockResolvedValue({
+      dataSourceId: "data-source-id",
+      id: 42,
+      type: "bigquery",
+      workspaceId: "workspace-id",
+    });
+    const interceptor = new ActivityInboundLogInterceptor(
+      makeActivityContext("bigquerySyncWorkflow"),
+      logger,
+      "bigquery"
+    );
+    const error = Object.assign(
+      new Error(
+        "VPC Service Controls: Request is prohibited by organization's policy."
+      ),
+      { code: 403, errors: [{ reason: "policyViolation" }] }
+    );
+    const input = {
+      args: [],
+      headers: {},
+    } satisfies ActivityExecuteInput;
+    const activity = vi.fn(async () => {
+      throw error;
+    }) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+    const next = vi.fn((activityInput: ActivityExecuteInput) =>
+      new BigQueryCastKnownErrorsInterceptor().execute(activityInput, activity)
+    ) satisfies Next<ActivityInboundCallsInterceptor, "execute">;
+
+    await expect(interceptor.execute(input, next)).rejects.toThrow(
+      ThirdPartyConfigurationError
+    );
+
+    expect(mocks.syncFailed).toHaveBeenCalledWith(
+      42,
+      "third_party_internal_error"
+    );
+    expect(mocks.pauseAndStop).toHaveBeenCalledWith({
+      reason: "Stopped on ThirdPartyConfigurationError",
     });
   });
 

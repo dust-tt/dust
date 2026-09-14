@@ -1,14 +1,16 @@
 ---
 name: dust-call-agent
-description: Call a Dust agent to get information (read a slack thread, a notion URL, a google drive document...), perform an action (post a message to slack, create a calendar event, ...), provide context on any topic regarding Dust (the company, current discussions, customers...) or in general have the Dust agent perform a given task.
+description: Call a Dust agent for Dust company context or to access tools, data, and actions unavailable through the current agent's native capabilities. Never use a Dust agent as a proxy for Slack, Notion, Google Drive, calendars, or any other service when native access is available; use the native tool instead because it is faster and more efficient.
 ---
 
 Access Dust agents that have context on all the company, e.g. recent projects, engineering, sales, marketing, etc., via the Dust CLI non-interactively, e.g.:
-`$ dust chat -a issueBot -m "create an issue for this: ..."`
+`$ dust chat -a dust -m "create an issue for this: ..."`
 `$ dust chat -a deep-dive -m "Research all info we have on kubernetes probe failures in recent weeks."`
 
+For GitHub issue creation, use the `dust` agent rather than `issueBot` or `gh`; `dust` has specific guidance for writing issues.
+
 A conversation with an agent can be continued after the first message using the argument `-c CONVERSATION_STRING_ID`. The conversation id will be returned in the JSON result from the initial call.
-`$ dust chat -a issueBot -c 'TdWyn4aDt1' -m "also add a subsequent issue about this: ..."`
+`$ dust chat -a dust -c 'TdWyn4aDt1' -m "also add a subsequent issue about this: ..."`
 
 Use `--projectName` or `--projectId` to create the conversation inside a specific project (space). These cannot be used with `-c` (only for new conversations):
 `$ dust chat -a prea --projectName "Engineering" -m "summarize recent incidents"`

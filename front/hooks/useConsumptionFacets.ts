@@ -1,41 +1,44 @@
 import type {
+  ConsumptionFacetOptions,
   UsageFilterAgentOption,
   UsageFilterApiKeyOption,
-  UsageFilterCategory,
   UsageFilterGroupOption,
   UsageFilterMemberOption,
   UsageFilterModelOption,
-  UsageFilterOptionForCategory,
   UsageFilterSkillOption,
   UsageFilterSourceOption,
   UsageFilterToolOption,
 } from "@app/components/workspace/analytics/usageFilter";
-import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
+import { EMPTY_FACET_OPTIONS } from "@app/components/workspace/analytics/usageFilter";
+import {
+  getConsumptionAnalyticsUrl,
+  useConsumptionQuery,
+} from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionFacetsResponse } from "@app/lib/api/analytics/consumption/facets";
-import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionFacetsBody } from "@app/lib/api/analytics/consumption/schema";
+import type {
+  ConsumptionFacetScope,
+  ConsumptionScopeDimension,
+  ConsumptionScopeFilter,
+} from "@app/types/api/analytics/consumption";
 import { isConnectorProvider } from "@app/types/data_source";
 import { useMemo } from "react";
 
-export type ConsumptionFacetOptions = {
-  [C in UsageFilterCategory]: UsageFilterOptionForCategory<C>[];
-};
-
-const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
-  agent: [],
-  member: [],
-  group: [],
-  model: [],
-  tool: [],
-  skill: [],
-  source: [],
-  api_key: [],
-};
+export interface UseConsumptionFacetsParams {
+  workspaceId: string;
+  period: ConsumptionPeriodSelection;
+  filter?: ConsumptionScopeFilter;
+  scope?: ConsumptionFacetScope;
+  dimensions?: ConsumptionScopeDimension[];
+  analyticsScope?: ConsumptionAnalyticsScope;
+  disabled?: boolean;
+}
 
 function baseOption(facet: {
   value: string;
@@ -49,7 +52,7 @@ function baseOption(facet: {
   };
 }
 
-function toFacetOptions(
+export function toConsumptionFacetOptions(
   data: GetConsumptionFacetsResponse
 ): ConsumptionFacetOptions {
   return {
@@ -102,28 +105,32 @@ export function useConsumptionFacets({
   workspaceId,
   period,
   filter,
+  scope = "all",
+  dimensions,
+  analyticsScope,
   disabled,
-}: {
-  workspaceId: string;
-  period: ConsumptionPeriodSelection;
-  filter?: ConsumptionScopeFilter;
-  disabled?: boolean;
-}) {
-  const url = `/api/w/${workspaceId}/analytics/consumption/facets`;
-  const body: ConsumptionBody = {
+}: UseConsumptionFacetsParams) {
+  const url = getConsumptionAnalyticsUrl({
+    workspaceId,
+    analyticsScope,
+    endpoint: "facets",
+  });
+  const body: ConsumptionFacetsBody = {
     period: period.kind,
     days:
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
     filter: normalizedConsumptionFilter(filter),
+    scope,
+    dimensions,
   };
 
   const { data, error, isValidating } = useConsumptionQuery<
-    ConsumptionBody,
+    ConsumptionFacetsBody,
     GetConsumptionFacetsResponse
   >({ url, body, disabled });
 
   const options = useMemo(
-    () => (data ? toFacetOptions(data) : EMPTY_FACET_OPTIONS),
+    () => (data ? toConsumptionFacetOptions(data) : EMPTY_FACET_OPTIONS),
     [data]
   );
 

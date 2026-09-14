@@ -10,7 +10,7 @@ import {
   useSpaceProjectsLookup,
   useSpacesAccessCheck,
 } from "@app/lib/swr/spaces";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType, SpaceType } from "@app/types/space";
 import type { ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
 import { useWatch } from "react-hook-form";
@@ -21,18 +21,17 @@ export interface EditorWithoutSpaceAccess {
   missingSpaces: SpaceType[];
 }
 
-interface SkillSpaceRestrictionsContextType {
+export interface SkillSpaceRestrictionsContextType {
   actionsBySpaceId: ReturnType<typeof getSpaceIdToActionsMap>;
-  allSpaces: SpaceType[];
+  allSpaces: EnrichedSpaceType[];
   areSpaceRequirementsReady: boolean;
   editorsWithoutSpaceAccess: EditorWithoutSpaceAccess[];
-  globalSpace: SpaceType | undefined;
-  initialAdditionalSpaces: string[];
+  globalSpace: EnrichedSpaceType | undefined;
   initialRequestedSpaceIds?: string[];
   knowledgeBySpaceId: Record<string, AttachedKnowledgeFormData[]>;
   missingSpaceIds: string[];
-  nonGlobalSpacesUsedBySkill: SpaceType[];
-  nonGlobalSpacesWithRestrictions: SpaceType[];
+  nonGlobalSpacesUsedBySkill: EnrichedSpaceType[];
+  nonGlobalSpacesWithRestrictions: EnrichedSpaceType[];
   skillsBySpaceId: Record<string, ReferencedSkillFormData[]>;
   spaceIdsUsedBySkill: Set<string>;
 }
@@ -142,20 +141,6 @@ export function SkillSpaceRestrictionsProvider({
     return skillsBySpace;
   }, [referencedSkills]);
 
-  const initialAdditionalSpaces = useMemo(() => {
-    if (!areSpaceRequirementsReady || !initialRequestedSpaceIds?.length) {
-      return [];
-    }
-
-    return initialRequestedSpaceIds.filter(
-      (spaceId) => !spaceIdsUsedBySkill.has(spaceId)
-    );
-  }, [
-    areSpaceRequirementsReady,
-    initialRequestedSpaceIds,
-    spaceIdsUsedBySkill,
-  ]);
-
   const additionalSpaceIds = useMemo(() => {
     return new Set(additionalSpaces ?? []);
   }, [additionalSpaces]);
@@ -228,7 +213,6 @@ export function SkillSpaceRestrictionsProvider({
       areSpaceRequirementsReady,
       editorsWithoutSpaceAccess,
       globalSpace,
-      initialAdditionalSpaces,
       initialRequestedSpaceIds,
       knowledgeBySpaceId,
       missingSpaceIds,
@@ -243,7 +227,6 @@ export function SkillSpaceRestrictionsProvider({
       areSpaceRequirementsReady,
       editorsWithoutSpaceAccess,
       globalSpace,
-      initialAdditionalSpaces,
       initialRequestedSpaceIds,
       knowledgeBySpaceId,
       missingSpaceIds,

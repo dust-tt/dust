@@ -56,24 +56,31 @@ export function useActivationRecommendations({
   };
 }
 
+// The current user's activation pod, optionally scoped to a specific pod sId.
 export function useActivationPod({
   workspaceId,
+  podId,
   disabled,
 }: {
   workspaceId: string;
+  podId?: string | null;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const podFetcher: Fetcher<GetActivationPodResponseBody> = fetcher;
 
-  const { data, error, isLoading } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/activation-pod`,
-    podFetcher,
-    { disabled, revalidateOnFocus: false }
-  );
+  const url = podId
+    ? `/api/w/${workspaceId}/activation-pod?podId=${podId}`
+    : `/api/w/${workspaceId}/activation-pod`;
+
+  const { data, error, isLoading } = useSWRWithDefaults(url, podFetcher, {
+    disabled,
+    revalidateOnFocus: false,
+  });
 
   return {
     activationPodId: data?.podId ?? null,
+    podKind: data?.kind ?? null,
     isActivationPodLoading: disabled ? false : isLoading,
     isActivationPodError: !!error,
   };

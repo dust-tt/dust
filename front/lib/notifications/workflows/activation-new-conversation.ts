@@ -9,6 +9,7 @@ import {
   getActivationRecommendation,
   getConversationDetails,
 } from "@app/lib/notifications/helpers";
+import { shouldSkipConversationExternalNotification } from "@app/lib/notifications/workflows/conversation-unread";
 import { ActivationRecommendationResource } from "@app/lib/resources/activation_recommendation_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FOR_YOU_EMAIL_UTM } from "@app/lib/tracking/campaigns";
@@ -32,7 +33,7 @@ export function getActivationNewConversationEmailSubject(
   recommendationName: string | null
 ): string {
   const normalizedName = recommendationName?.replace(/\s+/g, " ").trim();
-  return `[Dust] Recommendation For You: ${
+  return `[Dust] Try this next: ${
     normalizedName || ACTIVATION_NEW_CONVERSATION_EMAIL_SUBJECT_FALLBACK
   }`;
 }
@@ -66,6 +67,10 @@ export const shouldSkipActivationNewConversation = async ({
   payload: activationNewConversationPayloadType;
 }): Promise<boolean> => {
   if (!subscriberId) {
+    return true;
+  }
+
+  if (await shouldSkipConversationExternalNotification(payload.workspaceId)) {
     return true;
   }
 

@@ -10,6 +10,11 @@ interface StrongBlockProps {
   node?: MarkdownNode;
 }
 
+/**
+ * Renders bold (`**strong**`) text inside Markdown output with semibold
+ * weight and the context text color.
+ * @summary Strong-text renderer for Markdown.
+ */
 export const StrongBlock = memo(
   function StrongBlock({ children }: StrongBlockProps) {
     const { textColor } = useMarkdownStyle();

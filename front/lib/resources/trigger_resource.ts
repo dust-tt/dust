@@ -1,8 +1,9 @@
+import type { AuditAction } from "@app/lib/api/audit/workos_audit";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
-import { Authenticator } from "@app/lib/auth";
+import { Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
@@ -22,6 +23,7 @@ import {
   deleteTriggerSchedule,
 } from "@app/temporal/triggers/schedule_client";
 import type {
+  BulkTriggerUpdateOutcome,
   ScheduleConfig,
   TriggerExecutionMode,
   TriggerKind,
@@ -29,7 +31,13 @@ import type {
   TriggerType,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
-import { getTriggerStatusOwner } from "@app/types/assistant/triggers";
+import {
+  availableTriggerExecutionModes,
+  getTriggerStatusOwner,
+  NO_TRIGGER_EXECUTION_MODE_AVAILABLE_MESSAGE,
+  TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES,
+} from "@app/types/assistant/triggers";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -58,11 +66,59 @@ export async function resolveTriggerSpaceId(
   }
 
   const pod = await SpaceResource.fetchById(auth, spaceId);
-  if (!pod || !pod.isProject() || !pod.canRead(auth)) {
+  if (!pod || !pod.isProject() || !auth.can("read", pod)) {
     return new Err("Pod not found or not accessible.");
   }
 
   return new Ok(pod.id);
+}
+
+export class TriggerExecutionModeForbiddenError extends Error {}
+
+const BULK_TRIGGER_AUDIT_CONCURRENCY = 10;
+
+function emitBulkTriggerAuditLogEvents(
+  auth: Authenticator,
+  triggers: TriggerResource[],
+  toEvent: (trigger: TriggerResource) => {
+    action: AuditAction;
+    metadata: Record<string, string>;
+  }
+): Promise<void[]> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  return concurrentExecutor(
+    triggers,
+    async (trigger) => {
+      const { action, metadata } = toEvent(trigger);
+      return emitAuditLogEvent({
+        auth,
+        action,
+        targets: [
+          buildAuditLogTarget("workspace", workspace),
+          buildAuditLogTarget("trigger", {
+            sId: trigger.sId,
+            name: trigger.name,
+          }),
+        ],
+        metadata,
+      });
+    },
+    { concurrency: BULK_TRIGGER_AUDIT_CONCURRENCY }
+  );
+}
+
+async function availableExecutionModes(
+  auth: Authenticator
+): Promise<TriggerExecutionMode[]> {
+  return availableTriggerExecutionModes({
+    isPlanCreditPriced: isCreditPricedPlan(auth.getNonNullablePlan()),
+    hasLegacyTriggerLimits: await hasFeatureFlag(auth, "legacy_trigger_limits"),
+    canUseWorkspacePool: await auth.hasWorkspacePermission(
+      "use_workspace_pool",
+      "trigger"
+    ),
+  });
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -82,12 +138,32 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
   static async makeNew(
     auth: Authenticator,
-    blob: CreationAttributes<TriggerModel>,
+    blob: Omit<CreationAttributes<TriggerModel>, "executionMode"> & {
+      executionMode?: TriggerExecutionMode;
+    },
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<TriggerResource, Error>> {
-    const trigger = await TriggerModel.create(blob, {
-      transaction,
-    });
+    const executionModes = await availableExecutionModes(auth);
+    const executionMode = blob.executionMode ?? executionModes[0];
+    if (!executionMode) {
+      return new Err(
+        new TriggerExecutionModeForbiddenError(
+          NO_TRIGGER_EXECUTION_MODE_AVAILABLE_MESSAGE
+        )
+      );
+    }
+    if (!executionModes.includes(executionMode)) {
+      return new Err(
+        new TriggerExecutionModeForbiddenError(
+          TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES[executionMode]
+        )
+      );
+    }
+
+    const trigger = await TriggerModel.create(
+      { ...blob, executionMode },
+      { transaction }
+    );
 
     const resource = new this(TriggerModel, trigger.get());
 
@@ -124,6 +200,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
+  isEditedBy(auth: Authenticator): boolean {
+    return this.editor === auth.getNonNullableUser().id;
+  }
+
   canUpdateStatusTo(auth: Authenticator, to: TriggerStatus): boolean {
     if (this.status === to) {
       return true;
@@ -154,6 +234,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         workspaceId: workspace.id,
       },
       limit: options.limit,
+      offset: options.offset,
+      order: options.order,
     });
 
     return res.map((c) => new this(this.model, c.get()));
@@ -265,23 +347,61 @@ export class TriggerResource extends BaseResource<TriggerModel> {
 
   static async countForWorkspace(
     auth: Authenticator
-  ): Promise<{ enabled: number; total: number }> {
+  ): Promise<{ enabled: number; total: number; workspacePool: number }> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const [enabled, total] = await Promise.all([
-      this.model.count({ where: { workspaceId, status: "enabled" } }),
-      this.model.count({ where: { workspaceId } }),
-    ]);
+    const triggers = await this.model.findAll({
+      attributes: ["status", "executionMode"],
+      where: { workspaceId },
+    });
 
-    return { enabled, total };
+    let enabled = 0;
+    let workspacePool = 0;
+    for (const trigger of triggers) {
+      if (trigger.status === "enabled") {
+        enabled++;
+      }
+      if (trigger.executionMode === "workspace_pool") {
+        workspacePool++;
+      }
+    }
+
+    return { enabled, total: triggers.length, workspacePool };
   }
 
-  static listByWorkspaceAndKinds(
+  static listByWorkspaceAndKindsAndExecutionModes(
     auth: Authenticator,
-    kinds: TriggerKind[]
+    {
+      kinds,
+      executionModes,
+      limit,
+      offset,
+    }: {
+      kinds?: TriggerKind[];
+      executionModes?: TriggerExecutionMode[];
+      limit?: number;
+      offset?: number;
+    }
   ): Promise<TriggerResource[]> {
     return this.baseFetch(auth, {
-      where: { kind: { [Op.in]: kinds } },
+      where: {
+        ...(kinds?.length ? { kind: { [Op.in]: kinds } } : {}),
+        ...(executionModes?.length
+          ? { executionMode: { [Op.in]: executionModes } }
+          : {}),
+      },
+      order: [["id", "ASC"]],
+      limit,
+      offset,
+    });
+  }
+
+  static listByWorkspaceAndNameSearch(
+    auth: Authenticator,
+    search: string
+  ): Promise<TriggerResource[]> {
+    return this.baseFetch(auth, {
+      where: { name: { [Op.iLike]: `%${search}%` } },
     });
   }
 
@@ -362,33 +482,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       webhookSourceViewId: ModelId | null;
       agentConfigurationId: string;
     }>;
-  }
-
-  /**
-   * DANGEROUS: Lists triggers across workspaces for maintenance scripts.
-   * Should only be used in scripts, never in API routes or lib/api.
-   */
-  static async listAllForScript(options?: {
-    workspaceId?: ModelId;
-    status?: TriggerStatus;
-  }): Promise<TriggerResource[]> {
-    const where: {
-      workspaceId?: ModelId;
-      status?: TriggerStatus;
-    } = {};
-
-    if (options?.workspaceId) {
-      where.workspaceId = options.workspaceId;
-    }
-    if (options?.status) {
-      where.status = options.status;
-    }
-
-    const res = await this.model.findAll({
-      where,
-    });
-
-    return res.map((c) => new this(this.model, c.get()));
   }
 
   static async update(
@@ -643,6 +736,100 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
+  /**
+   * Transfers editorship of every trigger owned by `fromUser` to `toUser`, in
+   * the current workspace. Used by the user identity merge: without this the
+   * triggers stay on the merged-away identity, become unmanageable by the
+   * surviving one, and are deleted outright if the secondary user is revoked
+   * (see `revokeAndTrackMembership`).
+   *
+   * Schedule triggers bake the editor's sId into the Temporal schedule's
+   * workflow args, so the schedule is re-upserted with the new editor's auth;
+   * webhook triggers resolve their editor at fire time and need nothing extra.
+   */
+  static async transferEditor(
+    auth: Authenticator,
+    {
+      fromUser,
+      toUser,
+    }: {
+      fromUser: UserResource;
+      toUser: UserResource;
+    }
+  ): Promise<Result<number, Error>> {
+    assert(
+      auth.isAdmin(),
+      "Trigger editorship can only be transferred by admins."
+    );
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    const [, updatedRows] = await this.model.update(
+      { editor: toUser.id },
+      {
+        where: {
+          workspaceId: workspace.id,
+          editor: fromUser.id,
+        },
+        returning: true,
+      }
+    );
+    if (updatedRows.length === 0) {
+      return new Ok(0);
+    }
+
+    const transferred = updatedRows.map(
+      (row) => new this(this.model, row.get())
+    );
+
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        fromUserId: fromUser.sId,
+        toUserId: toUser.sId,
+        triggerIds: transferred.map((trigger) => trigger.sId),
+      },
+      "Transferred trigger editorship between users"
+    );
+
+    const toUserAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      toUser.sId,
+      workspace.sId
+    );
+
+    // Only enabled triggers have a live schedule; disabling removes it, so re-upserting a
+    // disabled one would resurrect it.
+    const enabled = transferred.filter(
+      (trigger) => trigger.status === "enabled"
+    );
+    const results = await concurrentExecutor(
+      enabled,
+      async (trigger) => ({
+        sId: trigger.sId,
+        result: await trigger.upsertTemporalWorkflow(toUserAuth),
+      }),
+      { concurrency: 4 }
+    );
+
+    // The rows already point at the new editor, so a retry of the transfer finds nothing to do
+    // and will not fix these schedules: they keep firing as the old editor until someone pauses
+    // and unpauses them (`enable` re-upserts with the current editor's auth).
+    const staleTriggerIds = results
+      .filter(({ result }) => result.isErr())
+      .map(({ sId }) => sId);
+    if (staleTriggerIds.length > 0) {
+      return new Err(
+        new Error(
+          `Trigger editorship moved to ${toUser.sId}, but ${staleTriggerIds.length} schedule(s) ` +
+            `still run as ${fromUser.sId} and must be paused then unpaused to be re-registered: ` +
+            staleTriggerIds.join(", ")
+        )
+      );
+    }
+
+    return new Ok(transferred.length);
+  }
+
   static async deleteAllForUser(
     auth: Authenticator,
     user: UserResource | UserType
@@ -693,6 +880,40 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         },
       }
     );
+  }
+
+  /**
+   * @cc [owner:aloia,label:product] archive-disables-pod-triggers
+   * Archiving a Pod disables enabled triggers that target it. Triggers stay
+   * attached to the Pod (not detached to personal conversations) and are not
+   * re-enabled on unarchive. Already-disabled or system-status triggers are
+   * left unchanged.
+   */
+  static async disableAllForSpace(
+    auth: Authenticator,
+    spaceModelId: ModelId
+  ): Promise<Result<undefined, Error>> {
+    const triggers = await this.listBySpace(auth, spaceModelId);
+    const enabled = triggers.filter((trigger) => trigger.status === "enabled");
+    if (enabled.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const result = await this.disableMany(auth, enabled, "disabled");
+    if (result.isErr()) {
+      return result;
+    }
+
+    void emitBulkTriggerAuditLogEvents(auth, enabled, (trigger) => ({
+      action: "trigger.disabled",
+      metadata: {
+        trigger_type: trigger.kind,
+        agent_id: trigger.agentConfigurationId,
+        status: "disabled",
+      },
+    }));
+
+    return new Ok(undefined);
   }
 
   static async disableAllForWorkspace(
@@ -832,6 +1053,55 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
+  // A selection made in the automations table routinely mixes triggers the
+  // caller can and cannot touch, so the ones they may not move are reported
+  // as skipped rather than failed.
+  static async bulkChangeExecutionMode(
+    auth: Authenticator,
+    triggers: TriggerResource[],
+    executionMode: TriggerExecutionMode
+  ): Promise<BulkTriggerUpdateOutcome> {
+    const workspace = auth.getNonNullableWorkspace();
+    const canUseTargetMode = (await availableExecutionModes(auth)).includes(
+      executionMode
+    );
+    const updatable = canUseTargetMode
+      ? triggers.filter(
+          (trigger) => auth.isManager() || trigger.isEditedBy(auth)
+        )
+      : [];
+
+    const changed = updatable.filter(
+      (trigger) => trigger.executionMode !== executionMode
+    );
+    if (changed.length > 0) {
+      await this.model.update(
+        { executionMode },
+        {
+          where: {
+            id: { [Op.in]: changed.map((trigger) => trigger.id) },
+            workspaceId: workspace.id,
+          },
+        }
+      );
+
+      void emitBulkTriggerAuditLogEvents(auth, changed, (trigger) => ({
+        action: "trigger.pool_updated",
+        metadata: {
+          trigger_type: trigger.kind,
+          agent_id: trigger.agentConfigurationId,
+          previous_execution_mode: trigger.executionMode,
+          execution_mode: executionMode,
+        },
+      }));
+    }
+
+    return {
+      updatedCount: updatable.length,
+      skippedCount: triggers.length - updatable.length,
+    };
+  }
+
   async upsertTemporalWorkflow(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
@@ -863,54 +1133,51 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   async enable(auth: Authenticator): Promise<Result<undefined, Error>> {
-    if (this.status === "enabled") {
-      return new Ok(undefined);
-    }
-
     if (!this.canUpdateStatusTo(auth, "enabled")) {
       return new Err(
         new Error("You don't have permission to change this trigger's status")
       );
     }
 
-    const previousStatus = this.status;
+    // Even when the trigger is already enabled, reconcile its Temporal
+    // workflow below. A previous enable may have updated the status but failed
+    // before re-registering the schedule.
+    if (this.status !== "enabled") {
+      const previousStatus = this.status;
 
-    try {
       await this.update({ status: "enabled" });
-    } catch (error) {
-      return new Err(normalizeError(error));
+
+      logger.info(
+        {
+          triggerId: this.sId,
+          triggerName: this.name,
+          triggerKind: this.kind,
+          previousStatus,
+          newStatus: "enabled",
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentConfigurationId: this.agentConfigurationId,
+          editorId: this.editor,
+        },
+        "Trigger status changed: enabled"
+      );
+
+      void emitAuditLogEvent({
+        auth,
+        action: "trigger.enabled",
+        targets: [
+          buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+          buildAuditLogTarget("trigger", {
+            sId: this.sId,
+            name: this.name,
+          }),
+        ],
+        metadata: {
+          trigger_type: this.kind,
+          agent_id: this.agentConfigurationId,
+          status: "enabled",
+        },
+      });
     }
-
-    logger.info(
-      {
-        triggerId: this.sId,
-        triggerName: this.name,
-        triggerKind: this.kind,
-        previousStatus,
-        newStatus: "enabled",
-        workspaceId: auth.getNonNullableWorkspace().sId,
-        agentConfigurationId: this.agentConfigurationId,
-        editorId: this.editor,
-      },
-      "Trigger status changed: enabled"
-    );
-
-    void emitAuditLogEvent({
-      auth,
-      action: "trigger.enabled",
-      targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        buildAuditLogTarget("trigger", {
-          sId: this.sId,
-          name: this.name,
-        }),
-      ],
-      metadata: {
-        trigger_type: this.kind,
-        agent_id: this.agentConfigurationId,
-        status: "enabled",
-      },
-    });
 
     const editor = await UserResource.fetchByModelId(this.editor);
     if (!editor) {
@@ -1037,6 +1304,57 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
+  async setExecutionMode(
+    auth: Authenticator,
+    executionMode: TriggerExecutionMode
+  ): Promise<Result<undefined, Error>> {
+    const isEditor = auth.isManager() || this.isEditedBy(auth);
+    if (!isEditor) {
+      return new Err(
+        new TriggerExecutionModeForbiddenError(
+          "You don't have permission to change this trigger's pool."
+        )
+      );
+    }
+
+    if (this.executionMode === executionMode) {
+      return new Ok(undefined);
+    }
+
+    if (!(await availableExecutionModes(auth)).includes(executionMode)) {
+      return new Err(
+        new TriggerExecutionModeForbiddenError(
+          TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES[executionMode]
+        )
+      );
+    }
+
+    const previousExecutionMode = this.executionMode;
+
+    try {
+      await this.update({ executionMode });
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+
+    void emitAuditLogEvent({
+      auth,
+      action: "trigger.pool_updated",
+      targets: [
+        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
+        buildAuditLogTarget("trigger", { sId: this.sId, name: this.name }),
+      ],
+      metadata: {
+        trigger_type: this.kind,
+        agent_id: this.agentConfigurationId,
+        previous_execution_mode: previousExecutionMode,
+        execution_mode: executionMode,
+      },
+    });
+
+    return new Ok(undefined);
+  }
+
   /**
    * Updates webhook-specific settings (execution limit and mode).
    * Used by poke plugins for admin-level trigger configuration.
@@ -1044,7 +1362,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
    */
   async updateWebhookSettings(
     executionPerDayLimitOverride: number | null,
-    executionMode: TriggerExecutionMode | null
+    executionMode: TriggerExecutionMode
   ): Promise<Result<undefined, Error>> {
     if (this.kind !== "webhook") {
       return new Err(
@@ -1088,6 +1406,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
       origin: this.origin,
+      executionMode: this.executionMode,
       spaceId: this.spaceId
         ? SpaceResource.modelIdToSId({
             id: this.spaceId,
@@ -1102,7 +1421,6 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         kind: "webhook" as const,
         configuration: this.configuration as WebhookConfig,
         executionPerDayLimitOverride: this.executionPerDayLimitOverride,
-        executionMode: this.executionMode,
         webhookSourceViewId: this.webhookSourceViewId
           ? makeSId("webhook_sources_view", {
               id: this.webhookSourceViewId,

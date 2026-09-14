@@ -3,6 +3,8 @@
 // and option shape; these helpers only assume `{id}`-shaped options keyed by
 // a category.
 
+import { removeDiacritics } from "@app/lib/utils";
+
 export interface FilterOptionBase {
   id: string;
   name: string;
@@ -18,6 +20,18 @@ export interface FilterSummary<Category extends string> {
   category: Category;
   categoryLabel: string;
   options: Array<{ id: string; name: string }>;
+}
+
+export function filterOptionMatchesSearch(
+  optionName: string,
+  searchText: string
+): boolean {
+  const normalizedSearch = removeDiacritics(searchText.trim()).toLowerCase();
+
+  return (
+    !normalizedSearch ||
+    removeDiacritics(optionName).toLowerCase().includes(normalizedSearch)
+  );
 }
 
 export function getFilterSummaries<

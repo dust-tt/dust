@@ -6,6 +6,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -29,57 +30,105 @@ type OrchestratorResult = {
   skipped: SkippedUser[];
 };
 
+type Candidate = { podId: string; spaceId: string; userId: string };
+
+function toNudgePlan(candidate: Candidate): NudgePlan {
+  return {
+    podId: candidate.podId,
+    spaceId: candidate.spaceId,
+    targetUserId: candidate.userId,
+  };
+}
+
 /**
  * Determines which users are eligible for activation based on the workspace and user filter
  */
 export async function determineEligibleActivationUsers(
   auth: Authenticator,
-  { userId, asOf }: { userId: string | null; asOf?: Date }
+  {
+    userIds = null,
+    asOf,
+    overrideChecks = false,
+  }: {
+    userIds?: string[] | null;
+    asOf?: Date;
+    overrideChecks?: boolean;
+  } = {}
 ): Promise<Result<OrchestratorResult, Error>> {
-  const workspaceId = auth.getNonNullableWorkspace().sId;
+  if (auth.plan()?.isByok && !overrideChecks) {
+    return new Ok({ eligible: [], skipped: [] });
+  }
+
+  const workspace = auth.getNonNullableWorkspace();
+  const workspaceId = workspace.sId;
 
   const pods = await ActivationPodResource.listForWorkspace(auth);
+  if (pods.length === 0) {
+    return new Ok({ eligible: [], skipped: [] });
+  }
 
   const spaces = await SpaceResource.fetchByModelIds(
     auth,
     pods.map((p) => p.spaceId)
   );
   const spaceByModelId = new Map(spaces.map((space) => [space.id, space]));
-  const membersBySpaceModelId =
-    await SpaceResource.fetchDistinctActiveManualGroupMembersBySpaces(
-      auth,
-      spaces
-    );
 
-  // Build the candidate (pod, member) list and the deduped set of user sIds to
-  // evaluate in a single batch.
-  const candidates: { podId: string; spaceId: string; userId: string }[] = [];
-  const userIds = new Set<string>();
+  const owners = await UserResource.fetchByModelIds([
+    ...new Set(pods.map((pod) => pod.userId)),
+  ]);
+  if (owners.length === 0) {
+    return new Ok({ eligible: [], skipped: [] });
+  }
+  const ownerByModelId = new Map(owners.map((owner) => [owner.id, owner]));
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users: owners,
+    workspace,
+  });
+  const activeOwnerModelIds = new Set(
+    memberships.map((membership) => membership.userId)
+  );
+
+  const userIdFilter = userIds === null ? null : new Set(userIds);
+
+  // One candidate per live pod: its owner, and only if they still have an
+  // active workspace membership. Extra space-group members are not nudged.
+  const candidates: Candidate[] = [];
+  const candidateUserIds = new Set<string>();
   for (const pod of pods) {
-    const space = spaceByModelId.get(pod.spaceId);
-    if (!space) {
+    if (!activeOwnerModelIds.has(pod.userId)) {
       continue;
     }
-    const members = membersBySpaceModelId.get(pod.spaceId) ?? [];
-    for (const member of members) {
-      if (userId !== null && member.sId !== userId) {
-        continue;
-      }
-      candidates.push({
-        podId: pod.sId,
-        spaceId: space.sId,
-        userId: member.sId,
-      });
-      userIds.add(member.sId);
+    const space = spaceByModelId.get(pod.spaceId);
+    const owner = ownerByModelId.get(pod.userId);
+    if (!space || !owner) {
+      continue;
     }
+    if (userIdFilter !== null && !userIdFilter.has(owner.sId)) {
+      continue;
+    }
+    candidates.push({
+      podId: pod.sId,
+      spaceId: space.sId,
+      userId: owner.sId,
+    });
+    candidateUserIds.add(owner.sId);
   }
 
   if (candidates.length === 0) {
     return new Ok({ eligible: [], skipped: [] });
   }
 
+  // Poke override skips activation-status entirely: no need to evaluate.
+  if (overrideChecks) {
+    return new Ok({
+      eligible: candidates.map(toNudgePlan),
+      skipped: [],
+    });
+  }
+
   const activationResult = await evaluateActivation(auth, {
-    userIds: Array.from(userIds),
+    userIds: Array.from(candidateUserIds),
     asOf,
   });
   if (activationResult.isErr()) {
@@ -118,11 +167,7 @@ export async function determineEligibleActivationUsers(
       });
       continue;
     }
-    eligible.push({
-      podId: candidate.podId,
-      spaceId: candidate.spaceId,
-      targetUserId: candidate.userId,
-    });
+    eligible.push(toNudgePlan(candidate));
   }
 
   return new Ok({ eligible, skipped });
@@ -143,7 +188,7 @@ export async function runActivationForWorkspace(
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
   const planResult = await determineEligibleActivationUsers(auth, {
-    userId,
+    userIds: userId ? [userId] : null,
     asOf,
   });
   if (planResult.isErr()) {

@@ -67,7 +67,59 @@ export type TriggerConfigurationType = ScheduleConfig | WebhookConfig;
 
 export const DEFAULT_SINGLE_TRIGGER_EXECUTION_PER_DAY_LIMIT = 42;
 
-export type TriggerExecutionMode = "fair_use" | "programmatic";
+export const TRIGGER_EXECUTION_MODES = ["user_pool", "workspace_pool"] as const;
+export type TriggerExecutionMode = (typeof TRIGGER_EXECUTION_MODES)[number];
+
+export function isTriggerExecutionMode(
+  value: string
+): value is TriggerExecutionMode {
+  return (TRIGGER_EXECUTION_MODES as readonly string[]).includes(value);
+}
+
+export function availableTriggerExecutionModes({
+  isPlanCreditPriced,
+  hasLegacyTriggerLimits,
+  canUseWorkspacePool,
+  currentExecutionMode,
+}: {
+  isPlanCreditPriced: boolean;
+  hasLegacyTriggerLimits: boolean;
+  canUseWorkspacePool: boolean;
+  currentExecutionMode?: TriggerExecutionMode | null;
+}): TriggerExecutionMode[] {
+  const modes: TriggerExecutionMode[] = [];
+  if (
+    isPlanCreditPriced ||
+    hasLegacyTriggerLimits ||
+    currentExecutionMode === "user_pool"
+  ) {
+    modes.push("user_pool");
+  }
+  if (canUseWorkspacePool) {
+    modes.push("workspace_pool");
+  }
+  return modes;
+}
+
+export const NO_TRIGGER_EXECUTION_MODE_AVAILABLE_MESSAGE =
+  "Automations on your plan must be charged to the workspace credit pool, " +
+  "which you don't have permission to use. Ask a workspace admin for access.";
+
+export const TRIGGER_EXECUTION_MODE_UNAVAILABLE_MESSAGES: Record<
+  TriggerExecutionMode,
+  string
+> = {
+  user_pool:
+    "Your plan doesn't support charging automations to personal credits.",
+  workspace_pool:
+    "You don't have permission to charge automations to the workspace credit pool.",
+};
+
+export type BulkTriggerUpdateOutcome = {
+  updatedCount: number;
+  // Triggers the caller may not move (insufficient role or permission).
+  skippedCount: number;
+};
 
 export const TRIGGER_STATUSES = [
   "enabled",
@@ -132,6 +184,7 @@ export const TriggerSchema = z.discriminatedUnion("kind", [
     configuration: ScheduleConfigSchema,
     editor: z.number().optional(),
     status: TriggerStatusSchema.optional(),
+    executionMode: z.enum(TRIGGER_EXECUTION_MODES).optional(),
     spaceId: z.string().nullable().optional(),
   }),
   z.object({
@@ -144,6 +197,7 @@ export const TriggerSchema = z.discriminatedUnion("kind", [
     executionPerDayLimitOverride: z.number(),
     editor: z.number().optional(),
     status: TriggerStatusSchema.optional(),
+    executionMode: z.enum(TRIGGER_EXECUTION_MODES).optional(),
     spaceId: z.string().nullable().optional(),
   }),
 ]);
@@ -160,6 +214,7 @@ const TriggerBaseSchema = z.object({
   naturalLanguageDescription: z.string().nullable(),
   origin: z.enum(["user", "agent", "system"]),
   spaceId: z.string().nullable(),
+  executionMode: z.enum(TRIGGER_EXECUTION_MODES),
 });
 
 export const FullTriggerSchema = z.discriminatedUnion("kind", [
@@ -172,22 +227,24 @@ export const FullTriggerSchema = z.discriminatedUnion("kind", [
     configuration: WebhookConfigSchema,
     executionPerDayLimitOverride: z.number().nullable(),
     webhookSourceViewId: z.string().nullable(),
-    executionMode: z.enum(["fair_use", "programmatic"]).nullable(),
   }),
 ]);
 
 export type TriggerType = z.infer<typeof FullTriggerSchema>;
 
 export type TriggerKind = TriggerType["kind"];
+export const TRIGGER_KINDS = [
+  "schedule",
+  "webhook",
+] as const satisfies readonly TriggerKind[];
 
 export function isValidTriggerKind(kind: string): kind is TriggerKind {
-  return ["schedule", "webhook"].includes(kind);
+  return TRIGGER_KINDS.some((triggerKind) => triggerKind === kind);
 }
 
 export type WebhookTriggerType = TriggerType & {
   kind: "webhook";
   webhookSourceViewId: string;
-  executionMode: TriggerExecutionMode | null;
   executionPerDayLimitOverride: number | null;
 };
 

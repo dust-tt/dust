@@ -1,6 +1,6 @@
 import {
   getWorkspaceCreditPoolStatus,
-  isUserBlocked,
+  isUserBlockedByMetronome,
 } from "@app/lib/metronome/user_block";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -74,7 +74,7 @@ vi.mock("@app/logger/logger", () => ({
   default: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-describe("isUserBlocked", () => {
+describe("isUserBlockedByMetronome", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // `clearAllMocks` resets call history but not implementations, so reset the
@@ -83,42 +83,48 @@ describe("isUserBlocked", () => {
     redisValues.clear();
   });
 
-  it("returns 'user_cap_reached' from Redis when user is capped and pool is active", async () => {
-    redisValues.set("metronome:user_credit_state:ws_test:u_test", "capped");
-    redisValues.set("metronome:pool_credit_status:ws_test", "active");
-
-    const blocked = await isUserBlocked(workspace, user);
-
-    expect(blocked).toBe("user_cap_reached");
-    expect(mockFetchWorkspaceById).not.toHaveBeenCalled();
-    expect(mockFetchUserById).not.toHaveBeenCalled();
-  });
-
   it("returns 'no_seat' when the user has no seat in the workspace", async () => {
     mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue({
       seatType: "none",
     });
 
-    const blocked = await isUserBlocked(workspace, user);
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+    });
 
     expect(blocked).toBe("no_seat");
     expect(mockRunOnRedis).not.toHaveBeenCalled();
   });
 
-  it("returns 'user_cap_reached' when the user is capped, even if the pool is also depleted", async () => {
-    redisValues.set("metronome:user_credit_state:ws_test:u_test", "capped");
-    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
+  it("userCapBlocked=true blocks even when the credit state is on_pool and pool is active", async () => {
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
+    redisValues.set("metronome:pool_credit_status:ws_test", "active");
 
-    const blocked = await isUserBlocked(workspace, user);
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: true,
+    });
 
     expect(blocked).toBe("user_cap_reached");
   });
 
-  it("returns null when user is on_pool and pool is active", async () => {
+  it("userCapBlocked=true wins even when the pool is also depleted", async () => {
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
+    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
+
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: true,
+    });
+
+    expect(blocked).toBe("user_cap_reached");
+  });
+
+  it("returns null when user is on_pool, pool is active and cap is not blocked", async () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
     redisValues.set("metronome:pool_credit_status:ws_test", "active");
 
-    const blocked = await isUserBlocked(workspace, user);
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+    });
 
     expect(blocked).toBeNull();
   });
@@ -127,19 +133,9 @@ describe("isUserBlocked", () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "user_seat");
     redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
-    const blocked = await isUserBlocked(workspace, user);
-
-    expect(blocked).toBeNull();
-  });
-
-  it("does not block a 'user_seat_low_balance' user when the pool is depleted", async () => {
-    redisValues.set(
-      "metronome:user_credit_state:ws_test:u_test",
-      "user_seat_low_balance"
-    );
-    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
-
-    const blocked = await isUserBlocked(workspace, user);
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+    });
 
     expect(blocked).toBeNull();
   });
@@ -148,31 +144,45 @@ describe("isUserBlocked", () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
     redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
-    const blocked = await isUserBlocked(workspace, user);
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+    });
 
     expect(blocked).toBe("credits_exhausted");
   });
 
-  it("does not block a warned 'on_pool_low_balance' user when pool is active", async () => {
-    redisValues.set(
-      "metronome:user_credit_state:ws_test:u_test",
-      "on_pool_low_balance"
-    );
-    redisValues.set("metronome:pool_credit_status:ws_test", "active");
+  it("does not block a 'free' seat when the pool is depleted, even if its credit state reads 'on_pool'", async () => {
+    // A free seat spends from its own lifetime allowance, never the pool. Its
+    // credit state can read 'on_pool' (stale, or normalized from a webhook
+    // state), which fails the isSpendingFromPersonalSeat carve-out — the
+    // seat-type carve-out must still unblock it so a credit regrant takes effect
+    // without waiting on the webhook.
+    mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue({
+      seatType: "free",
+    });
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
+    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
-    const blocked = await isUserBlocked(workspace, user);
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+    });
 
     expect(blocked).toBeNull();
   });
 
-  it("blocks an 'on_pool_low_balance' user when pool is depleted", async () => {
-    redisValues.set(
-      "metronome:user_credit_state:ws_test:u_test",
-      "on_pool_low_balance"
-    );
+  it("still blocks a non-free pool seat when the pool is depleted (carve-out is scoped to free seats)", async () => {
+    // Contrast to the free-seat carve-out: a pool seat genuinely draws from the
+    // workspace pool, so pool depletion must still block it even when the cap is
+    // clear.
+    mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue({
+      seatType: "pro",
+    });
+    redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
     redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
-    const blocked = await isUserBlocked(workspace, user);
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+    });
 
     expect(blocked).toBe("credits_exhausted");
   });
@@ -185,7 +195,9 @@ describe("isUserBlocked", () => {
     redisValues.set("metronome:user_credit_state:ws_test:u_test", "on_pool");
     redisValues.set("metronome:pool_credit_status:ws_test", poolState);
 
-    const blocked = await isUserBlocked(workspace, user);
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+    });
 
     expect(blocked).toBeNull();
   });
@@ -195,22 +207,50 @@ describe("isUserBlocked", () => {
       "metronome:user_credit_state:ws_test:u_test",
       "not_a_valid_state"
     );
-    redisValues.set("metronome:pool_credit_status:ws_test", "active");
+    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
 
     mockFetchUserById.mockResolvedValue({ sId: "u_test", id: 7 });
     mockFetchWorkspaceById.mockResolvedValue({
       sId: "ws_test",
       id: 42,
-      poolCreditState: "active",
+      poolCreditState: "depleted",
     });
     mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue({
-      creditState: "capped",
+      creditState: "user_seat",
     });
 
-    const blocked = await isUserBlocked(workspace, user);
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+    });
 
-    expect(blocked).toBe("user_cap_reached");
+    // DB resolved the state to `user_seat`, so pool depletion does not block.
+    expect(blocked).toBeNull();
     expect(mockFetchUserById).toHaveBeenCalled();
+  });
+
+  it("normalizes a legacy 'user_seat_low_balance' DB credit state to user_seat on fallback", async () => {
+    // No cached user credit state → DB fallback; the legacy value normalizes to
+    // `user_seat`, so the depleted pool does not block.
+    redisValues.set("metronome:pool_credit_status:ws_test", "depleted");
+
+    mockFetchUserById.mockResolvedValue({ sId: "u_test", id: 7 });
+    mockFetchWorkspaceById.mockResolvedValue({
+      sId: "ws_test",
+      id: 42,
+      poolCreditState: "depleted",
+    });
+    mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue({
+      creditState: "user_seat_low_balance",
+    });
+
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+    });
+
+    expect(blocked).toBeNull();
+    expect(redisValues.get("metronome:user_credit_state:ws_test:u_test")).toBe(
+      "user_seat"
+    );
   });
 
   it("defaults to 'on_pool' and returns null when user is not found in DB fallback", async () => {
@@ -221,7 +261,9 @@ describe("isUserBlocked", () => {
       poolCreditState: "active",
     });
 
-    const blocked = await isUserBlocked(workspace, user);
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+    });
 
     expect(blocked).toBeNull();
     expect(redisValues.get("metronome:pool_credit_status:ws_test")).toBe(
@@ -238,7 +280,9 @@ describe("isUserBlocked", () => {
     });
     mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue(null);
 
-    const blocked = await isUserBlocked(workspace, user);
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+    });
 
     expect(blocked).toBeNull();
   });
@@ -247,21 +291,23 @@ describe("isUserBlocked", () => {
     mockFetchWorkspaceById.mockResolvedValue({
       sId: "ws_test",
       id: 42,
-      poolCreditState: "active",
+      poolCreditState: "depleted",
     });
     mockFetchUserById.mockResolvedValue({ sId: "u_test", id: 7 });
     mockGetActiveMembershipOfUserInWorkspace.mockResolvedValue({
-      creditState: "capped",
+      creditState: "on_pool",
     });
 
-    const blocked = await isUserBlocked(workspace, user);
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+    });
 
-    expect(blocked).toBe("user_cap_reached");
+    expect(blocked).toBe("credits_exhausted");
     expect(redisValues.get("metronome:user_credit_state:ws_test:u_test")).toBe(
-      "capped"
+      "on_pool"
     );
     expect(redisValues.get("metronome:pool_credit_status:ws_test")).toBe(
-      "active"
+      "depleted"
     );
   });
 
@@ -274,7 +320,9 @@ describe("isUserBlocked", () => {
       poolCreditState: "depleted",
     });
 
-    const blocked = await isUserBlocked(workspace, user);
+    const blocked = await isUserBlockedByMetronome(workspace, user, {
+      userCapBlocked: false,
+    });
 
     expect(blocked).toBe("credits_exhausted");
     expect(redisValues.get("metronome:user_credit_state:ws_test:u_test")).toBe(

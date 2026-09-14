@@ -4,12 +4,14 @@ import { error, log } from "firebase-functions/logger";
 import { CONFIG, getProjectIds } from "./config.js";
 
 export interface Secrets {
+  cell00002Secret: string;
   euSecret: string;
   slackSigningSecret: string;
   usSecret: string;
   webhookSecret: string;
   microsoftBotId?: string;
   notionSigningSecret: string;
+  shopifyClientSecret: string;
 }
 
 export class SecretManager {
@@ -43,10 +45,12 @@ export class SecretManager {
         source: "environment",
       });
       return {
+        cell00002Secret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
         euSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
         microsoftBotId: CONFIG.MICROSOFT_BOT_ID_SECRET,
         slackSigningSecret: CONFIG.SLACK_SIGNING_SECRET ?? "",
         notionSigningSecret: CONFIG.NOTION_SIGNING_SECRET ?? "",
+        shopifyClientSecret: CONFIG.OAUTH_SHOPIFY_CLIENT_SECRET ?? "",
         usSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
         webhookSecret: CONFIG.DUST_CONNECTORS_WEBHOOKS_SECRET,
       };
@@ -61,10 +65,19 @@ export class SecretManager {
   }
 
   private async loadFromSecretManager(): Promise<Secrets> {
-    const { GCP_GLOBAL_PROJECT_ID, GCP_US_PROJECT_ID, GCP_EU_PROJECT_ID } =
-      getProjectIds();
+    const {
+      GCP_GLOBAL_PROJECT_ID,
+      GCP_US_PROJECT_ID,
+      GCP_EU_PROJECT_ID,
+      GCP_CELL_00002_PROJECT_ID,
+    } = getProjectIds();
 
-    if (!GCP_GLOBAL_PROJECT_ID || !GCP_US_PROJECT_ID || !GCP_EU_PROJECT_ID) {
+    if (
+      !GCP_GLOBAL_PROJECT_ID ||
+      !GCP_US_PROJECT_ID ||
+      !GCP_EU_PROJECT_ID ||
+      !GCP_CELL_00002_PROJECT_ID
+    ) {
       throw new Error("Missing required project environment variables");
     }
 
@@ -73,9 +86,11 @@ export class SecretManager {
         webhookSecretResponse,
         usSecretResponse,
         euSecretResponse,
+        cell00002SecretResponse,
         slackSigningSecretResponse,
         microsoftBotIdResponse,
         notionSigningSecretResponse,
+        shopifyClientSecretResponse,
       ] = await Promise.all([
         this.client.accessSecretVersion({
           name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.SECRET_NAME}/versions/latest`,
@@ -87,6 +102,9 @@ export class SecretManager {
           name: `projects/${GCP_EU_PROJECT_ID}/secrets/${CONFIG.SECRET_NAME}/versions/latest`,
         }),
         this.client.accessSecretVersion({
+          name: `projects/${GCP_CELL_00002_PROJECT_ID}/secrets/${CONFIG.SECRET_NAME}/versions/latest`,
+        }),
+        this.client.accessSecretVersion({
           name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.SLACK_SIGNING_SECRET_NAME}/versions/latest`,
         }),
         this.client.accessSecretVersion({
@@ -94,6 +112,9 @@ export class SecretManager {
         }),
         this.client.accessSecretVersion({
           name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.NOTION_SIGNING_SECRET_NAME}/versions/latest`,
+        }),
+        this.client.accessSecretVersion({
+          name: `projects/${GCP_GLOBAL_PROJECT_ID}/secrets/${CONFIG.OAUTH_SHOPIFY_CLIENT_SECRET_NAME}/versions/latest`,
         }),
       ]);
 
@@ -103,10 +124,14 @@ export class SecretManager {
           microsoftBotIdResponse[0].payload?.data?.toString() || "",
         usSecret: usSecretResponse[0].payload?.data?.toString() || "",
         euSecret: euSecretResponse[0].payload?.data?.toString() || "",
+        cell00002Secret:
+          cell00002SecretResponse[0].payload?.data?.toString() || "",
         slackSigningSecret:
           slackSigningSecretResponse[0].payload?.data?.toString() || "",
         notionSigningSecret:
           notionSigningSecretResponse[0].payload?.data?.toString() || "",
+        shopifyClientSecret:
+          shopifyClientSecretResponse[0].payload?.data?.toString() || "",
       };
     } catch (e) {
       error("Failed to load secrets from Secret Manager", {

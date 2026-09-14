@@ -3,25 +3,25 @@ import {
   Avatar,
   Button,
   ButtonGroup,
-  EmojiPicker,
+  ChevronRight,
+  Clipboard,
+  DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Edit04,
+  EmojiPicker,
+  FaceSmile,
+  Link01,
+  Maximize01,
+  Minimize01,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  ChevronRight,
-  Clipboard,
-  FaceSmile,
-  Minimize01,
-  Maximize01,
   ThumbsDown,
   ThumbsUp,
-  Link01,
-  DotsHorizontal,
-  Edit04,
   Trash01,
   cn,
 } from "@dust-tt/sparkle";
@@ -1071,7 +1071,7 @@ export const NewConversationPendingValidationBlock = React.forwardRef<
           </messageGroupTypeContext.Provider>
         </div>
         {!hideActions && (
-          <div className="flex items-center gap-2 p-2 pl-3 rounded-b-2xl border-t-2 border-border border-highlight-100 bg-highlight-50">
+          <div className="flex items-center gap-2 p-2 pl-3 rounded-b-2xl border-t-2 border border-highlight-100 bg-highlight-50">
             <span className="flex-1 text-sm text-foreground">
               This agent has access to sensitive data. Do you want to post this
               message in this shared conversation?

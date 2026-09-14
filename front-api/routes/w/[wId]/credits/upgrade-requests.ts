@@ -49,6 +49,11 @@ function upgradeRequestErrorToApiError(
         status_code: 403,
         api_error: { type: "plan_limit_error", message: error.message },
       };
+    case "reason_required":
+      return {
+        status_code: 400,
+        api_error: { type: "invalid_request_error", message: error.message },
+      };
     case "user_not_found":
       return {
         status_code: 404,
@@ -66,6 +71,11 @@ function upgradeRequestErrorToApiError(
       return {
         status_code: 409,
         api_error: { type: "invalid_request_error", message: error.message },
+      };
+    case "internal_error":
+      return {
+        status_code: 500,
+        api_error: { type: "internal_server_error", message: error.message },
       };
     default:
       assertNever(error.type);

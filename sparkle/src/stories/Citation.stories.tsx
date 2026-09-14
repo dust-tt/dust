@@ -1,5 +1,6 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { fn } from "storybook/test";
 
 import {
   Button,
@@ -11,10 +12,8 @@ import {
   CitationImage,
   CitationIndex,
   CitationTitle,
-  File02,
-  LinkExternal01,
   FaviconIcon,
-  Globe01,
+  LinkExternal01,
   Icon,
   NotionLogo,
   Popover,
@@ -46,58 +45,46 @@ const meta = {
 
 export default meta;
 
-export const CitationsExample = () => (
-  <div className="flex flex-col gap-8">
-    Example of attachement
+/**
+ * A responsive grid of attachments from different source types: a Slack
+ * thread (with a tooltip echoing its description), a table file, web pages
+ * identified by their favicon, and an image attachment.
+ * @summary Attachments grid across source types.
+ */
+export const AttachmentsGrid: StoryObj = {
+  render: () => (
     <CitationGrid>
       <Citation
-        onClick={() => alert("Card clicked")}
+        onClick={fn()}
         className="w-48"
-        tooltip="@ed at 16:32 This is the latest ve"
-      >
-        <CitationIcons>
-          <Icon visual={SlackLogo} size="sm" />
-        </CitationIcons>
-        <CitationTitle>Citation w/ tooltip</CitationTitle>
-        <CitationDescription>
-          @ed at 16:32 This is the latest ve
-        </CitationDescription>
-      </Citation>
-    </CitationGrid>
-    <CitationGrid>
-      <Citation
-        onClick={() => alert("Card clicked")}
-        className="w-48"
-        tooltip="@ed at 16:32 This is the latest ve"
+        tooltip="@ed at 16:32 — Here is the latest version of the launch plan"
       >
         <CitationIcons>
           <Icon visual={SlackLogo} size="sm" />
         </CitationIcons>
         <CitationTitle>Slack thread</CitationTitle>
         <CitationDescription>
-          @ed at 16:32 This is the latest ve
+          @ed at 16:32 — Here is the latest version of the launch plan
         </CitationDescription>
       </Citation>
-      <Citation onClick={() => alert("Card clicked")} className="w-48">
+      <Citation onClick={fn()} className="w-48">
         <CitationIcons>
           <Icon visual={Table} size="sm" />
         </CitationIcons>
-        <CitationTitle>extract_financa.csv</CitationTitle>
+        <CitationTitle>extract_finance.csv</CitationTitle>
       </Citation>
-      <Citation onClick={() => alert("Card clicked")} className="w-48">
+      <Citation onClick={fn()} className="w-48">
         <CitationIcons>
           <FaviconIcon websiteUrl="https://www.linkedin.com" size="sm" />
         </CitationIcons>
-        <CitationTitle>Linkedin, Edouard Wautier</CitationTitle>
+        <CitationTitle>LinkedIn, Edouard Wautier</CitationTitle>
       </Citation>
-
-      <Citation onClick={() => alert("Card clicked")} className="w-48">
+      <Citation onClick={fn()} className="w-48">
         <CitationIcons>
           <FaviconIcon websiteUrl="https://github.com" size="sm" />
         </CitationIcons>
-        <CitationTitle>GitHub Repository</CitationTitle>
+        <CitationTitle>GitHub repository</CitationTitle>
       </Citation>
-
       <Citation className="w-48">
         <CitationImage
           imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
@@ -105,131 +92,159 @@ export const CitationsExample = () => (
           downloadUrl="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
         />
       </Citation>
-
-      <Citation className="w-48">
-        <CitationImage
-          imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
-          title="screenshot.png (loading)"
-          isLoading={true}
-        />
-      </Citation>
     </CitationGrid>
-    Example of dissmissable attachements
+  ),
+};
+
+/**
+ * Attachments the user can remove: pass a **CitationClose** in the `action`
+ * slot (or `onClose` on **CitationImage**). Used for pending attachments in
+ * the conversation input.
+ * @summary Dismissable attachments with a close action.
+ */
+export const DismissableAttachments: StoryObj = {
+  render: () => (
     <CitationGrid>
       <Citation
-        onClick={() => alert("Card clicked")}
+        onClick={fn()}
         className="w-48"
-        action={<CitationClose onClick={() => alert("Close clicked")} />}
+        action={<CitationClose onClick={fn()} />}
       >
         <CitationIcons>
           <Icon visual={SlackLogo} size="sm" />
         </CitationIcons>
         <CitationTitle>Slack thread</CitationTitle>
         <CitationDescription>
-          @ed at 16:32 This is the latest ve
+          @ed at 16:32 — Here is the latest version of the launch plan
         </CitationDescription>
       </Citation>
       <Citation
-        onClick={() => alert("Card clicked")}
+        onClick={fn()}
         className="w-48"
-        action={<CitationClose onClick={() => alert("Close clicked")} />}
+        action={<CitationClose onClick={fn()} />}
       >
         <CitationIcons>
           <Icon visual={Table} size="sm" />
         </CitationIcons>
-        <CitationTitle>extract_financa.csv</CitationTitle>
+        <CitationTitle>extract_finance.csv</CitationTitle>
       </Citation>
-      <Citation
-        onClick={() => alert("Card clicked")}
-        className="w-48"
-        action={<CitationClose onClick={() => alert("Close clicked")} />}
-      >
-        <CitationIcons>
-          <Icon visual={Globe01} size="sm" />
-        </CitationIcons>
-        <CitationTitle>Linkedin, Edouard Wautier</CitationTitle>
-      </Citation>
-
       <Citation className="w-48">
         <CitationImage
           imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
           title="screenshot.png"
-          onClose={() => alert("Close clicked")}
+          onClose={fn()}
         />
       </Citation>
     </CitationGrid>
-    Example of citations in markdown
-    <div>
-      <Popover
-        trigger={<CitationIndex>1</CitationIndex>}
-        content={
-          <>
-            <CitationIcons>
-              <CitationIndex>1</CitationIndex>
-              <Icon visual={SlackLogo} size="sm" />
-            </CitationIcons>
-            <CitationTitle>Hello</CitationTitle>
-            <Button
-              variant={"ghost"}
-              icon={LinkExternal01}
-              className="absolute right-2 top-2"
-            />
-          </>
-        }
-      />
-    </div>
-    Example of dynamic grid
+  ),
+};
+
+/**
+ * A numbered inline reference as rendered in markdown answers: a
+ * **CitationIndex** acts as the **Popover** trigger, and the popover repeats
+ * the index next to the source icon, title, and an external-link button.
+ * @summary Numbered CitationIndex expanding in a Popover.
+ */
+export const NumberedCitationInPopover: StoryObj = {
+  render: () => (
+    <Popover
+      trigger={<CitationIndex>1</CitationIndex>}
+      content={
+        <>
+          <CitationIcons>
+            <CitationIndex>1</CitationIndex>
+            <Icon visual={SlackLogo} size="sm" />
+          </CitationIcons>
+          <CitationTitle>Slack thread: #help-onboarding</CitationTitle>
+          <Button
+            variant="ghost"
+            icon={LinkExternal01}
+            className="absolute right-2 top-2"
+          />
+        </>
+      }
+    />
+  ),
+};
+
+/**
+ * Numbered source citations laid out with the default responsive
+ * **CitationGrid**, matching the references block under an agent answer.
+ * @summary Numbered references in the responsive grid.
+ */
+export const NumberedReferencesGrid: StoryObj = {
+  render: () => (
     <CitationGrid>
-      <Citation onClick={() => alert("Card clicked")}>
+      <Citation onClick={fn()}>
         <CitationIcons>
           <CitationIndex>1</CitationIndex>
           <Icon visual={SlackLogo} size="sm" />
         </CitationIcons>
-        <CitationTitle>Hello</CitationTitle>
+        <CitationTitle>Slack thread: #help-onboarding</CitationTitle>
       </Citation>
-      <Citation onClick={() => alert("Close action clicked")}>
+      <Citation onClick={fn()}>
         <CitationIcons>
           <CitationIndex>2</CitationIndex>
           <Icon visual={NotionLogo} size="sm" />
         </CitationIcons>
-        <CitationTitle>Hello</CitationTitle>
+        <CitationTitle>Notion: Team handbook</CitationTitle>
       </Citation>
-      <Citation onClick={() => alert("Close action clicked")}>
+      <Citation onClick={fn()}>
         <CitationIcons>
           <CitationIndex>3</CitationIndex>
-          <Icon visual={File02} size="sm" />
-        </CitationIcons>
-        <CitationTitle>Hello</CitationTitle>
-      </Citation>
-      <Citation onClick={() => alert("Close action clicked")}>
-        <CitationIcons>
-          <CitationIndex>4</CitationIndex>
           <FaviconIcon websiteUrl="https://stackoverflow.com" size="sm" />
         </CitationIcons>
-        <CitationTitle>Stack Overflow Answer</CitationTitle>
+        <CitationTitle>Stack Overflow answer</CitationTitle>
       </Citation>
-      <Citation onClick={() => alert("Close action clicked")}>
+      <Citation onClick={fn()}>
         <CitationIcons>
-          <CitationIndex>5</CitationIndex>
+          <CitationIndex>4</CitationIndex>
           <FaviconIcon websiteUrl="https://www.wikipedia.org" size="sm" />
         </CitationIcons>
-        <CitationTitle>Wikipedia Article</CitationTitle>
+        <CitationTitle>Wikipedia article</CitationTitle>
       </Citation>
     </CitationGrid>
-    Example of interactive content (list variant)
+  ),
+};
+
+/**
+ * The `list` variant of **CitationGrid** stacks citations vertically — used
+ * for interactive-content references (visualizations, generated files)
+ * rather than document sources.
+ * @summary Vertical list variant for interactive content.
+ */
+export const InteractiveContentList: StoryObj = {
+  render: () => (
     <CitationGrid variant="list">
-      <Citation onClick={() => alert("Interactive content clicked")}>
+      <Citation onClick={fn()}>
         <CitationTitle>Analytics Dashboard</CitationTitle>
         <CitationDescription>Visualization</CitationDescription>
       </Citation>
-      <Citation onClick={() => alert("Interactive content clicked")}>
+      <Citation onClick={fn()}>
         <CitationTitle>Customer Data Analysis</CitationTitle>
         <CitationDescription>Interactive Content</CitationDescription>
       </Citation>
-      <Citation onClick={() => alert("Interactive content clicked")}>
+      <Citation onClick={fn()}>
         <CitationTitle>Sales Report Generator</CitationTitle>
         <CitationDescription>Visualization</CitationDescription>
       </Citation>
     </CitationGrid>
-  </div>
-);
+  ),
+};
+
+/**
+ * An image attachment still uploading: `isLoading` on **CitationImage**
+ * overlays a spinner until the image source is ready.
+ * @summary Image citation in its loading state.
+ */
+export const ImageLoadingState: StoryObj = {
+  render: () => (
+    <Citation className="w-48">
+      <CitationImage
+        imgSrc="https://dust.tt/static/droidavatar/Droid_Lime_3.jpg"
+        title="screenshot.png"
+        isLoading={true}
+      />
+    </Citation>
+  ),
+};

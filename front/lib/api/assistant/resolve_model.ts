@@ -1,6 +1,8 @@
+import { getDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
 import { selectEnabledModel } from "@app/lib/api/assistant/models";
 import type { Authenticator } from "@app/lib/auth";
+import { getAgentAllowedTierNamesOverride } from "@app/lib/model_tiers/agent_tier_overrides";
 import {
   getEnabledModelsForAuth,
   resolveStreamModel,
@@ -93,8 +95,16 @@ export async function resolveModel(
   // ordered candidate pool and pick the first one available to the workspace.
   if (enabled && isModelStreamId(enabled.modelId)) {
     const streamId = enabled.modelId;
-    const models = await getEnabledModelsForAuth(auth);
-    const resolution = resolveStreamModel(models, streamId);
+    const models = await getEnabledModelsForAuth(auth, {
+      allowedTierNamesOverride: getAgentAllowedTierNamesOverride(
+        configuration.sId
+      ),
+    });
+    const resolution = resolveStreamModel(
+      models,
+      streamId,
+      getDegradedModelIds()
+    );
     enabled = resolution.model;
 
     if (resolution.fromPool) {

@@ -28,97 +28,116 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const tags = Array.from({ length: 50 }).map(
+const versionTags = Array.from({ length: 50 }).map(
   (_, i, a) => `v1.2.0-beta.${a.length - i}`
 );
 
-export const ScrollAreaExample: Story = {
+function VersionList() {
+  return (
+    <>
+      {versionTags.map((tag) => (
+        <React.Fragment key={tag}>
+          <div className="text-sm">{tag}</div>
+          <Separator className="my-2" />
+        </React.Fragment>
+      ))}
+    </>
+  );
+}
+
+interface AgentFixture {
+  name: string;
+  avatar: string;
+}
+
+const agents: AgentFixture[] = [
+  {
+    name: "@support",
+    avatar: "https://dust.tt/static/droidavatar/Droid_Teal_2.jpg",
+  },
+  {
+    name: "@sales",
+    avatar: "https://dust.tt/static/droidavatar/Droid_Lime_3.jpg",
+  },
+  {
+    name: "@legal",
+    avatar: "https://dust.tt/static/droidavatar/Droid_Yellow_2.jpg",
+  },
+  {
+    name: "@hr",
+    avatar: "https://dust.tt/static/droidavatar/Droid_Green_2.jpg",
+  },
+];
+
+/**
+ * A vertically scrolling list constrained by an explicit height, with a
+ * vertical **ScrollBar** child providing the custom scrollbar.
+ * @summary Vertical scroll container with custom scrollbar.
+ */
+export const Default: Story = {
   render: () => (
-    <div className="flex flex-row gap-6 bg-muted p-8">
-      <div className="h-[400px]">
-        <ScrollArea className="h-full w-[200px] border-b border-t border-border bg-white">
-          <h4 className="mb-4 text-sm font-medium leading-none">
-            Mini ScrollBar
-          </h4>
-          {tags.map((tag) => (
-            <React.Fragment key={tag}>
-              <div className="text-sm">{tag}</div>
-              <Separator className="my-2" />
-            </React.Fragment>
-          ))}
-          <ScrollBar orientation="vertical" />
-        </ScrollArea>
-      </div>
-      <div className="h-[400px]">
-        <ScrollArea className="h-full w-[200px] border-b border-t border-border bg-white">
-          <h4 className="mb-4 text-sm font-medium leading-none">
-            Classic ScrollBar
-          </h4>
-          {tags.map((tag) => (
-            <React.Fragment key={tag}>
-              <div className="text-sm">{tag}</div>
-              <Separator className="my-2" />
-            </React.Fragment>
-          ))}
-          <ScrollBar orientation="vertical" size="classic" />
-        </ScrollArea>
-      </div>
-      <div className="h-[400px]">
-        <ScrollArea className="h-full w-[200px] border-b border-t border-border bg-white">
-          <h4 className="mb-4 text-sm font-medium leading-none">
-            Minimal ScrollBar
-          </h4>
-          {tags.map((tag) => (
-            <React.Fragment key={tag}>
-              <div className="text-sm">{tag}</div>
-              <Separator className="my-2" />
-            </React.Fragment>
-          ))}
-          <ScrollBar orientation="vertical" size="minimal" />
-        </ScrollArea>
-      </div>
+    <div className="h-[400px]">
+      <ScrollArea className="h-full w-[200px] rounded-xl border border-border bg-background p-4">
+        <h4 className="mb-4 text-sm font-medium leading-none">Versions</h4>
+        <VersionList />
+        <ScrollBar orientation="vertical" />
+      </ScrollArea>
     </div>
   ),
 };
 
-export interface Artwork {
-  artist: string;
-  art: string;
-}
+/**
+ * Visual reference for design review: the three **ScrollBar** sizes (default
+ * mini, classic, minimal) side by side. Not a usage example.
+ * @summary Gallery of scrollbar sizes.
+ */
+export const ScrollbarSizes: Story = {
+  tags: ["!manifest"],
+  render: () => (
+    <div className="flex flex-row gap-6 bg-muted p-8">
+      {(
+        [
+          { size: undefined, title: "Mini ScrollBar" },
+          { size: "classic", title: "Classic ScrollBar" },
+          { size: "minimal", title: "Minimal ScrollBar" },
+        ] as const
+      ).map(({ size, title }) => (
+        <div key={title} className="h-[400px]">
+          <ScrollArea className="h-full w-[200px] border-b border-t border-border bg-background p-4">
+            <h4 className="mb-4 text-sm font-medium leading-none">{title}</h4>
+            <VersionList />
+            <ScrollBar orientation="vertical" size={size} />
+          </ScrollArea>
+        </div>
+      ))}
+    </div>
+  ),
+};
 
-const works: Artwork[] = [
-  {
-    artist: "Ornella Binni",
-    art: "https://images.unsplash.com/photo-1465869185982-5a1a7522cbcb?auto=format&fit=crop&w=300&q=80",
-  },
-  {
-    artist: "Tom Byrom",
-    art: "https://images.unsplash.com/photo-1548516173-3cabfa4607e9?auto=format&fit=crop&w=300&q=80",
-  },
-  {
-    artist: "Vladimir Malyavko",
-    art: "https://images.unsplash.com/photo-1494337480532-3725c85fd2ab?auto=format&fit=crop&w=300&q=80",
-  },
-];
-export const ScrollAreaHorizontalDemo: Story = {
+/**
+ * A horizontally scrolling row of cards: constrain the width, let the content
+ * lay out at its natural size (`w-max`), and add a horizontal **ScrollBar**.
+ * @summary Horizontal scroll with a horizontal scrollbar.
+ */
+export const HorizontalScroll: Story = {
   render: () => (
     <ScrollArea className="w-96 whitespace-nowrap rounded-md border">
       <div className="flex w-max space-x-4 p-4">
-        {works.map((artwork) => (
-          <figure key={artwork.artist} className="shrink-0">
+        {agents.map((agent) => (
+          <figure key={agent.name} className="shrink-0">
             <div className="overflow-hidden rounded-md">
               <img
-                src={artwork.art}
-                alt={`Photo by ${artwork.artist}`}
-                className="aspect-[3/4] h-fit w-fit object-cover"
-                width={300}
-                height={400}
+                src={agent.avatar}
+                alt={`Avatar of ${agent.name}`}
+                className="aspect-square object-cover"
+                width={200}
+                height={200}
               />
             </div>
             <figcaption className="pt-2 text-xs text-muted-foreground">
-              Photo by{" "}
+              Agent{" "}
               <span className="font-semibold text-foreground">
-                {artwork.artist}
+                {agent.name}
               </span>
             </figcaption>
           </figure>
@@ -129,60 +148,22 @@ export const ScrollAreaHorizontalDemo: Story = {
   ),
 };
 
-export const ScrollWithActiveState: Story = {
-  render: () => {
-    return (
-      <div className="flex flex-col gap-4">
-        <ScrollArea className="h-[200px] w-[350px] rounded-xl border bg-white">
-          <div>
-            {Array.from({ length: 20 }).map((_, i) => (
-              <div key={i} className="px-4 py-2 text-sm">
-                Item {i + 1}
-              </div>
-            ))}
-          </div>
-          <ScrollBar orientation="vertical" />
-        </ScrollArea>
-      </div>
-    );
-  },
-};
-
-export const ScrollAreaHideScrollbar: Story = {
+/**
+ * Pass `hideScrollBar` (and omit the **ScrollBar** child) for a region that
+ * scrolls without any visible scrollbar — e.g. a chip row scrolled by drag or
+ * by adjacent controls.
+ * @summary Scrollable region with no visible scrollbar.
+ */
+export const HiddenScrollbar: Story = {
   render: () => (
-    <div className="flex flex-row gap-6 bg-muted p-8">
-      <div className="h-[400px]">
-        <ScrollArea
-          className="h-full w-[200px] border-b border-t border-border bg-white"
-          hideScrollBar
-        >
-          <h4 className="mb-4 text-sm font-medium leading-none">
-            Mini ScrollBar
-          </h4>
-          {tags.map((tag) => (
-            <React.Fragment key={tag}>
-              <div className="text-sm">{tag}</div>
-              <Separator className="my-2" />
-            </React.Fragment>
-          ))}
-        </ScrollArea>
-      </div>
-      <div className="h-[400px]">
-        <ScrollArea
-          className="h-full w-[200px] border-b border-t border-border bg-white"
-          hideScrollBar
-        >
-          <h4 className="mb-4 text-sm font-medium leading-none">
-            Classic ScrollBar
-          </h4>
-          {tags.map((tag) => (
-            <React.Fragment key={tag}>
-              <div className="text-sm">{tag}</div>
-              <Separator className="my-2" />
-            </React.Fragment>
-          ))}
-        </ScrollArea>
-      </div>
+    <div className="h-[400px]">
+      <ScrollArea
+        className="h-full w-[200px] rounded-xl border border-border bg-background p-4"
+        hideScrollBar
+      >
+        <h4 className="mb-4 text-sm font-medium leading-none">Versions</h4>
+        <VersionList />
+      </ScrollArea>
     </div>
   ),
 };

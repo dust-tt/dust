@@ -7,10 +7,14 @@ import { visit } from "unist-util-visit";
 
 interface QuickReplyBlockProps {
   label: string;
+  /** Message sent when tapped; defaults to `label`. */
   message?: string;
+  /** Async send handler — the block shows a pending state until the promise settles, so return the actual send promise. */
   onSend?: (message: string) => Promise<void>;
+  /** Analytics callback invoked with the label when the reply is tapped. */
   onTrack?: (label: string) => void;
   disabled?: boolean;
+  /** Icon shown on the button (defaults to MessageChatSquare). */
   icon?: React.ComponentType;
   className?: string;
   buttonClassName?: string;
@@ -28,6 +32,13 @@ type QuickReplyContainerContextValue = {
 const QuickReplyContainerContext =
   React.createContext<QuickReplyContainerContextValue | null>(null);
 
+/**
+ * Groups QuickReplyBlock children, laying them out vertically and collapsing
+ * the whole group once one reply has been sent. Always wrap quick replies in
+ * this container rather than rendering loose buttons; remount via a React
+ * `key` to reset it.
+ * @summary Collapsing container for quick-reply suggestions.
+ */
 export function QuickReplyContainer({
   children,
   className,
@@ -55,6 +66,13 @@ export function QuickReplyContainer({
   );
 }
 
+/**
+ * A tappable suggested-reply button that sends a predefined message back to
+ * the agent (e.g. "Summarize this", "Tell me more") — shown after an agent
+ * response, with a pending state while the async `onSend` resolves. Rendered
+ * inside Markdown output via the `:quickReply` directive.
+ * @summary One-tap suggested reply for agent messages.
+ */
 export function QuickReplyBlock({
   label,
   message,
@@ -118,6 +136,11 @@ type QuickReplyDirectiveNode = Node & {
   };
 };
 
+/**
+ * Remark plugin turning `:quickReply[label]{message="..."}` text directives in
+ * Markdown content into `quickReply` elements handled by getQuickReplyPlugin.
+ * @summary Remark directive for quick replies.
+ */
 export function quickReplyDirective() {
   return (tree: Node) => {
     visit(tree, ["textDirective"], (node) => {
@@ -135,6 +158,12 @@ export function quickReplyDirective() {
   };
 }
 
+/**
+ * Builds the react-markdown component that renders `quickReply` elements as
+ * QuickReplyBlock, binding the send handler and disabling replies on messages
+ * that are not the last one.
+ * @summary Factory for the quickReply Markdown component.
+ */
 export function getQuickReplyPlugin(
   onSend: (message: string) => Promise<void>,
   isLastMessage: boolean,

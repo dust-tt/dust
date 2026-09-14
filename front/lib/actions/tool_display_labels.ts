@@ -1086,7 +1086,6 @@ function getDynamicToolDisplayLabels({
     case "agent_memory":
     case "agent_router":
     case "ashby":
-    case "databricks":
     case "exa_people_and_company":
     case "fathom":
     case "freshservice":
@@ -1096,10 +1095,8 @@ function getDynamicToolDisplayLabels({
     case "missing_action_catcher":
     case "monday":
     case "openai_usage":
-    case "primitive_types_debugger":
     case "productboard":
     case "common_utilities":
-    case "jit_testing":
     case "run_dust_app":
     case "salesloft":
     case "servicenow":

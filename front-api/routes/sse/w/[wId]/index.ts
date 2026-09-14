@@ -3,6 +3,7 @@ import { workspaceAuth } from "@front-api/middlewares/workspace_auth";
 
 import conversationEvents from "./assistant/conversations/[cId]/events";
 import messageEvents from "./assistant/conversations/[cId]/messages/[mId]/events";
+import frameFunctionInvocationEvents from "./frames/[frameId]/invocations/[invocationId]/events";
 import mcpRequests from "./mcp/requests";
 import sandboxFunctionInvocationEvents from "./sandbox-functions/[functionId]/invocations/[invocationId]/events";
 
@@ -16,6 +17,10 @@ app.use("*", workspaceAuth());
 
 app.route("/assistant/conversations/:cId/events", conversationEvents);
 app.route("/assistant/conversations/:cId/messages/:mId/events", messageEvents);
+app.route(
+  "/frames/:frameId/invocations/:invocationId/events",
+  frameFunctionInvocationEvents
+);
 app.route("/mcp/requests", mcpRequests);
 app.route(
   "/sandbox-functions/:functionId/invocations/:invocationId/events",

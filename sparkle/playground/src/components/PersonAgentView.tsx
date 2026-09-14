@@ -1,10 +1,8 @@
 import {
   Avatar,
-  Button,
   ConversationListItem,
   ListGroup,
   ListItemSection,
-  Edit04,
   ReplySection,
   SearchInput,
   Sheet,
@@ -25,6 +23,8 @@ interface PersonAgentViewProps {
   conversations: Conversation[];
   users: User[];
   agents: Agent[];
+  aboutOpen?: boolean;
+  onAboutOpenChange?: (open: boolean) => void;
   onConversationClick?: (conversation: Conversation) => void;
 }
 
@@ -112,10 +112,11 @@ export function PersonAgentView({
   collaborator,
   user,
   conversations,
+  aboutOpen = false,
+  onAboutOpenChange,
   onConversationClick,
 }: PersonAgentViewProps) {
   const [searchText, setSearchText] = useState("");
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   // Get collaborator name for placeholder
   const collaboratorName =
@@ -226,31 +227,6 @@ export function PersonAgentView({
             !hasHistory ? "h-full justify-center py-8" : "py-8"
           }`}
         >
-          <div className="flex w-full items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <Avatar {...collaboratorAvatar} size="sm" />
-              <h2 className="heading-2xl text-foreground">
-                {collaboratorName}
-              </h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                label="About"
-                size="sm"
-                variant="outline"
-                onClick={() => setIsSheetOpen(true)}
-              />
-              {collaborator.type === "agent" && (
-                <Button
-                  label={`Edit`}
-                  size="sm"
-                  variant="outline"
-                  icon={Edit04}
-                  onClick={() => setIsSheetOpen(true)}
-                />
-              )}
-            </div>
-          </div>
           <InputBar
             placeholder={`Start a conversation with ${collaboratorName}`}
           />
@@ -373,7 +349,7 @@ export function PersonAgentView({
           </div>
         </div>
       </div>
-      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+      <Sheet open={aboutOpen} onOpenChange={onAboutOpenChange}>
         <SheetContent>
           <SheetHeader>
             <SheetTitle>About {collaboratorName}</SheetTitle>

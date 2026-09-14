@@ -1,0 +1,12 @@
+PUT /front.agent_message_consumption_analytics_1/_mapping
+{
+  "properties": {
+    "user": {
+      "properties": {
+        "seat_type": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}

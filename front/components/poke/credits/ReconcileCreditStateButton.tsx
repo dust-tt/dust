@@ -7,6 +7,51 @@ import { useState } from "react";
 
 const RECONCILE_CREDIT_STATE_PLUGIN_ID = "reconcile-credit-state";
 
+interface ReconcileSummary {
+  corrected: boolean;
+  description: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function summarizeStateTransition(
+  report: Record<string, unknown>
+): ReconcileSummary {
+  const corrected = report.corrected === true;
+  const previousState = String(report.previousState ?? "?");
+  const newState = String(report.newState ?? "?");
+  return {
+    corrected,
+    description: corrected
+      ? `${previousState} → ${newState}`
+      : `State: ${newState}`,
+  };
+}
+
+// The plugin reports as untyped JSON, in one of two shapes: the pool /
+// programmatic / user targets return a flat previous/new state, while
+// `api_key` returns a `keys` array (key names aren't unique, so reconciling a
+// name covers every active key sharing it).
+function summarizeReconcileReport(value: unknown): ReconcileSummary {
+  if (!isRecord(value)) {
+    return { corrected: false, description: "State: ?" };
+  }
+  const { keys } = value;
+  if (!Array.isArray(keys)) {
+    return summarizeStateTransition(value);
+  }
+  const summaries = keys.filter(isRecord).map(summarizeStateTransition);
+  if (summaries.length === 0) {
+    return { corrected: false, description: "No active key with this name." };
+  }
+  return {
+    corrected: summaries.some((summary) => summary.corrected),
+    description: summaries.map((summary) => summary.description).join(" · "),
+  };
+}
+
 interface ReconcileCreditStateButtonProps {
   owner: WorkspaceType;
   target: ReconcileCreditStateTarget;
@@ -61,20 +106,16 @@ export function ReconcileCreditStateButton({
       return;
     }
 
-    const value =
-      result.value.display === "json" ? result.value.value : undefined;
-    const corrected = value?.corrected === true;
-    const previousState = String(value?.previousState ?? "?");
-    const newState = String(value?.newState ?? "?");
+    const { corrected, description } = summarizeReconcileReport(
+      result.value.display === "json" ? result.value.value : undefined
+    );
 
     sendNotification({
       type: "success",
       title: corrected
         ? `Reconciled ${target} state`
         : `${target} state already in sync`,
-      description: corrected
-        ? `${previousState} → ${newState}`
-        : `State: ${newState}`,
+      description,
     });
     onReconciled?.();
   };

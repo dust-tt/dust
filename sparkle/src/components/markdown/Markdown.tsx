@@ -1,7 +1,10 @@
 import { Chip } from "@sparkle/components/Chip";
 import { createBaseMarkdownComponents } from "@sparkle/components/markdown/createBaseMarkdownComponents";
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
-import { MarkdownStyleContext } from "@sparkle/components/markdown/MarkdownStyleContext";
+import {
+  MarkdownStyleContext,
+  type TaskListVariant,
+} from "@sparkle/components/markdown/MarkdownStyleContext";
 import { safeRehypeKatex } from "@sparkle/components/markdown/safeRehypeKatex";
 import {
   type StreamingState,
@@ -38,23 +41,45 @@ function showUnsupportedDirective() {
 }
 
 export interface MarkdownProps {
+  /** Raw Markdown to render; the component handles escaping and rendering, so avoid pre-formatting to HTML. */
   content: string;
+  /** Legacy boolean flag for streaming; prefer `streamingState`. */
   isStreaming?: boolean;
+  /** Streaming lifecycle: "streaming", "none", or "cancelled". Takes priority over `isStreaming`. */
   streamingState?: StreamingState;
+  /** Tailwind text-color class applied to rendered text (default "text-foreground"). */
   textColor?: string;
+  /** Whether this renders the last message of a conversation; exposed to blocks via MarkdownContentContext. */
   isLastMessage?: boolean;
   compactSpacing?: boolean; // When true, removes vertical padding from paragraph blocks for tighter spacing
+  /** Text-size class overriding the default typography, e.g. to match a surrounding context like an ActionCardBlock detail. */
   forcedTextSize?: string;
+  /** Extra react-markdown component overrides merged on top of the base renderer blocks. */
   additionalMarkdownComponents?: Components;
+  /** Extra remark plugins appended to the default set (directive, GFM, math). */
   additionalMarkdownPlugins?: PluggableList;
+  /** When true (default), blockquotes show a copy button. */
   canCopyQuotes?: boolean;
+  /** "checkbox" (default) renders GFM task items with checkboxes; "step" renders read-only circles, numbered inside ordered lists. */
+  taskListVariant?: TaskListVariant;
+  /** When true, streamed text is revealed with a smooth animation (see useAnimatedText). */
   enableAnimation?: boolean;
+  /** Duration of each streaming reveal animation. */
   animationDurationSeconds?: number;
+  /** Delimiter used to split text for the reveal animation ("" animates per character). */
   delimiter?: string;
   /** When true (default), skip re-rendering blocks whose AST position is unchanged. */
   optimizeForStreaming?: boolean;
 }
 
+/**
+ * Renders agent message bodies from a Markdown `content` string. Supports the
+ * full GitHub-flavored set — headings, lists, task lists, tables, blockquotes,
+ * links, footnotes — plus fenced code (via CodeBlock), LaTeX math, CSV/JSON
+ * pretty-printing, and Mermaid diagrams, with optional streaming-aware
+ * rendering and animated text reveal.
+ * @summary GitHub-flavored Markdown renderer for agent messages.
+ */
 export const Markdown: React.FC<MarkdownProps> = ({
   content,
   isStreaming = false,
@@ -66,6 +91,7 @@ export const Markdown: React.FC<MarkdownProps> = ({
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
   canCopyQuotes = true,
+  taskListVariant = "checkbox",
   enableAnimation = false,
   animationDurationSeconds = DEFAULT_ANIMATION_DURATION_SECONDS,
   delimiter = DEFAULT_DELIMITER,
@@ -98,8 +124,9 @@ export const Markdown: React.FC<MarkdownProps> = ({
       forcedTextSize,
       compactSpacing,
       canCopyQuotes,
+      taskListVariant,
     }),
-    [textColor, forcedTextSize, compactSpacing, canCopyQuotes]
+    [textColor, forcedTextSize, compactSpacing, canCopyQuotes, taskListVariant]
   );
 
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown

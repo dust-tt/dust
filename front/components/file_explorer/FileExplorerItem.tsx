@@ -8,7 +8,9 @@ import type {
   ContentNodeEntry,
   FileEntry,
   FileExplorerMenuAction,
+  FileExplorerViewMode,
   FileSystemTreeNode,
+  FramePackageEntry,
 } from "@app/components/file_explorer/types";
 import {
   getCategoryFromContentType,
@@ -39,7 +41,7 @@ import { intlFormatDistance } from "date-fns";
 import type React from "react";
 import { useState } from "react";
 
-export type ViewMode = "grid" | "list";
+export type ViewMode = FileExplorerViewMode;
 
 type FileExplorerItemProps = {
   /** Merged onto the interactive surface (e.g. grab cursor while dragging). */
@@ -285,6 +287,7 @@ function FileExplorerDropTargetWrapper({
 interface FileExplorerFolderCardProps {
   node: FileSystemTreeNode;
   viewMode: ViewMode;
+  onDownload: () => Promise<void>;
   onNavigate: (node: FileSystemTreeNode) => void;
   onMoveFileDrop?: (scopedFilePath: string, parentRelativePath: string) => void;
   extraMenuItems?: FileExplorerMenuAction[];
@@ -293,6 +296,7 @@ interface FileExplorerFolderCardProps {
 export function FileExplorerFolderCard({
   node,
   viewMode,
+  onDownload,
   onNavigate,
   onMoveFileDrop,
   extraMenuItems,
@@ -320,6 +324,7 @@ export function FileExplorerFolderCard({
           titleClassName="font-semibold"
           subtitle={subtitle}
           surfaceClassName={surfaceClassName}
+          onDownload={onDownload}
           onOpen={() => onNavigate(node)}
           extraMenuItems={extraMenuItems}
         />
@@ -442,6 +447,43 @@ export function FileExplorerFileCard({
     >
       {item}
     </FileExplorerDraggableWrapper>
+  );
+}
+
+interface FileExplorerFramePackageCardProps {
+  entry: FramePackageEntry;
+  /** When set, title shows path relative to this folder (search mode). */
+  searchFolderPath?: string;
+  viewMode: ViewMode;
+  onDownload: () => Promise<void>;
+  onOpen: (entry: FramePackageEntry) => void;
+  extraMenuItems?: FileExplorerMenuAction[];
+}
+
+export function FileExplorerFramePackageCard({
+  entry,
+  searchFolderPath,
+  viewMode,
+  onDownload,
+  onOpen,
+  extraMenuItems,
+}: FileExplorerFramePackageCardProps) {
+  const title =
+    searchFolderPath !== undefined
+      ? getFileExplorerSearchResultTitle(entry, searchFolderPath)
+      : entry.fileName;
+
+  return (
+    <FileExplorerItem
+      kind="icon"
+      visual={getFileTypeIcon(entry.contentType, entry.fileName)}
+      viewMode={viewMode}
+      title={title}
+      subtitle="Frame"
+      onDownload={onDownload}
+      onOpen={() => onOpen(entry)}
+      extraMenuItems={extraMenuItems}
+    />
   );
 }
 

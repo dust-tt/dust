@@ -8,13 +8,17 @@ vi.mock("@app/temporal/agent_loop/client", () => ({
 
 import type { LightMCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { resolveSandboxChildBlock } from "@app/lib/api/sandbox/sandbox_child_block";
+import {
+  pauseSandboxBashForBlockedChild,
+  resolveSandboxChildBlock,
+} from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -34,7 +38,7 @@ const AGENT_LOOP_ARGS = {
   userMessageOrigin: "api",
 } as const;
 
-describe("resolveSandboxChildBlock", () => {
+describe("sandbox child blocking", () => {
   let workspace: WorkspaceType;
   let auth: Authenticator;
   let conversation: ConversationType;
@@ -166,6 +170,82 @@ describe("resolveSandboxChildBlock", () => {
       agentLoopArgs: AGENT_LOOP_ARGS,
     });
   }
+
+  it("atomically blocks a running parent before pausing its sandbox", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "running",
+    });
+    const { sId: childId } = await createAction({
+      name: "child_tool",
+      status: "blocked_authentication_required",
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
+    expect(child).not.toBeNull();
+    const pauseSandbox = vi
+      .spyOn(ConversationSandboxAdapter, "pauseSandboxForApproval")
+      .mockResolvedValue(new Ok(undefined));
+
+    await pauseSandboxBashForBlockedChild(auth, child!, conversation);
+
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    expect(parent?.status).toBe("blocked_child_action_input_required");
+    expect(pauseSandbox).toHaveBeenCalledTimes(1);
+    pauseSandbox.mockRestore();
+  });
+
+  it("keeps an already-blocked parent blocked for a concurrent sibling", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "blocked_child_action_input_required",
+    });
+    const { sId: childId } = await createAction({
+      name: "child_tool",
+      status: "blocked_validation_required",
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
+    expect(child).not.toBeNull();
+    const pauseSandbox = vi
+      .spyOn(ConversationSandboxAdapter, "pauseSandboxForApproval")
+      .mockResolvedValue(new Ok(undefined));
+
+    await pauseSandboxBashForBlockedChild(auth, child!, conversation);
+
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    expect(parent?.status).toBe("blocked_child_action_input_required");
+    expect(pauseSandbox).toHaveBeenCalledTimes(1);
+    pauseSandbox.mockRestore();
+  });
+
+  it("does not rewind a completed parent when a stale child blocks", async () => {
+    const { sId: parentId } = await createAction({
+      name: "bash",
+      status: "succeeded",
+    });
+    const { sId: childId } = await createAction({
+      name: "child_tool",
+      status: "blocked_validation_required",
+      sandboxChildActionInfo: { parentActionId: parentId },
+    });
+    const child = await AgentMCPActionResource.fetchById(auth, childId);
+    expect(child).not.toBeNull();
+    const pauseSandbox = vi
+      .spyOn(ConversationSandboxAdapter, "pauseSandboxForApproval")
+      .mockResolvedValue(new Ok(undefined));
+
+    await expect(
+      pauseSandboxBashForBlockedChild(auth, child!, conversation)
+    ).rejects.toThrow(
+      "cannot transition from succeeded to blocked_child_action_input_required"
+    );
+
+    const parent = await AgentMCPActionResource.fetchById(auth, parentId);
+    expect(parent?.status).toBe("succeeded");
+    expect(pauseSandbox).not.toHaveBeenCalled();
+    pauseSandbox.mockRestore();
+  });
 
   it("relaunches the parent loop when it is blocked, has an execId, and no sibling is still blocked", async () => {
     const { sId: parentId } = await createAction({

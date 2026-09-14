@@ -13,19 +13,44 @@ export function readableStreamToReadable<T = unknown>(
   return Readable.fromWeb(webStream as NodeReadableStream<T>);
 }
 
+/**
+ * @cc [owner:davidebbo,label:error-handling] delayed-pipe-readable-cancellation
+ * Cancelling before the first `pipe` event must drain the readable and delay destruction until
+ * that event; cancelling after it must destroy the readable immediately.
+ */
+export function createReadableCancellationHandler(
+  readable: Readable
+): () => void {
+  let pipeReceived = false;
+  let cancelled = false;
+  const onPipe = () => {
+    pipeReceived = true;
+  };
+  readable.on("pipe", onPipe);
+
+  return () => {
+    if (cancelled) {
+      return;
+    }
+    cancelled = true;
+    readable.off("pipe", onPipe);
+    readable.on("error", () => {});
+
+    if (pipeReceived) {
+      readable.destroy();
+    } else {
+      // GCS connects its upstream pipeline asynchronously. Draining lets that setup finish; the
+      // listener then stops the transfer without triggering ERR_STREAM_UNABLE_TO_PIPE.
+      readable.once("pipe", () => readable.destroy());
+      readable.resume();
+    }
+  };
+}
+
 export function readableToReadableStream<T = unknown>(
   readable: Readable
 ): ReadableStream<T> {
-  // Track whether node:pipeline() has already piped into this readable (GCS calls pipeline()
-  // inside its HTTP onResponse callback). The 'pipe' event fires on the destination synchronously
-  // during pipeline() setup, after the isWritable() check passes. So destroying here is safe and
-  // causes pipeline() to call onComplete(ERR_STREAM_PREMATURE_CLOSE) instead
-  // of throwing ERR_STREAM_UNABLE_TO_PIPE as an uncaught exception.
-  let pipeReceived = false;
-  // Additive: does not replace any existing listeners on the stream.
-  readable.on("pipe", () => {
-    pipeReceived = true;
-  });
+  const cancelReadable = createReadableCancellationHandler(readable);
 
   return new ReadableStream<T>({
     start(controller) {
@@ -38,16 +63,7 @@ export function readableToReadableStream<T = unknown>(
       readable.removeAllListeners("end");
       readable.removeAllListeners("error");
       readable.removeAllListeners("pipe");
-      readable.on("error", () => {});
-
-      if (pipeReceived) {
-        readable.destroy();
-      } else {
-        // pipeline() hasn't piped into this stream yet. Wait for 'pipe', then destroy immediately.
-        // Stops the GCS transfer with zero bytes read past what was already in-flight.
-        readable.once("pipe", () => readable.destroy());
-        readable.resume();
-      }
+      cancelReadable();
     },
   });
 }

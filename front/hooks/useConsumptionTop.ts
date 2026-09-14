@@ -1,38 +1,50 @@
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
-import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
+import {
+  getConsumptionAnalyticsUrl,
+  useConsumptionQuery,
+} from "@app/hooks/useConsumptionQuery";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { ConsumptionTopBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { GetConsumptionTopAgentsResponse } from "@app/lib/api/analytics/consumption/top_agents";
 import type { GetConsumptionTopApiKeysResponse } from "@app/lib/api/analytics/consumption/top_api_keys";
 import type { GetConsumptionTopGroupsResponse } from "@app/lib/api/analytics/consumption/top_groups";
 import type { GetConsumptionTopModelsResponse } from "@app/lib/api/analytics/consumption/top_models";
+import type { GetConsumptionTopReasoningEffortsResponse } from "@app/lib/api/analytics/consumption/top_reasoning_efforts";
 import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
 import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/consumption/top_sources";
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
 import { emptyArray } from "@app/lib/swr/swr";
+import type {
+  ConsumptionScopeFilter,
+  ConsumptionTopSortOrder,
+} from "@app/types/api/analytics/consumption";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useMemo } from "react";
+
+export type ConsumptionTopDimension = ConsumptionDimension | "reasoning_effort";
 
 const CONSUMPTION_TOP_ENDPOINTS = {
   agent: "top-agents",
   user: "top-users",
   group: "top-groups",
   model: "top-models",
+  reasoning_effort: "top-reasoning-efforts",
   tool: "top-tools",
   skill: "top-skills",
   source: "top-sources",
   api_key: "top-api-keys",
-} as const satisfies Record<ConsumptionDimension, string>;
+} as const satisfies Record<ConsumptionTopDimension, string>;
 
 export type ConsumptionTopRow = {
   id: string;
   name: string;
+  detailsHref?: string;
   pictureUrl: string | null;
   description: string | null;
   icon: string | null;
@@ -40,23 +52,41 @@ export type ConsumptionTopRow = {
   modelDisplayName: string | null;
   credits: number;
   avgCredits: number;
+  activeMembers?: number;
+  totalMembers?: number;
   previousCredits: number | null;
 };
 
-type ConsumptionTopResponse =
+export type ConsumptionTopResponse =
   | GetConsumptionTopAgentsResponse
   | GetConsumptionTopUsersResponse
   | GetConsumptionTopGroupsResponse
   | GetConsumptionTopModelsResponse
+  | GetConsumptionTopReasoningEffortsResponse
   | GetConsumptionTopToolsResponse
   | GetConsumptionTopSkillsResponse
   | GetConsumptionTopSourcesResponse
   | GetConsumptionTopApiKeysResponse;
 
+export interface UseConsumptionTopParams {
+  workspaceId: string;
+  dimension: ConsumptionTopDimension;
+  period: ConsumptionPeriodSelection;
+  limit: number;
+  offset?: number;
+  search?: string;
+  filter?: ConsumptionScopeFilter;
+  analyticsScope?: ConsumptionAnalyticsScope;
+  sortOrder?: ConsumptionTopSortOrder;
+  disabled?: boolean;
+}
+
 // Narrowed on the collection each response carries rather than on the requested
 // dimension, so a row shape that drifts from its endpoint is a type error here
 // instead of a silently empty table.
-function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
+export function toConsumptionTopRows(
+  data: ConsumptionTopResponse
+): ConsumptionTopRow[] {
   if ("agents" in data) {
     return data.agents.map((row) => ({
       id: row.agentId,
@@ -96,12 +126,28 @@ function toRows(data: ConsumptionTopResponse): ConsumptionTopRow[] {
       modelDisplayName: null,
       credits: row.credits,
       avgCredits: row.avgCreditsPerMessage,
+      activeMembers: row.activeMembers,
+      totalMembers: Math.max(row.totalMembers, row.activeMembers),
       previousCredits: row.previousCredits,
     }));
   }
   if ("models" in data) {
     return data.models.map((row) => ({
       id: row.modelId,
+      name: row.name,
+      pictureUrl: null,
+      description: null,
+      icon: null,
+      modelId: null,
+      modelDisplayName: null,
+      credits: row.credits,
+      avgCredits: row.avgCreditsPerMessage,
+      previousCredits: row.previousCredits,
+    }));
+  }
+  if ("reasoningEfforts" in data) {
+    return data.reasoningEfforts.map((row) => ({
+      id: row.reasoningEffort,
       name: row.name,
       pictureUrl: null,
       description: null,
@@ -181,18 +227,15 @@ export function useConsumptionTop({
   offset = 0,
   search,
   filter,
+  analyticsScope,
+  sortOrder = "desc",
   disabled,
-}: {
-  workspaceId: string;
-  dimension: ConsumptionDimension;
-  period: ConsumptionPeriodSelection;
-  limit: number;
-  offset?: number;
-  search?: string;
-  filter?: ConsumptionScopeFilter;
-  disabled?: boolean;
-}) {
-  const url = `/api/w/${workspaceId}/analytics/consumption/${CONSUMPTION_TOP_ENDPOINTS[dimension]}`;
+}: UseConsumptionTopParams) {
+  const url = getConsumptionAnalyticsUrl({
+    workspaceId,
+    analyticsScope,
+    endpoint: CONSUMPTION_TOP_ENDPOINTS[dimension],
+  });
   const body: ConsumptionTopBody = {
     period: period.kind,
     days:
@@ -201,6 +244,7 @@ export function useConsumptionTop({
     limit,
     offset,
     search: search?.trim(),
+    sortOrder,
   };
 
   const { data, error, isLoading, isValidating } = useConsumptionQuery<
@@ -209,15 +253,17 @@ export function useConsumptionTop({
   >({ url, body, disabled });
 
   const rows = useMemo(
-    () => (data ? toRows(data) : emptyArray<ConsumptionTopRow>()),
+    () => (data ? toConsumptionTopRows(data) : emptyArray<ConsumptionTopRow>()),
     [data]
   );
 
   return {
     rows,
-    // Everything the workspace consumed over the period, so a row's share of it
-    // is `credits / totalCredits`.
+    // Selected-scope totals back row-relative metrics. Group rows also use the
+    // distinct active-member total to compare per-member usage.
     totalCredits: data?.totalCredits ?? 0,
+    totalActiveMembers:
+      data && "totalActiveMembers" in data ? data.totalActiveMembers : 0,
     totalCount: data?.totalCount ?? 0,
     hasMore: data?.hasMore ?? false,
     isTopLoading: !error && isLoading,

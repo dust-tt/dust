@@ -1,19 +1,13 @@
 import { DEFAULT_TASK_OWNER_FILTER } from "@app/components/assistant/conversation/space/conversations/project_tasks/projectTasksListScope";
 import type { PodUiScopedPreferences } from "@app/hooks/useScopedUIPreferences";
 import {
-  isPodFrameTabValue,
-  makePodFrameTabValue,
-  parsePodFrameTabPath,
-} from "@app/types/pod_frame_tab";
+  isPodFileTabValue,
+  makePodFileTabValue,
+  parsePodFileTabPath,
+} from "@app/types/pod_file_tab";
 import { useCallback, useEffect, useRef } from "react";
 
-export type SystemPodTab =
-  | "conversations"
-  | "tasks"
-  | "files"
-  | "apps"
-  | "connected_data"
-  | "settings";
+export type SystemPodTab = "conversations" | "tasks" | "files" | "settings";
 
 export type PodTab = PodUiScopedPreferences["tab"];
 
@@ -28,11 +22,9 @@ const CONNECTED_DATA_QUERY_PARAMS = ["dsvId", "parentId", "q"] as const;
 
 const SYSTEM_POD_TAB_HASHES = new Set<string>([
   "files",
-  "apps",
   "settings",
   "conversations",
   "tasks",
-  "connected_data",
 ]);
 
 function isSystemPodTab(tab: string): tab is SystemPodTab {
@@ -52,7 +44,7 @@ function parsePodTabFromLocationHash(fallbackTab: PodTab): PodTab {
     try {
       const path = decodeURIComponent(hash.slice("frame/".length));
       if (path.length > 0) {
-        return makePodFrameTabValue(path);
+        return makePodFileTabValue(path);
       }
     } catch {
       return fallbackTab;
@@ -61,27 +53,13 @@ function parsePodTabFromLocationHash(fallbackTab: PodTab): PodTab {
   return fallbackTab;
 }
 
-/**
- * Connected Data is only available on admin-controlled Pods.
- * `undefined` means pod info is still loading — keep the tab as-is.
- */
-function resolvePodTab(
-  tab: PodTab,
-  isAdminControlled: boolean | undefined
-): PodTab {
-  if (tab === "connected_data" && isAdminControlled === false) {
-    return "conversations";
-  }
-  return tab;
-}
-
 function hasConnectedDataQueryParams(): boolean {
   const params = new URLSearchParams(window.location.search);
   return CONNECTED_DATA_QUERY_PARAMS.some((key) => params.has(key));
 }
 
 function tabToHash(tab: PodTab): string {
-  const framePath = parsePodFrameTabPath(tab);
+  const framePath = parsePodFileTabPath(tab);
   return framePath ? `frame/${encodeURIComponent(framePath)}` : tab;
 }
 
@@ -100,8 +78,6 @@ interface UsePodTabsParams {
   podId: string | null;
   podUiPreferences: PodUiScopedPreferences;
   setPodUiPreferences: (value: PodUiScopedPreferences) => void;
-  /** When false, `connected_data` is remapped to `conversations`. */
-  isAdminControlled?: boolean;
 }
 
 /**
@@ -119,7 +95,6 @@ export function usePodTabs({
   podId,
   podUiPreferences,
   setPodUiPreferences,
-  isAdminControlled,
 }: UsePodTabsParams): {
   currentTab: PodTab;
   handleTabChange: (tab: PodTab) => void;
@@ -128,7 +103,7 @@ export function usePodTabs({
 
   onHashChangeRef.current = () => {
     const tabFromHash = parsePodTabFromLocationHash(podUiPreferences.tab);
-    const resolved = resolvePodTab(tabFromHash, isAdminControlled);
+    const resolved = tabFromHash;
     const expectedHash = `#${tabToHash(podUiPreferences.tab)}`;
     if (resolved !== podUiPreferences.tab) {
       setPodUiPreferences({ ...podUiPreferences, tab: resolved });
@@ -160,36 +135,20 @@ export function usePodTabs({
     };
   }, [podId]);
 
-  // Remap a persisted/URL `connected_data` tab once we know the Pod is not
-  // admin-controlled (pod info loads after the hash sync above).
-  useEffect(() => {
-    if (
-      isAdminControlled !== false ||
-      podUiPreferences.tab !== "connected_data"
-    ) {
-      return;
-    }
-    setPodUiPreferences({ ...podUiPreferences, tab: "conversations" });
-    if (typeof window !== "undefined") {
-      replaceUrlWithTab("conversations");
-    }
-  }, [isAdminControlled, podUiPreferences, setPodUiPreferences]);
-
   const handleTabChange = useCallback(
     (newTab: PodTab) => {
-      const resolved = resolvePodTab(newTab, isAdminControlled);
-      replaceUrlWithTab(resolved);
-      setPodUiPreferences({ ...podUiPreferences, tab: resolved });
+      replaceUrlWithTab(newTab);
+      setPodUiPreferences({ ...podUiPreferences, tab: newTab });
     },
-    [podUiPreferences, setPodUiPreferences, isAdminControlled]
+    [podUiPreferences, setPodUiPreferences]
   );
 
   return {
-    currentTab: resolvePodTab(podUiPreferences.tab, isAdminControlled),
+    currentTab: podUiPreferences.tab,
     handleTabChange,
   };
 }
 
 export function isValidPodTabValue(value: string): value is PodTab {
-  return isSystemPodTab(value) || isPodFrameTabValue(value);
+  return isSystemPodTab(value) || isPodFileTabValue(value);
 }

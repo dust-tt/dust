@@ -251,6 +251,8 @@ export type FetchDataSourceViewContentNodesOptions = {
 export interface InfiniteContentNodesResult {
   isNodesLoading: boolean;
   isNodesValidating: boolean;
+  // True once at least one page has been fetched (even if it contains no nodes).
+  isNodesFetched: boolean;
   nodesError: unknown;
   nodes: GetDataSourceViewContentNodes["nodes"];
   nextPageCursor: string | null;
@@ -287,6 +289,7 @@ function processInfiniteContentNodesData({
   return {
     isNodesLoading: isLoading && !data,
     isNodesValidating: isValidating,
+    isNodesFetched: data !== undefined,
     nodesError: error,
     nodes,
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing

@@ -1,6 +1,7 @@
 import {
   archiveAgentConfiguration,
   getAgentConfiguration,
+  getAgentConfigurationForDetails,
 } from "@app/lib/api/assistant/configuration/agent";
 import { createOrUpgradeAgentConfiguration } from "@app/lib/api/assistant/configuration/create_or_upgrade";
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
@@ -11,22 +12,25 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import {
+  ARCHIVED_AGENT_API_ERROR,
+  isArchivedAgent,
+} from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
+import analytics from "./analytics";
 import editors from "./editors";
 import exportRoutes from "./export";
 import feedbacks from "./feedbacks";
 import history from "./history";
 import lastAuthor from "./last_author";
 import linkedSlackChannels from "./linked_slack_channels";
-import mcpConfigurations from "./mcp_configurations";
 import memories from "./memories";
 import observability from "./observability";
 import restore from "./restore";
 import skills from "./skills";
 import suggestions from "./suggestions";
 import tags from "./tags";
-import triggers from "./triggers";
 import usage from "./usage";
 
 const ParamsSchema = z.object({
@@ -53,11 +57,10 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
-    const agent = await getAgentConfiguration(auth, {
+    const agent = await getAgentConfigurationForDetails(auth, {
       agentId: aId,
-      variant: "full",
     });
-    if (!agent || (!agent.canRead && !auth.isAdmin())) {
+    if (!agent) {
       return apiError(ctx, {
         status_code: 404,
         api_error: {
@@ -97,6 +100,10 @@ app.patch(
           message: "The Agent you're trying to access was not found.",
         },
       });
+    }
+
+    if (isArchivedAgent(agent)) {
+      return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
     // Editors only, admins included: an admin who wants to change an agent has to add themselves
@@ -179,6 +186,10 @@ app.delete(
       });
     }
 
+    if (isArchivedAgent(agent)) {
+      return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
+    }
+
     const archived = await archiveAgentConfiguration(auth, aId);
     if (!archived) {
       return apiError(ctx, {
@@ -194,20 +205,19 @@ app.delete(
   }
 );
 
+app.route("/analytics", analytics);
 app.route("/editors", editors);
 app.route("/export", exportRoutes);
 app.route("/feedbacks", feedbacks);
 app.route("/history", history);
 app.route("/last_author", lastAuthor);
 app.route("/linked_slack_channels", linkedSlackChannels);
-app.route("/mcp_configurations", mcpConfigurations);
 app.route("/memories", memories);
 app.route("/observability", observability);
 app.route("/restore", restore);
 app.route("/skills", skills);
 app.route("/suggestions", suggestions);
 app.route("/tags", tags);
-app.route("/triggers", triggers);
 app.route("/usage", usage);
 
 export default app;

@@ -6,6 +6,7 @@ import type {
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
+import { MCP_CLIENT_ID_METADATA_DOCUMENT_URL } from "@app/lib/api/mcp_server/urls";
 import type { Authenticator } from "@app/lib/auth";
 import { toGlobalResponse, untrustedFetch } from "@app/lib/egress/server";
 import { DustError } from "@app/lib/error";
@@ -24,6 +25,7 @@ import { mcpToolsRequireConfiguration } from "@app/lib/utils/json_schemas";
 import logger from "@app/logger/logger";
 import type { MCPOAuthConnectionMetadataType } from "@app/types/api/oauth/providers/mcp";
 import type { MCPOAuthUseCase } from "@app/types/oauth/lib";
+import { isDevelopment } from "@app/types/shared/env";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -69,7 +71,13 @@ export function getMCPAuthorizationScope({
       : (resourceScopes ?? authorizationServerScopes ?? [])
   );
 
-  if (authorizationServerScopes?.includes("offline_access")) {
+  // `offline_access` gates refresh tokens on some providers, and either metadata document may be
+  // the one advertising it (e.g. Atlassian's authv2 lists it in the protected resource metadata
+  // while its authorization server metadata publishes no scopes at all), so honor both.
+  if (
+    resourceScopes?.includes("offline_access") ||
+    authorizationServerScopes?.includes("offline_access")
+  ) {
     scopes.add("offline_access");
   } else {
     scopes.delete("offline_access");
@@ -641,6 +649,16 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
     this.heavyAttributes = { ...this.heavyAttributes, lastError };
   }
 
+  /**
+   * @cc [owner:tdraier,label:mcp] oauth-client-registration-precedence
+   * Resolves the OAuth client identity in this order and returns the first that
+   * applies: (1) outside development, when the authorization-server metadata
+   * advertises `client_id_metadata_document_supported`, returns a public-client
+   * metadata (`token_endpoint_auth_method: "none"`, no `client_secret`) whose
+   * `client_id` is `MCP_CLIENT_ID_METADATA_DOCUMENT_URL`; else (2) attempts
+   * Dynamic Client Registration; else (3) fails with a `DustError` directing the
+   * caller to Static OAuth. It never performs DCR when CIMD applies.
+   */
   static async discoverOAuthMetadata({
     serverUrl,
     provider,
@@ -742,6 +760,27 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       authorizationServerScopes: metadata.scopes_supported,
     });
 
+    // CIMD (Client ID Metadata Documents): when a server advertises support, we
+    // present our hosted metadata-document URL as `client_id` instead of
+    // registering a client. This sidesteps both DCR (which enterprise servers
+    // such as ServiceNow refuse) and the manual per-instance Static OAuth setup.
+    // Skipped in development, where the finalize redirect URI is localhost and
+    // therefore absent from the published document's `redirect_uris`, so the
+    // authorization server would reject it — DCR remains the dev path.
+    if (metadata.client_id_metadata_document_supported && !isDevelopment()) {
+      const connectionMetadata: MCPOAuthConnectionMetadataType = {
+        authorization_endpoint: metadata.authorization_endpoint,
+        token_endpoint: metadata.token_endpoint,
+        token_endpoint_auth_method: "none",
+        client_id: MCP_CLIENT_ID_METADATA_DOCUMENT_URL,
+        resource: resource
+          ? url.format(resource, { fragment: false })
+          : undefined,
+        scope: clientMetadata.scope,
+      };
+      return new Ok(connectionMetadata);
+    }
+
     try {
       // Try DCR.
       const fullInformation = await registerClient(serverUrl, {
@@ -776,7 +815,16 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
         : "This server does not support automatic OAuth setup (no dynamic client registration " +
           "endpoint). Please use Static OAuth with the client ID/secret provided by the " +
           "server's OAuth application.";
-      logger.error({ error: e }, message);
+      logger.error(
+        {
+          error: normalizeError(e),
+          serverUrl,
+          authServerUrl: authServerUrl.toString(),
+          registrationEndpoint: metadata.registration_endpoint,
+          redirectUris: clientMetadata.redirect_uris,
+        },
+        message
+      );
       return new Err(new DustError("internal_error", message));
     }
   }

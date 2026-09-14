@@ -1,4 +1,3 @@
-import { reconcileApiKey } from "@app/lib/api/metronome/reconcile_credit_state";
 import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import {
   isProgrammaticUsage,
@@ -8,8 +7,7 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { ingestMetronomeEvents } from "@app/lib/metronome/client";
 import {
-  buildLlmUsageEvents,
-  buildToolUseEvents,
+  buildUsageEvents,
   computeRunKey,
   getUsageType,
 } from "@app/lib/metronome/events";
@@ -30,17 +28,16 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 import logger from "@app/logger/logger";
-import { launchReconcileApiKeyCreditStateWorkflow } from "@app/temporal/usage_queue/client";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { isHiddenHelperSubAgentId } from "@app/types/assistant/assistant";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export async function recordUsageActivity(workspaceId: string) {
   const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -201,10 +198,57 @@ export async function trackProgrammaticUsageActivity(
   return { tracked: false, origin: userMessageOrigin };
 }
 
+// Bounds how many parent-conversation hops we'll walk to find the human who
+// ultimately triggered a message with no direct user attribution
+const MAX_ORIGINATING_USER_TRACE_HOPS = 5;
+
+async function resolveOriginatingUserId(
+  workspace: { id: ModelId },
+  startUserMessage: UserMessageModel | undefined
+): Promise<string | null> {
+  let current = startUserMessage;
+  for (let hop = 0; hop < MAX_ORIGINATING_USER_TRACE_HOPS; hop++) {
+    if (!current?.agenticOriginMessageId) {
+      return null;
+    }
+
+    let messageRow = await MessageModel.findOne({
+      where: {
+        sId: current.agenticOriginMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+    for (
+      let parentHop = 0;
+      parentHop < MAX_ORIGINATING_USER_TRACE_HOPS &&
+      messageRow &&
+      !messageRow.userMessageId;
+      parentHop++
+    ) {
+      messageRow = messageRow.parentId
+        ? await MessageModel.findByPk(messageRow.parentId)
+        : null;
+    }
+    if (!messageRow?.userMessageId) {
+      return null;
+    }
+
+    current =
+      (await UserMessageModel.findOne({
+        where: { id: messageRow.userMessageId, workspaceId: workspace.id },
+        include: [{ model: UserModel, required: false }],
+      })) ?? undefined;
+    if (current?.user) {
+      return current.user.sId;
+    }
+  }
+  return null;
+}
+
 /**
- * Emit Metronome llm_usage and tool_use events for an agent message.
- * Called for ALL messages (not just programmatic) — always-on, fire-and-forget.
- * Metronome failures don't affect the agent loop.
+ * Emit the aggregated Metronome usage event (LLM + tool cost) for an agent
+ * message. Called for ALL messages (not just programmatic) — always-on,
+ * fire-and-forget. Metronome failures don't affect the agent loop.
  */
 export async function emitMetronomeUsageEventsActivity(
   authType: AuthenticatorType,
@@ -270,7 +314,9 @@ export async function emitMetronomeUsageEventsActivity(
   // pod_manager sub-conversations where the DB row has no user but the auth
   // still carries the original session user).
   const userId =
-    userMessageRow?.userMessage?.user?.sId ?? auth.user()?.sId ?? null;
+    userMessageRow?.userMessage?.user?.sId ??
+    auth.user()?.sId ??
+    (await resolveOriginatingUserId(workspace, userMessageRow?.userMessage));
 
   // Determine if the user holds a free seat. Free-seat events use a prefixed
   // user_id ("free-<sId>") so Metronome's free-credit specifier only drains
@@ -295,12 +341,18 @@ export async function emitMetronomeUsageEventsActivity(
   const parentAgentMessageId = userMessage?.agenticOriginMessageId ?? null;
   const isSubAgentMessage = userMessage?.agenticMessageType !== null;
 
-  const programmatic = isProgrammaticUsage(auth, { userMessageOrigin });
-  const usageType = getUsageType(programmatic, userMessageOrigin);
   // Use updatedAt — this is when the agent message finished (not when it was created).
   const timestamp = agentMessage.updatedAt.toISOString();
   const authMethod = userMessage?.userContextAuthMethod ?? null;
   const messageStatus = agentMessage.status ?? "unknown";
+  const usageType = getUsageType(
+    isProgrammaticUsage(auth, {
+      userMessageOrigin,
+      userId,
+      messageAuthMethod: authMethod,
+    }),
+    userMessageOrigin
+  );
 
   // Attribute usage to the parent (triggering) agent only for *hidden helper*
   // sub-agents (e.g. the dust-task / dust-planning runs spawned by "go deep").
@@ -339,8 +391,6 @@ export async function emitMetronomeUsageEventsActivity(
   // implementation detail, not a meaningful billing attribution. In those cases we
   // leave the API key name unset (it surfaces as "unknown" in the event).
   let apiKeyName: string | null = null;
-  // Retained for the post-ingest per-key cap reconcile below.
-  let apiKey: KeyResource | null = null;
   if (userMessage?.userContextApiKeyId) {
     const key = await KeyResource.fetchByWorkspaceAndId({
       workspace,
@@ -348,7 +398,6 @@ export async function emitMetronomeUsageEventsActivity(
     });
     if (key && !key.isSystem) {
       apiKeyName = key.name;
-      apiKey = key;
     }
   }
 
@@ -358,30 +407,24 @@ export async function emitMetronomeUsageEventsActivity(
   });
   const runUsages = await RunResource.listRunUsagesForRuns(auth, { runs });
 
-  // Get MCP actions, filtered to this execution's steps if startStep is available. The event
-  // adapter applies the canonical billing-status gate before producing Metronome events.
+  // Get every MCP action for the message so the canonical billing plan can
+  // apply message-level policies across interrupt/resume executions. The event
+  // adapter only emits the actions belonging to this execution.
   const allMcpActions = await AgentMCPActionResource.listByAgentMessageIds(
     auth,
     [agentMessage.id]
   );
-  const mcpActions = allMcpActions.filter((a) => {
+  const toolActions = allMcpActions.map((a) => {
     const json = a.toJSON();
-    if (
-      agentLoopArgs.startStep !== undefined &&
-      json.step < agentLoopArgs.startStep
-    ) {
-      return false;
-    }
-    return true;
-  });
-  const toolActions = mcpActions.map((a) => {
-    const json = a.toJSON();
+
     return {
       toolName: json.toolName,
       mcpServerId: json.mcpServerId,
       internalMCPServerName: json.internalMCPServerName,
       status: json.status,
-      executionDurationMs: json.executionDurationMs,
+      shouldEmit:
+        agentLoopArgs.startStep === undefined ||
+        json.step >= agentLoopArgs.startStep,
     };
   });
 
@@ -392,8 +435,8 @@ export async function emitMetronomeUsageEventsActivity(
   // ceils per the exact same execution partition that is billed here.
   const runKey = computeRunKey(effectiveRunIds);
 
-  // Build and ingest events.
-  const llmEvents = buildLlmUsageEvents({
+  // Build and ingest the single aggregated usage event (LLM + tool cost).
+  const usageEvents = buildUsageEvents({
     workspaceId: workspace.sId,
     isByok,
     conversationId,
@@ -405,25 +448,6 @@ export async function emitMetronomeUsageEventsActivity(
     parentAgentMessageId,
     runKey,
     runUsages,
-    origin: userMessageOrigin,
-    usageType,
-    authMethod,
-    apiKeyName,
-    messageStatus,
-    isSubAgentMessage,
-    timestamp,
-  });
-
-  const toolEvents = buildToolUseEvents({
-    workspaceId: workspace.sId,
-    conversationId,
-    userId,
-    isFreeSeatedUser,
-    agentMessageId,
-    agentId,
-    subAgentId,
-    parentAgentMessageId,
-    runKey,
     actions: toolActions,
     origin: userMessageOrigin,
     usageType,
@@ -434,31 +458,7 @@ export async function emitMetronomeUsageEventsActivity(
     timestamp,
   });
 
-  await ingestMetronomeEvents([...llmEvents, ...toolEvents]);
-
-  // Per-key cap enforcement is pull-based: Metronome spend alerts can't
-  // attribute spend by `api_key_name` (it's not the products' presentation
-  // group key), so we reconcile the key's credit state from live usage instead
-  // (the usage API does attribute by `api_key_name`). Launch a debounced
-  // reconcile so it runs after Metronome has ingested the usage emitted above
-  // and coalesces bursts on the same key. Only for keys that carry a cap; the
-  // reconcile activity re-checks plan/contract/state at run time.
-  if (apiKey && apiKey.monthlyCapAwuCredits !== null) {
-    const launchResult = await launchReconcileApiKeyCreditStateWorkflow({
-      workspaceId: workspace.sId,
-      keyId: apiKey.id,
-    });
-    if (launchResult.isErr()) {
-      logger.warn(
-        {
-          workspaceId: workspace.sId,
-          keyName: apiKey.name,
-          err: launchResult.error,
-        },
-        "[Metronome ApiKeyCap] failed to launch debounced reconcile"
-      );
-    }
-  }
+  await ingestMetronomeEvents(usageEvents);
 }
 
 /**
@@ -496,46 +496,12 @@ export async function syncMetronomeSeatCountActivity(
 }
 
 /**
- * Reconcile a single API key's credit state from live Metronome usage. Launched
- * (debounced) after a message that used a capped key emits its usage, so the
- * key gets flipped to `capped` / `on_pool` without relying on Metronome spend
- * alerts (which can't attribute by `api_key_name`). Best-effort: re-checks the
- * workspace / contract / key state at run time and logs on failure.
+ * Deprecated no-op. Per-API-key credit state (`keys.creditState`) has been
+ * removed; per-key spend caps are enforced by the Redis rate limiter. The
+ * workflow/signal/activity shell is kept only to drain any in-flight Temporal
+ * executions and will be removed once none remain.
  */
 export async function reconcileApiKeyCreditStateActivity(
-  workspaceId: string,
-  keyId: number
-): Promise<void> {
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace?.metronomeCustomerId) {
-    return;
-  }
-  const subscription = await SubscriptionResource.fetchActiveByWorkspaceModelId(
-    workspace.id
-  );
-  const metronomeContractId = subscription?.metronomeContractId ?? null;
-  if (!metronomeContractId) {
-    return;
-  }
-  const key = await KeyResource.fetchByWorkspaceAndId({
-    workspace: renderLightWorkspaceType({ workspace }),
-    id: keyId,
-  });
-  if (!key || key.monthlyCapAwuCredits === null) {
-    return;
-  }
-
-  const result = await reconcileApiKey({
-    workspaceId: workspace.sId,
-    metronomeCustomerId: workspace.metronomeCustomerId,
-    metronomeContractId,
-    key,
-    execute: true,
-  });
-  if (result.isErr()) {
-    logger.warn(
-      { workspaceId: workspace.sId, keyName: key.name, err: result.error },
-      "[Metronome ApiKeyCap] debounced reconcile failed"
-    );
-  }
-}
+  _workspaceId: string,
+  _keyId: number
+): Promise<void> {}

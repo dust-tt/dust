@@ -1,4 +1,4 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
@@ -29,64 +29,91 @@ const meta = {
 } satisfies Meta<typeof Collapsible>;
 
 export default meta;
+type Story = StoryObj<typeof meta>;
 
-export const CollapsibleExample = () => (
-  <div>
-    <Collapsible>
-      <CollapsibleTrigger label="Click me" />
-      <CollapsibleContent>
-        <div className="flex h-16 w-full items-center justify-center bg-muted-background">
-          Hello
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-
-    <Collapsible>
-      <CollapsibleTrigger label="Click me" />
-      <CollapsibleContent>
-        <div className="flex h-16 w-full items-center justify-center bg-muted-background">
-          Hello
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-    <Collapsible>
-      <CollapsibleTrigger label="Click me" />
-      <CollapsibleContent>
-        <div className="flex h-16 w-full items-center justify-center bg-muted-background">
-          Hello
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-    <Collapsible>
-      <CollapsibleTrigger>
-        <Chip>Click me custom (with chevron)</Chip>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="mt-1 flex h-16 w-full items-center justify-center bg-muted-background">
-          Custom trigger content with chevron shown by default
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-    <Collapsible>
-      <CollapsibleTrigger hideChevron>
-        <Chip>Click me custom (no chevron)</Chip>
-      </CollapsibleTrigger>
-      <CollapsibleContent>
-        <div className="mt-1 flex h-16 w-full items-center justify-center bg-muted-background">
-          Custom trigger content with chevron hidden
-        </div>
-      </CollapsibleContent>
-    </Collapsible>
-    <div className="rounded-md border border-gray-200 p-4">
-      <h3 className="mb-2 font-medium">Default Open</h3>
-      <Collapsible defaultOpen>
-        <CollapsibleTrigger label="Open by default" />
-        <CollapsibleContent>
-          <div className="flex h-16 w-full items-center justify-center bg-muted-background">
-            This collapsible is open by default
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
+const sampleContent = (
+  <div className="flex h-16 w-full items-center justify-center bg-muted-background">
+    Advanced options
   </div>
 );
+
+/**
+ * The standard disclosure: a labeled trigger with the default chevron, closed
+ * until the user clicks it.
+ * @summary Labeled trigger with default chevron.
+ */
+export const Default: Story = {
+  args: {
+    children: (
+      <>
+        <CollapsibleTrigger label="Show advanced options" />
+        <CollapsibleContent>{sampleContent}</CollapsibleContent>
+      </>
+    ),
+  },
+  render: (args) => <Collapsible {...args} />,
+};
+
+/**
+ * Pass custom children to the trigger instead of a `label` when the toggle
+ * needs bespoke UI (here a Chip); the chevron is still shown by default.
+ * @summary Custom trigger children instead of a label.
+ */
+export const CustomTrigger: Story = {
+  args: {
+    children: (
+      <>
+        <CollapsibleTrigger>
+          <Chip>Filters</Chip>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-1 flex h-16 w-full items-center justify-center bg-muted-background">
+            Filter controls
+          </div>
+        </CollapsibleContent>
+      </>
+    ),
+  },
+  render: (args) => <Collapsible {...args} />,
+};
+
+/**
+ * Set `hideChevron` on the trigger when the custom trigger carries its own
+ * affordance and the chevron would be redundant.
+ * @summary Custom trigger with the chevron hidden.
+ */
+export const WithoutChevron: Story = {
+  args: {
+    children: (
+      <>
+        <CollapsibleTrigger hideChevron>
+          <Chip>Filters</Chip>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-1 flex h-16 w-full items-center justify-center bg-muted-background">
+            Filter controls
+          </div>
+        </CollapsibleContent>
+      </>
+    ),
+  },
+  render: (args) => <Collapsible {...args} />,
+};
+
+/**
+ * Set `defaultOpen` on the root when the content should be visible on first
+ * render but remain collapsible by the user.
+ * @summary Expanded on first render via defaultOpen.
+ */
+export const OpenByDefault: Story = {
+  args: {
+    defaultOpen: true,
+    children: (
+      <>
+        <CollapsibleTrigger label="Open by default" />
+        <CollapsibleContent>{sampleContent}</CollapsibleContent>
+      </>
+    ),
+  },
+  render: (args) => <Collapsible {...args} />,
+};

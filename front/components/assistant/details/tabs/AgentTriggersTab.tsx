@@ -101,7 +101,7 @@ export function AgentTriggersTab({
 
   return (
     <>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold">My triggers</h3>
         <Button
           label="Add trigger"
@@ -138,9 +138,7 @@ export function AgentTriggersTab({
                 )
               }
               // The chip counts as a clamped line: leave room for it.
-              descriptionLineClamp={
-                trigger.status === "enabled" ? undefined : 3
-              }
+              descriptionLineClamp={6}
               canAdd={false}
               disabled={trigger.status !== "enabled"}
               onClick={() => onEditTrigger(trigger)}

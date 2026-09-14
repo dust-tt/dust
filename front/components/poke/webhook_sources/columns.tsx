@@ -29,6 +29,12 @@ export function makeColumnsForWebhookSources(
       ),
     },
     {
+      accessorKey: "id",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Id" />
+      ),
+    },
+    {
       accessorKey: "name",
       header: ({ column }) => (
         <PokeColumnSortableHeader column={column} label="Name" />

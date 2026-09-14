@@ -1,4 +1,4 @@
-const TOOL_EXECUTION_FINAL_STATUSES = [
+export const TOOL_EXECUTION_FINAL_STATUSES = [
   "succeeded",
   "errored",
   "denied",

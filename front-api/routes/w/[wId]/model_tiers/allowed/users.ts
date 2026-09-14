@@ -3,7 +3,11 @@ import {
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
-import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
+import {
+  clearUserMaxAllowedTier,
+  listUserAllowedTierNames,
+  setUserMaxAllowedTier,
+} from "@app/lib/model_tiers/allowed_tiers";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { GetUserAllowedModelTiersResponseBody } from "@app/types/api/model_tiers";
 import {
@@ -27,7 +31,7 @@ app.get(
   async (ctx): HandlerResult<GetUserAllowedModelTiersResponseBody> => {
     const auth = ctx.get("auth");
 
-    const users = await ModelsTierResource.listUserAllowedTierNames(auth);
+    const users = await listUserAllowedTierNames(auth);
 
     return ctx.json({ users });
   }
@@ -42,7 +46,7 @@ app.post(
     const auth = ctx.get("auth");
     const body = ctx.req.valid("json");
 
-    const result = await ModelsTierResource.setUserMaxAllowedTier(auth, body);
+    const result = await setUserMaxAllowedTier(auth, body);
 
     if (result.isErr()) {
       return apiError(ctx, modelTierErrorToApiError(result.error));
@@ -80,7 +84,7 @@ app.delete(
     const auth = ctx.get("auth");
     const body = ctx.req.valid("json");
 
-    const result = await ModelsTierResource.clearUserMaxAllowedTier(auth, body);
+    const result = await clearUserMaxAllowedTier(auth, body);
 
     if (result.isErr()) {
       return apiError(ctx, modelTierErrorToApiError(result.error));

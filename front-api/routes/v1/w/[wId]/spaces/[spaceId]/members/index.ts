@@ -31,8 +31,8 @@ type MembersCtx = PublicApiCtx & {
 
 /**
  * Fetches the space named by `:spaceId`, validates it exists and is editable
- * (not managed by provisioned groups, no global group). Used by GET and POST
- * below to dedupe the space lookup that the Next handler had inline.
+ * (a regular space or project, not managed by provisioned groups). Used by GET
+ * and POST below to dedupe the space lookup that the Next handler had inline.
  *
  * Reads `spaceId` from `ctx.req.valid("param")`, so a `validate("param", ...)`
  * with a schema containing `spaceId` must precede it in the handler chain.
@@ -58,18 +58,16 @@ const withEditableSpace = createMiddleware<
     });
   }
 
-  if (
-    space.managementMode === "group" ||
-    space.groups.some((group) => group.isGlobal())
-  ) {
+  // Members are editable on regular spaces and projects only — not global, system or conversations
+  // spaces — regardless of whether the space is open or restricted (an open space keeps an explicit
+  // member group whose grant confers write beyond the workspace-wide read). Group-managed spaces
+  // draw their membership from provisioned (IdP-owned) groups, so members can't be edited by API.
+  if (!space.isRegular() && !space.isProject()) {
     return apiError(ctx, {
       status_code: 404,
       api_error: {
         type: "space_not_found",
-        message:
-          space.managementMode === "group"
-            ? "Space is managed by provisioned group access, members can't be edited by API."
-            : "Non-restricted space's members can't be edited.",
+        message: "The space was not found.",
       },
     });
   }
@@ -93,7 +91,9 @@ app.get(
   async (ctx): HandlerResult<GetSpaceMembersResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
-    const groups = await space.fetchGroupResources(auth);
+    // The groups that make up the space's membership: an open space attaches the workspace global
+    // group as a reader, and its members are not members of the space.
+    const groups = await space.fetchMembershipGroups(auth);
 
     const currentMembers = uniqBy(
       (
@@ -196,8 +196,12 @@ app.post(
       });
     }
 
+    const [enrichedSpace] = await SpaceResource.enrichSpacesWithAccess(auth, [
+      space,
+    ]);
+
     return ctx.json({
-      space: space.toJSON(),
+      space: enrichedSpace,
       users: usersJson.map((userJson) => ({
         sId: userJson.sId,
         id: userJson.id,

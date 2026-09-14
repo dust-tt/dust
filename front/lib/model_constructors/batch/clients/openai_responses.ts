@@ -3,6 +3,7 @@ import type {
   BatchStatus,
 } from "@app/lib/model_constructors/batch/endpoint";
 import { BatchEndpoint } from "@app/lib/model_constructors/batch/endpoint";
+import { openAIReasoningSummaryForModel } from "@app/lib/model_constructors/providers/openai/reasoning_summary";
 import { WithOpenAIResponsesInputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/input";
 import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/output";
 import { responseToEvents } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
@@ -10,8 +11,9 @@ import type { Credentials } from "@app/lib/model_constructors/types/credentials"
 import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/hosts";
 import type { InputConfig } from "@app/lib/model_constructors/types/input/configuration";
 import { OPENAI_LAB } from "@app/lib/model_constructors/types/labs";
+import type { Model } from "@app/lib/model_constructors/types/models";
 import type { NonDeltaResponseEvent } from "@app/lib/model_constructors/types/output/events";
-import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
+import { buildHttpStatusErrorEvent } from "@app/lib/model_constructors/utils/classify_http_status";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 // Do not remove: front-api routes call into this client for the similar skill
 // and similar agent discovery features. Without an explicit version front-api can silently
@@ -66,6 +68,13 @@ export abstract class OpenAIResponsesBatch extends WithOpenAIResponsesInputConve
   constructor({ OPENAI_API_KEY }: Credentials) {
     super();
     this.apiKey = OPENAI_API_KEY;
+  }
+
+  protected override reasoningSummaryForModel(
+    model: Model,
+    conciseReasoningSummary: boolean
+  ) {
+    return openAIReasoningSummaryForModel(model, conciseReasoningSummary);
   }
 
   // Lazy: `baseUrl` is an abstract field, only set after subclass initializers run.
@@ -166,11 +175,12 @@ export abstract class OpenAIResponsesBatch extends WithOpenAIResponsesInputConve
       const { custom_id, response, error } = parsed.data;
       if (error || !response) {
         batchResult.set(custom_id, [
-          buildErrorEvent({
+          buildHttpStatusErrorEvent({
             metadata: this.metadata(),
-            type: "server_error",
-            message:
-              error?.message ?? `No response for custom_id ${custom_id}.`,
+            status: response?.status_code,
+            provider: "OpenAI",
+            detail: error?.message ?? `No response for custom_id ${custom_id}.`,
+            originalError: error,
           }),
         ]);
         continue;

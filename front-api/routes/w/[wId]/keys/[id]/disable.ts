@@ -61,10 +61,7 @@ app.post(
     });
 
     return ctx.json({
-      key: {
-        ...key.toJSON(user.id),
-        status: "disabled",
-      },
+      key: await key.toJSONWithSpaces(auth, user.id),
     });
   }
 );

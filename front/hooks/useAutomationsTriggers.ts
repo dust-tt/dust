@@ -16,6 +16,7 @@ export function useAutomationsTriggers({
   period,
   limit,
   offset = 0,
+  search,
   filter,
   disabled,
 }: {
@@ -23,6 +24,7 @@ export function useAutomationsTriggers({
   period: ConsumptionPeriodSelection;
   limit: number;
   offset?: number;
+  search?: string;
   filter?: AutomationTriggersFilter;
   disabled?: boolean;
 }) {
@@ -33,10 +35,12 @@ export function useAutomationsTriggers({
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
     limit,
     offset,
+    search: search?.trim(),
     filter,
+    format: "json",
   };
 
-  const { data, error, isLoading, isValidating } = useConsumptionQuery<
+  const { data, error, mutate, isLoading, isValidating } = useConsumptionQuery<
     AutomationTriggersBody,
     GetAutomationTriggersResponse
   >({ url, body, disabled });
@@ -46,6 +50,7 @@ export function useAutomationsTriggers({
     totalCount: data?.totalCount ?? 0,
     medianRunCount: data?.medianRunCount ?? 0,
     medianCostPerRun: data?.medianCostPerRun ?? 0,
+    mutateTriggers: mutate,
     isTriggersLoading: !error && isLoading,
     isTriggersError: error,
     isTriggersValidating: isValidating,

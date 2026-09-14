@@ -169,6 +169,41 @@ describe("GET /api/w/:wId/assistant/conversations/search", () => {
       expect(sIds).toContain(conv3.sId);
     });
 
+    it("excludes sub-conversations (depth > 0), even with a participation row", async () => {
+      const { workspace, auth, user } = await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
+
+      const rootConv = await createConversationWithTitle(
+        auth,
+        {
+          agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+          messagesCreatedAt: [new Date()],
+        },
+        "Deep dive on testing",
+        user.id
+      );
+
+      await createConversationWithTitle(
+        auth,
+        {
+          agentConfigurationId: GLOBAL_AGENTS_SID.DUST,
+          messagesCreatedAt: [new Date()],
+          depth: 1,
+        },
+        "run_agent deep-dive > dust_task testing",
+        user.id
+      );
+
+      const response = await search(workspace, { query: "testing" });
+
+      expect(response.status).toBe(200);
+      const data = await response.json();
+      expect(data.conversations).toHaveLength(1);
+      expect(data.conversations[0].sId).toBe(rootConv.sId);
+    });
+
     it("performs case-insensitive search", async () => {
       const { workspace, auth, user } = await createPrivateApiMockRequest({
         method: "GET",

@@ -8,7 +8,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -16,6 +15,7 @@ import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
+import type { MembershipRoleType } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
@@ -46,7 +46,7 @@ const TEST_AGENT_PARAMS = {
 
 export async function setupAgentOwner(
   workspace: LightWorkspaceType,
-  agentOwnerRole: "admin" | "builder" | "user"
+  agentOwnerRole: MembershipRoleType
 ) {
   const agentOwner = await UserFactory.basic();
   await MembershipFactory.associate(workspace, agentOwner, {
@@ -272,6 +272,60 @@ describe("GET /api/w/:wId/assistant/agent_configurations", () => {
     ).toEqual(["visible"]);
   });
 
+  it("lists unpublished and restricted space agents of other members in the manage_unrestricted view", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    // Both agents belong to another member: one is unpublished and the admin is not an editor,
+    // the other requires a space the admin is not a member of.
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
+      name: "Unpublished agent",
+      scope: "hidden",
+    });
+    await AgentConfigurationFactory.createTestAgent(agentOwnerAuth, {
+      name: "Restricted space agent",
+      scope: "visible",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const manageResponse = await listAgents(workspace, { view: "manage" });
+    expect(manageResponse.status).toBe(200);
+    const manageData: { agentConfigurations: LightAgentConfigurationType[] } =
+      await manageResponse.json();
+    const manageNames = manageData.agentConfigurations.map((a) => a.name);
+    expect(manageNames).not.toContain("Unpublished agent");
+    expect(manageNames).not.toContain("Restricted space agent");
+
+    const response = await listAgents(workspace, {
+      view: "manage_unrestricted",
+    });
+    expect(response.status).toBe(200);
+    const data: { agentConfigurations: LightAgentConfigurationType[] } =
+      await response.json();
+    const names = data.agentConfigurations.map((a) => a.name);
+    expect(names).toContain("Unpublished agent");
+    expect(names).toContain("Restricted space agent");
+  });
+
+  it("returns 403 for the manage_unrestricted view without admin role", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "user",
+    });
+
+    const response = await listAgents(workspace, {
+      view: "manage_unrestricted",
+    });
+
+    expect(response.status).toBe(403);
+    const data = await response.json();
+    expect(data.error.type).toBe("app_auth_error");
+  });
+
   it("returns 404 for admin_internal view without super user", async () => {
     const { workspace, user } = await createPrivateApiMockRequest({
       method: "GET",
@@ -372,7 +426,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations - additionalRequestedS
     await SpaceFactory.defaults(auth);
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
 
     const response = await postAgent(workspace, {
       assistant: {
@@ -448,7 +502,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations - additionalRequestedS
     await SpaceFactory.defaults(auth);
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
     const remoteMCPServer = await RemoteMCPServerFactory.create(workspace);
 
     // Get the system view for the remote MCP server
@@ -510,7 +564,7 @@ describe("POST /api/w/:wId/assistant/agent_configurations - additionalRequestedS
     await SpaceFactory.defaults(auth);
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
     const remoteMCPServer = await RemoteMCPServerFactory.create(workspace);
     const systemView =
       await MCPServerViewResource.getMCPServerViewForSystemSpace(

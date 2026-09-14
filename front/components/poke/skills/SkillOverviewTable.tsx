@@ -6,14 +6,14 @@ import {
 } from "@app/components/poke/shadcn/ui/table";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType } from "@app/types/space";
 import type { UserType } from "@app/types/user";
 import { Chip } from "@dust-tt/sparkle";
 
 interface SkillOverviewTableProps {
   skill: SkillType;
   editedByUser: UserType | null;
-  spaces: SpaceType[];
+  spaces: EnrichedSpaceType[];
 }
 
 export function SkillOverviewTable({
@@ -22,7 +22,7 @@ export function SkillOverviewTable({
   spaces,
 }: SkillOverviewTableProps) {
   return (
-    <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4">
+    <div className="flex flex-grow flex-col rounded-lg border p-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-md flex-grow pb-4 font-bold">Overview</h2>
       </div>

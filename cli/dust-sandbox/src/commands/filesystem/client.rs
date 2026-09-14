@@ -10,6 +10,8 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use tracing::warn;
 
+use super::errno;
+
 const FILESYSTEM_ERROR_HEADER: &str = "x-dust-filesystem-error";
 const GCS_CREATE_ONLY_HEADER: &str = "x-goog-if-generation-match";
 const GCS_CREATE_ONLY_VALUE: &str = "0";
@@ -92,7 +94,29 @@ struct UploadResponse {
 }
 
 #[derive(Debug, Deserialize)]
-struct EmptyResponse {}
+#[serde(rename_all = "camelCase")]
+struct RemoveResponse {
+    // Nothing else tells the daemon which node lost its name, so a response
+    // without this is invalid.
+    removed_node_id: u64,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RenameResponse {
+    #[serde(deserialize_with = "deserialize_required_option")]
+    node: Option<RemoteNode>,
+    // Front must send null when the destination name was free. A missing field is
+    // an invalid response, not a rename that replaced nothing.
+    #[serde(deserialize_with = "deserialize_required_option")]
+    replaced_node_id: Option<u64>,
+}
+
+#[derive(Debug)]
+pub struct RenamedNode {
+    pub node: RemoteNode,
+    pub replaced_node_id: Option<u64>,
+}
 
 fn deserialize_required_option<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
 where
@@ -458,16 +482,14 @@ fn invalid_response() -> io::Error {
     errno(libc::EIO)
 }
 
-fn errno(code: i32) -> io::Error {
-    io::Error::from_raw_os_error(code)
-}
-
 #[cfg(test)]
-mod test_support {
+pub(super) mod test_support {
     use std::io::Read;
     use std::net::TcpStream;
 
-    pub(super) fn read_request(stream: &mut TcpStream) -> String {
+    // The module itself is only reachable inside `filesystem`, so this stays
+    // private to the filesystem tests.
+    pub fn read_request(stream: &mut TcpStream) -> String {
         let mut request = Vec::new();
         let mut expected_len = None;
         loop {

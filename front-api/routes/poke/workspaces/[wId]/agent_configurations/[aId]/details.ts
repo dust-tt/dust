@@ -77,7 +77,7 @@ app.get(
       agentConfigurations,
       authors,
       lastVersionEditors,
-      spaces: spaces.map((s) => s.toJSON()),
+      spaces: await SpaceResource.enrichSpacesWithAccess(auth, spaces),
       skillsByVersion,
     });
   }

@@ -1,3 +1,4 @@
+/*
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -28,7 +29,8 @@ async function backfillApiKeys(
       );
     }
 
-    const systemGroup = await GroupResource.fetchWorkspaceSystemGroup(auth);
+    const systemGroup =
+      await GroupResource.dangerouslyFetchWorkspaceSystemGroup(auth);
     if (systemGroup.isOk()) {
       await KeyResource.model.update(
         // @ts-ignore -- Legacy migration: groupId column was removed.
@@ -50,3 +52,4 @@ makeScript({}, async ({ execute }, logger) => {
     await backfillApiKeys(workspace, logger, execute);
   });
 });
+*/

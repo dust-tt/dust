@@ -1,4 +1,5 @@
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
+import type { Result } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
 // Replace the Redis-backed subscription cache with an in-memory map so the
@@ -25,6 +26,19 @@ vi.mock("@app/lib/utils/cache", () => ({
           const result = await fn(...args);
           inMemoryCache.set(key, JSON.stringify(result));
           return result;
+        };
+      }
+    ),
+  cacheWithRedisResult: vi
+    .fn()
+    .mockImplementation(
+      <T, E, Args extends unknown[]>(
+        fn: (...args: Args) => Promise<Result<JsonSerializable<T>, E>>
+      ) => {
+        return async (
+          ...args: Args
+        ): Promise<Result<JsonSerializable<T>, E>> => {
+          return fn(...args);
         };
       }
     ),
@@ -146,16 +160,14 @@ describe("Authenticator.fromJSON", () => {
     const staleAuthJson = auth.toJSON();
 
     const pod = await SpaceFactory.project(workspace, user.id);
-    const editorGroup = pod.groups.find(
-      (group) => group.groupKind === "space_editors"
-    );
-    expect(editorGroup).toBeDefined();
+    const editorGroup = await pod.fetchManualEditorGroup(auth);
+    expect(editorGroup).not.toBeNull();
 
     const staleAuth = await Authenticator.fromJSON(staleAuthJson);
-    expect(staleAuth.hasGroupByModelId(editorGroup!.groupId)).toBe(false);
+    expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(false);
 
     const freshAuth =
       await Authenticator.fromJsonWithRefrehedGroups(staleAuthJson);
-    expect(freshAuth.hasGroupByModelId(editorGroup!.groupId)).toBe(true);
+    expect(freshAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
   });
 });

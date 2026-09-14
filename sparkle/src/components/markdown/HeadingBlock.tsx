@@ -19,9 +19,15 @@ const headingSpacing: Record<number, string> = {
 interface HeadingBlockProps {
   children?: React.ReactNode;
   id?: string;
+  /** hast node from react-markdown; its position is used to skip re-renders during streaming. */
   node?: MarkdownNode;
 }
 
+/**
+ * Renders level-1 headings (`#`) inside Markdown output, applying the shared
+ * heading typography and spacing from MarkdownStyleContext.
+ * @summary H1 heading renderer for Markdown.
+ */
 export const H1Block = memo(
   ({ children, id }: HeadingBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
@@ -42,6 +48,11 @@ export const H1Block = memo(
 );
 H1Block.displayName = "H1Block";
 
+/**
+ * Renders level-2 headings (`##`) inside Markdown output, applying the shared
+ * heading typography and spacing from MarkdownStyleContext.
+ * @summary H2 heading renderer for Markdown.
+ */
 export const H2Block = memo(
   ({ children, id }: HeadingBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
@@ -62,6 +73,11 @@ export const H2Block = memo(
 );
 H2Block.displayName = "H2Block";
 
+/**
+ * Renders level-3 headings (`###`) inside Markdown output, applying the shared
+ * heading typography and spacing from MarkdownStyleContext.
+ * @summary H3 heading renderer for Markdown.
+ */
 export const H3Block = memo(
   ({ children, id }: HeadingBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
@@ -82,6 +98,11 @@ export const H3Block = memo(
 );
 H3Block.displayName = "H3Block";
 
+/**
+ * Renders level-4 headings (`####`) inside Markdown output, applying the shared
+ * heading typography and spacing from MarkdownStyleContext.
+ * @summary H4 heading renderer for Markdown.
+ */
 export const H4Block = memo(
   ({ children, id }: HeadingBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
@@ -102,6 +123,11 @@ export const H4Block = memo(
 );
 H4Block.displayName = "H4Block";
 
+/**
+ * Renders level-5 headings (`#####`) inside Markdown output, applying the
+ * shared heading typography and spacing from MarkdownStyleContext.
+ * @summary H5 heading renderer for Markdown.
+ */
 export const H5Block = memo(
   ({ children, id }: HeadingBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();
@@ -122,6 +148,11 @@ export const H5Block = memo(
 );
 H5Block.displayName = "H5Block";
 
+/**
+ * Renders level-6 headings (`######`) inside Markdown output, applying the
+ * shared heading typography and spacing from MarkdownStyleContext.
+ * @summary H6 heading renderer for Markdown.
+ */
 export const H6Block = memo(
   ({ children, id }: HeadingBlockProps) => {
     const { textColor, forcedTextSize } = useMarkdownStyle();

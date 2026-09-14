@@ -1,18 +1,20 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { Input } from "../index_with_tw_base";
+import { LegacyInput } from "../index_with_tw_base";
 
 const MESSAGE_STATUSES = ["info", "default", "error"] as const;
 
 const meta = {
   title: "Forms & Inputs/LegacyInput",
-  component: Input,
-  tags: ["a11y-issues", "autodocs"],
+  component: LegacyInput,
+  tags: ["deprecated", "!manifest", "a11y-issues", "autodocs"],
   parameters: {
     docs: {
       description: {
-        component: `A single-line text field for short, freeform input such as a name, email, or search term. Inputs support an optional **label**, a helper or error **message** with status colouring, and the standard HTML input **type**s.
+        component: `**Deprecated — use Input instead.** Kept only as a visual reference for legacy product surfaces.
+
+A single-line text field for short, freeform input such as a name, email, or search term. Inputs support an optional **label**, a helper or error **message** with status colouring, and the standard HTML input **type**s.
 
 **When to use**
 - To collect a short piece of text or a number from the user.
@@ -62,7 +64,7 @@ const meta = {
       description: "HTML input type",
     },
   },
-} satisfies Meta<typeof Input>;
+} satisfies Meta<typeof LegacyInput>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -113,33 +115,33 @@ export const AllVariants: Story = {
   render: () => (
     <div className="flex flex-col gap-20">
       <div className="grid grid-cols-3 gap-4">
-        <Input
+        <LegacyInput
           placeholder="placeholder"
           name="input"
           message="Name must be unique"
           messageStatus="info"
         />
-        <Input
+        <LegacyInput
           placeholder="placeholder"
           name="input"
           value="value"
           message="errored because it's a very long message"
           messageStatus="error"
         />
-        <Input
+        <LegacyInput
           placeholder="placeholder"
           name="input"
           value="value"
           message="Default message"
         />
-        <Input
+        <LegacyInput
           placeholder="placeholder"
           name="input"
           value="value"
           message="errored because it's a very long message"
           messageStatus="error"
         />
-        <Input
+        <LegacyInput
           placeholder="placeholder"
           name="input"
           value="disabled"
@@ -148,28 +150,28 @@ export const AllVariants: Story = {
         />
       </div>
       <div className="grid grid-cols-3 gap-4">
-        <Input placeholder="placeholder" name="input" />
-        <Input
+        <LegacyInput placeholder="placeholder" name="input" />
+        <LegacyInput
           placeholder="placeholder"
           name="input"
           value="value"
           message="errored because it's a very long message"
           messageStatus="error"
         />
-        <Input
+        <LegacyInput
           placeholder="placeholder"
           name="input"
           value="value"
           message="Default message"
         />
-        <Input
+        <LegacyInput
           placeholder="placeholder"
           name="input"
           value="value"
           message="errored because it's a very long message"
           messageStatus="error"
         />
-        <Input
+        <LegacyInput
           placeholder="placeholder"
           name="input"
           value="test"
@@ -177,13 +179,13 @@ export const AllVariants: Story = {
         />
       </div>
       <div className="grid grid-cols-3 gap-4">
-        <Input
+        <LegacyInput
           placeholder="placeholder"
           name="input"
           label="Firstname"
           isError
         />
-        <Input
+        <LegacyInput
           placeholder="placeholder"
           name="input"
           label="Lastname"

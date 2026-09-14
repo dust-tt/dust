@@ -85,7 +85,7 @@ describe("POST /api/w/:wId/skills/import/github-connection", () => {
   });
 
   it("returns 403 for non-admin users", async () => {
-    for (const role of ["builder", "user"] as const) {
+    for (const role of ["user", "manager"] as const) {
       const { workspace } = await setup(role);
 
       const response = await post(workspace, {
@@ -129,12 +129,14 @@ describe("GET /api/w/:wId/skills/import/github-connection", () => {
     expect(await response.json()).toEqual({ connection: null });
   });
 
-  it("returns 403 for non-builder users", async () => {
-    const { workspace } = await setup("user");
+  it("returns 403 without the create/skill capability", async () => {
+    for (const role of ["user", "manager"] as const) {
+      const { workspace } = await setup(role);
 
-    const response = await get(workspace);
+      const response = await get(workspace);
 
-    expect(response.status).toBe(403);
+      expect(response.status).toBe(403);
+    }
   });
 });
 
@@ -155,7 +157,7 @@ describe("DELETE /api/w/:wId/skills/import/github-connection", () => {
   });
 
   it("returns 403 for non-admin users", async () => {
-    for (const role of ["builder", "user"] as const) {
+    for (const role of ["user", "manager"] as const) {
       const { workspace } = await setup(role);
 
       const response = await del(workspace);

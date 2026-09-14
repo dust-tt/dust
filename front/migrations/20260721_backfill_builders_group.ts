@@ -1,3 +1,4 @@
+/*
 import { Op, QueryTypes } from "sequelize";
 
 import {
@@ -15,6 +16,7 @@ import { makeScript } from "@app/scripts/helpers";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 
 const WORKSPACE_CONCURRENCY = 8;
+*/
 
 /**
  * Backfill of the "Builders" group (builder role deprecation, PR 2 of
@@ -25,6 +27,8 @@ const WORKSPACE_CONCURRENCY = 8;
  * workspace from the roles (the source of truth): active builders are added to the group,
  * group members who are not active builders are removed.
  */
+
+/*
 
 async function reconcileWorkspace(
   workspaceModelId: number,
@@ -172,3 +176,4 @@ makeScript({}, async ({ execute }, logger) => {
       : "Builders group backfill dry run complete"
   );
 });
+*/

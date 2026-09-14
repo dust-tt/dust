@@ -8,7 +8,7 @@ on:
       - front-spa/**
       - sparkle/**
       - sdks/js/**
-      - .github/workflows/build-and-test-spa.yml
+      - .github/workflows/build-spa.yaml
 
 permissions:
   contents: read

@@ -1,3 +1,5 @@
+import { frontSequelize } from "@app/lib/resources/storage";
+import logger from "@app/logger/logger";
 import {
   getRequestContext,
   RequestCachedQuery,
@@ -9,11 +11,16 @@ import {
   type RequestStorageEnv,
 } from "@front-api/lib/request_context";
 import { contextStorage } from "hono/context-storage";
-import { describe, expect, it } from "vitest";
+import { QueryTypes } from "sequelize";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { requestInstrumentation } from "./request_instrumentation";
 
 describe("requestInstrumentation", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("owns the query cache on the Hono context for one request", async () => {
     const app = createHono<RequestStorageEnv>();
     const query = new RequestCachedQuery<"key", number>();
@@ -53,5 +60,63 @@ describe("requestInstrumentation", () => {
       isNewRequest: true,
       value: 2,
     });
+  });
+
+  it("injects the normalized Hono route into SQL comments", async () => {
+    const app = createHono<RequestStorageEnv>();
+
+    configureHonoRequestStorage();
+    app.use(contextStorage());
+    app.use("*", requestInstrumentation);
+    app.get("/workspaces/:workspaceId", async (c) => {
+      // biome-ignore lint/plugin/noRawSql: current_query() verifies the comment received by PostgreSQL
+      const [result] = await frontSequelize.query<{ query: string }>(
+        'SELECT current_query() AS "query"',
+        { type: QueryTypes.SELECT }
+      );
+
+      return c.json({
+        query: result.query,
+        route: getRequestContext()?.route,
+      });
+    });
+
+    const response = await app.request("/workspaces/w_123");
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      query:
+        "SELECT current_query() AS \"query\" /*route='%2Fworkspaces%2F%3AworkspaceId'*/",
+      route: "/workspaces/:workspaceId",
+    });
+  });
+
+  it("logs the peak number of concurrent queries for the request", async () => {
+    const app = createHono<RequestStorageEnv>();
+    const infoSpy = vi
+      .spyOn(logger, "info")
+      .mockImplementation(() => undefined);
+
+    configureHonoRequestStorage();
+    app.use(contextStorage());
+    app.use("*", requestInstrumentation);
+    app.get("/", async (c) => {
+      await Promise.all([
+        // biome-ignore lint/plugin/noRawSql: exercises query concurrency instrumentation
+        frontSequelize.query("SELECT 1"),
+        // biome-ignore lint/plugin/noRawSql: exercises query concurrency instrumentation
+        frontSequelize.query("SELECT 1"),
+      ]);
+
+      return c.body(null);
+    });
+
+    const response = await app.request("/");
+
+    expect(response.status).toBe(200);
+    expect(infoSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ peakConcurrentQueries: 2 }),
+      "Processed request"
+    );
   });
 });

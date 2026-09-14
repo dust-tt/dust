@@ -253,8 +253,8 @@ export function useConversationMarkAsRead({
             spaceSummary.unreadConversations.some(
               ({ sId }) => sId === conversationId
             ) ||
-            spaceSummary.nonParticipantUnreadConversations.some(
-              ({ sId }) => sId === conversationId
+            spaceSummary.nonParticipantUnreadConversationIds.includes(
+              conversationId
             )
         );
         if (!containsConversation) {
@@ -267,9 +267,9 @@ export function useConversationMarkAsRead({
             unreadConversations: spaceSummary.unreadConversations.filter(
               ({ sId }) => sId !== conversationId
             ),
-            nonParticipantUnreadConversations:
-              spaceSummary.nonParticipantUnreadConversations.filter(
-                ({ sId }) => sId !== conversationId
+            nonParticipantUnreadConversationIds:
+              spaceSummary.nonParticipantUnreadConversationIds.filter(
+                (id) => id !== conversationId
               ),
           })),
         };

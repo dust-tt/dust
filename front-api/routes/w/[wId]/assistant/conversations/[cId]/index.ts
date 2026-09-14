@@ -360,6 +360,14 @@ app.patch(
               message: r.error.message,
             },
           });
+        case "invalid_request_error":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: r.error.message,
+            },
+          });
         default:
           assertNever(r.error.code);
       }
@@ -407,6 +415,14 @@ app.patch(
             api_error: {
               type: "internal_server_error",
               message: "Internal server error",
+            },
+          });
+        case "invalid_request_error":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: r.error.message,
             },
           });
         default:

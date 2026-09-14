@@ -1,3 +1,4 @@
+import { SlackWorkflowsTable } from "@app/components/poke/data_sources/slack/workflows_table";
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
@@ -45,6 +46,7 @@ import capitalize from "lodash/capitalize";
 import { useEffect, useState } from "react";
 
 const maxNotionParentChainDepth = 20;
+const NOTION_APP_URL = "https://app.notion.com/p";
 
 function FolderDisplay({
   owner,
@@ -148,7 +150,7 @@ function FolderDisplay({
         </div>
       </div>
 
-      <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+      <div className="mb-4 flex flex-grow flex-col rounded-lg border p-4">
         {documents.length > 0 ? (
           <ContextItem.List>
             {documents.map((d) => (
@@ -235,7 +237,7 @@ function FolderDisplay({
         </div>
       </div>
 
-      <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+      <div className="mb-4 flex flex-grow flex-col rounded-lg border p-4">
         {tables.length > 0 ? (
           <ContextItem.List>
             {tables.map((t) => (
@@ -361,12 +363,13 @@ function NotionUrlCheckOrFind({
 
     try {
       // Extract Notion ID from URL
-      // Handle both full URLs (https://www.notion.so/Block-child-page-28cd1abaf14f80a4bfd4c51ba853d732)
-      // and just IDs (28cd1abaf14f80a4bfd4c51ba853d732)
+      // Handle full URLs such as
+      // https://app.notion.com/p/Block-child-page-28cd1abaf14f80a4bfd4c51ba853d732
+      // and IDs such as 28cd1abaf14f80a4bfd4c51ba853d732.
       let notionId = notionUrl.trim();
 
       // If it's a full URL, extract the last part
-      if (notionId.includes("notion.so/")) {
+      if (URL.canParse(notionId)) {
         const urlParts = notionId.split("/").filter((p) => p);
         notionId = urlParts[urlParts.length - 1];
       }
@@ -581,7 +584,7 @@ function NotionUrlCheckOrFind({
                                 Parent URL:
                               </span>
                               <span className="pl-2">
-                                {` https://www.notion.so/${(
+                                {` ${NOTION_APP_URL}/${(
                                   urlDetails.page.parentId as string
                                 ).replaceAll("-", "")}`}
                               </span>
@@ -593,7 +596,7 @@ function NotionUrlCheckOrFind({
                                 Parent URL:
                               </span>
                               <span className="pl-2">
-                                {` https://www.notion.so/${(
+                                {` ${NOTION_APP_URL}/${(
                                   urlDetails.page.parentId as string
                                 ).replaceAll("-", "")}`}
                               </span>
@@ -617,7 +620,7 @@ function NotionUrlCheckOrFind({
                                 Parent URL:
                               </span>
                               <span className="pl-2">
-                                {`https://www.notion.so/${(
+                                {`${NOTION_APP_URL}/${(
                                   urlDetails.db?.parentId as string
                                 ).replaceAll("-", "")}`}
                               </span>
@@ -629,7 +632,7 @@ function NotionUrlCheckOrFind({
                                 Parent URL:
                               </span>
                               <span className="pl-2">
-                                {` https://www.notion.so/${(
+                                {` ${NOTION_APP_URL}/${(
                                   urlDetails.db?.parentId as string
                                 ).replaceAll("-", "")}`}
                               </span>
@@ -937,6 +940,7 @@ export function DataSourcePage() {
     dataSourceViews,
     coreDataSource,
     connector,
+    oauthConnectedAccount,
     features,
     temporalWorkspace,
     temporalRunningWorkflows,
@@ -985,6 +989,7 @@ export function DataSourcePage() {
           temporalWorkspace={temporalWorkspace}
           coreDataSource={coreDataSource}
           connector={connector}
+          oauthConnectedAccount={oauthConnectedAccount}
           temporalRunningWorkflows={temporalRunningWorkflows}
         />
         <div className="mt-4 flex grow flex-col gap-y-4">
@@ -1143,13 +1148,16 @@ export function DataSourcePage() {
           {["slack", "slack_bot"].includes(
             dataSource.connectorProvider ?? ""
           ) && (
-            <div className="border-material-200 mb-4 flex flex-grow flex-col rounded-lg border p-4">
+            <div className="mb-4 flex flex-grow flex-col rounded-lg border p-4">
               <SlackChannelPatternInput
                 initialValues={features.autoReadChannelPatterns || ""}
                 owner={owner}
                 dataSource={dataSource}
               />
             </div>
+          )}
+          {dataSource.connectorProvider === "slack_bot" && (
+            <SlackWorkflowsTable owner={owner} />
           )}
           {!dataSource.connectorId ? (
             <FolderDisplay

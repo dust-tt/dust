@@ -1,4 +1,5 @@
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import { splitConsumptionPeriodIntoBuckets } from "@app/lib/api/analytics/consumption/period_buckets";
 import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type { AuthenticatorType } from "@app/lib/auth";
 import type * as activities from "@app/temporal/analytics_queue/activities";
@@ -28,9 +29,14 @@ const {
   startToCloseTimeout: "5 minutes",
 });
 
-const { runConsumptionExportActivity } = proxyActivities<typeof activities>({
+const {
+  runConsumptionExportBucketActivity,
+  finalizeConsumptionExportActivity,
+} = proxyActivities<typeof activities>({
   startToCloseTimeout: "5 minutes",
 });
+
+const CONSUMPTION_EXPORT_BUCKET_CONCURRENCY = 8;
 
 export async function storeAgentAnalyticsWorkflow(
   authType: AuthenticatorType,
@@ -94,9 +100,33 @@ export async function runConsumptionExportWorkflow(
     exportId: string;
   }
 ): Promise<void> {
-  await runConsumptionExportActivity(authType, {
-    period,
-    filter,
+  const buckets = splitConsumptionPeriodIntoBuckets(period);
+
+  // Each bucket writes to its own index-derived path and finalize reconstructs order from
+  // those indices, not from completion order, so buckets within a batch can run concurrently.
+  for (
+    let batchStart = 0;
+    batchStart < buckets.length;
+    batchStart += CONSUMPTION_EXPORT_BUCKET_CONCURRENCY
+  ) {
+    const batch = buckets.slice(
+      batchStart,
+      batchStart + CONSUMPTION_EXPORT_BUCKET_CONCURRENCY
+    );
+    await Promise.all(
+      batch.map((bucketPeriod, offset) =>
+        runConsumptionExportBucketActivity(authType, {
+          period: bucketPeriod,
+          filter,
+          exportId,
+          bucketIndex: batchStart + offset,
+        })
+      )
+    );
+  }
+
+  await finalizeConsumptionExportActivity(authType, {
     exportId,
+    bucketCount: buckets.length,
   });
 }

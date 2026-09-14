@@ -27,7 +27,6 @@ const ConversationSelectedSpacesResponseSchema = z.object({
       groupIds: z.array(z.string()),
       isRestricted: z.boolean(),
       kind: z.enum(SPACE_KINDS),
-      managementMode: z.enum(["manual", "group"]),
       name: z.string(),
       sId: z.string(),
       selected: z.boolean(),

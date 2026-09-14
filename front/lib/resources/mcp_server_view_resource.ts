@@ -32,6 +32,7 @@ import type {
   MCPServerLightType,
   MCPServerType,
   MCPServerViewLightType,
+  MCPServerViewNameConflictDetails,
   MCPServerViewType,
   MCPToolType,
 } from "@app/lib/api/mcp";
@@ -219,9 +220,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       }
       resource.remoteMCPServer = remoteServer;
     } else if (blob.internalMCPServerId) {
+      // Creation is gated upstream (createInternalMCPServer); resolve the server
+      // even when restricted so an admin-installed view can still be built.
       const internalServer = await InternalMCPServerInMemoryResource.fetchById(
         auth,
-        blob.internalMCPServerId
+        blob.internalMCPServerId,
+        { includeRestricted: true }
       );
       if (!internalServer) {
         throw new DustError(
@@ -245,7 +249,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     systemView: MCPServerViewResource,
     space: SpaceResource
-  ): Promise<{ hasConflict: boolean; name: string }> {
+  ): Promise<{
+    hasConflict: boolean;
+    name: string;
+    conflictDetails: MCPServerViewNameConflictDetails | null;
+  }> {
     const name = systemView.name ?? systemView.getServerDisplayMetadata().name;
 
     return this.hasNameConflictInSpaceByName(auth, name, space);
@@ -254,7 +262,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   /**
    * Check whether the given name conflicts with an existing view in the target
    * space. When the candidate tools are known before creation, also compare the
-   * model-facing names generated after the server-name prefix is truncated.
+   * model-facing names generated after the server-name prefix is truncated. On
+   * conflict, `conflictDetails` names the existing view (and the shared
+   * model-facing tool name for cropped-tool collisions) so callers can surface
+   * what the new server collides with.
    */
   static async hasNameConflictInSpaceByName(
     auth: Authenticator,
@@ -262,7 +273,11 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     space: SpaceResource,
     tools: readonly MCPToolType[] = [],
     { excludedMCPServerViewId }: { excludedMCPServerViewId?: string } = {}
-  ): Promise<{ hasConflict: boolean; name: string }> {
+  ): Promise<{
+    hasConflict: boolean;
+    name: string;
+    conflictDetails: MCPServerViewNameConflictDetails | null;
+  }> {
     const candidateToolNames = removeNulls(
       tools.map((tool) => {
         const toolName = tryGetPrefixedToolName(name, tool.name);
@@ -272,30 +287,44 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       })
     );
     const existingViews = await this.listBySpace(auth, space);
-    const hasConflict = existingViews.some((view) => {
+    for (const view of existingViews) {
       if (view.sId === excludedMCPServerViewId) {
-        return false;
+        continue;
       }
 
       const existingName = view.name ?? view.getServerDisplayMetadata().name;
       if (existingName === name) {
-        return true;
+        return {
+          hasConflict: true,
+          name,
+          conflictDetails: { conflictingServerName: existingName },
+        };
       }
 
       // Use the candidate tool names for both prefixes: this check is about the
       // server-name crop and does not require loading existing tool payloads.
-      return candidateToolNames.some(({ originalName, prefixedName }) => {
+      for (const { originalName, prefixedName } of candidateToolNames) {
         const existingToolName = tryGetPrefixedToolName(
           existingName,
           originalName
         );
-        return (
-          existingToolName.isOk() && existingToolName.value === prefixedName
-        );
-      });
-    });
+        if (
+          existingToolName.isOk() &&
+          existingToolName.value === prefixedName
+        ) {
+          return {
+            hasConflict: true,
+            name,
+            conflictDetails: {
+              conflictingServerName: existingName,
+              conflictingToolName: prefixedName,
+            },
+          };
+        }
+      }
+    }
 
-    return { hasConflict, name };
+    return { hasConflict: false, name, conflictDetails: null };
   }
 
   public static async create(
@@ -467,11 +496,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       includeMetadata = true,
       includeHeavyAttributes,
       isRestrictedToSkills,
+      includeRestricted = false,
       transaction,
     }: {
       includeMetadata?: boolean;
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
+      // Surface views whose internal server is gated behind a feature flag the
+      // workspace does not have. Defaults to `false` so restricted servers are
+      // not resolved into runnable tools; only admin management surfaces opt in.
+      includeRestricted?: boolean;
       transaction?: Transaction;
     } = {}
   ) {
@@ -514,7 +548,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       const internalServers =
         await InternalMCPServerInMemoryResource.fetchByIds(
           auth,
-          removeNulls(views.map((v) => v.internalMCPServerId))
+          removeNulls(views.map((v) => v.internalMCPServerId)),
+          { includeRestricted }
         );
       const internalServerMap = new Map(internalServers.map((s) => [s.id, s]));
 
@@ -624,6 +659,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     options?: ResourceFindOptions<MCPServerViewModel> & {
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
+      includeRestricted?: boolean;
     }
   ): Promise<MCPServerViewResource | null> {
     const [mcpServerView] = await this.fetchByIds(auth, [id], options);
@@ -637,11 +673,16 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     options?: ResourceFindOptions<MCPServerViewModel> & {
       includeHeavyAttributes?: readonly RemoteMCPServerHeavyAttributeType[];
       isRestrictedToSkills?: boolean;
+      includeRestricted?: boolean;
     }
   ): Promise<MCPServerViewResource[]> {
     const viewModelIds = removeNulls(ids.map((id) => getResourceIdFromSId(id)));
-    const { includeHeavyAttributes, isRestrictedToSkills, ...findOptions } =
-      options ?? {};
+    const {
+      includeHeavyAttributes,
+      isRestrictedToSkills,
+      includeRestricted,
+      ...findOptions
+    } = options ?? {};
 
     const views = await this.baseFetch(
       auth,
@@ -654,7 +695,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           },
         },
       },
-      { includeHeavyAttributes, isRestrictedToSkills }
+      { includeHeavyAttributes, isRestrictedToSkills, includeRestricted }
     );
 
     return views ?? [];
@@ -826,8 +867,8 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
   ): Promise<MCPServerViewResource[]> {
     // Filter out spaces that the user does not have read or administrate access to
-    const accessibleSpaces = spaces.filter((s) =>
-      s.canReadOrAdministrate(auth)
+    const accessibleSpaces = spaces.filter(
+      (space) => auth.can("read", space) || auth.can("admin", space)
     );
     if (accessibleSpaces.length === 0) {
       return [];
@@ -1129,7 +1170,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     const matches = views.filter((view) => {
       if (
         view.space.kind === "system" ||
-        !view.space.canReadOrAdministrate(auth)
+        (!auth.can("read", view.space) && !auth.can("admin", view.space))
       ) {
         return false;
       }
@@ -1273,7 +1314,10 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
   public async updateOAuthUseCase(
     auth: Authenticator,
-    oAuthUseCase: MCPOAuthUseCase
+    oAuthUseCase: MCPOAuthUseCase,
+    // Set on activation with the scope the admin just authorized. Personal connections read their
+    // scope from the view, so this is what bounds members to the admin's consent.
+    oauthScope?: string
   ): Promise<Result<number, DustError<"unauthorized">>> {
     if (!this.canAdministrate(auth)) {
       return new Err(
@@ -1283,9 +1327,23 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
 
     const [affectedCount] = await this.update({
       oAuthUseCase,
+      ...(oauthScope !== undefined ? { oauthScope } : {}),
       editedAt: new Date(),
       editedByUserId: auth.getNonNullableUser().id,
     });
+    return new Ok(affectedCount);
+  }
+
+  public async clearOAuthScope(
+    auth: Authenticator
+  ): Promise<Result<number, DustError<"unauthorized">>> {
+    if (!this.canAdministrate(auth)) {
+      return new Err(
+        new DustError("unauthorized", "Not allowed to clear OAuth scope.")
+      );
+    }
+
+    const [affectedCount] = await this.update({ oauthScope: null });
     return new Ok(affectedCount);
   }
 
@@ -1580,6 +1638,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
   }
 
+  get remoteMCPServerUrl(): string | null {
+    return this.serverType === "remote"
+      ? this.getRemoteMCPServerResource().url
+      : null;
+  }
+
   /**
    * Computes the sIds of the auto internal MCP servers enabled for the workspace. This is
    * the exact set of servers whose views must exist in the system and global spaces.
@@ -1773,10 +1837,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           .map((v) => [v.internalMCPServerId, v])
       );
 
-      // editedByUserId is only meaningful when an admin triggers the creation (workspace
-      // creation, feature-flag toggle); just-in-time hydration from a member read leaves it
-      // null, the views are platform-created.
-      const editedByUserId = auth.isAdmin() ? (auth.user()?.id ?? null) : null;
+      // editedByUserId is only meaningful when a workspace admin triggers the creation
+      // (workspace creation, feature-flag toggle). A superuser acting from poke is not a
+      // member, and just-in-time hydration from a member read is not an admin action: both
+      // leave it null, the views are platform-created.
+      const editedByUserId =
+        auth.isAdmin() && !auth.isDustSuperUser()
+          ? (auth.user()?.id ?? null)
+          : null;
 
       // Unlike MCPServerViewResource.create, this does not clean up regular-space views of
       // the same server when creating the global view. That case is only reachable on a

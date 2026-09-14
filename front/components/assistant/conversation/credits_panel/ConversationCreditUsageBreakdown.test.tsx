@@ -3,7 +3,7 @@ import type {
   ConversationConsumptionDetails,
   ConversationConsumptionToolDetails,
 } from "@app/types/assistant/conversation_consumption";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/components/sparkle/ThemeContext", () => ({
@@ -62,6 +62,18 @@ describe("ConversationCreditUsageBreakdown", () => {
       <ConversationCreditUsageBreakdown billedCredits={20} details={details} />
     );
 
+    expect(
+      screen.getByRole("heading", { name: "Total credits consumed" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "By model" })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Context and reasoning")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Agents use credits to process the conversation history and context. Longer conversations consume more credits."
+      )
+    ).toBeInTheDocument();
     expect(screen.getByText("Calendar tool")).toBeInTheDocument();
     expect(screen.getByText("6.5 credits")).toBeInTheDocument();
     expect(screen.getByText("4.5 credits")).toBeInTheDocument();
@@ -74,9 +86,12 @@ describe("ConversationCreditUsageBreakdown", () => {
     expect(screen.getByText("GPT-5 Mini")).toBeInTheDocument();
     expect(screen.getByText("15 credits")).toBeInTheDocument();
     expect(screen.queryByText("Research agent")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Per Agents" })
+    ).not.toBeInTheDocument();
   });
 
-  it("shows agent breakdowns for multi-agent conversations", () => {
+  it("collapses agent breakdowns by default and expands them from the row", () => {
     const agent = {
       pictureUrl: null,
       billedCredits: 10,
@@ -89,8 +104,18 @@ describe("ConversationCreditUsageBreakdown", () => {
       tools: [],
       models: [],
       agents: [
-        { ...agent, agentId: "agent_1", name: "Research agent" },
-        { ...agent, agentId: "agent_2", name: "Writing agent" },
+        {
+          ...agent,
+          agentId: "agent_1",
+          name: "Research agent",
+          tools: [makeTool("search", "Search tool", 4)],
+        },
+        {
+          ...agent,
+          agentId: "agent_2",
+          name: "Writing agent",
+          tools: [makeTool("write", "Writing tool", 6)],
+        },
       ],
     };
 
@@ -100,5 +125,20 @@ describe("ConversationCreditUsageBreakdown", () => {
 
     expect(screen.getByText("Research agent")).toBeInTheDocument();
     expect(screen.getByText("Writing agent")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Per Agents" })
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Search tool")).not.toBeInTheDocument();
+    expect(screen.queryByText("Writing tool")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Research agent"));
+
+    expect(screen.getByText("Search tool")).toBeInTheDocument();
+    expect(screen.queryByText("Writing tool")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Collapse credit details for Research agent",
+      })
+    ).toHaveAttribute("aria-expanded", "true");
   });
 });

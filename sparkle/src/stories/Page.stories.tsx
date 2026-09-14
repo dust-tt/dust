@@ -1,4 +1,4 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
@@ -34,9 +34,15 @@ const meta = {
 } satisfies Meta<typeof Page>;
 
 export default meta;
+type Story = StoryObj;
 
-export const PageSimpleExample = () => {
-  return (
+/**
+ * The minimal page skeleton: a **Page.Header**, a paragraph, and one
+ * **Page.SectionHeader** carrying its section CTA via the \`action\` prop.
+ * @summary Header, paragraph, and section header basics.
+ */
+export const SimpleTextPage: Story = {
+  render: () => (
     <Page>
       <Page.Header title="Title" description="Description" />
       <Page.P>
@@ -54,11 +60,80 @@ export const PageSimpleExample = () => {
         <div className="h-12 w-16 bg-brand" />
       </Page.Layout>
     </Page>
-  );
+  ),
 };
 
-export const QIGExample = () => {
-  return (
+/**
+ * A complete page composing Page blocks with other Sparkle components: a
+ * header and section header above a **ContextItem.List** of rich list rows.
+ * @summary Page scaffolding around a ContextItem list.
+ */
+export const FullPageLayout: Story = {
+  render: () => (
+    <Page>
+      <Page.Header title="Title" description="Description" />
+      <Page.P>
+        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod
+        a massa quis lacinia. Donec euismod nisl eget nunc Lorem ipsum dolor sit
+        amet, consectetur adipiscing elit. Nullam euismod a massa quis lacinia.
+        Donec euismod nisl eget nunc
+      </Page.P>
+      <Page.SectionHeader
+        title="Section Title"
+        description="Section Description"
+        action={{ label: "Action", size: "sm" }}
+      />
+      <ContextItem.List>
+        <ContextItem
+          title="@Gpt4"
+          visual={
+            <Avatar
+              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
+              size="sm"
+            />
+          }
+        >
+          <ContextItem.Description description="Stats, pricing, history of contacts, contact message" />
+        </ContextItem>
+        <ContextItem
+          title="@SalesFr"
+          action={<Button variant="outline" label="Manage" size="sm" />}
+          visual={
+            <Avatar
+              visual="https://dust.tt/static/droidavatar/Droid_Indigo_4.jpg"
+              size="sm"
+            />
+          }
+        >
+          <ContextItem.Description description="Stats, pricing, history of contacts, contact message" />
+        </ContextItem>
+        <ContextItem
+          title="@SupportFr"
+          action={<Button variant="outline" label="Manage" size="sm" />}
+          visual={
+            <Avatar
+              visual="https://dust.tt/static/droidavatar/Droid_Pink_4.jpg"
+              size="sm"
+            />
+          }
+        >
+          <ContextItem.Description description="Stats, pricing, history of contacts, contact message" />
+        </ContextItem>
+      </ContextItem.List>
+    </Page>
+  ),
+};
+
+/**
+ * Recreation of Dust's onboarding "Quick Guide for new members" screen,
+ * exercising multi-column **Page.Horizontal** / **Page.Vertical** layouts
+ * with rich headings. Kept for design review of dense marketing-style
+ * pages.
+ * @summary App-screen recreation of the quick start guide.
+ */
+export const QuickStartGuide: Story = {
+  tags: ["!manifest"],
+  render: () => (
     <Page>
       <Page.Header
         title={
@@ -84,7 +159,10 @@ export const QIGExample = () => {
           </Page.P>
         </Page.Vertical>
         <Page.Vertical sizing="grow">
-          <img src="/static/quick_start_guide_input_bar.png" />
+          <img
+            src="/static/quick_start_guide_input_bar.png"
+            alt="The Dust input bar with an @mention"
+          />
         </Page.Vertical>
       </Page.Horizontal>
       <Page.Horizontal>
@@ -162,7 +240,7 @@ export const QIGExample = () => {
 
         <Page.P>
           To augment your agents with knowledge, you give them data.
-          <br /> Data can comes in different ways in Dust.{" "}
+          <br /> Data can come in different ways in Dust.{" "}
           <span className="font-bold">Here are the three main ways:</span>
         </Page.P>
         <Page.Horizontal>
@@ -173,7 +251,7 @@ export const QIGExample = () => {
             </div>
             <Page.P>
               Notion, Slack, Google Drive... Dust can connect to multiple
-              platforms and make syncronise your data.
+              platforms and synchronize your data.
             </Page.P>
           </Page.Vertical>
           <Page.Vertical sizing="grow">
@@ -198,67 +276,18 @@ export const QIGExample = () => {
         </Page.Horizontal>
       </Page.Vertical>
     </Page>
-  );
+  ),
 };
 
-export const PageExample = () => {
-  return (
-    <Page>
-      <Page.Header title="Title" description="Description" />
-      <Page.P>
-        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam euismod
-        a massa quis lacinia. Donec euismod nisl eget nunc Lorem ipsum dolor sit
-        amet, consectetur adipiscing elit. Nullam euismod a massa quis lacinia.
-        Donec euismod nisl eget nunc
-      </Page.P>
-      <Page.SectionHeader
-        title="Section Title"
-        description="Section Description"
-        action={{ label: "Action", size: "sm" }}
-      />
-      <ContextItem.List>
-        <ContextItem
-          title="@Gpt4"
-          visual={
-            <Avatar
-              visual="https://dust.tt/static/systemavatar/gpt4_avatar_full.png"
-              size="sm"
-            />
-          }
-        >
-          <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
-        </ContextItem>
-        <ContextItem
-          title="@SalesFr"
-          action={<Button variant="outline" label="Manage" size="sm" />}
-          visual={
-            <Avatar
-              visual="https://dust.tt/static/droidavatar/Droid_Indigo_4.jpg"
-              size="sm"
-            />
-          }
-        >
-          <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
-        </ContextItem>
-        <ContextItem
-          title="@SupportFr"
-          action={<Button variant="outline" label="Manage" size="sm" />}
-          visual={
-            <Avatar
-              visual="https://dust.tt/static/droidavatar/Droid_Pink_4.jpg"
-              size="sm"
-            />
-          }
-        >
-          <ContextItem.Description description="Lats, pricing, history of contacts, contact message" />
-        </ContextItem>
-      </ContextItem.List>
-    </Page>
-  );
-};
-
-export const AssistantBuilder = () => {
-  return (
+/**
+ * Recreation of the agent builder screen, exercising nested
+ * **Page.Layout** directions, gap sizes, and **Page.Separator** between
+ * form sections. Kept for design review.
+ * @summary App-screen recreation of the agent builder.
+ */
+export const AssistantBuilder: Story = {
+  tags: ["!manifest"],
+  render: () => (
     <Page>
       <Page.Layout direction="horizontal">
         <Page.Layout direction="vertical" sizing="grow" gap="lg">
@@ -266,8 +295,8 @@ export const AssistantBuilder = () => {
           <Page.Layout direction="vertical" gap="xs">
             <Page.H variant="h4">Name / Handle</Page.H>
             <Page.P variant="secondary">
-              The handle of your Droid will be used to call your Droïd with an
-              “@” hand (for instance @myAssistant).
+              The handle of your agent will be used to call it with an “@”
+              mention (for instance @myAssistant).
             </Page.P>
           </Page.Layout>
           <Page.Layout direction="vertical" gap="xs">
@@ -314,24 +343,31 @@ export const AssistantBuilder = () => {
             </Page.H>
             <Page.P variant="secondary">
               By default, your agent will follow your instructions and answer
-              based on commun knowledge.
+              based on common knowledge.
             </Page.P>
           </Page.Layout>
           <Page.Layout direction="vertical" gap="xs" sizing="grow">
             <Page.H variant="h5">Choose your data sources with care.</Page.H>
             <Page.P variant="secondary">
-              Giving a lot of data is does not always give better results.
+              Giving a lot of data does not always give better results.
               Selecting only the right data is better.
             </Page.P>
           </Page.Layout>
         </Page.Layout>
       </Page.Layout>
     </Page>
-  );
+  ),
 };
 
-export const HelpExample = () => {
-  return (
+/**
+ * Recreation of the in-app help screen, mixing section headers, secondary
+ * paragraphs, and suggestion buttons in a fluid layout. Kept for design
+ * review.
+ * @summary App-screen recreation of the help panel.
+ */
+export const HelpScreen: Story = {
+  tags: ["!manifest"],
+  render: () => (
     <Page>
       <Page.Header title="Welcome to Agent" />
       <Page.Layout direction="vertical" gap="xs" align="left">
@@ -353,9 +389,9 @@ export const HelpExample = () => {
         <Page.P variant="secondary">
           Dust is not just a single agent, it’s a full team at your service.{" "}
           <br />
-          Each member has a set of specific set skills.
+          Each member has a specific set of skills.
         </Page.P>
-        <Page.P variant="secondary">Meet some your Droid team:</Page.P>
+        <Page.P variant="secondary">Meet some of your agent team:</Page.P>
       </Page.Layout>
       <Page.Separator />
       <Page.Layout direction="vertical" gap="xs">
@@ -379,5 +415,5 @@ export const HelpExample = () => {
         </Page.Layout>
       </Page.Layout>
     </Page>
-  );
+  ),
 };

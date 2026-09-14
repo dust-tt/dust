@@ -10,15 +10,29 @@ const pagesShownInControls = 7;
 
 interface PaginationProps {
   size?: Size;
+  /** Show the "Showing X-Y of N items" range summary (default true). */
   showDetails?: boolean;
+  /** Show the numbered page buttons between the arrows (default true). */
   showPageButtons?: boolean;
+  /** Total number of rows in the dataset, used to derive the page count. */
   rowCount: number;
+  /** Flag `rowCount` as a lower-bound estimate; appends "+" to the range summary. */
   rowCountIsCapped?: boolean;
+  /** Current page state (`pageIndex` is 0-based); the caller owns this state. */
   pagination: PaginationState;
+  /** Called with the new pagination state when the user navigates. */
   setPagination: (pagination: PaginationState) => void;
+  /** Render the page numbers as inert text instead of clickable buttons. */
   disablePaginationNumbers?: boolean;
 }
 
+/**
+ * A controlled pager for tabular or list data: it derives the page count from
+ * `rowCount` and the current `pagination` state, and reports changes through
+ * `setPagination`. Use it to page through a large dataset rendered in chunks,
+ * e.g. a table backed by @tanstack/react-table.
+ * @summary Controlled pager for tables and lists.
+ */
 export function Pagination({
   size = "sm",
   showDetails = true,

@@ -20,7 +20,10 @@ import type {
   FileTypeWithMetadata,
   SharingGrantType,
 } from "@app/types/files";
-import { DUST_FILE_ID_HEADER } from "@app/types/files";
+import {
+  DUST_FILE_CONTENT_TYPE_HEADER,
+  DUST_FILE_ID_HEADER,
+} from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -72,13 +75,18 @@ function getFilePathMetadataApiPath(
   return `${getFilePathContentApiPath(owner, canonicalPath)}?metadata=1`;
 }
 
-export async function fetchFileIdFromPath({
+export interface FilePathHeadMetadata {
+  fileId: string | null;
+  contentType: string | null;
+}
+
+export async function fetchFileHeadMetadataFromPath({
   owner,
   filePath,
 }: {
   owner: LightWorkspaceType;
   filePath: string;
-}): Promise<string | null> {
+}): Promise<FilePathHeadMetadata | null> {
   const response = await clientFetch(
     getFilePathMetadataApiPath(owner, filePath),
     { method: "HEAD" }
@@ -90,13 +98,67 @@ export async function fetchFileIdFromPath({
     throw new Error(`Failed to fetch file metadata (HTTP ${response.status}).`);
   }
 
-  return response.headers.get(DUST_FILE_ID_HEADER);
+  return {
+    fileId: response.headers.get(DUST_FILE_ID_HEADER),
+    contentType: response.headers.get(DUST_FILE_CONTENT_TYPE_HEADER),
+  };
+}
+
+export async function fetchFileIdFromPath({
+  owner,
+  filePath,
+}: {
+  owner: LightWorkspaceType;
+  filePath: string;
+}): Promise<string | null> {
+  const metadata = await fetchFileHeadMetadataFromPath({ owner, filePath });
+  return metadata?.fileId ?? null;
+}
+
+export type FilePathMetadata = {
+  fileId: string | null;
+  contentType: string;
+  sizeBytes: number;
+};
+
+/**
+ * Resolve metadata for a canonical scoped path via HEAD on `/files/path/...`.
+ * Prefer the Dust content-type header (needed for frames); fall back to
+ * Content-Type. Returns null when the path is not found.
+ */
+export async function fetchFileMetadataFromPath({
+  owner,
+  filePath,
+}: {
+  owner: LightWorkspaceType;
+  filePath: string;
+}): Promise<FilePathMetadata | null> {
+  const response = await clientFetch(
+    getFilePathMetadataApiPath(owner, filePath),
+    { method: "HEAD" }
+  );
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch file metadata (HTTP ${response.status}).`);
+  }
+
+  const contentLength = response.headers.get("Content-Length");
+  return {
+    fileId: response.headers.get(DUST_FILE_ID_HEADER),
+    contentType:
+      response.headers.get(DUST_FILE_CONTENT_TYPE_HEADER) ??
+      response.headers.get("Content-Type") ??
+      "application/octet-stream",
+    sizeBytes: contentLength ? Number(contentLength) : 0,
+  };
 }
 
 /**
- * Resolve the FileResource sId linked to a canonical scoped path.
- * Returns null when the path exists but has no linked FileResource, or when
- * the path is not found.
+ * Resolve the FileResource sId and content type linked to a canonical scoped path.
+ * The id is null when the path exists but has no linked FileResource, or when
+ * the path is not found; callers can use `isFileIdNotFound` to distinguish loading.
  */
 export function useFileIdFromPath({
   owner,
@@ -111,15 +173,15 @@ export function useFileIdFromPath({
   const swrKey =
     disabled || path === null
       ? null
-      : (`file-id-from-path:${owner.sId}:${path}` as const);
+      : (`file-head-metadata-from-path:${owner.sId}:${path}` as const);
 
   const { data, error } = useSWRWithDefaults(
     swrKey,
-    async (): Promise<string | null> => {
+    async (): Promise<FilePathHeadMetadata | null> => {
       if (path === null) {
         return null;
       }
-      return fetchFileIdFromPath({ owner, filePath: path });
+      return fetchFileHeadMetadataFromPath({ owner, filePath: path });
     },
     { disabled: swrKey === null }
   );
@@ -127,10 +189,48 @@ export function useFileIdFromPath({
   const isLoading = swrKey !== null && !error && data === undefined;
 
   return {
-    fileId: data ?? null,
+    fileId: data?.fileId ?? null,
+    fileContentType: data?.contentType ?? null,
     isFileIdLoading: isLoading,
-    isFileIdNotFound: swrKey !== null && !isLoading && data === null,
+    isFileIdNotFound:
+      swrKey !== null && !isLoading && (data === null || data?.fileId === null),
     fileIdError: error ? normalizeError(error) : null,
+  };
+}
+
+export function useFileMetadataFromPath({
+  owner,
+  filePath,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  filePath: string | null | undefined;
+  disabled?: boolean;
+}) {
+  const path = filePath ?? null;
+  const swrKey =
+    disabled || path === null
+      ? null
+      : (`file-metadata-from-path:${owner.sId}:${path}` as const);
+
+  const { data, error } = useSWRWithDefaults(
+    swrKey,
+    async (): Promise<FilePathMetadata | null> => {
+      if (path === null) {
+        return null;
+      }
+      return fetchFileMetadataFromPath({ owner, filePath: path });
+    },
+    { disabled: swrKey === null }
+  );
+
+  const isLoading = swrKey !== null && !error && data === undefined;
+
+  return {
+    metadata: data ?? null,
+    isFileMetadataLoading: isLoading,
+    isFileMetadataNotFound: swrKey !== null && !isLoading && data === null,
+    fileMetadataError: error ? normalizeError(error) : null,
   };
 }
 
@@ -200,6 +300,49 @@ export async function writeFileContentByPath({
   }
 }
 
+/** Delete the file or folder at `canonicalPath`; Frame manifests run the package-aware deletion. */
+export function useDeleteFileByPath({ owner }: { owner: LightWorkspaceType }) {
+  const sendNotification = useSendNotification();
+
+  return async (canonicalPath: string): Promise<Result<void, Error>> => {
+    try {
+      const encoded = canonicalPath
+        .split("/")
+        .map(encodeURIComponent)
+        .join("/");
+      const res = await clientFetch(
+        `/api/w/${owner.sId}/files/path/${encoded}`,
+        { method: "DELETE" }
+      );
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to delete file",
+          description: errorData.message,
+        });
+        return new Err(new Error(errorData.message));
+      }
+
+      sendNotification({
+        type: "success",
+        title: "File deleted",
+      });
+
+      return new Ok(undefined);
+    } catch (e) {
+      const errorMessage = normalizeError(e).message;
+      sendNotification({
+        type: "error",
+        title: "Failed to delete file",
+        description: errorMessage,
+      });
+      return new Err(new Error(errorMessage));
+    }
+  };
+}
+
 export function useWriteFileContentByPath({
   owner,
 }: {
@@ -263,6 +406,23 @@ export const getFilePathDownloadUrl = (
   return `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/path/${encoded}?download=1`;
 };
 
+export async function prepareFolderArchiveDownload({
+  owner,
+  canonicalPath,
+}: {
+  owner: LightWorkspaceType;
+  canonicalPath: string;
+}): Promise<string> {
+  const url = `${getFilePathViewUrl(owner, canonicalPath)}?archive=zip`;
+  const response = await clientFetch(url, { method: "HEAD" });
+  if (!response.ok) {
+    throw new Error(
+      `Failed to prepare folder archive (HTTP ${response.status}).`
+    );
+  }
+  return url;
+}
+
 export async function downloadFile(
   owner: LightWorkspaceType,
   canonicalPath: string
@@ -290,14 +450,15 @@ export function useFileProcessedContent({
     disabled?: boolean;
   };
 }) {
-  const isDisabled = config?.disabled ?? !fileId;
+  const isDisabled = !fileId || config?.disabled === true;
+  const swrKey = fileId ? getFileProcessedUrl(owner, fileId) : null;
 
   const {
     data: response,
     error,
     mutate,
   } = useSWRWithDefaults(
-    isDisabled ? null : getFileProcessedUrl(owner, fileId),
+    swrKey,
     // Stream fetcher -> don't try to parse the stream.
     // Wait for initial response to trigger swr error handling.
     async (...args) => {
@@ -314,7 +475,7 @@ export function useFileProcessedContent({
 
       return response;
     },
-    config
+    { ...config, disabled: isDisabled }
   );
 
   return {
@@ -380,10 +541,12 @@ export function useFileMetadata({
   fileId,
   owner,
   cacheKey,
+  disabled = false,
 }: {
   fileId: string | null;
   owner: LightWorkspaceType;
   cacheKey?: string | null;
+  disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const fileMetadataFetcher: Fetcher<FileTypeWithMetadata> = fetcher;
@@ -397,12 +560,13 @@ export function useFileMetadata({
 
   const { data, error, mutateRegardlessOfQueryParams } = useSWRWithDefaults(
     swrKey,
-    fileMetadataFetcher
+    fileMetadataFetcher,
+    { disabled: disabled || swrKey === null }
   );
 
   return {
     fileMetadata: data,
-    isFileMetadataLoading: !error && !data,
+    isFileMetadataLoading: !disabled && swrKey !== null && !error && !data,
     isFileMetadataError: error,
     mutateFileMetadata: mutateRegardlessOfQueryParams,
   };

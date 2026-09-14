@@ -27,3 +27,33 @@ export const BatchUpdateAgentModelResponseBodySchema = z.object({
 export type BatchUpdateAgentModelResponseBody = z.infer<
   typeof BatchUpdateAgentModelResponseBodySchema
 >;
+
+// Inactive-agent archival. The skip reasons are the rules' exclusions plus the two outcomes only a
+// caller reading or mutating can produce; kept loose here so an older client tolerates a new one.
+const AgentArchivalSkipCountsSchema = z.record(z.string(), z.number().int());
+
+export const PreviewInactiveAgentsResponseBodySchema = z.object({
+  preview: z.object({
+    evaluatedAt: z.string(),
+    cutoffAt: z.string(),
+    thresholdDays: z.number().int(),
+    eligibleCount: z.number().int(),
+    skippedCountByReason: AgentArchivalSkipCountsSchema,
+  }),
+});
+export type PreviewInactiveAgentsResponseBody = z.infer<
+  typeof PreviewInactiveAgentsResponseBodySchema
+>;
+
+export const ArchiveInactiveAgentsResponseBodySchema = z.object({
+  archival: z.object({
+    evaluatedAt: z.string(),
+    cutoffAt: z.string(),
+    thresholdDays: z.number().int(),
+    archivedCount: z.number().int(),
+    skippedCountByReason: AgentArchivalSkipCountsSchema,
+  }),
+});
+export type ArchiveInactiveAgentsResponseBody = z.infer<
+  typeof ArchiveInactiveAgentsResponseBodySchema
+>;

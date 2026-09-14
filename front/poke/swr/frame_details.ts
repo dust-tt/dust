@@ -16,8 +16,9 @@ export function usePokeFileDetails({
   const fileFetcher: Fetcher<GetPokeFileResponseBody> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
-    sId && !disabled ? `/api/poke/workspaces/${owner.sId}/files/${sId}` : null,
-    fileFetcher
+    sId ? `/api/poke/workspaces/${owner.sId}/files/${sId}` : null,
+    fileFetcher,
+    { disabled: disabled || !sId }
   );
 
   return {

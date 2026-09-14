@@ -62,7 +62,6 @@ describe("listPodsForScope", () => {
       name: "Open Alpha Pod",
       isRestricted: false,
       spaceKind: "project",
-      managementMode: "manual",
       memberIds: [],
     });
     expect(openPodRes.isOk()).toBe(true);
@@ -101,7 +100,6 @@ describe("listPodsForScope", () => {
       name: "Alpha Launch",
       isRestricted: false,
       spaceKind: "project",
-      managementMode: "manual",
       memberIds: [],
     });
     expect(alphaPodRes.isOk()).toBe(true);
@@ -110,10 +108,12 @@ describe("listPodsForScope", () => {
       name: "Beta Rollout",
       isRestricted: false,
       spaceKind: "project",
-      managementMode: "manual",
       memberIds: [],
     });
     expect(betaPodRes.isOk()).toBe(true);
+
+    // Refresh so the long-lived auth's governance snapshot includes the just-created pods.
+    await adminAuth.refresh();
 
     const { pods, total } = await listPodsForScope(adminAuth, {
       access: "open",
@@ -140,10 +140,12 @@ describe("listPodsForScope", () => {
       name: "Café Launch",
       isRestricted: false,
       spaceKind: "project",
-      managementMode: "manual",
       memberIds: [],
     });
     expect(cafePodRes.isOk()).toBe(true);
+
+    // Refresh so the long-lived auth's governance snapshot includes the just-created pod.
+    await adminAuth.refresh();
 
     const { pods, total } = await listPodsForScope(adminAuth, {
       access: "open",

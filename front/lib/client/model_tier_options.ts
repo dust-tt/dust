@@ -1,8 +1,8 @@
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import {
   isModelsTierName,
   MODELS_TIER_NAMES,
-} from "@app/lib/api/assistant/token_pricing/tiers";
+} from "@app/types/assistant/models/model_tiers";
 import { formatMaxTierDescription } from "../model_tiers/tier_order";
 import { formatModelTiersSummary } from "./model_tiers";
 

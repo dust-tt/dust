@@ -2,6 +2,7 @@ import { OBSERVABILITY_TIME_RANGE } from "@app/components/agent_builder/observab
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
+import type { ButtonSizeType } from "@dust-tt/sparkle";
 import {
   Button,
   ButtonsSwitch,
@@ -83,12 +84,14 @@ interface ObservabilityPeriodSelectorProps {
   workspaceId: string;
   agentConfigurationId: string;
   isCustomAgent: boolean;
+  size?: ButtonSizeType;
 }
 
 export function ObservabilityPeriodSelector({
   workspaceId,
   agentConfigurationId,
   isCustomAgent,
+  size = "xs",
 }: ObservabilityPeriodSelectorProps) {
   const { mode, period, setPeriod, selectedVersion, setSelectedVersion } =
     useObservabilityContext();
@@ -112,7 +115,7 @@ export function ObservabilityPeriodSelector({
                   ? "Loading"
                   : "Not available"
             }
-            size="xs"
+            size={size}
             variant="outline"
             isSelect
             disabled={versionMarkers.length === 0}
@@ -137,7 +140,7 @@ export function ObservabilityPeriodSelector({
       <DropdownMenuTrigger asChild>
         <Button
           label={`Last ${period} days`}
-          size="xs"
+          size={size}
           variant="outline"
           isSelect
         />

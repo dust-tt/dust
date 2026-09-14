@@ -1,21 +1,27 @@
 // Typed client for calling workspace tools (MCP servers) from pod function
 // code.
 //
-// `tools.call(server, tool, args)` POSTs `sandbox/actions/call` with the
-// arguments as a real JSON object and polls `sandbox/actions/{aId}` until the
-// action completes, mirroring the dsbx CLI transport (src/api/client.rs)
-// without shelling out: no argv size limits, no scalar coercion, no stdout
-// parsing, and the wait is async so a resident worker serving concurrent
-// invocations is never blocked on a child process.
+// `tools.call(server, tool, args)` delegates to the dsbx CLI: it spawns
+// `dsbx tools --json --args-json - <server> <tool>` and parses the stdout
+// contract. The POST+poll transport, its retry policy, and offloaded-output
+// resolution are implemented exactly once, in dsbx (src/api/client.rs and
+// src/commands/tools/); this file only owns process plumbing. The spawn is
+// fully async (awaiting the child never blocks the event loop), so a resident
+// worker serving concurrent invocations is never stalled on a tool call.
+// Arguments travel over stdin as one JSON object (`--args-json -`): no argv
+// size limits, no scalar coercion.
 //
 // Auth and routing come from the invocation environment (DUST_API_URL is
 // workspace-scoped, DUST_SANDBOX_TOKEN is minted per invocation), read through
-// podEnv() so concurrent invocations in one process stay isolated.
+// podEnv() and passed explicitly to the child, so concurrent invocations in
+// one process stay isolated even though the child inherits the rest of
+// process.env.
 //
-// Tool outputs above front's offload threshold arrive as a truncated snippet
-// block plus an archive pointer into the pod filesystem. text()/json() return
-// the blocks as delivered; transparent archive resolution will build on the
-// resolveToolTextContent helper once it lands in this package.
+// Tool outputs above front's offload threshold are resolved by dsbx itself
+// under `--json` when the image's dsbx carries that behavior (dsbx > 0.1.49):
+// blocks arrive with their full archived content already substituted. With an
+// older dsbx, offloaded blocks keep their snippet and descriptor, and
+// resolveToolTextContent (./tool_output.ts) still applies.
 
 import { z } from "zod";
 
@@ -24,36 +30,57 @@ import { podEnv } from "./context.ts";
 export const TOOLS_API_URL_ENV = "DUST_API_URL";
 export const TOOLS_SANDBOX_TOKEN_ENV = "DUST_SANDBOX_TOKEN";
 
-// Poll cadence mirrors the dsbx CLI client (src/api/client.rs): 500 ms
-// interval, 10-minute hard cap so a wedged action cannot pin an invocation
-// forever, and bounded retries with exponential backoff on transient network
-// errors (re-polling an action id is idempotent).
-const POLL_INTERVAL_MS = 500;
-const POLL_MAX_DURATION_MS = 10 * 60 * 1000;
-const HTTP_REQUEST_TIMEOUT_MS = 30 * 1000;
-const POLL_MAX_CONSECUTIVE_NETWORK_ERRORS = 30;
-const POLL_RETRY_BACKOFF_BASE_MS = 500;
-const POLL_RETRY_BACKOFF_CAP_MS = 5 * 1000;
+/**
+ * Override of the dsbx executable path, for tests and local use. Production
+ * pods resolve the default absolute path baked into the sandbox image.
+ */
+export const DSBX_PATH_ENV = "DUST_DSBX_PATH";
 
-// Server-name resolution is cached per invocation: the sandbox token is minted
-// once per invocation, so keying by token scopes entries to exactly one
-// invocation on both the cold and warm paths. FIFO eviction keeps the map
-// bounded in a long-lived resident worker.
-const SERVER_VIEW_CACHE_MAX_ENTRIES = 256;
+const DEFAULT_DSBX_PATH = "/opt/bin/dsbx";
 
+// Default wait cap: dsbx's own 10-minute poll ceiling (src/api/client.rs)
+// plus a grace margin. dsbx's clock starts after its list+POST round-trips,
+// so the margin lets it hit its ceiling first and report the failure through
+// its typed envelope; the local deadline only fires when the child process
+// itself wedges.
+const DSBX_POLL_CEILING_MS = 10 * 60 * 1000;
+const DEFAULT_TIMEOUT_GRACE_MS = 30 * 1000;
+const DEFAULT_TIMEOUT_MS = DSBX_POLL_CEILING_MS + DEFAULT_TIMEOUT_GRACE_MS;
+
+const STDERR_TAIL_MAX_CHARS = 2000;
+
+/**
+ * Error codes thrown by tools.call().
+ *
+ * Most values mirror the dsbx `tools --json` error envelope
+ * (`ApiErrorCode::as_str` and `OffloadResolutionError` in the CLI); that
+ * contract is append-only, and an envelope code this client does not know yet
+ * is surfaced as `unknown` with the envelope's message and retryable flag
+ * intact. The rest (`missing_env`, `exec_error`, `invalid_response`,
+ * `timeout`) are local to this client's process plumbing.
+ */
 export type ToolCallErrorCode =
-  | "missing_env"
-  | "server_not_found"
-  | "invalid_token"
-  | "permission_denied"
-  | "rejected"
+  | "invalid_sandbox_token"
+  | "fast_function_called_tools"
   | "invalid_request"
-  | "not_found"
   | "rate_limited"
   | "server_error"
-  | "network_error"
+  | "tool_output_unavailable"
+  | "unknown"
+  | "missing_env"
+  | "exec_error"
   | "invalid_response"
   | "timeout";
+
+const ENVELOPE_ERROR_CODES: readonly ToolCallErrorCode[] = [
+  "invalid_sandbox_token",
+  "fast_function_called_tools",
+  "invalid_request",
+  "rate_limited",
+  "server_error",
+  "tool_output_unavailable",
+  "unknown",
+];
 
 /**
  * Transport-level failure of a tool call. Tool-level failures (the tool ran
@@ -61,11 +88,8 @@ export type ToolCallErrorCode =
  * with `isError: true`.
  *
  * `retryable` means "issuing the same tools.call() again is safe and has a
- * chance of succeeding". It is false when the failure is deterministic
- * (bad request, unknown server), when the invocation's token cannot recover
- * (tokens are minted once per invocation and expire on their own schedule),
- * and when the underlying action may already exist or still be running
- * (a retry would start a duplicate tool call).
+ * chance of succeeding". For envelope-carried failures it is dsbx's own
+ * classification; local failures are never retryable except where noted.
  */
 export class ToolCallError extends Error {
   override readonly name = "ToolCallError";
@@ -155,51 +179,31 @@ export class ToolCallResult {
 
 export interface ToolCallOptions {
   /**
-   * Cap on the total time spent waiting for the tool result. Defaults to the
-   * 10-minute poll ceiling. The invocation's own execution deadline is
-   * typically tighter.
+   * Cap on the total time spent waiting for the tool result. Defaults to
+   * dsbx's own 10-minute ceiling plus a small grace margin, so dsbx's typed
+   * timeout reporting wins over the local kill. The invocation's own
+   * execution deadline is typically tighter.
    */
   timeoutMs?: number;
 }
 
-interface ToolsClientConfig {
-  readonly baseUrl: string;
-  readonly token: string;
-}
-
-const serverViewsResponseSchema = z.object({
-  serverViews: z.array(
-    z.object({
-      sId: z.string(),
-      server: z.object({ name: z.string() }),
-    })
-  ),
+// The two stdout shapes of `dsbx tools --json`: a CallToolResult on
+// completion (exit 0, or 1 when the tool reported an error), an error
+// envelope on transport failure. Both are append-only contracts.
+const resultSchema = z.object({
+  content: z.array(z.unknown()),
+  isError: z.boolean(),
+  structuredContent: z.unknown().optional(),
 });
 
-const callPostResponseSchema = z.object({
-  status: z.literal("pending"),
-  actionId: z.string(),
-});
-
-const apiErrorEnvelopeSchema = z.object({
+const errorEnvelopeSchema = z.object({
   error: z.object({
-    type: z.string().optional(),
-    message: z.string().optional(),
+    code: z.string(),
+    message: z.string(),
+    retryable: z.boolean(),
+    status: z.number().optional(),
   }),
 });
-
-const pollResponseSchema = z.discriminatedUnion("status", [
-  z.object({ status: z.literal("pending") }),
-  z.object({ status: z.literal("rejected") }),
-  z.object({
-    status: z.literal("success"),
-    action: z.object({
-      status: z.string(),
-      output: z.array(z.unknown()).nullish(),
-      structuredContent: z.unknown().optional(),
-    }),
-  }),
-]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -207,10 +211,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function errorMessageOf(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function tryParseJson(text: string): unknown {
@@ -233,304 +233,102 @@ function requiredEnv(name: string): string {
   return value;
 }
 
-/**
- * Classify a failing (or unparseable) HTTP response into a ToolCallError.
- * Front error bodies are `{error: {type, message}}`; the message is surfaced
- * verbatim when present so the caller sees the platform's explanation (e.g.
- * the fast-function tool refusal).
- */
-function errorFromResponse(
-  context: string,
-  status: number,
-  bodyText: string
-): ToolCallError {
-  let detail = bodyText.slice(0, 500);
-  const envelope = apiErrorEnvelopeSchema.safeParse(tryParseJson(bodyText));
-  if (envelope.success) {
-    const { type, message } = envelope.data.error;
-    detail = message ?? type ?? detail;
-  }
-
-  if (status >= 200 && status < 300) {
-    return new ToolCallError(
-      "invalid_response",
-      `${context} returned an unparseable body: ${detail}`,
-      { retryable: false, status }
-    );
-  }
-
-  const message = `${context} returned ${status}: ${detail}`;
-  if (status === 401) {
-    // Tokens are minted once per invocation with a short expiry; a fresh one
-    // only exists in a fresh invocation, so retrying here is futile.
-    return new ToolCallError("invalid_token", message, {
-      retryable: false,
-      status,
-    });
-  }
-  if (status === 403) {
-    return new ToolCallError("permission_denied", message, {
-      retryable: false,
-      status,
-    });
-  }
-  if (status === 404) {
-    return new ToolCallError("not_found", message, {
-      retryable: false,
-      status,
-    });
-  }
-  if (status === 429) {
-    return new ToolCallError("rate_limited", message, {
-      retryable: true,
-      status,
-    });
-  }
-  if (status >= 500) {
-    return new ToolCallError("server_error", message, {
-      retryable: true,
-      status,
-    });
-  }
-  return new ToolCallError("invalid_request", message, {
-    retryable: false,
-    status,
-  });
+/** Map an envelope code onto the known union; future dsbx codes degrade to
+ * `unknown` (message and retryable flag still carried verbatim). */
+function classifyEnvelopeCode(code: string): ToolCallErrorCode {
+  return ENVELOPE_ERROR_CODES.find((known) => known === code) ?? "unknown";
 }
 
-interface HttpResponse {
-  readonly status: number;
-  readonly ok: boolean;
-  readonly bodyText: string;
+function stderrTail(stderr: string): string {
+  const trimmed = stderr.trim();
+  if (trimmed.length === 0) {
+    return "";
+  }
+  return `; stderr: ${trimmed.slice(-STDERR_TAIL_MAX_CHARS)}`;
+}
+
+interface DsbxRun {
+  readonly exitCode: number;
+  readonly stdout: string;
+  readonly stderr: string;
+  readonly timedOut: boolean;
+}
+
+interface DsbxSpawnParams {
+  dsbxPath: string;
+  argv: string[];
+  env: Record<string, string | undefined>;
+  stdinBody: string;
 }
 
 /**
- * One HTTP round-trip. Network failures (DNS, refused connection, per-request
- * timeout) reject with the underlying error; callers classify them because
- * retryability depends on the request's idempotency.
+ * Bun.spawn throws synchronously when the executable cannot be started
+ * (missing binary, permission denied); that surfaces as `exec_error`.
  */
-async function httpRequest(
-  config: ToolsClientConfig,
-  method: "GET" | "POST",
-  path: string,
-  body?: unknown
-): Promise<HttpResponse> {
-  const response = await fetch(`${config.baseUrl}/${path}`, {
-    method,
-    headers: {
-      authorization: `Bearer ${config.token}`,
-      "content-type": "application/json",
-    },
-    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-    signal: AbortSignal.timeout(HTTP_REQUEST_TIMEOUT_MS),
-  });
-  const bodyText = await response.text();
-  return { status: response.status, ok: response.ok, bodyText };
-}
-
-const serverViewIdCache = new Map<string, Promise<string>>();
-
-function resolveServerViewId(
-  config: ToolsClientConfig,
-  server: string
-): Promise<string> {
-  const key = `${config.token}\u0000${server}`;
-  const cached = serverViewIdCache.get(key);
-  if (cached !== undefined) {
-    return cached;
-  }
-
-  const promise = fetchServerViewId(config, server);
-  serverViewIdCache.set(key, promise);
-  // Failures are not cached: a transient listing error must not poison every
-  // later call of the invocation.
-  promise.catch(() => serverViewIdCache.delete(key));
-  while (serverViewIdCache.size > SERVER_VIEW_CACHE_MAX_ENTRIES) {
-    const oldest = serverViewIdCache.keys().next().value;
-    if (oldest === undefined) {
-      break;
-    }
-    serverViewIdCache.delete(oldest);
-  }
-  return promise;
-}
-
-async function fetchServerViewId(
-  config: ToolsClientConfig,
-  server: string
-): Promise<string> {
-  const path = `sandbox/actions?server=${encodeURIComponent(server)}&light=true`;
-  let response: HttpResponse;
+function spawnDsbx({ dsbxPath, argv, env, stdinBody }: DsbxSpawnParams) {
   try {
-    response = await httpRequest(config, "GET", path);
-  } catch (err) {
-    // Listing is read-only, so re-calling after a network failure is safe.
-    throw new ToolCallError(
-      "network_error",
-      `GET ${path} failed: ${errorMessageOf(err)}`,
-      { retryable: true }
-    );
-  }
-  if (!response.ok) {
-    throw errorFromResponse(`GET ${path}`, response.status, response.bodyText);
-  }
-
-  const parsed = serverViewsResponseSchema.safeParse(
-    tryParseJson(response.bodyText)
-  );
-  if (!parsed.success) {
-    throw errorFromResponse(`GET ${path}`, response.status, response.bodyText);
-  }
-
-  const view = parsed.data.serverViews.find((v) => v.server.name === server);
-  if (view === undefined) {
-    throw new ToolCallError(
-      "server_not_found",
-      `Server '${server}' not found: it is not available to this pod.`,
-      { retryable: false }
-    );
-  }
-  return view.sId;
-}
-
-async function postToolCall(
-  config: ToolsClientConfig,
-  {
-    serverViewId,
-    toolName,
-    args,
-  }: {
-    serverViewId: string;
-    toolName: string;
-    args: Record<string, unknown>;
-  }
-): Promise<string> {
-  const path = "sandbox/actions/call";
-  let response: HttpResponse;
-  try {
-    response = await httpRequest(config, "POST", path, {
-      serverViewId,
-      toolName,
-      arguments: args,
+    return Bun.spawn([dsbxPath, ...argv], {
+      env,
+      stdin: new TextEncoder().encode(stdinBody),
+      stdout: "pipe",
+      stderr: "pipe",
     });
   } catch (err) {
-    // The POST is not idempotent (each one creates an action) and a request
-    // that failed in flight may still have been processed, so a blind retry
-    // could run the tool twice.
     throw new ToolCallError(
-      "network_error",
-      `POST ${path} failed: ${errorMessageOf(err)}`,
+      "exec_error",
+      `Failed to spawn dsbx at ${dsbxPath}: ${errorMessageOf(err)}`,
       { retryable: false }
     );
   }
-  if (!response.ok) {
-    throw errorFromResponse(`POST ${path}`, response.status, response.bodyText);
-  }
-
-  const parsed = callPostResponseSchema.safeParse(
-    tryParseJson(response.bodyText)
-  );
-  if (!parsed.success) {
-    throw errorFromResponse(`POST ${path}`, response.status, response.bodyText);
-  }
-  return parsed.data.actionId;
 }
 
-function timeoutError(actionId: string, timeoutMs: number): ToolCallError {
-  // The action may still complete server-side; retrying would start a
-  // duplicate tool call on top of it.
-  return new ToolCallError(
-    "timeout",
-    `Timed out waiting for action ${actionId} after ${timeoutMs} ms.`,
-    { retryable: false }
-  );
-}
+/**
+ * Spawn dsbx and wait for it to exit and its pipes to drain, both under the
+ * same `timeoutMs` deadline: a child that wedges is killed, and a pipe still
+ * held open after exit (an fd inherited by a stray descendant) cannot hang
+ * the call either.
+ */
+async function runDsbx({
+  timeoutMs,
+  ...spawnParams
+}: DsbxSpawnParams & { timeoutMs: number }): Promise<DsbxRun> {
+  const proc = spawnDsbx(spawnParams);
 
-async function pollActionResult(
-  config: ToolsClientConfig,
-  {
-    actionId,
-    deadlineMs,
-    timeoutMs,
-  }: { actionId: string; deadlineMs: number; timeoutMs: number }
-): Promise<ToolCallResult> {
-  const path = `sandbox/actions/${actionId}`;
-  let consecutiveNetworkErrors = 0;
+  // Start draining both pipes before awaiting exit so a chatty child can
+  // never fill a pipe buffer and deadlock against us waiting on exited. A
+  // read failure degrades to an empty capture rather than masking the exit
+  // outcome.
+  const stdoutPromise = new Response(proc.stdout).text().catch(() => "");
+  const stderrPromise = new Response(proc.stderr).text().catch(() => "");
 
-  for (;;) {
-    let response: HttpResponse;
-    try {
-      response = await httpRequest(config, "GET", path);
-      consecutiveNetworkErrors = 0;
-    } catch (err) {
-      // Transient network errors are retried: action ids are durable and
-      // re-polling one is idempotent. HTTP-level errors below are terminal.
-      consecutiveNetworkErrors += 1;
-      if (consecutiveNetworkErrors > POLL_MAX_CONSECUTIVE_NETWORK_ERRORS) {
-        throw new ToolCallError(
-          "network_error",
-          `Polling action ${actionId} failed after ` +
-            `${POLL_MAX_CONSECUTIVE_NETWORK_ERRORS} consecutive network ` +
-            `errors: ${errorMessageOf(err)}`,
-          // The tool call may still be running server-side.
-          { retryable: false }
-        );
-      }
-      if (Date.now() >= deadlineMs) {
-        throw timeoutError(actionId, timeoutMs);
-      }
-      const backoffMs = Math.min(
-        POLL_RETRY_BACKOFF_BASE_MS *
-          2 ** Math.min(consecutiveNetworkErrors - 1, 4),
-        POLL_RETRY_BACKOFF_CAP_MS
-      );
-      await sleep(backoffMs);
-      continue;
-    }
+  let timedOut = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<"deadline">((resolve) => {
+    timer = setTimeout(() => {
+      timedOut = true;
+      // No-op when the child already exited and only a pipe is still open.
+      proc.kill("SIGKILL");
+      resolve("deadline");
+    }, timeoutMs);
+  });
 
-    const parsed = pollResponseSchema.safeParse(
-      tryParseJson(response.bodyText)
-    );
-    if (!parsed.success) {
-      // Error envelopes (and anything else unparseable) end the poll: the
-      // classifier maps front's `{error: {...}}` bodies to a typed error.
-      throw errorFromResponse(
-        `GET ${path}`,
-        response.status,
-        response.bodyText
-      );
-    }
-
-    const poll = parsed.data;
-    switch (poll.status) {
-      case "pending": {
-        if (Date.now() >= deadlineMs) {
-          throw timeoutError(actionId, timeoutMs);
-        }
-        await sleep(POLL_INTERVAL_MS);
-        continue;
-      }
-      case "rejected":
-        throw new ToolCallError(
-          "rejected",
-          `Action ${actionId} was rejected.`,
-          { retryable: false }
-        );
-      case "success":
-        return new ToolCallResult({
-          content: poll.action.output ?? [],
-          isError: poll.action.status === "errored",
-          structuredContent: poll.action.structuredContent,
-        });
-      default: {
-        const exhaustive: never = poll;
-        throw new ToolCallError(
-          "invalid_response",
-          `Unexpected poll status: ${JSON.stringify(exhaustive)}`,
-          { retryable: false }
-        );
+  try {
+    const exitCode = await proc.exited;
+    if (!timedOut) {
+      const drained = await Promise.race([
+        Promise.all([stdoutPromise, stderrPromise]),
+        deadline,
+      ]);
+      if (drained !== "deadline") {
+        const [stdout, stderr] = drained;
+        return { exitCode, stdout, stderr, timedOut: false };
       }
     }
+    // Timed out before exit or before EOF; whatever output exists is
+    // incomplete and discarded.
+    return { exitCode, stdout: "", stderr: "", timedOut: true };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -552,19 +350,71 @@ export const tools = {
     args?: Record<string, unknown>,
     options?: ToolCallOptions
   ): Promise<ToolCallResult> {
-    const config: ToolsClientConfig = {
-      baseUrl: requiredEnv(TOOLS_API_URL_ENV).replace(/\/+$/, ""),
-      token: requiredEnv(TOOLS_SANDBOX_TOKEN_ENV),
-    };
-    const timeoutMs = options?.timeoutMs ?? POLL_MAX_DURATION_MS;
-    const deadlineMs = Date.now() + timeoutMs;
+    const apiUrl = requiredEnv(TOOLS_API_URL_ENV);
+    const token = requiredEnv(TOOLS_SANDBOX_TOKEN_ENV);
+    const dsbxPath = podEnv(DSBX_PATH_ENV) ?? DEFAULT_DSBX_PATH;
+    const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 
-    const serverViewId = await resolveServerViewId(config, server);
-    const actionId = await postToolCall(config, {
-      serverViewId,
-      toolName: tool,
-      args: args ?? {},
+    const run = await runDsbx({
+      dsbxPath,
+      argv: ["tools", "--json", "--args-json", "-", server, tool],
+      // The invocation's credentials override whatever the process env holds:
+      // in a resident worker, process.env is scrubbed of tokens and each
+      // invocation carries its own.
+      env: {
+        ...process.env,
+        [TOOLS_API_URL_ENV]: apiUrl,
+        [TOOLS_SANDBOX_TOKEN_ENV]: token,
+      },
+      stdinBody: JSON.stringify(args ?? {}),
+      timeoutMs,
     });
-    return pollActionResult(config, { actionId, deadlineMs, timeoutMs });
+
+    if (run.timedOut) {
+      // The underlying action may still complete server-side; retrying would
+      // start a duplicate tool call on top of it.
+      throw new ToolCallError(
+        "timeout",
+        `Tool call ${server}.${tool} timed out after ${timeoutMs} ms.`,
+        { retryable: false }
+      );
+    }
+
+    const parsed = tryParseJson(run.stdout);
+
+    const envelope = errorEnvelopeSchema.safeParse(parsed);
+    if (envelope.success) {
+      const { code, message, retryable, status } = envelope.data.error;
+      throw new ToolCallError(classifyEnvelopeCode(code), message, {
+        retryable,
+        status,
+      });
+    }
+
+    const result = resultSchema.safeParse(parsed);
+    if (result.success) {
+      // Exit code 1 with a result payload is a tool-level error, already
+      // carried by isError; any other exit code cannot produce this shape.
+      return new ToolCallResult({
+        content: result.data.content,
+        isError: result.data.isError,
+        structuredContent: result.data.structuredContent,
+      });
+    }
+
+    if (run.exitCode === 0) {
+      throw new ToolCallError(
+        "invalid_response",
+        `dsbx exited 0 but its output is not a tool result: ` +
+          `${run.stdout.slice(0, 500)}${stderrTail(run.stderr)}`,
+        { retryable: false }
+      );
+    }
+    throw new ToolCallError(
+      "exec_error",
+      `dsbx exited ${run.exitCode} without a machine-readable ` +
+        `error${stderrTail(run.stderr)}`,
+      { retryable: false }
+    );
   },
 };

@@ -22,7 +22,7 @@ export async function resolveAdditionalRequestedSpaceModelIds(
   const spaces = await SpaceResource.fetchByIds(auth, requestedSpaceIds);
   const readableSpacesById = new Map(
     spaces
-      .filter((space) => space.canRead(auth))
+      .filter((space) => auth.can("read", space))
       .map((space) => [space.sId, space])
   );
 
@@ -72,8 +72,13 @@ export async function findSkillEditorsWithoutSpaceAccess(
     return null;
   }
 
+  const openIds = await SpaceResource.listOpenSpaceModelIds(
+    auth,
+    requestedSpaces
+  );
   const restrictedSpaces = requestedSpaces.filter(
-    (space) => space.isRegularAndRestricted() || space.isProjectAndRestricted()
+    (space) =>
+      (space.isRegular() || space.isProject()) && !openIds.has(space.id)
   );
 
   const editorsWithoutAccess = await listUsersWithoutAccessToSpaceResources(

@@ -1,16 +1,17 @@
 import type { EditableToolValidationComponentProps } from "@app/components/assistant/conversation/editable_tool_validation/types";
+import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { GmailSendMailInput } from "@app/lib/api/actions/servers/gmail/types";
 import { isGmailSendMailInput } from "@app/lib/api/actions/servers/gmail/types";
 import {
   AttachmentChip,
   Button,
-  Checkbox,
-  Label,
+  Check,
+  CheckDouble,
   Paperclip,
-  Trash01,
+  XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -79,8 +80,6 @@ export function GmailSendMailValidation({
   isPulsing,
   onApproveWithEditedArguments,
 }: EditableToolValidationComponentProps) {
-  const [neverAskAgain, setNeverAskAgain] = useState(false);
-
   const inputs = useMemo(
     () =>
       isGmailSendMailInput(blockedAction.inputs) ? blockedAction.inputs : null,
@@ -114,15 +113,16 @@ export function GmailSendMailValidation({
   const attachmentName = inputs?.attachmentFilePath?.split("/").pop() ?? null;
   const recipientRows = inputs ? getRecipientRows(inputs) : [];
 
-  const onApprove = handleSubmit(async ({ subject, body }) => {
-    await onApproveWithEditedArguments({
-      editedArguments: {
-        ...(isSubjectEditable && { subject }),
-        ...(isBodyEditable && { body }),
-      },
-      approved: neverAskAgain ? "always_approved" : "approved",
-    });
-  });
+  const onApprove = (approved: MCPValidationOutputType) =>
+    handleSubmit(async ({ subject, body }) => {
+      await onApproveWithEditedArguments({
+        editedArguments: {
+          ...(isSubjectEditable && { subject }),
+          ...(isBodyEditable && { body }),
+        },
+        approved,
+      });
+    })();
 
   const handleReject = async () => {
     await onApproveWithEditedArguments({
@@ -191,37 +191,36 @@ export function GmailSendMailValidation({
 
       <div className="flex items-center gap-3 border-t border-border px-4 py-2.5">
         <Button
-          label="Send"
+          label="Decline"
+          variant="outline"
+          size="sm"
+          icon={XClose}
+          isRounded
+          disabled={isSubmitting}
+          onClick={() => void handleReject()}
+        />
+        <div className="flex-1" />
+        {alwaysAllowLabel && (
+          <Button
+            label="Always allow"
+            variant="outline"
+            size="sm"
+            icon={CheckDouble}
+            tooltip={alwaysAllowLabel}
+            isRounded
+            disabled={isSubmitting}
+            onClick={() => void onApprove("always_approved")}
+          />
+        )}
+        <Button
+          label={alwaysAllowLabel ? "Allow once" : "Allow"}
           variant="highlight"
           size="sm"
+          icon={Check}
           isRounded
           disabled={isSubmitting}
           isPulsing={isPulsing}
-          onClick={() => void onApprove()}
-        />
-        {alwaysAllowLabel && (
-          <Label
-            htmlFor={`gmail-always-allow-${blockedAction.actionId}`}
-            className="flex cursor-pointer flex-row items-center gap-2 text-xs"
-          >
-            <Checkbox
-              id={`gmail-always-allow-${blockedAction.actionId}`}
-              checked={neverAskAgain}
-              disabled={isSubmitting}
-              onCheckedChange={(check) => setNeverAskAgain(!!check)}
-            />
-            <span className="font-normal">{alwaysAllowLabel}</span>
-          </Label>
-        )}
-        <div className="flex-1" />
-        <Button
-          tooltip="Discard"
-          variant="ghost"
-          size="icon"
-          icon={Trash01}
-          disabled={isSubmitting}
-          isPulsing={isPulsing}
-          onClick={() => void handleReject()}
+          onClick={() => void onApprove("approved")}
         />
       </div>
     </div>

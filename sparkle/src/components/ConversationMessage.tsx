@@ -13,6 +13,7 @@ import { cn } from "@sparkle/lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 import React from "react";
 
+/** Centered, capped-width column that lays out ConversationMessage turns with responsive gaps. */
 export const ConversationContainer = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -38,18 +39,27 @@ ConversationContainer.displayName = "ConversationContainer";
 interface ConversationMessageProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof messageVariants> {
+  /** Entries of the "…" dropdown menu in the message header; each onClick is invoked when its item is selected. */
   actions?: ConversationMessageAction[];
+  /** Shows the avatar in its busy (animated) state, e.g. while the agent is generating. */
   avatarBusy?: boolean;
+  /** Buttons rendered below the message (right-aligned for user, left-aligned for agent). */
   buttons?: React.ReactElement<typeof Button>[];
   children?: React.ReactNode;
+  /** Citation elements rendered with the message content. */
   citations?: React.ReactElement[];
   isDisabled?: boolean;
   name?: string;
   timestamp?: string;
+  /** Status node shown on the right of the header (e.g. agent timing/approval state). */
   completionStatus?: React.ReactNode;
+  /** Avatar image URL or custom visual node. */
   pictureUrl?: string | React.ReactNode | null;
+  /** Customizes how the sender's name is rendered in the header. */
   renderName?: (name: string | null) => React.ReactNode;
+  /** Chip displayed next to the name (e.g. a model or visibility indicator). */
   infoChip?: React.ReactNode;
+  /** Whether this is a "user" or "agent" message; drives styling and alignment. */
   type: ConversationMessageType;
 }
 
@@ -86,7 +96,9 @@ const buttonsVariants = cva("flex justify-start gap-2 pt-2", {
 });
 /**
  * Parent component for both UserMessage and AgentMessage, to ensure avatar,
- * side buttons and spacing are consistent between the two
+ * side buttons and spacing are consistent between the two.
+ * @deprecated Use ConversationMessages instead.
+ * @summary Legacy single chat message wrapper.
  */
 export const ConversationMessage = React.forwardRef<
   HTMLDivElement,

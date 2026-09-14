@@ -1,27 +1,101 @@
+import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
   BookOpen01,
   Button,
-  Clipboard,
+  cn,
+  DataTable,
+  DataTableSkeleton,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Edit04,
   Input,
+  LoadingBlock,
   Page,
   Plus,
+  SearchInput,
   Trash01,
 } from "@dust-tt/sparkle";
-import { PencilIcon } from "@heroicons/react/20/solid";
+import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
+
+interface SecretRowData {
+  name: string;
+  isActionDisabled: boolean;
+  onClick?: () => void;
+  onDelete?: () => void;
+}
+
+const columns: ColumnDef<SecretRowData>[] = [
+  {
+    id: "name",
+    accessorKey: "name",
+    header: "Name",
+    cell: (info: CellContext<SecretRowData, unknown>) => (
+      <DataTable.CellContent grow>
+        <DataTable.CellContentWithCopy
+          textToCopy={`env.secrets.${info.row.original.name}`}
+        >
+          <span className="font-mono">
+            env.secrets.{info.row.original.name}
+          </span>
+        </DataTable.CellContentWithCopy>
+      </DataTable.CellContent>
+    ),
+    meta: { className: "w-full" },
+  },
+  {
+    id: "actions",
+    header: "",
+    cell: (info: CellContext<SecretRowData, unknown>) => {
+      const { isActionDisabled, onClick, onDelete } = info.row.original;
+      if (!onClick || !onDelete) {
+        return null;
+      }
+
+      return (
+        <DataTable.CellContent>
+          <div className="flex gap-1 opacity-0 focus-within:opacity-100 group-hover/dt-row:opacity-100">
+            <Button
+              size="xs"
+              variant="ghost"
+              icon={Edit04}
+              tooltip="Edit"
+              disabled={isActionDisabled}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClick();
+              }}
+            />
+            <Button
+              size="xs"
+              variant="warning-ghost"
+              icon={Trash01}
+              tooltip="Delete"
+              disabled={isActionDisabled}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+            />
+          </div>
+        </DataTable.CellContent>
+      );
+    },
+    meta: { className: "w-20" },
+  },
+];
 
 export function SecretsPage() {
   const owner = useWorkspace();
@@ -35,9 +109,11 @@ export function SecretsPage() {
     useState<DustAppSecretType | null>(null);
   const [isNewSecretPromptOpen, setIsNewSecretPromptOpen] = useState(false);
   const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const sendNotification = useSendNotification();
 
-  const { secrets } = useDustAppSecrets(owner);
+  const { secrets, isSecretsLoading, isSecretsError } =
+    useDustAppSecrets(owner);
 
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(async (secret: DustAppSecretType) => {
@@ -98,192 +174,224 @@ export function SecretsPage() {
     setIsInputNameDisabled(true);
   };
 
+  const rows: SecretRowData[] = [...secrets]
+    .filter((secret) =>
+      secret.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((secret) => ({
+      name: secret.name,
+      isActionDisabled: isGenerating || isRevoking,
+      onClick: isAdmin ? () => handleUpdate(secret) : undefined,
+      onDelete: isAdmin ? () => setSecretToRevoke(secret) : undefined,
+    }));
+
   return (
-    <>
-      {secretToRevoke ? (
+    <AdminPageContainer>
+      <>
+        {secretToRevoke ? (
+          <Dialog
+            open={true}
+            onOpenChange={(open) => {
+              if (!open) {
+                setSecretToRevoke(null);
+              }
+            }}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete {secretToRevoke?.name}</DialogTitle>
+              </DialogHeader>
+              <DialogContainer>
+                Are you sure you want to delete the secret{" "}
+                <strong>{secretToRevoke?.name}</strong>?
+              </DialogContainer>
+              <DialogFooter
+                leftButtonProps={{
+                  label: "Cancel",
+                  variant: "outline",
+                  onClick: () => setSecretToRevoke(null),
+                }}
+                rightButtonProps={{
+                  label: "Delete",
+                  variant: "warning",
+                  onClick: () => handleRevoke(secretToRevoke),
+                }}
+              />
+            </DialogContent>
+          </Dialog>
+        ) : null}
         <Dialog
-          open={true}
+          open={isNewSecretPromptOpen}
           onOpenChange={(open) => {
             if (!open) {
-              setSecretToRevoke(null);
+              setIsNewSecretPromptOpen(false);
             }
           }}
         >
-          <DialogContent>
+          <DialogContent size="lg">
             <DialogHeader>
-              <DialogTitle>Delete {secretToRevoke?.name}</DialogTitle>
+              <DialogTitle>
+                {isInputNameDisabled ? "Update" : "New"} Developer Secret
+              </DialogTitle>
             </DialogHeader>
             <DialogContainer>
-              Are you sure you want to delete the secret{" "}
-              <strong>{secretToRevoke?.name}</strong>?
+              <Input
+                message="Secret names must be alphanumeric and underscore characters only."
+                name="Secret Name"
+                placeholder="SECRET_NAME"
+                value={newDustAppSecret.name}
+                disabled={isInputNameDisabled}
+                onChange={(e) =>
+                  setNewDustAppSecret({
+                    ...newDustAppSecret,
+                    name: cleanSecretName(e.target.value),
+                  })
+                }
+              />
+              <Input
+                // prevent autocompletion of secrets
+                autoComplete="off"
+                message="Secret values are encrypted and stored securely in our database."
+                name="Secret value"
+                placeholder="Type the secret value"
+                value={newDustAppSecret.value}
+                onChange={(e) =>
+                  setNewDustAppSecret({
+                    ...newDustAppSecret,
+                    value: e.target.value,
+                  })
+                }
+              />
             </DialogContainer>
             <DialogFooter
               leftButtonProps={{
                 label: "Cancel",
                 variant: "outline",
-                onClick: () => setSecretToRevoke(null),
+                onClick: () => setIsNewSecretPromptOpen(false),
               }}
               rightButtonProps={{
-                label: "Delete",
-                variant: "warning",
-                onClick: () => handleRevoke(secretToRevoke),
+                label: isInputNameDisabled ? "Update" : "Create",
+                variant: "primary",
+                onClick: () => handleGenerate(newDustAppSecret),
               }}
             />
           </DialogContent>
         </Dialog>
-      ) : null}
-      <Dialog
-        open={isNewSecretPromptOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsNewSecretPromptOpen(false);
-          }
-        }}
-      >
-        <DialogContent size="lg">
-          <DialogHeader>
-            <DialogTitle>
-              {isInputNameDisabled ? "Update" : "New"} Developer Secret
-            </DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            <Input
-              message="Secret names must be alphanumeric and underscore characters only."
-              name="Secret Name"
-              placeholder="SECRET_NAME"
-              value={newDustAppSecret.name}
-              disabled={isInputNameDisabled}
-              onChange={(e) =>
-                setNewDustAppSecret({
-                  ...newDustAppSecret,
-                  name: cleanSecretName(e.target.value),
-                })
-              }
-            />
-            <Input
-              // prevent autocompletion of secrets
-              autoComplete="off"
-              message="Secret values are encrypted and stored securely in our database."
-              name="Secret value"
-              placeholder="Type the secret value"
-              value={newDustAppSecret.value}
-              onChange={(e) =>
-                setNewDustAppSecret({
-                  ...newDustAppSecret,
-                  value: e.target.value,
-                })
-              }
-            />
-            <p className="text-xs text-muted-foreground"></p>
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => setIsNewSecretPromptOpen(false),
-            }}
-            rightButtonProps={{
-              label: isInputNameDisabled ? "Update" : "Create",
-              variant: "primary",
-              onClick: () => handleGenerate(newDustAppSecret),
-            }}
-          />
-        </DialogContent>
-      </Dialog>
 
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Developer Secrets"
-          description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
-        />{" "}
-        <Page.Vertical align="stretch" gap="md">
-          <Page.Horizontal align="stretch">
-            <div className="w-full" />
-            <Button
-              label="Read the API reference"
-              size="sm"
-              variant="outline"
-              icon={BookOpen01}
-              onClick={() => {
-                window.open(
-                  "https://docs.dust.tt/reference/developer-platform-overview#developer-secrets",
-                  "_blank"
-                );
-              }}
-            />
-            {isAdmin && (
-              <Button
-                label="Create Secret"
-                variant="primary"
-                onClick={async () => {
-                  setNewDustAppSecret(defaultSecret);
-                  setIsInputNameDisabled(false);
-                  setIsNewSecretPromptOpen(true);
-                }}
-                icon={Plus}
-                disabled={isGenerating || isRevoking}
+        <Page.Vertical gap="xl" align="stretch">
+          <Page.Header
+            title="Developer Secrets"
+            description="Secrets usable in Dust apps or MCP servers to safely store sensitive data."
+          />
+          <Page.Vertical align="stretch" gap="md">
+            <div className="flex items-center gap-2">
+              <SearchInput
+                className="flex-grow"
+                name="secrets-search"
+                placeholder="Search secrets"
+                value={searchQuery}
+                onChange={setSearchQuery}
               />
-            )}
-          </Page.Horizontal>
-          <div className="w-full space-y-4 divide-y divide-separator">
-            <div className="flex w-full flex-col space-y-4 pt-4">
-              {secrets
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((secret) => (
-                  <div
-                    key={secret.name}
-                    className="flex items-center space-x-4"
-                  >
-                    <div className="flex items-center space-x-2">
-                      <pre className="rounded bg-muted-background p-2 text-sm text-foreground">
-                        env.secrets.{secret.name}
-                      </pre>
-                      <Button
-                        variant="outline"
-                        icon={Clipboard}
-                        onClick={() => {
-                          const text = `env.secrets.${secret.name}`;
-                          void navigator.clipboard.writeText(text);
-                          sendNotification({
-                            type: "success",
-                            title: "Copied to clipboard",
-                            description: `Copied ${text} to clipboard.`,
-                          });
-                        }}
-                      />
-                    </div>
-                    <div className="flex-grow overflow-hidden"></div>
-                    {isAdmin && (
-                      <>
-                        <div className="flex-none px-2">
-                          <Button
-                            variant="outline"
-                            disabled={isRevoking || isGenerating}
-                            onClick={async () => {
-                              handleUpdate(secret);
-                            }}
-                            icon={PencilIcon}
-                          />
-                        </div>
-                        <div className="flex-none">
-                          <Button
-                            variant="warning"
-                            disabled={isRevoking || isGenerating}
-                            onClick={async () => {
-                              setSecretToRevoke(secret);
-                            }}
-                            icon={Trash01}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
+              <Button
+                label="API Reference"
+                size="sm"
+                variant="outline"
+                icon={BookOpen01}
+                onClick={() => {
+                  window.open(
+                    "https://docs.dust.tt/reference/developer-platform-overview#developer-secrets",
+                    "_blank"
+                  );
+                }}
+              />
+              {isAdmin && (
+                <Button
+                  label="Create Secret"
+                  variant="primary"
+                  onClick={() => {
+                    setNewDustAppSecret(defaultSecret);
+                    setIsInputNameDisabled(false);
+                    setIsNewSecretPromptOpen(true);
+                  }}
+                  icon={Plus}
+                  disabled={isGenerating || isRevoking}
+                />
+              )}
             </div>
-          </div>
+            <SecretsTable
+              isLoading={isSecretsLoading}
+              isError={!!isSecretsError}
+              rows={rows}
+              searchQuery={searchQuery}
+            />
+          </Page.Vertical>
         </Page.Vertical>
-      </Page.Vertical>
-      <div className="h-12" />
-    </>
+        <div className="h-12" />
+      </>
+    </AdminPageContainer>
   );
+}
+
+interface SecretsTableProps {
+  isLoading: boolean;
+  isError: boolean;
+  rows: SecretRowData[];
+  searchQuery: string;
+}
+
+function SecretSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return (
+        <div className="flex items-center gap-2">
+          <LoadingBlock
+            className={cn(
+              "h-3 max-w-full",
+              ["w-56", "w-64", "w-48", "w-60", "w-52"][rowIndex % 5]
+            )}
+          />
+          <LoadingBlock className="h-6 w-6 shrink-0 rounded-lg" />
+        </div>
+      );
+    case "actions":
+      // Edit and delete only appear on hover in the loaded table.
+      return null;
+    default:
+      return null;
+  }
+}
+
+function SecretsTable({
+  isLoading,
+  isError,
+  rows,
+  searchQuery,
+}: SecretsTableProps) {
+  if (isLoading) {
+    return (
+      <DataTableSkeleton columns={columns} SkeletonCell={SecretSkeletonCell} />
+    );
+  }
+
+  if (isError) {
+    return (
+      <p className="py-8 text-center text-muted-foreground">
+        Failed to load secrets.
+      </p>
+    );
+  }
+
+  if (rows.length === 0) {
+    return (
+      <p className="py-8 text-center text-muted-foreground">
+        {searchQuery ? "No matching secrets found" : "No secrets created yet."}
+      </p>
+    );
+  }
+
+  return <DataTable data={rows} columns={columns} />;
 }

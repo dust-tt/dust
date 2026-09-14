@@ -1,10 +1,13 @@
-use crate::oauth::{
-    connection::{
-        Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
-        PROVIDER_TIMEOUT_SECONDS,
+use crate::{
+    http::proxy_client::create_untrusted_egress_client_builder,
+    oauth::{
+        connection::{
+            Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
+            PROVIDER_TIMEOUT_SECONDS,
+        },
+        credential::Credential,
+        providers::utils::execute_request,
     },
-    credential::Credential,
-    providers::utils::execute_request,
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -12,14 +15,42 @@ use base64::{engine::general_purpose, Engine as _};
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::env;
+use tracing::error;
 use urlencoding;
 
 lazy_static! {
     static ref OAUTH_FRESHWORKS_CLIENT_ID: String = env::var("OAUTH_FRESHWORKS_CLIENT_ID").unwrap();
     static ref OAUTH_FRESHWORKS_CLIENT_SECRET: String =
         env::var("OAUTH_FRESHWORKS_CLIENT_SECRET").unwrap();
-    static ref FRESHSERVICE_DOMAIN_RE: Regex =
-        Regex::new(r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.myfreshworks\.com$").unwrap();
+    // Hostname only (no scheme, path, port, or IP). Accepts standard Freshworks
+    // hosts (*.myfreshworks.com) and custom organization domains
+    static ref FRESHWORKS_ORG_DOMAIN_RE: Regex = Regex::new(
+        r"^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$"
+    )
+    .unwrap();
+}
+
+/// Parses a Freshworks organization URL into a hostname suitable for token requests.
+fn parse_freshworks_org_url(raw: &str) -> Result<String> {
+    let trimmed = raw.trim();
+    let without_scheme = trimmed
+        .strip_prefix("https://")
+        .or_else(|| trimmed.strip_prefix("http://"))
+        .unwrap_or(trimmed);
+    let domain = without_scheme.trim_end_matches('/');
+
+    if domain.is_empty() || domain.len() > 253 || !FRESHWORKS_ORG_DOMAIN_RE.is_match(domain) {
+        return Err(anyhow!("Freshservice domain format invalid"));
+    }
+
+    Ok(domain.to_string())
+}
+
+fn freshworks_org_url_from_connection(connection: &Connection) -> Result<String> {
+    match connection.metadata()["freshworks_org_url"].as_str() {
+        Some(raw) => parse_freshworks_org_url(raw),
+        None => Err(anyhow!("Freshservice domain is missing")),
+    }
 }
 
 pub struct FreshserviceConnectionProvider {}
@@ -36,6 +67,17 @@ impl Provider for FreshserviceConnectionProvider {
         ConnectionProvider::Freshservice
     }
 
+    fn reqwest_client(&self) -> reqwest::Client {
+        // Token requests go to a user-provided org URL (including custom domains).
+        match create_untrusted_egress_client_builder().build() {
+            Ok(client) => client,
+            Err(e) => {
+                error!(error = ?e, "Failed to create client with untrusted egress proxy");
+                reqwest::Client::new()
+            }
+        }
+    }
+
     async fn finalize(
         &self,
         connection: &Connection,
@@ -43,15 +85,7 @@ impl Provider for FreshserviceConnectionProvider {
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
-        let domain = match connection.metadata()["freshworks_org_url"].as_str() {
-            Some(d) => {
-                if !FRESHSERVICE_DOMAIN_RE.is_match(d) {
-                    Err(anyhow!("Freshservice domain format invalid"))?
-                }
-                d
-            }
-            None => Err(anyhow!("Freshservice domain is missing"))?,
-        };
+        let domain = freshworks_org_url_from_connection(connection)?;
 
         let params = [
             ("grant_type", "authorization_code"),
@@ -98,7 +132,7 @@ impl Provider for FreshserviceConnectionProvider {
             raw_json: result,
             extra_metadata: Some(serde_json::Map::from_iter([(
                 "freshworks_org_url".to_string(),
-                serde_json::Value::String(domain.to_string()),
+                serde_json::Value::String(domain),
             )])),
         })
     }
@@ -108,15 +142,7 @@ impl Provider for FreshserviceConnectionProvider {
         connection: &Connection,
         _related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
-        let domain = match connection.metadata()["freshworks_org_url"].as_str() {
-            Some(d) => {
-                if !FRESHSERVICE_DOMAIN_RE.is_match(d) {
-                    Err(anyhow!("Freshservice domain format invalid"))?
-                }
-                d
-            }
-            None => Err(anyhow!("Freshservice domain is missing"))?,
-        };
+        let domain = freshworks_org_url_from_connection(connection)?;
 
         let refresh_token = connection
             .unseal_refresh_token()?
@@ -172,5 +198,43 @@ impl Provider for FreshserviceConnectionProvider {
             obj.remove("refresh_token");
         }
         Ok(scrubbed)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_freshworks_org_url;
+
+    #[test]
+    fn accepts_standard_myfreshworks_domain() {
+        assert_eq!(
+            parse_freshworks_org_url("acme.myfreshworks.com").unwrap(),
+            "acme.myfreshworks.com"
+        );
+    }
+
+    #[test]
+    fn accepts_custom_organization_domain() {
+        assert_eq!(
+            parse_freshworks_org_url("it.test.com").unwrap(),
+            "it.test.com"
+        );
+    }
+
+    #[test]
+    fn strips_scheme_and_trailing_slash() {
+        assert_eq!(
+            parse_freshworks_org_url("https://it.test.com/").unwrap(),
+            "it.test.com"
+        );
+    }
+
+    #[test]
+    fn rejects_ips_paths_ports_and_bare_hosts() {
+        assert!(parse_freshworks_org_url("127.0.0.1").is_err());
+        assert!(parse_freshworks_org_url("it.test.com/org").is_err());
+        assert!(parse_freshworks_org_url("it.test.com:443").is_err());
+        assert!(parse_freshworks_org_url("localhost").is_err());
+        assert!(parse_freshworks_org_url("").is_err());
     }
 }

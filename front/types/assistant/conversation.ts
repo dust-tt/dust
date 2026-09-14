@@ -8,7 +8,7 @@ import type { ContentFragmentType } from "../content_fragment";
 import type { AllSupportedWithDustSpecificFileContentType } from "../files";
 import type { ModelId } from "../shared/model_id";
 import { assertNeverAndIgnore } from "../shared/utils/assert_never";
-import type { SpaceType } from "../space";
+import type { EnrichedSpaceType } from "../space";
 import type { UserType, WorkspaceType } from "../user";
 import type {
   AgentConfigurationStatus,
@@ -96,6 +96,7 @@ export const CLIENT_MESSAGE_ORIGINS = [
   "project_kickoff",
   "extension",
   "agent_sidekick",
+  "analytics_panel",
   "reinforced_skill_notification",
 ] as const;
 
@@ -124,9 +125,9 @@ export type UserMessageOrigin =
   | "wakeup"
   | "zapier"
   | "zendesk"
-  // TODO onboarding_conversation, agent_sidekick, and project_kickoff aren't message origins. They
-  // have been used as a hack but should be removed and most likely handled as message metadata
-  // (to be created).
+  // TODO onboarding_conversation, agent_sidekick, analytics_panel, and project_kickoff aren't
+  // message origins. They have been used as a hack but should be removed and most likely handled
+  // as message metadata (to be created).
   | "onboarding_conversation"
   // for internal use, for reinforced agent batch LLM operations
   | "reinforcement"
@@ -360,7 +361,7 @@ export type BaseAgentMessageType = {
   // (recursively) by this message, separate from `costCredits` (this message's own
   // intelligence + tools). Computed lazily on single-message fetches only, so it is
   // `null` everywhere else (e.g. conversation list rendering). Optional during
-  // rollout. See [BACK12].
+  // rollout. See [api-backward-compatibility].
   subAgentCostCredits?: number | null;
 };
 
@@ -528,6 +529,8 @@ export type ConversationMetadata = Record<string, unknown> & {
   urlAccessMode?: ConversationUrlAccessMode;
   projectTaskId?: string;
   useFileSystem?: boolean;
+  /** Selects the database-backed filesystem for a fresh standalone conversation. */
+  useDatabaseFileSystem?: boolean;
 };
 
 function isConversationUrlAccessMode(
@@ -581,6 +584,15 @@ export type ConversationForkedChildType = {
 };
 
 /**
+ * Minimal reference to a conversation: enough to name it and link to it. Used by listings of other
+ * resources that only need to point at their conversation.
+ */
+export type ConversationRefType = {
+  sId: string;
+  title: string | null;
+};
+
+/**
  * Fields needed to render a conversation row in the sidebar list. Served
  * directly from Elasticsearch. No DB hydration required.
  */
@@ -599,6 +611,7 @@ export type ConversationListItemType = {
   unread: boolean;
   updated: number;
   isRunningAgentLoop: boolean;
+  isParticipant: boolean;
 };
 
 /**
@@ -622,7 +635,7 @@ export type ConversationWithoutContentType = ConversationListItemType & {
   forkingData?: ConversationForkingDataType;
 };
 
-export type SelectableConversationSpaceType = SpaceType & {
+export type SelectableConversationSpaceType = EnrichedSpaceType & {
   selected: boolean;
 };
 
@@ -857,7 +870,7 @@ type BaseConversationMCPServerViewType = {
   workspaceId: ModelId;
   conversationId: ModelId;
   mcpServerViewId: ModelId;
-  userId: ModelId;
+  userId: ModelId | null;
   enabled: boolean;
   createdAt: Date;
   updatedAt: Date;

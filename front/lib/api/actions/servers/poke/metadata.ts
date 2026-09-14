@@ -41,6 +41,11 @@ export const GET_WORKSPACE_AGENT_TOOL_NAME = "get_workspace_agent";
 export const LIST_WORKSPACE_SKILLS_TOOL_NAME = "list_workspace_skills";
 export const GET_WORKSPACE_SKILL_TOOL_NAME = "get_workspace_skill";
 
+// ─── Feedback ────────────────────────────────────────────────────────────────
+
+export const LIST_GLOBAL_AGENT_FEEDBACKS_TOOL_NAME =
+  "list_global_agent_feedbacks";
+
 // ─── Shared schema fragments ─────────────────────────────────────────────────
 
 const workspaceIdSchema = {
@@ -397,6 +402,66 @@ export const POKE_TOOLS_METADATA = [
     },
     stake: "low",
     displayLabels: { running: "Fetching skill", done: "Fetched skill" },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+
+  // ── Feedback ─────────────────────────────────────────────────────────────
+
+  {
+    name: LIST_GLOBAL_AGENT_FEEDBACKS_TOOL_NAME,
+    description:
+      "List end-user feedback (thumbs up/down and free-text comments) on Dust global agents " +
+      "across all workspaces. Most recent first.",
+    schema: {
+      since: z
+        .string()
+        .optional()
+        .describe(
+          "Only include feedback created at or after this ISO 8601 date (e.g. '2026-08-01')."
+        ),
+      until: z
+        .string()
+        .optional()
+        .describe(
+          "Only include feedback created strictly before this ISO 8601 date."
+        ),
+      agent_id: z
+        .string()
+        .optional()
+        .describe(
+          "Restrict to a single global agent id (e.g. 'dust'). Omit for all global agents."
+        ),
+      direction: z
+        .enum(["up", "down"])
+        .optional()
+        .describe("Restrict to thumbs up or thumbs down feedback."),
+      include_empty: z
+        .boolean()
+        .optional()
+        .describe(
+          "Include thumbs with no written comment. Defaults to false, which is usually what " +
+            "you want when summarizing what users said."
+        ),
+      limit: z
+        .number()
+        .int()
+        .min(1)
+        .max(500)
+        .optional()
+        .describe("Max feedbacks per page (default: 100, max: 500)."),
+      next_page_cursor: z
+        .string()
+        .optional()
+        .describe(
+          "Opaque cursor from the previous response to fetch the next page."
+        ),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Listing global agent feedback",
+      done: "Listed global agent feedback",
+    },
     toolCostCategory: "basic",
     freeUsage: true,
   },

@@ -18,6 +18,7 @@ import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfigurationModel,
+  AgentModel,
   AgentUserRelationModel,
   GlobalAgentSettingsModel,
 } from "@app/lib/models/agent/agent";
@@ -46,9 +47,9 @@ import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { MembershipUpgradeRequestResource } from "@app/lib/resources/membership_upgrade_request_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
-import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
@@ -57,7 +58,6 @@ import { ProviderCredentialResource } from "@app/lib/resources/provider_credenti
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SandboxEnvVarResource } from "@app/lib/resources/sandbox_env_var_resource";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { SelfImprovingSkillsUsageResource } from "@app/lib/resources/self_improving_skills_usage_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -83,7 +83,6 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
-import { WorkspacePlanLimitOverrideResource } from "@app/lib/resources/workspace_plan_limit_override_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
@@ -170,30 +169,7 @@ export async function scrubSpaceActivity({
   assert(space.isDeletable(), "Space cannot be deleted.");
 
   if (space.isProject()) {
-    const deleteSandboxFunctionsResult =
-      await SandboxFunctionResource.deleteAllForSpace(auth, space);
-    if (deleteSandboxFunctionsResult.isErr()) {
-      throw deleteSandboxFunctionsResult.error;
-    }
-
-    // Destroy the pod sandbox at the provider and drop its ownership row. The
-    // FK from sandbox_owners to spaces is `onDelete: "RESTRICT"`, so the row
-    // must be gone before the space can be hard-deleted. Runs before the pod
-    // state prefix is wiped: a live sandbox keeps replicating into it.
-    // Skipped when the pod never booted one, so pods stay scrubbable in
-    // deployments with no sandbox provider configured.
-    const sandbox = await PodSandboxAdapter.fetchSandbox(auth, space);
-    if (sandbox) {
-      const deleteSandboxResult = await PodSandboxAdapter.deleteSandbox(
-        auth,
-        space
-      );
-      if (deleteSandboxResult.isErr()) {
-        throw deleteSandboxResult.error;
-      }
-    }
-
-    // Same for the pod-scoped env vars.
+    // Pod-scoped env vars.
     await SandboxEnvVarResource.deleteAllForPod(auth, space);
 
     // Pod state (litestream replica) objects are never FileResources, so the
@@ -458,6 +434,10 @@ export async function deleteAgentsActivity({
     hardDeleteLogger.info({ agentId: agent.sId }, "Deleting agent");
     await agent.destroy();
   }
+
+  await AgentModel.destroy({
+    where: { workspaceId: workspace.id },
+  });
 }
 
 export async function deleteAppsActivity({
@@ -821,6 +801,7 @@ export async function deleteWorkspaceActivity({
   await FileResource.deleteAllForWorkspace(auth);
   await RunResource.deleteAllForWorkspace(auth);
   await MembershipResource.deleteAllForWorkspace(auth);
+  await MembershipUpgradeRequestResource.deleteAllForWorkspace(auth);
   await GroupPermissionResource.deleteAllForWorkspace(auth);
   await GroupMembershipModel.destroy({
     where: { workspaceId: workspace.id },
@@ -855,7 +836,7 @@ export async function deleteWorkspaceActivity({
   await SelfImprovingSkillsUsageResource.deleteAllForWorkspace(auth);
   await WorkspaceVerificationAttemptResource.deleteAllForWorkspace(auth);
   await WorkspaceSeatLimitResource.deleteAllForWorkspace({ workspace });
-  await WorkspacePlanLimitOverrideResource.deleteAllForWorkspace({ workspace });
+  await WorkspaceResource.deleteAllPlanLimitOverridesForWorkspace(workspace.id);
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 

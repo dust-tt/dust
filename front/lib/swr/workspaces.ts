@@ -1,4 +1,3 @@
-import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   AnalyticsScopeFilter,
@@ -8,17 +7,6 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
-import type { GetWorkspaceSkillUsageResponse } from "@app/lib/api/analytics/workspace_analytics";
-import type { GetWorkspaceActiveUsersResponse } from "@app/lib/api/assistant/observability/active_users_metrics";
-import type { GetAgentCreditsResponse } from "@app/lib/api/assistant/observability/agent_credits";
-import type { GetWorkspaceContextOriginResponse } from "@app/lib/api/assistant/observability/context_origin";
-import type { GetWorkspaceUsageMetricsResponse } from "@app/lib/api/assistant/observability/messages_metrics";
-import type { GetWorkspaceSkillsResponse } from "@app/lib/api/assistant/observability/skill_usage";
-import type {
-  GetWorkspaceToolsResponse,
-  GetWorkspaceToolUsageResponse,
-} from "@app/lib/api/assistant/observability/tool_usage";
-import type { GetUserCreditsResponse } from "@app/lib/api/assistant/observability/user_credits";
 import type {
   GetBusinessActivationResponseBody,
   PostBusinessActivationResponseBody,
@@ -31,8 +19,7 @@ import type {
   GetWorkspaceSeatsCountResponseBody,
   GetWorkspaceVerifiedDomainsResponseBody,
 } from "@app/lib/api/workspace";
-import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/lib/api/workspace/analytics";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
   GetMetronomeInvoiceLinesResponseBody,
@@ -62,21 +49,28 @@ import type {
   GetSubscriptionTrialInfoResponseBody,
   PostSubscriptionResponseBody,
 } from "@app/types/api/subscription";
+import type { CellInfo } from "@app/types/cell";
 import type { APIErrorResponse, RegionRedirectError } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { BillingPeriod } from "@app/types/plan";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 
-// Type guard to check if response is a region redirect
-export function isRegionRedirect(data: unknown): data is RegionRedirectError {
+export function isCellRedirectError(data: unknown): data is APIErrorResponse & {
+  error: {
+    redirect: CellInfo;
+  };
+} {
   return (
-    typeof data === "object" && data !== null && "redirect" in data
-    // typeof (data as RegionRedirectError).redirect === "object" &&
-    // (data as RegionRedirectError).redirect !== null &&
-    // "region" in (data as RegionRedirectError).redirect &&
-    // "url" in (data as RegionRedirectError).redirect
+    isAPIErrorResponse(data) &&
+    "redirect" in data.error &&
+    typeof data.error.redirect === "object" &&
+    data.error.redirect !== null &&
+    "name" in data.error.redirect &&
+    "region" in data.error.redirect &&
+    "url" in data.error.redirect
   );
 }
 
@@ -188,301 +182,6 @@ export function useWorkspaceSubscriptions({
     subscriptions: data?.subscriptions ?? emptyArray(),
     isSubscriptionsLoading: !error && !data && !disabled,
     isSubscriptionsError: error,
-  };
-}
-
-export const BROWSER_TIMEZONE =
-  typeof window !== "undefined"
-    ? Intl.DateTimeFormat().resolvedOptions().timeZone
-    : "UTC";
-
-export function useWorkspaceUsageMetrics({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  interval = "day",
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  interval?: "day" | "week";
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetWorkspaceUsageMetricsResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/usage-metrics?days=${days}&interval=${interval}&timezone=${encodeURIComponent(BROWSER_TIMEZONE)}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    usageMetrics: data?.points ?? emptyArray(),
-    isUsageMetricsLoading: !error && !data && !disabled,
-    isUsageMetricsError: error,
-    isUsageMetricsValidating: isValidating,
-  };
-}
-
-export function useWorkspaceActiveUsersMetrics({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetWorkspaceActiveUsersResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/active-users?days=${days}&timezone=${encodeURIComponent(BROWSER_TIMEZONE)}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    activeUsersMetrics: data?.points ?? emptyArray(),
-    isActiveUsersMetricsLoading: !error && !data && !disabled,
-    isActiveUsersMetricsError: error,
-    isActiveUsersMetricsValidating: isValidating,
-  };
-}
-
-export function useWorkspaceContextOrigin({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetWorkspaceContextOriginResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/source?days=${days}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    contextOrigin: data ?? { total: 0, buckets: emptyArray() },
-    isContextOriginLoading: !error && !data && !disabled,
-    isContextOriginError: error,
-    isContextOriginValidating: isValidating,
-  };
-}
-
-export function useWorkspaceTools({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetWorkspaceToolsResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/tools?days=${days}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    tools: data?.tools ?? emptyArray(),
-    isToolsLoading: !error && !data && !disabled,
-    isToolsError: error,
-    isToolsValidating: isValidating,
-  };
-}
-
-export function useWorkspaceToolUsage({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  serverName,
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  serverName?: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetWorkspaceToolUsageResponse> = fetcher;
-  const params = new URLSearchParams({
-    days: String(days),
-    timezone: BROWSER_TIMEZONE,
-  });
-  if (serverName) {
-    params.set("serverName", serverName);
-  }
-  const key = `/api/w/${workspaceId}/analytics/tool-usage?${params.toString()}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    toolUsage: data?.points ?? emptyArray(),
-    isToolUsageLoading: !error && !data && !disabled,
-    isToolUsageError: error,
-    isToolUsageValidating: isValidating,
-  };
-}
-
-export function useWorkspaceSkills({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetWorkspaceSkillsResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/skills?days=${days}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    skills: data?.skills ?? emptyArray(),
-    isSkillsLoading: !error && !data && !disabled,
-    isSkillsError: error,
-    isSkillsValidating: isValidating,
-  };
-}
-
-export function useWorkspaceSkillUsage({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  skillName,
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  skillName?: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetWorkspaceSkillUsageResponse> = fetcher;
-  const params = new URLSearchParams({
-    days: String(days),
-    timezone: BROWSER_TIMEZONE,
-  });
-  if (skillName) {
-    params.set("skillName", skillName);
-  }
-  const key = `/api/w/${workspaceId}/analytics/skill-usage?${params.toString()}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    skillUsage: data?.points ?? emptyArray(),
-    isSkillUsageLoading: !error && !data && !disabled,
-    isSkillUsageError: error,
-    isSkillUsageValidating: isValidating,
-  };
-}
-
-export function useWorkspaceUserCredits({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  limit = 100,
-  search,
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  limit?: number;
-  search?: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetUserCreditsResponse> = fetcher;
-  const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
-  const key = `/api/w/${workspaceId}/analytics/user-credits?days=${days}&limit=${limit}${searchParam}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    userCredits: data?.users ?? emptyArray(),
-    isUserCreditsLoading: !error && !data && !disabled,
-    isUserCreditsError: error,
-    isUserCreditsValidating: isValidating,
-  };
-}
-
-export function useWorkspaceAgentCredits({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  limit = 100,
-  search,
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  limit?: number;
-  search?: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetAgentCreditsResponse> = fetcher;
-  const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
-  const key = `/api/w/${workspaceId}/analytics/agent-credits?days=${days}&limit=${limit}${searchParam}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    agentCredits: data?.agents ?? emptyArray(),
-    isAgentCreditsLoading: !error && !data && !disabled,
-    isAgentCreditsError: error,
-    isAgentCreditsValidating: isValidating,
-  };
-}
-
-export function useWorkspaceAnalyticsOverview({
-  workspaceId,
-  days = DEFAULT_PERIOD_DAYS,
-  disabled,
-}: {
-  workspaceId: string;
-  days?: number;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<GetWorkspaceAnalyticsOverviewResponse> = fetcher;
-  const key = `/api/w/${workspaceId}/analytics/overview?days=${days}`;
-
-  const { data, error, isValidating } = useSWRWithDefaults(
-    disabled ? null : key,
-    fetcherFn
-  );
-
-  return {
-    overview: data ?? null,
-    isOverviewLoading: !error && !data && !disabled,
-    isOverviewError: error,
-    isOverviewValidating: isValidating,
   };
 }
 
@@ -920,7 +619,7 @@ export function useAuthContext(
 ) {
   const { workspaceId, disabled } = options;
   const { fetcher } = useFetcher();
-  const regionContext = useRegionContext();
+  const { setCellInfo } = useCellContext();
 
   const url = workspaceId
     ? workspaceAuthContextUrl(workspaceId)
@@ -934,31 +633,24 @@ export function useAuthContext(
     disabled,
   });
 
-  const isRegionRedirectResponse = error && isRegionRedirect(error.error);
-  const regionRedirect = isRegionRedirectResponse
+  const cellRedirect = isCellRedirectError(error)
     ? error.error.redirect
     : undefined;
   const isFetching = !error && !data && !disabled;
-  const isAuthenticated = !isRegionRedirectResponse && !!data?.user;
+  const isAuthenticated = !cellRedirect && !!data?.user;
 
-  // Handle region redirect.
+  // Handle cell redirect.
   useEffect(() => {
-    if (regionRedirect) {
-      regionContext.setRegionInfo(
-        {
-          name: regionRedirect.region,
-          url: regionRedirect.url,
-        },
-        { keepInStorage: true }
-      );
+    if (cellRedirect) {
+      setCellInfo(cellRedirect);
       void mutate();
     }
-  }, [regionRedirect, mutate, regionContext]);
+  }, [cellRedirect, mutate, setCellInfo]);
 
   return {
-    authContext: isRegionRedirectResponse ? undefined : data,
+    authContext: cellRedirect ? undefined : data,
     isAuthenticated,
-    isAuthContextLoading: isFetching || !!isRegionRedirectResponse,
+    isAuthContextLoading: isFetching || !!cellRedirect,
     authContextError: error,
     mutateAuthContext: mutate,
   };
@@ -980,13 +672,12 @@ export function useCheckoutStatus({
   const { fetcher } = useFetcher();
   const checkoutFetcher: Fetcher<GetCheckoutStatusResponseBody> = fetcher;
 
-  const url = disabled
-    ? null
-    : planCode
-      ? `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}&plan_code=${planCode}`
-      : `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}`;
+  const url = planCode
+    ? `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}&plan_code=${planCode}`
+    : `/api/w/${workspaceId}/subscriptions/checkout-status?session_id=${sessionId}`;
 
   const { data, error, mutate } = useSWRWithDefaults(url, checkoutFetcher, {
+    disabled,
     refreshInterval: pollIntervalMs,
   });
 
@@ -1065,7 +756,7 @@ export function useJoinData({
   conversationId: string | null;
 }) {
   const { fetcher } = useFetcher();
-  const regionContext = useRegionContext();
+  const { setCellInfo } = useCellContext();
   const joinFetcher: Fetcher<GetJoinResponseBody> = fetcher;
 
   const params = new URLSearchParams();
@@ -1080,30 +771,23 @@ export function useJoinData({
 
   const { data, error, mutate } = useSWRWithDefaults(url, joinFetcher);
 
-  const isRegionRedirectResponse = error && isRegionRedirect(error.error);
-  const regionRedirect = isRegionRedirectResponse
+  const cellRedirect = isCellRedirectError(error)
     ? error.error.redirect
     : undefined;
 
-  // Handle region redirect.
+  // Handle cell redirect.
   useEffect(() => {
-    if (regionRedirect) {
-      regionContext.setRegionInfo(
-        {
-          name: regionRedirect.region,
-          url: regionRedirect.url,
-        },
-        { keepInStorage: true }
-      );
+    if (cellRedirect) {
+      setCellInfo(cellRedirect);
       void mutate();
     }
-  }, [regionRedirect, mutate, regionContext]);
+  }, [cellRedirect, mutate, setCellInfo]);
 
   // The join API returns { redirectUrl: "..." } (e.g. for invalid/expired
   // tokens). This is not a standard API error response, so the fetcher wraps
   // it in new Error(jsonText) — we parse it back out here.
   const redirectUrl = useMemo(() => {
-    if (!error || isRegionRedirectResponse || !(error instanceof Error)) {
+    if (!error || cellRedirect || !(error instanceof Error)) {
       return null;
     }
     const parsed = safeParseJSON(error.message);
@@ -1111,13 +795,12 @@ export function useJoinData({
       return parsed.value.redirectUrl;
     }
     return null;
-  }, [error, isRegionRedirectResponse]);
+  }, [error, cellRedirect]);
 
   return {
     joinData: data ?? null,
     joinDataError: error ?? null,
-    isJoinDataLoading:
-      (!error && !data) || !!isRegionRedirectResponse || !!redirectUrl,
+    isJoinDataLoading: (!error && !data) || !!cellRedirect || !!redirectUrl,
     mutateJoinData: mutate,
     redirectUrl,
   };

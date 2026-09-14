@@ -39,9 +39,7 @@ export const createSpacePlugin = createPlugin({
       auth,
       {
         name: formattedName,
-        memberIds: [],
         isRestricted,
-        managementMode: "manual",
         spaceKind: "regular",
       },
       {

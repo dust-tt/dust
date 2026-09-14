@@ -1,7 +1,5 @@
-import { UsageUpgradeButton } from "@app/components/credits/UsageUpgradeButton";
 import { MarkdownEditor } from "@app/components/editor/MarkdownEditor";
 import {
-  ForYouNotificationPreferences,
   NotificationPreferences,
   useNotificationPreferencesForm,
 } from "@app/components/me/NotificationPreferences";
@@ -12,41 +10,32 @@ import {
 } from "@app/components/me/SoundNotificationPreferences";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { MyAwuUsageFromAnalyticsChart } from "@app/components/workspace/AwuUsageFromAnalyticsChart";
-import { CreditsCell } from "@app/components/workspace/analytics/creditsTableCells";
-import { AwuUsageBar } from "@app/components/workspace/MembersUsageTable";
+import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useIsMac } from "@app/hooks/useKeyboardShortcutLabel";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useFeatureFlags } from "@app/lib/auth/AuthContext";
 import { isSubmitMessageKey } from "@app/lib/keymaps";
-import { useAppRouter } from "@app/lib/platform";
 import { useActivationPod } from "@app/lib/swr/activation";
-import {
-  useMyTopConversations,
-  useMyUsage,
-  useSeatPlan,
-} from "@app/lib/swr/credits";
-import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import {
   usePatchUser,
   usePendingInvitations,
   useUser,
   useUserMemory,
-  useWorkspaceUsageStatus,
 } from "@app/lib/swr/user";
-import { getConversationRoute } from "@app/lib/utils/router";
+import { useAuthContext } from "@app/lib/swr/workspaces";
 import {
   MAX_USER_MEMORY_CHARS,
   MAX_USER_MEMORY_CONTENT_LENGTH,
 } from "@app/types/api/me/memory";
 import type { PendingInvitationOption } from "@app/types/membership_invitation";
-import { isCreditPricedPlan } from "@app/types/plan";
 import type { WorkspaceType } from "@app/types/user";
-import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
+import {
+  ANONYMOUS_USER_IMAGE_URL,
+  areConversationExternalNotificationsEnabled,
+} from "@app/types/user";
 import {
   Avatar,
-  BarChart01,
   Bell01,
   Brain,
   Button,
@@ -68,21 +57,18 @@ import {
   NavigationList,
   NavigationListItem,
   Page,
-  Separator,
   Settings01,
+  SettingsList,
   SliderToggle,
   Spinner,
-  Stars02,
   Sun,
   Tabs,
   TabsList,
   TabsTrigger,
-  Tooltip,
   User01,
   XClose,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ExternalLinkIcon } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useController, useForm } from "react-hook-form";
@@ -90,7 +76,6 @@ import { z } from "zod";
 
 type SettingsSection =
   | "personal"
-  | "usage"
   | "customization"
   | "notifications"
   | "memory"
@@ -134,229 +119,6 @@ function SectionContent({
         </div>
       )}
     </div>
-  );
-}
-
-// ─── Usage ────────────────────────────────────────────────────────────────────
-
-function ordinalDay(day: number): string {
-  const suffix =
-    day >= 11 && day <= 13
-      ? "th"
-      : day % 10 === 1
-        ? "st"
-        : day % 10 === 2
-          ? "nd"
-          : day % 10 === 3
-            ? "rd"
-            : "th";
-  return `${day}${suffix}`;
-}
-
-interface MyTopConversationsSectionProps {
-  owner: WorkspaceType;
-  onClose: () => void;
-  visible: boolean;
-}
-
-// Conversations ranked by the user's own credit consumption over the last 30
-// days. Hidden when there is no consumption to show.
-function MyTopConversationsSection({
-  owner,
-  onClose,
-  visible,
-}: MyTopConversationsSectionProps) {
-  const router = useAppRouter();
-  const { topConversations, isTopConversationsLoading } = useMyTopConversations(
-    {
-      workspaceId: owner.sId,
-      disabled: !visible,
-    }
-  );
-
-  if (!isTopConversationsLoading && topConversations.length === 0) {
-    return null;
-  }
-
-  return (
-    <section className="flex flex-col gap-2">
-      <div className="flex items-center gap-1.5">
-        <span className="text-sm font-semibold text-foreground">
-          Most expensive recent conversations
-        </span>
-        <Tooltip
-          label="Conversations with your highest credit consumption over the last 30 days. Costs only reflect your own messages, not the whole conversation's cost."
-          trigger={<InfoCircle className="h-4 w-4 text-muted-foreground" />}
-        />
-      </div>
-      {isTopConversationsLoading ? (
-        <div className="flex justify-center py-2">
-          <Spinner size="sm" />
-        </div>
-      ) : (
-        <NavigationList>
-          {topConversations.map((conversation) => (
-            <NavigationListItem
-              key={conversation.conversationId}
-              label={conversation.title ?? "Untitled conversation"}
-              onClick={() => {
-                onClose();
-                void router.push(
-                  getConversationRoute(owner.sId, conversation.conversationId)
-                );
-              }}
-              suffix={<CreditsCell credits={conversation.totalCredits} />}
-            />
-          ))}
-        </NavigationList>
-      )}
-    </section>
-  );
-}
-
-interface UsageSectionProps {
-  owner: WorkspaceType;
-  onClose: () => void;
-  // The popover stays mounted while closed (animated exit), so gate fetches on
-  // visibility to avoid polling the analytics endpoint from a hidden dialog.
-  visible: boolean;
-}
-
-function UsageSection({ owner, onClose, visible }: UsageSectionProps) {
-  const { isManager, subscription } = useAuth();
-  const { hasPermission } = useWorkspacePermissions();
-  const canAccessBilling = hasPermission("admin", "billing");
-
-  const isCreditBased = isCreditPricedPlan(subscription.plan);
-
-  const { myUsage, nextCreditResetAt, isMyUsageLoading } = useMyUsage({
-    workspaceId: owner.sId,
-    disabled: !isCreditBased || !visible,
-  });
-  const { seatPlans } = useSeatPlan({
-    workspaceId: owner.sId,
-    disabled: !isCreditBased || !visible,
-  });
-
-  const { hasPendingUpgradeRequest } = useWorkspaceUsageStatus({
-    owner,
-    disabled: isManager || !isCreditBased || !visible,
-  });
-
-  const seatName =
-    (myUsage?.seatType ? seatPlans[myUsage.seatType]?.name : null) ??
-    subscription.plan.name;
-
-  const isLoading = isMyUsageLoading;
-
-  const hasPersonalUsage =
-    (myUsage?.spendLimitAwuCredits ?? myUsage?.memberUsageLimit ?? null) !==
-    null;
-
-  return (
-    <SectionContent
-      title="Usage"
-      description="Manage the usage of your Dust workspace"
-    >
-      {isCreditBased && (
-        <section className="flex flex-col gap-2 rounded-lg bg-muted-background p-4">
-          <div className="flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-highlight-100 outline outline-1 outline-highlight-500/20">
-                <Stars02 className="h-3 w-3 text-highlight-500" />
-              </span>
-              <span className="text-base font-semibold text-foreground">
-                {seatName}
-              </span>
-            </span>
-            <UsageUpgradeButton
-              owner={owner}
-              hasPendingUpgradeRequest={hasPendingUpgradeRequest}
-              variant="button"
-              isManager={isManager}
-              onManagerNavigate={onClose}
-            />
-          </div>
-          <Separator />
-          {isLoading ? (
-            <div className="flex justify-center py-2">
-              <Spinner size="sm" />
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {hasPersonalUsage ? (
-                <>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-sm font-medium text-foreground">
-                      Your Credits
-                    </span>
-                    {nextCreditResetAt &&
-                      myUsage?.seatType !== "free" &&
-                      (() => {
-                        const d = new Date(nextCreditResetAt);
-                        const month = d.toLocaleDateString("en-US", {
-                          month: "long",
-                          timeZone: "UTC",
-                        });
-                        return (
-                          <span className="text-xs text-muted-foreground">
-                            Resets on {month} {ordinalDay(d.getUTCDate())}
-                          </span>
-                        );
-                      })()}
-                  </div>
-                  <AwuUsageBar
-                    consumed={myUsage?.consumedAwuCredits ?? 0}
-                    consumedFromAllowance={
-                      myUsage?.consumedFromAllowanceAwuCredits ?? 0
-                    }
-                    consumedFromPool={myUsage?.consumedFromPoolAwuCredits ?? 0}
-                    memberUsageLimit={myUsage?.memberUsageLimit ?? null}
-                    seatBalanceAwu={myUsage?.seatBalanceAwu ?? null}
-                    effectiveLimit={myUsage?.spendLimitAwuCredits ?? 0}
-                    spendLimitSource={myUsage?.spendLimitSource ?? "none"}
-                    seatType={myUsage?.seatType ?? null}
-                    isTotalAllowedUsagePending={false}
-                  />
-                </>
-              ) : null}
-            </div>
-          )}
-        </section>
-      )}
-
-      <MyAwuUsageFromAnalyticsChart
-        workspaceId={owner.sId}
-        disabled={!visible}
-      />
-
-      <MyTopConversationsSection
-        owner={owner}
-        onClose={onClose}
-        visible={visible}
-      />
-
-      {canAccessBilling && (
-        <section className="flex items-center justify-between border-b border-border dark:border-border-dark pb-4">
-          <div className="flex flex-col gap-0.5">
-            <span className="text-sm font-semibold text-foreground">
-              Invoices
-            </span>
-            <span className="text-sm text-muted-foreground">
-              Access and download your invoices
-            </span>
-          </div>
-          <Button
-            variant="outline"
-            size="xs"
-            label="Billing"
-            icon={ExternalLinkIcon}
-            href={`/w/${owner.sId}/${isCreditBased ? "billing" : "subscription"}`}
-            target="_blank"
-          />
-        </section>
-      )}
-    </SectionContent>
   );
 }
 
@@ -523,6 +285,11 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 function CustomizationSection() {
   const { theme: currentTheme, setTheme } = useTheme();
   const isMac = useIsMac();
+  const { isAgentsSectionVisible, setAgentsSectionVisible } =
+    useAgentsSectionVisibility();
+  const [localAgentsSectionVisible, setLocalAgentsSectionVisible] = useState(
+    isAgentsSectionVisible
+  );
 
   const modEnterLabel = useMemo(
     () => (isMac ? "Cmd + Enter (⌘ + ↵)" : "Ctrl + Enter"),
@@ -554,13 +321,15 @@ function CustomizationSection() {
     submitKey !==
       (typeof window !== "undefined"
         ? (localStorage.getItem("submitMessageKey") ?? "enter")
-        : "enter");
+        : "enter") ||
+    localAgentsSectionVisible !== isAgentsSectionVisible;
 
   const handleSave = () => {
     setTheme(localTheme as "light" | "dark" | "system");
     if (typeof window !== "undefined") {
       localStorage.setItem("submitMessageKey", submitKey);
     }
+    setAgentsSectionVisible(localAgentsSectionVisible);
   };
 
   return (
@@ -576,82 +345,96 @@ function CustomizationSection() {
         />
       }
     >
-      <div className="flex w-full gap-4">
-        <div className="flex-1">
-          <div className="mb-2">
-            <Label>Theme</Label>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                icon={
-                  localTheme === "light"
-                    ? Sun
-                    : localTheme === "dark"
-                      ? Moon01
-                      : Sun
-                }
-                label={
-                  localTheme === "light"
-                    ? "Light"
-                    : localTheme === "dark"
-                      ? "Dark"
-                      : "System"
-                }
-                isSelect
-                className="w-fit"
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent mountPortalContainer={portalContainer}>
-              <DropdownMenuItem
-                icon={Sun}
-                label="Light"
-                onClick={() => setLocalTheme("light")}
-              />
-              <DropdownMenuItem
-                icon={Moon01}
-                label="Dark"
-                onClick={() => setLocalTheme("dark")}
-              />
-              <DropdownMenuItem
-                icon={Sun}
-                label="System"
-                onClick={() => setLocalTheme("system")}
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-
-        <div className="flex-1">
-          <div className="mb-2">
-            <Label>Keyboard Shortcuts</Label>
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <div className="copy-sm flex items-center gap-2 text-foreground">
-                Send message:
+      <SettingsList>
+        <SettingsList.Row
+          title="Theme"
+          description="Choose how Dust looks on this device"
+          action={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
+                  size="sm"
+                  icon={
+                    localTheme === "light"
+                      ? Sun
+                      : localTheme === "dark"
+                        ? Moon01
+                        : Sun
+                  }
+                  label={
+                    localTheme === "light"
+                      ? "Light"
+                      : localTheme === "dark"
+                        ? "Dark"
+                        : "System"
+                  }
+                  isSelect
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent mountPortalContainer={portalContainer}>
+                <DropdownMenuItem
+                  icon={Sun}
+                  label="Light"
+                  onClick={() => setLocalTheme("light")}
+                />
+                <DropdownMenuItem
+                  icon={Moon01}
+                  label="Dark"
+                  onClick={() => setLocalTheme("dark")}
+                />
+                <DropdownMenuItem
+                  icon={Sun}
+                  label="System"
+                  onClick={() => setLocalTheme("system")}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
+
+        <SettingsList.Row
+          title="Send message"
+          description="Keyboard shortcut to send a message"
+          action={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
                   label={submitKey === "enter" ? "Enter (↵)" : modEnterLabel}
                   isSelect
-                  className="w-fit"
                 />
-              </div>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent mountPortalContainer={portalContainer}>
-              <DropdownMenuItem onClick={() => setSubmitKey("enter")}>
-                Enter
-                <DropdownMenuShortcut>↵</DropdownMenuShortcut>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSubmitKey("cmd+enter")}>
-                {modEnterMenuLabel}
-                <DropdownMenuShortcut>{modEnterShortcut}</DropdownMenuShortcut>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </div>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent mountPortalContainer={portalContainer}>
+                <DropdownMenuItem onClick={() => setSubmitKey("enter")}>
+                  Enter
+                  <DropdownMenuShortcut>↵</DropdownMenuShortcut>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSubmitKey("cmd+enter")}>
+                  {modEnterMenuLabel}
+                  <DropdownMenuShortcut>
+                    {modEnterShortcut}
+                  </DropdownMenuShortcut>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
+
+        <SettingsList.Row
+          title="Show your agents on the home page"
+          description="Access your favorite and most-used agents, or search for one from the home page."
+          action={
+            <SliderToggle
+              selected={localAgentsSectionVisible}
+              onClick={() =>
+                setLocalAgentsSectionVisible(!localAgentsSectionVisible)
+              }
+            />
+          }
+        />
+      </SettingsList>
     </SectionContent>
   );
 }
@@ -730,37 +513,29 @@ function NotificationsSection({ owner }: { owner: WorkspaceType }) {
               disabled={sound.isLoading}
             />
           </div>
-          {showNotificationPreferences && (
+          {showNotificationPreferences && notif.status === "error" && (
+            <ContentMessageInline variant="warning" icon={InfoCircle}>
+              We couldn't load your notification settings. Please try again
+              later.
+            </ContentMessageInline>
+          )}
+          {showNotificationPreferences && notif.status !== "error" && (
             <div className="flex flex-col gap-4">
               <Page.SectionHeader
                 title="Other channels"
                 description="Choose where else to receive notifications"
               />
-              {notif.status === "error" ? (
-                <ContentMessageInline variant="warning" icon={InfoCircle}>
-                  We couldn't load your notification settings. Please try again
-                  later.
-                </ContentMessageInline>
-              ) : (
-                <NotificationPreferences
-                  control={notif.control}
-                  displaySlackOption={notif.displaySlackOption}
-                  workflowEnabled={notif.workflowEnabled}
-                />
-              )}
+              <NotificationPreferences
+                control={notif.control}
+                displaySlackOption={notif.displaySlackOption}
+                displayForYouOption={displayForYouOption}
+                workflowEnabled={notif.workflowEnabled}
+                conversationExternalNotificationsEnabled={areConversationExternalNotificationsEnabled(
+                  owner
+                )}
+              />
             </div>
           )}
-          {showNotificationPreferences &&
-            displayForYouOption &&
-            notif.status !== "error" && (
-              <div className="flex flex-col gap-4">
-                <Page.SectionHeader
-                  title="For you"
-                  description="Recommendation emails from your learning space"
-                />
-                <ForYouNotificationPreferences control={notif.control} />
-              </div>
-            )}
         </>
       )}
     </SectionContent>
@@ -913,7 +688,6 @@ const NAV_ITEMS: Array<{
   label: string;
 }> = [
   { section: "personal", icon: User01, label: "Personal Information" },
-  { section: "usage", icon: BarChart01, label: "Usage" },
   { section: "customization", icon: Settings01, label: "Customization" },
   { section: "memory", icon: Brain, label: "Memory" },
   { section: "notifications", icon: Bell01, label: "Notifications" },
@@ -935,6 +709,10 @@ export function UserSettingsPopover({
   const { pendingInvitations, isPendingInvitationsLoading } =
     usePendingInvitations({ workspaceId: owner.sId, disabled: !open });
   const hasPendingInvitations = pendingInvitations.length > 0;
+  const { mutateAuthContext } = useAuthContext({
+    workspaceId: owner.sId,
+    disabled: true,
+  });
 
   // "Memory" is gated on the user_memory feature flag; "Invitations" only
   // appears when the user has pending invitations.
@@ -955,8 +733,9 @@ export function UserSettingsPopover({
   useEffect(() => {
     if (open) {
       setActiveSection("personal");
+      void mutateAuthContext();
     }
-  }, [open]);
+  }, [open, mutateAuthContext]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1019,13 +798,6 @@ export function UserSettingsPopover({
           <div className="flex flex-1 flex-col overflow-hidden">
             {activeSection === "personal" && (
               <PersonalInfoSection owner={owner} />
-            )}
-            {activeSection === "usage" && (
-              <UsageSection
-                owner={owner}
-                onClose={() => onOpenChange(false)}
-                visible={open}
-              />
             )}
             {activeSection === "customization" && <CustomizationSection />}
             {activeSection === "notifications" && (

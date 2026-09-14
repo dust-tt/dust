@@ -30,6 +30,7 @@ function prepareFeatureFlagsForDisplay(
         name: ff,
         description: WHITELISTABLE_FEATURES_CONFIG[ff].description,
         stage: WHITELISTABLE_FEATURES_CONFIG[ff].stage,
+        owner: WHITELISTABLE_FEATURES_CONFIG[ff].owner,
         enabled: !!enabledFlag,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         enabledAt: enabledFlag?.createdAt || null,

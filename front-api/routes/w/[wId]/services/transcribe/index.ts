@@ -1,5 +1,5 @@
 import { findAgentsInMessage } from "@app/lib/utils/find_agents_in_message";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import { transcribeStream } from "@app/lib/utils/transcribe_service";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -64,7 +64,7 @@ app.post("/", async (ctx) => {
   }
   const file = maybeFiles[0];
 
-  const statsd = getStatsDClient();
+  const statsd = statsDMetrics;
   const totalStartMs = performance.now();
   const wId = auth.getNonNullableWorkspace().sId;
 

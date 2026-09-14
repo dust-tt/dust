@@ -9,7 +9,8 @@ interface QueryTrackerStore {
  * Tracks the peak number of concurrent Sequelize queries within a single request.
  *
  * Usage:
- * - `withLogging` wraps each request handler in `queryTracker.run(store, ...)`.
+ * - Hono's `requestInstrumentation` middleware wraps each request in
+ *   `queryTracker.run(store, ...)`.
  * - `ActivityInboundLogInterceptor` wraps each Temporal activity execution the same way.
  * - `SequelizeWithComments.query()` increments/decrements `store.concurrent` around
  *   every query and updates `store.peak`.

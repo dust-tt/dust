@@ -1,3 +1,4 @@
+import { getConversationRankVersionLock } from "@app/lib/api/assistant/conversation/lock";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import {
@@ -16,10 +17,7 @@ import { REINFORCED_SKILLS_METADATA_KEYS } from "@app/lib/reinforcement/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import {
-  createAccessControlListFromSpacesWithMap,
-  createSpaceIdToGroupsMap,
-} from "@app/lib/resources/permission_utils";
+import { canReadRequestedSpaces } from "@app/lib/resources/permission_utils";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -44,6 +42,7 @@ import type {
   ConversationListItemType,
   ConversationMCPServerViewType,
   ConversationMetadata,
+  ConversationRefType,
   ConversationUrlAccessMode,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -82,6 +81,7 @@ import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 type FetchConversationOptions = {
   includeDeleted?: boolean;
   excludeTest?: boolean; // Explicitly exclude test conversations
+  onlyRootConversations?: boolean; // Exclude sub-conversations (depth > 0)
   dangerouslySkipPermissionFiltering?: boolean;
   includeForkingData?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
@@ -92,6 +92,15 @@ type FetchConversationOptions = {
 };
 
 type SpaceConversationsFilter = "all" | "group" | "with_me";
+
+export const AGENT_CONVERSATIONS_ORDER_COLUMNS = {
+  createdAt: `c."createdAt"`,
+  title: `c."title"`,
+  sId: `c."sId"`,
+} as const;
+
+export type AgentConversationsOrderColumn =
+  keyof typeof AGENT_CONVERSATIONS_ORDER_COLUMNS;
 
 interface UserParticipation {
   actionRequired: boolean;
@@ -133,6 +142,7 @@ export type AgentMessageConsumptionAnalyticsContext = {
     triggerModelId: ModelId | null;
   };
   triggeringUserMessage: {
+    agenticOriginMessageId: string | null;
     apiKeyModelId: ModelId | null;
     origin: UserMessageOrigin;
     userId: string | null;
@@ -571,8 +581,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const workspace = auth.getNonNullableWorkspace();
 
     // Check if the user has access to the space.
-    // Note, using canRead because spaces members do not have write access to the space as write is tied with datasources.
-    if (space && !space.canRead(auth)) {
+    // Use read because space members do not have write access to the space; write is tied to data
+    // sources.
+    if (space && !auth.can("read", space)) {
       throw new Error(
         "Cannot create conversation in a space you do not have access to."
       );
@@ -771,6 +782,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     status: AgentMessageStatus;
     runIds: string[] | null;
     triggeringUserMessageOrigin: UserMessageOrigin | null;
+    triggeringUserId: string | null;
+    triggeringUserMessageAuthMethod: string | null;
     // The total cost already stored (and already recorded to the usage
     // counters) by a prior finalize of this message. Used to record only the
     // newly-accrued delta on re-finalize.
@@ -791,15 +804,25 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }
 
     let triggeringUserMessageOrigin: UserMessageOrigin | null = null;
+    let triggeringUserId: string | null = null;
+    let triggeringUserMessageAuthMethod: string | null = null;
     if (messageRow.parentId !== null) {
       const parentRow = await MessageModel.findOne({
         where: { id: messageRow.parentId, workspaceId },
         include: [
-          { model: UserMessageModel, as: "userMessage", required: false },
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: false,
+            include: [{ model: UserModel, required: false }],
+          },
         ],
       });
       triggeringUserMessageOrigin =
         parentRow?.userMessage?.userContextOrigin ?? null;
+      triggeringUserId = parentRow?.userMessage?.user?.sId ?? null;
+      triggeringUserMessageAuthMethod =
+        parentRow?.userMessage?.userContextAuthMethod ?? null;
     }
 
     return {
@@ -807,6 +830,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       status: agentMessage.status,
       runIds: agentMessage.runIds,
       triggeringUserMessageOrigin,
+      triggeringUserId,
+      triggeringUserMessageAuthMethod,
       previousCostCredits: agentMessage.costCredits,
     };
   }
@@ -886,6 +911,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         triggerModelId: conversation.triggerId,
       },
       triggeringUserMessage: {
+        agenticOriginMessageId:
+          triggeringUserMessage.agenticOriginMessageId ?? null,
         apiKeyModelId: triggeringUserMessage.userContextApiKeyId,
         origin: triggeringUserMessage.userContextOrigin,
         userId: triggeringUserMessage.user?.sId ?? null,
@@ -1032,6 +1059,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       where.updatedAt = { [Op.gte]: new Date(options.updatedSince) };
     }
 
+    if (options?.onlyRootConversations) {
+      where.depth = { [Op.eq]: 0 };
+    }
+
     return {
       where,
     };
@@ -1115,11 +1146,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // further restrict who can open the conversation — they remain a runtime/scope
     // concern, not a conjunctive ACL. Missing/deleted project spaces deny access.
     const accessiblePodConversations: ConversationResource[] = podConversations
-      .filter(
-        (c) =>
-          spaceIdToSpaceMap.has(c.spaceId) &&
-          spaceIdToSpaceMap.get(c.spaceId)!.canRead(auth)
-      )
+      .filter((c) => {
+        const space = spaceIdToSpaceMap.get(c.spaceId);
+        return space ? auth.can("read", space) : false;
+      })
       .map((c) => this.fromModel(c, spaceIdToSpaceMap.get(c.spaceId) ?? null));
 
     // If there are no regular conversations, return the accessible pod conversations immediately.
@@ -1142,18 +1172,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         )
       );
 
-    // Create space-to-groups mapping once for efficient permission checks.
-    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-
     const spaceBasedAccessible = validConversations.filter((c) =>
-      auth.hasPermissionForAcls(
-        "read",
-        createAccessControlListFromSpacesWithMap(
-          spaceIdToGroupsMap,
-          c.requestedSpaceIds,
-          auth.getNonNullableWorkspace().id
-        )
-      )
+      canReadRequestedSpaces(auth, spaceIdToSpaceMap, c.requestedSpaceIds)
     );
 
     if (spaceBasedAccessible.length === 0) {
@@ -1255,27 +1275,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return participationCount > 0;
   }
 
-  private static async isConversationReadableFromRequestedSpaces(
-    auth: Authenticator,
-    conversation: ConversationModel
-  ): Promise<boolean> {
-    const spaces = await SpaceResource.fetchByModelIds(
-      auth,
-      conversation.requestedSpaceIds
-    );
-
-    const spaceIdToGroupsMap = createSpaceIdToGroupsMap(auth, spaces);
-
-    return auth.hasPermissionForAcls(
-      "read",
-      createAccessControlListFromSpacesWithMap(
-        spaceIdToGroupsMap,
-        conversation.requestedSpaceIds,
-        auth.getNonNullableWorkspace().id
-      )
-    );
-  }
-
   static async canAccess(
     auth: Authenticator,
     sId: string
@@ -1299,22 +1298,28 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       const spaces = await SpaceResource.fetchByModelIds(auth, [
         conversation.spaceId,
       ]);
-      return spaces.length > 0 && spaces[0].canRead(auth)
+      return spaces.length > 0 && auth.can("read", spaces[0])
         ? "allowed"
         : "conversation_access_restricted";
     }
 
-    try {
-      if (
-        !(await this.isConversationReadableFromRequestedSpaces(
-          auth,
-          conversation
-        ))
-      ) {
-        return "conversation_access_restricted";
-      }
-    } catch (_error) {
+    // Private conversations: the viewer must read every requested space (conjunctive ACL). A
+    // requested space missing from the fetch — deleted, or belonging to another workspace — means
+    // the conversation can no longer be located, not merely that access is restricted.
+    const spaces = await SpaceResource.fetchByModelIds(
+      auth,
+      conversation.requestedSpaceIds
+    );
+    const spaceById = new Map(spaces.map((s) => [s.id, s]));
+
+    if (conversation.requestedSpaceIds.some((id) => !spaceById.has(id))) {
       return "conversation_not_found";
+    }
+
+    if (
+      !canReadRequestedSpaces(auth, spaceById, conversation.requestedSpaceIds)
+    ) {
+      return "conversation_access_restricted";
     }
 
     if (
@@ -1734,6 +1739,109 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
+   * Page of the conversations in which `agentConfigurationId` produced at least one
+   * message, optionally restricted to a `createdAt` window (`createdAfter` inclusive,
+   * `createdBefore` exclusive). Paging and ordering happen in SQL: an active agent's
+   * conversation set is unbounded, so neither its conversation ids nor the hydrated
+   * conversations can be materialized in full.
+   *
+   * `totalCount` is the size of the matching set before visibility and permission
+   * filtering, so it is an upper bound: a page can hold fewer than `limit`
+   * conversations when the caller cannot read some of them.
+   */
+  static async listConversationsWithAgentPaginated(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      limit,
+      offset,
+      orderColumn = "createdAt",
+      orderDirection = "desc",
+      createdAfter,
+      createdBefore,
+    }: {
+      agentConfigurationId: string;
+      limit: number;
+      offset: number;
+      orderColumn?: AgentConversationsOrderColumn;
+      orderDirection?: "asc" | "desc";
+      createdAfter?: Date;
+      createdBefore?: Date;
+    },
+    options?: FetchConversationOptions
+  ): Promise<{ conversations: ConversationResource[]; totalCount: number }> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // Static fragments, so the window stays out of the plan entirely when unbounded.
+    const windowConditions = [
+      createdAfter ? `AND c."createdAt" >= :createdAfter` : "",
+      createdBefore ? `AND c."createdAt" < :createdBefore` : "",
+    ].join("\n       ");
+
+    // Never interpolated from caller input: both halves come from closed unions.
+    const direction = orderDirection === "asc" ? "ASC" : "DESC";
+    // `id` breaks ties so a row cannot drift between pages as the offset moves.
+    const orderBy = `${AGENT_CONVERSATIONS_ORDER_COLUMNS[orderColumn]} ${direction}, c."id" DESC`;
+
+    // `agent_messages` carries `conversationId` since the side-table denormalization, so
+    // the agent's conversations resolve without joining `messages`. The window count is
+    // free: the full id set is already materialized to be sorted.
+    const query = `
+      WITH agent_conversations AS (
+        SELECT DISTINCT am."conversationId"
+        FROM agent_messages am
+        WHERE am."workspaceId" = :workspaceId
+          AND am."agentConfigurationId" = :agentConfigurationId
+      )
+      SELECT c."id", COUNT(*) OVER () AS total_count
+      FROM agent_conversations ac
+      JOIN conversations c
+        ON c."id" = ac."conversationId"
+       AND c."workspaceId" = :workspaceId
+       ${windowConditions}
+      ORDER BY ${orderBy}
+      LIMIT :limit OFFSET :offset
+    `;
+
+    // biome-ignore lint/plugin/noRawSql: no association from conversations to agent_messages.
+    const rows = await frontSequelize.query<{
+      id: ModelId;
+      total_count: number;
+    }>(query, {
+      type: QueryTypes.SELECT,
+      replacements: {
+        workspaceId,
+        agentConfigurationId,
+        limit,
+        offset,
+        ...(createdAfter && { createdAfter }),
+        ...(createdBefore && { createdBefore }),
+      },
+    });
+
+    if (rows.length === 0) {
+      return { conversations: [], totalCount: 0 };
+    }
+
+    const conversations = await this.baseFetchWithAuthorization(auth, options, {
+      where: {
+        id: {
+          [Op.in]: rows.map((r) => r.id),
+        },
+      },
+    });
+
+    // Walk the SQL order, which the hydrating fetch does not preserve. Ids the fetch
+    // dropped on visibility or permissions simply fall out here.
+    const conversationById = new Map(conversations.map((c) => [c.id, c]));
+    const ordered = removeNulls(
+      rows.map((r) => conversationById.get(r.id) ?? null)
+    );
+
+    return { conversations: ordered, totalCount: rows[0].total_count };
+  }
+
+  /**
    * For each agent, returns the sIds of qualifying conversations in the window
    * createdAt >= cutoffDate. With excludeHumanOutOfTheLoop, removes conversations where
    * triggerId IS NOT NULL and no user messages are present.
@@ -1973,30 +2081,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
-    const { actionRequired, lastReadAt } =
-      await ConversationResource.getActionRequiredAndLastReadAtForUser(
-        auth,
-        conversation.id
-      );
+    await this.enrichWithParticipationAndReadState(auth, [conversation]);
 
-    return new Ok({
-      actionRequired,
-      created: conversation.createdAt.getTime(),
-      depth: conversation.depth,
-      hasError: conversation.hasError,
-      id: conversation.id,
-      lastReadMs: lastReadAt?.getTime() ?? null,
-      metadata: conversation.metadata,
-      requestedGroupIds: [],
-      requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
-      sId: conversation.sId,
-      spaceId: conversation.space?.sId ?? null,
-      title: conversation.title,
-      triggerId: conversation.triggerSId,
-      unread: lastReadAt === null || conversation.updatedAt > lastReadAt,
-      updated: conversation.updatedAt.getTime(),
-      isRunningAgentLoop: conversation.isRunningAgentLoop,
-    });
+    return new Ok(conversation.toJSON());
   }
 
   private static async update(
@@ -2292,21 +2379,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       };
     }
 
-    const participationMap = await this.fetchParticipationMapForUser(
-      auth,
-      conversations.map((c) => c.id)
-    );
-    const participantConversationIds = new Set(participationMap.keys());
-
-    // Attach participation data and read state to all resources.
-    conversations.forEach((c) => {
-      const participation = participationMap.get(c.id);
-      if (participation) {
-        c.userParticipation = participation;
-      }
-    });
-
-    await this.enrichWithReadState(auth, conversations);
+    await this.enrichWithParticipationAndReadState(auth, conversations);
 
     // These conversations are used to display the unread count in the sidebar.
     // We do not count conversations the user does not participate in.
@@ -2318,15 +2391,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const nonParticipantUnreadConversations = conversations.filter(
       (c) =>
-        !participantConversationIds.has(c.id) &&
+        !c.userParticipation &&
         (c.userLastReadAt === null || c.updatedAt > c.userLastReadAt)
     );
 
-    // Hydrate next wake-up only for conversations returned to the summary (sidebar inbox).
-    await this.enrichWithNextWakeupAt(auth, [
-      ...unreadConversations,
-      ...nonParticipantUnreadConversations,
-    ]);
+    // Hydrate next wake-up only for participant unread conversations, which are
+    // serialized into the sidebar inbox. Non-participant unread IDs are only
+    // used for the activity badge.
+    await this.enrichWithNextWakeupAt(auth, unreadConversations);
 
     const lastUserActivityBySpace = new Map<number, Date>();
 
@@ -2691,6 +2763,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       pagination,
       extraWhereClause: {
         title: { [Op.iLike]: `%${query}%` },
+        depth: { [Op.eq]: 0 }, // Only fetch root conversations
       },
     });
   }
@@ -2748,6 +2821,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         depth: c.depth,
         metadata: c.metadata,
         isRunningAgentLoop: c.isRunningAgentLoop,
+        isParticipant: !!participation,
       };
     });
   }
@@ -2809,6 +2883,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       depth: c.depth,
       metadata: c.metadata,
       isRunningAgentLoop: c.isRunningAgentLoop,
+      isParticipant: false,
     }));
   }
 
@@ -2927,6 +3002,72 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     return new Ok(updated[0]);
+  }
+
+  /**
+   * @cc [owner:philipperolet,label:backend;concurrency] cancel-unavailable-agent-message
+   * After an agent loop loses access to its data, cancel only its workspace-scoped message
+   * version if still created; under the conversation lock, clear the running flag only if
+   * that transition applied and no current agent message is running.
+   */
+  static async cancelUnavailableAgentMessage(
+    auth: Authenticator,
+    {
+      conversationId,
+      agentMessageId,
+      agentMessageVersion,
+    }: {
+      conversationId: string;
+      agentMessageId: string;
+      agentMessageVersion: number;
+    }
+  ): Promise<void> {
+    // Deletion or a permissions change may remove the loop's original access. This internal
+    // cleanup stays scoped to its workspace and message; it never returns conversation content.
+    const conversation = await this.fetchById(auth, conversationId, {
+      includeDeleted: true,
+      dangerouslySkipPermissionFiltering: true,
+    });
+    if (!conversation) {
+      return;
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    await withTransaction(async (transaction) => {
+      await getConversationRankVersionLock(auth, conversation, transaction);
+      const message = await MessageModel.findOne({
+        where: {
+          workspaceId,
+          conversationId: conversation.id,
+          sId: agentMessageId,
+          version: agentMessageVersion,
+        },
+        transaction,
+      });
+      if (!message?.agentMessageId) {
+        return;
+      }
+
+      const [updatedCount] = await AgentMessageModel.update(
+        { status: "cancelled", completedAt: new Date() },
+        {
+          where: { id: message.agentMessageId, workspaceId, status: "created" },
+          transaction,
+        }
+      );
+      if (
+        updatedCount === 0 ||
+        (await conversation.getRunningAgentMessage(auth, { transaction }))
+      ) {
+        return;
+      }
+
+      await this.setIsRunningAgentLoop(auth, {
+        conversation: conversation.toJSON(),
+        isRunningAgentLoop: false,
+        transaction,
+      });
+    });
   }
 
   static async markAsReadForAuthUser(
@@ -3484,27 +3625,40 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
-   * Returns `clientSideMCPServerIds` from the most recent user message (latest
-   * version per rank) whose origin is not `wakeup`. Used when posting wake-up
-   * messages to inherit the previous human turn's client-side MCP selection.
+   * Returns the context to carry over to a wake-up run: the client-side MCP servers and the
+   * model explicitly requested on the latest non wake-up user message of the conversation. This
+   * anchors wake-ups on the last human turn so they keep running with the model the user picked
+   * rather than falling back to the agent's configured model.
    */
-  async getClientSideMCPServerIdsFromLatestNonWakeUpUserMessage(
+  async getContextFromLatestNonWakeUpUserMessage(
     auth: Authenticator,
     {
       transaction,
     }: {
       transaction?: Transaction;
     } = {}
-  ): Promise<string[]> {
+  ): Promise<{
+    clientSideMCPServerIds: string[];
+    requestedProviderId: string | null;
+    requestedModelId: string | null;
+    requestedReasoningEffort: string | null;
+  }> {
     const owner = auth.getNonNullableWorkspace();
 
     const query = `
-      SELECT latest."clientSideMCPServerIds"
+      SELECT
+        latest."clientSideMCPServerIds",
+        latest."requestedProviderId",
+        latest."requestedModelId",
+        latest."requestedReasoningEffort"
       FROM (
         SELECT DISTINCT ON (m.rank)
           m.rank,
           um."userContextOrigin",
-          um."clientSideMCPServerIds"
+          um."clientSideMCPServerIds",
+          um."requestedProviderId",
+          um."requestedModelId",
+          um."requestedReasoningEffort"
         FROM messages m
         INNER JOIN user_messages um
           ON um.id = m."userMessageId"
@@ -3524,6 +3678,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // biome-ignore lint/plugin/noRawSql: DISTINCT ON subquery with LIMIT 1
     const [result] = await frontSequelize.query<{
       clientSideMCPServerIds: string[] | null;
+      requestedProviderId: string | null;
+      requestedModelId: string | null;
+      requestedReasoningEffort: string | null;
     }>(query, {
       type: QueryTypes.SELECT,
       replacements: {
@@ -3533,7 +3690,12 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     });
 
-    return result?.clientSideMCPServerIds ?? [];
+    return {
+      clientSideMCPServerIds: result?.clientSideMCPServerIds ?? [],
+      requestedProviderId: result?.requestedProviderId ?? null,
+      requestedModelId: result?.requestedModelId ?? null,
+      requestedReasoningEffort: result?.requestedReasoningEffort ?? null,
+    };
   }
 
   /**
@@ -4592,6 +4754,30 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(undefined);
   }
 
+  /** Copies the filesystem choice to a fresh standalone child conversation. */
+  static async inheritDatabaseFileSystem(
+    auth: Authenticator,
+    sId: string
+  ): Promise<Result<undefined, Error>> {
+    const conversation = await this.fetchById(auth, sId);
+    if (!conversation) {
+      return new Err(new ConversationError("conversation_not_found"));
+    }
+    if (conversation.spaceId !== null) {
+      return new Err(
+        new Error("Pod conversations inherit their Pod filesystem.")
+      );
+    }
+
+    await conversation.update({
+      metadata: {
+        ...conversation.metadata,
+        useDatabaseFileSystem: true,
+      },
+    });
+    return new Ok(undefined);
+  }
+
   static async fetchMCPServerViews(
     auth: Authenticator,
     conversation: ConversationWithoutContentType | ConversationResource,
@@ -4695,6 +4881,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
         transaction,
       });
+    const userId = auth.user()?.id ?? null;
 
     // Cycle through the mcpServerViewIds and create or update the conversationMCPServerView
     for (const mcpServerView of mcpServerViews) {
@@ -4707,7 +4894,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           {
             enabled,
             source,
-            userId: auth.getNonNullableUser().id,
+            userId,
             updatedAt: new Date(),
           },
           {
@@ -4725,7 +4912,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             conversationId: conversation.id,
             workspaceId: auth.getNonNullableWorkspace().id,
             mcpServerViewId: mcpServerView.id,
-            userId: auth.getNonNullableUser().id,
+            userId,
             enabled,
             source,
             agentConfigurationId,
@@ -5177,7 +5364,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       primaryUserId: ModelId;
       secondaryUserId: ModelId;
     }
-  ): Promise<void> {
+  ): Promise<number> {
     // Find conversations where primary user is already a participant
     const primaryUserParticipations =
       await ConversationParticipantModel.findAll({
@@ -5203,8 +5390,10 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       });
     }
 
-    // Update remaining secondary user participations to point to primary user
-    await ConversationParticipantModel.update(
+    // Update remaining secondary user participations to point to primary user. The affected-row
+    // count is the number of conversations actually transferred (duplicates the primary already
+    // participated in were deleted above, not transferred).
+    const [transferredCount] = await ConversationParticipantModel.update(
       { userId: primaryUserId },
       {
         where: {
@@ -5213,6 +5402,23 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       }
     );
+
+    return transferredCount;
+  }
+
+  /**
+   * Minimal serialization for listings that only need to name a conversation and link to it, such
+   * as the personal wake-ups list. Uses the same display title as `toListItem`.
+   */
+  toRefJSON(): ConversationRefType {
+    return {
+      sId: this.sId,
+      title: getConversationDisplayTitle({
+        created: this.createdAt.getTime(),
+        forkingData: this.forkingData,
+        title: this.title,
+      }),
+    };
   }
 
   toListItem(): ConversationListItemType {
@@ -5236,6 +5442,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         this.userLastReadAt === null || this.updatedAt > this.userLastReadAt,
       updated: this.updatedAt.getTime(),
       isRunningAgentLoop: this.isRunningAgentLoop,
+      isParticipant: !!this.userParticipation,
     };
   }
 

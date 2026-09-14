@@ -1,6 +1,7 @@
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import {
   ArrowDown,
   ArrowUp,
@@ -12,20 +13,27 @@ import {
   Icon,
   LoadingBlock,
 } from "@dust-tt/sparkle";
-import type { ColumnDef } from "@tanstack/react-table";
+import type {
+  ColumnDef,
+  OnChangeFn,
+  SortingState,
+} from "@tanstack/react-table";
 import {
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import type { ComponentType } from "react";
 import { Fragment } from "react";
+import type { ConsumptionAttributionBreakdownProps } from "./ConsumptionAttributionBreakdown";
 import { ConsumptionAttributionBreakdown } from "./ConsumptionAttributionBreakdown";
 import type { ConsumptionDimension } from "./consumptionDimensions";
 
 export type AttributionRowData = ConsumptionTopRow & {
   onClick: () => void;
   onAddFilter: () => void;
+  onNameClick?: () => void;
   onRemoveFilter: () => void;
 };
 
@@ -73,6 +81,8 @@ function AttributionSkeletonCell({
       );
     case "credits":
     case "avgCredits":
+    case "activeMembers":
+    case "usageVsAverage":
     case "vsPrev":
       return (
         <div className="flex h-12 items-center justify-end">
@@ -96,13 +106,15 @@ function AttributionSkeletonCell({
   }
 }
 
-interface ConsumptionAttributionRowsTableProps {
+export interface ConsumptionAttributionRowsTableProps {
   data: AttributionRowData[];
   columns: ColumnDef<AttributionRowData>[];
   workspaceId: string;
   dimension: ConsumptionDimension;
   period: ConsumptionPeriodSelection;
   filter?: ConsumptionScopeFilter;
+  analyticsScope?: ConsumptionAnalyticsScope;
+  disabled?: boolean;
   onViewAll: (
     dimension: ConsumptionDimension,
     selectedRow: ConsumptionTopRow
@@ -112,25 +124,39 @@ interface ConsumptionAttributionRowsTableProps {
   skeletonRowCount?: number;
   hasAvatar?: boolean;
   isAvatarRounded?: boolean;
+  sorting: SortingState;
+  onSortingChange: OnChangeFn<SortingState>;
 }
 
-export function ConsumptionAttributionRowsTable({
+interface ConsumptionAttributionRowsTableViewProps
+  extends ConsumptionAttributionRowsTableProps {
+  BreakdownComponent: ComponentType<ConsumptionAttributionBreakdownProps>;
+}
+
+export function ConsumptionAttributionRowsTableView({
   data,
   columns,
   workspaceId,
   dimension,
   period,
   filter,
+  analyticsScope,
+  disabled,
   onViewAll,
   expandedRowId,
   isLoading = false,
   skeletonRowCount = ATTRIBUTION_SKELETON_ROW_COUNT,
   hasAvatar = false,
   isAvatarRounded = false,
-}: ConsumptionAttributionRowsTableProps) {
+  sorting,
+  onSortingChange,
+  BreakdownComponent,
+}: ConsumptionAttributionRowsTableViewProps) {
   const table = useReactTable({
     data,
     columns,
+    state: { sorting },
+    onSortingChange,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
@@ -233,12 +259,14 @@ export function ConsumptionAttributionRowsTable({
                           "data-[state=closed]:slide-out-to-top-1 data-[state=closed]:duration-exit"
                         )}
                       >
-                        <ConsumptionAttributionBreakdown
+                        <BreakdownComponent
                           workspaceId={workspaceId}
                           selectedDimension={dimension}
                           selectedRow={row.original}
                           period={period}
                           filter={filter}
+                          analyticsScope={analyticsScope}
+                          disabled={disabled}
                           onViewAll={onViewAll}
                         />
                       </CollapsibleContent>
@@ -249,5 +277,16 @@ export function ConsumptionAttributionRowsTable({
             ))}
       </DataTable.Body>
     </DataTable.Root>
+  );
+}
+
+export function ConsumptionAttributionRowsTable(
+  props: ConsumptionAttributionRowsTableProps
+) {
+  return (
+    <ConsumptionAttributionRowsTableView
+      {...props}
+      BreakdownComponent={ConsumptionAttributionBreakdown}
+    />
   );
 }

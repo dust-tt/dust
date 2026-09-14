@@ -2,15 +2,17 @@ import { ChartContainer } from "@app/components/charts/ChartContainer";
 import type { LegendItem } from "@app/components/charts/ChartLegend";
 import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
-import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
-import { useConsumptionTimeseries } from "@app/hooks/useConsumptionTimeseries";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import {
   findPartialTimestamp,
   formatConsumptionDate,
 } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import { formatCredits, formatCreditsCompact } from "@app/lib/client/credits";
+import type { GetConsumptionTimeseriesResponse } from "@app/lib/api/analytics/consumption/timeseries";
+import {
+  formatCredits,
+  formatCreditsCompact,
+  formatCreditValue,
+} from "@app/lib/client/credits";
+import type { ReactNode } from "react";
 import { useMemo } from "react";
 import {
   CartesianGrid,
@@ -86,7 +88,7 @@ function ConsumptionBurnUpTooltip({
       rows={rows}
       footer={
         delta !== null
-          ? `${formatCredits(Math.abs(delta))} ${delta > 0 ? "ahead of" : "behind"} target`
+          ? `${formatCreditValue(Math.abs(delta))} ${delta > 0 ? "ahead of" : "behind"} target`
           : undefined
       }
     />
@@ -94,37 +96,22 @@ function ConsumptionBurnUpTooltip({
 }
 
 interface ConsumptionBurnUpChartProps {
-  workspaceId: string;
-  period: ConsumptionPeriodSelection;
-  filter?: ConsumptionScopeFilter;
+  timeseries: GetConsumptionTimeseriesResponse | null;
+  capCredits: number | null;
+  isTimeseriesLoading: boolean;
+  isTimeseriesError: boolean;
+  emptyMessage: string;
+  additionalControls?: ReactNode;
 }
 
 export function ConsumptionBurnUpChart({
-  workspaceId,
-  period,
-  filter,
+  timeseries,
+  capCredits,
+  isTimeseriesLoading,
+  isTimeseriesError,
+  emptyMessage,
+  additionalControls,
 }: ConsumptionBurnUpChartProps) {
-  const { overview } = useConsumptionOverview({ workspaceId, period, filter });
-  const isFiltered = Object.values(filter ?? {}).some(
-    (values) => values.length > 0
-  );
-  // A cap only exists on a billing cycle, when there's no filter. Gating on the
-  // selection rather than on the response alone keeps a previous cycle's cap —
-  // kept around by `keepPreviousData` while the new request lands — from drawing
-  // a target over a period that has none.
-  const capCredits =
-    period.kind === "cycle" && !isFiltered
-      ? (overview?.creditUsage?.capCredits ?? null)
-      : null;
-
-  const { timeseries, isTimeseriesLoading, isTimeseriesError } =
-    useConsumptionTimeseries({
-      workspaceId,
-      period,
-      mode: "cumulative",
-      filter,
-    });
-
   const chartData = useMemo<BurnUpPoint[]>(() => {
     const points = timeseries?.points ?? [];
     const partialTimestamp = findPartialTimestamp(points);
@@ -164,26 +151,21 @@ export function ConsumptionBurnUpChart({
       : []),
   ];
 
-  const hasConsumption = chartData.some(
+  const hasData = chartData.some(
     (point) => point.actual !== null && point.actual > 0
   );
 
   return (
     <ChartContainer
-      title="Cumulative credits"
+      additionalControls={additionalControls}
       isLoading={isTimeseriesLoading}
       errorMessage={
         isTimeseriesError ? "Failed to load consumption." : undefined
       }
-      emptyMessage={
-        !isTimeseriesLoading && !hasConsumption
-          ? "No consumption over this period."
-          : undefined
-      }
+      emptyMessage={!isTimeseriesLoading && !hasData ? emptyMessage : undefined}
       height={CHART_HEIGHT}
       legendItems={legendItems}
       legendAlignment="center"
-      showHeaderDivider
     >
       <LineChart data={chartData} margin={{ ...CHART_MARGIN, top: 24 }}>
         <CartesianGrid
@@ -208,6 +190,12 @@ export function ConsumptionBurnUpChart({
           axisLine={false}
           tickMargin={8}
           tickFormatter={formatCreditsCompact}
+          label={{
+            value: "Credits",
+            angle: -90,
+            position: "insideLeft",
+            className: "fill-muted-foreground text-xs",
+          }}
         />
         <Tooltip
           cursor={false}

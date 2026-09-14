@@ -1,20 +1,10 @@
-import type { TriggerType } from "@app/types/assistant/triggers";
 import type {
-  WebhookSourceForAdminType,
-  WebhookSourceType,
-  WebhookSourceViewForAdminType,
-} from "@app/types/triggers/webhooks";
-import type { UserType } from "@app/types/user";
+  WebhookSourceAdminDetails,
+  WebhookSourceWithCounts,
+} from "@app/lib/api/webhook_source";
 
 export type PokeListWebhookSources = {
-  webhookSources: Array<
-    WebhookSourceType & { viewCount: number; triggerCount: number }
-  >;
+  webhookSources: WebhookSourceWithCounts[];
 };
 
-export type PokeGetWebhookSourceDetails = {
-  webhookSource: WebhookSourceForAdminType;
-  views: WebhookSourceViewForAdminType[];
-  triggers: Array<TriggerType & { editorUser: UserType | null }>;
-  requestStats: { last24h: number; last7d: number; last30d: number };
-};
+export type PokeGetWebhookSourceDetails = WebhookSourceAdminDetails;

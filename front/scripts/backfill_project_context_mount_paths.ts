@@ -2,6 +2,7 @@ import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { ensureMountFilePath } from "@app/scripts/backfill_mount_helpers";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { Op } from "sequelize";
@@ -39,8 +40,7 @@ makeScript(
       async (workspace) => {
         const workspaceId = workspace.sId;
 
-        const auth =
-          await Authenticator.internalBuilderForWorkspace(workspaceId);
+        const auth = await Authenticator.internalUserForWorkspace(workspaceId);
 
         logger.info(
           { workspaceId, execute },
@@ -99,7 +99,7 @@ makeScript(
               }
 
               try {
-                await file.ensureMountFilePath(auth);
+                await ensureMountFilePath(auth, file);
                 totalUpdated++;
               } catch (err) {
                 logger.error(

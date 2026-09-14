@@ -10,7 +10,7 @@ const SvgFrame = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <rect width={20} height={16} x={2} y={4} fill="#A78BFA" rx={2} />
+    <rect width={20} height={16} x={2} y={4} fill="#A78BFA" rx={3} />
     <path
       fill="#fff"
       d="M18 18H6V6h12zm-3.518-2H16V8h-3.917zM8 13.624V16h4.917l-1.096-3.65zm0-1.582 3.39-1.13L10.517 8H8z"

@@ -22,17 +22,20 @@ export const DATADOG_LOG_STATUSES = [
 
 export type DatadogLogStatus = (typeof DATADOG_LOG_STATUSES)[number];
 
+// Datadog reserves `elapsed` and may replace its value. Use an explicit unit such as
+// `elapsedMs` instead.
+export type DatadogLogContext = {
+  status?: DatadogLogStatus;
+  elapsed?: never;
+} & Record<string, unknown>;
+
 interface CheckedLogFn {
   (msg: string, ...args: unknown[]): void;
   (obj: Error, msg?: string, ...args: unknown[]): void;
-  (
-    obj: { status?: DatadogLogStatus } & Record<string, unknown>,
-    msg?: string,
-    ...args: unknown[]
-  ): void;
+  (obj: DatadogLogContext, msg?: string, ...args: unknown[]): void;
 }
 
-// pino's own log methods accept any `status`; ours reject the values Datadog would misread.
+// Pino's own log methods accept Datadog-reserved fields with any value. Ours constrain them.
 export type Logger = Omit<
   pino.Logger,
   "trace" | "debug" | "info" | "warn" | "error" | "fatal" | "child"

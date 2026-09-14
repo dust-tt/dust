@@ -63,7 +63,9 @@ app.get(
     const results = filteredResults
       .map((r) => {
         const conv = conversationMap.get(r.conversationId);
-        if (!conv) {
+        // Sub-conversations (depth > 0) are indexed for agent search but must
+        // not surface in user-facing search.
+        if (!conv || conv.depth > 0) {
           return null;
         }
         return {

@@ -4,11 +4,8 @@ import { error, log } from "firebase-functions/logger";
 import rawBody from "raw-body";
 
 import type { SecretManager } from "../secrets.js";
-import type {
-  Region,
-  WebhookRouterConfigManager,
-} from "../webhook-router-config.js";
-import { ALL_REGIONS } from "../webhook-router-config.js";
+import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
+import { ALL_CELLS } from "../webhook-router-config.js";
 
 class ReceiverAuthenticityError extends Error {
   constructor(message: string) {
@@ -98,7 +95,7 @@ export function createSlackVerificationMiddleware(
 ): RequestHandler {
   return async (req, res, next): Promise<void> => {
     let teamId: string | undefined;
-    let connectorIdsByRegion: Record<string, number[]> | undefined;
+    let connectorIdsByCell: Record<string, number[]> | undefined;
 
     try {
       if (isUrlVerification(req.body)) {
@@ -131,12 +128,12 @@ export function createSlackVerificationMiddleware(
           "slack",
           teamId
         );
-        // Set the regions for the forwarder
-        req.regions = Object.keys(slackWebhookConfig.regions).filter(
-          (key): key is Region => ALL_REGIONS.includes(key as Region)
+        // Set the cells for the forwarder
+        req.cells = ALL_CELLS.filter(
+          (cell) => cell in slackWebhookConfig.cells
         );
-        // Extract connectorIds by region for potential error logging
-        connectorIdsByRegion = slackWebhookConfig.regions;
+        // Extract connectorIds by cell for potential error logging
+        connectorIdsByCell = slackWebhookConfig.cells;
         signingSecret = slackWebhookConfig.signingSecret;
       } else {
         const secrets = await secretManager.getSecrets();
@@ -157,7 +154,7 @@ export function createSlackVerificationMiddleware(
           component: "slack-verification",
           error: e.message,
           ...(teamId && { teamId }),
-          ...(connectorIdsByRegion && { connectorIdsByRegion }),
+          ...(connectorIdsByCell && { connectorIdsByCell }),
         });
         res.status(401).send();
         return;
@@ -167,7 +164,7 @@ export function createSlackVerificationMiddleware(
         component: "slack-verification",
         error: e instanceof Error ? e.message : String(e),
         ...(teamId && { teamId }),
-        ...(connectorIdsByRegion && { connectorIdsByRegion }),
+        ...(connectorIdsByCell && { connectorIdsByCell }),
       });
       res.status(400).send();
       return;

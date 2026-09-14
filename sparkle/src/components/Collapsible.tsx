@@ -48,6 +48,13 @@ export interface CollapsibleProps
   className?: string;
 }
 
+/**
+ * A disclosure primitive that shows or hides a region of content. Compose it with
+ * a CollapsibleTrigger (pass a `label` for the default chevron toggle) and a
+ * CollapsibleContent wrapping the hidden region. Use it to progressively disclose
+ * secondary content (details, advanced options) behind a toggle.
+ * @summary Show/hide disclosure container.
+ */
 const Collapsible = React.forwardRef<
   React.ElementRef<typeof CollapsiblePrimitive.Root>,
   CollapsibleProps
@@ -61,10 +68,17 @@ Collapsible.displayName = "Collapsible";
 export interface CollapsibleTriggerProps
   extends React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger>,
     Omit<VariantProps<typeof labelVariants>, "disabled"> {
+  /** Text for the default chevron toggle; ignored when custom children are provided. */
   label?: string;
+  /** Hide the open/closed chevron indicator. */
   hideChevron?: boolean;
 }
 
+/**
+ * The toggle of a Collapsible: pass a `label` for the standard chevron affordance,
+ * or custom children for a bespoke trigger.
+ * @summary Collapsible toggle trigger.
+ */
 const CollapsibleTrigger = React.forwardRef<
   React.ElementRef<typeof CollapsiblePrimitive.Trigger>,
   CollapsibleTriggerProps
@@ -142,6 +156,11 @@ export interface CollapsibleContentProps
   animated?: boolean;
 }
 
+/**
+ * The hidden region of a Collapsible, revealed with a height animation
+ * (disable via `animated={false}`).
+ * @summary Collapsible hidden content.
+ */
 const CollapsibleContent = React.forwardRef<
   React.ElementRef<typeof CollapsiblePrimitive.Content>,
   CollapsibleContentProps

@@ -107,7 +107,7 @@ export const createWorkspacePlugin = createPlugin({
     const invitationRes = await handleMembershipInvitations(newWorkspaceAuth, {
       owner: newWorkspaceAuth.getNonNullableWorkspace(),
       // Dust admin user who invited the new user.
-      user: auth.getNonNullableUser().toJSON(),
+      user: auth.toPokeUserJSON(),
       subscription,
       invitationRequests: [
         {

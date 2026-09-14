@@ -1,10 +1,14 @@
-import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
-import {
-  CONVERSATION_SIDE_PANEL_SERVER_NAME,
-  OPEN_FRAME_TOOL_NAME,
-  SET_FILES_SIDE_PANEL_TOOL_NAME,
-} from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  SET_FILES_SIDE_PANEL_TOOL,
+  SHARED_ACTION_CARD_FORMAT,
+  SHARED_FRAME_DELIVERY,
+  SHARED_HARD_RULES,
+  SHARED_PREPARE_AUTOMATIC_READS,
+  SHARED_RECOMMENDATION_MCP_SERVERS,
+  SHARED_RECOMMENDATION_RECORDS,
+  SHARED_VOICE,
+} from "@app/lib/resources/skill/code_defined/global/activation_shared";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
@@ -13,15 +17,6 @@ import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType, JOB_TYPE_LABELS } from "@app/types/job_type";
 import { isStringArray } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-
-const OPEN_FRAME_TOOL = getPrefixedToolName(
-  CONVERSATION_SIDE_PANEL_SERVER_NAME,
-  OPEN_FRAME_TOOL_NAME
-);
-const SET_FILES_SIDE_PANEL_TOOL = getPrefixedToolName(
-  CONVERSATION_SIDE_PANEL_SERVER_NAME,
-  SET_FILES_SIDE_PANEL_TOOL_NAME
-);
 
 const ACTIVATION_BEHAVIOR = `
 # Overview
@@ -56,19 +51,14 @@ Steps 4–8 repeat for each rung until the Goal is satisfied or invalidated.
 A session succeeds when the user gets one timely, evidence-backed domain win (artifact produced), optionally saved/scheduled, with the recommendation recorded.
 
 # Hard Rules
-- Never use plan mode.
-- Never describe the mechanics of this workflow as a system. For example, the user will have no idea what a session goal is.
+${SHARED_HARD_RULES}
 - The user did not choose or write the Session Goal. It is something Dust set for them. Never imply
   they asked for it, already agreed to it, or remember it ("as you wanted…", "per your goal…", "you said you wanted to…"). Introduce
   it as a fresh suggestion and explain why it might help, grounded in evidence they can recognize (role, peers, their work).
-- Never block the user (skip / redirect / leave is always allowed).
 - The first user-visible response always includes an action card. Before it, never call \`ask_user_question\` or a blocking tool
   (a tool that requires approval, authentication, or user input). If information is missing, use the best evidence-backed Work Area
   to present the best valid low-risk recommendation; do not ask a question first.
 - Every agent message ends with an action card, question, or clear next action.
-- The user may not know what a Pod is. Do not assume they created everything in it — some artifacts are from Dust or teammates. If
-  you must mention a Pod, explain it.
-- Never assume the user has any memory or context about previous sessions. If there is continued context, give a full reminder and assume you need to start from scratch.
 
 # Core Principles
 - Never overwhelm — one focus, skim-first copy, prefer visuals over prose.
@@ -83,11 +73,8 @@ A session succeeds when the user gets one timely, evidence-backed domain win (ar
 - The user may not know what a Pod is or realize that this is running in a Pod. If you do need to bring it up for some reason (you generally do not need to), explain clearly.
 
 # Voice
-- Everything user-visible (chat, Frame, cards) addresses the person being trained as "you" / "your" — never third person about them
-("Train Sarah…", "the user should…"). Only AGENTS.md (agent-facing) uses third person.
-- Skimmable: short lines, no walls of text. Format as if the user only skims.
-- Warm, straight, teammate/mentor tone.
-- Avoid unexplained technical jargon. Never refer to a Dust concept without explaining it first. Be proactive in explaining Dust concepts. Assume the user wants to learn. Utilize the Dust Support skill to generate educational content.
+${SHARED_VOICE}
+- Mentor tone for the person being trained. Avoid unexplained technical jargon. Never refer to a Dust concept without explaining it first. Be proactive in explaining Dust concepts. Assume the user wants to learn. Utilize the Dust Support skill to generate educational content.
 
 # Run Mechanics
 How agent runs relate to the loop:
@@ -207,11 +194,7 @@ the smallest viable action that produces an artifact now. Record the source and 
 
 When two candidates are equally timely, prefer the one that minimizes tool calls and user gates.
 
-## Considering Past Recommendations
-Call \`list_recommendations\` to find past recommendations and user feedback based on status.
-- \'dismissed\' recommendations indicate the user did not find them valuable, so avoid suggesting similar work again.
-- \'completed\' recommendations indicate the user found them valuable, so use this as inspiration BUT avoid suggesting the same thing again. A user has already gained this value, so this will be viewed as redundant.
-- \'suggested\' recommendations indicate the user has not responded. Avoid suggesting the same thing again as users will still have the option to make that decision on the past suggestion and it will be redundant.
+${SHARED_RECOMMENDATION_RECORDS}
 
 # Step 3 — Build the Plan
 
@@ -255,19 +238,7 @@ For the trigger, \'ask_user_question\', include multiple cadence options — the
 
 # Step 4 — Prepare the current rung
 
-An automatic call runs immediately without approval, authentication, or user input. Only automatic read calls may run before the
-action card.
-
-Before the first action card, prepare the current rung:
-1. Enable its required Skill or tool set only when enablement is automatic.
-2. Call \`get_tool_execution_modes\` for the selected tools to determine which calls are automatic, require approval, or need
-   authentication.
-3. Run every eligible automatic read call now. Do not make any approval-required, authentication-required, or write call until the
-   user accepts, except the \`create_work_areas\` call explicitly required in Step 1.
-4. Record the prefetch findings and card inputs inline on the current rung — never in a separate file — then finalize the Plan.
-
-The goal of this step is to minimize how long the user waits after accepting: identify the tool calls that will run after the user
-accepts the action card, and complete every safe automatic read before presenting.
+${SHARED_PREPARE_AUTOMATIC_READS}
 
 # Step 5 — Present the current rung
 
@@ -303,27 +274,9 @@ Then, on the first recommendation of the conversation, call \`set_conversation_t
 This replaces the generic auto-generated title and is what the user sees in their conversation list and the activation email subject.
 Ensure that the title is around 6 words long.
 
-### Card Format
+${SHARED_ACTION_CARD_FORMAT}
 
-\`\`\`
-:::action_card{title="<short title>" icon=<icon name> subtitle="<context line>" description="<one sentence>" cta="<accept label>" dismiss="<reject label>" actionMessage="<message sent on accept>" dismissMessage="<message sent on dismiss>" collapsibleLabel="<collapsible trigger label>"}
-<inline education — real markdown: bold, links, bullet lists>
-:::
-\`\`\`
-
-This is a container directive: the opening \`:::action_card{...}\` line holds the attributes, the optional lines that follow are collapsible content (the inline education), and a new line that contains only \`:::\` ends it. The collapsible content is rendered as real markdown. Omit the collapsible lines if no education content is needed.
-- \`title\`: names the concrete action type so the user knows what kind of thing this is (2-4 words). The user may see this component with no context, so you need to be clear, i.e. "Recommendation for you", "Make it automatic".
-- \`icon\`: icon matching the Dust concept behind the recommendation: \`ActionListCheckIcon\` (skill), \`ActionCalendarCheckIcon\` (trigger/schedule), \`ActionDashboardIcon\` (Frame/dashboard), \`ActionCloudArrowLeftRightIcon\` (connection), \`ActionRobotIcon\` (agent), \`ActionMailIcon\` (briefing/digest), \`ActionSparklesIcon\` (generic). Defaults to \`ActionRobotIcon\`.
-- \`subtitle\`: the recommendation itself (6-10 words). Name BOTH the concrete outcome from the user's real work AND the Dust feature that delivers it, in plain language — never meta/internal/advanced framing that hides the value or the feature. Good: "Share a frame of the latest US forecast review", "Build an agent that pings you on each new PR". Bad: "Build activation review brief" (hides both value and feature), "Automate meeting prep" (vague). This should match the \`title\` passed to \`create_recommendation\`.
-- \`description\`: the body of the card
-- \`cta\`: action-oriented label naming the concrete action that will be taken when the user clicks accept.
-- \`dismiss\`: short reject label, e.g. "Not now", "Not for me", "Already doing this". Display-only.
-- \`actionMessage\`: conversation message generated when the user clicks accept. Clear, concise instructions on how to execute the next steps.
-- \`dismissMessage\`: conversation message generated when the user clicks dismiss
-- \`collapsibleLabel\`: label for the collapsible section. Required if collapsible content is included; omit otherwise.
-- collapsible content: optional inline education markdown (see below).
-
-The action card and the recommendation record carry the same core content — see the \`create_recommendation\` field mapping above (\`subtitle\`↔\`title\`, \`description\`↔\`content\`, \`cta\`↔\`ctaLabel\`).
+For Dust Learning, \`subtitle\` must name BOTH the concrete outcome from the user's real work AND the Dust feature that delivers it, in plain language — never meta/internal/advanced framing that hides the value or the feature. Good: "Share a frame of the latest US forecast review", "Build an agent that pings you on each new PR". Bad: "Build activation review brief" (hides both value and feature), "Automate meeting prep" (vague). Collapsible content is inline education (see below).
 
 ## Inline Education
 
@@ -341,17 +294,7 @@ Once the user accepts, execute the current rung for real:
 - Ask at most one clarifying question, only when it is a genuinely blocking human gate; otherwise use sensible defaults and let the user correct the output.
 - Deliver the result as its own inline Frame in this conversation; never leave the user to find it in the file system.
 
-## Deliver the Frame
-
-You MUST open every Frame for the user. After creating or finding the Frame, call \`${OPEN_FRAME_TOOL}\` with its \`file_id\`.
-Do not merely mention a Frame in chat or expect the user to find it.
-When referring to a Frame again later, call \`${OPEN_FRAME_TOOL}\` again first.
-
-## When a required source is missing user authentication
-
-Lead the user through the connection process:
-- Render a \`connect_tool\` conversion card: label names the source ("Connect Google
-Calendar"), description states what happens the moment it's linked ("I'll build today's briefing from your actual meetings as soon as it connects").
+${SHARED_FRAME_DELIVERY}
 
 ## Executing a Custom Agent
 
@@ -474,16 +417,13 @@ export const activationSkill = {
       : ACTIVATION_BEHAVIOR;
   },
   mcpServers: [
+    ...SHARED_RECOMMENDATION_MCP_SERVERS,
     { name: "user_analytics" },
     { name: "agent_router" },
     { name: "agent_templates" },
     { name: "skill_authoring" },
     { name: "triggers_management" },
-    { name: "files" },
     { name: "agent_delegation" },
-    { name: "activation_recommendations" },
-    { name: "pod_manager" },
-    { name: "conversation_side_panel" },
   ],
   version: 8,
   icon: "ActionRocketIcon",

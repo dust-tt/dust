@@ -32,7 +32,6 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -909,7 +908,9 @@ describe("createAgentMessages", () => {
       );
       expect(refreshedRestrictedSpace).not.toBeNull();
       // Regular spaces created by SpaceFactory.regular are restricted (no global group)
-      expect(refreshedRestrictedSpace?.isOpen()).toBe(false);
+      expect(await refreshedRestrictedSpace?.isRestricted(adminAuth)).toBe(
+        true
+      );
 
       // Refresh the conversation space to get updated permissions
       const refreshedConversationSpace = await SpaceResource.fetchById(
@@ -1053,7 +1054,9 @@ describe("createAgentMessages", () => {
         restrictedSpace.sId
       );
       expect(refreshedRestrictedSpace).not.toBeNull();
-      expect(refreshedRestrictedSpace?.isOpen()).toBe(false);
+      expect(await refreshedRestrictedSpace?.isRestricted(adminAuth)).toBe(
+        true
+      );
 
       const refreshedConversationSpace = await SpaceResource.fetchById(
         userAuth,
@@ -1337,18 +1340,20 @@ describe("createAgentMessages", () => {
       const globalGroupRes =
         await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
       expect(globalGroupRes.isOk()).toBe(true);
-      if (!globalGroupRes.isOk()) {
+      if (globalGroupRes.isErr()) {
         throw new Error("Failed to fetch global group");
       }
       const globalGroup = globalGroupRes.value;
 
       // Add global group directly to make it open (if not already there)
-      const existingGroupIds = openSpace.groups.map((g) => g.groupSId);
+      const existingGroupIds = (await openSpace.fetchGrantReferences()).map(
+        (g) => g.groupSId
+      );
       const hasGlobalGroup = existingGroupIds.includes(globalGroup.sId);
 
       // If global group is not already there, associate it directly
       if (!hasGlobalGroup) {
-        await GroupSpaceFactory.associate(openSpace, globalGroup);
+        await SpaceFactory.attachGroup(openSpace, globalGroup);
       }
 
       // Refresh to get updated groups
@@ -1357,7 +1362,7 @@ describe("createAgentMessages", () => {
         openSpace.sId
       );
       expect(refreshedOpenSpace).not.toBeNull();
-      expect(refreshedOpenSpace?.isOpen()).toBe(true);
+      expect(await refreshedOpenSpace?.isRestricted(adminAuth)).toBe(false);
       // Verify it's not global
       expect(refreshedOpenSpace?.isGlobal()).toBe(false);
 

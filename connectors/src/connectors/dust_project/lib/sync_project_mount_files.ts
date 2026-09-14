@@ -33,6 +33,12 @@ import type {
 import axios, { isAxiosError } from "axios";
 import { createHash } from "crypto";
 
+// Spreadsheet content types, skipped by the mount file sync. See syncProjectMountFile.
+const SPREADSHEET_CONTENT_TYPES: string[] = [
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+];
+
 export function stableMountDocumentId({
   workspaceId,
   scopedPath,
@@ -240,6 +246,16 @@ export async function syncProjectMountFile({
   }
 
   const mimeType = entry.contentType || "application/octet-stream";
+
+  // Spreadsheets are skipped for now. The buffered extraction used below always returns zero pages
+  // and the file can never be upserted. Trying anyway costs a full download plus a Tika round-trip
+  // per file on every sync, and on large workbooks that keeps the batch running long enough for the
+  // pre-signed download URLs to expire mid-sync, which fails the whole activity.
+  if (SPREADSHEET_CONTENT_TYPES.includes(mimeType)) {
+    localLogger.info({ mimeType }, "Skipping mount file: spreadsheet");
+    return;
+  }
+
   const documentId = stableMountDocumentId({
     workspaceId,
     scopedPath: entry.path,

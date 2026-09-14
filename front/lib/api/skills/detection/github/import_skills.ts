@@ -162,6 +162,7 @@ export async function importSkillsFromGitHub(
         icon: existing.icon,
         mcpServerViews: existing.mcpServerViews,
         attachedKnowledge,
+        manuallyRequestedSpaceIds: existing.manuallyRequestedSpaceIds,
         requestedSpaceIds: existing.requestedSpaceIds,
         fileAttachments,
         source: "github",

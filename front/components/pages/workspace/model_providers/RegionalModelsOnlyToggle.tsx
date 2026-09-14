@@ -1,6 +1,6 @@
 import { RegionalFlag } from "@app/components/shared/RegionalFlag";
 import { useFeatureFlags } from "@app/lib/auth/AuthContext";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { useUpdateWorkspaceRegionalModelsOnly } from "@app/lib/swr/workspaces";
 import type { RegionType } from "@app/types/region";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -32,7 +32,7 @@ interface RegionalModelsOnlyToggleProps {
 export function RegionalModelsOnlyToggle({
   workspace,
 }: RegionalModelsOnlyToggleProps) {
-  const { regionInfo } = useRegionContext();
+  const { cellInfo } = useCellContext();
   const {
     updateWorkspaceRegionalModelsOnly,
     isUpdatingWorkspaceRegionalModelsOnly,
@@ -43,7 +43,7 @@ export function RegionalModelsOnlyToggle({
     return <></>;
   }
 
-  const config = REGIONAL_MODELS_ONLY_TOGGLE_CONFIG[regionInfo.name];
+  const config = REGIONAL_MODELS_ONLY_TOGGLE_CONFIG[cellInfo.region];
 
   if (!config) {
     return null;

@@ -1,7 +1,9 @@
+import { shadowCanAdminAgent } from "@app/lib/api/assistant/agent_permissions";
 import {
   getAgentConfiguration,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentEditorsShadowed } from "@app/lib/api/assistant/editors";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
@@ -14,6 +16,10 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import {
+  ARCHIVED_AGENT_API_ERROR,
+  isArchivedAgent,
+} from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -51,9 +57,12 @@ app.get(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
+    // Admins can see and manage the editors of every agent of the workspace, including the ones
+    // built on spaces they are not a member of.
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,
       variant: "light",
+      dangerouslySkipPermissionFiltering: auth.isAdmin(),
     });
     if (!agent) {
       return apiError(ctx, {
@@ -70,6 +79,7 @@ app.get(
       agent
     );
     if (editorGroupRes.isErr()) {
+      await getAgentEditorsShadowed(auth, agent, [], "getAgentEditorsRoute");
       switch (editorGroupRes.error.code) {
         case "unauthorized":
           return apiError(ctx, {
@@ -109,17 +119,13 @@ app.get(
     }
 
     const editorGroup = editorGroupRes.value;
-    if (!editorGroup.canRead(auth)) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "agent_group_permission_error",
-          message: "User is not authorized to read the agent editors.",
-        },
-      });
-    }
-
-    const members = await editorGroup.getActiveMembers(auth);
+    // Any workspace member can read the editors of an agent.
+    const members = await getAgentEditorsShadowed(
+      auth,
+      agent,
+      await editorGroup.getActiveMembers(auth),
+      "getAgentEditorsRoute"
+    );
     const memberUsers = members.map((m) => m.toJSON());
 
     // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)
@@ -145,9 +151,12 @@ app.patch(
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
+    // Admins can see and manage the editors of every agent of the workspace, including the ones
+    // built on spaces they are not a member of.
     const agent = await getAgentConfiguration(auth, {
       agentId: aId,
       variant: "light",
+      dangerouslySkipPermissionFiltering: auth.isAdmin(),
     });
     if (!agent) {
       return apiError(ctx, {
@@ -164,6 +173,7 @@ app.patch(
       agent
     );
     if (editorGroupRes.isErr()) {
+      await getAgentEditorsShadowed(auth, agent, [], "patchAgentEditorsRoute");
       switch (editorGroupRes.error.code) {
         case "unauthorized":
           return apiError(ctx, {
@@ -203,7 +213,14 @@ app.patch(
     }
 
     const editorGroup = editorGroupRes.value;
-    if (!editorGroup.canAdministrate(auth)) {
+    // TODO(governance) serve the AgentResource permission after shadow verification.
+    const canAdministrate = await shadowCanAdminAgent(
+      auth,
+      agent,
+      auth.isAdmin() || (await editorGroup.isMember(auth.getNonNullableUser())),
+      "patchAgentEditorsRoute"
+    );
+    if (!canAdministrate) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -212,6 +229,10 @@ app.patch(
             "Only editors of the agent or workspace admins can modify editors.",
         },
       });
+    }
+
+    if (isArchivedAgent(agent)) {
+      return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
     const { addEditorIds = [], removeEditorIds = [] } = ctx.req.valid("json");
@@ -264,6 +285,14 @@ app.patch(
             api_error: {
               type: "invalid_request_error",
               message: "Some of the passed ids are invalid.",
+            },
+          });
+        case "invalid_request_error":
+          return apiError(ctx, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: updateRes.error.message,
             },
           });
         case "group_not_found":
@@ -329,7 +358,12 @@ app.patch(
       }
     }
 
-    const updatedMembers = await editorGroup.getActiveMembers(auth);
+    const updatedMembers = await getAgentEditorsShadowed(
+      auth,
+      agent,
+      await editorGroup.getActiveMembers(auth),
+      "patchAgentEditorsResponse"
+    );
     const updatedEditors = updatedMembers.map((m) => m.toJSON());
 
     // biome-ignore lint/plugin/noDirectRoleCheck: non-admins receive only minimal essential user data (LightUserType)

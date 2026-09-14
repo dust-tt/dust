@@ -18,7 +18,7 @@ describe("GET /api/w/:wId/activation-pod", () => {
     expect(response.status).toBe(200);
 
     const body = await response.json();
-    expect(body).toEqual({ podId: null });
+    expect(body).toEqual({ podId: null, kind: null });
   });
 
   it("returns the pod space sId when the user has an activation pod", async () => {
@@ -40,7 +40,7 @@ describe("GET /api/w/:wId/activation-pod", () => {
     expect(response.status).toBe(200);
 
     const body = await response.json();
-    expect(body).toEqual({ podId: podSpace.sId });
+    expect(body).toEqual({ podId: podSpace.sId, kind: "learning" });
   });
 
   it("returns null when the user's activation pod is archived", async () => {
@@ -62,6 +62,6 @@ describe("GET /api/w/:wId/activation-pod", () => {
     expect(response.status).toBe(200);
 
     const body = await response.json();
-    expect(body).toEqual({ podId: null });
+    expect(body).toEqual({ podId: null, kind: null });
   });
 });

@@ -1,5 +1,6 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
+import { fn } from "storybook/test";
 
 import {
   Button,
@@ -36,7 +37,12 @@ const meta = {
 
 export default meta;
 
-export function SimplePopoverExample() {
+/**
+ * The all-in-one **Popover** API: pass `trigger` and `content`, position with
+ * `side` and `sideOffset`. The simplest way to show contextual content.
+ * @summary Simple popover via the convenience API.
+ */
+export function Default() {
   return (
     <Popover
       trigger={<Button label="Popover" variant="outline" />}
@@ -54,7 +60,13 @@ export function SimplePopoverExample() {
   );
 }
 
-export function PopoverExample() {
+/**
+ * The composable **PopoverRoot** / **PopoverTrigger** / **PopoverContent**
+ * primitives hosting a small inline form — use this API when the content needs
+ * custom structure the convenience `Popover` cannot express.
+ * @summary Composed primitives hosting an inline form.
+ */
+export function ComposedWithForm() {
   return (
     <PopoverRoot>
       <PopoverTrigger>
@@ -100,7 +112,12 @@ export function PopoverExample() {
   );
 }
 
-export function PopoverGrowingExample() {
+/**
+ * With `fullWidth` the popover drops its default fixed width and grows to fit
+ * its content — here an **EmojiPicker**, which sizes itself.
+ * @summary fullWidth popover sized by its content.
+ */
+export function FullWidthContent() {
   return (
     <Popover
       fullWidth={true}
@@ -109,14 +126,20 @@ export function PopoverGrowingExample() {
         <EmojiPicker
           theme="light"
           previewPosition="none"
-          onEmojiSelect={(emoji) => console.log(emoji)}
+          onEmojiSelect={fn()}
         />
       }
     />
   );
 }
 
-export function ScrollablePopoverExample() {
+/**
+ * Tall content wrapped in a fixed-height **ScrollArea**, so the popover keeps
+ * a bounded size and the list scrolls inside it — the recommended pattern for
+ * long lists.
+ * @summary Long list scrolling inside a fixed-height popover.
+ */
+export function ScrollableContent() {
   const tags = Array.from({ length: 50 }).map(
     (_, i, a) => `v1.2.0-beta.${a.length - i}`
   );

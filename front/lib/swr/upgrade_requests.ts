@@ -9,6 +9,8 @@ import {
 } from "@app/lib/swr/swr";
 import type { GetUpgradeRequestsResponseBody } from "@app/types/api/credits/upgrade_requests";
 import type { MembershipUpgradeRequestStatus } from "@app/types/memberships";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import { useCallback } from "react";
 import type { Fetcher } from "swr";
@@ -21,6 +23,9 @@ function usageStatusUrl(workspaceId: string): string {
   return `/api/w/${workspaceId}/usage-status`;
 }
 
+export type RequestUpgradeError = { errorType: string; message: string };
+export type RequestUpgradeResult = Result<void, RequestUpgradeError>;
+
 // Member-initiated: request a spend-limit upgrade for the current user. On
 // success the usage-status read is revalidated so the banner reflects the now
 // pending request.
@@ -29,7 +34,7 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
   const { mutate } = useSWRWithDefaults(usageStatusUrl(workspaceId), null);
 
   const doRequestUpgrade = useCallback(
-    async ({ reason }: { reason?: string }): Promise<boolean> => {
+    async ({ reason }: { reason?: string }): Promise<RequestUpgradeResult> => {
       const res = await clientFetch(upgradeRequestsUrl(workspaceId), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -38,12 +43,18 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
 
       if (!res.ok) {
         const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to request an upgrade",
-          description: errorData.message,
-        });
-        return false;
+        const errorType =
+          "type" in errorData ? errorData.type : "unknown_error";
+        // A rejected reason is shown inline on the field by the caller, not as
+        // a toast.
+        if (errorType !== "invalid_request_error") {
+          sendNotification({
+            type: "error",
+            title: "Failed to request an upgrade",
+            description: errorData.message,
+          });
+        }
+        return new Err({ errorType, message: errorData.message });
       }
 
       await mutate();
@@ -52,7 +63,7 @@ export function useRequestUpgrade({ workspaceId }: { workspaceId: string }) {
         title: "Upgrade requested",
         description: "Your workspace admins have been notified.",
       });
-      return true;
+      return new Ok(undefined);
     },
     [workspaceId, sendNotification, mutate]
   );

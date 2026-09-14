@@ -1,0 +1,13 @@
+@cc [owner:spolu,label:error-handling] temporal-activity-failure-boundary
+Registered activity entrypoints invoked by Temporal MAY throw expected failures, as an exception
+to `no-catching-own-errors`. An activity failure MUST be reported by throwing an `Error` at that
+boundary, including converting an unhandled helper `Err<E>`, rather than returning an `Err` as data.
+Helpers MUST return expected failures as `Result<T, E>` until the activity boundary; neither
+`activities.ts` nor `activities/` grants them this exception. The separately documented
+external-service adapter exception remains governed by `no-catching-own-errors`.
+
+@cc [owner:spolu,label:error-handling] temporal-workflow-activity-failures
+Workflow code MAY catch failures delivered by Temporal activity calls using runtime type guards,
+such as `error instanceof ActivityFailure`, under the exception to `no-catching-own-errors`.
+Unrecognized errors MUST be rethrown. This exception does not permit workflows to throw expected
+local failures or catch errors thrown by workflow helpers.

@@ -1,4 +1,4 @@
-import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
+import { CreateAgentDropdown } from "@app/components/assistant/CreateAgentDropdown";
 import { useClientType } from "@app/lib/context/clientType";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { filterAndSortAgents } from "@app/lib/utils";
@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
   Icon,
   Robot,
-  X,
+  XClose,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -116,7 +116,10 @@ export function AgentPicker({
               }}
               button={
                 showFooterButtons && (
-                  <CreateDropdown owner={owner} dataGtmLocation="homepage" />
+                  <CreateAgentDropdown
+                    owner={owner}
+                    dataGtmLocation="homepage"
+                  />
                 )
               }
             />
@@ -137,7 +140,7 @@ export function AgentPicker({
                   isSelected ? "bg-primary-100" : ""
                 }`}
                 endComponent={
-                  <div className="flex items-center gap-1">
+                  <div className="z-10 flex items-center gap-1">
                     {isSelected && (
                       // Show a tick by default; on hover swap it for an X to
                       // signal that clicking will deselect the agent.
@@ -148,7 +151,7 @@ export function AgentPicker({
                           className="group-hover:hidden"
                         />
                         <Icon
-                          visual={X}
+                          visual={XClose}
                           size="sm"
                           className="hidden group-hover:block"
                         />
@@ -158,7 +161,7 @@ export function AgentPicker({
                       <Button
                         icon={DotsHorizontal}
                         variant="outline"
-                        size="mini"
+                        size="xmini"
                         className="opacity-0 group-hover:opacity-100"
                         onClick={(e) => {
                           e.stopPropagation();

@@ -8,6 +8,7 @@ import {
   AgentMCPActionModel,
   AgentMCPActionOutputItemModel,
 } from "@app/lib/models/agent/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import {
   GCS_CONTENT_CACHE_TTL_MS,
@@ -15,6 +16,7 @@ import {
   warmGcsContentCache,
 } from "@app/lib/resources/agent_mcp_action/output_storage";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
@@ -31,6 +33,8 @@ import type {
   ConversationType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import { frameV2ContentType } from "@app/types/files";
+import type { ModelId } from "@app/types/shared/model_id";
 import type { WorkspaceType } from "@app/types/user";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { assert, beforeEach, describe, expect, it, vi } from "vitest";
@@ -39,42 +43,50 @@ import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 const gcsStore = new Map<string, Buffer>();
 let gcsSaveFailureMarker: string | null = null;
 
-vi.mock("@app/lib/file_storage", () => ({
-  getPrivateUploadBucket: vi.fn(() => ({
-    file: vi.fn((path: string) => ({
-      copy: vi.fn().mockResolvedValue(undefined),
-      save: vi.fn(async (data: Buffer) => {
-        if (
-          gcsSaveFailureMarker &&
-          data.toString("utf-8").includes(gcsSaveFailureMarker)
-        ) {
-          throw new Error("Simulated GCS write failure");
-        }
-        gcsStore.set(path, data);
-      }),
-      download: vi.fn(async () => {
-        const buf = gcsStore.get(path);
-        if (!buf) {
-          throw new Error(`GCS file not found: ${path}`);
-        }
-        return [buf];
-      }),
-    })),
-    delete: vi.fn(async (path: string, opts?: { ignoreNotFound?: boolean }) => {
-      if (!gcsStore.has(path) && !opts?.ignoreNotFound) {
-        throw new Error(`GCS file not found: ${path}`);
-      }
-      gcsStore.delete(path);
-    }),
-    deleteByPrefix: vi.fn(async (prefix: string) => {
-      for (const path of [...gcsStore.keys()]) {
-        if (path.startsWith(prefix)) {
+vi.mock("@app/lib/file_storage", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("@app/lib/file_storage")>();
+
+  return {
+    ...original,
+    getPrivateUploadBucket: vi.fn(() => ({
+      file: vi.fn((path: string) => ({
+        copy: vi.fn().mockResolvedValue(undefined),
+        save: vi.fn(async (data: Buffer) => {
+          if (
+            gcsSaveFailureMarker &&
+            data.toString("utf-8").includes(gcsSaveFailureMarker)
+          ) {
+            throw new Error("Simulated GCS write failure");
+          }
+          gcsStore.set(path, data);
+        }),
+        download: vi.fn(async () => {
+          const buf = gcsStore.get(path);
+          if (!buf) {
+            throw new Error(`GCS file not found: ${path}`);
+          }
+          return [buf];
+        }),
+      })),
+      delete: vi.fn(
+        async (path: string, opts?: { ignoreNotFound?: boolean }) => {
+          if (!gcsStore.has(path) && !opts?.ignoreNotFound) {
+            throw new Error(`GCS file not found: ${path}`);
+          }
           gcsStore.delete(path);
         }
-      }
-    }),
-  })),
-}));
+      ),
+      deleteByPrefix: vi.fn(async (prefix: string) => {
+        for (const path of [...gcsStore.keys()]) {
+          if (path.startsWith(prefix)) {
+            gcsStore.delete(path);
+          }
+        }
+      }),
+    })),
+  };
+});
 
 // Bypass Redis caching, pass through to the underlying function.
 vi.mock("@app/lib/utils/cache", async (importOriginal) => {
@@ -397,6 +409,205 @@ describe("listBlockedActionsForConversation", () => {
       action.sId
     );
     expect(reloadedAction?.status).toBe("blocked_validation_required");
+  });
+
+  it("excludes sandbox child actions from conversation-visible metadata", async () => {
+    const agentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
+      agentConfigurationId: "test-agent",
+      agentConfigurationVersion: 0,
+      status: "created",
+      skipToolsValidation: false,
+    });
+    const { action: parentAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.id,
+      parentAction,
+      sandboxChildActionInfo: { parentActionId: parentAction.sId },
+    });
+
+    const visibleActions =
+      await AgentMCPActionResource.fetchVisibleByLatestStepContents(auth, [
+        agentMessage.id,
+      ]);
+
+    expect(visibleActions.map(({ sId }) => sId)).toEqual([parentAction.sId]);
+  });
+
+  it("returns only actions linked to canonical function calls", async () => {
+    const agentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
+      agentConfigurationId: "test-agent",
+      agentConfigurationVersion: 0,
+      status: "created",
+      skipToolsValidation: false,
+    });
+    const { action: supersededAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    const { action: canonicalAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    const { action: removedAction } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+
+    await AgentStepContentModel.update(
+      {
+        step: supersededAction.stepContent.step,
+        index: supersededAction.stepContent.index,
+        version: supersededAction.stepContent.version + 1,
+      },
+      {
+        where: {
+          id: canonicalAction.stepContent.id,
+          workspaceId: workspace.id,
+        },
+      }
+    );
+    await AgentStepContentModel.create({
+      workspaceId: workspace.id,
+      agentMessageId: agentMessage.id,
+      step: removedAction.stepContent.step,
+      index: removedAction.stepContent.index,
+      version: removedAction.stepContent.version + 1,
+      dustRunId: null,
+      type: "text_content",
+      value: { type: "text_content", value: "The retry did not call a tool" },
+    });
+
+    const visibleActions =
+      await AgentMCPActionResource.fetchVisibleByLatestStepContents(auth, [
+        agentMessage.id,
+      ]);
+
+    expect(visibleActions.map(({ sId }) => sId)).toEqual([canonicalAction.sId]);
+  });
+
+  it("does not rewind a final action through a stale sandbox parent resource", async () => {
+    const agentMessage = await AgentMessageModel.create({
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
+      agentConfigurationId: "test-agent",
+      agentConfigurationVersion: 0,
+      status: "created",
+      skipToolsValidation: false,
+    });
+    const { action } = await createBlockedAction({
+      agentMessageModelId: agentMessage.id,
+    });
+    await action.updateStatus("running");
+
+    const staleParent = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId
+    );
+    const currentParent = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId
+    );
+    if (!staleParent || !currentParent) {
+      throw new Error("Expected both sandbox parent resources to exist.");
+    }
+    expect(staleParent.status).toBe("running");
+    expect(currentParent.status).toBe("running");
+    await currentParent.updateStatus("succeeded");
+
+    await expect(staleParent.blockForSandboxChild(auth)).rejects.toThrow(
+      "cannot transition from succeeded to blocked_child_action_input_required"
+    );
+    const reloadedParent = await AgentMCPActionResource.fetchById(
+      auth,
+      action.sId
+    );
+    expect(reloadedParent?.status).toBe("succeeded");
+  });
+});
+
+describe("listNonFinalActionsForAgentMessage", () => {
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
+  let conversation: ConversationType;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+  });
+
+  it("should return only the message's non-final actions", async () => {
+    const { agentMessage } = await AgentMCPActionFactory.createWithAgentMessage(
+      auth,
+      { workspace, conversation, status: "succeeded" }
+    );
+
+    const { action: runningAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "running",
+    });
+    const { action: blockedAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "blocked_validation_required",
+    });
+
+    // Non-final action on another agent message: must not be returned.
+    const otherAgentConfig = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      { name: "Other Agent" }
+    );
+    const { agentMessage: otherAgentMessage } =
+      await ConversationFactory.createAgentMessage(auth, {
+        workspace,
+        conversation,
+        agentConfig: otherAgentConfig,
+        // The first agent message of the test occupies rank 0.
+        rank: 1,
+      });
+    await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: otherAgentMessage.agentMessageId,
+      status: "running",
+    });
+
+    const actions =
+      await AgentMCPActionResource.listNonFinalActionsForAgentMessage(auth, {
+        agentMessageModelId: agentMessage.agentMessageId,
+      });
+
+    expect(actions.map((a) => a.id).sort()).toEqual(
+      [runningAction.id, blockedAction.id].sort()
+    );
+  });
+
+  it("should return an empty array when every action is final", async () => {
+    const { agentMessage } = await AgentMCPActionFactory.createWithAgentMessage(
+      auth,
+      { workspace, conversation, status: "errored" }
+    );
+
+    const actions =
+      await AgentMCPActionResource.listNonFinalActionsForAgentMessage(auth, {
+        agentMessageModelId: agentMessage.agentMessageId,
+      });
+
+    expect(actions).toEqual([]);
   });
 });
 
@@ -1120,6 +1331,44 @@ describe("listGeneratedFilesForConversation", () => {
     });
   });
 
+  it("uses the Frame name for a Frames v2 generated file", async () => {
+    const frame = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 42,
+      status: "created",
+      useCase: "conversation",
+      useCaseMetadata: {
+        conversationId: conversation.sId,
+        frameName: "Hello Frame",
+      },
+    });
+
+    const { action } = await ConversationFactory.createAgentMessage(auth, {
+      workspace,
+      conversation,
+      agentConfig,
+      mcpAction: { toolConfiguration },
+    });
+    assert(action);
+
+    const outputRes = await action.createOutputItems(auth, [
+      {
+        content: { type: "text", text: "generated" },
+        fileId: frame.id,
+      },
+    ]);
+    expect(outputRes.isOk()).toBe(true);
+
+    const result =
+      await AgentMCPActionResource.listGeneratedFilesForConversation(auth, {
+        conversationId: conversation.id,
+      });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]?.title).toBe("Hello Frame");
+  });
+
   it("respects upToRank when filtering generated files", async () => {
     const earlyFile = await FileFactory.create(auth, user, {
       contentType: "text/plain",
@@ -1227,5 +1476,141 @@ describe("listGeneratedFilesForConversation", () => {
       });
 
     expect(result).toEqual([]);
+  });
+});
+
+describe("fetchByStepContents", () => {
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
+  let conversation: ConversationType;
+
+  beforeEach(async () => {
+    const setup = await createResourceTest({});
+    workspace = setup.workspace;
+    auth = setup.authenticator;
+
+    conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "test-agent",
+      messagesCreatedAt: [],
+      visibility: "unlisted",
+    });
+  });
+
+  async function createAgentMessage(rank: number): Promise<ModelId> {
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth, {
+      name: `Test Agent ${rank}`,
+    });
+
+    const userMessageRow = await ConversationFactory.createUserMessageWithRank({
+      auth,
+      workspace,
+      conversationId: conversation.id,
+      rank,
+      content: "Test message",
+    });
+
+    const agentMessageRow =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: conversation.id,
+        rank: rank + 1,
+        agentConfigurationId: agentConfig.sId,
+        agentConfigurationVersion: agentConfig.version,
+        parentId: userMessageRow.id,
+      });
+
+    return agentMessageRow.agentMessageId!;
+  }
+
+  function createAction(agentMessageModelId: ModelId, step: number) {
+    return AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      status: "succeeded",
+      step,
+    });
+  }
+
+  it("should return the actions of every given agent message", async () => {
+    const firstAgentMessageId = await createAgentMessage(0);
+    const secondAgentMessageId = await createAgentMessage(2);
+
+    const { action: firstAction } = await createAction(firstAgentMessageId, 1);
+    const { action: secondAction } = await createAction(
+      secondAgentMessageId,
+      1
+    );
+
+    const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+      auth,
+      { agentMessageIds: [firstAgentMessageId, secondAgentMessageId] }
+    );
+
+    const actions = await AgentMCPActionResource.fetchByStepContents(auth, {
+      stepContents,
+    });
+
+    expect(actions.map((a) => a.id).sort()).toEqual(
+      [firstAction.id, secondAction.id].sort()
+    );
+  });
+
+  it("should only return the actions of the given step contents", async () => {
+    const agentMessageId = await createAgentMessage(0);
+    const { action: firstAction } = await createAction(agentMessageId, 1);
+    await createAction(agentMessageId, 2);
+
+    const actions = await AgentMCPActionResource.fetchByStepContents(auth, {
+      stepContents: [firstAction.stepContent],
+    });
+
+    expect(actions.map((a) => a.id)).toEqual([firstAction.id]);
+  });
+
+  it("should return no action when no step content is a function call", async () => {
+    const agentMessageId = await createAgentMessage(0);
+    await createAction(agentMessageId, 1);
+
+    const textContent = await AgentStepContentResource.createNewVersion({
+      workspaceId: workspace.id,
+      agentMessageId,
+      step: 1,
+      index: 42,
+      type: "text_content",
+      value: { type: "text_content", value: "Some text" },
+    });
+
+    const actions = await AgentMCPActionResource.fetchByStepContents(auth, {
+      stepContents: [textContent],
+    });
+
+    expect(actions).toEqual([]);
+  });
+
+  it("should exclude sandbox child actions sharing their parent step content", async () => {
+    const agentMessageId = await createAgentMessage(0);
+    const { action: parentAction } = await createAction(agentMessageId, 1);
+
+    await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId: agentMessageId,
+      status: "succeeded",
+      step: 1,
+      parentAction,
+      sandboxChildActionInfo: { parentActionId: parentAction.sId },
+    });
+
+    const stepContents = await AgentStepContentResource.fetchByAgentMessages(
+      auth,
+      { agentMessageIds: [agentMessageId] }
+    );
+
+    const actions = await AgentMCPActionResource.fetchByStepContents(auth, {
+      stepContents,
+    });
+
+    expect(actions.map((a) => a.id)).toEqual([parentAction.id]);
   });
 });

@@ -1,4 +1,4 @@
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 
 const UNIQUE_SPACE_KINDS = [
   "global", // Also known as "company data", by definition, this space is shared by all users in the workspace.
@@ -16,31 +16,55 @@ export type SpaceKind = (typeof SPACE_KINDS)[number];
 
 type UniqueSpaceKind = (typeof UNIQUE_SPACE_KINDS)[number];
 /**
- * @swaggerschema Space (swagger_schemas.ts), PrivateSpace (swagger_private_schemas.ts)
+ * A space's whole desired membership. Every dimension is optional, and one the request leaves out
+ * is emptied rather than kept: the request describes the end state, not a patch.
+ *
+ * - `memberIds` / `editorIds`: the space's manual member and editor lists (editors are Pod-only).
+ * - `groupIds` / `editorGroupIds`: the groups given member and editor access to the space.
+ */
+export type SpaceMembershipUpdate = {
+  memberIds?: string[];
+  editorIds?: string[];
+  groupIds?: string[];
+  editorGroupIds?: string[];
+};
+
+/**
+ * @swaggerschema PrivateSpace (swagger_private_schemas.ts)
  */
 export type SpaceType = {
   createdAt: number;
-  groupIds: string[];
-  isRestricted: boolean;
   kind: SpaceKind;
-  managementMode: "manual" | "group";
   name: string;
   sId: string;
   updatedAt: number;
 };
 
 /**
+ * A space serialized together with its grant-derived fields — the sIds of the groups holding a
+ * grant on it, and whether it is restricted. Both come from `group_permissions`, so they are loaded
+ * on demand by the endpoints that expose them (the public API for backward compatibility, and the
+ * space-management UI) rather than carried on every `SpaceType` (which would force the eager grant
+ * include on every space load).
+ *
+ * @swaggerschema Space (swagger_schemas.ts)
+ */
+export type EnrichedSpaceType = SpaceType & {
+  groupIds: string[];
+  isRestricted: boolean;
+};
+
+/**
  * @swaggerschema PrivateProject (swagger_private_schemas.ts)
  */
-export type PodType = SpaceType & {
+export type PodType = EnrichedSpaceType & {
   description: string | null;
   isMember: boolean;
   isEditor: boolean;
   archivedAt: number | null;
   pinnedFramePath?: string | null;
-  frameTabs?: PodFrameTab[];
+  frameTabs?: PodFileTab[];
   tabsOrder?: string[];
-  isAdminControlled?: boolean;
 };
 
 export type PodListItemType = PodType & {

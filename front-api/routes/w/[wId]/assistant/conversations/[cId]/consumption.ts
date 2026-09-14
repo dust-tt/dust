@@ -5,7 +5,6 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
-import { withFeatureFlag } from "@front-api/middlewares/with_feature_flag";
 import { z } from "zod";
 
 const ParamsSchema = z.object({
@@ -13,8 +12,6 @@ const ParamsSchema = z.object({
 });
 
 const app = workspaceApp();
-
-app.use(withFeatureFlag("conversation_consumption_details"));
 
 /**
  * @swagger
@@ -56,8 +53,6 @@ app.use(withFeatureFlag("conversation_consumption_details"));
  *                   allOf:
  *                     - $ref: '#/components/schemas/PrivateConversationConsumptionDetails'
  *                   nullable: true
- *       403:
- *         description: The workspace does not have access to consumption details
  *       404:
  *         description: Conversation not found
  */

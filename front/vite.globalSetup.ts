@@ -44,6 +44,7 @@ export default async function setup() {
     DUST_SANDBOX_JWT_SECRET: "sandbox-secret-for-tests",
     DUST_DEVELOPERS_SECRETS_SECRET: "test-developer-secret",
     REGION: "us-central1",
+    CELL: "cell-00000",
     DUST_MCP_SERVER_CREDENTIALS_SECRET: "test-secret",
     WORKOS_CLIENT_ID: "test-workos-client-id",
     WORKOS_AUTHKIT_DOMAIN: "https://test.authkit.app",

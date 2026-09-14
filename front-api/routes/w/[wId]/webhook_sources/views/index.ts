@@ -25,7 +25,9 @@ app.get(
     const spaceIds = rawSpaceIds.length > 0 ? rawSpaceIds.split(",") : [];
 
     const spaces = await SpaceResource.fetchByIds(auth, spaceIds);
-    const allowedSpaces = spaces.filter((s) => s.canReadOrAdministrate(auth));
+    const allowedSpaces = spaces.filter(
+      (space) => auth.can("read", space) || auth.can("admin", space)
+    );
     const views = await WebhookSourcesViewResource.listBySpaces(
       auth,
       allowedSpaces

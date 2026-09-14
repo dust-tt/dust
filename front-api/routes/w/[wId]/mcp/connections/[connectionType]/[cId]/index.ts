@@ -1,3 +1,4 @@
+import { clearPinnedOAuthScopeForMCPServerViews } from "@app/lib/api/mcp/views";
 import type {
   MCPServerConnectionConnectionType,
   MCPServerConnectionType,
@@ -109,6 +110,12 @@ app.delete(
           type: "internal_server_error",
           message: "Failed to delete connection",
         },
+      });
+    }
+
+    if (connectionType === "workspace") {
+      await clearPinnedOAuthScopeForMCPServerViews(auth, {
+        mcpServerId: connectionRes.value.mcpServerId,
       });
     }
 

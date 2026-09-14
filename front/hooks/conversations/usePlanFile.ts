@@ -67,7 +67,7 @@ export function useClosePlan({
         const errorData = await getErrorFromResponse(res);
         sendNotification({
           type: "error",
-          title: "Failed to close plan",
+          title: "Failed to archive plan",
           description: errorData.message,
         });
         return false;

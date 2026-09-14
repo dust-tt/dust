@@ -1,4 +1,4 @@
-import { SKILL_AVAILABILITY_DISPLAY } from "@app/components/skills/SkillsTable";
+import { SKILL_AVAILABILITY_DISPLAY } from "@app/lib/skills/labels";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import type {
   SkillAvailability,

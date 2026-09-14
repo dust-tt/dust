@@ -4,20 +4,18 @@ import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization"
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PlanModel } from "@app/lib/models/plan";
-import {
-  isCreditPricedFreePlan,
-  isFreePlan,
-  isUpgraded,
-} from "@app/lib/plans/plan_codes";
+import { isCreditPricedFreePlan, isFreePlan } from "@app/lib/plans/plan_codes";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import type { UTMParams } from "@app/lib/utils/utm";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { launchImmediateWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 
 export async function createWorkspace(
   session: SessionWithUser,
@@ -78,24 +76,92 @@ export async function createWorkspaceInternal({
     };
   }
 
-  const workspace = await WorkspaceResource.makeNew({
-    sId: generateRandomModelSId(),
-    name,
-    metadata,
+  // Keep the DB transaction to core Dust rows only. WorkOS is an external call
+  // (bounded by the WorkOS client timeout) and must not hold a DB transaction.
+  const workspace = await withTransaction(async (transaction) => {
+    const created = await WorkspaceResource.makeNew(
+      {
+        sId: generateRandomModelSId(),
+        name,
+        metadata,
+      },
+      transaction
+    );
+
+    const lightWorkspace = renderLightWorkspaceType({ workspace: created });
+
+    const { systemGroup, globalGroup } =
+      await GroupResource.makeDefaultsForWorkspace(lightWorkspace, {
+        transaction,
+      });
+
+    const auth = await Authenticator.internalAdminForWorkspace(
+      lightWorkspace.sId,
+      { transaction }
+    );
+    await SpaceResource.makeDefaultsForWorkspace(
+      auth,
+      {
+        systemGroup,
+        globalGroup,
+      },
+      transaction
+    );
+
+    return created;
   });
 
   const lightWorkspace = renderLightWorkspaceType({ workspace });
+  const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace);
+  if (orgRes.isErr()) {
+    logger.error(
+      {
+        error: orgRes.error,
+        workspaceId: workspace.sId,
+      },
+      "Failed to create WorkOS organization during workspace creation; launching scrub"
+    );
 
-  const { systemGroup, globalGroup } =
-    await GroupResource.makeDefaultsForWorkspace(lightWorkspace);
+    const scrubRes = await launchImmediateWorkspaceScrubWorkflow({
+      workspaceId: workspace.sId,
+    });
+    if (scrubRes.isErr()) {
+      logger.error(
+        {
+          error: scrubRes.error,
+          workspaceId: workspace.sId,
+        },
+        "Failed to launch workspace scrub after WorkOS organization creation failure"
+      );
+    }
+
+    throw orgRes.error;
+  }
+
+  const refreshedWorkspace = await WorkspaceResource.fetchByModelId(
+    workspace.id
+  );
+  if (!refreshedWorkspace?.workOSOrganizationId) {
+    const scrubRes = await launchImmediateWorkspaceScrubWorkflow({
+      workspaceId: workspace.sId,
+    });
+    if (scrubRes.isErr()) {
+      logger.error(
+        {
+          error: scrubRes.error,
+          workspaceId: workspace.sId,
+        },
+        "Failed to launch workspace scrub after missing WorkOS organization id"
+      );
+    }
+    throw new Error(
+      "WorkOS organization was created but workspace was not updated."
+    );
+  }
 
   const auth = await Authenticator.internalAdminForWorkspace(
-    lightWorkspace.sId
+    refreshedWorkspace.sId
   );
-  await SpaceResource.makeDefaultsForWorkspace(auth, {
-    systemGroup,
-    globalGroup,
-  });
 
   // Seed default governance capability state (no-op until Phase 2 capabilities register seeders).
   await seedWorkspaceCapabilities(auth);
@@ -107,26 +173,15 @@ export async function createWorkspaceInternal({
     if (isCreditPricedFreePlan(planCode)) {
       await activateCreditPricedFreePlanForWorkspace(auth);
     } else {
-      const newSubscription =
-        await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
-          workspaceId: workspace.sId,
-          planCode,
-          endDate,
-        });
-
-      if (isUpgraded(newSubscription.getPlan())) {
-        const orgRes = await getOrCreateWorkOSOrganization(lightWorkspace);
-        if (orgRes.isErr()) {
-          logger.error(
-            { error: orgRes.error, workspaceId: workspace.sId },
-            "Failed to create WorkOS organization during workspace creation"
-          );
-        }
-      }
+      await SubscriptionResource.internalSubscribeWorkspaceToFreePlan({
+        workspaceId: refreshedWorkspace.sId,
+        planCode,
+        endDate,
+      });
     }
   }
 
-  return workspace;
+  return refreshedWorkspace;
 }
 
 export async function findWorkspaceWithVerifiedDomain(user: {

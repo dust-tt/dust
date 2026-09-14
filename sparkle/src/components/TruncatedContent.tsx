@@ -17,19 +17,37 @@ const contentVariants = cva("relative", {
 
 export interface TruncatedContentProps {
   children: React.ReactNode;
+  /** Content height (px) above which the clamp and toggle kick in (defaults to 420). */
   thresholdPx?: number;
+  /** Height (px) the content is clamped to while collapsed (defaults to 320). */
   collapsedHeightPx?: number;
+  /** Whether the content starts collapsed (defaults to true). */
   defaultCollapsed?: boolean;
+  /** Animates the height when toggling (defaults to false). */
   animated?: boolean;
+  /** Duration of the height transition when `animated` (defaults to 200). */
   animationDurationMs?: number;
+  /** Toggle label while collapsed (defaults to "Show more"). */
   expandLabel?: string;
+  /** Toggle label while expanded (defaults to "Show less"). */
   collapseLabel?: string;
+  /** Toggle styling: "default" is an outline button with a chevron; "light" is a ghost button without one. */
   variant?: "default" | "light";
+  /** Extra controls rendered beside the toggle, visible regardless of expansion state. */
   footer?: React.ReactNode;
   className?: string;
   buttonClassName?: string;
 }
 
+/**
+ * Clamps tall content to a collapsed height and reveals a show-more / show-less toggle
+ * when it overflows, with a fade-out gradient at the clamp edge. Use it for long text or
+ * rich blocks (descriptions, transcripts) that should stay compact until expanded, tuning
+ * `thresholdPx` so short content renders fully without a redundant toggle. For clamping a
+ * short text to a line count with a tooltip, use `TruncatedText` instead.
+ *
+ * @summary Collapsible overflow container with show-more toggle.
+ */
 export function TruncatedContent({
   children,
   thresholdPx = 420,

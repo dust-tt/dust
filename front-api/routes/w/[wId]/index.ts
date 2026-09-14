@@ -1,4 +1,8 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import {
+  MAX_INACTIVITY_THRESHOLD_DAYS,
+  MIN_INACTIVITY_THRESHOLD_DAYS,
+} from "@app/lib/api/assistant/inactivity/policy";
 import { listActiveAgentsUsingNonRegionalModels } from "@app/lib/api/assistant/workspace_capabilities";
 import {
   buildAuditActor,
@@ -50,9 +54,11 @@ import extension from "./extension";
 import fairUseCredits from "./fair-use-credits";
 import featureFlags from "./feature-flags";
 import files from "./files";
+import frames from "./frames";
 import googleDrivePickerToken from "./google_drive/picker_token";
 import googleDriveSearchForAuthorization from "./google_drive/search_for_authorization";
 import governancePermissions from "./governance-permissions";
+import grantedRoles from "./granted-roles";
 import groups from "./groups";
 import invitations from "./invitations";
 import keys from "./keys";
@@ -70,7 +76,6 @@ import projectTasks from "./project_tasks";
 import providerCredentials from "./provider_credentials";
 import providerCredential from "./provider_credentials/[providerId]";
 import providers from "./providers";
-import provisioningStatus from "./provisioning-status";
 import sandbox from "./sandbox";
 import sandboxFunctions from "./sandbox-functions";
 import search from "./search";
@@ -78,12 +83,14 @@ import searchToolsUpload from "./search/tools/upload";
 import seats from "./seats";
 import services from "./services";
 import skills from "./skills";
+import slackWorkflows from "./slack-workflows";
 import spaces from "./spaces";
 import sso from "./sso";
 import subscriptions from "./subscriptions";
 import tags from "./tags";
 import trial from "./trial";
 import trialMessageUsage from "./trial-message-usage";
+import triggers from "./triggers";
 import usageSettings from "./usage_settings";
 import usageStatus from "./usage-status";
 import verification from "./verification";
@@ -133,6 +140,10 @@ const WorkspacePrivateConversationUrlsUpdateBodySchema = z.object({
 
 const WorkspaceEmailAgentsUpdateBodySchema = z.object({
   allowEmailAgents: z.boolean(),
+});
+
+const WorkspaceConversationExternalNotificationsUpdateBodySchema = z.object({
+  allowConversationExternalNotifications: z.boolean(),
 });
 
 const WorkspaceAgentReinforcementUpdateBodySchema = z.object({
@@ -205,7 +216,18 @@ const WorkspaceDefaultAgentUpdateBodySchema = z.object({
   workspaceDefaultAgentId: z.string().nullable(),
 });
 
+const WorkspaceInactiveAgentArchivalUpdateBodySchema = z.object({
+  // Null turns automatic archival off: the policy is opt-in and has no default threshold.
+  inactiveAgentArchivalThresholdDays: z
+    .number()
+    .int()
+    .min(MIN_INACTIVITY_THRESHOLD_DAYS)
+    .max(MAX_INACTIVITY_THRESHOLD_DAYS)
+    .nullable(),
+});
+
 const PostWorkspaceRequestBodySchema = z.union([
+  WorkspaceInactiveAgentArchivalUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
   WorkspaceRegionalModelsOnlyUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
@@ -215,6 +237,7 @@ const PostWorkspaceRequestBodySchema = z.union([
   WorkspaceVoiceTranscriptionUpdateBodySchema,
   WorkspacePrivateConversationUrlsUpdateBodySchema,
   WorkspaceEmailAgentsUpdateBodySchema,
+  WorkspaceConversationExternalNotificationsUpdateBodySchema,
   WorkspaceAgentReinforcementUpdateBodySchema,
   WorkspaceReinforcementBatchModeUpdateBodySchema,
   WorkspaceExtensionMcpToolsUpdateBodySchema,
@@ -871,6 +894,44 @@ app.post(
           enabled: String(!body.disableWorkspaceAnalytics),
         },
       });
+    } else if ("inactiveAgentArchivalThresholdDays" in body) {
+      if (!(await hasFeatureFlag(auth, "archive_inactive_agents"))) {
+        return apiError(ctx, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "The archive_inactive_agents feature is not enabled.",
+          },
+        });
+      }
+
+      // Null clears it, which is how the workspace turns automatic archival off.
+      const inactiveAgentArchivalThresholdDays =
+        body.inactiveAgentArchivalThresholdDays ?? undefined;
+      const updateRes = await updateWorkspaceMetadata(owner, {
+        inactiveAgentArchivalThresholdDays,
+      });
+      if (updateRes.isErr()) {
+        return apiError(ctx, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: updateRes.error.message,
+          },
+        });
+      }
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.inactive_agent_archival_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          threshold_days: inactiveAgentArchivalThresholdDays
+            ? String(inactiveAgentArchivalThresholdDays)
+            : "disabled",
+        },
+      });
     } else if ("workspaceDefaultAgentId" in body) {
       if (!(await hasFeatureFlag(auth, "workspace_default_agent"))) {
         return apiError(ctx, {
@@ -946,6 +1007,25 @@ app.post(
           enabled: String(body.slackPersonalAllowFooterRemoval),
         },
       });
+    } else if ("allowConversationExternalNotifications" in body) {
+      const previousMetadata = owner.metadata ?? {};
+      const newMetadata = {
+        ...previousMetadata,
+        allowConversationExternalNotifications:
+          body.allowConversationExternalNotifications,
+      };
+      await workspace.updateWorkspaceSettings({ metadata: newMetadata });
+      owner.metadata = newMetadata;
+
+      void emitAuditLogEvent({
+        auth,
+        action: "workspace.conversation_external_notifications_updated",
+        targets: [buildAuditLogTarget("workspace", owner)],
+        context: getAuditLogContext(auth),
+        metadata: {
+          enabled: String(body.allowConversationExternalNotifications),
+        },
+      });
     }
 
     return ctx.json({ workspace: owner });
@@ -975,6 +1055,7 @@ app.route("/dust_app_secrets", dustAppSecrets);
 app.route("/extension", extension);
 app.route("/fair-use-credits", fairUseCredits);
 app.route("/files", files);
+app.route("/frames", frames);
 app.route("/google_drive/picker_token", googleDrivePickerToken);
 app.route(
   "/google_drive/search_for_authorization",
@@ -996,9 +1077,9 @@ app.route("/usage-status", usageStatus);
 app.route("/permissions", permissions);
 app.route("/project_tasks", projectTasks);
 app.route("/provider_credentials/:providerId", providerCredential);
+app.route("/granted-roles", grantedRoles);
 app.route("/provider_credentials", providerCredentials);
 app.route("/providers", providers);
-app.route("/provisioning-status", provisioningStatus);
 app.route("/sandbox", sandbox);
 app.route("/sandbox-functions", sandboxFunctions);
 app.route("/search", search);
@@ -1006,10 +1087,12 @@ app.route("/search/tools/upload", searchToolsUpload);
 app.route("/seats", seats);
 app.route("/services", services);
 app.route("/skills", skills);
-app.route("/sso", sso);
+app.route("/slack-workflows", slackWorkflows);
 app.route("/spaces", spaces);
+app.route("/sso", sso);
 app.route("/subscriptions", subscriptions);
 app.route("/tags", tags);
+app.route("/triggers", triggers);
 app.route("/usage_settings", usageSettings);
 app.route("/verification", verification);
 app.route("/verified-domains", verifiedDomains);

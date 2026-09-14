@@ -21,14 +21,28 @@ import { Checkbox, type CheckboxProps } from "./Checkbox";
 
 export interface TreeProps {
   children?: ReactNode;
+  /** Wraps the tree in a rounded, bordered, muted container. */
   isBoxed?: boolean;
+  /** Shows a spinner below the items, e.g. while a branch is lazily loading or paginating. */
   isLoading?: boolean;
+  /** Lets item content (e.g. tooltips, menus) overflow the tree container. */
   overflowVisible?: boolean;
+  /** Tailwind text color class applied to the items' visual icons. */
   tailwindIconTextColor?: string;
+  /** "navigator" makes items navigatable (hover/selected row styling); "finder" is the plain default. */
   variant?: "navigator" | "finder";
   className?: string;
 }
 
+/**
+ * A hierarchical, expandable list wrapping a set of `Tree.Item` nodes, each taking a
+ * `label`, optional `visual` icon, and nested children. Use it to browse nested
+ * structures such as folders, data sources, or document hierarchies; for lazily loaded
+ * branches, render a child `<Tree isLoading />` until data arrives rather than blocking
+ * the whole tree.
+ *
+ * @summary Hierarchical expandable list.
+ */
 export function Tree({
   children,
   isLoading,
@@ -92,19 +106,31 @@ const treeItemStyleClasses = {
 
 interface TreeItemProps {
   label?: string;
+  /** "node" (default) shows an expand chevron; "leaf" is terminal and indented in place of the chevron; "item" has neither. */
   type?: "node" | "item" | "leaf";
+  /** Tailwind text color class for the visual icon (defaults to "text-muted-foreground"). */
   tailwindIconTextColor?: string;
+  /** Leading icon distinguishing the node kind (e.g. folder vs. document). */
   visual?: ComponentType<{ className?: string }>;
+  /** Renders a Checkbox before the icon for multi-selection; forwarded as its props. */
   checkbox?: CheckboxProps;
+  /** Called when the chevron is clicked; makes the collapse state controlled together with `collapsed`. */
   onChevronClick?: () => void;
+  /** Controlled collapse state; leave undefined to let the item manage it internally. */
   collapsed?: boolean;
+  /** Initial collapse state when uncontrolled (defaults to true). */
   defaultCollapsed?: boolean;
   className?: string;
   labelClassName?: string;
+  /** Trailing controls (buttons, menus) rendered after the label. */
   actions?: React.ReactNode;
+  /** Fades the `actions` in only while the row is hovered (defaults to true). */
   areActionsFading?: boolean;
+  /** Applies navigatable row styling (hover/selected background); set by Tree's "navigator" variant. */
   isNavigatable?: boolean;
+  /** Highlights the row as the current selection (navigatable styling). */
   isSelected?: boolean;
+  /** Called when the row itself is clicked (checkbox and button clicks are excluded). */
   onItemClick?: () => void;
   id?: string;
 }
@@ -115,10 +141,18 @@ export interface TreeItemPropsWithChildren extends TreeItemProps {
 }
 
 export interface TreeItemPropsWithRender extends TreeItemProps {
+  /** Lazily renders the nested items only when the item is expanded, instead of `children`. */
   renderTreeItems: () => React.ReactNode;
   children?: never;
 }
 
+/**
+ * One row of a `Tree`: a chevron (for `type="node"`), optional `checkbox`, `visual`
+ * icon, truncating `label` with an automatic tooltip, and trailing `actions`. Nested
+ * items go in `children`, or in `renderTreeItems` to defer rendering until expanded.
+ *
+ * @summary Single tree row.
+ */
 Tree.Item = React.forwardRef<
   HTMLDivElement,
   TreeItemPropsWithChildren | TreeItemPropsWithRender

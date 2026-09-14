@@ -6,7 +6,6 @@ import { Checkbox, Label } from "../index_with_tw_base";
 
 const meta = {
   title: "Forms & Inputs/Label",
-  tags: ["a11y-issues"],
   component: Label,
   parameters: {
     docs: {
@@ -26,42 +25,46 @@ const meta = {
 } satisfies Meta<typeof Label>;
 
 export default meta;
-
-export const LabelDemo = () => {
-  const handleChange = () => {
-    // This function intentionally left blank
-  };
-  return (
-    <div>
-      <div className="flex items-center space-x-2">
-        <Checkbox onChange={handleChange} />
-        <Label htmlFor="terms">Accept terms and conditions</Label>
-      </div>
-    </div>
-  );
-};
-
 type Story = StoryObj<typeof meta>;
 
+/**
+ * The base label style on its own. In real usage always pair it with a control
+ * via htmlFor — see AssociatedWithControl for the full wiring.
+ * @summary Base label text.
+ */
 export const Default: Story = {
-  args: { children: "Email address", htmlFor: "email" },
+  args: { children: "Email address" },
   tags: ["ai-generated", "needs-work"],
 };
 
+/**
+ * The muted treatment for secondary or optional captions, de-emphasised next
+ * to primary labels.
+ * @summary Muted label via isMuted.
+ */
 export const Muted: Story = {
   args: { children: "Optional", isMuted: true },
   tags: ["ai-generated", "needs-work"],
 };
 
-// Smoke play: `htmlFor` must surface as the DOM `for` attribute so clicking the
-// label focuses its associated control.
+/**
+ * A label correctly wired to a control: htmlFor matches the Checkbox id, so
+ * clicking the label toggles the checkbox. The play function asserts that
+ * htmlFor surfaces as the DOM `for` attribute.
+ * @summary Label associated with a checkbox via htmlFor.
+ */
 export const AssociatedWithControl: Story = {
-  args: { children: "Workspace name", htmlFor: "workspace-input" },
+  args: { children: "Accept terms and conditions", htmlFor: "terms" },
   tags: ["ai-generated", "needs-work"],
+  render: (args) => (
+    <div className="flex items-center space-x-2">
+      <Checkbox id="terms" />
+      <Label {...args} />
+    </div>
+  ),
   play: async ({ canvas }) => {
-    await expect(canvas.getByText("Workspace name")).toHaveAttribute(
-      "for",
-      "workspace-input"
-    );
+    await expect(
+      canvas.getByText("Accept terms and conditions")
+    ).toHaveAttribute("for", "terms");
   },
 };

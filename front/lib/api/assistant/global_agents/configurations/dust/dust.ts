@@ -9,6 +9,7 @@ import {
   AGENT_ROUTER_SERVER_NAME,
   SUGGEST_AGENTS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
+import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type {
   MCPServerViewsForGlobalAgentsMap,
@@ -50,16 +51,16 @@ import {
 } from "@app/types/assistant/models/anthropic";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import {
-  FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
+  FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_CONFIG,
   FIREWORKS_GLM_5_MODEL_CONFIG,
-  FIREWORKS_GLM_5P2_MODEL_CONFIG,
+  FIREWORKS_GLM_5P3_MODEL_CONFIG,
   FIREWORKS_KIMI_K3_MODEL_CONFIG,
   FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
 } from "@app/types/assistant/models/fireworks";
 import {
   GEMINI_3_1_FLASH_LITE_MODEL_CONFIG,
   GEMINI_3_1_PRO_MODEL_CONFIG,
-  GEMINI_3_5_FLASH_MODEL_CONFIG,
+  GEMINI_3_8_FLASH_MODEL_CONFIG,
 } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_MEDIUM_3_5_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 import { NOOP_MODEL_CONFIG } from "@app/types/assistant/models/noop";
@@ -71,7 +72,6 @@ import {
 } from "@app/types/assistant/models/openai";
 import type {
   ModelConfigurationType,
-  ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
@@ -82,18 +82,14 @@ interface DustLikeGlobalAgentArgs {
   mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   hasDeepDive: boolean;
   globalAgentContext?: GlobalAgentContext;
-  excludeProviders?: ReadonlySet<ModelProviderIdType>;
   // Workspace feature flags, forwarded to model selection so it runs the exact
   // same model availability check that is enforced when a message is posted.
   featureFlags: WhitelistableFeature[];
   // When set, the @dust agent defaults to this stream meta-model (the highest
-  // one the member's model-tier cap allows) instead of Claude Sonnet 4.6.
+  // one the member's model-tier cap allows) instead of GPT 5.6 Luna.
   autoDefaultModelConfig?: ModelConfigurationType | null;
-  // When set, the @dust agent defaults to GPT 5.6 Luna (high reasoning) instead
-  // of Claude Sonnet 4.6. Gated by the `dust_agent_gpt_5_6_luna_default` flag.
-  preferGpt56LunaDefaultModel?: boolean;
-  // When set, the @dust agent defaults to Claude Sonnet 5 instead of Claude
-  // Sonnet 4.6. Gated by the `dust_agent_sonnet_5_default` feature flag.
+  // When set, the @dust agent defaults to Claude Sonnet 5 instead of GPT 5.6
+  // Luna. Gated by the `dust_agent_sonnet_5_default` feature flag.
   preferSonnet5DefaultModel?: boolean;
 }
 
@@ -130,13 +126,11 @@ Keep your thinking as short as possible.
 Only use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME} tool if the user explicitly asks about other agents available in the workspace. Never use it proactively.
 </instructions>`,
 
-  goDeepInstructions: `If a request is particularly complex (requires deep exploration of company data, multiple web searches, SQL queries, or 3+ steps of tool use), or if the user explicitly asks for a "deep dive", "deep research", or "comprehensive analysis", enable the "Go Deep" skill to delegate work across sub-agents for more thorough research.`,
-
-  supportSkillActivation: `<dust_platform_support_guidelines>
-For clear Dust platform support requests, enable the "Dust Support" skill before answering.
-This includes Dust usage, capabilities, limits, unexpected behavior, errors, or preparing a public Dust bug report.
-Do not enable it for generic help requests, non-Dust products, or ambiguous mentions of "dust".
-</dust_platform_support_guidelines>`,
+  goDeepInstructions: `<go_deep_skill_guidelines>
+Enable the "Go Deep" skill only when the user explicitly asks to use Go Deep, asks for a deep dive or deep research, or requests a comprehensive multi-source investigation.
+Do not infer that Go Deep is needed from task complexity alone. Do not enable it based only on a detailed requested output, SQL, a mix of company and web research, several tool calls, or an opportunity to parallelize work.
+If none of the explicit activation conditions is clearly met, handle the request directly. When in doubt, do not enable it.
+</go_deep_skill_guidelines>`,
 
   memory: `<memory_guidelines>
 You have access to a persistent, user-specific memory system. Each user has their own private memory store.
@@ -189,10 +183,15 @@ Never explicitly say "I remember" or "based on our previous conversation" - just
 </memory_guidelines>`,
 };
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] exclude-skills-only-toolsets
+ * The available toolsets context MUST NOT include MCP server views restricted to skills.
+ */
 export function buildToolsetsContext(
   availableToolsets: MCPServerViewResource[]
 ): string {
   const toolsetsList = availableToolsets
+    .filter((toolset) => !toolset.isRestrictedToSkills)
     .sort((a, b) => {
       const aView = a.toJSON();
       const bView = b.toJSON();
@@ -244,7 +243,6 @@ function buildInstructions({
     INSTRUCTION_SECTIONS.primary,
     INSTRUCTION_SECTIONS.instructions,
     hasDeepDive && INSTRUCTION_SECTIONS.goDeepInstructions,
-    INSTRUCTION_SECTIONS.supportSkillActivation,
     hasAgentMemory && INSTRUCTION_SECTIONS.memory,
   ].filter((part): part is string => typeof part === "string");
 
@@ -259,7 +257,6 @@ function _getDustLikeGlobalAgent(
     mcpServerViews,
     hasDeepDive,
     globalAgentContext,
-    excludeProviders = new Set<ModelProviderIdType>(),
     featureFlags,
   }: DustLikeGlobalAgentArgs,
   {
@@ -267,14 +264,12 @@ function _getDustLikeGlobalAgent(
     name,
     preferredModelConfiguration,
     preferredReasoningEffort,
-    requiredPreferredModelConfiguration,
     omittedThinking,
   }: {
     agentId: GLOBAL_AGENTS_SID;
     name: string;
     preferredModelConfiguration?: ModelConfigurationType | null;
     preferredReasoningEffort?: ReasoningEffort;
-    requiredPreferredModelConfiguration?: boolean;
     omittedThinking?: boolean;
   }
 ): (AgentConfigurationType & { omittedThinking?: boolean }) | null {
@@ -301,20 +296,10 @@ function _getDustLikeGlobalAgent(
       preferredModelConfiguration != null &&
       selectEnabledModel(auth, [preferredModelConfiguration], {
         featureFlags,
-        excludeProviders,
       }) != null;
 
-    if (requiredPreferredModelConfiguration) {
-      if (isPreferredModelConfigurationAvailable) {
-        isPreferredModel = true;
-        return preferredModelConfiguration;
-      }
-
-      return null;
-    }
-
     if (!auth.isUpgraded()) {
-      return getSmallWhitelistedModel(auth, excludeProviders, {
+      return getSmallWhitelistedModel(auth, undefined, {
         featureFlags,
       });
     }
@@ -324,7 +309,7 @@ function _getDustLikeGlobalAgent(
       return preferredModelConfiguration;
     }
 
-    return getLargeWhitelistedModel(auth, excludeProviders, { featureFlags });
+    return getLargeWhitelistedModel(auth, undefined, { featureFlags });
   })();
 
   const model: AgentModelConfigurationType = modelConfiguration
@@ -450,7 +435,7 @@ function _getDustLikeGlobalAgent(
     ...dustAgent,
     status: "active",
     actions,
-    skills: [
+    codeDefinedSkillIds: [
       "discover_knowledge",
       "discover_skills",
       "frames",
@@ -476,8 +461,8 @@ export function _getDustGlobalAgent(
   args: DustLikeGlobalAgentArgs
 ): AgentConfigurationType | null {
   let preferredModelConfiguration: ModelConfigurationType =
-    CLAUDE_SONNET_4_6_DEFAULT_MODEL_CONFIG;
-  let preferredReasoningEffort: ReasoningEffort = "medium";
+    GPT_5_6_LUNA_MODEL_CONFIG;
+  let preferredReasoningEffort: ReasoningEffort = "high";
 
   if (args.autoDefaultModelConfig) {
     preferredModelConfiguration = args.autoDefaultModelConfig;
@@ -485,9 +470,6 @@ export function _getDustGlobalAgent(
   } else if (args.preferSonnet5DefaultModel) {
     preferredModelConfiguration = CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG;
     preferredReasoningEffort = "medium";
-  } else if (args.preferGpt56LunaDefaultModel) {
-    preferredModelConfiguration = GPT_5_6_LUNA_MODEL_CONFIG;
-    preferredReasoningEffort = "high";
   }
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST,
@@ -495,6 +477,33 @@ export function _getDustGlobalAgent(
     preferredModelConfiguration,
     preferredReasoningEffort,
   });
+}
+
+export function _getDustLeanGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  const dustAgent = _getDustGlobalAgent(auth, args);
+  if (!dustAgent) {
+    return null;
+  }
+
+  return {
+    ...dustAgent,
+    ...getGlobalAgentMetadata(GLOBAL_AGENTS_SID.DUST_LEAN),
+    instructions: `<primary_goal>
+You are an AI agent created by Dust. Answer questions using your own knowledge and the information provided in this conversation.
+Use only the capabilities explicitly provided in this conversation. When information is missing and no available capability can retrieve it, say so and ask the user to provide it.
+</primary_goal>
+
+<general_guidelines>${globalAgentGuidelines}</general_guidelines>
+
+<critical_thinking_guidelines>
+Keep your thinking as short as possible.
+</critical_thinking_guidelines>`,
+    actions: [],
+    codeDefinedSkillIds: [],
+  };
 }
 
 export function _getDustHighGlobalAgent(
@@ -745,7 +754,7 @@ export function _getDustPistacheGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_PISTACHE,
     name: "dust-pistache",
-    preferredModelConfiguration: FIREWORKS_GLM_5P2_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_GLM_5P3_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -757,7 +766,7 @@ export function _getDustPistacheMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM,
     name: "dust-pistache-medium",
-    preferredModelConfiguration: FIREWORKS_GLM_5P2_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_GLM_5P3_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -769,7 +778,7 @@ export function _getDustPistacheHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_PISTACHE_HIGH,
     name: "dust-pistache-high",
-    preferredModelConfiguration: FIREWORKS_GLM_5P2_MODEL_CONFIG,
+    preferredModelConfiguration: FIREWORKS_GLM_5P3_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }
@@ -817,8 +826,10 @@ export function _getDustDeepseekGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_DEEPSEEK,
     name: "dust-deepseek",
-    preferredModelConfiguration: FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG,
-    preferredReasoningEffort: "none",
+    preferredModelConfiguration: FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_CONFIG,
+    // `none` on the preview meant "reasoning not wired up" and resolved to
+    // DeepSeek's `high` on the wire; on this model's ladder that is `medium`.
+    preferredReasoningEffort: "medium",
   });
 }
 
@@ -853,7 +864,7 @@ export function _getDustGoogGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG,
     name: "dust-goog",
-    preferredModelConfiguration: GEMINI_3_5_FLASH_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_8_FLASH_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -865,7 +876,7 @@ export function _getDustGoogMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM,
     name: "dust-goog-medium",
-    preferredModelConfiguration: GEMINI_3_5_FLASH_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_8_FLASH_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -877,7 +888,7 @@ export function _getDustGoogHighGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_GOOG_HIGH,
     name: "dust-goog-high",
-    preferredModelConfiguration: GEMINI_3_5_FLASH_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_8_FLASH_MODEL_CONFIG,
     preferredReasoningEffort: "high",
   });
 }
@@ -1056,7 +1067,7 @@ export function _getDustQuickGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_QUICK,
     name: "dust-quick",
-    preferredModelConfiguration: GEMINI_3_5_FLASH_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_8_FLASH_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }
@@ -1068,7 +1079,7 @@ export function _getDustQuickMediumGlobalAgent(
   return _getDustLikeGlobalAgent(auth, args, {
     agentId: GLOBAL_AGENTS_SID.DUST_QUICK_MEDIUM,
     name: "dust-quick-medium",
-    preferredModelConfiguration: GEMINI_3_5_FLASH_MODEL_CONFIG,
+    preferredModelConfiguration: GEMINI_3_8_FLASH_MODEL_CONFIG,
     preferredReasoningEffort: "medium",
   });
 }
@@ -1115,13 +1126,14 @@ export function _getDustNextHighGlobalAgent(
   });
 }
 
-// Formerly custom-model dust-* global agents (sundae, pistache, chalom).
-// Their eval models were removed from the infra custom-models config (GCS), so
-// they no longer resolve to a custom model. They remain callable for past
+// Formerly custom-model dust-* global agents (chawi, soupinou, sundae,
+// pistache, chalom). Their eval models were removed from the infra custom-models
+// config (GCS), so they no longer resolve to a custom model. They remain callable for past
 // conversations via a concrete fallback model and are listed in
-// RETIRED_GLOBAL_AGENTS_SID (see global_agents.ts). We may revive them as
-// custom-model agents in the future by moving them back into
-// CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.
+// RETIRED_GLOBAL_AGENTS_SID (see global_agents.ts). Reviving one as a
+// custom-model agent requires moving it back into
+// CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS and restoring
+// _getCustomModelDustLikeGlobalAgent and its switch cases (removed in #31262).
 type RetiredDustGlobalAgentConfig = {
   name: string;
   preferredReasoningEffort: ReasoningEffort;
@@ -1154,6 +1166,34 @@ const RETIRED_DUST_GLOBAL_AGENT_CONFIGS = new Map<
   [
     GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
     { name: "dust-chalom-high", preferredReasoningEffort: "high" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU,
+    { name: "dust-soupinou", preferredReasoningEffort: "light" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
+    { name: "dust-soupinou-medium", preferredReasoningEffort: "medium" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+    { name: "dust-soupinou-high", preferredReasoningEffort: "high" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
+    { name: "dust-soupinou-none", preferredReasoningEffort: "none" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHAWI,
+    { name: "dust-chawi", preferredReasoningEffort: "light" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+    { name: "dust-chawi-medium", preferredReasoningEffort: "medium" },
+  ],
+  [
+    GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
+    { name: "dust-chawi-high", preferredReasoningEffort: "high" },
   ],
 ]);
 
@@ -1217,64 +1257,6 @@ const CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS = new Map<
       preferredReasoningEffort: "high",
     },
   ],
-  [
-    GLOBAL_AGENTS_SID.DUST_CHAWI,
-    {
-      name: "dust-chawi",
-      customModelIndex: 0,
-      preferredReasoningEffort: "light",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
-    {
-      name: "dust-chawi-medium",
-      customModelIndex: 0,
-      preferredReasoningEffort: "medium",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
-    {
-      name: "dust-chawi-high",
-      customModelIndex: 0,
-      preferredReasoningEffort: "high",
-    },
-  ],
-  // Index 2 is the eval model with displayName "Soupinou" in the infra
-  // custom-models config.
-  [
-    GLOBAL_AGENTS_SID.DUST_SOUPINOU,
-    {
-      name: "dust-soupinou",
-      customModelIndex: 2,
-      preferredReasoningEffort: "light",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
-    {
-      name: "dust-soupinou-medium",
-      customModelIndex: 2,
-      preferredReasoningEffort: "medium",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
-    {
-      name: "dust-soupinou-high",
-      customModelIndex: 2,
-      preferredReasoningEffort: "high",
-    },
-  ],
-  [
-    GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
-    {
-      name: "dust-soupinou-none",
-      customModelIndex: 2,
-      preferredReasoningEffort: "none",
-    },
-  ],
 ]);
 
 export function getCustomModelDustGlobalAgentIndex(
@@ -1284,25 +1266,4 @@ export function getCustomModelDustGlobalAgentIndex(
     CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId)?.customModelIndex ??
     null
   );
-}
-
-export function _getCustomModelDustLikeGlobalAgent(
-  auth: Authenticator,
-  args: DustLikeGlobalAgentArgs,
-  agentId: GLOBAL_AGENTS_SID
-): AgentConfigurationType | null {
-  const config = CUSTOM_MODEL_DUST_GLOBAL_AGENT_CONFIGS.get(agentId);
-
-  if (!config) {
-    return null;
-  }
-
-  return _getDustLikeGlobalAgent(auth, args, {
-    agentId,
-    name: config.name,
-    preferredModelConfiguration:
-      CUSTOM_MODEL_CONFIGS[config.customModelIndex] ?? null,
-    preferredReasoningEffort: config.preferredReasoningEffort,
-    requiredPreferredModelConfiguration: true,
-  });
 }

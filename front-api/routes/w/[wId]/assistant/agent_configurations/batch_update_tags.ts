@@ -1,8 +1,13 @@
+import { shadowEditableAgents } from "@app/lib/api/assistant/agent_permissions";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import {
+  ARCHIVED_AGENT_API_ERROR,
+  isArchivedAgents,
+} from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 const BatchUpdateAgentTagsRequestBodySchema = z.object({
@@ -42,12 +47,23 @@ app.post(
       });
     }
 
+    // Admins may tag any agent of the workspace, including the ones built on spaces they cannot
+    // read (the manage agents page lists those behind "Show hidden agents"). Tagging touches
+    // nothing the spaces protect.
     const agents = await getAgentConfigurations(auth, {
       agentIds,
       variant: "light",
+      dangerouslySkipPermissionFiltering: auth.isAdmin(),
     });
-    const editableAgents = agents.filter(
-      (agent) => agent.canEdit || auth.isAdmin()
+    if (isArchivedAgents(agents)) {
+      return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
+    }
+
+    const editableAgents = await shadowEditableAgents(
+      auth,
+      agents,
+      agents.filter((agent) => agent.canEdit || auth.isAdmin()),
+      "batchUpdateAgentTags"
     );
 
     const addTagsResult = await TagResource.addToAgents(

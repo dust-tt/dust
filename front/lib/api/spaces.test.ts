@@ -1,4 +1,5 @@
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { DATABASE_FILE_SYSTEM_POD_PREFIX } from "@app/lib/api/file_system/storage_mode";
 import { getProjectConversationsDatasourceName } from "@app/lib/api/projects/data_sources";
 import {
   createSpaceAndGroup,
@@ -8,15 +9,15 @@ import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
@@ -30,14 +31,8 @@ import { SPACE_KINDS } from "@app/types/space";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 async function fetchNonGlobalGroup(space: SpaceResource, auth: Authenticator) {
-  const groupReference = space.groups.find((group) => !group.isGlobal());
-  if (!groupReference) {
-    return null;
-  }
-  const [group] = await space.fetchGroupResources(auth, {
-    groupReferences: [groupReference],
-  });
-  return group;
+  const [group] = await space.fetchRegularAutoGroups(auth);
+  return group ?? null;
 }
 
 describe("createSpaceAndGroup", () => {
@@ -84,12 +79,44 @@ describe("createSpaceAndGroup", () => {
   });
 
   describe("successful creation", () => {
+    it("only allows fresh database filesystem Pods when the flag is enabled", async () => {
+      const params = {
+        name: `${DATABASE_FILE_SYSTEM_POD_PREFIX}Playground`,
+        isRestricted: true,
+        spaceKind: "project" as const,
+        memberIds: [],
+      };
+
+      const disabledRes = await createSpaceAndGroup(adminAuth, params);
+      expect(disabledRes.isErr() && disabledRes.error.code).toBe(
+        "invalid_request_error"
+      );
+
+      await FeatureFlagFactory.basic(adminAuth, "dust_filesystem");
+      const enabledRes = await createSpaceAndGroup(adminAuth, params);
+      expect(enabledRes.isOk()).toBe(true);
+      if (enabledRes.isErr()) {
+        return;
+      }
+
+      const sameModeRenameRes = await enabledRes.value.updateName(
+        adminAuth,
+        `${DATABASE_FILE_SYSTEM_POD_PREFIX}Renamed`
+      );
+      expect(sameModeRenameRes.isOk()).toBe(true);
+
+      const removePrefixRes = await enabledRes.value.updateName(
+        adminAuth,
+        "Regular Pod"
+      );
+      expect(removePrefixRes.isErr()).toBe(true);
+    });
+
     it("should create a regular space with manual management mode and members", async () => {
       const result = await createSpaceAndGroup(adminAuth, {
         name: "Test Regular Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [user1.sId, user2.sId],
       });
 
@@ -98,8 +125,7 @@ describe("createSpaceAndGroup", () => {
         const space = result.value;
         expect(space.name).toBe("Test Regular Space");
         expect(space.kind).toBe("regular");
-        expect(space.managementMode).toBe("manual");
-        expect(space.isRegularAndRestricted()).toBe(true);
+        expect(await space.isRestricted(adminAuth)).toBe(true);
 
         // Verify the space has a group
         const groups = await space.fetchGroupResources(adminAuth);
@@ -124,7 +150,6 @@ describe("createSpaceAndGroup", () => {
         name: "Kind Check Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [user1.sId],
       });
 
@@ -150,7 +175,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Group Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "group",
         groupIds: [provisionedGroup.sId],
       });
 
@@ -159,17 +183,16 @@ describe("createSpaceAndGroup", () => {
         const space = result.value;
         expect(space.name).toBe("Test Group Space");
         expect(space.kind).toBe("regular");
-        expect(space.managementMode).toBe("group");
-        expect(space.isRegularAndRestricted()).toBe(true);
+        expect(await space.isRestricted(adminAuth)).toBe(true);
 
-        // Verify groups were associated
-        const groupSpaces = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: space.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
+        // Verify groups were associated (from the space's group_permissions grants).
+        const reloadedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          space.sId
+        );
+        const associatedGroupIds = (
+          await reloadedSpace!.fetchGrantReferences()
+        ).map((group) => group.groupId);
         expect(associatedGroupIds).toContain(provisionedGroup.id);
       }
     });
@@ -187,7 +210,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Project With Connector",
         isRestricted: false,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -217,7 +239,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Regular Space No Connector",
         isRestricted: false,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -258,7 +279,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Project Creator Editor",
         isRestricted: true,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -266,10 +286,10 @@ describe("createSpaceAndGroup", () => {
       if (result.isOk()) {
         const pod = result.value;
         const creator = userAuth.getNonNullableUser();
-        const { groupsToProcess, allGroupMemberships } =
+        const { groupsToProcess, allGroupMemberships, editorGroupModelId } =
           await pod.fetchManualGroupsMemberships(userAuth);
         const editorGroup = groupsToProcess.find(
-          (group) => group.kind === "space_editors"
+          (group) => group.id === editorGroupModelId
         );
 
         expect(editorGroup).toBeDefined();
@@ -282,14 +302,56 @@ describe("createSpaceAndGroup", () => {
         ).toBe(true);
 
         const staleAuth = await Authenticator.fromJSON(staleAuthJson);
-        expect(pod.canAdministrate(staleAuth)).toBe(false);
+        expect(staleAuth.can("admin", pod)).toBe(false);
         expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(false);
 
         await staleAuth.refresh();
         expect(staleAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
 
         const refreshedPod = await SpaceResource.fetchById(staleAuth, pod.sId);
-        expect(refreshedPod?.canAdministrate(staleAuth)).toBe(true);
+        expect(staleAuth.can("admin", refreshedPod!)).toBe(true);
+      }
+
+      createConnectorSpy.mockRestore();
+    });
+
+    it("refreshes the live creator auth so it can administrate the new project in the same request", async () => {
+      const createConnectorSpy = vi
+        .spyOn(
+          await import("@app/lib/api/projects/connector"),
+          "createDataSourceAndConnectorForProject"
+        )
+        .mockResolvedValue(new Ok(undefined));
+
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user1.sId,
+        workspace.sId
+      );
+
+      const result = await createSpaceAndGroup(userAuth, {
+        name: "Test Project Live Auth Refresh",
+        isRestricted: true,
+        spaceKind: "project",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const pod = result.value;
+        const { groupsToProcess, editorGroupModelId } =
+          await pod.fetchManualGroupsMemberships(userAuth);
+        const editorGroup = groupsToProcess.find(
+          (group) => group.id === editorGroupModelId
+        );
+        expect(editorGroup).toBeDefined();
+
+        // createSpaceAndGroup added the creator to the new editor group, wrote its grants, and
+        // refreshed `userAuth` post-commit. The same live auth must now see the group and
+        // administrate the pod with no manual refresh (contrast the reconstructed stale-auth test
+        // above, which has to call refresh() itself).
+        expect(userAuth.hasGroupByModelId(editorGroup!.id)).toBe(true);
+        expect(userAuth.getGrantedVerbs("space", pod.id)).toContain("admin");
+        expect(userAuth.can("admin", pod)).toBe(true);
       }
 
       createConnectorSpy.mockRestore();
@@ -309,7 +371,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Project Connector Failure",
         isRestricted: false,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -335,7 +396,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Open Space",
         isRestricted: false,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -347,18 +407,56 @@ describe("createSpaceAndGroup", () => {
           space.sId
         );
         expect(reloadedSpace).not.toBeNull();
-        expect(reloadedSpace!.isRegularAndRestricted()).toBe(false);
+        expect(await reloadedSpace!.isRestricted(adminAuth)).toBe(false);
 
-        // Verify global group was added
-        const groupSpaces = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: reloadedSpace!.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
+        // Verify global group was added (from the space's group_permissions grants).
+        const associatedGroupIds = (
+          await reloadedSpace!.fetchGrantReferences()
+        ).map((group) => group.groupId);
         expect(associatedGroupIds).toContain(globalGroup.id);
       }
+    });
+
+    it("gives members of an open space write, and everyone else read only", async () => {
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Open Space With Members",
+        isRestricted: false,
+        spaceKind: "regular",
+        memberIds: [user1.sId],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        return;
+      }
+
+      // Auths are built after the space exists: they resolve their grants once, at construction.
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user1.sId,
+        workspace.sId
+      );
+      const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user2.sId,
+        workspace.sId
+      );
+
+      const asMember = await SpaceResource.fetchById(
+        memberAuth,
+        result.value.sId
+      );
+      const asNonMember = await SpaceResource.fetchById(
+        nonMemberAuth,
+        result.value.sId
+      );
+
+      expect(await asMember!.isRestricted(memberAuth)).toBe(false);
+
+      // The member group confers write; the global group's `reader` grant only confers read.
+      expect(memberAuth.can("read", asMember!)).toBe(true);
+      expect(memberAuth.can("write", asMember!)).toBe(true);
+
+      expect(nonMemberAuth.can("read", asNonMember!)).toBe(true);
+      expect(nonMemberAuth.can("write", asNonMember!)).toBe(false);
     });
 
     it("should create a restricted space without global group", async () => {
@@ -366,23 +464,18 @@ describe("createSpaceAndGroup", () => {
         name: "Test Restricted Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const space = result.value;
-        expect(space.isRegularAndRestricted()).toBe(true);
+        expect(await space.isRestricted(adminAuth)).toBe(true);
 
-        // Verify global group was NOT added
-        const groupSpaces = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: space.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
+        // Verify global group was NOT added (from the space's group_permissions grants).
+        const associatedGroupIds = (await space.fetchGrantReferences()).map(
+          (group) => group.groupId
+        );
         expect(associatedGroupIds).not.toContain(globalGroup.id);
       }
     });
@@ -392,7 +485,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Empty Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -408,7 +500,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Empty Group Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "group",
         groupIds: [],
       });
 
@@ -416,7 +507,6 @@ describe("createSpaceAndGroup", () => {
       if (result.isOk()) {
         const space = result.value;
         expect(space.name).toBe("Test Empty Group Space");
-        expect(space.managementMode).toBe("group");
       }
     });
   });
@@ -430,7 +520,6 @@ describe("createSpaceAndGroup", () => {
           name: "Duplicate Name Space",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -444,7 +533,6 @@ describe("createSpaceAndGroup", () => {
           name: "Duplicate Name Space",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -488,7 +576,6 @@ describe("createSpaceAndGroup", () => {
               name: `Test Space ${i}`,
               isRestricted: true,
               spaceKind: "regular",
-              managementMode: "manual",
               memberIds: [],
             },
             { ignoreWorkspaceLimit: false }
@@ -501,7 +588,6 @@ describe("createSpaceAndGroup", () => {
           name: "Limit Exceeded Space",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         });
 
@@ -547,7 +633,6 @@ describe("createSpaceAndGroup", () => {
               name: `Test Space Ignore ${i}`,
               isRestricted: true,
               spaceKind: "regular",
-              managementMode: "manual",
               memberIds: [],
             },
             { ignoreWorkspaceLimit: false }
@@ -562,7 +647,6 @@ describe("createSpaceAndGroup", () => {
             name: "Ignored Limit Space",
             isRestricted: true,
             spaceKind: "regular",
-            managementMode: "manual",
             memberIds: [],
           },
           { ignoreWorkspaceLimit: true }
@@ -610,7 +694,6 @@ describe("createSpaceAndGroup", () => {
               name: `Limit Test Space ${i}`,
               isRestricted: true,
               spaceKind: "regular",
-              managementMode: "manual",
               memberIds: [],
             },
             { ignoreWorkspaceLimit: false }
@@ -623,7 +706,6 @@ describe("createSpaceAndGroup", () => {
           name: "Would Exceed Limit",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         });
         expect(limitResult.isErr()).toBe(true);
@@ -637,7 +719,6 @@ describe("createSpaceAndGroup", () => {
           name: "Project When At Limit",
           isRestricted: false,
           spaceKind: "project",
-          managementMode: "manual",
           memberIds: [],
         });
         expect(projectResult.isOk()).toBe(true);
@@ -656,7 +737,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Invalid Group Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "group",
         groupIds: ["invalid-group-id"],
       });
 
@@ -674,7 +754,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Invalid Member Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: ["invalid-user-id"],
       });
 
@@ -692,7 +771,6 @@ describe("createSpaceAndGroup", () => {
         name: "  Trimmed Space Name  ",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -711,7 +789,6 @@ describe("createSpaceAndGroup", () => {
           name: "Test Space",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -725,7 +802,6 @@ describe("createSpaceAndGroup", () => {
           name: "test space",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -746,7 +822,6 @@ describe("createSpaceAndGroup", () => {
           name: "Whitespace Test",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -760,7 +835,6 @@ describe("createSpaceAndGroup", () => {
           name: "  Whitespace Test  ",
           isRestricted: true,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -790,31 +864,29 @@ describe("createSpaceAndGroup", () => {
         name: "Test Multi Group Space",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "group",
         groupIds: [provisionedGroup1.sId, provisionedGroup2.sId],
       });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const space = result.value;
-        const groupSpaces = await GroupSpaceModel.findAll({
-          where: {
-            vaultId: space.id,
-            workspaceId: workspace.id,
-          },
-        });
-        const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
+        const reloadedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          space.sId
+        );
+        const associatedGroupIds = (
+          await reloadedSpace!.fetchGrantReferences()
+        ).map((group) => group.groupId);
         expect(associatedGroupIds).toContain(provisionedGroup1.id);
         expect(associatedGroupIds).toContain(provisionedGroup2.id);
       }
     });
 
-    it("should set global group kind to 'member' for unrestricted regular spaces", async () => {
+    it("should grant the global group reader on unrestricted regular spaces", async () => {
       const result = await createSpaceAndGroup(adminAuth, {
         name: "Test Unrestricted Regular Space",
         isRestricted: false,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -825,18 +897,20 @@ describe("createSpaceAndGroup", () => {
           adminAuth,
           space.sId
         );
-        expect(reloadedSpace!.isOpen()).toBe(true);
+        expect(await reloadedSpace!.isRestricted(adminAuth)).toBe(false);
 
-        // Verify global group was added with kind "member"
-        const groupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-          space: reloadedSpace!,
-        });
-        expect(groupSpaces.length).toBeGreaterThan(0);
-        expect(groupSpaces.some((gs) => gs.group.kind === "global")).toBe(true);
+        // Verify the global group holds a reader grant on the space (open regular space).
+        const grants = await GroupPermissionResource.listForResource(
+          adminAuth,
+          { resourceType: "space", resourceId: reloadedSpace!.id }
+        );
+        const globalGrant = grants.find((g) => g.groupId === globalGroup.id);
+        expect(globalGrant).toBeDefined();
+        expect(globalGrant?.grantType).toBe("reader");
       }
     });
 
-    it("should set global group kind to 'project_viewer' for unrestricted project spaces", async () => {
+    it("should grant the global group reader on unrestricted project spaces", async () => {
       vi.spyOn(
         await import("@app/lib/api/projects/connector"),
         "createDataSourceAndConnectorForProject"
@@ -846,7 +920,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Unrestricted Project Space",
         isRestricted: false,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -858,18 +931,16 @@ describe("createSpaceAndGroup", () => {
           space.sId
         );
         expect(reloadedSpace!.kind).toBe("project");
-        expect(reloadedSpace!.isOpen()).toBe(true);
+        expect(await reloadedSpace!.isRestricted(adminAuth)).toBe(false);
 
-        // Verify global group was added with kind "project_viewer"
-        const groupSpace = await GroupSpaceModel.findOne({
-          where: {
-            vaultId: reloadedSpace!.id,
-            workspaceId: workspace.id,
-            groupId: globalGroup.id,
-          },
-        });
-        expect(groupSpace).toBeDefined();
-        expect(groupSpace?.kind).toBe("project_viewer");
+        // Verify the global group holds a reader grant on the project (attached as viewer).
+        const grants = await GroupPermissionResource.listForResource(
+          adminAuth,
+          { resourceType: "space", resourceId: reloadedSpace!.id }
+        );
+        const globalGrant = grants.find((g) => g.groupId === globalGroup.id);
+        expect(globalGrant).toBeDefined();
+        expect(globalGrant?.grantType).toBe("reader");
       }
     });
   });
@@ -885,7 +956,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Project",
         isRestricted: false,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
       expect(projectResult.isOk()).toBe(true);
@@ -901,7 +971,6 @@ describe("createSpaceAndGroup", () => {
         name: "Test Regular",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
       expect(regularResult.isOk()).toBe(true);
@@ -1033,7 +1102,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         name: "Test Regular Space With Keys",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -1068,7 +1136,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         name: "Test Project Space With Keys",
         isRestricted: true,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -1098,7 +1165,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         name: "Test Regular Space With Disabled Keys",
         isRestricted: true,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -1128,7 +1194,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         name: "Test Regular Space With Global Keys",
         isRestricted: false,
         spaceKind: "regular",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -1140,7 +1205,11 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           space.sId
         );
         // Verify the space has the global group
-        expect(reloadedSpace!.groups.some((g) => g.isGlobal())).toBe(true);
+        expect(
+          (await reloadedSpace!.fetchGrantReferences()).some((g) =>
+            g.isReader()
+          )
+        ).toBe(true);
 
         // Create an active API key for the global group
         await KeyFactory.regular(globalGroup);
@@ -1165,7 +1234,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         name: "Test Project Space With Global Keys",
         isRestricted: false,
         spaceKind: "project",
-        managementMode: "manual",
         memberIds: [],
       });
 
@@ -1177,7 +1245,11 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           space.sId
         );
         // Verify the space has the global group
-        expect(reloadedSpace!.groups.some((g) => g.isGlobal())).toBe(true);
+        expect(
+          (await reloadedSpace!.fetchGrantReferences()).some((g) =>
+            g.isReader()
+          )
+        ).toBe(true);
 
         // Create an active API key for the global group
         await KeyFactory.regular(globalGroup);
@@ -1201,7 +1273,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Space With Skill Knowledge",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1239,7 +1310,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Space With Tool",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1284,6 +1354,81 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       expect(skillAfter!.requestedSpaceIds).toHaveLength(0);
     });
 
+    it("should remove a deleted space from a skill's manually requested spaces", async () => {
+      // A manual selection survives everything else, but not the space going away: an id pointing
+      // at a missing space makes the skill unreadable for everyone.
+      const spaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Manually Selected Space",
+          isRestricted: false,
+          spaceKind: "regular",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(spaceResult.isOk()).toBe(true);
+      const space = spaceResult.isOk() ? spaceResult.value : null;
+      expect(space).not.toBeNull();
+
+      const skill = await SkillFactory.create(adminAuth, {
+        name: "Skill With Manual Space",
+        requestedSpaceIds: [space!.id],
+        manuallyRequestedSpaceIds: [space!.id],
+      });
+
+      const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+        adminAuth,
+        space!,
+        true // force delete
+      );
+      expect(deleteResult.isOk()).toBe(true);
+
+      const skillAfter = await SkillResource.fetchById(adminAuth, skill.sId);
+      expect(skillAfter).not.toBeNull();
+      expect(skillAfter!.manuallyRequestedSpaceIds).not.toContain(space!.id);
+      expect(skillAfter!.requestedSpaceIds).not.toContain(space!.id);
+    });
+
+    it("should clean an archived skill's requestedSpaceIds too", async () => {
+      // An archived skill keeps its references, and a dangling one makes it unfetchable — so it
+      // could never be restored. The cleanup must not be limited to active skills.
+      const spaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space With Archived Skill",
+          isRestricted: false,
+          spaceKind: "regular",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(spaceResult.isOk()).toBe(true);
+      const space = spaceResult.isOk() ? spaceResult.value : null;
+      expect(space).not.toBeNull();
+
+      const skill = await SkillFactory.create(adminAuth, {
+        name: "Archived Skill Referencing A Space",
+        requestedSpaceIds: [space!.id],
+      });
+      await skill.archive(adminAuth);
+
+      const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+        adminAuth,
+        space!,
+        true // force delete
+      );
+      expect(deleteResult.isOk()).toBe(true);
+
+      // `fetchById` and friends default to active skills, so read it back as archived.
+      const archivedSkills = await SkillResource.listByWorkspace(adminAuth, {
+        status: "archived",
+      });
+      const skillAfter = archivedSkills.find((s) => s.id === skill.id);
+      expect(skillAfter).toBeDefined();
+      expect(skillAfter!.requestedSpaceIds).not.toContain(space!.id);
+    });
+
     it("should preserve additional skill requestedSpaceIds when deleting a dependency space", async () => {
       const toolSpaceResult = await createSpaceAndGroup(
         adminAuth,
@@ -1291,7 +1436,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Space With Tool",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1305,7 +1449,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Additional Skill Space",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1327,6 +1470,8 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       const skill = await SkillFactory.create(adminAuth, {
         name: "Test Skill With Tool And Additional Space",
         requestedSpaceIds: [toolSpace!.id, additionalSpace!.id],
+        // Only the additional space was picked by hand; the tool space comes from the server view.
+        manuallyRequestedSpaceIds: [additionalSpace!.id],
         mcpServerViews: [serverView],
       });
 
@@ -1343,6 +1488,85 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       expect(skillAfter!.requestedSpaceIds).toEqual([additionalSpace!.id]);
     });
 
+    it("should preserve a nested skill's spaces when deleting a dependency space", async () => {
+      // The parent requests two spaces for two different reasons: a tool of its own, and a child
+      // skill it references. Deleting the tool's space must not drop the child's.
+      const toolSpaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space With Parent Tool",
+          isRestricted: false,
+          spaceKind: "regular",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(toolSpaceResult.isOk()).toBe(true);
+      const toolSpace = toolSpaceResult.isOk() ? toolSpaceResult.value : null;
+
+      const childSpaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space With Child Tool",
+          isRestricted: false,
+          spaceKind: "regular",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(childSpaceResult.isOk()).toBe(true);
+      const childSpace = childSpaceResult.isOk()
+        ? childSpaceResult.value
+        : null;
+
+      const server = await RemoteMCPServerFactory.create(workspace, {
+        name: "Test Server",
+      });
+      const parentServerView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        toolSpace!
+      );
+      const childServerView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        childSpace!
+      );
+
+      const { parentSkill } = await SkillFactory.createWithNestedSkill(
+        adminAuth,
+        {
+          childOverrides: {
+            name: "Nested Child Skill",
+            requestedSpaceIds: [childSpace!.id],
+            mcpServerViews: [childServerView],
+          },
+          parentOverrides: {
+            name: "Nested Parent Skill",
+            requestedSpaceIds: [toolSpace!.id, childSpace!.id],
+            mcpServerViews: [parentServerView],
+          },
+        }
+      );
+
+      const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+        adminAuth,
+        toolSpace!,
+        true // force delete
+      );
+      expect(deleteResult.isOk()).toBe(true);
+
+      const parentAfter = await SkillResource.fetchById(
+        adminAuth,
+        parentSkill.sId
+      );
+      expect(parentAfter).not.toBeNull();
+      expect(parentAfter!.requestedSpaceIds).not.toContain(toolSpace!.id);
+      // Requested through the child skill reference, not by hand.
+      expect(parentAfter!.requestedSpaceIds).toContain(childSpace!.id);
+      expect(parentAfter!.manuallyRequestedSpaceIds).toEqual([]);
+    });
+
     it("should only remove deleted space from agent requestedSpaceIds, keeping other spaces", async () => {
       // Create two non-restricted regular spaces (accessible via global group)
       const space1Result = await createSpaceAndGroup(
@@ -1351,7 +1575,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Space 1",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }
@@ -1365,7 +1588,6 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           name: "Test Space 2",
           isRestricted: false,
           spaceKind: "regular",
-          managementMode: "manual",
           memberIds: [],
         },
         { ignoreWorkspaceLimit: true }

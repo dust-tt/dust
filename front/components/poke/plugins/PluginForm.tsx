@@ -35,6 +35,9 @@ interface PluginFormProps {
     Record<string, string | number | boolean | AsyncEnumValues | EnumValues>
   > | null;
   disabled?: boolean;
+  // Values to seed the form with, overriding the manifest defaults. Only keys declared by the
+  // manifest are applied.
+  initialValues?: Record<string, unknown>;
   isRunning?: boolean;
   manifest: PokeGetPluginDetailsResponseBody["manifest"];
   onSubmit: (args: FormValues<any>) => Promise<void>;
@@ -44,6 +47,7 @@ interface PluginFormProps {
 export function PluginForm({
   asyncArgs,
   disabled,
+  initialValues,
   isRunning = false,
   manifest,
   onSubmit,
@@ -64,7 +68,7 @@ export function PluginForm({
     if (!manifest) {
       return {};
     }
-    return Object.fromEntries(
+    const manifestDefaults = Object.fromEntries(
       Object.entries(manifest.args).map(([key, arg]) => {
         switch (arg.type) {
           case "text":
@@ -116,7 +120,18 @@ export function PluginForm({
         }
       })
     );
-  }, [manifest, asyncArgs]);
+
+    if (!initialValues) {
+      return manifestDefaults;
+    }
+
+    return {
+      ...manifestDefaults,
+      ...Object.fromEntries(
+        Object.entries(initialValues).filter(([key]) => key in manifest.args)
+      ),
+    };
+  }, [manifest, asyncArgs, initialValues]);
 
   const form = useForm({
     resolver: argsSchema ? zodResolver(argsSchema) : undefined,

@@ -3,6 +3,7 @@ import type {
   ConnectorsAPIErrorWithStatusCode,
   WithConnectorsAPIErrorReponse,
 } from "@connectors/types";
+import { normalizeError } from "@dust-tt/client";
 import type { Request, Response } from "express";
 import StatsD from "hot-shots";
 
@@ -22,8 +23,7 @@ export const withLogging = (handler: any) => {
           url: req.url,
           durationMs: elapsed,
           error: err,
-          // @ts-expect-error we can't really know what the error is
-          error_stack: err?.stack,
+          error_stack: normalizeError(err).stack,
           headers: req.headers,
         },
         "Unhandled API Error"

@@ -57,13 +57,13 @@ app.get(
         },
       });
     }
-    if (!agent.canEdit && !auth.isAdmin()) {
+    // Suggestions carry instruction replacements, so admins get no bypass: they must be editors.
+    if (!agent.canEdit) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "agent_group_permission_error",
-          message:
-            "Only editors of the agent or workspace admins can view suggestions.",
+          message: "Only editors of the agent can view suggestions.",
         },
       });
     }
@@ -113,13 +113,13 @@ app.patch(
         },
       });
     }
-    if (!agent.canEdit && !auth.isAdmin()) {
+    // Suggestions carry instruction replacements, so admins get no bypass: they must be editors.
+    if (!agent.canEdit) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "agent_group_permission_error",
-          message:
-            "Only editors of the agent or workspace admins can view suggestions.",
+          message: "Only editors of the agent can view suggestions.",
         },
       });
     }

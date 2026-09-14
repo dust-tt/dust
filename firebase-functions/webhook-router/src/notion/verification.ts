@@ -5,11 +5,8 @@ import { error } from "firebase-functions/logger";
 import rawBody from "raw-body";
 
 import type { SecretManager } from "../secrets.js";
-import type {
-  Region,
-  WebhookRouterConfigManager,
-} from "../webhook-router-config.js";
-import { ALL_REGIONS } from "../webhook-router-config.js";
+import type { WebhookRouterConfigManager } from "../webhook-router-config.js";
+import { ALL_CELLS } from "../webhook-router-config.js";
 
 class ReceiverAuthenticityError extends Error {
   constructor(message: string) {
@@ -76,7 +73,7 @@ export function createNotionVerificationMiddleware(
     next: express.NextFunction
   ): Promise<void> => {
     let providerWorkspaceId: string | undefined;
-    let connectorIdsByRegion: Record<string, number[]> | undefined;
+    let connectorIdsByCell: Record<string, number[]> | undefined;
 
     try {
       // Get the raw body for Notion signature verification.
@@ -109,19 +106,19 @@ export function createNotionVerificationMiddleware(
 
       let signingSecret: string;
       if (useClientCredentials) {
-        // It's a private client integration, so get the signing secret and regions from
+        // It's a private client integration, so get the signing secret and cells from
         // the webhook router config.
         providerWorkspaceId = req.params.providerWorkspaceId;
         const notionWebhookConfig = await webhookRouterConfigManager.getEntry(
           "notion",
           providerWorkspaceId
         );
-        // Set the regions for the forwarder
-        req.regions = Object.keys(notionWebhookConfig.regions).filter(
-          (key): key is Region => ALL_REGIONS.includes(key as Region)
+        // Set the cells for the forwarder
+        req.cells = ALL_CELLS.filter(
+          (cell) => cell in notionWebhookConfig.cells
         );
-        // Extract connectorIds by region for potential error logging
-        connectorIdsByRegion = notionWebhookConfig.regions;
+        // Extract connectorIds by cell for potential error logging
+        connectorIdsByCell = notionWebhookConfig.cells;
         signingSecret = notionWebhookConfig.signingSecret;
       } else {
         // Get secrets for Notion signature verification (webhook secret already validated)
@@ -142,7 +139,7 @@ export function createNotionVerificationMiddleware(
           component: "notion-verification",
           error: e.message,
           ...(providerWorkspaceId && { providerWorkspaceId }),
-          ...(connectorIdsByRegion && { connectorIdsByRegion }),
+          ...(connectorIdsByCell && { connectorIdsByCell }),
         });
         res.status(401).send();
         return;
@@ -152,7 +149,7 @@ export function createNotionVerificationMiddleware(
         component: "notion-verification",
         error: e instanceof Error ? e.message : String(e),
         ...(providerWorkspaceId && { providerWorkspaceId }),
-        ...(connectorIdsByRegion && { connectorIdsByRegion }),
+        ...(connectorIdsByCell && { connectorIdsByCell }),
       });
       res.status(400).send();
       return;

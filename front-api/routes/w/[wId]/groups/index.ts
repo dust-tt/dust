@@ -5,7 +5,11 @@ import {
   type PostGroupResponseBody,
 } from "@app/types/api/groups/manage";
 import type { GroupKind, GroupType } from "@app/types/groups";
-import { GroupKindCodec } from "@app/types/groups";
+import {
+  GroupKindCodec,
+  isUserVisibleGroupKind,
+  USER_VISIBLE_GROUP_KINDS,
+} from "@app/types/groups";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
@@ -14,6 +18,7 @@ import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
 import groupDetail from "./[groupId]";
+import grantedRole from "./[groupId]/granted_role";
 import spendLimit from "./[groupId]/spend_limit";
 
 export type GetGroupsResponseBody = {
@@ -22,7 +27,6 @@ export type GetGroupsResponseBody = {
 
 const GetGroupsQuerySchema = z.object({
   kind: z.union([GroupKindCodec, z.array(GroupKindCodec)]).optional(),
-  spaceId: z.string().optional(),
   // When "true", each group also carries its member sIds (one extra batched
   // query) instead of just memberCount.
   withMembers: z.enum(["true", "false"]).optional(),
@@ -37,17 +41,22 @@ app.get(
   validate("query", GetGroupsQuerySchema),
   async (ctx): HandlerResult<GetGroupsResponseBody> => {
     const auth = ctx.get("auth");
-    const { kind, spaceId, withMembers } = ctx.req.valid("query");
+    const { kind, withMembers } = ctx.req.valid("query");
 
-    const groupKinds: GroupKind[] = kind
+    const requestedKinds: GroupKind[] = kind
       ? Array.isArray(kind)
         ? kind
         : [kind]
-      : ["global", "regular_auto", "space_editors"];
+      : [...USER_VISIBLE_GROUP_KINDS];
 
-    const groups: GroupResource[] = spaceId
-      ? await GroupResource.listForSpaceById(auth, spaceId, { groupKinds })
-      : await GroupResource.listAllWorkspaceGroups(auth, { groupKinds });
+    // This endpoint only ever exposes user-visible group kinds. Internal kinds
+    // (regular_auto, system, agent_editors) are never listed here, so we clamp
+    // whatever was requested to the visible set.
+    const groupKinds = requestedKinds.filter(isUserVisibleGroupKind);
+
+    const groups = await GroupResource.listAllWorkspaceGroups(auth, {
+      groupKinds,
+    });
 
     return ctx.json({
       groups:
@@ -120,6 +129,7 @@ app.post(
 );
 
 app.route("/:groupId/spend_limit", spendLimit);
+app.route("/:groupId/granted_role", grantedRole);
 app.route("/:groupId", groupDetail);
 
 export default app;

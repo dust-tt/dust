@@ -43,34 +43,6 @@ const SandboxFunctionRunnerOutputSchema = z.discriminatedUnion("ok", [
     .strict(),
 ]);
 
-const LegacySandboxFunctionRunnerOutputSchema = z.discriminatedUnion("ok", [
-  z
-    .object({
-      ok: z.literal(true),
-      response: z
-        .object({
-          status: z.number().int(),
-          headers: z.record(z.string(), z.string()),
-          body: z.string().nullable(),
-          encoding: z.enum(["utf8", "base64"]),
-        })
-        .strict(),
-    })
-    .strict(),
-  z
-    .object({
-      ok: z.literal(false),
-      error: z
-        .object({
-          kind: z.enum(["bad_input", "import_failed", "threw", "bad_return"]),
-          message: z.string(),
-          stack: z.string().optional(),
-        })
-        .strict(),
-    })
-    .strict(),
-]);
-
 // Mirrors ResultEnvelope in cli/dust-sandbox/src/commands/function/envelope.rs.
 // Deliberately not `.strict()`: the wrapper is a forward-compatibility seam, so a field added by
 // a newer dsbx must not fail the parse. Inner outcome schemas stay `.strict()`.
@@ -160,12 +132,7 @@ function normalizeRunnerOutcome(
   result: unknown
 ): NormalizedSandboxFunctionOutcome {
   const current = SandboxFunctionRunnerOutputSchema.safeParse(result);
-  if (current.success) {
-    return current.data;
-  }
-
-  const legacy = LegacySandboxFunctionRunnerOutputSchema.safeParse(result);
-  if (!legacy.success) {
+  if (!current.success) {
     return invalidResultEnvelope("unrecognized_runner_outcome", {
       resultSnippet: truncate(
         JSON.stringify(result) ?? "undefined",
@@ -174,43 +141,7 @@ function normalizeRunnerOutcome(
     });
   }
 
-  if (!legacy.data.ok) {
-    return {
-      ok: false,
-      error: {
-        code: legacy.data.error.kind,
-        message: legacy.data.error.message,
-      },
-    };
-  }
-
-  const { response } = legacy.data;
-  const body =
-    response.body === null
-      ? ""
-      : Buffer.from(response.body, response.encoding).toString("utf8");
-  if (response.status < 200 || response.status >= 300) {
-    return {
-      ok: false,
-      error: {
-        code: "http_error",
-        message: `Function returned HTTP ${response.status}${body ? `: ${body}` : "."}`,
-        status: response.status,
-      },
-    };
-  }
-
-  try {
-    return { ok: true, output: JSON.parse(body) };
-  } catch {
-    return {
-      ok: false,
-      error: {
-        code: "invalid_output",
-        message: "Function response body is not valid JSON.",
-      },
-    };
-  }
+  return current.data;
 }
 
 function isSupportedProtocolVersion(version: number): boolean {
@@ -223,8 +154,8 @@ function isSupportedProtocolVersion(version: number): boolean {
 }
 
 /**
- * Normalize a Pod function result payload from either the HTTP callback body or a
- * worker-owned stdout envelope into one classified outcome.
+ * Normalize a Pod function result payload from a worker-owned stdout envelope into one
+ * classified outcome.
  */
 export function normalizeSandboxFunctionResult(
   result: unknown

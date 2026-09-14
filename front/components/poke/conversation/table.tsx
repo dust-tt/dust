@@ -25,7 +25,6 @@ export function ConversationDataTable({
       header="Conversations"
       owner={owner}
       loadOnInit={loadOnInit}
-      showSensitiveDataWarning={true}
       useSWRHook={useConversationsWithTrigger}
     >
       {(conversations) => (

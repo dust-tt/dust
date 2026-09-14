@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, Result};
 use clap::Parser;
-use cloud_storage::{ListRequest, Object};
+use cloud_storage::ListRequest;
 use dust::data_sources::data_source::make_document_id_hash;
 use dust::data_sources::file_storage_document::FileStorageDocument;
+use dust::gcs_client::gcs_client;
 use dust::stores::{postgres, store};
 use futures::{pin_mut, StreamExt};
 
@@ -217,14 +218,17 @@ async fn list_files_with_prefix(prefix: &str) -> Result<Vec<String>> {
 
     let mut paths = Vec::new();
 
-    let stream = Object::list(
-        &bucket,
-        ListRequest {
-            prefix: Some(prefix.to_string()),
-            ..Default::default()
-        },
-    )
-    .await?;
+    let stream = gcs_client()
+        .await?
+        .object()
+        .list(
+            &bucket,
+            ListRequest {
+                prefix: Some(prefix.to_string()),
+                ..Default::default()
+            },
+        )
+        .await?;
 
     pin_mut!(stream);
 

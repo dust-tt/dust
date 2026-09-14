@@ -1,4 +1,3 @@
-import { PokeWorkspaceUsageChart } from "@app/components/poke/analytics/PokeWorkspaceUsageChart";
 import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { PokeUsageTab } from "@app/components/poke/credits/PokeUsageTab";
@@ -6,9 +5,10 @@ import { CreditsDataTable } from "@app/components/poke/credits/table";
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { DataSourceDataTable } from "@app/components/poke/data_sources/table";
 import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
+import { FramesDataTable } from "@app/components/poke/frames/table";
+import { GovernanceTab } from "@app/components/poke/governance/GovernanceTab";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
-import { WorkspaceDatasourceRetrievalTreemapPluginChart } from "@app/components/poke/plugins/components/WorkspaceDatasourceRetrievalTreemapPluginChart";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { ProjectsDataTable } from "@app/components/poke/projects/table";
 import {
@@ -26,12 +26,14 @@ import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WebhookSourceDataTable } from "@app/components/poke/webhook_sources/table";
 import { WorkspaceMetadataTab } from "@app/components/poke/workspace/MetadataTab";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
+import { WorkspaceAnalyticsButton } from "@app/components/poke/workspace/WorkspaceAnalyticsButton";
+import { WorkspacePoolUsageButton } from "@app/components/poke/workspace/WorkspacePoolUsageButton";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
-import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
-import { usePokeRegion } from "@app/lib/swr/poke";
+import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
@@ -54,7 +56,7 @@ import {
 export function WorkspacePage() {
   const owner = useWorkspace();
   usePokePageMetadata({ name: owner.name ?? "Workspace", sId: owner.sId });
-  const { regionData } = usePokeRegion();
+  const { cellInfo: currentCell } = useCellContext();
 
   const router = useAppRouter();
 
@@ -132,6 +134,7 @@ export function WorkspacePage() {
     activeSubscription,
     hasDummyFeature,
     hasMetronomeFeature,
+    inactiveMembersCount,
     membersCount,
     metronomeCustomerId,
     pendingSubscription,
@@ -141,8 +144,10 @@ export function WorkspacePage() {
     programmaticAlerts,
     usageCapAlert,
     defaultAlerts,
-    programmaticCreditState,
-    programmaticWarningReached,
+    programmaticRateLimiterState,
+    programmaticSpendLimitRateCapCount,
+    programmaticEsConsumedAwuCredits,
+    programmaticMetronomeConsumedAwuCredits,
     seatPlan,
     stripeSubscription,
     stripeCustomerId,
@@ -157,14 +162,13 @@ export function WorkspacePage() {
     temporalFrontNamespace,
   } = workspaceInfo;
 
-  // The Usage tab (AWU usage chart + credit pool) is backed by Metronome usage
-  // data, so it applies to any workspace with a Metronome contract — both
-  // credit-priced and legacy shadow contracts. There's no need to gate it on a
-  // feature flag in poke: it's staff tooling, not customer-facing exposure.
-  const hasMetronomeUsage =
+  // Credit diagnostics are backed by Metronome usage data, so they apply to
+  // any workspace with a Metronome contract — both credit-priced and legacy
+  // shadow contracts. The activity chart itself is available to every
+  // workspace.
+  const hasMetronomeBillingUsage =
     metronomeCustomerId !== null &&
     activeSubscription.metronomeContractId !== null;
-
   return (
     <div className="ml-8 p-6">
       {isInMaintenance && (
@@ -180,9 +184,9 @@ export function WorkspacePage() {
         <div className="flex-grow">
           <div className="flex items-center gap-2">
             <span className="text-2xl font-bold">{owner.name}</span>
-            {regionData && (
-              <Chip size="xs" color={getRegionChipColor(regionData.region)}>
-                {getRegionDisplay(regionData.region)}
+            {currentCell && (
+              <Chip size="xs" color={getCellChipColor(currentCell.region)}>
+                {getCellDisplay(currentCell)}
               </Chip>
             )}
           </div>
@@ -231,19 +235,24 @@ export function WorkspacePage() {
                 <TabsTrigger value="planlimitations" label="Plan Limitations" />
               </TabsList>
               <TabsContent value="workspace">
-                <WorkspaceInfoTable
-                  owner={owner}
-                  membersCount={membersCount}
-                  metronomeCustomerId={metronomeCustomerId}
-                  stripeCustomerId={stripeCustomerId}
-                  workspaceVerifiedDomains={workspaceVerifiedDomains}
-                  workspaceCreationDay={workspaceCreationDay}
-                  extensionConfig={extensionConfig}
-                  dataRetention={dataRetention}
-                  workosEnvironmentId={workosEnvironmentId}
-                  hasDummyFeature={hasDummyFeature}
-                  temporalFrontNamespace={temporalFrontNamespace}
-                />
+                <div className="flex flex-col gap-3">
+                  <WorkspaceInfoTable
+                    owner={owner}
+                    membersCount={membersCount}
+                    inactiveMembersCount={inactiveMembersCount}
+                    metronomeCustomerId={metronomeCustomerId}
+                    stripeCustomerId={stripeCustomerId}
+                    workspaceVerifiedDomains={workspaceVerifiedDomains}
+                    workspaceCreationDay={workspaceCreationDay}
+                    extensionConfig={extensionConfig}
+                    dataRetention={dataRetention}
+                    workosEnvironmentId={workosEnvironmentId}
+                    hasDummyFeature={hasDummyFeature}
+                    temporalFrontNamespace={temporalFrontNamespace}
+                  />
+                  <WorkspaceAnalyticsButton workspaceId={owner.sId} />
+                  <WorkspacePoolUsageButton workspaceId={owner.sId} />
+                </div>
               </TabsContent>
               <TabsContent value="subscriptions">
                 <ActiveSubscriptionTable
@@ -288,17 +297,17 @@ export function WorkspacePage() {
               <TabsTrigger value="datasources" label="Data Sources" />
               <TabsTrigger value="datasourceviews" label="Data Source Views" />
               <TabsTrigger value="featureflags" label="Feature Flags" />
+              <TabsTrigger value="frames" label="Frames" />
+              <TabsTrigger value="governance" label="Governance" />
               <TabsTrigger value="groups" label="Groups" />
               <TabsTrigger value="mcpviews" label="MCP" />
               <TabsTrigger value="pods" label="Pods" />
               <TabsTrigger value="skills" label="Skills" />
               <TabsTrigger value="spaces" label="Spaces" />
-
               <TabsTrigger value="triggers" label="Triggers" />
               <TabsTrigger value="webhooksources" label="Webhook Sources" />
               <TabsTrigger value="credits" label="API Usage" />
-              {hasMetronomeUsage && <TabsTrigger value="usage" label="Usage" />}
-              <TabsTrigger value="analytics" label="Analytics" />
+              <TabsTrigger value="usage" label="Usage" />
             </TabsList>
 
             <TabsContent value="metadata">
@@ -319,6 +328,9 @@ export function WorkspacePage() {
             </TabsContent>
             <TabsContent value="pods">
               <ProjectsDataTable owner={owner} loadOnInit />
+            </TabsContent>
+            <TabsContent value="frames">
+              <FramesDataTable owner={owner} loadOnInit />
             </TabsContent>
             <TabsContent value="spaces">
               <SpaceDataTable owner={owner} loadOnInit />
@@ -347,8 +359,14 @@ export function WorkspacePage() {
               />
             </TabsContent>
 
+            <TabsContent value="governance">
+              <GovernanceTab
+                owner={owner}
+                workosEnvironmentId={workosEnvironmentId}
+              />
+            </TabsContent>
             <TabsContent value="triggers">
-              <TriggerDataTable owner={owner} loadOnInit />
+              <TriggerDataTable owner={owner} />
             </TabsContent>
             <TabsContent value="webhooksources">
               <WebhookSourceDataTable owner={owner} loadOnInit />
@@ -361,31 +379,29 @@ export function WorkspacePage() {
                 loadOnInit
               />
             </TabsContent>
-            {hasMetronomeUsage && (
-              <TabsContent value="usage">
-                <PokeUsageTab
-                  owner={owner}
-                  subscription={activeSubscription}
-                  stripeSubscription={stripeSubscription}
-                  poolCreditState={poolCreditState}
-                  programmaticCreditState={programmaticCreditState}
-                  programmaticWarningReached={programmaticWarningReached}
-                  creditUsageConfig={creditUsageConfig}
-                  poolAlert={poolAlert}
-                  programmaticAlerts={programmaticAlerts}
-                  usageCapAlert={usageCapAlert}
-                  defaultAlerts={defaultAlerts}
-                />
-              </TabsContent>
-            )}
-            <TabsContent value="analytics">
-              <div className="flex flex-col gap-6">
-                <PokeWorkspaceUsageChart workspaceId={owner.sId} period={30} />
-                <WorkspaceDatasourceRetrievalTreemapPluginChart
-                  workspaceId={owner.sId}
-                  period={30}
-                />
-              </div>
+            <TabsContent value="usage">
+              <PokeUsageTab
+                owner={owner}
+                hasMetronomeBillingUsage={hasMetronomeBillingUsage}
+                subscription={activeSubscription}
+                stripeSubscription={stripeSubscription}
+                poolCreditState={poolCreditState}
+                programmaticRateLimiterState={programmaticRateLimiterState}
+                programmaticSpendLimitRateCapCount={
+                  programmaticSpendLimitRateCapCount
+                }
+                programmaticEsConsumedAwuCredits={
+                  programmaticEsConsumedAwuCredits
+                }
+                programmaticMetronomeConsumedAwuCredits={
+                  programmaticMetronomeConsumedAwuCredits
+                }
+                creditUsageConfig={creditUsageConfig}
+                poolAlert={poolAlert}
+                programmaticAlerts={programmaticAlerts}
+                usageCapAlert={usageCapAlert}
+                defaultAlerts={defaultAlerts}
+              />
             </TabsContent>
           </Tabs>
         </div>

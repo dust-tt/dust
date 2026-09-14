@@ -4,7 +4,10 @@ import {
   isAllowedOrigin,
 } from "@app/config/cors";
 import logger from "@app/logger/logger";
-import { DUST_FILE_ID_HEADER } from "@app/types/files";
+import {
+  DUST_FILE_CONTENT_TYPE_HEADER,
+  DUST_FILE_ID_HEADER,
+} from "@app/types/files";
 import { isDevelopment } from "@app/types/shared/env";
 import type { MiddlewareHandler } from "hono";
 
@@ -14,8 +17,22 @@ const EXPOSE_HEADERS = [
   "WWW-Authenticate",
   "mcp-session-id",
   "mcp-protocol-version",
+  DUST_FILE_CONTENT_TYPE_HEADER,
   DUST_FILE_ID_HEADER,
 ].join(", ");
+
+// The MCP server endpoint authenticates strictly through a Bearer JWT in the
+// Authorization header — it never reads cookies or any other ambient
+// credential. Origin allowlisting therefore protects nothing here (the JWT is
+// the security boundary) while blocking legitimate third-party MCP clients
+// (browser extensions, other apps) that register dynamically via DCR. Serve it
+// as a public, credential-less CORS endpoint: any origin, and crucially no
+// Access-Control-Allow-Credentials (which browsers forbid alongside a wildcard
+// origin anyway, and which is unnecessary since the token is an explicit
+// header, not sent via credentials mode).
+function isPublicMcpPath(path: string): boolean {
+  return path === "/mcp" || path.startsWith("/mcp/");
+}
 
 /**
  * Adds the cross-origin headers expected by browser clients to every
@@ -31,6 +48,27 @@ export const cors: MiddlewareHandler = async (ctx, next) => {
       return ctx.body(null, 200);
     }
     await next();
+    return;
+  }
+
+  // Public, credential-less CORS for the MCP server endpoint (see above).
+  if (isPublicMcpPath(ctx.req.path)) {
+    if (ctx.req.method === "OPTIONS") {
+      const requested = ctx.req.header("access-control-request-headers");
+      return ctx.body(null, 200, {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": ALLOW_METHODS,
+        "Access-Control-Allow-Headers": requested ?? ALLOWED_HEADERS.join(", "),
+        "Access-Control-Expose-Headers": EXPOSE_HEADERS,
+      });
+    }
+
+    await next();
+
+    ctx.header("Access-Control-Allow-Origin", "*");
+    ctx.header("Access-Control-Allow-Methods", ALLOW_METHODS);
+    ctx.header("Access-Control-Allow-Headers", ALLOWED_HEADERS.join(", "));
+    ctx.header("Access-Control-Expose-Headers", EXPOSE_HEADERS);
     return;
   }
 

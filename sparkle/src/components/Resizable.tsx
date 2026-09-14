@@ -16,6 +16,14 @@ const ResizablePanelAnimationContext = React.createContext<{
   setIsDragging: (isDragging: boolean) => void;
 } | null>(null);
 
+/**
+ * A user-resizable split layout built on react-resizable-panels: wraps
+ * ResizablePanel regions separated by draggable ResizableHandle dividers,
+ * with a `direction` of `horizontal` or `vertical`. Use it for split views
+ * the user should rebalance (sidebar plus main area, list/detail); groups can
+ * be nested to create grids of resizable regions.
+ * @summary Resizable split-panel layout group.
+ */
 const ResizablePanelGroup: React.FC<ResizablePanelGroupProps> = ({
   animateLayoutChanges = false,
   className,
@@ -38,6 +46,11 @@ const ResizablePanelGroup: React.FC<ResizablePanelGroupProps> = ({
   );
 };
 
+/**
+ * One resizable region inside a ResizablePanelGroup; size it with
+ * `defaultSize` (a percentage within the group).
+ * @summary Single region of a resizable group.
+ */
 const ResizablePanel = React.forwardRef<
   React.ElementRef<typeof ResizablePrimitive.Panel>,
   React.ComponentPropsWithoutRef<typeof ResizablePrimitive.Panel>
@@ -60,12 +73,17 @@ const ResizablePanel = React.forwardRef<
 });
 ResizablePanel.displayName = "ResizablePanel";
 
+/**
+ * The draggable divider between two ResizablePanel regions.
+ * @summary Draggable divider between panels.
+ */
 const ResizableHandle = ({
   withHandle,
   className,
   onDragging,
   ...props
 }: React.ComponentProps<typeof ResizablePrimitive.PanelResizeHandle> & {
+  /** Render a small visible grip on the divider. */
   withHandle?: boolean;
 }) => {
   const animationContext = React.useContext(ResizablePanelAnimationContext);

@@ -18,13 +18,15 @@ working state for both gate-true and gate-false workspaces.
 - **One PR = one design block** where possible. The page assembles incrementally; until a block
   ships, render a skeleton/`<Spinner />` for that section.
 - **Backend before frontend**: any new endpoint ships in its own PR with a typed handler + test
-  before the UI PR that consumes it. Per `[BACK16]/[BACK18]` keep handlers thin, put logic in
+  before the UI PR that consumes it. Per
+  `[thin-api-handlers]/[transport-independent-business-results]` keep handlers thin, put logic in
   `lib/api/billing/*` returning domain types — never `APIErrorWithStatusCode`.
 - **Don't introduce a feature flag for the page** — the gate is contract-based per the Slack
   decision. Local dev only requires the workspace to lack the `legacy_billing` feature flag
   plus the Poke flip as documented in `overview.md`.
 - **Every PR is reviewable in isolation**: include a 1-2 line `## Tests` section in the PR
-  body matching the template in `AGENTS.local.md`. Use `[TEST1]/[TEST2]` factory-based
+  body matching the template in `AGENTS.local.md`. Use
+  `[functional-endpoint-tests]/[test-setup-through-factories]` factory-based
   functional tests for endpoints; add Vitest unit tests for pure helpers.
 
 ---
@@ -215,7 +217,8 @@ Billing-information block. This is one of the two backend gaps in `overview.md` 
   `@ignoreswagger` since it's private and the public swagger surface is unaffected.
 
 **Tests**
-- Functional test (factory + supertest, per `[TEST1]/[TEST2]`) — admin GET returns shape;
+- Functional test (factory + supertest, per
+  `[functional-endpoint-tests]/[test-setup-through-factories]`) — admin GET returns shape;
   non-admin gets 403; workspace without a Stripe customer gets 404.
 
 **Risk:** Medium. Touches Stripe. Mock Stripe in tests; verify on a real dev workspace
@@ -231,9 +234,11 @@ endpoint at `front/pages/api/stripe/portal.ts`).
 
 **Changes**
 - New SWR hook `useBillingInfo` in `front/lib/swr/billing.ts` following the
-  `[REACT2]` pattern — abstract the GET and the POST-to-portal as colocated hooks.
+  `[network-operations-in-swr-hooks]` pattern — abstract the GET and the POST-to-portal as colocated
+  hooks.
 - New `front/components/pages/workspace/billing/BillingInfoBlock.tsx` — renders the address
-  card and the card-on-file row with two "Change" buttons. Loading state per `[REACT3]`.
+  card and the card-on-file row with two "Change" buttons. Loading state per
+  `[async-network-loading-state]`.
 - Card brand → icon: small map (visa, mastercard, amex, …) or use Sparkle's existing card
   icons if available. If not, fall back to a text label and add icons in a follow-up.
 

@@ -9,7 +9,7 @@ import {
 
 const meta = {
   title: "Foundations/Spacing",
-  tags: ["autodocs"],
+  tags: ["!manifest", "autodocs"],
   decorators: [withThemedSurface],
   parameters: {
     layout: "padded",

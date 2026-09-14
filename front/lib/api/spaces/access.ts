@@ -1,5 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
@@ -21,26 +20,7 @@ export class SpaceAccessCheckError extends Error {
   }
 }
 
-const NO_GROUPS: ReadonlySet<ModelId> = new Set();
-
-/**
- * For each user, the groups they are an active member of among the ones that make `spaces`
- * readable. One query, whatever the number of users and spaces.
- */
-async function listSpaceGroupsByUser(
-  auth: Authenticator,
-  { spaces, users }: { spaces: SpaceResource[]; users: UserResource[] }
-): Promise<Map<ModelId, Set<ModelId>>> {
-  const groupModelIds = [
-    ...new Set(spaces.flatMap((space) => space.groups.map((g) => g.groupId))),
-  ];
-
-  return GroupResource.listGroupModelIdsByUserModelIdInWorkspace({
-    workspace: auth.getNonNullableWorkspace(),
-    userModelIds: users.map((user) => user.id),
-    groupModelIds,
-  });
-}
+const NO_SPACES: ReadonlySet<ModelId> = new Set();
 
 export interface UserWithoutSpaceAccess {
   user: UserResource;
@@ -51,8 +31,8 @@ export interface UserWithoutSpaceAccess {
  * For each of `users`, the spaces among `spaces` they cannot read.
  *
  * Unlike {@link listUsersWithoutAccessToSpaces} this takes already-fetched resources and performs
- * no permission check of its own: it is meant for callers that hold the spaces because they are
- * about to write them (skill requirements, editor lists), and that have established their own
+ * no permission check of its own: it is meant for callers that already hold the spaces (skill
+ * requirements, editor lists, project agent mention checks) and that have established their own
  * access separately. Users are assumed to be active workspace members.
  */
 export async function listUsersWithoutAccessToSpaceResources(
@@ -63,12 +43,15 @@ export async function listUsersWithoutAccessToSpaceResources(
     return [];
   }
 
-  const groupsByUser = await listSpaceGroupsByUser(auth, { spaces, users });
+  const memberSpacesByUser = await SpaceResource.listMemberSpaceModelIdsByUser(
+    auth,
+    { spaces, userModelIds: users.map((user) => user.id) }
+  );
 
   return users.flatMap((user) => {
-    const groupModelIds = groupsByUser.get(user.id) ?? NO_GROUPS;
+    const memberSpaceIds = memberSpacesByUser.get(user.id) ?? NO_SPACES;
     const unreadableSpaces = spaces.filter(
-      (space) => !space.isMemberByGroupModelIds(groupModelIds)
+      (space) => !memberSpaceIds.has(space.id)
     );
 
     return unreadableSpaces.length > 0
@@ -105,7 +88,7 @@ export async function listUsersWithoutAccessToSpaces(
   }
 
   const unauthorizedSpaceIds = spaces
-    .filter((space) => !space.canReadOrAdministrate(auth))
+    .filter((space) => !auth.can("read", space) && !auth.can("admin", space))
     .map((space) => space.sId);
   if (unauthorizedSpaceIds.length > 0) {
     return new Err(
@@ -131,14 +114,11 @@ export async function listUsersWithoutAccessToSpaces(
     (userId) => !workspaceUserIds.has(userId)
   );
 
-  const groupModelIdsByUserModelId = await listSpaceGroupsByUser(auth, {
-    spaces,
-    users: workspaceUsers,
-  });
+  const memberSpacesByUser = await SpaceResource.listMemberSpaceModelIdsByUser(
+    auth,
+    { spaces, userModelIds: workspaceUsers.map((user) => user.id) }
+  );
 
-  // A user belong to multiple groups
-  // A space has multiple group of readers
-  // We must check if they intercept or not to know if a user has access.
   return new Ok(
     spaces.map((space) => ({
       spaceId: space.sId,
@@ -147,9 +127,7 @@ export async function listUsersWithoutAccessToSpaces(
         ...workspaceUsers
           .filter(
             (user) =>
-              !space.isMemberByGroupModelIds(
-                groupModelIdsByUserModelId.get(user.id) ?? NO_GROUPS
-              )
+              !(memberSpacesByUser.get(user.id) ?? NO_SPACES).has(space.id)
           )
           .map((user) => user.sId),
       ],

@@ -1,6 +1,6 @@
+import { checkUserCellAffinity } from "@app/lib/api/cells/lookup";
 import type { PluginResponse } from "@app/lib/api/poke/types";
 import { createPlugin } from "@app/lib/api/poke/types";
-import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import {
   addWorkOSOrganizationDomain,
   getOrCreateWorkOSOrganization,
@@ -37,17 +37,17 @@ async function handleAddDomain(
     );
   }
 
-  // Check if domain is whitelisted in any other region.
-  const affinityRes = await checkUserRegionAffinity({
+  // Check if domain is whitelisted in any other cell.
+  const affinityRes = await checkUserCellAffinity({
     email: `email@${domain}`,
     email_verified: true,
   });
   if (affinityRes.isErr()) {
-    return new Err(new Error("Cannot check domain in other region."));
-  } else if (affinityRes.value.hasAffinity) {
+    return new Err(new Error("Cannot check domain in other cell."));
+  } else if (affinityRes.value) {
     return new Err(
       new Error(
-        `This domain is already authorized in region ${affinityRes.value.region}.`
+        `This domain is already authorized in cell ${affinityRes.value.name}.`
       )
     );
   }

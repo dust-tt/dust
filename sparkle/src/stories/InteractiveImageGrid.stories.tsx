@@ -3,11 +3,9 @@ import React from "react";
 
 import { InteractiveImageGrid } from "@sparkle/components/InteractiveImageGrid";
 
-import { Citation } from "../index_with_tw_base";
-
 const meta = {
-  title: "Product/Conversation/InteractiveImage",
-  component: Citation,
+  title: "Product/Conversation/InteractiveImageGrid",
+  component: InteractiveImageGrid,
   parameters: {
     docs: {
       description: {
@@ -23,7 +21,7 @@ const meta = {
       },
     },
   },
-} satisfies Meta<typeof Citation>;
+} satisfies Meta<typeof InteractiveImageGrid>;
 
 export default meta;
 
@@ -71,59 +69,78 @@ const images = [
   },
 ];
 
-export const InteractiveImageExample = () => (
-  <div className="flex flex-col gap-8">
-    <div className="w-[700px]">
-      <h2>Interactive Image Grid</h2>
-      <InteractiveImageGrid images={images} />
-    </div>
-    <div className="w-[300px]">
-      <h2>Interactive Image Grid with small width</h2>
-      <InteractiveImageGrid images={images} />
-    </div>
-    <div className="w-[700px]">
-      <h2>Interactive Image Grid with 1 image</h2>
-      <InteractiveImageGrid images={images.slice(1, 2)} />
-    </div>
-    <div className="w-[700px]">
-      <h2>Interactive Image Grid with 1 image (loading)</h2>
-      <InteractiveImageGrid images={images.slice(0, 1)} />
-    </div>
+/**
+ * Several images arranged into the adaptive grid; the column layout adjusts
+ * to the container width and image count.
+ *
+ * @summary Multi-image adaptive grid.
+ */
+export const MultipleImages = () => (
+  <div className="w-[700px]">
+    <InteractiveImageGrid images={images} />
   </div>
 );
 
-export const InteractiveImageWithRemove = () => {
+/**
+ * The same image set in a narrow container — the grid reflows its columns
+ * to fit.
+ *
+ * @summary Grid reflow in a narrow container.
+ */
+export const NarrowContainer = () => (
+  <div className="w-[300px]">
+    <InteractiveImageGrid images={images} />
+  </div>
+);
+
+/**
+ * A single loaded image; hovering reveals the download affordance when a
+ * `downloadUrl` is provided.
+ *
+ * @summary Single image with download on hover.
+ */
+export const SingleImage = () => (
+  <div className="w-[700px]">
+    <InteractiveImageGrid images={images.slice(1, 2)} />
+  </div>
+);
+
+/**
+ * An image still being generated: set `isLoading` on the entry to render a
+ * placeholder tile.
+ *
+ * @summary Loading placeholder for a pending image.
+ */
+export const LoadingImage = () => (
+  <div className="w-[700px]">
+    <InteractiveImageGrid images={images.slice(0, 1)} />
+  </div>
+);
+
+/**
+ * Passing `onClose` swaps the hover affordance from download to remove
+ * (an X button). The removed/reset state here is story scaffolding so the
+ * interaction can be replayed.
+ *
+ * @summary Removable image via the onClose callback.
+ */
+export const RemovableImage = () => {
   const [removed, setRemoved] = React.useState(false);
 
-  return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h2 className="mb-2">
-          With onClose callback (hover to see X button, no download button)
-        </h2>
-        {removed ? (
-          <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-            Removed!
-            <button
-              className="ml-2 text-primary-600 underline"
-              onClick={() => setRemoved(false)}
-            >
-              Reset
-            </button>
-          </div>
-        ) : (
-          <InteractiveImageGrid
-            images={images.slice(1, 2)}
-            onClose={() => setRemoved(true)}
-          />
-        )}
-      </div>
-      <div>
-        <h2 className="mb-2">
-          Without onClose (hover to see download button, no X button)
-        </h2>
-        <InteractiveImageGrid images={images.slice(1, 2)} />
-      </div>
+  return removed ? (
+    <div className="flex h-24 items-center justify-center gap-2 rounded-2xl bg-muted px-4 text-muted-foreground">
+      Removed
+      <button
+        className="text-primary-600 underline"
+        onClick={() => setRemoved(false)}
+      >
+        Reset
+      </button>
     </div>
+  ) : (
+    <InteractiveImageGrid
+      images={images.slice(1, 2)}
+      onClose={() => setRemoved(true)}
+    />
   );
 };

@@ -1,0 +1,15 @@
+{
+  "action": "webhook_source.deleted",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "webhook_source"
+    }
+  ],
+  "metadata": {
+    "provider": "string",
+    "actor_type": "string"
+  }
+}

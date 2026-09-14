@@ -14,8 +14,6 @@ interface LLMTraceContextBase {
   /** Type of operation that triggered the LLM call */
   operationType:
     | "agent_builder_description_suggestion"
-    | "project_task_analyze_document"
-    | "project_task_deduplicate_candidates"
     | "agent_builder_emoji_suggestion"
     | "agent_builder_name_suggestion"
     | "agent_builder_similar_agents_checker"
@@ -43,17 +41,18 @@ interface LLMTraceContextBase {
 
   workspaceId?: string;
   /** User who triggered the operation */
-  userId?: string;
+  userId?: string | null;
   /**
    * Origin of the triggering user message, set for agent_conversation calls.
-   * Used to classify free (unbilled) usage at the LLM call site.
+   * Used to classify usage as free, user, or programmatic at the LLM call site.
    */
   userMessageOrigin?: UserMessageOrigin;
+  userMessageAuthMethod?: string | null;
 }
 
 export type LLMTraceContext = LLMTraceContextBase & {
   /** Additional context fields for tagging - MUST be camelCase (no underscores, starts lowercase) */
-  [key: string]: string | undefined;
+  [key: string]: string | null | undefined;
 };
 
 export interface LLMTraceCustomization {
@@ -117,6 +116,7 @@ interface LLMTraceMetadata {
   modelId: ModelIdType | "unknown";
   startTimestamp: string;
   timeToFirstEventMs?: number;
+  timeToFirstTokenMs?: number;
   /** Reason for truncation if applicable */
   truncationReason?: string;
 }

@@ -1,16 +1,22 @@
 import { GroupModelTierPickerDropdown } from "@app/components/workspace/GroupModelTierPickerDropdown";
+import { GroupSpendLimitCell } from "@app/components/workspace/GroupSpendLimitCell";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import { useGroups, useUpdateGroupSpendLimit } from "@app/lib/swr/groups";
-import type { GroupSpendLimit } from "@app/types/api/groups/spend_limit";
 import { CAP_ELIGIBLE_GROUP_KINDS } from "@app/types/groups";
 import type { LightWorkspaceType } from "@app/types/user";
-import { DataTable, InputWithSave, Spinner, Users01 } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
+import {
+  DataTable,
+  DataTableSkeleton,
+  LoadingBlock,
+  Users01,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 interface GroupsUsageTableProps {
   owner: LightWorkspaceType;
-  readOnly: boolean;
+  showSpendLimitColumn?: boolean;
   showModelTiersColumn?: boolean;
 }
 
@@ -24,59 +30,29 @@ type GroupRowData = {
 
 type GroupInfo = CellContext<GroupRowData, string>;
 
-interface GroupCapCellProps {
-  group: GroupRowData;
-  readOnly: boolean;
-  onSave: (group: GroupRowData, limit: GroupSpendLimit) => Promise<void>;
-}
-
-// Per-row editable cap cell. Empty input clears the cap (unlimited); 0 blocks
-// the group's pool access; a positive integer sets a custom limit. Reverts to
-// the current value when nothing is persisted.
-function GroupCapCell({ group, readOnly, onSave }: GroupCapCellProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const current = group.poolCapAwuCredits;
-
-  const handleSave = async (newValue: string) => {
-    const trimmed = newValue.trim();
-    if (trimmed === "") {
-      if (current === null) {
-        return;
-      }
-      await onSave(group, { kind: "unlimited" });
-      return;
-    }
-    const parsed = Number(trimmed);
-    if (!Number.isInteger(parsed) || parsed < 0 || parsed === current) {
-      return;
-    }
-    await onSave(group, { kind: "limited", awuCredits: parsed });
-  };
-
-  return (
-    <div className="w-60">
-      <InputWithSave
-        inputMode="numeric"
-        pattern="[0-9]*"
-        placeholder="No limit"
-        value={current === null ? "" : current.toLocaleString()}
-        unit={current === null && !isEditing ? undefined : "credits/month"}
-        normalizeValue={(value) => value.replace(/[^\d]/g, "")}
-        formatValue={(value) =>
-          value ? Number(value).toLocaleString() : value
-        }
-        onSave={handleSave}
-        onFocus={() => setIsEditing(true)}
-        onBlur={() => setIsEditing(false)}
-        disabled={readOnly}
-      />
-    </div>
-  );
+function GroupUsageSkeletonCell({ columnId }: DataTableSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return (
+        <div className="flex items-center gap-2">
+          <LoadingBlock className="h-5 w-5 shrink-0" />
+          <LoadingBlock className="h-3 w-28 max-w-full" />
+        </div>
+      );
+    case "memberCount":
+      return <LoadingBlock className="h-3 w-8" />;
+    case "cap":
+      return <LoadingBlock className="h-8 w-60 rounded-xl" />;
+    case "modelTiers":
+      return <LoadingBlock className="h-8 w-48 rounded-xl" />;
+    default:
+      return null;
+  }
 }
 
 export function GroupsUsageTable({
   owner,
-  readOnly,
+  showSpendLimitColumn = true,
   showModelTiersColumn = false,
 }: GroupsUsageTableProps) {
   const { groups, isGroupsLoading } = useGroups({
@@ -123,25 +99,28 @@ export function GroupsUsageTable({
         ),
         enableSorting: false,
       },
-      {
-        id: "cap",
-        header: "Spend limit",
-        meta: { className: "w-64" },
-        cell: (info: GroupInfo) => (
-          <GroupCapCell
-            group={info.row.original}
-            readOnly={readOnly}
-            onSave={async (group, limit) => {
-              await doUpdateGroupSpendLimit({
-                groupId: group.groupId,
-                groupName: group.name,
-                limit,
-              });
-            }}
-          />
-        ),
-        enableSorting: false,
-      },
+      ...(showSpendLimitColumn
+        ? [
+            {
+              id: "cap",
+              header: "Spend limit",
+              meta: { className: "hidden @3xl:table-cell @3xl:w-64" },
+              cell: (info: GroupInfo) => (
+                <GroupSpendLimitCell
+                  group={info.row.original}
+                  onSave={async (group, limit) => {
+                    await doUpdateGroupSpendLimit({
+                      groupId: group.groupId,
+                      groupName: group.name,
+                      limit,
+                    });
+                  }}
+                />
+              ),
+              enableSorting: false,
+            } satisfies ColumnDef<GroupRowData, string>,
+          ]
+        : []),
       ...(showModelTiersColumn
         ? [
             {
@@ -152,12 +131,11 @@ export function GroupsUsageTable({
                   <ModelTiersInfoButton />
                 </span>
               ),
-              meta: { className: "w-64" },
+              meta: { className: "hidden @2xl:table-cell @2xl:w-64" },
               cell: (info: GroupInfo) => (
                 <GroupModelTierPickerDropdown
                   owner={owner}
                   groupId={info.row.original.groupId}
-                  readOnly={readOnly}
                 />
               ),
               enableSorting: false,
@@ -165,29 +143,26 @@ export function GroupsUsageTable({
           ]
         : []),
     ],
-    [owner, readOnly, showModelTiersColumn, doUpdateGroupSpendLimit]
+    [owner, showSpendLimitColumn, showModelTiersColumn, doUpdateGroupSpendLimit]
   );
-
-  if (isGroupsLoading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-3">
-      <span className="copy-sm text-muted-foreground">
-        A group's monthly spend limit applies to each of its members. When a
-        member belongs to several groups, the highest limit is used.
-      </span>
-      <DataTable
-        filterColumn="name"
-        data={rows}
-        columns={columns}
-        columnsBreakpoints={{ name: "md" }}
-      />
+      {showSpendLimitColumn && (
+        <span className="copy-sm text-muted-foreground">
+          A group's monthly spend limit applies to each of its members. When a
+          member belongs to several groups, the highest limit is used.
+        </span>
+      )}
+      {isGroupsLoading ? (
+        <DataTableSkeleton
+          columns={columns}
+          SkeletonCell={GroupUsageSkeletonCell}
+          rowHeight={49}
+        />
+      ) : (
+        <DataTable filterColumn="name" data={rows} columns={columns} />
+      )}
     </div>
   );
 }

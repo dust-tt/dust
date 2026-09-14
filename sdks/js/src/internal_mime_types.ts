@@ -122,7 +122,8 @@ export const CONTENT_NODE_MIME_TYPES = {
     // Spreadsheets may contain many sheets, thus resemble folders and are
     // stored as such, but with the special mimeType below.
     // For files and sheets, we keep Microsoft's mime types.
-    resourceTypes: ["FOLDER", "SPREADSHEET"],
+    // LIST is a SharePoint list synced as a structured table.
+    resourceTypes: ["FOLDER", "SPREADSHEET", "LIST"],
   }),
   NOTION: generateConnectorRelativeMimeTypes({
     provider: "notion",

@@ -1,10 +1,16 @@
 import { listConsumptionFacetCatalogDimension } from "@app/lib/api/analytics/consumption/facet_catalog";
 import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/labels";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import {
+  fetchConsumptionTopGroups as fetchConsumptionTopGroupBuckets,
+  resolveConsumptionGroupLabels,
+} from "@app/lib/api/analytics/consumption/top";
 import { fetchConsumptionTopAgents } from "@app/lib/api/analytics/consumption/top_agents";
 import { fetchConsumptionTopApiKeys } from "@app/lib/api/analytics/consumption/top_api_keys";
+import { fetchConsumptionTopConversations } from "@app/lib/api/analytics/consumption/top_conversations";
 import { fetchConsumptionTopGroups } from "@app/lib/api/analytics/consumption/top_groups";
 import { fetchConsumptionTopModels } from "@app/lib/api/analytics/consumption/top_models";
+import { fetchConsumptionTopReasoningEfforts } from "@app/lib/api/analytics/consumption/top_reasoning_efforts";
 import { fetchConsumptionTopSkills } from "@app/lib/api/analytics/consumption/top_skills";
 import { fetchConsumptionTopSources } from "@app/lib/api/analytics/consumption/top_sources";
 import { fetchConsumptionTopTools } from "@app/lib/api/analytics/consumption/top_tools";
@@ -14,6 +20,7 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
+import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -51,11 +58,13 @@ function mockAggs({
   buckets,
   totalCount = buckets.length,
   totalMicro,
+  totalActiveMembers = 0,
   filtered = false,
 }: {
   buckets: Array<Record<string, unknown> & { key: string }>;
   totalCount?: number;
   totalMicro: number;
+  totalActiveMembers?: number;
   filtered?: boolean;
 }) {
   vi.mocked(searchConsumptionAnalytics).mockImplementation(
@@ -82,6 +91,7 @@ function mockAggs({
       return esResponse({
         ...(filtered ? { ranking } : ranking),
         total_credit_micro: { value: totalMicro },
+        active_members: { value: totalActiveMembers },
       });
     }
   );
@@ -182,14 +192,14 @@ describe("consumption top rankings", () => {
       },
     ]);
 
-    // Ranked on agent.id by gross credits, with a per-message cardinality
-    // sub-agg — a message spans several documents.
+    // Ranked on the attributed agent by gross credits, with a per-message cardinality
+    // sub-aggregation because a message spans several documents.
     const [query, options] = rankingSearchCall();
     expect(query.bool?.filter).toContainEqual({
       range: { completed_at: { gte: PERIOD.startDate, lt: PERIOD.endDate } },
     });
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
-      field: "agent.id",
+      field: "agent.attributed_id",
       size: 10,
       order: { credit_micro: "desc" },
     });
@@ -203,7 +213,7 @@ describe("consumption top rankings", () => {
       "credit_micro"
     );
     expect(options?.aggregations?.total_count?.cardinality).toEqual({
-      field: "agent.id",
+      field: "agent.attributed_id",
       precision_threshold: 40_000,
     });
     expect(options?.aggregations?.ranking).toBeUndefined();
@@ -253,12 +263,26 @@ describe("consumption top rankings", () => {
   });
 
   it.each([
-    ["AGENT 080", { terms: { "agent.id": ["agent80"] } }],
-    ["missing", { match_none: {} }],
-  ])("filters the ranking for search %s", async (search, expectedFilter) => {
+    [
+      "AGENT 080",
+      "Pagination Agent 080",
+      { terms: { "agent.attributed_id": ["agent80"] } },
+    ],
+    [
+      "developpeur",
+      "Développeur",
+      { terms: { "agent.attributed_id": ["agent80"] } },
+    ],
+    [
+      "développeur",
+      "Developpeur",
+      { terms: { "agent.attributed_id": ["agent80"] } },
+    ],
+    ["missing", "Pagination Agent 080", { match_none: {} }],
+  ])("filters the ranking for search %s", async (search, label, expectedFilter) => {
     const { auth } = await setup();
     vi.mocked(listConsumptionFacetCatalogDimension).mockResolvedValue([
-      { value: "agent80", label: "Pagination Agent 080", pictureUrl: null },
+      { value: "agent80", label, pictureUrl: null },
     ]);
     mockLabels({});
     mockAggs({
@@ -321,11 +345,13 @@ describe("consumption top rankings", () => {
     }
 
     expect(termsClauses).toHaveLength(2);
-    expect(termsClauses[0]?.terms?.["agent.id"]).toHaveLength(65_536);
-    expect(termsClauses[1]?.terms?.["agent.id"]).toHaveLength(1);
+    expect(termsClauses[0]?.terms?.["agent.attributed_id"]).toHaveLength(
+      65_536
+    );
+    expect(termsClauses[1]?.terms?.["agent.attributed_id"]).toHaveLength(1);
   });
 
-  it("counts tool invocations as documents, with no message sub-agg", async () => {
+  it("filters skill management from the tool response", async () => {
     const { auth } = await setup();
     vi.mocked(resolveDimensionLabels).mockResolvedValue(
       new Map([
@@ -343,11 +369,17 @@ describe("consumption top rankings", () => {
     mockAggs({
       buckets: [
         {
+          key: "skill_management",
+          doc_count: 5,
+          credit_micro: { value: 3_000_000 },
+        },
+        {
           key: "web_search_browse",
           doc_count: 4,
           credit_micro: { value: 2_000_000 },
         },
       ],
+      totalCount: 2,
       totalMicro: 10_000_000,
     });
 
@@ -372,10 +404,17 @@ describe("consumption top rankings", () => {
         avgCreditsPerInvocation: 0.5,
       },
     ]);
-    // The tools are a slice of the period, not all of it.
-    expect(result.value.totalCredits).toBe(10);
+    // Only the hidden tool's credits are removed from the share denominator.
+    expect(result.value.totalCredits).toBe(7);
 
-    const [, options] = lastSearchCall();
+    const [query] = rankingSearchCall();
+    expect(query.bool?.filter).not.toContainEqual({
+      bool: {
+        must_not: [{ terms: { "tool.server_name": ["skill_management"] } }],
+      },
+    });
+
+    const [, options] = rankingSearchCall();
     expect(options?.aggregations?.by_group?.terms).toMatchObject({
       field: "tool.server_name",
     });
@@ -507,9 +546,11 @@ describe("consumption top rankings", () => {
           doc_count: 6,
           credit_micro: { value: 2_000_000 },
           messages: { value: 4 },
+          active_members: { value: 2 },
         },
       ],
       totalMicro: 2_000_000,
+      totalActiveMembers: 3,
     });
 
     mockLabels({ key1: "Jane Doe" });
@@ -534,7 +575,20 @@ describe("consumption top rankings", () => {
       field: "user.id",
     });
 
-    mockLabels({ key1: "Engineering" });
+    vi.mocked(searchConsumptionAnalytics).mockClear();
+    vi.mocked(resolveDimensionLabels).mockResolvedValue(
+      new Map([
+        [
+          "key1",
+          {
+            name: "Engineering",
+            pictureUrl: null,
+            description: null,
+            memberCount: 5,
+          },
+        ],
+      ])
+    );
     const groups = await fetchConsumptionTopGroups(auth, {
       period: PERIOD,
       limit: 10,
@@ -547,13 +601,24 @@ describe("consumption top rankings", () => {
       groupId: "key1",
       name: "Engineering",
       credits: 2,
+      activeMembers: 2,
+      totalMembers: 5,
       previousCredits: 2,
       messageCount: 4,
       avgCreditsPerMessage: 0.5,
     });
-    expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
+    expect(groups.value.totalActiveMembers).toBe(3);
+    const [, groupRankingOptions] = rankingSearchCall();
+    expect(groupRankingOptions?.aggregations?.by_group?.terms).toMatchObject({
       field: "user.group_ids",
     });
+    expect(
+      groupRankingOptions?.aggregations?.by_group?.aggs?.active_members
+        ?.cardinality
+    ).toMatchObject({ field: "user.id" });
+    expect(
+      groupRankingOptions?.aggregations?.active_members?.cardinality
+    ).toMatchObject({ field: "user.id" });
 
     mockLabels({ key1: "Claude 4 Sonnet" });
     const models = await fetchConsumptionTopModels(auth, {
@@ -575,6 +640,52 @@ describe("consumption top rankings", () => {
     expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
       field: "model.model_id",
     });
+  });
+
+  it("ranks reasoning efforts per message for the selected model", async () => {
+    const { auth } = await setup();
+    mockAggs({
+      buckets: [
+        {
+          key: "medium",
+          doc_count: 6,
+          credit_micro: { value: 2_000_000 },
+          messages: { value: 4 },
+        },
+      ],
+      totalMicro: 2_000_000,
+    });
+
+    const result = await fetchConsumptionTopReasoningEfforts(auth, {
+      period: PERIOD,
+      limit: 3,
+      filter: { models: ["claude-sonnet-4-6"] },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.reasoningEfforts).toEqual([
+      {
+        reasoningEffort: "medium",
+        name: "Medium",
+        credits: 2,
+        previousCredits: 2,
+        messageCount: 4,
+        avgCreditsPerMessage: 0.5,
+      },
+    ]);
+    const [query, options] = rankingSearchCall();
+    expect(query.bool?.filter).toContainEqual({
+      term: { "model.model_id": "claude-sonnet-4-6" },
+    });
+    expect(options?.aggregations?.by_group?.terms).toMatchObject({
+      field: "model.reasoning_effort",
+    });
+    expect(
+      options?.aggregations?.by_group?.aggs?.messages?.cardinality?.field
+    ).toBe("agent_message_id");
   });
 
   it("keys sources on the raw context origin so the row can be filtered on", async () => {
@@ -612,6 +723,56 @@ describe("consumption top rankings", () => {
     expect(lastSearchCall()[1]?.aggregations?.by_group?.terms).toMatchObject({
       field: "normalized_origin",
     });
+  });
+
+  it("ranks deleted conversations from the consumption index", async () => {
+    const { auth } = await setup();
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: "unused",
+      messagesCreatedAt: [],
+      visibility: "deleted",
+    });
+    mockAggs({
+      buckets: [
+        {
+          key: conversation.sId,
+          doc_count: 4,
+          credit_micro: { value: 6_000_000 },
+          messages: { value: 2 },
+        },
+      ],
+      totalMicro: 6_000_000,
+    });
+
+    const result = await fetchConsumptionTopConversations(auth, {
+      period: PERIOD,
+      limit: 10,
+      filter: { users: ["user1"] },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (!result.isOk()) {
+      return;
+    }
+    expect(result.value.conversations).toEqual([
+      {
+        conversationId: conversation.sId,
+        title: "Test Conversation",
+        totalCredits: 6,
+      },
+    ]);
+
+    const [query, options] = rankingSearchCall();
+    expect(query.bool?.filter).toContainEqual({
+      term: { "user.id": "user1" },
+    });
+    expect(options?.aggregations?.by_group?.terms).toMatchObject({
+      field: "conversation_id",
+      order: { credit_micro: "desc" },
+    });
+    expect(
+      options?.aggregations?.by_group?.aggs?.messages?.cardinality?.field
+    ).toBe("agent_message_id");
   });
 
   it("narrows the scope with the requested filter", async () => {
@@ -728,5 +889,147 @@ describe("consumption top rankings", () => {
     }
     expect(result.value.agents[0].credits).toBe(3);
     expect(result.value.agents[0].previousCredits).toBeNull();
+  });
+
+  it("ranks ascending when sortOrder is asc", async () => {
+    const { auth } = await setup();
+    mockLabels({ agent1: "@dust" });
+    mockAggs({
+      buckets: [
+        {
+          key: "agent1",
+          doc_count: 1,
+          credit_micro: { value: 3_000_000 },
+          messages: { value: 1 },
+        },
+      ],
+      totalMicro: 3_000_000,
+    });
+
+    const result = await fetchConsumptionTopAgents(auth, {
+      period: PERIOD,
+      limit: 10,
+      sortOrder: "asc",
+    });
+
+    expect(result.isOk()).toBe(true);
+
+    const [, options] = rankingSearchCall();
+    expect(options?.aggregations?.by_group?.terms).toMatchObject({
+      order: { credit_micro: "asc" },
+    });
+  });
+});
+
+describe("fetchConsumptionTopGroups options", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it.each([
+    {
+      name: "credits sort on the credit sum",
+      dimension: "agent" as const,
+      rankBy: "credits" as const,
+      order: { credit_micro: "desc" },
+    },
+    {
+      name: "a message dimension counted sorts on distinct messages",
+      dimension: "agent" as const,
+      rankBy: "count" as const,
+      order: { messages: "desc" },
+    },
+    {
+      name: "an invocation dimension counted sorts on the bucket's own docs",
+      dimension: "tool" as const,
+      rankBy: "count" as const,
+      order: { _count: "desc" },
+    },
+  ])("$name", async ({ dimension, rankBy, order }) => {
+    const { auth } = await setup();
+    mockAggs({ buckets: [], totalMicro: 0 });
+
+    await fetchConsumptionTopGroupBuckets(auth, {
+      dimension,
+      period: PERIOD,
+      limit: 5,
+      rankBy,
+      includePreviousCredits: false,
+    });
+
+    const [, options] = lastSearchCall();
+    expect(options?.aggregations?.by_group?.terms).toMatchObject({ order });
+  });
+
+  it("skips the previous-period search when the caller opts out", async () => {
+    const { auth } = await setup();
+    mockAggs({
+      buckets: [{ key: "a", credit_micro: { value: 1 } }],
+      totalMicro: 1,
+    });
+
+    await fetchConsumptionTopGroupBuckets(auth, {
+      dimension: "agent",
+      period: PERIOD,
+      limit: 5,
+      includePreviousCredits: false,
+    });
+
+    expect(vi.mocked(searchConsumptionAnalytics)).toHaveBeenCalledTimes(1);
+  });
+
+  it("scopes on the tags filter key", async () => {
+    const { auth } = await setup();
+    mockAggs({ buckets: [], totalMicro: 0 });
+
+    await fetchConsumptionTopGroupBuckets(auth, {
+      dimension: "agent",
+      period: PERIOD,
+      limit: 5,
+      filter: { tags: ["tag_1"] },
+      includePreviousCredits: false,
+    });
+
+    const [query] = lastSearchCall();
+    expect(query.bool?.filter).toContainEqual({
+      term: { "agent.tag_ids": "tag_1" },
+    });
+  });
+});
+
+describe("resolveConsumptionGroupLabels", () => {
+  it("drops a conversation row resolveDimensionLabels omitted, rather than falling back to its id", async () => {
+    const { auth } = await setup();
+    mockLabels({ readable_conversation: "Readable" });
+
+    const rows = await resolveConsumptionGroupLabels(auth, "conversation", [
+      {
+        key: "private_conversation",
+        credits: 12,
+        count: 3,
+        previousCredits: null,
+      },
+      {
+        key: "readable_conversation",
+        credits: 4,
+        count: 1,
+        previousCredits: null,
+      },
+    ]);
+
+    expect(rows.map((row) => row.key)).toEqual(["readable_conversation"]);
+  });
+
+  it("falls back to the raw key for every other dimension", async () => {
+    const { auth } = await setup();
+    mockLabels({});
+
+    const rows = await resolveConsumptionGroupLabels(auth, "model", [
+      { key: "deleted-model", credits: 4, count: 1, previousCredits: null },
+    ]);
+
+    expect(rows).toEqual([
+      expect.objectContaining({ key: "deleted-model", name: "deleted-model" }),
+    ]);
   });
 });

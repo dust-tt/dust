@@ -211,7 +211,8 @@ export function PodConversationsTab({
                   podInfo.archivedAt && "text-muted-foreground"
                 )}
               >
-                {podInfo.name} - {greeting}
+                {podInfo.name}{" "}
+                <span className="text-muted-foreground">- {greeting}</span>
               </h2>
               {podInfo.archivedAt && (
                 <Chip size="xs" color="warning" label="Archived" />
@@ -233,7 +234,6 @@ export function PodConversationsTab({
                 space={podInfo}
                 disableAutoFocus={false}
                 isFloating={false}
-                placeholder={`Get work done...`}
                 defaultAgentId={defaultAgentId}
                 isDefaultAgentLoading={isPodMetadataLoading}
                 defaultSkills={defaultSkills}
@@ -298,7 +298,7 @@ export function PodConversationsTab({
                   <Button
                     size="sm"
                     variant="outline"
-                    icon={hideTriggeredConversations ? Zap : ZapOff}
+                    icon={hideTriggeredConversations ? ZapOff : Zap}
                     tooltip={
                       hideTriggeredConversations
                         ? "Show triggered"

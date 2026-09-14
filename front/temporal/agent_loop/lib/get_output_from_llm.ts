@@ -8,8 +8,11 @@ import type { LLM } from "@app/lib/api/llm/llm";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import { config as regionsConfig } from "@app/lib/api/regions/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { getShutdownSignal } from "@app/lib/shutdown_signal";
+import { classifyTemporalAbortReason } from "@app/lib/temporal/cancellation";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
+import { makeModelInterruptionError } from "@app/temporal/agent_loop/lib/run_model_errors";
 import type {
   GetOutputRequestParams,
   GetOutputResponse,
@@ -26,6 +29,9 @@ const HEARTBEAT_LOG_INTERVAL = 6; // Every minute (6 * 10s)
 // Timeout for waiting on a single LLM event (first or subsequent).
 const LLM_EVENT_TIMEOUT_MINUTES = 2;
 const LLM_EVENT_TIMEOUT_MS = LLM_EVENT_TIMEOUT_MINUTES * 60 * 1000;
+// Bound on waiting for the stream to close on early exit: exit paths that must report quickly
+// (worker shutdown has ~10s before SIGKILL) cannot wait on a stalled provider read.
+const STREAM_CLEANUP_TIMEOUT_MS = 2_000;
 type LLMStreamTimeoutKind = "activity" | "event";
 
 export function resolveStableToolCallName(
@@ -88,13 +94,15 @@ function makeLLMTimeoutResponse(kind: LLMStreamTimeoutKind): GetOutputResponse {
           ? "The agent step hit its time budget before the model response completed"
           : `LLM stream timeout after ${LLM_EVENT_TIMEOUT_MINUTES} minutes waiting for event`,
       isRetryable: true,
+      errorSource: "dust",
     },
   });
 }
 
 // Wraps an async iterator and ensures heartbeat() is called at regular intervals
 // even when the source is slow to yield values.
-async function* withPeriodicHeartbeat<T>(
+// Exported for tests.
+export async function* withPeriodicHeartbeat<T>(
   stream: AsyncIterator<T>,
   activityTimeoutDeadlineMs: number,
   logContext?: {
@@ -112,8 +120,26 @@ async function* withPeriodicHeartbeat<T>(
 
   let heartbeatTimer: NodeJS.Timeout | undefined;
 
+  // The pod shutdown signal aborts 10s before the termination grace period ends, while
+  // Temporal's own WORKER_SHUTDOWN cancellation only fires at grace expiry, together with
+  // SIGKILL, too late to report anything. Raced against the stream below so a shutdown is
+  // detected immediately, not at the next event or heartbeat tick, and the retryable failure
+  // can be reported while the pod can still talk to Temporal.
+  const shutdownSignal = getShutdownSignal();
+  let onShutdownAbort: (() => void) | undefined;
+  const shutdownPromise = new Promise<{ type: "shutdown" }>((resolve) => {
+    onShutdownAbort = () => resolve({ type: "shutdown" as const });
+    shutdownSignal.addEventListener("abort", onShutdownAbort, { once: true });
+  });
+
   try {
     while (!streamExhausted) {
+      // The abort listener above never fires for a signal that aborted before this generator
+      // started: cover it here.
+      if (shutdownSignal.aborted) {
+        throw makeModelInterruptionError();
+      }
+
       const remainingActivityTimeMs = activityTimeoutDeadlineMs - Date.now();
 
       if (remainingActivityTimeMs <= 0) {
@@ -145,10 +171,15 @@ async function* withPeriodicHeartbeat<T>(
             Math.min(LLM_HEARTBEAT_INTERVAL_MS, remainingActivityTimeMs)
           );
         }),
+        shutdownPromise,
       ]);
 
       // Clear the heartbeat timer if the stream event won the race.
       clearTimeout(heartbeatTimer);
+
+      if (result.type === "shutdown") {
+        throw makeModelInterruptionError();
+      }
 
       heartbeat();
 
@@ -221,16 +252,30 @@ async function* withPeriodicHeartbeat<T>(
     // Clear any pending heartbeat timer to prevent leaked closures.
     clearTimeout(heartbeatTimer);
 
-    // Ensure the underlying stream is closed on early exit (timeout, error, or break).
-    // This aborts the HTTP connection to the LLM provider.
-    // Wrapped in try/catch to avoid masking the original error if cleanup fails.
-    try {
-      await stream.return?.();
-    } catch (cleanupError) {
+    if (onShutdownAbort) {
+      shutdownSignal.removeEventListener("abort", onShutdownAbort);
+    }
+
+    // Ensure the underlying stream is closed on early exit (timeout, error, worker shutdown, or
+    // break). This aborts the HTTP connection to the LLM provider. An async generator's return()
+    // queues behind an in-flight next(), so a stalled provider read would block this await
+    // indefinitely: bound it and abandon the stream if it does not settle. The pending read
+    // keeps the connection until it settles or the process exits.
+    const cleanupPromise = stream.return?.()?.catch((cleanupError) => {
       logger.warn(
         { err: cleanupError, ...logContext },
         "[LLM stream] cleanup error"
       );
+    });
+    if (cleanupPromise) {
+      let cleanupTimer: NodeJS.Timeout | undefined;
+      await Promise.race([
+        cleanupPromise,
+        new Promise<void>((resolve) => {
+          cleanupTimer = setTimeout(resolve, STREAM_CLEANUP_TIMEOUT_MS);
+        }),
+      ]);
+      clearTimeout(cleanupTimer);
     }
   }
 }
@@ -242,7 +287,6 @@ export async function getOutputFromLLMStream(
     conversation,
     toolSearchEnabled,
     disableToolUse,
-    cacheDiagnosticsEnabled,
     specifications,
     flushParserTokens,
     contentParser,
@@ -279,16 +323,14 @@ export async function getOutputFromLLMStream(
   // Prompt-cache diagnostics: thread the previous step's response id so Anthropic
   // can report why the cache prefix diverged. Keyed by conversation and agent in
   // Redis so the chain survives across steps and user turns. `null` (no prior, or
-  // expired) is still a valid opt-in value. `undefined` keeps the feature off.
+  // expired) is still a valid value.
   const cacheDiagnosticsKey: CacheDiagnosticsKey = {
     conversationId: conversation.sId,
     agentConfigurationId: agentConfiguration.sId,
     providerId: model.providerId,
   };
 
-  const previousMessageId = cacheDiagnosticsEnabled
-    ? await getPreviousMessageId(cacheDiagnosticsKey)
-    : undefined;
+  const previousMessageId = await getPreviousMessageId(cacheDiagnosticsKey);
 
   const events = llm.stream(
     {
@@ -318,7 +360,7 @@ export async function getOutputFromLLMStream(
       activityTimeoutDeadlineMs,
       logContext
     )) {
-      timeToFirstEvent = Date.now() - start;
+      timeToFirstEvent ??= Date.now() - start;
       if (event.type === "error") {
         await flushParserTokens();
         return new Err({
@@ -332,6 +374,12 @@ export async function getOutputFromLLMStream(
         await sleep(1);
       } catch (err) {
         if (err instanceof CancelledFailure) {
+          // Worker shutdown also cancels in-flight activities. Surface a retryable failure so
+          // Temporal reruns the step on another worker, instead of finalizing the message as
+          // successful mid-answer like a user stop would.
+          if (classifyTemporalAbortReason(err) === "worker_shutdown") {
+            throw makeModelInterruptionError();
+          }
           logger.info("Activity cancelled, stopping");
           return new Err({ type: "shouldReturnNull" });
         }
@@ -514,45 +562,39 @@ export async function getOutputFromLLMStream(
       }
 
       if (event.type === "interaction_id") {
-        if (cacheDiagnosticsEnabled) {
-          const { modelInteractionId, cacheMissReason } = event.content;
+        const { modelInteractionId, cacheMissReason } = event.content;
 
-          // Store this response id so the next step/turn can compare against it.
-          await setPreviousMessageId(cacheDiagnosticsKey, modelInteractionId);
+        // Store this response id so the next step/turn can compare against it.
+        await setPreviousMessageId(cacheDiagnosticsKey, modelInteractionId);
 
-          if (cacheMissReason) {
-            logger.info(
-              {
-                ...logContext,
-                agentConfigurationId: agentConfiguration.sId,
-                modelInteractionId,
-                previousMessageId,
-                cacheMissReasonType: cacheMissReason.type,
-                cacheMissedInputTokens: cacheMissReason.cacheMissedInputTokens,
-              },
-              "[LLM stream] prompt cache miss"
-            );
-            const reasonTags = [
-              `model_id:${model.modelId}`,
-              `reason:${cacheMissReason.type}`,
-              `is_dust_like_agent:${isDustLikeAgent(agentConfiguration.sId)}`,
-            ];
-            // Count: how often each reason occurs.
-            getStatsDClient().increment(
-              "llm.cache_miss_reason.count",
-              1,
+        if (cacheMissReason) {
+          logger.info(
+            {
+              ...logContext,
+              agentConfigurationId: agentConfiguration.sId,
+              modelInteractionId,
+              previousMessageId,
+              cacheMissReasonType: cacheMissReason.type,
+              cacheMissedInputTokens: cacheMissReason.cacheMissedInputTokens,
+            },
+            "[LLM stream] prompt cache miss"
+          );
+          const reasonTags = [
+            `model_id:${model.modelId}`,
+            `reason:${cacheMissReason.type}`,
+            `is_dust_like_agent:${isDustLikeAgent(agentConfiguration.sId)}`,
+          ];
+          // Count: how often each reason occurs.
+          statsDMetrics.increment("llm.cache_miss_reason.count", 1, reasonTags);
+          // Weighted by lost-cache tokens: which reason actually costs the most,
+          // not just which happens most. Only the `*_changed` reasons carry this
+          // (the inconclusive ones have no diverged prefix to measure).
+          if (cacheMissReason.cacheMissedInputTokens !== undefined) {
+            statsDMetrics.distribution(
+              "llm.cache_miss_reason.missed_input_tokens",
+              cacheMissReason.cacheMissedInputTokens,
               reasonTags
             );
-            // Weighted by lost-cache tokens: which reason actually costs the most,
-            // not just which happens most. Only the `*_changed` reasons carry this
-            // (the inconclusive ones have no diverged prefix to measure).
-            if (cacheMissReason.cacheMissedInputTokens !== undefined) {
-              getStatsDClient().distribution(
-                "llm.cache_miss_reason.missed_input_tokens",
-                cacheMissReason.cacheMissedInputTokens,
-                reasonTags
-              );
-            }
           }
         }
         continue;
@@ -579,6 +621,9 @@ export async function getOutputFromLLMStream(
   } catch (err) {
     if (err instanceof LLMStreamTimeoutError) {
       await flushParserTokens();
+      // Watchdog timeouts abort after llm_interaction.count is already emitted
+      // and never become a terminal LLM error, so they do not increment
+      // llm_error.count.
       return makeLLMTimeoutResponse(err.kind);
     }
     throw err;

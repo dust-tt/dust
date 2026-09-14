@@ -1,23 +1,23 @@
-import { config } from "@app/lib/api/regions/config";
+import { config } from "@app/lib/api/cells/config";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { readFrontTableChunk } from "@app/temporal/relocation/activities/source_region/front";
-import type { RegionType } from "@app/types/region";
-import { isRegionType, SUPPORTED_REGIONS } from "@app/types/region";
+import type { CellType } from "@app/types/cell";
+import { isCellType, SUPPORTED_CELLS } from "@app/types/cell";
 
-function assertCorrectRegion(region: RegionType) {
-  if (config.getCurrentRegion() !== region) {
+function assertCurrentCell(cell: CellType) {
+  if (config.getCurrentCell().name !== cell) {
     throw new Error(
-      `Relocation must be run from ${region}. Current region is ${config.getCurrentRegion()}.`
+      `Relocation must be run from ${cell}. Current cell is ${config.getCurrentCell().name}.`
     );
   }
 }
 
 makeScript(
   {
-    destRegion: {
+    destCell: {
       type: "string",
-      choices: SUPPORTED_REGIONS,
+      choices: SUPPORTED_CELLS,
       required: true,
     },
     lastId: {
@@ -27,9 +27,9 @@ makeScript(
       type: "number",
       require: true,
     },
-    sourceRegion: {
+    sourceCell: {
       type: "string",
-      choices: SUPPORTED_REGIONS,
+      choices: SUPPORTED_CELLS,
     },
     tableName: {
       type: "string",
@@ -44,33 +44,33 @@ makeScript(
     },
   },
   async ({
-    destRegion,
+    destCell,
     lastId,
     limit,
-    sourceRegion,
+    sourceCell,
     tableName,
     workspaceId,
     fileName,
     execute,
   }) => {
-    if (!isRegionType(sourceRegion) || !isRegionType(destRegion)) {
-      logger.error("Invalid region.");
+    if (!isCellType(sourceCell) || !isCellType(destCell)) {
+      logger.error("Invalid cell.");
       return;
     }
 
-    if (sourceRegion === destRegion) {
-      logger.error("Source and destination regions must be different.");
+    if (sourceCell === destCell) {
+      logger.error("Source and destination cells must be different.");
       return;
     }
 
-    assertCorrectRegion(sourceRegion);
+    assertCurrentCell(sourceCell);
 
     if (execute) {
       try {
         const res = await readFrontTableChunk({
-          destRegion,
+          destCell,
           lastId,
-          sourceRegion,
+          sourceCell,
           tableName,
           workspaceId,
           limit,

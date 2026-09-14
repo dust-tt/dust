@@ -33,6 +33,7 @@ interface ChartTooltipProps {
   footer?: string;
   activeKey?: string;
   selectedKey?: string;
+  separatorAfterKey?: string;
 }
 
 export function ChartTooltipCard({
@@ -41,6 +42,7 @@ export function ChartTooltipCard({
   footer,
   activeKey,
   selectedKey,
+  separatorAfterKey,
 }: ChartTooltipProps) {
   const visibleRows =
     selectedKey !== undefined
@@ -58,14 +60,18 @@ export function ChartTooltipCard({
     >
       {title && <div className="mb-1 font-medium text-foreground">{title}</div>}
       <ul className="space-y-1.5">
-        {visibleRows.map((r) => {
+        {visibleRows.map((r, index) => {
           const rowKey = r.key ?? r.label;
           const isActive = rowKey === activeKey;
+          const previousRow = visibleRows[index - 1];
+          const previousRowKey = previousRow?.key ?? previousRow?.label;
+          const hasSeparator = previousRowKey === separatorAfterKey;
           return (
             <li
               key={rowKey}
               className={cn(
                 "flex items-center gap-2 rounded",
+                hasSeparator && "border-t border-border/50 pt-1",
                 isActive && "-mx-1.5 bg-muted-background/60 px-1.5"
               )}
             >
@@ -79,7 +85,7 @@ export function ChartTooltipCard({
               >
                 {r.label}
               </span>
-              <span className="ml-auto font-mono font-medium tabular-nums text-foreground">
+              <span className="ml-auto font-medium tabular-nums text-foreground">
                 {r.value.toLocaleString()}
               </span>
               {typeof r.percent === "number" && (

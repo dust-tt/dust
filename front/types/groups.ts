@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { MembershipSeatType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
 import { isRoleType } from "./user";
@@ -25,21 +26,14 @@ import { isRoleType } from "./user";
  *  agent. Has special permissions: not restricted only to admins. Users can
  *  create, and members of the group can update it.
  *
- * skill_editors group: Group specific to represent skill editors, tied to a
- *  skill. Has special permissions: not restricted only to admins. Users can
- *  create, and members of the group can update it.
- *
  *  provisioned group: Contains all users from a provisioned group.
  */
 export const GROUP_KINDS = [
   "regular_auto",
   "regular_manual",
-  // space_editors is used to know if a member of a manual group can edit the group
-  "space_editors",
   "global",
   "system",
   "agent_editors",
-  "skill_editors",
   "provisioned",
 ] as const;
 export type GroupKind = (typeof GROUP_KINDS)[number];
@@ -68,6 +62,59 @@ export function isManageableGroupKind(kind: GroupKind): boolean {
   return MANAGEABLE_GROUP_KINDS.some((k) => k === kind);
 }
 
+// Group kinds that any workspace member may see directly (e.g. in the workspace
+// Groups listing or when referencing a group by id). Internal kinds
+// (`regular_auto`, `system`, `agent_editors`) are never surfaced this way: they
+// are implementation details of spaces, permissions, and agent editors.
+export const USER_VISIBLE_GROUP_KINDS = [
+  ...MANAGEABLE_GROUP_KINDS,
+  "global",
+] as const;
+
+export function isUserVisibleGroupKind(
+  kind: GroupKind
+): kind is UserVisibleGroupKind {
+  return USER_VISIBLE_GROUP_KINDS.some((k) => k === kind);
+}
+
+export type UserVisibleGroupKind = (typeof USER_VISIBLE_GROUP_KINDS)[number];
+
+// A group can grant a workspace role to its active members. Only "admin" and
+// "manager" are grantable: every member is at least a "user", and "builder" is
+// deprecated. A group with a null `grantedRole` grants no role. When a user
+// belongs to several role-granting groups, the highest role wins
+// (admin > manager). See `GroupResource.computeUserRoleFromGroups`.
+export const GROUP_GRANTABLE_ROLES = ["admin", "manager"] as const;
+export type GroupGrantableRole = (typeof GROUP_GRANTABLE_ROLES)[number];
+
+export function isGroupGrantableRole(
+  value: unknown
+): value is GroupGrantableRole {
+  return GROUP_GRANTABLE_ROLES.includes(value as GroupGrantableRole);
+}
+
+// A group grants a billable seat *tier* to its active members — `workspace`,
+// `pro` or `max`. Only the base (monthly) variants are grantable: cadence is not
+// chosen per group. When a member is already on the granted tier the sync keeps
+// their existing cadence (so a manual yearly upgrade is preserved); otherwise
+// they get the monthly seat (or the yearly one if the contract bills only that).
+// `free`/`none` are not grantable, and a null `grantedSeatType` grants no seat.
+// When a user is in several seat-granting groups the highest tier wins (per
+// `SEAT_TYPE_ORDER`). See `GroupResource.computeUserSeatFromGroups`.
+export const GROUP_GRANTABLE_SEAT_TYPES = [
+  "workspace",
+  "pro",
+  "max",
+] as const satisfies readonly MembershipSeatType[];
+export type GroupGrantableSeatType =
+  (typeof GROUP_GRANTABLE_SEAT_TYPES)[number];
+
+export function isGroupGrantableSeatType(
+  value: unknown
+): value is GroupGrantableSeatType {
+  return GROUP_GRANTABLE_SEAT_TYPES.some((seatType) => seatType === value);
+}
+
 export function isGroupKind(value: unknown): value is GroupKind {
   return GROUP_KINDS.includes(value as GroupKind);
 }
@@ -86,10 +133,6 @@ export function isAgentEditorGroupKind(value: GroupKind): boolean {
   return value === "agent_editors";
 }
 
-export function isSkillEditorGroupKind(value: GroupKind): boolean {
-  return value === "skill_editors";
-}
-
 export type GroupType = {
   id: ModelId;
   name: string;
@@ -100,6 +143,9 @@ export type GroupType = {
   // Per-group usage spend limit (excluding seat allowance), applied per member.
   // null means the group carries no cap (falls back to the workspace default).
   poolCapAwuCredits: number | null;
+  // Workspace role granted to this group's active members (admin or manager),
+  // or null when the group grants no role.
+  grantedRole: GroupGrantableRole | null;
   // Member sIds, only populated when explicitly requested
   memberIds?: string[];
 };
@@ -108,9 +154,7 @@ export const GroupKindCodec = z.enum([
   "global",
   "regular_auto",
   "regular_manual",
-  "space_editors",
   "agent_editors",
-  "skill_editors",
   "system",
   "provisioned",
 ]);

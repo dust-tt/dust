@@ -9,4 +9,14 @@ export class FeatureFlagFactory {
       featureName
     );
   }
+
+  // Insert a flag row whose name is no longer declared in
+  // WHITELISTABLE_FEATURES_CONFIG. The cast is the point of the factory: it creates the exact
+  // state the type system forbids, so that code handling leftover rows can be tested.
+  static async legacy(auth: Authenticator, featureName: string) {
+    await FeatureFlagResource.enable(
+      auth.getNonNullableWorkspace(),
+      featureName as WhitelistableFeature
+    );
+  }
 }

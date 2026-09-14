@@ -43,7 +43,7 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
       response_type: "code",
       client_id: clientId,
       state: connection.connection_id,
-      redirect_uri: finalizeUriForProvider("gmail"),
+      redirect_uri: finalizeUriForProvider({ provider: "gmail", connection }),
       scope: extraConfig.scope,
       access_type: "offline",
       prompt: "consent",

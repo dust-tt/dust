@@ -4,6 +4,7 @@ import type {
 } from "@app/components/members/MemberSelectionTable";
 import { MemberSelectionTable } from "@app/components/members/MemberSelectionTable";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { spaceMembershipProperties } from "@app/lib/spaces_utils";
 import { useUpdateSpace } from "@app/lib/swr/spaces";
 import type { RichSpaceType } from "@app/types/api/spaces";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
@@ -54,9 +55,6 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
   const [currentEditors, setCurrentEditors] = useState<Set<string>>(new Set());
   const [selectedUsers, setSelectedUsers] = useState<SearchMemberType[]>([]);
 
-  const isAdminControlled =
-    mode === "space-members" && props.space.isAdminControlled;
-
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset state when panel opens
   useEffect(() => {
     if (mode === "space-members") {
@@ -73,7 +71,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
 
   const toggleEditor = useCallback(
     (userId: string) => {
-      if (isAdminControlled || !currentMembers.has(userId)) {
+      if (!currentMembers.has(userId)) {
         return;
       }
       setCurrentEditors((prev) => {
@@ -86,7 +84,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
         return next;
       });
     },
-    [isAdminControlled, currentMembers]
+    [currentMembers]
   );
 
   const handleSave = async () => {
@@ -98,7 +96,10 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
       );
       const editorIds = Array.from(currentEditors);
 
-      if (!isAdminControlled && editorIds.length === 0) {
+      // A Pod keeps at least one individual editor even when a group is attached to it as an
+      // editor: a group's membership can drop to zero — in its IdP, for a provisioned one —
+      // leaving the Pod with nobody able to administrate it.
+      if (editorIds.length === 0) {
         setIsOpen(false);
         sendNotification({
           title: "At least one editor is required.",
@@ -113,9 +114,10 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
         props.space,
         {
           isRestricted: props.space.isRestricted,
+          // Only the individual members change here; the space's groups are passed through.
+          ...spaceMembershipProperties(props.space),
           memberIds,
           editorIds,
-          managementMode: "manual",
           name: props.space.name,
         },
         {
@@ -161,7 +163,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
   };
 
   const editorColumn: ColumnDef<MemberRowData>[] = useMemo(() => {
-    if (mode !== "space-members" || isAdminControlled) {
+    if (mode !== "space-members") {
       return [];
     }
     return [
@@ -197,14 +199,13 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
         },
       },
     ];
-  }, [mode, isAdminControlled, currentMembers, currentEditors, toggleEditor]);
+  }, [mode, currentMembers, currentEditors, toggleEditor]);
 
   const initialMembers =
     mode === "editors-only" ? props.editors : props.currentProjectMembers;
 
   const canSave =
-    !isSaving &&
-    (mode !== "space-members" || isAdminControlled || currentEditors.size > 0);
+    !isSaving && (mode !== "space-members" || currentEditors.size > 0);
 
   const sheetTitle =
     mode === "space-members"
@@ -239,7 +240,7 @@ export function ManageUsersPanel(props: ManageUsersPanelProps) {
             disabled: !canSave,
             isLoading: isSaving,
             tooltip:
-              !canSave && mode === "space-members" && !isAdminControlled
+              !canSave && mode === "space-members"
                 ? "Please select at least one editor to save."
                 : undefined,
           }}

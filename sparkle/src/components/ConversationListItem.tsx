@@ -8,6 +8,7 @@ export interface ReplySectionProps {
   replyCount: number;
   unreadCount: number;
   mentionCount?: number;
+  /** Participant avatars shown as a stacked Avatar.Stack (up to 3 visible). */
   avatars: Array<{
     name?: string;
     emoji?: string;
@@ -15,9 +16,11 @@ export interface ReplySectionProps {
     isRounded?: boolean;
     backgroundColor?: string;
   }>;
+  /** Name of the author of the last message ("Last by X."). */
   lastMessageBy: string;
 }
 
+/** Summary line of reply, unread, and mention counts with participant avatars, for the replySection slot of ConversationListItem. */
 export function ReplySection({
   replyCount,
   unreadCount,
@@ -86,13 +89,16 @@ export function ReplySection({
 }
 
 export interface ConversationListItemProps {
+  /** Marks the row as unread: shows a highlight dot and colors the timestamp. */
   unread: boolean;
+  /** The conversation to summarise (title, optional description, last update). */
   conversation: {
     id: string;
     title: string;
     description?: string;
     updatedAt: Date;
   };
+  /** Leading avatar for direct conversations — pass either this or creator, not both. */
   avatar?: {
     name?: string;
     emoji?: string;
@@ -100,18 +106,32 @@ export interface ConversationListItemProps {
     isRounded?: boolean;
     backgroundColor?: string;
   };
+  /** Creator portrait and name for group conversations — pass either this or avatar, not both. */
   creator?: {
     fullName: string;
     portrait?: string;
   };
+  /** Formatted timestamp displayed on the right of the title. */
   time: string;
+  /** Slot for reply/unread/mention counts — use the ReplySection component. */
   replySection?: ReactNode;
+  /** Called when the row is clicked (e.g. to open the thread). */
   onClick?: () => void;
+  /** Briefly flashes a highlight background on the row when it becomes true. */
   showFocus?: boolean;
+  /** "streaming" animates the title and description as if being generated. */
   textAnimation?: "none" | "streaming";
   className?: string;
 }
 
+/**
+ * A list row summarising a conversation: title and description, a timestamp,
+ * and a leading avatar (direct) or creator portrait (group), with an optional
+ * replySection for reply/unread/mention counts. Use it to render an inbox or
+ * activity feed of conversations, grouping rows inside ListGroup so dividers
+ * and spacing stay consistent.
+ * @summary Conversation summary row for inbox lists.
+ */
 export function ConversationListItem({
   conversation,
   unread,

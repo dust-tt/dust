@@ -1,17 +1,10 @@
 import { createHash } from "node:crypto";
 
-import { ensurePodSandboxReady } from "@app/lib/api/sandbox/lifecycle";
-import { buildSandboxFunctionOnSandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
+import { buildSandboxFunctionOnReadySandbox } from "@app/lib/api/sandbox_functions/build_on_sandbox";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
-vi.mock("@app/lib/api/sandbox/lifecycle", () => ({
-  ensurePodSandboxReady: vi.fn(),
-}));
 
 const SRC = "/files/pod-spc123/greet.ts";
 
@@ -62,7 +55,7 @@ const BUNDLE_CONTENT = "export default {/*bundle*/};";
 const validSchemaFile = JSON.stringify({
   name: "greet",
   description: "Greet someone.",
-  userIdentity: "interactive_workspace_user_required",
+  userIdentity: "frame_author_required",
   input_schema: { type: "object", properties: { name: { type: "string" } } },
   output_schema: {
     type: "object",
@@ -75,32 +68,25 @@ async function setup(): Promise<{
     ReturnType<typeof createResourceTest>
   >["authenticator"];
   sandbox: SandboxResource;
-  space: SpaceResource;
 }> {
-  const { authenticator, workspace } = await createResourceTest({
-    role: "admin",
-  });
-  const space = await SpaceFactory.project(workspace);
+  const { authenticator } = await createResourceTest({ role: "admin" });
   const sandbox = await SandboxResource.makeNew(authenticator, {
     providerId: "test-provider-id",
     status: "running",
     baseImage: "dust-base",
     version: "0.0.0-test",
   });
-  vi.mocked(ensurePodSandboxReady).mockResolvedValue(
-    new Ok({ sandbox, freshlyCreated: false })
-  );
 
-  return { authenticator, sandbox, space };
+  return { authenticator, sandbox };
 }
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe("buildSandboxFunctionOnSandbox", () => {
+describe("buildSandboxFunctionOnReadySandbox", () => {
   it("builds the bundle and returns the extracted contract", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     const execSpy = mockExecWithHashes(sandbox, {
       "bundle.js": BUNDLE_CONTENT,
       "schema.json": validSchemaFile,
@@ -110,8 +96,8 @@ describe("buildSandboxFunctionOnSandbox", () => {
       .mockResolvedValueOnce(new Ok(Buffer.from(BUNDLE_CONTENT)))
       .mockResolvedValueOnce(new Ok(Buffer.from(validSchemaFile)));
 
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
+    const result = await buildSandboxFunctionOnReadySandbox(authenticator, {
+      sandbox,
       srcSandboxPath: SRC,
     });
 
@@ -120,9 +106,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
       return;
     }
     expect(result.value.bundleCode).toBe(BUNDLE_CONTENT);
-    expect(result.value.userIdentity).toBe(
-      "interactive_workspace_user_required"
-    );
+    expect(result.value.userIdentity).toBe("frame_author_required");
     expect(result.value.inputSchema).toEqual({
       type: "object",
       properties: { name: { type: "string" } },
@@ -162,7 +146,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("surfaces a build failure from the envelope without reading files", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 1,
@@ -175,8 +159,8 @@ describe("buildSandboxFunctionOnSandbox", () => {
     );
     const readSpy = vi.spyOn(sandbox, "readFile");
 
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
+    const result = await buildSandboxFunctionOnReadySandbox(authenticator, {
+      sandbox,
       srcSandboxPath: SRC,
     });
 
@@ -190,7 +174,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("maps an unknown error kind to internal", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({
         exitCode: 2,
@@ -202,8 +186,8 @@ describe("buildSandboxFunctionOnSandbox", () => {
       })
     );
 
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
+    const result = await buildSandboxFunctionOnReadySandbox(authenticator, {
+      sandbox,
       srcSandboxPath: SRC,
     });
 
@@ -215,7 +199,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("rejects a function missing an input or output schema", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     mockExecWithHashes(sandbox, {
       "bundle.js": "bundle",
       "schema.json": JSON.stringify({
@@ -242,8 +226,8 @@ describe("buildSandboxFunctionOnSandbox", () => {
         )
       );
 
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
+    const result = await buildSandboxFunctionOnReadySandbox(authenticator, {
+      sandbox,
       srcSandboxPath: SRC,
     });
 
@@ -255,7 +239,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("rejects an older sandbox image that omits user identity", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     mockExecWithHashes(sandbox, {
       "bundle.js": "bundle",
       "schema.json": JSON.stringify({
@@ -280,8 +264,8 @@ describe("buildSandboxFunctionOnSandbox", () => {
         )
       );
 
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
+    const result = await buildSandboxFunctionOnReadySandbox(authenticator, {
+      sandbox,
       srcSandboxPath: SRC,
     });
 
@@ -293,13 +277,13 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("returns an internal error when the exec itself fails", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Err(new Error("provider unavailable"))
     );
 
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
+    const result = await buildSandboxFunctionOnReadySandbox(authenticator, {
+      sandbox,
       srcSandboxPath: SRC,
     });
 
@@ -312,13 +296,13 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("returns an internal error when dsbx produces no output", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({ exitCode: 0, stdout: "", stderr: "" })
     );
 
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
+    const result = await buildSandboxFunctionOnReadySandbox(authenticator, {
+      sandbox,
       srcSandboxPath: SRC,
     });
 
@@ -330,7 +314,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("refuses a bundle artifact swapped after the build", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     mockExecWithHashes(sandbox, {
       "bundle.js": BUNDLE_CONTENT,
       "schema.json": validSchemaFile,
@@ -340,8 +324,8 @@ describe("buildSandboxFunctionOnSandbox", () => {
       .mockResolvedValueOnce(new Ok(swapped))
       .mockResolvedValueOnce(new Ok(Buffer.from(validSchemaFile)));
 
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
+    const result = await buildSandboxFunctionOnReadySandbox(authenticator, {
+      sandbox,
       srcSandboxPath: SRC,
     });
 
@@ -358,7 +342,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("refuses a schema artifact swapped after the build", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     mockExecWithHashes(sandbox, {
       "bundle.js": BUNDLE_CONTENT,
       "schema.json": validSchemaFile,
@@ -367,8 +351,8 @@ describe("buildSandboxFunctionOnSandbox", () => {
       .mockResolvedValueOnce(new Ok(Buffer.from(BUNDLE_CONTENT)))
       .mockResolvedValueOnce(new Ok(Buffer.from("swapped-schema")));
 
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
+    const result = await buildSandboxFunctionOnReadySandbox(authenticator, {
+      sandbox,
       srcSandboxPath: SRC,
     });
 
@@ -383,7 +367,7 @@ describe("buildSandboxFunctionOnSandbox", () => {
   });
 
   it("fails closed when the exec output carries no integrity hashes", async () => {
-    const { authenticator, sandbox, space } = await setup();
+    const { authenticator, sandbox } = await setup();
     vi.spyOn(sandbox, "exec").mockResolvedValue(
       new Ok({ exitCode: 0, stdout: okEnvelope, stderr: "" })
     );
@@ -391,8 +375,8 @@ describe("buildSandboxFunctionOnSandbox", () => {
       .mockResolvedValueOnce(new Ok(Buffer.from(BUNDLE_CONTENT)))
       .mockResolvedValueOnce(new Ok(Buffer.from(validSchemaFile)));
 
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
+    const result = await buildSandboxFunctionOnReadySandbox(authenticator, {
+      sandbox,
       srcSandboxPath: SRC,
     });
 
@@ -402,23 +386,5 @@ describe("buildSandboxFunctionOnSandbox", () => {
     }
     expect(result.error.code).toBe("internal");
     expect(result.error.message).toContain("Missing integrity hash");
-  });
-
-  it("maps a sandbox failure to sandbox_unavailable", async () => {
-    const { authenticator, space } = await setup();
-    vi.mocked(ensurePodSandboxReady).mockResolvedValue(
-      new Err(new Error("sandbox down"))
-    );
-
-    const result = await buildSandboxFunctionOnSandbox(authenticator, {
-      space,
-      srcSandboxPath: SRC,
-    });
-
-    expect(result.isErr()).toBe(true);
-    if (result.isOk()) {
-      return;
-    }
-    expect(result.error.code).toBe("sandbox_unavailable");
   });
 });

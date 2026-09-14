@@ -3,8 +3,7 @@ use crate::oauth::{
     encryption::{seal_str, unseal_str},
     providers::{
         confluence::ConfluenceConnectionProvider,
-        confluence_tools::ConfluenceToolsConnectionProvider,
-        databricks::DatabricksConnectionProvider, discord::DiscordConnectionProvider,
+        confluence_tools::ConfluenceToolsConnectionProvider, discord::DiscordConnectionProvider,
         fathom::FathomConnectionProvider, freshservice::FreshserviceConnectionProvider,
         github::GithubConnectionProvider, gmail::GmailConnectionProvider,
         gong::GongConnectionProvider, google_drive::GoogleDriveConnectionProvider,
@@ -14,10 +13,10 @@ use crate::oauth::{
         microsoft_tools::MicrosoftToolsConnectionProvider, mock::MockConnectionProvider,
         monday::MondayConnectionProvider, notion::NotionConnectionProvider,
         productboard::ProductboardConnectionProvider, salesforce::SalesforceConnectionProvider,
-        servicenow::ServicenowConnectionProvider, slack::SlackConnectionProvider,
-        slack_tools::SlackToolsConnectionProvider, snowflake::SnowflakeConnectionProvider,
-        ukg_ready::UkgReadyConnectionProvider, vanta::VantaConnectionProvider,
-        zendesk::ZendeskConnectionProvider,
+        servicenow::ServicenowConnectionProvider, shopify::ShopifyConnectionProvider,
+        slack::SlackConnectionProvider, slack_tools::SlackToolsConnectionProvider,
+        snowflake::SnowflakeConnectionProvider, ukg_ready::UkgReadyConnectionProvider,
+        vanta::VantaConnectionProvider, zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
@@ -120,7 +119,6 @@ impl std::error::Error for ConnectionError {}
 pub enum ConnectionProvider {
     Confluence,
     ConfluenceTools,
-    Databricks,
     Discord,
     Fathom,
     Freshservice,
@@ -143,6 +141,7 @@ pub enum ConnectionProvider {
     Zendesk,
     Salesforce,
     Servicenow,
+    Shopify,
     Hubspot,
     UkgReady,
     Vanta,
@@ -272,7 +271,6 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
     match t {
         ConnectionProvider::Confluence => Box::new(ConfluenceConnectionProvider::new()),
         ConnectionProvider::ConfluenceTools => Box::new(ConfluenceToolsConnectionProvider::new()),
-        ConnectionProvider::Databricks => Box::new(DatabricksConnectionProvider::new()),
         ConnectionProvider::Discord => Box::new(DiscordConnectionProvider::new()),
         ConnectionProvider::Fathom => Box::new(FathomConnectionProvider::new()),
         ConnectionProvider::Freshservice => Box::new(FreshserviceConnectionProvider::new()),
@@ -294,6 +292,7 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Zendesk => Box::new(ZendeskConnectionProvider::new()),
         ConnectionProvider::Salesforce => Box::new(SalesforceConnectionProvider::new()),
         ConnectionProvider::Servicenow => Box::new(ServicenowConnectionProvider::new()),
+        ConnectionProvider::Shopify => Box::new(ShopifyConnectionProvider::new()),
         ConnectionProvider::Hubspot => Box::new(HubspotConnectionProvider::new()),
         ConnectionProvider::UkgReady => Box::new(UkgReadyConnectionProvider::new()),
         ConnectionProvider::Vanta => Box::new(VantaConnectionProvider::new()),
@@ -597,11 +596,12 @@ impl Connection {
         store: Box<dyn OAuthStore + Sync + Send>,
         provider: ConnectionProvider,
         metadata: serde_json::Value,
+        redirect_uri: Option<String>,
         migrated_credentials: Option<MigratedCredentials>,
         related_credential_id: Option<String>,
     ) -> Result<Self> {
         let mut c = store
-            .create_connection(provider, metadata, related_credential_id)
+            .create_connection(provider, metadata, redirect_uri, related_credential_id)
             .await?;
 
         if let Some(creds) = migrated_credentials {

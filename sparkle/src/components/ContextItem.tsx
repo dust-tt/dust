@@ -5,19 +5,35 @@ import { Icon } from "./Icon";
 import { ListItem } from "./ListItem";
 
 type ContextItemProps = {
+  /** Trailing control(s) rendered on the right of the row (e.g. Buttons, a SliderToggle). */
   action?: ReactNode;
   children?: ReactNode;
   className?: string;
+  /** Draws a separator below the row (default true). */
   hasSeparator?: boolean;
+  /** Keeps the separator even when the row is the last of its list. */
   hasSeparatorIfLast?: boolean;
+  /** Secondary metadata rendered next to the title (e.g. author, timestamp). */
   subElement?: ReactNode;
   title: ReactNode;
+  /** Leading visual — typically a ContextItem.Visual logo or an Avatar. */
   visual: ReactNode;
+  /** Hides the action until the row is hovered. */
   hoverAction?: boolean;
+  /** Called when the row is clicked; makes the row interactive. */
   onClick?: () => void;
+  /** Truncates the subElement with an ellipsis instead of the title. */
   truncateSubElement?: boolean;
 };
 
+/**
+ * A rich list row for representing a resource, connection, or agent, with a
+ * leading visual, a title, optional subElement metadata, free-form children,
+ * and a trailing action. Use it to list connected platforms, data sources,
+ * agents, or settings entries, composing rows inside ContextItem.List; for a
+ * denser settings layout with a single control, prefer SettingsList.Row.
+ * @summary Rich list row with visual, metadata, and action.
+ */
 export function ContextItem({
   action,
   children,
@@ -86,6 +102,7 @@ interface ContextItemListProps {
   hasBorder?: boolean;
 }
 
+/** Vertical list container for ContextItem rows and ContextItem.SectionHeader groups. */
 ContextItem.List = function ({
   children,
   className,
@@ -131,6 +148,7 @@ interface ContextItemDescriptionProps {
   description?: string;
 }
 
+/** Muted description text rendered inside a ContextItem row. */
 ContextItem.Description = function ({
   children,
   description,
@@ -151,6 +169,7 @@ interface ContextItemVisualProps {
   visual?: ComponentType<{ className?: string }>;
 }
 
+/** Standard-size icon/logo wrapper for a ContextItem row's leading visual. */
 ContextItem.Visual = function ({ visual }: ContextItemVisualProps) {
   return <Icon size="md" visual={visual} />;
 };
@@ -161,6 +180,7 @@ interface ItemSectionHeaderProps {
   hasBorder?: boolean;
 }
 
+/** Titled section header used to break a ContextItem.List into groups. */
 ContextItem.SectionHeader = function ({
   title,
   description,

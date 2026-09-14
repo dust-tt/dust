@@ -190,7 +190,8 @@ export async function createSandboxChildAction(
     auth,
     view.mcpServerId,
     serverSideConfig,
-    [{ name: toolName, description: "" }]
+    [{ name: toolName, description: "" }],
+    view.remoteMCPServerUrl
   );
   if (toolConfigurationsRes.isErr()) {
     return toolConfigurationsRes;

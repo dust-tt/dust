@@ -17,8 +17,9 @@ import assert from "assert";
 // context-window safety padding from tool footprints and uses o200k for GPT-5 provider accounting.
 // Version 6 excludes enabled-skill tool definitions when provider-side tool search keeps those
 // non-eager tools deferred, while continuing to attribute the enabled skill's instructions.
+// Version 7 records post-cap MCP server calls with zero direct credits.
 // Each version remains a separate, self-consistent set of rows.
-export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 6;
+export const AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION = 7;
 
 export type RunUsageForAttribution = Pick<
   RunUsageType,

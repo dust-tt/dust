@@ -36,7 +36,7 @@ front/
 ```
 
 API handlers are **not** here — they live in `front-api/routes/`, one file per URL. See
-`front-api/CODING_RULES.md` before adding or changing an endpoint.
+`front-api/CONTRACTS` before adding or changing an endpoint.
 
 # Development setup
 
@@ -45,8 +45,8 @@ API handlers are **not** here — they live in `front-api/routes/`, one file per
 - For changes related to Temporal, LLM, MCP servers, Elasticsearch, audit events, and webhook sources, and for testing, use the corresponding skills.
 
 # Running tests
-- Use `npm run test -- filetotest
+- Use `npm run test -- filetotest` directly, it will automatically use a test environment (db, redis..)
 
-@CODING_RULES.md
+@../CODE-CONTRACTS.md
 
 @AGENTS.local.md

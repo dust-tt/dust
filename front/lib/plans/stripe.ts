@@ -267,7 +267,7 @@ export const createStripeSubscriptionCheckoutSession = async ({
     custom_text: {
       terms_of_service_acceptance: {
         message:
-          "I have read and accept the [Master Services Agreement](https://dust-tt.notion.site/Master-Services-Agreement-2bdcf30156db4a40bcb20d27b0b1bd4e?pvs=4) and [Data Processing Addendum](https://www.notion.so/dust-tt/Data-Processing-Addendum-466528e861e34f08949428e06eecd5f4?pvs=4).",
+          "I have read and accept the [Master Services Agreement](https://dust-tt.notion.site/Master-Services-Agreement-2bdcf30156db4a40bcb20d27b0b1bd4e?pvs=4) and [Data Processing Addendum](https://dust-tt.notion.site/Data-Processing-Addendum-466528e861e34f08949428e06eecd5f4?pvs=4).",
       },
     },
   });
@@ -362,7 +362,7 @@ export const createEmbeddedMetronomeSetupCheckoutSession = async ({
     custom_text: {
       terms_of_service_acceptance: {
         message:
-          "I have read and accept the [Master Services Agreement](https://dust-tt.notion.site/Master-Services-Agreement-2bdcf30156db4a40bcb20d27b0b1bd4e?pvs=4) and [Data Processing Addendum](https://www.notion.so/dust-tt/Data-Processing-Addendum-466528e861e34f08949428e06eecd5f4?pvs=4).",
+          "I have read and accept the [Master Services Agreement](https://dust-tt.notion.site/Master-Services-Agreement-2bdcf30156db4a40bcb20d27b0b1bd4e?pvs=4) and [Data Processing Addendum](https://dust-tt.notion.site/Data-Processing-Addendum-466528e861e34f08949428e06eecd5f4?pvs=4).",
       },
     },
   });
@@ -786,6 +786,12 @@ export async function cancelSubscriptionAtPeriodEnd({
  * the Stripe sub stops at the new Metronome contract's start time, so the two
  * rails don't double-bill. Prorations at cancellation follow the subscription's
  * existing proration settings (default: a credit for the unused portion).
+ *
+ * @cc [owner:tdraier,label:backend] cancels-schedule-managed-subscriptions
+ * `scheduleSubscriptionCancellation` schedules the subscription to cancel at `cancelAt`, including
+ * when the subscription is managed by a subscription schedule: it releases the schedule before
+ * setting `cancel_at`, since Stripe rejects direct cancelation edits on schedule-managed
+ * subscriptions.
  */
 export async function scheduleSubscriptionCancellation({
   stripeSubscriptionId,
@@ -795,6 +801,22 @@ export async function scheduleSubscriptionCancellation({
   cancelAt: Date;
 }) {
   const stripe = getStripeClient();
+
+  // A subscription driven by a subscription schedule rejects direct `cancel_at`
+  // edits ("updating any cancelation behavior directly is not allowed"). Release
+  // the schedule so the subscription becomes standalone before scheduling the
+  // cancellation. Releasing keeps the subscription running with its current items
+  // and discards future scheduled phases, which is the intended outcome here: the
+  // subscription is being wound down.
+  const subscription =
+    await stripe.subscriptions.retrieve(stripeSubscriptionId);
+  const scheduleId = isString(subscription.schedule)
+    ? subscription.schedule
+    : subscription.schedule?.id;
+  if (scheduleId) {
+    await stripe.subscriptionSchedules.release(scheduleId);
+  }
+
   await stripe.subscriptions.update(stripeSubscriptionId, {
     cancel_at: Math.floor(cancelAt.getTime() / 1000),
   });

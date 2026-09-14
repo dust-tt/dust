@@ -6,7 +6,7 @@ import {
 } from "@app/lib/api/assistant/conversation/attachments";
 import {
   frameSlideshowContentType,
-  isInteractiveContentType,
+  isFrameContentType,
 } from "@app/types/files";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
@@ -22,7 +22,7 @@ function getFilePanelCategory(
     return "knowledge";
   }
 
-  if (isInteractiveContentType(item.contentType)) {
+  if (isFrameContentType(item.contentType)) {
     return item.contentType === frameSlideshowContentType
       ? "slideshow"
       : "frame";

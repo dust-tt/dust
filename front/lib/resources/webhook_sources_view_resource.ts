@@ -261,8 +261,8 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     spaces: SpaceResource[],
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ): Promise<WebhookSourcesViewResource[]> {
-    const allowedSpaces = spaces.filter((space) =>
-      space.canReadOrAdministrate(auth)
+    const allowedSpaces = spaces.filter(
+      (space) => auth.can("read", space) || auth.can("admin", space)
     );
     if (allowedSpaces.length === 0) {
       return [];
@@ -282,7 +282,7 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     space: SpaceResource,
     options?: ResourceFindOptions<WebhookSourcesViewModel>
   ): Promise<WebhookSourcesViewResource[]> {
-    if (!space.canReadOrAdministrate(auth)) {
+    if (!auth.can("read", space) && !auth.can("admin", space)) {
       return [];
     }
     return this.listBySpaces(auth, [space], options);

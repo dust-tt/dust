@@ -26,6 +26,7 @@ import type {
   FileUseCase,
 } from "@app/types/files";
 import {
+  isFrameV2ContentType,
   isInteractiveContentType,
   isSandboxFunctionContentType,
   isSupportedAudioContentType,
@@ -457,8 +458,9 @@ const getProcessingFunction = ({
     return undefined;
   }
 
-  // Interactive Content files should not be processed.
+  // Internal executable files should not be processed.
   if (
+    isFrameV2ContentType(contentType) ||
     isInteractiveContentType(contentType) ||
     isSandboxFunctionContentType(contentType)
   ) {

@@ -88,7 +88,8 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
   if (isTopLevelInView && listItems.length === 0) {
     return (
       <EmptyCTA
-        message="No pages found in this website."
+        title="No pages found"
+        message="This website doesn't have any pages to browse yet."
         action={
           <EmptyCTAButton
             variant="primary"

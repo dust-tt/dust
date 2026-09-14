@@ -15,13 +15,9 @@ export async function seedGroup(
 ): Promise<GroupResource | undefined> {
   const { auth, workspace, execute, logger } = ctx;
 
-  const existingGroup = await GroupResource.fetchByName(auth, name);
-  if (existingGroup) {
-    logger.info(
-      { sId: existingGroup.sId, name },
-      "Group already exists, skipping"
-    );
-    return existingGroup;
+  if (await GroupResource.groupExistsByName(auth, name)) {
+    logger.info({ name }, "Group already exists, skipping");
+    return undefined;
   }
 
   if (!execute) {

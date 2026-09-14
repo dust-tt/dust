@@ -1,6 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type {
@@ -8,7 +7,6 @@ import type {
   PatchGovernancePermissionResponseBody,
 } from "@app/types/api/governance";
 import { honoApp } from "@front-api/app";
-import assert from "assert";
 import { describe, expect, it } from "vitest";
 
 function getGovernancePermissions(workspace: { sId: string }) {
@@ -51,7 +49,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
     const { governancePermissions }: GetGovernancePermissionsResponseBody =
       await response.json();
 
-    // Admin sees every domain: agent/skill/frame plus the admin-only billing/identity.
+    // Admin sees every domain: agent/skill/frame/trigger plus the admin-only billing/identity.
     expect(governancePermissions).toEqual({
       "create:agent": adminsOnly("create", "agent"),
       "publish:agent": adminsOnly("publish", "agent"),
@@ -60,6 +58,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
       "make_discoverable:skill": adminsOnly("make_discoverable", "skill"),
       "invite:frame": adminsOnly("invite", "frame"),
       "publish:frame": adminsOnly("publish", "frame"),
+      "use_workspace_pool:trigger": adminsOnly("use_workspace_pool", "trigger"),
       "admin:billing": adminsOnly("admin", "billing"),
       "admin:security": adminsOnly("admin", "security"),
     });
@@ -77,7 +76,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
     const { governancePermissions }: GetGovernancePermissionsResponseBody =
       await response.json();
 
-    // Manager sees agent/skill/frame but never the admin-only billing/identity.
+    // Manager sees agent/skill/frame/trigger but never the admin-only billing/identity.
     expect(governancePermissions).toEqual({
       "create:agent": adminsOnly("create", "agent"),
       "publish:agent": adminsOnly("publish", "agent"),
@@ -86,6 +85,7 @@ describe("GET /api/w/:wId/governance-permissions", () => {
       "make_discoverable:skill": adminsOnly("make_discoverable", "skill"),
       "invite:frame": adminsOnly("invite", "frame"),
       "publish:frame": adminsOnly("publish", "frame"),
+      "use_workspace_pool:trigger": adminsOnly("use_workspace_pool", "trigger"),
     });
   });
 
@@ -97,10 +97,6 @@ describe("GET /api/w/:wId/governance-permissions", () => {
 
     // Set up grant state with an internal admin auth, independent of the request user.
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
-      workspace.id
-    );
-    assert(globalGroup, "global group should exist");
 
     await GroupPermissionResource.setForEverybody(auth, {
       grantType: "create",
@@ -196,18 +192,15 @@ describe("PATCH /api/w/:wId/governance-permissions", () => {
   });
 
   it("rejects a groups configuration referencing a non-manageable group", async () => {
-    const { workspace } = await createPrivateApiMockRequest({
+    const { workspace, globalGroup } = await createPrivateApiMockRequest({
       method: "PATCH",
       role: "admin",
     });
 
-    // `regular_auto` groups back spaces and are not user-managed, so they cannot be granted here.
-    const autoGroup = await GroupFactory.regularAuto(workspace, "auto");
-
     const response = await patchGovernancePermission(workspace, {
       grantType: "publish",
       resourceType: "agent",
-      configuration: { scope: "groups", groupIds: [autoGroup.sId] },
+      configuration: { scope: "groups", groupIds: [globalGroup.sId] },
     });
 
     expect(response.status).toBe(400);

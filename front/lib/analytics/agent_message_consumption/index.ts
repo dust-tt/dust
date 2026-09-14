@@ -1,3 +1,4 @@
+import type { ConsumptionDocumentsSkipReason } from "@app/lib/analytics/agent_message_consumption/documents";
 import { buildAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/documents";
 import { loadAgentMessageConsumptionAnalyticsInput } from "@app/lib/analytics/agent_message_consumption/load";
 import { upsertAgentMessageConsumptionAnalyticsDocuments } from "@app/lib/analytics/agent_message_consumption/store";
@@ -5,8 +6,7 @@ import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
-import assert from "assert";
+import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * Loads, projects, and indexes the complete consumption analytics snapshot for one agent message.
@@ -22,7 +22,7 @@ export async function indexAgentMessageConsumptionAnalytics(
     agentMessageId: string;
     preloadedActions?: AgentMCPActionResource[];
   }
-): Promise<Result<void, ElasticsearchError>> {
+): Promise<Result<void, ElasticsearchError | ConsumptionDocumentsSkipReason>> {
   const input = await loadAgentMessageConsumptionAnalyticsInput(auth, {
     agentMessageId,
     preloadedActions,
@@ -31,11 +31,13 @@ export async function indexAgentMessageConsumptionAnalytics(
     return new Ok(undefined);
   }
 
-  const documents = buildAgentMessageConsumptionAnalyticsDocuments(input);
-  assert(
-    documents && documents.length > 0,
-    "Consumption attribution is incomplete for analytics"
-  );
+  const documentsResult = buildAgentMessageConsumptionAnalyticsDocuments(input);
+  if (documentsResult.isErr()) {
+    return documentsResult;
+  }
+  if (documentsResult.value.length === 0) {
+    return new Err({ code: "empty_documents", context: {} });
+  }
 
-  return upsertAgentMessageConsumptionAnalyticsDocuments(documents);
+  return upsertAgentMessageConsumptionAnalyticsDocuments(documentsResult.value);
 }

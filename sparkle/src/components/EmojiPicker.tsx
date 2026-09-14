@@ -5,9 +5,13 @@ import type { EmojiSkinType } from "@sparkle/lib/avatar/types";
 import React from "react";
 
 interface EmojiPickerProps {
+  /** Emoji dataset to use (defaults to the bundled emoji-mart data). */
   data?: EmojiMartData;
+  /** Called with the chosen emoji (including skin tone) when the user picks one. */
   onEmojiSelect: (emoji: EmojiSkinType) => void;
+  /** Pass "none" to hide emoji-mart's preview bar. */
   previewPosition?: "none";
+  /** Color theme of the picker — pass the app's current theme explicitly. */
   theme: "dark" | "light";
 }
 
@@ -15,6 +19,13 @@ EmojiPicker.defaults = {
   previewPosition: "none",
 };
 
+/**
+ * A searchable emoji picker wrapping emoji-mart, themed for light or dark
+ * mode. Use it wherever the user picks an emoji (reactions, avatars),
+ * typically inside a popover; it isolates Sparkle's design tokens so the
+ * picker's own theming is preserved.
+ * @summary Emoji-mart picker wrapper.
+ */
 function EmojiPicker({
   data = emojiData as EmojiMartData,
   onEmojiSelect,

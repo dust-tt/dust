@@ -19,26 +19,35 @@ export type ComposerSuggestionTriggerType =
 export interface ComposerSuggestionItem {
   id: string;
   label: string;
+  /** Secondary muted text displayed under the label in the suggestion list. */
   description?: string;
+  /** Icon shown next to the label when no `visual` is provided. */
   icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  /** Avatar image URL shown next to the label (takes precedence over `icon`). */
   visual?: string;
 }
 
 export interface ComposerSuggestionSource {
+  /** Character that opens this suggestion list: `/` (commands) or `@` (agents). */
   trigger: ComposerSuggestionTriggerType;
+  /** Suggestions to filter against the text typed after the trigger. */
   items: ComposerSuggestionItem[];
+  /** Invoked when an item is picked; the trigger text is already removed from the value. */
   onSelect: (item: ComposerSuggestionItem, query: string) => void;
 }
 
 interface ComposerInputProps {
   value: string;
+  /** Invoked with the new text on every change (controlled input). */
   onChange: (value: string) => void;
+  /** Invoked with the current value on Enter (without Shift, outside IME composition). */
   onSubmit?: (value: string) => void;
   onFocus?: () => void;
   onBlur?: () => void;
   placeholder?: string;
   disabled?: boolean;
   autoFocus?: boolean;
+  /** Suggestion sources keyed by trigger character (`/` commands, `@` agents). */
   suggestions?: ComposerSuggestionSource[];
   className?: string;
 }
@@ -88,6 +97,13 @@ function filterItems(
   );
 }
 
+/**
+ * The auto-growing text input of the Composer: a controlled textarea that submits
+ * on Enter (Shift+Enter for a newline) and shows keyboard-navigable suggestion
+ * popovers for `/` (commands) and `@` (agents) triggers. Use it as the input inside
+ * a Composer shell.
+ * @summary Composer text input with suggestions.
+ */
 export const ComposerInput = React.forwardRef<
   HTMLTextAreaElement,
   ComposerInputProps

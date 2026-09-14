@@ -11,6 +11,7 @@ import type {
 import type { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { ModelIdType } from "@app/types/assistant/models/types";
+import type { AgentSkillType } from "@app/types/assistant/skill_configuration";
 import { DbModelIdSchema } from "@app/types/shared/model_id";
 import type { TagType } from "@app/types/tag";
 import { TagSchema } from "@app/types/tag";
@@ -95,6 +96,10 @@ export type AgentConfigurationScope =
  *   opens up with the caller's role.
  * - 'admin_internal': Grants access to all agents, including private ones.
  * - 'manage': Retrieves all agents for the manage agents view (same as list, but including disabled agents).
+ * - 'manage_unrestricted': Same as 'manage', but without the visibility
+ *   restrictions: every active agent of the workspace, whatever its scope,
+ *   whoever edits it, and whether or not the caller can read the spaces it is
+ *   built on. Admins only.
  * - 'archived': Retrieves all agents that are archived. Only available to super
  *   users. Intended strictly for internal use with necessary superuser or admin
  *   authorization.
@@ -106,6 +111,7 @@ export type AgentsGetViewType =
   | "list"
   | "all"
   | "analytics"
+  | "manage_unrestricted"
   | "published"
   | "global"
   | "admin_internal"
@@ -198,10 +204,20 @@ export type LightAgentConfigurationType = z.infer<
 export const AgentConfigurationSchema = LightAgentConfigurationSchema.extend({
   instructionsHtml: z.string().nullable(),
   actions: z.array(MCPServerConfigurationSchema),
-  skills: z.array(z.string()).optional(),
+  // Code-defined skill ids, only set by the in-code global agent definitions.
+  codeDefinedSkillIds: z.array(z.string()).optional(),
 });
 
 export type AgentConfigurationType = z.infer<typeof AgentConfigurationSchema>;
+
+/**
+ * An agent configuration with its attached skills resolved, which is what the API serializes.
+ * `codeDefinedSkillIds` is stripped on the way out: `skills` supersedes it, and the ids on their
+ * own are an internal detail of how global agents declare theirs.
+ */
+export type AgentConfigurationWithSkillsType = LightAgentConfigurationType & {
+  skills: AgentSkillType[];
+};
 
 export type AgentConfigurationWithoutModelType = Omit<
   AgentConfigurationType,

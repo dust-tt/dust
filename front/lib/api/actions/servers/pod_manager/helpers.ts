@@ -143,7 +143,7 @@ export async function getPod(
     // membership, so a caller passing an arbitrary pod id could otherwise read its members,
     // conversations, documents and tasks. Report unreadable pods as not-found so this cannot
     // probe which pod sIds exist.
-    if (!pod.canRead(auth)) {
+    if (!auth.can("read", pod)) {
       return new Err(
         new MCPError(`Pod not found: ${podId}`, { tracked: false })
       );
@@ -176,8 +176,11 @@ export async function getPod(
     }
 
     if (isSandboxFunctionRunContext(toolContext.runContext)) {
-      const space = toolContext.runContext.invocation.sandboxFunction.space;
-      return new Ok({ pod: space });
+      const { pod } = toolContext.runContext;
+      if (!pod) {
+        return new Err(new MCPError("Pod not found", { tracked: false }));
+      }
+      return new Ok({ pod });
     }
   }
 
@@ -192,7 +195,7 @@ function checkWritePermission(
   auth: Authenticator,
   space: SpaceResource
 ): Result<void, MCPError> {
-  if (!space.canWrite(auth)) {
+  if (!auth.can("write", space)) {
     return new Err(
       new MCPError("You do not have write permissions for this Pod", {
         tracked: false,
@@ -249,7 +252,7 @@ export async function resolvePodUserRolesBySId(
   auth: Authenticator,
   pod: SpaceResource
 ): Promise<Map<string, "editor" | "member">> {
-  const { groupsToProcess, allGroupMemberships } =
+  const { groupsToProcess, allGroupMemberships, editorGroupModelId } =
     await pod.fetchManualGroupsMemberships(auth, {
       shouldIncludeAllMembers: false,
     });
@@ -267,7 +270,7 @@ export async function resolvePodUserRolesBySId(
 
     const previous = membershipByUserId.get(membership.userId);
     membershipByUserId.set(membership.userId, {
-      isEditor: Boolean(previous?.isEditor) || group.kind === "space_editors",
+      isEditor: Boolean(previous?.isEditor) || group.id === editorGroupModelId,
     });
   }
 

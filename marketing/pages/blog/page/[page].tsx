@@ -135,7 +135,7 @@ export default function BlogPage({
   return (
     <>
       <Head>
-        <title>Blog - Page {currentPage} | Dust</title>
+        <title>{`Blog - Page ${currentPage} | Dust`}</title>
         <meta
           name="description"
           content="Insights, tutorials, and updates from the Dust team on AI agents, enterprise productivity, and building with AI."

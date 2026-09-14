@@ -4,9 +4,11 @@ import {
 } from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
-import { getWorkflowConfig } from "@app/temporal/bundle_helper";
+import {
+  createTemporalWorker,
+  getWorkflowConfig,
+} from "@app/temporal/bundle_helper";
 import type { Context } from "@temporalio/activity";
-import { Worker } from "@temporalio/worker";
 import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import * as activities from "./activities";
@@ -18,7 +20,7 @@ const SHUTDOWN_GRACE_TIME_MS = 70 * 1_000;
 export async function runAgentTriggerWorker() {
   const { connection, namespace } = await getTemporalAgentWorkerConnection();
 
-  const worker = await Worker.create({
+  const worker = await createTemporalWorker({
     ...getWorkflowConfig({
       workerName: "agent_schedule",
       getWorkflowsPath: () => require.resolve("./workflows"),

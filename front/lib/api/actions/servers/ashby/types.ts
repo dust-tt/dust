@@ -77,7 +77,13 @@ export const AshbyReportSynchronousResponseSchema = z
     }),
     z.object({
       requestId: z.string(),
-      status: z.enum(["failed", "in_progress"]),
+      status: z.literal("failed"),
+      reportData: z.record(z.unknown()).nullable(),
+      failureReason: z.string().nullable(),
+    }),
+    z.object({
+      requestId: z.string(),
+      status: z.literal("in_progress"),
       reportData: z.null(),
       failureReason: z.string().nullable(),
     }),

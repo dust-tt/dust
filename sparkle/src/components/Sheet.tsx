@@ -9,6 +9,16 @@ import { cn } from "@sparkle/lib/utils";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 
+/**
+ * A panel that slides in from an edge of the screen, built on Radix Dialog. Compose it
+ * from `SheetTrigger`, `SheetContent` (with a `side` and `size`), `SheetHeader`
+ * (`SheetTitle`, `SheetDescription`), `SheetContainer` for the scrollable body, and
+ * `SheetFooter`. Use it for secondary tasks, detail views, or forms that need more room
+ * than a popover but shouldn't navigate away. For a multi-step flow use `MultiPageSheet`;
+ * for a focus-blocking centered modal, use `Dialog`.
+ *
+ * @summary Edge-anchored sliding panel.
+ */
 const Sheet = SheetPrimitive.Root;
 
 const SheetTrigger = SheetPrimitive.Trigger;
@@ -89,10 +99,15 @@ const sheetVariants = cva(
 
 interface SheetContentProps
   extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {
+  /** Maximum width of the panel: "md" | "lg" | "xl" | "2xl" | "3xl" (defaults to "md"). */
   size?: SheetSizeType;
+  /** Traps keyboard focus inside the sheet while it is open. */
   trapFocusScope?: boolean;
+  /** Edge the panel slides in from: "top" | "bottom" | "left" | "right" (defaults to "right"). */
   side?: SheetSideType;
+  /** Prevents Radix from moving focus back to the trigger when the sheet closes (defaults to true). */
   preventAutoFocusOnClose?: boolean;
+  /** Prevents Radix from auto-focusing the first focusable element when the sheet opens (defaults to true). */
   preventAutoFocusOnOpen?: boolean;
 }
 
@@ -113,6 +128,14 @@ function isEventInsideNotification(event: {
   return target instanceof Element && !!target.closest("[data-sonner-toaster]");
 }
 
+/**
+ * The sliding panel itself, rendered in a portal over a dimming overlay. Pick the edge
+ * with `side` and the width with `size`; always give it a `SheetHeader` with a
+ * `SheetTitle` for context and accessibility. Cmd/Ctrl+Enter triggers the footer button
+ * marked `data-sheet-save`.
+ *
+ * @summary Sheet panel content.
+ */
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
@@ -220,6 +243,7 @@ const SheetContent = React.forwardRef<
 SheetContent.displayName = SheetPrimitive.Content.displayName;
 
 interface SheetHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Hides the close (X) button in the top-right corner. */
   hideButton?: boolean;
 }
 
@@ -246,7 +270,9 @@ const SheetHeader = ({
 SheetHeader.displayName = "SheetHeader";
 
 interface SheetContainerProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Renders a plain flex column instead of wrapping children in a ScrollArea. */
   noScroll?: boolean;
+  /** Removes the default gap and horizontal padding, for full-width list content. */
   isListSelector?: boolean;
 }
 
@@ -308,9 +334,13 @@ const SheetContainer = ({
 SheetContainer.displayName = "SheetContainer";
 
 interface SheetFooterProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Props for the left-aligned button (typically Cancel); closes the sheet unless disabled. */
   leftButtonProps?: React.ComponentProps<typeof Button>;
+  /** Props for the right-aligned primary button (typically Save); triggered by Cmd/Ctrl+Enter. */
   rightButtonProps?: React.ComponentProps<typeof Button>;
+  /** Props for an extra button rendered after the right button. */
   rightEndButtonProps?: React.ComponentProps<typeof Button>;
+  /** className applied to the SheetClose wrappers around the footer buttons. */
   sheetCloseClassName?: string;
 }
 

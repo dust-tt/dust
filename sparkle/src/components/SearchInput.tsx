@@ -23,6 +23,7 @@ import React, {
 export interface SearchInputProps {
   placeholder?: string;
   value: string | null;
+  /** Called with the raw string value (not a DOM event) on every change; called with "" when the clear button is pressed. */
   onChange: (value: string) => void;
   onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onFocus?: () => void;
@@ -30,10 +31,20 @@ export interface SearchInputProps {
   id?: string;
   name: string;
   disabled?: boolean;
+  /** Replaces the trailing icon with a small spinner while results are being fetched. */
   isLoading?: boolean;
   className?: string;
 }
 
+/**
+ * A search-specific text field with a built-in search icon and clear affordance, wired
+ * through a simplified `value` / `onChange` (string) contract. Use it for freeform search
+ * or filter input; `onChange` receives the raw string value, so manage the query in state
+ * directly. For generic short text or number entry use `Input`; for multi-line input use
+ * `TextArea`; to surface live results inline, use `SearchInputWithPopover`.
+ *
+ * @summary Search text field with clear affordance.
+ */
 export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(
   (
     {
@@ -111,22 +122,35 @@ SearchInput.displayName = "SearchInput";
 
 type SearchInputWithPopoverBaseProps<T> = SearchInputProps & {
   contentClassName?: string;
+  /** Controls whether the results popover is open. */
   open: boolean;
+  /** Called when the popover requests to open or close (typing, selection, outside click). */
   onOpenChange: (open: boolean) => void;
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
+  /** Sizes the popover to the available viewport height instead of a fixed `maxHeight`. */
   availableHeight?: boolean;
+  /** Maximum height of the results list when `availableHeight` is not set. */
   maxHeight?: "sm" | "md" | "lg" | "xl";
   items: T[];
+  /** Renders one result row; `selected` is true for the keyboard-highlighted item. */
   renderItem: (item: T, selected: boolean) => React.ReactNode;
+  /** Called when a result is chosen by click or Enter. */
   onItemSelect?: (item: T) => void;
+  /** When provided, shows a "Select all" button in the sticky header. */
   onSelectAll?: () => void;
+  /** Message shown when `items` is empty and not loading. */
   noResults?: string;
   isLoading?: boolean;
+  /** Optional `ContentMessage` rendered below the results list. */
   contentMessage?: ContentMessageProps;
+  /** Shows a "N search results" count in the sticky header. */
   displayItemCount?: boolean;
+  /** Total result count, displayed alongside the item count as "(out of N)". */
   totalItems?: number;
+  /** Content pinned above the results list. */
   stickyTopContent?: React.ReactNode;
+  /** Content pinned below the results list. */
   stickyBottomContent?: React.ReactNode;
 };
 
@@ -341,6 +365,14 @@ function BaseSearchInputWithPopover<T>(
   );
 }
 
+/**
+ * A `SearchInput` with an attached results dropdown offering keyboard navigation, custom
+ * `renderItem`, an optional `onSelectAll`, sticky top/bottom content, item counts, and a
+ * `noResults` state. Use it when search results should appear inline below the field;
+ * handle selection via `onItemSelect`. For a plain field without results, use `SearchInput`.
+ *
+ * @summary Search field with results popover.
+ */
 export const SearchInputWithPopover = forwardRef(
   BaseSearchInputWithPopover
 ) as <T>(

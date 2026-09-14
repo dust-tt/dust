@@ -40,8 +40,10 @@ export type KnownModelLLMId =
   | "gpt-5.2"
   | "gpt-5.4"
   | "gpt-5.5"
+  | "gpt-6-astra"
   | "gpt-5.6-sol"
   | "gpt-5.6-terra"
+  | "gpt-5.6-terra-long-context"
   | "gpt-5.6-luna"
   | "gpt-5.4-mini"
   | "gpt-5.4-nano"
@@ -88,10 +90,13 @@ export type KnownModelLLMId =
   | "gemini-3.5-flash-lite"
   | "gemini-3.6-flash"
   | "gemini-3.7-flash"
+  | "gemini-3.8-flash"
   | "deepseek-chat" // deepseek api
   | "accounts/fireworks/models/deepseek-v3p2" // fireworks
   | "accounts/fireworks/models/deepseek-v4-pro" // fireworks
+  | "accounts/fireworks/models/deepseek-v4-pro-0813" // fireworks
   | "accounts/fireworks/models/deepseek-v4-flash-0731" // fireworks
+  | "accounts/fireworks/models/deepseek-v4p1-flash" // fireworks
   | "accounts/fireworks/models/kimi-k2-instruct" // fireworks - not supported anymore
   | "accounts/fireworks/models/kimi-k2-instruct-0905" // fireworks
   | "accounts/fireworks/models/kimi-k2p5" // fireworks
@@ -100,6 +105,8 @@ export type KnownModelLLMId =
   | "accounts/fireworks/models/minimax-m2p5" // fireworks
   | "accounts/fireworks/models/glm-5" // fireworks
   | "accounts/fireworks/models/glm-5p2" // fireworks
+  | "accounts/fireworks/models/glm-5p3" // fireworks
+  | "accounts/fireworks/models/glm-5p3-flash" // fireworks
   | "accounts/fireworks/models/inkling" // fireworks
   | "grok-3-latest" // xAI
   | "grok-3-mini-latest" // xAI
@@ -157,6 +164,8 @@ const ConnectorsAPIErrorTypeSchema = FlexibleEnumSchema<
   | "connector_update_error"
   | "connector_update_unauthorized"
   | "connector_oauth_target_mismatch"
+  | "connector_oauth_user_missing_rights"
+  | "connector_oauth_user_must_be_admin"
   | "connector_oauth_error"
   | "slack_channel_not_found"
   | "connector_rate_limit_error"
@@ -172,7 +181,7 @@ const ConnectorsAPIErrorSchema = z.object({
 
 export type ConnectorsAPIError = z.infer<typeof ConnectorsAPIErrorSchema>;
 
-const ModelIdSchema = z.number();
+export const ModelIdSchema = z.number();
 
 export type ConnectorsAPIErrorType = z.infer<
   typeof ConnectorsAPIErrorTypeSchema
@@ -290,6 +299,89 @@ export type PostWebhookTriggerResponseType = z.infer<
   typeof PostWebhookTriggerResponseSchema
 >;
 
+export const TriggerKindSchema = z.enum(["schedule", "webhook"]);
+export type TriggerKindType = z.infer<typeof TriggerKindSchema>;
+
+export const TriggerStatusSchema = z.enum([
+  "enabled",
+  "disabled",
+  "disabled_by_manager",
+  "relocating",
+  "downgraded",
+]);
+export type TriggerStatusType = z.infer<typeof TriggerStatusSchema>;
+
+export const TriggerExecutionModeSchema = z.enum([
+  "user_pool",
+  "workspace_pool",
+]);
+export type TriggerExecutionModeType = z.infer<
+  typeof TriggerExecutionModeSchema
+>;
+
+export const CronScheduleConfigSchema = z.object({
+  type: z.literal("cron").optional(),
+  cron: z.string(),
+  timezone: z.string(),
+});
+
+export const IntervalScheduleConfigSchema = z.object({
+  type: z.literal("interval"),
+  intervalDays: z.number(),
+  dayOfWeek: z.number().nullable(),
+  hour: z.number(),
+  minute: z.number(),
+  timezone: z.string(),
+});
+
+export const ScheduleConfigSchema = z.union([
+  CronScheduleConfigSchema,
+  IntervalScheduleConfigSchema,
+]);
+
+export const WebhookConfigSchema = z.object({
+  includePayload: z.boolean(),
+  event: z.string().optional(),
+  filter: z.string().optional(),
+});
+
+const TriggerBaseSchema = z.object({
+  id: ModelIdSchema,
+  sId: z.string(),
+  name: z.string(),
+  agentConfigurationId: z.string(),
+  customPrompt: z.string().nullable(),
+  status: TriggerStatusSchema,
+  createdAt: z.number(),
+  naturalLanguageDescription: z.string().nullable(),
+  executionMode: TriggerExecutionModeSchema,
+});
+
+export const TriggerSchema = z.discriminatedUnion("kind", [
+  TriggerBaseSchema.extend({
+    kind: z.literal("schedule"),
+    configuration: ScheduleConfigSchema,
+  }),
+  TriggerBaseSchema.extend({
+    kind: z.literal("webhook"),
+    configuration: WebhookConfigSchema,
+    webhookSource: z
+      .object({ name: z.string(), provider: z.string() })
+      .nullable(),
+  }),
+]);
+export type TriggerType = z.infer<typeof TriggerSchema>;
+
+export const GetTriggersResponseSchema = z.object({
+  triggers: z.array(TriggerSchema),
+});
+export type GetTriggersResponseType = z.infer<typeof GetTriggersResponseSchema>;
+
+export const GetTriggerResponseSchema = z.object({
+  trigger: TriggerSchema,
+});
+export type GetTriggerResponseType = z.infer<typeof GetTriggerResponseSchema>;
+
 type OtherContentType = keyof typeof supportedOtherFileFormats;
 type ImageContentType = keyof typeof supportedImageFileFormats;
 type AudioContentType = keyof typeof supportedAudioFileFormats;
@@ -340,6 +432,9 @@ const FrameContentTypeSchema = z.literal("application/vnd.dust.frame");
 const FrameSlideshowContentTypeSchema = z.literal(
   "application/vnd.dust.frame.slideshow"
 );
+const FrameV2ContentTypeSchema = z.literal(
+  "application/vnd.dust.frame.v2+json"
+);
 const SandboxFunctionContentTypeSchema = z.literal(
   "application/vnd.dust.sandbox.function"
 );
@@ -348,6 +443,7 @@ const ActionGeneratedFileContentTypeSchema = z.union([
   SupportedFileContentFragmentTypeSchema,
   FrameContentTypeSchema,
   FrameSlideshowContentTypeSchema,
+  FrameV2ContentTypeSchema,
   SandboxFunctionContentTypeSchema,
 ]);
 
@@ -401,6 +497,7 @@ const USER_MESSAGE_ORIGINS = [
   "zendesk",
   "onboarding_conversation",
   "agent_sidekick",
+  "analytics_panel",
   "project_kickoff",
   "reinforced_skill_notification",
   "reinforcement",
@@ -734,43 +831,49 @@ export type RetrievalDocumentPublicType = z.infer<
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "activation_force_nudge"
-  | "admin_controlled_pods"
   | "advanced_notion_management"
-  | "allow_scim"
-  | "allow_sso"
+  | "analytics_conversation_panel"
   | "custom_model_feature"
   | "anthropic_vertex_fallback"
-  | "anthropic_cache_diagnostics"
+  | "archive_inactive_agents"
   | "audit_logs"
   | "claude_4_5_opus_feature"
   | "claude_4_opus_feature"
+  | "group_seat_provisioning"
   | "claude_fable_5_feature"
-  | "databricks_tool"
   | "deepseek_feature"
-  | "dev_mcp_actions"
   | "exa_people_and_company"
   | "disable_computer_feature"
   | "disable_formatting_prompt"
+  | "disable_gpt_6_astra"
   | "disable_run_logs"
   | "discord_bot"
   | "dummy_feature_for_flag_testing"
-  | "dust_agent_gpt_5_6_luna_default"
   | "dust_agent_sonnet_5_default"
+  | "dust_filesystem"
   | "dust_internal_dangerous_in_cluster_mcp_servers"
   | "dust_internal_global_agents"
+  | "dust_lean_agent"
+  | "dust_pod_goal"
+  | "enable_new_usage_page"
   | "fireworks_new_model_feature"
+  | "frames_v2"
   | "google_sheets_tool"
+  | "gpt_5_6_terra_long_context"
   | "group_permissions_shadow"
   | "http_client_tool"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
   | "labs_transcripts"
   | "legacy_dust_apps"
-  | "models_picker"
+  | "legacy_trigger_limits"
+  | "message_export_from_consumption_index"
   | "netsuite_mcp"
   | "noop_model_feature"
   | "notion_private_integration"
   | "allow_old_notion_mcp"
+  | "openai_concise_reasoning_summaries"
+  | "openai_flex_processing"
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
@@ -779,43 +882,39 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "self_improvement_beta_tester"
   | "legacy_billing"
   | "plan_mode"
-  | "pod_frame_tabs"
+  | "admin_can_see_private_entities"
   | "skill_favorites"
   | "poke_mcp"
   | "restricted_spaces_in_input_bar"
   | "salesforce_synced_queries"
   | "salesforce_tool"
-  | "sandbox_functions"
   | "self_created_slack_app_connector_rollout"
   | "servicenow_tool"
   | "shopify_tool"
   | "show_debug_tools"
   | "slack_message_splitting"
+  | "stateful_conversation_window"
   | "run_tools_from_prompt"
   | "usage_data_api"
-  | "usage_page_read_only"
-  | "enable_analytics_consumption"
-  | "enable_analytics_automations"
   | "pricing_groups"
   | "workspace_analytics"
   | "xai_feature"
   | "conversations_slack_notifications"
   | "collapsible_messages"
+  | "consumption_export_api"
   | "conversation_consumption_details"
   | "use_dust_keys"
-  | "browser_extension_mcp_tools"
   | "sensitivity_labels"
   | "use_vertex_for_supported_models"
-  | "live_speech_to_text"
   | "workspace_default_agent"
   | "whitelabel_frames"
-  | "workday_mcp"
   | "user_memory"
   | "similar_agents_check"
-  | "enforce_user_spend_limit_rate_cap"
   | "enforce_premium_model_message_limit"
   | "editable_tool_inputs"
   | "skip_free_usage_rate_limit"
+  | "disable_fair_use_awu_limit"
+  | "remote_db_query_identity_labels"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -950,7 +1049,13 @@ const AgentConfigurationScopeSchema = FlexibleEnumSchema<
 >();
 
 export const AgentConfigurationViewSchema = FlexibleEnumSchema<
-  "all" | "list" | "workspace" | "published" | "global" | "favorites"
+  | "all"
+  | "all_unrestricted"
+  | "list"
+  | "workspace"
+  | "published"
+  | "global"
+  | "favorites"
 >();
 
 export type AgentConfigurationViewType = z.infer<
@@ -970,6 +1075,12 @@ const AgentModelConfigurationSchema = z.object({
   providerId: ModelProviderIdSchema,
   modelId: ModelLLMIdSchema,
   temperature: z.number(),
+});
+
+// A skill attached to an agent, as returned by the agent GET endpoints.
+const AgentSkillSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
 });
 
 const LightAgentConfigurationSchema = z.object({
@@ -995,6 +1106,9 @@ const LightAgentConfigurationSchema = z.object({
   groupIds: z.array(z.string()).optional(),
   requestedGroupIds: z.array(z.array(z.string())).optional(),
   requestedSpaceIds: z.array(z.string()).optional(),
+  // Only populated by the agent GET endpoints; empty for agents whose details were redacted
+  // (`canRead` false).
+  skills: z.array(AgentSkillSchema).optional(),
 });
 
 export type LightAgentConfigurationType = z.infer<
@@ -1216,8 +1330,8 @@ export function isAgentMessage(
 
 const AgentMessageFeedbackSchema = z.object({
   messageId: z.string(),
-  agentMessageId: z.number(),
-  userId: z.number(),
+  agentMessageId: ModelIdSchema,
+  userId: ModelIdSchema,
   thumbDirection: z.union([z.literal("up"), z.literal("down")]),
   content: z.string().nullable(),
   createdAt: z.number(),
@@ -2362,6 +2476,14 @@ export type GetWorkspaceFeatureFlagsResponseType = z.infer<
   typeof GetWorkspaceFeatureFlagsResponseSchema
 >;
 
+export const GetAutoGroupIdsForSpacesResponseSchema = z.object({
+  groupIds: z.string().array(),
+});
+
+export type GetAutoGroupIdsForSpacesResponseType = z.infer<
+  typeof GetAutoGroupIdsForSpacesResponseSchema
+>;
+
 export const PublicPostMessagesRequestBodySchema = z.intersection(
   z.object({
     content: z.string().min(1),
@@ -3134,6 +3256,64 @@ export type GetAnalyticsExportRequestType = z.infer<
   typeof GetAnalyticsExportRequestSchema
 >;
 
+const ConsumptionExportFilterKeySchema = z.enum([
+  "agents",
+  "users",
+  "api_keys",
+  "groups",
+  "models",
+  "tools",
+  "skills",
+  "sources",
+  "tags",
+]);
+
+const IsoDateTimeSchema = z
+  .string()
+  .refine((s): s is string => !isNaN(new Date(s).getTime()), {
+    message: "Must be a valid ISO 8601 datetime (e.g. 2026-01-15T00:00:00Z)",
+  });
+
+export const PostConsumptionExportRequestSchema = z
+  .object({
+    startDate: IsoDateTimeSchema,
+    endDate: IsoDateTimeSchema,
+    format: z.enum(["csv", "ndjson"]).optional(),
+    filter: z
+      .record(ConsumptionExportFilterKeySchema, z.string().max(256).array())
+      .optional(),
+  })
+  .refine(
+    (d) => new Date(d.startDate).getTime() < new Date(d.endDate).getTime(),
+    { message: "startDate must be strictly before endDate" }
+  )
+  .refine(
+    (d) => {
+      const diffMs =
+        new Date(d.endDate).getTime() - new Date(d.startDate).getTime();
+      return diffMs <= 30 * 24 * 60 * 60 * 1000;
+    },
+    { message: "Time range must not exceed 30 days" }
+  )
+  .refine(
+    (d) => {
+      if (!d.filter) {
+        return true;
+      }
+      const total = Object.values(d.filter).reduce(
+        (sum, arr) => sum + arr.length,
+        0
+      );
+      // Aligned with CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION in front.
+      return total <= 500;
+    },
+    { message: "Filter must not exceed 500 values total across all dimensions" }
+  );
+
+export type PostConsumptionExportRequestType = z.infer<
+  typeof PostConsumptionExportRequestSchema
+>;
+
 export const FileUploadUrlRequestSchema = z.object({
   contentType: SupportedFileContentFragmentTypeSchema,
   fileName: z.string().max(4096, "File name must be less than 4096 characters"),
@@ -3396,6 +3576,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ActionRobotIcon"
   | "ActionScanIcon"
   | "ActionSpeakIcon"
+  | "ActionStoreIcon"
   | "ActionTableIcon"
   | "ActionTimeIcon"
   | "AdomikLogo"
@@ -3412,6 +3593,8 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "ConfluenceLogo"
   | "ContentsquareLogo"
   | "CostoryLogo"
+  | "CursorLogo"
+  | "DatabricksLogo"
   | "DriveLogo"
   | "FathomLogo"
   | "FreshserviceLogo"
@@ -3450,12 +3633,14 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SalesforceLogo"
   | "SemrushLogo"
   | "SalesloftLogo"
+  | "ShopifyLogo"
   | "SlabLogo"
   | "SlackLogo"
   | "SnowflakeLogo"
   | "StatuspageLogo"
   | "StripeLogo"
   | "SupabaseLogo"
+  | "TerminalSquareIcon"
   | "UkgLogo"
   | "ValTownLogo"
   | "VantaLogo"
@@ -3632,7 +3817,7 @@ const MCPServerTypeSchema = z.object({
 });
 
 const MCPServerViewTypeSchema = z.object({
-  id: z.number(),
+  id: ModelIdSchema,
   sId: z.string(),
   name: z.string().nullable(),
   description: z.string().nullable(),

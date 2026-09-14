@@ -6,10 +6,17 @@ import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
+import type { GetApiKeysUsageResponseBody } from "@app/lib/api/credits/api_keys_usage";
 import type { GetMembersUsageResponseBody } from "@app/lib/api/credits/members_usage";
+import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PokeConditionalFetchProps } from "@app/poke/swr/types";
-import type { AwuPoolSummaryResponseBody } from "@app/types/api/credits/awu_pool_summary";
+import type {
+  AwuPoolCurrentCycleResponseBody,
+  AwuPoolCycleBreakdown,
+  AwuPoolCycleHistoryOverflow,
+  AwuPoolCycleHistoryResponseBody,
+} from "@app/types/api/credits/awu_pool_summary";
 import type { GetAwuTopUpsHistoryResponseBody } from "@app/types/api/credits/top_ups_history";
 import type { PokeListCreditsResponseBody } from "@app/types/api/poke/credits";
 import type {
@@ -22,6 +29,10 @@ export type PokeCreditsData = {
   rows: PokeListCreditsResponseBody["rows"];
   excessCreditsLast30DaysMicroUsd: number;
 };
+
+const EMPTY_HAS_MORE_CYCLE_HISTORY: AwuPoolCycleHistoryOverflow = Object.freeze(
+  { cycleBreakdown: false, excessCycleBreakdown: false }
+);
 
 export function usePokeCredits({ disabled, owner }: PokeConditionalFetchProps) {
   const { fetcher } = useFetcher();
@@ -144,26 +155,62 @@ export function usePokeAwuUsageFromAnalytics({
   };
 }
 
-export function usePokeAwuPoolSummary({
+export function usePokeAwuPoolCurrentCycle({
   owner,
   disabled,
 }: PokeConditionalFetchProps) {
   const { fetcher } = useFetcher();
-  const fetcherFn: Fetcher<AwuPoolSummaryResponseBody> = fetcher;
+  const fetcherFn: Fetcher<AwuPoolCurrentCycleResponseBody> = fetcher;
 
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/poke/workspaces/${owner.sId}/credits/awu-pool-summary`,
-    fetcherFn
+    `/api/poke/workspaces/${owner.sId}/credits/awu-pool-current-cycle`,
+    fetcherFn,
+    { disabled }
   );
 
   return {
-    awuPoolSummary: data ?? null,
-    isAwuPoolSummaryLoading: !error && !data && !disabled,
-    isAwuPoolSummaryError: error,
-    isAwuPoolSummaryValidating: isValidating,
-    mutateAwuPoolSummary: mutate,
+    awuPoolCurrentCycle: data ?? null,
+    isAwuPoolCurrentCycleLoading: !error && !data && !disabled,
+    isAwuPoolCurrentCycleError: error,
+    isAwuPoolCurrentCycleValidating: isValidating,
+    mutateAwuPoolCurrentCycle: mutate,
+  };
+}
+
+export function usePokeAwuPoolCycleHistory({
+  owner,
+  cycleHistoryLimit,
+  disabled,
+}: PokeConditionalFetchProps & { cycleHistoryLimit?: number }) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<AwuPoolCycleHistoryResponseBody> = fetcher;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/credits/awu-pool-cycle-history${
+      cycleHistoryLimit ? `?cycleHistoryLimit=${cycleHistoryLimit}` : ""
+    }`,
+    fetcherFn,
+    // Keep rows on screen while a larger limit is fetched so "Load more"
+    // appends instead of swapping the table for a spinner.
+    { disabled, keepPreviousData: true }
+  );
+
+  const isUsable = !error && !disabled;
+
+  return {
+    cycleBreakdown: isUsable
+      ? (data?.cycleBreakdown ?? emptyArray<AwuPoolCycleBreakdown>())
+      : emptyArray<AwuPoolCycleBreakdown>(),
+    excessCycleBreakdown: isUsable
+      ? (data?.excessCycleBreakdown ?? emptyArray<AwuPoolCycleBreakdown>())
+      : emptyArray<AwuPoolCycleBreakdown>(),
+    hasMoreCycleHistoryByBreakdown: isUsable
+      ? (data?.hasMoreCycleHistoryByBreakdown ?? EMPTY_HAS_MORE_CYCLE_HISTORY)
+      : EMPTY_HAS_MORE_CYCLE_HISTORY,
+    isAwuPoolCycleHistoryLoading: !error && !data && !disabled,
+    isAwuPoolCycleHistoryError: error,
+    isAwuPoolCycleHistoryValidating: isValidating,
+    mutateAwuPoolCycleHistory: mutate,
   };
 }
 
@@ -175,8 +222,9 @@ export function usePokeTopUpsHistory({
   const fetcherFn: Fetcher<GetAwuTopUpsHistoryResponseBody> = fetcher;
 
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    disabled ? null : `/api/poke/workspaces/${owner.sId}/credits/top-ups`,
-    fetcherFn
+    `/api/poke/workspaces/${owner.sId}/credits/top-ups`,
+    fetcherFn,
+    { disabled }
   );
 
   return {
@@ -198,6 +246,7 @@ export function usePokeMembersUsage({
   orderDirection,
   seatType,
   creditState,
+  groupId,
 }: PokeConditionalFetchProps & {
   pageIndex: number;
   pageSize: number;
@@ -206,11 +255,16 @@ export function usePokeMembersUsage({
     | "name"
     | "email"
     | "consumedAwuCredits"
+    | "consumedFromPoolAwuCredits"
     | "seatType"
-    | "creditState";
+    | "creditState"
+    | "seatUsage"
+    | "premiumMessageUsage"
+    | "fairUse";
   orderDirection?: "asc" | "desc";
   seatType?: MembershipSeatType;
   creditState?: UserCreditState;
+  groupId?: string;
 }) {
   const { fetcher } = useFetcher();
   const fetcherFn: Fetcher<GetMembersUsageResponseBody> = fetcher;
@@ -231,24 +285,69 @@ export function usePokeMembersUsage({
   if (creditState) {
     params.set("creditState", creditState);
   }
+  if (groupId) {
+    params.set("groupId", groupId);
+  }
   if (orderDirection) {
     params.set("orderDirection", orderDirection);
   }
 
   const { data, error, isValidating, mutate } = useSWRWithDefaults(
-    disabled
-      ? null
-      : `/api/poke/workspaces/${owner.sId}/credits/members-usage?${params.toString()}`,
+    `/api/poke/workspaces/${owner.sId}/credits/members-usage?${params.toString()}`,
     fetcherFn,
-    { revalidateOnFocus: false, keepPreviousData: true }
+    { disabled, revalidateOnFocus: false, keepPreviousData: true }
   );
 
   return {
     members: data?.members ?? emptyArray(),
     totalMembers: data?.total ?? 0,
+    creditsResetAt: data?.creditsResetAt ?? null,
     isMembersUsageLoading: !error && !data && !disabled,
     isMembersUsageError: error,
     isMembersUsageValidating: isValidating,
     mutateMembersUsage: mutate,
+  };
+}
+
+export function usePokeApiKeysUsage({
+  disabled,
+  owner,
+}: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
+  const fetcherFn: Fetcher<GetApiKeysUsageResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/credits/api-keys-usage`,
+    fetcherFn,
+    { disabled, revalidateOnFocus: false }
+  );
+
+  return {
+    apiKeys: data?.keys ?? emptyArray(),
+    isApiKeysUsageLoading: !error && !data && !disabled,
+    isApiKeysUsageError: error,
+    mutateApiKeysUsage: mutate,
+  };
+}
+
+const EMPTY_SEAT_PLANS: SeatPlanResponseBody = {};
+
+export function usePokeSeatPlan({
+  disabled,
+  owner,
+}: PokeConditionalFetchProps) {
+  const { fetcher } = useFetcher();
+  const seatPlanFetcher: Fetcher<SeatPlanResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/poke/workspaces/${owner.sId}/credits/seats-plan`,
+    seatPlanFetcher,
+    { disabled }
+  );
+
+  return {
+    seatPlans: data ?? EMPTY_SEAT_PLANS,
+    isSeatPlanLoading: !error && !data && !disabled,
+    isSeatPlanError: error,
   };
 }

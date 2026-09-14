@@ -21,7 +21,7 @@ import type {
   UpsertDatabaseTableRequestType,
   UpsertTableFromCsvRequestType,
 } from "@dust-tt/client";
-import type { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
 import http from "http";
@@ -1366,8 +1366,7 @@ async function _getDataSourceTable({
       dustRequestConfig
     );
   } catch (e) {
-    const axiosError = e as AxiosError;
-    if (axiosError?.response?.status === 404) {
+    if (axios.isAxiosError(e) && e.response?.status === 404) {
       localLogger.info("Table doesn't exist on Dust. Ignoring.");
       return;
     }
@@ -1502,8 +1501,7 @@ export async function _getDataSourceFolder({
   try {
     dustRequestResult = await axiosWithTimeout.get(endpoint, dustRequestConfig);
   } catch (e) {
-    const axiosError = e as AxiosError;
-    if (axiosError?.response?.status === 404) {
+    if (axios.isAxiosError(e) && e.response?.status === 404) {
       localLogger.info("Folder doesn't exist on Dust. Ignoring.");
       return;
     }

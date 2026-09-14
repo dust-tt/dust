@@ -25,9 +25,9 @@ import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_uti
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { CONVERSATION_SIDE_PANEL_SERVER } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
+import { CURSOR_CLOUD_AGENTS_SERVER } from "@app/lib/api/actions/servers/cursor_cloud_agents/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
-import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
 import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FATHOM_SERVER } from "@app/lib/api/actions/servers/fathom/metadata";
@@ -47,7 +47,6 @@ import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_gene
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
-import { JIT_TESTING_SERVER } from "@app/lib/api/actions/servers/jit_testing/metadata";
 import { LUMA_SERVER } from "@app/lib/api/actions/servers/luma/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_EXCEL_SERVER } from "@app/lib/api/actions/servers/microsoft_excel/metadata";
@@ -62,7 +61,6 @@ import { PLAN_MODE_SERVER } from "@app/lib/api/actions/servers/plan_mode/metadat
 import { POD_MANAGER_SERVER } from "@app/lib/api/actions/servers/pod_manager/metadata";
 import { POD_TASKS_SERVER } from "@app/lib/api/actions/servers/pod_tasks/metadata";
 import { POKE_SERVER } from "@app/lib/api/actions/servers/poke/metadata";
-import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
 import {
   QUERY_TABLES_V2_SERVER,
@@ -76,7 +74,6 @@ import {
   SANDBOX_MCP_REQUEST_TIMEOUT_MS,
   SANDBOX_SERVER,
 } from "@app/lib/api/actions/servers/sandbox/metadata";
-import { SANDBOX_FUNCTIONS_SERVER } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SERVICENOW_SERVER } from "@app/lib/api/actions/servers/servicenow/metadata";
 import { SHOPIFY_SERVER } from "@app/lib/api/actions/servers/shopify/metadata";
@@ -102,8 +99,11 @@ import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
-import { WORKDAY_SERVER } from "@app/lib/api/actions/servers/workday/metadata";
-import { WORKSPACE_ANALYTICS_SERVER } from "@app/lib/api/actions/servers/workspace_analytics/metadata";
+import {
+  WORKSPACE_ANALYTICS_SERVER,
+  WORKSPACE_ANALYTICS_SERVER_NAME,
+} from "@app/lib/api/actions/servers/workspace_analytics/metadata";
+import { WORKSPACE_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import type {
   InternalMCPServerDefinitionType,
@@ -153,7 +153,13 @@ export const ASHBY_SERVER_NAME = "ashby";
 
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
-export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [4, 28];
+// 1047 was workspace_people, folded into workspace_management as list_workspace_members.
+export const LEGACY_INTERNAL_MCP_SERVER_IDS: number[] = [
+  // 45 (databricks) was removed in favor of the official Databricks managed MCP servers, added as
+  // remote MCP server presets (see DEFAULT_REMOTE_MCP_SERVERS).
+  4,
+  28, 45, 1004, 1016, 1047,
+];
 
 export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Note:
@@ -173,8 +179,8 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "confluence",
   "conversation_files",
   "conversation_side_panel",
+  "cursor_cloud_agents",
   "files",
-  "databricks",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
   "extract_data",
@@ -204,10 +210,8 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "openai_usage",
   "outlook_calendar",
   "outlook",
-  "primitive_types_debugger",
   "productboard",
   "common_utilities",
-  "jit_testing",
   "run_agent",
   "run_dust_app",
   "salesforce",
@@ -226,7 +230,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "user_mentions",
   "val_town",
   "vanta",
-  "workday",
   "front",
   "web_search_&_browse",
   "zendesk",
@@ -239,11 +242,11 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "pod_tasks",
   "poke",
   "sandbox",
-  "sandbox_functions",
   "ask_user_question",
   "wakeups",
   "plan_mode",
-  "workspace_analytics",
+  WORKSPACE_ANALYTICS_SERVER_NAME,
+  "workspace_management",
   "activation_recommendations",
 ] as const;
 
@@ -775,19 +778,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     timeoutMs: undefined,
     metadata: VANTA_SERVER,
   },
-  databricks: {
-    id: 45,
-    availability: "manual",
-    allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("databricks_tool");
-    },
-    isPreview: true,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: DATABRICKS_SERVER,
-  },
   productboard: {
     id: 46,
     availability: "manual",
@@ -866,19 +856,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: GONG_SERVER,
-  },
-  primitive_types_debugger: {
-    id: 1004,
-    availability: "manual",
-    allowMultipleInstances: false,
-    isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("dev_mcp_actions");
-    },
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: PRIMITIVE_TYPES_DEBUGGER_SERVER,
   },
   [SEARCH_SERVER_NAME]: {
     id: 1006,
@@ -959,19 +936,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: VAL_TOWN_SERVER,
-  },
-  jit_testing: {
-    id: 1016,
-    availability: "manual",
-    allowMultipleInstances: false,
-    isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("dev_mcp_actions");
-    },
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: JIT_TESTING_SERVER,
   },
   common_utilities: {
     id: 1017,
@@ -1091,19 +1055,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     // timeout returns captured output before this MCP deadline aborts the call.
     timeoutMs: SANDBOX_MCP_REQUEST_TIMEOUT_MS,
   },
-  sandbox_functions: {
-    id: 1037,
-    availability: "auto_hidden_builder",
-    allowMultipleInstances: false,
-    isPreview: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("sandbox_functions");
-    },
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: SANDBOX_FUNCTIONS_SERVER,
-  },
   user_mentions: {
     id: 1026,
     availability: "auto_hidden_builder",
@@ -1208,6 +1159,17 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     timeoutMs: undefined,
     metadata: WORKSPACE_ANALYTICS_SERVER,
   },
+  workspace_management: {
+    id: 1048,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: WORKSPACE_MANAGEMENT_SERVER,
+  },
   exa_people_and_company: {
     id: 1036,
     availability: "auto",
@@ -1219,17 +1181,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: EXA_SERVER,
-  },
-  workday: {
-    id: 1038,
-    availability: "manual",
-    allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => !featureFlags.includes("workday_mcp"),
-    isPreview: true,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    metadata: WORKDAY_SERVER,
   },
   user_analytics: {
     id: 1039,
@@ -1285,9 +1236,6 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
       return !featureFlags.includes("shopify_tool");
     },
     isPreview: true,
-    // no Shopify OAuth provider yet (preview), so auth uses requiresBearerToken
-    // (we are using an access token from a client as bearer + shop domain via X-Shopify-Shop header)
-    requiresBearerToken: true,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1316,6 +1264,18 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: AGENT_DELEGATION_SERVER,
+  },
+  cursor_cloud_agents: {
+    id: 1049,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    requiresBearerToken: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: CURSOR_CLOUD_AGENTS_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

@@ -103,6 +103,41 @@ export class GCSRepositoryManager {
   }
 
   /**
+   * Generate the GCS path used to spool a repository tarball before extraction.
+   * Lives outside the extraction base path so repository file listings (index creation)
+   * never pick it up. Deleted by the bucket lifecycle policy.
+   */
+  generateTarballGcsPath(connectorId: number, repoId: number): string {
+    return `${connectorId}/github-repos/${repoId}/tarballs/${Date.now()}.tar.gz`;
+  }
+
+  /**
+   * Stream a repository tarball into a single GCS object.
+   * Errors are rethrown as-is so callers can classify them for retries.
+   */
+  async uploadTarballStream(gcsPath: string, stream: Readable): Promise<void> {
+    const file = this.bucket.file(gcsPath);
+
+    await pipeline(
+      stream,
+      file.createWriteStream({
+        metadata: {
+          contentType: "application/gzip",
+        },
+        resumable: true,
+        validation: false,
+      })
+    );
+  }
+
+  /**
+   * Create a read stream over a previously spooled tarball.
+   */
+  createTarballReadStream(gcsPath: string): Readable {
+    return this.bucket.file(gcsPath).createReadStream();
+  }
+
+  /**
    * List all files in a repository's GCS path.
    */
   async listFiles(
@@ -161,6 +196,8 @@ export class GCSRepositoryManager {
         metadata: {
           contentType: options?.contentType || "text/plain",
         },
+        // Resumable uploads add a round trip per object, too slow for small files.
+        resumable: false,
       });
 
       if (options?.metadata) {

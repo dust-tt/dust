@@ -5,6 +5,12 @@ import {
 } from "@app/components/poke/shadcn/ui/form/fields";
 import { clientFetch } from "@app/lib/egress/client";
 import { amountCents } from "@app/lib/metronome/amounts";
+import {
+  commitmentAmount,
+  commitmentMonths,
+  commitmentPeriodEnd,
+  maxInvoicePeriods,
+} from "@app/lib/metronome/seat_commitment";
 import { isPaygEligibleTier } from "@app/lib/metronome/types";
 import {
   CREDIT_PRICED_BUSINESS_PLAN_CODE,
@@ -13,12 +19,18 @@ import {
   isEnterprisePlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
+import type {
+  ContractDurationUnit,
+  SwitchContractTemplate,
+} from "@app/lib/poke/switch_contract_templates";
+import { SWITCH_CONTRACT_TEMPLATES } from "@app/lib/poke/switch_contract_templates";
 import {
   usePokeMetronomePackages,
   usePokePlans,
   usePokeStripeCustomerCurrency,
 } from "@app/lib/swr/poke";
 import { usePokePluginAsyncArgs } from "@app/poke/swr/plugins";
+import type { SupportedCurrency } from "@app/types/currency";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
 import { BILLABLE_SEAT_TYPES } from "@app/types/memberships";
 import { isCreditPricedPlan } from "@app/types/plan";
@@ -36,6 +48,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Label,
   SliderToggle,
   Spinner,
@@ -85,6 +101,115 @@ function snapDatetimeLocalToHour(value: string): string {
   return value;
 }
 
+// Add a contract duration to a start moment (UTC), clamping month/year day
+// overflow to the last day of the target month (Jan 31 + 1 month → Feb 28/29).
+function addContractDuration(
+  start: Date,
+  value: number,
+  unit: ContractDurationUnit
+): Date {
+  if (unit === "weeks") {
+    return new Date(start.getTime() + value * 7 * 24 * 60 * 60 * 1000);
+  }
+  const monthsToAdd = unit === "years" ? value * 12 : value;
+  const targetMonthIndex = start.getUTCMonth() + monthsToAdd;
+  const targetYear = start.getUTCFullYear() + Math.floor(targetMonthIndex / 12);
+  const targetMonth = ((targetMonthIndex % 12) + 12) % 12;
+  const lastDay = new Date(
+    Date.UTC(targetYear, targetMonth + 1, 0)
+  ).getUTCDate();
+  return new Date(
+    Date.UTC(
+      targetYear,
+      targetMonth,
+      Math.min(start.getUTCDate(), lastDay),
+      start.getUTCHours(),
+      start.getUTCMinutes(),
+      0,
+      0
+    )
+  );
+}
+
+// Floor a moment to the start of its UTC hour. Contracts always start and end
+// on whole hours, so the duration math anchors to the floored start hour.
+function floorToHourUTC(d: Date): Date {
+  const floored = new Date(d);
+  floored.setUTCMinutes(0, 0, 0);
+  return floored;
+}
+
+// Format a Date to the `YYYY-MM-DDTHH:mm` shape the datetime-local field uses,
+// interpreted in UTC.
+function toDatetimeLocalUTC(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` +
+    `T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
+  );
+}
+
+type SeatFormValue = {
+  selected: boolean;
+  minSeats: number;
+  maxSeats?: number;
+  rate: number;
+  commitmentPrice?: number;
+  paymentSchedule: {
+    frequency:
+      | "one_time"
+      | "monthly"
+      | "quarterly"
+      | "semi_annually"
+      | "annually";
+    periods?: number;
+  };
+};
+
+// Default seat settings for a package: entitled seats pre-selected, the rest
+// unchecked for the operator to opt into; minSeats 0 and the rate converted from
+// Metronome's fiat unit to the dialog's major units. Shared by the seat-reset
+// effect and template application so they can't drift.
+function buildDefaultSeats(
+  seats: { seatType: string; defaultRate: number | null; entitled: boolean }[],
+  resolvedCurrency: SupportedCurrency | null | undefined
+): Record<string, SeatFormValue> {
+  const next: Record<string, SeatFormValue> = {};
+  for (const seat of seats) {
+    const rate =
+      seat.defaultRate != null && resolvedCurrency
+        ? amountCents(seat.defaultRate, resolvedCurrency) / 100
+        : (seat.defaultRate ?? 0);
+    next[seat.seatType] = {
+      selected: seat.entitled,
+      minSeats: 0,
+      maxSeats: undefined,
+      rate,
+      paymentSchedule: { frequency: "one_time" },
+    };
+  }
+  return next;
+}
+
+// Merge a template's per-seat overrides onto a package's default seats. Seat
+// types the package does not sell have no entry to merge onto and are skipped.
+function mergeTemplateSeats(
+  base: Record<string, SeatFormValue>,
+  templateSeats: SwitchContractTemplate["seats"]
+): Record<string, SeatFormValue> {
+  if (!templateSeats) {
+    return base;
+  }
+  const next = { ...base };
+  for (const [seatType, override] of Object.entries(templateSeats)) {
+    if (!override || !next[seatType]) {
+      continue;
+    }
+    next[seatType] = { ...next[seatType], ...override };
+  }
+  return next;
+}
+
 const isLegacyPackageName = (name: string) => /\blegacy\b/i.test(name);
 
 const DEFAULT_PERIODS_FOR_FREQUENCY: Record<string, number | undefined> = {
@@ -94,6 +219,67 @@ const DEFAULT_PERIODS_FOR_FREQUENCY: Record<string, number | undefined> = {
   annually: 1,
   one_time: undefined,
 };
+
+// A small number input + unit dropdown (years / months / weeks), reused for the
+// contract duration and the promotional offer period.
+function PeriodField({
+  value,
+  unit,
+  onValueChange,
+  onUnitChange,
+  portalContainer,
+  min = 1,
+}: {
+  value: number;
+  unit: ContractDurationUnit;
+  onValueChange: (value: number) => void;
+  onUnitChange: (unit: ContractDurationUnit) => void;
+  portalContainer: HTMLElement | undefined;
+  min?: number;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <input
+        type="number"
+        min={min}
+        value={value}
+        onChange={(e) => onValueChange(Number(e.target.value))}
+        className="h-7 w-14 rounded-md border border-border bg-background px-1.5 text-xs"
+      />
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            isSelect
+            label={
+              unit === "years"
+                ? "Years"
+                : unit === "months"
+                  ? "Months"
+                  : "Weeks"
+            }
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent mountPortalContainer={portalContainer}>
+          <DropdownMenuItem
+            label="Years"
+            onClick={() => onUnitChange("years")}
+          />
+          <DropdownMenuItem
+            label="Months"
+            onClick={() => onUnitChange("months")}
+          />
+          <DropdownMenuItem
+            label="Weeks"
+            onClick={() => onUnitChange("weeks")}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
 
 interface SwitchContractDialogProps {
   owner: WorkspaceType;
@@ -107,6 +293,20 @@ export default function SwitchContractDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [durationMode, setDurationMode] = useState(false);
+  const [durationValue, setDurationValue] = useState(1);
+  const [durationUnit, setDurationUnit] =
+    useState<ContractDurationUnit>("years");
+  // Promotional free period offered at the start of the contract (0 = none),
+  // applied globally to every seat commitment's earliest bills.
+  const [offerValue, setOfferValue] = useState(0);
+  const [offerUnit, setOfferUnit] = useState<ContractDurationUnit>("weeks");
+  const [appliedTemplateName, setAppliedTemplateName] = useState<string | null>(
+    null
+  );
+  // Template whose non-package fields still need applying once the package it
+  // selects has repopulated the seats (see the apply-template effect below).
+  const pendingTemplateRef = useRef<SwitchContractTemplate | null>(null);
   const [portalContainer, setPortalContainer] = useState<
     HTMLElement | undefined
   >(undefined);
@@ -145,9 +345,8 @@ export default function SwitchContractDialog({
   // The credit-priced usage cap lives on `credit_usage_configuration.usageCapCredits`
   // and is managed via the "Manage Credit Usage Configuration" plugin — operators
   // enter the desired cap (in AWU credits) fresh when switching contracts.
-  const form = useForm<SwitchContractFormValues>({
-    resolver: zodResolver(SwitchContractFormSchema),
-    defaultValues: {
+  const formDefaults: SwitchContractFormValues = useMemo(
+    () => ({
       metronomePackageId: "",
       planCode: "",
       hubspotDealId: "",
@@ -173,7 +372,12 @@ export default function SwitchContractDialog({
       scheduledCharge: undefined,
       recurringFreeCredit: undefined,
       seats: {},
-    },
+    }),
+    [stripeCustomerId]
+  );
+  const form = useForm<SwitchContractFormValues>({
+    resolver: zodResolver(SwitchContractFormSchema),
+    defaultValues: formDefaults,
   });
 
   const watchedStripeCustomerId = form.watch("stripeCustomerId");
@@ -207,6 +411,8 @@ export default function SwitchContractDialog({
   const creditConfigAppliedRef = useRef(false);
   useEffect(() => {
     if (!open) {
+      // Re-arm the one-shot prefill for the next open; the operator-facing
+      // resets happen in the dialog's onOpenChange handler.
       creditConfigAppliedRef.current = false;
       return;
     }
@@ -289,28 +495,7 @@ export default function SwitchContractDialog({
   // (dollars/euros), so convert for display. Avoids stale values leaking across
   // package selections.
   useEffect(() => {
-    const next: Record<
-      string,
-      {
-        selected: boolean;
-        minSeats: number;
-        rate: number;
-        paymentSchedule: { frequency: "one_time" };
-      }
-    > = {};
-    for (const seat of selectedSeats) {
-      const rate =
-        seat.defaultRate != null && resolvedCurrency
-          ? amountCents(seat.defaultRate, resolvedCurrency) / 100
-          : (seat.defaultRate ?? 0);
-      next[seat.seatType] = {
-        selected: seat.entitled,
-        minSeats: 0,
-        rate,
-        paymentSchedule: { frequency: "one_time" },
-      };
-    }
-    form.setValue("seats", next);
+    form.setValue("seats", buildDefaultSeats(selectedSeats, resolvedCurrency));
   }, [selectedSeats, form, resolvedCurrency]);
 
   // Clear a stale package selection when the resolved currency changes so a
@@ -348,6 +533,187 @@ export default function SwitchContractDialog({
       form.setValue("usageCapCredits", undefined);
     }
   }, [selectedTier, form, defaultStartingAtUTC]);
+
+  // Resolve a template's contract type to a concrete package id in the resolved
+  // currency: same tier and, when given, a case-insensitive name-substring match.
+  const resolveTemplatePackageId = useCallback(
+    (template: SwitchContractTemplate): string | null => {
+      if (!template.package) {
+        return null;
+      }
+      const pattern = template.package.namePattern?.toLowerCase();
+      const match = metronomePackages.find(
+        (p) =>
+          p.tier === template.package?.tier &&
+          p.currency === resolvedCurrency &&
+          (!pattern || p.name.toLowerCase().includes(pattern))
+      );
+      return match?.id ?? null;
+    },
+    [metronomePackages, resolvedCurrency]
+  );
+
+  // Apply every non-package field of a template onto the form. Package selection
+  // is handled separately (it repopulates the seats first), so this runs either
+  // directly (package unchanged / template has none) or from the apply-template
+  // effect once the seats are ready.
+  const applyTemplateFields = useCallback(
+    (template: SwitchContractTemplate) => {
+      if (template.planCode !== undefined) {
+        form.setValue("planCode", template.planCode);
+      }
+      if (template.startMode !== undefined) {
+        form.setValue("startMode", template.startMode);
+      }
+      if (template.startingAt !== undefined) {
+        form.setValue("startingAt", template.startingAt);
+      }
+      if (template.netPaymentTermsDays !== undefined) {
+        form.setValue("netPaymentTermsDays", template.netPaymentTermsDays);
+      }
+      if (template.defaultDiscountPercent !== undefined) {
+        form.setValue(
+          "defaultDiscountPercent",
+          template.defaultDiscountPercent
+        );
+      }
+      if (template.usageCapCredits !== undefined) {
+        form.setValue("usageCapCredits", template.usageCapCredits);
+      }
+      if (template.defaultPoolCapCredits !== undefined) {
+        form.setValue("defaultPoolCapCredits", template.defaultPoolCapCredits);
+      }
+      if (template.paygEnabled !== undefined) {
+        form.setValue("paygEnabled", template.paygEnabled);
+      }
+      if (template.autoSeatUpgradeEnabled !== undefined) {
+        form.setValue(
+          "autoSeatUpgradeEnabled",
+          template.autoSeatUpgradeEnabled
+        );
+      }
+      if (template.topUpEnabled !== undefined) {
+        form.setValue("topUpEnabled", template.topUpEnabled);
+      }
+      if (template.autoInvoiceFinalizationEnabled !== undefined) {
+        form.setValue(
+          "autoInvoiceFinalizationEnabled",
+          template.autoInvoiceFinalizationEnabled
+        );
+      }
+      if (template.promoteNoneSeatsTo !== undefined) {
+        form.setValue("promoteNoneSeatsTo", template.promoteNoneSeatsTo);
+      }
+      if (template.initialCredits !== undefined) {
+        form.setValue("initialCredits", template.initialCredits);
+      }
+      if (template.scheduledCharge !== undefined) {
+        form.setValue("scheduledCharge", template.scheduledCharge);
+      }
+      if (template.recurringFreeCredit !== undefined) {
+        form.setValue("recurringFreeCredit", template.recurringFreeCredit);
+      }
+      // Merge seat overrides onto the current package's seats.
+      if (template.seats) {
+        form.setValue(
+          "seats",
+          mergeTemplateSeats(form.getValues("seats") ?? {}, template.seats)
+        );
+      }
+    },
+    [form]
+  );
+
+  const applyTemplate = useCallback(
+    (template: SwitchContractTemplate) => {
+      setError(null);
+      setAppliedTemplateName(template.name);
+      pendingTemplateRef.current = null;
+
+      const packageId = resolveTemplatePackageId(template);
+      // Surface a resolution miss instead of silently applying no package (and
+      // therefore no seats): the package name/currency may not match this env.
+      if (template.package && !packageId) {
+        setError(
+          `Template "${template.name}": no ${template.package.tier} package` +
+            (template.package.namePattern
+              ? ` matching "${template.package.namePattern}"`
+              : "") +
+            ` found for ${resolvedCurrency?.toUpperCase() ?? "the selected currency"}. ` +
+            "Pick a package manually."
+        );
+      }
+      const isSamePackage =
+        Boolean(packageId) && packageId === selectedPackageId;
+
+      // Start from a blank form so no field from a previously applied template
+      // lingers. The billing identity (Stripe customer + currency) is preserved
+      // since it identifies the customer, not the contract shape. When the
+      // package is unchanged the seat-reset effect won't fire, so seed the
+      // package's default seats (with the template's overrides) into this single
+      // reset — a reset() followed by a setValue() on the nested `seats` object
+      // races and leaves the seat fields blank.
+      const current = form.getValues();
+      form.reset({
+        ...formDefaults,
+        stripeCustomerId: current.stripeCustomerId,
+        stripeCollectionMethod: current.stripeCollectionMethod,
+        manualCurrency: current.manualCurrency,
+        ...(isSamePackage
+          ? {
+              metronomePackageId: packageId,
+              startingAt: defaultStartingAtUTC,
+              seats: mergeTemplateSeats(
+                buildDefaultSeats(selectedSeats, resolvedCurrency),
+                template.seats
+              ),
+            }
+          : {}),
+      });
+      // Duration and offer are local UI state that don't depend on the package,
+      // so set them here in the handler (not from the deferred effect below).
+      setDurationMode(template.duration !== undefined);
+      setDurationValue(template.duration?.value ?? 1);
+      setDurationUnit(template.duration?.unit ?? "years");
+      setOfferValue(template.offerFreePeriod?.value ?? 0);
+      setOfferUnit(template.offerFreePeriod?.unit ?? "weeks");
+
+      if (packageId && !isSamePackage) {
+        // The package changes: selecting it repopulates the seats and resets the
+        // tier defaults, so defer the rest of the template until that settles.
+        pendingTemplateRef.current = template;
+        form.setValue("metronomePackageId", packageId);
+      } else {
+        // Same package (seats already seeded above) or no package: apply the
+        // remaining scalar fields now.
+        applyTemplateFields(template);
+      }
+    },
+    [
+      resolveTemplatePackageId,
+      selectedPackageId,
+      selectedSeats,
+      resolvedCurrency,
+      defaultStartingAtUTC,
+      form,
+      formDefaults,
+      applyTemplateFields,
+    ]
+  );
+
+  // Second phase of applying a template: once selecting its package has
+  // repopulated the seats and reset the tier defaults, apply the template's own
+  // fields on top. Placed after the seat-reset and tier-default effects so it
+  // wins. No-op unless a template is pending.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedSeats and selectedTier are intentional re-run triggers — this effect must fire once the package's seats/tier have settled, even though it reads neither directly.
+  useEffect(() => {
+    const pending = pendingTemplateRef.current;
+    if (!pending) {
+      return;
+    }
+    pendingTemplateRef.current = null;
+    applyTemplateFields(pending);
+  }, [selectedSeats, selectedTier, applyTemplateFields]);
 
   const startMode = form.watch("startMode");
   const startingAt = form.watch("startingAt");
@@ -393,6 +759,64 @@ export default function SwitchContractDialog({
         retroactiveFirstOfMonthLabel: d.toUTCString(),
       };
     }, []);
+
+  // Resolve the contract start moment the same way `onSubmit` does, so the
+  // commitment-period info and the per-seat default commitment prices reflect
+  // what will actually be provisioned.
+  const commitmentStartDate = useMemo(() => {
+    if (startMode === "retroactive_first_of_month") {
+      return new Date(retroactiveFirstOfMonthISO);
+    }
+    if (startMode === "immediately") {
+      // "Immediately" swaps at a whole hour; floor now so the displayed period,
+      // prorated defaults, and computed end date all sit on hour boundaries.
+      return floorToHourUTC(new Date());
+    }
+    if (startMode === "select" && startingAt) {
+      const d = new Date(startingAt + ":00Z");
+      return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+  }, [startMode, startingAt, retroactiveFirstOfMonthISO]);
+
+  const commitmentEndDate = useMemo(() => {
+    if (!endingAt) {
+      return undefined;
+    }
+    const d = new Date(endingAt + ":00Z");
+    return isNaN(d.getTime()) ? undefined : d;
+  }, [endingAt]);
+
+  // The commitment period drives the default seat commitment prices: it runs
+  // from the contract start to its end date, or one year when open-ended.
+  const commitmentPeriodInfo = useMemo(() => {
+    if (!commitmentStartDate) {
+      return null;
+    }
+    const end = commitmentPeriodEnd(commitmentStartDate, commitmentEndDate);
+    return {
+      start: commitmentStartDate,
+      end,
+      months: commitmentMonths(commitmentStartDate, end),
+      openEnded: commitmentEndDate === undefined,
+    };
+  }, [commitmentStartDate, commitmentEndDate]);
+
+  // While "Set duration" is on, the end date is derived from the (floored) start
+  // plus the chosen duration and kept in sync as the start, value, or unit
+  // change — the end-date field is read-only in this mode. Anchored to the
+  // floored start hour so the end lands on a whole hour.
+  useEffect(() => {
+    if (!durationMode || !commitmentStartDate || !(durationValue > 0)) {
+      return;
+    }
+    const end = addContractDuration(
+      floorToHourUTC(commitmentStartDate),
+      durationValue,
+      durationUnit
+    );
+    form.setValue("endingAt", toDatetimeLocalUTC(end));
+  }, [durationMode, commitmentStartDate, durationValue, durationUnit, form]);
 
   const startModeOptions = useMemo(
     () => [
@@ -472,6 +896,45 @@ export default function SwitchContractDialog({
     }
   }, [promoteNoneSeatsTo, enterableSeatTypes, form]);
 
+  // Canonical default installment count for a payment frequency, capped so no
+  // installment lands at or past the commitment period end (a 3rd monthly
+  // invoice on a six-week contract would never be raised). Reads the start/end
+  // from the live form values so it tracks whatever the operator has entered.
+  const cappedDefaultPeriods = useCallback(
+    (
+      freq: "one_time" | "monthly" | "quarterly" | "semi_annually" | "annually",
+      values: {
+        startMode?: string;
+        startingAt?: string;
+        endingAt?: string;
+      }
+    ): number | undefined => {
+      const base = DEFAULT_PERIODS_FOR_FREQUENCY[freq];
+      if (base === undefined || freq === "one_time") {
+        return base;
+      }
+      const start =
+        values.startMode === "retroactive_first_of_month"
+          ? new Date(retroactiveFirstOfMonthISO)
+          : values.startMode === "immediately"
+            ? new Date()
+            : values.startMode === "select" && values.startingAt
+              ? new Date(values.startingAt + ":00Z")
+              : null;
+      if (!start || isNaN(start.getTime())) {
+        return base;
+      }
+      const end = values.endingAt
+        ? new Date(values.endingAt + ":00Z")
+        : undefined;
+      return Math.min(
+        base,
+        maxInvoicePeriods(start, commitmentPeriodEnd(start, end), freq)
+      );
+    },
+    [retroactiveFirstOfMonthISO]
+  );
+
   // When any payment frequency field changes, pre-fill its sibling periods
   // field with the canonical default. Uses form.watch(callback) — the only
   // reliable way to know exactly which field changed (via the `name` argument).
@@ -483,7 +946,7 @@ export default function SwitchContractDialog({
           : "one_time";
         form.setValue(
           "initialCredits.paymentSchedule.periods",
-          DEFAULT_PERIODS_FOR_FREQUENCY[freq]
+          cappedDefaultPeriods(freq, value)
         );
       }
       if (name === "scheduledCharge.paymentSchedule.frequency") {
@@ -492,7 +955,7 @@ export default function SwitchContractDialog({
           : "one_time";
         form.setValue(
           "scheduledCharge.paymentSchedule.periods",
-          DEFAULT_PERIODS_FOR_FREQUENCY[freq]
+          cappedDefaultPeriods(freq, value)
         );
       }
       if (
@@ -504,7 +967,7 @@ export default function SwitchContractDialog({
           value.seats?.[seatType]?.paymentSchedule?.frequency ?? "one_time";
         form.setValue(
           `seats.${seatType}.paymentSchedule.periods`,
-          DEFAULT_PERIODS_FOR_FREQUENCY[freq]
+          cappedDefaultPeriods(freq, value)
         );
       }
       // A commitment can't be invoiced at a $0 rate — clear a stale commitment
@@ -518,7 +981,7 @@ export default function SwitchContractDialog({
       }
     });
     return unsubscribe;
-  }, [form]);
+  }, [form, cappedDefaultPeriods]);
 
   const onSubmit = useCallback(
     (values: SwitchContractFormValues) => {
@@ -586,6 +1049,10 @@ export default function SwitchContractDialog({
       if (values.recurringFreeCredit !== undefined) {
         cleaned.recurringFreeCredit = values.recurringFreeCredit;
       }
+      // Promotional free period: only sent when a positive duration is entered.
+      if (offerValue > 0) {
+        cleaned.offerFreePeriod = { value: offerValue, unit: offerUnit };
+      }
       // Resolve the start moment. "immediately" leaves `startingAt` unset so
       // the server swaps at the current hour.
       if (values.startMode === "retroactive_first_of_month") {
@@ -598,6 +1065,18 @@ export default function SwitchContractDialog({
         // datetime-local has no timezone — append Z to interpret as UTC.
         cleaned.endingAt = new Date(values.endingAt + ":00Z").toISOString();
       }
+      // Resolve the commitment window (mirrors the display memos) so the default
+      // seat commitment price is prorated to the contract, not a fixed year.
+      const commitStart =
+        values.startMode === "retroactive_first_of_month"
+          ? new Date(retroactiveFirstOfMonthISO)
+          : values.startMode === "select" && values.startingAt
+            ? new Date(values.startingAt + ":00Z")
+            : floorToHourUTC(new Date());
+      const commitEnd = values.endingAt
+        ? new Date(values.endingAt + ":00Z")
+        : undefined;
+      const commitPeriodEnd = commitmentPeriodEnd(commitStart, commitEnd);
       // Seats: every seat the package knows about, each carrying its `selected`
       // state, so the server can entitle checked seats and disable unchecked
       // ones the package would otherwise sell. Entitled-by-default seats are
@@ -610,9 +1089,13 @@ export default function SwitchContractDialog({
         const minSeats = Number.isFinite(entry?.minSeats)
           ? (entry?.minSeats ?? 0)
           : 0;
+        const maxSeats =
+          typeof entry?.maxSeats === "number" && Number.isFinite(entry.maxSeats)
+            ? entry.maxSeats
+            : undefined;
         const rate = Number.isFinite(entry?.rate) ? (entry?.rate ?? 0) : 0;
-        // If the operator left commitment price blank, default to minSeats * rate
-        // (the list value of the committed seats).
+        // If the operator left commitment price blank, default to the
+        // commitment period prorated in months (see `commitmentInvoiceAmount`).
         const explicitPrice =
           typeof entry?.commitmentPrice === "number" &&
           Number.isFinite(entry.commitmentPrice) &&
@@ -621,7 +1104,17 @@ export default function SwitchContractDialog({
             : null;
         const commitmentPrice =
           explicitPrice ??
-          (minSeats > 0 && rate > 0 ? minSeats * rate : undefined);
+          (minSeats > 0 && rate > 0
+            ? Math.round(
+                commitmentAmount({
+                  minSeats,
+                  ratePerPeriod: rate,
+                  isAnnual: seatType.endsWith("_yearly"),
+                  start: commitStart,
+                  end: commitPeriodEnd,
+                }) * 100
+              ) / 100
+            : undefined);
         // Periods-when-not-one-time is enforced by `paymentScheduleSchema`'s
         // own refine, so it's guaranteed present here whenever needed.
         const paymentSchedule = entry?.paymentSchedule ?? {
@@ -637,6 +1130,7 @@ export default function SwitchContractDialog({
         seats[seatType] = {
           selected,
           minSeats,
+          maxSeats,
           rate,
           commitmentPrice,
           paymentSchedule,
@@ -675,11 +1169,31 @@ export default function SwitchContractDialog({
       };
       void submit();
     },
-    [form, owner.sId, router, selectedSeats, retroactiveFirstOfMonthISO]
+    [
+      form,
+      owner.sId,
+      router,
+      selectedSeats,
+      retroactiveFirstOfMonthISO,
+      offerValue,
+      offerUnit,
+    ]
   );
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        // Reset the transient selections when the dialog closes.
+        if (!next) {
+          setOfferValue(0);
+          setOfferUnit("weeks");
+          setAppliedTemplateName(null);
+          pendingTemplateRef.current = null;
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button variant="outline" label="🔁 Switch contract" />
       </DialogTrigger>
@@ -759,6 +1273,44 @@ export default function SwitchContractDialog({
                     credit configuration to show for an unresolved customer. */}
                 {resolvedCurrency && (
                   <>
+                    <div className="grid grid-cols-[200px_1fr] items-center gap-x-4 gap-y-2">
+                      <Label className="text-sm">
+                        Template
+                        <span className="ml-1 text-muted-foreground">
+                          (optional)
+                        </span>
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              isSelect
+                              disabled={isPackagesLoading}
+                              label={
+                                appliedTemplateName ?? "Select a template…"
+                              }
+                            />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            mountPortalContainer={portalContainer}
+                          >
+                            {SWITCH_CONTRACT_TEMPLATES.map((template) => (
+                              <DropdownMenuItem
+                                key={template.id}
+                                label={template.name}
+                                description={template.description}
+                                onClick={() => applyTemplate(template)}
+                              />
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <span className="text-xs text-muted-foreground">
+                          Pre-fills the form; every field stays editable.
+                        </span>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-[200px_1fr] items-center gap-x-4 gap-y-2">
                       <Label className="text-sm">
                         HubSpot Deal ID
@@ -907,21 +1459,56 @@ export default function SwitchContractDialog({
                             </span>
                           </Label>
                           <div className="relative">
-                            <InputField
-                              control={form.control}
-                              name="endingAt"
-                              hideLabel
-                              type="datetime-local"
-                              step={3600}
-                              placeholder="open-ended"
-                              transformValue={snapDatetimeLocalToHour}
-                            />
-                            {endingAtLocalLabel && (
-                              <p className="mt-1 text-xs text-muted-foreground absolute top-2 right-2">
-                                Local: {endingAtLocalLabel}
-                              </p>
-                            )}
+                            <div className="relative">
+                              <InputField
+                                control={form.control}
+                                name="endingAt"
+                                hideLabel
+                                type="datetime-local"
+                                step={3600}
+                                placeholder="open-ended"
+                                disabled={durationMode}
+                                transformValue={snapDatetimeLocalToHour}
+                              />
+                              {endingAtLocalLabel && (
+                                <p className="mt-1 text-xs text-muted-foreground absolute top-2 right-2">
+                                  Local: {endingAtLocalLabel}
+                                </p>
+                              )}
+                            </div>
+                            <div className="mt-2 flex items-center gap-2">
+                              <SliderToggle
+                                selected={durationMode}
+                                onClick={() => setDurationMode((v) => !v)}
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                Set duration
+                              </span>
+                              {durationMode && (
+                                <PeriodField
+                                  value={durationValue}
+                                  unit={durationUnit}
+                                  onValueChange={setDurationValue}
+                                  onUnitChange={setDurationUnit}
+                                  portalContainer={portalContainer}
+                                />
+                              )}
+                            </div>
                           </div>
+                          {commitmentPeriodInfo && (
+                            <>
+                              <Label className="text-sm">
+                                Commitment period
+                              </Label>
+                              <div className="text-sm text-muted-foreground">
+                                {commitmentPeriodInfo.openEnded
+                                  ? "1 year (open-ended contract)"
+                                  : `${commitmentPeriodInfo.months.toFixed(1)} months (contract start → end)`}
+                                . Drives the default seat commitment prices
+                                below.
+                              </div>
+                            </>
+                          )}
                         </>
                       )}
                     </div>
@@ -1048,7 +1635,8 @@ export default function SwitchContractDialog({
                         {/* Header row */}
                         <div className="flex items-center gap-3 pb-1 text-xs font-medium text-muted-foreground">
                           <div className="w-32 shrink-0" />
-                          <div className="flex-1">Min seats</div>
+                          <div className="flex-1">Commitment</div>
+                          <div className="flex-1">Max</div>
                           <div className="flex-1">
                             Seat rate
                             {resolvedCurrency
@@ -1075,9 +1663,28 @@ export default function SwitchContractDialog({
                           const rate = watchedSeats?.[seatType]?.rate ?? 0;
                           const isAnnualSeat = seatType.endsWith("_yearly");
                           const defaultCommitment =
-                            minSeats > 0 && rate > 0 ? minSeats * rate : null;
+                            commitmentPeriodInfo && minSeats > 0 && rate > 0
+                              ? Math.round(
+                                  commitmentAmount({
+                                    minSeats,
+                                    ratePerPeriod: rate,
+                                    isAnnual: isAnnualSeat,
+                                    start: commitmentPeriodInfo.start,
+                                    end: commitmentPeriodInfo.end,
+                                  }) * 100
+                                ) / 100
+                              : null;
                           const monthlyRate =
                             isAnnualSeat && rate > 0 ? rate / 12 : null;
+                          const maxPeriods =
+                            commitmentPeriodInfo &&
+                            seatPaymentFrequency !== "one_time"
+                              ? maxInvoicePeriods(
+                                  commitmentPeriodInfo.start,
+                                  commitmentPeriodInfo.end,
+                                  seatPaymentFrequency
+                                )
+                              : undefined;
                           return (
                             <div
                               key={seatType}
@@ -1109,6 +1716,17 @@ export default function SwitchContractDialog({
                                   hideLabel
                                   type="number"
                                   placeholder="0"
+                                  disabled={!isSelected}
+                                />
+                              </div>
+                              <div className="flex-1">
+                                <InputField
+                                  control={form.control}
+                                  name={`seats.${seatType}.maxSeats`}
+                                  hideLabel
+                                  type="number"
+                                  min="1"
+                                  placeholder="∞"
                                   disabled={!isSelected}
                                 />
                               </div>
@@ -1174,6 +1792,12 @@ export default function SwitchContractDialog({
                                     name={`seats.${seatType}.paymentSchedule.periods`}
                                     hideLabel
                                     type="number"
+                                    min="1"
+                                    max={
+                                      maxPeriods !== undefined
+                                        ? String(maxPeriods)
+                                        : undefined
+                                    }
                                     placeholder="e.g., 4"
                                   />
                                 )}
@@ -1422,6 +2046,27 @@ export default function SwitchContractDialog({
                             />
                           </>
                         )}
+                      </div>
+                    </div>
+                    <div className="border-t pt-4">
+                      <div className="grid grid-cols-[200px_1fr] items-center gap-x-4 gap-y-2">
+                        <Label className="text-sm font-medium">
+                          Offer free period
+                        </Label>
+                        <PeriodField
+                          value={offerValue}
+                          unit={offerUnit}
+                          onValueChange={(v) => setOfferValue(Math.max(0, v))}
+                          onUnitChange={setOfferUnit}
+                          portalContainer={portalContainer}
+                          min={0}
+                        />
+                        <div className="col-span-2 text-xs text-muted-foreground">
+                          Reduces every seat commitment's earliest bill(s) by
+                          the prorated value of this leading period, so the
+                          customer pays nothing for it. Leave at 0 for no offer.
+                          The granted seats are unchanged.
+                        </div>
                       </div>
                     </div>
                   </>

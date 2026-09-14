@@ -16,6 +16,8 @@ import type {
   DatasetType,
   DatasetViewType,
 } from "@app/types/dataset";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { isString } from "@app/types/shared/utils/general";
 import {
   Button,
   Download01,
@@ -443,26 +445,26 @@ export default function DatasetView({
     setDatasetData(data);
   };
 
-  const handleFileLoaded = (e: any) => {
-    const content = e.target.result;
-    let data = [];
-    try {
-      data = content
-        .split("\n")
-        .filter((l: string) => {
-          return l.length > 0;
-        })
-        .map((l: string, i: number) => {
-          try {
-            return JSON.parse(l);
-          } catch (e: any) {
-            e.line = i;
-            throw e;
-          }
-        });
-    } catch (e: any) {
-      window.alert(`Error parsing JSONL line ${e.line}: ${e}`);
+  /**
+   * @cc [owner:spolu,label:product;error-handling] jsonl-import-preserves-data-on-parse-failure
+   * A failed file read or JSONL parse MUST report an error and return without updating dataset state.
+   */
+  const handleFileLoaded = (e: ProgressEvent<FileReader>) => {
+    const content = e.target?.result;
+    if (!isString(content)) {
+      window.alert("Error reading JSONL file.");
       return;
+    }
+
+    const data: DatasetEntry[] = [];
+    const lines = content.split("\n").filter((line) => line.length > 0);
+    for (const [i, line] of lines.entries()) {
+      try {
+        data.push(JSON.parse(line));
+      } catch (err) {
+        window.alert(`Error parsing JSONL line ${i}: ${normalizeError(err)}`);
+        return;
+      }
     }
     if (data.length > 256) {
       window.alert("Dataset size is currently limited to 256 entries");

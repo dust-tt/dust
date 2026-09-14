@@ -1,3 +1,4 @@
+import { config as cellsConfig } from "@app/lib/api/cells/config";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import type { PokePlanTypeFilter } from "@app/lib/plans/plan_codes";
@@ -268,6 +269,7 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
 
   const hasMore = workspaces.length > limit;
   const displayed = workspaces.slice(0, limit);
+  const currentCell = cellsConfig.getCurrentCell();
 
   const lightWorkspaces = displayed.map((workspace) =>
     renderLightWorkspaceType({ workspace, role: "admin" })
@@ -290,6 +292,8 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
         activeSubscription: workspace.subscriptions[0],
       }),
       membersCount: membersCountByWorkspaceId[workspace.sId] ?? 0,
+      cell: currentCell.name,
+      region: currentCell.region,
     })),
     hasMore,
   });

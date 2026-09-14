@@ -1,0 +1,17 @@
+{
+  "action": "trigger.pool_updated",
+  "targets": [
+    {
+      "type": "workspace"
+    },
+    {
+      "type": "trigger"
+    }
+  ],
+  "metadata": {
+    "trigger_type": "string",
+    "agent_id": "string",
+    "previous_execution_mode": "string",
+    "execution_mode": "string"
+  }
+}

@@ -1,5 +1,6 @@
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   ModelIdType,
@@ -34,13 +35,14 @@ export class AgentConfigurationFactory {
     const user = auth.user();
     assert(user, "User is required");
 
-    // Test fixture, not a real workflow: many tests construct an Authenticator directly without
-    // ever creating a workspace membership, so `auth` may not hold the create-agent capability
-    // (or any capability at all). `authorId`/`editors` below are explicit, so using an internal
-    // admin authenticator for the actual write doesn't change who the created agent is
-    // attributed to — it only bypasses the capability check for this test fixture.
+    const workspace = auth.getNonNullableWorkspace();
+    // Some legacy tests use an auth without workspace membership. Such users cannot belong to an
+    // editor group, but authorId below still preserves attribution and the author fallback.
+    const editors = Authenticator.isMember(auth.role()) ? [user.toJSON()] : [];
+
+    // Internal auth only bypasses the create capability; explicit authorId keeps attribution.
     const internalAuth = await Authenticator.internalAdminForWorkspace(
-      auth.getNonNullableWorkspace().sId
+      workspace.sId
     );
 
     const result = await createAgentConfiguration(internalAuth, {
@@ -59,7 +61,7 @@ export class AgentConfigurationFactory {
       templateId: null,
       requestedSpaceIds,
       tags: [], // Added missing tags property
-      editors: [user.toJSON()],
+      editors,
       authorId: user.id,
     });
 
@@ -125,5 +127,22 @@ export class AgentConfigurationFactory {
       instructionsHtml: overrides.instructionsHtml ?? null,
       actions: [],
     };
+  }
+
+  /** Backdates every version of an agent, for features that treat a young agent differently. */
+  static async backdate(
+    auth: Authenticator,
+    agentId: string,
+    createdAt: Date
+  ): Promise<void> {
+    await AgentConfigurationModel.update(
+      { createdAt },
+      {
+        where: {
+          sId: agentId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
   }
 }

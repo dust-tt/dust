@@ -3,15 +3,19 @@ import {
   createConversation,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
+import { isUserBlocked } from "@app/lib/api/credits/access_control";
+import { isNonCreditPricedUserSpendLimitReached } from "@app/lib/api/users/spend_limit";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
-import { isUserBlocked } from "@app/lib/metronome/user_block";
+import type { ActivationPodKind } from "@app/lib/models/activation/activation_pod";
 import type { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { activationSkill } from "@app/lib/resources/skill/code_defined/global/activation";
+import { jobSkill } from "@app/lib/resources/skill/code_defined/global/job";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
+import { serializeSkillTag } from "@app/lib/skills/format";
 import {
   DEFAULT_ACTIVATION_NUDGE_FREQUENCY_CAP_DAYS,
   DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT,
@@ -19,12 +23,32 @@ import {
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { ACTIVATION_NUDGE_ORIGIN } from "@app/types/assistant/conversation";
+import { isCreditPricedPlan } from "@app/types/plan";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
 import isNumber from "lodash/isNumber";
 
-const ACTIVATION_NUDGE_PROMPT = "Run the Dust Learning workflow.";
+function nudgeSkillForKind(kind: ActivationPodKind) {
+  switch (kind) {
+    case "learning":
+      return activationSkill;
+    case "goal":
+      return jobSkill;
+    default:
+      assertNever(kind);
+  }
+}
+
+function nudgePromptForKind(kind: ActivationPodKind): string {
+  const skill = nudgeSkillForKind(kind);
+  return serializeSkillTag({
+    id: skill.sId,
+    name: skill.name,
+    icon: skill.icon,
+  });
+}
 
 // A resource type that the activation nudge should drive the user toward
 export type ActivationNudgePushedResourceType = "skill" | "agent";
@@ -64,23 +88,21 @@ export function getActivationNudgeMaxUnansweredCount(
   return DEFAULT_ACTIVATION_NUDGE_MAX_UNANSWERED_COUNT;
 }
 
-// A pod is "dead" once it can no longer receive nudges for reasons unrelated
-// to nudge history: it was archived, or its target user was removed from or
-// left the workspace.
-async function isPodDead(
+function isPodDead(pod: SpaceResource): boolean {
+  return pod.deletedAt !== null;
+}
+
+// The pod owner is still an active, non-revoked member of this workspace
+// (membership has started and has not been ended).
+async function hasActivePodOwnerMembership(
   auth: Authenticator,
-  pod: SpaceResource,
   activationPod: ActivationPodResource
 ): Promise<boolean> {
-  if (pod.deletedAt !== null) {
-    return true;
-  }
-
   const [targetUser] = await UserResource.fetchByModelIds([
     activationPod.userId,
   ]);
   if (!targetUser) {
-    return true;
+    return false;
   }
 
   const activeMembership =
@@ -89,35 +111,64 @@ async function isPodDead(
       workspace: auth.getNonNullableWorkspace(),
     });
 
-  return activeMembership === null;
+  return activeMembership !== null;
 }
 
-// Gates re-nudging a pod on four conditions: the pod is dead, the user is
-// blocked on credit, the pod was nudged within the frequency cap window, or its
-// recent nudges went unanswered.
+function isCreditPricedWorkspace(auth: Authenticator): boolean {
+  const workspace = auth.getNonNullableWorkspace();
+  const plan = auth.plan();
+  return Boolean(
+    workspace.metronomeCustomerId && plan && isCreditPricedPlan(plan)
+  );
+}
+
+// Whether this pod can be nudged right now.
+// Always applied: archived pod; owner is not an active, non-revoked member;
+// credit/seat (or the legacy spend cap). Skipped when overrideChecks is set
+// (poke one-off): BYOK, frequency cap, unanswered-nudge limit.
 export async function isEligibleForNudge(
   auth: Authenticator,
   {
     pod,
     activationPod,
     user,
+    overrideChecks = false,
   }: {
     pod: SpaceResource;
     activationPod: ActivationPodResource;
     user: UserResource | null;
+    overrideChecks?: boolean;
   }
 ): Promise<boolean> {
-  if (await isPodDead(auth, pod, activationPod)) {
+  if (isPodDead(pod)) {
+    return false;
+  }
+
+  if (!(await hasActivePodOwnerMembership(auth, activationPod))) {
     return false;
   }
 
   if (user) {
-    const workspace = renderLightWorkspaceType({
-      workspace: auth.getNonNullableWorkspace(),
-    });
-    if (await isUserBlocked(workspace, user)) {
-      return false;
+    if (isCreditPricedWorkspace(auth)) {
+      if (await isUserBlocked(auth, user)) {
+        return false;
+      }
+    } else {
+      // Legacy plans: `seatType === "none"` is the backfill/default, not a
+      // block, so skip isUserBlocked. The matching conversation-posting gate
+      // is the non-CP spend cap.
+      if (await isNonCreditPricedUserSpendLimitReached(auth, { user })) {
+        return false;
+      }
     }
+  }
+
+  if (overrideChecks) {
+    return true;
+  }
+
+  if (auth.plan()?.isByok) {
+    return false;
   }
 
   const maxUnansweredCount = getActivationNudgeMaxUnansweredCount(auth);
@@ -156,7 +207,13 @@ export async function isEligibleForNudge(
 // and never surface it.
 function buildActivationNudgeContent(
   agentConfiguration: AgentConfigurationType,
-  context: ActivationNudgeContext | undefined
+  {
+    kind,
+    context,
+  }: {
+    kind: ActivationPodKind;
+    context: ActivationNudgeContext | undefined;
+  }
 ): string {
   const contextLines = removeNulls([
     context?.sessionGoal ? `Session goal: ${context.sessionGoal}` : null,
@@ -170,7 +227,7 @@ function buildActivationNudgeContent(
   ]);
 
   const content =
-    serializeMention(agentConfiguration) + `\n\n${ACTIVATION_NUDGE_PROMPT}`;
+    serializeMention(agentConfiguration) + `\n\n${nudgePromptForKind(kind)}`;
   if (contextLines.length === 0) {
     return content;
   }
@@ -192,8 +249,7 @@ function buildActivationNudgeContent(
  * executes under the target user's authenticator, so the agent sees exactly
  * what they can see, and they stay a participant of the conversation.
  *
- * Callers are expected to have gated on `isEligibleForNudge`, except for the
- * poke plugin, which nudges on demand.
+ * Callers are expected to have gated on `isEligibleForNudge`.
  */
 export async function postActivationNudge(
   auth: Authenticator,
@@ -245,7 +301,10 @@ export async function postActivationNudge(
 
   const messageRes = await postUserMessage(userAuth, {
     conversationResource: conversation,
-    content: buildActivationNudgeContent(agentConfiguration, context),
+    content: buildActivationNudgeContent(agentConfiguration, {
+      kind: activationPod.kind,
+      context,
+    }),
     mentions: [{ configurationId: agentConfiguration.sId }],
     context: {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",

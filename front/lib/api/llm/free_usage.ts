@@ -5,10 +5,11 @@ import {
   awuFromMicroUsd,
   isFreeOrigin,
 } from "@app/lib/credits/agent_message_billing";
+import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { isEnterpriseOrDust } from "@app/lib/plans/plan_codes";
 import {
   addRateLimiterCount,
-  getRateLimiterCount,
+  getWeightedRateLimiterCount,
 } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -32,7 +33,11 @@ const makeFreeUsageCostRateLimitKeyForUser = (
   owner: LightWorkspaceType,
   userId: number
 ) => {
-  return `workspace:${owner.id}:user:${userId}:free_usage_cost`;
+  // `:v2_microcredits` marks the switch to weighted amount-carrying entries
+  // (`<microCredits>:<uuid>`, summed on read). Bumping the key prevents summing
+  // the new entries together with legacy plain-uuid rows; the short rolling
+  // window makes the pre-existing key expire quickly after cutover.
+  return `workspace:${owner.id}:user:${userId}:free_usage_cost:v2_microcredits`;
 };
 
 // Whether an LLM call is free (unbilled). Two cases:
@@ -71,8 +76,10 @@ export async function isFreeUsageBlocked(
     return false;
   }
 
-  // Fails open on a Redis error so a transient failure never blocks usage.
-  const result = await getRateLimiterCount({
+  // Fails open on a Redis error so a transient failure never blocks usage. The
+  // counter stores microCredits, so compare against the limit scaled the same
+  // way.
+  const result = await getWeightedRateLimiterCount({
     key: makeFreeUsageCostRateLimitKeyForUser(
       auth.getNonNullableWorkspace(),
       user.id
@@ -82,7 +89,10 @@ export async function isFreeUsageBlocked(
   if (result.isErr()) {
     return false;
   }
-  return result.value >= freeUsageAwuCreditsLimitForAuth(auth);
+  return (
+    result.value >=
+    roundCreditsToMicroCredits(freeUsageAwuCreditsLimitForAuth(auth))
+  );
 }
 
 // Contribute a free call's cost (converted to AWU credits) to the user's daily

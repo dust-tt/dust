@@ -1,5 +1,5 @@
+import { getWorkspaceCellRedirect } from "@app/lib/api/cells/lookup";
 import config from "@app/lib/api/config";
-import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
 import type { GetWorkspaceAuthContextResponseType } from "@app/types/api/auth_context";
@@ -35,14 +35,14 @@ app.get(
 
     // If workspace not found locally, lookup in other region.
     if (!workspace || !subscription) {
-      const redirect = await getWorkspaceRegionRedirect(wId);
+      const redirect = await getWorkspaceCellRedirect(wId);
 
       if (redirect) {
         return ctx.json(
           {
             error: {
-              type: "workspace_in_different_region",
-              message: "Workspace is located in a different region",
+              type: "workspace_in_different_cell",
+              message: "Workspace is located in a different cell",
               redirect,
             },
           },

@@ -159,7 +159,7 @@ export const bigqueryChangeLocationPlugin = createPlugin({
     };
 
     // Create new credentials in OAuth service
-    const user = auth.getNonNullableUser();
+    const user = auth.toPokeUserJSON();
     const workspace = auth.getNonNullableWorkspace();
     const postCredRes = await oAuthAPI.postCredentials({
       provider: "bigquery",
@@ -192,7 +192,7 @@ export const bigqueryChangeLocationPlugin = createPlugin({
 
     auditLog(
       {
-        author: auth.user()?.toJSON() ?? "no-author",
+        author: auth.toPokeUserJSON(),
         connectorId: dataSource.connectorId,
         previousConnectionId: connector.connectionId,
         newConnectionId: newCredentialsId,

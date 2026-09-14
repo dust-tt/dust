@@ -35,6 +35,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
     };
   }) {
     if (relatedCredential) {
+      // TODO(single-tenant): ask thomas about changing this to use the finalizeUriForProvider function.
       return `${config.getAppUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
     } else {
       const scopes = [
@@ -49,7 +50,10 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
         response_type: "code",
         client_id: config.getOAuthMicrosoftClientId(),
         state: connection.connection_id,
-        redirect_uri: finalizeUriForProvider("microsoft"),
+        redirect_uri: finalizeUriForProvider({
+          provider: "microsoft",
+          connection,
+        }),
         scope: scopes.join(" "),
       });
       return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;

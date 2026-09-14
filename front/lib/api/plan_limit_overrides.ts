@@ -1,7 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import type { PlanLimitOverride } from "@app/lib/plans/plan_limit_overrides";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-import { WorkspacePlanLimitOverrideResource } from "@app/lib/resources/workspace_plan_limit_override_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
@@ -13,9 +13,9 @@ import { Ok } from "@app/types/shared/result";
 export async function getWorkspacePlanLimitOverrides(
   auth: Authenticator
 ): Promise<PlanLimitOverride | null> {
-  return WorkspacePlanLimitOverrideResource.fetchByWorkspace({
-    workspace: auth.getNonNullableWorkspace(),
-  });
+  return WorkspaceResource.fetchPlanLimitOverride(
+    auth.getNonNullableWorkspace().id
+  );
 }
 
 /**
@@ -32,10 +32,10 @@ export async function setWorkspacePlanLimitOverrides(
 ): Promise<Result<undefined, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const res = await WorkspacePlanLimitOverrideResource.upsert({
-    workspace,
-    override,
-  });
+  const res = await WorkspaceResource.upsertPlanLimitOverride(
+    workspace.id,
+    override
+  );
   if (res.isErr()) {
     return res;
   }

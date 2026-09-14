@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { fn } from "storybook/test";
 
 import {
   IMAGE_PREVIEW_TITLE_POSITIONS,
@@ -76,77 +77,62 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const ExampleImagePreview: Story = {
+/**
+ * The baseline preview: an image with an alt text and a hover title along the
+ * bottom edge. This is the minimal setup for an image attachment in a message.
+ * @summary Standalone preview with bottom hover title.
+ */
+export const Default: Story = {
   args: {
     imgSrc: SAMPLE_IMAGE,
-    title: "Sample Image",
+    title: "Sample image",
     alt: "A sample droid avatar",
     variant: "standalone",
     titlePosition: "bottom",
-    isLoading: false,
-    manageZoomDialog: true,
   },
 };
 
-export const Variants: Story = {
+/**
+ * The hover title centered over the image instead of anchored to the bottom
+ * edge. Use when the bottom of the image carries meaningful content.
+ * @summary Hover title centered on the image.
+ */
+export const TitleCentered: Story = {
   args: {
     imgSrc: SAMPLE_IMAGE,
+    title: "Sample image",
+    alt: "A sample droid avatar",
     variant: "standalone",
+    titlePosition: "center",
   },
-  render: (args) => (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2">
-        <div className="text-sm font-medium text-primary">
-          Title Position: Bottom
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="w-32">
-            <ImagePreview {...args} title="Normal" titlePosition="bottom" />
-          </div>
-          <div className="w-32">
-            <ImagePreview
-              {...args}
-              title="With Close"
-              titlePosition="bottom"
-              onClose={() => alert("Close clicked")}
-            />
-          </div>
-          <div className="w-32">
-            <ImagePreview
-              {...args}
-              title="With Download"
-              titlePosition="bottom"
-              downloadUrl={SAMPLE_IMAGE}
-            />
-          </div>
-        </div>
-      </div>
-      <div className="flex flex-col gap-2">
-        <div className="text-sm font-medium text-primary">
-          Title Position: Center
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="w-32">
-            <ImagePreview {...args} title="Normal" titlePosition="center" />
-          </div>
-          <div className="w-32">
-            <ImagePreview
-              {...args}
-              title="With Close"
-              titlePosition="center"
-              onClose={() => alert("Close clicked")}
-            />
-          </div>
-          <div className="w-32">
-            <ImagePreview
-              {...args}
-              title="With Download"
-              titlePosition="center"
-              downloadUrl={SAMPLE_IMAGE}
-            />
-          </div>
-        </div>
-      </div>
-    </div>
-  ),
+};
+
+/**
+ * Passing onClose renders a remove button on hover, for previews the user can
+ * dismiss — e.g. an attachment in a message being composed.
+ * @summary Remove button via onClose.
+ */
+export const Dismissable: Story = {
+  args: {
+    imgSrc: SAMPLE_IMAGE,
+    title: "Sample image",
+    alt: "A sample droid avatar",
+    variant: "standalone",
+    onClose: fn(),
+  },
+};
+
+/**
+ * Passing downloadUrl renders a download button on hover, letting the user
+ * save the image — typical for agent-generated images.
+ * @summary Download button via downloadUrl.
+ */
+export const Downloadable: Story = {
+  args: {
+    imgSrc: SAMPLE_IMAGE,
+    title: "Sample image",
+    alt: "A sample droid avatar",
+    variant: "standalone",
+    downloadUrl: SAMPLE_IMAGE,
+  },
 };

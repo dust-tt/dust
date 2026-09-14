@@ -193,12 +193,17 @@ function BreadcrumbItemRenderer({
 }
 
 interface BreadcrumbProps {
+  /** Trail segments; each has a `label` and optional `icon`, `href`, or `onClick`. */
   items: BreadcrumbsItem[];
   className?: string;
   size?: "xs" | "sm";
+  /** Button variant used for clickable segments (default `ghost`). */
   buttonVariant?: ButtonVariantType;
+  /** Use the lighter text style instead of label styling (default true). */
   hasLighterFont?: boolean;
+  /** Max characters for intermediate labels before truncation (default 15). */
   truncateLengthMiddle?: number;
+  /** Max characters for the last label before truncation (default 30). */
   truncateLengthEnd?: number;
 }
 
@@ -207,6 +212,14 @@ interface BreadcrumbsAccumulator {
   itemsHidden: BreadcrumbsItem[];
 }
 
+/**
+ * Displays the user's location within a hierarchy as a trail of clickable segments,
+ * driven by an `items` array. Long trails automatically collapse middle segments
+ * into an ellipsis menu and truncate overflowing labels. Use it to show and navigate
+ * the path to the current page; for switching between sibling views rather than
+ * levels of depth, use Tabs instead.
+ * @summary Hierarchical navigation trail.
+ */
 export function Breadcrumbs({
   items,
   className,
@@ -276,6 +289,7 @@ interface BreadcrumbRootProps {
   className?: string;
 }
 
+/** Composable breadcrumb root: a nav landmark wrapping BreadcrumbItem children. */
 export function Breadcrumb({ children, className }: BreadcrumbRootProps) {
   return (
     <nav
@@ -292,6 +306,7 @@ interface BreadcrumbItemProps {
   className?: string;
 }
 
+/** Composable wrapper for one breadcrumb segment inside a Breadcrumb. */
 export function BreadcrumbItem({ children, className }: BreadcrumbItemProps) {
   return (
     <div className={cn("flex flex-row items-center", className)}>
@@ -308,6 +323,7 @@ interface BreadcrumbButtonProps {
   icon?: ComponentType<{ className?: string }>;
 }
 
+/** Clickable breadcrumb segment rendered as a Button. */
 export function BreadcrumbButton({
   label,
   onClick,
@@ -332,6 +348,7 @@ interface BreadcrumbPageProps {
   className?: string;
 }
 
+/** Non-interactive current-page segment (`aria-current="page"`). */
 export function BreadcrumbPage({ children, className }: BreadcrumbPageProps) {
   return (
     <span
@@ -351,6 +368,7 @@ export function BreadcrumbPage({ children, className }: BreadcrumbPageProps) {
   );
 }
 
+/** Chevron separator between breadcrumb segments. */
 export function BreadcrumbSeparator({ className }: { className?: string }) {
   return (
     <Icon

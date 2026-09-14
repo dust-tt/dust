@@ -1,48 +1,66 @@
-import { useConsumptionQuery } from "@app/hooks/useConsumptionQuery";
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import {
+  getConsumptionAnalyticsUrl,
+  useConsumptionQuery,
+} from "@app/hooks/useConsumptionQuery";
+import type {
+  ConsumptionGranularity,
+  ConsumptionPeriodSelection,
+} from "@app/lib/analytics/consumption_period";
 import {
   DEFAULT_CONSUMPTION_PERIOD_DAYS,
   normalizedConsumptionFilter,
 } from "@app/lib/analytics/consumption_period";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { ConsumptionBody } from "@app/lib/api/analytics/consumption/schema";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
 import type {
   ConsumptionBreakdownDimension,
   ConsumptionTimeseriesMode,
   GetConsumptionTimeseriesResponse,
 } from "@app/lib/api/analytics/consumption/timeseries";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 
 type ConsumptionTimeseriesBody = ConsumptionBody & {
   mode: ConsumptionTimeseriesMode;
+  granularity?: ConsumptionGranularity;
   breakdownBy?: ConsumptionBreakdownDimension;
   breakdownCount?: number;
 };
 
+export interface UseConsumptionTimeseriesParams {
+  workspaceId: string;
+  period: ConsumptionPeriodSelection;
+  granularity?: ConsumptionGranularity;
+  mode: ConsumptionTimeseriesMode;
+  breakdownBy?: ConsumptionBreakdownDimension;
+  breakdownCount?: number;
+  filter?: ConsumptionScopeFilter;
+  analyticsScope?: ConsumptionAnalyticsScope;
+  disabled?: boolean;
+}
+
 export function useConsumptionTimeseries({
   workspaceId,
   period,
+  granularity,
   mode,
   breakdownBy,
   breakdownCount,
   filter,
+  analyticsScope,
   disabled,
-}: {
-  workspaceId: string;
-  period: ConsumptionPeriodSelection;
-  mode: ConsumptionTimeseriesMode;
-  // Omit for a single total series.
-  breakdownBy?: ConsumptionBreakdownDimension;
-  breakdownCount?: number;
-  filter?: ConsumptionScopeFilter;
-  disabled?: boolean;
-}) {
-  const url = `/api/w/${workspaceId}/analytics/consumption/timeseries`;
+}: UseConsumptionTimeseriesParams) {
+  const url = getConsumptionAnalyticsUrl({
+    workspaceId,
+    analyticsScope,
+    endpoint: "timeseries",
+  });
   const body: ConsumptionTimeseriesBody = {
     period: period.kind,
     days:
       period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
     filter: normalizedConsumptionFilter(filter),
     mode,
+    granularity,
     breakdownBy,
     breakdownCount,
   };

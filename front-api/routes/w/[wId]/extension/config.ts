@@ -1,5 +1,6 @@
 import type { GetExtensionConfigResponseBody } from "@app/lib/resources/extension";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { EXTENSION_LAST_USED_AT_METADATA_KEY } from "@app/types/extension";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
@@ -38,6 +39,13 @@ app.get("/", async (ctx): HandlerResult<GetExtensionConfigResponseBody> => {
   const auth = ctx.get("auth");
 
   const config = await ExtensionConfigurationResource.fetchForWorkspace(auth);
+
+  await auth
+    .user()
+    ?.setMetadata(
+      EXTENSION_LAST_USED_AT_METADATA_KEY,
+      new Date().toISOString()
+    );
 
   return ctx.json({
     blacklistedDomains: config?.blacklistedDomains ?? [],

@@ -89,7 +89,7 @@ export async function setSeatLimitScheduleForSeatType(
         }))
       ),
     },
-    auth.getNonNullableUser(),
+    auth.getPokePrincipal().email,
     workspace,
     { resourceId: workspace.sId, resourceType: "workspaces" }
   );

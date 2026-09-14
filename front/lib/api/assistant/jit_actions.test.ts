@@ -3,6 +3,7 @@ import {
   CONVERSATION_FILES_SERVER_NAME,
   CONVERSATION_LIST_FILES_ACTION_NAME,
 } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import { makeFileAttachment } from "@app/lib/api/assistant/conversation/attachments";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -936,24 +937,20 @@ describe("getJITServers", () => {
         status: "ready",
       });
 
+      // Built through the constructor so the flags cannot describe a state the product can't reach.
       const attachments: ConversationAttachmentType[] = [
-        {
+        makeFileAttachment({
           fileId: file.sId,
-          path: null,
           source: "user",
           title: "test.csv",
           contentType: "text/csv",
-          contentFragmentVersion: "latest",
           snippet: "test snippet",
-          generatedTables: [file.sId],
-          isIncludable: true,
-          isSearchable: true,
-          isQueryable: true,
           isInProjectContext: false,
-          hidden: false,
-          creator: null,
-        },
+          hideFromUser: false,
+          capabilities: { isNewFileExplorer: false, hasSandboxTools: false },
+        }),
       ];
+      expect(attachments[0].isQueryable).toBe(true);
 
       const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
@@ -978,7 +975,7 @@ describe("getJITServers", () => {
       // but the server should still be created with the correct structure.
     });
 
-    it("should not include query_tables server for queryable file attachments when Computer is available", async () => {
+    it("should not include query_tables server for tabular file attachments when Computer is available", async () => {
       const user = auth.getNonNullableUser();
       const file = await FileFactory.csv(auth, user, {
         useCase: "conversation",
@@ -988,24 +985,21 @@ describe("getJITServers", () => {
         status: "ready",
       });
 
+      // With Computer available the sandbox analyzes tabular files, so the attachment comes out
+      // non-queryable and query_tables has nothing to register for.
       const attachments: ConversationAttachmentType[] = [
-        {
+        makeFileAttachment({
           fileId: file.sId,
-          path: null,
           source: "user",
           title: "test.csv",
           contentType: "text/csv",
-          contentFragmentVersion: "latest",
           snippet: "test snippet",
-          generatedTables: [file.sId],
-          isIncludable: true,
-          isSearchable: true,
-          isQueryable: true,
           isInProjectContext: false,
-          hidden: false,
-          creator: null,
-        },
+          hideFromUser: false,
+          capabilities: { isNewFileExplorer: false, hasSandboxTools: true },
+        }),
       ];
+      expect(attachments[0].isQueryable).toBe(false);
 
       const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,

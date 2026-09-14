@@ -1,3 +1,4 @@
+import { isSandboxExecTimeoutError } from "@app/lib/api/sandbox/provider";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -14,9 +15,15 @@ export async function runSandboxFunctionInvocationActivity(
   }
 ): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
-  const sandboxFunction = await SandboxFunctionResource.fetchById(
+  // Execution-side resolution: the serialized auth cannot carry the invoker's original grant
+  // (e.g. a frame share token). The ids come from workflow args our own launch code minted after
+  // the caller-facing gates passed, so the space filter is deliberately skipped.
+  const sandboxFunction = await SandboxFunctionResource.fetchByIdForExecution(
     auth,
-    sandboxFunctionId
+    {
+      sandboxFunctionId,
+      invocationId,
+    }
   );
   if (!sandboxFunction) {
     throw new Error(`Pod function not found: ${sandboxFunctionId}`);
@@ -34,6 +41,12 @@ export async function runSandboxFunctionInvocationActivity(
   const executionResult = await invocation.execute(auth);
   if (executionResult.isErr()) {
     await invocation.fail(executionResult.error);
+    // A function running past its exec ceiling is an expected outcome, not a workflow
+    // failure: fail() above recorded it and listeners settled. Rethrow everything else
+    // so real problems keep failing the workflow.
+    if (isSandboxExecTimeoutError(executionResult.error)) {
+      return;
+    }
     throw executionResult.error;
   }
 }

@@ -19,7 +19,7 @@ import {
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
@@ -151,20 +151,32 @@ export class UserResource extends BaseResource<UserModel> {
     return userResource;
   }
 
-  static async fetchByIds(userIds: string[]): Promise<UserResource[]> {
+  static async fetchByIds(
+    userIds: string[],
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<UserResource[]> {
     const users = await UserModel.findAll({
       where: {
         sId: userIds,
       },
+      transaction,
     });
 
     return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
+  /**
+   * @cc [owner:philipperolet,label:performance] empty-user-ids-skip-queries
+   * Empty ids return no users without querying the database.
+   */
   static async fetchByModelIds(
     ids: ModelId[],
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<UserResource[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+
     const users = await UserModel.findAll({
       where: {
         id: ids,
@@ -438,10 +450,7 @@ export class UserResource extends BaseResource<UserModel> {
       const foundUserIds = new Set(users.map((u) => u.sId));
       const missingUserIds = userIds.filter((sId) => !foundUserIds.has(sId));
 
-      getStatsDClient().increment(
-        "user_search.revoked_users_in_results.count",
-        1
-      );
+      statsDMetrics.increment("user_search.revoked_users_in_results.count", 1);
 
       logger.error(
         {
@@ -738,7 +747,14 @@ export class UserResource extends BaseResource<UserModel> {
     );
   }
 
-  async deleteMetadata(where: WhereOptions<UserMetadataModel>) {
+  /**
+   * @cc [owner:spolu,label:security;backend] user-metadata-deletion-scope
+   * Deletion MUST affect only this user's metadata in `where.workspaceId`; `null` selects only
+   * global metadata.
+   */
+  async deleteMetadata(
+    where: WhereOptions<UserMetadataModel> & { workspaceId: ModelId | null }
+  ) {
     return UserMetadataModel.destroy({
       where: {
         ...where,

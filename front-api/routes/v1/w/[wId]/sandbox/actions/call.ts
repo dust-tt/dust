@@ -4,7 +4,6 @@ import {
 } from "@app/lib/api/sandbox/access_tokens";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
 import { createSandboxFunctionMCPAction } from "@app/lib/api/sandbox_functions/create_sandbox_function_mcp_action";
-import { selfHealSandboxFunctionExecutionMode } from "@app/lib/api/sandbox_functions/self_heal_execution_mode";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { CallMCPToolRequestBodySchema } from "@dust-tt/client";
@@ -48,32 +47,16 @@ app.post(
       //
       // This is a guardrail against a mislabelled function, not a sandbox boundary: every
       // invocation execs as the same user, so a fast function running alongside a durable one
-      // could read that invocation's token out of /proc. That grants nothing the pod owner could
-      // not get by publishing as durable, and the tool call still needs its usual approval.
+      // could read that invocation's token out of /proc. That grants nothing the Frame's author
+      // could not get by publishing as durable, and the tool call still needs its usual approval.
       if (claims.noTools) {
-        // The declaration was wrong, and only this refusal reveals it. Record the function as
-        // durable so the next invocation works, without holding up the refusal this one gets.
-        void selfHealSandboxFunctionExecutionMode(auth, {
-          sandboxFunctionId: claims.sandboxFunctionId,
-          invocationId: claims.invocationId,
-        }).catch((err) =>
-          logger.error(
-            {
-              err,
-              sandboxFunctionId: claims.sandboxFunctionId,
-              invocationId: claims.invocationId,
-            },
-            "Failed to record a Pod function as durable"
-          )
-        );
-
         return apiError(ctx, {
           status_code: 403,
           api_error: {
-            type: "invalid_request_error",
+            type: "fast_function_called_tools",
             message:
-              "This Pod function is published as fast and cannot call tools. Publish it with " +
-              "executionMode `durable` to let it call tools.",
+              "This Frame function was published as fast, which cannot call tools, so this " +
+              "call was refused. Republish the Frame with executionMode `durable`.",
           },
         });
       }
@@ -81,7 +64,7 @@ app.post(
       const result = await createSandboxFunctionMCPAction(auth, {
         sandboxFunctionId: claims.sandboxFunctionId,
         invocationId: claims.invocationId,
-        podSpaceId: claims.spaceId,
+        runtimeSpaceId: claims.spaceId,
         serverViewId,
         toolName,
         rawInputs: toolArgs ?? {},

@@ -707,3 +707,53 @@ describe("reasoningContentToLegacyMetadata — persistence write path", () => {
     expect(reasoningContentToLegacyMetadata(undefined)).toEqual({});
   });
 });
+
+describe("convertToOldEvent — errors", () => {
+  it("preserves an explicit provider error source", () => {
+    expect(
+      convertToOldEvent(
+        {
+          type: "error",
+          content: {
+            type: "timeout_error",
+            message: "timed out",
+            errorSource: "provider",
+          },
+          metadata: endpointMetadata,
+        },
+        llmMetadata
+      )
+    ).toMatchObject({
+      type: "error",
+      content: {
+        type: "timeout_error",
+        errorSource: "provider",
+        isRetryable: true,
+      },
+    });
+  });
+
+  it("preserves a dust source when mapping input_configuration_error", () => {
+    expect(
+      convertToOldEvent(
+        {
+          type: "error",
+          content: {
+            type: "input_configuration_error",
+            message: "bad config",
+            errorSource: "dust",
+          },
+          metadata: endpointMetadata,
+        },
+        llmMetadata
+      )
+    ).toMatchObject({
+      type: "error",
+      content: {
+        type: "invalid_request_error",
+        errorSource: "dust",
+        isRetryable: false,
+      },
+    });
+  });
+});

@@ -10,6 +10,7 @@ import {
   literal,
   Op,
 } from "@app/lib/resources/storage/data_types";
+import { FileSystemNodeModel } from "@app/lib/resources/storage/models/file_system_node";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
@@ -20,6 +21,7 @@ import type {
   FileUseCase,
   FileUseCaseMetadata,
 } from "@app/types/files";
+import { frameV2ContentType } from "@app/types/files";
 
 export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare createdAt: CreationOptional<Date>;
@@ -36,6 +38,9 @@ export class FileModel extends WorkspaceAwareModel<FileModel> {
   declare mountFilePath: string | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
+  // The file system node holding this file's live source. For a Frame this is
+  // the published entry file. The id survives every move and rename.
+  declare fileSystemNodeId: ForeignKey<FileSystemNodeModel["id"]> | null;
 
   declare user: NonAttribute<UserModel>;
 }
@@ -112,6 +117,20 @@ FileModel.init(
         unique: true,
         where: { mountFilePath: { [Op.ne]: null } },
       },
+      {
+        // Poke's workspace Frames list orders by updatedAt within a workspace. Partial so the
+        // index stays small: Frames are a tiny fraction of the files table. Plain ascending —
+        // Postgres scans a btree backwards at the same cost, so this serves ORDER BY DESC.
+        name: "files_workspace_id_frame_v2_updated_at",
+        fields: ["workspaceId", "updatedAt"],
+        concurrently: true,
+        where: { contentType: frameV2ContentType },
+      },
+      {
+        fields: ["fileSystemNodeId"],
+        concurrently: true,
+        where: { fileSystemNodeId: { [Op.ne]: null } },
+      },
     ],
   }
 );
@@ -120,6 +139,13 @@ UserModel.hasMany(FileModel, {
   onDelete: "RESTRICT",
 });
 FileModel.belongsTo(UserModel);
+FileSystemNodeModel.hasMany(FileModel, {
+  foreignKey: { name: "fileSystemNodeId", allowNull: true },
+  onDelete: "RESTRICT",
+});
+FileModel.belongsTo(FileSystemNodeModel, {
+  foreignKey: { name: "fileSystemNodeId", allowNull: true },
+});
 
 /**
  * Shared files logic.

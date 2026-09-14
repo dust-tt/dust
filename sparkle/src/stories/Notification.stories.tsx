@@ -1,5 +1,6 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { fn } from "storybook/test";
 
 import {
   NotificationContent,
@@ -13,7 +14,7 @@ const meta: Meta<typeof Notification> = {
   parameters: {
     docs: {
       description: {
-        component: `A transient toast that confirms the outcome of an action. Toasts are dispatched imperatively with the **useSendNotification** hook ( \`title\`, \`description\`, and **type** — \`success\`, \`error\`, \`info\`, or \`hello\`) and rendered inside a **Notification.Area** mounted near the app root. **NotificationContent** is the underlying presentational card, useful for inline previews.
+        component: `A transient toast that confirms the outcome of an action. Toasts are dispatched imperatively with the **useSendNotification** hook ( \`title\`, \`description\`, and **type** — \`success\`, \`error\`, \`info\`, \`warning\`, or \`hello\`) and rendered inside a **Notification.Area** mounted near the app root. **NotificationContent** is the underlying presentational card, useful for inline previews.
 
 **When to use**
 - For brief, self-dismissing feedback after an action completes (saved, failed, copied).
@@ -29,9 +30,14 @@ const meta: Meta<typeof Notification> = {
 
 export default meta;
 
-/** Notification shown inline (no toast) for design iteration. */
-export const Inline = () => {
-  return (
+/**
+ * Notification shown inline (no toast) for design iteration: every `type`
+ * variant of the underlying NotificationContent card, plus one with an
+ * `action` button.
+ * @summary All notification types rendered inline.
+ */
+export const Inline: StoryObj = {
+  render: () => (
     <div className="flex flex-col gap-4">
       <NotificationContent
         type="success"
@@ -62,15 +68,19 @@ export const Inline = () => {
         type="success"
         title="Added to favorites"
         description="Research assistant"
-        action={{ label: "View", href: "#favorites" }}
+        action={{ label: "View", onClick: fn() }}
       />
     </div>
-  );
+  ),
 };
 
-/** Same as Inline but with longer titles and descriptions (tests line-clamp). */
-export const InlineLongText = () => {
-  return (
+/**
+ * Same as Inline but with longer titles and descriptions (tests line-clamp).
+ * @summary Line-clamp stress test for long copy.
+ */
+export const InlineLongText: StoryObj = {
+  tags: ["!manifest"],
+  render: () => (
     <div className="flex flex-col gap-4">
       <NotificationContent
         type="success"
@@ -98,18 +108,25 @@ export const InlineLongText = () => {
         description="Your team left a few comments and assigned you new tasks. Head over to your inbox to see what's new and respond when you have a moment."
       />
     </div>
-  );
+  ),
 };
 
-export const Example = () => {
-  return (
+/**
+ * The canonical usage pattern: mount a **Notification.Area** near the app
+ * root, then dispatch toasts imperatively from anywhere below it with the
+ * **useSendNotification** hook. Click each button to fire a toast of that
+ * type.
+ * @summary Dispatching toasts with useSendNotification inside Notification.Area.
+ */
+export const SendNotificationHook: StoryObj = {
+  render: () => (
     <Notification.Area>
-      <NotificationExample />
+      <NotificationTriggers />
     </Notification.Area>
-  );
+  ),
 };
 
-const NotificationExample = () => {
+const NotificationTriggers = () => {
   const sendNotification = useSendNotification();
 
   return (

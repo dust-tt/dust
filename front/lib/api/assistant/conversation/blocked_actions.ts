@@ -75,7 +75,8 @@ export async function cleanupDeniedBlockedActions(
 /**
  * Emits a `tool.approval_resolved` audit event for each manual approval that was auto-denied
  * when its agent message terminated, so the audit trail doesn't keep `tool.approval_requested`
- * entries without a resolution. Fire-and-forget (AUDIT1): must never block or break the
+ * entries without a resolution. Fire-and-forget (audit-security-sensitive-mutations): must never
+ * block or break the
  * termination flow.
  */
 function emitApprovalResolvedAuditEvents(

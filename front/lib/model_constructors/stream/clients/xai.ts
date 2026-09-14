@@ -1,6 +1,9 @@
 import { WithOpenAIResponsesInputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/input";
 import { WithOpenAIResponsesOutputConverter } from "@app/lib/model_constructors/sdk/openai_responses/converters/output";
-import { rawOutputToEvents } from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
+import {
+  makeStreamErrorToErrorEvent,
+  rawOutputToEvents,
+} from "@app/lib/model_constructors/sdk/openai_responses/converters/output/utils";
 import { StreamEndpoint } from "@app/lib/model_constructors/stream/endpoint";
 import type { Credentials } from "@app/lib/model_constructors/types/credentials";
 import { XAI_HOST } from "@app/lib/model_constructors/types/hosts";
@@ -31,11 +34,18 @@ export abstract class XaiStream extends WithOpenAIResponsesInputConverter(
 
   static readonly configSchema: z.ZodType<InputConfig> = inputConfigSchema;
 
+  override streamErrorToErrorEvent = makeStreamErrorToErrorEvent("xAI");
+
   private readonly client: OpenAI;
 
   constructor({ XAI_API_KEY }: Credentials) {
     super();
-    this.client = new OpenAI({ apiKey: XAI_API_KEY, baseURL: XAI_BASE_URL });
+    this.client = new OpenAI({
+      apiKey: XAI_API_KEY,
+      baseURL: XAI_BASE_URL,
+      // The agent loop owns retries so every attempt gets its own Dust trace.
+      maxRetries: 0,
+    });
   }
 
   buildRequestPayload(

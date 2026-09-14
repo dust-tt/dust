@@ -16,12 +16,12 @@ export const goDeepSkill = {
     "Enable comprehensive analysis across company data, databases, and web " +
     "sources — thorough analysis that may take several minutes.",
   agentFacingDescription:
-    "Enable when the user asks complex or research-heavy questions. Ideal for analysis " +
-    "tasks requiring comprehensive research across multiple data sources, databases, or web " +
-    "resources. Enable when the user asks for a deep dive, for a detailed response " +
-    "or for thorough analysis. When in doubt, prefer enabling this skill than not. " +
-    "If you realize that the question turns out to be complex and ran multiple steps (e.g. more " +
-    "than 3) of web or company data research, you can enable the Go deep skill midway.",
+    "Use only when the user explicitly asks to use Go Deep, asks for a deep dive or deep " +
+    "research, or requests a comprehensive multi-source investigation. Do not infer that Go " +
+    "Deep is needed from task complexity alone. Do not use it merely because the response should " +
+    "be detailed, the task uses SQL, combines web and company data, requires several tool calls, " +
+    "or could be parallelized. If none of the explicit activation conditions is clearly met, " +
+    "handle the request directly. When in doubt, do not enable it.",
   fetchInstructions: async (
     auth: Authenticator,
     _params: { spaceIds: string[]; agentLoopData?: AgentLoopExecutionData }
@@ -51,7 +51,7 @@ export const goDeepSkill = {
     { name: "web_search_&_browse" },
     { name: "data_warehouses" },
   ],
-  version: 2,
+  version: 3,
   icon: "ActionAtomIcon",
   isRestricted: isDeepDiveDisabledByAdmin,
   inheritAgentConfigurationDataSources: true,

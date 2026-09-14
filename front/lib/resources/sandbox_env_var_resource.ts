@@ -939,6 +939,45 @@ export class SandboxEnvVarResource extends BaseResource<SandboxEnvVarModel> {
     return new Ok(env);
   }
 
+  /**
+   * Pod config vars (cleartext) + HTTPS secret DSEC placeholders for any sandbox running in the
+   * pod. Pod-level sandbox config applies to everything running in the Pod, so a conversation or
+   * Frame sandbox inside one receives these at creation.
+   *
+   * These ride the owner env layer, which beats the workspace env layer in buildSandboxEnvVars —
+   * so a pod var shadows a workspace var of the same name, consistent with the egress-secrets file
+   * merge. Config vars are injected in cleartext; HTTPS secrets as their DSEC placeholders (dsbx
+   * swaps them on the wire). Fail closed: a var we cannot resolve aborts sandbox creation rather
+   * than booting without it.
+   */
+  static async loadPodScopedEnv(
+    auth: Authenticator,
+    pod: SpaceResource,
+    runtimeOwner: SandboxRuntimeOwner
+  ): Promise<Result<Record<string, string>, Error>> {
+    const podEnvResult = await this.loadEnv(
+      auth,
+      { kind: "pod", pod },
+      runtimeOwner
+    );
+    if (podEnvResult.isErr()) {
+      return podEnvResult;
+    }
+    const podPlaceholderEnvResult = await this.loadHttpsSecretPlaceholderEnv(
+      auth,
+      { kind: "pod", pod },
+      runtimeOwner
+    );
+    if (podPlaceholderEnvResult.isErr()) {
+      return podPlaceholderEnvResult;
+    }
+
+    return new Ok({
+      ...podEnvResult.value,
+      ...podPlaceholderEnvResult.value,
+    });
+  }
+
   // ── Serialization ──────────────────────────────────────────────────────
 
   toJSON(): SandboxEnvVarType {

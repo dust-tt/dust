@@ -4,7 +4,7 @@ import {
   Button,
   CloudArrowLeftRight,
   ContentMessage,
-  GithubMonoLogo,
+  GithubLogo,
 } from "@dust-tt/sparkle";
 
 interface ConnectWorkspaceGitHubMessageProps {
@@ -31,7 +31,7 @@ export function ConnectWorkspaceGitHubMessage({
     <ContentMessage
       variant="primary"
       size="lg"
-      icon={GithubMonoLogo}
+      icon={GithubLogo}
       title="Connect GitHub to import from private repositories"
     >
       <div className="flex flex-col gap-3">

@@ -185,7 +185,14 @@ const Section = ({
   </div>
 );
 
+/**
+ * Token reference table for every easing utility: each row loops a ball along
+ * the curve next to a copyable class chip and its resolved cubic-bezier value.
+ * Also demonstrates why there are no ease-in tokens.
+ * @summary Easing token reference table.
+ */
 export const Easing: Story = {
+  tags: ["!manifest"],
   render: () => (
     <div className="flex flex-col gap-12">
       <MotionKeyframes />
@@ -305,7 +312,14 @@ export const Easing: Story = {
   ),
 };
 
+/**
+ * Token reference table for the duration utilities, numeric and semantic: each
+ * square completes one rotation per token duration, next to a copyable class
+ * chip and the resolved millisecond value.
+ * @summary Duration token reference table.
+ */
 export const Durations: Story = {
+  tags: ["!manifest"],
   render: () => (
     <div className="flex flex-col gap-12">
       <MotionKeyframes />
@@ -422,6 +436,16 @@ function EnterExitDemo({
   );
 }
 
+/**
+ * How to combine the tokens in real components: enter/exit transitions pair an
+ * easing with a matched duration couple where the exit runs ~20% faster than
+ * the entrance. Two live, toggleable examples show the recommended pairs —
+ * `ease-enter` + `duration-enter`/`duration-exit` for standard UI
+ * (tooltips, dropdowns, popovers) and `ease-emphasized` +
+ * `duration-modal-enter`/`duration-modal-exit` for modals and drawers. Copy
+ * these class combinations directly into new components.
+ * @summary Recommended easing + duration pairs for enter/exit transitions.
+ */
 export const EnterExitPairing: Story = {
   render: () => (
     <div className="flex max-w-2xl flex-col gap-8">

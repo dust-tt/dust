@@ -7,6 +7,7 @@ import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import {
   isToolExecutionStatusBlocked,
   TOOL_EXECUTION_BLOCKED_STATUSES,
+  TOOL_EXECUTION_FINAL_STATUSES,
 } from "@app/lib/actions/statuses";
 import { getApprovalArgsLabel } from "@app/lib/actions/tool_approval_labels";
 import {
@@ -60,7 +61,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import type {
@@ -72,6 +73,7 @@ import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { UNRESUMABLE_AGENT_MESSAGE_STATUSES } from "@app/types/assistant/conversation";
+import { getFileDisplayName } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -662,58 +664,74 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       stepContents: AgentStepContentResource[];
     }
   ): Promise<AgentMCPActionResource[]> {
-    if (stepContents.length === 0) {
+    const functionCallStepContents = stepContents.filter(
+      (
+        content
+      ): content is AgentStepContentResource & {
+        value: AgentFunctionCallContentType;
+      } => content.isFunctionCallContent()
+    );
+    if (functionCallStepContents.length === 0) {
       return [];
     }
 
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const agentStepContentToolExecutions =
-      await AgentStepContentToolExecutionModel.findAll({
-        where: {
-          workspaceId,
-          stepContentId: { [Op.in]: stepContents.map((content) => content.id) },
+    const toolExecutions = await AgentStepContentToolExecutionModel.findAll({
+      attributes: ["stepContentId", "agentMCPActionId"],
+      where: {
+        workspaceId,
+        stepContentId: {
+          [Op.in]: functionCallStepContents.map((content) => content.id),
         },
-        include: [
-          {
-            model: AgentMCPActionModel,
-            as: "agentMCPAction",
-            required: true,
-          },
-        ],
-      });
+      },
+    });
+    if (toolExecutions.length === 0) {
+      return [];
+    }
 
-    const stepContentsMap = new Map(stepContents.map((s) => [s.id, s]));
-
-    // Sandbox-child actions share their parent's stepContent and must not
-    // surface as separate executions in the conversation timeline.
-    const visibleExecutions = agentStepContentToolExecutions.filter(
-      (row) =>
-        !isSandboxChildActionInfo(
-          row.agentMCPAction.stepContext.sandboxChildActionInfo
-        )
+    const actions = await AgentMCPActionModel.findAll({
+      where: {
+        workspaceId,
+        id: {
+          [Op.in]: toolExecutions.map(
+            (toolExecution) => toolExecution.agentMCPActionId
+          ),
+        },
+      },
+    });
+    const actionsById = new Map(actions.map((action) => [action.id, action]));
+    const stepContentsMap = new Map(
+      functionCallStepContents.map((content) => [content.id, content])
     );
 
-    return visibleExecutions.map((row) => {
-      const a = row.agentMCPAction;
-      const stepContent = stepContentsMap.get(row.stepContentId);
+    const resources: AgentMCPActionResource[] = [];
+    for (const toolExecution of toolExecutions) {
+      const action = actionsById.get(toolExecution.agentMCPActionId);
+      assert(action, "Action not found.");
 
-      // Each action must have a function call step content.
+      // Sandbox-child actions share their parent's stepContent and must not
+      // surface as separate executions in the conversation timeline.
+      if (isSandboxChildActionInfo(action.stepContext.sandboxChildActionInfo)) {
+        continue;
+      }
+
+      const stepContent = stepContentsMap.get(toolExecution.stepContentId);
       assert(stepContent, "Step content not found.");
-      assert(
-        stepContent.isFunctionCallContent(),
-        "Step content is not a function call."
-      );
 
-      const internalMCPServerName = a.toolConfiguration.toolServerId
-        ? getInternalMCPServerNameFromSId(a.toolConfiguration.toolServerId)
+      const internalMCPServerName = action.toolConfiguration.toolServerId
+        ? getInternalMCPServerNameFromSId(action.toolConfiguration.toolServerId)
         : null;
 
-      return new this(this.model, a.get(), stepContent, {
-        internalMCPServerName,
-        mcpServerId: a.toolConfiguration.toolServerId,
-      });
-    });
+      resources.push(
+        new this(this.model, action.get(), stepContent, {
+          internalMCPServerName,
+          mcpServerId: action.toolConfiguration.toolServerId,
+        })
+      );
+    }
+
+    return resources;
   }
 
   static async listModelIdsByAgentMessageIds(
@@ -741,7 +759,23 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<AgentMCPActionResource[]> {
     return this.baseFetch(auth, {
       where: { agentMessageId: { [Op.in]: agentMessageIds } },
+      // Billing policies are applied chronologically. Model ids preserve action
+      // creation order and provide a deterministic tie-break for parallel calls.
+      order: [["id", "ASC"]],
     });
+  }
+
+  static async fetchVisibleByLatestStepContents(
+    auth: Authenticator,
+    agentMessageModelIds: ModelId[]
+  ): Promise<AgentMCPActionResource[]> {
+    const stepContents =
+      await AgentStepContentResource.fetchLatestFunctionCallsByAgentMessageModelIds(
+        auth,
+        agentMessageModelIds
+      );
+
+    return this.fetchByStepContents(auth, { stepContents });
   }
 
   /**
@@ -899,7 +933,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           workspaceId: file.workspaceId,
         }),
         contentType: file.contentType,
-        title: file.fileName,
+        title: getFileDisplayName(file),
         snippet: file.snippet,
         createdAt: file.createdAt.getTime(),
         updatedAt: file.updatedAt.getTime(),
@@ -963,6 +997,23 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     }
 
     return actions;
+  }
+
+  // Actions the agent message left in a non-final status: still running when a workflow errors
+  // (the worker that ran them may have died before finalizing the row), or parked on a user
+  // interaction (blocked_*). Callers discriminate on `status`.
+  static async listNonFinalActionsForAgentMessage(
+    auth: Authenticator,
+    { agentMessageModelId }: { agentMessageModelId: ModelId }
+  ): Promise<AgentMCPActionResource[]> {
+    return this.baseFetch(auth, {
+      where: {
+        agentMessageId: agentMessageModelId,
+        status: {
+          [Op.notIn]: TOOL_EXECUTION_FINAL_STATUSES,
+        },
+      },
+    });
   }
 
   /**
@@ -1182,12 +1233,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
             }),
           ]);
 
-          getStatsDClient().increment(
+          statsDMetrics.increment(
             "mcp_output_items.fetch.count",
             gcsItems.length,
             ["storage:gcs"]
           );
-          getStatsDClient().increment(
+          statsDMetrics.increment(
             "mcp_output_items.fetch.count",
             legacyItems.length,
             ["storage:legacy"]
@@ -1203,7 +1254,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                 gcsPath: item.contentGcsPath!,
               }))
             );
-            getStatsDClient().distribution(
+            statsDMetrics.distribution(
               "mcp_output_items.gcs_hydrate.duration_ms",
               Date.now() - gcsStartMs
             );
@@ -1216,7 +1267,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                 }
               }
             } else {
-              getStatsDClient().increment(
+              statsDMetrics.increment(
                 "mcp_output_items.gcs_fallback_db.count",
                 gcsItems.length
               );
@@ -1414,7 +1465,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
                       workspaceId: file.workspaceId,
                     }),
                     contentType: file.contentType,
-                    title: file.fileName,
+                    title: getFileDisplayName(file),
                     snippet: file.snippet,
                     createdAt: file.createdAt.getTime(),
                     updatedAt: file.updatedAt.getTime(),
@@ -1541,6 +1592,41 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return this.update({
       status,
     });
+  }
+
+  /**
+   * Atomically blocks a running sandbox parent. Multiple children may block concurrently, so the
+   * target status is idempotent. Every other source status is an invariant violation: in
+   * particular, a late sandbox child must never rewind a final parent into a resumable state.
+   */
+  async blockForSandboxChild(auth: Authenticator): Promise<void> {
+    await withTransaction(async (transaction) => {
+      const action = await AgentMCPActionModel.findOne({
+        attributes: ["id", "status"],
+        where: {
+          id: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      assert(action, `Sandbox parent action ${this.sId} no longer exists.`);
+
+      if (action.status === "blocked_child_action_input_required") {
+        return;
+      }
+      assert(
+        action.status === "running",
+        `Sandbox parent action ${this.sId} cannot transition from ${action.status} to blocked_child_action_input_required.`
+      );
+
+      await action.update(
+        { status: "blocked_child_action_input_required" },
+        { transaction }
+      );
+    });
+
+    Object.assign(this, { status: "blocked_child_action_input_required" });
   }
 
   /**

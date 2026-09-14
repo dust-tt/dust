@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { fn } from "storybook/test";
 
 import {
   ConversationListItem,
@@ -39,95 +40,14 @@ const mockConversation = {
   updatedAt: new Date(),
 };
 
-export const OneOnOneWithReply: Story = {
-  args: {
-    unread: true,
-    conversation: mockConversation,
-    time: "14:30",
-  },
-  render: () => (
-    <ListGroup>
-      <ConversationListItem
-        unread={true}
-        conversation={mockConversation}
-        avatar={{
-          name: "Alice",
-          visual: "https://i.pravatar.cc/150?img=1",
-          isRounded: true,
-        }}
-        time="14:30"
-        replySection={
-          <ReplySection
-            replyCount={3}
-            unreadCount={1}
-            avatars={[
-              {
-                name: "Alice",
-                visual: "https://i.pravatar.cc/150?img=1",
-                isRounded: true,
-              },
-            ]}
-            lastMessageBy="Alice"
-          />
-        }
-        onClick={() => console.log("Clicked")}
-      />
-    </ListGroup>
-  ),
+const aliceAvatar = {
+  name: "Alice",
+  visual: "https://i.pravatar.cc/150?img=1",
+  isRounded: true,
 };
 
-export const GroupConversationWithReply: Story = {
-  args: {
-    unread: false,
-    conversation: mockConversation,
-    time: "14:30",
-  },
-  render: () => (
-    <ListGroup>
-      <ConversationListItem
-        unread={false}
-        conversation={mockConversation}
-        creator={{
-          fullName: "Bob",
-          portrait: "https://i.pravatar.cc/150?img=2",
-        }}
-        time="14:30"
-        replySection={
-          <ReplySection
-            replyCount={5}
-            unreadCount={0}
-            avatars={[
-              {
-                name: "Alice",
-                visual: "https://i.pravatar.cc/150?img=1",
-                isRounded: true,
-              },
-              {
-                name: "Charlie",
-                visual: "https://i.pravatar.cc/150?img=3",
-                isRounded: true,
-              },
-              {
-                name: "Diana",
-                visual: "https://i.pravatar.cc/150?img=4",
-                isRounded: true,
-              },
-            ]}
-            lastMessageBy="seb"
-          />
-        }
-        onClick={() => console.log("Clicked")}
-      />
-    </ListGroup>
-  ),
-};
-
-const mentionAvatars = [
-  {
-    name: "Alice",
-    visual: "https://i.pravatar.cc/150?img=1",
-    isRounded: true,
-  },
+const participantAvatars = [
+  aliceAvatar,
   {
     name: "Charlie",
     visual: "https://i.pravatar.cc/150?img=3",
@@ -140,129 +60,90 @@ const mentionAvatars = [
   },
 ];
 
+const renderInListGroup: Story["render"] = (args) => (
+  <ListGroup>
+    <ConversationListItem {...args} />
+  </ListGroup>
+);
+
+/**
+ * A direct (one-on-one) conversation: pass `avatar` for the counterpart,
+ * mark it `unread`, and surface reply/unread counts via `replySection`.
+ *
+ * @summary Unread one-on-one conversation with replies.
+ */
+export const OneOnOneWithReply: Story = {
+  args: {
+    unread: true,
+    conversation: mockConversation,
+    avatar: aliceAvatar,
+    time: "14:30",
+    replySection: (
+      <ReplySection
+        replyCount={3}
+        unreadCount={1}
+        avatars={[aliceAvatar]}
+        lastMessageBy="Alice"
+      />
+    ),
+    onClick: fn(),
+  },
+  render: renderInListGroup,
+};
+
+/**
+ * A group conversation: pass `creator` (not `avatar`) for the person who
+ * started the thread, with participant avatars in the reply section.
+ *
+ * @summary Read group conversation with participants.
+ */
+export const GroupConversationWithReply: Story = {
+  args: {
+    unread: false,
+    conversation: mockConversation,
+    creator: {
+      fullName: "Bob",
+      portrait: "https://i.pravatar.cc/150?img=2",
+    },
+    time: "14:30",
+    replySection: (
+      <ReplySection
+        replyCount={5}
+        unreadCount={0}
+        avatars={participantAvatars}
+        lastMessageBy="Diana"
+      />
+    ),
+    onClick: fn(),
+  },
+  render: renderInListGroup,
+};
+
+/**
+ * When the user is @-mentioned, `mentionCount` renders alongside the reply
+ * and unread counts so the row signals it needs the user's attention.
+ *
+ * @summary Conversation with pending mentions.
+ */
 export const WithMentions: Story = {
   args: {
     unread: true,
     conversation: mockConversation,
+    creator: {
+      fullName: "Bob",
+      portrait: "https://i.pravatar.cc/150?img=2",
+    },
     time: "14:30",
+    replySection: (
+      <ReplySection
+        replyCount={23}
+        unreadCount={4}
+        mentionCount={2}
+        avatars={participantAvatars}
+        lastMessageBy="Alice"
+      />
+    ),
+    onClick: fn(),
   },
-  render: () => (
-    <ListGroup>
-      {/* 2 Mentions on 4 unreads (23 replies) */}
-      <ConversationListItem
-        unread={true}
-        conversation={{
-          ...mockConversation,
-          title: "All different counts",
-        }}
-        creator={{
-          fullName: "Bob",
-          portrait: "https://i.pravatar.cc/150?img=2",
-        }}
-        time="14:30"
-        replySection={
-          <ReplySection
-            replyCount={23}
-            unreadCount={4}
-            mentionCount={2}
-            avatars={mentionAvatars}
-            lastMessageBy="Alice"
-          />
-        }
-        onClick={() => console.log("Clicked")}
-      />
-      {/* 2 Mentions (5 replies) — mentions == unreads */}
-      <ConversationListItem
-        unread={true}
-        conversation={{
-          ...mockConversation,
-          title: "Mentions equal unreads",
-        }}
-        creator={{
-          fullName: "Charlie",
-          portrait: "https://i.pravatar.cc/150?img=3",
-        }}
-        time="12:00"
-        replySection={
-          <ReplySection
-            replyCount={5}
-            unreadCount={2}
-            mentionCount={2}
-            avatars={mentionAvatars}
-            lastMessageBy="Diana"
-          />
-        }
-        onClick={() => console.log("Clicked")}
-      />
-      {/* 2 Mentions on 4 unreads — unreads == replies */}
-      <ConversationListItem
-        unread={true}
-        conversation={{
-          ...mockConversation,
-          title: "Unreads equal replies",
-        }}
-        creator={{
-          fullName: "Diana",
-          portrait: "https://i.pravatar.cc/150?img=4",
-        }}
-        time="09:15"
-        replySection={
-          <ReplySection
-            replyCount={4}
-            unreadCount={4}
-            mentionCount={2}
-            avatars={mentionAvatars}
-            lastMessageBy="Charlie"
-          />
-        }
-        onClick={() => console.log("Clicked")}
-      />
-      {/* 2 Mentions — all counts equal */}
-      <ConversationListItem
-        unread={true}
-        conversation={{
-          ...mockConversation,
-          title: "All counts equal",
-        }}
-        creator={{
-          fullName: "Alice",
-          portrait: "https://i.pravatar.cc/150?img=1",
-        }}
-        time="08:00"
-        replySection={
-          <ReplySection
-            replyCount={2}
-            unreadCount={2}
-            mentionCount={2}
-            avatars={mentionAvatars}
-            lastMessageBy="Bob"
-          />
-        }
-        onClick={() => console.log("Clicked")}
-      />
-      {/* 1 Mention — singular */}
-      <ConversationListItem
-        unread={true}
-        conversation={{
-          ...mockConversation,
-          title: "Single mention",
-        }}
-        creator={{
-          fullName: "Alice",
-          portrait: "https://i.pravatar.cc/150?img=1",
-        }}
-        time="07:45"
-        replySection={
-          <ReplySection
-            replyCount={1}
-            unreadCount={1}
-            mentionCount={1}
-            avatars={mentionAvatars}
-            lastMessageBy="Alice"
-          />
-        }
-        onClick={() => console.log("Clicked")}
-      />
-    </ListGroup>
-  ),
+  render: renderInListGroup,
 };

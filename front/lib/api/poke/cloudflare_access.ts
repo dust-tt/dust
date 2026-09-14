@@ -1,0 +1,173 @@
+import config from "@app/lib/api/config";
+import { trustedFetch } from "@app/lib/egress/server";
+import type { PokeRole } from "@app/lib/poke/roles";
+import { mapAccessGroupNamesToPokeRoles } from "@app/lib/poke/roles";
+import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { createRemoteJWKSet, jwtVerify } from "jose";
+import { z } from "zod";
+
+export type CloudflareAccessIdentity = {
+  email: string;
+  name: string | null;
+  sub: string;
+};
+
+const CloudFlareIdentityResponseSchema = z.object({
+  groups: z.array(
+    z.object({
+      id: z.string(),
+      email: z.string(),
+      name: z.string(),
+    })
+  ),
+});
+type CloudflareAccessConfig = {
+  teamDomain: string;
+  aud: string;
+};
+
+let cachedJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
+let cachedJwksIssuer: string | null = null;
+
+function normalizeTeamDomain(teamDomain: string): string {
+  return teamDomain.startsWith("https://")
+    ? teamDomain.replace(/\/$/, "")
+    : `https://${teamDomain.replace(/\/$/, "")}`;
+}
+
+export function getCloudflareAccessConfig(): CloudflareAccessConfig | null {
+  const teamDomain = config.getCloudflareAccessTeamDomain();
+  const aud = config.getCloudflareAccessAud();
+  if (!teamDomain || !aud) {
+    return null;
+  }
+  return { teamDomain: normalizeTeamDomain(teamDomain), aud };
+}
+
+/**
+ * Prefer the `Cf-Access-Jwt-Assertion` header (what Cloudflare injects at the
+ * edge). Fall back to the `CF_Authorization` cookie for browser same-origin
+ * requests where the header may not be forwarded.
+ *
+ * Extracted so tests can mock token presence without attaching headers to every
+ * `honoApp.request` call (same idea as mocking WorkOS session resolution).
+ */
+export function resolveCloudflareAccessToken({
+  headerToken,
+  cookieToken,
+}: {
+  headerToken?: string;
+  cookieToken?: string;
+}): string | undefined {
+  if (headerToken) {
+    return headerToken;
+  }
+  return cookieToken;
+}
+
+function getJwks(issuer: string) {
+  if (cachedJwks && cachedJwksIssuer === issuer) {
+    return cachedJwks;
+  }
+  cachedJwks = createRemoteJWKSet(new URL(`${issuer}/cdn-cgi/access/certs`));
+  cachedJwksIssuer = issuer;
+  return cachedJwks;
+}
+
+/**
+ * Validates a Cloudflare Access application JWT.
+ *
+ * Prefer the `Cf-Access-Jwt-Assertion` header (what Cloudflare injects at the
+ * edge). Fall back to the `CF_Authorization` cookie for browser same-origin
+ * requests where the header may not be forwarded.
+ *
+ * @see https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/
+ */
+export async function verifyCloudflareAccessJwt(
+  token: string
+): Promise<CloudflareAccessIdentity | null> {
+  const accessConfig = getCloudflareAccessConfig();
+  if (!accessConfig) {
+    return null;
+  }
+
+  try {
+    const { payload } = await jwtVerify(
+      token,
+      getJwks(accessConfig.teamDomain),
+      {
+        issuer: accessConfig.teamDomain,
+        audience: accessConfig.aud,
+      }
+    );
+
+    const email =
+      typeof payload.email === "string" ? payload.email.toLowerCase() : null;
+    const sub = typeof payload.sub === "string" ? payload.sub : null;
+    if (!email || !sub) {
+      logger.warn(
+        { hasEmail: !!email, hasSub: !!sub },
+        "[poke] Cloudflare Access JWT missing email or sub claim"
+      );
+      return null;
+    }
+
+    const name =
+      typeof payload.name === "string" && payload.name.trim().length > 0
+        ? payload.name.trim()
+        : null;
+
+    return { email, name, sub };
+  } catch (err) {
+    logger.warn(
+      { err: normalizeError(err) },
+      "[poke] Cloudflare Access JWT verification failed"
+    );
+    return null;
+  }
+}
+
+export async function getPokeRolesForUserViaCloudflareAccess(
+  accessToken: string
+): Promise<PokeRole[]> {
+  const accessConfig = getCloudflareAccessConfig();
+  if (!accessConfig) {
+    return [];
+  }
+  const response = await trustedFetch(
+    `${accessConfig.teamDomain}/cdn-cgi/access/get-identity`,
+    {
+      headers: {
+        cookie: `CF_Authorization=${accessToken}`,
+      },
+    }
+  );
+
+  if (response.ok) {
+    const data = await response.json();
+    const parsedData = CloudFlareIdentityResponseSchema.parse(data);
+
+    return mapAccessGroupNamesToPokeRoles(
+      parsedData.groups.map((group) => group.name)
+    );
+  } else {
+    logger.error("cloudflare access get-identity request failed", {
+      status: response.status,
+      statusText: response.statusText,
+    });
+    return [];
+  }
+}
+
+/**
+ * @cc [owner:philipperolet,label:testing] jwks-cache-test-reset
+ * Test-only helper to clear the cached JWKS between cases.
+ * Exception to `non-runtime-code-stays-local`: resetting this private module state here keeps
+ * tests isolated with static imports, without `vi.resetModules()` and dynamic re-imports.
+ * This helper must only be called from tests.
+ */
+export function clearCloudflareAccessJwksCacheForTests(): void {
+  cachedJwks = null;
+  cachedJwksIssuer = null;
+}

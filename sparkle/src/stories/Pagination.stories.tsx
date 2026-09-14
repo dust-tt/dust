@@ -1,28 +1,36 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import type { PaginationState } from "@tanstack/react-table";
 import React, { useState } from "react";
-import { expect } from "storybook/test";
+import { expect, fn } from "storybook/test";
 
 import { Pagination } from "@sparkle/components/Pagination";
 
-// Pagination is controlled. Each story wraps it so the `pagination` state lives locally and is
-// fed back in — mirroring real callers and making the interaction play meaningful. The defaults
-// below seed the initial state; `render` replaces `setPagination` with the local state setter.
+/**
+ * Pagination is controlled. Each story wraps it so the `pagination` state lives locally and is
+ * fed back in — mirroring real callers and making the interaction play meaningful. The defaults
+ * below seed the initial state; `render` layers the local state setter on top of the
+ * `setPagination` spy so changes both update the story and show in the Actions panel.
+ */
 const meta: Meta<typeof Pagination> = {
   title: "Navigation/Pagination",
   component: Pagination,
   args: {
     rowCount: 95,
     pagination: { pageIndex: 0, pageSize: 10 },
-    setPagination: () => {},
+    setPagination: fn(),
   },
   render: (args) => {
-    const [pagination, setPagination] = useState(args.pagination);
+    const [pagination, setPagination] = useState<PaginationState>(
+      args.pagination
+    );
     return (
       <Pagination
         {...args}
         pagination={pagination}
-        setPagination={setPagination}
+        setPagination={(state) => {
+          args.setPagination(state);
+          setPagination(state);
+        }}
       />
     );
   },
@@ -46,14 +54,30 @@ const meta: Meta<typeof Pagination> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * The standard pager over a 95-row dataset paged by 10: numbered page buttons,
+ * previous/next arrows, and the "showing X-Y of N" range summary.
+ * @summary Standard multi-page pager.
+ */
 export const Default: Story = {};
 
+/**
+ * When the dataset fits within one page there is nothing to navigate — the
+ * pager still shows the range summary but navigation is inert. The edge case
+ * to check before hiding the pager entirely on small datasets.
+ * @summary Dataset fits on a single page.
+ */
 export const SinglePage: Story = {
   args: { rowCount: 4 },
 };
 
-// Interaction: selecting page 2 must advance the controlled state and update the range summary.
+/**
+ * Interaction test: selecting page 2 must advance the controlled state and
+ * update the range summary.
+ * @summary Interaction test for page navigation.
+ */
 export const NavigatesPages: Story = {
+  tags: ["!manifest"],
   play: async ({ canvas, userEvent }) => {
     await expect(canvas.getByText(/showing 1-10 of 95/i)).toBeVisible();
     await userEvent.click(canvas.getByRole("button", { name: "2" }));
@@ -61,11 +85,16 @@ export const NavigatesPages: Story = {
   },
 };
 
-// Single project-wide CssCheck. Pagination's page-number buttons use `font-medium`, which
-// Sparkle's theme remaps to `--font-weight-medium: 450` (variable font). A concrete computed
-// value is the only proof that the shared preview actually loaded Sparkle's stylesheet —
-// `toBeVisible` would pass even unstyled, and Tailwind's default would yield 500.
+/**
+ * Single project-wide CSS smoke check. Pagination's page-number buttons use
+ * `font-medium`, which Sparkle's theme remaps to `--font-weight-medium: 450`
+ * (variable font). A concrete computed value is the only proof that the shared
+ * preview actually loaded Sparkle's stylesheet — `toBeVisible` would pass even
+ * unstyled, and Tailwind's default would yield 500.
+ * @summary Build-infra assertion that the stylesheet loaded.
+ */
 export const CssCheck: Story = {
+  tags: ["!manifest"],
   play: async ({ canvas }) => {
     const pageButton = canvas.getByRole("button", { name: "1" });
     await expect(getComputedStyle(pageButton).fontWeight).toBe("450");

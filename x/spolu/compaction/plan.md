@@ -30,7 +30,7 @@ DB schema change, no runtime behavior. PR #24065.
 - Update `MessageModel`: add `compactionMessageId` FK declaration.
 - Update `MessageModel` validation hook: extend the exactly-one-FK-non-null check to include
   `compactionMessageId`.
-- Add `compactionMessageId` index on `messages` table (following [BACK13]).
+- Add `compactionMessageId` index on `messages` table (following [index-foreign-keys]).
 - Add associations: `CompactionMessageModel.hasOne(MessageModel)` /
   `MessageModel.belongsTo(CompactionMessageModel)`.
 - Register in `admin/db.ts`.

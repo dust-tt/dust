@@ -12,7 +12,7 @@ const SvgFilterLines = (props: SVGProps<SVGSVGElement>) => (
   >
     <path
       fill="currentColor"
-      d="M15 16.965a1.035 1.035 0 0 1 0 2.07H9a1.035 1.035 0 0 1 0-2.07zm3-6a1.035 1.035 0 0 1 0 2.07H6a1.035 1.035 0 0 1 0-2.07zm3-6a1.035 1.035 0 0 1 0 2.07H3a1.035 1.035 0 0 1 0-2.07z"
+      d="M15 17a1 1 0 1 1 0 2H9a1 1 0 1 1 0-2zm3-6a1 1 0 1 1 0 2H6a1 1 0 1 1 0-2zm3-6a1 1 0 1 1 0 2H3a1 1 0 0 1 0-2z"
     />
   </svg>
 );

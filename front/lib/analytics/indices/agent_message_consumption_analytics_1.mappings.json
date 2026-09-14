@@ -15,6 +15,9 @@
     "agent_message_id": {
       "type": "keyword"
     },
+    "parent_message_id": {
+      "type": "keyword"
+    },
     "message_version": {
       "type": "keyword"
     },
@@ -33,6 +36,9 @@
     "agent": {
       "type": "object",
       "properties": {
+        "attributed_id": {
+          "type": "keyword"
+        },
         "id": {
           "type": "keyword"
         },
@@ -80,6 +86,9 @@
           "type": "keyword"
         },
         "group_ids": {
+          "type": "keyword"
+        },
+        "seat_type": {
           "type": "keyword"
         }
       }
@@ -163,6 +172,9 @@
       }
     },
     "credit_micro": {
+      "type": "long"
+    },
+    "micro_usd": {
       "type": "long"
     },
     "usage_type": {

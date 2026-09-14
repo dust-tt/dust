@@ -1,9 +1,18 @@
 import { FileExplorer } from "@app/components/file_explorer/FileExplorer";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { frameV2ContentType } from "@app/types/files";
+import { Ok } from "@app/types/shared/result";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import { useState } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockClientFetch = vi.fn();
 vi.mock("@app/lib/egress/client", () => ({
@@ -16,11 +25,13 @@ vi.mock("@app/lib/swr/useIsMobile", () => ({
 function makeFile({
   contentType,
   fileName,
+  fileResourceContentType,
   lastModifiedMs,
   path = fileName,
 }: {
   contentType: string;
   fileName: string;
+  fileResourceContentType?: string;
   lastModifiedMs: number;
   path?: string;
 }): FileSystemFileEntry {
@@ -30,6 +41,7 @@ function makeFile({
     path: `conversation-c1/${path}`,
     contentType,
     fileId: `file-${fileName}`,
+    fileResourceContentType,
     sizeBytes: 100,
     lastModifiedMs,
     thumbnailUrl: null,
@@ -55,6 +67,20 @@ function ControlledFileExplorer(props: ControlledFileExplorerProps) {
   );
 }
 
+// Layout and sort preferences persist in localStorage.
+beforeEach(() => {
+  localStorage.clear();
+});
+
+beforeAll(() => {
+  // Radix relies on this browser API when opening dropdown content.
+  global.ResizeObserver = class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+});
+
 describe("FileExplorer file opening", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -68,7 +94,7 @@ describe("FileExplorer file opening", () => {
       lastModifiedMs: 1,
     });
     let finishDownload: (() => void) | undefined;
-    const onFileDownload = vi.fn(
+    const onDownload = vi.fn(
       () =>
         new Promise<void>((resolve) => {
           finishDownload = resolve;
@@ -81,7 +107,7 @@ describe("FileExplorer file opening", () => {
         files={[archive]}
         getFileUrl={(path) => `/files/${path}`}
         isLoading={false}
-        onFileDownload={onFileDownload}
+        onDownload={onDownload}
       />
     );
 
@@ -89,7 +115,7 @@ describe("FileExplorer file opening", () => {
     fireEvent.click(archiveTitle);
 
     await waitFor(() =>
-      expect(onFileDownload).toHaveBeenCalledWith({
+      expect(onDownload).toHaveBeenCalledWith({
         ...archive,
         kind: "file",
       })
@@ -99,7 +125,7 @@ describe("FileExplorer file opening", () => {
       "true"
     );
     fireEvent.click(archiveTitle);
-    expect(onFileDownload).toHaveBeenCalledTimes(1);
+    expect(onDownload).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(mockClientFetch).not.toHaveBeenCalled();
 
@@ -135,7 +161,7 @@ describe("FileExplorer file opening", () => {
         files={[first, archive, second]}
         getFileUrl={(path) => `/files/${path}`}
         isLoading={false}
-        onFileDownload={vi.fn().mockResolvedValue(undefined)}
+        onDownload={vi.fn().mockResolvedValue(undefined)}
       />
     );
 
@@ -172,7 +198,7 @@ describe("FileExplorer navigation", () => {
         files={[nestedFile, rootFile]}
         getFileUrl={(path) => `/files/${path}`}
         isLoading={false}
-        onFileDownload={vi.fn().mockResolvedValue(undefined)}
+        onDownload={vi.fn().mockResolvedValue(undefined)}
       />
     );
 
@@ -180,5 +206,218 @@ describe("FileExplorer navigation", () => {
     fireEvent.click(screen.getByText("folder"));
 
     expect(screen.getByText("nested.txt")).toBeInTheDocument();
+  });
+
+  it("passes a folder's canonical path to folder actions", async () => {
+    const user = userEvent.setup();
+    const onRename = vi.fn();
+    const nestedFile = makeFile({
+      contentType: "text/plain",
+      fileName: "nested.txt",
+      lastModifiedMs: 1,
+      path: "folder/nested.txt",
+    });
+
+    render(
+      <ControlledFileExplorer
+        defaultViewMode="list"
+        files={[nestedFile]}
+        getFileUrl={(path) => `/files/${path}`}
+        isLoading={false}
+        onDownload={vi.fn().mockResolvedValue(undefined)}
+        onRename={onRename}
+      />
+    );
+
+    const folderTitle = screen.getByText("folder");
+    const folderRow = folderTitle.closest("div.cursor-pointer");
+    expect(folderRow).toBeInstanceOf(HTMLElement);
+    if (!(folderRow instanceof HTMLElement)) {
+      throw new Error("Folder row not found.");
+    }
+
+    await user.click(within(folderRow).getByRole("button"));
+    await user.click(screen.getByText("Rename"));
+
+    expect(onRename).toHaveBeenCalledWith({
+      kind: "folder",
+      name: "folder",
+      path: "conversation-c1/folder",
+    });
+  });
+
+  it("downloads a folder from its canonical path", async () => {
+    const user = userEvent.setup();
+    const onDownload = vi.fn().mockResolvedValue(undefined);
+    const nestedFile = makeFile({
+      contentType: "text/plain",
+      fileName: "nested.txt",
+      lastModifiedMs: 1,
+      path: "folder/nested.txt",
+    });
+
+    render(
+      <ControlledFileExplorer
+        defaultViewMode="list"
+        files={[nestedFile]}
+        getFileUrl={(path) => `/files/${path}`}
+        isLoading={false}
+        onDownload={onDownload}
+      />
+    );
+
+    const folderTitle = screen.getByText("folder");
+    const folderRow = folderTitle.closest("div.cursor-pointer");
+    expect(folderRow).toBeInstanceOf(HTMLElement);
+    if (!(folderRow instanceof HTMLElement)) {
+      throw new Error("Folder row not found.");
+    }
+
+    await user.click(within(folderRow).getByRole("button"));
+    await user.click(screen.getByText("Download"));
+
+    expect(onDownload).toHaveBeenCalledWith({
+      kind: "folder",
+      name: "folder",
+      path: "conversation-c1/folder",
+    });
+  });
+});
+
+describe("FileExplorer Frame packages", () => {
+  it("opens the Frame and downloads its source folder", async () => {
+    const user = userEvent.setup();
+    mockClientFetch.mockResolvedValue(new Response("preview content"));
+    const manifest = makeFile({
+      contentType: "application/json",
+      fileName: "manifest.json",
+      fileResourceContentType: frameV2ContentType,
+      lastModifiedMs: 2,
+      path: "status/manifest.json",
+    });
+    const source = makeFile({
+      contentType: "text/typescript",
+      fileName: "index.tsx",
+      lastModifiedMs: 1,
+      path: "status/index.tsx",
+    });
+    const onOpenInteractive = vi.fn();
+    const onDelete = vi.fn().mockResolvedValue(undefined);
+    const onDownload = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <ControlledFileExplorer
+        defaultViewMode="list"
+        displayFramePackages
+        files={[manifest, source]}
+        getFileUrl={(path) => `/files/${path}`}
+        isLoading={false}
+        onDelete={onDelete}
+        onDownload={onDownload}
+        onMoveFile={vi.fn().mockResolvedValue(new Ok(undefined))}
+        onOpenInteractive={onOpenInteractive}
+        onRename={vi.fn()}
+      />
+    );
+
+    const packageTitle = screen.getByText("status");
+    fireEvent.click(packageTitle);
+    expect(onOpenInteractive).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fileId: "file-manifest.json",
+        kind: "frame_package",
+        path: "conversation-c1/status/manifest.json",
+        sourceFolderPath: "status",
+      })
+    );
+
+    const packageRow = packageTitle.closest("div.cursor-pointer");
+    expect(packageRow).toBeInstanceOf(HTMLElement);
+    if (!(packageRow instanceof HTMLElement)) {
+      throw new Error("Frame package row not found.");
+    }
+    await user.click(within(packageRow).getByRole("button"));
+    await user.click(screen.getByText("Download"));
+    expect(onDownload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "frame_package",
+        path: "conversation-c1/status/manifest.json",
+        sourceFolderCanonicalPath: "conversation-c1/status",
+      })
+    );
+
+    await user.click(within(packageRow).getByRole("button"));
+    expect(screen.getByText("View source")).toBeInTheDocument();
+    expect(screen.queryByText("Rename")).not.toBeInTheDocument();
+    expect(screen.queryByText("Move to…")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Delete"));
+    expect(onDelete).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "frame_package",
+        path: "conversation-c1/status/manifest.json",
+      })
+    );
+
+    await user.click(within(packageRow).getByRole("button"));
+    fireEvent.click(screen.getByText("View source"));
+    const manifestTitle = await screen.findByText("manifest.json");
+    expect(screen.getByText("index.tsx")).toBeInTheDocument();
+
+    fireEvent.click(manifestTitle);
+    expect(
+      await screen.findByRole("dialog", { name: "manifest.json" })
+    ).toBeInTheDocument();
+    expect(await screen.findByText("preview content")).toBeInTheDocument();
+  });
+});
+
+describe("FileExplorer preferences", () => {
+  const file = makeFile({
+    contentType: "text/plain",
+    fileName: "notes.txt",
+    lastModifiedMs: 1,
+  });
+
+  function renderExplorer() {
+    return render(
+      <ControlledFileExplorer
+        defaultViewMode="grid"
+        files={[file]}
+        getFileUrl={(path) => `/files/${path}`}
+        isLoading={false}
+        onDownload={vi.fn().mockResolvedValue(undefined)}
+      />
+    );
+  }
+
+  function isListLayout() {
+    const layout = screen
+      .getByText("notes.txt")
+      .closest("[data-layout]")
+      ?.getAttribute("data-layout");
+    return layout === "list";
+  }
+
+  async function pickListLayout(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: "Layout" }));
+    await user.click(await screen.findByText("List"));
+  }
+
+  it("restores view and sort mode after a remount", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderExplorer();
+    expect(isListLayout()).toBe(false);
+
+    await pickListLayout(user);
+    await user.click(screen.getByRole("button", { name: "Last modified" }));
+    await user.click(await screen.findByText("Name Z → A"));
+    expect(isListLayout()).toBe(true);
+    unmount();
+
+    renderExplorer();
+    expect(isListLayout()).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "Name Z → A" })
+    ).toBeInTheDocument();
   });
 });

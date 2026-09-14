@@ -1,19 +1,12 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
-import {
-  ADMIN_GROUP_NAME,
-  GroupResource,
-  MANAGER_GROUP_NAME,
-} from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type { MembershipRoleType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type {
-  LightWorkspaceType,
   UserType,
   UserTypeWithExtensionWorkspaces,
   UserTypeWithWorkspaces,
@@ -289,35 +282,4 @@ export async function getUserWithWorkspaces<T extends boolean>(
       };
     }),
   };
-}
-
-export async function determineUserRoleFromGroups(
-  workspace: LightWorkspaceType,
-  user: UserResource
-): Promise<MembershipRoleType> {
-  // Get all groups the user is a member of.
-  const userGroups = await GroupResource.listUserGroupsInWorkspace({
-    user,
-    workspace,
-  });
-
-  let atLeastManager = false;
-
-  for (const group of userGroups) {
-    if (group.name === ADMIN_GROUP_NAME) {
-      return "admin";
-    }
-    if (group.name === MANAGER_GROUP_NAME) {
-      atLeastManager = true;
-    }
-  }
-  // If we're here, the user is not in the admin group. Role precedence is
-  // admin > manager > user. The `dust-builders` group no longer grants a role: it is mirrored
-  // into the manual "Builders" group instead (see handleRoleAssignmentForGroup).
-  if (atLeastManager) {
-    return "manager";
-  }
-
-  // Did not find any group granting a role, so the user should be a regular user.
-  return "user";
 }

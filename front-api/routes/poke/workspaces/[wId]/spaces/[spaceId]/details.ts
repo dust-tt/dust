@@ -1,7 +1,6 @@
 import type { PokeGetSpaceDetails } from "@app/lib/api/poke/spaces";
 import { getMembers } from "@app/lib/api/workspace";
 import { spaceToPokeJSON } from "@app/lib/poke/utils";
-import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserTypeWithWorkspaces } from "@app/types/user";
@@ -38,12 +37,7 @@ app.get(
 
     const members: Record<string, UserTypeWithWorkspaces[]> = {};
 
-    const groupReferences = space.groups.filter((group) =>
-      space.managementMode === "manual"
-        ? group.isRegularAuto() || group.groupKind === "space_editors"
-        : group.isProvisioned()
-    );
-    const groups = await space.fetchGroupResources(auth, { groupReferences });
+    const groups = await space.fetchMembershipGroups(auth);
 
     const memberships = await getMembers(auth);
     const memberById = new Map(memberships.members.map((m) => [m.sId, m]));
@@ -60,14 +54,9 @@ app.get(
       ? await ProjectMetadataResource.fetchBySpace(auth, space)
       : null;
 
-    const sandbox = space.isProject()
-      ? await PodSandboxAdapter.fetchSandbox(auth, space)
-      : null;
-
     return ctx.json({
       members,
       metadata: metadata ? metadata.toJSON() : null,
-      sandbox: sandbox ? sandbox.toPokeJSON() : null,
       space: await spaceToPokeJSON(auth, space),
     });
   }

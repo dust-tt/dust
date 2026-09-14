@@ -254,6 +254,7 @@ export async function importSkillsFromFiles(
         icon: existing.icon,
         mcpServerViews: existing.mcpServerViews,
         attachedKnowledge,
+        manuallyRequestedSpaceIds: existing.manuallyRequestedSpaceIds,
         requestedSpaceIds: existing.requestedSpaceIds,
         fileAttachments,
         source,

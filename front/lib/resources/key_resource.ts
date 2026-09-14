@@ -3,12 +3,15 @@
 
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { getApiKeysSpendCappedByModelId } from "@app/lib/spend_limits/api_key_cap_status";
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
@@ -16,10 +19,11 @@ import {
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
-import type { ApiKeyCreditState, KeyType } from "@app/types/key";
+import type { KeyType } from "@app/types/key";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { redactString } from "@app/types/shared/utils/string_utils";
+import type { SpaceType } from "@app/types/space";
 import type {
   AssignableRoleType,
   LightWorkspaceType,
@@ -48,6 +52,16 @@ export interface KeyAuthType {
   isSystem: boolean;
   role: RoleType;
   monthlyCapMicroUsd: number | null;
+}
+
+// A key proven to be a system key. Callers that only make sense for a system key take this rather
+// than a key plus a boolean, so a regular key cannot reach them (see `Authenticator.resolvePermissions`).
+export type SystemKey = { isSystem: true };
+
+export function isSystemKey<T extends { isSystem: boolean }>(
+  key: T
+): key is T & SystemKey {
+  return key.isSystem;
 }
 
 export const DEFAULT_SYSTEM_KEY_NAME = "DustSystemKey";
@@ -91,7 +105,6 @@ export class KeyResource extends BaseResource<KeyModel> {
       role: key.role,
       monthlyCapMicroUsd: key.monthlyCapMicroUsd,
       monthlyCapAwuCredits: key.monthlyCapAwuCredits,
-      creditState: key.creditState,
       workspaceId: key.workspaceId,
       groupIds: key.groupIds,
       userId: key.userId,
@@ -341,7 +354,11 @@ export class KeyResource extends BaseResource<KeyModel> {
     );
   }
 
-  toJSON(requestingUserModelId: ModelId): KeyType {
+  private toJSON(
+    requestingUserModelId: ModelId,
+    spaces: SpaceType[],
+    isSpendCapped: boolean
+  ): KeyType {
     // We only display the full secret key to the admin who created it, and only
     // for the first 10 minutes after creation. Every other admin (or the
     // creator past the window) sees a redacted value.
@@ -365,12 +382,120 @@ export class KeyResource extends BaseResource<KeyModel> {
       name: this.name,
       secret,
       status: this.status,
-      groupIds: this.groupIds,
+      spaces,
       role: this.role,
       monthlyCapMicroUsd: this.monthlyCapMicroUsd,
       monthlyCapAwuCredits: this.monthlyCapAwuCredits,
-      creditState: this.creditState,
+      isSpendCapped,
     };
+  }
+
+  /**
+   * The spaces each of `keys` can reach, keyed by key model id.
+   *
+   * A key stores the groups it was scoped to, never spaces, so the spaces are reverse-mapped from
+   * those groups through their `space` grants in `group_permissions`. The workspace global group is
+   * ignored: every key carries it and it holds `reader` on every open space, so mapping it would
+   * list most of the workspace on every row.
+   *
+   * Display-only: it never feeds back into authorization.
+   */
+  private static async listSpacesByKeyModelId(
+    auth: Authenticator,
+    keys: KeyResource[]
+  ): Promise<Map<ModelId, SpaceType[]>> {
+    if (keys.length === 0) {
+      return new Map();
+    }
+
+    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    const globalGroupModelId = globalGroupRes.isOk()
+      ? globalGroupRes.value.id
+      : null;
+
+    const groupModelIds = [
+      ...new Set(keys.flatMap((key) => key.groupIds)),
+    ].filter((groupModelId) => groupModelId !== globalGroupModelId);
+    if (groupModelIds.length === 0) {
+      return new Map();
+    }
+
+    const grants = await GroupPermissionResource.listForGroups(
+      auth.getNonNullableWorkspace(),
+      { groupModelIds, resourceType: "space" }
+    );
+
+    const spaces = await SpaceResource.fetchByModelIds(auth, [
+      ...new Set(grants.map((grant) => grant.resourceId)),
+    ]);
+    const spaceByModelId = new Map(
+      spaces.map((space) => [space.id, space.toJSON()])
+    );
+
+    const spacesByGroupModelId = new Map<ModelId, SpaceType[]>();
+    for (const grant of grants) {
+      // A grant on a space we could not resolve (deleted, say) has nothing to display.
+      const space = spaceByModelId.get(grant.resourceId);
+      if (!space) {
+        continue;
+      }
+
+      const existing = spacesByGroupModelId.get(grant.groupId);
+      if (existing) {
+        existing.push(space);
+      } else {
+        spacesByGroupModelId.set(grant.groupId, [space]);
+      }
+    }
+
+    return new Map(
+      keys.map((key) => {
+        const spaces = new Map(
+          key.groupIds
+            .flatMap(
+              (groupModelId) => spacesByGroupModelId.get(groupModelId) ?? []
+            )
+            .map((space) => [space.sId, space])
+        );
+
+        return [
+          key.id,
+          [...spaces.values()].sort((a, b) => a.name.localeCompare(b.name)),
+        ];
+      })
+    );
+  }
+
+  static async toJSONWithSpaces(
+    auth: Authenticator,
+    keys: KeyResource[],
+    requestingUserModelId: ModelId
+  ): Promise<KeyType[]> {
+    const [spacesByKeyModelId, spendCappedByModelId] = await Promise.all([
+      this.listSpacesByKeyModelId(auth, keys),
+      getApiKeysSpendCappedByModelId(auth, keys),
+    ]);
+
+    return keys.map((key) =>
+      key.toJSON(
+        requestingUserModelId,
+        spacesByKeyModelId.get(key.id) ?? [],
+        spendCappedByModelId.get(key.id) ?? false
+      )
+    );
+  }
+
+  async toJSONWithSpaces(
+    auth: Authenticator,
+    requestingUserModelId: ModelId
+  ): Promise<KeyType> {
+    const [json] = await KeyResource.toJSONWithSpaces(
+      auth,
+      [this],
+      requestingUserModelId
+    );
+
+    return json;
   }
 
   // Use to serialize a KeyResource in the Authenticator.
@@ -433,12 +558,5 @@ export class KeyResource extends BaseResource<KeyModel> {
     transaction?: Transaction
   ) {
     await this.update({ monthlyCapAwuCredits }, transaction);
-  }
-
-  async updateCreditState(
-    creditState: ApiKeyCreditState,
-    transaction?: Transaction
-  ) {
-    await this.update({ creditState }, transaction);
   }
 }

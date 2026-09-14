@@ -3,9 +3,9 @@
 set -e
 
 # Check required environment variables.
-if [[ -z "$GCP_US_PROJECT_ID" || -z "$GCP_EU_PROJECT_ID" || -z "$GCP_GLOBAL_PROJECT_ID" ]]; then
+if [[ -z "$GCP_US_PROJECT_ID" || -z "$GCP_EU_PROJECT_ID" || -z "$GCP_CELL_00002_PROJECT_ID" || -z "$GCP_GLOBAL_PROJECT_ID" ]]; then
   echo "❌ Error: Missing required environment variables"
-  echo "   Please set: GCP_US_PROJECT_ID, GCP_EU_PROJECT_ID, and GCP_GLOBAL_PROJECT_ID"
+  echo "   Please set: GCP_US_PROJECT_ID, GCP_EU_PROJECT_ID, GCP_CELL_00002_PROJECT_ID, and GCP_GLOBAL_PROJECT_ID"
   exit 1
 fi
 
@@ -13,12 +13,14 @@ echo "🔧 Project Configuration:"
 echo "  Global Project: $GCP_GLOBAL_PROJECT_ID (webhook secrets)"
 echo "  US Project: $GCP_US_PROJECT_ID (connector secrets)"
 echo "  EU Project: $GCP_EU_PROJECT_ID (connector secrets)"
+echo "  cell-00002 Project: $GCP_CELL_00002_PROJECT_ID (connector secrets)"
 
 echo "🔧 Creating .env file for Firebase deployment..."
 cat > .env << EOF
 GCP_GLOBAL_PROJECT_ID=$GCP_GLOBAL_PROJECT_ID
 GCP_US_PROJECT_ID=$GCP_US_PROJECT_ID
 GCP_EU_PROJECT_ID=$GCP_EU_PROJECT_ID
+GCP_CELL_00002_PROJECT_ID=$GCP_CELL_00002_PROJECT_ID
 SERVICE_ACCOUNT=webhook-router-sa@$GCP_GLOBAL_PROJECT_ID.iam.gserviceaccount.com
 GCP_WEBHOOK_ROUTER_CONFIG_BUCKET=bkt-$GCP_GLOBAL_PROJECT_ID-webhook-router-config
 EOF

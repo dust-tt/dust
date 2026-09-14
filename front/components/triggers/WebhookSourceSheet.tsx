@@ -178,7 +178,9 @@ function WebhookSourceSheetContent({
   const [remoteProviderData, setRemoteProviderData] =
     useState<RemoteProviderData | null>(null);
   const [connectionId, setConnectionId] = useState<string | null>(null);
-  const [isPresetReadyToSubmit, setIsPresetReadyToSubmit] = useState(true);
+  const [isPresetReadyToSubmit, setIsPresetReadyToSubmit] = useState(
+    mode.provider === null
+  );
 
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
@@ -465,7 +467,7 @@ function WebhookSourceSheetContent({
         .filter((source) => source.sId === webhookSource.sId)
         .map((source) => source.usage?.agents ?? [])
         .flat()
-        .map((agent) => `@${agent.name}`)
+        .map((agent) => agent.name)
     );
 
     const confirmed = await confirm({

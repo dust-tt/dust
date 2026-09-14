@@ -372,9 +372,17 @@ function formatKey(key: string): string {
 }
 
 interface JsonViewerProps {
+  /** Parsed JSON value to display; objects, arrays, and primitives are all supported. */
   data: JsonValueType;
   className?: string;
 }
+/**
+ * Human-friendly viewer for parsed JSON, rendering keys as chips and nesting
+ * with indent guides, with expand/collapse for deep, long, or large values.
+ * Used by CodeBlockWithExtendedSupport as the "Pretty JSON" view of fenced
+ * JSON blocks in Markdown output.
+ * @summary Pretty-printed JSON viewer.
+ */
 export function PrettyJsonViewer({ data, className }: JsonViewerProps) {
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
 

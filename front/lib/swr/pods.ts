@@ -26,12 +26,6 @@ import type {
   FileSystemEntry,
   GetSpaceFilesResponseBody,
 } from "@app/types/api/file_system/types";
-import type { ImportPodAppResponseBody } from "@app/types/api/pod_app_archive";
-import type {
-  ClonePodAppResponseBody,
-  GetPodAppsResponseBody,
-  PodApp,
-} from "@app/types/api/pod_apps";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,
@@ -41,7 +35,6 @@ import type {
   PatchUserPodNotificationPreferenceResponseBody,
   PostUserPodStarResponseBody,
 } from "@app/types/api/projects/preferences";
-import type { GetPodRestrictionImpactResponseBody } from "@app/types/api/projects/restriction_impact";
 import type {
   GetPodTasksResponseBody,
   GetWorkspacePodTaskResponseBody,
@@ -51,10 +44,12 @@ import type {
 } from "@app/types/api/projects/tasks";
 import type {
   GetPodEgressPolicyResponseBody,
+  PostPodEgressPolicyRequestResponseBody,
   PutPodEgressPolicyResponseBody,
 } from "@app/types/api/sandbox/egress_policy";
 import type {
   CheckNameResponseBody,
+  GetSpaceResponseBody,
   PatchPodMetadataBodyType,
 } from "@app/types/api/spaces";
 import type {
@@ -92,19 +87,16 @@ export function usePodContextAttachments({
   const podContextFetcher: Fetcher<GetProjectContextResponseBody> = fetcher;
 
   const key = useMemo(() => {
-    if (disabled) {
-      return null;
-    }
     const params = new URLSearchParams();
     if (query && query.trim().length > 0) {
       params.set("query", query);
     }
     const qs = params.toString();
     return `/api/w/${owner.sId}/spaces/${podId}/project_context${qs ? `?${qs}` : ""}`;
-  }, [disabled, owner.sId, podId, query]);
+  }, [owner.sId, podId, query]);
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
-    useSWRWithDefaults(key, podContextFetcher);
+    useSWRWithDefaults(key, podContextFetcher, { disabled });
 
   const refreshPodContextAttachments = useCallback(async () => {
     // Do not pass `undefined` as data — it clears the cache and causes UI flicker.
@@ -120,257 +112,13 @@ export function usePodContextAttachments({
   };
 }
 
-export function usePodApps({
-  owner,
-  podId,
-  disabled,
-}: {
-  owner: LightWorkspaceType;
-  podId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const podAppsFetcher: Fetcher<GetPodAppsResponseBody> = fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    !podId ? null : `/api/w/${owner.sId}/pods/${podId}/apps`,
-    podAppsFetcher,
-    { disabled, keepPreviousData: true }
-  );
-
-  return {
-    apps: data?.apps ?? emptyArray<PodApp>(),
-    isPodAppsLoading: !disabled && !error && !data,
-    isPodAppsError: !!error,
-    mutatePodApps: mutate,
-  };
-}
-
-export function useClonePodApp({
-  owner,
-  podId,
-}: {
-  owner: LightWorkspaceType;
-  podId: string;
-}) {
-  const sendNotification = useSendNotification();
-  const { mutatePodApps } = usePodApps({ owner, podId, disabled: true });
-
-  return async (
-    app: PodApp,
-    name: string
-  ): Promise<Result<ClonePodAppResponseBody["app"], Error>> => {
-    try {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/pods/${podId}/apps/${encodeURIComponent(app.prefix)}/clone`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name }),
-        }
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: `Failed to clone ${app.name ?? app.prefix}`,
-          description: errorData.message,
-        });
-        return new Err(new Error(errorData.message));
-      }
-
-      const { app: cloned }: ClonePodAppResponseBody = await res.json();
-      sendNotification({
-        type: "success",
-        title: `${cloned.name} created`,
-        description: `${cloned.publishedFunctionSlugs.length} function(s) published, ${cloned.reconciledDatabaseNames.length} database(s) created empty.`,
-      });
-      await mutatePodApps();
-
-      return new Ok(cloned);
-    } catch (e) {
-      const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: `Failed to clone ${app.name ?? app.prefix}`,
-        description: errorMessage,
-      });
-      return new Err(new Error(errorMessage));
-    }
-  };
-}
-
-export function getPodAppExportUrl(
-  owner: LightWorkspaceType,
-  podId: string,
-  prefix: string
-): string {
-  return `/api/w/${owner.sId}/pods/${podId}/apps/${encodeURIComponent(prefix)}/export`;
-}
-
-export function useDownloadPodApp({
-  owner,
-  podId,
-}: {
-  owner: LightWorkspaceType;
-  podId: string;
-}) {
-  const sendNotification = useSendNotification();
-
-  return async (app: PodApp): Promise<void> => {
-    const appName = app.name ?? app.prefix;
-
-    try {
-      const res = await clientFetch(
-        getPodAppExportUrl(owner, podId, app.prefix)
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: `Failed to download ${appName}`,
-          description: errorData.message,
-        });
-        return;
-      }
-
-      // Fetch-then-blob (rather than a bare <a href> to the endpoint) so the download carries
-      // the same auth context as every other API call, matching `useFileDownload`.
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = blobUrl;
-      anchor.download = `${app.prefix}.podapp.zip`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      document.body.removeChild(anchor);
-      URL.revokeObjectURL(blobUrl);
-    } catch (e) {
-      const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: `Failed to download ${appName}`,
-        description: errorMessage,
-      });
-    }
-  };
-}
-
-export function useImportPodApp({
-  owner,
-  podId,
-}: {
-  owner: LightWorkspaceType;
-  podId: string;
-}) {
-  const sendNotification = useSendNotification();
-  const { mutatePodApps } = usePodApps({ owner, podId, disabled: true });
-
-  return async (
-    file: File,
-    name?: string
-  ): Promise<Result<ImportPodAppResponseBody["app"], Error>> => {
-    try {
-      const body = new FormData();
-      body.append("file", file);
-      if (name !== undefined && name.trim().length > 0) {
-        body.append("name", name.trim());
-      }
-
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/pods/${podId}/apps/import`,
-        { method: "POST", body }
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to import app",
-          description: errorData.message,
-        });
-        return new Err(new Error(errorData.message));
-      }
-
-      const { app }: ImportPodAppResponseBody = await res.json();
-      const hasIssues = app.warnings.length > 0 || app.skipped.length > 0;
-      sendNotification({
-        type: hasIssues ? "info" : "success",
-        title: `${app.name} imported`,
-        description: `${app.publishedFunctionSlugs.length} function(s) published, ${app.reconciledDatabaseNames.length} database(s) created empty${hasIssues ? `, ${app.warnings.length + app.skipped.length} issue(s) to review` : ""}.`,
-      });
-      await mutatePodApps();
-
-      return new Ok(app);
-    } catch (e) {
-      const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to import app",
-        description: errorMessage,
-      });
-      return new Err(new Error(errorMessage));
-    }
-  };
-}
-
-export function useDeletePodApp({
-  owner,
-  podId,
-}: {
-  owner: LightWorkspaceType;
-  podId: string;
-}) {
-  const sendNotification = useSendNotification();
-  const { mutatePodApps } = usePodApps({ owner, podId, disabled: true });
-
-  return async (app: PodApp): Promise<Result<void, Error>> => {
-    const appName = app.name ?? app.prefix;
-
-    try {
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/pods/${podId}/apps/${encodeURIComponent(app.prefix)}`,
-        { method: "DELETE" }
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: `Failed to delete ${appName}`,
-          description: errorData.message,
-        });
-        return new Err(new Error(errorData.message));
-      }
-
-      sendNotification({
-        type: "success",
-        title: `${appName} deleted`,
-      });
-      await mutatePodApps();
-
-      return new Ok(undefined);
-    } catch (e) {
-      const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: `Failed to delete ${appName}`,
-        description: errorMessage,
-      });
-      return new Err(new Error(errorMessage));
-    }
-  };
-}
-
 export function usePodFiles({
   owner,
   podId,
   disabled,
 }: {
   owner: LightWorkspaceType;
-  podId: string;
+  podId: string | null;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
@@ -380,7 +128,7 @@ export function usePodFiles({
     useSWRWithDefaults(
       !podId ? null : `/api/w/${owner.sId}/spaces/${podId}/files`,
       podFilesFetcher,
-      { disabled, keepPreviousData: true }
+      { disabled: disabled || !podId, keepPreviousData: true }
     );
 
   const refreshPodFiles = useCallback(async () => {
@@ -633,54 +381,6 @@ export function useCreatePodFolder({
   };
 }
 
-export function useDeletePodFile({
-  owner,
-  podId: _podId,
-}: {
-  owner: LightWorkspaceType;
-  podId: string;
-}) {
-  const sendNotification = useSendNotification();
-
-  return async (canonicalPath: string): Promise<Result<void, Error>> => {
-    try {
-      const encoded = canonicalPath
-        .split("/")
-        .map(encodeURIComponent)
-        .join("/");
-      const res = await clientFetch(
-        `/api/w/${owner.sId}/files/path/${encoded}`,
-        { method: "DELETE" }
-      );
-
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
-        sendNotification({
-          type: "error",
-          title: "Failed to delete file",
-          description: errorData.message,
-        });
-        return new Err(new Error(errorData.message));
-      }
-
-      sendNotification({
-        type: "success",
-        title: "File deleted",
-      });
-
-      return new Ok(undefined);
-    } catch (e) {
-      const errorMessage = normalizeError(e).message;
-      sendNotification({
-        type: "error",
-        title: "Failed to delete file",
-        description: errorMessage,
-      });
-      return new Err(new Error(errorMessage));
-    }
-  };
-}
-
 export function useMovePodFile({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
 
@@ -794,17 +494,13 @@ export function usePodTasks({
   const { fetcher } = useFetcher();
   const tasksFetcher: Fetcher<GetPodTasksResponseBody> = fetcher;
   const tasksUrl = useMemo(
-    () =>
-      disabled
-        ? null
-        : buildPodTasksListSwrKey(owner.sId, podId, taskOwnerFilter),
-    [disabled, owner.sId, podId, taskOwnerFilter]
+    () => buildPodTasksListSwrKey(owner.sId, podId, taskOwnerFilter),
+    [owner.sId, podId, taskOwnerFilter]
   );
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    disabled ? null : tasksUrl,
-    tasksFetcher
-  );
+  const { data, error, mutate } = useSWRWithDefaults(tasksUrl, tasksFetcher, {
+    disabled,
+  });
 
   const stableTaskOrderByAssigneeKeyRef = useRef<Map<string, string[]>>(
     new Map()
@@ -1152,21 +848,23 @@ export function useWorkspacePodTask({
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const url =
-    !disabled && taskId
-      ? `/api/w/${workspaceId}/project_tasks/${encodeURIComponent(taskId)}`
-      : null;
+  const url = taskId
+    ? `/api/w/${workspaceId}/project_tasks/${encodeURIComponent(taskId)}`
+    : null;
   const podTaskFetcher: Fetcher<GetWorkspacePodTaskResponseBody> = fetcher;
 
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
     url,
-    podTaskFetcher
+    podTaskFetcher,
+    {
+      disabled: disabled || !taskId,
+    }
   );
 
   return {
     task: data?.task ?? null,
     pod: data?.space ?? null,
-    isWorkspacePodTaskLoading: !error && isLoading && !!url,
+    isWorkspacePodTaskLoading: !disabled && !error && isLoading && !!taskId,
     isWorkspacePodTaskError: !!error,
     mutateWorkspacePodTask: mutate,
   };
@@ -1298,33 +996,6 @@ export function usePodMetadata({
   };
 }
 
-export function usePodRestrictionImpact({
-  workspaceId,
-  podId,
-  disabled = false,
-}: {
-  workspaceId: string;
-  podId: string;
-  disabled?: boolean;
-}) {
-  const { fetcher } = useFetcher();
-  const restrictionImpactFetcher: Fetcher<GetPodRestrictionImpactResponseBody> =
-    fetcher;
-
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/spaces/${podId}/project_restriction_impact`,
-    restrictionImpactFetcher,
-    { disabled }
-  );
-
-  return {
-    restrictionImpact: data?.restrictionImpact ?? null,
-    isRestrictionImpactLoading: !error && !data && !disabled,
-    isRestrictionImpactError: error,
-    mutateRestrictionImpact: mutate,
-  };
-}
-
 export function usePodDefaultSkills({
   owner,
   podId,
@@ -1380,67 +1051,163 @@ export function useUpdatePodMetadata({
     options: { disabled: true },
   });
 
-  const { mutateSpaceInfoRegardlessOfQueryParams } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: podId,
-    disabled: true,
-  });
+  // `includeAllMembers: true` matches PodPage's live space-info key so
+  // optimistic updates land in the cache the settings UI reads from.
+  const { mutateSpaceInfo, mutateSpaceInfoRegardlessOfQueryParams } =
+    useSpaceInfo({
+      workspaceId: owner.sId,
+      spaceId: podId,
+      includeAllMembers: true,
+      disabled: true,
+    });
 
   return async (
     updates: PatchPodMetadataBodyType
   ): Promise<PodMetadataType | null> => {
     const url = `/api/w/${owner.sId}/spaces/${podId}/project_metadata`;
 
-    const res = await clientFetch(url, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updates),
-    });
+    const applyMutationOnSpace =
+      updates.description !== undefined ||
+      updates.pinnedFramePath !== undefined ||
+      updates.frameTabs !== undefined ||
+      updates.tabsOrder !== undefined ||
+      updates.archive !== undefined;
 
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Error updating Pod metadata",
-        description: `Error: ${errorData.message}`,
+    const applySpaceOptimistic = (
+      data: GetSpaceResponseBody | undefined
+    ): GetSpaceResponseBody | undefined => {
+      if (!data) {
+        return data;
+      }
+      return {
+        ...data,
+        space: {
+          ...data.space,
+          ...(updates.description !== undefined
+            ? { description: updates.description }
+            : {}),
+          ...(updates.pinnedFramePath !== undefined
+            ? { pinnedFramePath: updates.pinnedFramePath }
+            : {}),
+          ...(updates.frameTabs !== undefined
+            ? { frameTabs: updates.frameTabs }
+            : {}),
+          ...(updates.tabsOrder !== undefined
+            ? { tabsOrder: updates.tabsOrder }
+            : {}),
+          ...(updates.archive === true
+            ? { archivedAt: data.space.archivedAt ?? Date.now() }
+            : updates.archive === false
+              ? { archivedAt: null }
+              : {}),
+        },
+      };
+    };
+
+    const applySpaceFromMetadata = (
+      data: GetSpaceResponseBody | undefined,
+      metadata: PodMetadataType
+    ): GetSpaceResponseBody | undefined => {
+      if (!data) {
+        return data;
+      }
+      return {
+        ...data,
+        space: {
+          ...data.space,
+          description: metadata.description,
+          pinnedFramePath: metadata.pinnedFramePath,
+          frameTabs: metadata.frameTabs,
+          tabsOrder: metadata.tabsOrder,
+          archivedAt: metadata.archivedAt,
+        },
+      };
+    };
+
+    const patchRequest = async (): Promise<PodMetadataType> => {
+      const res = await clientFetch(url, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
       });
+
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Error updating Pod metadata",
+          description: `Error: ${errorData.message}`,
+        });
+        throw new Error(errorData.message);
+      }
+
+      const response: PatchPodMetadataResponseBody = await res.json();
+      return response.projectMetadata;
+    };
+
+    try {
+      let projectMetadata: PodMetadataType;
+
+      if (applyMutationOnSpace) {
+        // Official SWR optimistic update: write the pending space fields into
+        // cache immediately, roll back on error, then populate from the PATCH.
+        let patched: PodMetadataType | null = null;
+        await mutateSpaceInfo(
+          async (current) => {
+            patched = await patchRequest();
+            void mutatePodMetadata(
+              { projectMetadata: patched },
+              { revalidate: false }
+            );
+            return applySpaceFromMetadata(current, patched);
+          },
+          {
+            optimisticData: (current) =>
+              applySpaceOptimistic(current) as GetSpaceResponseBody,
+            rollbackOnError: true,
+            populateCache: true,
+            revalidate: false,
+          }
+        );
+        if (!patched) {
+          return null;
+        }
+        projectMetadata = patched;
+        // Refresh any other space-info query-param variants (not the live key —
+        // we already populated it above).
+        void mutateSpaceInfoRegardlessOfQueryParams();
+      } else {
+        projectMetadata = await patchRequest();
+        void mutatePodMetadata({ projectMetadata }, { revalidate: false });
+        void mutateSpaceInfoRegardlessOfQueryParams();
+      }
+
+      void mutatePodConversationsSummary();
+
+      const title =
+        updates.frameTabs !== undefined || updates.tabsOrder !== undefined
+          ? updates.frameTabs?.length === 0
+            ? "Pod tabs cleared"
+            : "Pod tabs updated"
+          : updates.pinnedFramePath !== undefined
+            ? updates.pinnedFramePath
+              ? "Frame pinned as Pod banner"
+              : "Banner unpinned"
+            : updates.archive !== undefined
+              ? updates.archive
+                ? "Pod archived"
+                : "Pod unarchived"
+              : "Pod updated";
+
+      sendNotification({
+        type: "success",
+        title,
+      });
+
+      return projectMetadata;
+    } catch {
       return null;
     }
-
-    void mutatePodMetadata();
-    void mutatePodConversationsSummary();
-    void mutateSpaceInfoRegardlessOfQueryParams();
-
-    const title =
-      updates.frameTabs !== undefined || updates.tabsOrder !== undefined
-        ? updates.frameTabs?.length === 0
-          ? "Frame tabs cleared"
-          : "Pod frame tabs updated"
-        : updates.pinnedFramePath !== undefined
-          ? updates.pinnedFramePath
-            ? "Frame pinned as Pod banner"
-            : "Banner unpinned"
-          : updates.archive !== undefined
-            ? updates.archive
-              ? "Pod archived"
-              : "Pod unarchived"
-            : updates.todoGenerationEnabled !== undefined
-              ? updates.todoGenerationEnabled
-                ? "Automatic task suggestions turned on"
-                : "Automatic task suggestions turned off"
-              : updates.isAdminControlled !== undefined
-                ? updates.isAdminControlled
-                  ? "Pod is now admin-controlled"
-                  : "Pod is now self-serve"
-                : "Pod updated";
-
-    sendNotification({
-      type: "success",
-      title,
-    });
-
-    const response: PatchPodMetadataResponseBody = await res.json();
-    return response.projectMetadata;
   };
 }
 
@@ -1746,4 +1513,87 @@ export function useDismissPodEgressRequest({
   };
 
   return { dismissPodEgressRequest, isDismissingRequest };
+}
+
+// Lets a Pod member request a domain (recorded for admin review, never
+// granted).
+export function useRequestPodEgressDomain({
+  owner,
+  podId,
+}: {
+  owner: LightWorkspaceType;
+  podId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const [isRequestingPodEgressDomain, setIsRequesting] = useState(false);
+  const { mutatePodEgressPolicy } = usePodEgressPolicy({
+    owner,
+    podId,
+    disabled: true,
+  });
+
+  const requestPodEgressDomain = async (domain: string): Promise<boolean> => {
+    setIsRequesting(true);
+    try {
+      const response = await clientFetch(
+        `${podEgressPolicyUrl(owner.sId, podId)}/requests`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ domain }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await getErrorFromResponse(response);
+        sendNotification({
+          type: "error",
+          title: "Failed to request domain",
+          description: error.message,
+        });
+        return false;
+      }
+
+      const data: PostPodEgressPolicyRequestResponseBody =
+        await response.json();
+      await mutatePodEgressPolicy(
+        {
+          policy: data.policy,
+          requestedDomains: (data.policy.requestedDomains ?? []).map(
+            ({ domain: d, requestedAtMs }) => ({ domain: d, requestedAtMs })
+          ),
+        },
+        false
+      );
+      sendNotification({
+        type: "success",
+        title:
+          data.outcome === "already_allowed"
+            ? "Domain already allowed"
+            : data.outcome === "already_requested"
+              ? "Domain already requested"
+              : "Domain requested",
+        description:
+          data.outcome === "requested"
+            ? "A workspace admin will review your request."
+            : `${domain} is already ${
+                data.outcome === "already_allowed"
+                  ? "allowed"
+                  : "pending review"
+              } for this Pod.`,
+      });
+      return true;
+    } catch {
+      sendNotification({
+        type: "error",
+        title: "Failed to request domain",
+        description: "An unexpected error occurred. Please try again.",
+      });
+      return false;
+    } finally {
+      setIsRequesting(false);
+    }
+  };
+
+  return { requestPodEgressDomain, isRequestingPodEgressDomain };
 }

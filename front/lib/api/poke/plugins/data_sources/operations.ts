@@ -71,7 +71,7 @@ export const connectorOperationsPlugin = createPlugin({
 
     auditLog(
       {
-        author: auth.user()?.toJSON() ?? "no-author",
+        author: auth.toPokeUserJSON(),
         connectorId,
         op,
       },

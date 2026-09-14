@@ -422,7 +422,7 @@ async function moveGCSMountFile({
   return new Ok(undefined);
 }
 
-async function emitGCSMountFileMovedAuditLog(
+export async function emitGCSMountFileMovedAuditLog(
   auth: Authenticator,
   scope: GCSMountPoint,
   {

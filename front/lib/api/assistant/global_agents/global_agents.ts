@@ -17,7 +17,6 @@ import {
   _getPlanningAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/deep-dive";
 import {
-  _getCustomModelDustLikeGlobalAgent,
   _getDustAntGlobalAgent,
   _getDustAntHighGlobalAgent,
   _getDustAntHighOmittedGlobalAgent,
@@ -44,6 +43,7 @@ import {
   _getDustKimiGlobalAgent,
   _getDustKimiHighGlobalAgent,
   _getDustKimiMediumGlobalAgent,
+  _getDustLeanGlobalAgent,
   _getDustLightGlobalAgent,
   _getDustLionelGlobalAgent,
   _getDustLionelHighGlobalAgent,
@@ -119,7 +119,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getDefaultStreamConfigForAuth } from "@app/lib/model_tiers/enabled_models";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
-import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import type {
   AgentConfigurationType,
   AgentFetchVariant,
@@ -131,10 +130,7 @@ import {
   isGlobalAgentId,
 } from "@app/types/assistant/assistant";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
-import type {
-  ModelConfigurationType,
-  ModelProviderIdType,
-} from "@app/types/assistant/models/types";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
@@ -149,9 +145,7 @@ function getGlobalAgent({
   hasDeepDive,
   hasSandbox,
   globalAgentContext,
-  excludeProviders,
   autoDefaultModelConfig,
-  preferGpt56LunaDefaultModel,
   preferSonnet5DefaultModel,
   featureFlags,
 }: {
@@ -164,9 +158,7 @@ function getGlobalAgent({
   hasDeepDive: boolean;
   hasSandbox: boolean;
   globalAgentContext?: GlobalAgentContext;
-  excludeProviders: ReadonlySet<ModelProviderIdType>;
   autoDefaultModelConfig: ModelConfigurationType | null;
-  preferGpt56LunaDefaultModel: boolean;
   preferSonnet5DefaultModel: boolean;
   featureFlags: WhitelistableFeature[];
 }): AgentConfigurationType | null {
@@ -386,9 +378,18 @@ function getGlobalAgent({
         hasDeepDive,
         featureFlags,
         globalAgentContext,
-        excludeProviders,
         autoDefaultModelConfig,
-        preferGpt56LunaDefaultModel,
+        preferSonnet5DefaultModel,
+      });
+      break;
+    case GLOBAL_AGENTS_SID.DUST_LEAN:
+      agentConfiguration = _getDustLeanGlobalAgent(auth, {
+        settings,
+        preFetchedDataSources,
+        mcpServerViews,
+        hasDeepDive,
+        featureFlags,
+        autoDefaultModelConfig,
         preferSonnet5DefaultModel,
       });
       break;
@@ -845,26 +846,6 @@ function getGlobalAgent({
         featureFlags,
       });
       break;
-    // Active custom-model dust-* agents.
-    case GLOBAL_AGENTS_SID.DUST_CHAWI:
-    case GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM:
-    case GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH:
-    case GLOBAL_AGENTS_SID.DUST_SOUPINOU:
-    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM:
-    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH:
-    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE:
-      agentConfiguration = _getCustomModelDustLikeGlobalAgent(
-        auth,
-        {
-          settings,
-          preFetchedDataSources,
-          mcpServerViews,
-          hasDeepDive,
-          featureFlags,
-        },
-        sId
-      );
-      break;
     // Retired custom-model dust-* agents: their eval models were removed from
     // the infra config, so they resolve to a fallback model for past
     // conversations only (see RETIRED_GLOBAL_AGENTS_SID).
@@ -874,6 +855,13 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_CHALOM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM:
     case GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH:
+    case GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE:
+    case GLOBAL_AGENTS_SID.DUST_CHAWI:
+    case GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM:
+    case GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH:
       agentConfiguration = _getRetiredDustLikeGlobalAgent(
         auth,
         {
@@ -892,7 +880,6 @@ function getGlobalAgent({
         preFetchedDataSources,
         mcpServerViews,
         hasSandbox,
-        excludeProviders,
         featureFlags,
       });
       break;
@@ -901,7 +888,6 @@ function getGlobalAgent({
         settings,
         preFetchedDataSources,
         mcpServerViews,
-        excludeProviders,
         featureFlags,
       });
       break;
@@ -911,7 +897,6 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.DUST_PLANNING:
       agentConfiguration = _getPlanningAgent(auth, {
         settings,
-        excludeProviders,
         featureFlags,
       });
       break;
@@ -928,7 +913,7 @@ function getGlobalAgent({
       agentConfiguration = _getReinforcementGlobalAgent();
       break;
     case GLOBAL_AGENTS_SID.ANALYST:
-      agentConfiguration = _getAnalystGlobalAgent({ auth, featureFlags });
+      agentConfiguration = _getAnalystGlobalAgent({ auth });
       break;
     case GLOBAL_AGENTS_SID.NOOP:
       agentConfiguration = _getNoopAgent();
@@ -987,6 +972,13 @@ const RETIRED_GLOBAL_AGENTS_SID = [
   GLOBAL_AGENTS_SID.DUST_CHALOM,
   GLOBAL_AGENTS_SID.DUST_CHALOM_MEDIUM,
   GLOBAL_AGENTS_SID.DUST_CHALOM_HIGH,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU_HIGH,
+  GLOBAL_AGENTS_SID.DUST_SOUPINOU_NONE,
+  GLOBAL_AGENTS_SID.DUST_CHAWI,
+  GLOBAL_AGENTS_SID.DUST_CHAWI_MEDIUM,
+  GLOBAL_AGENTS_SID.DUST_CHAWI_HIGH,
 ];
 
 // Retired global agents remain resolvable internally (to keep past conversations running) but
@@ -1053,13 +1045,11 @@ export async function getGlobalAgents(
 
   const [
     isDeepDiveDisabled,
-    isDustAgentsFallback,
     preFetchedDataSources,
     globalAgentSettings,
     mcpServerViews,
   ] = await Promise.all([
     isDeepDiveDisabledByAdmin(auth),
-    KillSwitchResource.isKillSwitchEnabled("global_dust_agents_fallback"),
     variant === "full"
       ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
       : null,
@@ -1068,11 +1058,6 @@ export async function getGlobalAgents(
     }),
     getMCPServerViewsForGlobalAgents(auth, variant),
   ]);
-
-  const excludeProviders: ReadonlySet<ModelProviderIdType> =
-    isDustAgentsFallback
-      ? new Set<ModelProviderIdType>(["anthropic"])
-      : new Set<ModelProviderIdType>();
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
   // one (which will remove these models from the list of default agents in the product + list of
@@ -1089,13 +1074,19 @@ export async function getGlobalAgents(
 
   const flags = await getFeatureFlags(auth);
 
+  if (!flags.includes("dust_lean_agent")) {
+    agentsIdsToFetch = agentsIdsToFetch.filter(
+      (sId) => sId !== GLOBAL_AGENTS_SID.DUST_LEAN
+    );
+  }
+
   if (!isWorkspaceAnalyticsEnabled(owner)) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) => sId !== GLOBAL_AGENTS_SID.ANALYST
     );
   }
 
-  if (agentIds === undefined && flags.includes("models_picker")) {
+  if (agentIds === undefined) {
     agentsIdsToFetch = agentsIdsToFetch.filter(
       (sId) =>
         !isGlobalAgentId(sId) || !MODEL_ONLY_GLOBAL_AGENTS_SID.includes(sId)
@@ -1204,9 +1195,7 @@ export async function getGlobalAgents(
       ? await buildSidekickContext(auth, agentsIdsToFetch)
       : null;
 
-  const autoDefaultModelConfig = flags.includes("models_picker")
-    ? await getDefaultStreamConfigForAuth(auth)
-    : null;
+  const autoDefaultModelConfig = await getDefaultStreamConfigForAuth(auth);
 
   // For now we retrieve them all
   // We will store them in the database later to allow admin enable them or not
@@ -1221,11 +1210,7 @@ export async function getGlobalAgents(
       hasDeepDive: !isDeepDiveDisabled,
       hasSandbox: isComputerFeatureEnabled(flags),
       globalAgentContext: options?.globalAgentContext,
-      excludeProviders,
       autoDefaultModelConfig,
-      preferGpt56LunaDefaultModel: flags.includes(
-        "dust_agent_gpt_5_6_luna_default"
-      ),
       preferSonnet5DefaultModel: flags.includes("dust_agent_sonnet_5_default"),
       featureFlags: flags,
     })

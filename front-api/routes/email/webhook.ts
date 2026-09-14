@@ -13,18 +13,19 @@ import {
   hasValidRelayAuthorization,
   hasValidSendgridAuthorization,
   parseSendgridWebhookContent,
-  relayEmailToOtherRegion,
+  recordEmailRelay,
+  relayEmailToOtherCells,
   replyToError,
   resolveRelayedErrorReply,
-  shouldRelayToOtherRegion,
+  shouldRelayToOtherCells,
 } from "@app/lib/api/assistant/email/webhook_helpers";
 import {
   buildAuditLogTarget,
   emitAuditLogEvent,
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
+import { config as cellsConfig } from "@app/lib/api/cells/config";
 import apiConfig from "@app/lib/api/config";
-import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
@@ -141,6 +142,17 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
 
   const email = emailRes.value;
 
+  if (
+    isRelayRequest &&
+    !(await recordEmailRelay(email.threadingHeaders.messageId))
+  ) {
+    logger.info(
+      { senderEmail: email.sender.email },
+      "[email] Ignoring duplicate inbound email relay"
+    );
+    return ctx.json({ success: true });
+  }
+
   // Acknowledge the webhook now — from here on, all errors should be sent as
   // a reply to the original sender, not surfaced to SendGrid. We finish the
   // remaining processing in a detached IIFE so the response goes out
@@ -182,9 +194,14 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
         email: email.sender.email,
       });
       if (userRes.isErr()) {
-        if (shouldRelayToOtherRegion({ headers, error: userRes.error })) {
-          const relayRes = await relayEmailToOtherRegion(email, {
-            sourceError: userRes.error,
+        const error = resolveRelayedErrorReply({
+          headers,
+          localError: userRes.error,
+          senderEmail: email.sender.email,
+        });
+        if (shouldRelayToOtherCells(userRes.error)) {
+          const relayRes = await relayEmailToOtherCells(email, {
+            sourceError: error,
           });
           if (relayRes.isOk()) {
             return;
@@ -193,20 +210,12 @@ app.post("/", async (ctx): HandlerResult<PostResponseBody> => {
             {
               senderEmail: email.sender.email,
               error: relayRes.error,
-              sourceRegion: regionsConfig.getCurrentRegion(),
-              targetRegion: regionsConfig.getOtherRegionInfo().name,
+              sourceCell: cellsConfig.getCurrentCell().name,
             },
-            "[email] Failed to relay inbound email to other region"
+            "[email] Failed to relay inbound email to other cells"
           );
         }
-        await replyToError(
-          email,
-          resolveRelayedErrorReply({
-            headers,
-            localError: userRes.error,
-            senderEmail: email.sender.email,
-          })
-        );
+        await replyToError(email, error);
         return;
       }
 

@@ -1,6 +1,6 @@
+import { openaiStreamErrorToErrorEvent } from "@app/lib/model_constructors/sdk/openai_shared/stream_error";
 import type { EndpointMetadata } from "@app/lib/model_constructors/types/endpoint_metadata";
 import type {
-  ErrorEvent,
   ModelResponseEvent,
   ReasoningEvent,
   TextEvent,
@@ -9,10 +9,8 @@ import type {
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { isNumber, isRecord, isString } from "@app/types/shared/utils/general";
+import { isRecord, isString } from "@app/types/shared/utils/general";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
-import { APIError } from "openai";
 import type { ChatCompletionChunk } from "openai/resources/chat/completions";
 
 // Parses tool-call arguments into an object, falling back to `{}` for malformed
@@ -63,75 +61,6 @@ function usageToTokenUsageEvent(
     },
     metadata,
   };
-}
-
-// Maps any error thrown while streaming into a unified `ErrorEvent`, so
-// everything leaving the endpoint is an event, not an exception.
-export function streamErrorToErrorEvent(
-  metadata: EndpointMetadata,
-  error: unknown
-): ErrorEvent {
-  if (error instanceof APIError) {
-    const status = error.status;
-    switch (status) {
-      case 400:
-        return buildErrorEvent({
-          metadata,
-          type: "invalid_request_error",
-          message: `Invalid request to Fireworks: ${error.message}`,
-          originalError: error,
-        });
-      case 401:
-        return buildErrorEvent({
-          metadata,
-          type: "authentication_error",
-          message: `Authentication failed for Fireworks: ${error.message}`,
-          originalError: error,
-        });
-      case 403:
-        return buildErrorEvent({
-          metadata,
-          type: "permission_error",
-          message: `Permission denied for Fireworks: ${error.message}`,
-          originalError: error,
-        });
-      case 404:
-        return buildErrorEvent({
-          metadata,
-          type: "not_found_error",
-          message: `Resource not found for Fireworks: ${error.message}`,
-          originalError: error,
-        });
-      case 429:
-        return buildErrorEvent({
-          metadata,
-          type: "rate_limit_error",
-          message: `Rate limit exceeded for Fireworks/${metadata.model}: ${error.message}`,
-          originalError: error,
-        });
-      default:
-        if (isNumber(status) && status >= 500 && status < 600) {
-          return buildErrorEvent({
-            metadata,
-            type: "server_error",
-            message: `Server error from Fireworks (${status}): ${error.message}`,
-            originalError: error,
-          });
-        }
-        return buildErrorEvent({
-          metadata,
-          type: "unknown_error",
-          message: `Error from Fireworks (${status}): ${error.message}`,
-          originalError: error,
-        });
-    }
-  }
-  return buildErrorEvent({
-    metadata,
-    type: "unknown_error",
-    message: `Unknown error from Fireworks: ${normalizeError(error).message}`,
-    originalError: error,
-  });
 }
 
 type Accumulator = { textParts: string; reasoningParts: string };
@@ -193,7 +122,7 @@ export async function* rawOutputToEvents(
     try {
       result = await stream.next();
     } catch (err) {
-      yield streamErrorToErrorEvent(metadata, err);
+      yield openaiStreamErrorToErrorEvent(metadata, err, "Fireworks");
       return;
     }
     if (result.done) {
@@ -298,6 +227,7 @@ export async function* rawOutputToEvents(
       }
       case "length":
         yield buildErrorEvent({
+          errorSource: "dust",
           metadata,
           type: "stop_error",
           message: "The maximum response length was reached.",
@@ -305,6 +235,7 @@ export async function* rawOutputToEvents(
         return;
       case "content_filter":
         yield buildErrorEvent({
+          errorSource: "dust",
           metadata,
           type: "refusal_error",
           message: "The response was filtered by the content policy.",

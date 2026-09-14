@@ -1,6 +1,7 @@
 import { ConsumptionAttributionTable } from "@app/components/workspace/analytics/consumption/ConsumptionAttributionTable";
 import type { ConsumptionDimension } from "@app/components/workspace/analytics/consumption/consumptionDimensions";
 import type { ConsumptionTopRow } from "@app/hooks/useConsumptionTop";
+import { PERSONAL_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import {
   fireEvent,
   render,
@@ -56,7 +57,17 @@ vi.mock(
   })
 );
 
+vi.mock(
+  "@app/components/workspace/analytics/consumption/ConsumptionConversationAttribution",
+  () => ({
+    ConsumptionConversationAttribution: () => (
+      <div>Conversation attribution</div>
+    ),
+  })
+);
+
 const period = { kind: "days", days: 30 } as const;
+const agentAnalyticsScope = { kind: "agent", agentId: "agent-id" } as const;
 
 function ControlledAttributionTable({
   onDimensionChange,
@@ -93,6 +104,237 @@ describe("ConsumptionAttributionTable", () => {
       isStarting: false,
       startConsumptionExport: vi.fn().mockResolvedValue(undefined),
     });
+  });
+
+  it("scopes attribution data and hides raw exports in the personal view", () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [],
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
+        dimension="agent"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(mockUseConsumptionTop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        analyticsScope: PERSONAL_CONSUMPTION_ANALYTICS_SCOPE,
+      })
+    );
+    expect(mockUseConsumptionExports).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: "Download raw data" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Agents" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Conversations" })).toHaveClass(
+      "ml-auto"
+    );
+    expect(
+      screen.queryByRole("tab", { name: "Members" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: "Groups" })
+    ).not.toBeInTheDocument();
+  });
+
+  it.each([
+    "user",
+    "group",
+  ] as const)("normalizes the %s dimension in the personal view", (dimension) => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [],
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
+        dimension={dimension}
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("tab", { name: "Agents" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    expect(mockUseConsumptionTop).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        dimension: "agent",
+        analyticsScope: PERSONAL_CONSUMPTION_ANALYTICS_SCOPE,
+      })
+    );
+  });
+
+  it("shows conversations only in personal attribution without changing the chart dimension", () => {
+    const onDimensionChange = vi.fn();
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [],
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    const { rerender } = render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        analyticsScope={PERSONAL_CONSUMPTION_ANALYTICS_SCOPE}
+        dimension="agent"
+        onDimensionChange={onDimensionChange}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    const conversationsTab = screen.getByRole("tab", {
+      name: "Conversations",
+    });
+    fireEvent.pointerDown(conversationsTab);
+    fireEvent.mouseDown(conversationsTab, { button: 0, ctrlKey: false });
+
+    expect(onDimensionChange).not.toHaveBeenCalled();
+    expect(screen.getByText("Conversation attribution")).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Search…")).not.toBeInTheDocument();
+
+    rerender(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="agent"
+        onDimensionChange={onDimensionChange}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByRole("tab", { name: "Conversations" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("scopes attribution data to an agent and removes the Agents tab", () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [],
+      totalCredits: 0,
+      totalCount: 0,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        analyticsScope={agentAnalyticsScope}
+        dimension="user"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(mockUseConsumptionTop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        analyticsScope: agentAnalyticsScope,
+        dimension: "user",
+      })
+    );
+    expect(mockUseConsumptionExports).not.toHaveBeenCalled();
+    expect(
+      screen.queryByRole("button", { name: "Download raw data" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("tab", { name: "Agents" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Members" })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Groups" })).toBeInTheDocument();
+  });
+
+  it("shows active members and per-member usage for groups", () => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [
+        {
+          id: "engineering",
+          name: "Engineering",
+          pictureUrl: null,
+          description: null,
+          icon: null,
+          modelId: null,
+          modelDisplayName: null,
+          credits: 500,
+          avgCredits: 100,
+          activeMembers: 2,
+          totalMembers: 5,
+          previousCredits: null,
+        },
+      ],
+      totalCredits: 1_000,
+      totalActiveMembers: 10,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="group"
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    expect(
+      screen.getByRole("columnheader", { name: "Active / total members" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "Vs workspace avg" })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("columnheader", { name: "Consumption share" })
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("2 / 5")).toBeInTheDocument();
+    const usagePercentage = screen.getByText("+150%");
+    expect(usagePercentage.parentElement).toHaveClass("text-highlight-600");
+    expect(usagePercentage.parentElement?.querySelector("svg")).toBeNull();
   });
 
   it("caps the available pages and fetches the selected fixed-size page", async () => {
@@ -246,6 +488,50 @@ describe("ConsumptionAttributionTable", () => {
       expect(mockUseConsumptionTop).toHaveBeenCalledWith(
         expect.objectContaining({ search: "Agent 080", offset: 0, limit: 25 })
       );
+    });
+  });
+
+  it("clears the search when a row is added to the filters", async () => {
+    const onAddFilter = vi.fn();
+    const row = {
+      id: "user-1",
+      name: "Jane Doe",
+      pictureUrl: null,
+      credits: 100,
+      avgCredits: 10,
+    };
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [row],
+      totalCredits: 100,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension="user"
+        onDimensionChange={vi.fn()}
+        onAddFilter={onAddFilter}
+        onRemoveFilter={vi.fn()}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    const searchInput = screen.getByPlaceholderText("Search…");
+    fireEvent.change(searchInput, { target: { value: "Jane" } });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add Jane Doe to filters" })
+    );
+
+    expect(onAddFilter).toHaveBeenCalledWith(expect.objectContaining(row));
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("Search…")).toHaveValue("");
     });
   });
 
@@ -549,6 +835,74 @@ describe("ConsumptionAttributionTable", () => {
       expect.objectContaining({ id: "agent-id" })
     );
     expect(onAddFilter).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    {
+      dimension: "agent" as const,
+      row: {
+        id: "agent-id",
+        name: "Research agent",
+        pictureUrl: null,
+        description: null,
+        icon: null,
+        modelId: "model-id",
+        modelDisplayName: "Model",
+        credits: 100,
+        avgCredits: 10,
+        previousCredits: null,
+      },
+    },
+    {
+      dimension: "skill" as const,
+      row: {
+        id: "skill-id",
+        name: "Research skill",
+        pictureUrl: null,
+        description: null,
+        icon: null,
+        modelId: null,
+        modelDisplayName: null,
+        credits: 100,
+        avgCredits: 10,
+        previousCredits: null,
+      },
+    },
+  ])("opens the $dimension info page from its name", ({ dimension, row }) => {
+    mockUseConsumptionTop.mockReturnValue({
+      rows: [row],
+      totalCredits: 100,
+      totalCount: 1,
+      hasMore: false,
+      isTopLoading: false,
+      isTopError: undefined,
+      isTopValidating: false,
+    });
+    const onAgentClick = vi.fn();
+    const onSkillClick = vi.fn();
+
+    render(
+      <ConsumptionAttributionTable
+        workspaceId="workspace-id"
+        period={period}
+        dimension={dimension}
+        onDimensionChange={vi.fn()}
+        onAddFilter={vi.fn()}
+        onAgentClick={onAgentClick}
+        onRemoveFilter={vi.fn()}
+        onSkillClick={onSkillClick}
+        onViewAll={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByText(row.name));
+
+    expect(
+      dimension === "agent" ? onAgentClick : onSkillClick
+    ).toHaveBeenCalledWith(row.id);
+    expect(
+      dimension === "agent" ? onSkillClick : onAgentClick
+    ).not.toHaveBeenCalled();
   });
 
   it("renders the skill identity and description without a model", () => {

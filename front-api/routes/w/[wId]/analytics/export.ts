@@ -2,6 +2,7 @@ import {
   exportTable,
   stringifyExportTableAsCsv,
 } from "@app/lib/api/analytics/export_tables";
+import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError } from "@front-api/middlewares/utils";
@@ -73,6 +74,16 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
       },
     });
   }
+
+  logger.info(
+    {
+      workspaceId: owner.sId,
+      table,
+      period: `${startDate}:${endDate}`,
+      format: format ?? "csv",
+    },
+    "Analytics export downloaded"
+  );
 
   if (format === "json") {
     return ctx.json(result.value.rows);

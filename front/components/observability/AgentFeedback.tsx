@@ -5,6 +5,7 @@ import { isNavigationLocked } from "@app/lib/navigation-lock";
 import { useAgentAnalytics } from "@app/lib/swr/assistants";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  LoadingBlock,
   SafeSuspense,
   safeLazy,
   ThumbsDown,
@@ -23,7 +24,7 @@ const FeedbackDistributionChart = safeLazy(
 );
 
 function ChartFallback() {
-  return <div className="h-64 animate-pulse rounded-lg bg-muted-background" />;
+  return <LoadingBlock className="h-64 rounded-lg" />;
 }
 
 interface AgentFeedbackProps {

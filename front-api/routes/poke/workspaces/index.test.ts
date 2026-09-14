@@ -1,6 +1,6 @@
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
@@ -36,7 +36,7 @@ function fetchWorkspaces(params: Record<string, string>) {
 describe("GET /api/poke/workspaces — workspace name search", () => {
   it("matches by prefix", async () => {
     const workspace = await createNamedWorkspace("Zorbix Industries");
-    await createPrivateApiMockRequest({ isSuperUser: true, workspace });
+    await createPokeApiMockRequest({ isSuperUser: true, workspace });
 
     const response = await searchWorkspaces("Zorbix", "20");
 
@@ -49,7 +49,7 @@ describe("GET /api/poke/workspaces — workspace name search", () => {
 
   it("matches by a word in the middle of the name", async () => {
     const workspace = await createNamedWorkspace("Zorbix Industries");
-    await createPrivateApiMockRequest({ isSuperUser: true, workspace });
+    await createPokeApiMockRequest({ isSuperUser: true, workspace });
 
     const response = await searchWorkspaces("Industries", "20");
 
@@ -62,7 +62,7 @@ describe("GET /api/poke/workspaces — workspace name search", () => {
 
   it("matches case-insensitively", async () => {
     const workspace = await createNamedWorkspace("Zorbix Industries");
-    await createPrivateApiMockRequest({ isSuperUser: true, workspace });
+    await createPokeApiMockRequest({ isSuperUser: true, workspace });
 
     const response = await searchWorkspaces("industries", "20");
 
@@ -79,7 +79,7 @@ describe("GET /api/poke/workspaces — plan type filter", () => {
     const workspace = await createNamedWorkspace("Quibble Pro Corp", () =>
       WorkspaceFactory.basic()
     );
-    await createPrivateApiMockRequest({ isSuperUser: true, workspace });
+    await createPokeApiMockRequest({ isSuperUser: true, workspace });
 
     const response = await fetchWorkspaces({
       search: encodeURIComponent("Quibble Pro Corp"),
@@ -98,7 +98,7 @@ describe("GET /api/poke/workspaces — plan type filter", () => {
     const workspace = await createNamedWorkspace("Quibble Pro Corp Two", () =>
       WorkspaceFactory.basic()
     );
-    await createPrivateApiMockRequest({ isSuperUser: true, workspace });
+    await createPokeApiMockRequest({ isSuperUser: true, workspace });
 
     const response = await fetchWorkspaces({
       search: encodeURIComponent("Quibble Pro Corp Two"),
@@ -118,7 +118,7 @@ describe("GET /api/poke/workspaces — plan type filter", () => {
       "Quibble Enterprise Corp",
       () => WorkspaceFactory.enterprise()
     );
-    await createPrivateApiMockRequest({ isSuperUser: true, workspace });
+    await createPokeApiMockRequest({ isSuperUser: true, workspace });
 
     const response = await fetchWorkspaces({
       search: encodeURIComponent("Quibble Enterprise Corp"),
@@ -138,7 +138,7 @@ describe("GET /api/poke/workspaces — plan type filter", () => {
       "Quibble Enterprise Corp Two",
       () => WorkspaceFactory.enterprise()
     );
-    await createPrivateApiMockRequest({ isSuperUser: true, workspace });
+    await createPokeApiMockRequest({ isSuperUser: true, workspace });
 
     const response = await fetchWorkspaces({
       search: encodeURIComponent("Quibble Enterprise Corp Two"),
@@ -158,7 +158,7 @@ describe("GET /api/poke/workspaces — plan type filter", () => {
       WorkspaceFactory.basic()
     );
     await SubscriptionResource.endActiveSubscription(workspace);
-    await createPrivateApiMockRequest({ isSuperUser: true, workspace });
+    await createPokeApiMockRequest({ isSuperUser: true, workspace });
 
     const response = await fetchWorkspaces({
       search: encodeURIComponent("Quibble No Sub Corp"),
@@ -179,7 +179,7 @@ describe("GET /api/poke/workspaces — plan type filter", () => {
       () => WorkspaceFactory.basic()
     );
     await SubscriptionResource.endActiveSubscription(workspace);
-    await createPrivateApiMockRequest({ isSuperUser: true, workspace });
+    await createPokeApiMockRequest({ isSuperUser: true, workspace });
 
     const response = await fetchWorkspaces({
       search: encodeURIComponent("Quibble No Sub Corp Two"),
@@ -195,7 +195,7 @@ describe("GET /api/poke/workspaces — plan type filter", () => {
   });
 
   it("rejects an unknown planType value", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await fetchWorkspaces({ planType: "not_a_real_bucket" });
 
@@ -210,7 +210,7 @@ describe("GET /api/poke/workspaces — pagination", () => {
     const alpha = await createNamedWorkspace("Nimbus Page Test Alpha");
     const beta = await createNamedWorkspace("Nimbus Page Test Beta");
     const gamma = await createNamedWorkspace("Nimbus Page Test Gamma");
-    await createPrivateApiMockRequest({ isSuperUser: true, workspace: alpha });
+    await createPokeApiMockRequest({ isSuperUser: true, workspace: alpha });
 
     const firstPageResponse = await fetchWorkspaces({
       search: encodeURIComponent("Nimbus Page Test"),
@@ -239,7 +239,7 @@ describe("GET /api/poke/workspaces — pagination", () => {
   });
 
   it("rejects a non-numeric offset value", async () => {
-    await createPrivateApiMockRequest({ isSuperUser: true });
+    await createPokeApiMockRequest({ isSuperUser: true });
 
     const response = await fetchWorkspaces({ offset: "not_a_number" });
 

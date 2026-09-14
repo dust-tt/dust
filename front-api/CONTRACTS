@@ -1,0 +1,216 @@
+@cc [label:api] shared-typescript-contracts
+TypeScript rules in `front/CONTRACTS` also apply to `front-api`, since it shares the same
+TypeScript environment and reaches into `front` internals via the `@app/*` path map.
+
+@cc [label:api] one-way-front-dependency
+`front-api` is the Hono service that serves all HTTP traffic. `server.ts` boots `honoApp`
+from `app.ts` on `@hono/node-server`, and `routes/` holds every handler.
+
+`front` is a library workspace (`lib`, `types`, `logger`, `components`) plus the Temporal
+workers and the migrations. The dependency is one-way: `front-api` reaches into `front`
+via `@app/*`, never the reverse.
+
+@cc [label:api] url-aligned-route-files
+Each route must live in one file whose path mirrors its URL: `front-api/routes/<path>.ts` maps
+1:1 to `/api/<path>`, with dynamic segments (`[wId]`, `[spaceId]`, etc.) as literal directory
+names.
+
+```
+front-api/routes/
+  healthz.ts                                       # /api/healthz
+  w/
+    [wId]/
+      index.ts                                     # mounts children, applies workspaceAuth
+      models.ts                                    # /api/w/:wId/models
+      providers/
+        index.ts                                   # /api/w/:wId/providers
+      spaces/
+        index.ts                                   # /api/w/:wId/spaces — GET /, POST /
+        [spaceId]/
+          index.ts                                 # mounts /:spaceId children
+          leave.ts                                 # /api/w/:wId/spaces/:spaceId/leave
+          mcp/
+            available.ts                           # /api/w/:wId/spaces/:spaceId/mcp/available
+          ...
+  v1/
+    w/
+      [wId]/
+        index.ts                                   # applies publicApiAuth
+        spaces/
+          index.ts                                 # /api/v1/w/:wId/spaces
+```
+
+**One file per URL, one route per file at `/`.** A leaf lives at
+`front-api/routes/<path>.ts` and registers its handlers under `"/"` (the
+parent mount owns the path segment). GET/POST/PATCH/DELETE on the **same
+URL** stay together in one file; only different URLs split into different
+files.
+
+Each leaf exports `export default app`:
+
+```ts
+// front-api/routes/w/[wId]/spaces/[spaceId]/leave.ts
+const app = new Hono();
+app.post("/", withSpace({ requireCanReadOrAdministrate: true }), ...);
+export default app;
+```
+
+@cc [label:api] directory-route-mounts
+Each route directory must have an `index.ts` that mounts its children via
+`app.route("/segment", child)`. These files compose the route tree and may also apply
+directory-scoped middleware, such as resource fetches shared by all routes in the directory
+(see [resource-middleware-per-handler]).
+
+```ts
+// front-api/routes/w/[wId]/spaces/[spaceId]/index.ts
+const app = new Hono();
+app.route("/leave", leave);
+app.route("/mcp", mcp);
+app.route("/data_source_views", dataSourceViews);
+// ...
+export default app;
+```
+
+**Registration order matters** when two sibling routes share a prefix and
+one is a literal while the other is a param — e.g. `/tables/search` must be
+mounted before `/tables/:tableId`, otherwise the param route swallows
+"search" as an id. Hono's router scans in registration order.
+
+@cc [label:api] route-mounting-is-source-of-truth
+Route mounting must be the single source of truth; do not maintain a separate route list or
+manifest. A route is reachable only through its parent mounts, up to `front-api/app.ts`.
+Adding the file and mounting it completes registration.
+
+Root-level mount order in `app.ts` follows the same literal-before-param rule
+as [directory-route-mounts], and the exceptions are commented there — e.g. `/w/:wId/join` is
+mounted before `/w/:wId` so it does not inherit `workspaceAuth`, and the
+`/:preStopSecret` sub-app is mounted last so its dynamic first segment does
+not shadow the literal-prefixed routes above it.
+
+@cc [label:api] auth-at-sub-app-boundaries
+Auth middleware must be applied once at the sub-app boundary, not per-route. For `workspaceAuth`
+and `publicApiAuth`, this is the workspace sub-app's `[wId]/index.ts` mount file:
+
+```ts
+// front-api/routes/w/[wId]/index.ts
+const app = new Hono();
+app.use("*", workspaceAuth);
+app.route("/spaces", spaces);
+// ...
+export default app;
+```
+
+All routes below inherit it. The resolved `Authenticator` is available via
+`c.get("auth")`.
+
+The same pattern applies for any directory-scoped resource fetch — e.g.
+`routes/w/[wId]/assistant/skills/[sId]/index.ts` fetches the `SkillResource`
+once and stashes it on `c` so every route below can read it from
+`c.get("skill")`.
+
+@cc [label:api] resource-middleware-per-handler
+Resource-loading middlewares like `withSpace` carry permission options
+(`requireCanRead`, `requireCanWrite`, etc.) that vary per endpoint. Apply
+them on the individual handler, not on the parent's `index.ts`:
+
+```ts
+// front-api/routes/w/[wId]/spaces/[spaceId]/mcp/available.ts
+const app = new Hono();
+app.get("/", withSpace({ requireCanRead: true }), async (ctx) => {
+  const space = ctx.get("space");
+  // …
+});
+export default app;
+```
+
+Lift the middleware to the parent `index.ts` only when **every** route in the
+subtree uses the exact same options (e.g. `routes/w/[wId]/assistant/skills/[sId]/index.ts`,
+where the skill fetch and `canWrite` check are identical for all children).
+
+@cc [label:api] validate-input-through-middleware
+Validate request input with `validate(target, schema)`.
+
+`front-api/middlewares/validator.ts` wraps `@hono/zod-validator` so failures
+produce our standard `{ error: { type, message } }` shape. Use it for any
+target (`json`, `query`, `param`, `header`, `cookie`, `form`):
+
+```ts
+spacesApp.post(
+  "/",
+  validate("json", PostSpaceRequestBodySchema),
+  async (c) => {
+    const body = c.req.valid("json"); // typed by inference
+    // …
+  }
+);
+```
+
+Do not call `c.req.json()` + `safeParse` manually in handlers — that's what
+the wrapper exists to eliminate.
+
+@cc [label:api] errors-through-api-error
+All error responses must go through `apiError(c, err, error?)` from
+`@front-api/middlewares/utils`. It produces the standard
+`{ error: { type, message } }` body plus the logging, dd-trace span tags, and
+statsd `api_errors.count` increment. Calling `c.json({ error: ... }, status)`
+directly skips that observability and is not allowed.
+
+```ts
+// BAD — bypasses logging / tracing / statsd
+return c.json(
+  {
+    error: {
+      type: "invalid_request_error",
+      message: `Too many ids provided. Maximum is ${MAX}.`,
+    },
+  },
+  400
+);
+
+// GOOD
+return apiError(c, {
+  status_code: 400,
+  api_error: {
+    type: "invalid_request_error",
+    message: `Too many ids provided. Maximum is ${MAX}.`,
+  },
+});
+```
+
+When forwarding an underlying exception, pass it as the third argument so
+its message and stack are captured in the log instead of the synthetic one.
+
+`apiError` also handles the case where a `Result.Err` carries an
+`APIErrorWithStatusCode` directly — pass it through verbatim. The
+`number → ContentfulStatusCode` cast is centralized in the helper.
+
+Reviewer: if you see `c.json({ error: ... }, status)` in a handler, require
+the author to switch to `apiError(c, ...)`.
+
+@cc [label:api] workspace-import-aliases
+Use `@front-api/*` for imports from `front-api/` itself (middleware, app, helpers) and `@app/*`
+for imports from `front/`. The path tree is deeply nested, so relative imports across the tree
+get long quickly:
+
+```ts
+// front-api/routes/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search.ts
+import { validate } from "@front-api/middlewares/validator";        // self
+import { withSpace } from "@front-api/middlewares/with_space";
+import { CoreAPI } from "@app/types/core/core_api";                // front
+```
+
+Both aliases are configured in `tsconfig.json` and `vite.config.mjs`.
+Relative imports (`./sibling`, `../parent`) are still fine for files
+adjacent in the tree, but anything reaching across more than one segment
+should use the alias.
+
+@cc [label:api] requests-through-hono-context
+Middleware and handlers read what they need from Hono's `Context` directly
+(`c.req.header(...)`, `c.req.param(...)`, `c.req.raw.headers`) — never
+through a framework-specific request/response pair.
+
+For cookie-based session resolution, call
+`getWorkOSSessionWithSetCookies(workOSSessionCookie)` from
+`@app/lib/api/workos/user`. It returns `{ session, setCookies }` — emit each
+`setCookies` value with `c.header("Set-Cookie", cookie, { append: true })`,
+as `front-api/middlewares/session_resolution.ts` does.

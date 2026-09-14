@@ -130,6 +130,18 @@ const Help: FC = () => {
       </Box>
       <Box marginLeft={2}>
         <Text>
+          <Text bold>--allow-path</Text> Grant file system tools access to a
+          path outside the current directory (can be repeated)
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
+          <Text bold>--dangerously-disable-sandbox</Text> Let file system tools
+          reach anywhere on the machine, not just the current directory
+        </Text>
+      </Box>
+      <Box marginLeft={2}>
+        <Text>
           <Text bold>--projectName</Text> Create conversation in a project by
           name
         </Text>

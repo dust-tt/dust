@@ -2,7 +2,6 @@ import type { Authenticator } from "@app/lib/auth";
 import type { ResourceWithId } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type {
@@ -97,18 +96,6 @@ export abstract class ResourceWithSpace<
         id: blobs.map((b) => b.vaultId),
         workspaceId: blobWorkspaceIds,
       },
-      include: [
-        {
-          as: "groupSpaces",
-          model: GroupSpaceModel,
-          // A where on an include implies required: true;
-          // pass this required: false to keep the original behavior intact
-          required: false,
-          where: {
-            workspaceId: blobWorkspaceIds,
-          },
-        },
-      ],
       includeDeleted,
       transaction,
       // WORKSPACE_ISOLATION_BYPASS: The where clause is scoped to the blobs' workspaces, which
@@ -201,19 +188,19 @@ export abstract class ResourceWithSpace<
   }
 
   canAdministrate(auth: Authenticator) {
-    return this.space.canAdministrate(auth);
+    return auth.can("admin", this);
   }
 
   canReadOrAdministrate(auth: Authenticator) {
-    return this.space.canReadOrAdministrate(auth);
+    return auth.can("read", this) || auth.can("admin", this);
   }
 
   canRead(auth: Authenticator) {
-    return this.space.canRead(auth);
+    return auth.can("read", this);
   }
 
   canWrite(auth: Authenticator) {
-    return this.space.canWrite(auth);
+    return auth.can("write", this);
   }
 
   // This method determines if the authenticated user can fetch data, based on workspace ownership.

@@ -48,6 +48,7 @@ export function ViewDataSourceTable({
   coreDataSource,
   dataSource,
   dataSourceViews,
+  oauthConnectedAccount,
   owner,
   temporalWorkspace,
   temporalRunningWorkflows,
@@ -56,6 +57,7 @@ export function ViewDataSourceTable({
   coreDataSource: CoreAPIDataSource;
   dataSource: DataSourceType;
   dataSourceViews: DataSourceViewType[];
+  oauthConnectedAccount: string | null;
   owner: WorkspaceType;
   temporalWorkspace: string;
   temporalRunningWorkflows: {
@@ -85,7 +87,7 @@ export function ViewDataSourceTable({
       />
       <div className="flex flex-col space-y-8">
         <div className="flex justify-between gap-3">
-          <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
+          <div className="my-4 flex flex-grow flex-col rounded-lg border p-4">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-md flex-grow pb-4 font-bold">Overview</h2>
               <Button
@@ -143,6 +145,12 @@ export function ViewDataSourceTable({
                       : "N/A"}
                   </PokeTableCell>
                 </PokeTableRow>
+                {oauthConnectedAccount && (
+                  <PokeTableRow>
+                    <PokeTableCell>Connected account</PokeTableCell>
+                    <PokeTableCell>{oauthConnectedAccount}</PokeTableCell>
+                  </PokeTableRow>
+                )}
                 <PokeTableRow>
                   <PokeTableCell>Logs</PokeTableCell>
                   <PokeTableCell>

@@ -71,11 +71,12 @@ describe("GET /api/w/:wId/groups/:groupId", () => {
     expect(body.members).toEqual([expect.objectContaining({ sId: bob.sId })]);
   });
 
-  it("returns 404 on a group that is not surfaced in admin UIs", async () => {
-    const { workspace } = await createPrivateApiMockRequest({ role: "admin" });
-    const spaceGroup = await GroupFactory.regularAuto(workspace, "Space group");
+  it("returns 404 on a non-manageable group", async () => {
+    const { workspace, globalGroup } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
 
-    const response = await getGroupRequest(workspace.sId, spaceGroup.sId);
+    const response = await getGroupRequest(workspace.sId, globalGroup.sId);
 
     expect(response.status).toBe(404);
     expect((await response.json()).error.type).toBe("group_not_found");

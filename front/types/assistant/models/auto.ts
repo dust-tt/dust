@@ -2,11 +2,12 @@ import {
   CLAUDE_OPUS_4_8_MODEL_ID,
   CLAUDE_OPUS_5_MODEL_ID,
   CLAUDE_SONNET_4_6_MODEL_ID,
+  CLAUDE_SONNET_5_MODEL_ID,
 } from "./anthropic";
 import {
   GEMINI_3_1_FLASH_LITE_MODEL_ID,
   GEMINI_3_1_PRO_MODEL_ID,
-  GEMINI_3_7_FLASH_MODEL_ID,
+  GEMINI_3_8_FLASH_MODEL_ID,
 } from "./google_ai_studio";
 import {
   MISTRAL_LARGE_MODEL_ID,
@@ -63,7 +64,7 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "anthropic",
-        modelId: CLAUDE_SONNET_4_6_MODEL_ID,
+        modelId: CLAUDE_SONNET_5_MODEL_ID,
         reasoningEffort: "medium",
       },
       {
@@ -110,12 +111,12 @@ export const MODEL_STREAMS: Record<ModelStreamIdType, ModelStreamCandidate[]> =
       },
       {
         providerId: "anthropic",
-        modelId: CLAUDE_SONNET_4_6_MODEL_ID,
+        modelId: CLAUDE_SONNET_5_MODEL_ID,
         reasoningEffort: "light",
       },
       {
         providerId: "google_ai_studio",
-        modelId: GEMINI_3_7_FLASH_MODEL_ID,
+        modelId: GEMINI_3_8_FLASH_MODEL_ID,
         reasoningEffort: "light",
       },
       {
@@ -196,9 +197,6 @@ function makeMetaModelConfig(
     },
     defaultReasoningEffort: "none",
     supportsResponseFormat: false,
-    availableIfOneOf: {
-      featureFlag: "models_picker",
-    },
     tokenizer: { type: "tiktoken", base: "o200k_base" },
     regionalAvailability: {
       "us-central1": true,

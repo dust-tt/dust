@@ -9,6 +9,9 @@ export type CreditUsageConfigurationBody = {
   allowMemberUpgradeRequests: boolean;
   // Whether workspace admins are emailed when a member requests an upgrade.
   upgradeRequestEmailEnabled: boolean;
+  // Whether a member submitting an upgrade request must provide a non-empty
+  // reason.
+  requireUpgradeRequestReason: boolean;
   // Whether members who hit their per-user credit limit are automatically bumped
   // to the next entitled seat tier instead of being blocked.
   autoSeatUpgradeEnabled: boolean;
@@ -30,6 +33,7 @@ export const PatchCreditUsageConfigurationRequestBody = z.object({
   balanceThresholdCredits: z.number().int().min(0).nullable().optional(),
   allowMemberUpgradeRequests: z.boolean().optional(),
   upgradeRequestEmailEnabled: z.boolean().optional(),
+  requireUpgradeRequestReason: z.boolean().optional(),
   autoSeatUpgradeEnabled: z.boolean().optional(),
 });
 

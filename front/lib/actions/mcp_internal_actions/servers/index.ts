@@ -19,9 +19,9 @@ import { default as commonUtilitiesServer } from "@app/lib/api/actions/servers/c
 import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
 import { default as conversationSidePanelServer } from "@app/lib/api/actions/servers/conversation_side_panel";
+import { default as cursorCloudAgentsServer } from "@app/lib/api/actions/servers/cursor_cloud_agents";
 import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
-import { default as databricksServer } from "@app/lib/api/actions/servers/databricks";
 import { default as exaServer } from "@app/lib/api/actions/servers/exa";
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
 import { default as fathomServer } from "@app/lib/api/actions/servers/fathom";
@@ -41,7 +41,6 @@ import { default as imageGenerationServer } from "@app/lib/api/actions/servers/i
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
 import { default as interactiveContentServer } from "@app/lib/api/actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/api/actions/servers/jira";
-import { default as jitTestingServer } from "@app/lib/api/actions/servers/jit_testing";
 import { default as lumaServer } from "@app/lib/api/actions/servers/luma";
 import { default as microsoftDriveServer } from "@app/lib/api/actions/servers/microsoft_drive";
 import { default as microsoftExcelServer } from "@app/lib/api/actions/servers/microsoft_excel";
@@ -56,7 +55,6 @@ import { default as planModeServer } from "@app/lib/api/actions/servers/plan_mod
 import { default as podManagerServer } from "@app/lib/api/actions/servers/pod_manager";
 import { default as podTasksServer } from "@app/lib/api/actions/servers/pod_tasks";
 import { default as pokeServer } from "@app/lib/api/actions/servers/poke";
-import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as productboardServer } from "@app/lib/api/actions/servers/productboard";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
 import { default as runAgentServer } from "@app/lib/api/actions/servers/run_agent";
@@ -64,7 +62,6 @@ import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_
 import { default as salesforceServer } from "@app/lib/api/actions/servers/salesforce";
 import { default as salesloftServer } from "@app/lib/api/actions/servers/salesloft";
 import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
-import { default as sandboxFunctionsServer } from "@app/lib/api/actions/servers/sandbox_functions";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as servicenowServer } from "@app/lib/api/actions/servers/servicenow";
 import { default as shopifyServer } from "@app/lib/api/actions/servers/shopify";
@@ -87,8 +84,8 @@ import { default as valtownServer } from "@app/lib/api/actions/servers/val_town"
 import { default as vantaServer } from "@app/lib/api/actions/servers/vanta";
 import { default as wakeupsServer } from "@app/lib/api/actions/servers/wakeups";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
-import { default as workdayServer } from "@app/lib/api/actions/servers/workday";
 import { default as workspaceAnalyticsServer } from "@app/lib/api/actions/servers/workspace_analytics";
+import { default as workspaceManagementServer } from "@app/lib/api/actions/servers/workspace_management";
 import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -149,10 +146,6 @@ export async function getInternalMCPServer(
       return interactiveContentServer(auth, toolContext);
     case "query_tables_v2":
       return tablesQueryServerV2(auth, toolContext);
-    case "primitive_types_debugger":
-      return primitiveTypesDebuggerServer(auth, toolContext);
-    case "jit_testing":
-      return jitTestingServer(auth, toolContext);
     case "common_utilities":
       return commonUtilitiesServer(auth, toolContext);
     case "web_search_&_browse":
@@ -205,10 +198,10 @@ export async function getInternalMCPServer(
       return conversationFilesServer(auth, toolContext);
     case "conversation_side_panel":
       return conversationSidePanelServer(auth, toolContext);
+    case "cursor_cloud_agents":
+      return cursorCloudAgentsServer(auth, toolContext);
     case "files":
       return filesServer(auth, toolContext);
-    case "databricks":
-      return databricksServer(auth, toolContext);
     case "servicenow":
       return servicenowServer(auth, toolContext);
     case "shopify":
@@ -265,6 +258,8 @@ export async function getInternalMCPServer(
       return zendeskServer(auth, toolContext);
     case "workspace_analytics":
       return workspaceAnalyticsServer(auth, toolContext);
+    case "workspace_management":
+      return workspaceManagementServer(auth, toolContext);
     case "skill_management":
       return skillManagementServer(auth, toolContext);
     case "skill_authoring":
@@ -289,14 +284,10 @@ export async function getInternalMCPServer(
       return statuspageServer(auth, toolContext);
     case "sandbox":
       return sandboxServer(auth, toolContext);
-    case "sandbox_functions":
-      return sandboxFunctionsServer(auth, toolContext);
     case "wakeups":
       return wakeupsServer(auth, toolContext);
     case "plan_mode":
       return planModeServer(auth, toolContext);
-    case "workday":
-      return workdayServer(auth, toolContext);
     case "user_analytics":
       return userAnalyticsServer(auth, toolContext);
     case "user_memory":

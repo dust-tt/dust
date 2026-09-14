@@ -13,7 +13,7 @@ export type ConfirmDataType = {
   title: string | ReactNode;
   message: string | ReactNode;
   validateLabel?: string;
-  validateVariant?: "primary" | "warning";
+  validateVariant?: "primary" | "warning" | "highlight";
   validateDisabled?: boolean;
   cancelLabel?: string;
 };

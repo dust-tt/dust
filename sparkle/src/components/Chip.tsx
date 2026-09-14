@@ -98,12 +98,17 @@ ChipButton.displayName = "ChipButton";
 
 type ChipBaseProps = {
   size?: ChipSizeType;
+  /** Semantic color; use `success`, `warning`, and `info` to match their intent. */
   color?: ChipColorType;
+  /** Chip text; keep it to one or two words. */
   label?: string;
   children?: ReactNode;
   className?: string;
+  /** Animate the label with a shimmer for transient processing states. */
   isBusy?: boolean;
+  /** Leading icon component. */
   icon?: ComponentType;
+  /** Invoked when the remove (close) button is clicked; its presence shows the button. */
   onRemove?: () => void;
 };
 
@@ -125,6 +130,14 @@ export type ChipProps = ChipLinkProps | ChipButtonProps;
 // but use button when there is onClick.
 // Since we can have a button inside a button with current implementation, the top level element is a div
 // with a role="button", a tabIndex={0} to make it focusable, and onKeyDown handler.
+/**
+ * A compact, mostly read-only label for surfacing a status, category, or short
+ * piece of metadata, in several sizes and semantic colors, with an optional leading
+ * icon, a breathing "busy" animation, clickable and removable affordances. Use it
+ * for statuses, tags, categories, or active filters; for a primary action, use a
+ * Button instead.
+ * @summary Status or metadata label.
+ */
 const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
   (
     {

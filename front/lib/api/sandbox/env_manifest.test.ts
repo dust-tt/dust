@@ -121,26 +121,23 @@ describe("sandbox environment manifest", () => {
     expect(json).not.toContain("slack-secret");
   });
 
-  it("uses SPACE_ID instead of CONVERSATION_ID for pod sandbox manifests", async () => {
-    const { authenticator, workspace, user } = await createResourceTest({
-      role: "admin",
-    });
-    const pod = await SpaceFactory.project(workspace, user.id);
+  it("identifies Frame sandbox manifests with FRAME_ID", async () => {
+    const { authenticator } = await createResourceTest({ role: "admin" });
 
     const manifestResult = await buildSandboxEnvManifest(authenticator, {
-      kind: "pod",
-      spaceId: pod.sId,
+      kind: "frame",
+      frameId: "frame-id",
+      spaceId: null,
     });
 
     expect(manifestResult.isOk()).toBe(true);
     if (manifestResult.isErr()) {
       throw manifestResult.error;
     }
-
     expect(manifestResult.value.system).toEqual([
       {
-        name: "SPACE_ID",
-        description: "current pod space sId",
+        name: "FRAME_ID",
+        description: "current Frame sId",
       },
       {
         name: "WORKSPACE_ID",
@@ -196,12 +193,16 @@ describe("sandbox environment manifest", () => {
     );
     expect(podVar.isOk()).toBe(true);
 
-    // Same listing for the pod owner and a conversation running in the pod.
+    // Same listing for a conversation and a Frame running in the pod.
     for (const owner of [
-      { kind: "pod" as const, spaceId: pod.sId },
       {
         kind: "conversation" as const,
         conversationId: "conversation-test",
+        spaceId: pod.sId,
+      },
+      {
+        kind: "frame" as const,
+        frameId: "fil_frame-test",
         spaceId: pod.sId,
       },
     ]) {
@@ -251,7 +252,7 @@ describe("sandbox environment manifest", () => {
     // placeholderNonce, but the builder still defends against that DB
     // corruption case. Simulate it by overriding the instance attribute and
     // stubbing the resource list lookup, rather than reaching into the
-    // Sequelize model from the test ([TEST5]).
+    // Sequelize model from the test ([tests-use-resources]).
     Object.defineProperty(secretResult.value, "placeholderNonce", {
       value: null,
       configurable: true,

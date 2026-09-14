@@ -36,4 +36,33 @@ describe("listActivationPodsByUser", () => {
 
     expect(byUser.get(user.id)?.pod.sId).toBe(pod.sId);
   });
+
+  it("selects Learning Spaces by explicit kind", async () => {
+    const { authenticator, workspace, user } = await createResourceTest({
+      role: "admin",
+    });
+    const activationSpace = await SpaceFactory.project(workspace, user.id);
+    const goalSpace = await SpaceFactory.project(workspace, user.id);
+    await ProjectMetadataResource.makeNew(authenticator, activationSpace, {
+      description: "A normal project description",
+    });
+    await ProjectMetadataResource.makeNew(authenticator, goalSpace, {
+      description: null,
+    });
+    await ActivationPodResource.makeNew(authenticator, {
+      pod: activationSpace,
+      user,
+    });
+    await ActivationPodResource.makeNew(authenticator, {
+      pod: goalSpace,
+      user,
+      kind: "goal",
+    });
+
+    const activationPods = await listActivationPodsByUser(authenticator, {
+      kind: "learning",
+    });
+
+    expect(activationPods.get(user.id)?.pod.sId).toBe(activationSpace.sId);
+  });
 });

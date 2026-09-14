@@ -18,6 +18,7 @@ import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { slugify } from "@app/types/shared/utils/string_utils";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import assert from "assert";
 
 export interface PersistedToolOutput {
   contentType: AllSupportedFileContentType;
@@ -30,8 +31,8 @@ export interface PersistedToolOutput {
 
 /**
  * Builds the DustFileSystem associated with a tool run context: the conversation file system when
- * running in an agent loop, the pod (project space) file system when running in a sandbox
- * function invocation.
+ * running in an agent loop, the file system of the Pod the Frame runs in when running in a
+ * sandbox function invocation.
  */
 async function getDustFileSystemForRunContext(
   auth: Authenticator,
@@ -41,10 +42,14 @@ async function getDustFileSystemForRunContext(
     case "agent_loop":
       return DustFileSystem.forConversation(auth, runContext.conversation);
     case "sandbox_function":
-      return DustFileSystem.forPod(
-        auth,
-        runContext.invocation.sandboxFunction.space
-      );
+      if (!runContext.pod) {
+        return new Err(
+          new Error(
+            "This Frame does not run in a Pod, so its tools have nowhere to write files."
+          )
+        );
+      }
+      return DustFileSystem.forPod(auth, runContext.pod);
     default:
       return assertNever(runContext);
   }
@@ -65,8 +70,12 @@ function getToolOutputsScopedPath(
       // flat folder would mix outputs across functions. The slug is preferred over the
       // invocation sId as it is shorter and less error-prone for the model to reference. The
       // folder is visible in-sandbox at /files/pod-{pId}/.tool_outputs/{slug}/.
+      assert(
+        runContext.pod,
+        "This Frame does not run in a Pod, so its tools have no output folder."
+      );
       return podScopedPath(
-        runContext.invocation.sandboxFunction.space.sId,
+        runContext.pod.sId,
         `${TOOL_OUTPUTS_FOLDER_NAME}/${runContext.invocation.sandboxFunction.slug}/${fileName}`
       );
     default:

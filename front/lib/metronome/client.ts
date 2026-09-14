@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import config from "@app/lib/api/config";
 import type { ContractCreditType } from "@app/lib/metronome/constants";
 import {
@@ -9,21 +11,31 @@ import {
   SEAT_TYPE_CUSTOM_FIELD_KEY,
 } from "@app/lib/metronome/constants";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import {
+  bestEffortInvalidateCacheWithRedis,
+  cacheWithRedis,
+} from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { SupportedCurrency } from "@app/types/currency";
 import type { MembershipSeatType } from "@app/types/memberships";
 import { isMembershipSeatType } from "@app/types/memberships";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { ONE_DAY_MS, ONE_HOUR_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import Metronome, { BadRequestError, ConflictError } from "@metronome/sdk";
+import Metronome, {
+  BadRequestError,
+  ConflictError,
+  UnprocessableEntityError,
+} from "@metronome/sdk";
 import type { Commit, ContractV2, Credit, V1 } from "@metronome/sdk/resources";
 import type { ContractRetrieveRateScheduleResponse } from "@metronome/sdk/resources/v1/contracts/contracts";
 import type { ProductListResponse } from "@metronome/sdk/resources/v1/contracts/products";
 import type { RateCardRetrieveResponse } from "@metronome/sdk/resources/v1/contracts/rate-cards";
 import type {
   CustomerAlert,
+  CustomerDetail,
   Invoice,
 } from "@metronome/sdk/resources/v1/customers";
 import type { ContractEditParams } from "@metronome/sdk/resources/v2/contracts";
@@ -63,11 +75,10 @@ export function getMetronomeClient(): Metronome {
 }
 
 // Metronome requires dates on specific boundaries (hour for contracts, midnight for usage).
-const HOUR_MS = 3_600_000;
-const DAY_MS = 24 * HOUR_MS;
-
 export function floorToHourISO(date: Date): string {
-  return new Date(Math.floor(date.getTime() / HOUR_MS) * HOUR_MS).toISOString();
+  return new Date(
+    Math.floor(date.getTime() / ONE_HOUR_MS) * ONE_HOUR_MS
+  ).toISOString();
 }
 
 /** Convert an epoch-seconds timestamp (e.g. from Stripe) to an hour-floored ISO string. */
@@ -76,7 +87,9 @@ export function epochSecondsToFloorHourISO(epochSeconds: number): string {
 }
 
 export function ceilToHourISO(date: Date): string {
-  return new Date(Math.ceil(date.getTime() / HOUR_MS) * HOUR_MS).toISOString();
+  return new Date(
+    Math.ceil(date.getTime() / ONE_HOUR_MS) * ONE_HOUR_MS
+  ).toISOString();
 }
 
 export function floorToMidnightUTC(d: Date): Date {
@@ -88,7 +101,7 @@ export function floorToMidnightUTC(d: Date): Date {
 export function ceilToMidnightUTC(d: Date): Date {
   const floored = floorToMidnightUTC(d);
   return floored.getTime() < d.getTime()
-    ? new Date(floored.getTime() + DAY_MS)
+    ? new Date(floored.getTime() + ONE_DAY_MS)
     : floored;
 }
 
@@ -1543,6 +1556,19 @@ export async function getMetronomeSeatActiveSince({
 // Metronome rejects any single contracts.edit carrying more than 1000 seat IDs.
 const MAX_SEAT_IDS_PER_EDIT = 1000;
 
+// A retried contracts.edit that reuses an already-consumed `uniqueness_key` is
+// rejected with a 422 `UnprocessableEntityError` whose message is "Uniqueness
+// key already exists: <key>" (despite the docs implying a 409). We also accept
+// the 409 `ConflictError` defensively in case the API's status ever changes.
+// The message guard keeps this from swallowing an unrelated 422 validation
+// error (e.g. a genuinely malformed edit body).
+function isDuplicateUniquenessKeyError(err: unknown): boolean {
+  return (
+    (err instanceof UnprocessableEntityError || err instanceof ConflictError) &&
+    /uniqueness key already exists/i.test(err.message)
+  );
+}
+
 export async function updateSubscriptionSeats({
   metronomeCustomerId,
   contractId,
@@ -1644,13 +1670,40 @@ export async function updateSubscriptionSeats({
       continue;
     }
 
+    // Seat updates are cumulative DELTAS (`add/remove_seat_ids`,
+    // `add/remove_unassigned_seats`), and the edit endpoint returns 504s that
+    // still apply server-side — so the SDK's retry-on-5xx (client maxRetries: 5)
+    // would blindly re-send the delta and stack it (an add of 137 unassigned
+    // landing 4× → 548). A fresh per-edit `uniqueness_key` makes the retry safe:
+    // Metronome rejects a duplicate key, so a retry of an already-applied edit
+    // is a no-op we treat as success — the edit becomes idempotent against
+    // retries instead of stacking. The rejection surfaces as a 422
+    // `UnprocessableEntityError` ("Uniqueness key already exists"), NOT the 409
+    // the docs suggest — see `isDuplicateUniquenessKeyError`.
+    const uniquenessKey = randomUUID();
     try {
       await getMetronomeClient().v2.contracts.edit({
         customer_id: metronomeCustomerId,
         contract_id: contractId,
         update_subscriptions: updateSubscriptions,
+        uniqueness_key: uniquenessKey,
       });
     } catch (err) {
+      if (isDuplicateUniquenessKeyError(err)) {
+        // Duplicate uniqueness_key → this exact edit already landed (a retry
+        // after a 504 that applied server-side). Idempotent success.
+        logger.info(
+          {
+            metronomeCustomerId,
+            contractId,
+            fromSubscriptionId,
+            toSubscriptionId,
+            uniquenessKey,
+          },
+          "[Metronome] Subscription seat edit already applied (duplicate uniqueness_key) — treating as success"
+        );
+        continue;
+      }
       const error = normalizeError(err);
       logger.error(
         {
@@ -2275,13 +2328,43 @@ export async function listMetronomeDraftInvoices(
   }
 }
 
+export async function listMetronomeFinalizedInvoices(
+  metronomeCustomerId: string,
+  { limit }: { limit: number }
+): Promise<Result<Invoice[], Error>> {
+  try {
+    const invoices: Invoice[] = [];
+    for await (const entry of getMetronomeClient().v1.customers.invoices.list({
+      customer_id: metronomeCustomerId,
+      status: "FINALIZED",
+      sort: "date_desc",
+      skip_zero_qty_line_items: true,
+    })) {
+      invoices.push(entry);
+      if (invoices.length >= limit) {
+        break;
+      }
+    }
+    return new Ok(invoices);
+  } catch (err) {
+    const error = normalizeError(err);
+    logger.error(
+      { error, metronomeCustomerId },
+      "[Metronome] Failed to list finalized invoices"
+    );
+    return new Err(error);
+  }
+}
+
 export async function listMetronomeBalances(
   metronomeCustomerId: string,
   {
     includeArchived = false,
     coveringDate = new Date(),
     effectiveBefore,
+    startingAt,
     onlyPoolCredits = true,
+    includeLedgers = false,
   }: {
     // Pass `null` to drop the `covering_date` filter and return balances of any
     // date (including expired and, depending on `effectiveBefore`, future ones).
@@ -2289,9 +2372,12 @@ export async function listMetronomeBalances(
     // Restrict to balances with any access before this date — used to hide
     // future-dated balances while still returning expired ones.
     effectiveBefore?: Date;
+    startingAt?: Date;
     includeArchived?: boolean;
     // Restrict to balances related to pool credits
     onlyPoolCredits?: boolean;
+    // Include each entry's full transaction ledger.
+    includeLedgers?: boolean;
   } = {}
 ): Promise<Result<MetronomeBalance[], Error>> {
   if (!config.getMetronomeApiKey()) {
@@ -2312,7 +2398,11 @@ export async function listMetronomeBalances(
       ...(effectiveBefore !== undefined
         ? { effective_before: effectiveBefore.toISOString() }
         : {}),
+      ...(startingAt !== undefined
+        ? { starting_at: startingAt.toISOString() }
+        : {}),
       ...(includeArchived ? { include_archived: true } : {}),
+      ...(includeLedgers ? { include_ledgers: true } : {}),
     })) {
       // Mirror the pool balance alert filter for credits: include only
       // credits explicitly tagged DUST_CONTRACT_CREDIT_TYPE=pool. Excess
@@ -2443,6 +2533,73 @@ export async function listMetronomeUsage({
   }
 }
 
+// Metronome rejects a `/v1/usage/groups` request that filters on more than 200
+// group values (enforced for compound multi-key billable metrics too). We chunk
+// well under that so callers can pass an unbounded filter list.
+const MAX_GROUP_FILTER_VALUES_PER_REQUEST = 190;
+
+/**
+ * @cc [owner:tdraier,label:backend;performance] usage-groups-filter-value-limit
+ * `listMetronomeUsageWithGroups` must never send more than
+ * `MAX_GROUP_FILTER_VALUES_PER_REQUEST` (< Metronome's 200) group-filter values,
+ * counted ACROSS ALL keys, in a single `/v1/usage/groups` request (Metronome
+ * rejects an oversized request, for compound metrics included). It splits an
+ * over-limit filter into sequential sub-requests and concatenates the results,
+ * so callers may pass an unbounded `groupFilters` value list.
+ *
+ * It splits the one key with the most values into chunks, keeping any other keys
+ * whole in every chunk (all current callers filter on exactly one key), sizing
+ * the chunk so the whole request — chunk + the whole of every other key — stays
+ * within the limit. Values are de-duplicated first, so a value never lands in two
+ * chunks: the chunks query disjoint value subsets, the returned groups are
+ * disjoint, and concatenation never double-counts. A filter whose non-chunked
+ * keys alone meet the limit cannot be satisfied while kept whole; that case
+ * (no caller produces it) throws rather than emit an oversized request.
+ */
+function chunkGroupFilters(
+  groupFilters: Record<string, string[]> | undefined
+): Array<Record<string, string[]> | undefined> {
+  if (!groupFilters) {
+    return [undefined];
+  }
+  // De-duplicate each key's values up front: duplicates would otherwise land in
+  // two different chunks and double-count on concatenation.
+  const entries: Array<[string, string[]]> = Object.entries(groupFilters).map(
+    ([key, values]) => [key, [...new Set(values)]]
+  );
+  const totalValues = entries.reduce(
+    (sum, [, values]) => sum + values.length,
+    0
+  );
+  const deduped = Object.fromEntries(entries);
+  if (totalValues <= MAX_GROUP_FILTER_VALUES_PER_REQUEST) {
+    return [deduped];
+  }
+  const [chunkKey, chunkValues] = entries.reduce((a, b) =>
+    b[1].length > a[1].length ? b : a
+  );
+  const otherEntries = entries.filter(([key]) => key !== chunkKey);
+  const otherValueCount = otherEntries.reduce(
+    (sum, [, values]) => sum + values.length,
+    0
+  );
+  const chunkSize = MAX_GROUP_FILTER_VALUES_PER_REQUEST - otherValueCount;
+  if (chunkSize < 1) {
+    throw new Error(
+      "chunkGroupFilters: the non-chunked group_filters keys alone exceed the " +
+        "per-request value limit; multi-key filters this large are unsupported."
+    );
+  }
+  const requests: Array<Record<string, string[]>> = [];
+  for (let i = 0; i < chunkValues.length; i += chunkSize) {
+    requests.push({
+      ...Object.fromEntries(otherEntries),
+      [chunkKey]: chunkValues.slice(i, i + chunkSize),
+    });
+  }
+  return requests;
+}
+
 export async function listMetronomeUsageWithGroups({
   customerId,
   billableMetricId,
@@ -2475,21 +2632,25 @@ export async function listMetronomeUsageWithGroups({
 
   try {
     const results: MetronomeUsageWithGroupsResponse[] = [];
-    for await (const entry of client.v1.usage.listWithGroups({
-      customer_id: customerId,
-      billable_metric_id: billableMetricId,
-      window_size: windowSize,
-      group_key: groupKey,
-      starting_on: startingOn,
-      ending_before: endingBefore,
-      ...(groupFilters ? { group_filters: groupFilters } : {}),
-    })) {
-      results.push({
-        startingOn: entry.starting_on,
-        endingBefore: entry.ending_before,
-        value: entry.value,
-        group: entry.group ?? null,
-      });
+    // Sequential chunks (Metronome recommends sequential over one large request)
+    // that each stay within the 200-group-values-per-request limit.
+    for (const requestFilters of chunkGroupFilters(groupFilters)) {
+      for await (const entry of client.v1.usage.listWithGroups({
+        customer_id: customerId,
+        billable_metric_id: billableMetricId,
+        window_size: windowSize,
+        group_key: groupKey,
+        starting_on: startingOn,
+        ending_before: endingBefore,
+        ...(requestFilters ? { group_filters: requestFilters } : {}),
+      })) {
+        results.push({
+          startingOn: entry.starting_on,
+          endingBefore: entry.ending_before,
+          value: entry.value,
+          group: entry.group ?? null,
+        });
+      }
     }
     return new Ok(results);
   } catch (err) {
@@ -2801,6 +2962,124 @@ export async function listCustomerPerUserCreditBalances({
     metronomeCustomerId,
     contractCreditType,
     includeBalances: true,
+  });
+}
+
+// Long TTL: the cache is invalidated from the Metronome webhook whenever a
+// credit is created / a segment starts / an amount is edited, so the TTL is only
+// a fallback for missed events rather than the primary freshness bound.
+const PER_USER_CREDIT_BALANCES_CACHE_TTL_MS = 60 * 60 * 1000;
+
+const perUserCreditBalancesCacheResolver = ({
+  metronomeCustomerId,
+  contractCreditType,
+}: {
+  metronomeCustomerId: string;
+  contractCreditType: ContractCreditType;
+}) => `${metronomeCustomerId}-${contractCreditType}`;
+
+async function fetchPerUserCreditBalancesRecord(args: {
+  metronomeCustomerId: string;
+  contractCreditType: ContractCreditType;
+}): Promise<
+  Record<
+    string,
+    { creditIds: string[]; balanceAwu: number; startingBalanceAwu: number }
+  >
+> {
+  const result = await listCustomerPerUserCreditBalances(args);
+  // Throw at the cache boundary so a transient fetch failure is not cached.
+  if (result.isErr()) {
+    throw result.error;
+  }
+  return Object.fromEntries(result.value);
+}
+
+// At most one `credits.list` fan-out in flight per (customer, credit type)
+// fleet-wide: concurrent misses on other processes get null (callers degrade)
+// instead of each firing their own read. Mirrors `getCachedSeatDataByUserId`.
+const getCachedPerUserCreditBalancesRecord = cacheWithRedis(
+  fetchPerUserCreditBalancesRecord,
+  perUserCreditBalancesCacheResolver,
+  {
+    ttlMs: PER_USER_CREDIT_BALANCES_CACHE_TTL_MS,
+    useDistributedLock: true,
+    skipIfLocked: true,
+  }
+);
+
+const invalidatePerUserCreditBalancesRecord =
+  bestEffortInvalidateCacheWithRedis(
+    fetchPerUserCreditBalancesRecord,
+    perUserCreditBalancesCacheResolver,
+    "per-user credit balances"
+  );
+
+/**
+ * Cached variant of `listCustomerPerUserCreditBalances`. Same shape, backed by a
+ * Redis cache keyed by (customer, credit type). Use this on read-heavy
+ * surfaces (members usage table, per-member usage) so repeated views don't each
+ * hit Metronome's `credits.list` endpoint. The cache is invalidated from the
+ * Metronome webhook when a credit is created or a segment starts (see
+ * `invalidateCachedCustomerPerUserCreditBalances`). Degrades to an empty map
+ * when another process holds the fetch lock, so callers must tolerate a
+ * transiently-missing balance (they already fall back to the seat-type
+ * constant).
+ */
+export async function getCachedCustomerPerUserCreditBalances({
+  metronomeCustomerId,
+  contractCreditType,
+}: {
+  metronomeCustomerId: string;
+  contractCreditType: ContractCreditType;
+}): Promise<
+  Result<
+    {
+      balances: Map<
+        string,
+        { creditIds: string[]; balanceAwu: number; startingBalanceAwu: number }
+      >;
+      // true when another process holds the fetch lock (skipIfLocked): `balances`
+      // is empty because the read was *skipped*, not because the customer has no
+      // per-user credits. Callers that must distinguish "unknown right now" from
+      // "genuinely none" — e.g. fail-open spend enforcement, which should stay
+      // quiet on a transient lock but alert on a real gap — branch on this.
+      locked: boolean;
+    },
+    Error
+  >
+> {
+  try {
+    const record = await getCachedPerUserCreditBalancesRecord({
+      metronomeCustomerId,
+      contractCreditType,
+    });
+    // null: another process holds the fetch lock (skipIfLocked). Degrade rather
+    // than piling a duplicate Metronome fan-out on top.
+    if (record === null) {
+      return new Ok({ balances: new Map(), locked: true });
+    }
+    return new Ok({ balances: new Map(Object.entries(record)), locked: false });
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
+/**
+ * Invalidate the cached per-user credit balances for a customer. Best-effort:
+ * logs and swallows on failure. Called from the Metronome webhook when a credit
+ * is added or a segment starts so the next read reflects the new balance.
+ */
+export async function invalidateCachedCustomerPerUserCreditBalances({
+  metronomeCustomerId,
+  contractCreditType,
+}: {
+  metronomeCustomerId: string;
+  contractCreditType: ContractCreditType;
+}): Promise<void> {
+  await invalidatePerUserCreditBalancesRecord({
+    metronomeCustomerId,
+    contractCreditType,
   });
 }
 
@@ -3653,18 +3932,27 @@ export async function adjustSeatCreditBalances({
   );
 
   try {
-    await getMetronomeClient().v1.contracts.addManualBalanceEntry({
-      id: creditId,
-      customer_id: metronomeCustomerId,
-      contract_id: metronomeContractId,
-      segment_id: segmentId,
-      amount: totalAmount,
-      per_group_amounts: perSeatAmounts,
-      reason,
-      timestamp: alignToHour
-        ? floorToHourISO(timestamp)
-        : timestamp.toISOString(),
-    });
+    // A manual ledger entry is a cumulative DELTA and the endpoint 504s while
+    // still applying server-side — so an SDK retry would post the entry twice and
+    // over-adjust the balance. Unlike `contracts.edit`, `addManualBalanceEntry`
+    // has no `uniqueness_key`, so we can't dedup a retry; `maxRetries: 0` is the
+    // mitigation. On failure callers get `Err` and retry at their own (bounded,
+    // spaced) level instead.
+    await getMetronomeClient().v1.contracts.addManualBalanceEntry(
+      {
+        id: creditId,
+        customer_id: metronomeCustomerId,
+        contract_id: metronomeContractId,
+        segment_id: segmentId,
+        amount: totalAmount,
+        per_group_amounts: perSeatAmounts,
+        reason,
+        timestamp: alignToHour
+          ? floorToHourISO(timestamp)
+          : timestamp.toISOString(),
+      },
+      { maxRetries: 0 }
+    );
     logger.info(
       {
         metronomeCustomerId,
@@ -3999,33 +4287,13 @@ export async function* listMetronomeAlerts(
   }
 }
 
-// Retrieve a single customer alert by its Metronome id, including its enforced
-// `custom_field_filters` and `uniqueness_key`. Returns null when no API key is
-// configured. Used to resolve a per-user credit alert's target user from the
-// `alert_id` carried in the webhook (the payload omits both the filters and the
-// uniqueness key).
-export async function getMetronomeAlertById({
-  metronomeCustomerId,
-  alertId,
-}: {
-  metronomeCustomerId: string;
-  alertId: string;
-}): Promise<Result<CustomerAlert | null, Error>> {
-  if (!config.getMetronomeApiKey()) {
-    return new Ok(null);
-  }
-  try {
-    const response = await getMetronomeClient().v1.customers.alerts.retrieve({
-      customer_id: metronomeCustomerId,
-      alert_id: alertId,
-    });
-    return new Ok(response.data);
-  } catch (err) {
-    const error = normalizeError(err);
-    logger.error(
-      { error, metronomeCustomerId, alertId },
-      "[Metronome] Failed to retrieve alert by id"
-    );
-    return new Err(error);
+// Lazily iterates every Metronome customer, auto-paginating via the SDK. Unlike
+// the DB-driven workspace scan, this reaches customers whose Dust workspace has
+// been deleted (so it never appears in `runOnAllWorkspaces`) but whose Metronome
+// customer — and its alerts — still exist. Used by the unused-alert cleanup
+// script to reach orphaned alerts. Errors surface through the iterator.
+export async function* listMetronomeCustomers(): AsyncGenerator<CustomerDetail> {
+  for await (const customer of getMetronomeClient().v1.customers.list()) {
+    yield customer;
   }
 }

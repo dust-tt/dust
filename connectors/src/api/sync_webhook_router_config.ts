@@ -29,7 +29,7 @@ type SyncWebhookRouterEntryReqBody = t.TypeOf<
 
 /**
  * POST /webhooks_router_entries/:webhook_secret/:provider/:providerWorkspaceId
- * Sync webhook router configuration entry for this region.
+ * Sync webhook router configuration entry for this cell.
  * Looks up all connectors for the given providerWorkspaceId and updates the entry.
  */
 const _syncWebhookRouterEntryHandler = async (
@@ -56,7 +56,7 @@ const _syncWebhookRouterEntryHandler = async (
   }
 
   const { signingSecret } = bodyValidation.right;
-  const region = connectorsConfig.getCurrentRegion();
+  const cell = connectorsConfig.getCurrentCell();
 
   let connectorIds: number[] = [];
 
@@ -72,7 +72,7 @@ const _syncWebhookRouterEntryHandler = async (
 
       logger.info(
         { notionWorkspaceId: providerWorkspaceId, connectorIds },
-        `Found ${connectorIds.length} Notion connectors in region ${region}`
+        `Found ${connectorIds.length} Notion connectors in cell ${cell}`
       );
     } else {
       logger.info(
@@ -95,12 +95,12 @@ const _syncWebhookRouterEntryHandler = async (
 
       logger.info(
         { slackTeamId: providerWorkspaceId, connectorIds },
-        `Found ${connectorIds.length} Slack connectors in region ${region}`
+        `Found ${connectorIds.length} Slack connectors in cell ${cell}`
       );
     } else {
       logger.info(
         { slackTeamId: providerWorkspaceId },
-        "No Slack configuration found in this region"
+        "No Slack configuration found in this cell"
       );
     }
   } else {
@@ -119,7 +119,7 @@ const _syncWebhookRouterEntryHandler = async (
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `No connectors found for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}' in region '${region}'. Cannot sync with provided signing secret.`,
+        message: `No connectors found for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}' in cell '${cell}'. Cannot sync with provided signing secret.`,
       },
     });
   }
@@ -139,17 +139,17 @@ const _syncWebhookRouterEntryHandler = async (
     }
   }
 
-  // Sync the entry for this region
+  // Sync the entry for this cell
   await service.syncEntry(
     provider,
     providerWorkspaceId,
     signingSecret,
-    region,
+    cell,
     connectorIds
   );
 
   logger.info(
-    { provider, providerWorkspaceId, region, connectorIds },
+    { provider, providerWorkspaceId, cell, connectorIds },
     `Successfully synced webhook router entry`
   );
 

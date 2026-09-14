@@ -131,7 +131,7 @@ export const getConfig = ({ env }: { env: Environment }) => {
       }),
       new webpack.DefinePlugin({
         // Expose VITE_* vars on `import.meta.env` so the shared `front`
-        // RegionContext can resolve the regional API base URL in the webpack
+        // CellProvider can resolve the cell API base URL in the webpack
         // build (Vite only injects these in the SPA).
         "import.meta.env": JSON.stringify(
           getImportMetaEnv(
@@ -153,11 +153,6 @@ export const getConfig = ({ env }: { env: Environment }) => {
         NEXT_PUBLIC_DUST_API_URL: process.env.NEXT_PUBLIC_DUST_API_URL || "",
         NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL:
           process.env.NEXT_PUBLIC_DUST_STATIC_WEBSITE_URL || "",
-        NEXT_PUBLIC_NOVU_API_URL: process.env.NEXT_PUBLIC_NOVU_API_URL || "",
-        NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER:
-          process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER || "",
-        NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL:
-          process.env.NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL || "",
         NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY:
           process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY || "",
         VIZ_PUBLIC_URL: process.env.VIZ_PUBLIC_URL || "",

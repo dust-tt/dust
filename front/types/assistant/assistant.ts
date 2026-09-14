@@ -42,6 +42,7 @@ export function isSupportingResponseFormat(modelId: ModelIdType) {
 export enum GLOBAL_AGENTS_SID {
   HELPER = "helper",
   DUST = "dust",
+  DUST_LEAN = "dust-lean",
   DUST_OMITTED = "dust-omitted",
   DUST_HIGH = "dust-high",
   DUST_HIGH_OMITTED = "dust-high-omitted",
@@ -157,14 +158,26 @@ export function isGlobalAgentId(sId: string): sId is GLOBAL_AGENTS_SID {
 // users, so usage they generate should be attributed to the parent agent that
 // spawned them rather than to the helper itself. Other sub-agents (real user
 // agents invoked via run_agent / agent_handover) keep their own attribution.
-const HIDDEN_HELPER_SUB_AGENT_SIDS: ReadonlySet<string> = new Set<string>([
+const HIDDEN_HELPER_SUB_AGENT_ID_SET: ReadonlySet<string> = new Set<string>([
   GLOBAL_AGENTS_SID.DUST_TASK,
   GLOBAL_AGENTS_SID.DUST_PLANNING,
   GLOBAL_AGENTS_SID.DUST_BROWSER_SUMMARY,
 ]);
 
 export function isHiddenHelperSubAgentId(sId: string): boolean {
-  return HIDDEN_HELPER_SUB_AGENT_SIDS.has(sId);
+  return HIDDEN_HELPER_SUB_AGENT_ID_SET.has(sId);
+}
+
+export function getAgentUsageAttributedId({
+  agentId,
+  parentAgentId,
+}: {
+  agentId: string;
+  parentAgentId: string | null | undefined;
+}): string {
+  return isHiddenHelperSubAgentId(agentId) && parentAgentId
+    ? parentAgentId
+    : agentId;
 }
 
 // If you want to show feedback buttons for global agents, add sId here.
@@ -178,12 +191,12 @@ export function isGlobalAgentWithFeedback(sId: GLOBAL_AGENTS_SID): boolean {
   return GLOBAL_AGENTS_WITH_FEEDBACK.has(sId);
 }
 
-const AGENT_IDS_RESTRICTED_TO_BUILDER = new Set<string>([
+const AGENT_IDS_WITHOUT_CONVERSATION_ACTIONS = new Set<string>([
   GLOBAL_AGENTS_SID.SIDEKICK,
 ]);
 
 export function canShowAgentConversationActions(agentId: string): boolean {
-  return !AGENT_IDS_RESTRICTED_TO_BUILDER.has(agentId);
+  return !AGENT_IDS_WITHOUT_CONVERSATION_ACTIONS.has(agentId);
 }
 
 export function getGlobalAgentAuthorName(agentId: string): string {
@@ -217,6 +230,7 @@ export function getGlobalAgentAuthorName(agentId: string): string {
 // Not exhaustive.
 const GLOBAL_AGENTS_SORT_ORDER: string[] = [
   GLOBAL_AGENTS_SID.DUST,
+  GLOBAL_AGENTS_SID.DUST_LEAN,
   GLOBAL_AGENTS_SID.DEEP_DIVE,
   GLOBAL_AGENTS_SID.CLAUDE_5_SONNET,
   GLOBAL_AGENTS_SID.GPT5,

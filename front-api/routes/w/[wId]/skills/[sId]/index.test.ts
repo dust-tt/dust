@@ -8,7 +8,6 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -16,14 +15,15 @@ import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory"
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import type { WhereOptions } from "sequelize";
 import { describe, expect, it } from "vitest";
 
 async function setupTest(
   options: {
-    skillOwnerRole?: "admin" | "builder" | "user";
-    requestUserRole?: "admin" | "builder" | "user";
+    skillOwnerRole?: MembershipRoleType;
+    requestUserRole?: MembershipRoleType;
   } = {}
 ) {
   const skillOwnerRole = options.skillOwnerRole ?? "admin";
@@ -238,6 +238,149 @@ describe("GET /api/w/:wId/skills/:sId", () => {
     expect(data.skill.isFavorite).toBe(true);
   });
 
+  it("redacts the private fields of a skill built on a space the admin cannot read", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "user",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [skillOwner.sId] });
+    const restrictedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      instructions: "Secret guidelines",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    // Give the skill a tool and a file, so the redaction is tested on real data.
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Restricted Server",
+    });
+    const serverView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      restrictedSpace
+    );
+    const file = await FileFactory.create(skillOwnerAuth, skillOwner, {
+      contentType: "text/plain",
+      fileName: "secret.txt",
+      fileSize: 100,
+      status: "ready",
+      useCase: "skill_attachment",
+    });
+    await restrictedSkill.updateSkill(skillOwnerAuth, {
+      name: restrictedSkill.name,
+      agentFacingDescription: restrictedSkill.agentFacingDescription,
+      userFacingDescription: restrictedSkill.userFacingDescription,
+      instructions: "Secret guidelines",
+      icon: null,
+      attachedKnowledge: [],
+      mcpServerViews: [serverView],
+      fileAttachments: [file],
+      requestedSpaceIds: [restrictedSpace.id],
+      manuallyRequestedSpaceIds: [],
+    });
+    const ownerView = await getSkill(workspace, restrictedSkill.sId);
+    // Sanity check on the fixture through the owner's own resource: the private data is there.
+    const ownerSkill = (
+      await SkillResource.fetchByIds(skillOwnerAuth, [restrictedSkill.sId])
+    )[0];
+    expect(ownerSkill.toJSON(skillOwnerAuth).tools).toHaveLength(1);
+    expect(ownerSkill.toJSON(skillOwnerAuth).fileAttachments).toHaveLength(1);
+    expect(ownerView.status).toBe(200);
+
+    const response = await getSkill(workspace, restrictedSkill.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.sId).toBe(restrictedSkill.sId);
+    expect(data.skill.name).toBe("Restricted Space Skill");
+    expect(data.skill.canRead).toBe(false);
+    // Not an editor, but an admin: archiving and availability changes stay possible.
+    expect(data.skill.canWrite).toBe(false);
+    expect(data.skill.canAdministrate).toBe(true);
+    expect(data.skill.instructions).toBeNull();
+    expect(data.skill.instructionsHtml).toBeNull();
+    expect(data.skill.tools).toEqual([]);
+    expect(data.skill.fileAttachments).toEqual([]);
+
+    // The details sheet also asks for the relations (editors, usage): they stay available.
+    const withRelationsResponse = await getSkillWithRelations(
+      workspace,
+      restrictedSkill.sId
+    );
+    expect(withRelationsResponse.status).toBe(200);
+    const withRelations = await withRelationsResponse.json();
+    expect(withRelations.skill.canRead).toBe(false);
+    expect(withRelations.skill.instructions).toBeNull();
+    expect(
+      withRelations.skill.relations.editors.map((e: { sId: string }) => e.sId)
+    ).toEqual([skillOwner.sId]);
+  });
+
+  it("returns a skill built on a space the admin cannot read in full with the admin_can_see_private_entities flag", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    await FeatureFlagFactory.basic(auth, "admin_can_see_private_entities");
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "user",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [skillOwner.sId] });
+    const restrictedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      instructions: "Secret guidelines",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const response = await getSkill(workspace, restrictedSkill.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skill.canRead).toBe(true);
+    expect(data.skill.instructions).toBe("Secret guidelines");
+  });
+
+  it("returns 404 for a skill built on a space a non-admin cannot read", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "builder",
+    });
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "user",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(internalAdminAuth, {
+      userIds: [skillOwner.sId],
+    });
+    const restrictedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const response = await getSkill(workspace, restrictedSkill.sId);
+
+    expect(response.status).toBe(404);
+  });
+
   it("should return 404 for non-existent skill", async () => {
     const { workspace } = await setupTest();
 
@@ -256,7 +399,7 @@ describe("GET /api/w/:wId/skills/:sId", () => {
 describe("PATCH /api/w/:wId/skills/:sId", () => {
   it("should return 403 for non-editor user", async () => {
     const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
+      skillOwnerRole: "admin",
       requestUserRole: "user",
     });
 
@@ -278,6 +421,57 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
         message: "Only editors can modify this skill.",
       },
     });
+  });
+
+  it("should return 400 for an archived skill, which only restore can change", async () => {
+    const { workspace, skill, skillOwnerAuth } = await setupTest({
+      requestUserRole: "admin",
+      skillOwnerRole: "admin",
+    });
+
+    await skill.archive(skillOwnerAuth);
+
+    const response = await patchSkill(workspace, skill.sId, {
+      name: "Renamed While Archived",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
+      instructions: "Updated instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived skill cannot be updated. Restore it first.",
+      },
+    });
+
+    const untouched = await SkillResource.fetchById(skillOwnerAuth, skill.sId);
+    expect(untouched?.name).toBe(skill.name);
+    expect(untouched?.instructions).not.toBe("Updated instructions");
+
+    // Restoring is the one change it accepts, and editing works again afterwards.
+    const restoreResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/skills/${skill.sId}/restore`,
+      { method: "POST" }
+    );
+    expect(restoreResponse.status).toBe(200);
+
+    const patchAfterRestore = await patchSkill(workspace, skill.sId, {
+      name: "Renamed After Restore",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
+      instructions: "Updated instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+    });
+    expect(patchAfterRestore.status).toBe(200);
   });
 
   it("should return 400 for duplicate skill name", async () => {
@@ -437,7 +631,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
 
   it("denies any edit to a non-editor even with the publish permission", async () => {
     const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
+      skillOwnerRole: "user",
       requestUserRole: "admin",
     });
 
@@ -564,7 +758,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
 
     const childSkill = await SkillFactory.create(requestUserAuth, {
       name: "Referenced Pod Skill",
@@ -735,7 +929,12 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
+    // An open space confers read through the global group's `reader` grant, and an Authenticator
+    // resolves its grants once, at construction. `requestUserAuth` predates the space, so refresh
+    // it before reading a skill that requests it — `SkillResource` drops skills whose spaces it
+    // cannot read.
+    await requestUserAuth.refresh();
 
     const response = await patchSkill(workspace, skill.sId, {
       name: skill.name,
@@ -777,12 +976,9 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const coEditor = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, coEditor, { role: "builder" });
-    const addRes = await skill.editorGroup?.dangerouslyAddMembers(
-      requestUserAuth,
-      { users: [coEditor.toJSON()] }
-    );
-    if (!addRes || addRes.isErr()) {
+    await MembershipFactory.associate(workspace, coEditor, { role: "user" });
+    const addRes = await skill.addEditors(requestUserAuth, [coEditor]);
+    if (addRes.isErr()) {
       throw new Error("Failed to add the co-editor");
     }
 
@@ -822,16 +1018,13 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     );
 
     const coEditor = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, coEditor, { role: "builder" });
+    await MembershipFactory.associate(workspace, coEditor, { role: "user" });
     await restrictedSpace.addMembers(adminAuth, {
       userIds: [requestUser.sId, coEditor.sId],
     });
 
-    const addRes = await skill.editorGroup?.dangerouslyAddMembers(
-      requestUserAuth,
-      { users: [coEditor.toJSON()] }
-    );
-    if (!addRes || addRes.isErr()) {
+    const addRes = await skill.addEditors(requestUserAuth, [coEditor]);
+    if (addRes.isErr()) {
       throw new Error("Failed to add the co-editor");
     }
 
@@ -859,14 +1052,16 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
 
+    // The space was picked by hand, which is what the write paths now record alongside the union.
     await skill.updateSkill(requestUserAuth, {
       agentFacingDescription: skill.agentFacingDescription,
       attachedKnowledge: [],
       icon: skill.icon,
       instructions: skill.instructions,
       instructionsHtml: skill.instructionsHtml,
+      manuallyRequestedSpaceIds: [openSpace.id],
       mcpServerViews: [],
       name: skill.name,
       requestedSpaceIds: [openSpace.id],
@@ -896,7 +1091,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
     });
 
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
 
     const selfReferenceInstructions = `Recurse with ${SkillFactory.serializeSkillReferenceTag(skill)}.`;
 
@@ -908,6 +1103,7 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
       instructionsHtml: skill.instructionsHtml,
       mcpServerViews: [],
       name: skill.name,
+      manuallyRequestedSpaceIds: [],
       requestedSpaceIds: [openSpace.id],
       userFacingDescription: skill.userFacingDescription,
     });
@@ -1028,6 +1224,192 @@ describe("PATCH /api/w/:wId/skills/:sId", () => {
   });
 });
 
+describe("PATCH /api/w/:wId/skills/:sId - manually requested spaces", () => {
+  // Sets up an open space the request user can read, plus a folder in it so knowledge attached
+  // from that space makes it required automatically as well as manually.
+  async function setupSpaceWithKnowledge(options: {
+    requestUserRole: "admin";
+  }) {
+    const test = await setupTest(options);
+    const { workspace, globalGroup, requestUserAuth, requestUser } = test;
+
+    const space = await SpaceFactory.regular(workspace);
+    await SpaceFactory.attachGroup(space, globalGroup);
+    // An open space confers read through the global group's `reader` grant, and an Authenticator
+    // resolves its grants once, at construction.
+    await requestUserAuth.refresh();
+
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      space,
+      requestUser
+    );
+
+    return { ...test, space, dataSourceView };
+  }
+
+  function patchBody(
+    skill: {
+      name: string;
+      agentFacingDescription: string;
+      userFacingDescription: string;
+      instructions: string;
+    },
+    overrides: Record<string, unknown>
+  ) {
+    return {
+      name: skill.name,
+      agentFacingDescription: skill.agentFacingDescription,
+      userFacingDescription: skill.userFacingDescription,
+      instructions: skill.instructions,
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+      instructionsHtml: null,
+      ...overrides,
+    };
+  }
+
+  function knowledge(dataSourceView: { sId: string }, space: { sId: string }) {
+    return [
+      {
+        dataSourceViewId: dataSourceView.sId,
+        nodeId: "folder1",
+        spaceId: space.sId,
+        title: "Folder 1",
+      },
+    ];
+  }
+
+  it("stores the manually selected spaces, and snapshots them on the version", async () => {
+    const { workspace, skill, requestUserAuth, space } =
+      await setupSpaceWithKnowledge({ requestUserRole: "admin" });
+
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, { additionalRequestedSpaceIds: [space.sId] })
+    );
+    expect(await response.json()).not.toHaveProperty("error");
+
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.manuallyRequestedSpaceIds).toEqual([space.id]);
+    expect(updatedSkill?.requestedSpaceIds).toContain(space.id);
+
+    // Patch again so a version is snapshotted from the state above.
+    await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, { additionalRequestedSpaceIds: [space.sId] })
+    );
+    const versionWhere: WhereOptions<SkillVersionModel> = {
+      workspaceId: workspace.id,
+      skillConfigurationId: skill.id,
+    };
+    const versions = await SkillVersionModel.findAll({ where: versionWhere });
+    expect(
+      versions.some((version) =>
+        version.manuallyRequestedSpaceIds.includes(space.id)
+      )
+    ).toBe(true);
+  });
+
+  it("keeps a manual space that attached knowledge also requires", async () => {
+    const { workspace, skill, requestUserAuth, space, dataSourceView } =
+      await setupSpaceWithKnowledge({ requestUserRole: "admin" });
+
+    // Manually selected AND required by knowledge
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, {
+        additionalRequestedSpaceIds: [space.sId],
+        attachedKnowledge: knowledge(dataSourceView, space),
+      })
+    );
+    expect(await response.json()).not.toHaveProperty("error");
+
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.manuallyRequestedSpaceIds).toEqual([space.id]);
+    expect(updatedSkill?.requestedSpaceIds).toContain(space.id);
+  });
+
+  it("keeps a manual space after the knowledge from it is removed", async () => {
+    const { workspace, skill, requestUserAuth, space, dataSourceView } =
+      await setupSpaceWithKnowledge({ requestUserRole: "admin" });
+
+    // Select the space by hand, then attach knowledge from it.
+    await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, { additionalRequestedSpaceIds: [space.sId] })
+    );
+    await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, {
+        additionalRequestedSpaceIds: [space.sId],
+        attachedKnowledge: knowledge(dataSourceView, space),
+      })
+    );
+
+    // Remove the knowledge. The space was picked by hand, so it stays.
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, { additionalRequestedSpaceIds: [space.sId] })
+    );
+    expect(await response.json()).not.toHaveProperty("error");
+
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.requestedSpaceIds).toContain(space.id);
+    expect(updatedSkill?.manuallyRequestedSpaceIds).toEqual([space.id]);
+  });
+
+  it("drops a knowledge-only space when its last knowledge item is removed", async () => {
+    const { workspace, skill, requestUserAuth, space, dataSourceView } =
+      await setupSpaceWithKnowledge({ requestUserRole: "admin" });
+
+    await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, {
+        additionalRequestedSpaceIds: [],
+        attachedKnowledge: knowledge(dataSourceView, space),
+      })
+    );
+
+    const withKnowledge = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(withKnowledge?.requestedSpaceIds).toContain(space.id);
+
+    const response = await patchSkill(
+      workspace,
+      skill.sId,
+      patchBody(skill, { additionalRequestedSpaceIds: [] })
+    );
+    expect(await response.json()).not.toHaveProperty("error");
+
+    const updatedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      skill.sId
+    );
+    expect(updatedSkill?.requestedSpaceIds).not.toContain(space.id);
+    expect(updatedSkill?.manuallyRequestedSpaceIds).toEqual([]);
+  });
+});
+
 describe("PATCH /api/w/:wId/skills/:sId - Suggested skill activation", () => {
   it("should activate a suggested skill and set the author when saving", async () => {
     const { workspace, user: requestUser } = await createPrivateApiMockRequest({
@@ -1088,8 +1470,8 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
   it("should update file attachments", async () => {
     const { auth, workspace, skill, requestUser, requestUserAuth } =
       await setupTest({
-        skillOwnerRole: "builder",
-        requestUserRole: "builder",
+        skillOwnerRole: "user",
+        requestUserRole: "user",
       });
 
     const file = await FileFactory.create(auth, requestUser, {
@@ -1130,8 +1512,8 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
 
   it("should succeed without file attachments", async () => {
     const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
-      requestUserRole: "builder",
+      skillOwnerRole: "user",
+      requestUserRole: "user",
     });
 
     const response = await patchSkill(workspace, skill.sId, {
@@ -1151,8 +1533,8 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
   it("should remove file attachments when updating with empty array", async () => {
     const { auth, workspace, skill, requestUser, requestUserAuth } =
       await setupTest({
-        skillOwnerRole: "builder",
-        requestUserRole: "builder",
+        skillOwnerRole: "user",
+        requestUserRole: "user",
       });
 
     const file = await FileFactory.create(auth, requestUser, {
@@ -1171,6 +1553,7 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
       instructions: skill.instructions,
       mcpServerViews: [],
       name: skill.name,
+      manuallyRequestedSpaceIds: [],
       requestedSpaceIds: [],
       userFacingDescription: skill.userFacingDescription,
     });
@@ -1215,9 +1598,37 @@ describe("PATCH /api/w/:wId/skills/:sId - file attachments", () => {
 });
 
 describe("DELETE /api/w/:wId/skills/:sId", () => {
+  it("lets an admin archive a skill built on a space they cannot read", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+    const skillOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, skillOwner, {
+      role: "user",
+    });
+    const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      skillOwner.sId,
+      workspace.sId
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [skillOwner.sId] });
+    const restrictedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+
+    const response = await deleteSkill(workspace, restrictedSkill.sId);
+
+    expect(response.status).toBe(200);
+    const [archived] = await SkillResource.fetchByIds(skillOwnerAuth, [
+      restrictedSkill.sId,
+    ]);
+    expect(archived.status).toBe("archived");
+  });
+
   it("should return 403 for non-editor user", async () => {
     const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
+      skillOwnerRole: "admin",
       requestUserRole: "user",
     });
 
@@ -1232,9 +1643,35 @@ describe("DELETE /api/w/:wId/skills/:sId", () => {
     });
   });
 
+  it("refuses to re-archive an already archived skill", async () => {
+    const { workspace, requestUserAuth, skill, skillOwnerAuth } =
+      await setupTest({
+        requestUserRole: "admin",
+        skillOwnerRole: "admin",
+      });
+
+    await skill.archive(skillOwnerAuth);
+
+    const response = await deleteSkill(workspace, skill.sId);
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived skill cannot be updated. Restore it first.",
+      },
+    });
+
+    // Archiving twice used to rename the skill after itself: `archive` timestamps the same-named
+    // archived skill it finds, which is this one.
+    const untouched = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(untouched?.name).toBe(skill.name);
+    expect(untouched?.status).toBe("archived");
+  });
+
   it("allows a workspace admin to archive a skill they do not edit", async () => {
     const { workspace, requestUserAuth, skill } = await setupTest({
-      skillOwnerRole: "builder",
+      skillOwnerRole: "user",
       requestUserRole: "admin",
     });
 

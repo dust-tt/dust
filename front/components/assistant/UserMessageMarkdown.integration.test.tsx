@@ -61,6 +61,8 @@ vi.mock(
     ...(await importOriginal()),
     useConversationSidePanelContext: () => ({
       currentPanel: undefined,
+      isPanelClosing: false,
+      removeFromPanelHistory: vi.fn(),
       openPanel: vi.fn(),
       togglePanel: togglePanelMock,
       closePanel: vi.fn(),
@@ -285,6 +287,23 @@ Quote text
         type: "skill",
         skillId: "skill_123",
       });
+    });
+
+    it("renders inline tool tags as chips", () => {
+      const content =
+        'Please use <tool id="msvr_123" name="Web Search" icon="magnifying_glass" />';
+      const message = { ...mockMessage, content };
+      const { container } = render(
+        <UserMessageMarkdown
+          owner={mockOwner}
+          message={message}
+          isLastMessage={false}
+        />
+      );
+
+      expect(container.textContent).toContain("Please use");
+      expect(container.textContent).toContain("Web Search");
+      expect(container.textContent).not.toContain("<tool");
     });
 
     it("renders content node mentions", () => {

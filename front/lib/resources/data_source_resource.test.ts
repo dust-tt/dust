@@ -270,10 +270,10 @@ describe("DataSourceResource cross-workspace fetch", () => {
     await MembershipFactory.associate(workspaceB, superUser, {
       role: "admin",
     });
-    const authB = await Authenticator.fromUserIdAndWorkspaceId(
-      superUser.sId,
-      workspaceB.sId
-    );
+    const authB = await Authenticator.fromDustSuperUser({
+      user: superUser,
+      wId: workspaceB.sId,
+    });
 
     const dataSource = await DataSourceResource.unsafeFetchByDustAPIProjectId(
       authB,
@@ -282,7 +282,9 @@ describe("DataSourceResource cross-workspace fetch", () => {
 
     expect(dataSource).not.toBeNull();
     expect(dataSource?.space.id).toBe(spaceA.id);
-    expect(dataSource?.space.groups.length).toBeGreaterThan(0);
+    expect(
+      (await dataSource?.space.fetchGrantReferences())?.length
+    ).toBeGreaterThan(0);
   });
 
   it("unsafeFetchByDustAPIProjectId filters out other-workspace resources for non super users", async () => {
@@ -338,10 +340,12 @@ describe("DataSourceResource cross-workspace fetch", () => {
 
     expect(dataSource).not.toBeNull();
     expect(dataSource?.space.workspaceId).toBe(dataSource?.workspaceId);
-    expect(dataSource?.space.groups.length).toBeGreaterThan(0);
     expect(
-      dataSource?.space.groups.every(
-        (group) => group.workspaceId === dataSource.workspaceId
+      (await dataSource?.space.fetchGrantReferences())?.length
+    ).toBeGreaterThan(0);
+    expect(
+      (await dataSource?.space.fetchGrantReferences())?.every(
+        (group) => group.workspaceId === dataSource!.workspaceId
       )
     ).toBe(true);
   });

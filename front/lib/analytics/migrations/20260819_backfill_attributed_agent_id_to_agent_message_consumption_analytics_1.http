@@ -1,0 +1,26 @@
+POST /front.agent_message_consumption_analytics_1/_update_by_query?wait_for_completion=false&slices=auto&scroll_size=5000&requests_per_second=10000
+{
+  "conflicts": "proceed",
+  "script": {
+    "lang": "painless",
+    "source": "def agent = ctx._source.agent; agent.attributed_id = params.hidden_agent_ids.contains(agent.id) && agent.direct_parent_id != null ? agent.direct_parent_id : agent.id;",
+    "params": {
+      "hidden_agent_ids": [
+        "dust-task",
+        "dust-planning",
+        "dust-browser-summary"
+      ]
+    }
+  },
+  "query": {
+    "bool": {
+      "must_not": [
+        {
+          "exists": {
+            "field": "agent.attributed_id"
+          }
+        }
+      ]
+    }
+  }
+}

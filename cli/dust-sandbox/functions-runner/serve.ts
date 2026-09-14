@@ -470,7 +470,7 @@ export async function serve(
         return { kind: "unresolved" };
       }
       try {
-        // GEN10 exemption: a static import (and a literal specifier) is
+        // prefer-static-imports exemption: a static import (and a literal specifier) is
         // structurally impossible here — the module to load is a published
         // function bundle resolved from the functions directory at request
         // time. Dynamic import IS this worker's purpose; the path is
@@ -550,7 +550,7 @@ export async function serve(
         return null;
       }
       try {
-        // GEN10 exemption: like the fuse import below, the module to load
+        // prefer-static-imports exemption: like the fuse import below, the module to load
         // is resolved at request time (here from a validated content hash);
         // a literal specifier is structurally impossible.
         await import(cachePath);

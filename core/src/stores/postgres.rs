@@ -236,6 +236,10 @@ impl Store for PostgresStore {
         tx.execute("SELECT delete_project_datasets($1)", &[&project_id])
             .await?;
 
+        // Runs joins & Block executions & Runs: we execute a SQL function
+        tx.execute("SELECT delete_project_runs($1)", &[&project_id])
+            .await?;
+
         // Cache, Specifications & Project
         tx.execute("DELETE FROM cache WHERE project = $1", &[&project_id])
             .await?;

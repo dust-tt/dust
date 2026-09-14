@@ -16,13 +16,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
   mockGetAppUrl,
-  mockGetCurrentRegion,
+  mockGetCurrentCell,
   mockGetEmailValidationSecret,
   mockSendEmail,
   mockSendEmailToRecipients,
 } = vi.hoisted(() => ({
   mockGetAppUrl: vi.fn(),
-  mockGetCurrentRegion: vi.fn(),
+  mockGetCurrentCell: vi.fn(),
   mockGetEmailValidationSecret: vi.fn(),
   mockSendEmail: vi.fn(),
   mockSendEmailToRecipients: vi.fn(),
@@ -40,10 +40,9 @@ vi.mock("@app/lib/api/email", () => ({
   sendEmailToRecipients: mockSendEmailToRecipients,
 }));
 
-vi.mock("@app/lib/api/regions/config", () => ({
-  SUPPORTED_REGIONS: ["europe-west1", "us-central1"],
+vi.mock("@app/lib/api/cells/config", () => ({
   config: {
-    getCurrentRegion: mockGetCurrentRegion,
+    getCurrentCell: mockGetCurrentCell,
   },
 }));
 
@@ -53,7 +52,11 @@ beforeEach(() => {
   vi.clearAllMocks();
 
   mockGetAppUrl.mockReturnValue("https://dust.tt");
-  mockGetCurrentRegion.mockReturnValue("europe-west1");
+  mockGetCurrentCell.mockReturnValue({
+    name: "cell-00001",
+    region: "europe-west1",
+    url: "https://eu.dust.tt",
+  });
   mockGetEmailValidationSecret.mockReturnValue("test-email-validation-secret");
   mockSendEmail.mockResolvedValue(undefined);
 });
@@ -291,7 +294,7 @@ describe("getThreadingLookupMessageIds", () => {
 });
 
 describe("sendToolValidationEmail", () => {
-  it("adds region metadata to approval links", async () => {
+  it("adds cell metadata to approval links", async () => {
     await sendToolValidationEmail({
       email: makeInboundEmail(),
       agentConfiguration: {
@@ -318,8 +321,8 @@ describe("sendToolValidationEmail", () => {
       expect(url.origin + url.pathname).toBe(
         "https://dust.tt/email/validation"
       );
-      expect(url.searchParams.get("region")).toBe("europe-west1");
-      expect(url.searchParams.has("regionUrl")).toBe(false);
+      expect(url.searchParams.get("cell")).toBe("cell-00001");
+      expect(url.searchParams.has("region")).toBe(false);
 
       const token = url.searchParams.get("token");
       if (!token) {

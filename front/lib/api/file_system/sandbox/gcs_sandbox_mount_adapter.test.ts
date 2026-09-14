@@ -5,8 +5,8 @@ import {
   buildMountCommand,
   GCSSandboxMountAdapter,
 } from "@app/lib/api/file_system/sandbox/gcs_sandbox_mount_adapter";
+import { frameSandboxOnlyMounts } from "@app/lib/api/sandbox/frame_mounts";
 import { SandboxImage } from "@app/lib/api/sandbox/image/sandbox_image";
-import { podSandboxOnlyMounts } from "@app/lib/api/sandbox/pod_mounts";
 import type { RootCommand } from "@app/lib/api/sandbox/root_command";
 import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
 import { setupPlainConversation } from "@app/tests/utils/conversation_test_factories";
@@ -67,7 +67,7 @@ function getRootCommandCall(
   return renderRootCommand(mock.mock.calls[callIndex][1] as RootCommand);
 }
 
-function createPodSandboxAdapter(): GCSSandboxMountAdapter {
+function createPodFilesSandboxAdapter(): GCSSandboxMountAdapter {
   const backend = new GCSFileSystemBackend("ws1", "test-private-uploads");
   const adapter = backend.createSandboxAdapter(
     [
@@ -81,7 +81,21 @@ function createPodSandboxAdapter(): GCSSandboxMountAdapter {
         permissions: { canRead: true, canWrite: true },
       },
     ],
-    podSandboxOnlyMounts({ sId: "spc1" })
+    []
+  );
+
+  if (!(adapter instanceof GCSSandboxMountAdapter)) {
+    throw new Error("expected a GCSSandboxMountAdapter");
+  }
+
+  return adapter;
+}
+
+function createFrameSandboxAdapter(): GCSSandboxMountAdapter {
+  const backend = new GCSFileSystemBackend("ws1", "test-private-uploads");
+  const adapter = backend.createSandboxAdapter(
+    [],
+    frameSandboxOnlyMounts({ sId: "fil_frame" })
   );
 
   if (!(adapter instanceof GCSSandboxMountAdapter)) {
@@ -111,17 +125,16 @@ describe("buildMountCommand", () => {
     expect(command).toContain("bucket-x /files/pod-spc1");
   });
 
-  test("pod function profile disables caches for newly published functions", () => {
+  test("Frame publication profile is read-only and uncached", () => {
     const command = renderRootCommand(
       buildMountCommand({
         bucket: "bucket-x",
-        targetIndex: 1,
         target: workloadTarget({
-          gcsPrefix: "w/ws1/pods/spc1/sandbox-functions",
-          sandboxMountPoint: "/sandbox-functions/pods/spc1",
+          gcsPrefix: "w/ws1/frames/fil_frame/publications",
+          sandboxMountPoint: "/frames/fil_frame/publications",
           legacySandboxMountPoint: null,
           readOnly: true,
-          mountProfile: "pod_sandbox_functions",
+          mountProfile: "frame_publications",
         }),
       })
     );
@@ -130,19 +143,20 @@ describe("buildMountCommand", () => {
     expect(command).toContain("--kernel-list-cache-ttl-secs=0");
     expect(command).toContain("--metadata-cache-ttl-secs=0");
     expect(command).toContain("--metadata-cache-negative-ttl-secs=0");
-    expect(command).toContain("--token-url http://127.0.0.1:987/token/mount-1");
+    expect(command).toContain("--only-dir w/ws1/frames/fil_frame/publications");
+    expect(command).toContain("bucket-x /frames/fil_frame/publications");
   });
 
-  test("pod_state_replica profile mounts as dust-state without allow_other or list caching", () => {
+  test("sandbox state replica mounts as dust-state without allow_other or list caching", () => {
     const command = renderRootCommand(
       buildMountCommand({
         bucket: "bucket-x",
         target: {
           gcsPrefix: "w/ws1/pods/spc1/state",
-          sandboxMountPoint: "/pod-state/replica",
+          sandboxMountPoint: "/sandbox-state/replica",
           legacySandboxMountPoint: null,
           readOnly: false,
-          mountProfile: "pod_state_replica",
+          mountProfile: "sandbox_state_replica",
         },
       })
     );
@@ -161,49 +175,40 @@ describe("buildMountCommand", () => {
     expect(command).toContain("--dir-mode=700");
     expect(command).toContain("--only-dir w/ws1/pods/spc1/state");
     expect(command).toContain("--enable-hns=false");
-    expect(command).toContain("bucket-x /pod-state/replica");
+    expect(command).toContain("bucket-x /sandbox-state/replica");
   });
 });
 
-describe("pod sandbox mount wiring", () => {
+describe("pod files mount wiring", () => {
   beforeAll(() => {
     // Config reads used by createSandboxAdapter/getAccessBoundaryRules.
     process.env.GOOGLE_CLOUD_PROJECT_ID ??= "test-project";
     process.env.DUST_PRIVATE_UPLOADS_BUCKET ??= "test-private-uploads";
   });
 
-  test("the real pod mount set produces the full 7-rule CAB grant including the state prefix", () => {
-    // Derived from the ACTUAL wiring (podSandboxOnlyMounts + the backend's
-    // prefix mapping) rather than hand-built prefixes, so dropping the state
-    // mount from the pod set — or regressing its prefix string — fails here.
-    const adapter = createPodSandboxAdapter();
+  test("grants only the pod files prefix", () => {
+    // Derived from the ACTUAL wiring (the backend's prefix mapping) rather than hand-built
+    // prefixes, so regressing the prefix string fails here.
+    const adapter = createPodFilesSandboxAdapter();
 
-    // Each mount gets its own 1 + 2-rule CAB. The firewall is the sole caller
-    // authorization boundary; if a caller reaches the broker, each token still
-    // grants only its own target prefix.
+    // The one mount gets its own 1 + 2-rule CAB. The firewall is the sole caller authorization
+    // boundary; if a caller reaches the broker, each token still grants only its own prefix.
     const rules = adapter.getAccessBoundaryRules();
-    expect(rules).toHaveLength(3);
+    expect(rules).toHaveLength(1);
     expect(rules.every((tokenRules) => tokenRules.length === 3)).toBe(true);
 
-    const conditions = rules
-      .flat()
-      .map((rule) =>
-        "availabilityCondition" in rule
-          ? rule.availabilityCondition.expression
-          : ""
-      )
-      .join("\n");
-    expect(conditions).toContain("w/ws1/pods/spc1/files/");
-    expect(conditions).toContain("w/ws1/pods/spc1/sandbox-functions/");
-    expect(conditions).toContain("w/ws1/pods/spc1/state/");
+    const serializedRules = JSON.stringify(rules);
+    expect(serializedRules).toContain("w/ws1/pods/spc1/files/");
+    expect(serializedRules).not.toContain("/sandbox-functions/");
+    expect(serializedRules).not.toContain("/state/");
   });
 
-  test("the real pod function mount disables directory list caching", async () => {
+  test("the real pod files mount disables directory list caching", async () => {
     vi.clearAllMocks();
     mockMintDownscopedGcsToken.mockResolvedValue(
       new Ok({ accessToken: "token", expiresInSeconds: 3600 })
     );
-    const adapter = createPodSandboxAdapter();
+    const adapter = createPodFilesSandboxAdapter();
     const { auth, sandbox, execRoot } = await createTestSandbox();
     const image = createTestImage();
 
@@ -218,20 +223,31 @@ describe("pod sandbox mount wiring", () => {
         command.includes("/usr/bin/gcsfuse") &&
         command.includes("/files/pod-spc1")
     );
-    const podFunctionsCommand = commands.find(
-      (command) =>
-        command.includes("/usr/bin/gcsfuse") &&
-        command.includes("/sandbox-functions/pods/spc1")
-    );
 
     expect(podFilesCommand).toContain("--kernel-list-cache-ttl-secs=0");
     expect(podFilesCommand).toContain("--metadata-cache-ttl-secs=0");
     expect(podFilesCommand).toContain("--metadata-cache-negative-ttl-secs=0");
-    expect(podFunctionsCommand).toContain("--kernel-list-cache-ttl-secs=0");
-    expect(podFunctionsCommand).toContain("--metadata-cache-ttl-secs=0");
-    expect(podFunctionsCommand).toContain(
-      "--metadata-cache-negative-ttl-secs=0"
+  });
+});
+
+describe("Frame sandbox mount wiring", () => {
+  beforeAll(() => {
+    process.env.GOOGLE_CLOUD_PROJECT_ID ??= "test-project";
+    process.env.DUST_PRIVATE_UPLOADS_BUCKET ??= "test-private-uploads";
+  });
+
+  test("grants only stable Frame publication and state prefixes", () => {
+    const rules = createFrameSandboxAdapter().getAccessBoundaryRules();
+
+    expect(rules).toHaveLength(2);
+    expect(rules.every((tokenRules) => tokenRules.length === 3)).toBe(true);
+    const serializedRules = JSON.stringify(rules);
+    expect(serializedRules).toContain("w/ws1/frames/fil_frame/publications/");
+    expect(serializedRules).toContain(
+      "w/ws1/frames/fil_frame/state/databases/"
     );
+    expect(serializedRules).not.toContain("/conversations/");
+    expect(serializedRules).not.toContain("/pods/");
   });
 });
 

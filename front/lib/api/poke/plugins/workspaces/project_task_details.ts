@@ -1,7 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { ProjectTaskResource } from "@app/lib/resources/project_task_resource";
-import { ProjectTaskSourceModel } from "@app/lib/resources/storage/models/project_task";
-import { TakeawaysResource } from "@app/lib/resources/takeaways_resource";
 import { Err, Ok } from "@app/types/shared/result";
 
 export const projectTodoDetailsPlugin = createPlugin({
@@ -38,15 +36,11 @@ export const projectTodoDetailsPlugin = createPlugin({
     }
 
     const taskSId = task.sId;
-    const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const [sourcesMap, conversationsMap, taskSources] = await Promise.all([
+    const [sourcesMap, conversationsMap] = await Promise.all([
       ProjectTaskResource.fetchSourcesForTaskIds(auth, { sIds: [taskSId] }),
       ProjectTaskResource.fetchConversationIdsForTaskIds(auth, {
         sIds: [taskSId],
-      }),
-      ProjectTaskSourceModel.findAll({
-        where: { workspaceId, projectTodoId: task.id },
       }),
     ]);
 
@@ -72,39 +66,6 @@ export const projectTodoDetailsPlugin = createPlugin({
     const conversationSection = conversationId
       ? `\`${conversationId}\``
       : "_No linked conversation._";
-
-    const takeawayResults = await Promise.all(
-      taskSources.map(async (src) => {
-        const takeaway = await TakeawaysResource.fetchLatestBySourceIdAndType(
-          auth,
-          { sourceId: src.sourceId, sourceType: src.sourceType }
-        );
-        return { src, takeaway };
-      })
-    );
-
-    const takeawaysSection =
-      takeawayResults.length === 0
-        ? "_No takeaway sources._"
-        : takeawayResults
-            .map(({ src, takeaway }) => {
-              const link = src.sourceUrl ? ` ([link](${src.sourceUrl}))` : "";
-              const label = `**${src.sourceType}** — ${src.sourceTitle ?? src.sourceId}${link}`;
-
-              if (!takeaway) {
-                return `- ${label} — _no takeaway found_`;
-              }
-
-              const actionItem = takeaway.actionItems.find(
-                (item) => item.sId === src.itemId
-              );
-              const itemDetail = actionItem
-                ? `\n  - _"${actionItem.shortDescription}"_`
-                : `\n  - _item \`${src.itemId}\` not found in takeaway_`;
-
-              return `- ${label}${itemDetail}`;
-            })
-            .join("\n");
 
     const json = task.toJSON();
     const doneAt = json.doneAt ? new Date(json.doneAt).toISOString() : "—";
@@ -148,10 +109,6 @@ export const projectTodoDetailsPlugin = createPlugin({
 ## Sources (${sources.length})
 
 ${sourcesSection}
-
-## Takeaways (${takeawayResults.length})
-
-${takeawaysSection}
 
 ## Linked Conversation
 

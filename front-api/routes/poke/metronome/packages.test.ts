@@ -1,5 +1,5 @@
 import { listMetronomePackages } from "@app/lib/metronome/client";
-import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
 import { Err, Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -38,7 +38,7 @@ describe("GET /api/poke/metronome/packages", () => {
       ])
     );
 
-    await createPrivateApiMockRequest({
+    await createPokeApiMockRequest({
       method: "GET",
       isSuperUser: true,
     });
@@ -62,7 +62,7 @@ describe("GET /api/poke/metronome/packages", () => {
   });
 
   it("returns 401 when the user is not a super user", async () => {
-    await createPrivateApiMockRequest({
+    await createPokeApiMockRequest({
       method: "GET",
       isSuperUser: false,
     });
@@ -83,7 +83,7 @@ describe("GET /api/poke/metronome/packages", () => {
       new Err(new Error("Metronome unavailable"))
     );
 
-    await createPrivateApiMockRequest({
+    await createPokeApiMockRequest({
       method: "GET",
       isSuperUser: true,
     });

@@ -8,12 +8,12 @@ import {
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useAppRouter } from "@app/lib/platform";
 import {
   useAddMCPServerToSpace,
-  useAvailableMCPServers,
   useMCPServerViews,
+  useMCPServerViewsNotActivated,
   useRemoveMCPServerViewFromSpace,
 } from "@app/lib/swr/mcp_servers";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
@@ -21,7 +21,13 @@ import { isDevelopment } from "@app/types/shared/env";
 import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import { DataTable, Spinner } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
+import {
+  AvatarCellSkeleton,
+  DataTable,
+  DataTableSkeleton,
+  TextCellSkeleton,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type { ParsedUrlQuery } from "querystring";
 import * as React from "react";
@@ -48,6 +54,33 @@ interface SpaceActionsListProps {
   space: SpaceType;
 }
 
+function SpaceActionSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return (
+        <AvatarCellSkeleton
+          className="py-3"
+          avatarClassName="h-9 w-9 rounded-lg"
+        >
+          <TextCellSkeleton
+            className={rowIndex % 2 === 0 ? "h-4 w-28" : "h-4 w-36"}
+          />
+        </AvatarCellSkeleton>
+      );
+    case "description":
+      return (
+        <TextCellSkeleton
+          className={rowIndex % 2 === 0 ? "h-4 w-3/4" : "h-4 w-1/2"}
+        />
+      );
+    default:
+      return null;
+  }
+}
+
 export const SpaceActionsList = ({
   owner,
   isAdmin,
@@ -65,10 +98,8 @@ export const SpaceActionsList = ({
     });
   const { addToSpace } = useAddMCPServerToSpace(owner);
   const { removeFromSpace } = useRemoveMCPServerViewFromSpace(owner);
-  const { mutateAvailableMCPServers } = useAvailableMCPServers({
-    owner,
-    space,
-  });
+  const { mutateMCPServerViews: mutateActivableMCPServerViews } =
+    useMCPServerViewsNotActivated({ owner, space, disabled: true });
 
   const [shouldOpenToolsMenu, setShouldOpenToolsMenu] = React.useState(false);
   React.useEffect(() => {
@@ -87,16 +118,16 @@ export const SpaceActionsList = ({
     urlPrefix: "table",
   });
 
-  const onAddServer = async (server: MCPServerType) => {
-    await addToSpace(server, space);
+  const onAddServerView = async (serverView: MCPServerViewType) => {
+    await addToSpace(serverView.server, space);
     await mutateMCPServerViews();
-    await mutateAvailableMCPServers();
+    await mutateActivableMCPServerViews();
   };
 
   const onRemoveServer = async (sId: string) => {
     await removeFromSpace(serverViews.find((view) => view.sId === sId)!, space);
     await mutateMCPServerViews();
-    await mutateAvailableMCPServers();
+    await mutateActivableMCPServerViews();
   };
 
   const getTableColumns = (): ColumnDef<RowData, string>[] => {
@@ -172,15 +203,19 @@ export const SpaceActionsList = ({
     containerId: ACTION_BUTTONS_CONTAINER_ID,
   });
 
+  const columns = getTableColumns();
+
   if (isMCPServerViewsLoading) {
     return (
-      <div className="mt-8 flex justify-center">
-        <Spinner size="lg" />
+      <div className="pb-4">
+        <DataTableSkeleton
+          columns={columns}
+          SkeletonCell={SpaceActionSkeletonCell}
+          rowHeight={60}
+        />
       </div>
     );
   }
-
-  const columns = getTableColumns();
 
   const isEmpty = rows.length === 0;
 
@@ -191,7 +226,7 @@ export const SpaceActionsList = ({
           <SpaceManagedActionsViewsModel
             space={space}
             owner={owner}
-            onAddServer={onAddServer}
+            onAddServerView={onAddServerView}
             shouldOpenMenu={shouldOpenToolsMenu}
             onOpenMenuHandled={() => setShouldOpenToolsMenu(false)}
           />

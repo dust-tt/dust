@@ -17,7 +17,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-import { getAgentLoopDataWithAuth } from "@app/types/assistant/agent_run";
+import { getAgentLoopRuntimeDataWithAuth } from "@app/types/assistant/agent_run";
 import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 
@@ -177,7 +177,7 @@ export async function sendEmailReplyOnCompletion(
   }
 
   // Get the completed agent message data.
-  const dataRes = await getAgentLoopDataWithAuth(auth, agentLoopArgs);
+  const dataRes = await getAgentLoopRuntimeDataWithAuth(auth, agentLoopArgs);
   if (dataRes.isErr()) {
     logger.warn(
       {

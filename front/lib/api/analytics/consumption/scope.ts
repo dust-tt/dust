@@ -1,6 +1,30 @@
 import type { Authenticator } from "@app/lib/auth";
 import { MICRO_CREDITS_PER_CREDIT } from "@app/lib/credits/units";
+import type {
+  ConsumptionScopeDimension,
+  ConsumptionScopeFilter,
+} from "@app/types/api/analytics/consumption";
+import {
+  CONSUMPTION_DIMENSION_FILTER_KEYS,
+  CONSUMPTION_SCOPE_DIMENSIONS,
+} from "@app/types/api/analytics/consumption";
 import type { estypes } from "@elastic/elasticsearch";
+
+export type {
+  ConsumptionFacetScope,
+  ConsumptionScopeDimension,
+  ConsumptionScopeFilter,
+  ConsumptionScopeFilterKey,
+  ConsumptionTopSortOrder,
+} from "@app/types/api/analytics/consumption";
+export {
+  CONSUMPTION_DIMENSION_FILTER_KEYS,
+  CONSUMPTION_FACET_SCOPES,
+  CONSUMPTION_FILTER_MAX_VALUES_PER_DIMENSION,
+  CONSUMPTION_SCOPE_DIMENSIONS,
+  CONSUMPTION_SCOPE_FILTER_KEYS,
+  CONSUMPTION_TOP_SORT_ORDER,
+} from "@app/types/api/analytics/consumption";
 
 export const COMPLETED_AT_FIELD = "completed_at";
 
@@ -12,25 +36,42 @@ export const TRIGGER_ID_FIELD = "trigger_id";
 
 export const CARDINALITY_PRECISION_THRESHOLD = 40_000;
 
-export const CONSUMPTION_SCOPE_DIMENSIONS = [
-  "agent",
-  "user",
-  "api_key",
-  "group",
-  "model",
-  "tool",
-  "skill",
-  "source",
+// Upper bound on the number of buckets a terms aggregation over an export's
+// full dimension (every agent, every user, ...) can return. Large enough that
+// no real workspace hits it, so every value comes back in one page.
+export const MAX_EXPORT_TERMS_SIZE = 10_000;
+
+// Consumption documents are split per LLM step and per tool call, so a
+// message contributes several documents to the same bucket: dedupe by
+// agent_message_id to count distinct messages, at the same precision as the
+// rest of the consumption module's cardinality aggregations.
+export function uniqueMessagesCardinalityAgg(): estypes.AggregationsAggregationContainer {
+  return {
+    cardinality: {
+      field: AGENT_MESSAGE_ID_FIELD,
+      precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+    },
+  };
+}
+
+// The scope dimensions plus the two that can be ranked but not filtered on, and
+// are therefore not scope dimensions: conversation, and the agent tag a
+// document inherits from the agent that produced it.
+export const CONSUMPTION_TOP_DIMENSIONS = [
+  ...CONSUMPTION_SCOPE_DIMENSIONS,
+  "conversation",
+  "tag",
+  "reasoning_effort",
 ] as const;
 
-export type ConsumptionScopeDimension =
-  (typeof CONSUMPTION_SCOPE_DIMENSIONS)[number];
+export type ConsumptionTopDimension =
+  (typeof CONSUMPTION_TOP_DIMENSIONS)[number];
 
 export const CONSUMPTION_DIMENSION_FIELDS: Record<
   ConsumptionScopeDimension,
   string
 > = {
-  agent: "agent.id",
+  agent: "agent.attributed_id",
   user: "user.id",
   api_key: "api_key_name",
   // Multi-valued: a member can belong to several groups at once.
@@ -40,6 +81,19 @@ export const CONSUMPTION_DIMENSION_FIELDS: Record<
   // Multi-valued: one tool call can be attributed to several skills at once.
   skill: "tool.attributed_skill_ids",
   source: "normalized_origin",
+};
+
+export const AGENT_TAG_IDS_FIELD = "agent.tag_ids";
+
+export const CONSUMPTION_TOP_DIMENSION_FIELDS: Record<
+  ConsumptionTopDimension,
+  string
+> = {
+  ...CONSUMPTION_DIMENSION_FIELDS,
+  conversation: CONVERSATION_ID_FIELD,
+  // Multi-valued: an agent can carry several tags at once.
+  tag: AGENT_TAG_IDS_FIELD,
+  reasoning_effort: "model.reasoning_effort",
 };
 
 export type ConsumptionTopUnit = "message" | "invocation";
@@ -58,37 +112,33 @@ export const CONSUMPTION_DIMENSION_UNIT: Record<
   source: "message",
 };
 
-export const CONSUMPTION_SCOPE_FILTER_KEYS = [
-  "agents",
-  "users",
-  "api_keys",
-  "groups",
-  "models",
-  "tools",
-  "skills",
-  "sources",
+export const CONSUMPTION_TOP_DIMENSION_UNIT: Record<
+  ConsumptionTopDimension,
+  ConsumptionTopUnit
+> = {
+  ...CONSUMPTION_DIMENSION_UNIT,
+  conversation: "message",
+  tag: "message",
+  reasoning_effort: "message",
+};
+
+export const CONSUMPTION_TOP_RANK_BY = ["credits", "count"] as const;
+
+export type ConsumptionTopRankBy = (typeof CONSUMPTION_TOP_RANK_BY)[number];
+
+export const CONSUMPTION_MESSAGE_DIMENSIONS = [
+  "agent",
+  "user",
+  "api_key",
+  "group",
+  "model",
+  "source",
+  "conversation",
+  "tag",
+  "reasoning_effort",
 ] as const;
 
-export type ConsumptionScopeFilterKey =
-  (typeof CONSUMPTION_SCOPE_FILTER_KEYS)[number];
-
-export type ConsumptionScopeFilter = Partial<
-  Record<ConsumptionScopeFilterKey, string[]>
->;
-
-export const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
-  ConsumptionScopeDimension,
-  ConsumptionScopeFilterKey
-> = {
-  agent: "agents",
-  user: "users",
-  api_key: "api_keys",
-  group: "groups",
-  model: "models",
-  tool: "tools",
-  skill: "skills",
-  source: "sources",
-};
+export const CONSUMPTION_INVOCATION_DIMENSIONS = ["tool", "skill"] as const;
 
 export const CONSUMPTION_METRICS = ["credit_micro"] as const;
 
@@ -180,6 +230,7 @@ export function buildConsumptionScopeQuery({
       )
     );
   }
+  filters.push(...termFilter(AGENT_TAG_IDS_FIELD, filter.tags));
 
   return { bool: { filter: [...filters, ...extraFilters] } };
 }

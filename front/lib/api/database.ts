@@ -1,8 +1,8 @@
 import { queryTracker } from "@app/lib/api/query_tracker";
+import { getTemporalActivityContext } from "@app/lib/temporal_activity_context";
 import logger from "@app/logger/logger";
 import { isString } from "@app/types/shared/utils/general";
-import { context as otelContext, trace } from "@opentelemetry/api";
-import type { ReadableSpan } from "@opentelemetry/sdk-trace-base";
+import { getRequestContext } from "@app/types/shared/utils/request_context";
 import type {
   ColumnsDescription,
   Model,
@@ -283,25 +283,14 @@ export class SequelizeWithComments<
 
       const comments: Record<string, string> = {};
 
-      // Get Next.js route from OpenTelemetry span.
-      const span = trace.getSpan(otelContext.active());
-      if (span && span.isRecording()) {
-        const readableSpan = span as unknown as ReadableSpan;
-        const attrs = readableSpan.attributes;
+      const activityName = getTemporalActivityContext()?.activityName;
+      if (activityName) {
+        comments.activity = activityName;
+      }
 
-        // Case 1: getServerSideProps/getStaticProps: has explicit `next.route`.
-        if (attrs?.["next.route"]) {
-          comments.route = attrs["next.route"] as string;
-        }
-        // Case 2: API routes: extract from next.span_name.
-        else if (attrs?.["next.span_name"]) {
-          const spanName = attrs["next.span_name"] as string;
-          // Extract route from: "executing api route (pages) /api/w/[wId]/feature-flags".
-          const match = spanName.match(/executing api route \(pages\) (.+)$/);
-          if (match) {
-            comments.route = match[1];
-          }
-        }
+      const route = getRequestContext()?.route;
+      if (route) {
+        comments.route = route;
       }
 
       // Build comment string following sqlcommenter format

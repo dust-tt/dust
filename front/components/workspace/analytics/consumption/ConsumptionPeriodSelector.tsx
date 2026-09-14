@@ -1,6 +1,12 @@
-import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import type {
+  ConsumptionGranularity,
+  ConsumptionPeriodSelection,
+} from "@app/lib/analytics/consumption_period";
 import {
+  CONSUMPTION_GRANULARITY_OPTIONS,
   CONSUMPTION_PERIOD_OPTIONS,
+  consumptionGranularityFromKey,
+  consumptionGranularityLabel,
   consumptionPeriodFromKey,
   consumptionPeriodKey,
   consumptionPeriodLabel,
@@ -48,6 +54,48 @@ export function ConsumptionPeriodSelector({
               key={consumptionPeriodKey(option)}
               value={consumptionPeriodKey(option)}
               label={consumptionPeriodLabel(option)}
+            />
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+interface ConsumptionGranularitySelectorProps {
+  granularity: ConsumptionGranularity;
+  onGranularityChange: (granularity: ConsumptionGranularity) => void;
+}
+
+export function ConsumptionGranularitySelector({
+  granularity,
+  onGranularityChange,
+}: ConsumptionGranularitySelectorProps) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          label={consumptionGranularityLabel(granularity)}
+          size="sm"
+          variant="outline"
+          isSelect
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuRadioGroup
+          value={granularity}
+          onValueChange={(value) => {
+            const selection = consumptionGranularityFromKey(value);
+            if (selection) {
+              onGranularityChange(selection);
+            }
+          }}
+        >
+          {CONSUMPTION_GRANULARITY_OPTIONS.map((option) => (
+            <DropdownMenuRadioItem
+              key={option}
+              value={option}
+              label={consumptionGranularityLabel(option)}
             />
           ))}
         </DropdownMenuRadioGroup>

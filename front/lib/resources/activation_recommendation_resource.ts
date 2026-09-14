@@ -9,6 +9,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type {
   Attributes,
   CreationAttributes,
@@ -140,13 +141,19 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
 
   static async fetchByUser(
     auth: Authenticator,
-    { limit = 100 }: { limit?: number } = {}
+    {
+      limit = 100,
+      activationPodModelId,
+    }: { limit?: number; activationPodModelId?: number } = {}
   ): Promise<ActivationRecommendationResource[]> {
     const user = auth.getNonNullableUser();
     const recs = await this.model.findAll({
       where: {
         userId: user.id,
         workspaceId: auth.getNonNullableWorkspace().id,
+        ...(activationPodModelId
+          ? { activationPodId: activationPodModelId }
+          : {}),
       },
       order: [["createdAt", "DESC"]],
       limit,
@@ -177,11 +184,13 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       limit = 5,
       sinceDaysAgo,
       spaceModelId,
+      activationPodModelId,
     }: {
       status: ActivationRecommendationStatus;
       limit?: number;
       sinceDaysAgo?: number;
       spaceModelId?: ModelId;
+      activationPodModelId?: ModelId;
     }
   ): Promise<
     {
@@ -189,12 +198,12 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       conversationSId: string | null;
     }[]
   > {
-    const user = auth.getNonNullableUser();
-
     const where: WhereOptions<ActivationRecommendationModel> = {
-      userId: user.id,
       workspaceId: auth.getNonNullableWorkspace().id,
       status,
+      ...(activationPodModelId !== undefined
+        ? { activationPodId: activationPodModelId }
+        : { userId: auth.getNonNullableUser().id }),
     };
 
     if (sinceDaysAgo !== undefined) {
@@ -288,7 +297,7 @@ export class ActivationRecommendationResource extends BaseResource<ActivationRec
       });
       return new Ok(undefined);
     } catch (err) {
-      return new Err(err instanceof Error ? err : new Error(String(err)));
+      return new Err(normalizeError(err));
     }
   }
 

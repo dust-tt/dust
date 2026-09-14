@@ -25,7 +25,7 @@ import type {
   PatchMCPServerViewBody,
   PatchMCPServerViewResponseBody,
 } from "@app/lib/api/mcp/views";
-import { useRegionContext } from "@app/lib/auth/RegionContext";
+import { useCellContext } from "@app/lib/auth/CellContext";
 import { clientFetch } from "@app/lib/egress/client";
 import type {
   GetConnectionsResponseBody,
@@ -34,7 +34,6 @@ import type {
   PostConnectionResponseBody,
 } from "@app/lib/resources/mcp_server_connection_resource";
 import type { GetMCPServerViewsResponseBody } from "@app/lib/resources/mcp_server_view_resource";
-import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { DiscoverOAuthMetadataResponseBody } from "@app/types/api/oauth/providers/mcp";
 import type { WithAPIErrorResponse } from "@app/types/error";
@@ -51,9 +50,9 @@ import { Err, Ok } from "@app/types/shared/result";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
-import { isAdmin } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
+import { useSWRConfig } from "swr";
 
 export type MCPConnectionType = {
   useCase: MCPOAuthUseCase;
@@ -61,15 +60,7 @@ export type MCPConnectionType = {
 };
 
 export function useMutateMCPServersViewsForAdmin(owner: LightWorkspaceType) {
-  const { spaces } = useSpacesAsAdmin({
-    workspaceId: owner.sId,
-    disabled: !isAdmin(owner),
-  });
-  const { mutateMCPServerViews } = useMCPServerViews({
-    owner,
-    space: spaces.find((s) => s.kind === "system"),
-    disabled: true,
-  });
+  const { mutate: globalMutate } = useSWRConfig();
   const { mutateMCPServers } = useMCPServers({
     disabled: true,
     owner,
@@ -77,9 +68,14 @@ export function useMutateMCPServersViewsForAdmin(owner: LightWorkspaceType) {
 
   return {
     mutate: useCallback(async () => {
-      await mutateMCPServerViews();
+      await globalMutate(
+        (key) =>
+          typeof key === "string" &&
+          key.startsWith(`/api/w/${owner.sId}/spaces/`) &&
+          key.includes("/mcp_views")
+      );
       await mutateMCPServers();
-    }, [mutateMCPServerViews, mutateMCPServers]),
+    }, [owner.sId, globalMutate, mutateMCPServers]),
   };
 }
 
@@ -437,7 +433,12 @@ export function useCreateRemoteMCPServer(owner: LightWorkspaceType) {
       if (!response.ok) {
         const body = await response.json();
         if (body.nameConflict?.name) {
-          return new Err({ nameConflict: body.nameConflict.name });
+          return new Err({
+            nameConflict: body.nameConflict.name,
+            ...(body.nameConflict.conflictDetails
+              ? { conflictDetails: body.nameConflict.conflictDetails }
+              : {}),
+          });
         }
         return new Err(
           new MCPCreateServerError(
@@ -767,7 +768,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     owner,
     connectionType: "personal",
   });
-  const regionContext = useRegionContext();
+  const cellContext = useCellContext();
 
   const createPersonalConnection = async ({
     mcpServerId,
@@ -824,7 +825,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
         provider,
         useCase,
         extraConfig,
-        regionInfo: regionContext.regionInfo,
+        cellInfo: cellContext.cellInfo,
       });
 
       if (cRes.isErr()) {
@@ -1213,14 +1214,6 @@ export function useJITMCPServerViewsFromSpaces(
     isError: error,
     mutateServerViews: mutate,
   };
-}
-
-export function useManualMCPServerViewsFromSpaces(
-  owner: LightWorkspaceType,
-  spaces: SpaceType[],
-  swrOptions?: SWRConfiguration & { disabled?: boolean }
-) {
-  return useMCPServerViewsFromSpacesBase(owner, spaces, ["manual"], swrOptions);
 }
 
 export function useMCPServerViewsWithPersonalConnections({

@@ -10,7 +10,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { getTestStreamEndpoint } from "@app/tests/utils/models";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
+import { getAgentLoopRuntimeData } from "@app/types/assistant/agent_run";
 import {
   isAgentMessageType,
   isUserMessageType,
@@ -214,7 +214,10 @@ describe("pod_manager move_conversation", () => {
       userMessageVersion: runContext.userMessage.version,
       userMessageOrigin: runContext.userMessage.context.origin,
     };
-    const agentLoopData = await getAgentLoopData(auth.toJSON(), agentLoopArgs);
+    const agentLoopData = await getAgentLoopRuntimeData(
+      auth.toJSON(),
+      agentLoopArgs
+    );
     assert(agentLoopData.isOk());
     expect(agentLoopData.value.conversation.spaceId).toBe(targetPod.sId);
 

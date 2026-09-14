@@ -5,7 +5,7 @@ import {
 } from "@app/lib/resources/storage/data_types";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
+import type { PodFileTab } from "@app/types/pod_file_tab";
 import type { CreationOptional, ForeignKey } from "sequelize";
 
 export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataModel> {
@@ -17,18 +17,13 @@ export class ProjectMetadataModel extends WorkspaceAwareModel<ProjectMetadataMod
   declare todoGenerationEnabled: CreationOptional<boolean>;
   /** First-run window only; cleared after first successful analysis. Internal / workflow. */
   declare initialTodoAnalysisLookback: CreationOptional<string | null>;
-  /**
-   * When true, workspace admins control membership and can attach connected data
-   * (Space DataSourceViews) to this Pod. Opt-in; gated by `admin_controlled_pods`.
-   */
-  declare isAdminControlled: CreationOptional<boolean>;
   declare spaceId: ForeignKey<SpaceModel["id"]>;
 
   declare description: string | null;
   /** Scoped path to a project frame file, e.g. `project/banner.html`. */
   declare pinnedFramePath: CreationOptional<string | null>;
   /** Frames promoted as custom pod tabs (shared). */
-  declare frameTabs: CreationOptional<PodFrameTab[]>;
+  declare frameTabs: CreationOptional<PodFileTab[]>;
   /**
    * Interleaved nav order before Settings: system tab ids + frame paths.
    * Empty means default (system tabs then frame paths).
@@ -64,11 +59,6 @@ ProjectMetadataModel.init(
       allowNull: true,
     },
     todoGenerationEnabled: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    isAdminControlled: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,

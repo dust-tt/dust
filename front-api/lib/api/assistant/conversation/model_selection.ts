@@ -1,5 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { getEnabledModelsForAuth } from "@app/lib/model_tiers/enabled_models";
 import type { ModelSelectionType } from "@app/types/assistant/models/types";
 import { ModelSelectionSchema } from "@app/types/assistant/models/types";
@@ -29,18 +28,6 @@ export async function validatePublicModelSelection(
     });
   }
   const modelSelection = parsed.data;
-
-  if (!(await hasFeatureFlag(auth, "models_picker"))) {
-    return new Err({
-      status_code: 403,
-      api_error: {
-        type: "feature_flag_not_found",
-        message:
-          "Per-message model selection requires the 'models_picker' feature, " +
-          "which is not enabled for this workspace.",
-      },
-    });
-  }
 
   const enabledModels = await getEnabledModelsForAuth(auth);
   const isAuthorized = enabledModels.some(

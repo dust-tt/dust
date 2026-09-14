@@ -10,7 +10,8 @@ import imageSize from "image-size";
 import sharp from "sharp";
 import { pipeline } from "stream/promises";
 
-const CONVERSATION_IMG_MAX_SIZE_PIXELS = 1538;
+// Exported so generators can stay within it and skip the resize path entirely.
+export const CONVERSATION_IMG_MAX_SIZE_PIXELS = 1538;
 const AVATAR_IMG_MAX_SIZE_PIXELS = 256;
 const BRANDING_LOGO_MAX_SIZE_PIXELS = 512;
 const BRANDING_FAVICON_MAX_SIZE_PIXELS = 256;

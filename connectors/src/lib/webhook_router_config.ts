@@ -1,42 +1,41 @@
-import { connectorsConfig } from "@connectors/connectors/shared/config";
+import {
+  type CellType,
+  connectorsConfig,
+  SUPPORTED_CELLS,
+} from "@connectors/connectors/shared/config";
 import logger from "@connectors/logger/logger";
 import { isDevelopment } from "@connectors/types";
 import { Storage } from "@google-cloud/storage";
+import { z } from "zod";
 
 const WEBHOOK_ROUTER_CONFIG_FILE = "webhook-router-config.json";
 
-export interface WebhookRouterEntry {
-  signingSecret: string;
-  regions: {
-    [region: string]: number[]; // region name -> connector IDs
-  };
-}
+const WebhookRouterEntryBaseSchema = z.object({
+  signingSecret: z.string(),
+  cells: z.record(z.enum(SUPPORTED_CELLS), z.array(z.number())),
+});
 
-export interface WebhookRouterConfig {
-  [provider: string]: {
-    [providerWorkspaceId: string]: WebhookRouterEntry;
-  };
-}
+// Preserve legacy keys (e.g. `regions`) across read-modify-write cycles until
+// they are intentionally removed by the removeRegions backfill.
+const WebhookRouterEntrySchema = WebhookRouterEntryBaseSchema.passthrough();
 
-/**
- * Error thrown when a webhook router entry is not found.
- */
-export class WebhookRouterEntryNotFoundError extends Error {
-  constructor(
-    public readonly provider: string,
-    public readonly providerWorkspaceId: string
-  ) {
-    super(
-      `Webhook router entry not found for provider '${provider}' and providerWorkspaceId '${providerWorkspaceId}'`
-    );
-    this.name = "WebhookRouterEntryNotFoundError";
-  }
-}
+const WebhookRouterConfigSchema = z.record(
+  z.enum(["slack", "notion"]),
+  z.record(z.string(), WebhookRouterEntrySchema)
+);
+
+const WebhookRouterConfigWithoutLegacyKeysSchema = z.record(
+  z.enum(["slack", "notion"]),
+  z.record(z.string(), WebhookRouterEntryBaseSchema)
+);
+
+type WebhookRouterEntry = z.infer<typeof WebhookRouterEntryBaseSchema>;
+type WebhookRouterConfig = z.infer<typeof WebhookRouterConfigSchema>;
 
 /**
  * Error thrown when a concurrent modification is detected during a write operation.
  */
-export class ConcurrentModificationError extends Error {
+class ConcurrentModificationError extends Error {
   constructor(message: string = "Concurrent modification detected") {
     super(message);
     this.name = "ConcurrentModificationError";
@@ -89,14 +88,8 @@ export class WebhookRouterConfigService {
       const [contents] = await file.download();
       const [metadata] = await file.getMetadata();
 
-      const config = JSON.parse(contents.toString("utf-8"));
-
-      // Validate the structure
-      if (typeof config !== "object" || config === null) {
-        throw new Error(
-          "Invalid webhook router configuration format. Expected an object."
-        );
-      }
+      const parsed = JSON.parse(contents.toString("utf-8"));
+      const config = WebhookRouterConfigSchema.parse(parsed);
 
       return {
         config,
@@ -248,22 +241,22 @@ export class WebhookRouterConfigService {
   }
 
   /**
-   * Sync webhook router entry for a specific region with retry logic for concurrent modifications.
-   * Updates the connector IDs for the given region. If connectorIds is empty, removes the region.
-   * If all regions are removed, deletes the entire entry.
+   * Sync webhook router entry for a specific cell with retry logic for concurrent modifications.
+   * Updates the connector IDs for the given cell. If connectorIds is empty, removes the cell.
+   * If all cells are removed, deletes the entire entry.
    *
    * @param provider - The provider name (e.g., "slack", "notion")
    * @param providerWorkspaceId - The provider workspace/team ID
    * @param signingSecret - Optional signing secret for verification. If provided, updates the secret.
-   * @param region - The region name (e.g., "europe-west1", "us-central1")
-   * @param connectorIds - Array of connector IDs for this region
+   * @param cell - The cell name (e.g., "cell-00000", "cell-00001")
+   * @param connectorIds - Array of connector IDs for this cell
    * @param maxRetries - Maximum number of retries on concurrent modification (default: 5)
    */
   async syncEntry(
-    provider: string,
+    provider: "slack" | "notion",
     providerWorkspaceId: string,
     signingSecret: string | undefined,
-    region: string,
+    cell: CellType,
     connectorIds: number[],
     maxRetries: number = 5
   ): Promise<void> {
@@ -278,12 +271,12 @@ export class WebhookRouterConfigService {
         const existingEntry = config[provider]![providerWorkspaceId];
 
         if (connectorIds.length === 0) {
-          // No connectors for this region - remove the region
+          // No connectors for this cell - remove the cell
           if (existingEntry) {
-            delete existingEntry.regions[region];
+            delete existingEntry.cells[cell];
 
-            // If no regions left, delete the entire entry
-            if (Object.keys(existingEntry.regions).length === 0) {
+            // If no cells left, delete the entire entry
+            if (Object.keys(existingEntry.cells).length === 0) {
               delete config[provider]![providerWorkspaceId];
             }
           }
@@ -294,7 +287,10 @@ export class WebhookRouterConfigService {
             if (signingSecret !== undefined) {
               existingEntry.signingSecret = signingSecret;
             }
-            existingEntry.regions[region] = connectorIds;
+            existingEntry.cells = {
+              ...existingEntry.cells,
+              [cell]: connectorIds,
+            };
           } else {
             // Create new entry - signingSecret must be provided for new entries
             if (!signingSecret) {
@@ -304,8 +300,8 @@ export class WebhookRouterConfigService {
             }
             config[provider]![providerWorkspaceId] = {
               signingSecret,
-              regions: {
-                [region]: connectorIds,
+              cells: {
+                [cell]: connectorIds,
               },
             };
           }
@@ -328,10 +324,58 @@ export class WebhookRouterConfigService {
    * @returns The entry if found, null otherwise
    */
   async getEntry(
-    provider: string,
+    provider: "slack" | "notion",
     providerWorkspaceId: string
   ): Promise<WebhookRouterEntry | null> {
     const { config } = await this.readConfig();
     return config[provider]?.[providerWorkspaceId] || null;
+  }
+
+  /**
+   * Remove legacy `regions` fields from webhook router entries in GCS.
+   * Uses a stripping schema so unknown keys are dropped from the rewritten file.
+   */
+  async removeRegions(execute: boolean): Promise<{ entriesUpdated: number }> {
+    const bucket = this.storage.bucket(this.bucketName);
+    const file = bucket.file(WEBHOOK_ROUTER_CONFIG_FILE);
+    const [exists] = await file.exists();
+
+    if (!exists) {
+      return { entriesUpdated: 0 };
+    }
+
+    const [contents] = await file.download();
+    const [metadata] = await file.getMetadata();
+    const raw = JSON.parse(contents.toString("utf-8"));
+
+    let entriesUpdated = 0;
+    if (typeof raw === "object" && raw !== null) {
+      for (const providerConfig of Object.values(raw)) {
+        if (typeof providerConfig !== "object" || providerConfig === null) {
+          continue;
+        }
+        for (const entry of Object.values(providerConfig)) {
+          if (
+            typeof entry === "object" &&
+            entry !== null &&
+            "regions" in entry
+          ) {
+            entriesUpdated++;
+          }
+        }
+      }
+    }
+
+    if (entriesUpdated === 0) {
+      return { entriesUpdated: 0 };
+    }
+
+    const config = WebhookRouterConfigWithoutLegacyKeysSchema.parse(raw);
+
+    if (execute) {
+      await this.writeConfig(config, metadata.generation?.toString() || null);
+    }
+
+    return { entriesUpdated };
   }
 }

@@ -48,8 +48,30 @@ printf updated >"$CONVERSATION_DIR/file.txt"
 test "$(stat -c %i "$CONVERSATION_DIR/file.txt")" = "$FILE_INODE"
 test "$(cat "$CONVERSATION_DIR/file.txt")" = updated
 
-# O_TRUNC is applied to the staged handle. Repeated fsync calls must not create
-# extra uploads or revisions once that handle is clean.
+# The short names are links to the roots that carry a Dust identifier. Linux
+# needs one inode per name: a directory reporting the same inode under two names
+# is moved from one to the other instead of appearing under both.
+CONVERSATION_ROOT="$(readlink "$MOUNTPOINT/conversation")"
+test -n "$CONVERSATION_ROOT"
+test "$(stat -c %F "$MOUNTPOINT/conversation")" = "symbolic link"
+test "$(stat -c %i "$MOUNTPOINT/conversation")" != "$(stat -c %i "$MOUNTPOINT/$CONVERSATION_ROOT")"
+
+# Using both names in turn must leave both of them working.
+for _ in 1 2 3; do
+  test -d "$MOUNTPOINT/conversation"
+  test -d "$MOUNTPOINT/$CONVERSATION_ROOT"
+  test "$(cd "$MOUNTPOINT/conversation" && pwd -P)" = "$MOUNTPOINT/$CONVERSATION_ROOT"
+done
+
+# The links belong to the mount layout and are not sandbox files.
+if rm "$MOUNTPOINT/conversation" >/dev/null 2>&1; then
+  echo "the conversation link was removed" >&2
+  exit 1
+fi
+
+# O_TRUNC applies to the staged copy. Repeated fsync calls on a handle that has
+# nothing left to save must keep the file readable and unchanged. How many
+# revisions Front stored is not checked here.
 if [[ -x /opt/bin/bun ]]; then
   JS_RUNTIME=/opt/bin/bun
 elif [[ -x /usr/bin/node ]]; then
@@ -185,10 +207,10 @@ chmod +x "$POD_DIR/project/nested/child.txt"
 test "$(stat -c %a "$POD_DIR/project/nested/child.txt")" = 777
 chmod -x "$POD_DIR/project/nested/child.txt"
 test "$(stat -c %a "$POD_DIR/project/nested/child.txt")" = 666
-if touch "$POD_DIR/project/nested/child.txt" >/dev/null 2>&1; then
-  echo "touch reported a timestamp change that Dust does not store" >&2
-  exit 1
-fi
+# Dust records when contents last changed and ignores a time chosen by the
+# caller. These commands still have to succeed, because `tar -x`, `cp -p` and
+# `touch` set a time on every file they write and would stop on the first one.
+touch "$POD_DIR/project/nested/child.txt"
 if chmod 0600 "$POD_DIR/project/nested/child.txt" >/dev/null 2>&1; then
   echo "chmod changed non-executable permission bits" >&2
   exit 1
@@ -209,5 +231,94 @@ test "$("$EXECUTABLE")" = dust-executable-ok
 truncate -s 2 "$POD_DIR/project/nested/child.txt"
 test "$(stat -c %s "$POD_DIR/project/nested/child.txt")" = 2
 test "$(stat -f -c %s "$MOUNTPOINT")" -gt 0
+
+# Agents unpack archives here, and tar sets a time and a mode on every entry it
+# writes. The whole round trip has to work, not only the file contents.
+command -v tar >/dev/null
+mkdir -p "$POD_DIR/packed" "$POD_DIR/unpacked"
+printf archived >"$POD_DIR/packed/archived.txt"
+cp -p "$POD_DIR/packed/archived.txt" "$POD_DIR/packed/copied.txt"
+
+# The time a file reports must stay put once its write is saved. `cp -p` looks
+# at the file before closing it, and Linux keeps what it read for a second, so a
+# time that only settles after the save makes tar and rsync report that the file
+# changed while they were reading it.
+COPIED_MTIME="$(stat -c %.9Y "$POD_DIR/packed/copied.txt")"
+sleep 2
+test "$(stat -c %.9Y "$POD_DIR/packed/copied.txt")" = "$COPIED_MTIME"
+
+tar -cf "$POD_DIR/archive.tar" -C "$POD_DIR/packed" .
+tar -xf "$POD_DIR/archive.tar" -C "$POD_DIR/unpacked"
+test "$(cat "$POD_DIR/unpacked/archived.txt")" = archived
+test "$(cat "$POD_DIR/unpacked/copied.txt")" = archived
+
+# Dust saves one writer's version at a time, so a second writer is refused
+# instead of one of the two versions being lost.
+export DUST_SINGLE_WRITER_PATH="$CONVERSATION_DIR/single-writer.txt"
+printf seed >"$DUST_SINGLE_WRITER_PATH"
+"$JS_RUNTIME" -e '
+  const fs = require("node:fs");
+  const first = fs.openSync(process.env.DUST_SINGLE_WRITER_PATH, "r+");
+  try {
+    fs.openSync(process.env.DUST_SINGLE_WRITER_PATH, "r+");
+    throw new Error("a second writer was accepted");
+  } catch (error) {
+    if (error.code !== "EBUSY") throw error;
+  }
+  // Reading the same file alongside the writer stays allowed.
+  fs.closeSync(fs.openSync(process.env.DUST_SINGLE_WRITER_PATH, "r"));
+  fs.closeSync(first);
+  fs.closeSync(fs.openSync(process.env.DUST_SINGLE_WRITER_PATH, "r+"));
+'
+
+# Saving a file to Front can take a while, and the program that owns the file
+# often keeps writing during that time. Those writes must wait for the upload
+# and then succeed, rather than report "try again" to a program that will not.
+export DUST_CONCURRENT_PATH="$CONVERSATION_DIR/write-during-save.txt"
+export DUST_JS_RUNTIME="$JS_RUNTIME"
+"$JS_RUNTIME" -e '
+  const fs = require("node:fs");
+  const { spawn, spawnSync } = require("node:child_process");
+
+  const runtime = process.env.DUST_JS_RUNTIME;
+  const chunk = Buffer.alloc(1024 * 1024, "a");
+  const fd = fs.openSync(process.env.DUST_CONCURRENT_PATH, "w");
+  for (let index = 0; index < 8; index++) {
+    fs.writeSync(fd, chunk);
+  }
+
+  // The child has to receive this file as its own file descriptor 3, so that
+  // its fsync saves the file this process keeps writing to. A runtime that
+  // passes no extra descriptor cannot set up the case at all.
+  const probe = spawnSync(runtime, ["-e", "require(\"node:fs\").fstatSync(3)"], {
+    stdio: ["ignore", "ignore", "ignore", fd],
+  });
+  const saving =
+    probe.status === 0
+      ? spawn(runtime, ["-e", "require(\"node:fs\").fsyncSync(3)"], {
+          stdio: ["ignore", "ignore", "inherit", fd],
+        })
+      : null;
+  if (saving === null) {
+    process.stderr.write(
+      "[acceptance] skipped writing during a save: this runtime passes no extra file descriptor\n",
+    );
+  }
+
+  // These writes run while the child is saving the first half of the file.
+  for (let index = 0; index < 8; index++) {
+    fs.writeSync(fd, chunk);
+  }
+  fs.closeSync(fd);
+  if (saving !== null) {
+    saving.on("exit", (code) => {
+      if (code !== 0) {
+        process.stderr.write(`saving the file failed with status ${code}\n`);
+        process.exitCode = 1;
+      }
+    });
+  }
+'
+test "$(stat -c %s "$DUST_CONCURRENT_PATH")" = "$((16 * 1024 * 1024))"
 
 echo "Dust filesystem acceptance cases passed"

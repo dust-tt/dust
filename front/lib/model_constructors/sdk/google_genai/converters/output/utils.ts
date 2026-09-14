@@ -13,7 +13,11 @@ import type {
   ToolCallStartedEvent,
 } from "@app/lib/model_constructors/types/output/events";
 import { buildErrorEvent } from "@app/lib/model_constructors/utils/build_error_event";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import {
+  buildHttpStatusErrorEvent,
+  httpErrorMessage,
+} from "@app/lib/model_constructors/utils/classify_http_status";
+import { classifyStreamError } from "@app/lib/model_constructors/utils/classify_stream_error";
 import type {
   GenerateContentResponse,
   GenerateContentResponseUsageMetadata,
@@ -187,6 +191,7 @@ export function finishReasonToErrorEvent(
       return null;
     case FinishReason.MAX_TOKENS:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "stop_error",
         message: "The maximum response length was reached.",
@@ -200,6 +205,7 @@ export function finishReasonToErrorEvent(
     case FinishReason.IMAGE_SAFETY:
     case FinishReason.LANGUAGE:
       return buildErrorEvent({
+        errorSource: "dust",
         metadata,
         type: "refusal_error",
         message:
@@ -208,6 +214,7 @@ export function finishReasonToErrorEvent(
     case FinishReason.MALFORMED_FUNCTION_CALL:
     case FinishReason.UNEXPECTED_TOOL_CALL:
       return buildErrorEvent({
+        errorSource: "unknown",
         metadata,
         type: "model_output_error",
         message: `Model generated an invalid tool call for ${metadata.model}.`,
@@ -216,6 +223,7 @@ export function finishReasonToErrorEvent(
     // is surfaced as an unknown error.
     default:
       return buildErrorEvent({
+        errorSource: "provider",
         metadata,
         type: "unknown_error",
         message: `Unexpected finish reason from Google: ${finishReason}.`,
@@ -235,64 +243,29 @@ function apiErrorToErrorEvent(
 
   if (status === 401 || (status === 400 && isAuthMessage)) {
     return buildErrorEvent({
+      errorSource: "dust",
       metadata,
       type: "authentication_error",
-      message: `Authentication failed for Google: ${error.message}`,
+      message: httpErrorMessage({
+        type: "authentication_error",
+        provider: "Google",
+        detail: error.message,
+      }),
       originalError: error,
     });
   }
-  switch (status) {
-    case 400:
-      return buildErrorEvent({
-        metadata,
-        type: "invalid_request_error",
-        message: `Invalid request to Google: ${error.message}`,
-        originalError: error,
-      });
-    case 403:
-      return buildErrorEvent({
-        metadata,
-        type: "permission_error",
-        message: `Permission denied for Google: ${error.message}`,
-        originalError: error,
-      });
-    case 404:
-      return buildErrorEvent({
-        metadata,
-        type: "not_found_error",
-        message: `Resource not found for Google: ${error.message}`,
-        originalError: error,
-      });
-    case 429:
-      return buildErrorEvent({
-        metadata,
-        type: "rate_limit_error",
-        message: `Rate limit exceeded for Google/${metadata.model}: ${error.message}`,
-        originalError: error,
-      });
-    case 503:
-      return buildErrorEvent({
-        metadata,
-        type: "overloaded_error",
-        message: `Google is overloaded: ${error.message}`,
-        originalError: error,
-      });
-    default:
-      if (status >= 500 && status < 600) {
-        return buildErrorEvent({
-          metadata,
-          type: "server_error",
-          message: `Server error from Google (${status}): ${error.message}`,
-          originalError: error,
-        });
-      }
-      return buildErrorEvent({
-        metadata,
-        type: "unknown_error",
-        message: `Error from Google (${status}): ${error.message}`,
-        originalError: error,
-      });
-  }
+
+  return buildHttpStatusErrorEvent({
+    metadata,
+    status: error.status,
+    provider: "Google",
+    detail: error.message,
+    originalError: error,
+  });
+}
+
+function isApiError(error: unknown): error is ApiError {
+  return error instanceof ApiError;
 }
 
 // Maps any error thrown by the Google SDK while streaming into a unified
@@ -301,14 +274,14 @@ export function streamErrorToErrorEvent(
   metadata: EndpointMetadata,
   error: unknown
 ): ErrorEvent {
-  if (error instanceof ApiError) {
+  if (isApiError(error)) {
     return apiErrorToErrorEvent(metadata, error);
   }
-  return buildErrorEvent({
+
+  return classifyStreamError({
+    error,
     metadata,
-    type: "unknown_error",
-    message: `Unknown error from Google: ${normalizeError(error).message}`,
-    originalError: error,
+    providerName: "Google",
   });
 }
 

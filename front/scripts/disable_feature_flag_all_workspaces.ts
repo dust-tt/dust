@@ -1,4 +1,4 @@
-import { FeatureFlagModel } from "@app/lib/models/feature_flag";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import { WHITELISTABLE_FEATURES } from "@app/types/shared/feature_flags";
@@ -15,9 +15,7 @@ makeScript(
   async ({ featureFlag, execute }) => {
     const flag = featureFlag as WhitelistableFeature;
 
-    const count = await FeatureFlagModel.count({
-      where: { name: flag },
-    });
+    const count = await FeatureFlagResource.countForAllWorkspaces(flag);
 
     console.log(
       `Found ${count} workspace(s) with feature flag "${flag}" enabled.`
@@ -29,9 +27,7 @@ makeScript(
     }
 
     if (execute) {
-      const deleted = await FeatureFlagModel.destroy({
-        where: { name: flag },
-      });
+      const deleted = await FeatureFlagResource.disableForAllWorkspaces(flag);
       console.log(
         `Feature flag "${flag}" disabled for ${deleted} workspace(s).`
       );

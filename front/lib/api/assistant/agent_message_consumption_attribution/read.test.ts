@@ -1,3 +1,4 @@
+import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/agent_message_consumption_attribution/attribution_builder";
 import { getAgentMessageConsumption } from "@app/lib/api/assistant/agent_message_consumption_attribution/read";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
@@ -8,6 +9,7 @@ import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
+import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ModelId } from "@app/types/shared/model_id";
 import { describe, expect, it } from "vitest";
 
@@ -121,6 +123,7 @@ describe("getAgentMessageConsumption", () => {
           itemType: "tool",
           runUsageModelId,
           action: firstAction,
+          attributedSkillIds: [],
           inputTokensCount: 20,
           outputTokensCount: 5,
           grossAttributedCreditAmountMicro: 4_000_000,
@@ -130,6 +133,7 @@ describe("getAgentMessageConsumption", () => {
           itemType: "tool",
           runUsageModelId,
           action: secondAction,
+          attributedSkillIds: [],
           inputTokensCount: 10,
           outputTokensCount: 4,
           grossAttributedCreditAmountMicro: 3_000_000,
@@ -146,12 +150,13 @@ describe("getAgentMessageConsumption", () => {
 
     expect(consumption).toEqual({
       billedCredits: BILLED_CREDITS,
+      totalBilledCredits: BILLED_CREDITS,
       details: {
         attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
         agentWorkCredits: 3,
         tools: [
           expect.objectContaining({
-            label: "Test Tool",
+            label: "Test tool",
             callCount: 2,
             attributedCredits: 7,
             directCredits: 4,
@@ -163,7 +168,190 @@ describe("getAgentMessageConsumption", () => {
     });
   });
 
-  it("exposes a blocked tool as pending without inventing a direct charge", async () => {
+  it.each([
+    { hidden: false, description: "visible" },
+    { hidden: true, description: "hidden helper" },
+  ])("attributes a $description sub-agent subtree", async ({ hidden }) => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      runUsageModelId,
+      agentMessage,
+    } = await setupMessage();
+    const childAgentId = hidden
+      ? GLOBAL_AGENTS_SID.DUST_TASK
+      : (
+          await AgentConfigurationFactory.createTestAgent(auth, {
+            name: "Research agent",
+          })
+        ).sId;
+    const grandchildAgent = await AgentConfigurationFactory.createTestAgent(
+      auth,
+      {
+        name: "Web researcher",
+      }
+    );
+    const childConversationData = await ConversationFactory.create(auth, {
+      agentConfigurationId: childAgentId,
+      messagesCreatedAt: [],
+      depth: 1,
+    });
+    const childConversation = await ConversationResource.fetchById(
+      auth,
+      childConversationData.sId
+    );
+    if (!childConversation) {
+      throw new Error("Just-created child conversation not found.");
+    }
+    const { messageRow: childUserMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation: childConversationData,
+        content: "Research this",
+        agenticMessageType: "run_agent",
+        agenticOriginMessageId: agentMessage.sId,
+        authorless: true,
+      });
+    const childAgentMessage =
+      await ConversationFactory.createAgentMessageWithRank({
+        workspace,
+        conversationId: childConversationData.id,
+        agentConfigurationId: childAgentId,
+        parentId: childUserMessage.id,
+        rank: 1,
+      });
+    if (!childAgentMessage.agentMessageId) {
+      throw new Error("Child agent message was not created.");
+    }
+    await ConversationResource.updateAgentMessageCostCredits(auth, {
+      agentMessageModelId: childAgentMessage.agentMessageId,
+      costCredits: 20,
+    });
+
+    const grandchildConversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: grandchildAgent.sId,
+      messagesCreatedAt: [],
+      depth: 2,
+    });
+    const { messageRow: grandchildUserMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation: grandchildConversation,
+        content: "Research further",
+        agenticMessageType: "run_agent",
+        agenticOriginMessageId: childAgentMessage.sId,
+        authorless: true,
+      });
+    const { agentMessage: grandchildAgentMessage } =
+      await ConversationFactory.createAgentMessage(auth, {
+        workspace,
+        conversation: grandchildConversation,
+        agentConfig: grandchildAgent,
+        parentMessageModelId: grandchildUserMessage.id,
+        rank: 1,
+      });
+    await ConversationResource.updateAgentMessageCostCredits(auth, {
+      agentMessageModelId: grandchildAgentMessage.agentMessageId,
+      costCredits: 3,
+    });
+
+    const runAgentServerId = internalMCPServerNameToSId({
+      name: "run_agent",
+      workspaceId: workspace.id,
+      prefix: 1,
+    });
+    const { action: runChildAction } = await AgentMCPActionFactory.create(
+      auth,
+      {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: agentMessage.agentMessageId,
+        status: "succeeded",
+        dustRunId: run.dustRunId,
+        functionCallName: "run_research_agent",
+        toolName: "run_research_agent",
+        toolServerId: runAgentServerId,
+        childAgentId,
+      }
+    );
+    await runChildAction.updateStepContext({
+      ...runChildAction.stepContext,
+      resumeState: {
+        conversationId: childConversation.sId,
+        userMessageId: childUserMessage.sId,
+      },
+    });
+    const { action: runGrandchildAction } = await AgentMCPActionFactory.create(
+      auth,
+      {
+        workspace,
+        conversationModelId: childConversation.id,
+        agentMessageModelId: childAgentMessage.agentMessageId,
+        status: "succeeded",
+        dustRunId: run.dustRunId,
+        functionCallName: "run_web_researcher",
+        toolName: "run_web_researcher",
+        toolServerId: runAgentServerId,
+      }
+    );
+    await runGrandchildAction.updateStepContext({
+      ...runGrandchildAction.stepContext,
+      resumeState: {
+        conversationId: grandchildConversation.sId,
+        userMessageId: grandchildUserMessage.sId,
+      },
+    });
+
+    await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
+      conversation,
+      agentMessageModelId: agentMessage.agentMessageId,
+      attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+      records: [
+        ...modelRecords(runUsageModelId),
+        {
+          itemType: "tool",
+          runUsageModelId,
+          action: runChildAction,
+          attributedSkillIds: [],
+          inputTokensCount: 20,
+          outputTokensCount: 5,
+          grossAttributedCreditAmountMicro: 6_000_000,
+          directCreditAmountMicro: 4_000_000,
+        },
+      ],
+      pendingToolItems: [],
+    });
+
+    const consumption = await getAgentMessageConsumption(auth, {
+      conversation,
+      agentMessageId: agentMessage.sId,
+    });
+
+    expect(consumption).toMatchObject({
+      billedCredits: BILLED_CREDITS,
+      totalBilledCredits: 33,
+      details: {
+        agentWorkCredits: hidden ? 33 : 4,
+        tools: hidden
+          ? []
+          : [
+              expect.objectContaining({
+                label: "Run Research agent",
+                callCount: 1,
+                attributedCredits: 29,
+                directCredits: 4,
+                toolName: "run_research_agent",
+              }),
+            ],
+      },
+    });
+  });
+
+  it("attributes a failed hidden helper call to agent work", async () => {
     const {
       auth,
       workspace,
@@ -178,15 +366,41 @@ describe("getAgentMessageConsumption", () => {
       agentMessageModelId: agentMessage.agentMessageId,
       dustRunId: run.dustRunId,
     });
+    const { action: hiddenHelperAction } = await AgentMCPActionFactory.create(
+      auth,
+      {
+        workspace,
+        conversationModelId: conversation.id,
+        agentMessageModelId: agentMessage.agentMessageId,
+        status: "errored",
+        dustRunId: run.dustRunId,
+        functionCallName: "run_dust_task",
+        toolName: "run_dust_task",
+        childAgentId: GLOBAL_AGENTS_SID.DUST_TASK,
+      }
+    );
 
     await AgentMessageConsumptionItemResource.recordItemsIdempotently(auth, {
       conversation,
       agentMessageModelId: agentMessage.agentMessageId,
       attributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
-      records: modelRecords(runUsageModelId),
+      records: [
+        ...modelRecords(runUsageModelId),
+        {
+          itemType: "tool",
+          action: hiddenHelperAction,
+          attributedSkillIds: [],
+          runUsageModelId,
+          inputTokensCount: null,
+          outputTokensCount: 5,
+          grossAttributedCreditAmountMicro: 1_000_000,
+          directCreditAmountMicro: null,
+        },
+      ],
       pendingToolItems: [
         {
           action,
+          attributedSkillIds: [],
           runUsageModelId,
           outputTokensCount: 5,
           grossAttributedCreditAmountMicro: 1_000_000,
@@ -199,13 +413,17 @@ describe("getAgentMessageConsumption", () => {
       agentMessageId: agentMessage.sId,
     });
 
-    expect(consumption?.details?.tools).toEqual([
-      expect.objectContaining({
-        callCount: 1,
-        directCredits: 0,
-        pending: true,
-      }),
-    ]);
+    expect(consumption?.details).toMatchObject({
+      agentWorkCredits: 9,
+      tools: [
+        expect.objectContaining({
+          callCount: 1,
+          directCredits: 0,
+          pending: true,
+          toolName: "test_tool",
+        }),
+      ],
+    });
   });
 
   it("assigns an unattributed billed residual to agent work", async () => {
@@ -255,7 +473,11 @@ describe("getAgentMessageConsumption", () => {
         conversation,
         agentMessageId: agentMessage.sId,
       })
-    ).resolves.toEqual({ billedCredits: BILLED_CREDITS, details: null });
+    ).resolves.toEqual({
+      billedCredits: BILLED_CREDITS,
+      totalBilledCredits: BILLED_CREDITS,
+      details: null,
+    });
   });
 
   it("falls back to the newest complete previous attribution", async () => {
@@ -310,6 +532,10 @@ describe("getAgentMessageConsumption", () => {
         conversation,
         agentMessageId: agentMessage.sId,
       })
-    ).resolves.toEqual({ billedCredits: BILLED_CREDITS, details: null });
+    ).resolves.toEqual({
+      billedCredits: BILLED_CREDITS,
+      totalBilledCredits: BILLED_CREDITS,
+      details: null,
+    });
   });
 });

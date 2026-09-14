@@ -34,7 +34,7 @@
     "**/*.jsx",
     "**/*.js",
     "**/*.mjs",
-    "./.eslintrc.js"
+    "./.eslintrc.js",
   ],
   "exclude": [
     "node_modules",

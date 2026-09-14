@@ -3,14 +3,17 @@ import {
   ALL_WORKERS,
   workerFunctions,
 } from "@connectors/temporal/worker_registry";
-import { isDevelopment, setupGlobalErrorHandler } from "@connectors/types";
+import {
+  isDevelopment,
+  normalizeError,
+  setupGlobalErrorHandler,
+} from "@connectors/types";
 import { closeRedisClients } from "@connectors/types/shared/redis_client";
 import type { Logger, LogLevel } from "@temporalio/common/lib/logger";
 import { Runtime } from "@temporalio/worker/lib/runtime";
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
 
-import { errorFromAny } from "./lib/error";
 import logger from "./logger/logger";
 
 setupGlobalErrorHandler(logger);
@@ -48,14 +51,14 @@ async function runWorkers(workers: WorkerName[]) {
       Promise.resolve()
         .then(() => workerFunctions[worker]())
         .catch((err) => {
-          logger.error(errorFromAny(err), `Error running ${worker} worker.`);
+          logger.error(normalizeError(err), `Error running ${worker} worker.`);
         })
     );
 
     // Wait for all workers to complete
     await Promise.all(promises);
   } catch (e) {
-    logger.error(errorFromAny(e), "Unexpected error during worker startup.");
+    logger.error(normalizeError(e), "Unexpected error during worker startup.");
   }
 
   // Shutdown Temporal native runtime *once*
@@ -83,6 +86,6 @@ yargs(hideBin(process.argv))
   .parseAsync()
   .then(async (args) => runWorkers(args.workers as WorkerName[]))
   .catch((err) => {
-    logger.error(errorFromAny(err), "Error running workers");
+    logger.error(normalizeError(err), "Error running workers");
     process.exit(1);
   });

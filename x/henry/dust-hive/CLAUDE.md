@@ -1,7 +1,5 @@
 # dust-hive Development Context
 
-Follow all rules in **CODING_RULES.md** before making changes.
-
 ## Development Workflow
 
 **CRITICAL**: Always run `bun run check` before committing. This runs typecheck, lint, and tests. Never commit code that fails these checks.
@@ -225,3 +223,5 @@ curl -sf http://localhost:10001/             # core
 # Run from project root
 bun run src/index.ts <command>
 ```
+
+@../../../CODE-CONTRACTS.md

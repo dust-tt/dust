@@ -1,0 +1,37 @@
+{
+  "__": [
+    "This is a SKELETON, not data. It documents the shape of a user profile snapshot:",
+    "the parts of an Authenticator a search needs in order to answer as that user.",
+    "",
+    "No profile is committed — a snapshot names a real person and their group and space",
+    "memberships — so assets/profile_*.json is gitignored.",
+    "",
+    "To produce one, run scripts/export_user_profile.ts against a workspace member",
+    "(see README.md, 'Producing an export'). It writes profile_<userSId>.json; drop it",
+    "in this directory and pass it to search with --profile.",
+    "",
+    "readableNonPodSpaces and readablePodSpaces feed independent Elasticsearch",
+    "filters. An agent must pass both filters."
+  ],
+  "workspaceId": "0000000000",
+  "workspaceName": "Example Workspace",
+  "generatedAt": "2026-08-25T16:20:00.000Z",
+  "user": {
+    "sId": "aaaaaaaaaaaaaaaaaaaa",
+    "email": "someone@example.com",
+    "fullName": "Some One"
+  },
+  "role": "user",
+  "groupIds": ["grp_AAAAAAAAAAAA", "grp_BBBBBBBBBBBB"],
+  "groups": [
+    { "sId": "grp_AAAAAAAAAAAA", "name": "Workspace", "kind": "global" },
+    { "sId": "grp_BBBBBBBBBBBB", "name": "support", "kind": "provisioned" }
+  ],
+  "readableNonPodSpaces": [
+    { "sId": "vlt_AAAAAAAAAAAA", "name": "Company Data", "kind": "global" },
+    { "sId": "vlt_CCCCCCCCCCCC", "name": "Support", "kind": "regular" }
+  ],
+  "readablePodSpaces": [
+    { "sId": "vlt_BBBBBBBBBBBB", "name": "Support Knowledge", "kind": "project" }
+  ]
+}

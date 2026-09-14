@@ -1,9 +1,9 @@
 import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType, SpaceType } from "@app/types/space";
 import { Chip } from "@dust-tt/sparkle";
 
 interface SpaceChipsProps {
-  spaces: SpaceType[];
+  spaces: EnrichedSpaceType[];
   onRemoveSpace?: (space: SpaceType) => void;
 }
 

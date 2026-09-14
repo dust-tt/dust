@@ -3,7 +3,10 @@ import type {
   CursorPaginationParams,
   SortingParams,
 } from "@app/lib/api/pagination";
-import type { PatchSpaceMembersRequestBodyType } from "@app/lib/api/spaces/members";
+import type {
+  PatchSpaceMembersRequestBodyType,
+  PostSpaceMembersRequestBodyType,
+} from "@app/lib/api/spaces/members";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
@@ -18,6 +21,7 @@ import type {
   GetSpaceDataSourceViewsResponseBody,
 } from "@app/types/api/data_source_view";
 import type { PostSpaceDataSourceResponseBody } from "@app/types/api/data_sources";
+import type { GetKeyScopableSpacesResponseBody } from "@app/types/api/keys";
 import type { SpacesLookupResponseBody } from "@app/types/api/projects/list";
 import type { DataSourceViewCategoryWithoutApps } from "@app/types/api/public/spaces";
 import type {
@@ -37,7 +41,12 @@ import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { SearchWarningCode } from "@app/types/core/core_api";
 import { MIN_SEARCH_QUERY_SIZE } from "@app/types/core/utils";
 import type { DataSourceViewType } from "@app/types/data_source_view";
-import type { PodType, SpaceKind, SpaceType } from "@app/types/space";
+import type {
+  EnrichedSpaceType,
+  PodType,
+  SpaceKind,
+  SpaceType,
+} from "@app/types/space";
 import type { LightWorkspaceType, SpaceUserType } from "@app/types/user";
 import { useMemo } from "react";
 import type { Fetcher, KeyedMutator, SWRConfiguration } from "swr";
@@ -73,7 +82,7 @@ export function useSpaces({
   const spaces = useMemo(() => {
     return (
       data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??
-      emptyArray<SpaceType | PodType>()
+      emptyArray<EnrichedSpaceType | PodType>()
     );
     // Serialize the kinds array to a string to avoid unnecessary re-renders
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -114,7 +123,7 @@ export function useSpaceProjectsLookup({
 
   const spaces = useMemo(() => {
     if (!data?.spaces) {
-      return emptyArray<SpaceType>();
+      return emptyArray<PodType>();
     }
     return data.spaces;
   }, [data?.spaces]);
@@ -192,6 +201,31 @@ export function useSpacesAsAdmin({
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
+  };
+}
+
+// The spaces a new API key may be scoped to: the workspace's restricted spaces and pods. Admin
+// only — the endpoint that serves it is behind `ensureIsAdmin()`.
+export function useKeyScopableSpaces({
+  owner,
+  disabled,
+}: {
+  owner: LightWorkspaceType;
+  disabled?: boolean;
+}) {
+  const { fetcher } = useFetcher();
+  const spacesFetcher: Fetcher<GetKeyScopableSpacesResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/keys/spaces`,
+    spacesFetcher,
+    { disabled }
+  );
+
+  return {
+    spaces: data?.spaces ?? emptyArray(),
+    isSpacesLoading: !error && !data && !disabled,
+    isSpacesError: !!error,
   };
 }
 
@@ -522,70 +556,31 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     params: PostSpaceRequestBodyType,
     notification?: { title: string; description: string }
   ) => {
-    const { name, managementMode, isRestricted, spaceKind } = params;
+    const { name, memberIds, groupIds, isRestricted, spaceKind } = params;
 
     if (!name) {
       return null;
     }
 
-    const url = `/api/w/${owner.sId}/spaces`;
-    let res;
-    let body: PostSpaceRequestBodyType;
-
-    if (managementMode === "manual") {
-      const { memberIds } = params;
-
-      // Must have memberIds for manual management mode, except for projects
-      // where the backend handles adding the creator to the editor group
-      if (
-        spaceKind !== "project" &&
-        isRestricted &&
-        (!memberIds || memberIds.length < 1)
-      ) {
-        return null;
-      }
-
-      body = {
-        name,
-        memberIds,
-        managementMode,
-        isRestricted,
-        spaceKind,
-      };
-
-      res = await clientFetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-    } else if (managementMode === "group") {
-      const { groupIds } = params;
-
-      // Must have groupIds for group management mode
-      if (isRestricted && (!groupIds || groupIds.length < 1)) {
-        return null;
-      }
-
-      body = {
-        name,
-        groupIds,
-        managementMode,
-        isRestricted,
-        spaceKind,
-      };
-
-      res = await clientFetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-    } else {
+    // A restricted space needs someone in it — a member or a group. Projects are the exception:
+    // the backend adds the creator to the editor group.
+    if (
+      spaceKind !== "project" &&
+      isRestricted &&
+      !memberIds?.length &&
+      !groupIds?.length
+    ) {
       return null;
     }
+
+    const url = `/api/w/${owner.sId}/spaces`;
+    const res = await clientFetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(params satisfies PostSpaceRequestBodyType),
+    });
 
     if (!res.ok) {
       const errorData = await getErrorFromResponse(res);
@@ -632,7 +627,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     params: PatchSpaceMembersRequestBodyType,
     notification?: { title: string; description: string }
   ) => {
-    const { name: newName, managementMode, isRestricted } = params;
+    const { name: newName, isRestricted } = params;
 
     const updatePromises: Promise<Response>[] = [];
 
@@ -654,43 +649,22 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${space.sId}/members`;
 
-    if (managementMode === "manual") {
-      updatePromises.push(
-        clientFetch(spaceMembersUrl, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: newName,
-            isRestricted,
-            managementMode,
-            memberIds: params.memberIds,
-            editorIds: params.editorIds,
-          } satisfies PatchSpaceMembersRequestBodyType),
-        })
-      );
-    } else if (managementMode === "group") {
-      updatePromises.push(
-        clientFetch(spaceMembersUrl, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name: newName,
-            isRestricted,
-            managementMode,
-            groupIds: params.groupIds,
-            editorGroupIds: params.editorGroupIds,
-          } satisfies PatchSpaceMembersRequestBodyType),
-        })
-      );
-    }
-
-    if (updatePromises.length === 0) {
-      return null;
-    }
+    // The request describes the space's whole membership: a dimension the caller leaves out is
+    // emptied server-side, not kept. The Pod tabs carry members and editors only, which says a
+    // Pod has no groups — true while Pods are managed manually.
+    updatePromises.push(
+      clientFetch(spaceMembersUrl, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...params,
+          name: newName,
+          isRestricted,
+        } satisfies PatchSpaceMembersRequestBodyType),
+      })
+    );
 
     const results = await Promise.all(updatePromises);
 
@@ -720,6 +694,62 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     return spaceResponse.space;
   };
   return doUpdate;
+}
+
+// Adds members to a manually managed space without replacing its member list.
+export function useAddSpaceMembers({ owner }: { owner: LightWorkspaceType }) {
+  const sendNotification = useSendNotification();
+  const { mutate: mutateSpaces } = useSpaces({
+    workspaceId: owner.sId,
+    kinds: "all",
+    disabled: true, // Needed just to mutate
+  });
+  const { mutate: mutateSpacesAsAdmin } = useSpacesAsAdmin({
+    workspaceId: owner.sId,
+    disabled: true, // Needed just to mutate
+  });
+
+  const doAdd = async (
+    space: SpaceType,
+    memberIds: string[],
+    notification?: { title: string; description: string }
+  ): Promise<boolean> => {
+    const res = await clientFetch(
+      `/api/w/${owner.sId}/spaces/${space.sId}/members`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          memberIds,
+        } satisfies PostSpaceMembersRequestBodyType),
+      }
+    );
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: `Failed to add members to ${getSpaceName(space)}`,
+        description: `Error: ${errorData.message}`,
+      });
+      return false;
+    }
+
+    void mutateSpaces();
+    void mutateSpacesAsAdmin();
+
+    sendNotification({
+      type: "success",
+      title: notification?.title ?? "Successfully added members",
+      description:
+        notification?.description ??
+        `Members were added to ${getSpaceName(space)}.`,
+    });
+    return true;
+  };
+  return doAdd;
 }
 
 export function useDeleteSpace({

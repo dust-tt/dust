@@ -1,4 +1,4 @@
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import { createHono } from "@front-api/lib/hono";
 
 import ready from "./healthz/ready";
@@ -12,7 +12,7 @@ healthzApp.get("/", (ctx) => {
   const response = ctx.text("ok", 200);
   const elapsedMs = performance.now() - startMs;
 
-  getStatsDClient().distribution("requests.health.check", elapsedMs);
+  statsDMetrics.distribution("requests.health.check", elapsedMs);
 
   return response;
 });

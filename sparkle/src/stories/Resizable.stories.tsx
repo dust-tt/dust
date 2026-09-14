@@ -1,4 +1,4 @@
-import type { Meta } from "@storybook/react";
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import {
@@ -27,21 +27,14 @@ const meta = {
 
 export default meta;
 
-export const TooltipLongLabel = () => (
-  <div className="flex flex-col bg-muted-background p-12">
-    <div className="flex h-[600px] w-[800px] flex-col gap-16 p-12">
-      <ResizableDemo />
-    </div>
-    <div className="flex h-[600px] w-[800px] flex-col gap-16 p-12">
-      <ResizableHeaderDemo />
-    </div>
-    <div className="flex h-[600px] w-[800px] flex-col gap-16 p-12">
-      <ResizableGrabDemo />
-    </div>
-  </div>
-);
-export function ResizableDemo() {
-  return (
+/**
+ * A horizontal two-panel split whose right panel nests a vertical
+ * **ResizablePanelGroup**, showing how groups compose into grids of
+ * resizable regions.
+ * @summary Horizontal split with a nested vertical group.
+ */
+export const HorizontalSplit: StoryObj = {
+  render: () => (
     <ResizablePanelGroup
       direction="horizontal"
       className="max-w-md rounded-lg border bg-white md:min-w-[450px]"
@@ -68,11 +61,16 @@ export function ResizableDemo() {
         </ResizablePanelGroup>
       </ResizablePanel>
     </ResizablePanelGroup>
-  );
-}
+  ),
+};
 
-export function ResizableHeaderDemo() {
-  return (
+/**
+ * A vertical split (`direction="vertical"`) giving a resizable header region
+ * above the main content, sized 25 / 75 by default.
+ * @summary Vertical split with a header panel.
+ */
+export const VerticalSplitWithHeader: StoryObj = {
+  render: () => (
     <ResizablePanelGroup
       direction="vertical"
       className="min-h-[200px] max-w-md rounded-lg border bg-white md:min-w-[450px]"
@@ -89,11 +87,17 @@ export function ResizableHeaderDemo() {
         </div>
       </ResizablePanel>
     </ResizablePanelGroup>
-  );
-}
+  ),
+};
 
-export function ResizableGrabDemo() {
-  return (
+/**
+ * Passing **withHandle** to **ResizableHandle** renders a visible grip on the
+ * divider, making the resize affordance discoverable — useful for
+ * sidebar-style splits.
+ * @summary Handle with a visible grip indicator.
+ */
+export const HandleWithGrip: StoryObj = {
+  render: () => (
     <ResizablePanelGroup
       direction="horizontal"
       className="min-h-[200px] max-w-md rounded-lg border bg-white md:min-w-[450px]"
@@ -110,5 +114,5 @@ export function ResizableGrabDemo() {
         </div>
       </ResizablePanel>
     </ResizablePanelGroup>
-  );
-}
+  ),
+};

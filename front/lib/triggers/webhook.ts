@@ -1,3 +1,8 @@
+import {
+  isPoolDepleted,
+  PROGRAMMATIC_CAP_REACHED_MESSAGE,
+} from "@app/lib/api/credits/access_control";
+import { notifyAdminsTriggerBlockedByProgrammaticCap } from "@app/lib/api/credits/programmatic_cap_trigger_alert";
 import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { FathomClient } from "@app/lib/api/triggers/built-in-webhooks/fathom/fathom_client";
 import type { Authenticator } from "@app/lib/auth";
@@ -5,10 +10,7 @@ import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { isGCSPreconditionFailedError } from "@app/lib/file_storage/types";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
-import {
-  isApiBlocked,
-  isProgrammaticApiBlocked,
-} from "@app/lib/metronome/user_block";
+import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import type { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -17,8 +19,9 @@ import type { RateLimitCheckResult } from "@app/lib/triggers/rate_limits";
 import {
   checkTriggerForExecutionPerDayLimit,
   checkWebhookRequestForRateLimit,
+  isTriggerProgrammaticCapReached,
 } from "@app/lib/triggers/rate_limits";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import { verifySignature } from "@app/lib/webhook_source_server";
 import logger from "@app/logger/logger";
 import { launchTriggersWorkflows } from "@app/temporal/triggers/webhook_client";
@@ -293,60 +296,68 @@ async function checkWorkspaceRateLimit({
   // depleted, no downstream message can be posted, so reject early instead of
   // spinning up the trigger workflow only to fail in `checkMessagesLimit`.
   if (plan && isCreditPricedPlan(plan)) {
-    if (owner.metronomeCustomerId && (await isApiBlocked(owner.sId))) {
+    if (owner.metronomeCustomerId && (await isPoolDepleted(auth))) {
       block = {
         status: "credits_exhausted",
         message:
           "Your workspace has run out of credits. Please purchase more credits to continue.",
       };
     }
+  }
 
-    // Programmatic monthly cap gate: if the programmatic cap is reached, reject
-    // early for programmatic triggers.
-    if (
-      !block &&
-      owner.metronomeCustomerId &&
-      trigger.executionMode === "programmatic" &&
-      (await isProgrammaticApiBlocked(owner.sId))
-    ) {
-      block = {
-        status: "credits_exhausted",
+  // Programmatic monthly cap gate: if the cap is reached, reject early for
+  // triggers charged to the workspace pool.
+  if (!block && (await isTriggerProgrammaticCapReached(auth, { trigger }))) {
+    block = {
+      status: "credits_exhausted",
+      message: PROGRAMMATIC_CAP_REACHED_MESSAGE,
+    };
+    fireAndForgetNotification(
+      notifyAdminsTriggerBlockedByProgrammaticCap(auth, { trigger }),
+      {
         message:
-          "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.",
-      };
-    }
+          "[ProgrammaticCapTriggerAlert] Failed to notify admins of blocked trigger",
+        context: { workspaceId, webhookRequestId, triggerId: trigger.sId },
+      }
+    );
   }
 
   /**
    * Check for workspace-level rate limits
-   * - for fair use execution mode, check global rate limits
-   * - for programmatic usage mode, check public API limits
+   * - user pool: check global rate limits
+   * - workspace pool: check public API limits
    */
   if (!block) {
-    if (!trigger.executionMode || trigger.executionMode === "fair_use") {
-      const { rateLimited, message } =
-        await checkWebhookRequestForRateLimit(auth);
-      if (rateLimited) {
-        block = { status: "rate_limited", message };
-      }
-    } else {
-      // Programmatic execution mode: legacy programmatic-credit gate applies
-      // to legacy plans only. Credit-priced plans are already gated above by
-      // the workspace pool check.
-      if (!plan || !isCreditPricedPlan(plan)) {
-        const limitsResult = await checkProgrammaticUsageLimits(auth);
-        if (limitsResult.isErr()) {
-          block = {
-            status: "rate_limited",
-            message: limitsResult.error.message,
-          };
+    switch (trigger.executionMode) {
+      case "user_pool": {
+        const { rateLimited, message } =
+          await checkWebhookRequestForRateLimit(auth);
+        if (rateLimited) {
+          block = { status: "rate_limited", message };
         }
+        break;
       }
+      case "workspace_pool": {
+        // The legacy programmatic-credit gate applies to legacy plans only.
+        // Credit-priced plans are already gated above by the pool check.
+        if (!plan || !isCreditPricedPlan(plan)) {
+          const limitsResult = await checkProgrammaticUsageLimits(auth);
+          if (limitsResult.isErr()) {
+            block = {
+              status: "rate_limited",
+              message: limitsResult.error.message,
+            };
+          }
+        }
+        break;
+      }
+      default:
+        assertNever(trigger.executionMode);
     }
   }
 
   if (block !== null) {
-    getStatsDClient().increment("webhook_workspace_rate_limit.hit.count", 1, [
+    statsDMetrics.increment("webhook_workspace_rate_limit.hit.count", 1, [
       `provider:${provider}`,
       `workspace_id:${workspaceId}`,
       `block_status:${block.status}`,
@@ -387,7 +398,7 @@ async function checkTriggerRateLimit({
       { workspaceId, webhookRequestId, triggerId: trigger.sId },
       result.message
     );
-    getStatsDClient().increment("webhook_trigger_rate_limit.hit.count", 1, [
+    statsDMetrics.increment("webhook_trigger_rate_limit.hit.count", 1, [
       `provider:${provider}`,
       `workspace_id:${workspaceId}`,
       `trigger_id:${trigger.sId}`,
@@ -423,7 +434,7 @@ function matchesPayloadFilter({
     `workspace_id:${workspaceId}`,
     `trigger_id:${trigger.sId}`,
   ];
-  getStatsDClient().increment("webhook_filter.events_processed.count", 1, tags);
+  statsDMetrics.increment("webhook_filter.events_processed.count", 1, tags);
 
   const parsedFilterResult = parseMatcherExpression(filter);
   if (parsedFilterResult.isErr()) {
@@ -441,7 +452,7 @@ function matchesPayloadFilter({
 
   const payloadMatchesFilter = matchPayload(body, parsedFilterResult.value);
   if (payloadMatchesFilter) {
-    getStatsDClient().increment("webhook_filter.events_passed.count", 1, tags);
+    statsDMetrics.increment("webhook_filter.events_passed.count", 1, tags);
     return true;
   }
 
@@ -568,8 +579,8 @@ async function storePayloadInGCS(
 
   const gcsPath = WebhookRequestResource.getGcsPath({
     workspaceId: auth.getNonNullableWorkspace().sId,
-    webhookSourceId: webhookSource.id,
-    webRequestId: webhookRequest.id,
+    webhookSourceModelId: webhookSource.id,
+    webhookRequestModelId: webhookRequest.id,
   });
 
   try {
@@ -591,7 +602,7 @@ async function storePayloadInGCS(
         "Webhook request payload was already stored in GCS"
       );
 
-      getStatsDClient().increment("webhook_gcs_precondition.count", 1, [
+      statsDMetrics.increment("webhook_gcs_precondition.count", 1, [
         `provider:${provider}`,
         `workspace_id:${auth.getNonNullableWorkspace().sId}`,
       ]);
@@ -610,7 +621,7 @@ async function storePayloadInGCS(
       "Failed to store webhook request"
     );
 
-    getStatsDClient().increment("webhook_error.count", 1, [
+    statsDMetrics.increment("webhook_error.count", 1, [
       `provider:${provider}`,
       `workspace_id:${auth.getNonNullableWorkspace().sId}`,
     ]);
@@ -640,8 +651,8 @@ export async function getWebhookRequestPayloadFromGCS(
     const file = bucket.file(
       WebhookRequestResource.getGcsPath({
         workspaceId: auth.getNonNullableWorkspace().sId,
-        webhookSourceId: webhookRequest.webhookSourceId,
-        webRequestId: webhookRequest.id,
+        webhookSourceModelId: webhookRequest.webhookSourceId,
+        webhookRequestModelId: webhookRequest.id,
       })
     );
     const [content] = await file.download();
@@ -846,8 +857,8 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
       if (bucket && requestCanHavePayload) {
         const gcsPath = WebhookRequestResource.getGcsPath({
           workspaceId: workspace.sId,
-          webhookSourceId: wrt.webhookRequest.webhookSourceId,
-          webRequestId: wrt.webhookRequest.id,
+          webhookSourceModelId: wrt.webhookRequest.webhookSourceId,
+          webhookRequestModelId: wrt.webhookRequest.id,
         });
 
         try {

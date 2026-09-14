@@ -1,9 +1,8 @@
-import { RegionProvider } from "@app/lib/auth/RegionContext";
+import { CellProvider } from "@app/lib/auth/CellContext";
 import { render, waitFor } from "@testing-library/react";
 import type React from "react";
 import type { MockInstance } from "vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 import { ValidationPage } from "./ValidationPage";
 
 vi.mock("@app/lib/platform", () => ({
@@ -28,9 +27,9 @@ vi.mock("@dust-tt/sparkle", () => ({
 
 function renderValidationPage() {
   render(
-    <RegionProvider>
+    <CellProvider>
       <ValidationPage />
-    </RegionProvider>
+    </CellProvider>
   );
 }
 
@@ -54,6 +53,7 @@ describe("ValidationPage", () => {
   beforeEach(() => {
     vi.stubEnv("VITE_DUST_API_URL_EU", "https://eu.dust.tt");
     vi.stubEnv("VITE_DUST_API_URL_US", "https://dust.tt");
+    vi.stubEnv("VITE_DUST_API_URL_CELL_00002", "https://eu2.dust.tt");
     window.localStorage.clear();
     window.history.replaceState(
       null,

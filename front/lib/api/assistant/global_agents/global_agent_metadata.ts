@@ -32,6 +32,7 @@ import {
   O3_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import type { RoleType } from "@app/types/user";
 
 // Audiences are role-hierarchical: `managers` means managers and admins.
 const GLOBAL_AGENT_AUDIENCES = ["everyone", "managers", "admins"] as const;
@@ -45,28 +46,36 @@ type AgentMetadata = {
   audience?: GlobalAgentAudience;
 };
 
+function readerRolesForAudience(audience: GlobalAgentAudience): RoleType[] {
+  switch (audience) {
+    case "everyone":
+      return ["admin", "manager", "builder", "user", "none"];
+    case "managers":
+      return ["admin", "manager"];
+    case "admins":
+      return ["admin"];
+    default:
+      return assertNever(audience);
+  }
+}
+
 export function canRoleSeeAudience(
   audience: GlobalAgentAudience,
   auth: Authenticator
 ): boolean {
-  switch (audience) {
-    case "everyone":
-      return true;
-    case "managers":
-      return auth.isManager();
-    case "admins":
-      return auth.isAdmin();
-    default:
-      return assertNever(audience);
-  }
+  return readerRolesForAudience(audience).includes(auth.role());
+}
+
+export function globalAgentReaderRoles(sId: GLOBAL_AGENTS_SID): RoleType[] {
+  const { audience = "everyone" } = getGlobalAgentMetadata(sId);
+  return readerRolesForAudience(audience);
 }
 
 export function canRoleSeeGlobalAgent(
   sId: GLOBAL_AGENTS_SID,
   auth: Authenticator
 ): boolean {
-  const { audience = "everyone" } = getGlobalAgentMetadata(sId);
-  return canRoleSeeAudience(audience, auth);
+  return globalAgentReaderRoles(sId).includes(auth.role());
 }
 
 export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
@@ -456,7 +465,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_PISTACHE,
         name: "dust-pistache",
-        description: "Same as dust but running GLM-5.2.",
+        description: "Same as dust but running GLM-5.3.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_PISTACHE_MEDIUM:
@@ -520,7 +529,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_GOOG,
         name: "dust-goog",
-        description: "Same as dust but running Gemini 3.5 Flash.",
+        description: "Same as dust but running Gemini 3.8 Flash.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_GOOG_MEDIUM:
@@ -699,7 +708,7 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
       return {
         sId: GLOBAL_AGENTS_SID.DUST_DEEPSEEK,
         name: "dust-deepseek",
-        description: "Same as dust but running DeepSeek V4 Pro.",
+        description: "Same as dust but running DeepSeek V4.1 Flash.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_MISTRAL_MEDIUM_NONE:
@@ -730,6 +739,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         sId: GLOBAL_AGENTS_SID.DUST,
         name: "dust",
         description: "An agent with context on your company data.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
+    case GLOBAL_AGENTS_SID.DUST_LEAN:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_LEAN,
+        name: "dust-lean",
+        description:
+          "Dust with no tools, skills, or company knowledge by default. Add capabilities to the conversation as needed.",
         pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.DUST_HIGH:

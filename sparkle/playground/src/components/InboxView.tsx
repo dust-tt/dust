@@ -5,21 +5,27 @@ import {
   Collapsible,
   CollapsibleContent,
   ConversationListItem,
+  Cube01,
+  CubeOutline,
   Icon,
-  Inbox01,
+  Mail01,
   ListGroup,
+  MessageChatSquare,
   ReplySection,
   SearchInput,
   SearchInputWithPopover,
   UniversalSearchItem,
+  Zap,
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 
 import { getAgentById } from "../data/agents";
-import { getRandomGreetingForName } from "../data/greetings";
+import { getRandomInboxGreetingForName } from "../data/greetings";
+import { isTriggeredConversation } from "../data/myPod";
 import type { Agent, Conversation, Space, User } from "../data/types";
 import { getUserById } from "../data/users";
+import { EmptyState } from "./EmptyState";
 import { TaskItem } from "./TaskItem";
 
 type InboxTab = "conversations" | "tasks";
@@ -48,7 +54,9 @@ interface InboxViewProps {
   currentUserId?: string;
   onConversationClick?: (conversation: Conversation) => void;
   onMyPodClick?: () => void;
+  onAutomationsClick?: () => void;
   onSpaceClick?: (space: Space) => void;
+  personalSectionLabel?: string;
 }
 
 const INBOX_TASK_ITEMS: InboxTask[] = [
@@ -244,6 +252,11 @@ function getConversationListItemMeta(conversation: Conversation) {
   return { time, replyCount, messageCount, mentionCount };
 }
 
+function getInboxPodSectionIcon(space: Space) {
+  const isRestricted = space.id.charCodeAt(space.id.length - 1) % 2 === 0;
+  return isRestricted ? CubeOutline : Cube01;
+}
+
 export function InboxView({
   spaces,
   conversations,
@@ -254,14 +267,16 @@ export function InboxView({
   currentUserId,
   onConversationClick,
   onMyPodClick,
+  onAutomationsClick,
   onSpaceClick,
+  personalSectionLabel = "My Pod",
 }: InboxViewProps) {
   const currentUserFirstName = currentUserId
     ? (getUserById(currentUserId)?.firstName ?? "there")
     : "there";
   const [greeting, setGreeting] = useState<string>("");
   useEffect(() => {
-    setGreeting(getRandomGreetingForName(currentUserFirstName));
+    setGreeting(getRandomInboxGreetingForName(currentUserFirstName));
   }, [currentUserFirstName]);
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
     new Set()
@@ -306,7 +321,31 @@ export function InboxView({
     const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
 
     const filtered = conversations.filter((conv) => {
+      if (isTriggeredConversation(conv)) {
+        return false;
+      }
       if (conv.spaceId) return false;
+      return conv.updatedAt >= twoDaysAgo;
+    });
+
+    const sorted = [...filtered].sort(
+      (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
+    );
+    const limit = Math.min(
+      Math.max(1, Math.floor(Math.random() * 3) + 1),
+      sorted.length
+    );
+    return sorted.slice(0, limit);
+  }, [conversations]);
+
+  const automationConversations = useMemo(() => {
+    const now = new Date();
+    const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+
+    const filtered = conversations.filter((conv) => {
+      if (!isTriggeredConversation(conv)) {
+        return false;
+      }
       return conv.updatedAt >= twoDaysAgo;
     });
 
@@ -325,14 +364,21 @@ export function InboxView({
     const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
 
     return conversations.filter((conv) => {
+      if (isTriggeredConversation(conv)) {
+        return false;
+      }
       if (!conv.spaceId) return false;
       return conv.updatedAt >= twoDaysAgo;
     });
   }, [conversations]);
 
   const inboxSearchableConversations = useMemo(
-    () => [...myConversations, ...unreadConversations],
-    [myConversations, unreadConversations]
+    () => [
+      ...myConversations,
+      ...automationConversations,
+      ...unreadConversations,
+    ],
+    [automationConversations, myConversations, unreadConversations]
   );
 
   const conversationSearchResults = useMemo(
@@ -375,8 +421,55 @@ export function InboxView({
     return spaces.filter((space) => conversationsBySpace.has(space.id));
   }, [spaces, conversationsBySpace]);
 
+  // Stabilize the random per-conversation display data (participants, creator,
+  // reply/message/mention counts) so unrelated re-renders don't reshuffle the
+  // lists. Recomputed only when the displayed conversations change.
+  const conversationDisplayById = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        creator?: User;
+        avatarProps: ReturnType<typeof participantsToAvatarProps>;
+        time: string;
+        replyCount: number;
+        messageCount: number;
+        mentionCount: number;
+      }
+    >();
+
+    const displayed = [
+      ...myConversations,
+      ...automationConversations,
+      ...Array.from(conversationsBySpace.values()).flat(),
+    ];
+
+    displayed.forEach((conversation) => {
+      if (map.has(conversation.id)) {
+        return;
+      }
+      const participants = getRandomParticipants(conversation, users, agents);
+      const creator = getRandomCreator(conversation, users);
+      const meta = getConversationListItemMeta(conversation);
+      map.set(conversation.id, {
+        creator: creator || undefined,
+        avatarProps: participantsToAvatarProps(participants),
+        ...meta,
+      });
+    });
+
+    return map;
+  }, [
+    automationConversations,
+    myConversations,
+    conversationsBySpace,
+    users,
+    agents,
+  ]);
+
   const hasConversationContent =
-    myConversations.length > 0 || spacesWithUnread.length > 0;
+    myConversations.length > 0 ||
+    automationConversations.length > 0 ||
+    spacesWithUnread.length > 0;
 
   const baseInboxTaskGroups = useMemo(() => {
     const groups: Array<{
@@ -392,7 +485,7 @@ export function InboxView({
     if (myPodTasks.length > 0) {
       groups.push({
         key: "my-pod",
-        label: "My Pod",
+        label: personalSectionLabel,
         onHeaderClick: onMyPodClick,
         tasks: myPodTasks,
       });
@@ -413,7 +506,13 @@ export function InboxView({
     });
 
     return groups;
-  }, [checkedTaskKeys, onMyPodClick, onSpaceClick, spaces]);
+  }, [
+    checkedTaskKeys,
+    onMyPodClick,
+    onSpaceClick,
+    personalSectionLabel,
+    spaces,
+  ]);
 
   const inboxTaskGroups = useMemo(() => {
     const normalizedSearch = taskSearchText.trim().toLowerCase();
@@ -440,12 +539,19 @@ export function InboxView({
     const myConversationsCollapsed =
       myConversations.length === 0 || collapsedSections.has("my-conversations");
 
+    const automationsCollapsed =
+      automationConversations.length === 0 ||
+      collapsedSections.has("automations");
+
     const allSpacesCollapsed =
       spacesWithUnread.length === 0 ||
       spacesWithUnread.every((space) => collapsedSections.has(space.id));
 
-    return myConversationsCollapsed && allSpacesCollapsed;
+    return (
+      myConversationsCollapsed && automationsCollapsed && allSpacesCollapsed
+    );
   }, [
+    automationConversations.length,
     collapsedSections,
     hasConversationContent,
     myConversations.length,
@@ -504,32 +610,52 @@ export function InboxView({
     );
   };
 
+  const handleMarkAllConversationsAsRead = () => {
+    setCollapsedSections((prev) => {
+      const next = new Set(prev);
+      next.add("my-conversations");
+      next.add("automations");
+      spacesWithUnread.forEach((space) => next.add(space.id));
+      return next;
+    });
+  };
+
   const renderConversationsToolbar = () => (
-    <SearchInputWithPopover
-      name="inbox-conversation-search"
-      value={conversationSearchText}
-      onChange={(value) => {
-        setConversationSearchText(value);
-        if (!value.trim()) {
-          setIsConversationSearchOpen(false);
+    <div className="flex items-center gap-2">
+      <SearchInputWithPopover
+        name="inbox-conversation-search"
+        value={conversationSearchText}
+        onChange={(value) => {
+          setConversationSearchText(value);
+          if (!value.trim()) {
+            setIsConversationSearchOpen(false);
+          }
+        }}
+        open={isConversationSearchOpen}
+        onOpenChange={setIsConversationSearchOpen}
+        placeholder="Search in Inbox"
+        className="w-full"
+        items={conversationSearchResults}
+        availableHeight
+        noResults={
+          conversationSearchText.trim()
+            ? "No results found"
+            : "Start typing to search"
         }
-      }}
-      open={isConversationSearchOpen}
-      onOpenChange={setIsConversationSearchOpen}
-      placeholder="Search in Inbox"
-      className="w-full"
-      items={conversationSearchResults}
-      availableHeight
-      noResults={
-        conversationSearchText.trim()
-          ? "No results found"
-          : "Start typing to search"
-      }
-      onItemSelect={handleConversationSearchSelect}
-      renderItem={(item, selected) =>
-        renderConversationSearchItem(item, selected)
-      }
-    />
+        onItemSelect={handleConversationSearchSelect}
+        renderItem={(item, selected) =>
+          renderConversationSearchItem(item, selected)
+        }
+      />
+      <Button
+        label="Mark all as read"
+        icon={Check}
+        size="sm"
+        variant="outline"
+        tooltip="Mark all as read"
+        onClick={handleMarkAllConversationsAsRead}
+      />
+    </div>
   );
 
   const renderTasksToolbar = () => (
@@ -546,13 +672,17 @@ export function InboxView({
     label: string,
     onHeaderClick: (() => void) | undefined,
     onAction: () => void,
-    actionLabel: string
+    actionLabel: string,
+    icon?: ComponentType<{ className?: string }>
   ) => (
     <div
       className="mt-2 flex cursor-pointer items-center justify-between rounded-2xl bg-muted-background p-1.5 pl-3.5 heading-sm"
       onClick={onHeaderClick}
     >
-      {label}
+      <span className="flex min-w-0 items-center gap-1.5">
+        {icon ? <Icon visual={icon} size="sm" /> : null}
+        {label}
+      </span>
       <Button
         label={actionLabel}
         icon={Check}
@@ -568,11 +698,13 @@ export function InboxView({
   );
 
   const renderInboxConversationItem = (conversation: Conversation) => {
-    const participants = getRandomParticipants(conversation, users, agents);
-    const creator = getRandomCreator(conversation, users);
-    const avatarProps = participantsToAvatarProps(participants);
-    const { time, replyCount, messageCount, mentionCount } =
-      getConversationListItemMeta(conversation);
+    const display = conversationDisplayById.get(conversation.id);
+    const creator = display?.creator;
+    const avatarProps = display?.avatarProps ?? [];
+    const time = display?.time ?? "";
+    const replyCount = display?.replyCount ?? 0;
+    const messageCount = display?.messageCount ?? 0;
+    const mentionCount = display?.mentionCount ?? 0;
     const isSelected = selectedConversationId === conversation.id;
 
     return (
@@ -601,20 +733,19 @@ export function InboxView({
     );
   };
 
+  const renderEmptyState = (title: string, description: React.ReactNode) => (
+    <EmptyState icon={Mail01} title={title} description={description} />
+  );
+
   const renderConversationsTab = () => {
     if (!hasConversationContent) {
-      return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2">
-          <div className="flex flex-col items-center justify-center gap-1 text-foreground">
-            <Icon size="md" visual={Inbox01} />
-            <h2 className="heading-xl">Inbox</h2>
-          </div>
-          <p className="text-center text-lg text-muted-foreground">
-            You're all caught up!
-            <br />
-            Nothing new under the sun.
-          </p>
-        </div>
+      return renderEmptyState(
+        "Inbox",
+        <>
+          You're all caught up!
+          <br />
+          Nothing new under the sun.
+        </>
       );
     }
 
@@ -622,17 +753,14 @@ export function InboxView({
       return (
         <div className="flex flex-1 flex-col gap-3">
           {renderConversationsToolbar()}
-          <div className="flex flex-1 flex-col items-center justify-center gap-2">
-            <div className="flex flex-col items-center justify-center gap-1 text-foreground">
-              <Icon size="md" visual={Inbox01} />
-              <h2 className="heading-xl">Inbox</h2>
-            </div>
-            <p className="text-center text-lg text-muted-foreground">
+          {renderEmptyState(
+            "Inbox",
+            <>
               You're all caught up!
               <br />
               Nothing new under the sun.
-            </p>
-          </div>
+            </>
+          )}
         </div>
       );
     }
@@ -663,13 +791,49 @@ export function InboxView({
               <CollapsibleContent>
                 <div className="flex flex-col gap-1">
                   {renderInboxSectionHeader(
-                    "My Pod",
+                    personalSectionLabel,
                     onMyPodClick,
                     () => toggleSectionCollapse("my-conversations"),
-                    "Mark as read"
+                    "Mark as read",
+                    MessageChatSquare
                   )}
                   <ListGroup className="border-transparent! gap-0.5">
                     {myConversations.map(renderInboxConversationItem)}
+                  </ListGroup>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+          {automationConversations.length > 0 && (
+            <Collapsible
+              key="automations"
+              open={!collapsedSections.has("automations")}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setCollapsedSections((prev) =>
+                    new Set(prev).add("automations")
+                  );
+                } else {
+                  setCollapsedSections((prev) => {
+                    const next = new Set(prev);
+                    next.delete("automations");
+                    return next;
+                  });
+                }
+              }}
+              className="flex flex-col"
+            >
+              <CollapsibleContent>
+                <div className="flex flex-col gap-1">
+                  {renderInboxSectionHeader(
+                    "Automations",
+                    onAutomationsClick,
+                    () => toggleSectionCollapse("automations"),
+                    "Mark as read",
+                    Zap
+                  )}
+                  <ListGroup className="border-transparent! gap-0.5">
+                    {automationConversations.map(renderInboxConversationItem)}
                   </ListGroup>
                 </div>
               </CollapsibleContent>
@@ -702,7 +866,8 @@ export function InboxView({
                       space.name,
                       () => onSpaceClick?.(space),
                       () => toggleSectionCollapse(space.id),
-                      "Mark as read"
+                      "Mark as read",
+                      getInboxPodSectionIcon(space)
                     )}
                     <ListGroup className="border-transparent! gap-0.5">
                       {spaceConversations.map(renderInboxConversationItem)}
@@ -719,22 +884,15 @@ export function InboxView({
 
   const renderTasksTab = () => {
     if (!hasTaskContent) {
-      return (
-        <div className="flex flex-1 flex-col items-center justify-center gap-2">
-          <div className="flex flex-col items-center justify-center gap-1 text-foreground">
-            <Icon size="md" visual={Inbox01} />
-            <h2 className="heading-xl">All tasks done</h2>
-          </div>
-          <p className="text-center text-lg text-muted-foreground">
-            No ongoing tasks across your pods.
-          </p>
-        </div>
+      return renderEmptyState(
+        "All tasks done",
+        "No ongoing tasks across your pods."
       );
     }
 
     if (!hasFilteredTaskContent) {
       return (
-        <div className="flex flex-1 flex-col gap-4">
+        <div className="flex flex-1 flex-col gap-3">
           {renderTasksToolbar()}
           <div className="flex flex-1 flex-col items-center justify-center gap-2">
             <p className="text-center text-lg text-muted-foreground">
@@ -747,23 +905,18 @@ export function InboxView({
 
     if (allTaskSectionsCollapsed) {
       return (
-        <div className="flex flex-1 flex-col gap-4">
+        <div className="flex flex-1 flex-col gap-3">
           {renderTasksToolbar()}
-          <div className="flex flex-1 flex-col items-center justify-center gap-2">
-            <div className="flex flex-col items-center justify-center gap-1 text-foreground">
-              <Icon size="md" visual={Inbox01} />
-              <h2 className="heading-xl">All tasks done</h2>
-            </div>
-            <p className="text-center text-lg text-muted-foreground">
-              No ongoing tasks across your pods.
-            </p>
-          </div>
+          {renderEmptyState(
+            "All tasks done",
+            "No ongoing tasks across your pods."
+          )}
         </div>
       );
     }
 
     return (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {renderTasksToolbar()}
         {inboxTaskGroups.map((group) => (
           <Collapsible
@@ -828,16 +981,16 @@ export function InboxView({
   };
 
   return (
-    <div className="flex h-full w-full flex-col bg-background">
-      <div className="flex h-full min-h-0 flex-1 flex-col overflow-y-auto px-4">
-        <div className="mx-auto flex h-full w-full max-w-4xl flex-col gap-3 py-6">
-          {greeting && (
-            <h2 className="heading-2xl text-foreground">{greeting}</h2>
-          )}
-          {activeTab === "conversations"
-            ? renderConversationsTab()
-            : renderTasksTab()}
-        </div>
+    <div className="flex h-full w-full flex-col overflow-x-clip overflow-y-auto bg-background">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 pt-8 pb-8">
+        {greeting && (
+          <div className="heading-2xl text-center text-foreground">
+            {greeting}
+          </div>
+        )}
+        {activeTab === "conversations"
+          ? renderConversationsTab()
+          : renderTasksTab()}
       </div>
     </div>
   );

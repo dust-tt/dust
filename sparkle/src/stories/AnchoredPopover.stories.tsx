@@ -27,7 +27,47 @@ const meta = {
 
 export default meta;
 
-export const MultipleAnchors: StoryObj<typeof AnchoredPopover> = {
+/**
+ * The minimal wiring: one anchor element referenced by `anchorRef`, and an
+ * `open` state you control yourself.
+ *
+ * @summary Minimal single-anchor setup.
+ */
+export const Default: StoryObj<typeof AnchoredPopover> = {
+  render: () => {
+    const [isOpen, setIsOpen] = useState(false);
+    const anchorRef = useRef<HTMLButtonElement>(null);
+
+    return (
+      <div className="flex h-64 w-96 items-center justify-center">
+        <Button
+          ref={anchorRef}
+          label="Toggle popover"
+          onClick={() => setIsOpen((open) => !open)}
+          size="sm"
+        />
+        <AnchoredPopover
+          open={isOpen}
+          anchorRef={anchorRef}
+          side="bottom"
+          align="center"
+          sideOffset={4}
+          className="w-40 p-4"
+        >
+          <div className="text-sm">Anchored to the button.</div>
+        </AnchoredPopover>
+      </div>
+    );
+  },
+};
+
+/**
+ * The same popover moved between four anchors at runtime, one per `side`
+ * value — click a button to re-anchor and reposition it.
+ *
+ * @summary Re-anchoring across the four placement sides.
+ */
+export const PlacementSides: StoryObj<typeof AnchoredPopover> = {
   render: () => {
     const [isOpen, setIsOpen] = useState(false);
     const [activeRef, setActiveRef] =

@@ -1,9 +1,8 @@
 import type {
-  PokePodFunction,
-  PokePodFunctionDetails,
-} from "@app/lib/api/poke/projects";
+  PokeFrameFunction,
+  PokeFrameFunctionDetails,
+} from "@app/lib/api/poke/frames";
 import { SandboxFunctionInvocationError } from "@app/lib/api/sandbox_functions/errors";
-import { sandboxFunctionNameFromSlug } from "@app/lib/api/sandbox_functions/slug";
 import { authorizeSandboxFunctionInvocation } from "@app/lib/api/sandbox_functions/workspace_user";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
@@ -11,7 +10,6 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import type { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   SandboxFunctionInvocationModel,
   SandboxFunctionModel,
@@ -24,8 +22,6 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { UserResource } from "@app/lib/resources/user_resource";
-import type { PodAppFunction } from "@app/types/api/pod_apps";
 import type {
   PostSandboxFunctionInvocationRequestBody,
   SandboxFunctionExecutionMode,
@@ -38,7 +34,6 @@ import {
   DEFAULT_SANDBOX_FUNCTION_STAKE,
   isValidSandboxFunctionSlug,
 } from "@app/types/api/sandbox_functions";
-import { sandboxFunctionContentType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -48,12 +43,33 @@ import assert from "assert";
 import { createHash } from "crypto";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import type { Attributes, Transaction } from "sequelize";
+import { col, fn, Op } from "sequelize";
+import { z } from "zod";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SandboxFunctionResource
   extends ReadonlyAttributesType<SandboxFunctionModel> {}
 
+export interface FramePublicationFunctionDefinition {
+  name: string;
+  description: string;
+  userIdentity: SandboxFunctionUserIdentityPolicy;
+  executionMode: SandboxFunctionExecutionMode;
+  defaultStake: SandboxFunctionStake;
+  bundleCode: string;
+  inputSchema: JSONSchema;
+  outputSchema: JSONSchema;
+}
+
 export const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
+
+// A `findAll` carrying an aggregate attribute returns plain rows rather than model instances, so
+// the model's declared types do not describe them. Parsed instead of cast so a shape change fails
+// loudly. `functionCount` is coerced because aggregates arrive as strings from some drivers.
+const FrameFunctionCountRowSchema = z.object({
+  fileId: z.number(),
+  functionCount: z.coerce.number(),
+});
 
 /**
  * Sha256 hex of a published bundle's utf8 bytes — the same bytes uploadContent writes and the
@@ -61,6 +77,14 @@ export const SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS = 5 * 60_000;
  */
 export function computeSandboxFunctionBundleSha256(bundleCode: string): string {
   return createHash("sha256").update(bundleCode, "utf8").digest("hex");
+}
+
+/**
+ * Short prefix of a bundle sha for tool output: enough to tell two publishes apart at a glance,
+ * mirroring short commit hashes. "unknown" covers functions last published before hashes existed.
+ */
+export function shortSandboxFunctionBundleSha256(sha: string | null): string {
+  return sha === null ? "unknown" : sha.slice(0, 12);
 }
 
 export function getSandboxFunctionPublishLockName(
@@ -79,13 +103,14 @@ function userIdentityPolicyStrength(
       return 1;
     case "interactive_workspace_user_required":
       return 2;
-    case "pod_member_required":
-      // The pod-scoped audience ranks above the workspace-wide, session-bound policy: a publish
-      // moving to it always commits the policy before exposing the new bundle.
+    case "frame_author_required":
+      // Source write access is the strictest policy. On a Frame outside a Pod it is scoped to
+      // conversation access; inside a Pod it follows the Pod's write permission. A legacy Pod
+      // Function cannot satisfy it and therefore fails closed.
       return 3;
     default:
       // The stored policy can be a value this revision does not know: one from a newer revision
-      // in a mixed-version deploy, or a retired policy (e.g. `pod_editor_required`). Rank it
+      // in a mixed-version deploy, or a retired policy (e.g. `pod_member_required`). Rank it
       // strictest so the republish never loosens it early and simply overwrites it with the
       // upload; invoking it is denied regardless (see authorizeSandboxFunctionInvocation).
       // `assertNeverAndIgnore` (not `assertNever`) is deliberate although this is server code:
@@ -101,18 +126,23 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
   static model: ModelStaticWorkspaceAware<SandboxFunctionModel> =
     SandboxFunctionModel;
 
-  readonly space: SpaceResource;
   file: FileResource;
 
   constructor(
     model: ModelStaticWorkspaceAware<SandboxFunctionModel>,
     blob: Attributes<SandboxFunctionModel>,
-    space: SpaceResource,
     file: FileResource
   ) {
     super(model, blob);
-    this.space = space;
     this.file = file;
+  }
+
+  /**
+   * The Frame that owns this function. Non-null by construction: `baseFetch` is the only path
+   * that builds a resource, and it drops any row that does not hydrate into a Frame function.
+   */
+  get frame(): FileResource {
+    return this.file;
   }
 
   get sId(): string {
@@ -132,77 +162,42 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return makeSId("sandbox_function", { id, workspaceId });
   }
 
-  static async makeNew(
+  static async createForFramePublication(
     auth: Authenticator,
     {
-      space,
-      file,
-      slug,
-      description,
-      userIdentity = "optional",
-      executionMode = DEFAULT_SANDBOX_FUNCTION_EXECUTION_MODE,
-      defaultStake = DEFAULT_SANDBOX_FUNCTION_STAKE,
-      bundleSha256 = null,
-      inputSchema,
-      outputSchema,
+      frame,
+      functions,
+      publicationId,
     }: {
-      space: SpaceResource;
-      file: FileResource;
-      slug: string;
-      description: string;
-      userIdentity?: SandboxFunctionUserIdentityPolicy;
-      executionMode?: SandboxFunctionExecutionMode;
-      defaultStake?: SandboxFunctionStake;
-      bundleSha256?: string | null;
-      inputSchema: JSONSchema;
-      outputSchema: JSONSchema;
+      frame: FileResource;
+      functions: FramePublicationFunctionDefinition[];
+      publicationId: string;
     },
-    transaction?: Transaction
-  ): Promise<SandboxFunctionResource> {
-    assert(space.isProject(), "Sandbox functions can only belong to pods.");
+    transaction: Transaction
+  ): Promise<void> {
+    const owner = auth.getNonNullableWorkspace();
+    assert(frame.isFrameV2, "Frame functions require a Frames v2 file.");
     assert(
-      isValidSandboxFunctionSlug(slug),
-      "The slug must be lowercase alphanumeric with single hyphen separators."
-    );
-    assert(
-      space.workspaceId === auth.getNonNullableWorkspace().id,
-      "The space must belong to the authenticated workspace."
-    );
-    assert(
-      file.workspaceId === auth.getNonNullableWorkspace().id,
-      "The file must belong to the authenticated workspace."
-    );
-    assert(
-      file.contentType === sandboxFunctionContentType,
-      `The file must use the ${sandboxFunctionContentType} content type.`
-    );
-    assert(
-      file.useCase === "project_context",
-      "The file must use the project_context use case."
-    );
-    assert(
-      file.useCaseMetadata?.spaceId === space.sId,
-      "The file must belong to the same pod as the sandbox function."
+      frame.workspaceId === owner.id,
+      "The Frame must belong to the authenticated workspace."
     );
 
-    const sandboxFunction = await this.model.create(
-      {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        spaceId: space.id,
-        fileId: file.id,
-        slug,
-        description,
-        userIdentity,
-        executionMode,
-        defaultStake,
-        bundleSha256,
-        inputSchema,
-        outputSchema,
-      },
-      { transaction }
+    await this.model.bulkCreate(
+      functions.map((fn) => ({
+        workspaceId: owner.id,
+        fileId: frame.id,
+        publicationId,
+        slug: fn.name,
+        description: fn.description,
+        userIdentity: fn.userIdentity,
+        executionMode: fn.executionMode,
+        defaultStake: fn.defaultStake,
+        bundleSha256: computeSandboxFunctionBundleSha256(fn.bundleCode),
+        inputSchema: fn.inputSchema,
+        outputSchema: fn.outputSchema,
+      })),
+      { transaction, validate: true }
     );
-
-    return new this(this.model, sandboxFunction.get(), space, file);
   }
 
   /**
@@ -210,6 +205,10 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
    * rewrites the same file (canonical original plus its mount path <prefix>/<slug>.ts) and bumps the
    * version, so the function's storage path stays stable across re-publishes rather than drifting to
    * a disambiguated name. The caller checks write permission.
+   *
+   * Reports whether the new bundle is byte-identical to the one it replaces: a publisher who
+   * edited the source expects the built output to change, and echoing that it did not lets the
+   * caller surface "your edit didn't land" instead of leaving a stale-publish hunt.
    */
   async updateContent(
     auth: Authenticator,
@@ -230,7 +229,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       inputSchema: JSONSchema;
       outputSchema: JSONSchema;
     }
-  ): Promise<Result<undefined, Error>> {
+  ): Promise<Result<{ byteIdentical: boolean }, Error>> {
     try {
       return await executeWithLock(
         getSandboxFunctionPublishLockName(this.sId),
@@ -244,6 +243,12 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
           if (!currentFunction) {
             return new Err(new Error("The Pod Function no longer exists."));
           }
+
+          // Hash of the exact code the upload below writes. Compared against the row re-read
+          // under the lock, not the in-memory copy, so a concurrent publish cannot skew the
+          // byte-identical report. Null on the row (pre-hash publishes) never matches.
+          const bundleSha256 = computeSandboxFunctionBundleSha256(bundleCode);
+          const byteIdentical = currentFunction.bundleSha256 === bundleSha256;
 
           const currentUserIdentity =
             currentFunction.userIdentity ?? "optional";
@@ -277,16 +282,16 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
             userIdentity,
             executionMode,
             defaultStake,
-            // Derived from the exact code the upload above wrote. Landing with the row update
-            // (not before the upload) means a warm server can never be told to expect a bundle
-            // that is not on disk yet; invocations racing this publish carry the old hash and
-            // settle against whichever bundle they were issued for.
-            bundleSha256: computeSandboxFunctionBundleSha256(bundleCode),
+            // The hash lands with the row update (not before the upload), so a warm server can
+            // never be told to expect a bundle that is not on disk yet; invocations racing this
+            // publish carry the old hash and settle against whichever bundle they were issued
+            // for.
+            bundleSha256,
             inputSchema,
             outputSchema,
           });
 
-          return new Ok(undefined);
+          return new Ok({ byteIdentical });
         },
         30_000,
         { lockTtlMs: SANDBOX_FUNCTION_PUBLISH_LOCK_TTL_MS }
@@ -296,17 +301,14 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
   }
 
-  // `includeDeletedSpace` refers to the pod, not to the functions themselves: pods are
-  // soft-deleted before being scrubbed, and without it every function of a pod being deleted
-  // resolves to no space and is silently dropped here.
+  /**
+   * @cc [owner:davidebbo,label:backend] frame-owned-rows-only
+   * A row MUST NOT be hydrated into a `SandboxFunctionResource` unless its file is a Frames v2
+   * manifest. Callers rely on `frame` being present on every resource this returns.
+   */
   private static async baseFetch(
     auth: Authenticator,
-    {
-      includeDeletedSpace,
-      ...options
-    }: ResourceFindOptions<SandboxFunctionModel> & {
-      includeDeletedSpace?: boolean;
-    } = {}
+    options: ResourceFindOptions<SandboxFunctionModel> = {}
   ): Promise<SandboxFunctionResource[]> {
     const { where, ...rest } = options;
     const sandboxFunctions = await this.model.findAll({
@@ -316,25 +318,6 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       },
       ...rest,
     });
-
-    const spaces = await SpaceResource.fetchByModelIds(
-      auth,
-      Array.from(
-        new Set(
-          sandboxFunctions.map(
-            (sandboxFunction) => sandboxFunction.get().spaceId
-          )
-        )
-      ),
-      { includeDeleted: includeDeletedSpace }
-    );
-    const accessibleSpacesById = new Map(
-      spaces
-        .filter(
-          (space) => space.isProject() && space.canReadOrAdministrate(auth)
-        )
-        .map((space) => [space.id, space])
-    );
 
     const files = await FileResource.fetchByModelIdsWithAuth(
       auth,
@@ -348,14 +331,15 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     );
     const filesById = new Map(files.map((file) => [file.id, file]));
 
+    // A row whose Frame the caller cannot read is dropped.
     return sandboxFunctions.flatMap((sandboxFunction) => {
-      const space = accessibleSpacesById.get(sandboxFunction.get().spaceId);
-      const file = filesById.get(sandboxFunction.get().fileId);
-      if (!space || !file) {
+      const blob = sandboxFunction.get();
+      const file = filesById.get(blob.fileId);
+      if (!file?.isFrameV2) {
         return [];
       }
 
-      return [new this(this.model, sandboxFunction.get(), space, file)];
+      return [new this(this.model, blob, file)];
     });
   }
 
@@ -379,6 +363,65 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     return sandboxFunction ?? null;
   }
 
+  /**
+   * Resolve either owner kind for caller-facing invocation routes. Pod space access is still
+   * filtered here; Frame use rights and active-publication checks are applied by the route
+   * resolver once the owning Frame is known.
+   */
+  static async fetchByIdForInvocationResolution(
+    auth: Authenticator,
+    sandboxFunctionId: string
+  ): Promise<SandboxFunctionResource | null> {
+    if (!isResourceSId("sandbox_function", sandboxFunctionId)) {
+      return null;
+    }
+    const sandboxFunctionModelId = getResourceIdFromSId(sandboxFunctionId);
+    if (sandboxFunctionModelId === null) {
+      return null;
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { id: sandboxFunctionModelId },
+    });
+    return sandboxFunction ?? null;
+  }
+
+  /**
+   * Gets the function if a matching invocation exists.
+   * In the context of a temporal activity or a sandbox callback, we don't have the original
+   * caller's grant (e.g. a frame share token) in the auth, so the space permission filter is
+   * deliberately skipped. The invocation ties the pair together; callers are trusted because
+   * their (function, invocation) ids come from server-minted inputs — workflow args or verified
+   * sandbox JWT claims — never from user input.
+   */
+  static async fetchByIdForExecution(
+    auth: Authenticator,
+    {
+      sandboxFunctionId,
+      invocationId,
+    }: { sandboxFunctionId: string; invocationId: string }
+  ): Promise<SandboxFunctionResource | null> {
+    const sandboxFunctionModelId = getResourceIdFromSId(sandboxFunctionId);
+    if (sandboxFunctionModelId === null) {
+      return null;
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { id: sandboxFunctionModelId },
+    });
+    if (!sandboxFunction) {
+      return null;
+    }
+
+    // We don't need the invocation itself, just its existence.
+    const invocation = await SandboxFunctionInvocationResource.fetchById(auth, {
+      sandboxFunction,
+      invocationId,
+      access: "system",
+    });
+    return invocation ? sandboxFunction : null;
+  }
+
   // Lives here rather than on SandboxFunctionMCPActionResource: that resource can only type-import
   // the invocation resource (the invocation resource value-imports it for cascade deletion), so it
   // cannot construct an invocation. Takes the action rather than its FK id so callers don't thread
@@ -397,13 +440,12 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       return null;
     }
 
-    const sandboxFunction = await this.fetchById(
-      auth,
-      this.modelIdToSId({
-        id: invocation.sandboxFunctionId,
-        workspaceId: invocation.workspaceId,
-      })
-    );
+    // The invocation row above is the execution side's proof of authorization: the tool workflow must
+    // resolve the function even when the invoker's original grant (e.g. a frame share token)
+    // cannot be reconstructed from the serialized auth.
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { id: invocation.sandboxFunctionId },
+    });
     if (!sandboxFunction) {
       return null;
     }
@@ -418,138 +460,172 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     });
   }
 
-  static async listBySpace(
+  /**
+   * Fetch an invocation through its stable Frame identity. The function row is resolved from the
+   * invocation itself rather than from the active publication, so an in-flight stream survives a
+   * republish or removal of the function from a later publication.
+   */
+  static async fetchInvocationByFrameAndId(
     auth: Authenticator,
-    space: SpaceResource
-  ): Promise<SandboxFunctionResource[]> {
-    if (!space.isProject()) {
-      return [];
+    {
+      frame,
+      invocationId,
+    }: {
+      frame: FileResource;
+      invocationId: string;
+    }
+  ): Promise<SandboxFunctionInvocationResource | null> {
+    if (
+      !frame.isFrameV2 ||
+      !isResourceSId("sandbox_function_invocation", invocationId)
+    ) {
+      return null;
+    }
+    const invocationModelId = getResourceIdFromSId(invocationId);
+    if (invocationModelId === null) {
+      return null;
     }
 
-    return this.baseFetch(auth, { where: { spaceId: space.id } });
-  }
-
-  static async fetchBySpaceAndSlug(
-    auth: Authenticator,
-    space: SpaceResource,
-    slug: string
-  ): Promise<SandboxFunctionResource | null> {
-    if (!space.isProject()) {
+    const invocation = await SandboxFunctionInvocationModel.findOne({
+      attributes: ["sandboxFunctionId"],
+      where: {
+        id: invocationModelId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    if (!invocation) {
       return null;
     }
 
     const [sandboxFunction] = await this.baseFetch(auth, {
-      where: { spaceId: space.id, slug },
+      where: {
+        id: invocation.sandboxFunctionId,
+        fileId: frame.id,
+      },
+    });
+    if (!sandboxFunction) {
+      return null;
+    }
+
+    return SandboxFunctionInvocationResource.fetchById(auth, {
+      sandboxFunction,
+      invocationId,
+    });
+  }
+
+  static async listByFramePublication(
+    auth: Authenticator,
+    { frame, publicationId }: { frame: FileResource; publicationId: string }
+  ): Promise<SandboxFunctionResource[]> {
+    if (!frame.isFrameV2) {
+      return [];
+    }
+
+    return this.baseFetch(auth, {
+      where: { fileId: frame.id, publicationId },
+    });
+  }
+
+  /**
+   * One grouped count per Frame's *active* publication — the Poke Frames list must not query per
+   * row, and must not count functions from publications that are no longer served (a frame keeps
+   * every past publication's function rows around, so a plain per-file count would grow with
+   * every publish instead of matching what `listByFramePublication` actually serves).
+   */
+  static async countByFrameModelIds(
+    auth: Authenticator,
+    framePublications: {
+      frameModelId: ModelId;
+      activePublicationId: string | null;
+    }[]
+  ): Promise<Map<ModelId, number>> {
+    const activePairs = framePublications.filter(
+      (
+        framePublication
+      ): framePublication is {
+        frameModelId: ModelId;
+        activePublicationId: string;
+      } => framePublication.activePublicationId !== null
+    );
+
+    if (activePairs.length === 0) {
+      return new Map();
+    }
+
+    const rows = await SandboxFunctionModel.findAll({
+      attributes: ["fileId", [fn("COUNT", col("id")), "functionCount"]],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        // Exact (fileId, publicationId) pairs rather than independent `IN` lists: publication ids
+        // are not guaranteed distinct across frames (test fixtures reuse the same literal id), so
+        // crossing the two lists could attribute one frame's functions to another.
+        [Op.or]: activePairs.map(({ frameModelId, activePublicationId }) => ({
+          fileId: frameModelId,
+          publicationId: activePublicationId,
+        })),
+      },
+      group: ["fileId", "publicationId"],
+      raw: true,
+    });
+
+    return new Map(
+      rows.map((row) => {
+        const { fileId, functionCount } =
+          FrameFunctionCountRowSchema.parse(row);
+        return [fileId, functionCount];
+      })
+    );
+  }
+
+  /**
+   * A Frame function addressed by sId within a given Frame. Note `fetchById` cannot serve this:
+   * `baseFetch` excludes Frame functions unless asked. The `fileId` filter is what stops another
+   * Frame's function being read through this Frame's URL, and any publication resolves — not just
+   * the active one — so an operator can inspect a superseded function.
+   */
+  static async fetchByFrameAndId(
+    auth: Authenticator,
+    {
+      frame,
+      sandboxFunctionId,
+    }: { frame: FileResource; sandboxFunctionId: string }
+  ): Promise<SandboxFunctionResource | null> {
+    if (
+      !frame.isFrameV2 ||
+      !isResourceSId("sandbox_function", sandboxFunctionId)
+    ) {
+      return null;
+    }
+
+    const sandboxFunctionModelId = getResourceIdFromSId(sandboxFunctionId);
+    if (sandboxFunctionModelId === null) {
+      return null;
+    }
+
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { id: sandboxFunctionModelId, fileId: frame.id },
     });
 
     return sandboxFunction ?? null;
   }
 
-  static async fetchByIdOrSlug(
+  static async fetchByFramePublicationAndSlug(
     auth: Authenticator,
-    functionIdOrSlug: string
+    {
+      frame,
+      publicationId,
+      slug,
+    }: { frame: FileResource; publicationId: string; slug: string }
   ): Promise<SandboxFunctionResource | null> {
-    const sandboxFunction = await this.fetchById(auth, functionIdOrSlug);
-    if (sandboxFunction) {
-      return sandboxFunction;
-    }
-
-    const [podId, slug, ...rest] = functionIdOrSlug.split("/");
-    if (!podId || !slug || rest.length > 0) {
-      return null;
-    }
-    if (!isResourceSId("space", podId) || !isValidSandboxFunctionSlug(slug)) {
+    if (!frame.isFrameV2 || !isValidSandboxFunctionSlug(slug)) {
       return null;
     }
 
-    const space = await SpaceResource.fetchById(auth, podId);
-    if (!space) {
-      return null;
-    }
-
-    return this.fetchBySpaceAndSlug(auth, space, slug);
-  }
-
-  static async deleteAllForSpace(
-    auth: Authenticator,
-    space: SpaceResource
-  ): Promise<Result<number, Error>> {
-    assert(space.isProject(), "Sandbox functions can only belong to pods.");
-
-    // The pod is already soft-deleted when the scrub runs, hence `includeDeletedSpace`.
-    const sandboxFunctions = await this.baseFetch(auth, {
-      where: { spaceId: space.id },
-      includeDeletedSpace: true,
+    const [sandboxFunction] = await this.baseFetch(auth, {
+      where: { fileId: frame.id, publicationId, slug },
     });
-    for (const sandboxFunction of sandboxFunctions) {
-      // TODO(spolu): potentially optimize as this may be quite slow (each delete calls file delete
-      // which deletes a whole bunch of records).
-      const result = await sandboxFunction.delete(auth);
-      if (result.isErr()) {
-        return new Err(result.error);
-      }
-    }
 
-    // `baseFetch` drops rows it cannot fully hydrate, so a partial list would leave rows behind and
-    // surface much later as a foreign key violation on the pod hard delete. Fail here instead, with
-    // the ids an operator needs to unblock the scrub.
-    const remaining = await this.model.findAll({
-      attributes: ["id"],
-      where: {
-        spaceId: space.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-    });
-    if (remaining.length > 0) {
-      return new Err(
-        new Error(
-          `Sandbox function(s) of pod ${space.sId} could not be deleted: ` +
-            `${remaining.map(({ id }) => id).join(", ")}.`
-        )
-      );
-    }
-
-    return new Ok(sandboxFunctions.length);
-  }
-
-  /**
-   * Make a fast function durable, after it did something only a durable function can do.
-   *
-   * A fast function is published on the promise that it does not call Dust tools. When it breaks
-   * that promise the invocation fails, and without this the next one fails the same way: the
-   * publisher's declaration is wrong and nothing on the platform knows it. Recording durable here
-   * costs that function its fast path and makes every later invocation work.
-   *
-   * The update is guarded on the mode still being fast, so concurrent invocations that each break
-   * the promise converge on one write, and a function whose publisher has already moved it is left
-   * alone. Returns whether this call is the one that moved it.
-   *
-   * A re-publish restates the mode, so this is an override the publisher can clear rather than a
-   * permanent verdict. If the republished bundle still calls tools, it is simply made durable
-   * again.
-   */
-  async makeDurable(auth: Authenticator): Promise<boolean> {
-    const [affectedCount, rows] = await this.model.update(
-      { executionMode: "durable" },
-      {
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          executionMode: "fast",
-        },
-        returning: true,
-      }
-    );
-    if (affectedCount === 0) {
-      return false;
-    }
-
-    const row = rows[0];
-    if (row) {
-      Object.assign(this, row.get());
-    }
-
-    return true;
+    return sandboxFunction ?? null;
   }
 
   async invoke(
@@ -560,18 +636,21 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
         new SandboxFunctionInvocationError(
-          "This Pod Function belongs to another workspace."
+          "This Frame function belongs to another workspace."
         )
       );
     }
     const authorization = await authorizeSandboxFunctionInvocation(auth, {
       userIdentity: this.userIdentity,
       origin,
-      space: this.space,
+      owner: { kind: "frame", frame: this.frame },
     });
     if (!authorization.authorized) {
       return new Err(
-        new SandboxFunctionInvocationError(authorization.errorMessage)
+        new SandboxFunctionInvocationError(
+          authorization.errorMessage,
+          authorization.errorCode
+        )
       );
     }
 
@@ -582,61 +661,47 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     });
   }
 
-  toPokeJSON(author: UserResource | null): PokePodFunction {
+  /**
+   * Poke's listing shape for a Frame function. A Frame function's `fileId` is the Frame manifest,
+   * so `publicationId` is what identifies its artifact, and `name` is the key its bundle is
+   * stored under.
+   */
+  toPokeFrameJSON(): PokeFrameFunction {
     return {
       sId: this.sId,
       slug: this.slug,
       description: this.description,
+      publicationId: this.publicationId,
       createdAt: this.createdAt.toISOString(),
       updatedAt: this.updatedAt.toISOString(),
-      author: author ? author.fullName() : null,
     };
   }
 
-  // What the Pod's Apps tab shows for a function it lists under its app. Carries both the full slug
-  // (which addresses the function) and the bare name (which is all the app's own view needs to show).
-  toPodAppJSON(): PodAppFunction {
+  toPokeFrameDetailsJSON(
+    activePublicationId: string | null
+  ): PokeFrameFunctionDetails {
     return {
-      slug: this.slug,
-      name: sandboxFunctionNameFromSlug(this.slug),
-      description: this.description,
-      executionMode: this.executionMode,
-      defaultStake: this.defaultStake,
-    };
-  }
-
-  // The listing shape plus what only a single-function view needs: its contract and the bundle
-  // file it was published from.
-  toPokeDetailsJSON(author: UserResource | null): PokePodFunctionDetails {
-    return {
-      ...this.toPokeJSON(author),
-      fileId: this.file.sId,
+      ...this.toPokeFrameJSON(),
       userIdentity: this.userIdentity,
       executionMode: this.executionMode,
       defaultStake: this.defaultStake,
+      bundleSha256: this.bundleSha256,
       inputSchema: this.inputSchema,
       outputSchema: this.outputSchema,
+      isActivePublication: this.publicationId === activePublicationId,
     };
   }
 
-  async delete(auth: Authenticator): Promise<Result<undefined, Error>> {
-    try {
-      if (!this.space.canReadOrAdministrate(auth)) {
-        return new Err(new Error("Sandbox function space is not accessible."));
-      }
-
-      await SandboxFunctionInvocationResource.deleteAllForSandboxFunction(this);
-
-      await this.model.destroy({
-        where: {
-          id: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-        },
-      });
-
-      return this.file.delete(auth);
-    } catch (error) {
-      return new Err(normalizeError(error));
-    }
+  /**
+   * A Frame function row belongs to its Frame's publication history, not to itself: the Frame file
+   * owns the whole set and deletes it through `deleteFrameFunctionModelIds`. Deleting one on its
+   * own would leave a publication serving a function that no longer exists.
+   */
+  async delete(): Promise<Result<undefined, Error>> {
+    return new Err(
+      new Error(
+        "A Frame function cannot be deleted on its own: delete its Frame instead."
+      )
+    );
   }
 }

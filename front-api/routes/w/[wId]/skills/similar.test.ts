@@ -2,6 +2,7 @@ import { SKILLS_PER_LLM_CALL } from "@app/lib/api/skills/existing_skill_checker"
 import { Authenticator } from "@app/lib/auth";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import type { MembershipRoleType } from "@app/types/memberships";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -13,7 +14,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
 import { honoApp } from "@front-api/app";
 
-async function setup(role: "builder" | "user" | "admin" = "builder") {
+async function setup(role: MembershipRoleType = "user") {
   const { workspace, user } = await createPrivateApiMockRequest({ role });
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,

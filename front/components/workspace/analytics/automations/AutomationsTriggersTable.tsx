@@ -1,90 +1,73 @@
 import { ConfirmContext } from "@app/components/Confirm";
-import { getIcon } from "@app/components/resources/resources_icons";
+import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
 import { AutomationsFilterPanel } from "@app/components/workspace/analytics/automations/AutomationsFilterPanel";
 import { AutomationsFilterSummary } from "@app/components/workspace/analytics/automations/AutomationsFilterSummary";
 import type { TriggerRowData as BaseTriggerRowData } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
 import { AutomationsTriggersRowsTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersRowsTable";
+import type { PoolRowFields } from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
+import {
+  agentColumn,
+  creditsColumn,
+  detailsColumn,
+  nameColumn,
+  poolColumn,
+  typeColumn,
+} from "@app/components/workspace/analytics/automations/automationsTriggerColumns";
+import { BulkTriggerPoolModal } from "@app/components/workspace/analytics/automations/BulkTriggerPoolModal";
 import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
 import { toAutomationsTriggersFilter } from "@app/components/workspace/analytics/automationsFilter";
-import {
-  AvatarNameCell,
-  CreditsCell,
-  EntityTooltipCard,
-} from "@app/components/workspace/analytics/creditsTableCells";
+import { CsvDownloadButton } from "@app/components/workspace/analytics/CsvDownloadButton";
 import { useAutomationsTriggers } from "@app/hooks/useAutomationsTriggers";
+import { useDebounce } from "@app/hooks/useDebounce";
+import { useDownloadCsv } from "@app/hooks/useDownloadCsv";
+import { useTableRowsSelection } from "@app/hooks/useTableRowsSelection";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { DEFAULT_CONSUMPTION_PERIOD_DAYS } from "@app/lib/analytics/consumption_period";
+import type {
+  AutomationTriggersBody,
+  AutomationTriggersQuery,
+} from "@app/lib/api/analytics/automations/schema";
 import type { AutomationTriggerRow } from "@app/lib/api/analytics/automations/triggers";
-import { useUpdateTriggerStatus } from "@app/lib/swr/agent_triggers";
-import { normalizeWebhookIcon } from "@app/lib/webhook_source";
-import type { TriggerStatus } from "@app/types/assistant/triggers";
+import type { BulkTriggerSelection } from "@app/lib/api/triggers/bulk_selection";
+import {
+  useBulkUpdateTriggerExecutionMode,
+  useUpdateTriggerExecutionMode,
+  useUpdateTriggerStatus,
+} from "@app/lib/swr/agent_triggers";
+import { useWorkspacePermissions } from "@app/lib/swr/permissions";
+import type {
+  TriggerExecutionMode,
+  TriggerStatus,
+} from "@app/types/assistant/triggers";
 import { getTriggerStatusOwner } from "@app/types/assistant/triggers";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Avatar,
   Button,
-  ChevronDown,
-  ChevronUp,
-  Clock,
+  createSelectionColumn,
   DataTable,
-  DataTableLoadingSkeleton,
-  Icon,
   Pagination,
+  SearchInput,
   SliderToggle,
   Tooltip,
 } from "@dust-tt/sparkle";
-import type { ColumnDef, PaginationState } from "@tanstack/react-table";
-import type { ComponentProps, Dispatch, SetStateAction } from "react";
+import type {
+  ColumnDef,
+  PaginationState,
+  RowSelectionState,
+} from "@tanstack/react-table";
+import { flexRender } from "@tanstack/react-table";
+import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 
+const SEARCH_DEBOUNCE_DELAY_MS = 300;
 const TRIGGERS_PAGE_SIZE = 25;
 
-interface TriggerRowData extends BaseTriggerRowData {
+interface TriggerRowData extends BaseTriggerRowData, PoolRowFields {
   displayStatus: TriggerStatus;
   isStatusPending: boolean;
   onToggleStatus: () => void;
-}
-
-function TypeCell({ trigger }: { trigger: AutomationTriggerRow }) {
-  switch (trigger.kind) {
-    case "schedule":
-      return (
-        <TypeLabel
-          visual={Clock}
-          label={trigger.scheduleDescription || "Schedule"}
-        />
-      );
-    case "webhook":
-      if (trigger.webhookSourceRestricted) {
-        return (
-          <Tooltip
-            label="This webhook lives in a space you don't have access to."
-            tooltipTriggerAsChild
-            trigger={
-              <div>
-                <TypeLabel
-                  visual={getIcon("ActionLockIcon")}
-                  label="Restricted webhook"
-                />
-              </div>
-            }
-          />
-        );
-      }
-      return (
-        <TypeLabel
-          visual={getIcon(normalizeWebhookIcon(trigger.webhookIcon))}
-          label={
-            trigger.webhookSourceName
-              ? `${trigger.webhookSourceName} webhook`
-              : "Webhook"
-          }
-        />
-      );
-    default:
-      assertNeverAndIgnore(trigger.kind);
-      return null;
-  }
 }
 
 function RunningCell({ row }: { row: TriggerRowData }) {
@@ -119,203 +102,95 @@ function RunningCell({ row }: { row: TriggerRowData }) {
       );
     default:
       assertNeverAndIgnore(row.displayStatus);
-      return null;
-  }
-}
-
-function TypeLabel({
-  visual,
-  label,
-}: {
-  visual: ComponentProps<typeof Icon>["visual"];
-  label: string;
-}) {
-  return (
-    <Tooltip
-      label={label}
-      tooltipTriggerAsChild
-      trigger={
-        <div className="flex min-w-0 items-center gap-2">
-          <Icon visual={visual} size="xs" className="text-muted-foreground" />
-          <span className="truncate text-sm">{label}</span>
-        </div>
-      }
-    />
-  );
-}
-
-function AgentCell({ agent }: { agent: AutomationTriggerRow["agent"] }) {
-  const content = (
-    <div className="min-w-0">
-      <AvatarNameCell
-        name={agent.name}
-        imageUrl={agent.pictureUrl}
-        size="xxs"
-      />
-    </div>
-  );
-
-  if (!agent.description) {
-    return content;
-  }
-
-  return (
-    <Tooltip
-      label={
-        <EntityTooltipCard
-          avatar={
-            <Avatar
-              name={agent.name}
-              visual={agent.pictureUrl ?? undefined}
-              size="xs"
-            />
-          }
-          name={agent.name}
-          description={agent.description}
-          modelId={agent.modelId}
-          modelDisplayName={agent.modelDisplayName}
+      return (
+        <SliderToggle
+          selected={row.displayStatus === "enabled"}
+          disabled={row.isStatusPending}
+          onClick={row.onToggleStatus}
         />
-      }
-      className="p-3"
-      tooltipTriggerAsChild
-      trigger={content}
-    />
-  );
+      );
+  }
 }
 
-function EditorCell({ editor }: { editor: AutomationTriggerRow["editor"] }) {
+function OwnerCell({ owner }: { owner: AutomationTriggerRow["owner"] }) {
   return (
     <Tooltip
       label={
         <div className="flex flex-col">
-          <span>{editor.name}</span>
-          {editor.email && <span>{editor.email}</span>}
+          <span>{owner.name}</span>
+          {owner.email && <span>{owner.email}</span>}
         </div>
       }
       tooltipTriggerAsChild
       trigger={
-        <div className="flex items-center">
+        <div className="flex gap-2 items-center">
           <Avatar
-            name={editor.name}
-            visual={editor.pictureUrl ?? undefined}
+            name={owner.name}
+            visual={owner.pictureUrl ?? undefined}
             size="xs"
             isRounded
           />
+          <span className="text-sm truncate">{owner.name}</span>
         </div>
       }
     />
   );
 }
 
+// The row is clickable to expand its breakdown, so ticking its checkbox must
+// not bubble up to it.
+function rowSelectionColumn(): ColumnDef<TriggerRowData> {
+  const column = createSelectionColumn<TriggerRowData>();
+  return {
+    ...column,
+    cell: (context) => (
+      <div
+        onClick={(event) => event.stopPropagation()}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        {flexRender(column.cell, context)}
+      </div>
+    ),
+  };
+}
+
 function buildColumns({
   expandedRowId,
+  showSelectionColumn,
 }: {
   expandedRowId: string | null;
+  showSelectionColumn: boolean;
 }): ColumnDef<TriggerRowData>[] {
   return [
+    ...(showSelectionColumn ? [rowSelectionColumn()] : []),
+    nameColumn(),
     {
-      id: "name",
-      accessorKey: "name",
-      header: "Name",
-      meta: { className: "w-48", headerAlign: "left" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-start text-left">
-          <span className="truncate text-sm">{info.row.original.name}</span>
-        </DataTable.CellContent>
-      ),
-    },
-    {
-      id: "agent",
-      header: "Agent",
+      id: "owner",
+      header: "Owner",
       enableSorting: false,
-      meta: { className: "w-44", headerAlign: "left" },
+      meta: { className: "w-36", headerAlign: "left" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-start">
-          <AgentCell agent={info.row.original.agent} />
+          <OwnerCell owner={info.row.original.owner} />
         </DataTable.CellContent>
       ),
     },
-    {
-      id: "editor",
-      header: "Editor",
-      enableSorting: false,
-      meta: { className: "w-16", headerAlign: "center" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-center">
-          <EditorCell editor={info.row.original.editor} />
-        </DataTable.CellContent>
-      ),
-    },
-    {
-      id: "type",
-      header: "Type",
-      enableSorting: false,
-      meta: { headerAlign: "left" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-start">
-          <TypeCell trigger={info.row.original} />
-        </DataTable.CellContent>
-      ),
-    },
-    {
-      id: "runCount",
-      accessorKey: "runCount",
-      header: "Runs",
-      meta: { className: "w-20", headerAlign: "right" },
-      cell: (info) => (
-        <DataTable.BasicCellContent
-          className="justify-end text-right tabular-nums"
-          label={info.row.original.runCount.toLocaleString()}
-        />
-      ),
-    },
-    {
-      id: "credits",
-      accessorKey: "credits",
-      header: "Credits",
-      meta: { className: "w-24", headerAlign: "right" },
-      cell: (info) => (
-        <DataTable.CellContent className="w-full justify-end text-right">
-          <CreditsCell credits={info.row.original.credits} />
-        </DataTable.CellContent>
-      ),
-    },
+    agentColumn(),
+    typeColumn(),
+    creditsColumn(),
+    poolColumn(),
     {
       id: "status",
-      header: "",
+      header: "Enabled",
       enableSorting: false,
-      meta: { className: "w-24" },
+      meta: { className: "w-16" },
       cell: (info) => (
         <DataTable.CellContent className="w-full justify-center">
           <RunningCell row={info.row.original} />
         </DataTable.CellContent>
       ),
     },
-    {
-      id: "details",
-      header: "",
-      enableSorting: false,
-      meta: { className: "w-12" },
-      cell: (info) => {
-        const row = info.row.original;
-        const isExpanded = expandedRowId === row.triggerId;
-        return (
-          <DataTable.CellContent className="w-full justify-end">
-            <Button
-              icon={isExpanded ? ChevronUp : ChevronDown}
-              variant="ghost-secondary"
-              size="xs"
-              aria-label={`${isExpanded ? "Collapse" : "Expand"} breakdown for ${row.name}`}
-              aria-expanded={isExpanded}
-              onClick={(event) => {
-                event.stopPropagation();
-                row.onClick();
-              }}
-            />
-          </DataTable.CellContent>
-        );
-      },
-    },
+    detailsColumn(expandedRowId),
   ];
 }
 
@@ -324,6 +199,7 @@ interface AutomationsTriggersTableProps {
   period: ConsumptionPeriodSelection;
   filter: AutomationsFilter;
   onFilterChange: (next: AutomationsFilter) => void;
+  onAgentClick: (agentId: string) => void;
 }
 
 export function AutomationsTriggersTable({
@@ -331,6 +207,7 @@ export function AutomationsTriggersTable({
   period,
   filter,
   onFilterChange,
+  onAgentClick,
 }: AutomationsTriggersTableProps) {
   const workspaceId = owner.sId;
   const triggersFilter = useMemo(
@@ -344,12 +221,20 @@ export function AutomationsTriggersTable({
   });
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
-  // A filter change invalidates the current page and any expanded row.
-  // Reset during render (https://react.dev/learn/you-might-not-need-an-effect)
-  // instead of an effect keyed on `filter`.
-  const [prevFilter, setPrevFilter] = useState(filter);
-  if (prevFilter !== filter) {
-    setPrevFilter(filter);
+  const { inputValue, debouncedValue, setValue } = useDebounce("", {
+    delay: SEARCH_DEBOUNCE_DELAY_MS,
+  });
+
+  // A filter or search change invalidates the current page and any expanded
+  // row. Reset during render
+  // (https://react.dev/learn/you-might-not-need-an-effect) instead of an
+  // effect keyed on the query.
+  const [prevQuery, setPrevQuery] = useState({
+    filter,
+    search: debouncedValue,
+  });
+  if (prevQuery.filter !== filter || prevQuery.search !== debouncedValue) {
+    setPrevQuery({ filter, search: debouncedValue });
     setPagination((current) => ({ ...current, pageIndex: 0 }));
     setExpandedRowId(null);
   }
@@ -359,11 +244,13 @@ export function AutomationsTriggersTable({
     totalCount,
     medianRunCount,
     medianCostPerRun,
+    mutateTriggers,
     isTriggersLoading,
     isTriggersError,
   } = useAutomationsTriggers({
     workspaceId,
     period,
+    search: debouncedValue,
     filter: triggersFilter,
     limit: pagination.pageSize,
     offset: pagination.pageIndex * pagination.pageSize,
@@ -371,6 +258,37 @@ export function AutomationsTriggersTable({
 
   const confirm = useContext(ConfirmContext);
   const updateTriggerStatus = useUpdateTriggerStatus({ workspaceId });
+  const updateTriggerExecutionMode = useUpdateTriggerExecutionMode({
+    workspaceId,
+  });
+
+  const { hasPermission } = useWorkspacePermissions();
+  const canBulkSetPool = hasPermission("use_workspace_pool", "trigger");
+
+  const triggersQuery: AutomationTriggersQuery = useMemo(
+    () => ({
+      period: period.kind,
+      days:
+        period.kind === "days" ? period.days : DEFAULT_CONSUMPTION_PERIOD_DAYS,
+      search: debouncedValue.trim() || undefined,
+      filter: triggersFilter,
+    }),
+    [period, debouncedValue, triggersFilter]
+  );
+
+  const exportBody: AutomationTriggersBody = {
+    ...triggersQuery,
+    limit: TRIGGERS_PAGE_SIZE,
+    offset: 0,
+    format: "csv",
+  };
+  const exportDate = new Date().toISOString().slice(0, 10);
+  const csvDownload = useDownloadCsv({
+    url: `/api/w/${workspaceId}/analytics/automations/triggers`,
+    filename: `dust_automations_${exportDate}.csv`,
+    body: exportBody,
+    disabled: isTriggersLoading || !!isTriggersError || totalCount === 0,
+  });
 
   // The table data comes from an expensive Elasticsearch query, so instead of
   // revalidating after a toggle we track the new statuses locally.
@@ -378,6 +296,12 @@ export function AutomationsTriggersTable({
     Record<string, TriggerStatus>
   >({});
   const [pendingIds, setPendingIds] = useState<ReadonlySet<string>>(new Set());
+  const [executionModeOverrides, setExecutionModeOverrides] = useState<
+    Record<string, TriggerExecutionMode>
+  >({});
+  const [pendingExecutionModeIds, setPendingExecutionModeIds] = useState<
+    ReadonlySet<string>
+  >(new Set());
 
   // Refetched rows (pagination, period change) already carry any status we
   // wrote, so overrides only need to live until the next fetch. Reset during
@@ -388,6 +312,7 @@ export function AutomationsTriggersTable({
   if (prevTriggers !== triggers) {
     setPrevTriggers(triggers);
     setStatusOverrides({});
+    setExecutionModeOverrides({});
   }
 
   const handleToggle = useCallback(
@@ -400,7 +325,7 @@ export function AutomationsTriggersTable({
       if (nextStatus === "disabled") {
         const confirmed = await confirm({
           title: "Disable this automation?",
-          message: `"${trigger.name}" will stop running for ${trigger.editor.name}. A manager or admin will be able to re-enable it.`,
+          message: `"${trigger.name}" will stop running for ${trigger.owner.name}. A manager or admin will be able to re-enable it.`,
           validateVariant: "warning",
           validateLabel: "Disable",
           cancelLabel: "Cancel",
@@ -434,6 +359,98 @@ export function AutomationsTriggersTable({
     [confirm, updateTriggerStatus]
   );
 
+  const handleSetExecutionMode = useCallback(
+    async (
+      trigger: AutomationTriggerRow,
+      executionMode: TriggerExecutionMode
+    ) => {
+      setPendingExecutionModeIds((ids) => new Set([...ids, trigger.triggerId]));
+      const success = await updateTriggerExecutionMode({
+        agentConfigurationId: trigger.agent.agentId,
+        triggerId: trigger.triggerId,
+        executionMode,
+      });
+      if (success) {
+        setExecutionModeOverrides((overrides) => ({
+          ...overrides,
+          [trigger.triggerId]: executionMode,
+        }));
+      }
+      setPendingExecutionModeIds((ids) => {
+        const next = new Set(ids);
+        next.delete(trigger.triggerId);
+        return next;
+      });
+    },
+    [updateTriggerExecutionMode]
+  );
+
+  const pageTriggerIds = useMemo(
+    () => triggers.map((trigger) => trigger.triggerId),
+    [triggers]
+  );
+  const selection = useTableRowsSelection({
+    pageItemIds: pageTriggerIds,
+    totalCount,
+    resetKey: JSON.stringify([triggersFilter, debouncedValue, period]),
+  });
+
+  const buildBulkSelectionBody = useCallback((): BulkTriggerSelection => {
+    const descriptor = selection.descriptor();
+    return descriptor.mode === "ids"
+      ? { mode: "ids", triggerIds: descriptor.ids }
+      : {
+          mode: "all",
+          query: triggersQuery,
+          excludeTriggerIds: descriptor.excludedIds,
+        };
+  }, [selection, triggersQuery]);
+
+  // Only the selected rows of the current page are visible, so those are the
+  // ones that get a pending state while the bulk request runs.
+  const pendingBulkTriggerIds = useMemo(
+    () => pageTriggerIds.filter((id) => selection.rowSelection[id]),
+    [pageTriggerIds, selection.rowSelection]
+  );
+
+  const bulkUpdateTriggerExecutionMode = useBulkUpdateTriggerExecutionMode({
+    workspaceId,
+  });
+  const [isBulkPoolOpen, setIsBulkPoolOpen] = useState(false);
+
+  const handleBulkExecutionMode = useCallback(
+    async (executionMode: TriggerExecutionMode): Promise<boolean> => {
+      setPendingExecutionModeIds(
+        (ids) => new Set([...ids, ...pendingBulkTriggerIds])
+      );
+      try {
+        const outcome = await bulkUpdateTriggerExecutionMode({
+          selection: buildBulkSelectionBody(),
+          executionMode,
+        });
+        if (!outcome) {
+          return false;
+        }
+        selection.clearSelection();
+        await mutateTriggers();
+        return true;
+      } finally {
+        setPendingExecutionModeIds((ids) => {
+          const next = new Set(ids);
+          pendingBulkTriggerIds.forEach((id) => next.delete(id));
+          return next;
+        });
+      }
+    },
+    [
+      selection,
+      pendingBulkTriggerIds,
+      bulkUpdateTriggerExecutionMode,
+      buildBulkSelectionBody,
+      mutateTriggers,
+    ]
+  );
+
   const rows: TriggerRowData[] = useMemo(
     () =>
       triggers.map((trigger) => {
@@ -444,50 +461,106 @@ export function AutomationsTriggersTable({
           displayStatus,
           isStatusPending: pendingIds.has(trigger.triggerId),
           onToggleStatus: () => void handleToggle(trigger, displayStatus),
+          displayExecutionMode:
+            executionModeOverrides[trigger.triggerId] ?? trigger.executionMode,
+          isExecutionModePending: pendingExecutionModeIds.has(
+            trigger.triggerId
+          ),
+          onSetExecutionMode: (executionMode: TriggerExecutionMode) =>
+            void handleSetExecutionMode(trigger, executionMode),
+          onAgentClick: () => onAgentClick(trigger.agent.agentId),
           onClick: () =>
             setExpandedRowId((current) =>
               current === trigger.triggerId ? null : trigger.triggerId
             ),
         };
       }),
-    [triggers, statusOverrides, pendingIds, handleToggle]
+    [
+      triggers,
+      statusOverrides,
+      pendingIds,
+      handleToggle,
+      executionModeOverrides,
+      pendingExecutionModeIds,
+      handleSetExecutionMode,
+      onAgentClick,
+    ]
   );
 
   return (
-    <div className="rounded-lg border border-border bg-panel-background p-4">
-      <div className="mb-4 flex flex-col gap-2">
-        <div className="flex items-center justify-end">
-          <AutomationsFilterPanel
-            owner={owner}
+    <>
+      <div className="rounded-lg border border-border bg-panel-background p-4">
+        <div className="mb-4 flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <SearchInput
+              name="automations-triggers-search"
+              placeholder="Search…"
+              value={inputValue}
+              onChange={setValue}
+              className="flex-1"
+            />
+            <AutomationsFilterPanel
+              owner={owner}
+              period={period}
+              filter={filter}
+              onFilterChange={onFilterChange}
+            />
+            <CsvDownloadButton {...csvDownload} size="sm" />
+          </div>
+          <AutomationsFilterSummary
             filter={filter}
             onFilterChange={onFilterChange}
           />
         </div>
-        <AutomationsFilterSummary
-          filter={filter}
-          onFilterChange={onFilterChange}
+        <TriggersTableBody
+          isLoading={isTriggersLoading}
+          isError={!!isTriggersError}
+          search={debouncedValue}
+          rows={rows}
+          totalCount={totalCount}
+          medianRunCount={medianRunCount}
+          medianCostPerRun={medianCostPerRun}
+          pagination={pagination}
+          setPagination={setPagination}
+          workspaceId={workspaceId}
+          period={period}
+          expandedRowId={expandedRowId}
+          showSelectionColumn={canBulkSetPool}
+          rowSelection={selection.rowSelection}
+          onRowSelectionChange={selection.onRowSelectionChange}
+        />
+        <BulkTriggerPoolModal
+          isOpen={isBulkPoolOpen}
+          onClose={() => setIsBulkPoolOpen(false)}
+          triggerCount={selection.selectedCount}
+          onValidate={handleBulkExecutionMode}
         />
       </div>
-      <TriggersTableBody
-        isLoading={isTriggersLoading}
-        isError={!!isTriggersError}
-        rows={rows}
-        totalCount={totalCount}
-        medianRunCount={medianRunCount}
-        medianCostPerRun={medianCostPerRun}
-        pagination={pagination}
-        setPagination={setPagination}
-        workspaceId={workspaceId}
-        period={period}
-        expandedRowId={expandedRowId}
-      />
-    </div>
+      {canBulkSetPool && (
+        <BulkSelectionBar
+          selectedCount={selection.selectedCount}
+          totalCount={totalCount}
+          itemLabel="automation"
+          canSelectAll={selection.hasMorePagesToSelect}
+          onSelectAll={selection.selectAllAcrossPages}
+          onClear={selection.clearSelection}
+        >
+          <Button
+            size="sm"
+            variant="primary"
+            label="Set pool"
+            onClick={() => setIsBulkPoolOpen(true)}
+          />
+        </BulkSelectionBar>
+      )}
+    </>
   );
 }
 
 interface TriggersTableBodyProps {
   isLoading: boolean;
   isError: boolean;
+  search: string;
   rows: TriggerRowData[];
   totalCount: number;
   medianRunCount: number;
@@ -497,11 +570,15 @@ interface TriggersTableBodyProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
   expandedRowId: string | null;
+  showSelectionColumn: boolean;
+  rowSelection: RowSelectionState;
+  onRowSelectionChange: (selection: RowSelectionState) => void;
 }
 
 function TriggersTableBody({
   isLoading,
   isError,
+  search,
   rows,
   totalCount,
   medianRunCount,
@@ -511,17 +588,31 @@ function TriggersTableBody({
   workspaceId,
   period,
   expandedRowId,
+  showSelectionColumn,
+  rowSelection,
+  onRowSelectionChange,
 }: TriggersTableBodyProps) {
   const columns = useMemo(
-    () => buildColumns({ expandedRowId }),
-    [expandedRowId]
+    () => buildColumns({ expandedRowId, showSelectionColumn }),
+    [expandedRowId, showSelectionColumn]
   );
 
-  if (isLoading) {
-    return (
-      <DataTableLoadingSkeleton showSelectionColumn={false} showTrailingCell />
-    );
-  }
+  const firstRowIndex = pagination.pageIndex * pagination.pageSize;
+  const skeletonRowCount =
+    totalCount > firstRowIndex
+      ? Math.min(pagination.pageSize, totalCount - firstRowIndex)
+      : pagination.pageSize;
+  const paginationControls = totalCount > pagination.pageSize && (
+    <div className="mt-2 p-1">
+      <Pagination
+        size="xs"
+        showDetails={false}
+        pagination={pagination}
+        setPagination={setPagination}
+        rowCount={totalCount}
+      />
+    </div>
+  );
 
   if (isError) {
     return (
@@ -531,38 +622,35 @@ function TriggersTableBody({
     );
   }
 
-  if (rows.length === 0) {
+  if (!isLoading && rows.length === 0) {
     return (
       <div className="text-sm text-muted-foreground">
-        No automation ran over this period.
+        {search.trim()
+          ? `No results for "${search.trim()}". Only items with usage data appear here.`
+          : "No automation ran over this period."}
       </div>
     );
   }
 
   return (
-    <div>
+    <div aria-busy={isLoading || undefined}>
       <div className="overflow-x-auto">
         <AutomationsTriggersRowsTable
           data={rows}
           columns={columns}
           workspaceId={workspaceId}
           period={period}
+          scope="workspace"
           expandedRowId={expandedRowId}
           medianRunCount={medianRunCount}
           medianCostPerRun={medianCostPerRun}
+          isLoading={isLoading}
+          skeletonRowCount={skeletonRowCount}
+          rowSelection={rowSelection}
+          onRowSelectionChange={onRowSelectionChange}
         />
       </div>
-      {totalCount > pagination.pageSize && (
-        <div className="mt-2 p-1">
-          <Pagination
-            size="xs"
-            showDetails={false}
-            pagination={pagination}
-            setPagination={setPagination}
-            rowCount={totalCount}
-          />
-        </div>
-      )}
+      {paginationControls}
     </div>
   );
 }

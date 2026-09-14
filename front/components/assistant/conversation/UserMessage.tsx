@@ -11,6 +11,7 @@ import {
 import { UserHandle } from "@app/components/assistant/conversation/UserHandle";
 import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdown";
 import { ConfirmContext } from "@app/components/Confirm";
+import { EditorSelectionToolbar } from "@app/components/editor/EditorSelectionToolbar";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
@@ -55,7 +56,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
-import { BubbleMenu } from "@tiptap/react/menus";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { cva } from "class-variance-authority";
 import type React from "react";
@@ -98,13 +98,13 @@ function UserMessageEditor({
         className="inline-block max-h-[40vh] min-h-14 w-full overflow-y-auto whitespace-pre-wrap scrollbar-hide"
       />
 
-      <BubbleMenu editor={editor} className={cn("flex", isMobile && "hidden")}>
+      <EditorSelectionToolbar editor={editor} disabled={isMobile}>
         {editor && (
-          <Toolbar className={cn("inline-flex", isMobile && "hidden")}>
+          <Toolbar className="inline-flex">
             <ToolBarContent editor={editor} />
           </Toolbar>
         )}
-      </BubbleMenu>
+      </EditorSelectionToolbar>
 
       <div className="flex justify-end gap-2">
         <Button
@@ -134,6 +134,7 @@ interface UserMessageProps {
   message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
   onReactionToggle: (emoji: string) => void;
+  disableReactions?: boolean;
   isProjectArchived?: boolean;
   setLimitReachedCode?: (code: WorkspaceLimit) => void;
 }
@@ -147,6 +148,7 @@ export function UserMessage({
   message,
   owner,
   onReactionToggle,
+  disableReactions = false,
   isProjectArchived = false,
   setLimitReachedCode,
 }: UserMessageProps) {
@@ -441,6 +443,7 @@ export function UserMessage({
                   isUserMessageHovered={isUserMessageHovered}
                   message={message}
                   onReactionToggle={onReactionToggle}
+                  disableReactions={disableReactions}
                   handleEditMessage={handleEditMessage}
                   handleDeleteMessage={handleDeleteMessage}
                   canDelete={canDelete}
@@ -459,6 +462,7 @@ export function UserMessage({
                 isUserMessageHovered={isUserMessageHovered}
                 message={message}
                 onReactionToggle={onReactionToggle}
+                disableReactions={disableReactions}
                 handleEditMessage={handleEditMessage}
                 handleDeleteMessage={handleDeleteMessage}
                 canDelete={canDelete}
@@ -567,6 +571,7 @@ interface ActionMenuProps {
   handleDeleteMessage: () => void;
   message: UserMessageTypeWithContentFragments;
   onReactionToggle: (emoji: string) => void;
+  disableReactions: boolean;
   isUserMessageHovered: boolean;
   conversationId: string;
   owner: WorkspaceType;
@@ -583,6 +588,7 @@ function ActionMenu({
   handleDeleteMessage,
   message,
   onReactionToggle,
+  disableReactions,
   isUserMessageHovered,
   conversationId,
   owner,
@@ -663,11 +669,13 @@ function ActionMenu({
       )}
       {!isDeleted && (
         <div className={cn("flex items-center gap-1", sideItemVisibilityClass)}>
-          <MessageEmojiPicker
-            key="emoji-picker"
-            onEmojiSelect={onReactionToggle}
-            onOpenChange={setIsEmojiPickerOpen}
-          />
+          {!disableReactions && (
+            <MessageEmojiPicker
+              key="emoji-picker"
+              onEmojiSelect={onReactionToggle}
+              onOpenChange={setIsEmojiPickerOpen}
+            />
+          )}
           {actions.length > 0 && (
             <DropdownMenu
               open={isMenuOpen}

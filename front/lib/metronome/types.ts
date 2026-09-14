@@ -174,11 +174,30 @@ export interface MetronomeUsageWithGroupsResponse {
 
 export interface MetronomeSeatBalance {
   seat_id: string;
+  // Aggregated per credit TYPE (AWU currency) — a single number per type.
   balances: Array<{
     credit_type_id: string;
     balance: number;
     starting_balance: number;
   }>;
+  // Per individual CREDIT (only present with `include_credits_and_commits`).
+  // Distinct from `balances`: this breaks the same total down by the specific
+  // credit id, so a stray seat credit (e.g. a pro credit still held by a max
+  // seat) is directly visible and can be emptied by id.
+  credits?: Array<{
+    id: string;
+    credit_type_id: string;
+    balance: number;
+  }>;
+}
+
+function isMetronomeAwuBalanceRow(b: unknown): boolean {
+  return (
+    typeof b === "object" &&
+    b !== null &&
+    typeof (b as Record<string, unknown>)["credit_type_id"] === "string" &&
+    typeof (b as Record<string, unknown>)["balance"] === "number"
+  );
 }
 
 export function isMetronomeSeatBalance(v: unknown): v is MetronomeSeatBalance {
@@ -192,12 +211,28 @@ export function isMetronomeSeatBalance(v: unknown): v is MetronomeSeatBalance {
   if (!Array.isArray(obj["balances"])) {
     return false;
   }
-  return obj["balances"].every(
-    (b) =>
-      typeof b === "object" &&
-      b !== null &&
-      typeof (b as Record<string, unknown>)["credit_type_id"] === "string" &&
-      typeof (b as Record<string, unknown>)["balance"] === "number" &&
-      typeof (b as Record<string, unknown>)["starting_balance"] === "number"
-  );
+  if (
+    !obj["balances"].every(
+      (b) =>
+        isMetronomeAwuBalanceRow(b) &&
+        typeof (b as Record<string, unknown>)["starting_balance"] === "number"
+    )
+  ) {
+    return false;
+  }
+  // `credits` is optional; when present each row must carry an id + balance so
+  // it can be mapped to a seat type and emptied by credit id.
+  if (obj["credits"] !== undefined) {
+    if (
+      !Array.isArray(obj["credits"]) ||
+      !obj["credits"].every(
+        (c) =>
+          isMetronomeAwuBalanceRow(c) &&
+          typeof (c as Record<string, unknown>)["id"] === "string"
+      )
+    ) {
+      return false;
+    }
+  }
+  return true;
 }

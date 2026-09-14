@@ -1,7 +1,8 @@
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
-import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/lib/api/analytics/consumption/scope";
+import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
+import { CONSUMPTION_SCOPE_FILTER_KEYS } from "@app/types/api/analytics/consumption";
 
-export const CONSUMPTION_PERIOD_DAY_OPTIONS = [7, 30, 90] as const;
+export const CONSUMPTION_PERIOD_DAY_OPTIONS = [7, 30, 90, 180] as const;
 
 export const DEFAULT_CONSUMPTION_PERIOD_DAYS = 30;
 
@@ -24,12 +25,52 @@ export const CONSUMPTION_PERIOD_OPTIONS: ConsumptionPeriodSelection[] = [
   })),
 ];
 
+export const CONSUMPTION_GRANULARITY_OPTIONS = [
+  "day",
+  "week",
+  "month",
+] as const;
+
+export type ConsumptionGranularity =
+  (typeof CONSUMPTION_GRANULARITY_OPTIONS)[number];
+
+export const DEFAULT_CONSUMPTION_GRANULARITY: ConsumptionGranularity = "day";
+
+const CONSUMPTION_GRANULARITY_LABELS: Record<ConsumptionGranularity, string> = {
+  day: "Daily",
+  week: "Weekly",
+  month: "Monthly",
+};
+
+export function consumptionGranularityFromKey(
+  key: string
+): ConsumptionGranularity | null {
+  return CONSUMPTION_GRANULARITY_OPTIONS.find((o) => o === key) ?? null;
+}
+
+export function consumptionGranularityLabel(
+  granularity: ConsumptionGranularity
+): string {
+  return CONSUMPTION_GRANULARITY_LABELS[granularity];
+}
+
 export function formatConsumptionDate(date: string | number): string {
   return new Date(date).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
     timeZone: "UTC",
   });
+}
+
+// The counterpart the used share of the cap is read against.
+export function cycleElapsedPercent({
+  startDate,
+  endDate,
+}: ConsumptionPeriod): number {
+  const startMs = new Date(startDate).getTime();
+  const endMs = new Date(endDate).getTime();
+  const elapsedRatio = (Date.now() - startMs) / (endMs - startMs);
+  return Math.round(Math.min(Math.max(elapsedRatio, 0), 1) * 100);
 }
 
 // The endpoints bucket the whole period, so the tail of a series is the part of

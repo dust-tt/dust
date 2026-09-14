@@ -10,6 +10,7 @@ const uniq = <T>(arr: T[]): T[] => Array.from(new Set(arr));
 
 export const TABLE_PREFIX = "TABLE:";
 export const DUST_FILE_ID_HEADER = "X-Dust-File-Id";
+export const DUST_FILE_CONTENT_TYPE_HEADER = "X-Dust-File-Content-Type";
 
 export type FileStatus = "created" | "failed" | "ready";
 
@@ -61,6 +62,12 @@ export type FileUseCaseMetadata = {
   // record of what the entry actually is. Live edits (no model in the loop, triggered by a UI
   // click) reuse it to know what to rebuild from, rather than guessing from fileName.
   frameEntryRelPath?: string;
+  // Immutable Frames v2 publication currently served by the Frame.
+  activePublicationId?: string;
+  // Name and description from the manifest of the active publication. Refreshed on every
+  // activation, so they describe what is served, not what the source folder currently says.
+  frameName?: string;
+  frameDescription?: string;
 };
 
 export function isConversationFileUseCase(
@@ -79,6 +86,14 @@ export const fileShareScopeSchema = z.enum([
 ]);
 
 export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
+
+/**
+ * Whether a share scope makes the file visible to every workspace member holding its link.
+ * "workspace" is the legacy spelling of "workspace_and_emails".
+ */
+export function isWorkspaceVisibleShareScope(scope: FileShareScope): boolean {
+  return scope === "workspace_and_emails" || scope === "workspace";
+}
 
 /**
  * Allowlist of files a shared Frame may load via useFile().
@@ -705,6 +720,7 @@ export const FILE_FORMATS = {
 export type SupportedFileContentType = keyof typeof FILE_FORMATS;
 
 export const frameContentType = "application/vnd.dust.frame";
+export const frameV2ContentType = "application/vnd.dust.frame.v2+json";
 export const frameSlideshowContentType = "application/vnd.dust.frame.slideshow";
 export const sandboxFunctionContentType =
   "application/vnd.dust.sandbox.function";
@@ -730,6 +746,20 @@ export const INTERACTIVE_CONTENT_FILE_FORMATS = {
 export type InteractiveContentFileContentType =
   keyof typeof INTERACTIVE_CONTENT_FILE_FORMATS;
 
+const FRAME_V2_FILE_FORMATS = {
+  [frameV2ContentType]: {
+    cat: "code",
+    exts: [".json"],
+    isSafeToDisplay: true,
+  },
+} as const satisfies Record<string, FileFormat>;
+
+type FrameV2FileContentType = keyof typeof FRAME_V2_FILE_FORMATS;
+
+export type FrameFileContentType =
+  | InteractiveContentFileContentType
+  | FrameV2FileContentType;
+
 const SANDBOX_FUNCTION_FILE_FORMATS = {
   [sandboxFunctionContentType]: {
     cat: "code",
@@ -743,12 +773,14 @@ export type SandboxFunctionFileContentType =
 
 export const ALL_FILE_FORMATS = {
   ...INTERACTIVE_CONTENT_FILE_FORMATS,
+  ...FRAME_V2_FILE_FORMATS,
   ...SANDBOX_FUNCTION_FILE_FORMATS,
   ...FILE_FORMATS,
 };
 // Union type for all supported content types.
 export type AllSupportedFileContentType =
   | InteractiveContentFileContentType
+  | FrameV2FileContentType
   | SandboxFunctionFileContentType
   | SupportedFileContentType;
 
@@ -818,11 +850,41 @@ export function isSandboxFunctionContentType(
   ];
 }
 
+export function isFrameV2ContentType(
+  contentType: string
+): contentType is FrameV2FileContentType {
+  return contentType === frameV2ContentType;
+}
+
+export function isFrameContentType(
+  contentType: string
+): contentType is FrameFileContentType {
+  return (
+    isInteractiveContentType(contentType) || isFrameV2ContentType(contentType)
+  );
+}
+
+export function getFileDisplayName(file: {
+  contentType: string;
+  fileName: string;
+  useCaseMetadata?: FileUseCaseMetadata | null;
+}): string {
+  if (
+    isFrameV2ContentType(file.contentType) &&
+    file.useCaseMetadata?.frameName
+  ) {
+    return file.useCaseMetadata.frameName;
+  }
+
+  return file.fileName;
+}
+
 export function isAllSupportedFileContentType(
   contentType: string
 ): contentType is AllSupportedFileContentType {
   return (
     isInteractiveContentType(contentType) ||
+    isFrameV2ContentType(contentType) ||
     isSandboxFunctionContentType(contentType) ||
     isSupportedFileContentType(contentType)
   );

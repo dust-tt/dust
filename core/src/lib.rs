@@ -51,6 +51,7 @@ pub mod databases {
     pub mod transient_database;
 }
 pub mod gcp_auth;
+pub mod gcs_client;
 pub mod project;
 pub mod run;
 pub mod search_filter;
@@ -142,7 +143,6 @@ pub mod oauth {
     pub mod providers {
         pub mod confluence;
         pub mod confluence_tools;
-        pub mod databricks;
         pub mod discord;
         pub mod fathom;
         pub mod freshservice;
@@ -164,6 +164,7 @@ pub mod oauth {
         pub mod productboard;
         pub mod salesforce;
         pub mod servicenow;
+        pub mod shopify;
         pub mod slack;
         pub mod slack_tools;
         pub mod snowflake;

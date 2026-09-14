@@ -186,7 +186,7 @@ Key points:
   Descriptions** below)
 - `stake` values map to review/approval expectations
 
-### BM25-Friendly Descriptions (MCP3 rule)
+### BM25-Friendly Descriptions (verb-first-mcp-tool-descriptions rule)
 
 Tool names and descriptions both drive BM25 retrieval. **Names are the strongest signal** — they
 must be consistent and follow the `verb_noun` convention (e.g., `list_warehouses`, `get_workbook`).

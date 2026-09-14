@@ -33,10 +33,19 @@ pub struct MountArgs {
 
 #[cfg(target_os = "linux")]
 pub fn run(args: MountArgs) -> anyhow::Result<()> {
+    use anyhow::Context;
+
     let cache_capacity_bytes = args
         .cache_capacity_mib
         .checked_mul(1024 * 1024)
         .ok_or_else(|| anyhow::anyhow!("filesystem cache capacity is too large"))?;
+    // Calls to Front run on this runtime while the mount keeps the current
+    // thread busy, so it needs threads of its own. `filesystem::run` gave this
+    // thread no runtime, which is what lets it be built and dropped here.
+    let runtime = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .context("failed to start the filesystem runtime")?;
     super::fuse::mount(
         &args.mountpoint,
         &args.staging_dir,
@@ -44,6 +53,7 @@ pub fn run(args: MountArgs) -> anyhow::Result<()> {
         &args.workspace_id,
         &args.token_file,
         cache_capacity_bytes,
+        runtime.handle().clone(),
     )
 }
 

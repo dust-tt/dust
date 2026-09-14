@@ -15,9 +15,9 @@ const {
   mockIsProgrammaticUsage: vi.fn(),
 }));
 
-vi.mock("@app/lib/metronome/user_block", () => ({
+vi.mock("@app/lib/api/credits/access_control", () => ({
   isUserBlocked: mockIsUserBlocked,
-  isApiBlocked: mockIsApiBlocked,
+  isPoolDepleted: mockIsApiBlocked,
   isProgrammaticApiBlocked: mockIsProgrammaticApiBlocked,
 }));
 
@@ -105,14 +105,14 @@ describe("checkPoolCreditGate", () => {
     });
   });
 
-  it("checks isApiBlocked (not isUserBlocked) when there is no human user", async () => {
+  it("checks isPoolDepleted (not isUserBlocked) when there is no human user", async () => {
     const auth = makeAuth({ hasUser: false });
     await callGate(auth);
     expect(mockIsUserBlocked).not.toHaveBeenCalled();
-    expect(mockIsApiBlocked).toHaveBeenCalledWith("ws_test");
+    expect(mockIsApiBlocked).toHaveBeenCalledWith(auth);
   });
 
-  it("stops when isApiBlocked is true (no human user)", async () => {
+  it("stops when isPoolDepleted is true (no human user)", async () => {
     mockIsApiBlocked.mockResolvedValue(true);
     const auth = makeAuth({ hasUser: false });
     const result = await callGate(auth);

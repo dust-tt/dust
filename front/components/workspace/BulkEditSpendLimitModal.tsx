@@ -28,6 +28,10 @@ interface BulkEditSpendLimitModalProps {
   isOpen: boolean;
   onClose: () => void;
   memberCount: number;
+  // Whether any seat on the workspace's contract carries a built-in credit
+  // allowance. When it doesn't (e.g. pooled plans with no per-seat allowance),
+  // the pool limit is the member's whole monthly budget rather than a top-up.
+  seatsHaveBuiltInAllowance: boolean;
   onValidate: (limit: SpendLimit) => Promise<boolean>;
 }
 
@@ -35,6 +39,7 @@ export function BulkEditSpendLimitModal({
   isOpen,
   onClose,
   memberCount,
+  seatsHaveBuiltInAllowance,
   onValidate,
 }: BulkEditSpendLimitModalProps) {
   return (
@@ -44,6 +49,7 @@ export function BulkEditSpendLimitModal({
           <BulkEditSpendLimitForm
             onClose={onClose}
             memberCount={memberCount}
+            seatsHaveBuiltInAllowance={seatsHaveBuiltInAllowance}
             onValidate={onValidate}
           />
         )}
@@ -55,12 +61,14 @@ export function BulkEditSpendLimitModal({
 interface BulkEditSpendLimitFormProps {
   onClose: () => void;
   memberCount: number;
+  seatsHaveBuiltInAllowance: boolean;
   onValidate: (limit: SpendLimit) => Promise<boolean>;
 }
 
 function BulkEditSpendLimitForm({
   onClose,
   memberCount,
+  seatsHaveBuiltInAllowance,
   onValidate,
 }: BulkEditSpendLimitFormProps) {
   const [kind, setKind] = useState<SpendLimitKind>("override");
@@ -121,9 +129,12 @@ function BulkEditSpendLimitForm({
           Edit spend limit for {memberCount.toLocaleString("en-US")} members
         </DialogTitle>
         <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-          They will be able to consume this amount from the pool after reaching
-          their plan usage limit. This limit is added on top of each seat&apos;s
-          built-in allowance.
+          {seatsHaveBuiltInAllowance
+            ? "They will be able to consume this amount from the pool after " +
+              "reaching their plan usage limit. This limit is added on top of " +
+              "each seat's built-in allowance."
+            : "This is the total amount of credits each member will be able to " +
+              "consume from the workspace credit pool per month."}
         </p>
       </DialogHeader>
       <DialogContainer>

@@ -1,10 +1,10 @@
 import { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
-import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import type { SandboxTimestampCursor } from "@app/lib/resources/sandbox_resource";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -21,6 +21,7 @@ import {
 } from "./config";
 
 const REAPER_CONCURRENCY = 16;
+const REAPER_AUTH_CONCURRENCY = 4;
 
 export type ReaperPhase =
   | "kill_requested"
@@ -48,7 +49,7 @@ export interface ReapSandboxPhaseActivityResult {
 }
 
 type ReaperSandboxLifecycleOwner = {
-  kind: "conversation" | "pod";
+  kind: "conversation" | "frame";
   modelId: ModelId;
   workspaceModelId: ModelId;
   dangerouslyDestroySandboxIfKillRequested(
@@ -75,78 +76,112 @@ type SandboxOwnerMaps = {
   ownersBySandboxModelId: Map<ModelId, ReaperSandboxLifecycleOwner>;
 };
 
-type ReaperAuthMaps = {
-  conversation: Map<ModelId, Authenticator>;
-  pod: Map<ModelId, Authenticator>;
-};
+type ReaperAuthKind = "admin" | "conversation";
+
+const REAPER_AUTH_KINDS = ["admin", "conversation"] satisfies ReaperAuthKind[];
+
+type ReaperAuthMaps = Record<ReaperAuthKind, Map<ModelId, Authenticator>>;
+
+function getAuthKindForOwnerKind(
+  kind: ReaperSandboxLifecycleOwner["kind"]
+): ReaperAuthKind {
+  switch (kind) {
+    case "conversation":
+      return "conversation";
+    case "frame":
+      return "admin";
+    default:
+      assertNever(kind);
+  }
+}
+
+function buildAuthenticator(
+  authKind: ReaperAuthKind,
+  workspace: WorkspaceResource
+): Promise<Authenticator> {
+  switch (authKind) {
+    case "admin":
+      return Authenticator.internalAdminForWorkspace(workspace.sId, {
+        dangerouslyRequestAllGroups: true,
+      });
+    case "conversation":
+      return Authenticator.internalUserForWorkspace(workspace.sId);
+    default:
+      assertNever(authKind);
+  }
+}
 
 /**
- * Build workspace-scoped authenticators for each owner kind touched by the
- * batch. Conversation lifecycle calls retain builder auth. Pod lifecycle calls
- * need the workspace's project groups so their pre-sleep filesystem flush can
- * access restricted projects.
+ * @cc [owner:adrsimon,label:security] conversation-auth-stays-narrow
+ * Conversation-owned sandboxes MUST be reaped with a plain user authenticator (global group
+ * only). Only frame-owned sandboxes get an admin authenticator with
+ * `dangerouslyRequestAllGroups`, which the frame pre-sleep filesystem flush needs to reach
+ * restricted projects.
+ */
+/**
+ * @cc [owner:adrsimon,label:performance] bounded-auth-fan-out
+ * Every authenticator build MUST share a single `concurrentExecutor` budget. Each build issues
+ * several queries, so splitting them into one executor per kind under a `Promise.all` multiplies
+ * the real ceiling past `POOL_MAX` and leaves the activity queueing on connection acquisition.
  */
 async function fetchAuthMaps(
   sandboxes: SandboxResource[],
   ownerMaps: SandboxOwnerMaps
 ): Promise<ReaperAuthMaps> {
-  const workspaceModelIdsByOwnerKind = {
+  const workspaceModelIdsByAuthKind: Record<ReaperAuthKind, Set<ModelId>> = {
+    admin: new Set<ModelId>(),
     conversation: new Set<ModelId>(),
-    pod: new Set<ModelId>(),
   };
 
   for (const sandbox of sandboxes) {
     const ownerRef = ownerMaps.ownerRefsBySandboxModelId.get(sandbox.id);
     if (ownerRef) {
-      workspaceModelIdsByOwnerKind[ownerRef.kind].add(sandbox.workspaceId);
+      workspaceModelIdsByAuthKind[getAuthKindForOwnerKind(ownerRef.kind)].add(
+        sandbox.workspaceId
+      );
     }
   }
 
   const uniqueWorkspaceModelIds = [
     ...new Set([
-      ...workspaceModelIdsByOwnerKind.conversation,
-      ...workspaceModelIdsByOwnerKind.pod,
+      ...workspaceModelIdsByAuthKind.admin,
+      ...workspaceModelIdsByAuthKind.conversation,
     ]),
   ];
 
   const workspaces = await WorkspaceResource.fetchByModelIds(
     uniqueWorkspaceModelIds
   );
+  const workspacesByModelId = new Map(
+    workspaces.map((workspace) => [workspace.id, workspace])
+  );
 
-  const [conversationEntries, podEntries] = await Promise.all([
-    concurrentExecutor(
-      workspaces.filter((workspace) =>
-        workspaceModelIdsByOwnerKind.conversation.has(workspace.id)
-      ),
-      async (workspace) => {
-        const authenticator = await Authenticator.internalBuilderForWorkspace(
-          workspace.sId
-        );
-        return [workspace.id, authenticator] as const;
-      },
-      { concurrency: REAPER_CONCURRENCY }
-    ),
-    concurrentExecutor(
-      workspaces.filter((workspace) =>
-        workspaceModelIdsByOwnerKind.pod.has(workspace.id)
-      ),
-      async (workspace) => {
-        const authenticator = await Authenticator.internalAdminForWorkspace(
-          workspace.sId,
-          {
-            dangerouslyRequestAllGroups: true,
-          }
-        );
-        return [workspace.id, authenticator] as const;
-      },
-      { concurrency: REAPER_CONCURRENCY }
-    ),
-  ]);
+  const authRequests = REAPER_AUTH_KINDS.flatMap((authKind) =>
+    [...workspaceModelIdsByAuthKind[authKind]].flatMap((workspaceModelId) => {
+      const workspace = workspacesByModelId.get(workspaceModelId);
+      return workspace ? [{ authKind, workspace }] : [];
+    })
+  );
 
-  return {
-    conversation: new Map(conversationEntries),
-    pod: new Map(podEntries),
+  const authEntries = await concurrentExecutor(
+    authRequests,
+    async ({ authKind, workspace }) => ({
+      authKind,
+      authenticator: await buildAuthenticator(authKind, workspace),
+      workspaceModelId: workspace.id,
+    }),
+    { concurrency: REAPER_AUTH_CONCURRENCY }
+  );
+
+  const authMaps: ReaperAuthMaps = {
+    admin: new Map(),
+    conversation: new Map(),
   };
+  for (const { authKind, authenticator, workspaceModelId } of authEntries) {
+    authMaps[authKind].set(workspaceModelId, authenticator);
+  }
+
+  return authMaps;
 }
 
 /**
@@ -161,22 +196,23 @@ async function fetchSandboxOwnerMaps(
     await ConversationSandboxAdapter.dangerouslyFetchConversationModelIdsBySandboxes(
       sandboxes
     );
-  const podModelIdsBySandboxModelId =
-    await PodSandboxAdapter.dangerouslyFetchPodModelIdsBySandboxes(sandboxes);
+  const frameModelIdsBySandboxModelId =
+    await FrameSandboxAdapter.dangerouslyFetchFrameModelIdsBySandboxes(
+      sandboxes
+    );
 
   const conversationModelIds = [
     ...new Set(conversationModelIdsBySandboxModelId.values()),
   ];
-  const podModelIds = [...new Set(podModelIdsBySandboxModelId.values())];
+  const frameModelIds = [...new Set(frameModelIdsBySandboxModelId.values())];
 
   const conversations =
     await ConversationResource.dangerouslyFetchByModelIds(conversationModelIds);
-  const pods = await SpaceResource.dangerouslyFetchByModelIds(podModelIds);
+  const frames =
+    await FileResource.dangerouslyFetchFrameV2ByModelIds(frameModelIds);
 
   const conversationsById = new Map(conversations.map((c) => [c.id, c]));
-  const podsById = new Map(
-    pods.filter((p) => p.isProject()).map((p) => [p.id, p])
-  );
+  const framesById = new Map(frames.map((frame) => [frame.id, frame]));
 
   const ownerRefsBySandboxModelId = new Map<ModelId, SandboxOwnerRef>();
   const ownersBySandboxModelId = new Map<
@@ -225,31 +261,38 @@ async function fetchSandboxOwnerMaps(
       continue;
     }
 
-    const podModelId = podModelIdsBySandboxModelId.get(sandbox.id);
-    if (!podModelId) {
-      continue;
-    }
-
-    ownerRefsBySandboxModelId.set(sandbox.id, {
-      kind: "pod",
-      modelId: podModelId,
-    });
-
-    const pod = podsById.get(podModelId);
-    if (pod) {
-      ownersBySandboxModelId.set(sandbox.id, {
-        kind: "pod",
-        modelId: pod.id,
-        workspaceModelId: pod.workspaceId,
-        dangerouslyDestroySandboxIfKillRequested: (auth) =>
-          PodSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(auth, pod),
-        dangerouslyDestroySandboxIfSleeping: (auth) =>
-          PodSandboxAdapter.dangerouslyDestroySandboxIfSleeping(auth, pod),
-        dangerouslySleepSandboxIfPendingApproval: (auth) =>
-          PodSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(auth, pod),
-        dangerouslySleepSandboxIfRunning: (auth) =>
-          PodSandboxAdapter.dangerouslySleepSandboxIfRunning(auth, pod),
+    const frameModelId = frameModelIdsBySandboxModelId.get(sandbox.id);
+    if (frameModelId) {
+      ownerRefsBySandboxModelId.set(sandbox.id, {
+        kind: "frame",
+        modelId: frameModelId,
       });
+
+      const frame = framesById.get(frameModelId);
+      if (frame) {
+        ownersBySandboxModelId.set(sandbox.id, {
+          kind: "frame",
+          modelId: frame.id,
+          workspaceModelId: frame.workspaceId,
+          dangerouslyDestroySandboxIfKillRequested: (auth) =>
+            FrameSandboxAdapter.dangerouslyDestroySandboxIfKillRequested(
+              auth,
+              frame
+            ),
+          dangerouslyDestroySandboxIfSleeping: (auth) =>
+            FrameSandboxAdapter.dangerouslyDestroySandboxIfSleeping(
+              auth,
+              frame
+            ),
+          dangerouslySleepSandboxIfPendingApproval: (auth) =>
+            FrameSandboxAdapter.dangerouslySleepSandboxIfPendingApproval(
+              auth,
+              frame
+            ),
+          dangerouslySleepSandboxIfRunning: (auth) =>
+            FrameSandboxAdapter.dangerouslySleepSandboxIfRunning(auth, frame),
+        });
+      }
     }
   }
 
@@ -286,7 +329,7 @@ async function processSandboxes(
     async (sandbox): Promise<ProcessSandboxOutcome> => {
       const owner = ownerMaps.ownersBySandboxModelId.get(sandbox.id);
       const auth = owner
-        ? authMaps[owner.kind].get(sandbox.workspaceId)
+        ? authMaps[getAuthKindForOwnerKind(owner.kind)].get(sandbox.workspaceId)
         : undefined;
 
       if (!auth || !owner) {

@@ -13,7 +13,10 @@ function createServer(
 
   // Gate at server creation: if the caller is not a Dust super user, register
   // a single error tool so the agent gets a clear message.
-  if (!auth.isDustSuperUser()) {
+  // Note: here we do not use the authenticator's isDustSuperUser method because the authenticator is created using the regular flow.
+  // Only poke create super user's authenticators.
+  const user = auth.user();
+  if (!user?.isDustSuperUser) {
     server.tool(
       "poke_not_available",
       "Poke tools require Dust super user privileges.",

@@ -21,6 +21,60 @@ const BYOK_TRANSITION_BYOK_KEYS_RATIO = 1; // 100%
 export const MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE =
   "An OpenAI API key is required to perform this action. Please configure it in your workspace settings or contact an admin.";
 
+const env = (key: string) =>
+  EnvironmentConfig.getOptionalEnvVariable(key) ?? "";
+
+function dustManagedByokProviderKeys(): Record<ProviderCredentialKey, string> {
+  return {
+    ANTHROPIC_API_KEY: env("DUST_MANAGED_ANTHROPIC_API_KEY"),
+    OPENAI_API_KEY: env("DUST_MANAGED_OPENAI_API_KEY"),
+    GOOGLE_AI_STUDIO_API_KEY: env("DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY"),
+  };
+}
+
+function dustManagedOtherProviderKeys() {
+  return {
+    AZURE_OPENAI_API_KEY: env("DUST_MANAGED_AZURE_OPENAI_API_KEY"),
+    AZURE_OPENAI_ENDPOINT: env("DUST_MANAGED_AZURE_OPENAI_ENDPOINT"),
+    MISTRAL_API_KEY: env("DUST_MANAGED_MISTRAL_API_KEY"),
+    TEXTSYNTH_API_KEY: env("DUST_MANAGED_TEXTSYNTH_API_KEY"),
+    GOOGLE_AI_STUDIO_API_KEY: env("DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY"),
+    DEEPSEEK_API_KEY: env("DUST_MANAGED_DEEPSEEK_API_KEY"),
+    FIREWORKS_API_KEY: env("DUST_MANAGED_FIREWORKS_API_KEY"),
+    XAI_API_KEY: env("DUST_MANAGED_XAI_API_KEY"),
+  };
+}
+
+// Safer to always point to the same hosting region while we handle US first,
+// avoid region switching issues when welcoming EU BYOK workspaces later.
+function baseCredentialVariables() {
+  return {
+    OPENAI_USE_EU_ENDPOINT:
+      config.getRegion() === "europe-west1" ? "true" : "false",
+    OPENAI_BASE_URL: env("DUST_MANAGED_OPENAI_BASE_URL"),
+    AGENT_PLATFORM_PROJECT_ID: config.getVertexAiProjectId(),
+  };
+}
+
+/**
+ * The Dust-managed keys, resolved from the environment alone.
+ *
+ * This is what a non-BYOK workspace gets, factored out so callers that have no
+ * `Authenticator` at all -- the model health probe running in a Temporal worker
+ * -- can reach Dust's own credentials without inventing a workspace.
+ *
+ * Dangerous because it answers for no workspace: it skips `plan.isByok`, so a
+ * BYOK workspace's inference would run on Dust's keys, in Dust's provider
+ * accounts. If you hold an `Authenticator`, call `getLlmCredentials(auth)`.
+ */
+export function dangerouslyGetDustManagedLlmCredentials(): LLMCredentialsType {
+  return {
+    ...baseCredentialVariables(),
+    ...dustManagedOtherProviderKeys(),
+    ...dustManagedByokProviderKeys(),
+  };
+}
+
 /**
  * Returns LLM credentials for the workspace.
  *
@@ -45,44 +99,11 @@ export async function getLlmCredentials(
 ): Promise<LLMCredentialsType> {
   const plan = auth.getNonNullablePlan();
 
-  const env = (key: string) =>
-    EnvironmentConfig.getOptionalEnvVariable(key) ?? "";
-
-  const DUST_MANAGED_BYOK_PROVIDERS_API_KEYS: Record<
-    ProviderCredentialKey,
-    string
-  > = {
-    ANTHROPIC_API_KEY: env("DUST_MANAGED_ANTHROPIC_API_KEY"),
-    OPENAI_API_KEY: env("DUST_MANAGED_OPENAI_API_KEY"),
-    GOOGLE_AI_STUDIO_API_KEY: env("DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY"),
-  };
-
-  const DUST_MANAGED_OTHER_PROVIDERS_API_KEYS = {
-    AZURE_OPENAI_API_KEY: env("DUST_MANAGED_AZURE_OPENAI_API_KEY"),
-    AZURE_OPENAI_ENDPOINT: env("DUST_MANAGED_AZURE_OPENAI_ENDPOINT"),
-    MISTRAL_API_KEY: env("DUST_MANAGED_MISTRAL_API_KEY"),
-    TEXTSYNTH_API_KEY: env("DUST_MANAGED_TEXTSYNTH_API_KEY"),
-    GOOGLE_AI_STUDIO_API_KEY: env("DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY"),
-    DEEPSEEK_API_KEY: env("DUST_MANAGED_DEEPSEEK_API_KEY"),
-    FIREWORKS_API_KEY: env("DUST_MANAGED_FIREWORKS_API_KEY"),
-    XAI_API_KEY: env("DUST_MANAGED_XAI_API_KEY"),
-  };
-
-  // Safer to always point to the same hosting region while we handle US first,
-  // avoid region switching issues when welcoming EU BYOK workspaces later.
-  const BASE_VARIABLES = {
-    OPENAI_USE_EU_ENDPOINT:
-      config.getRegion() === "europe-west1" ? "true" : "false",
-    OPENAI_BASE_URL: env("DUST_MANAGED_OPENAI_BASE_URL"),
-    AGENT_PLATFORM_PROJECT_ID: config.getVertexAiProjectId(),
-  };
+  const DUST_MANAGED_BYOK_PROVIDERS_API_KEYS = dustManagedByokProviderKeys();
+  const BASE_VARIABLES = baseCredentialVariables();
 
   if (!plan.isByok) {
-    return {
-      ...BASE_VARIABLES,
-      ...DUST_MANAGED_OTHER_PROVIDERS_API_KEYS,
-      ...DUST_MANAGED_BYOK_PROVIDERS_API_KEYS,
-    };
+    return dangerouslyGetDustManagedLlmCredentials();
   }
 
   const featureFlags = await getFeatureFlags(auth);

@@ -1,0 +1,112 @@
+{
+  "ranAt": "2026-08-25T18:02:18.571Z",
+  "querySet": "eval_queries_dust.json",
+  "groupBoost": 0.5,
+  "excludeGlobal": true,
+  "includeInstructions": false,
+  "minShouldMatch": "",
+  "matchMode": "hybrid",
+  "nameFallback": "fuzzy",
+  "overall": {
+    "queries": 2184,
+    "mrr": 0.9424768518518519,
+    "recallAt1": 0.9166666666666666,
+    "recallAt5": 0.9748168498168498,
+    "recallAt10": 0.978021978021978,
+    "hits": 12.74587912087912,
+    "coverage": 0.29330561991730975,
+    "junk": 0.23960746899277635,
+    "junkHits": 0.804945054945055
+  },
+  "byKind": {
+    "desc_phrase": {
+      "queries": 295,
+      "mrr": 0.8988229755178906,
+      "recallAt1": 0.8338983050847457,
+      "recallAt5": 0.9796610169491525,
+      "recallAt10": 0.9966101694915255,
+      "hits": 35.637288135593224,
+      "coverage": 0.26290011037527594,
+      "junk": 0.12665562913907286,
+      "junkHits": 1.0372881355932204
+    },
+    "desc_terms": {
+      "queries": 294,
+      "mrr": 0.9244047619047621,
+      "recallAt1": 0.8639455782312925,
+      "recallAt5": 0.9965986394557823,
+      "recallAt10": 1,
+      "hits": 8.741496598639456,
+      "coverage": 0.191047471620229,
+      "junk": 0.45123839009287925,
+      "junkHits": 1.9829931972789117
+    },
+    "name_exact": {
+      "queries": 339,
+      "mrr": 1,
+      "recallAt1": 1,
+      "recallAt5": 1,
+      "recallAt10": 1,
+      "hits": 4.398230088495575,
+      "coverage": 0.41292134831460636,
+      "junk": 0.15168539325842698,
+      "junkHits": 0.1592920353982301
+    },
+    "name_prefix": {
+      "queries": 317,
+      "mrr": 0.9492639327024184,
+      "recallAt1": 0.9085173501577287,
+      "recallAt5": 0.9936908517350158,
+      "recallAt10": 0.9936908517350158,
+      "hits": 7.220820189274448,
+      "coverage": 0.30464216634429425,
+      "junk": 0.5589941972920697,
+      "junkHits": 0.9116719242902208
+    },
+    "name_transpose": {
+      "queries": 313,
+      "mrr": 0.9127795527156549,
+      "recallAt1": 0.9073482428115016,
+      "recallAt5": 0.9233226837060703,
+      "recallAt10": 0.9233226837060703,
+      "hits": 3.6613418530351436,
+      "coverage": 0.23898678414096944,
+      "junk": 0.23348017621145375,
+      "junkHits": 0.16932907348242812
+    },
+    "name_typo": {
+      "queries": 325,
+      "mrr": 0.9283076923076923,
+      "recallAt1": 0.9230769230769231,
+      "recallAt5": 0.9384615384615385,
+      "recallAt10": 0.9384615384615385,
+      "hits": 3.8923076923076922,
+      "coverage": 0.2576666666666669,
+      "junk": 0.232,
+      "junkHits": 0.17846153846153845
+    },
+    "name_words": {
+      "queries": 301,
+      "mrr": 0.9771594684385381,
+      "recallAt1": 0.9667774086378738,
+      "recallAt5": 0.9933554817275747,
+      "recallAt10": 0.9966777408637874,
+      "hits": 28.448504983388705,
+      "coverage": 0.3715737896738379,
+      "junk": 0.18209741114523914,
+      "junkHits": 1.3787375415282392
+    }
+  },
+  "negatives": {
+    "chimera": {
+      "queries": 120,
+      "meanHits": 10.675,
+      "zeroHitRate": 0
+    },
+    "oov": {
+      "queries": 108,
+      "meanHits": 0,
+      "zeroHitRate": 1
+    }
+  }
+}

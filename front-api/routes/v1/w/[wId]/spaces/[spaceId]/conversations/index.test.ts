@@ -148,6 +148,53 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/conversations", () => {
     expect(firstConvo.url).toContain(convo1.sId);
   });
 
+  it("should exclude sub-conversations (depth > 0)", async () => {
+    const { workspace, key } = await createPublicApiMockRequest({
+      systemKey: true,
+    });
+
+    const space = await SpaceFactory.regular(workspace);
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "admin" });
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const addMembersRes = await space.addMembers(adminAuth, {
+      userIds: [user.sId],
+    });
+    if (!addMembersRes.isOk()) {
+      throw new Error("Failed to add user to space");
+    }
+
+    const agent = await AgentConfigurationFactory.createTestAgent(adminAuth, {
+      name: "Test Agent",
+    });
+
+    const rootConvo = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agent.sId,
+      requestedSpaceIds: [space.id],
+      spaceId: space.id,
+      messagesCreatedAt: [new Date()],
+    });
+    const subConvo = await ConversationFactory.create(adminAuth, {
+      agentConfigurationId: agent.sId,
+      requestedSpaceIds: [space.id],
+      spaceId: space.id,
+      messagesCreatedAt: [new Date()],
+      depth: 1,
+    });
+
+    const response = await getConversations(workspace, space.sId, key);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    const conversationIds = data.conversations.map((c: any) => c.sId);
+    expect(conversationIds).toContain(rootConvo.sId);
+    expect(conversationIds).not.toContain(subConvo.sId);
+  });
+
   it("should include deleted conversations", async () => {
     const { workspace, key } = await createPublicApiMockRequest({
       systemKey: true,

@@ -2,14 +2,17 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { ModelPickerHighlight } from "@app/components/assistant/conversation/input_bar/ModelPickerHighlight";
 import type { ModelPickerProps } from "@app/components/model_picker/ModelPicker";
 import { ModelPicker } from "@app/components/model_picker/ModelPicker";
+import { useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { useContext } from "react";
 
 type InputBarModelPickerProps = Omit<
   ModelPickerProps,
   | "buttonVariant"
+  | "showDropdownArrow"
   | "showLabel"
   | "setStickyModelOverride"
   | "stickyModelOverride"
+  | "trackingSurface"
 >;
 
 export function InputBarModelPicker({
@@ -27,6 +30,10 @@ export function InputBarModelPicker({
   const { stickyModelOverride, setStickyModelOverride, openModelPickerRef } =
     useContext(InputBarContext);
 
+  // On mobile (and in the narrow extension) the input bar has no room for the
+  // model name, so the trigger stays icon-only with its tooltip.
+  const isWidthConstrained = useIsWidthConstrained();
+
   return (
     <ModelPickerHighlight>
       <ModelPicker
@@ -36,7 +43,8 @@ export function InputBarModelPicker({
         owner={owner}
         buttonVariant="ghost-secondary"
         buttonSize={buttonSize}
-        showLabel={false}
+        showLabel={!isWidthConstrained}
+        showDropdownArrow
         side={side}
         disabled={disabled}
         selectionRef={selectionRef}
@@ -45,6 +53,7 @@ export function InputBarModelPicker({
         setStickyModelOverride={setStickyModelOverride}
         commitApiRef={commitApiRef}
         openApiRef={openModelPickerRef}
+        trackingSurface="conversation_input_bar"
       />
     </ModelPickerHighlight>
   );

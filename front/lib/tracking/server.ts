@@ -1,8 +1,8 @@
+import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
-import { PostHogServerSideTracking } from "@app/lib/tracking/posthog/server";
 import type { UTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";

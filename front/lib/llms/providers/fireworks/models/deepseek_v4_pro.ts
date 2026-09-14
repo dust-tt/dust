@@ -7,7 +7,7 @@ export function WithDustDeepSeekDeepSeekV4ProConfig<
   ) => object,
 >(Base: TBase) {
   abstract class DustDeepSeekDeepSeekV4Pro extends Base {
-    static readonly displayName = "DeepSeek V4 Pro (Fireworks)";
+    static readonly displayName = "DeepSeek V4 Pro";
     static readonly description =
       "DeepSeek's V4 Pro Mixture-of-Experts model with frontier reasoning, advanced coding, and 1M context (served via Fireworks).";
     static readonly byok = false;

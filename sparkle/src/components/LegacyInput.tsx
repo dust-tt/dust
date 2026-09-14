@@ -11,12 +11,17 @@ type MessageStatus = (typeof MESSAGE_STATUS)[number];
 
 export interface LegacyInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value"> {
+  /** Helper or error text shown under the field, colored by `messageStatus`. */
   message?: string | null;
+  /** How the `message` is rendered: "info" shows an icon, "error" also colors the field. */
   messageStatus?: MessageStatus;
   value?: string | null;
+  /** Forces the error (warning border) state regardless of `messageStatus`. */
   isError?: boolean;
   className?: string;
+  /** Classes applied to the outer container (label + field + message). */
   containerClassName?: string;
+  /** Caption rendered above the field. */
   label?: string;
 }
 
@@ -80,6 +85,14 @@ const inputStyleClasses = cva(
   }
 );
 
+/**
+ * Legacy single-line text field with an optional label and a helper or error
+ * message with status colouring. Kept only as a visual reference for legacy
+ * product surfaces.
+ *
+ * @deprecated Use Input instead.
+ * @summary Deprecated legacy text field.
+ */
 export const LegacyInput = forwardRef<HTMLInputElement, LegacyInputProps>(
   (
     {

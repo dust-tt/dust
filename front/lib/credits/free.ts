@@ -11,7 +11,7 @@ import {
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
@@ -593,7 +593,7 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
       },
       "[Free Credits] Error starting credit"
     );
-    getStatsDClient().increment("credits.top_up.error", 1, [
+    statsDMetrics.increment("credits.top_up.error", 1, [
       `workspace_id:${workspaceId}`,
       "type:free",
       `customer:${isEnterprise ? "enterprise" : "pro"}`,
@@ -601,7 +601,7 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
     return new Err(startResult.error);
   }
 
-  getStatsDClient().increment("credits.top_up.success", 1, [
+  statsDMetrics.increment("credits.top_up.success", 1, [
     `workspace_id:${workspaceId}`,
     "type:free",
     `customer:${isEnterprise ? "enterprise" : "pro"}`,
@@ -773,7 +773,7 @@ export async function grantFreeCreditFromSubscriptionStateChangeYearly({
       },
       "[Free Credits Yearly] Error starting credit"
     );
-    getStatsDClient().increment("credits.top_up.error", 1, [
+    statsDMetrics.increment("credits.top_up.error", 1, [
       `workspace_id:${workspaceId}`,
       "type:free_yearly",
       `customer:${isEnterprise ? "enterprise" : "pro"}`,
@@ -781,7 +781,7 @@ export async function grantFreeCreditFromSubscriptionStateChangeYearly({
     return new Err(startResult.error);
   }
 
-  getStatsDClient().increment("credits.top_up.success", 1, [
+  statsDMetrics.increment("credits.top_up.success", 1, [
     `workspace_id:${workspaceId}`,
     "type:free_yearly",
     `customer:${isEnterprise ? "enterprise" : "pro"}`,

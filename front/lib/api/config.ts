@@ -11,6 +11,14 @@ export function setBaseUrlResolver(fn: (() => string) | null): void {
   baseUrlResolver = fn;
 }
 
+function publicApiBaseUrl(): string {
+  // Using process.env here to make sure the function is usable on the client side.
+  if (!process.env.NEXT_PUBLIC_DUST_API_URL) {
+    throw new Error("NEXT_PUBLIC_DUST_API_URL is not set");
+  }
+  return process.env.NEXT_PUBLIC_DUST_API_URL;
+}
+
 // Returns the resolver's URL if set, or empty string.
 // Used by clientFetch to decide whether to rewrite relative URLs (SPA cross-origin only).
 export function getBaseUrl(): string {
@@ -61,18 +69,27 @@ const config = {
     // We override the NEXT_PUBLIC_DUST_API_URL in `front-internal` to ensure that the
     // uploadUrl returned by the file API points to the `http://front-internal-service` and not our
     // public API URL.
-    let override = EnvironmentConfig.getOptionalEnvVariable(
+    const override = EnvironmentConfig.getOptionalEnvVariable(
       "DUST_INTERNAL_API_URL"
     );
     if (override) {
       return override;
     }
 
-    // Using process.env here to make sure the function is usable on the client side.
-    if (!process.env.NEXT_PUBLIC_DUST_API_URL) {
-      throw new Error("NEXT_PUBLIC_DUST_API_URL is not set");
+    return publicApiBaseUrl();
+  },
+
+  // The URL a sandbox uses to reach us. Sandboxes run outside our cluster, so
+  // this stays the public URL: getApiBaseUrl prefers the internal service
+  // address wherever DUST_INTERNAL_API_URL is set, and nothing in a sandbox can
+  // reach that. Every sandbox-facing caller must use this one.
+  getSandboxApiBaseUrl: (): string => {
+    const developmentHostName = config.getSandboxDevFrontHostName();
+    if (isDevelopment() && developmentHostName) {
+      return `https://${developmentHostName}`;
     }
-    return process.env.NEXT_PUBLIC_DUST_API_URL;
+
+    return publicApiBaseUrl();
   },
 
   getStaticWebsiteUrl: (): string => {
@@ -96,8 +113,20 @@ const config = {
   getPokeAppUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("POKE_APP_URL");
   },
-  // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
-  // from NEXT_PUBLIC_DUST_API_URL. Falls back to getClientFacingUrl() when not set.
+  // Cloudflare Access team domain used to validate poke JWTs
+  // (e.g. "https://dust.cloudflareaccess.com"). Optional: when unset, poke
+  // falls back to the WorkOS super-user session path.
+  getCloudflareAccessTeamDomain: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "CLOUDFLARE_ACCESS_TEAM_DOMAIN"
+    );
+  },
+  // Cloudflare Access application Audience (AUD) tag for poke.
+  getCloudflareAccessAud: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("CLOUDFLARE_ACCESS_AUD");
+  },
+  // For the WorkOS callback, which must reach the API. Allows overriding the
+  // redirect base URL separately from NEXT_PUBLIC_DUST_API_URL.
   getAuthRedirectBaseUrl: (): string => {
     return (
       EnvironmentConfig.getOptionalEnvVariable("DUST_AUTH_REDIRECT_BASE_URL") ??
@@ -200,8 +229,8 @@ const config = {
   getPersonaApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("PERSONA_API_KEY");
   },
-  getServiceAccount: (): string => {
-    return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
+  getServiceAccount: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("SERVICE_ACCOUNT");
   },
   getPostHogApiKey: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("NEXT_PUBLIC_POSTHOG_KEY");
@@ -372,11 +401,14 @@ const config = {
   getOAuthHubspotClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
   },
+  getOAuthShopifyClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_SHOPIFY_CLIENT_ID");
+  },
+  getOAuthShopifyClientSecret: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_SHOPIFY_CLIENT_SECRET");
+  },
   getOAuthFreshserviceClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_CLIENT_ID");
-  },
-  getOAuthFreshserviceDomain: (): string => {
-    return EnvironmentConfig.getEnvVariable("OAUTH_FRESHWORKS_DOMAIN");
   },
   getOAuthJiraClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_JIRA_CLIENT_ID");
@@ -436,12 +468,6 @@ const config = {
   getStatusPageApiToken: (): string => {
     return EnvironmentConfig.getEnvVariable("STATUS_PAGE_API_TOKEN");
   },
-  getMultiActionsAgentAnthropicBetaFlags: (): string[] | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "MULTI_ACTIONS_AGENT_ANTHROPIC_BETA_FLAGS"
-    )?.split(",");
-  },
-
   // WorkOS
   getWorkOSApiKey: (): string => {
     return EnvironmentConfig.getEnvVariable("WORKOS_API_KEY");
@@ -502,14 +528,6 @@ const config = {
       EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_ENVIRONMENT") ??
       "master"
     );
-  },
-  getContentfulPreviewSecret: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "CONTENTFUL_PREVIEW_SECRET"
-    );
-  },
-  getContentfulPreviewToken: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("CONTENTFUL_PREVIEW_TOKEN");
   },
   // Untrusted egress proxy.
   getUntrustedEgressProxyHost: (): string | undefined => {
@@ -594,18 +612,9 @@ const config = {
       "SENDGRID_PARSE_WEBHOOK_PUBLIC_KEY"
     );
   },
-  getProductionDustWorkspaceId: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable(
-      "PRODUCTION_DUST_WORKSPACE_ID"
-    );
-  },
   // Email validation secret for HMAC signing of action approval tokens.
   getEmailValidationSecret: (): string => {
     return EnvironmentConfig.getEnvVariable("EMAIL_VALIDATION_SECRET");
-  },
-  // Secret for signing gated asset download tokens (ebooks, whitepapers, etc.).
-  getGatedAssetsTokenSecret: (): string => {
-    return EnvironmentConfig.getEnvVariable("GATED_ASSETS_TOKEN_SECRET");
   },
   // Secrets for secure storage of keys and bearer tokens.
   getDeveloperSecretsSecret: (): string => {
@@ -667,6 +676,9 @@ const config = {
   },
   getGoogleCloudProjectId: (): string => {
     return EnvironmentConfig.getEnvVariable("GOOGLE_CLOUD_PROJECT_ID");
+  },
+  getOptionalGoogleCloudProjectId: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("GOOGLE_CLOUD_PROJECT_ID");
   },
   // Novu notifications.
   getNovuSecretKey: (): string => {

@@ -13,6 +13,7 @@ vi.mock("@app/lib/metronome/client", async () => {
     ...actual,
     listMetronomeBalances: vi.fn(),
     listMetronomeDraftInvoices: vi.fn(),
+    listMetronomeFinalizedInvoices: vi.fn(),
   };
 });
 
@@ -26,6 +27,18 @@ const EMPTY_POOL_SUMMARY = {
   overageCredits: null,
   overageAmountCents: null,
   overageCurrency: null,
+  currentCycleStartMs: null,
+  currentCycleEndMs: null,
+  currentCycleConsumedCredits: null,
+  cycleBreakdown: [],
+  excessConsumedCredits: null,
+  excessCycleBreakdown: [],
+  hasMoreCycleHistory: false,
+  hasMoreCycleHistoryByBreakdown: {
+    cycleBreakdown: false,
+    excessCycleBreakdown: false,
+  },
+  programmaticConsumedCredits: null,
 };
 
 beforeEach(() => {
@@ -33,6 +46,9 @@ beforeEach(() => {
     new Ok([])
   );
   vi.mocked(metronomeClient.listMetronomeDraftInvoices).mockResolvedValue(
+    new Ok([])
+  );
+  vi.mocked(metronomeClient.listMetronomeFinalizedInvoices).mockResolvedValue(
     new Ok([])
   );
 });

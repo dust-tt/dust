@@ -16,15 +16,21 @@ export const AGENT_DOCUMENT_OUTPUTS_ALIAS_NAME = "front.agent_document_outputs";
 export const CONVERSATION_SEARCH_ALIAS_NAME = "front.conversation_search";
 
 /**
- * Mapping of index names to their directory locations.
- * This allows different features to organize their indices in feature-specific directories.
+ * Registry of front-owned indices: where the settings/mappings files live and
+ * the current version. A version bump here must ship with the matching
+ * [name]_[version].settings.[region].json and [name]_[version].mappings.json.
  */
-export const INDEX_DIRECTORIES: Record<string, string> = {
-  agent_document_outputs: "lib/analytics/indices",
-  agent_message_analytics: "lib/analytics/indices",
-  agent_message_consumption_analytics: "lib/analytics/indices",
-  conversation_search: "lib/conversation_search/indices",
-  user_search: "lib/user_search/indices",
+export const INDEX_REGISTRY: Record<
+  string,
+  { directory: string; version: number }
+> = {
+  agent_document_outputs: { directory: "lib/analytics/indices", version: 1 },
+  agent_message_analytics: { directory: "lib/analytics/indices", version: 2 },
+  agent_message_consumption_analytics: {
+    directory: "lib/analytics/indices",
+    version: 1,
+  },
+  user_search: { directory: "lib/user_search/indices", version: 1 },
 };
 
 export interface ElasticsearchBaseDocument {

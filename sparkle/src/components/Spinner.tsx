@@ -22,8 +22,15 @@ type SpinnerVariantType = (typeof SPINNER_VARIANTS)[number];
 type SpinnerVariant = "mono" | "revert" | "light" | "dark" | SpinnerVariantType;
 
 export interface SpinnerProps {
+  /** Rendered size: "xs" (16px) | "sm" (20px) | "md" (24px) | "lg" (32px). Defaults to "md". */
   size?: SpinnerSizeType;
+  /**
+   * Color scheme: "mono" follows the current theme, "revert" inverts it, "light" forces a
+   * white arc (for dark or colored backgrounds), "dark" forces a near-black arc, and a
+   * palette value (e.g. "rose300") tints the spinner with that color. Defaults to "mono".
+   */
   variant?: SpinnerVariant;
+  /** Animation style: "worm" (default spinning arc) | "shapes" (morphing shape) | "tri" (Lottie). */
   type?: SpinnerTypeType;
 }
 
@@ -333,6 +340,14 @@ function getCustomHex(variant: string): string | null {
 
 // ─── Spinner ──────────────────────────────────────────────────────────────────
 
+/**
+ * Indicates that content is loading or an action is in progress. Use it for indeterminate
+ * waits where no progress percentage is available, choosing a `size` to match the context
+ * and a `variant` to suit the background — `mono` adapts to light and dark themes. For
+ * loading state inside a button, use the Button's `isLoading` prop instead.
+ *
+ * @summary Indeterminate loading indicator.
+ */
 const Spinner: React.FC<SpinnerProps> = ({
   size = "md",
   variant = "mono",

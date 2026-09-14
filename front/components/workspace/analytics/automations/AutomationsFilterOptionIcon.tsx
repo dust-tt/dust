@@ -28,6 +28,7 @@ export function AutomationsFilterOptionIcon({
         />
       );
     case "type":
+    case "pool":
       return null;
     default:
       assertNeverAndIgnore(option.category);

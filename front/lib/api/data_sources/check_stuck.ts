@@ -110,7 +110,7 @@ async function checkWorkflowStuck(
 ): Promise<StuckWorkflowInfo | null> {
   // `visited` is shared across the whole recursion via the closure below, so
   // sibling children dedupe against each other. It must not be passed as a
-  // parameter (GEN5).
+  // parameter (no-parameter-mutation).
   const visited = new Set<string>();
 
   async function visit(id: string): Promise<StuckWorkflowInfo | null> {

@@ -15,6 +15,7 @@ import {
 } from "@app/types/assistant/triggers";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { ScheduleOptions, ScheduleSpec } from "@temporalio/client";
 import {
@@ -22,8 +23,6 @@ import {
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
 import moment from "moment-timezone";
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Convert local hour/minute in a given IANA timezone to a UTC-based
@@ -57,7 +56,7 @@ function computeIntervalOffsetMs(config: IntervalScheduleConfig): number {
     // Week-aligned: offset to reach target day-of-week from epoch Thursday.
     const epochDayOfWeek = 4; // Thursday
     const offsetDays = (config.dayOfWeek - epochDayOfWeek + 7) % 7;
-    return offsetDays * DAY_MS + utcTimeMs;
+    return offsetDays * ONE_DAY_MS + utcTimeMs;
   }
 
   // Pure day interval: just set the time-of-day offset.
@@ -80,7 +79,7 @@ function buildScheduleSpec(config: ScheduleConfig): ScheduleSpec {
   }
 
   // Interval-based (N-day, N-week).
-  const everyMs = config.intervalDays * DAY_MS;
+  const everyMs = config.intervalDays * ONE_DAY_MS;
   const offsetMs = computeIntervalOffsetMs(config);
   return {
     intervals: [{ every: everyMs, offset: offsetMs }],

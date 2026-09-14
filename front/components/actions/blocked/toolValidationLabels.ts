@@ -19,7 +19,6 @@ import {
   isPodTasksCreateTasksInput,
   isPodTasksUpdateTasksInput,
 } from "@app/lib/api/actions/servers/pod_tasks/types";
-import { SANDBOX_FUNCTIONS_SERVER_NAME } from "@app/lib/api/actions/servers/sandbox_functions/metadata";
 import { WAKEUPS_SERVER_NAME } from "@app/lib/api/actions/servers/wakeups/metadata";
 import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
@@ -27,7 +26,7 @@ type ToolOverride = {
   title?: (inputs: Record<string, unknown>) => string;
   approveLabel?: string;
   alwaysAllowLabel?: (inputs: Record<string, unknown>) => string;
-  detailsExpanded?: boolean;
+  detailsInline?: boolean;
 };
 
 // Display data needed to compute the title and always-allow label of a tool validation card, for
@@ -41,7 +40,7 @@ export type ToolValidationLabelData = Pick<
   | "argumentsRequiringApproval"
 >;
 
-/** Overrides title, alwaysAllowLabel, and details expansion for specific MCP tools */
+/** Overrides validation labels and details placement for specific MCP tools. */
 const MCP_TOOL_OVERRIDES: Partial<
   Record<string, Partial<Record<string, ToolOverride>>>
 > = {
@@ -60,18 +59,7 @@ const MCP_TOOL_OVERRIDES: Partial<
   sandbox: {
     add_egress_domain: {
       title: () => `Allow agent to add a domain to the Computer?`,
-      detailsExpanded: true,
-    },
-  },
-  [SANDBOX_FUNCTIONS_SERVER_NAME]: {
-    publish: {
-      title: () => "Publish this function?",
-      approveLabel: "Publish",
-      alwaysAllowLabel: () => "Always allow agent to publish Pod functions",
-    },
-    unpublish: {
-      title: () => "Unpublish this function?",
-      approveLabel: "Unpublish",
+      detailsInline: true,
     },
   },
   [POD_TASKS_SERVER_NAME]: {
@@ -203,7 +191,7 @@ export function getToolValidationAlwaysAllowLabel(
   data: ToolValidationLabelData
 ): string {
   if (data.stake !== "medium") {
-    return "Always allow";
+    return `Allow every time an agent uses the “${asDisplayName(data.metadata.toolName)}” tool`;
   }
   const toolOverride = getToolOverride(data.metadata);
   if (toolOverride?.alwaysAllowLabel) {
@@ -214,18 +202,31 @@ export function getToolValidationAlwaysAllowLabel(
     return data.approvalArgsLabel;
   }
   const args = data.argumentsRequiringApproval ?? [];
-  const argValues = args
+  const approvalScopes = args
     .filter((arg) => data.inputs[arg] != null)
     .map((arg) => {
       const value = data.inputs[arg];
-      if (Array.isArray(value)) {
-        return value.map(String).join(", ");
-      }
-      return JSON.stringify(value);
+      const displayValue = Array.isArray(value)
+        ? value.map(String).join(", ")
+        : typeof value === "string" ||
+            typeof value === "number" ||
+            typeof value === "boolean"
+          ? String(value)
+          : JSON.stringify(value);
+
+      return {
+        label: `“${asDisplayName(arg).toLowerCase()}” is ${displayValue}`,
+        value: displayValue,
+      };
     });
-  return `Always allow agent to ${asDisplayName(data.metadata.toolName)} ${
-    argValues.length > 0
-      ? ` for the following parameters: ${argValues.join(", ")}`
-      : ""
-  }`;
+
+  const [approvalScope] = approvalScopes;
+  let scopeLabel = "";
+  if (approvalScopes.length === 1 && approvalScope) {
+    scopeLabel = ` only for ${approvalScope.value}`;
+  } else if (approvalScopes.length > 1) {
+    scopeLabel = ` only when ${approvalScopes.map(({ label }) => label).join(" and ")}`;
+  }
+
+  return `Always allow ${data.metadata.agentName} to ${asDisplayName(data.metadata.toolName)}${scopeLabel}`;
 }

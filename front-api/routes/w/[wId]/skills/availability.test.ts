@@ -4,6 +4,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
@@ -18,7 +19,7 @@ async function setupTest(role: MembershipRoleType = "admin") {
   // editor group: the batch endpoint relies on the publish permission alone.
   const skillOwner = await UserFactory.basic();
   await MembershipFactory.associate(workspace, skillOwner, {
-    role: "builder",
+    role: "user",
   });
   const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     skillOwner.sId,
@@ -98,6 +99,74 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
     expect(untouchedSkill?.editedBy).toBe(skillOwner.id);
   });
 
+  it("lets an admin change the availability of a skill built on a space they cannot read", async () => {
+    const { workspace, requestUserAuth, skillOwner, skillOwnerAuth } =
+      await setupTest();
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(requestUserAuth, {
+      userIds: [skillOwner.sId],
+    });
+    const restrictedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Restricted Space Skill",
+      availability: "editors",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    // The admin cannot read the skill through the regular fetch.
+    expect(
+      await SkillResource.fetchByIds(requestUserAuth, [restrictedSkill.sId])
+    ).toEqual([]);
+
+    const response = await patchSkillsAvailability(workspace, {
+      skillIds: [restrictedSkill.sId],
+      availability: "workspace_users",
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.skills[0].availability).toBe("workspace_users");
+    expect(data.skills[0].canRead).toBe(false);
+    expect(data.skills[0].instructions).toBeNull();
+    const [updated] = await SkillResource.fetchByIds(skillOwnerAuth, [
+      restrictedSkill.sId,
+    ]);
+    expect(updated.availability).toBe("workspace_users");
+  });
+
+  it("refuses the batch when one of the skills is archived", async () => {
+    const { workspace, requestUserAuth, skillOwnerAuth } = await setupTest();
+
+    const activeSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Active Batch Skill",
+      availability: "editors",
+    });
+    const archivedSkill = await SkillFactory.create(skillOwnerAuth, {
+      name: "Archived Batch Skill",
+      availability: "editors",
+    });
+    await archivedSkill.archive(skillOwnerAuth);
+
+    const response = await patchSkillsAvailability(workspace, {
+      skillIds: [activeSkill.sId, archivedSkill.sId],
+      availability: "workspace_users",
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message:
+          "Archived skills cannot be updated: Archived Batch Skill. Restore them first.",
+      },
+    });
+
+    // The whole batch is rejected: the active skill keeps its availability too.
+    const untouchedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      activeSkill.sId
+    );
+    expect(untouchedSkill?.availability).toBe("editors");
+  });
+
   it("snapshots a version of each updated skill", async () => {
     const { workspace, requestUserAuth, skillOwnerAuth } = await setupTest();
 
@@ -121,7 +190,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
   });
 
   it("denies a caller without the publish permission", async () => {
-    const { workspace, skillOwnerAuth } = await setupTest("builder");
+    const { workspace, skillOwnerAuth } = await setupTest("user");
     const skill = await SkillFactory.create(skillOwnerAuth);
 
     const response = await patchSkillsAvailability(workspace, {
@@ -133,8 +202,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
   });
 
   it("denies making skills auto-discoverable without the make_discoverable permission", async () => {
-    const { workspace, requestUser, skillOwnerAuth } =
-      await setupTest("builder");
+    const { workspace, requestUser, skillOwnerAuth } = await setupTest("user");
     // The caller can publish skills, but not make them auto-discoverable.
     await grantWorkspacePermission(workspace, requestUser, {
       grantType: "publish",
@@ -160,7 +228,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
 
   it("denies changing an auto-discoverable skill's availability without the make_discoverable permission", async () => {
     const { workspace, requestUser, requestUserAuth, skillOwnerAuth } =
-      await setupTest("builder");
+      await setupTest("user");
     // The caller can publish skills, but not make them auto-discoverable.
     await grantWorkspacePermission(workspace, requestUser, {
       grantType: "publish",
@@ -186,7 +254,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
 
   it("allows changing an auto-discoverable skill's availability with the make_discoverable permission", async () => {
     const { workspace, requestUser, requestUserAuth, skillOwnerAuth } =
-      await setupTest("builder");
+      await setupTest("user");
     await grantWorkspacePermission(workspace, requestUser, {
       grantType: "publish",
       resourceType: "skill",
@@ -214,7 +282,7 @@ describe("PATCH /api/w/:wId/skills/availability", () => {
 
   it("allows making skills auto-discoverable with the make_discoverable permission", async () => {
     const { workspace, requestUser, requestUserAuth, skillOwnerAuth } =
-      await setupTest("builder");
+      await setupTest("user");
     await grantWorkspacePermission(workspace, requestUser, {
       grantType: "publish",
       resourceType: "skill",

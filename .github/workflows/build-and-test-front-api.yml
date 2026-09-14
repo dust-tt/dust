@@ -21,8 +21,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [ 1, 2, 3 ]
-        shardTotal: [ 3 ]
+        shardIndex: [ 1, 2, 3, 4, 5, 6 ]
+        shardTotal: [ 6 ]
     runs-on: ubuntu-latest
     services:
       redis:
@@ -81,12 +81,12 @@ jobs:
           build-sparkle: "true"
       - name: Lint swagger annotations
         run: npm -w front-api run lint:swagger-annotations
-      - name: Check swagger.json is up to date
+      - name: Check swagger files are up to date
         working-directory: front-api
         run: |
           npx tsx scripts/generate-swagger.ts
-          if ! git diff --exit-code public/swagger.json; then
-            echo "Error: public/swagger.json is out of date. Run 'npm run docs' in front-api/ and commit the result."
+          if ! git diff --exit-code public/swagger.json routes/swagger-private.json; then
+            echo "Error: public/swagger.json or routes/swagger-private.json is out of date. Run 'npm run docs' in front-api/ and commit the result."
             exit 1
           fi
       - name: Typecheck
@@ -94,3 +94,6 @@ jobs:
       - name: Build
         working-directory: front-api
         run: npm run build
+      - name: Check bundled runtime deps are declared
+        working-directory: front-api
+        run: npm run check:bundled-deps

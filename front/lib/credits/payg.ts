@@ -7,7 +7,7 @@ import {
 } from "@app/lib/plans/stripe";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import { isCreditPricedPlan } from "@app/types/plan";
@@ -46,7 +46,7 @@ function handlePAYGCreditCreationError({
         { workspaceId, error: error_message, panic: true },
         `[Credit PAYG] Failed to create PAYG credit for this period. Potentially blocking customer's automations`
       );
-      getStatsDClient().increment("credits.top_up.error", 1, [
+      statsDMetrics.increment("credits.top_up.error", 1, [
         `workspace_id:${workspaceId}`,
         "type:payg",
         "customer:enterprise",
@@ -163,7 +163,7 @@ export async function allocatePAYGCreditsOnCycleRenewal({
     },
     "[Credit PAYG] Allocated new PAYG credit for billing cycle"
   );
-  getStatsDClient().increment("credits.top_up.success", 1, [
+  statsDMetrics.increment("credits.top_up.success", 1, [
     `workspace_id:${workspace.sId}`,
     "type:payg",
     "customer:enterprise",
@@ -205,7 +205,7 @@ export async function startOrResumeEnterprisePAYG({
   const config =
     await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
   if (!config) {
-    getStatsDClient().increment("credits.top_up.error", 1, [
+    statsDMetrics.increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:payg",
       "customer:enterprise",
@@ -221,7 +221,7 @@ export async function startOrResumeEnterprisePAYG({
     paygCapMicroUsd,
   });
   if (updateResult.isErr()) {
-    getStatsDClient().increment("credits.top_up.error", 1, [
+    statsDMetrics.increment("credits.top_up.error", 1, [
       `workspace_id:${workspace.sId}`,
       "type:payg",
       "customer:enterprise",
@@ -273,7 +273,7 @@ export async function startOrResumeEnterprisePAYG({
       );
     }
   }
-  getStatsDClient().increment("credits.top_up.success", 1, [
+  statsDMetrics.increment("credits.top_up.success", 1, [
     `workspace_id:${workspace.sId}`,
     "type:payg",
     "customer:enterprise",

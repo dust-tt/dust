@@ -1,7 +1,7 @@
 //! `dsbx db` — pod database subcommands (reconcile/schema/list/query).
 //!
 //! Databases are per-pod SQLite files `{name}.db` under `$DUST_POD_DATABASES_DIR`
-//! (falling back to the image's `/pod-state/databases`). This Rust layer owns name
+//! (falling back to the image's `/sandbox-state/databases`). This Rust layer owns name
 //! validation and path resolution; the DDL/SQL
 //! work runs in the embedded Bun runner (same privilege-drop machinery as
 //! `dsbx function`: dropped to `agent-proxied` via `runuser` whenever dsbx runs as
@@ -33,7 +33,7 @@ pub(crate) use super::function::emit_error;
 /// an Option-typed `pod_databases_dir()` for `function run` — dedup onto a single shared
 /// definition (these here are the superset: PathBuf-typed helper + empty-value fallback).
 pub(crate) const POD_DATABASES_DIR_ENV: &str = "DUST_POD_DATABASES_DIR";
-pub(crate) const DEFAULT_POD_DATABASES_DIR: &str = "/pod-state/databases";
+pub(crate) const DEFAULT_POD_DATABASES_DIR: &str = "/sandbox-state/databases";
 
 #[derive(Subcommand)]
 pub enum DbCommand {

@@ -1,3 +1,4 @@
+import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
 import { ArchiveSkillsDialog } from "@app/components/skills/ArchiveSkillsDialog";
 import type { GetSkillsWithRelationsResponseBody } from "@app/types/api/skills";
 import type { SkillAvailability } from "@app/types/assistant/skill_configuration";
@@ -15,7 +16,6 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  XClose,
 } from "@dust-tt/sparkle";
 
 export type BatchAvailabilityAction = {
@@ -35,7 +35,7 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     dialogDescription: (count) => {
       const pronoun = count === 1 ? "it" : "them";
       const subject = count === 1 ? "The skill remains" : "The skills remain";
-      return `Only editors can find ${pronoun} via the input bar and agent builder. ${subject} available through agents and skills that use ${pronoun}.`;
+      return `Only editors can find ${pronoun} via the composer and agent builder. ${subject} available through agents and skills that use ${pronoun}.`;
     },
   },
   {
@@ -45,7 +45,7 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
       `Make ${count} skill${pluralize(count)} available to all members`,
     dialogDescription: (count) => {
       const pronoun = count === 1 ? "it" : "them";
-      return `All members can find ${pronoun} via the input bar and agent builder.`;
+      return `All members can find ${pronoun} via the composer and agent builder.`;
     },
   },
   {
@@ -55,26 +55,30 @@ const BATCH_AVAILABILITY_ACTIONS: BatchAvailabilityAction[] = [
     getDialogTitle: () => `This affects your entire workspace`,
     dialogDescription: (count) => {
       const pronoun = count === 1 ? "it" : "them";
-      return `All members can find ${pronoun} via the input bar and agent builder. Agents with Discover Skills, including Dust, can use ${pronoun} automatically.`;
+      return `All members can find ${pronoun} via the composer and agent builder. Agents with Discover Skills, including Dust, can use ${pronoun} automatically.`;
     },
   },
 ];
 
 interface SkillsBatchEditBarProps {
   selectedSkills: GetSkillsWithRelationsResponseBody["skills"];
+  totalCount: number;
   isUpdating: boolean;
   canMakeSkillAutoDiscoverable: boolean;
   owner: LightWorkspaceType;
-  onClose: () => void;
+  onClear: () => void;
+  onSelectAll: () => void;
   onSelectAction: (action: BatchAvailabilityAction) => void;
 }
 
 export function SkillsBatchEditBar({
   selectedSkills,
+  totalCount,
   isUpdating,
   canMakeSkillAutoDiscoverable,
   owner,
-  onClose,
+  onClear,
+  onSelectAll,
   onSelectAction,
 }: SkillsBatchEditBarProps) {
   const selectedCount = selectedSkills.length;
@@ -83,55 +87,54 @@ export function SkillsBatchEditBar({
   );
 
   return (
-    <div className="flex flex-row items-center justify-between gap-2 rounded-xl bg-muted-background px-2 py-2 dark:bg-muted-background-night">
-      <Button
-        variant="outline"
-        size="xs"
-        icon={XClose}
-        label="Close edition"
-        onClick={onClose}
+    <BulkSelectionBar
+      selectedCount={selectedCount}
+      totalCount={totalCount}
+      itemLabel="skill"
+      canSelectAll={totalCount > selectedCount}
+      onSelectAll={onSelectAll}
+      onClear={onClear}
+      disabled={isUpdating}
+      isLoading={isUpdating}
+    >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="primary"
+            size="sm"
+            label="Set availability"
+            isSelect
+            disabled={isUpdating}
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {BATCH_AVAILABILITY_ACTIONS.map((action) => {
+            const isActionDisabled =
+              action.availability === "users_and_agents" &&
+              !canMakeSkillAutoDiscoverable;
+            return (
+              <DropdownMenuItem
+                key={action.availability}
+                label={action.label}
+                description={
+                  isActionDisabled
+                    ? "You don’t have permission to make skills auto-discoverable"
+                    : action.description
+                }
+                disabled={isActionDisabled}
+                onClick={() => onSelectAction(action)}
+              />
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ArchiveSkillsDialog
+        skills={selectedSkills}
+        disabled={isUpdating || !canArchiveSelection}
+        owner={owner}
+        onSave={onClear}
       />
-      <div className="flex flex-row items-center gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="xs"
-              label="Set availability"
-              isSelect
-              isLoading={isUpdating}
-              disabled={selectedCount === 0 || isUpdating}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {BATCH_AVAILABILITY_ACTIONS.map((action) => {
-              const isActionDisabled =
-                action.availability === "users_and_agents" &&
-                !canMakeSkillAutoDiscoverable;
-              return (
-                <DropdownMenuItem
-                  key={action.availability}
-                  label={action.label}
-                  description={
-                    isActionDisabled
-                      ? "You don’t have permission to make skills auto-discoverable"
-                      : action.description
-                  }
-                  disabled={isActionDisabled}
-                  onClick={() => onSelectAction(action)}
-                />
-              );
-            })}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <ArchiveSkillsDialog
-          skills={selectedSkills}
-          disabled={selectedCount === 0 || isUpdating || !canArchiveSelection}
-          owner={owner}
-          onSave={onClose}
-        />
-      </div>
-    </div>
+    </BulkSelectionBar>
   );
 }
 

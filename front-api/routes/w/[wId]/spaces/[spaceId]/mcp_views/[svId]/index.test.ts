@@ -1,6 +1,5 @@
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -48,7 +47,7 @@ describe("DELETE /api/w/:wId/spaces/:spaceId/mcp_views/:svId", () => {
     );
     await SpaceFactory.defaults(adminAuth);
     const space = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(space, globalGroup);
+    await SpaceFactory.attachGroup(space, globalGroup);
 
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
     const view = await MCPServerViewFactory.create(

@@ -13,6 +13,7 @@ import {
   DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
+  MCP_LIST_TOOLS_TIMEOUT_MS,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type {
@@ -42,6 +43,7 @@ import {
 import { findMatchingSubSchemas } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isMCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import {
   makeMCPToolExit,
   makePersonalAuthenticationError,
@@ -79,6 +81,7 @@ import {
   isClientSideMCPToolConfiguration,
   isMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
+  isServerSideMCPServerConfigurationWithName,
   isServerSideMCPToolConfiguration,
 } from "@app/lib/actions/types/guards";
 import { getBaseServerId } from "@app/lib/api/actions/mcp/client_side_registry";
@@ -132,6 +135,9 @@ const MCP_NOTIFICATION_EVENT_NAME = "mcp-notification";
 const MCP_TOOL_DONE_EVENT_NAME = "TOOL_DONE" as const;
 const MCP_TOOL_ERROR_EVENT_NAME = "TOOL_ERROR" as const;
 const MCP_TOOL_HEARTBEAT_EVENT_NAME = "TOOL_HEARTBEAT" as const;
+// Threshold above which a tools/list duration is logged, to build the latency
+// distribution behind the MCP_LIST_TOOLS_TIMEOUT_MS cap.
+const SLOW_MCP_TOOLS_LIST_THRESHOLD_MS = 5_000;
 const TOOL_EXECUTION_CANCELLED_MESSAGE = "The tool execution was cancelled.";
 const TOOL_EXECUTION_INTERRUPTED_MESSAGE =
   "A tool was interrupted before Dust could confirm the result. Please check whether it completed, then retry.";
@@ -165,7 +171,8 @@ export function getToolExtraFields(
     toolName: string;
     permission: MCPToolStakeLevelType;
     enabled: boolean;
-  }[]
+  }[],
+  remoteServerUrl: string | null
 ) {
   let toolsStakes: Record<string, MCPToolStakeLevelType> = {};
   let serverTimeoutMs: number | undefined;
@@ -195,6 +202,10 @@ export function getToolExtraFields(
       ({ toolName, permission }) => (toolsStakes[toolName] = permission)
     );
   } else {
+    toolsStakes = {
+      ...getDefaultRemoteMCPServerByURL(remoteServerUrl)?.toolStakes,
+    };
+
     metadata.forEach(
       ({ toolName, permission }) => (toolsStakes[toolName] = permission)
     );
@@ -756,6 +767,7 @@ function makeServerSideMCPConnectionParams(
     mcpServerId: mcpServerView.mcpServerId,
     oAuthUseCase: mcpServerView.oAuthUseCase,
     oauthScope: mcpServerView.oauthScope,
+    remoteMCPServerUrl: mcpServerView.remoteMCPServerUrl,
   };
 }
 
@@ -1024,7 +1036,7 @@ export function deduplicateMCPServerConfigurations({
   jitServers: MCPServerConfigurationType[];
 }): MCPServerConfigurationType[] {
   const seen = new Set<string>();
-  return [
+  const configs = [
     ...agentActions,
     ...clientSideActions,
     ...skillServers,
@@ -1039,6 +1051,20 @@ export function deduplicateMCPServerConfigurations({
     seen.add(key);
     return true;
   });
+
+  // The sandbox generates and converts files itself, so file_generation is only exposed to
+  // conversations running without it.
+  const hasSandbox = configs.some((config) =>
+    isServerSideMCPServerConfigurationWithName(config, "sandbox")
+  );
+  if (hasSandbox) {
+    return configs.filter(
+      (config) =>
+        !isServerSideMCPServerConfigurationWithName(config, "file_generation")
+    );
+  }
+
+  return configs;
 }
 
 /**
@@ -1322,7 +1348,9 @@ async function listToolsForClientSideMCPServer(
 
   // Fetch all tools, handling pagination if supported by the MCP server.
   do {
-    const { tools, nextCursor } = await mcpClient.listTools();
+    const { tools, nextCursor } = await mcpClient.listTools(undefined, {
+      timeout: MCP_LIST_TOOLS_TIMEOUT_MS,
+    });
 
     nextPageCursor = nextCursor;
     const dustMetaByTool = new Map(
@@ -1364,7 +1392,9 @@ export async function listToolsForServerSideMCPServer(
 
   // Fetch all tools, handling pagination if supported by the MCP server.
   do {
-    const { tools, nextCursor } = await mcpClient.listTools();
+    const { tools, nextCursor } = await mcpClient.listTools(undefined, {
+      timeout: MCP_LIST_TOOLS_TIMEOUT_MS,
+    });
     nextPageCursor = nextCursor;
     allToolsRaw = [
       ...allToolsRaw,
@@ -1395,22 +1425,33 @@ export async function listToolsForServerSideMCPServer(
     auth,
     connectionParams.mcpServerId,
     config,
-    allToolsRaw
+    allToolsRaw,
+    connectionParams.remoteMCPServerUrl
   );
 }
 
+/**
+ * @cc [owner:rfrenoy,label:performance] remote-url-supplied-by-caller
+ * `remoteMCPServerUrl` MUST be supplied by the caller from an already-fetched
+ * `MCPServerViewResource` or connection params. This function MUST NOT fetch the remote server to
+ * resolve it: it runs once per server configuration under `tryListMCPTools`' `concurrentExecutor`,
+ * so a fetch here is one SQL query per configured server (see `batch-database-queries`). Pass
+ * `null` for internal servers and when no remote server URL is known; preset tool stakes are then
+ * not applied.
+ */
 export async function buildToolConfigurationsFromRawTools(
   auth: Authenticator,
   mcpServerId: string,
   config: ServerSideMCPServerConfigurationType,
-  allToolsRaw: MCPToolType[]
+  allToolsRaw: MCPToolType[],
+  remoteMCPServerUrl: string | null
 ): Promise<Result<ServerSideMCPToolConfigurationType[], Error>> {
   const metadata = await RemoteMCPServerToolMetadataResource.fetchByServerId(
     auth,
     mcpServerId
   );
 
-  const r = getToolExtraFields(mcpServerId, metadata);
+  const r = getToolExtraFields(mcpServerId, metadata, remoteMCPServerUrl);
   if (r.isErr()) {
     return r;
   }
@@ -1519,7 +1560,8 @@ async function listMCPServerToolsAndServerInstructions(
               auth,
               connectionParams.mcpServerId,
               config,
-              cachedTools
+              cachedTools,
+              connectionParams.remoteMCPServerUrl
             );
             if (cachedToolsRes.isOk()) {
               return new Ok({
@@ -1536,6 +1578,7 @@ async function listMCPServerToolsAndServerInstructions(
 
     const serverInstructions = mcpClient.getInstructions();
 
+    const listStartMs = Date.now();
     let toolsRes: Result<MCPToolConfigurationType[], Error>;
     if (isConnectViaClientSideMCPServer(connectionParams)) {
       assert(
@@ -1553,6 +1596,23 @@ async function listMCPServerToolsAndServerInstructions(
         connectionParams,
         mcpClient,
         config
+      );
+    }
+
+    // Listing normally completes in well under a second: log the slow tail so the
+    // MCP_LIST_TOOLS_TIMEOUT_MS cap can be tuned on real latency data.
+    const listDurationMs = Date.now() - listStartMs;
+    if (listDurationMs > SLOW_MCP_TOOLS_LIST_THRESHOLD_MS) {
+      logger.info(
+        {
+          workspaceId: owner.sId,
+          conversationId: agentLoopListToolsContext.conversation.sId,
+          messageId: agentLoopListToolsContext.agentMessage.sId,
+          mcpServerName: config.name,
+          durationMs: listDurationMs,
+          success: toolsRes.isOk(),
+        },
+        "Slow MCP tools listing"
       );
     }
 

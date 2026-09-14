@@ -27,6 +27,7 @@ describe("ConsumptionExportPanel", () => {
     mockUseConsumptionExports.mockReturnValue({
       exports: [],
       isGenerating: false,
+      isReady: false,
       isConsumptionExportsLoading: false,
       isConsumptionExportsError: undefined,
     });
@@ -62,6 +63,7 @@ describe("ConsumptionExportPanel", () => {
     mockUseConsumptionExports.mockReturnValue({
       exports: [],
       isGenerating: false,
+      isReady: false,
       isConsumptionExportsLoading: false,
       isConsumptionExportsError: new Error("boom"),
     });

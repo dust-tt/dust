@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   iframeProps: null as {
     canInvokeFunctions: boolean;
+    frameId?: string;
     scopedUserIdentity?: ScopedWorkspaceUserIdentity;
     viewer: unknown;
   } | null,
@@ -25,6 +26,7 @@ vi.mock(
   () => ({
     VisualizationActionIframe: (props: {
       canInvokeFunctions: boolean;
+      frameId?: string;
       scopedUserIdentity?: ScopedWorkspaceUserIdentity;
       viewer: unknown;
     }) => {
@@ -124,6 +126,7 @@ describe("PublicFrameRenderer", () => {
       fileId: "file_123",
       hideHeader: true,
       shareToken: "share-token",
+      title: "Frame",
       workspaceId: "w_current",
       vizUrl: "https://viz.dust.tt",
     };
@@ -144,9 +147,11 @@ describe("PublicFrameRenderer", () => {
 
     render(
       createElement(PublicFrameRenderer, {
-        fileId: "file_123",
+        fileId: "fil_frame",
+        frameId: "fil_frame",
         hideHeader: true,
         shareToken: "share-token",
+        title: "Frame",
         workspaceId: "w_current",
         vizUrl: "https://viz.dust.tt",
       })
@@ -154,6 +159,7 @@ describe("PublicFrameRenderer", () => {
 
     expect(mocks.iframeProps).toMatchObject({
       canInvokeFunctions: true,
+      frameId: "fil_frame",
       scopedUserIdentity: {
         workspaceId: "w_current",
         isPodMember: true,
@@ -178,6 +184,7 @@ describe("PublicFrameRenderer", () => {
         fileId: "file_123",
         hideHeader: true,
         shareToken: "share-token",
+        title: "Frame",
         workspaceId: "w_current",
         vizUrl: "https://viz.dust.tt",
       })

@@ -50,9 +50,12 @@ app.get(
     const { serverType, id } = getServerTypeAndIdFromSId(serverId);
     switch (serverType) {
       case "internal": {
+        // Admin management surface: surface an installed-but-restricted server
+        // so it can be inspected and removed even with its flag off.
         const server = await InternalMCPServerInMemoryResource.fetchById(
           auth,
-          serverId
+          serverId,
+          { includeRestricted: true }
         );
 
         if (!server) {
@@ -136,7 +139,8 @@ app.patch(
 
     const internalServer = await InternalMCPServerInMemoryResource.fetchById(
       auth,
-      serverId
+      serverId,
+      { includeRestricted: true }
     );
     if (!internalServer) {
       return apiError(ctx, {
@@ -164,7 +168,9 @@ app.delete(
     const server =
       serverType === "remote"
         ? await RemoteMCPServerResource.fetchById(auth, serverId)
-        : await InternalMCPServerInMemoryResource.fetchById(auth, serverId);
+        : await InternalMCPServerInMemoryResource.fetchById(auth, serverId, {
+            includeRestricted: true,
+          });
 
     if (!server) {
       return apiError(ctx, {

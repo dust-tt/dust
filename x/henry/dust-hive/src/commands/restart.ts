@@ -5,7 +5,7 @@ import { stopService } from "../lib/process";
 import { restoreTerminal } from "../lib/prompt";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
-import { ALL_SERVICES, isServiceName, type ServiceName } from "../lib/services";
+import { ALL_SERVICES, resolveServices, SERVICE_ALIASES, type ServiceName } from "../lib/services";
 
 async function selectService(): Promise<ServiceName | null> {
   const result = await p.select({
@@ -34,37 +34,41 @@ export async function restartCommand(
   const env = envResult.value;
 
   // Handle service selection
-  let service: ServiceName;
+  let services: readonly ServiceName[];
   if (serviceArg) {
-    // Service provided via CLI argument
-    if (!isServiceName(serviceArg)) {
+    // Service or alias provided via CLI argument
+    const resolved = resolveServices(serviceArg);
+    if (!resolved) {
       console.log(`\nServices: ${ALL_SERVICES.join(", ")}`);
+      console.log(`Aliases: ${Object.keys(SERVICE_ALIASES).join(", ")}`);
       return Err(new CommandError(`Unknown service '${serviceArg}'`));
     }
-    service = serviceArg;
+    services = resolved;
   } else {
     // Interactive selection
     const selected = await selectService();
     if (!selected) {
       return Err(new CommandError("No service selected"));
     }
-    service = selected;
+    services = [selected];
   }
 
   // Restore terminal after all interactive prompts are done
   restoreTerminal();
 
-  logger.info(`Restarting ${service} in '${env.name}'...`);
+  for (const service of services) {
+    logger.info(`Restarting ${service} in '${env.name}'...`);
 
-  const stopped = await stopService(env.name, service);
-  if (!stopped) {
-    logger.info(`${service} was not running`);
+    const stopped = await stopService(env.name, service);
+    if (!stopped) {
+      logger.info(`${service} was not running`);
+    }
+
+    await startService(env, service);
+    await waitForServiceReady(env, service);
+
+    logger.success(`${service} restarted`);
   }
-
-  await startService(env, service);
-  await waitForServiceReady(env, service);
-
-  logger.success(`${service} restarted`);
 
   return Ok(undefined);
 }

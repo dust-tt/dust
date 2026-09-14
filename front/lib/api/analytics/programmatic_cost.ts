@@ -1,6 +1,6 @@
 import {
-  DAY_MS,
   getTimestampsForWindow,
+  ONE_DAY_MS,
 } from "@app/lib/api/analytics/time_utils";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { MetricsBucket } from "@app/lib/api/assistant/observability/messages_metrics";
@@ -296,7 +296,7 @@ export async function getProgrammaticCost(
     getBillingCycleFromDay(billingCycleStartDay, referenceDate, true);
 
   // Cap periodEnd to 10 days in the future to avoid too big empty chart areas.
-  const TEN_DAYS_MS = 10 * DAY_MS;
+  const TEN_DAYS_MS = 10 * ONE_DAY_MS;
   const cappedPeriodEnd = new Date(
     Math.min(periodEnd.getTime(), Date.now() + TEN_DAYS_MS)
   );

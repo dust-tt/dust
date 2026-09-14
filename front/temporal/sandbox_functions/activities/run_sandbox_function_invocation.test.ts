@@ -1,14 +1,13 @@
+import { SandboxExecTimeoutError } from "@app/lib/api/sandbox/provider";
 import { publishSandboxFunctionInvocationEvent } from "@app/lib/api/sandbox_functions/events";
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { runSandboxFunctionInvocationActivity } from "@app/temporal/sandbox_functions/activities/run_sandbox_function_invocation";
-import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import { sandboxFunctionContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -31,17 +30,8 @@ async function setup() {
     role: "admin",
   });
   const space = await SpaceFactory.project(workspace);
-  const file = await FileFactory.create(adminAuth, null, {
-    contentType: sandboxFunctionContentType,
-    fileName: "function.ts",
-    fileSize: 100,
-    status: "created",
-    useCase: "project_context",
-    useCaseMetadata: { spaceId: space.sId },
-  });
-  const sandboxFunction = await SandboxFunctionResource.makeNew(adminAuth, {
+  const { sandboxFunction } = await createTestFrameFunction(adminAuth, {
     space,
-    file,
     slug: "run-function",
     description: "Run the function.",
     inputSchema: schema,
@@ -121,7 +111,7 @@ describe("runSandboxFunctionInvocationActivity", () => {
 
     const refetched = await SandboxFunctionInvocationResource.fetchById(
       adminAuth,
-      { sandboxFunction, invocationId: invocation.sId }
+      { sandboxFunction, invocationId: invocation.sId, access: "system" }
     );
     expect(refetched?.status).toBe("errored");
     expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
@@ -129,6 +119,40 @@ describe("runSandboxFunctionInvocationActivity", () => {
         type: "sandbox_function_invocation_error",
         invocationId: invocation.sId,
         error: { code: "invocation_failed", message: "sandbox unavailable" },
+      }),
+      { invocationId: invocation.sId }
+    );
+  });
+
+  it("fails the invocation without throwing when execution times out", async () => {
+    const { adminAuth, authenticator, sandboxFunction, invocation } =
+      await setup();
+    const timeoutError = new SandboxExecTimeoutError(120_000);
+    vi.spyOn(
+      SandboxFunctionInvocationResource.prototype,
+      "execute"
+    ).mockResolvedValue(new Err(timeoutError));
+
+    await expect(
+      runSandboxFunctionInvocationActivity(authenticator.toJSON(), {
+        sandboxFunctionId: sandboxFunction.sId,
+        invocationId: invocation.sId,
+      })
+    ).resolves.toBeUndefined();
+
+    const refetched = await SandboxFunctionInvocationResource.fetchById(
+      adminAuth,
+      { sandboxFunction, invocationId: invocation.sId, access: "system" }
+    );
+    expect(refetched?.status).toBe("errored");
+    expect(publishSandboxFunctionInvocationEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "sandbox_function_invocation_error",
+        invocationId: invocation.sId,
+        error: {
+          code: "invocation_failed",
+          message: timeoutError.message,
+        },
       }),
       { invocationId: invocation.sId }
     );

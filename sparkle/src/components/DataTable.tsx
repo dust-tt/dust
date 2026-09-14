@@ -16,6 +16,7 @@ import {
 } from "@sparkle/components/Dropdown";
 import { Icon } from "@sparkle/components/Icon";
 import { IconButton } from "@sparkle/components/IconButton";
+import { LoadMore } from "@sparkle/components/LoadMore";
 import { Pagination } from "@sparkle/components/Pagination";
 import {
   radioIndicatorStyles,
@@ -51,7 +52,13 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import React, { type ReactNode, useEffect, useRef, useState } from "react";
+import React, {
+  type ReactNode,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { breakpoints, useWindowSize } from "./WindowUtility";
 
 const cellHeight = "h-12";
@@ -74,7 +81,7 @@ interface TBaseData {
 }
 
 interface ColumnBreakpoint {
-  [columnId: string]: "xs" | "sm" | "md" | "lg" | "xl";
+  [columnId: string]: keyof typeof breakpoints;
 }
 
 function shouldRenderColumn(
@@ -89,35 +96,154 @@ function shouldRenderColumn(
 
 interface DataTableProps<TData extends TBaseData> {
   data: TData[];
+  /** Total row count on the server; when larger than data.length, pagination becomes server-side. */
   totalRowCount?: number;
+  /** Displays the row count as a capped value (e.g. "1000+") in the pagination. */
   rowCountIsCapped?: boolean;
+  /** TanStack Table column definitions. */
   columns: ColumnDef<TData, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   className?: string;
   widthClassName?: string;
+  /** Text filter value applied to filterColumn. */
   filter?: string;
+  /** Id of the column the filter value applies to. */
   filterColumn?: string;
+  /** Controlled pagination state; enables the pagination footer when set with setPagination. */
   pagination?: PaginationState;
+  /** Called with the new pagination state when the user changes page. */
   setPagination?: (pagination: PaginationState) => void;
+  /** Shows a clickable "Load more" footer, as an alternative to pagination. Ignored when pagination is set. */
+  onLoadMore?: () => void;
+  /** Swaps the "Load more" label for an animated "Loading" and disables it. */
+  isLoadingMore?: boolean;
+  /** Adds a "Show less" control next to "Load more"; pass it only once extra rows are revealed. */
+  onShowLess?: () => void;
+  /** Minimum breakpoint per column id below which the column is hidden. */
   columnsBreakpoints?: ColumnBreakpoint;
+  /** Controlled sorting state. */
   sorting?: SortingState;
+  /** Called with the new sorting state when the user toggles a column sort. */
   setSorting?: (sorting: SortingState) => void;
+  /** Delegates sorting to the server instead of sorting rows client-side. */
   isServerSideSorting?: boolean;
+  /** Hides the numbered page buttons, keeping only previous/next. */
   disablePaginationNumbers?: boolean;
+  /** Returns a stable row id — set it when using row selection so state survives re-renders. */
   getRowId?: (
     originalRow: TData,
     index: number,
     parent?: Row<TData> | undefined
   ) => string;
   // row selection props
+  /** Controlled row selection state. */
   rowSelection?: RowSelectionState;
+  /** Called with the new selection state when the user selects rows. */
   setRowSelection?: (rowSelection: RowSelectionState) => void;
+  /** Enables row selection, globally or per row via a predicate. */
   enableRowSelection?: boolean | ((row: Row<TData>) => boolean);
+  /** Allows selecting several rows at once (default true). */
   enableMultiRowSelection?: boolean;
+  /** Allows a third sort toggle back to the unsorted state (default true). */
   enableSortingRemoval?: boolean;
   /** Omit the default bottom divider on tbody rows (e.g. dense custom lists). */
   hideRowDivider?: boolean;
+  disableRowClickSelection?: boolean;
 }
 
+const ROW_REVEAL_DURATION_MS = 300;
+
+/**
+ * Reveals appended rows by animating the table's height, so the rows slide into
+ * view at exactly the rate the footer below them moves down. Animating the
+ * footer instead would let the rows pop in ahead of it.
+ */
+function useRowRevealAnimation(rowCount: number, enabled: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const previousHeightRef = useRef<number | null>(null);
+  const previousRowCountRef = useRef(rowCount);
+
+  // Keep the last laid-out height current through every layout change, not just
+  // row changes. Cells are skipped on the first commit (the window size is not
+  // measured yet), so a height recorded only on mount would be the height of a
+  // table with no columns, and the first reveal would animate from ~nothing.
+  // ResizeObserver callbacks run after layout effects, so the value read below
+  // is always the height from before the new rows landed.
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element || !enabled) {
+      return;
+    }
+
+    previousHeightRef.current = element.scrollHeight;
+
+    const observer = new ResizeObserver(() => {
+      previousHeightRef.current = element.scrollHeight;
+    });
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [enabled]);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+
+    // `scrollHeight` reports the content height even while we pin `height`
+    // mid-animation, so this stays correct if rows land back to back.
+    const height = element.scrollHeight;
+    const previousHeight = previousHeightRef.current;
+    const grew = rowCount > previousRowCountRef.current;
+
+    previousRowCountRef.current = rowCount;
+
+    if (
+      !enabled ||
+      !grew ||
+      previousHeight === null ||
+      previousHeight >= height ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const clear = () => {
+      element.style.transition = "";
+      element.style.height = "";
+      element.style.overflow = "";
+    };
+
+    element.style.overflow = "hidden";
+    element.style.transition = "none";
+    element.style.height = `${previousHeight}px`;
+
+    const frame = requestAnimationFrame(() => {
+      element.style.transition = `height ${ROW_REVEAL_DURATION_MS}ms ease-out`;
+      element.style.height = `${height}px`;
+    });
+
+    element.addEventListener("transitionend", clear, { once: true });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      element.removeEventListener("transitionend", clear);
+      clear();
+    };
+  }, [rowCount, enabled]);
+
+  return ref;
+}
+
+/**
+ * A tabular data display built on TanStack Table, with text filtering, client-
+ * or server-side sorting, pagination or a "Load more" footer, and row
+ * selection, rendered with the DataTable.* cell helpers. Use it to list
+ * structured records (data sources, members, files); for very long or infinite
+ * server-side datasets, prefer ScrollableDataTable, which virtualizes rows and
+ * loads more on scroll.
+ * @summary Sortable, filterable, paginated data table.
+ */
 export function DataTable<TData extends TBaseData>({
   data,
   totalRowCount,
@@ -130,6 +256,9 @@ export function DataTable<TData extends TBaseData>({
   columnsBreakpoints = {},
   pagination,
   setPagination,
+  onLoadMore,
+  isLoadingMore = false,
+  onShowLess,
   sorting,
   setSorting,
   isServerSideSorting = false,
@@ -141,6 +270,7 @@ export function DataTable<TData extends TBaseData>({
   getRowId,
   enableSortingRemoval = true,
   hideRowDivider = false,
+  disableRowClickSelection = false,
 }: DataTableProps<TData>) {
   const windowSize = useWindowSize();
 
@@ -222,9 +352,17 @@ export function DataTable<TData extends TBaseData>({
     }
   }, [filter, filterColumn]);
 
+  const rows = table.getRowModel().rows;
+  // Uses the rendered row count, not `data.length`, so filtering keeps the
+  // measured height in sync.
+  const rowRevealRef = useRowRevealAnimation(
+    rows.length,
+    !!onLoadMore && !pagination
+  );
+
   return (
     <div className={cn("flex flex-col gap-2", className, widthClassName)}>
-      <DataTable.Root>
+      <DataTable.Root containerRef={rowRevealRef}>
         <DataTable.Header>
           {table.getHeaderGroups().map((headerGroup) => (
             <DataTable.Row key={headerGroup.id} widthClassName={widthClassName}>
@@ -285,7 +423,7 @@ export function DataTable<TData extends TBaseData>({
           ))}
         </DataTable.Header>
         <DataTable.Body>
-          {table.getRowModel().rows.map((row) => {
+          {rows.map((row) => {
             const handleRowClick = () => {
               if (enableRowSelection && row.getCanSelect()) {
                 row.toggleSelected(!enableMultiRowSelection ? true : undefined);
@@ -299,7 +437,9 @@ export function DataTable<TData extends TBaseData>({
                 key={row.id}
                 hideBottomBorder={hideRowDivider}
                 onClick={
-                  enableRowSelection ? handleRowClick : row.original.onClick
+                  enableRowSelection && !disableRowClickSelection
+                    ? handleRowClick
+                    : row.original.onClick
                 }
                 onDoubleClick={row.original.onDoubleClick}
                 rowData={row.original}
@@ -341,15 +481,31 @@ export function DataTable<TData extends TBaseData>({
           />
         </div>
       )}
+      {!pagination && onLoadMore && (
+        <div className="p-1">
+          <LoadMore
+            onLoadMore={onLoadMore}
+            onShowLess={onShowLess}
+            isLoading={isLoadingMore}
+            rowCount={data.length}
+            totalRowCount={totalRowCount}
+            totalRowCountIsCapped={rowCountIsCapped}
+          />
+        </div>
+      )}
     </div>
   );
 }
 
 export interface ScrollableDataTableProps<TData extends TBaseData>
-  extends DataTableProps<TData> {
+  extends Omit<DataTableProps<TData>, "onLoadMore" | "isLoadingMore"> {
+  /** Height of the scroll container: a max-height class name, true to fill the parent (flex-1), or unset for the default max-h-100. */
   maxHeight?: string | boolean;
+  /** Called when the user scrolls near the bottom — use it for infinite loading. */
   onLoadMore?: () => void;
+  /** Shows a "Loading more data..." footer and pauses onLoadMore triggers. */
   isLoading?: boolean;
+  /** Ref to the scrollable container element. */
   containerRef?: React.Ref<HTMLDivElement>;
 }
 
@@ -357,6 +513,13 @@ export interface ScrollableDataTableProps<TData extends TBaseData>
 const COLUMN_HEIGHT = 48;
 const MIN_COLUMN_WIDTH = 40;
 
+/**
+ * A virtualized variant of DataTable for large or infinite datasets: rows are
+ * windowed with TanStack Virtual inside a scrollable container, with a sticky
+ * header and infinite loading via onLoadMore. Use it when row counts are too
+ * large for pagination; for ordinary lists prefer DataTable.
+ * @summary Virtualized, infinitely scrollable data table.
+ */
 export function ScrollableDataTable<TData extends TBaseData>({
   data,
   totalRowCount,
@@ -376,6 +539,7 @@ export function ScrollableDataTable<TData extends TBaseData>({
   getRowId,
   containerRef,
   hideRowDivider = false,
+  disableRowClickSelection = false,
 }: ScrollableDataTableProps<TData>) {
   const windowSize = useWindowSize();
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -657,7 +821,9 @@ export function ScrollableDataTable<TData extends TBaseData>({
                   widthClassName={widthClassName}
                   hideBottomBorder={hideRowDivider}
                   onClick={
-                    enableRowSelection ? handleRowClick : row.original.onClick
+                    enableRowSelection && !disableRowClickSelection
+                      ? handleRowClick
+                      : row.original.onClick
                   }
                   onDoubleClick={row.original.onDoubleClick}
                   rowData={row.original}
@@ -734,17 +900,22 @@ interface DataTableRootProps extends React.HTMLAttributes<HTMLTableElement> {
   children: ReactNode;
   containerClassName?: string;
   containerProps?: React.HTMLAttributes<HTMLDivElement>;
+  /** Ref to the container wrapping the table element. */
+  containerRef?: React.Ref<HTMLDivElement>;
 }
 
+/** The underlying table element with its container-query wrapper. */
 DataTable.Root = function DataTableRoot({
   children,
   className,
   containerClassName,
   containerProps,
+  containerRef,
   ...props
 }: DataTableRootProps) {
   return (
     <div
+      ref={containerRef}
       className={cn("@container/table", containerClassName)}
       {...containerProps}
     >
@@ -762,6 +933,7 @@ interface HeaderProps extends React.HTMLAttributes<HTMLTableSectionElement> {
   children: ReactNode;
 }
 
+/** Table head section (thead). */
 DataTable.Header = function Header({
   children,
   className,
@@ -779,6 +951,7 @@ interface HeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
   column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
+/** Header cell (th) with alignment and optional tooltip from the column meta. */
 DataTable.Head = function Head({
   children,
   className,
@@ -809,6 +982,7 @@ DataTable.Head = function Head({
   );
 };
 
+/** Table body section (tbody). */
 DataTable.Body = function Body({
   children,
   className,
@@ -831,6 +1005,7 @@ interface RowProps extends React.HTMLAttributes<HTMLTableRowElement> {
   hideBottomBorder?: boolean;
 }
 
+/** Table row (tr) with hover/selection styling and a right-click context menu when rowData.menuItems is set. */
 DataTable.Row = function Row({
   children,
   className,
@@ -1034,7 +1209,9 @@ const renderMenuItem = (
 
 export interface DataTableMoreButtonProps {
   className?: string;
+  /** Menu entries — regular items or submenus (with default or checkbox selection). */
   menuItems?: MenuItem[];
+  /** Extra props forwarded to the underlying DropdownMenu. */
   dropdownMenuProps?: Omit<
     React.ComponentPropsWithoutRef<typeof DropdownMenu>,
     "modal"
@@ -1042,6 +1219,7 @@ export interface DataTableMoreButtonProps {
   disabled?: boolean;
 }
 
+/** "..." row-actions button that opens a dropdown of menuItems. */
 DataTable.MoreButton = function MoreButton({
   className,
   menuItems,
@@ -1105,6 +1283,7 @@ interface CellProps extends React.HTMLAttributes<HTMLTableCellElement> {
   column: Column<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
+/** Body cell (td) with truncation and column meta styling. */
 DataTable.Cell = function Cell({
   children,
   className,
@@ -1142,6 +1321,7 @@ interface CellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   };
 }
 
+/** Standard cell layout with optional avatar, avatar stack, icon, and trailing description. */
 DataTable.CellContent = function CellContent({
   children,
   className,
@@ -1234,6 +1414,7 @@ interface BasicCellContentProps extends React.TdHTMLAttributes<HTMLDivElement> {
   disabled?: boolean;
 }
 
+/** Simple muted text cell with an optional tooltip and hover copy-to-clipboard button. */
 DataTable.BasicCellContent = function BasicCellContent({
   label,
   tooltip,
@@ -1326,6 +1507,7 @@ interface CellContentWithCopyProps {
   className?: string;
 }
 
+/** Cell content with a persistent copy-to-clipboard icon button. */
 DataTable.CellContentWithCopy = function CellContentWithCopy({
   children,
   textToCopy,
@@ -1359,6 +1541,7 @@ DataTable.CellContentWithCopy = function CellContentWithCopy({
   );
 };
 
+/** Table caption element. */
 DataTable.Caption = function Caption({
   children,
   className,
@@ -1375,6 +1558,7 @@ interface SelectionColumnOptions {
   hideSelectAll?: boolean;
 }
 
+/** Builds a checkbox column for multi-row selection, with an optional select-all header. */
 export function createSelectionColumn<TData>({
   hideSelectAll = false,
 }: SelectionColumnOptions = {}): ColumnDef<TData> {
@@ -1420,6 +1604,7 @@ export function createSelectionColumn<TData>({
   };
 }
 
+/** Builds a radio column for single-row selection. */
 export function createRadioSelectionColumn<TData>(): ColumnDef<TData> {
   return {
     id: "radio-select",

@@ -1,16 +1,17 @@
 import { passesBillingGate } from "@app/lib/api/credits/auto_seat_upgrade";
 import { syncMetronomeBalanceThresholdAlert } from "@app/lib/api/credits/balance_threshold_alert";
-import { syncMetronomeSeatCountForWorkspace } from "@app/lib/api/metronome/seat_sync";
 import type { Authenticator } from "@app/lib/auth";
 import { isEnterprisePlanPrefix, isFreePlan } from "@app/lib/plans/plan_codes";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import {
   DEFAULT_ALLOW_MEMBER_UPGRADE_REQUESTS,
   DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
+  DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
   DEFAULT_TOP_UP_ENABLED,
   DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
 } from "@app/lib/resources/storage/models/credit_usage_configurations";
 import logger from "@app/logger/logger";
+import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   CreditUsageConfigurationBody,
   PatchCreditUsageConfigurationBody,
@@ -39,6 +40,9 @@ export async function getUsageConfiguration(
     upgradeRequestEmailEnabled:
       config?.upgradeRequestEmailEnabled ??
       DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
+    requireUpgradeRequestReason:
+      config?.requireUpgradeRequestReason ??
+      DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
     autoSeatUpgradeEnabled:
       config?.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
     autoSeatUpgradeAvailable: subscription
@@ -60,6 +64,7 @@ async function setConfigurationToggles(
   toggles: {
     allowMemberUpgradeRequests?: boolean;
     upgradeRequestEmailEnabled?: boolean;
+    requireUpgradeRequestReason?: boolean;
     autoSeatUpgradeEnabled?: boolean;
   }
 ): Promise<Result<undefined, Error>> {
@@ -80,6 +85,9 @@ async function setConfigurationToggles(
     upgradeRequestEmailEnabled:
       toggles.upgradeRequestEmailEnabled ??
       DEFAULT_UPGRADE_REQUEST_EMAIL_ENABLED,
+    requireUpgradeRequestReason:
+      toggles.requireUpgradeRequestReason ??
+      DEFAULT_REQUIRE_UPGRADE_REQUEST_REASON,
     autoSeatUpgradeEnabled:
       toggles.autoSeatUpgradeEnabled ?? DEFAULT_AUTO_SEAT_UPGRADE_ENABLED,
   });
@@ -127,11 +135,13 @@ export async function updateUsageConfiguration(
   if (
     patch.allowMemberUpgradeRequests !== undefined ||
     patch.upgradeRequestEmailEnabled !== undefined ||
+    patch.requireUpgradeRequestReason !== undefined ||
     patch.autoSeatUpgradeEnabled !== undefined
   ) {
     const toggleResult = await setConfigurationToggles(auth, {
       allowMemberUpgradeRequests: patch.allowMemberUpgradeRequests,
       upgradeRequestEmailEnabled: patch.upgradeRequestEmailEnabled,
+      requireUpgradeRequestReason: patch.requireUpgradeRequestReason,
       autoSeatUpgradeEnabled: patch.autoSeatUpgradeEnabled,
     });
     if (toggleResult.isErr()) {
@@ -140,9 +150,13 @@ export async function updateUsageConfiguration(
   }
 
   if (enablingAutoSeatUpgrade) {
-    // Best-effort: a failure here must not fail the configuration update.
-    const reconcileResult = await syncMetronomeSeatCountForWorkspace({
-      workspace: auth.getNonNullableWorkspace(),
+    // Route the whole-workspace reconcile through the debounced Temporal
+    // workflow (the single serialized path per workspace) rather than running a
+    // full reconcile inline — two full reconciles in parallel stack open-ended
+    // unassigned-seat edits. Best-effort: a failure here must not fail the
+    // configuration update.
+    const reconcileResult = await launchMetronomeSeatCountSyncWorkflow({
+      workspaceId: auth.getNonNullableWorkspace().sId,
     });
     if (reconcileResult.isErr()) {
       logger.warn(
@@ -150,7 +164,7 @@ export async function updateUsageConfiguration(
           workspaceId: auth.getNonNullableWorkspace().sId,
           err: reconcileResult.error.message,
         },
-        "[UsageConfiguration] Whole-workspace reconcile after enabling auto-upgrade failed"
+        "[UsageConfiguration] Failed to launch whole-workspace reconcile after enabling auto-upgrade"
       );
     }
   }

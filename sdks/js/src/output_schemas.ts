@@ -573,7 +573,6 @@ export function isMCPProgressNotificationType(
 export const OAuthProviderSchema = FlexibleEnumSchema<
   | "confluence"
   | "confluence_tools"
-  | "databricks"
   | "discord"
   | "fathom"
   | "freshservice"
@@ -600,6 +599,7 @@ export const OAuthProviderSchema = FlexibleEnumSchema<
   | "ukg_ready"
   | "vanta"
   | "productboard"
+  | "shopify"
 >();
 
 export const AuthRequiredOutputResourceSchema = z.object({

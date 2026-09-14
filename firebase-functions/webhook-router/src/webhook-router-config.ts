@@ -1,45 +1,29 @@
 import type { Database } from "firebase-admin/database";
+import { z } from "zod";
 
-export const ALL_REGIONS = ["us-central1", "europe-west1"] as const;
-export type Region = (typeof ALL_REGIONS)[number];
+export const ALL_CELLS = ["cell-00000", "cell-00001", "cell-00002"] as const;
+export type Cell = (typeof ALL_CELLS)[number];
 
 type ProviderWithSigningSecret = "slack" | "notion";
 
-type WebhookRouterConfigEntry = {
-  signingSecret: string;
-  regions: {
-    [region in Region]: number[];
-  };
-};
+// Unknown keys (e.g. legacy `regions`) are stripped by Zod's default object behavior.
+const WebhookRouterEntrySchema = z.object({
+  signingSecret: z.string(),
+  cells: z.record(z.enum(ALL_CELLS), z.array(z.number())),
+});
 
-/**
- * Type guard to validate webhook router configuration entries.
- *
- * Example valid object:
- * {
- *   signingSecret: "abc123def456",
- *   regions: {
- *     "us-central1": [123, 456],
- *     "europe-west1": [789]
- *   }
- * }
- */
-function isValidWebhookRouterConfigEntry(
-  value: unknown
-): value is WebhookRouterConfigEntry {
-  return (
-    value !== null &&
-    typeof value === "object" &&
-    "signingSecret" in value &&
-    typeof value.signingSecret === "string" &&
-    "regions" in value &&
-    typeof value.regions === "object" &&
-    value.regions !== null &&
-    Object.keys(value.regions).every(
-      (region: unknown) =>
-        typeof region === "string" && ALL_REGIONS.includes(region as Region)
-    )
-  );
+const WebhookRouterConfigSchema = z.record(
+  z.enum(["slack", "notion"]),
+  z.record(z.string(), WebhookRouterEntrySchema)
+);
+
+export type WebhookRouterConfigEntry = z.infer<typeof WebhookRouterEntrySchema>;
+type WebhookRouterConfig = z.infer<typeof WebhookRouterConfigSchema>;
+
+export function normalizeWebhookRouterConfig(
+  raw: unknown
+): WebhookRouterConfig {
+  return WebhookRouterConfigSchema.parse(raw);
 }
 
 export class WebhookRouterConfigManager {
@@ -58,16 +42,15 @@ export class WebhookRouterConfigManager {
       );
     }
 
-    const configEntry = configSnapshot.val();
-    if (!isValidWebhookRouterConfigEntry(configEntry)) {
+    const parsedEntry = WebhookRouterEntrySchema.safeParse(
+      configSnapshot.val()
+    );
+    if (!parsedEntry.success) {
       throw new Error(
         `Invalid ${provider} webhook router configuration found for providerWorkspaceId ${providerWorkspaceId}`
       );
     }
 
-    return {
-      signingSecret: configEntry.signingSecret,
-      regions: configEntry.regions,
-    };
+    return parsedEntry.data;
   }
 }

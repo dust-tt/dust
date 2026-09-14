@@ -64,11 +64,11 @@ function makeExtra(auth: Authenticator) {
   return extra as ToolHandlerExtra;
 }
 
-// A "builder" role membership no longer grants create/skill by itself — it requires a group
-// grant. Drop-in replacement for createResourceTest({ role: "builder" }) for tests that create a
-// skill via the CREATE_SKILL_TOOL_NAME tool.
-async function createBuilderTestContext() {
-  const result = await createResourceTest({ role: "builder" });
+// A non-admin role membership does not grant create/skill by itself — it requires a group grant.
+// Drop-in replacement for createResourceTest({ role: "user" }) for tests that create a skill via
+// the CREATE_SKILL_TOOL_NAME tool.
+async function createSkillAuthorTestContext() {
+  const result = await createResourceTest({ role: "user" });
   await grantWorkspacePermission(result.workspace, result.user, {
     grantType: "create",
     resourceType: "skill",
@@ -95,7 +95,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("creates, lists, reads, and updates a skill", async () => {
-    const { authenticator, workspace } = await createBuilderTestContext();
+    const { authenticator, workspace } = await createSkillAuthorTestContext();
 
     const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
@@ -173,7 +173,7 @@ describe("skill_authoring tools", () => {
 
     const otherUser = await UserFactory.basic();
     const owner = authenticator.getNonNullableWorkspace();
-    await MembershipFactory.associate(owner, otherUser, { role: "builder" });
+    await MembershipFactory.associate(owner, otherUser, { role: "user" });
     const otherAuthenticator = await Authenticator.fromUserIdAndWorkspaceId(
       otherUser.sId,
       workspace.sId
@@ -242,7 +242,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("returns an MCPError without an interactive user", async () => {
-    const { workspace } = await createBuilderTestContext();
+    const { workspace } = await createSkillAuthorTestContext();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
     const result = await getTool(CREATE_SKILL_TOOL_NAME).handler(
@@ -286,7 +286,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("ignores an invalid icon on create and falls back to a valid one", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
 
     const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
@@ -318,7 +318,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects an invalid icon on update", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
 
     const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
@@ -363,7 +363,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("applies a targeted instructions edit with old_string/new_string", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
 
     const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
@@ -405,7 +405,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects an edit when old_string is not found", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
 
     const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
@@ -450,7 +450,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects an edit when the replacement count does not match", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
 
     const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
@@ -506,7 +506,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects a full replace that drops a knowledge tag", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
     const originalInstructions =
       'Summarize the runbook. <knowledge id="data_xyz" title="Runbook" />';
     const skill = await seedSkill(authenticator, {
@@ -546,7 +546,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects a targeted edit that drops a knowledge tag", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
     const originalInstructions =
       'Summarize the runbook. <knowledge id="data_xyz" title="Runbook" />';
     const skill = await seedSkill(authenticator, {
@@ -574,7 +574,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects a targeted edit that drops a nested skill tag", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
 
     const childSkill = await SkillFactory.create(authenticator, {
       name: "Child Skill",
@@ -620,7 +620,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects a full replace that strips knowledge tag attributes", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
     const originalInstructions =
       'Use <knowledge id="n1" title="Runbook" space="sp1" dsv="dsv1" hasChildren="true" /> for context.';
     const skill = await seedSkill(authenticator, {
@@ -647,7 +647,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("allows a full replace that reorders knowledge tag attributes", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
     const originalInstructions =
       'Use <knowledge id="n1" title="Runbook" space="sp1" dsv="dsv1" hasChildren="true" /> for context.';
     const reorderedInstructions =
@@ -671,7 +671,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects a full replace that strips tool tag attributes", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
     const originalInstructions =
       'Use <tool id="tool_1" name="Search" icon="ActionListIcon" /> for research.';
     const skill = await seedSkill(authenticator, {
@@ -698,7 +698,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("keeps nested skill references in sync when editing instructions", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
 
     const childSkill = await SkillFactory.create(authenticator, {
       name: "Child Skill",
@@ -736,7 +736,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects creating a skill that embeds a knowledge tag", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
 
     const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
@@ -759,7 +759,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects creating a skill that embeds a tool tag", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
 
     const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {
@@ -782,7 +782,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects creating a skill that embeds a nested skill reference", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
 
     const childSkill = await SkillFactory.create(authenticator, {
       name: "Child Skill",
@@ -810,7 +810,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects a full replace that adds a knowledge tag", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
     const originalInstructions =
       "Summarize the runbook in three bullet points.";
     const skill = await seedSkill(authenticator, {
@@ -838,7 +838,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects a targeted edit that adds a tool tag", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
     const originalInstructions = "Use the search step for research.";
     const skill = await seedSkill(authenticator, {
       name: "Plain Tool Skill",
@@ -865,7 +865,7 @@ describe("skill_authoring tools", () => {
   });
 
   it("rejects combining a full instructions replace with a targeted edit", async () => {
-    const { authenticator } = await createBuilderTestContext();
+    const { authenticator } = await createSkillAuthorTestContext();
 
     const createResult = await getTool(CREATE_SKILL_TOOL_NAME).handler(
       {

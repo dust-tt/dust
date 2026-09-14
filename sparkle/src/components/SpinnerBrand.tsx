@@ -16,8 +16,14 @@ const SPINNER_BRAND_VARIANTS = [
 ] as const;
 
 export interface SpinnerBrandProps {
+  /** Rendered size, "xs" (16px) through "2xl" (192px). Defaults to "md". */
   size?: SpinnerBrandSizeType;
+  /**
+   * Color scheme: "mono" | "mono-white" (for dark surfaces) | "colored" | "colored-gray".
+   * Defaults to "mono".
+   */
   variant?: SpinnerBrandVariantType;
+  /** Animation rate multiplier (1 = normal speed). */
   speed?: number;
 }
 
@@ -70,6 +76,14 @@ const animationData: Record<SpinnerBrandVariantType, object> = {
   "colored-gray": animSpinnerBrandColoredGray,
 };
 
+/**
+ * A branded, Dust-logo loading indicator for indeterminate waits.
+ *
+ * @deprecated Use Spinner instead (or a LoadingBlock skeleton when the
+ * loading layout is known ahead of time).
+ *
+ * @summary Deprecated Dust-branded loading indicator — use Spinner.
+ */
 const SpinnerBrand: React.FC<SpinnerBrandProps> = ({
   size = "md",
   variant = "mono",

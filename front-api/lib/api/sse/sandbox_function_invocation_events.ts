@@ -1,7 +1,7 @@
 import { getSandboxFunctionInvocationEvents } from "@app/lib/api/sandbox_functions/events";
+import { resolveSandboxFunctionWithCapability } from "@app/lib/api/sandbox_functions/frame_share_capability";
 import type { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { streamEvents } from "@front-api/lib/api/sse/stream_events";
 import type { Context } from "hono";
 import { z } from "zod";
@@ -24,9 +24,10 @@ export async function streamSandboxFunctionInvocationEventsForRoute(
     lastEventId: string | null;
   }
 ) {
-  const sandboxFunction = await SandboxFunctionResource.fetchById(
+  const sandboxFunction = await resolveSandboxFunctionWithCapability(
     auth,
-    functionId
+    functionId,
+    { allowInactiveFramePublication: true }
   );
   if (!sandboxFunction) {
     return ctx.notFound();

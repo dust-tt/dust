@@ -32,7 +32,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     ? await SpaceResource.fetchById(auth, useCaseMetadata.spaceId)
     : null;
 
-  if (useCase === "folders_document" && (!space || !space.canRead(auth))) {
+  if (useCase === "folders_document" && (!space || !auth.can("read", space))) {
     return apiError(ctx, {
       status_code: 404,
       api_error: { type: "file_not_found", message: "File not found." },

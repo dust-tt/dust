@@ -1,0 +1,869 @@
+{
+  "workspaceId": "w_mocked",
+  "workspaceName": "Permission model",
+  "generatedAt": "2026-08-27T00:00:00.000Z",
+  "usagePeriodDays": 30,
+  "agentCount": 21,
+  "permissionTest": {
+    "nonPodSpaces": [
+      {
+        "sId": "vlt_company",
+        "name": "Company",
+        "kind": "global"
+      },
+      {
+        "sId": "vlt_restricted_alpha",
+        "name": "Restricted Alpha",
+        "kind": "regular"
+      },
+      {
+        "sId": "vlt_restricted_beta",
+        "name": "Restricted Beta",
+        "kind": "regular"
+      }
+    ],
+    "podSpaces": [
+      {
+        "sId": "vlt_pod_alpha",
+        "name": "Pod Alpha",
+        "kind": "project"
+      },
+      {
+        "sId": "vlt_pod_beta",
+        "name": "Pod Beta",
+        "kind": "project"
+      }
+    ],
+    "editorEmail": "editor@example.com",
+    "nonEditorEmail": "member@example.com"
+  },
+  "agents": [
+    {
+      "sId": "agt_visible_none",
+      "name": "Visible without spaces",
+      "description": "Visible to every workspace member.",
+      "instructions": null,
+      "scope": "visible",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [],
+      "spaces": [],
+      "nonPodSpaceIds": [],
+      "podSpaceIds": [],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_global_none",
+      "name": "Global without spaces",
+      "description": "Global and active.",
+      "instructions": null,
+      "scope": "global",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [],
+      "spaces": [],
+      "nonPodSpaceIds": [],
+      "podSpaceIds": [],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_inactive_global_none",
+      "name": "Inactive global without spaces",
+      "description": "Excluded by the list view.",
+      "instructions": null,
+      "scope": "global",
+      "status": "inactive",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [],
+      "spaces": [],
+      "nonPodSpaceIds": [],
+      "podSpaceIds": [],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_inactive_visible_none",
+      "name": "Inactive visible without spaces",
+      "description": "Excluded by status.",
+      "instructions": null,
+      "scope": "visible",
+      "status": "inactive",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [],
+      "spaces": [],
+      "nonPodSpaceIds": [],
+      "podSpaceIds": [],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_hidden_editor_none",
+      "name": "Hidden editor without spaces",
+      "description": "Visible only to editor@example.com.",
+      "instructions": null,
+      "scope": "hidden",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [
+        "editor@example.com"
+      ],
+      "requestedSpaceIds": [],
+      "spaces": [],
+      "nonPodSpaceIds": [],
+      "podSpaceIds": [],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_hidden_other_none",
+      "name": "Hidden other editor without spaces",
+      "description": "Not visible to the tested identities.",
+      "instructions": null,
+      "scope": "hidden",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [
+        "other@example.com"
+      ],
+      "requestedSpaceIds": [],
+      "spaces": [],
+      "nonPodSpaceIds": [],
+      "podSpaceIds": [],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_visible_company",
+      "name": "Visible company",
+      "description": "Requires the company space.",
+      "instructions": null,
+      "scope": "visible",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [
+        "vlt_company"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_company",
+          "name": "Company",
+          "kind": "global"
+        }
+      ],
+      "nonPodSpaceIds": [
+        "vlt_company"
+      ],
+      "podSpaceIds": [],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_visible_restricted_alpha",
+      "name": "Visible restricted alpha",
+      "description": "Requires restricted alpha.",
+      "instructions": null,
+      "scope": "visible",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [
+        "vlt_restricted_alpha"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_restricted_alpha",
+          "name": "Restricted Alpha",
+          "kind": "regular"
+        }
+      ],
+      "nonPodSpaceIds": [
+        "vlt_restricted_alpha"
+      ],
+      "podSpaceIds": [],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_visible_restricted_beta",
+      "name": "Visible restricted beta",
+      "description": "Requires restricted beta.",
+      "instructions": null,
+      "scope": "visible",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [
+        "vlt_restricted_beta"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_restricted_beta",
+          "name": "Restricted Beta",
+          "kind": "regular"
+        }
+      ],
+      "nonPodSpaceIds": [
+        "vlt_restricted_beta"
+      ],
+      "podSpaceIds": [],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_visible_restricted_both",
+      "name": "Visible both restricted",
+      "description": "Requires both restricted spaces.",
+      "instructions": null,
+      "scope": "visible",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [
+        "vlt_restricted_alpha",
+        "vlt_restricted_beta"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_restricted_alpha",
+          "name": "Restricted Alpha",
+          "kind": "regular"
+        },
+        {
+          "sId": "vlt_restricted_beta",
+          "name": "Restricted Beta",
+          "kind": "regular"
+        }
+      ],
+      "nonPodSpaceIds": [
+        "vlt_restricted_alpha",
+        "vlt_restricted_beta"
+      ],
+      "podSpaceIds": [],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_visible_pod_alpha",
+      "name": "Visible pod alpha",
+      "description": "Requires pod alpha.",
+      "instructions": null,
+      "scope": "visible",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [
+        "vlt_pod_alpha"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_pod_alpha",
+          "name": "Pod Alpha",
+          "kind": "project"
+        }
+      ],
+      "nonPodSpaceIds": [],
+      "podSpaceIds": [
+        "vlt_pod_alpha"
+      ],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_visible_pod_beta",
+      "name": "Visible pod beta",
+      "description": "Requires pod beta.",
+      "instructions": null,
+      "scope": "visible",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [
+        "vlt_pod_beta"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_pod_beta",
+          "name": "Pod Beta",
+          "kind": "project"
+        }
+      ],
+      "nonPodSpaceIds": [],
+      "podSpaceIds": [
+        "vlt_pod_beta"
+      ],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_visible_pods_all",
+      "name": "Visible both pods",
+      "description": "Requires both pods.",
+      "instructions": null,
+      "scope": "visible",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [
+        "vlt_pod_alpha",
+        "vlt_pod_beta"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_pod_alpha",
+          "name": "Pod Alpha",
+          "kind": "project"
+        },
+        {
+          "sId": "vlt_pod_beta",
+          "name": "Pod Beta",
+          "kind": "project"
+        }
+      ],
+      "nonPodSpaceIds": [],
+      "podSpaceIds": [
+        "vlt_pod_alpha",
+        "vlt_pod_beta"
+      ],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_visible_company_pod_alpha",
+      "name": "Visible company and pod alpha",
+      "description": "Requires a non-pod and a pod.",
+      "instructions": null,
+      "scope": "visible",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [
+        "vlt_company",
+        "vlt_pod_alpha"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_company",
+          "name": "Company",
+          "kind": "global"
+        },
+        {
+          "sId": "vlt_pod_alpha",
+          "name": "Pod Alpha",
+          "kind": "project"
+        }
+      ],
+      "nonPodSpaceIds": [
+        "vlt_company"
+      ],
+      "podSpaceIds": [
+        "vlt_pod_alpha"
+      ],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_visible_restricted_alpha_pod_beta",
+      "name": "Visible restricted alpha and pod beta",
+      "description": "Requires a restricted space and a pod.",
+      "instructions": null,
+      "scope": "visible",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [
+        "vlt_restricted_alpha",
+        "vlt_pod_beta"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_restricted_alpha",
+          "name": "Restricted Alpha",
+          "kind": "regular"
+        },
+        {
+          "sId": "vlt_pod_beta",
+          "name": "Pod Beta",
+          "kind": "project"
+        }
+      ],
+      "nonPodSpaceIds": [
+        "vlt_restricted_alpha"
+      ],
+      "podSpaceIds": [
+        "vlt_pod_beta"
+      ],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_visible_all",
+      "name": "Visible all spaces",
+      "description": "Requires every mocked space.",
+      "instructions": null,
+      "scope": "visible",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [
+        "vlt_company",
+        "vlt_restricted_alpha",
+        "vlt_restricted_beta",
+        "vlt_pod_alpha",
+        "vlt_pod_beta"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_company",
+          "name": "Company",
+          "kind": "global"
+        },
+        {
+          "sId": "vlt_restricted_alpha",
+          "name": "Restricted Alpha",
+          "kind": "regular"
+        },
+        {
+          "sId": "vlt_restricted_beta",
+          "name": "Restricted Beta",
+          "kind": "regular"
+        },
+        {
+          "sId": "vlt_pod_alpha",
+          "name": "Pod Alpha",
+          "kind": "project"
+        },
+        {
+          "sId": "vlt_pod_beta",
+          "name": "Pod Beta",
+          "kind": "project"
+        }
+      ],
+      "nonPodSpaceIds": [
+        "vlt_company",
+        "vlt_restricted_alpha",
+        "vlt_restricted_beta"
+      ],
+      "podSpaceIds": [
+        "vlt_pod_alpha",
+        "vlt_pod_beta"
+      ],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_hidden_editor_restricted_alpha",
+      "name": "Hidden editor restricted alpha",
+      "description": "Requires editorship and restricted alpha.",
+      "instructions": null,
+      "scope": "hidden",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [
+        "editor@example.com"
+      ],
+      "requestedSpaceIds": [
+        "vlt_restricted_alpha"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_restricted_alpha",
+          "name": "Restricted Alpha",
+          "kind": "regular"
+        }
+      ],
+      "nonPodSpaceIds": [
+        "vlt_restricted_alpha"
+      ],
+      "podSpaceIds": [],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_hidden_editor_pod_alpha",
+      "name": "Hidden editor pod alpha",
+      "description": "Requires editorship and pod alpha.",
+      "instructions": null,
+      "scope": "hidden",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [
+        "editor@example.com"
+      ],
+      "requestedSpaceIds": [
+        "vlt_pod_alpha"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_pod_alpha",
+          "name": "Pod Alpha",
+          "kind": "project"
+        }
+      ],
+      "nonPodSpaceIds": [],
+      "podSpaceIds": [
+        "vlt_pod_alpha"
+      ],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_hidden_editor_all",
+      "name": "Hidden editor all spaces",
+      "description": "Requires editorship and every mocked space.",
+      "instructions": null,
+      "scope": "hidden",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [
+        "editor@example.com"
+      ],
+      "requestedSpaceIds": [
+        "vlt_company",
+        "vlt_restricted_alpha",
+        "vlt_restricted_beta",
+        "vlt_pod_alpha",
+        "vlt_pod_beta"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_company",
+          "name": "Company",
+          "kind": "global"
+        },
+        {
+          "sId": "vlt_restricted_alpha",
+          "name": "Restricted Alpha",
+          "kind": "regular"
+        },
+        {
+          "sId": "vlt_restricted_beta",
+          "name": "Restricted Beta",
+          "kind": "regular"
+        },
+        {
+          "sId": "vlt_pod_alpha",
+          "name": "Pod Alpha",
+          "kind": "project"
+        },
+        {
+          "sId": "vlt_pod_beta",
+          "name": "Pod Beta",
+          "kind": "project"
+        }
+      ],
+      "nonPodSpaceIds": [
+        "vlt_company",
+        "vlt_restricted_alpha",
+        "vlt_restricted_beta"
+      ],
+      "podSpaceIds": [
+        "vlt_pod_alpha",
+        "vlt_pod_beta"
+      ],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_hidden_other_all",
+      "name": "Hidden other editor all spaces",
+      "description": "Never visible to the tested identities.",
+      "instructions": null,
+      "scope": "hidden",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [
+        "other@example.com"
+      ],
+      "requestedSpaceIds": [
+        "vlt_company",
+        "vlt_restricted_alpha",
+        "vlt_restricted_beta",
+        "vlt_pod_alpha",
+        "vlt_pod_beta"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_company",
+          "name": "Company",
+          "kind": "global"
+        },
+        {
+          "sId": "vlt_restricted_alpha",
+          "name": "Restricted Alpha",
+          "kind": "regular"
+        },
+        {
+          "sId": "vlt_restricted_beta",
+          "name": "Restricted Beta",
+          "kind": "regular"
+        },
+        {
+          "sId": "vlt_pod_alpha",
+          "name": "Pod Alpha",
+          "kind": "project"
+        },
+        {
+          "sId": "vlt_pod_beta",
+          "name": "Pod Beta",
+          "kind": "project"
+        }
+      ],
+      "nonPodSpaceIds": [
+        "vlt_company",
+        "vlt_restricted_alpha",
+        "vlt_restricted_beta"
+      ],
+      "podSpaceIds": [
+        "vlt_pod_alpha",
+        "vlt_pod_beta"
+      ],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    },
+    {
+      "sId": "agt_visible_company_and_deleted",
+      "name": "Visible, company space and a deleted one",
+      "description": "Requests a space no profile can hold, standing in for a deleted space.",
+      "instructions": null,
+      "scope": "visible",
+      "status": "active",
+      "tags": [],
+      "templateId": null,
+      "author": null,
+      "editors": [],
+      "requestedSpaceIds": [
+        "vlt_company",
+        "vlt_deleted"
+      ],
+      "spaces": [
+        {
+          "sId": "vlt_company",
+          "name": "Company",
+          "kind": "global"
+        }
+      ],
+      "nonPodSpaceIds": [
+        "vlt_company",
+        "vlt_deleted"
+      ],
+      "podSpaceIds": [],
+      "usage": {
+        "periodDays": 30,
+        "messages": 0,
+        "conversations": 0,
+        "users": 0,
+        "credits": 0,
+        "feedbacksUp": 0,
+        "feedbacksDown": 0,
+        "byGroup": []
+      }
+    }
+  ]
+}

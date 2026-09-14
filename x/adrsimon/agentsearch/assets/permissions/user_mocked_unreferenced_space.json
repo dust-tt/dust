@@ -1,0 +1,16 @@
+{
+  "scenario": "company space plus an unreferenced readable space",
+  "workspaceId": "w_mocked",
+  "workspaceName": "Permission model",
+  "generatedAt": "2026-08-27T00:00:00.000Z",
+  "user": { "sId": "usr_unreferenced", "email": "member@example.com", "fullName": "Unreferenced space" },
+  "role": "user",
+  "groupIds": [],
+  "groups": [],
+  "readableNonPodSpaces": [
+    { "sId": "vlt_company", "name": "Company", "kind": "global" },
+    { "sId": "vlt_unreferenced", "name": "Unreferenced", "kind": "regular" }
+  ],
+  "readablePodSpaces": [],
+  "expectedAgentIds": ["agt_global_none", "agt_visible_company", "agt_visible_none"]
+}

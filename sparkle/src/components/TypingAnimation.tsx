@@ -2,11 +2,21 @@ import React, { useEffect, useRef, useState } from "react";
 
 interface TypingAnimationProps {
   text: string;
+  /** Delay in milliseconds between each revealed character (defaults to 50). */
   duration?: number;
   className?: string;
+  /** Called once the full text has been revealed. */
   onComplete?: () => void;
 }
 
+/**
+ * Reveals a string one character at a time to mimic live typing. Use it for playful
+ * intros, hero text, or to suggest an agent is "typing" a short message, keeping `text`
+ * concise so the reveal does not feel slow; for streaming model output that genuinely
+ * arrives token-by-token, render the real tokens rather than this decorative effect.
+ *
+ * @summary Character-by-character typing effect.
+ */
 export function TypingAnimation({
   text,
   duration = 50,

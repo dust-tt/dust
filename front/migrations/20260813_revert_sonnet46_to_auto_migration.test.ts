@@ -1,4 +1,7 @@
-import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import {
+  AgentConfigurationModel,
+  AgentModel,
+} from "@app/lib/models/agent/agent";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import baseLogger from "@app/logger/logger";
 import type { AgentModelVersion } from "@app/migrations/20260813_revert_sonnet46_to_auto_migration";
@@ -257,6 +260,10 @@ async function seedAgent({
   versions: SeededVersion[];
 }): Promise<string> {
   const agentId = generateRandomModelSId("agent");
+  const agentIdentity = await AgentModel.create({
+    sId: agentId,
+    workspaceId: workspace.id,
+  });
 
   for (const version of versions) {
     const providerId: ModelProviderIdType =
@@ -264,6 +271,7 @@ async function seedAgent({
 
     const row = await AgentConfigurationModel.create({
       sId: agentId,
+      agentId: agentIdentity.id,
       version: version.version,
       status: version.status ?? "archived",
       scope: "visible",

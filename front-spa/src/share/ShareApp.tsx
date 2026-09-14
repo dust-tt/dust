@@ -3,7 +3,7 @@ import { ErrorBoundary } from "@dust-tt/front/components/error_boundary/ErrorBou
 import { SharedFilePage } from "@dust-tt/front/components/pages/share/SharedFilePage";
 import { SharedFramePage } from "@dust-tt/front/components/pages/share/SharedFramePage";
 import { ShareOgPage } from "@dust-tt/front/components/pages/share/ShareOgPage";
-import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import { CellProvider } from "@dust-tt/front/lib/auth/CellContext";
 import { FetcherProvider } from "@dust-tt/front/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@dust-tt/front/lib/swr/fetcher";
 import { GlobalErrorFallback } from "@spa/app/components/GlobalErrorFallback";
@@ -41,7 +41,7 @@ const router = createBrowserRouter(
 
 export default function ShareApp() {
   return (
-    <RegionProvider>
+    <CellProvider>
       <FetcherProvider fetcher={fetcher} fetcherWithBody={fetcherWithBody}>
         <PostHogTracker>
           <ErrorBoundary fallback={<GlobalErrorFallback />}>
@@ -49,6 +49,6 @@ export default function ShareApp() {
           </ErrorBoundary>
         </PostHogTracker>
       </FetcherProvider>
-    </RegionProvider>
+    </CellProvider>
   );
 }

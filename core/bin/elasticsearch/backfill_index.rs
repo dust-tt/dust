@@ -31,6 +31,14 @@ struct Args {
  * cargo run --bin elasticsearch_backfill_nodes_index -- --index-version <version> [--skip-confirmation] [--start-cursor <cursor>] [--batch-size <batch_size>]
  *
  */
+// The pods carry CELL and REGION from their topology labels, so the prompt names the
+// deployment the operator is about to touch.
+fn deployment_target() -> String {
+    let cell = std::env::var("CELL").expect("CELL must be set");
+    let region = std::env::var("REGION").expect("REGION must be set");
+    format!("{} ({})", cell, region)
+}
+
 #[tokio::main]
 async fn main() {
     if let Err(e) = run().await {
@@ -53,9 +61,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let password =
         std::env::var("ELASTICSEARCH_PASSWORD").expect("ELASTICSEARCH_PASSWORD must be set");
 
-    let region = match std::env::var("NODE_ENV").unwrap_or_default().as_str() {
+    let target = match std::env::var("NODE_ENV").unwrap_or_default().as_str() {
         "development" => "local".to_string(),
-        _ => std::env::var("DUST_REGION").expect("DUST_REGION must be set"),
+        _ => deployment_target(),
     };
 
     // create ES client
@@ -77,8 +85,8 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     if !args.skip_confirmation {
         println!(
-            "Are you sure you want to backfill the index {} in region {}? (y/N)",
-            index_fullname, region
+            "Are you sure you want to backfill the index {} in {}? (y/N)",
+            index_fullname, target
         );
         let mut input = String::new();
         std::io::stdin().read_line(&mut input).unwrap();

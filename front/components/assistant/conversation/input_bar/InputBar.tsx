@@ -14,7 +14,6 @@ import {
   INPUT_BAR_COMPACT_PILL_CLASSES,
 } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
-import { PlanCard } from "@app/components/assistant/conversation/plan_mode/PlanCard";
 import {
   useAddDeleteConversationTool,
   useConversationTools,
@@ -58,6 +57,9 @@ import React, {
 } from "react";
 
 const DEFAULT_INPUT_BAR_ACTIONS = [...INPUT_BAR_ACTIONS];
+
+// Placeholder shown when a submitted message would be queued.
+const INPUT_BAR_QUEUE_PLACEHOLDER = "Add a follow-up...";
 
 type SelectedSpacesState = {
   key: string;
@@ -250,6 +252,11 @@ export const InputBar = React.memo(function InputBar({
   const isBlockedByAgentSwitch = agentSwitchBlockMessage !== null;
   const isBlockedForSubmission =
     isBlockedByAgentSwitch || submitBlockMessage !== null;
+
+  // Same signal as the Stop button: a message sent while generating is queued.
+  const willQueueMessage =
+    !!conversation &&
+    getConversationGeneratingMessages(conversation.sId).length > 0;
 
   // Tools selection
 
@@ -678,10 +685,6 @@ export const InputBar = React.memo(function InputBar({
       )}
     >
       <InputBarUsageBanner owner={owner} />
-      <PlanCard
-        conversationId={conversation?.sId ?? null}
-        workspaceId={owner.sId}
-      />
       <div
         onAnimationEnd={() => setIsShaking(false)}
         onClick={(e) => {
@@ -710,8 +713,8 @@ export const InputBar = React.memo(function InputBar({
             : classNames(
                 "rounded-squircle-40 w-full overflow-hidden",
                 "border",
-                "has-[.tiptap:focus]:bg-stone-25 bg-[oklch(0.988_0_89.876)]",
-                "dark:has-[.tiptap:focus]:bg-[oklch(0.310_0.007_75)] dark:bg-[oklch(0.294_0.008_84.593)]",
+                "bg-input-bar-background",
+                "has-[.tiptap:focus]:bg-stone-25 dark:has-[.tiptap:focus]:bg-[oklch(0.310_0.007_75)]",
                 isFloating
                   ? "max-md:border-border max-md:has-[.tiptap:focus]:border-border-dark max-md:dark:has-[.tiptap:focus]:border-stone-750"
                   : "border-border has-[.tiptap:focus]:border-border-dark dark:has-[.tiptap:focus]:border-stone-750",
@@ -795,7 +798,10 @@ export const InputBar = React.memo(function InputBar({
             disableAgentSelector={isBlockedByAgentSwitch}
             disableInput={disableInput}
             submitBlockMessage={submitBlockMessage ?? agentSwitchBlockMessage}
-            placeholder={placeholder}
+            placeholder={
+              willQueueMessage ? INPUT_BAR_QUEUE_PLACEHOLDER : placeholder
+            }
+            animatePlaceholder={willQueueMessage}
             onShake={handleShake}
             isCompact={effectiveIsCompact}
             onExpandInputBar={onExpandInputBar}

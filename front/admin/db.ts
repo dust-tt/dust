@@ -19,6 +19,7 @@ import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
   AgentConfigurationModel,
+  AgentModel,
   AgentUserRelationModel,
   GlobalAgentSettingsModel,
 } from "@app/lib/models/agent/agent";
@@ -67,7 +68,6 @@ import {
   AgentMessageSkillModel,
   ConversationSkillModel,
 } from "@app/lib/models/skill/conversation_skill";
-import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import { SelfImprovingSkillsUsageModel } from "@app/lib/models/skill/self_improving_skills_usage";
 import { SkillReferenceModel } from "@app/lib/models/skill/skill_reference";
 import { SkillSuggestionModel } from "@app/lib/models/skill/skill_suggestion";
@@ -102,7 +102,6 @@ import {
 } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
 import { KillSwitchModel } from "@app/lib/resources/storage/models/kill_switches";
@@ -113,6 +112,7 @@ import {
 } from "@app/lib/resources/storage/models/labs_transcripts";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { MembershipUpgradeRequestModel } from "@app/lib/resources/storage/models/membership_upgrade_requests";
+import { ModelDegradationModel } from "@app/lib/resources/storage/models/model_degradations";
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
@@ -182,8 +182,9 @@ export function loadAllModels() {
     ProviderModel,
     CloneModel,
     KeyModel,
-    FileModel,
+    // FileSystemNodeModel first: files references it through fileSystemNodeId.
     FileSystemNodeModel,
+    FileModel,
     FileSystemMutationModel,
     FileSystemBlobCleanupModel,
     SandboxFunctionModel,
@@ -193,7 +194,6 @@ export function loadAllModels() {
     SharingGrantModel,
     ExternalViewerSessionModel,
     DustAppSecretModel,
-    GroupSpaceModel,
     GroupPermissionModel,
     WebhookSourceModel,
     WebhookSourcesViewModel,
@@ -219,6 +219,7 @@ export function loadAllModels() {
     CouponRedemptionModel,
     ProgrammaticUsageConfigurationModel,
     CreditUsageConfigurationModel,
+    AgentModel,
     AgentConfigurationModel,
     AgentUserRelationModel,
     GlobalAgentSettingsModel,
@@ -255,6 +256,7 @@ export function loadAllModels() {
     KillSwitchModel,
     LabsTranscriptsConfigurationModel,
     LabsTranscriptsHistoryModel,
+    ModelDegradationModel,
     PluginRunModel,
     AgentMemoryModel,
     OnboardingTaskModel,
@@ -262,7 +264,6 @@ export function loadAllModels() {
     SkillConfigurationModel,
     SkillDataSourceConfigurationModel,
     SkillVersionModel,
-    GroupSkillModel,
     SkillReferenceModel,
     AgentSkillModel,
     ConversationSkillModel,

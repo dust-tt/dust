@@ -25,6 +25,15 @@ interface MockFileMetadata {
   contentDisposition?: string;
 }
 
+class MockGcsError extends Error {
+  constructor(
+    readonly code: number,
+    message: string
+  ) {
+    super(message);
+  }
+}
+
 // Minimal duck-typed stand-in for the GCS `File` objects `getSortedFileVersions` resolves to.
 // Callers (e.g. FileResource.revert()) only ever call `.copy(dest)` and `.delete()` on them.
 export interface MockFileVersion {
@@ -103,8 +112,9 @@ class FileStorageMock {
   }
 
   /**
-   * Makes `file(path).save(...)` reject for paths matching the predicate.
-   * Defaults to never failing. Reset between tests via `reset()`.
+   * Makes `file(path).save(...)` reject, and `file(path).createWriteStream(...)` emit an error,
+   * for paths matching the predicate. Defaults to never failing. Reset between tests via
+   * `reset()`.
    */
   setFileSaveFails(predicate: (filePath: string) => boolean): void {
     this._saveShouldFail = predicate;
@@ -246,6 +256,7 @@ class FileStorageMock {
       getPrivateUploadBucket: vi.fn(createStorage),
       getPublicUploadBucket: vi.fn(createStorage),
       getUpsertQueueBucket: vi.fn(createStorage),
+      getTmpWorkloadsBucket: vi.fn(createStorage),
       getDustDataSourcesBucket: vi.fn(createStorage),
       getWebhookRequestsBucket: vi.fn(createStorage),
       getLLMTracesBucket: vi.fn(createStorage),
@@ -256,9 +267,11 @@ class FileStorageMock {
     return {
       copy: vi.fn().mockResolvedValue(undefined),
       createReadStream: vi.fn(() => {
-        this._readStreamCalls.push(filePath ?? "unknown");
-        const content = this._contentForPath(filePath ?? "");
-        if (content !== null) {
+        const path = filePath ?? "unknown";
+        this._readStreamCalls.push(path);
+        const content =
+          this._objectStore.get(path) ?? this._contentForPath(path);
+        if (content !== null && content !== undefined) {
           return Readable.from([Buffer.from(content, "utf8")]);
         }
         return new PassThrough();
@@ -266,11 +279,19 @@ class FileStorageMock {
       createWriteStream: vi
         .fn()
         .mockImplementation((opts?: { contentType?: string }) => {
+          const path = filePath ?? "unknown";
           this._writeStreamCalls.push({
-            filePath: filePath ?? "unknown",
+            filePath: path,
             contentType: opts?.contentType,
           });
-          return new PassThrough();
+          const stream = new PassThrough();
+          if (this._saveShouldFail(path)) {
+            // Deferred so `pipeline()` has already attached its error listeners
+            queueMicrotask(() =>
+              stream.destroy(new Error(`Simulated GCS write failure: ${path}`))
+            );
+          }
+          return stream;
         }),
       delete: vi.fn().mockImplementation(() => {
         this._objectStore.delete(filePath ?? "unknown");
@@ -364,9 +385,27 @@ class FileStorageMock {
           return Promise.resolve(undefined);
         }
       ),
-      uploadSmallRawContentToBucketAsNewFile: vi
-        .fn()
-        .mockResolvedValue(undefined),
+      uploadSmallRawContentToBucketAsNewFile: vi.fn(
+        (args: { content: string; contentType: string; filePath: string }) => {
+          if (this._objectStore.has(args.filePath)) {
+            return Promise.reject(
+              new MockGcsError(412, `Object already exists: ${args.filePath}`)
+            );
+          }
+          if (this._saveShouldFail(args.filePath)) {
+            return Promise.reject(
+              new Error(`Simulated GCS write failure: ${args.filePath}`)
+            );
+          }
+          this._objectStore.set(args.filePath, args.content);
+          this._saveFileCalls.push({
+            filePath: args.filePath,
+            content: args.content,
+            contentType: args.contentType,
+          });
+          return Promise.resolve(undefined);
+        }
+      ),
       fetchFileContent: vi.fn((filePath: string) => {
         const stored = this._objectStore.get(filePath);
         if (stored !== undefined) {
@@ -379,20 +418,49 @@ class FileStorageMock {
         if (this._fetchNotFoundPredicate(filePath)) {
           // Same shape isGCSNotFoundError matches on real GCS ApiErrors.
           return Promise.reject(
-            Object.assign(new Error(`No such object: ${filePath}`), {
-              code: 404,
-            })
+            new MockGcsError(404, `No such object: ${filePath}`)
           );
         }
         return Promise.resolve("mock content");
       }),
-      fetchFileBuffer: vi.fn().mockResolvedValue(new Uint8Array()),
+      fetchFileBuffer: vi.fn((filePath: string) => {
+        const stored = this._objectStore.get(filePath);
+        if (stored !== undefined) {
+          return Promise.resolve(Uint8Array.from(Buffer.from(stored)));
+        }
+        if (this._fetchNotFoundPredicate(filePath)) {
+          return Promise.reject(
+            new MockGcsError(404, `No such object: ${filePath}`)
+          );
+        }
+        return Promise.resolve(new Uint8Array());
+      }),
       copyFile: vi.fn((src: string, dest: string) => {
         if (this._copyFileShouldFail(src, dest)) {
           return Promise.reject(
             new Error(`Simulated GCS copy failure: ${src} -> ${dest}`)
           );
         }
+        const content = this._objectStore.get(src) ?? this._contentForPath(src);
+        if (content !== null && content !== undefined) {
+          this._objectStore.set(dest, content);
+        }
+        return Promise.resolve(undefined);
+      }),
+      // Mirrors real GCS compose: concatenates each source's stored content, in order,
+      // into the destination object.
+      composeFiles: vi.fn((sourcePaths: string[], destinationPath: string) => {
+        const combined = sourcePaths
+          .map((path) => this._objectStore.get(path) ?? "")
+          .join("");
+        this._objectStore.set(destinationPath, combined);
+        this._saveFileCalls.push({
+          filePath: destinationPath,
+          content: combined,
+          contentType: destinationPath.endsWith(".csv")
+            ? "text/csv"
+            : undefined,
+        });
         return Promise.resolve(undefined);
       }),
       delete: vi.fn((filePath: string) => {
@@ -414,6 +482,12 @@ class FileStorageMock {
           files: this._filesByPrefix(prefix) ?? [],
           pageFetchCount: 1,
         })
+      ),
+      getFiles: vi.fn(
+        ({ prefix, maxResults }: { prefix: string; maxResults: number }) =>
+          Promise.resolve(
+            (this._filesByPrefix(prefix) ?? []).slice(0, maxResults)
+          )
       ),
       listSubdirectoryNames: vi.fn(({ prefix }: { prefix: string }) => {
         const normalized = prefix.endsWith("/") ? prefix : `${prefix}/`;

@@ -1,11 +1,14 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
+import { Authenticator } from "@app/lib/auth";
 import { ActivationPodResource } from "@app/lib/resources/activation_pod_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import type { ActivationWorkspaceWorkflowArgs } from "@app/temporal/activation_scheduler/types";
 import type { Result } from "@app/types/shared/result";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   ScheduleAlreadyRunning,
   ScheduleNotFoundError,
@@ -37,14 +40,23 @@ const ONE_HOUR_MS = 60 * 60 * 1000;
 
 /**
  * Launch a schedule for a single workspace.
- * Fires at the start of the regional workday with a 1-hour jitter to spread
- * load.
+ * Fires at the start of the regional workday (Mon-Fri) with a 1-hour jitter
+ * to spread load.
  */
 export async function startActivationWorkspaceSchedule({
   workspaceId,
 }: {
   workspaceId: string;
 }): Promise<Result<undefined, Error>> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  if (auth.plan()?.isByok) {
+    logger.info(
+      { workspaceId },
+      "[ActivationScheduler] Skipping schedule for BYOK workspace."
+    );
+    return new Ok(undefined);
+  }
+
   const client = await getTemporalClientForFrontNamespace();
   const region = config.getCurrentRegion();
   const timezone = REGION_TIMEZONES[region];
@@ -67,7 +79,13 @@ export async function startActivationWorkspaceSchedule({
         overlap: ScheduleOverlapPolicy.SKIP,
       },
       spec: {
-        calendars: [{ hour: ACTIVATION_WORKDAY_START_HOUR, minute: 0 }],
+        calendars: [
+          {
+            hour: ACTIVATION_WORKDAY_START_HOUR,
+            minute: 0,
+            dayOfWeek: ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
+          },
+        ],
         timezone,
         jitter: ONE_HOUR_MS,
       },
@@ -150,6 +168,39 @@ export async function triggerActivationWorkspaceWorkflow({
   logger.info(
     { workflowId, workspaceId },
     "[ActivationScheduler] Triggered workspace workflow."
+  );
+  return new Ok(workflowId);
+}
+
+/**
+ * One-off poke/admin run against the same workflow function as the daily
+ * schedule, but a distinct workflow id so it cannot no-op against an in-flight
+ * workday run. `overrideChecks` skips cadence, activation-status, BYOK, and
+ * the per-run user cap; membership and credit still apply.
+ */
+export async function startActivationWorkspaceWorkflow(
+  args: ActivationWorkspaceWorkflowArgs
+): Promise<Result<string, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = `${makeWorkspaceWorkflowId(args.workspaceId)}-manual-${Date.now()}`;
+
+  try {
+    await client.workflow.start(activationWorkspaceWorkflow, {
+      args: [args],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+    });
+  } catch (e) {
+    logger.error(
+      { workflowId, workspaceId: args.workspaceId, error: e },
+      "[ActivationScheduler] Failed starting on-demand workspace workflow."
+    );
+    return new Err(normalizeError(e));
+  }
+
+  logger.info(
+    { workflowId, workspaceId: args.workspaceId },
+    "[ActivationScheduler] Started on-demand workspace workflow."
   );
   return new Ok(workflowId);
 }

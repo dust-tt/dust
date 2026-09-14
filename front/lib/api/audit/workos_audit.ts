@@ -97,12 +97,15 @@ export const AUDIT_ACTIONS = [
   "workspace.audit_logs_updated",
   "workspace.analytics_updated",
   "workspace.advanced_model_access_updated",
+  "workspace.conversation_external_notifications_updated",
   "workspace.default_agent_updated",
   "workspace.default_user_spend_limit_updated",
   "workspace.domain_auto_join_updated",
   "workspace.email_agents_updated",
   "workspace.extension_mcp_tools_updated",
   "workspace.governance_permission_updated",
+  "workspace.inactive_agent_archival_updated",
+  "workspace.inactive_agents_archived",
   "workspace.interactive_content_sharing_updated",
   "workspace.manual_project_knowledge_management_updated",
   "workspace.model_provider_settings_updated",
@@ -140,6 +143,7 @@ export const AUDIT_ACTIONS = [
   "trigger.enabled",
   "trigger.disabled",
   "trigger.fired",
+  "trigger.pool_updated",
   "trigger.email_received",
   // Wake-ups.
   "wake_up.cancelled",
@@ -152,6 +156,7 @@ export const AUDIT_ACTIONS = [
   "agent.archived",
   "agent.restored",
   "agent.scope_changed",
+  "agent.editors_updated",
   // Spaces.
   "space.accessed",
   "space.created",
@@ -166,12 +171,18 @@ export const AUDIT_ACTIONS = [
   "datasource.deleted",
   "datasource.deleted_admin",
   "datasource.reauthorized",
+  // Slack workflows.
+  "slack_workflow.allowed",
+  "slack_workflow.revoked",
+
+  "webhook_source.deleted",
   // Files.
   "file.moved",
   "frame.authorized_files_updated",
   "frame.deleted_admin",
   "frame.email_grant_added",
   "frame.email_grant_revoked",
+  "frame.publication_activated",
   "frame.share_scope_updated",
   // Audit Logs.
   "audit_log.viewed",
@@ -374,6 +385,14 @@ export async function emitAuditLogEventDirect({
  * Uses the authenticated user when available, falls back to the API key.
  */
 export function buildAuditActor(auth: Authenticator): AuditLogActor {
+  if (auth.isDustSuperUser()) {
+    return {
+      type: "dust_super_user",
+      id: auth.getPokePrincipal().email,
+      name: auth.getPokePrincipal().name ?? undefined,
+    };
+  }
+
   const user = auth.user();
   if (user) {
     return {
@@ -417,7 +436,8 @@ type AuditTargetType =
   | "credential"
   | "mcp_connection"
   | "sandbox_env_var"
-  | "frame";
+  | "frame"
+  | "webhook_source";
 
 /**
  * Resource shape required for each audit target type.

@@ -25,7 +25,7 @@ vi.mock("@app/lib/reinforcement/aggregate_suggestions", () => ({
 import { honoApp } from "@front-api/app";
 
 async function setup(options: { role?: MembershipRoleType } = {}) {
-  const role = options.role ?? "builder";
+  const role = options.role ?? "user";
   const { workspace, auth } = await createPrivateApiMockRequest({ role });
 
   const skill = await SkillFactory.create(auth);
@@ -40,7 +40,7 @@ async function setupAdminWithOtherBuilderSkill() {
 
   const skillOwner = await UserFactory.basic();
   await MembershipFactory.associate(workspace, skillOwner, {
-    role: "builder",
+    role: "user",
   });
   const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     skillOwner.sId,
@@ -92,7 +92,7 @@ function get(
 describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
   it("returns 404 for non-existent skill", async () => {
     const { workspace } = await createPrivateApiMockRequest({
-      role: "builder",
+      role: "user",
     });
 
     const response = await patch(workspace, "non-existent-skill", {
@@ -294,7 +294,7 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
 
     const skillOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, skillOwner, {
-      role: "builder",
+      role: "user",
     });
     const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       skillOwner.sId,
@@ -514,7 +514,7 @@ describe("GET /api/w/:wId/assistant/skills/:sId/suggestions", () => {
 
     const skillOwner = await UserFactory.basic();
     await MembershipFactory.associate(workspace, skillOwner, {
-      role: "builder",
+      role: "user",
     });
     const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
       skillOwner.sId,

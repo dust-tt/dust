@@ -1,0 +1,16 @@
+{
+  "scenario": "company space with global agents excluded",
+  "excludeGlobal": true,
+  "workspaceId": "w_mocked",
+  "workspaceName": "Permission model",
+  "generatedAt": "2026-08-27T00:00:00.000Z",
+  "user": { "sId": "usr_exclude_global", "email": "member@example.com", "fullName": "Exclude global" },
+  "role": "user",
+  "groupIds": [],
+  "groups": [],
+  "readableNonPodSpaces": [
+    { "sId": "vlt_company", "name": "Company", "kind": "global" }
+  ],
+  "readablePodSpaces": [],
+  "expectedAgentIds": ["agt_visible_company", "agt_visible_none"]
+}

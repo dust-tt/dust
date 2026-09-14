@@ -1,5 +1,9 @@
+import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/scope";
+import type {
+  ConsumptionScopeFilter,
+  ConsumptionTopSortOrder,
+} from "@app/lib/api/analytics/consumption/scope";
 import {
   fetchConsumptionTopGroups,
   resolveConsumptionGroupLabels,
@@ -50,12 +54,14 @@ export async function fetchConsumptionTopTools(
     offset = 0,
     search,
     filter,
+    sortOrder,
   }: {
     period: ConsumptionPeriod;
     limit: number;
     offset?: number;
     search?: string;
     filter?: ConsumptionScopeFilter;
+    sortOrder?: ConsumptionTopSortOrder;
   }
 ): Promise<Result<ConsumptionTopTools, ElasticsearchError>> {
   const result = await fetchConsumptionTopGroups(auth, {
@@ -65,17 +71,28 @@ export async function fetchConsumptionTopTools(
     offset,
     search,
     filter,
+    sortOrder,
   });
   if (result.isErr()) {
     return result;
   }
   const { groups, hasMore, totalCount, totalCredits } = result.value;
 
-  const rows = await resolveConsumptionGroupLabels(auth, "tool", groups);
+  // Enabling a skill is an internal setup step, so do not show it as a tool in
+  // consumption analytics.
+  const visibleGroups = groups.filter(
+    (group) => group.key !== SKILL_MANAGEMENT_SERVER_NAME
+  );
+  const skillManagementCredits =
+    groups.find((group) => group.key === SKILL_MANAGEMENT_SERVER_NAME)
+      ?.credits ?? 0;
+  const rows = await resolveConsumptionGroupLabels(auth, "tool", visibleGroups);
 
   return new Ok({
     period,
-    totalCredits,
+    // Exclude hidden tools from the total so percentages are calculated from
+    // the same visible set.
+    totalCredits: totalCredits - skillManagementCredits,
     hasMore,
     totalCount,
     tools: rows.map((row) => ({

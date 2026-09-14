@@ -81,33 +81,59 @@ type ActionButtonPosition = "header" | "footer";
 export interface ActionCardBlockProps {
   // Visual
   title: string;
+  /** Avatar (or AvatarStack) element displayed next to the title; resized to match `size`. */
   visual?:
     | React.ReactElement<AvatarProps>
     | React.ReactElement<AvatarStackProps>;
 
   // Content
   subtitle?: string;
+  /** Body text of the proposal; hidden (moved to a tooltip) once the card is resolved. */
   description?: React.ReactNode;
+  /** Optional detail tucked behind a Collapsible instead of crowding the description; render rich detail with Markdown. */
   collapsibleContent?: React.ReactElement;
+  /** Trigger label for `collapsibleContent` (defaults to "Details"). */
   collapsibleLabel?: string;
 
   // Actions
+  /** Custom action element replacing the default accept/reject buttons. */
   actions?: React.ReactElement;
+  /** Where the accept/reject buttons render: "header" or "footer" (default). */
   actionsPosition?: ActionButtonPosition;
+  /** Label for the accept button (defaults to "Apply"); name the action rather than a generic "OK". */
   applyLabel?: string;
+  /** Label for the reject button (defaults to "Reject"). */
   rejectLabel?: string;
+  /** When true, shows an "always allow" checkbox in the footer for permission requests. */
   hasCheck?: boolean;
+  /** Text next to the `hasCheck` checkbox (defaults to "Always allow"). */
   checkLabel?: string;
+  /** Called when the user accepts; wire it to advance `state` to "accepted". */
   onClickAccept?: () => void;
+  /** Called when the user rejects; wire it to advance `state` to "rejected". */
   onClickReject?: () => void;
 
   // State & appearance
+  /** Lifecycle state: "active" (default), "disabled", "accepted", or "rejected". */
   state?: ActionCardState;
+  /** Title swapped in once `state` is "accepted". */
   acceptedTitle?: string;
+  /** Title swapped in once `state` is "rejected". */
   rejectedTitle?: string;
+  /** Card visual variant (e.g. "highlight", "warning" for destructive proposals, "secondary"). */
   cardVariant?: CardVariantType;
+  /** "default" or "compact" for dense conversation contexts. */
   size?: ActionCardBlockSize;
 }
+
+/**
+ * Inline, actionable card rendered inside an agent message to propose a change
+ * and let the user accept or reject it — e.g. enable a tool, rename an agent,
+ * or grant a permission (optionally with an "always allow" checkbox). Tracks a
+ * `state` (`active`, `disabled`, `accepted`, `rejected`) and swaps in
+ * `acceptedTitle` / `rejectedTitle` once resolved.
+ * @summary Accept/reject proposal card in agent messages.
+ */
 
 export function ActionCardBlock({
   title,

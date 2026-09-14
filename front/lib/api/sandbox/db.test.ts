@@ -1,10 +1,14 @@
 import {
+  checkReplicaMountLiveness,
   isFuseStatfsMagic,
   isValidPodDatabaseName,
   parseLiveDatabaseNames,
   parseReplicaDatabaseNames,
 } from "@app/lib/api/sandbox/db";
-import { describe, expect, test } from "vitest";
+import type { RootCommand } from "@app/lib/api/sandbox/root_command";
+import { renderRootCommand } from "@app/lib/api/sandbox/root_command";
+import { Ok } from "@app/types/shared/result";
+import { describe, expect, test, vi } from "vitest";
 
 describe("pod state helpers", () => {
   test("validates database names against the contract shape", () => {
@@ -27,14 +31,14 @@ describe("pod state helpers", () => {
   test("parses replica enumeration output (watcher {db}.db layout), dropping non-conforming entries", () => {
     const findOutput = [
       // The directory watcher names replica subdirs by database FILENAME.
-      "/pod-state/replica/chat.db",
-      "/pod-state/replica/tasks.db",
+      "/sandbox-state/replica/chat.db",
+      "/sandbox-state/replica/tasks.db",
       // Hostile or accidental entries a workload could plant elsewhere or a
       // partial write could leave behind: all dropped by the name allowlist.
-      "/pod-state/replica/.hidden.db",
-      "/pod-state/replica/Invalid-Name.db",
-      "/pod-state/replica/-o.db",
-      "/pod-state/replica/no-db-suffix",
+      "/sandbox-state/replica/.hidden.db",
+      "/sandbox-state/replica/Invalid-Name.db",
+      "/sandbox-state/replica/-o.db",
+      "/sandbox-state/replica/no-db-suffix",
       "",
       "  ",
     ].join("\n");
@@ -45,11 +49,11 @@ describe("pod state helpers", () => {
 
   test("parses live database enumeration output", () => {
     const findOutput = [
-      "/pod-state/databases/chat.db",
-      "/pod-state/databases/tasks.db",
-      "/pod-state/databases/.restore-chat.db",
-      "/pod-state/databases/UPPER.db",
-      "/pod-state/databases/not-a-db.txt",
+      "/sandbox-state/databases/chat.db",
+      "/sandbox-state/databases/tasks.db",
+      "/sandbox-state/databases/.restore-chat.db",
+      "/sandbox-state/databases/UPPER.db",
+      "/sandbox-state/databases/not-a-db.txt",
     ].join("\n");
 
     expect(parseLiveDatabaseNames(findOutput)).toEqual(["chat", "tasks"]);
@@ -65,5 +69,78 @@ describe("pod state helpers", () => {
     expect(isFuseStatfsMagic("ef53")).toBe(false);
     expect(isFuseStatfsMagic("794c7630")).toBe(false);
     expect(isFuseStatfsMagic("")).toBe(false);
+  });
+
+  test("checks the canonical sandbox-state replica mount", async () => {
+    const execRoot = vi
+      .fn()
+      .mockResolvedValue(
+        new Ok({ exitCode: 0, stdout: "65735546\n", stderr: "" })
+      );
+
+    const result = await checkReplicaMountLiveness(
+      {} as never,
+      { execRoot } as never
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(
+      renderRootCommand(execRoot.mock.calls[0][1] as RootCommand)
+    ).toContain("/sandbox-state/replica");
+    expect(execRoot).toHaveBeenCalledTimes(1);
+  });
+
+  test("falls back to the legacy replica mount for old images", async () => {
+    const execRoot = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Ok({ exitCode: 1, stdout: "", stderr: "No such file" })
+      )
+      .mockResolvedValueOnce(new Ok({ exitCode: 0, stdout: "", stderr: "" }))
+      .mockResolvedValueOnce(
+        new Ok({ exitCode: 0, stdout: "65735546\n", stderr: "" })
+      );
+
+    const result = await checkReplicaMountLiveness(
+      {} as never,
+      { execRoot } as never
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(
+      renderRootCommand(execRoot.mock.calls[2][1] as RootCommand)
+    ).toContain("/pod-state/replica");
+    expect(execRoot).toHaveBeenCalledTimes(3);
+  });
+
+  test("does not fall back when the canonical path is present but not FUSE", async () => {
+    const execRoot = vi
+      .fn()
+      .mockResolvedValue(new Ok({ exitCode: 0, stdout: "ef53\n", stderr: "" }));
+
+    const result = await checkReplicaMountLiveness(
+      {} as never,
+      { execRoot } as never
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(execRoot).toHaveBeenCalledTimes(1);
+  });
+
+  test("does not fall back when the canonical root exists but its mount is missing", async () => {
+    const execRoot = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Ok({ exitCode: 1, stdout: "", stderr: "No such file" })
+      )
+      .mockResolvedValueOnce(new Ok({ exitCode: 1, stdout: "", stderr: "" }));
+
+    const result = await checkReplicaMountLiveness(
+      {} as never,
+      { execRoot } as never
+    );
+
+    expect(result.isErr()).toBe(true);
+    expect(execRoot).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,12 +1,11 @@
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { fetchFeedbackDistribution } from "@app/lib/api/assistant/observability/feedback_distribution";
-import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
+import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import type { GetAgentFeedbackDistributionResponseBody } from "@app/types/api/assistant/observability/feedback-distribution";
 import { workspaceApp } from "@front-api/middlewares/ctx";
-import { apiError } from "@front-api/middlewares/utils";
+import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
 const ParamsSchema = z.object({
   aId: z.string(),
@@ -24,7 +23,7 @@ app.get(
   "/",
   validate("param", ParamsSchema),
   validate("query", QuerySchema),
-  async (ctx) => {
+  async (ctx): HandlerResult<GetAgentFeedbackDistributionResponseBody> => {
     const auth = ctx.get("auth");
     const { aId } = ctx.req.valid("param");
 
@@ -43,29 +42,21 @@ app.get(
     }
 
     const { days } = ctx.req.valid("query");
-    const owner = auth.getNonNullableWorkspace();
 
-    const baseQuery = buildAgentAnalyticsBaseQuery({
-      workspaceId: owner.sId,
-      agentId: assistant.sId,
-      days,
-    });
+    const dayPoints =
+      await AgentMessageFeedbackResource.getFeedbackDistributionForAssistantByDay(
+        auth,
+        assistant.sId,
+        days
+      );
 
-    const feedbackDistributionResult = await fetchFeedbackDistribution(
-      baseQuery,
-      days
-    );
-    if (feedbackDistributionResult.isErr()) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: `Failed to retrieve feedback distribution: ${fromError(feedbackDistributionResult.error).toString()}`,
-        },
-      });
-    }
+    const points = dayPoints.map((p) => ({
+      timestamp: p.day.getTime(),
+      positive: p.positive,
+      negative: p.negative,
+    }));
 
-    return ctx.json({ points: feedbackDistributionResult.value });
+    return ctx.json({ points });
   }
 );
 

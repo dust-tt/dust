@@ -1,17 +1,19 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { useState } from "react";
 
-import { InputWithSave } from "../index_with_tw_base";
+import { LegacyInputWithSave } from "../index_with_tw_base";
 
 const meta = {
   title: "Forms & Inputs/LegacyInputWithSave",
-  tags: ["a11y-issues"],
-  component: InputWithSave,
+  tags: ["deprecated", "!manifest", "a11y-issues"],
+  component: LegacyInputWithSave,
   parameters: {
     layout: "padded",
     docs: {
       description: {
-        component: `A text field with an optional right-aligned **unit** and an inline save action. At rest it shows the value and unit; while editing, a Save button appears on the right. Clicking save (or pressing Enter) calls **onSave** and shows a spinner until the returned promise resolves; blurring without saving (or pressing Escape) reverts the edit.
+        component: `**Deprecated — use InputWithSave instead.** Kept only as a visual reference for legacy product surfaces.
+
+A text field with an optional right-aligned **unit** and an inline save action. At rest it shows the value and unit; while editing, a Save button appears on the right. Clicking save (or pressing Enter) calls **onSave** and shows a spinner until the returned promise resolves; blurring without saving (or pressing Escape) reverts the edit.
 
 **When to use**
 - For a single value that is persisted on its own (e.g. a quota, a price, a limit), without a surrounding form.
@@ -44,7 +46,7 @@ const meta = {
       action: "saved",
     },
   },
-} satisfies Meta<React.ComponentProps<typeof InputWithSave>>;
+} satisfies Meta<React.ComponentProps<typeof LegacyInputWithSave>>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -61,7 +63,7 @@ function ControlledInputWithSave({
   const [value, setValue] = useState(initialValue);
 
   return (
-    <InputWithSave
+    <LegacyInputWithSave
       value={value}
       unit={unit}
       placeholder={placeholder}

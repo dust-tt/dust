@@ -5,11 +5,11 @@
   "scripts": {
     "dev": "tsx esbuild.dev.ts",
     "build": "tsx esbuild.production.ts",
-    "test": "FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --run",
+    "test": "NODE_ENV=test FRONT_DATABASE_URI=$TEST_FRONT_DATABASE_URI REDIS_URI=$TEST_REDIS_URI REDIS_CACHE_URI=$TEST_REDIS_URI vitest --run",
     "test:ci": "vitest --watch=false --test-timeout=30000",
     "lint:swagger-annotations": "BAD_FILES=$(grep -rlE 'app\\.(get|post|patch|put|delete)\\(' routes --include='*.ts' | grep -v '\\.test\\.ts$' | xargs grep -rL '@swagger\\|@ignoreswagger'); if [ -n \"$BAD_FILES\" ]; then echo \"Error: The following API route files register a handler but are missing the @swagger or @ignoreswagger annotation:\"; echo \"$BAD_FILES\"; exit 1; else echo \"Swagger annotation check: OK.\"; exit 0; fi",
-    "docs": "tsx scripts/generate-swagger.ts 2>&1 | tee /dev/stderr | grep -E \"YAML.*Error\" && { echo \"Could not generate swagger because of errors\" && exit 1; } || npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
-    "docs:check": "npx @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json",
+    "docs": "tsx scripts/generate-swagger.ts 2>&1 | tee /dev/stderr | grep -E \"YAML.*Error\" && { echo \"Could not generate swagger because of errors\" && exit 1; } || npx --yes @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json routes/swagger-private.json",
+    "docs:check": "npx --yes @redocly/cli@1.25.5 lint --extends recommended-strict --skip-rule operation-operationId --lint-config error public/swagger.json routes/swagger-private.json",
     "create-db-migration": "../scripts/db/create_db_migration_file.sh",
     "migration:generate:pre-deploy": "MIGRATION_DB_URI_VAR=FRONT_DATABASE_URI MIGRATION_SHADOW_PREFIX=dust_front_shadow_to MIGRATION_ADMIN_DB_PATH=../front/admin/db.ts ../scripts/db/generate-migration.sh pre-deploy",
     "migration:generate:post-deploy": "MIGRATION_DB_URI_VAR=FRONT_DATABASE_URI MIGRATION_SHADOW_PREFIX=dust_front_shadow_to MIGRATION_ADMIN_DB_PATH=../front/admin/db.ts ../scripts/db/generate-migration.sh post-deploy",
@@ -22,18 +22,20 @@
     "migration:check:post-deploy": "node ../scripts/db/run-migrate.cjs --command check-post-deploy --execute",
     "migration:mark:pre-deploy": "node ../scripts/db/run-migrate.cjs --command mark-pre-deploy --execute",
     "migration:mark:post-deploy": "node ../scripts/db/run-migrate.cjs --command mark-post-deploy --execute",
-    "tsgo": "tsgo"
+    "tsgo": "tsgo",
+    "check:bundled-deps": "tsx scripts/check-bundled-deps.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
     "@novu/framework": "^2.11.1",
-    "openai": "^6.46.0",
     "umzug": "3.8.3",
     "@hono/mcp": "^0.3.0",
     "@hono/node-server": "^1.19.10",
     "@hono/zod-validator": "^0.7.6",
+    "archiver": "^8.0.0",
     "hono": "^4.12.15",
     "jsonwebtoken": "^9.0.0",
+    "openai": "^6.46.0",
     "swagger-jsdoc": "^6.2.8",
     "zod": "^3.25.76",
     "zod-validation-error": "^3.4.0"

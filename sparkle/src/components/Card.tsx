@@ -24,11 +24,16 @@ export type CardVariantType = (typeof CARD_VARIANTS)[number];
 export const CARD_SIZES = ["xs", "sm", "md", "lg"] as const;
 export type CardSizeType = (typeof CARD_SIZES)[number];
 
+export const CARD_SHADOW = cn(
+  "shadow-[0px_0.5px_1px_0px_rgba(0,0,0,0.04),inset_2px_-2px_7px_0px_rgba(0,0,0,0.01),inset_0px_4px_4px_0px_rgba(255,255,255,0.08)]",
+  "dark:shadow-none"
+);
+
 const interactiveClasses = cn(
   "cursor-pointer",
-  "transition duration-200",
-  "hover:bg-primary-100",
-  "active:bg-primary-150",
+  "transition-[background-color] duration-100 ease-out motion-reduce:transition-none",
+  "hover:bg-primary-100 hover:shadow-none",
+  "active:bg-primary-150 active:shadow-none",
   "disabled:text-primary-muted",
   "disabled:border-border",
   "disabled:pointer-events-none"
@@ -43,16 +48,16 @@ const cardVariants = cva(
   {
     variants: {
       variant: {
-        primary: cn("bg-muted-background", "border-transparent"),
-        active: cn("bg-muted-background", "border-border"),
-        highlight: cn("bg-highlight-50", "border-transparent"),
-        warning: cn("bg-warning-50", "border-transparent"),
-        secondary: cn("bg-background", "border-border"),
+        primary: cn("bg-muted-background", "border-border", CARD_SHADOW),
+        active: cn("bg-primary-100", "border-border"),
+        highlight: cn("bg-highlight-50", "border-transparent", CARD_SHADOW),
+        warning: cn("bg-warning-50", "border-transparent", CARD_SHADOW),
+        secondary: cn("bg-background", "border-border", CARD_SHADOW),
         tertiary: cn("bg-background", "border-transparent"),
       },
       size: {
         xs: "px-2 py-1.5 rounded-lg",
-        sm: "p-3 rounded-xl",
+        sm: "p-3 rounded-2xl",
         md: "p-4 rounded-2xl",
         lg: "p-5 rounded-3xl",
       },
@@ -77,7 +82,9 @@ interface CommonProps {
   variant?: CardVariantType;
   size?: CardSizeType;
   className?: string;
+  /** Visually highlight the card as selected (ring + border). */
   selected?: boolean;
+  /** Pulse the card's ring to draw attention; use for one element at a time. */
   isPulsing?: boolean;
   style?: React.CSSProperties;
 }
@@ -180,10 +187,14 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
 );
 
 interface CardPropsBase {
+  /** Secondary control (e.g. a CardActionButton) revealed on hover in the top-right corner. */
   action?: React.ReactNode;
+  /** Class applied to the outer wrapper div around the card surface. */
   containerClassName?: string;
   className?: string;
+  /** Visual style of the card surface. */
   variant?: CardVariantType;
+  /** Padding and corner radius scale. */
   size?: CardSizeType;
 }
 
@@ -204,6 +215,15 @@ InnerCard.displayName = "InnerCard";
 
 export type CardProps = CardPropsWithLink | CardPropsWithButton;
 
+/**
+ * A container that groups related content onto a single, optionally interactive
+ * surface (clickable via `onClick` or `href`), with variants, sizes, selected and
+ * disabled states, a pulsing attention state, and an `action` slot. Use it for
+ * selectable options or entry points (tools, data sources, agents), laid out with
+ * CardGrid; when a card represents a single action, make the whole card clickable
+ * rather than nesting a button.
+ * @summary Grouping surface, optionally interactive.
+ */
 export const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ containerClassName, className, action, ...props }, ref) => {
     return (
@@ -238,6 +258,11 @@ const CardActions = React.forwardRef<
 
 CardActions.displayName = "CardActions";
 
+/**
+ * An icon-only button (default: close) styled for a Card's `action` slot,
+ * revealed when the card is hovered or focused.
+ * @summary Hover-revealed card action button.
+ */
 export const CardActionButton = React.forwardRef<
   HTMLButtonElement,
   IconOnlyButtonProps
@@ -270,10 +295,17 @@ const adaptiveGridClasses = cn(
 );
 
 interface CardGridProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Cap the column count to the number of children instead of the container width alone. */
   adaptColumns?: boolean;
+  /** Override the inner grid's classes entirely. */
   gridClassName?: string;
 }
 
+/**
+ * A responsive, container-query-driven grid for laying out Cards (1 to 5 columns
+ * depending on available width).
+ * @summary Responsive grid of cards.
+ */
 export const CardGrid = React.forwardRef<HTMLDivElement, CardGridProps>(
   (
     { children, className, gridClassName, adaptColumns = false, ...props },

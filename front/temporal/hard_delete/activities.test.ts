@@ -2,6 +2,7 @@ import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configur
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
+import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import {
@@ -70,7 +71,22 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     const agent = await AgentConfigurationModel.findOne({
       where: { sId, workspaceId: workspace.id },
     });
-    const editorGroupId = await getEditorGroupId(agent!.id, workspace.id);
+    if (!agent) {
+      throw new Error("Pending agent was not created");
+    }
+    const editorGroupId = await getEditorGroupId(agent.id, workspace.id);
+    const grantGroup =
+      await GroupPermissionResource.findRegularAutoGroupForGrant(
+        authenticator,
+        {
+          grantType: "editor",
+          resourceType: "agent",
+          resourceId: agent.agentId,
+        }
+      );
+    if (!grantGroup) {
+      throw new Error("Agent editor grant was not created");
+    }
 
     // Advance time past the retention threshold.
     vi.advanceTimersByTime(PAST_THRESHOLD_MS);
@@ -84,9 +100,10 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     expect(agentAfter).toBeNull();
 
     // Editor group should be deleted too.
-    const groupsAfter = await GroupResource.fetchByModelIds(authenticator, [
-      editorGroupId,
-    ]);
+    const groupsAfter = await GroupResource.dangerouslyFetchByModelIds(
+      authenticator,
+      [editorGroupId, grantGroup.id]
+    );
     expect(groupsAfter).toHaveLength(0);
   });
 
@@ -111,9 +128,10 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     expect(agentAfter!.status).toBe("pending");
 
     // Editor group should survive too.
-    const groupsAfter = await GroupResource.fetchByModelIds(authenticator, [
-      editorGroupId,
-    ]);
+    const groupsAfter = await GroupResource.dangerouslyFetchByModelIds(
+      authenticator,
+      [editorGroupId]
+    );
     expect(groupsAfter).toHaveLength(1);
   });
 
@@ -164,9 +182,10 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     expect(agents[0].status).toBe("active");
 
     // Its editor group should survive too.
-    const groupsAfter = await GroupResource.fetchByModelIds(authenticator, [
-      editorGroupId,
-    ]);
+    const groupsAfter = await GroupResource.dangerouslyFetchByModelIds(
+      authenticator,
+      [editorGroupId]
+    );
     expect(groupsAfter).toHaveLength(1);
   });
 
@@ -211,7 +230,9 @@ describe("purgeExpiredPendingAgentsActivity", () => {
       })
     ).toBeNull();
     expect(
-      await GroupResource.fetchByModelIds(authenticator, [expiredGroupId])
+      await GroupResource.dangerouslyFetchByModelIds(authenticator, [
+        expiredGroupId,
+      ])
     ).toHaveLength(0);
 
     // Fresh pending agent + group: survived.
@@ -221,7 +242,9 @@ describe("purgeExpiredPendingAgentsActivity", () => {
     expect(freshAfter).not.toBeNull();
     expect(freshAfter!.status).toBe("pending");
     expect(
-      await GroupResource.fetchByModelIds(authenticator, [freshGroupId])
+      await GroupResource.dangerouslyFetchByModelIds(authenticator, [
+        freshGroupId,
+      ])
     ).toHaveLength(1);
 
     // Active agent + group: survived.
@@ -231,7 +254,9 @@ describe("purgeExpiredPendingAgentsActivity", () => {
       })
     ).toHaveLength(1);
     expect(
-      await GroupResource.fetchByModelIds(authenticator, [activeGroupId])
+      await GroupResource.dangerouslyFetchByModelIds(authenticator, [
+        activeGroupId,
+      ])
     ).toHaveLength(1);
   });
 });

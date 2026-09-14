@@ -209,6 +209,35 @@
  *         actions:
  *           type: array
  *           example: []
+ *         skills:
+ *           type: array
+ *           description: >-
+ *             Skills attached to the agent. Returned by the agent GET endpoints (list and
+ *             single-agent) whatever the requested variant. Empty both for an agent with no skill
+ *             and for an agent whose details were redacted for the caller (canRead false).
+ *           items:
+ *             $ref: '#/components/schemas/AgentSkill'
+ *         tags:
+ *           type: array
+ *           description: Tags attached to the agent
+ *           items:
+ *             type: object
+ *             properties:
+ *               sId:
+ *                 type: string
+ *                 example: "3f9d1c7a5b"
+ *               name:
+ *                 type: string
+ *                 example: "Support"
+ *               kind:
+ *                 type: string
+ *                 enum: [standard, protected]
+ *         requestedSpaceIds:
+ *           type: array
+ *           description: Identifiers of the spaces the agent needs access to
+ *           items:
+ *             type: string
+ *           example: ["vlt_a1b2c3d4e5"]
  *         maxStepsPerRun:
  *           type: integer
  *           example: 10
@@ -217,6 +246,18 @@
  *           nullable: true
  *           description: ID of the template used for this configuration
  *           example: "b4e2f1a9c7"
+ *     AgentSkill:
+ *       type: object
+ *       description: A skill attached to an agent configuration.
+ *       properties:
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the skill
+ *           example: "skill_abc123"
+ *         name:
+ *           type: string
+ *           description: Name of the skill
+ *           example: "Customer Support"
  *     Conversation:
  *       type: object
  *       properties:
@@ -504,6 +545,9 @@
  *           items:
  *             type: string
  *           description: List of group IDs that have access to the space
+ *         isRestricted:
+ *           type: boolean
+ *           description: Whether the space is restricted to specific groups
  *     Datasource:
  *       type: object
  *       properties:
@@ -725,6 +769,13 @@
  *           items:
  *             type: string
  *           description: Space identifiers the skill needs access to
+ *         manuallyRequestedSpaceIds:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: >
+ *             Subset of requestedSpaceIds that was selected by hand rather than derived from the
+ *             skill's tools, knowledge or nested skills
  *         fileAttachments:
  *           type: array
  *           items:
@@ -736,6 +787,9 @@
  *               fileName:
  *                 type: string
  *                 description: Name of the attached file
+ *         canRead:
+ *           type: boolean
+ *           description: Whether the authenticated actor can read the skill's instructions, tools and files. False when they were redacted for a workspace admin who is not a member of every space the skill requires.
  *         canWrite:
  *           type: boolean
  *           description: Whether the authenticated actor can edit the skill
@@ -1021,4 +1075,65 @@
  *               nullable: true
  *               description: Profile image URL of the editor
  *               example: "https://example.com/profile/johndoe.jpg"
+ *     Trigger:
+ *       type: object
+ *       required:
+ *         - id
+ *         - sId
+ *         - name
+ *         - agentConfigurationId
+ *         - kind
+ *         - status
+ *         - createdAt
+ *         - executionMode
+ *         - configuration
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 12345
+ *         sId:
+ *           type: string
+ *           description: Unique string identifier for the trigger
+ *           example: "0ec9852c2f"
+ *         name:
+ *           type: string
+ *           example: "Daily summary"
+ *         agentConfigurationId:
+ *           type: string
+ *           description: sId of the agent this trigger runs
+ *           example: "8f3a1c2d9e"
+ *         kind:
+ *           type: string
+ *           enum: [schedule, webhook]
+ *         status:
+ *           type: string
+ *           enum: [enabled, disabled, disabled_by_manager, relocating, downgraded]
+ *         createdAt:
+ *           type: integer
+ *           example: 1625097600
+ *         customPrompt:
+ *           type: string
+ *           nullable: true
+ *         naturalLanguageDescription:
+ *           type: string
+ *           nullable: true
+ *         executionMode:
+ *           type: string
+ *           enum: [user_pool, workspace_pool]
+ *         configuration:
+ *           type: object
+ *           description: |
+ *             For `kind: schedule`, either a cron config (`cron`, `timezone`) or an interval
+ *             config (`intervalDays`, `dayOfWeek`, `hour`, `minute`, `timezone`). For
+ *             `kind: webhook`, `{ includePayload, event?, filter? }`.
+ *         webhookSource:
+ *           type: object
+ *           nullable: true
+ *           description: "Present only for `kind: webhook` triggers"
+ *           properties:
+ *             name:
+ *               type: string
+ *             provider:
+ *               type: string
+ *               example: "github"
  */

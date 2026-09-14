@@ -10,12 +10,14 @@ interface LockedSectionProps {
   locked: boolean;
   children: React.ReactNode;
   className?: string;
+  tooltipContent?: React.ReactNode;
 }
 
 export function LockedSection({
   locked,
   children,
   className,
+  tooltipContent = "Top up your credit pool to enable these settings",
 }: LockedSectionProps) {
   if (!locked) {
     return <>{children}</>;
@@ -36,9 +38,7 @@ export function LockedSection({
             <div className="absolute inset-0 cursor-not-allowed" />
           </TooltipTrigger>
         </div>
-        <TooltipContent>
-          Top up your credit pool to enable these settings
-        </TooltipContent>
+        <TooltipContent>{tooltipContent}</TooltipContent>
       </TooltipRoot>
     </TooltipProvider>
   );

@@ -7,6 +7,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -14,6 +15,7 @@ import { AgentMCPActionFactory } from "@app/tests/utils/AgentMCPActionFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -100,6 +102,7 @@ async function setupSettledMessageWithUsage({
 
   return {
     auth,
+    agentConfiguration,
     globalSpace,
     workspace,
     conversation,
@@ -180,7 +183,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
   it("writes attribution for a project conversation hidden from the workflow auth", async () => {
     const { workspace, conversationId, agentMessageId, agentMessageModelId } =
       await setupSettledMessageWithUsage({ restrictedConversation: true });
-    const workflowAuth = await Authenticator.internalBuilderForWorkspace(
+    const workflowAuth = await Authenticator.internalUserForWorkspace(
       workspace.sId
     );
 
@@ -269,6 +272,96 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     ).rejects.toThrow("An attributed run usage is missing tool evidence");
   });
 
+  it("appends a late sandbox child after its parent evidence completed", async () => {
+    const {
+      auth,
+      workspace,
+      conversation,
+      run,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
+
+    const { action: parentAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      status: "errored",
+      dustRunId: run.dustRunId,
+      functionCallName: "sandbox__bash",
+      toolName: "bash",
+      mcpServerName: "sandbox",
+      toolServerId: autoInternalMCPServerNameToSId({
+        name: "sandbox",
+        workspaceId: workspace.id,
+      }),
+    });
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const parentItem = (
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      )
+    ).find((item) => item.agentMCPActionId === parentAction.id);
+    expect(parentItem?.completedAt).toEqual(expect.any(Date));
+
+    const { action: childAction } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      status: "errored",
+      functionCallName: "interactive_content__create_interactive_content_file",
+      toolName: "create_interactive_content_file",
+      mcpServerName: "interactive_content",
+      toolServerId: autoInternalMCPServerNameToSId({
+        name: "interactive_content",
+        workspaceId: workspace.id,
+      }),
+      sandboxChildActionInfo: { parentActionId: parentAction.sId },
+      parentAction,
+    });
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    expect(
+      items.find((item) => item.agentMCPActionId === childAction.id)
+    ).toMatchObject({
+      itemType: "tool",
+      runUsageId: parentItem?.runUsageId,
+      inputTokensCount: 0,
+      outputTokensCount: 0,
+      directCreditAmountMicro: 3_000_000,
+      grossAttributedCreditAmountMicro: 3_000_000,
+      completedAt: expect.any(Date),
+    });
+    expect(
+      items.reduce(
+        (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
+        0
+      )
+    ).toBe(BILLED_CREDIT_AMOUNT_MICRO);
+  });
+
   it("writes a tool row per action and carves the tool output from the assistant output", async () => {
     const {
       auth,
@@ -322,6 +415,80 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
     expect(
       (outputItem?.outputTokensCount ?? 0) + (toolItem?.outputTokensCount ?? 0)
     ).toBe(OUTPUT_TOKENS_COUNT - REASONING_TOKENS_COUNT);
+  });
+
+  it("stores every skill that exposes the action's tool", async () => {
+    const {
+      auth,
+      agentConfiguration,
+      globalSpace,
+      workspace,
+      conversation,
+      run,
+      conversationId,
+      agentMessageId,
+      agentMessageModelId,
+    } = await setupSettledMessageWithUsage();
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      name: "Attributed server",
+      tools: [
+        {
+          name: "attributed_tool",
+          description: "Attributed tool",
+          inputSchema: undefined,
+        },
+      ],
+    });
+    const serverView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      globalSpace
+    );
+    const skill = await SkillFactory.create(auth, {
+      name: "Attributed skill",
+      mcpServerViews: [serverView],
+    });
+    const enabledSkill = await skill.upsertToConversation(auth, {
+      conversationId: conversation.id,
+      enabled: true,
+    });
+    if (enabledSkill.isErr()) {
+      throw new Error("Skill could not be enabled for the test conversation");
+    }
+    await SkillResource.snapshotConversationSkillsForMessage(auth, {
+      agentConfigurationId: agentConfiguration.sId,
+      agentMessageId: agentMessageModelId,
+      conversationId: conversation.id,
+    });
+
+    const { action } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      status: "succeeded",
+      dustRunId: run.dustRunId,
+      functionCallName: "attributed_server__attributed_tool",
+      toolName: "attributed_tool",
+      toolServerId: server.sId,
+    });
+
+    await computeAndStoreAgentMessageConsumptionAttribution(auth, {
+      agentMessageId,
+      conversationId,
+    });
+
+    const items =
+      await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(
+        auth,
+        {
+          agentMessageModelIds: [agentMessageModelId],
+          maxAttributionVersion: AGENT_MESSAGE_CONSUMPTION_ATTRIBUTION_VERSION,
+        }
+      );
+    expect(
+      items.find((item) => item.agentMCPActionId === action.id)
+        ?.attributedSkillIds
+    ).toEqual([skill.sId]);
   });
 
   it("removes only the last run's tool result footprint when the message stops", async () => {
@@ -637,6 +804,7 @@ describe("computeAndStoreAgentMessageConsumptionAttribution", () => {
       );
     const toolItem = items.find((item) => item.itemType === "tool");
     expect(toolItem?.inputTokensCount).toBe(inputTexts[0].length);
+    expect(toolItem?.attributedSkillIds).toEqual([skill.sId]);
   });
 
   it("writes a blocked tool as a pending row, carving its output but withholding the charge", async () => {

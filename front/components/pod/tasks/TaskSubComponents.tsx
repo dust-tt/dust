@@ -44,7 +44,7 @@ function formatActorLabel(
         return "Dust";
       }
       const name = agentId ? agentNameById.get(agentId) : null;
-      return name ? `@${name}` : "an agent";
+      return name || "an agent";
     case "user":
       if (userId === currentUser?.sId) {
         return "you";

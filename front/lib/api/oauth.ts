@@ -10,7 +10,6 @@ import type {
 } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
 import { ConfluenceToolsOAuthProvider } from "@app/lib/api/oauth/providers/confluence_tools";
-import { DatabricksOAuthProvider } from "@app/lib/api/oauth/providers/databricks";
 import { DiscordOAuthProvider } from "@app/lib/api/oauth/providers/discord";
 import { FathomOAuthProvider } from "@app/lib/api/oauth/providers/fathom";
 import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
@@ -31,6 +30,7 @@ import { NotionOAuthProvider } from "@app/lib/api/oauth/providers/notion";
 import { ProductboardOAuthProvider } from "@app/lib/api/oauth/providers/productboard";
 import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce";
 import { ServiceNowOAuthProvider } from "@app/lib/api/oauth/providers/servicenow";
+import { ShopifyOAuthProvider } from "@app/lib/api/oauth/providers/shopify";
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
 import { SlackToolsOAuthProvider } from "@app/lib/api/oauth/providers/slack_tools";
 import { SnowflakeOAuthProvider } from "@app/lib/api/oauth/providers/snowflake";
@@ -69,7 +69,6 @@ export type OAuthError = {
 const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   confluence: new ConfluenceOAuthProvider(),
   confluence_tools: new ConfluenceToolsOAuthProvider(),
-  databricks: new DatabricksOAuthProvider(),
   discord: new DiscordOAuthProvider(),
   fathom: new FathomOAuthProvider(),
   freshservice: new FreshserviceOAuthProvider(),
@@ -89,6 +88,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   notion: new NotionOAuthProvider(),
   productboard: new ProductboardOAuthProvider(),
   salesforce: new SalesforceOAuthProvider(),
+  shopify: new ShopifyOAuthProvider(),
   servicenow: new ServiceNowOAuthProvider(),
   slack: new SlackOAuthProvider(),
   slack_tools: new SlackToolsOAuthProvider(),
@@ -241,6 +241,8 @@ export async function createConnectionAndGetSetupUrl(
   const cRes = await api.createConnection({
     provider,
     metadata,
+    // Stored on the connection so the finalize URI survives redirect base changes.
+    redirectUri: finalizeUriForProvider({ provider, connection: null }),
     relatedCredential,
   });
   if (cRes.isErr()) {
@@ -323,13 +325,44 @@ export async function finalizeConnection(
     });
   }
 
+  if (
+    providerStrategy.isCallbackQueryValid &&
+    !providerStrategy.isCallbackQueryValid(query)
+  ) {
+    logger.error(
+      { provider, connectionId, step: "callback_validation" },
+      "OAuth: Failed to finalize connection"
+    );
+    return new Err({
+      code: "connection_finalization_failed",
+      message: `Failed to finalize ${provider} connection: invalid callback signature`,
+    });
+  }
+
   const api = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+
+  // Fetching the connection metadata is necessary to build the redirect URI.
+  const connectionRes = await api.getConnectionMetadata({
+    connectionId,
+  });
+
+  if (connectionRes.isErr()) {
+    logger.error(
+      { connectionId, step: "connection_metadata_retrieval" },
+      "OAuth: Failed to retrieve connection metadata"
+    );
+    return new Err({
+      code: "connection_finalization_failed",
+      message: `Failed to finalize ${provider} connection: failed to retrieve connection metadata`,
+    });
+  }
+
+  const connection = connectionRes.value.connection;
 
   const cRes = await api.finalizeConnection({
     provider,
-    connectionId,
+    connection,
     code,
-    redirectUri: finalizeUriForProvider(provider),
   });
 
   if (cRes.isErr()) {

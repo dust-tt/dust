@@ -2,7 +2,6 @@ import { ZendeskCustomFieldFilters } from "@app/components/data_source/ZendeskCu
 import { ZendeskOrganizationTagFilters } from "@app/components/data_source/ZendeskOrganizationTagFilters";
 import { ZendeskRateLimitConfig } from "@app/components/data_source/ZendeskRateLimitConfig";
 import { ZendeskTicketTagFilters } from "@app/components/data_source/ZendeskTicketTagFilters";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
 import { clientFetch } from "@app/lib/egress/client";
@@ -15,7 +14,6 @@ import {
   Input,
   SliderToggle,
   ZendeskLogo,
-  ZendeskWhiteLogo,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -30,8 +28,6 @@ export function ZendeskConfigView({
   isAdmin: boolean;
   dataSource: DataSourceType;
 }) {
-  const { isDark } = useTheme();
-
   const {
     configValue: syncUnresolvedTicketsConfigValue,
     mutateConfig: mutateSyncUnresolvedTicketsConfig,
@@ -131,11 +127,7 @@ export function ZendeskConfigView({
     <ContextItem.List>
       <ContextItem
         title="Sync unresolved tickets"
-        visual={
-          <ContextItem.Visual
-            visual={isDark ? ZendeskWhiteLogo : ZendeskLogo}
-          />
-        }
+        visual={<ContextItem.Visual visual={ZendeskLogo} />}
         action={
           <div className="relative">
             <SliderToggle
@@ -160,11 +152,7 @@ export function ZendeskConfigView({
 
       <ContextItem
         title="Hide Customer Information"
-        visual={
-          <ContextItem.Visual
-            visual={isDark ? ZendeskWhiteLogo : ZendeskLogo}
-          />
-        }
+        visual={<ContextItem.Visual visual={ZendeskLogo} />}
         action={
           <div className="relative">
             <SliderToggle
@@ -191,11 +179,7 @@ export function ZendeskConfigView({
 
       <ContextItem
         title="Data Retention Period"
-        visual={
-          <ContextItem.Visual
-            visual={isDark ? ZendeskWhiteLogo : ZendeskLogo}
-          />
-        }
+        visual={<ContextItem.Visual visual={ZendeskLogo} />}
       >
         <ContextItem.Description>
           <div className="mb-4 flex items-start justify-between gap-4 text-muted-foreground">

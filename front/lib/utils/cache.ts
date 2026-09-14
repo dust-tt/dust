@@ -1,6 +1,8 @@
 import { getRedisCacheClient } from "@app/lib/api/redis";
 import { distributedLock, distributedUnlock } from "@app/lib/lock";
 import logger from "@app/logger/logger";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Transaction } from "sequelize";
 
@@ -34,15 +36,15 @@ export type CacheableFunction<T, Args extends unknown[]> = (
 
 type KeyResolver<Args extends unknown[]> = (...args: Args) => string;
 
-/**
- * During a rolling key migration, this key remains the source of truth. Reads use it instead of
- * the canonical key and mirror compatible values by default. Invalidation removes both keys.
- */
-type ReadFromKeyFirst<Args extends unknown[]> = {
-  cacheId: string;
-  resolver: KeyResolver<Args>;
-  // Disable when a legacy hit cannot safely represent the canonical payload semantics.
-  mirrorToCanonicalOnHit?: boolean;
+// `readFrom` chooses the key used for reads. Fresh loads write both keys.
+// `after_read` also copies cache hits to the other key.
+type CacheKeyMigration<Args extends unknown[]> = {
+  previousKey: {
+    cacheId: string;
+    resolver: KeyResolver<Args>;
+  };
+  readFrom: "previous" | "new";
+  copyToOtherKey: "after_load" | "after_read";
 };
 
 export function buildCacheWithRedisKey(
@@ -63,7 +65,7 @@ function getCacheKey<T, Args extends unknown[]>(
 
 // Wrapper function to cache the result of a function with Redis.
 // Usage:
-// const cachedFn = cacheWithRedis(fn, (fnArg1, fnArg2, ...) => `${fnArg1}-${fnArg2}`, 60 * 10 * 1000);
+// const cachedFn = cacheWithRedis(fn, (fnArg1, fnArg2, ...) => `${fnArg1}-${fnArg2}`, 60 * 10 * 1000)
 
 // if caching big objects, there is a possible race condition (multiple calls to
 // caching), therefore, we use a lock
@@ -77,7 +79,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     useDistributedLock?: boolean;
     skipIfLocked?: false;
     cacheNullValues?: boolean;
-    readFromKeyFirst?: ReadFromKeyFirst<Args>;
+    migration?: CacheKeyMigration<Args>;
   }
 ): (...args: Args) => Promise<JsonSerializable<T>>;
 
@@ -91,7 +93,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     useDistributedLock?: boolean;
     skipIfLocked?: false;
     cacheNullValues: false;
-    readFromKeyFirst?: ReadFromKeyFirst<Args>;
+    migration?: CacheKeyMigration<Args>;
   }
 ): (...args: Args) => Promise<JsonSerializable<T> | null>;
 
@@ -106,7 +108,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     // When true and the distributed lock is taken, return null immediately.
     skipIfLocked: true;
     cacheNullValues?: boolean;
-    readFromKeyFirst?: ReadFromKeyFirst<Args>;
+    migration?: CacheKeyMigration<Args>;
   }
 ): (...args: Args) => Promise<JsonSerializable<T> | null>;
 
@@ -121,7 +123,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     useDistributedLock = false,
     skipIfLocked = false,
     cacheNullValues = true,
-    readFromKeyFirst,
+    migration,
   }: {
     cacheId?: string;
     ttlMs?: number | ((...args: Args) => number);
@@ -132,7 +134,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
     // When false, null/undefined results are not cached. This prevents stale
     // null entries from masking records that exist in the database.
     cacheNullValues?: boolean;
-    readFromKeyFirst?: ReadFromKeyFirst<Args>;
+    migration?: CacheKeyMigration<Args>;
   }
 ): (...args: Args) => Promise<JsonSerializable<T> | null> {
   // A static ttlMs is validated eagerly, same as before. A function ttlMs can only be
@@ -147,15 +149,22 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       throw new Error("ttlMs should be less than 24 hours");
     }
 
-    const key = getCacheKey(fn, resolver, args, cacheId);
-    const readKey = readFromKeyFirst
+    const newKey = getCacheKey(fn, resolver, args, cacheId);
+    const previousKey = migration
       ? getCacheKey(
           fn,
-          readFromKeyFirst.resolver,
+          migration.previousKey.resolver,
           args,
-          readFromKeyFirst.cacheId
+          migration.previousKey.cacheId
         )
-      : key;
+      : null;
+    const readKey =
+      migration?.readFrom === "previous" && previousKey ? previousKey : newKey;
+    const otherKey = previousKey
+      ? readKey === newKey
+        ? previousKey
+        : newKey
+      : null;
 
     const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
 
@@ -167,21 +176,22 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       }
     };
 
-    const synchronizeCanonicalKey = async (
+    const copyToOtherKey = async (
       value: string,
       { fromCacheHit }: { fromCacheHit: boolean }
     ): Promise<void> => {
-      if (
-        readKey !== key &&
-        (!fromCacheHit || readFromKeyFirst?.mirrorToCanonicalOnHit !== false)
-      ) {
-        await setValue(key, value);
+      if (!otherKey) {
+        return;
       }
+      if (fromCacheHit && migration?.copyToOtherKey !== "after_read") {
+        return;
+      }
+      await setValue(otherKey, value);
     };
 
     let cacheVal = await redisCli.get(readKey);
     if (cacheVal) {
-      await synchronizeCanonicalKey(cacheVal, { fromCacheHit: true });
+      await copyToOtherKey(cacheVal, { fromCacheHit: true });
       return JSON.parse(cacheVal) as JsonSerializable<T>;
     }
 
@@ -205,7 +215,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
             );
             cacheVal = await redisCli.get(readKey);
             if (cacheVal) {
-              await synchronizeCanonicalKey(cacheVal, { fromCacheHit: true });
+              await copyToOtherKey(cacheVal, { fromCacheHit: true });
               return JSON.parse(cacheVal) as JsonSerializable<T>;
             }
             lockValue = await distributedLock(redisCli, readKey);
@@ -216,7 +226,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       }
       cacheVal = await redisCli.get(readKey);
       if (cacheVal) {
-        await synchronizeCanonicalKey(cacheVal, { fromCacheHit: true });
+        await copyToOtherKey(cacheVal, { fromCacheHit: true });
         return JSON.parse(cacheVal) as JsonSerializable<T>;
       }
 
@@ -224,7 +234,7 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       if (cacheNullValues || result != null) {
         const serializedResult = JSON.stringify(result);
         await setValue(readKey, serializedResult);
-        await synchronizeCanonicalKey(serializedResult, {
+        await copyToOtherKey(serializedResult, {
           fromCacheHit: false,
         });
       }
@@ -237,6 +247,58 @@ export function cacheWithRedis<T, Args extends unknown[]>(
       } else {
         unlock(readKey);
       }
+    }
+  };
+}
+
+// Wraps cacheWithRedisResult's error so it can round-trip through
+// cacheWithRedis's throw-to-skip-caching contract without ever escaping to a
+// caller of cacheWithRedisResult.
+class CacheResultError<E> extends Error {
+  constructor(public readonly original: E) {
+    super("cacheWithRedisResult: wrapped domain error");
+  }
+}
+
+// Same fetch-dedup semantics as cacheWithRedis (fleet-wide single-flight via
+// the distributed lock), but for loaders that report failure through Result<>
+// instead of throwing. The loader's Err is never cached and is returned to
+// the caller as a Result, so callers can use `.isErr()` instead of try/catch.
+export function cacheWithRedisResult<T, E, Args extends unknown[]>(
+  fn: (...args: Args) => Promise<Result<JsonSerializable<T>, E>>,
+  resolver: KeyResolver<Args>,
+  options: {
+    cacheId?: string;
+    ttlMs?: number | ((...args: Args) => number);
+    useDistributedLock: true;
+    skipIfLocked: true;
+    cacheNullValues?: boolean;
+    migration?: CacheKeyMigration<Args>;
+  }
+): (...args: Args) => Promise<Result<JsonSerializable<T> | null, E>> {
+  const cacheId = options.cacheId ?? fn.name;
+
+  const cachedFn = cacheWithRedis<T, Args>(
+    async (...args: Args) => {
+      const result = await fn(...args);
+      if (result.isErr()) {
+        throw new CacheResultError(result.error);
+      }
+      return result.value;
+    },
+    resolver,
+    { ...options, cacheId }
+  );
+
+  return async function (...args: Args) {
+    try {
+      const value = await cachedFn(...args);
+      return new Ok(value);
+    } catch (err) {
+      if (err instanceof CacheResultError) {
+        return new Err(err.original as E);
+      }
+      throw err;
     }
   };
 }
@@ -270,22 +332,22 @@ export function invalidateCacheWithRedis<T, Args extends unknown[]>(
   _options?: {
     cacheId?: string;
     redisUri?: string;
-    readFromKeyFirst?: ReadFromKeyFirst<Args>;
+    migration?: CacheKeyMigration<Args>;
   }
 ): (...args: Args) => Promise<void> {
   return async function (...args: Args): Promise<void> {
     const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
 
-    const key = getCacheKey(fn, resolver, args, _options?.cacheId);
-    const readKey = _options?.readFromKeyFirst
+    const newKey = getCacheKey(fn, resolver, args, _options?.cacheId);
+    const previousKey = _options?.migration
       ? getCacheKey(
           fn,
-          _options.readFromKeyFirst.resolver,
+          _options.migration.previousKey.resolver,
           args,
-          _options.readFromKeyFirst.cacheId
+          _options.migration.previousKey.cacheId
         )
-      : key;
-    await redisCli.del(readKey === key ? key : [key, readKey]);
+      : null;
+    await redisCli.del(previousKey ? [newKey, previousKey] : newKey);
   };
 }
 
@@ -296,6 +358,7 @@ export function batchInvalidateCacheWithRedis<T, Args extends unknown[]>(
   _options?: {
     cacheId?: string;
     redisUri?: string;
+    migration?: CacheKeyMigration<Args>;
   }
 ): (argsList: Args[]) => Promise<void> {
   return async function (argsList: Args[]): Promise<void> {
@@ -305,10 +368,21 @@ export function batchInvalidateCacheWithRedis<T, Args extends unknown[]>(
 
     const redisCli = await getRedisCacheClient({ origin: "cache_with_redis" });
 
-    const keys = argsList.map((args) =>
-      getCacheKey(fn, resolver, args, _options?.cacheId)
-    );
-    await redisCli.del(keys);
+    const keys = new Set<string>();
+    for (const args of argsList) {
+      keys.add(getCacheKey(fn, resolver, args, _options?.cacheId));
+      if (_options?.migration) {
+        keys.add(
+          getCacheKey(
+            fn,
+            _options.migration.previousKey.resolver,
+            args,
+            _options.migration.previousKey.cacheId
+          )
+        );
+      }
+    }
+    await redisCli.del([...keys]);
   };
 }
 

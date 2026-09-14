@@ -10,6 +10,7 @@ import type {
 } from "@app/types/api/sandbox/env_vars";
 import { SANDBOX_ENV_VAR_KINDS } from "@app/types/sandbox/env_var";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
@@ -25,8 +26,11 @@ const PostPodSandboxEnvVarBodySchema = z.object({
 });
 
 // Mounted at /api/w/:wId/spaces/:spaceId/sandbox/env-vars. Pods are project
-// spaces: non-project spaces have no pod-scoped env vars and 404.
+// spaces: non-project spaces have no pod-scoped env vars and 404. Workspace-admin
+// only (read and write); the gate on this leaf also covers the mounted /:id.
 const app = workspaceApp();
+
+app.use("*", ensureIsAdmin());
 
 /** @ignoreswagger */
 app.get(

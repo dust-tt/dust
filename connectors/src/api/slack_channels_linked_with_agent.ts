@@ -90,6 +90,10 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     new Set(slackChannelIds.filter((id) => !foundSlackChannelIds.has(id)))
   );
 
+  const privateByChannelId = new Map(
+    slackChannels.map((c) => [c.slackChannelId, c.private])
+  );
+
   const slackClient = await getSlackClient(parseInt(connectorId));
 
   await withTransaction(async (t) => {
@@ -108,6 +112,8 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
                 `Unexpected error: Unable to find Slack channel ${slackChannelId}.`
               );
             }
+            const isPrivate = !!remoteChannel.is_private;
+            privateByChannelId.set(slackChannelId, isPrivate);
             return await SlackChannelModel.create(
               {
                 connectorId: parseInt(connectorId),
@@ -115,10 +121,13 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
                 slackChannelName: remoteChannel.name,
                 agentConfigurationId,
                 permission: "write",
-                private: !!remoteChannel.is_private,
-                autoRespondWithoutMention: autoRespondWithoutMention ?? false,
+                private: isPrivate,
+                // Private channels never receive unmentioned messages (no message.groups).
+                autoRespondWithoutMention:
+                  !isPrivate && (autoRespondWithoutMention ?? false),
                 autoRespondWithoutMentionSkipThreadReplies:
-                  autoRespondWithoutMentionSkipThreadReplies ?? false,
+                  !isPrivate &&
+                  (autoRespondWithoutMentionSkipThreadReplies ?? false),
               },
               {
                 transaction: t,
@@ -144,17 +153,21 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
       }
     );
     await Promise.all(
-      slackChannelIds.map((slackChannelId) =>
-        SlackChannelModel.update(
+      slackChannelIds.map((slackChannelId) => {
+        const isPrivate = privateByChannelId.get(slackChannelId) ?? false;
+        return SlackChannelModel.update(
           {
             agentConfigurationId,
-            autoRespondWithoutMention: autoRespondWithoutMention ?? false,
+            // Private channels never receive unmentioned messages (no message.groups).
+            autoRespondWithoutMention:
+              !isPrivate && (autoRespondWithoutMention ?? false),
             autoRespondWithoutMentionSkipThreadReplies:
-              autoRespondWithoutMentionSkipThreadReplies ?? false,
+              !isPrivate &&
+              (autoRespondWithoutMentionSkipThreadReplies ?? false),
           },
           { where: { connectorId, slackChannelId }, transaction: t }
-        )
-      )
+        );
+      })
     );
   });
   const joinPromises = await Promise.all(
@@ -218,6 +231,7 @@ type GetSlackChannelsLinkedWithAgentResBody = WithConnectorsAPIErrorReponse<{
     agentConfigurationId: string;
     autoRespondWithoutMention: boolean;
     autoRespondWithoutMentionSkipThreadReplies: boolean;
+    isPrivate: boolean;
   }[];
 }>;
 
@@ -256,6 +270,7 @@ const _getSlackChannelsLinkedWithAgentHandler = async (
       autoRespondWithoutMention: c.autoRespondWithoutMention,
       autoRespondWithoutMentionSkipThreadReplies:
         c.autoRespondWithoutMentionSkipThreadReplies,
+      isPrivate: c.private,
     })),
   });
 };

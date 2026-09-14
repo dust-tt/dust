@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ColumnDef } from "@tanstack/react-table";
 import React, { useCallback, useState } from "react";
+import { fn } from "storybook/test";
 
 import { Button } from "@sparkle/components/Button";
 import { ScrollableDataTable } from "@sparkle/components/DataTable";
@@ -132,9 +133,7 @@ const samplePages: MultiPageSheetPage[] = [
 const MultiPageSheetDemo = () => {
   const [currentPageId, setCurrentPageId] = useState("profile");
 
-  const handleSave = () => {
-    alert("Changes saved!");
-  };
+  const handleSave = fn();
 
   return (
     <MultiPageSheet>
@@ -152,11 +151,26 @@ const MultiPageSheetDemo = () => {
   );
 };
 
+/**
+ * Baseline setup: three static pages with header navigation, the built-in
+ * footer, and an `onSave` callback. Same content as MultiPageDialog's
+ * `Default` but as a slide-in side panel — choose the Sheet when the user
+ * should keep the underlying page visible instead of a blocking modal.
+ * @summary Basic three-page sheet with built-in save footer.
+ */
 export const Default: Story = {
   render: () => <MultiPageSheetDemo />,
 };
 
-export const InteractiveContent: Story = {
+/**
+ * A three-step wizard where each page writes into shared `formData` and
+ * progression happens through in-content buttons that unlock as the step
+ * becomes valid. Prefer this Sheet variant over MultiPageDialog when the
+ * flow benefits from staying anchored beside the page (e.g. configuring
+ * against visible context).
+ * @summary Wizard with per-page form state driven from page content.
+ */
+export const WizardWithFormState: Story = {
   render: () => {
     const [currentPageId, setCurrentPageId] = useState("step1");
     const [formData, setFormData] = useState({
@@ -166,9 +180,7 @@ export const InteractiveContent: Story = {
       notifications: false,
     });
 
-    const handleSave = () => {
-      alert(`Setup completed! Data: ${JSON.stringify(formData, null, 2)}`);
-    };
+    const handleSave = fn();
 
     const interactivePages: MultiPageSheetPage[] = [
       {
@@ -342,17 +354,20 @@ export const InteractiveContent: Story = {
   },
 };
 
+/**
+ * Uses the built-in navigation (`showNavigation`) with `disableNext` /
+ * `disableSave` guards so each step must be valid before moving on, plus a
+ * per-page `footerContent` slot. This gating lives in the Sheet's own footer,
+ * unlike MultiPageDialog where you wire footer buttons yourself.
+ * @summary Built-in navigation gated by disableNext / disableSave.
+ */
 export const WithConditionalNavigation: Story = {
   render: () => {
     const [currentPageId, setCurrentPageId] = useState("data-selection");
     const [selectedItems, setSelectedItems] = useState<string[]>([]);
     const [description, setDescription] = useState("");
 
-    const handleSave = () => {
-      alert(
-        `Configuration saved! Selected: ${selectedItems.join(", ")}, Description: ${description}`
-      );
-    };
+    const handleSave = fn();
 
     const conditionalPages: MultiPageSheetPage[] = [
       {
@@ -523,24 +538,33 @@ const generateRandomUsers = (
   ];
 
   return Array.from({ length: count }, (_, index) => {
-    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-    const id = (startId + index + 1).toString();
+    const absoluteIndex = startId + index;
+    const firstName = firstNames[absoluteIndex % firstNames.length];
+    const lastName = lastNames[(absoluteIndex * 3) % lastNames.length];
+    const id = (absoluteIndex + 1).toString();
 
     return {
       id,
       name: `${firstName} ${lastName}`,
       email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com`,
-      role: roles[Math.floor(Math.random() * roles.length)],
-      status: statuses[Math.floor(Math.random() * statuses.length)],
+      role: roles[absoluteIndex % roles.length],
+      status: statuses[absoluteIndex % statuses.length],
       lastActive: new Date(
-        Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000
+        Date.now() - (absoluteIndex % 30) * 24 * 60 * 60 * 1000
       ).toLocaleDateString(),
-      onClick: () => alert(`Clicked on user: ${firstName} ${lastName}`),
+      onClick: fn(),
     };
   });
 };
 
+/**
+ * The Sheet-specific pattern this component exists for: a page flagged
+ * `noScroll` hosting a ScrollableDataTable that manages its own infinite
+ * scrolling (`onLoadMore` + `isLoading`) inside the wide side panel. Use this
+ * over MultiPageDialog whenever a step contains tall, self-scrolling content
+ * like a data table.
+ * @summary noScroll page hosting an infinite-scroll data table.
+ */
 export const WithScrollableDataTable: Story = {
   render() {
     const [currentPageId, setCurrentPageId] = useState("users");
@@ -633,9 +657,7 @@ export const WithScrollableDataTable: Story = {
       }, 1000);
     }, [isLoading, hasMore, users.length]);
 
-    const handleSave = () => {
-      alert("User data saved!");
-    };
+    const handleSave = fn();
 
     const scrollableDataTablePages: MultiPageSheetPage[] = [
       {

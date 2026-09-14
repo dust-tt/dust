@@ -1,6 +1,6 @@
 import config from "@app/lib/api/config";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import type { WakeLockEntry } from "@app/lib/wake_lock";
 import { getWakeLockDetails, wakeLockIsFree } from "@app/lib/wake_lock";
 import logger from "@app/logger/logger";
@@ -32,7 +32,7 @@ async function runPreStopOnce(drainDurationMs: number): Promise<void> {
     action: "preStop",
   });
 
-  getStatsDClient().increment("prestop.requests");
+  statsDMetrics.increment("prestop.requests");
 
   childLogger.info(
     { drainDurationMs },
@@ -54,14 +54,11 @@ async function runPreStopOnce(drainDurationMs: number): Promise<void> {
       );
 
       // Record initial wake lock metrics.
-      getStatsDClient().gauge(
-        "prestop.initial_wake_locks",
-        currentWakeLockCount
-      );
+      statsDMetrics.gauge("prestop.initial_wake_locks", currentWakeLockCount);
       if (currentWakeLockCount > 0) {
-        getStatsDClient().increment("prestop.has_wake_locks");
+        statsDMetrics.increment("prestop.has_wake_locks");
       } else {
-        getStatsDClient().increment("prestop.no_wake_locks");
+        statsDMetrics.increment("prestop.no_wake_locks");
       }
 
       // Log details of all active wake locks.
@@ -119,7 +116,7 @@ async function runPreStopOnce(drainDurationMs: number): Promise<void> {
       "Endpoint drain completed without active wake locks"
     );
 
-    getStatsDClient().increment("prestop.wake_locks_cleared");
+    statsDMetrics.increment("prestop.wake_locks_cleared");
   } else {
     childLogger.warn(
       {
@@ -133,17 +130,14 @@ async function runPreStopOnce(drainDurationMs: number): Promise<void> {
       "Endpoint drain deadline reached with active wake locks"
     );
 
-    getStatsDClient().increment("prestop.timeouts");
-    getStatsDClient().gauge(
+    statsDMetrics.increment("prestop.timeouts");
+    statsDMetrics.gauge(
       "prestop.timeout_wake_locks",
       finalWakeLockDetails.length
     );
-    getStatsDClient().distribution(
-      "prestop.timeout_duration_ms",
-      totalDurationMs
-    );
-    getStatsDClient().increment("prestop.wake_locks_forced");
-    getStatsDClient().distribution(
+    statsDMetrics.distribution("prestop.timeout_duration_ms", totalDurationMs);
+    statsDMetrics.increment("prestop.wake_locks_forced");
+    statsDMetrics.distribution(
       "prestop.wake_lock_forced_duration_ms",
       totalDurationMs
     );
@@ -155,6 +149,6 @@ async function runPreStopOnce(drainDurationMs: number): Promise<void> {
   );
 
   // Record total prestop duration.
-  getStatsDClient().increment("prestop.completions");
-  getStatsDClient().distribution("prestop.total_duration_ms", totalDurationMs);
+  statsDMetrics.increment("prestop.completions");
+  statsDMetrics.distribution("prestop.total_duration_ms", totalDurationMs);
 }

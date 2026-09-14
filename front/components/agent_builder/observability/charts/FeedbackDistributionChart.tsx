@@ -1,4 +1,3 @@
-import { FeedbackDistributionTooltip } from "@app/components/agent_builder/observability/charts/ChartsTooltip";
 import {
   FEEDBACK_DISTRIBUTION_LEGEND,
   FEEDBACK_DISTRIBUTION_PALETTE,
@@ -11,6 +10,7 @@ import {
 } from "@app/components/agent_builder/observability/utils";
 import { ChartContainer } from "@app/components/charts/ChartContainer";
 import { legendFromConstant } from "@app/components/charts/ChartLegend";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { CHART_HEIGHT, CHART_MARGIN } from "@app/components/charts/constants";
 import { useSelectableSeries } from "@app/components/charts/useSelectableSeries";
 import {
@@ -33,6 +33,63 @@ interface FeedbackDistributionChartProps {
   workspaceId: string;
   agentConfigurationId: string;
   isCustomAgent: boolean;
+}
+
+interface FeedbackDistributionData {
+  timestamp: number;
+  date: string;
+  positive: number;
+  negative: number;
+}
+
+function isFeedbackDistributionData(
+  data: unknown
+): data is FeedbackDistributionData {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+
+  return (
+    "timestamp" in data &&
+    typeof data.timestamp === "number" &&
+    "date" in data &&
+    typeof data.date === "string" &&
+    "positive" in data &&
+    typeof data.positive === "number" &&
+    "negative" in data &&
+    typeof data.negative === "number"
+  );
+}
+
+function FeedbackDistributionTooltip(
+  props: TooltipContentProps<number, string> & {
+    activeKey?: string;
+    selectedKey?: string;
+  }
+) {
+  const { active, payload, activeKey, selectedKey } = props;
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+  const first = payload[0];
+  if (!first?.payload || !isFeedbackDistributionData(first.payload)) {
+    return null;
+  }
+  const row = first.payload;
+
+  return (
+    <ChartTooltipCard
+      title={row.date}
+      rows={FEEDBACK_DISTRIBUTION_LEGEND.map(({ key, label }) => ({
+        key,
+        label,
+        value: row[key],
+        colorClassName: FEEDBACK_DISTRIBUTION_PALETTE[key],
+      }))}
+      activeKey={activeKey}
+      selectedKey={selectedKey}
+    />
+  );
 }
 
 function zeroFactory(timestamp: number) {

@@ -43,6 +43,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
   switch (workerName) {
     case "activation_scheduler":
       return path.join(baseDir, "temporal/activation_scheduler");
+    case "agent_inactivity":
+      return path.join(baseDir, "temporal/agent_inactivity");
     case "agent_loop_batch":
     case "agent_loop_interactive":
     case "agent_loop_programmatic":
@@ -56,8 +58,6 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/analytics_queue");
     case "conversation_fork_queue":
       return path.join(baseDir, "temporal/conversation_fork_queue");
-    case "project_task":
-      return path.join(baseDir, "temporal/project_task");
     case "credit_alerts":
       return path.join(baseDir, "temporal/credit_alerts");
     case "data_retention":
@@ -72,6 +72,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/mentions_count_queue");
     case "mentions_queue":
       return path.join(baseDir, "temporal/mentions_queue");
+    case "model_health":
+      return path.join(baseDir, "temporal/model_health");
     case "notifications_queue":
       return path.join(baseDir, "temporal/notifications_queue");
     case "poke":

@@ -1,8 +1,8 @@
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationSandboxAdapter } from "@app/lib/resources/conversation_sandbox_adapter";
-import { PodSandboxAdapter } from "@app/lib/resources/pod_sandbox_adapter";
+import type { FrameSandboxOwner } from "@app/lib/resources/frame_sandbox_adapter";
+import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
-import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { SandboxStatus } from "@app/lib/resources/storage/models/sandbox";
 import {
   SandboxModel,
@@ -67,9 +67,9 @@ export class SandboxFactory {
     return result;
   }
 
-  static async createForPod(
+  static async createForFrame(
     auth: Authenticator,
-    pod: SpaceResource,
+    frame: FrameSandboxOwner,
     opts?: {
       status?: SandboxStatus;
       killRequestedAt?: Date;
@@ -97,13 +97,13 @@ export class SandboxFactory {
 
     await SandboxOwnerModel.create({
       workspaceId: auth.getNonNullableWorkspace().id,
-      spaceId: pod.id,
+      frameFileModelId: frame.id,
       sandboxId: sandbox.id,
     });
 
-    const result = await PodSandboxAdapter.fetchSandbox(auth, pod);
+    const result = await FrameSandboxAdapter.fetchSandbox(auth, frame);
     if (!result) {
-      throw new Error("Pod sandbox not found after creation");
+      throw new Error("Frame sandbox not found after creation");
     }
     return result;
   }

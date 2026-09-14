@@ -79,7 +79,7 @@ export function SpaceDataSourceViewPage() {
               workspace: owner,
             }}
           />
-          <div className="border-material-200 my-4 rounded-lg border p-4">
+          <div className="my-4 rounded-lg border p-4">
             <DataSourceViewSelector
               owner={owner}
               readonly

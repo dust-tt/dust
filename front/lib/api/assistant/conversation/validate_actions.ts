@@ -163,11 +163,11 @@ export async function validateAction(
 
   // Emit an audit event for the approval decision. Fire-and-forget and fully
   // isolated: the agent-config lookup must never block or break the approval
-  // flow (AUDIT1). auth is the deciding user (HTTP request).
+  // flow (audit-security-sensitive-mutations). auth is the deciding user (HTTP request).
   void (async () => {
     try {
       // Resolved via the resource so the agent-message model lookup stays in
-      // the resource layer (BACK3/BACK5).
+      // the resource layer (models-behind-resources/business-functions-use-resources).
       const auditAgentConfig = await action.getLightAgentConfiguration(auth);
       void emitAuditLogEvent({
         auth,

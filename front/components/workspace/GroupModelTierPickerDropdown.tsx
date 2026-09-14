@@ -1,5 +1,4 @@
 import { ModelTierPickerDropdown } from "@app/components/workspace/ModelTierPickerDropdown";
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import {
   getGroupModelTierOptions,
   NO_GROUP_MODEL_TIER,
@@ -8,18 +7,17 @@ import {
   useGroupAllowedModelTierMutations,
   useGroupAllowedModelTiers,
 } from "@app/lib/swr/model_tiers";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { LightWorkspaceType } from "@app/types/user";
 
 interface GroupModelTierPickerDropdownProps {
   owner: LightWorkspaceType;
   groupId: string;
-  readOnly?: boolean;
 }
 
 export function GroupModelTierPickerDropdown({
   owner,
   groupId,
-  readOnly = false,
 }: GroupModelTierPickerDropdownProps) {
   const { groups: groupAllowedModelTiers, isGroupAllowedModelTiersLoading } =
     useGroupAllowedModelTiers({ owner });
@@ -48,7 +46,6 @@ export function GroupModelTierPickerDropdown({
           tierName: value as ModelsTierName,
         });
       }}
-      readOnly={readOnly}
       isLoading={isGroupAllowedModelTiersLoading}
       isMutating={isGroupAllowedModelTierMutating}
     />

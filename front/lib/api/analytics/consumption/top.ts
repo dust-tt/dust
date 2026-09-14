@@ -3,17 +3,20 @@ import { resolveDimensionLabels } from "@app/lib/api/analytics/consumption/label
 import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { previousConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import type {
-  ConsumptionScopeDimension,
   ConsumptionScopeFilter,
+  ConsumptionTopDimension,
+  ConsumptionTopRankBy,
+  ConsumptionTopSortOrder,
   ConsumptionTopUnit,
 } from "@app/lib/api/analytics/consumption/scope";
 import {
-  AGENT_MESSAGE_ID_FIELD,
   buildConsumptionScopeQuery,
   CARDINALITY_PRECISION_THRESHOLD,
   CONSUMPTION_DIMENSION_FIELDS,
-  CONSUMPTION_DIMENSION_UNIT,
+  CONSUMPTION_TOP_DIMENSION_FIELDS,
+  CONSUMPTION_TOP_DIMENSION_UNIT,
   CREDIT_MICRO_FIELD,
+  uniqueMessagesCardinalityAgg,
 } from "@app/lib/api/analytics/consumption/scope";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import {
@@ -22,18 +25,22 @@ import {
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { microCreditsToCredits } from "@app/lib/credits/units";
+import { removeDiacritics } from "@app/lib/utils";
 import logger from "@app/logger/logger";
+import { ORDERED_REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 import chunk from "lodash/chunk";
 
-type ConsumptionTopGroup = {
+export type ConsumptionTopGroup = {
   key: string;
   credits: number;
   // Distinct messages, or tool invocations, per the ranking's unit.
   count: number;
+  // Only populated for the group dimension.
+  activeMembers?: number;
   // This key's credits over the equivalent window immediately preceding the
   // period, for period-over-period growth. Null when the key had no
   // consumption at all in that prior window.
@@ -49,12 +56,15 @@ export type ConsumptionTopGroups = {
   // sum of `groups`. The ranking is capped at `limit`, and a dimension that only
   // exists on some documents (a tool, a skill) accounts for part of the total.
   totalCredits: number;
+  // Only populated for the group dimension.
+  totalActiveMembers?: number;
 };
 
 // Sub-aggregation names, kept out of the callers so the ranking order and the
 // bucket reads below cannot drift apart.
 const CREDIT_AGG = "credit_micro";
 const MESSAGES_AGG = "messages";
+const ACTIVE_MEMBERS_AGG = "active_members";
 const TOTAL_COUNT_AGG = "total_count";
 const RANKING_TERMS_PAGE_SIZE = 1_000;
 const MAX_ES_QUERY_CLAUSES = 1_024;
@@ -65,13 +75,24 @@ type GroupBucket = {
   doc_count: number;
   [CREDIT_AGG]?: estypes.AggregationsSumAggregate;
   [MESSAGES_AGG]?: estypes.AggregationsCardinalityAggregate;
+  [ACTIVE_MEMBERS_AGG]?: estypes.AggregationsCardinalityAggregate;
 };
 
-function subAggs(unit: ConsumptionTopUnit) {
+function subAggs(unit: ConsumptionTopUnit, dimension: ConsumptionTopDimension) {
   return {
     [CREDIT_AGG]: { sum: { field: CREDIT_MICRO_FIELD } },
     ...(unit === "message"
-      ? { [MESSAGES_AGG]: { cardinality: { field: AGENT_MESSAGE_ID_FIELD } } }
+      ? { [MESSAGES_AGG]: uniqueMessagesCardinalityAgg() }
+      : {}),
+    ...(dimension === "group"
+      ? {
+          [ACTIVE_MEMBERS_AGG]: {
+            cardinality: {
+              field: CONSUMPTION_DIMENSION_FIELDS.user,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+        }
       : {}),
   };
 }
@@ -84,6 +105,7 @@ type RankingAggs = {
 type TopAggs = RankingAggs & {
   ranking?: estypes.AggregationsSingleBucketAggregateBase & RankingAggs;
   total_credit_micro?: estypes.AggregationsSumAggregate;
+  [ACTIVE_MEMBERS_AGG]?: estypes.AggregationsCardinalityAggregate;
 };
 
 function countFromBucket(
@@ -144,20 +166,35 @@ async function resolveConsumptionTopSearchFilter(
     dimension,
     search,
   }: {
-    dimension: ConsumptionScopeDimension;
+    dimension: ConsumptionTopDimension;
     search?: string;
   }
 ): Promise<estypes.QueryDslQueryContainer | null> {
-  const normalizedSearch = search?.trim().toLowerCase();
+  if (dimension === "conversation" || dimension === "tag") {
+    return null;
+  }
+
+  const normalizedSearch = removeDiacritics(search?.trim() ?? "").toLowerCase();
   if (!normalizedSearch) {
     return null;
+  }
+
+  if (dimension === "reasoning_effort") {
+    return buildConsumptionTopSearchTermsQuery(
+      CONSUMPTION_TOP_DIMENSION_FIELDS[dimension],
+      ORDERED_REASONING_EFFORTS.filter((effort) =>
+        effort.includes(normalizedSearch)
+      )
+    );
   }
 
   // TODO(2026-08-14 aubin): Store searchable dimension names in consumption
   // analytics documents so Elasticsearch can perform this search directly.
   const catalog = await listConsumptionFacetCatalogDimension(auth, dimension);
   const matchingValues = catalog
-    .filter((entry) => entry.label.toLowerCase().includes(normalizedSearch))
+    .filter((entry) =>
+      removeDiacritics(entry.label).toLowerCase().includes(normalizedSearch)
+    )
     .map((entry) => entry.value);
 
   return buildConsumptionTopSearchTermsQuery(
@@ -166,36 +203,65 @@ async function resolveConsumptionTopSearchFilter(
   );
 }
 
+function rankingOrder(
+  dimension: ConsumptionTopDimension,
+  rankBy: ConsumptionTopRankBy,
+  sortOrder: ConsumptionTopSortOrder
+): Record<string, ConsumptionTopSortOrder> {
+  if (rankBy === "credits") {
+    return { [CREDIT_AGG]: sortOrder };
+  }
+
+  switch (CONSUMPTION_TOP_DIMENSION_UNIT[dimension]) {
+    case "message":
+      return { [MESSAGES_AGG]: sortOrder };
+    case "invocation":
+      return { _count: sortOrder };
+    default:
+      return assertNever(CONSUMPTION_TOP_DIMENSION_UNIT[dimension]);
+  }
+}
+
 function buildConsumptionTopAggregations({
   dimension,
   bucketCount,
   excludedKeys,
   searchFilter,
+  sortOrder,
+  rankBy,
+  includeTotalCount,
 }: {
-  dimension: ConsumptionScopeDimension;
+  dimension: ConsumptionTopDimension;
   bucketCount: number;
   excludedKeys: string[];
   searchFilter: estypes.QueryDslQueryContainer | null;
+  sortOrder: ConsumptionTopSortOrder;
+  rankBy: ConsumptionTopRankBy;
+  includeTotalCount: boolean;
 }): Record<string, estypes.AggregationsAggregationContainer> {
-  const unit = CONSUMPTION_DIMENSION_UNIT[dimension];
-  const dimensionField = CONSUMPTION_DIMENSION_FIELDS[dimension];
+  const unit = CONSUMPTION_TOP_DIMENSION_UNIT[dimension];
+  const dimensionField = CONSUMPTION_TOP_DIMENSION_FIELDS[dimension];
 
   const rankingAggregations = {
     by_group: {
       terms: {
         field: dimensionField,
         size: bucketCount,
-        order: { [CREDIT_AGG]: "desc" },
+        order: rankingOrder(dimension, rankBy, sortOrder),
         ...(excludedKeys.length > 0 ? { exclude: excludedKeys } : {}),
       },
-      aggs: subAggs(unit),
+      aggs: subAggs(unit, dimension),
     },
-    [TOTAL_COUNT_AGG]: {
-      cardinality: {
-        field: dimensionField,
-        precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
-      },
-    },
+    ...(includeTotalCount
+      ? {
+          [TOTAL_COUNT_AGG]: {
+            cardinality: {
+              field: dimensionField,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+        }
+      : {}),
   } satisfies Record<string, estypes.AggregationsAggregationContainer>;
 
   const rankingRootAggregations = searchFilter
@@ -210,6 +276,16 @@ function buildConsumptionTopAggregations({
   return {
     ...rankingRootAggregations,
     total_credit_micro: { sum: { field: CREDIT_MICRO_FIELD } },
+    ...(dimension === "group"
+      ? {
+          [ACTIVE_MEMBERS_AGG]: {
+            cardinality: {
+              field: CONSUMPTION_DIMENSION_FIELDS.user,
+              precision_threshold: CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+        }
+      : {}),
   };
 }
 
@@ -228,7 +304,7 @@ async function fetchConsumptionPreviousCredits(
     filter,
     keys,
   }: {
-    dimension: ConsumptionScopeDimension;
+    dimension: ConsumptionTopDimension;
     previousPeriod: ConsumptionPeriod;
     filter?: ConsumptionScopeFilter;
     keys: string[];
@@ -251,7 +327,7 @@ async function fetchConsumptionPreviousCredits(
       aggregations: {
         by_group: {
           terms: {
-            field: CONSUMPTION_DIMENSION_FIELDS[dimension],
+            field: CONSUMPTION_TOP_DIMENSION_FIELDS[dimension],
             include: keys,
             size: keys.length,
           },
@@ -293,13 +369,21 @@ export async function fetchConsumptionTopGroups(
     offset = 0,
     search,
     filter,
+    sortOrder = "desc",
+    rankBy = "credits",
+    includePreviousCredits = true,
+    includeTotalCount = true,
   }: {
-    dimension: ConsumptionScopeDimension;
+    dimension: ConsumptionTopDimension;
     period: ConsumptionPeriod;
     limit: number;
     offset?: number;
     search?: string;
     filter?: ConsumptionScopeFilter;
+    sortOrder?: ConsumptionTopSortOrder;
+    rankBy?: ConsumptionTopRankBy;
+    includePreviousCredits?: boolean;
+    includeTotalCount?: boolean;
   }
 ): Promise<Result<ConsumptionTopGroups, ElasticsearchError>> {
   const searchFilter = await resolveConsumptionTopSearchFilter(auth, {
@@ -320,9 +404,10 @@ export async function fetchConsumptionTopGroups(
   let batchSize = 0;
   let totalCount = 0;
   let totalCredits = 0;
+  let totalActiveMembers = 0;
 
   // Terms aggregations do not expose an after_key when ordered by a metric.
-  // Continue the credit-ranked result in bounded batches by excluding the keys
+  // Continue the ranked result in bounded batches by excluding the keys
   // already returned, and stop as soon as the requested page is available.
   do {
     batchSize = Math.min(
@@ -334,6 +419,9 @@ export async function fetchConsumptionTopGroups(
       bucketCount: batchSize,
       excludedKeys: rankedGroups.map((group) => group.key),
       searchFilter,
+      sortOrder,
+      rankBy,
+      includeTotalCount,
     });
     const result = await searchConsumptionAnalytics<never, TopAggs>(query, {
       aggregations,
@@ -349,16 +437,31 @@ export async function fetchConsumptionTopGroups(
       : result.value.aggregations;
     buckets = bucketsToArray<GroupBucket>(ranking?.by_group?.buckets);
     rankedGroups.push(
-      ...buckets.map((bucket) => ({
-        key: String(bucket.key),
-        credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
-        count: countFromBucket(bucket, CONSUMPTION_DIMENSION_UNIT[dimension]),
-      }))
+      ...buckets.map((bucket) => {
+        const group = {
+          key: String(bucket.key),
+          credits: microCreditsToCredits(bucket[CREDIT_AGG]?.value ?? 0),
+          count: countFromBucket(
+            bucket,
+            CONSUMPTION_TOP_DIMENSION_UNIT[dimension]
+          ),
+        };
+
+        return dimension === "group"
+          ? {
+              ...group,
+              activeMembers: Math.round(bucket[ACTIVE_MEMBERS_AGG]?.value ?? 0),
+            }
+          : group;
+      })
     );
     totalCredits = microCreditsToCredits(
       result.value.aggregations?.total_credit_micro?.value ?? 0
     );
     totalCount = Math.round(ranking?.[TOTAL_COUNT_AGG]?.value ?? 0);
+    totalActiveMembers = Math.round(
+      result.value.aggregations?.[ACTIVE_MEMBERS_AGG]?.value ?? 0
+    );
   } while (
     rankedGroups.length < requestedBucketCount &&
     buckets.length === batchSize
@@ -370,7 +473,7 @@ export async function fetchConsumptionTopGroups(
     dimension,
     previousPeriod: previousConsumptionPeriod(period),
     filter,
-    keys: pagedGroups.map((group) => group.key),
+    keys: includePreviousCredits ? pagedGroups.map((group) => group.key) : [],
   });
   // The prior-period lookup only feeds the vs-prev display column: a failure
   // there should not take down the current-period ranking, which already
@@ -398,6 +501,7 @@ export async function fetchConsumptionTopGroups(
     hasMore: totalCount > offset + limit,
     totalCount,
     totalCredits,
+    ...(dimension === "group" ? { totalActiveMembers } : {}),
   });
 }
 
@@ -421,12 +525,14 @@ export type ResolvedConsumptionGroup = {
   credits: number;
   count: number;
   avgCredits: number;
+  activeMembers?: number;
+  memberCount?: number;
   previousCredits: number | null;
 };
 
 export async function resolveConsumptionGroupLabels(
   auth: Authenticator,
-  dimension: ConsumptionScopeDimension,
+  dimension: ConsumptionTopDimension,
   groups: ConsumptionTopGroup[]
 ): Promise<ResolvedConsumptionGroup[]> {
   const labels = await resolveDimensionLabels(
@@ -435,7 +541,12 @@ export async function resolveConsumptionGroupLabels(
     groups.map((group) => group.key)
   );
 
-  return groups.map((group) => ({
+  const visibleGroups =
+    dimension === "conversation"
+      ? groups.filter((group) => labels.has(group.key))
+      : groups;
+
+  return visibleGroups.map((group) => ({
     key: group.key,
     name: labels.get(group.key)?.name ?? group.key,
     pictureUrl: labels.get(group.key)?.pictureUrl ?? null,
@@ -446,6 +557,12 @@ export async function resolveConsumptionGroupLabels(
     credits: group.credits,
     count: group.count,
     avgCredits: avgCreditsPerUnit(group.credits, group.count),
+    ...(group.activeMembers !== undefined
+      ? { activeMembers: group.activeMembers }
+      : {}),
+    ...(labels.get(group.key)?.memberCount !== undefined
+      ? { memberCount: labels.get(group.key)?.memberCount }
+      : {}),
     previousCredits: group.previousCredits,
   }));
 }

@@ -1,4 +1,4 @@
-import { MODELS_TIER_NAMES } from "@app/lib/api/assistant/token_pricing/tiers";
+import { MODELS_TIER_NAMES } from "@app/types/assistant/models/model_tiers";
 import { z } from "zod";
 
 const ModelsTierNameSchema = z.enum(MODELS_TIER_NAMES);
@@ -49,6 +49,15 @@ export const GetWorkspaceAllowedModelTiersResponseBodySchema = z.object({
 });
 export type GetWorkspaceAllowedModelTiersResponseBody = z.infer<
   typeof GetWorkspaceAllowedModelTiersResponseBodySchema
+>;
+
+export const GetPokeAllowedModelTiersResponseBodySchema = z.object({
+  users: z.array(UserAllowedModelTiersSchema),
+  groups: z.array(GroupAllowedModelTiersSchema),
+  maxTierName: ModelsTierNameSchema,
+});
+export type GetPokeAllowedModelTiersResponseBody = z.infer<
+  typeof GetPokeAllowedModelTiersResponseBodySchema
 >;
 
 export const AllowedModelTierBodySchema = z.object({

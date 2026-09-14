@@ -63,9 +63,12 @@ const ParamsSchema = z.object({
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Table'
+ *               type: object
+ *               properties:
+ *                 tables:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Table'
  *       400:
  *         description: Invalid request
  *   post:
@@ -130,7 +133,10 @@ const ParamsSchema = z.object({
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Table'
+ *               type: object
+ *               properties:
+ *                 table:
+ *                   $ref: '#/components/schemas/Table'
  *       400:
  *         description: Invalid request
  */

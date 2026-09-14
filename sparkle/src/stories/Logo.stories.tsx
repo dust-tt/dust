@@ -16,8 +16,8 @@ import {
 } from "../logo/dust";
 
 const meta = {
-  title: "Assets/Logo",
-  tags: ["autodocs"],
+  title: "Assets/Logo/Dust Logo",
+  tags: ["!manifest", "autodocs"],
   parameters: {
     docs: {
       description: {

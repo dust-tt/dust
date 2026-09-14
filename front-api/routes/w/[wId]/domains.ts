@@ -59,9 +59,8 @@ app.get(
   async (ctx): HandlerResult<GetWorkspaceDomainsResponseBody> => {
     const auth = ctx.get("auth");
 
-    // If the workspace doesn't have a WorkOS organization (which can happen for workspaces
-    // created via admin tools), we create one before fetching domains. This ensures the
-    // endpoint works for all workspaces, regardless of how they were created.
+    // Safety net for legacy workspaces that predate creating a WorkOS
+    // organization at workspace creation time.
     const organizationRes = await getOrCreateWorkOSOrganization(
       auth.getNonNullableWorkspace()
     );

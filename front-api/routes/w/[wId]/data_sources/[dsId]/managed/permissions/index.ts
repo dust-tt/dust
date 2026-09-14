@@ -131,6 +131,14 @@ app.get(
                 "Authorization error while retrieving the data source permissions.",
             },
           });
+        case "connector_oauth_user_must_be_admin":
+          return apiError(ctx, {
+            status_code: 403,
+            api_error: {
+              type: "connector_oauth_user_must_be_admin",
+              message: result.error.message,
+            },
+          });
         case "internal_error":
           return apiError(ctx, {
             status_code: 500,

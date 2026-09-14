@@ -19,7 +19,10 @@ import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GlobalFeatureFlagResource } from "@app/lib/resources/global_feature_flag_resource";
-import type { GroupPermissionsJSON } from "@app/lib/resources/group_permission_registry";
+import type {
+  GroupPermissionsJSON,
+  ResourcesWithVerb,
+} from "@app/lib/resources/group_permission_registry";
 import {
   allWorkspacePermissions,
   GroupPermissions,
@@ -27,15 +30,16 @@ import {
 } from "@app/lib/resources/group_permission_registry";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import type { KeyAuthType } from "@app/lib/resources/key_resource";
+import type { KeyAuthType, SystemKey } from "@app/lib/resources/key_resource";
 import {
   DEFAULT_SYSTEM_KEY_NAME,
+  isSystemKey,
   KeyResource,
   SECRET_KEY_PREFIX,
 } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
-import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import {
   getResourceIdFromSId,
@@ -71,15 +75,21 @@ import {
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { isString, removeNulls } from "@app/types/shared/utils/general";
 import { decodeUtf8HeaderValue } from "@app/types/shared/utils/http_headers";
 import type {
   LightWorkspaceType,
   RoleType,
+  UserType,
   WorkspaceType,
 } from "@app/types/user";
-import { isAdmin, isBuilder, isManager, isUser } from "@app/types/user";
+import {
+  isAdmin,
+  isBuilder,
+  isManager,
+  isUser,
+  lowestRole,
+} from "@app/types/user";
 import assert from "assert";
 import { TokenExpiredError } from "jsonwebtoken";
 import type { Transaction } from "sequelize";
@@ -87,6 +97,10 @@ import type { Transaction } from "sequelize";
 const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
 const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
+
+export function isDustInternalEmail(email: string): boolean {
+  return isDevelopment() || DUST_INTERNAL_EMAIL_REGEXP.test(email);
+}
 
 const DustApiKeyNameHeader = "x-dust-api-key-name";
 
@@ -97,6 +111,12 @@ export type AuthMethodType =
   | "session"
   | "sandbox_token"
   | "internal";
+
+/** Principal used by poke when there is no provisioned Dust user (e.g. Cloudflare Access). */
+export type PokePrincipal = {
+  email: string;
+  name: string | null;
+};
 
 // Bearer tokens are identified by their prefix: API keys start with `sk-`,
 // sandbox exec tokens with `sbt-`. Anything else is treated as an OAuth
@@ -125,6 +145,7 @@ export interface AuthenticatorType {
   attributionKey?: { id: ModelId; name: string };
   clientIp?: string;
   permissions?: GroupPermissionsJSON;
+  globalGroupModelId?: ModelId | null;
 }
 
 /**
@@ -150,6 +171,13 @@ export class Authenticator {
   _clientIp?: string;
   // Governance grants the caller holds, resolved by the factory (see `resolvePermissions`)
   _permissions: GroupPermissions;
+  // The workspace global group's model id. `undefined` = not resolved yet (resolved lazily on first use)
+  _globalGroupModelId: ModelId | null | undefined;
+  // Set only by poke factory methods (`fromDustSuperUser` / `fromSuperUserSession`).
+  // Regular session/API auths keep this false even if the user has the DB flag.
+  _isDustSuperUser: boolean;
+  // Poke operator principal when no provisioned Dust user is attached (CF Access).
+  _pokePrincipal: PokePrincipal | null;
 
   // Should only be called from the static methods below.
   constructor({
@@ -164,6 +192,9 @@ export class Authenticator {
     providersHealth,
     clientIp,
     permissions,
+    globalGroupModelId,
+    isDustSuperUser = false,
+    pokePrincipal = null,
   }: {
     workspace?: WorkspaceResource | null;
     user?: UserResource | null;
@@ -176,6 +207,9 @@ export class Authenticator {
     providersHealth?: ProvidersHealth | null;
     clientIp?: string;
     permissions: GroupPermissions;
+    globalGroupModelId?: ModelId | null;
+    isDustSuperUser?: boolean;
+    pokePrincipal?: PokePrincipal | null;
   }) {
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._workspace = workspace || null;
@@ -191,6 +225,9 @@ export class Authenticator {
     this._providersHealth = providersHealth ?? null;
     this._clientIp = clientIp;
     this._permissions = permissions;
+    this._globalGroupModelId = globalGroupModelId;
+    this._isDustSuperUser = isDustSuperUser;
+    this._pokePrincipal = pokePrincipal;
 
     if (user) {
       tracer.setUser({
@@ -267,11 +304,12 @@ export class Authenticator {
   }): Promise<{
     role: RoleType;
     groupModelIds: ModelId[];
+    globalGroupModelId: ModelId | null;
     subscription: SubscriptionResource | null;
   }> {
     const lightWorkspace = renderLightWorkspaceType({ workspace });
 
-    const [role, groupModelIds, subscription] = await Promise.all([
+    const [role, authGroups, subscription] = await Promise.all([
       MembershipResource.getActiveRoleForUserInWorkspace({
         user,
         workspace: lightWorkspace,
@@ -288,9 +326,11 @@ export class Authenticator {
       ),
     ]);
 
+    const isMember = Authenticator.isMember(role);
     return {
       role,
-      groupModelIds: Authenticator.isMember(role) ? groupModelIds : [],
+      groupModelIds: isMember ? authGroups.groupModelIds : [],
+      globalGroupModelId: isMember ? authGroups.globalGroupModelId : null,
       subscription,
     };
   }
@@ -315,6 +355,7 @@ export class Authenticator {
 
       let role = "none" as RoleType;
       let groupModelIds: ModelId[] = [];
+      let globalGroupModelId: ModelId | null = null;
       let subscription: SubscriptionResource | null = null;
 
       if (user && workspace) {
@@ -324,6 +365,7 @@ export class Authenticator {
         });
         role = authData.role;
         groupModelIds = authData.groupModelIds;
+        globalGroupModelId = authData.globalGroupModelId;
         subscription = authData.subscription;
       }
 
@@ -339,6 +381,7 @@ export class Authenticator {
         user,
         role,
         groupModelIds,
+        globalGroupModelId,
         subscription,
         providersHealth,
         permissions: await this.resolvePermissions({
@@ -378,13 +421,20 @@ export class Authenticator {
     // Reload group memberships for user-backed auths. Key auths carry a fixed group set derived
     // from the key (not from live membership), so their `_groupModelIds` are left as-is.
     if (this._user) {
-      this._groupModelIds = Authenticator.isMember(this._role)
-        ? await GroupResource.dangerouslyListUserGroupsForAuth({
+      if (Authenticator.isMember(this._role)) {
+        const authGroups = await GroupResource.dangerouslyListUserGroupsForAuth(
+          {
             user: this._user,
             workspace: renderLightWorkspaceType({ workspace: this._workspace }),
             transaction,
-          })
-        : [];
+          }
+        );
+        this._groupModelIds = authGroups.groupModelIds;
+        this._globalGroupModelId = authGroups.globalGroupModelId;
+      } else {
+        this._groupModelIds = [];
+        this._globalGroupModelId = null;
+      }
     }
 
     // Re-resolve grants from the current group set. Grants on those groups can change (backfill,
@@ -404,6 +454,11 @@ export class Authenticator {
    * workos session.
    * Super User will have `role` set to `admin` regardless of their actual role in the workspace.
    *
+   * Only elevates (and sets the poke `_isDustSuperUser` flag) when the session
+   * user has the DB super-user flag and a Dust-internal email. Otherwise
+   * returns a non-privileged authenticator (legacy behavior for callers like
+   * app runs `wIdTarget`).
+   *
    * @param session any workos session
    * @param wId string target workspace id
    * @returns Promise<Authenticator>
@@ -412,21 +467,72 @@ export class Authenticator {
     session: SessionWithUser | null,
     wId: string | null
   ): Promise<Authenticator> {
-    const [workspace, user] = await Promise.all([
-      wId ? WorkspaceResource.fetchById(wId) : null,
-      this.userFromSession(session),
-    ]);
+    const user = await this.userFromSession(session);
+    if (user && user.isDustSuperUser && isDustInternalEmail(user.email)) {
+      return this.fromDustSuperUser({ user, wId });
+    }
+
+    const workspace = wId ? await WorkspaceResource.fetchById(wId) : null;
+    const subscription = workspace
+      ? await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id)
+      : null;
+    const providersHealth = await this.fetchByokProvidersHealth(
+      workspace,
+      subscription
+    );
+
+    return new Authenticator({
+      authMethod: "session",
+      workspace,
+      user,
+      role: "none",
+      groupModelIds: [],
+      subscription,
+      providersHealth,
+      permissions: await this.resolvePermissions({
+        workspace,
+        groupModelIds: [],
+      }),
+      isDustSuperUser: false,
+    });
+  }
+
+  /**
+   * Build a poke super-user Authenticator. Only poke entrypoints should call
+   * this (or `fromSuperUserSession`). The resulting auth has
+   * `_isDustSuperUser` set; regular session/API factories leave it false.
+   *
+   * Super users get `role` admin and all workspace groups when `wId` is set.
+   * `pokePrincipal` is required when `user` is null (Cloudflare Access path).
+   */
+  static async fromDustSuperUser({
+    user = null,
+    wId = null,
+    pokePrincipal = null,
+  }: {
+    user?: UserResource | null;
+    wId?: string | null;
+    pokePrincipal?: PokePrincipal | null;
+  }): Promise<Authenticator> {
+    const workspace = wId ? await WorkspaceResource.fetchById(wId) : null;
+
+    const resolvedPokePrincipal: PokePrincipal | null = pokePrincipal
+      ? {
+          email: pokePrincipal.email.toLowerCase(),
+          name: pokePrincipal.name,
+        }
+      : user
+        ? { email: user.email, name: user.fullName() }
+        : null;
 
     let groups: GroupResource[] = [];
     let subscription: SubscriptionResource | null = null;
 
     if (workspace) {
       [groups, subscription] = await Promise.all([
-        user?.isDustSuperUser
-          ? GroupResource.internalFetchAllWorkspaceGroups({
-              workspaceId: workspace.id,
-            })
-          : [],
+        GroupResource.internalFetchAllWorkspaceGroups({
+          workspaceId: workspace.id,
+        }),
         SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
       ]);
     }
@@ -436,13 +542,12 @@ export class Authenticator {
       subscription
     );
 
-    const role: RoleType = user?.isDustSuperUser ? "admin" : "none";
     const groupModelIds = groups.map((g) => g.id);
     return new Authenticator({
       authMethod: "session",
       workspace,
       user,
-      role,
+      role: "admin",
       groupModelIds,
       subscription,
       providersHealth,
@@ -450,6 +555,8 @@ export class Authenticator {
         workspace,
         groupModelIds,
       }),
+      isDustSuperUser: true,
+      pokePrincipal: resolvedPokePrincipal,
     });
   }
   /**
@@ -472,6 +579,7 @@ export class Authenticator {
 
     let role: RoleType = "none";
     let groupModelIds: ModelId[] = [];
+    let globalGroupModelId: ModelId | null = null;
     let subscription: SubscriptionResource | null = null;
 
     if (user && workspace) {
@@ -482,6 +590,7 @@ export class Authenticator {
       });
       role = authData.role;
       groupModelIds = authData.groupModelIds;
+      globalGroupModelId = authData.globalGroupModelId;
       subscription = authData.subscription;
     }
 
@@ -497,6 +606,7 @@ export class Authenticator {
       user,
       role,
       groupModelIds,
+      globalGroupModelId,
       subscription,
       providersHealth,
       permissions: await this.resolvePermissions({
@@ -780,16 +890,17 @@ export class Authenticator {
       requestedSpaceIds.add(spaceId);
     }
 
-    const spaceGroups = await GroupSpaceModel.findAll({
+    const spaceGrants = await GroupPermissionModel.findAll({
       where: {
-        vaultId: [...requestedSpaceIds],
+        resourceType: "space",
+        resourceId: [...requestedSpaceIds],
         workspaceId,
       },
       attributes: ["groupId"],
     });
 
     const allowedGroupIds = new Set(
-      spaceGroups.map((sg) => Number(sg.groupId) as ModelId)
+      spaceGrants.map((grant) => Number(grant.groupId) as ModelId)
     );
 
     return new Ok(userGroupIds.filter((id) => allowedGroupIds.has(id)));
@@ -856,24 +967,26 @@ export class Authenticator {
       }
     }
 
-    const spaceGroups = await GroupSpaceModel.findAll({
+    const spaceGrants = await GroupPermissionModel.findAll({
       where: {
-        vaultId: [...allowedSpaceIds],
+        resourceType: "space",
+        resourceId: [...allowedSpaceIds],
         workspaceId,
       },
       attributes: ["groupId"],
     });
 
     const allowedGroupIds = new Set(
-      spaceGroups.map((sg) => Number(sg.groupId) as ModelId)
+      spaceGrants.map((grant) => Number(grant.groupId) as ModelId)
     );
 
     return new Ok(userGroupIds.filter((id) => allowedGroupIds.has(id)));
   }
 
   /**
-   * Returns two Authenticators, one for the workspace associated with the key and one for the
-   * workspace provided as an argument.
+   * Returns an Authenticator for the workspace provided as an argument, authenticated with the
+   * given API key. The key does not have to belong to that workspace: when it does not, it
+   * confers no groups and no role there.
    *
    * @param key Key the API key
    * @param wId the target workspaceId
@@ -881,17 +994,14 @@ export class Authenticator {
    *                                   possible with a system key).
    * @param requestedRole optional role to assign the auth in place of the key role (only possible
    *                               with a system key).
-   * @returns Promise<{ workspaceAuth: Authenticator, keyAuth: Authenticator }>
+   * @returns Promise<Authenticator>
    */
   static async fromKey(
     key: KeyResource,
     wId: string,
     requestedGroupIds?: string[],
     requestedRole?: RoleType
-  ): Promise<{
-    workspaceAuth: Authenticator;
-    keyAuth: Authenticator;
-  }> {
+  ): Promise<Authenticator> {
     const [workspace, keyWorkspace] = await Promise.all([
       WorkspaceResource.fetchById(wId),
       WorkspaceResource.fetchByModelId(key.workspaceId),
@@ -916,49 +1026,21 @@ export class Authenticator {
     let keyGroups: GroupResource[] = [];
     let requestedGroups: GroupResource[] = [];
     let workspaceSubscription: SubscriptionResource | null = null;
-    let keySubscription: SubscriptionResource | null = null;
 
     if (workspace) {
       const lightWorkspace = renderLightWorkspaceType({ workspace });
-      const lightKeyWorkspace = renderLightWorkspaceType({
-        workspace: keyWorkspace,
-      });
       if (requestedGroupIds && key.isSystem) {
-        [requestedGroups, keySubscription, workspaceSubscription] =
-          await Promise.all([
-            GroupResource.listGroupsWithSystemKey(key, requestedGroupIds),
-            SubscriptionResource.fetchActiveByWorkspaceModelId(
-              lightKeyWorkspace.id
-            ),
-            // We need to fetch the subscription separately as requested groups
-            // might not include the global group which is used to fetch the
-            // subscription in fetchRoleGroupsAndSubscription.
-            isKeyWorkspace
-              ? null
-              : SubscriptionResource.fetchActiveByWorkspaceModelId(
-                  lightWorkspace.id
-                ),
-          ]);
+        [requestedGroups, workspaceSubscription] = await Promise.all([
+          GroupResource.listGroupsWithSystemKey(key, requestedGroupIds),
+          // Fetched separately: the requested groups might not include the global group, which is
+          // what fetchRoleGroupsAndSubscription uses to resolve the subscription.
+          SubscriptionResource.fetchActiveByWorkspaceModelId(lightWorkspace.id),
+        ]);
       } else {
-        [keyGroups, keySubscription, workspaceSubscription] = await Promise.all(
-          [
-            GroupResource.listWorkspaceGroupsFromKey(key),
-            SubscriptionResource.fetchActiveByWorkspaceModelId(
-              lightKeyWorkspace.id
-            ),
-            isKeyWorkspace
-              ? null
-              : SubscriptionResource.fetchActiveByWorkspaceModelId(
-                  lightWorkspace.id
-                ),
-          ]
-        );
-      }
-
-      // When the key workspace is the target workspace, both subscriptions
-      // are identical - reuse the one we already fetched.
-      if (isKeyWorkspace) {
-        workspaceSubscription = keySubscription;
+        [keyGroups, workspaceSubscription] = await Promise.all([
+          GroupResource.listWorkspaceGroupsFromKey(key),
+          SubscriptionResource.fetchActiveByWorkspaceModelId(lightWorkspace.id),
+        ]);
       }
     }
     const allGroups = requestedGroupIds ? requestedGroups : keyGroups;
@@ -972,60 +1054,39 @@ export class Authenticator {
     const workspaceGroupModelIds = isKeyWorkspace
       ? allGroups.map((g) => g.id)
       : [];
-    const keyGroupModelIds = allGroups.map((g) => g.id);
 
-    let permissions: GroupPermissions;
-    let keyPermissions: GroupPermissions;
-    if (isKeyWorkspace) {
-      // Same workspace and same groups: both Authenticators share one resolution rather than
-      // running the same query twice. Safe to share the instance, GroupPermissions is immutable.
-      permissions = await this.resolvePermissions({
-        workspace,
-        groupModelIds: workspaceGroupModelIds,
-      });
-      keyPermissions = permissions;
-    } else {
-      [permissions, keyPermissions] = await Promise.all([
-        this.resolvePermissions({
-          workspace,
-          groupModelIds: workspaceGroupModelIds,
-        }),
-        this.resolvePermissions({
-          workspace: keyWorkspace,
-          groupModelIds: keyGroupModelIds,
-        }),
-      ]);
-    }
+    // `requestedGroupIds` replaces the key's own groups (the Slack bot acting as a user), so the
+    // resolution goes through those groups instead of the key.
+    const systemKey = !requestedGroupIds && isSystemKey(key) ? key : null;
 
-    return {
-      workspaceAuth: new Authenticator({
-        authMethod: key.isSystem ? "system_api_key" : "api_key",
-        groupModelIds: workspaceGroupModelIds,
-        key: key.toAuthJSON(),
-        role,
-        subscription: workspaceSubscription,
-        workspace,
-        providersHealth: workspaceProvidersHealth,
-        permissions,
-      }),
-      keyAuth: new Authenticator({
-        authMethod: key.isSystem ? "system_api_key" : "api_key",
-        groupModelIds: keyGroupModelIds,
-        key: key.toAuthJSON(),
-        role: "builder",
-        subscription: keySubscription,
-        workspace: keyWorkspace,
-        permissions: keyPermissions,
-      }),
-    };
+    // The target workspace is not necessarily the key's; when it is not, the key says nothing
+    // about it and `workspaceGroupModelIds` is empty.
+    const permissions = await this.resolvePermissions(
+      systemKey && isKeyWorkspace
+        ? { workspace, systemKey }
+        : { workspace, groupModelIds: workspaceGroupModelIds }
+    );
+
+    return new Authenticator({
+      authMethod: key.isSystem ? "system_api_key" : "api_key",
+      groupModelIds: workspaceGroupModelIds,
+      key: key.toAuthJSON(),
+      role,
+      subscription: workspaceSubscription,
+      workspace,
+      providersHealth: workspaceProvidersHealth,
+      permissions,
+    });
   }
 
   /**
-   * Creates an Authenticator for a given workspace (with role `builder`). Used for internal calls
+   * Creates an Authenticator for a given workspace (with role `user`). Used for internal calls
    * to the Dust API or other functions, when the system is calling something for the workspace.
+   * Only the workspace global group is granted; use `internalAdminForWorkspace` when broader
+   * access is required.
    * @param workspaceId string
    */
-  static async internalBuilderForWorkspace(
+  static async internalUserForWorkspace(
     workspaceId: string
   ): Promise<Authenticator> {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
@@ -1050,7 +1111,7 @@ export class Authenticator {
     return new Authenticator({
       authMethod: "internal",
       workspace,
-      role: "builder",
+      role: "user",
       groupModelIds,
       subscription,
       providersHealth,
@@ -1066,13 +1127,18 @@ export class Authenticator {
   static async internalAdminForWorkspace(
     workspaceId: string,
     options?: {
-      dangerouslyRequestAllGroups: boolean;
+      dangerouslyRequestAllGroups?: boolean;
       // Only applies when dangerouslyRequestAllGroups is true. Overrides the group kinds fetched,
       // e.g. to include editor groups that are excluded by default.
       groupKinds?: GroupKind[];
+      transaction?: Transaction;
     }
   ): Promise<Authenticator> {
-    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    const transaction = options?.transaction;
+    const workspace = await WorkspaceResource.fetchById(
+      workspaceId,
+      transaction
+    );
     if (!workspace) {
       throw new Error(`Could not find workspace with sId ${workspaceId}`);
     }
@@ -1083,14 +1149,21 @@ export class Authenticator {
           return GroupResource.internalFetchAllWorkspaceGroups({
             workspaceId: workspace.id,
             ...(options.groupKinds ? { groupKinds: options.groupKinds } : {}),
+            transaction,
           });
         } else {
           const globalGroup =
-            await GroupResource.internalFetchWorkspaceGlobalGroup(workspace.id);
+            await GroupResource.internalFetchWorkspaceGlobalGroup(
+              workspace.id,
+              transaction
+            );
           return globalGroup ? [globalGroup] : [];
         }
       })(),
-      SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id),
+      SubscriptionResource.fetchActiveByWorkspaceModelId(
+        workspace.id,
+        transaction
+      ),
     ]);
 
     const providersHealth = await this.fetchByokProvidersHealth(
@@ -1118,13 +1191,22 @@ export class Authenticator {
    *
    * /!\ This function should only be used with Authenticators that are associated with a system key.
    *
+   * The exchanged authenticator is scoped down to a plain `user` role by default. An internal
+   * system-key caller that needs the impersonated user to keep their own role (e.g. the
+   * `run_agent` tool, so a sub-agent gated on `managers`/`admins` stays reachable) asks for it
+   * with the `X-Dust-Role` header; we then cap the requested role by the user's verified active
+   * membership, so the exchange can never grant more than the user actually has.
+   *
    * @param auth
    * @param param1
    * @returns
    */
   async exchangeSystemKeyForUserAuthByEmail(
     auth: Authenticator,
-    { userEmail }: { userEmail: string }
+    {
+      userEmail,
+      requestedRole,
+    }: { userEmail: string; requestedRole?: RoleType }
   ): Promise<Authenticator | null> {
     if (!auth.isSystemKey()) {
       logger.error(
@@ -1175,17 +1257,20 @@ export class Authenticator {
     }
 
     // Membership already verified above (activeMembership found).
-    const groupModelIds = await GroupResource.dangerouslyListUserGroupsForAuth({
-      user,
-      workspace: owner,
-    });
+    const { groupModelIds, globalGroupModelId } =
+      await GroupResource.dangerouslyListUserGroupsForAuth({
+        user,
+        workspace: owner,
+      });
 
     return new Authenticator({
       authMethod: auth.authMethod(),
       key: auth._key,
-      // We limit scope to a user role.
-      role: "user",
+      role: requestedRole
+        ? lowestRole(requestedRole, activeMembership.role)
+        : "user",
       groupModelIds,
+      globalGroupModelId,
       user,
       subscription: auth._subscription,
       workspace: auth._workspace,
@@ -1210,6 +1295,8 @@ export class Authenticator {
       providersHealth: this._providersHealth,
       // Role and groups are unchanged, so capabilities carry over unchanged.
       permissions: this._permissions,
+      isDustSuperUser: this._isDustSuperUser,
+      pokePrincipal: this._pokePrincipal,
     });
   }
 
@@ -1294,20 +1381,34 @@ export class Authenticator {
    * NOT confer access to a specific instance unless a grant grants it. Cheap for callers with no
    * groups (no query).
    */
-  static async resolvePermissions({
-    workspace,
-    groupModelIds,
-  }: {
-    workspace?: WorkspaceResource | null;
-    groupModelIds: ModelId[];
-  }): Promise<GroupPermissions> {
+  static async resolvePermissions(
+    // Groups or a system key, never both: a system key is attached to every group of its
+    // workspace, so its grants are the wildcard and reading them back would scan the workspace's
+    // whole `group_permissions` slice. A system key narrowed to a group subset must resolve from
+    // those groups, so the two inputs are mutually exclusive rather than a rule to remember.
+    params: { workspace?: WorkspaceResource | null } & (
+      | { groupModelIds: ModelId[]; systemKey?: never }
+      | { systemKey: SystemKey; groupModelIds?: never }
+    )
+  ): Promise<GroupPermissions> {
+    const { workspace } = params;
     if (!workspace) {
       return GroupPermissions.empty();
     }
 
+    if (params.systemKey) {
+      return GroupPermissions.fromGrants([
+        {
+          grantType: "*",
+          resourceType: "*",
+          resourceId: WHOLE_TYPE_RESOURCE_ID,
+        },
+      ]);
+    }
+
     const lightWorkspace = renderLightWorkspaceType({ workspace });
     const grants = await GroupPermissionResource.listForGroups(lightWorkspace, {
-      groupModelIds,
+      groupModelIds: params.groupModelIds,
     });
 
     return GroupPermissions.fromGrants(grants);
@@ -1378,6 +1479,14 @@ export class Authenticator {
     return subscription;
   }
 
+  getFeatureFlags(): Promise<WhitelistableFeature[]> {
+    return getFeatureFlagsForWorkspace(this.getNonNullableWorkspace());
+  }
+
+  async hasFeatureFlag(flag: WhitelistableFeature): Promise<boolean> {
+    return (await this.getFeatureFlags()).includes(flag);
+  }
+
   subscriptionResource(): SubscriptionResource | null {
     return this._subscription;
   }
@@ -1436,47 +1545,75 @@ export class Authenticator {
   }
 
   isDustSuperUser(): boolean {
-    if (!this._user) {
-      return false;
-    }
-
-    const { email, isDustSuperUser = false } = this._user;
-    const isDustInternal =
-      isDevelopment() || DUST_INTERNAL_EMAIL_REGEXP.test(email);
-
-    return isDustInternal && isDustSuperUser;
+    return this._isDustSuperUser;
   }
 
-  groupIds(): string[] {
-    const workspaceId = this._workspace?.id;
-    // Group are always tied to a workspace, so we can't have a group without a workspace.
-    if (!workspaceId) {
-      return [];
+  /**
+   * Poke operator principal (email/name). Prefers the attached Dust user when
+   * present; otherwise the Cloudflare Access principal stashed at auth time.
+   */
+  getPokePrincipal(): PokePrincipal {
+    if (this._pokePrincipal) {
+      return this._pokePrincipal;
+    }
+    if (this._user) {
+      return { email: this._user.email, name: this._user.fullName() };
+    }
+    throw new Error("Unexpected poke authenticator without principal.");
+  }
+
+  /**
+   * User payload for poke UI / audit. Uses the real user when available;
+   * otherwise a non-persisted shape derived from Cloudflare Access claims.
+   */
+  toPokeUserJSON(): UserType {
+    if (this._user) {
+      return this._user.toJSON();
     }
 
-    return this._groupModelIds.map((id) =>
-      GroupResource.modelIdToSId({ id, workspaceId })
-    );
+    const principal = this.getPokePrincipal();
+    const displayName =
+      principal.name?.trim() || principal.email.split("@")[0] || "poke";
+    const [firstName, ...rest] = displayName.split(/\s+/);
+
+    return {
+      sId: `poke_${principal.email}`,
+      id: 0,
+      createdAt: 0,
+      provider: null,
+      username: principal.email.split("@")[0] || "poke",
+      email: principal.email,
+      firstName: firstName || "poke",
+      lastName: rest.length > 0 ? rest.join(" ") : null,
+      fullName: displayName,
+      image: null,
+      lastLoginAt: null,
+    };
   }
 
   groupModelIds(): ModelId[] {
     return this._groupModelIds;
   }
 
-  hasGroup(groupId: string): boolean {
-    const workspaceId = this._workspace?.id;
-    // Group are always tied to a workspace, so we can't have a group without a workspace.
-    if (!workspaceId) {
-      return false;
+  // The workspace global group's model id, used by openness checks (see
+  // `SpaceResource.listOpenSpaceModelIds`). Resolved once by the factory from the caller's group
+  // fetch and cached on the instance; falls back to a lazy query for auths that did not provide it
+  // (e.g. system/internal auths). Returns null for a non-member or an auth with no workspace — a
+  // workspace always has a global group, so null is about this auth, not a missing group.
+  async getGlobalGroupModelId(): Promise<ModelId | null> {
+    if (this._globalGroupModelId !== undefined) {
+      return this._globalGroupModelId;
+    }
+    if (!this._workspace) {
+      this._globalGroupModelId = null;
+      return null;
     }
 
-    return this._groupModelIds.some(
-      (id) =>
-        GroupResource.modelIdToSId({
-          id,
-          workspaceId,
-        }) === groupId
-    );
+    const globalGroupRes = await GroupResource.fetchWorkspaceGlobalGroup(this);
+    this._globalGroupModelId = globalGroupRes.isOk()
+      ? globalGroupRes.value.id
+      : null;
+    return this._globalGroupModelId;
   }
 
   hasGroupByModelId(groupId: ModelId): boolean {
@@ -1497,62 +1634,26 @@ export class Authenticator {
   }
 
   /**
-   * Shadow-compare (#9479) for the group_permissions rollout: while the `group_permissions_shadow`
-   * flag is on for the workspace, compare two composed decisions for the same check — the served
-   * `legacyAcls` and the `candidateAcls` (the same roles routed through the group_permissions
-   * table) — and log mismatches so a Datadog monitor can confirm parity before the flip (#9480).
-   * The caller builds both shapes. Fire-and-forget: never changes the served result and swallows its
-   * own failures. (Inlined rather than reusing `lib/api/permissions/shadow` to avoid an auth <->
-   * shadow import cycle.)
+   * The instances of `resourceType` the caller may `verb`, resolved from their governance grants.
+   * The enumeration counterpart of `getGrantedVerbs` — "which resources may I act on" rather than
+   * "what may I do on this one" — for reverse lookups such as the projects a caller belongs to.
+   * Returns `{ kind: "all" }` when a type-wide grant confers the verb on every instance, which a
+   * system key holds on every type (see `resolvePermissions`).
    */
-  shadowComparePermission(
-    verb: GrantVerb,
-    legacyAcls: AccessControlList[],
-    candidateAcls: AccessControlList[],
-    context: Record<string, string | number | boolean | null>
-  ): void {
-    void this.runShadowComparePermission(
-      verb,
-      legacyAcls,
-      candidateAcls,
-      context
-    );
+  getResourceIdsWithVerb(
+    resourceType: ConcreteResourceType,
+    verb: GrantVerb
+  ): ResourcesWithVerb {
+    return this._permissions.resourceIdsWithVerb(resourceType, verb);
   }
 
-  private async runShadowComparePermission(
-    verb: GrantVerb,
-    legacyAcls: AccessControlList[],
-    candidateAcls: AccessControlList[],
-    context: Record<string, string | number | boolean | null>
-  ): Promise<void> {
-    try {
-      const flags = await getFeatureFlags(this);
-      if (!flags.includes("group_permissions_shadow")) {
-        return;
-      }
-
-      const legacyResult = this.hasPermissionForAcls(verb, legacyAcls);
-      const candidateResult = this.hasPermissionForAcls(verb, candidateAcls);
-
-      // The literal message is the Datadog monitor key — keep it stable.
-      if (legacyResult !== candidateResult) {
-        logger.warn(
-          {
-            ...context,
-            legacyResult,
-            candidateResult,
-            legacyAcls,
-            candidateAcls,
-          },
-          "group_permissions_shadow_mismatch"
-        );
-      }
-    } catch (err) {
-      logger.error(
-        { ...context, err: normalizeError(err) },
-        "group_permissions_shadow_error"
-      );
-    }
+  /**
+   * @cc [owner:aubin-tchoi,label:security;performance] readable-spaces-from-permissions
+   * Returns the readable space model IDs from the current permission snapshot without fetching;
+   * a type-wide read grant returns `{ kind: "all" }` because it contains no enumerable ID list.
+   */
+  getReadableSpaceModelIds(): ResourcesWithVerb {
+    return this.getResourceIdsWithVerb("space", "read");
   }
 
   /**
@@ -1562,6 +1663,10 @@ export class Authenticator {
    */
   hasPermission(verb: GrantVerb, target: WithAccessControl): boolean {
     return this.hasPermissionForAcls(verb, target.getAccessControlLists(this));
+  }
+
+  can(verb: GrantVerb, target: WithAccessControl): boolean {
+    return this.hasPermission(verb, target);
   }
 
   /**
@@ -1628,6 +1733,24 @@ export class Authenticator {
     return this._attributionKey?.id ?? null;
   }
 
+  // The key that usage is charged to: the attribution key when an internal
+  // system-key flow forwarded one (run_agent sub-agents, agent_router,
+  // run_dust_app), the request's own key otherwise. Distinct from
+  // `attributionKey()`, which exposes only the forwarded reference and is null
+  // on a direct call.
+  /**
+   * @cc [owner:fabiencelier,label:product;performance] one-usage-key-identity
+   * Every per-API-key spend-cap read, gate and increment, every persisted usage attribution, and
+   * every api-key field on an observability trace MUST resolve the key through this method.
+   * Authorization checks are the exception and MUST keep using `key()`.
+   */
+  keyForUsageAttribution(): { id: ModelId; name: string } | null {
+    if (this._attributionKey) {
+      return this._attributionKey;
+    }
+    return this._key ? { id: this._key.id, name: this._key.name } : null;
+  }
+
   // Returns a copy of this authenticator carrying an attribution-only key
   // reference. Used to attribute usage to the original caller's key when an
   // internal flow re-authenticates with the workspace system key (e.g. run_agent
@@ -1650,6 +1773,8 @@ export class Authenticator {
       providersHealth: this._providersHealth,
       // Attribution-only copy: role and groups are unchanged, so capabilities carry over unchanged.
       permissions: this._permissions,
+      isDustSuperUser: this._isDustSuperUser,
+      pokePrincipal: this._pokePrincipal,
     });
   }
 
@@ -1662,13 +1787,16 @@ export class Authenticator {
       workspaceId: workspace.sId,
       userId: this._user?.sId ?? null,
       role: this._role,
-      groupIds: this.groupIds(),
+      groupIds: this._groupModelIds.map((id) =>
+        GroupResource.modelIdToSId({ id, workspaceId: workspace.id })
+      ),
       subscriptionId: this._subscription?.sId ?? null,
       isByok: this.plan()?.isByok ?? false,
       key: this._key,
       attributionKey: this._attributionKey,
       clientIp: this._clientIp,
       permissions: this._permissions.toJSON(),
+      globalGroupModelId: this._globalGroupModelId,
     };
   }
 
@@ -1722,6 +1850,7 @@ export class Authenticator {
       attributionKey: authType.attributionKey,
       providersHealth,
       clientIp: authType.clientIp,
+      globalGroupModelId: authType.globalGroupModelId,
       permissions: authType.permissions
         ? GroupPermissions.fromJSON(authType.permissions)
         : // Payloads serialized before governance grants existed (in-flight Temporal workflows
@@ -2037,6 +2166,12 @@ export function getApiKeyNameFromHeaders(headers: {
   return undefined;
 }
 
+/**
+ * @cc [owner:fabiencelier,label:product] forwarded-key-name-prefers-attribution
+ * When `auth` carries an attribution key, the forwarded `x-dust-api-key-name` MUST be that key's
+ * name rather than `auth.key()`'s, so the originating key's name survives nested internal
+ * system-key calls. With neither an attribution key nor a request key, no header is returned.
+ */
 export function getApiKeyNameHeader(auth: Authenticator) {
   // Prefer the attribution key name over the request's own key so the original
   // caller's key name propagates transitively through nested internal system-key

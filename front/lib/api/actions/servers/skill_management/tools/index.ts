@@ -5,12 +5,14 @@ import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definitio
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import { SKILL_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { makeEnableSkillResultOutput } from "@app/lib/api/actions/servers/skill_management/rendering";
-import { loadSkillFilesToConversation } from "@app/lib/api/skills/conversation_files";
+import { upsertSkillFilesToConversation } from "@app/lib/api/skills/conversation_files";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { extractUniqueSkillIds } from "@app/lib/skills/format";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { isUserMessageType } from "@app/types/assistant/conversation";
+import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 
@@ -37,6 +39,21 @@ function extractSkillIdsFromConversationMessages(
   }
 
   return [...userMessageSkillIds];
+}
+
+async function mountSkillFilesToConversation(
+  auth: Authenticator,
+  skill: SkillResource,
+  conversation: ConversationWithoutContentType
+): Promise<Result<{ loadedPaths: string[] }, Error>> {
+  if (!skill.hasFiles()) {
+    return new Ok({ loadedPaths: [] });
+  }
+
+  return upsertSkillFilesToConversation(auth, {
+    skill,
+    conversation,
+  });
 }
 
 async function findAvailableSkillForAgentLoop({
@@ -139,42 +156,45 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       );
     }
 
+    // Mount the skill's files before persisting the enablement: persisting it first would let a
+    // failed mount still leave the skill looking "enabled".
+    const mountResult = await mountSkillFilesToConversation(
+      auth,
+      skill,
+      conversation
+    );
+
+    if (mountResult.isErr()) {
+      // Returns a failure, not a successful enablement with a warning. A retried enable_skill call
+      // will attempt the mount again since it is idempotent.
+      return new Err(
+        new MCPError(
+          `Failed to mount files for skill "${skill.name}": ${mountResult.error.message}`
+        )
+      );
+    }
+
     const { wasAlreadyEnabled } = await skill.enableForAgent(auth, {
       agentConfiguration,
       conversation,
     });
 
-    if (wasAlreadyEnabled) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: `Skill "${skill.name}" was already enabled. No action taken.`,
-        },
-      ]);
-    }
+    const { loadedPaths } = mountResult.value;
+    const loadedFilesList = loadedPaths.map((p) => `  - ${p}`).join("\n");
 
-    // Copy the skill's files into the conversation file system so they are visible to both the
-    // files tools and the sandbox (when one exists). Covers both custom-skill attachments and
-    // code-defined skill files.
-    let fileMessage: string | null = null;
-    if (skill.hasFiles()) {
-      const fileLoadResult = await loadSkillFilesToConversation(auth, {
-        skill,
-        conversation,
-      });
-
-      if (fileLoadResult.isOk()) {
-        fileMessage =
-          "Skill files successfully loaded:\n" +
-          fileLoadResult.value.loadedPaths.map((p) => `  - ${p}`).join("\n");
-      } else {
-        fileMessage = `Failed to load skill files: ${fileLoadResult.error.message}`;
+    let text: string;
+    if (!wasAlreadyEnabled) {
+      text = `Skill "${skill.name}" has been enabled.`;
+      if (loadedPaths.length > 0) {
+        text += `\n\nSkill files successfully loaded:\n${loadedFilesList}`;
       }
+    } else if (loadedPaths.length > 0) {
+      text =
+        `Skill "${skill.name}" was already enabled, but some files were missing and ` +
+        `have been additionally loaded:\n\n${loadedFilesList}`;
+    } else {
+      text = `Skill "${skill.name}" was already enabled.`;
     }
-
-    const text =
-      `Skill "${skill.name}" has been enabled.` +
-      (fileMessage ? `\n\n${fileMessage}` : "");
 
     return new Ok([makeEnableSkillResultOutput({ skillId: skill.sId, text })]);
   },

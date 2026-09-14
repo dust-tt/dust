@@ -57,6 +57,16 @@ def test_pdf_stale_when_missing():
         assert R._pdf_is_fresh(Path(d) / "nope.pdf", str(src)) is False
 
 
+def test_cache_dir_separates_two_decks_that_share_a_basename():
+    """A QA pass that reads the wrong deck's PDF reports it as clean."""
+    assert R.cache_dir_name("/a/deck.pptx") != R.cache_dir_name("/b/deck.pptx")
+
+
+def test_cache_dir_is_stable_and_keeps_the_readable_name():
+    assert R.cache_dir_name("/a/deck.pptx") == R.cache_dir_name("/a/deck.pptx")
+    assert R.cache_dir_name("/a/deck.pptx").startswith("deck-")
+
+
 if __name__ == "__main__":
     tests = [v for k, v in sorted(globals().items())
              if k.startswith("test_") and callable(v)]

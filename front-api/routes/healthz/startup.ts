@@ -1,6 +1,6 @@
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { createHono } from "@front-api/lib/hono";
@@ -72,9 +72,12 @@ app.get("/", async (ctx) => {
       "Startup probe succeeded - dependencies connected"
     );
 
-    getStatsDClient().distribution("healthz.startup.duration_ms", durationMs, [
-      "status:success",
-    ]);
+    statsDMetrics.distribution(
+      "healthz.startup.duration_ms",
+      durationMs,
+      ["status:success"],
+      { includeHostTag: true }
+    );
 
     return ctx.json(
       { status: "ready", durationMs, dependencies: results },
@@ -87,9 +90,12 @@ app.get("/", async (ctx) => {
     `Startup probe failed - ${failed.map((r) => r.name).join(", ")} not ready`
   );
 
-  getStatsDClient().distribution("healthz.startup.duration_ms", durationMs, [
-    "status:failure",
-  ]);
+  statsDMetrics.distribution(
+    "healthz.startup.duration_ms",
+    durationMs,
+    ["status:failure"],
+    { includeHostTag: true }
+  );
 
   return ctx.json(
     { status: "not ready", durationMs, dependencies: results },

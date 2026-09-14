@@ -69,6 +69,7 @@ describe("/api/w/[wId]/credits/usage-configuration", () => {
     const { configuration } = await response.json();
     expect(configuration.allowMemberUpgradeRequests).toBe(true);
     expect(configuration.upgradeRequestEmailEnabled).toBe(true);
+    expect(configuration.requireUpgradeRequestReason).toBe(false);
     expect(configuration.autoSeatUpgradeEnabled).toBe(false);
     // The default mock workspace is on a free (non-Metronome) plan, so
     // auto-upgrade is not available — the UI disables the toggle.
@@ -112,6 +113,38 @@ describe("/api/w/[wId]/credits/usage-configuration", () => {
     const getBody = await getResponse.json();
     expect(getBody.configuration.allowMemberUpgradeRequests).toBe(false);
     expect(getBody.configuration.upgradeRequestEmailEnabled).toBe(false);
+  });
+
+  it("PATCH persists requireUpgradeRequestReason and GET reflects it", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "PATCH",
+      role: "admin",
+    });
+
+    const patchResponse = await honoApp.request(
+      usageConfigurationUrl(workspace.sId),
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requireUpgradeRequestReason: true }),
+      }
+    );
+
+    expect(patchResponse.status).toBe(200);
+    const { configuration } = await patchResponse.json();
+    expect(configuration.requireUpgradeRequestReason).toBe(true);
+
+    await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+      workspace,
+    });
+
+    const getResponse = await honoApp.request(
+      usageConfigurationUrl(workspace.sId)
+    );
+    const getBody = await getResponse.json();
+    expect(getBody.configuration.requireUpgradeRequestReason).toBe(true);
   });
 
   it("PATCH persists autoSeatUpgradeEnabled and GET reflects it", async () => {

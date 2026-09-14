@@ -94,12 +94,13 @@ describe("sandbox image registry", () => {
   test("pins the current dust-base and sbx bedrock image tags", () => {
     expect(getDustBaseImage().imageId).toEqual({
       imageName: "dust-base",
-      tag: "0.8.84",
+      tag: "0.8.107",
     });
     expect(getDustBaseImage().baseImage).toEqual({
       type: "docker",
       imageRef: "dust-sbx-bedrock:1.11.0",
     });
+    expect(getDustBaseImage().hasCapability("dust_filesystem")).toBe(true);
   });
 
   test("loads Fluent Bit credentials from a root-only runtime file", () => {
@@ -483,7 +484,7 @@ describe("sandbox image registry", () => {
     expect(runCommands).toEqual(
       expect.arrayContaining([
         expect.stringContaining(
-          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.50/dsbx-linux-x86_64"
+          "https://github.com/dust-tt/dust/releases/download/dsbx-v0.1.57/dsbx-linux-x86_64"
         ),
         expect.stringContaining(
           "chown root:root /opt/bin/dsbx && chmod 755 /opt/bin/dsbx"
@@ -562,14 +563,20 @@ describe("sandbox image registry", () => {
         expect.stringContaining(
           "useradd --system --no-create-home --gid dust-state --groups agent --shell /usr/sbin/nologin dust-state"
         ),
-        expect.stringContaining("install -d -o root -g root -m 755 /pod-state"),
         expect.stringContaining(
-          "install -d -o dust-state -g agent -m 2770 /pod-state/databases"
+          "install -d -o root -g root -m 755 /sandbox-state"
         ),
-        expect.stringContaining("setfacl -R -d -m g::rwx /pod-state/databases"),
-        expect.stringContaining("setfacl -R -m g::rwx /pod-state/databases"),
         expect.stringContaining(
-          "install -d -o dust-state -g dust-state -m 700 /pod-state/replica"
+          "install -d -o dust-state -g agent -m 2770 /sandbox-state/databases"
+        ),
+        expect.stringContaining(
+          "setfacl -R -d -m g::rwx /sandbox-state/databases"
+        ),
+        expect.stringContaining(
+          "setfacl -R -m g::rwx /sandbox-state/databases"
+        ),
+        expect.stringContaining(
+          "install -d -o dust-state -g dust-state -m 700 /sandbox-state/replica"
         ),
       ])
     );
@@ -598,7 +605,7 @@ describe("sandbox image registry", () => {
     expect(litestreamUnit).toContain("RuntimeDirectory=litestream");
     expect(litestreamUnit).toContain("NoNewPrivileges=yes");
     expect(litestreamUnit).toContain("ProtectSystem=strict");
-    expect(litestreamUnit).toContain("ReadWritePaths=/pod-state");
+    expect(litestreamUnit).toContain("ReadWritePaths=/sandbox-state");
     expect(litestreamUnit).toContain("RestrictAddressFamilies=AF_UNIX");
     expect(litestreamUnit).toContain("MemoryDenyWriteExecute=yes");
 
@@ -633,11 +640,11 @@ describe("sandbox image registry", () => {
 
     // Directory watcher: post-cold-start databases are discovered
     // automatically; the replica subdir is named by db FILENAME ({db}.db).
-    expect(litestreamConfig).toContain("dir: /pod-state/databases");
+    expect(litestreamConfig).toContain("dir: /sandbox-state/databases");
     expect(litestreamConfig).toContain('pattern: "*.db"');
     expect(litestreamConfig).toContain("watch: true");
     expect(litestreamConfig).toContain("type: file");
-    expect(litestreamConfig).toContain("path: /pod-state/replica");
+    expect(litestreamConfig).toContain("path: /sandbox-state/replica");
   });
 
   test("pins drizzle packages and vendors @dust/pod", () => {
@@ -672,7 +679,7 @@ describe("sandbox image registry", () => {
         expect.objectContaining({ name: "drizzle-orm", version: "0.45.2" }),
         expect.objectContaining({ name: "drizzle-kit", version: "0.31.10" }),
         expect.objectContaining({ name: "@libsql/client", version: "0.17.4" }),
-        expect.objectContaining({ name: "@dust/pod", version: "0.2.0" }),
+        expect.objectContaining({ name: "@dust/pod", version: "0.3.2" }),
       ])
     );
   });

@@ -46,7 +46,7 @@ app.post(
     const pluginRun = await PluginRunResource.makeNew(
       plugin,
       rawBody,
-      auth.getNonNullableUser(),
+      auth.getPokePrincipal().email,
       owner,
       { resourceId: owner.sId, resourceType: "workspaces" }
     );

@@ -53,7 +53,7 @@ import type {
   TagsFilterMode,
 } from "@app/types/data_source_view";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType } from "@app/types/space";
 import {
   createContext,
   useCallback,
@@ -116,7 +116,7 @@ type DataSourceBuilderState = StateType & {
   /**
    * Add the current selected space
    */
-  setSpaceEntry: (space: SpaceType) => void;
+  setSpaceEntry: (space: EnrichedSpaceType) => void;
 
   /**
    * Set the current selected category in the navigation
@@ -149,7 +149,7 @@ type DataSourceBuilderState = StateType & {
 type ActionType =
   | {
       type: "NAVIGATION_SET_SPACE";
-      payload: { space: SpaceType };
+      payload: { space: EnrichedSpaceType };
     }
   | {
       type: "NAVIGATION_SET_CATEGORY";

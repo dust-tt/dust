@@ -1,6 +1,8 @@
 import { CONVERSATIONS_RETENTION_MIN_DAYS } from "@app/lib/conversations_retention";
+import { EMPTY_PLAN_LIMIT_OVERRIDE } from "@app/lib/plans/plan_limit_overrides";
 import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 import { getNamespace } from "@app/tests/utils/test_cls";
+import type { Result } from "@app/types/shared/result";
 import type { Transaction } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -18,10 +20,13 @@ vi.mock("@app/lib/utils/cache", () => ({
       options?: {
         cacheId?: string;
         cacheNullValues?: boolean;
-        readFromKeyFirst?: {
-          cacheId: string;
-          resolver: (...args: Args) => string;
-          mirrorToCanonicalOnHit?: boolean;
+        migration?: {
+          previousKey: {
+            cacheId: string;
+            resolver: (...args: Args) => string;
+          };
+          readFrom: "previous" | "new";
+          copyToOtherKey: "after_load" | "after_read";
         };
       }
     ) => {
@@ -29,14 +34,23 @@ vi.mock("@app/lib/utils/cache", () => ({
         if (cacheReadFailure.current) {
           throw cacheReadFailure.current;
         }
-        const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
-        const readKey = options?.readFromKeyFirst
-          ? `cacheWithRedis-${options.readFromKeyFirst.cacheId}-${options.readFromKeyFirst.resolver(...args)}`
-          : key;
+        const newKey = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
+        const previousKey = options?.migration
+          ? `cacheWithRedis-${options.migration.previousKey.cacheId}-${options.migration.previousKey.resolver(...args)}`
+          : null;
+        const readKey =
+          options?.migration?.readFrom === "previous" && previousKey
+            ? previousKey
+            : newKey;
+        const otherKey = previousKey
+          ? readKey === newKey
+            ? previousKey
+            : newKey
+          : null;
         const cached = inMemoryCache.get(readKey);
         if (cached) {
-          if (options?.readFromKeyFirst?.mirrorToCanonicalOnHit !== false) {
-            inMemoryCache.set(key, cached);
+          if (otherKey && options?.migration?.copyToOtherKey === "after_read") {
+            inMemoryCache.set(otherKey, cached);
           }
           return JSON.parse(cached) as JsonSerializable<T>;
         }
@@ -44,32 +58,49 @@ vi.mock("@app/lib/utils/cache", () => ({
         if ((options?.cacheNullValues ?? true) || result !== null) {
           const serializedResult = JSON.stringify(result);
           inMemoryCache.set(readKey, serializedResult);
-          inMemoryCache.set(key, serializedResult);
+          if (otherKey) {
+            inMemoryCache.set(otherKey, serializedResult);
+          }
         }
         return result;
       };
     }
   ),
+  cacheWithRedisResult: vi
+    .fn()
+    .mockImplementation(
+      <T, E, Args extends unknown[]>(
+        fn: (...args: Args) => Promise<Result<JsonSerializable<T>, E>>
+      ) => {
+        return async (
+          ...args: Args
+        ): Promise<Result<JsonSerializable<T>, E>> => {
+          return fn(...args);
+        };
+      }
+    ),
   invalidateCacheWithRedis: vi.fn().mockImplementation(
     <T, Args extends unknown[]>(
       fn: CacheableFunction<JsonSerializable<T>, Args>,
       resolver: (...args: Args) => string,
       options?: {
         cacheId?: string;
-        readFromKeyFirst?: {
-          cacheId: string;
-          resolver: (...args: Args) => string;
+        migration?: {
+          previousKey: {
+            cacheId: string;
+            resolver: (...args: Args) => string;
+          };
         };
       }
     ) => {
       return (...args: Args): Promise<void> => {
-        const key = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
-        inMemoryCache.delete(key);
-        deletedKeys.push(key);
-        if (options?.readFromKeyFirst) {
-          const readKey = `cacheWithRedis-${options.readFromKeyFirst.cacheId}-${options.readFromKeyFirst.resolver(...args)}`;
-          inMemoryCache.delete(readKey);
-          deletedKeys.push(readKey);
+        const newKey = `cacheWithRedis-${options?.cacheId ?? fn.name}-${resolver(...args)}`;
+        inMemoryCache.delete(newKey);
+        deletedKeys.push(newKey);
+        if (options?.migration) {
+          const previousKey = `cacheWithRedis-${options.migration.previousKey.cacheId}-${options.migration.previousKey.resolver(...args)}`;
+          inMemoryCache.delete(previousKey);
+          deletedKeys.push(previousKey);
         }
         return Promise.resolve();
       };
@@ -132,6 +163,7 @@ vi.mock("@app/lib/resources/kill_switch_resource", () => ({
   },
 }));
 
+import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types/user";
@@ -246,6 +278,58 @@ describe("WorkspaceResource", () => {
           "openai",
           "anthropic",
         ]);
+      });
+
+      // A v3 snapshot exactly as the previous deploy wrote it. Guards two things: entries written
+      // before a deploy must keep parsing (the cache has no TTL), and the fixture's key set must
+      // match the model's attributes. When the keys assertion fails, the model changed shape and
+      // WORKSPACE_CACHE_KEY_VERSION must be bumped along with this fixture.
+      it("parses snapshots written by the previous deploy", async () => {
+        const v3Snapshot = {
+          id: 987654321,
+          sId: "ws_fixture_v3",
+          name: "fixture-workspace",
+          description: null,
+          segmentation: null,
+          ssoEnforced: false,
+          regionalModelsOnly: false,
+          workOSOrganizationId: null,
+          whiteListedProviders: ["openai", "anthropic"],
+          defaultEmbeddingProvider: null,
+          metadata: { fixtureKey: "fixtureValue" },
+          sharingPolicy: "all_scopes",
+          conversationsRetentionDays: null,
+          metronomeCustomerId: null,
+          poolCreditState: "active",
+          createdAt: 1755000000000,
+          updatedAt: 1755000000000,
+        };
+        inMemoryCache.set(
+          getCacheKeyForWorkspace(v3Snapshot.sId),
+          JSON.stringify(v3Snapshot)
+        );
+
+        const resource = await WorkspaceResource.fetchById(v3Snapshot.sId);
+
+        expect(Object.keys(v3Snapshot).sort()).toEqual(
+          Object.keys(WorkspaceModel.getAttributes()).sort()
+        );
+        expect(resource?.name).toBe("fixture-workspace");
+        expect(resource?.whiteListedProviders).toEqual(["openai", "anthropic"]);
+        expect(resource?.metadata).toEqual({ fixtureKey: "fixtureValue" });
+        expect(resource?.createdAt).toEqual(new Date(1755000000000));
+        expect(resource?.updatedAt).toEqual(new Date(1755000000000));
+      });
+
+      it("serves the same attributes from the cache as from the database", async () => {
+        await WorkspaceResource.fetchById(workspace.sId);
+
+        const cachedFetch = await WorkspaceResource.fetchById(workspace.sId);
+        const [databaseFetch] = await WorkspaceResource.fetchByIds([
+          workspace.sId,
+        ]);
+
+        expect(cachedFetch?.blob).toEqual(databaseFetch?.blob);
       });
     });
 
@@ -693,6 +777,151 @@ describe("WorkspaceResource", () => {
       expect(result).not.toContain("openai");
       expect(result).toContain("anthropic");
       expect(result).toContain("mistral");
+    });
+
+    it("applies provider kill switches on uncached fetch paths", async () => {
+      workspace = await WorkspaceFactory.basic({
+        whiteListedProviders: ["openai", "anthropic"],
+      });
+      listEnabledKillSwitches.mockResolvedValue(["global_blacklist_openai"]);
+
+      const [resource] = await WorkspaceResource.fetchByIds([workspace.sId]);
+
+      expect(resource?.whiteListedProviders).toEqual(["anthropic"]);
+    });
+  });
+
+  describe("plan limit overrides", () => {
+    it("returns null when the workspace has no override", async () => {
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverride(workspace.id)
+      ).resolves.toBeNull();
+    });
+
+    it("upserts, then fetches the override", async () => {
+      const result = await WorkspaceResource.upsertPlanLimitOverride(
+        workspace.id,
+        {
+          ...EMPTY_PLAN_LIMIT_OVERRIDE,
+          maxUsersInWorkspace: 42,
+          maxVaultsInWorkspace: -1,
+        }
+      );
+      expect(result.isOk()).toBe(true);
+
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverride(workspace.id)
+      ).resolves.toEqual({
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxUsersInWorkspace: 42,
+        maxVaultsInWorkspace: -1,
+      });
+    });
+
+    it("replaces the existing override on a second upsert", async () => {
+      await WorkspaceResource.upsertPlanLimitOverride(workspace.id, {
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxUsersInWorkspace: 42,
+      });
+      await WorkspaceResource.upsertPlanLimitOverride(workspace.id, {
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxDataSourcesCount: 7,
+      });
+
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverride(workspace.id)
+      ).resolves.toEqual({
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxDataSourcesCount: 7,
+      });
+    });
+
+    it("deletes the row when no override remains", async () => {
+      await WorkspaceResource.upsertPlanLimitOverride(workspace.id, {
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxUsersInWorkspace: 42,
+      });
+
+      const result = await WorkspaceResource.upsertPlanLimitOverride(
+        workspace.id,
+        EMPTY_PLAN_LIMIT_OVERRIDE
+      );
+      expect(result.isOk()).toBe(true);
+
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverride(workspace.id)
+      ).resolves.toBeNull();
+    });
+
+    it("rejects a limit below -1 and a non-integer limit", async () => {
+      const belowUnlimited = await WorkspaceResource.upsertPlanLimitOverride(
+        workspace.id,
+        { ...EMPTY_PLAN_LIMIT_OVERRIDE, maxUsersInWorkspace: -2 }
+      );
+      expect(belowUnlimited.isErr()).toBe(true);
+
+      const nonInteger = await WorkspaceResource.upsertPlanLimitOverride(
+        workspace.id,
+        { ...EMPTY_PLAN_LIMIT_OVERRIDE, maxUsersInWorkspace: 1.5 }
+      );
+      expect(nonInteger.isErr()).toBe(true);
+
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverride(workspace.id)
+      ).resolves.toBeNull();
+    });
+
+    it("fetches overrides for several workspaces at once, skipping those without any", async () => {
+      const otherWorkspace = await WorkspaceFactory.basic();
+      const workspaceWithoutOverride = await WorkspaceFactory.basic();
+
+      await WorkspaceResource.upsertPlanLimitOverride(workspace.id, {
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxUsersInWorkspace: 42,
+      });
+      await WorkspaceResource.upsertPlanLimitOverride(otherWorkspace.id, {
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxConnectionsCount: 3,
+      });
+
+      const overrides =
+        await WorkspaceResource.fetchPlanLimitOverridesByWorkspaceModelIds([
+          workspace.id,
+          otherWorkspace.id,
+          workspaceWithoutOverride.id,
+        ]);
+
+      expect(overrides.size).toBe(2);
+      expect(overrides.get(workspace.id)).toEqual({
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxUsersInWorkspace: 42,
+      });
+      expect(overrides.get(otherWorkspace.id)).toEqual({
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxConnectionsCount: 3,
+      });
+      expect(overrides.has(workspaceWithoutOverride.id)).toBe(false);
+    });
+
+    it("returns an empty map when no workspace model id is requested", async () => {
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverridesByWorkspaceModelIds([])
+      ).resolves.toEqual(new Map());
+    });
+
+    it("deletes all overrides for a workspace", async () => {
+      await WorkspaceResource.upsertPlanLimitOverride(workspace.id, {
+        ...EMPTY_PLAN_LIMIT_OVERRIDE,
+        maxUsersInWorkspace: 42,
+      });
+
+      await WorkspaceResource.deleteAllPlanLimitOverridesForWorkspace(
+        workspace.id
+      );
+
+      await expect(
+        WorkspaceResource.fetchPlanLimitOverride(workspace.id)
+      ).resolves.toBeNull();
     });
   });
 });

@@ -39,6 +39,14 @@ Only roots named in the signed sandbox token are returned. A sandbox can have a
 conversation root, a Pod root, or both. The current product flow rejects a mix
 of legacy GCS roots and database roots in the same filesystem.
 
+`conversation` and `pod` are real symbolic links that the daemon builds when it
+starts, and the database stores no symbolic link of its own. Each link keeps an
+inode number of its own, above every value a database row can take. Reporting
+the root's own inode under a second name would not give the root two names:
+Linux keeps one name per directory inode and would move the directory from one
+name to the other. Both links are read-only, so removing or renaming one fails
+with `EPERM`.
+
 ## PostgreSQL tables
 
 ### `file_system_nodes`
@@ -143,6 +151,26 @@ entries; local namespace mutations invalidate affected entries immediately.
 
 The sandbox never sends file bytes through Front.
 
+A save holds its open file until the upload finishes. A program that keeps
+writing to that file during the upload waits and then continues, which is what
+the same program would see on a local disk. `stat` on the file does not wait: it
+reports the size already staged for the next save.
+
+While a file is being written, its size and time come from the local staged
+copy, and Linux keeps that answer for a second. The save then gives the file the
+time Front recorded, and no reply carries that new time back. The daemon
+therefore tells Linux to drop what it holds for that file once a save
+completes. Without it, a program that reads a file it has just written sees the
+time change under it, and `tar` and `rsync` report that the file changed while
+they were reading it.
+
+Front gives every upload its own blob ID and commits it against the blob that
+was opened. If the reply to a commit is lost, the client sends the same commit
+again, and Front answers that the blob it was given is out of date. The daemon
+then reads the file back: a file already holding the blob it just uploaded
+proves that this commit is its own, so the write succeeded. Any other blob means
+another sandbox wrote first and stays an error.
+
 The mount negotiates atomic `O_TRUNC`, so opening an existing file with `>`
 truncates its staged write handle instead of first committing a separate empty
 revision. Shells often duplicate that handle and trigger an early `flush`; an
@@ -196,9 +224,9 @@ unmanaged or dead process.
 - `src/commands/filesystem/fuse.rs`: mount state and open handles.
 - `src/commands/filesystem/fuse/handles.rs`: file handles and directory snapshots.
 - `src/commands/filesystem/fuse/linux.rs`: Linux flags, attributes, and error replies.
-- `src/commands/filesystem/fuse/remote.rs`: separate queues for reads, content,
-  name changes, local syncs, and final close.
 - `src/commands/filesystem/fuse/operations.rs`: Linux FUSE calls.
+- `src/commands/filesystem/remote.rs`: separate queues for reads, content,
+  name changes, local syncs, and final close.
 - `src/commands/filesystem/store.rs`: local staged files and node/blob cache.
 - `src/commands/filesystem/client.rs`: scoped Front calls and signed GCS
   transfers.
@@ -237,8 +265,25 @@ the same mode.
 - Product `FileResource` and Frame attachment are not part of this milestone.
   They can later point to a stable node ID.
 - User-created symlinks, hard links, special files, extended attributes, and
-  advisory locks are not supported.
-- Only one writable open handle is allowed per node.
+  advisory locks are not supported. The only symbolic links are the two
+  read-only `conversation` and `pod` links at the top of the mount.
+- Only one writable open handle is allowed per node. A second program opening
+  the same file for writing gets `EBUSY` while the first one holds it, so no
+  version is silently lost. Opening the file for reading stays allowed.
+- Dust records when a file's contents last changed and stores no time chosen by
+  the caller. Requests that set a time report success and change nothing, so
+  `tar -x`, `cp -p`, `rsync` and `touch` work while the times they ask for are
+  dropped.
+- Dust stores no owner, and every file reports the daemon's own user. Asking for
+  that same owner changes nothing and is accepted, which is what `tar -x` run by
+  root does on every file it writes. Asking for another owner is refused.
+- Only the executable bits can be changed. A `chmod` that alters the read or
+  write bits is refused, so unpacking an archive written on another filesystem
+  can still fail on its modes even though its times are accepted.
+- Each queue of Front work has a fixed waiting limit. A request that arrives
+  when its queue is full, or that waits more than five seconds for a slot, gets
+  `EAGAIN`. This only happens when the sandbox has far more filesystem work in
+  flight than Front can answer.
 - Linux sees files as `0666` plus the stored executable bits and directories as
   `0777`, matching the current gcsfuse mount. Other `chmod` changes are rejected.
   The signed token's roots—not Unix uid/gid bits—remain the sandbox authorization

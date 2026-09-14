@@ -1,3 +1,4 @@
+import { apiConfig } from "@connectors/lib/api/config";
 import {
   SlackBotWhitelistModel,
   SlackChannelModel,
@@ -15,10 +16,67 @@ import type {
   SlackbotWhitelistType,
   SlackConfigurationType,
 } from "@connectors/types";
-import { normalizeError } from "@connectors/types";
+import {
+  buildCacheWithRedisKey,
+  cacheWithRedisResult,
+  normalizeError,
+} from "@connectors/types";
+import { redisClient } from "@connectors/types/shared/redis_client";
 import type { ConnectorProvider, Result } from "@dust-tt/client";
-import { Err, Ok } from "@dust-tt/client";
+import { DustAPI, Err, Ok } from "@dust-tt/client";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+
+const AUTO_GROUP_IDS_CACHE_TTL_MS = 5 * 60 * 1000;
+
+async function fetchAutoGroupIdsForSpaces(
+  whitelistModelId: ModelId,
+  {
+    workspaceId,
+    workspaceAPIKey,
+    spaceIds,
+  }: { workspaceId: string; workspaceAPIKey: string; spaceIds: string[] }
+): Promise<Result<string[], Error>> {
+  const dustAPI = new DustAPI(
+    { url: apiConfig.getDustFrontAPIUrl() },
+    { workspaceId, apiKey: workspaceAPIKey },
+    logger
+  );
+
+  const groupIdsRes = await dustAPI.getAutoGroupIdsForSpaces({ spaceIds });
+  if (groupIdsRes.isErr()) {
+    return new Err(new Error(groupIdsRes.error.message));
+  }
+
+  return groupIdsRes;
+}
+
+const autoGroupIdsCacheKey = (whitelistModelId: ModelId) =>
+  `${whitelistModelId}`;
+
+const getAutoGroupIdsForSpaces = cacheWithRedisResult(
+  fetchAutoGroupIdsForSpaces,
+  autoGroupIdsCacheKey,
+  { ttlMs: AUTO_GROUP_IDS_CACHE_TTL_MS }
+);
+
+async function invalidateAutoGroupIdsForSpaces(
+  whitelistModelId: ModelId
+): Promise<void> {
+  const redis = await redisClient({ origin: "cache_with_redis" });
+
+  await redis.del(
+    buildCacheWithRedisKey(
+      fetchAutoGroupIdsForSpaces.name,
+      autoGroupIdsCacheKey(whitelistModelId)
+    )
+  );
+}
+
+export type WhitelistedBotType = {
+  botName: string;
+  spaceIds: string[];
+  createdAt: number;
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -176,7 +234,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
   async whitelistBot(
     botName: string,
-    groupIds: string[],
+    { spaceIds }: { spaceIds: string[] | null },
     whitelistType: SlackbotWhitelistType
   ): Promise<Result<undefined, Error>> {
     const existingBot = await SlackBotWhitelistModel.findOne({
@@ -189,15 +247,16 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
     if (existingBot) {
       await existingBot.update({
-        groupIds,
+        spaceIds,
         whitelistType,
       });
+      await invalidateAutoGroupIdsForSpaces(existingBot.id);
     } else {
       await SlackBotWhitelistModel.create({
         connectorId: this.connectorId,
         slackConfigurationId: this.id,
         botName,
-        groupIds,
+        spaceIds,
         whitelistType,
       });
     }
@@ -205,8 +264,48 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     return new Ok(undefined);
   }
 
-  // Get the Dust group IDs that the bot is whitelisted for.
-  async getBotGroupIds(botName: string): Promise<string[]> {
+  async listWhitelistedBots(
+    whitelistType: SlackbotWhitelistType
+  ): Promise<WhitelistedBotType[]> {
+    const bots = await SlackBotWhitelistModel.findAll({
+      where: {
+        connectorId: this.connectorId,
+        slackConfigurationId: this.id,
+        whitelistType,
+      },
+      order: [["botName", "ASC"]],
+    });
+
+    return bots.map((bot) => ({
+      botName: bot.botName,
+      spaceIds: bot.spaceIds ?? [],
+      createdAt: bot.createdAt.getTime(),
+    }));
+  }
+
+  async removeWhitelistedBot(
+    botName: string,
+    whitelistType: SlackbotWhitelistType
+  ): Promise<number> {
+    return SlackBotWhitelistModel.destroy({
+      where: {
+        connectorId: this.connectorId,
+        slackConfigurationId: this.id,
+        botName,
+        whitelistType,
+      },
+    });
+  }
+
+  // A whitelisted workflow reaches the spaces it was allowed on. Front owns which group stands for
+  // a space, so ask it at run time instead of keeping group ids here.
+  async getBotWhitelistedGroupIds(
+    botName: string,
+    {
+      workspaceId,
+      workspaceAPIKey,
+    }: { workspaceId: string; workspaceAPIKey: string }
+  ): Promise<Result<string[], Error>> {
     const bot = await SlackBotWhitelistModel.findOne({
       where: {
         connectorId: this.connectorId,
@@ -215,7 +314,21 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       },
     });
 
-    return bot ? bot.groupIds : [];
+    if (!bot) {
+      return new Err(new Error(`Workflow "${botName}" is not whitelisted.`));
+    }
+
+    if (!bot.spaceIds?.length) {
+      return new Err(
+        new Error(`Workflow "${botName}" is allowed on no space.`)
+      );
+    }
+
+    return getAutoGroupIdsForSpaces(bot.id, {
+      workspaceId,
+      workspaceAPIKey,
+      spaceIds: bot.spaceIds,
+    });
   }
 
   static async listAll() {

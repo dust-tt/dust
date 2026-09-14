@@ -81,8 +81,7 @@ makeScript(
 
     if (execute) {
       // The `builder` role is deprecated and can no longer be assigned, so restore a
-      // previously-revoked builder as a regular user (builders are now driven by the
-      // `dust-builders` provisioning group / manual "Builders" group instead).
+      // previously-revoked builder as a regular user.
       const restoredRole =
         latestMembership.role === "builder" ? "user" : latestMembership.role;
 

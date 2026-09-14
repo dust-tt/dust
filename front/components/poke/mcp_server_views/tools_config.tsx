@@ -1,4 +1,4 @@
-import { getDefaultInternalToolStakeLevel } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
+import { getDefaultToolStakeLevel } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import {
   PokeTable,
@@ -178,7 +178,7 @@ export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
 
     return mcpServerView.server.tools.map((tool) => {
       const override = overridesByName.get(tool.name);
-      const defaultPermission = getDefaultInternalToolStakeLevel(
+      const defaultPermission = getDefaultToolStakeLevel(
         mcpServerView.server,
         tool.name
       );
@@ -200,7 +200,7 @@ export function ToolsConfigTable({ mcpServerView }: ToolsConfigTableProps) {
     rows.find((row) => row.name === selectedToolName) ?? null;
 
   return (
-    <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
+    <div className="my-4 flex flex-grow flex-col rounded-lg border p-4">
       <h2 className="text-md pb-4 font-bold">Tools configuration</h2>
       {rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">

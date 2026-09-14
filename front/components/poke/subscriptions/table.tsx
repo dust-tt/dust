@@ -157,7 +157,7 @@ function SubscriptionsDataTable({
   subscriptions,
 }: SubscriptionsDataTableProps) {
   return (
-    <div className="border-material-200 my-4 flex flex-col rounded-lg border p-4">
+    <div className="my-4 flex flex-col rounded-lg border p-4">
       <h2 className="text-md mb-4 font-bold">History of subscriptions:</h2>
       <PokeDataTable
         columns={makeColumnsForSubscriptions()}
@@ -456,6 +456,23 @@ function PlanLimitValue({ value, isOverridden }: PlanLimitValueProps) {
   );
 }
 
+interface PlanFlagValueProps {
+  label: string;
+  value: boolean;
+  isOverridden: boolean;
+}
+
+function PlanFlagValue({ label, value, isOverridden }: PlanFlagValueProps) {
+  return (
+    <span>
+      {label} {value ? "✅" : "❌"}
+      {isOverridden && (
+        <span className="text-warning-500 pl-1 font-bold">(overridden)</span>
+      )}
+    </span>
+  );
+}
+
 interface PlanLimitationsTableProps {
   subscription: SubscriptionType;
   planLimitOverride: PlanLimitOverride | null;
@@ -470,7 +487,7 @@ export function PlanLimitationsTable({
   return (
     <div className="flex flex-col">
       <div className="flex justify-between gap-3">
-        <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4 pb-2">
+        <div className="flex flex-grow flex-col rounded-lg border p-4 pb-2">
           <h2 className="text-md pb-4 font-bold">Plan limitations</h2>
           <PokeTable>
             <PokeTableBody>
@@ -483,10 +500,16 @@ export function PlanLimitationsTable({
               <PokeTableRow>
                 <PokeTableCell>SSO/SCIM features</PokeTableCell>
                 <PokeTableCell>
-                  {activePlan.limits.users.isSSOAllowed ? "SSO ✅" : "SSO ❌"}
-                  {activePlan.limits.users.isSCIMAllowed
-                    ? " SCIM ✅"
-                    : " SCIM ❌"}
+                  <PlanFlagValue
+                    label="SSO"
+                    value={activePlan.limits.users.isSSOAllowed}
+                    isOverridden={planLimitOverride?.isSSOAllowed != null}
+                  />{" "}
+                  <PlanFlagValue
+                    label="SCIM"
+                    value={activePlan.limits.users.isSCIMAllowed}
+                    isOverridden={planLimitOverride?.isSCIMAllowed != null}
+                  />
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>

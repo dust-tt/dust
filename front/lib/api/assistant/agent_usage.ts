@@ -1,4 +1,10 @@
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  AGENT_MESSAGE_ID_FIELD,
+  COMPLETED_AT_FIELD,
+  CONSUMPTION_DIMENSION_FIELDS,
+  CONVERSATION_ID_FIELD,
+} from "@app/lib/api/analytics/consumption/scope";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import { getRedisStreamClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
@@ -16,6 +22,10 @@ import type { RedisClientType } from "redis";
 // Ranking of agents is done over a 30 days period.
 const RANKING_USAGE_DAYS = 30;
 const RANKING_TIMEFRAME_SEC = 60 * 60 * 24 * RANKING_USAGE_DAYS;
+
+// Popularity ranking can use Elasticsearch's default precision instead of the
+// higher precision used by consumption analytics, reducing per-agent memory.
+const RANKING_CARDINALITY_PRECISION_THRESHOLD = 3_000;
 
 const MENTION_COUNT_TTL = 60 * 60 * 24 * 7; // 7 days
 
@@ -140,6 +150,7 @@ type MentionsCountAggs = {
   by_agent: estypes.AggregationsTermsAggregateBase<{
     key: string;
     doc_count: number;
+    message_count?: estypes.AggregationsCardinalityAggregate;
     conversation_count: estypes.AggregationsCardinalityAggregate;
     user_count: estypes.AggregationsCardinalityAggregate;
   }>;
@@ -153,10 +164,13 @@ export async function agentMentionsCount(
   const filters: estypes.QueryDslQueryContainer[] = [
     { term: { workspace_id: workspaceId } },
     { terms: { context_origin: USER_USAGE_ORIGINS } },
-    { exists: { field: "agent_id" } },
+    // Every indexed message has LLM documents with the same agent, conversation,
+    // and user as its tool documents. Exclude tools, but still dedupe LLM steps.
+    { term: { consumption_type: "llm" } },
+    { exists: { field: CONSUMPTION_DIMENSION_FIELDS.agent } },
     {
       range: {
-        timestamp: {
+        [COMPLETED_AT_FIELD]: {
           gte: `now-${rankingUsageDays}d/d`,
         },
       },
@@ -164,7 +178,11 @@ export async function agentMentionsCount(
   ];
 
   if (agentConfiguration) {
-    filters.push({ term: { agent_id: agentConfiguration.sId } });
+    filters.push({
+      term: {
+        [CONSUMPTION_DIMENSION_FIELDS.agent]: agentConfiguration.sId,
+      },
+    });
   }
 
   const query: estypes.QueryDslQueryContainer = {
@@ -175,20 +193,40 @@ export async function agentMentionsCount(
     {
       by_agent: {
         terms: {
-          field: "agent_id",
+          field: CONSUMPTION_DIMENSION_FIELDS.agent,
           size: 1000,
+          order: { message_count: "desc" },
         },
         aggs: {
-          conversation_count: { cardinality: { field: "conversation_id" } },
-          user_count: { cardinality: { field: "user_id" } },
+          message_count: {
+            cardinality: {
+              field: AGENT_MESSAGE_ID_FIELD,
+              precision_threshold: RANKING_CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+          conversation_count: {
+            cardinality: {
+              field: CONVERSATION_ID_FIELD,
+              precision_threshold: RANKING_CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
+          user_count: {
+            cardinality: {
+              field: CONSUMPTION_DIMENSION_FIELDS.user,
+              precision_threshold: RANKING_CARDINALITY_PRECISION_THRESHOLD,
+            },
+          },
         },
       },
     };
 
-  const result = await searchAnalytics<never, MentionsCountAggs>(query, {
-    aggregations,
-    size: 0,
-  });
+  const result = await searchConsumptionAnalytics<never, MentionsCountAggs>(
+    query,
+    {
+      aggregations,
+      size: 0,
+    }
+  );
 
   if (result.isErr()) {
     return new Err(
@@ -205,7 +243,7 @@ export async function agentMentionsCount(
     buckets
       .map((bucket) => ({
         agentId: bucket.key,
-        messageCount: bucket.doc_count,
+        messageCount: Math.round(bucket.message_count?.value ?? 0),
         conversationCount: bucket.conversation_count?.value ?? 0,
         userCount: bucket.user_count?.value ?? 0,
         timePeriodSec: rankingUsageDays * 24 * 60 * 60,

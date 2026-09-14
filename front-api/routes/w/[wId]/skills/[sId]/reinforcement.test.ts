@@ -6,13 +6,14 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
 async function setupTest(
   options: {
-    skillOwnerRole?: "admin" | "builder" | "user";
-    requestUserRole?: "admin" | "builder" | "user";
+    skillOwnerRole?: MembershipRoleType;
+    requestUserRole?: MembershipRoleType;
   } = {}
 ) {
   const skillOwnerRole = options.skillOwnerRole ?? "admin";
@@ -90,6 +91,29 @@ function patch(workspace: { sId: string }, sId: string, body: unknown) {
 }
 
 describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
+  it("refuses to change the reinforcement of an archived skill", async () => {
+    const { workspace, skill, requestUserAuth } = await setupTest({
+      requestUserRole: "admin",
+    });
+
+    await skill.archive(requestUserAuth);
+
+    const response = await patch(workspace, skill.sId, {
+      reinforcement: "off",
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived skill cannot be updated. Restore it first.",
+      },
+    });
+
+    const untouched = await SkillResource.fetchById(requestUserAuth, skill.sId);
+    expect(untouched?.reinforcement).toBe("on");
+  });
+
   it("updates the reinforcement field", async () => {
     const { workspace, skill, requestUserAuth } = await setupTest({
       requestUserRole: "admin",
@@ -112,7 +136,7 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
 
   it("allows a workspace admin to update reinforcement for a skill they do not edit", async () => {
     const { workspace, skill, requestUserAuth } = await setupTest({
-      skillOwnerRole: "builder",
+      skillOwnerRole: "user",
       requestUserRole: "admin",
     });
 
@@ -144,7 +168,7 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
 
   it("returns 403 for a non-editor user", async () => {
     const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
+      skillOwnerRole: "admin",
       requestUserRole: "user",
     });
 
@@ -292,8 +316,8 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
 
   it("returns 403 when a non-admin tries to set selfImprovementLock", async () => {
     const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
-      requestUserRole: "builder",
+      skillOwnerRole: "user",
+      requestUserRole: "user",
     });
 
     const response = await patch(workspace, skill.sId, {
@@ -311,8 +335,8 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
 
   it("returns 403 when a non-admin tries to set the per-skill cap", async () => {
     const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
-      requestUserRole: "builder",
+      skillOwnerRole: "user",
+      requestUserRole: "user",
     });
 
     const response = await patch(workspace, skill.sId, {
@@ -324,8 +348,8 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
 
   it("returns 403 when a non-admin tries to set the per-skill AWU credits cap", async () => {
     const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
-      requestUserRole: "builder",
+      skillOwnerRole: "user",
+      requestUserRole: "user",
     });
 
     const response = await patch(workspace, skill.sId, {
@@ -337,8 +361,8 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
 
   it("returns 403 when a non-admin tries to flip reinforcement on a locked skill", async () => {
     const { workspace, skill } = await setupTest({
-      skillOwnerRole: "builder",
-      requestUserRole: "builder",
+      skillOwnerRole: "user",
+      requestUserRole: "user",
     });
 
     // Lock the skill via direct resource update — admin-only via the API.

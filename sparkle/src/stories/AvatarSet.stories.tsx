@@ -5,7 +5,7 @@ import { Avatar } from "@sparkle/components";
 
 const meta = {
   title: "Assets/Avatars/AvatarSet",
-  tags: ["a11y-issues"],
+  tags: ["!manifest", "a11y-issues"],
   component: Avatar,
   parameters: {
     docs: {

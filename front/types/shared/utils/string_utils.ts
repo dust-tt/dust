@@ -115,11 +115,14 @@ const SPECIAL_CASES = {
   github: "GitHub",
   hubspot: "HubSpot",
   mcp: "MCP",
+  webbrowser: "Web browsing",
+  websearch: "Web search",
+  id: "ID",
 };
 
-// Create a single regex pattern for all special cases
+// Match "id" in "user id", but not inside "video".
 const SPECIAL_CASES_PATTERN = new RegExp(
-  Object.keys(SPECIAL_CASES).join("|"),
+  `\\b(?:${Object.keys(SPECIAL_CASES).join("|")})\\b`,
   "g"
 );
 
@@ -130,7 +133,7 @@ export function formatAsDisplayName(name: string): string {
       SPECIAL_CASES_PATTERN,
       (match) => SPECIAL_CASES[match as keyof typeof SPECIAL_CASES]
     )
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+    .replace(/\b\w/, (char) => char.toUpperCase());
 }
 
 export function asDisplayToolName(name?: string | null) {

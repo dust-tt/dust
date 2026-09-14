@@ -16,7 +16,10 @@ import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
-import { GPT_5_6_SOL_MODEL_CONFIG } from "@app/types/assistant/models/openai";
+import {
+  GPT_5_6_SOL_MODEL_CONFIG,
+  GPT_6_ASTRA_MODEL_CONFIG,
+} from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import type { PlanType } from "@app/types/plan";
 import type { RegionType } from "@app/types/region";
@@ -55,6 +58,18 @@ function isSolAvailable(
   featureFlags: WhitelistableFeature[] = []
 ) {
   return isModelAvailable(GPT_5_6_SOL_MODEL_CONFIG, {
+    featureFlags,
+    plan,
+    regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
+    region: TEST_REGION,
+  });
+}
+
+function isAstraAvailable(
+  plan: PlanType,
+  featureFlags: WhitelistableFeature[] = []
+) {
+  return isModelAvailable(GPT_6_ASTRA_MODEL_CONFIG, {
     featureFlags,
     plan,
     regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
@@ -293,25 +308,6 @@ describe("isModelAvailable", () => {
     ).toBe(false);
   });
 
-  it("should not grant advanced model access through models_picker", () => {
-    const model = createMockModel({
-      availableIfOneOf: { plansWithAdvancedModels: true },
-      largeModel: false,
-    });
-    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE, {
-      hasAdvancedModelAccess: false,
-    });
-
-    expect(
-      isModelAvailable(model, {
-        featureFlags: ["models_picker"],
-        plan,
-        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
-        region: TEST_REGION,
-      })
-    ).toBe(false);
-  });
-
   it("should return true when both plansWithAdvancedModels and featureFlag are set, with advanced model access", () => {
     const model = createMockModel({
       availableIfOneOf: {
@@ -373,6 +369,49 @@ describe("isModelAvailable", () => {
       })
     ).toBe(false);
   });
+
+  it("should return false when the model matches an unavailableIfOneOf condition, even if another condition grants access", () => {
+    const model = createMockModel({
+      availableIfOneOf: { featureFlag: "deepseek_feature" },
+      unavailableIfOneOf: { featureFlag: "disable_gpt_6_astra" },
+      largeModel: false,
+    });
+    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: ["deepseek_feature", "disable_gpt_6_astra"],
+        plan,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
+        region: TEST_REGION,
+      })
+    ).toBe(false);
+  });
+
+  it("should return true when the model matches no unavailableIfOneOf condition", () => {
+    const model = createMockModel({
+      unavailableIfOneOf: { featureFlag: "disable_gpt_6_astra" },
+      availableIfOneOf: undefined,
+      largeModel: false,
+    });
+    const plan = createMockPlan(PRO_PLAN_SEAT_29_CODE);
+
+    expect(
+      isModelAvailable(model, {
+        featureFlags: [],
+        plan,
+        regionalModelsOnly: TEST_WORKSPACE.regionalModelsOnly,
+        region: TEST_REGION,
+      })
+    ).toBe(true);
+  });
+
+  it("should hide GPT 6 Astra from a credit-priced workspace with the disable_gpt_6_astra flag", () => {
+    const plan = createMockPlan(CREDIT_PRICED_BUSINESS_PLAN_CODE);
+
+    expect(isAstraAvailable(plan)).toBe(true);
+    expect(isAstraAvailable(plan, ["disable_gpt_6_astra"])).toBe(false);
+  });
 });
 
 describe("isModelReleased", () => {
@@ -392,7 +431,7 @@ describe("isModelReleased", () => {
 });
 
 describe("filterEnabledModels", () => {
-  it("excludes advanced models when models_picker is enabled without plan access", async () => {
+  it("excludes advanced models when the plan lacks advanced model access", async () => {
     const workspace = await WorkspaceFactory.basic();
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
     const model = createMockModel({
@@ -402,7 +441,7 @@ describe("filterEnabledModels", () => {
     });
 
     const result = filterEnabledModels([model], {
-      featureFlags: ["models_picker"],
+      featureFlags: [],
       plan: { ...auth.plan()!, hasAdvancedModelAccess: false },
       regionalModelsOnly: auth.getNonNullableWorkspace().regionalModelsOnly,
       region: TEST_REGION,

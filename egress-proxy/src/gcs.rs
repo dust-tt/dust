@@ -44,8 +44,8 @@ impl GcsPolicyProvider {
             })
             .build();
 
-        // Skip GCP auth setup when a static token is provided (tests).
-        let auth = if std::env::var("GOOGLE_CLOUD_ACCESS_TOKEN").is_ok() {
+        // Skip provider setup when a static token is provided (tests).
+        let auth = if get_static_access_token_from_env().is_some() {
             None
         } else {
             Some(
@@ -201,16 +201,13 @@ impl GcsPolicyProvider {
 
     async fn get_access_token(&self) -> Result<String> {
         // Static token bypass for tests.
-        if let Ok(token) = std::env::var("GOOGLE_CLOUD_ACCESS_TOKEN") {
-            let trimmed = token.trim();
-            if !trimmed.is_empty() {
-                return Ok(trimmed.to_string());
-            }
+        if let Some(token) = get_static_access_token_from_env() {
+            return Ok(token);
         }
 
         let auth = self.auth.as_ref().ok_or_else(|| {
             anyhow!(
-                "no GCP credentials: set GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_CLOUD_ACCESS_TOKEN"
+                "no GCP credentials: set GOOGLE_CLOUD_ACCESS_TOKEN, set GOOGLE_APPLICATION_CREDENTIALS, or run with metadata/ADC (for example WIF)"
             )
         })?;
 
@@ -221,6 +218,19 @@ impl GcsPolicyProvider {
 
         Ok(token.as_str().to_string())
     }
+}
+
+fn get_static_access_token_from_env() -> Option<String> {
+    std::env::var("GOOGLE_CLOUD_ACCESS_TOKEN")
+        .ok()
+        .and_then(|token| {
+            let trimmed = token.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        })
 }
 
 impl CacheEntry {

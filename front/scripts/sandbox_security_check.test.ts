@@ -206,33 +206,33 @@ describe("sandbox security check assertions", () => {
 
   test("detects unsafe pod-state directory ownership or modes", () => {
     const safeOutput = [
-      "POD_STATE_DIR=/pod-state root:root 755 drwxr-xr-x",
-      "POD_STATE_DIR=/pod-state/databases dust-state:agent 2770 drwxrws---",
-      "POD_STATE_DIR=/pod-state/replica dust-state:dust-state 700 drwx------",
+      "POD_STATE_DIR=/sandbox-state root:root 755 drwxr-xr-x",
+      "POD_STATE_DIR=/sandbox-state/databases dust-state:agent 2770 drwxrws---",
+      "POD_STATE_DIR=/sandbox-state/replica dust-state:dust-state 700 drwx------",
     ].join("\n");
 
     expect(() => assertPodStateDirsSafe(safeOutput)).not.toThrow();
     expect(() =>
       assertPodStateDirsSafe(
         safeOutput.replace(
-          "/pod-state/replica dust-state:dust-state 700",
-          "/pod-state/replica dust-state:dust-state 755"
+          "/sandbox-state/replica dust-state:dust-state 700",
+          "/sandbox-state/replica dust-state:dust-state 755"
         )
       )
-    ).toThrow("pod-state directory /pod-state/replica");
+    ).toThrow("pod-state directory /sandbox-state/replica");
     expect(() =>
       assertPodStateDirsSafe(
         safeOutput.replace(
-          "/pod-state/databases dust-state:agent 2770",
-          "/pod-state/databases agent:agent 2770"
+          "/sandbox-state/databases dust-state:agent 2770",
+          "/sandbox-state/databases agent:agent 2770"
         )
       )
-    ).toThrow("pod-state directory /pod-state/databases");
+    ).toThrow("pod-state directory /sandbox-state/databases");
     expect(() =>
       assertPodStateDirsSafe(
-        "POD_STATE_DIR=/pod-state root:root 755 drwxr-xr-x"
+        "POD_STATE_DIR=/sandbox-state root:root 755 drwxr-xr-x"
       )
-    ).toThrow("missing pod-state directory audit for /pod-state/databases");
+    ).toThrow("missing pod-state directory audit for /sandbox-state/databases");
   });
 
   test("detects root PATH entries that can resolve agent-writable binaries", () => {

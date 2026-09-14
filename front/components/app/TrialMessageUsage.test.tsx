@@ -17,6 +17,17 @@ vi.mock("@dust-tt/sparkle", () => ({
   }) => <a href={href}>{children}</a>,
   cn: (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" "),
+  ProgressBar: ({
+    values,
+  }: {
+    values: Array<{ value: number; className?: string }>;
+  }) => (
+    <div>
+      {values.map((v, i) => (
+        <div key={i} data-value={v.value} className={v.className} />
+      ))}
+    </div>
+  ),
 }));
 
 const mockedUseTrialMessageUsage = vi.fn();

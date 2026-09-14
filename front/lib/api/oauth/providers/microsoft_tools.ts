@@ -40,7 +40,10 @@ export class MicrosoftToolsOAuthProvider implements BaseOAuthStrategyProvider {
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       client_id: clientId || config.getOAuthMicrosoftToolsClientId(),
       state: connection.connection_id,
-      redirect_uri: finalizeUriForProvider("microsoft_tools"),
+      redirect_uri: finalizeUriForProvider({
+        provider: "microsoft_tools",
+        connection,
+      }),
       scope: extraConfig.scope,
     });
     return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${qs}`;

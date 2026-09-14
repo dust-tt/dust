@@ -114,6 +114,7 @@ function makeSkillType(config: MockSkillConfig): SkillType {
     })),
     fileAttachments: [],
     canWrite: false,
+    canRead: true,
     canAdministrate: false,
     isDefault: false,
     availability: "workspace_users",

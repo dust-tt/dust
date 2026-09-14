@@ -18,11 +18,21 @@ import { useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 
-const requestUpgradeFormSchema = z.object({
-  reason: z.string().trim().max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS),
-});
+function getRequestUpgradeFormSchema(requireReason: boolean) {
+  return z.object({
+    reason: requireReason
+      ? z
+          .string()
+          .trim()
+          .min(1, "A reason is required to submit an upgrade request.")
+          .max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS)
+      : z.string().trim().max(MAX_UPGRADE_REQUEST_REASON_LENGTH_CHARS),
+  });
+}
 
-type RequestUpgradeFormValues = z.infer<typeof requestUpgradeFormSchema>;
+type RequestUpgradeFormValues = z.infer<
+  ReturnType<typeof getRequestUpgradeFormSchema>
+>;
 
 type UsageUpgradeButtonVariant = "link" | "button";
 
@@ -31,6 +41,7 @@ interface UsageUpgradeButtonProps {
   hasPendingUpgradeRequest: boolean;
   variant?: UsageUpgradeButtonVariant;
   isManager?: boolean;
+  requireReason?: boolean;
   onManagerNavigate?: () => void;
 }
 
@@ -42,6 +53,7 @@ export function UsageUpgradeButton({
   hasPendingUpgradeRequest,
   variant = "link",
   isManager = false,
+  requireReason = false,
   onManagerNavigate,
 }: UsageUpgradeButtonProps) {
   const { doRequestUpgrade } = useRequestUpgrade({ workspaceId: owner.sId });
@@ -49,7 +61,7 @@ export function UsageUpgradeButton({
   const [requested, setRequested] = useState(false);
 
   const form = useForm<RequestUpgradeFormValues>({
-    resolver: zodResolver(requestUpgradeFormSchema),
+    resolver: zodResolver(getRequestUpgradeFormSchema(requireReason)),
     defaultValues: { reason: "" },
   });
 
@@ -57,13 +69,20 @@ export function UsageUpgradeButton({
 
   const onSubmit = async (values: RequestUpgradeFormValues) => {
     const trimmedReason = values.reason.trim();
-    const ok = await doRequestUpgrade({
+    const result = await doRequestUpgrade({
       reason: trimmedReason.length > 0 ? trimmedReason : undefined,
     });
-    if (ok) {
+    if (result.isOk()) {
       setRequested(true);
       setIsDialogOpen(false);
       form.reset();
+      return;
+    }
+    if (result.error.errorType === "invalid_request_error") {
+      form.setError("reason", {
+        type: "manual",
+        message: result.error.message,
+      });
     }
   };
 
@@ -143,7 +162,11 @@ export function UsageUpgradeButton({
                 </p>
                 <BaseFormFieldSection<HTMLTextAreaElement>
                   fieldName="reason"
-                  title="Help your admin decide"
+                  title={
+                    requireReason
+                      ? "Help your admin decide (required)"
+                      : "Help your admin decide"
+                  }
                 >
                   {({
                     registerRef,

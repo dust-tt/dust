@@ -1,3 +1,4 @@
+import { GroupPermissionsDataTable } from "@app/components/poke/group_permissions/table";
 import { ViewGroupTable } from "@app/components/poke/groups/view";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -56,6 +57,7 @@ export function GroupPage() {
         <ViewGroupTable group={group} />
         <MembersDataTable members={members} owner={owner} readonly />
       </div>
+      <GroupPermissionsDataTable owner={owner} groupId={groupId} />
     </>
   );
 }

@@ -121,23 +121,6 @@ export async function batchWriteContentsToGcs(
 }
 
 /**
- * Rewrites existing output items at deterministic paths so backfill retries are idempotent.
- */
-export async function batchRewriteContentsToGcs(
-  auth: Authenticator,
-  action: AgentMCPActionResource,
-  items: Array<{ itemId: ModelId; content: OutputContent }>
-): Promise<Result<string[], Error>> {
-  return batchWriteContentsToGcsAtPaths(
-    action,
-    items.map(({ itemId, content }) => ({
-      content,
-      gcsPath: getGcsPath(auth, action, itemId.toString()),
-    }))
-  );
-}
-
-/**
  * Fetches content from GCS. Throws on failure (cacheWithRedis propagates the error).
  */
 // itemId is unused in the fetch logic but passed to populate the cache key.

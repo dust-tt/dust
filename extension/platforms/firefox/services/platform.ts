@@ -1,3 +1,4 @@
+import type { CellInfo } from "@app/types/cell";
 import { FirefoxMcpService } from "@extension/platforms/firefox/services/mcp";
 import { ChromeFirefoxAuthService } from "@extension/shared/services/browser_auth";
 import { ChromeFirefoxCaptureService } from "@extension/shared/services/browser_capture";
@@ -12,7 +13,7 @@ export interface PendingUpdate {
 }
 
 export class FirefoxPlatformService extends PlatformService {
-  constructor() {
+  constructor(cells?: CellInfo[]) {
     const messaging = new ChromeFirefoxBrowserMessagingService();
     const captureService = new ChromeFirefoxCaptureService();
     const mcpService = new FirefoxMcpService();
@@ -22,6 +23,7 @@ export class FirefoxPlatformService extends PlatformService {
       "firefox",
       ChromeFirefoxAuthService,
       new ChromeFirefoxStorageService(),
+      cells,
       captureService,
       messaging,
       mcpService

@@ -23,10 +23,13 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
+  ContentMessageInline,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  InfoCircle,
+  Lock01,
   SettingsList,
   SliderToggle,
 } from "@dust-tt/sparkle";
@@ -212,13 +215,17 @@ export function useNotificationPreferencesForm({
 interface NotificationPreferencesProps {
   control: Control<NotificationPreferencesFormValues>;
   displaySlackOption: boolean;
+  displayForYouOption: boolean;
   workflowEnabled: boolean;
+  conversationExternalNotificationsEnabled: boolean;
 }
 
 export function NotificationPreferences({
   control,
   displaySlackOption,
+  displayForYouOption,
   workflowEnabled,
+  conversationExternalNotificationsEnabled,
 }: NotificationPreferencesProps) {
   const { field: notifyConditionField } = useController({
     name: "notifyCondition",
@@ -231,139 +238,149 @@ export function NotificationPreferences({
   const { field: inAppField } = useController({ name: "inApp", control });
   const { field: slackField } = useController({ name: "slack", control });
   const { field: emailField } = useController({ name: "email", control });
+  const { field: forYouField } = useController({ name: "forYou", control });
 
   const [portalContainer] = useState<HTMLElement | undefined>(() =>
     typeof document !== "undefined" ? document.body : undefined
   );
 
   const notificationsDisabled = notifyConditionField.value === "never";
+  const externalChannelsDisabled = !conversationExternalNotificationsEnabled;
   const isInAppEnabled = inAppField.value && workflowEnabled;
-  const isSlackEnabled = slackField.value && workflowEnabled;
-  const isEmailEnabled = emailField.value && workflowEnabled;
-  const isEmailFrequencyEnabled = isEmailEnabled && !notificationsDisabled;
+  const isSlackEnabled =
+    slackField.value && workflowEnabled && !externalChannelsDisabled;
+  const isEmailEnabled =
+    emailField.value && workflowEnabled && !externalChannelsDisabled;
+  const isEmailFrequencyEnabled =
+    isEmailEnabled && !notificationsDisabled && !externalChannelsDisabled;
+  const slackEmailDisabled = notificationsDisabled || externalChannelsDisabled;
+  const isForYouEnabled = forYouField.value && !externalChannelsDisabled;
 
   return (
-    <SettingsList>
-      <SettingsList.Row
-        title="Notify me about"
-        description="Choose which activity sends you a notification"
-        action={
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                isSelect
-                label={
-                  NOTIFICATION_CONDITION_LABELS[notifyConditionField.value]
-                }
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent mountPortalContainer={portalContainer}>
-              {NOTIFICATION_CONDITION_OPTIONS.map((condition) => (
-                <DropdownMenuItem
-                  key={condition}
-                  label={NOTIFICATION_CONDITION_LABELS[condition]}
-                  onClick={() => notifyConditionField.onChange(condition)}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        }
-      />
-
-      <SettingsList.Row
-        title="In-app popup"
-        description="Show a popup inside Dust"
-        action={
-          <SliderToggle
-            selected={isInAppEnabled}
-            disabled={notificationsDisabled}
-            onClick={() => inAppField.onChange(!isInAppEnabled)}
-          />
-        }
-      />
-
-      {displaySlackOption && (
+    <div className="flex flex-col gap-3">
+      <SettingsList>
         <SettingsList.Row
-          title="Slack"
-          description="A direct message in Slack"
+          title="Notify me about"
+          description="Applies to in-app popups, email, and Slack"
+          action={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  isSelect
+                  label={
+                    NOTIFICATION_CONDITION_LABELS[notifyConditionField.value]
+                  }
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent mountPortalContainer={portalContainer}>
+                {NOTIFICATION_CONDITION_OPTIONS.map((condition) => (
+                  <DropdownMenuItem
+                    key={condition}
+                    label={NOTIFICATION_CONDITION_LABELS[condition]}
+                    onClick={() => notifyConditionField.onChange(condition)}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
+
+        <SettingsList.Row
+          title="In-app popup"
+          description="Show a popup inside Dust"
           action={
             <SliderToggle
-              selected={isSlackEnabled}
+              selected={isInAppEnabled}
               disabled={notificationsDisabled}
-              onClick={() => slackField.onChange(!isSlackEnabled)}
+              onClick={() => inAppField.onChange(!isInAppEnabled)}
             />
           }
         />
+      </SettingsList>
+
+      {externalChannelsDisabled && (
+        <ContentMessageInline variant="info" icon={InfoCircle}>
+          Email and Slack notifications are turned off for this workspace by an
+          admin.
+        </ContentMessageInline>
       )}
 
-      <SettingsList.Row
-        title="Email"
-        description="Receive a summary by email"
-        action={
-          <SliderToggle
-            selected={isEmailEnabled}
-            disabled={notificationsDisabled}
-            onClick={() => emailField.onChange(!isEmailEnabled)}
-          />
-        }
-      />
-
-      <SettingsList.Row
-        title="Email frequency"
-        description="How often to send email notification summaries"
-        action={
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                isSelect
-                disabled={!isEmailFrequencyEnabled}
-                label={
-                  NOTIFICATION_PREFERENCES_DELAY_LABELS[emailDelayField.value]
-                }
+      <SettingsList>
+        {displaySlackOption && (
+          <SettingsList.Row
+            title="Slack"
+            description="A direct message in Slack"
+            action={
+              <SliderToggle
+                selected={isSlackEnabled}
+                disabled={slackEmailDisabled}
+                icon={externalChannelsDisabled ? Lock01 : undefined}
+                onClick={() => slackField.onChange(!isSlackEnabled)}
               />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent mountPortalContainer={portalContainer}>
-              {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
-                <DropdownMenuItem
-                  key={delay}
-                  label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
-                  onClick={() => emailDelayField.onChange(delay)}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        }
-      />
-    </SettingsList>
-  );
-}
-
-export function ForYouNotificationPreferences({
-  control,
-}: {
-  control: Control<NotificationPreferencesFormValues>;
-}) {
-  const { field: forYouField } = useController({
-    name: "forYou",
-    control,
-  });
-
-  return (
-    <SettingsList>
-      <SettingsList.Row
-        title="For you"
-        description="Email when Dust has a new recommendation for you"
-        action={
-          <SliderToggle
-            selected={forYouField.value}
-            onClick={() => forYouField.onChange(!forYouField.value)}
+            }
           />
-        }
-      />
-    </SettingsList>
+        )}
+
+        <SettingsList.Row
+          title="Email"
+          description="Receive a summary by email"
+          action={
+            <SliderToggle
+              selected={isEmailEnabled}
+              disabled={slackEmailDisabled}
+              icon={externalChannelsDisabled ? Lock01 : undefined}
+              onClick={() => emailField.onChange(!isEmailEnabled)}
+            />
+          }
+        />
+
+        <SettingsList.Row
+          title="Email frequency"
+          description="How often to send email notification summaries"
+          action={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild disabled={!isEmailFrequencyEnabled}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  isSelect
+                  disabled={!isEmailFrequencyEnabled}
+                  icon={externalChannelsDisabled ? Lock01 : undefined}
+                  label={
+                    NOTIFICATION_PREFERENCES_DELAY_LABELS[emailDelayField.value]
+                  }
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent mountPortalContainer={portalContainer}>
+                {NOTIFICATION_DELAY_OPTIONS.map((delay) => (
+                  <DropdownMenuItem
+                    key={delay}
+                    label={NOTIFICATION_PREFERENCES_DELAY_LABELS[delay]}
+                    onClick={() => emailDelayField.onChange(delay)}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
+
+        {displayForYouOption && (
+          <SettingsList.Row
+            title="For you"
+            description="Email when Dust has a new recommendation for you"
+            action={
+              <SliderToggle
+                selected={isForYouEnabled}
+                disabled={externalChannelsDisabled}
+                icon={externalChannelsDisabled ? Lock01 : undefined}
+                onClick={() => forYouField.onChange(!isForYouEnabled)}
+              />
+            }
+          />
+        )}
+      </SettingsList>
+    </div>
   );
 }

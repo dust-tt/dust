@@ -7,7 +7,6 @@ import {
   revokeAndTrackMembership,
 } from "@app/lib/api/membership";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
-import { determineUserRoleFromGroups } from "@app/lib/api/user";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import {
   getOrCreateWorkOSOrganization,
@@ -23,7 +22,7 @@ import {
   getWorkspaceInfos,
   isWorkspaceRelocationDone,
 } from "@app/lib/api/workspace";
-import { Authenticator, getFeatureFlagsForWorkspace } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { ExternalUser } from "@app/lib/iam/provider";
 import type { CustomAttributeKey } from "@app/lib/iam/users";
 import {
@@ -32,18 +31,12 @@ import {
   WORKOS_METADATA_KEY_PREFIX,
 } from "@app/lib/iam/users";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
-import {
-  ADMIN_GROUP_NAME,
-  BUILDER_GROUP_NAME,
-  GroupResource,
-  MANAGER_GROUP_NAME,
-} from "@app/lib/resources/group_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
 import { GROUP_KINDS } from "@app/types/groups";
 import type { Result } from "@app/types/shared/result";
@@ -127,9 +120,8 @@ async function verifyWorkOSWorkspace<E extends Event, R>(
   ) {
     const subscription =
       await SubscriptionResource.fetchActiveByWorkspaceModelId(workspace.id);
-    const featureFlags = await getFeatureFlagsForWorkspace(workspace);
     const plan = subscription?.getPlan();
-    if (!plan || !isSCIMEnabled(plan, featureFlags)) {
+    if (!plan || !isSCIMEnabled(plan)) {
       logger.warn(
         { workspaceId: workspace.sId, organizationId },
         "SCIM event received but neither the workspace plan nor a feature flag allows SCIM, skipping"
@@ -160,191 +152,6 @@ async function verifyWorkOSWorkspace<E extends Event, R>(
   }
 
   return handler(workspace, event);
-}
-
-function emitMembershipRoleUpdatedFromDirectorySync({
-  workspace,
-  user,
-  directoryId,
-  previousRole,
-  newRole,
-}: {
-  workspace: LightWorkspaceType;
-  user: UserResource;
-  directoryId?: string;
-  previousRole: string;
-  newRole: string;
-}): void {
-  void emitAuditLogEventDirect({
-    workspace,
-    action: "membership.role_updated",
-    actor: {
-      type: "system",
-      id: String(directoryId ?? "directory_sync"),
-      name: "Directory Sync",
-    },
-    targets: [
-      buildAuditLogTarget("workspace", workspace),
-      buildAuditLogTarget("user", {
-        sId: user.sId,
-        name: user.fullName() ?? "unknown",
-      }),
-    ],
-    context: { location: "system" },
-    metadata: {
-      previous_role: previousRole,
-      new_role: newRole,
-    },
-  });
-}
-
-/**
- * Handle role assignment based on the name of the group.
- */
-async function handleRoleAssignmentForGroup(
-  auth: Authenticator,
-  {
-    workspace,
-    user,
-    group,
-    action,
-    directoryId,
-  }: {
-    workspace: LightWorkspaceType;
-    user: UserResource;
-    group: GroupResource;
-    action: "add" | "remove";
-    directoryId?: string;
-  }
-) {
-  // The `dust-builders` provisioning group no longer grants the deprecated builder role. Mirror
-  // the membership into the workspace's manual "Builders" group when it exists; if the group has
-  // not been created, ignore it (provisioning never creates it).
-  if (group.name === BUILDER_GROUP_NAME) {
-    await GroupResource.syncBuilderGroupMembership({
-      workspace,
-      user,
-      isBuilder: action === "add",
-      createIfMissing: false,
-    });
-    return;
-  }
-
-  if (group.name !== ADMIN_GROUP_NAME && group.name !== MANAGER_GROUP_NAME) {
-    // Not a special group, no role assignment needed.
-    return;
-  }
-
-  const currentMembership =
-    await MembershipResource.getActiveMembershipOfUserInWorkspace({
-      user,
-      workspace,
-    });
-
-  if (!currentMembership) {
-    logger.warn(
-      `User ${user.sId} has no active membership in workspace ${workspace.sId}, cannot assign role.`
-    );
-    return;
-  }
-
-  if (action === "add") {
-    const newRole = await determineUserRoleFromGroups(workspace, user);
-
-    if (newRole !== currentMembership.role) {
-      const updateResult = await MembershipResource.updateMembershipRole({
-        user,
-        workspace,
-        newRole,
-        allowLastAdminRemoval: true,
-        author: auth.user()?.toJSON() ?? "no-author",
-      });
-
-      if (updateResult.isErr()) {
-        logger.error(
-          { error: updateResult.error, userId: user.sId, role: newRole },
-          `Failed to assign ${newRole} role to user`
-        );
-        throw new Error(
-          `Failed to assign ${newRole} role to user ${user.sId}: ${updateResult.error.type}`
-        );
-      }
-
-      logger.info(
-        {
-          userId: user.sId,
-          workspaceId: workspace.sId,
-          oldRole: currentMembership.role,
-          newRole,
-          groupName: group.name,
-        },
-        "Assigned role to user based on group membership"
-      );
-
-      void ServerSideTracking.trackUpdateMembershipRole({
-        user: user.toJSON(),
-        workspace,
-        previousRole: currentMembership.role,
-        role: newRole,
-      });
-
-      emitMembershipRoleUpdatedFromDirectorySync({
-        workspace,
-        user,
-        directoryId,
-        previousRole: String(currentMembership.role),
-        newRole: String(newRole),
-      });
-    }
-  } else if (action === "remove") {
-    const newRole = await determineUserRoleFromGroups(workspace, user);
-
-    if (newRole !== currentMembership.role) {
-      const updateResult = await MembershipResource.updateMembershipRole({
-        user,
-        workspace,
-        newRole,
-        allowLastAdminRemoval: true,
-        author: auth.user()?.toJSON() ?? "no-author",
-      });
-
-      if (updateResult.isErr()) {
-        logger.error(
-          { error: updateResult.error, userId: user.sId, role: newRole },
-          "Failed to downgrade user role."
-        );
-        throw new Error(
-          `Failed to downgrade user role for ${user.sId}: ${updateResult.error.type}`
-        );
-      }
-
-      logger.info(
-        {
-          workspaceId: workspace.sId,
-          userId: user.sId,
-          oldRole: currentMembership.role,
-          newRole,
-          groupName: group.name,
-        },
-        "Downgraded user role after group removal"
-      );
-
-      void ServerSideTracking.trackUpdateMembershipRole({
-        user: user.toJSON(),
-        workspace,
-        previousRole: currentMembership.role,
-        role: newRole,
-      });
-
-      emitMembershipRoleUpdatedFromDirectorySync({
-        workspace,
-        user,
-        directoryId,
-        previousRole: String(currentMembership.role),
-        newRole: String(newRole),
-      });
-    }
-  }
 }
 
 // WorkOS webhooks do not guarantee event ordering. Events can arrive out of sequence.
@@ -658,7 +465,7 @@ async function autoCreateSpaceForProvisionedGroup(
     return;
   }
 
-  // Create restricted space with group-based management
+  // Create a restricted space whose access comes from the provisioned group.
   const spaceName = group.name;
 
   const spaceResult = await createSpaceAndGroup(
@@ -667,7 +474,6 @@ async function autoCreateSpaceForProvisionedGroup(
       name: spaceName,
       groupIds: [group.sId],
       isRestricted: true,
-      managementMode: "group",
       spaceKind: "regular",
     },
     { ignoreWorkspaceLimit: false }
@@ -707,7 +513,10 @@ async function handleGroupUpsert(
   const { data: eventData } = event;
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  const groupByName = await GroupResource.fetchByName(auth, eventData.name);
+  const groupByName = await GroupResource.dangerouslyFetchByName(
+    auth,
+    eventData.name
+  );
   if (groupByName && groupByName.workOSGroupId !== eventData.id) {
     // Conflict - another group with the same name already exists.
 
@@ -910,14 +719,8 @@ async function handleUserAddedToGroup(
     );
   }
 
-  // Handle role assignment for special groups.
-  await handleRoleAssignmentForGroup(auth, {
-    workspace,
-    user,
-    group,
-    action: "add",
-    directoryId: eventData.directoryId ?? undefined,
-  });
+  // Role assignment is handled inside `dangerouslyAddMember` when the group
+  // grants a workspace role (see `GroupResource.recomputeAndSyncWorkspaceRolesForUsers`).
 
   // Update membership origin to "provisioned" when syncing from WorkOS groups.
   const currentMembership =
@@ -1060,8 +863,8 @@ async function handleUserRemovedFromGroup(
   }
 
   // No canWrite guard here — `auth` is always internalAdminForWorkspace
-  // (trusted SCIM/directory sync), and canWrite returns false for agent_editors/
-  // skill_editors groups (their admin role lacks "write"), which would wrongly abort
+  // (trusted SCIM/directory sync), and canWrite returns false for agent_editors
+  // groups (their admin role lacks "write"), which would wrongly abort
   // deprovisioning. dangerouslyRemoveMember is the intended trusted path.
   const res = await group.dangerouslyRemoveMember(auth, {
     user: user.toJSON(),
@@ -1071,14 +874,8 @@ async function handleUserRemovedFromGroup(
     throw new Error(res.error.message);
   }
 
-  // Handle role assignment for special groups.
-  await handleRoleAssignmentForGroup(auth, {
-    workspace,
-    user,
-    group,
-    action: "remove",
-    directoryId: eventData.directoryId ?? undefined,
-  });
+  // Role assignment is handled inside `dangerouslyRemoveMember` when the group
+  // grants a workspace role (see `GroupResource.recomputeAndSyncWorkspaceRolesForUsers`).
 
   void emitAuditLogEventDirect({
     workspace,
@@ -1334,15 +1131,15 @@ async function revokeWorkOSUserMembership(
   triggersDeleted: boolean
 ) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const groups = await GroupResource.listUserGroupsInWorkspace({
+  const groups = await GroupResource.dangerouslyListAllUserGroupsInWorkspace({
+    auth,
     user,
-    workspace,
     groupKinds: GROUP_KINDS.filter((k) => k !== "system" && k !== "global"),
   });
 
   for (const group of groups) {
     // No canWrite guard here — see handleUserRemovedFromGroup. `auth` is
-    // internalAdminForWorkspace, and canWrite is false for agent_editors/skill_editors
+    // internalAdminForWorkspace, and canWrite is false for agent_editors
     // groups, which would wrongly abort deprovisioning of editor users.
     const removeResult = await group.dangerouslyRemoveMember(auth, {
       user: user.toJSON(),

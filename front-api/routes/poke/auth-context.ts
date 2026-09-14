@@ -12,10 +12,9 @@ app.get(
   "/",
   async (ctx): HandlerResult<GetPokeNoWorkspaceAuthContextResponseType> => {
     const auth = ctx.get("auth");
-    const userResource = auth.getNonNullableUser();
 
     return ctx.json({
-      user: userResource.toJSON(),
+      user: auth.toPokeUserJSON(),
       isSuperUser: true,
       pokeRoles: ctx.get("pokeRoles"),
     });

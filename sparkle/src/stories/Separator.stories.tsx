@@ -25,28 +25,13 @@ const meta = {
 
 export default meta;
 
-export const SeparatorExample = () => (
-  <div>
-    <div className="space-y-1">
-      <h4 className="text-sm font-medium leading-none">Dust Separator</h4>
-      <p className="text-sm text-muted-foreground">
-        Lorem Ipsum is simply dummy text of the printing and typesetting
-        industry.
-      </p>
-    </div>
-    <Separator className="my-4" />
-    <div className="flex h-5 items-center space-x-4 text-sm">
-      <div>Dust</div>
-      <Separator orientation="vertical" />
-      <div>Separator</div>
-      <Separator orientation="vertical" />
-      <div>Menu</div>
-    </div>
-  </div>
-);
-
 type Story = StoryObj<typeof meta>;
 
+/**
+ * The default horizontal rule, dividing stacked content. Purely decorative by
+ * default — add vertical margins (e.g. `my-4`) for breathing room.
+ * @summary Horizontal dividing line.
+ */
 export const Horizontal: Story = {
   tags: ["ai-generated", "needs-work"],
   render: () => (
@@ -56,8 +41,13 @@ export const Horizontal: Story = {
   ),
 };
 
-// A semantic (non-decorative) vertical separator must expose role="separator" and
-// aria-orientation="vertical" — proving the orientation prop drives the accessibility tree.
+/**
+ * A semantic (non-decorative) vertical separator, as used between inline
+ * items. With `decorative={false}` it must expose `role="separator"` and
+ * `aria-orientation="vertical"` — the play assertion proves the orientation
+ * prop drives the accessibility tree.
+ * @summary Semantic vertical separator.
+ */
 export const Vertical: Story = {
   args: { orientation: "vertical", decorative: false },
   tags: ["ai-generated", "needs-work"],

@@ -6,11 +6,15 @@ import { Icon } from "./Icon";
 interface PriceTableProps {
   title: string;
   price: string;
+  /** Text shown next to the price, e.g. "/ month / seat". */
   priceLabel?: string;
+  /** Accent color of the card's frame and price. */
   color?: "pink" | "sky" | "emerald" | "amber" | "blue";
+  /** Density: `xs` compact (default), `sm` standard. */
   size?: "xs" | "sm";
   className?: string;
   children: ReactNode;
+  /** Slightly scale the card up on hover (default true). */
   magnified?: boolean;
 }
 
@@ -35,6 +39,14 @@ const sizeTable = {
   xs: "rounded-2xl p-px shadow-xl",
 };
 
+/**
+ * A pricing plan card showing a title, price, optional price label, and an
+ * accent color, filled with PriceTable.Item rows and one or more
+ * PriceTable.ActionContainer slots. Use it on pricing or plan-selection pages
+ * to compare tiers, laying several plans side by side with
+ * PriceTable.Container.
+ * @summary Pricing plan card with feature rows.
+ */
 export function PriceTable({
   title,
   price,
@@ -133,10 +145,12 @@ const iconColorTable = {
 interface PriceTableItemProps {
   label: ReactNode;
   size?: "xs" | "sm";
+  /** Leading icon: `check` included (green), `dash` partial (golden), `xmark` excluded (red). */
   variant?: "check" | "dash" | "xmark";
   className?: string;
 }
 
+/** A feature row of a PriceTable, with a `variant` icon marking inclusion. */
 PriceTable.Item = function ({
   label,
   variant = "check",
@@ -174,9 +188,11 @@ PriceTable.Item = function ({
 interface PriceTableActionContainerProps {
   children: ReactNode;
   size?: "xs" | "sm";
+  /** Where the CTA sits: `top` above the feature list (with a divider), `bottom` pinned to the card's end. */
   position?: "top" | "bottom";
 }
 
+/** Slot for a plan's call-to-action button, positionable at the top or bottom of the card. */
 PriceTable.ActionContainer = function ({
   children,
   size = "xs",
@@ -202,6 +218,7 @@ interface PriceTableContainerProps {
   children: ReactNode;
 }
 
+/** Lays multiple PriceTable cards side by side so they align and size consistently. */
 PriceTable.Container = function ({ children }: PriceTableContainerProps) {
   return <div className="flex w-full items-stretch gap-3">{children}</div>;
 };

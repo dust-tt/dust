@@ -14,7 +14,11 @@ export const paragraphBlockVariants = cva(
     variants: {
       compactSpacing: {
         true: ["py-0"],
-        false: ["py-1 @md:pt-2 @md:pb-[10px] @md:leading-relaxed"],
+        // The conversation column is capped at 65ch (~690px in Geist), so a
+        // 48rem (@md) container is never reached inside a message; @sm (40rem)
+        // is the "comfortable column" step. Below it (side panels, phones) stay
+        // compact.
+        false: ["py-1 @sm:pt-2 @sm:pb-[10px] @sm:leading-relaxed"],
       },
     },
   }
@@ -25,6 +29,12 @@ interface ParagraphBlockProps {
   node?: MarkdownNode;
 }
 
+/**
+ * Renders paragraphs inside Markdown output (as a `div` so nested block
+ * content stays valid), applying the typography and spacing options from
+ * MarkdownStyleContext.
+ * @summary Paragraph renderer for Markdown.
+ */
 export const ParagraphBlock = memo(
   ({ children }: ParagraphBlockProps) => {
     const { textColor, forcedTextSize, compactSpacing } = useMarkdownStyle();

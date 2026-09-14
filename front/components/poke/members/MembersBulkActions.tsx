@@ -64,7 +64,7 @@ export function MembersBulkActions({
     setIsSubmitting(true);
     const res = await runBatchUpdate(
       update,
-      eligible.map((m) => m.email)
+      eligible.map((m) => m.sId)
     );
     setIsSubmitting(false);
 
@@ -80,7 +80,9 @@ export function MembersBulkActions({
       window.alert(
         `${res.value.length - failures.length}/${res.value.length} succeeded.\n\n` +
           `Issues:\n` +
-          failures.map((r) => `${r.email}: ${r.error ?? r.status}`).join("\n")
+          failures
+            .map((r) => `${r.email ?? r.identifier}: ${r.error ?? r.status}`)
+            .join("\n")
       );
     }
 

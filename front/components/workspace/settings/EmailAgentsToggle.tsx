@@ -20,8 +20,8 @@ const ENABLE_EMAIL_AGENTS_CONFIRMATION_MESSAGE =
   "from untrusted sources, since those are exposed to security risks such as " +
   "prompt injection.";
 
-const LABEL = "Email agents";
-const DESCRIPTION = `Whether members can reach agents by email at AGENT_NAME@${ASSISTANT_EMAIL_SUBDOMAIN}`;
+export const EMAIL_AGENTS_LABEL = "Email agents";
+export const EMAIL_AGENTS_DESCRIPTION = `Whether members can reach agents by email at AGENT_NAME@${ASSISTANT_EMAIL_SUBDOMAIN}`;
 const DOCUMENTATION_URL = "https://docs.dust.tt/docs/email-agents";
 
 interface EmailAgentsToggleProps {
@@ -47,8 +47,8 @@ export function EmailAgentsToggle({ owner }: EmailAgentsToggleProps) {
   return (
     <>
       <GovernanceSettingRowLayout
-        label={LABEL}
-        description={DESCRIPTION}
+        label={EMAIL_AGENTS_LABEL}
+        description={EMAIL_AGENTS_DESCRIPTION}
         documentationUrl={DOCUMENTATION_URL}
         action={
           <SliderToggle

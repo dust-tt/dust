@@ -95,7 +95,7 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
       `https://slack.com/oauth/v2/authorize?` +
       `client_id=${clientId}` +
       `&user_scope=${encodeURIComponent(user_scopes.join(" "))}` +
-      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider("slack_tools"))}` +
+      `&redirect_uri=${encodeURIComponent(finalizeUriForProvider({ provider: "slack_tools", connection }))}` +
       // Force the team id to be the same as the admin-setup.
       // Edge-case: if the user is not in the team or not logged in, they might still connect to the wrong team.
       // We catch it in the `checkConnectionValidPostFinalize` method.

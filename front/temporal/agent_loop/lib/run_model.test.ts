@@ -1,10 +1,13 @@
+import { RETRY_ON_INTERRUPT_MAX_ATTEMPTS } from "@app/lib/actions/constants";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp_schemas";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import {
   buildBaseSpecifications,
   buildSpecificationsWithReplayPlaceholders,
   buildToolDefinitionsForTokenCount,
+  shouldSurfaceModelError,
 } from "@app/temporal/agent_loop/lib/run_model";
 import type {
   ModelConversationTypeMultiActions,
@@ -617,5 +620,37 @@ describe("buildSpecificationsWithReplayPlaceholders", () => {
 
     expect(missingReplayedToolNames).toEqual(["removed_tool"]);
     expect(specifications).toHaveLength(1);
+  });
+});
+
+describe("shouldSurfaceModelError", () => {
+  it("retries a retryable model error below the error budget", () => {
+    expect(
+      shouldSurfaceModelError({
+        isRetryable: true,
+        attempt: RUN_MODEL_MAX_RETRIES - 1,
+      })
+    ).toBe(false);
+  });
+
+  it("surfaces a retryable model error once the budget is exhausted, even though the policy cap allows more attempts", () => {
+    expect(
+      shouldSurfaceModelError({
+        isRetryable: true,
+        attempt: RUN_MODEL_MAX_RETRIES,
+      })
+    ).toBe(true);
+    expect(
+      shouldSurfaceModelError({
+        isRetryable: true,
+        attempt: RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
+      })
+    ).toBe(true);
+  });
+
+  it("surfaces a non-retryable model error immediately", () => {
+    expect(shouldSurfaceModelError({ isRetryable: false, attempt: 1 })).toBe(
+      true
+    );
   });
 });

@@ -1,4 +1,7 @@
-import type { AutomationsFilter } from "@app/components/workspace/analytics/automationsFilter";
+import type {
+  AutomationsFilter,
+  AutomationsFilterCategory,
+} from "@app/components/workspace/analytics/automationsFilter";
 import { getAutomationsFilterSummaries } from "@app/components/workspace/analytics/automationsFilter";
 import { FilterSummaryChips } from "@app/components/workspace/analytics/filterPanel/FilterSummaryChips";
 import { clearFilterCategory } from "@app/components/workspace/analytics/filterPanel/filterState";
@@ -6,15 +9,17 @@ import { clearFilterCategory } from "@app/components/workspace/analytics/filterP
 interface AutomationsFilterSummaryProps {
   filter: AutomationsFilter;
   onFilterChange: (filter: AutomationsFilter) => void;
+  categories?: readonly AutomationsFilterCategory[];
 }
 
 export function AutomationsFilterSummary({
   filter,
   onFilterChange,
+  categories,
 }: AutomationsFilterSummaryProps) {
   return (
     <FilterSummaryChips
-      summaries={getAutomationsFilterSummaries(filter)}
+      summaries={getAutomationsFilterSummaries(filter, categories)}
       onClearCategory={(category) =>
         onFilterChange(clearFilterCategory(filter, category))
       }

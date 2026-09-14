@@ -3,6 +3,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import type { MembershipRoleType } from "@app/types/memberships";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -14,7 +15,7 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 
 import { honoApp } from "@front-api/app";
 
-async function setup(role: "builder" | "user" | "admin" = "builder") {
+async function setup(role: MembershipRoleType = "user") {
   const { workspace, user } = await createPrivateApiMockRequest({ role });
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,

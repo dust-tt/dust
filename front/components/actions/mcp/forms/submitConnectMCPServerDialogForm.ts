@@ -2,9 +2,9 @@ import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { CellInfo } from "@app/types/cell";
 import { setupOAuthConnection } from "@app/types/oauth/client/setup";
 import type { OAuthProvider } from "@app/types/oauth/lib";
-import type { RegionInfo } from "@app/types/region";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
@@ -23,6 +23,7 @@ type CreateMCPServerConnectionFn = (
 
 interface UpdateMCPServerViewParams {
   oAuthUseCase: NonNullable<MCPServerOAuthFormValues["useCase"]>;
+  oauthScope?: string;
 }
 
 // Returns true on success, false on error (error handling is done internally via notifications).
@@ -38,7 +39,7 @@ interface SubmitConnectMCPServerDialogFormParams {
   createMCPServerConnection: CreateMCPServerConnectionFn;
   updateServerView: UpdateMCPServerViewFn;
   onBeforeAssociateConnection: () => void;
-  regionInfo: RegionInfo | null;
+  cellInfo: CellInfo | null;
 }
 
 export async function submitConnectMCPServerDialogForm({
@@ -49,7 +50,7 @@ export async function submitConnectMCPServerDialogForm({
   createMCPServerConnection,
   updateServerView,
   onBeforeAssociateConnection,
-  regionInfo,
+  cellInfo,
 }: SubmitConnectMCPServerDialogFormParams): Promise<Result<null, Error>> {
   if (!values.useCase) {
     return new Err(new Error("Use case is null while trying to connect"));
@@ -67,7 +68,7 @@ export async function submitConnectMCPServerDialogForm({
       ...(values.authCredentials ?? {}),
       ...(scope ? { scope } : {}),
     },
-    regionInfo,
+    cellInfo,
   });
 
   if (connectionResult.isErr()) {
@@ -85,10 +86,13 @@ export async function submitConnectMCPServerDialogForm({
     provider: authorization.provider,
   });
 
-  // Step 3: Update the oAuthUseCase for the MCP server view.
+  // Step 3: Update the oAuthUseCase for the MCP server view, pinning the scope this connection was
+  // authorized for. Personal connections read their scope from the view, so this bounds members to
+  // what the admin just consented to instead of letting them follow the server metadata as it grows.
   // Error handling for this step is done internally by the hook via notifications.
   await updateServerView({
     oAuthUseCase: values.useCase,
+    ...(scope ? { oauthScope: scope } : {}),
   });
 
   return new Ok(null);

@@ -1,14 +1,15 @@
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import {
-  contentHash,
-  extractPlanTitle,
-} from "@app/components/assistant/conversation/plan_mode/utils";
+import { extractPlanTitle } from "@app/components/assistant/conversation/plan_mode/utils";
+import { ConfirmContext } from "@app/components/Confirm";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { usePlanFile } from "@app/hooks/conversations/usePlanFile";
+import {
+  useClosePlan,
+  usePlanFile,
+} from "@app/hooks/conversations/usePlanFile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { LightWorkspaceType } from "@app/types/user";
-import { Button, Markdown, Spinner, XClose } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import { Archive, Button, Markdown, Spinner, XClose } from "@dust-tt/sparkle";
+import { useContext } from "react";
 
 interface ConversationPlanModePanelProps {
   conversation: ConversationWithoutContentType;
@@ -24,12 +25,27 @@ export function ConversationPlanModePanel({
     conversationId: conversation.sId,
     workspaceId: owner.sId,
   });
+  const { closePlan, isClosing } = useClosePlan({
+    workspaceId: owner.sId,
+    conversationId: conversation.sId,
+  });
+  const confirm = useContext(ConfirmContext);
+
+  // Sits next to the panel close button, so ask before archiving.
+  const archivePlan = async () => {
+    const confirmed = await confirm({
+      title: "Archive this plan?",
+      message:
+        "This will hide the current plan from the side panel, but keep it in the conversation's files. The agent can create a new one.",
+      validateLabel: "Archive plan",
+      validateVariant: "primary",
+    });
+    if (confirmed) {
+      await closePlan();
+    }
+  };
 
   const title = extractPlanTitle(content);
-  const markdownKey = useMemo(
-    () => (content ? contentHash(content) : ""),
-    [content]
-  );
 
   return (
     <div className="flex h-panel flex-col">
@@ -40,12 +56,24 @@ export function ConversationPlanModePanel({
               Plan: {title}
             </span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={closePanel}
-            icon={XClose}
-          />
+          <div className="flex items-center gap-1">
+            {content && (
+              <Button
+                variant="ghost"
+                size="sm"
+                icon={Archive}
+                tooltip="Archive plan"
+                isLoading={isClosing}
+                onClick={() => void archivePlan()}
+              />
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={closePanel}
+              icon={XClose}
+            />
+          </div>
         </div>
       </AppLayoutTitle>
       <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
@@ -58,9 +86,14 @@ export function ConversationPlanModePanel({
             No active plan for this conversation.
           </div>
         ) : (
-          // Remount on each edit: Sparkle's `Markdown` memoizes AST nodes for streaming reveal and
-          // can keep stale children when the whole content prop is replaced between edits.
-          <Markdown key={markdownKey} content={content} />
+          // Plain (non-memoized) blocks so each edit re-renders items in place and the step
+          // badges can transition when the agent ticks a task. Items are matched by position,
+          // so inserting a task above completed ones replays their check animation once.
+          <Markdown
+            content={content}
+            taskListVariant="step"
+            optimizeForStreaming={false}
+          />
         )}
       </div>
     </div>

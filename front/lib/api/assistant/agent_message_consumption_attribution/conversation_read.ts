@@ -7,6 +7,7 @@ import type { ConversationConsumptionMessageFacts } from "@app/lib/resources/age
 import { AgentMessageConsumptionItemResource as ConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import type { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { getAgentUsageAttributedId } from "@app/types/assistant/assistant";
 import { isTerminalAgentMessageStatus } from "@app/types/assistant/conversation";
 import type {
   ConversationConsumptionAgentDetails,
@@ -146,7 +147,10 @@ export async function getConversationConsumption(
   }
   const detailsByAgentId = new Map<string, typeof completeMessageDetails>();
   for (const entry of completeMessageDetails) {
-    const agentId = entry.message.agentConfigurationId;
+    const agentId = getAgentUsageAttributedId({
+      agentId: entry.message.agentConfigurationId,
+      parentAgentId: entry.message.parentAgentConfigurationId,
+    });
     const agentDetails = detailsByAgentId.get(agentId) ?? [];
     agentDetails.push(entry);
     detailsByAgentId.set(agentId, agentDetails);

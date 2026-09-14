@@ -10,12 +10,9 @@ const SvgGrok = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <g clipPath="url(#grok_svg__a)">
-      <path
-        fill="#000"
-        d="M0 4a4 4 0 0 1 4-4h16a4 4 0 0 1 4 4v16a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4z"
-      />
-      <g clipPath="url(#grok_svg__b)">
+    <g clipPath="url(#Grok_svg__a)">
+      <rect width={24} height={24} fill="#000" rx={6} />
+      <g clipPath="url(#Grok_svg__b)">
         <path
           fill="#fff"
           fillRule="evenodd"
@@ -25,10 +22,10 @@ const SvgGrok = (props: SVGProps<SVGSVGElement>) => (
       </g>
     </g>
     <defs>
-      <clipPath id="grok_svg__a">
+      <clipPath id="Grok_svg__a">
         <rect width={24} height={24} fill="#fff" rx={4} />
       </clipPath>
-      <clipPath id="grok_svg__b">
+      <clipPath id="Grok_svg__b">
         <path fill="#fff" d="M3 3h18v18H3z" />
       </clipPath>
     </defs>

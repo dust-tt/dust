@@ -3,7 +3,7 @@ import type {
   DataSourceViewContentNode,
   DataSourceViewType,
 } from "@app/types/data_source_view";
-import type { SpaceType } from "@app/types/space";
+import type { EnrichedSpaceType } from "@app/types/space";
 import { z } from "zod";
 
 const tagsFilter = z.object({
@@ -14,7 +14,10 @@ const tagsFilter = z.object({
 
 const navigationHistoryEntry = z.discriminatedUnion("type", [
   z.object({ type: z.literal("root") }),
-  z.object({ type: z.literal("space"), space: z.custom<SpaceType>() }),
+  z.object({
+    type: z.literal("space"),
+    space: z.custom<EnrichedSpaceType>(),
+  }),
   z.object({
     type: z.literal("category"),
     category: z.custom<DataSourceViewCategoryWithoutApps>(),

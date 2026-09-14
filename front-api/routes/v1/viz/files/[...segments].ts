@@ -87,7 +87,7 @@ app.get("/:scope/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  if (!frameFile.isInteractiveContent) {
+  if (!frameFile.isShareableFrame) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {

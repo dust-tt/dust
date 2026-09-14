@@ -1,34 +1,39 @@
 import { AuthenticatedVisualizationActionIframe } from "@app/components/assistant/conversation/actions/AuthenticatedVisualizationActionIframe";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationSidePanelHeader } from "@app/components/assistant/conversation/ConversationSidePanelHeader";
-import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
+import { DEFAULT_FRAME_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import { CenteredState } from "@app/components/assistant/conversation/interactive_content/CenteredState";
 import { ExportContentDropdown } from "@app/components/assistant/conversation/interactive_content/ExportContentDropdown";
 import { ShareFrameSheet } from "@app/components/assistant/conversation/interactive_content/frame/ShareFrameSheet";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { PinPodBannerButton } from "@app/components/pod/files/PinPodBannerButton";
-import { PodFrameTabButton } from "@app/components/pod/files/PodFrameTabButton";
+import { PodFileTabButton } from "@app/components/pod/files/PodFileTabButton";
 import { useVisualizationRevert } from "@app/hooks/conversations";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
-import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
+import {
+  useFileContent,
+  useFileMetadata,
+  useShareInteractiveContentFile,
+} from "@app/lib/swr/files";
+import { useEditFrameText, useFramePermissions } from "@app/lib/swr/frames";
 import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import { FULL_SCREEN_HASH_PARAM } from "@app/types/conversation_side_panel";
-import { normalizeAsInternalDustError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   CheckCircle,
   CodeBlock,
   Eye,
+  LinkExternal01,
   Maximize01,
   Minimize01,
   RefreshCw01,
@@ -54,6 +59,7 @@ interface FrameRendererProps {
   owner: LightWorkspaceType;
   lastEditedByAgentConfigurationId?: string;
   contentHash?: string;
+  renderMode: "legacy" | "v2";
 }
 
 export function FrameRenderer({
@@ -63,16 +69,15 @@ export function FrameRenderer({
   owner,
   lastEditedByAgentConfigurationId,
   contentHash,
+  renderMode,
 }: FrameRendererProps) {
   const { vizUrl } = useAuth();
-  const { hasFeature } = useFeatureFlags();
-  const hasFrameTabs = hasFeature("pod_frame_tabs");
   const isMobile = useIsMobile();
   const { isNavigationBarOpen, setIsNavigationBarOpen } =
     useDesktopNavigation();
   const [isLoading, setIsLoading] = useState(false);
   const isNavBarPrevOpenRef = useRef(isNavigationBarOpen);
-  const prevPanelSizeRef = useRef(DEFAULT_RIGHT_PANEL_SIZE);
+  const prevPanelSizeRef = useRef(DEFAULT_FRAME_PANEL_SIZE);
 
   const { spaceInfo: projectInfo, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -141,6 +146,12 @@ export function FrameRenderer({
     owner,
   });
 
+  const { fileShare } = useShareInteractiveContentFile({
+    fileId,
+    owner,
+    cacheKey: contentHash,
+  });
+
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
   const [isSavingToProject, setIsSavingToProject] = useState(false);
@@ -152,56 +163,41 @@ export function FrameRenderer({
 
   const [showCode, setShowCode] = React.useState(false);
 
+  const { isFrameAuthor } = useFramePermissions({
+    owner,
+    frameId: fileId,
+    disabled: renderMode !== "v2" || !conversation,
+  });
+  const editFrameText = useEditFrameText({
+    owner,
+    fileId,
+    conversationId: conversation?.sId,
+  });
+  const isEditable =
+    renderMode === "legacy" || Boolean(conversation && isFrameAuthor);
+
   const handleEditText = useCallback(
-    async ({
-      newText,
-      oldText,
-      targetFileId,
-      source,
-    }: {
-      newText: string;
-      oldText: string;
-      targetFileId?: string;
-      source?: string;
-    }) => {
-      try {
-        // Location-based edits address the published entry Frame (the clicked bundle); the source
-        // path inside `source` resolves within its build root. Legacy context edits route to the
-        // nested target file.
-        const editFileId = source ? fileId : (targetFileId ?? fileId);
-        const response = await clientFetch(
-          `/api/w/${owner.sId}/files/${editFileId}/edit-text`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ oldText, newText, source }),
-          }
-        );
+    async (params: Parameters<typeof editFrameText>[0]) => {
+      const result = await editFrameText(params);
 
-        if (!response.ok) {
-          const errorData = await getErrorFromResponse(response);
-          return { success: false, error: errorData.message };
+      if (result.success) {
+        try {
+          await mutateFileContent();
+        } catch {
+          // The mutation already succeeded. Keep the inline edit and let the next reload fetch
+          // the active publication rather than reporting a false save failure to the iframe.
         }
-
-        await mutateFileContent(
-          `/api/w/${owner.sId}/files/${fileId}?action=view`
-        );
-
-        return { success: true };
-      } catch (e) {
-        return {
-          success: false,
-          error: normalizeAsInternalDustError(e).message,
-        };
       }
+
+      return result;
     },
-    [owner.sId, fileId, mutateFileContent]
+    [editFrameText, mutateFileContent]
   );
 
   const restoreLayout = useCallback(() => {
     if (panel) {
       setIsNavigationBarOpen(isNavBarPrevOpenRef.current ?? true);
-      panel.resize(prevPanelSizeRef.current ?? DEFAULT_RIGHT_PANEL_SIZE);
+      panel.resize(prevPanelSizeRef.current ?? DEFAULT_FRAME_PANEL_SIZE);
     }
   }, [panel, setIsNavigationBarOpen]);
 
@@ -366,20 +362,85 @@ export function FrameRenderer({
   return (
     <div className="flex h-panel flex-col">
       <ConversationSidePanelHeader onClose={onClosePanel}>
-        <div className="flex w-full items-center justify-between">
-          <Button
-            icon={showCode ? Eye : Terminal}
-            onClick={() => setShowCode(!showCode)}
-            tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
-            variant="ghost"
-          />
-          <div className="flex items-center">
+        {renderMode === "legacy" && (
+          <div className="flex w-full items-center justify-between">
+            <Button
+              icon={showCode ? Eye : Terminal}
+              onClick={() => setShowCode(!showCode)}
+              tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
+              variant="ghost"
+            />
+            <div className="flex items-center">
+              <ExportContentDropdown
+                iframeRef={iframeRef}
+                owner={owner}
+                fileId={fileId}
+                fileContent={fileContent ?? null}
+                fileName={fileMetadata?.fileName}
+                contentType={fileMetadata?.contentType}
+              />
+              <ShareFrameSheet
+                key={contentHash ?? fileId}
+                fileId={fileId}
+                owner={owner}
+                contentHash={contentHash}
+              />
+              <PinPodBannerButton
+                owner={owner}
+                spaceId={projectId ?? ""}
+                pinnedFramePath={projectInfo?.pinnedFramePath ?? null}
+                isEditor={projectInfo?.isEditor ?? false}
+                framePath={framePath}
+                fileName={fileMetadata?.fileName}
+                hidden={!isFrameInPod}
+              />
+              <PodFileTabButton
+                owner={owner}
+                spaceId={projectId ?? ""}
+                fileTabs={projectInfo?.frameTabs ?? []}
+                tabsOrder={projectInfo?.tabsOrder ?? []}
+                isEditor={projectInfo?.isEditor ?? false}
+                filePath={framePath}
+                fileName={fileMetadata?.fileName}
+                hidden={!isFrameInPod}
+              />
+              {projectSaveState === "saved" && (
+                <Button
+                  icon={CheckCircle}
+                  variant="ghost"
+                  disabled={true}
+                  label={isMobile ? undefined : "Saved"}
+                  tooltip={`Saved in "${projectInfo?.name ?? "unknown Pod"}"`}
+                />
+              )}
+              {projectSaveState === "supported" && (
+                <Button
+                  icon={UploadCloud02}
+                  variant="ghost"
+                  label={
+                    isMobile
+                      ? undefined
+                      : isSavingToProject
+                        ? "Saving…"
+                        : "Save"
+                  }
+                  isLoading={isSavingToProject}
+                  tooltip={`Save to "${projectInfo?.name ?? "unknown Pod"}"`}
+                  onClick={handleSaveToProject}
+                />
+              )}
+            </div>
+          </div>
+        )}
+        {renderMode === "v2" && (
+          <div className="flex w-full justify-end">
             <ExportContentDropdown
               iframeRef={iframeRef}
               owner={owner}
               fileId={fileId}
               fileContent={fileContent ?? null}
               fileName={fileMetadata?.fileName}
+              contentType={fileMetadata?.contentType}
             />
             <ShareFrameSheet
               key={contentHash ?? fileId}
@@ -387,50 +448,8 @@ export function FrameRenderer({
               owner={owner}
               contentHash={contentHash}
             />
-            <PinPodBannerButton
-              owner={owner}
-              spaceId={projectId ?? ""}
-              pinnedFramePath={projectInfo?.pinnedFramePath ?? null}
-              isEditor={projectInfo?.isEditor ?? false}
-              framePath={framePath}
-              fileName={fileMetadata?.fileName}
-              hidden={!isFrameInPod}
-            />
-            {hasFrameTabs && (
-              <PodFrameTabButton
-                owner={owner}
-                spaceId={projectId ?? ""}
-                frameTabs={projectInfo?.frameTabs ?? []}
-                tabsOrder={projectInfo?.tabsOrder ?? []}
-                isEditor={projectInfo?.isEditor ?? false}
-                framePath={framePath}
-                fileName={fileMetadata?.fileName}
-                hidden={!isFrameInPod}
-              />
-            )}
-            {projectSaveState === "saved" && (
-              <Button
-                icon={CheckCircle}
-                variant="ghost"
-                disabled={true}
-                label={isMobile ? undefined : "Saved"}
-                tooltip={`Saved in "${projectInfo?.name ?? "unknown Pod"}"`}
-              />
-            )}
-            {projectSaveState === "supported" && (
-              <Button
-                icon={UploadCloud02}
-                variant="ghost"
-                label={
-                  isMobile ? undefined : isSavingToProject ? "Saving…" : "Save"
-                }
-                isLoading={isSavingToProject}
-                tooltip={`Save to "${projectInfo?.name ?? "unknown Pod"}"`}
-                onClick={handleSaveToProject}
-              />
-            )}
           </div>
-        </div>
+        )}
       </ConversationSidePanelHeader>
 
       <div className="flex-1 overflow-hidden">
@@ -458,11 +477,12 @@ export function FrameRenderer({
               }}
               key={`viz-${fileId}`}
               conversationId={conversation?.sId ?? null}
-              isEditable={true}
               spaceId={frameSpaceId ?? undefined}
               framePath={framePath}
+              frameId={renderMode === "v2" ? fileId : undefined}
               isInDrawer={true}
-              onEditText={handleEditText}
+              isEditable={isEditable}
+              onEditText={isEditable ? handleEditText : undefined}
               ref={iframeRef}
             />
             {conversation && (
@@ -476,6 +496,7 @@ export function FrameRenderer({
                 isFullScreen={isFullScreen}
                 exitFullScreen={exitFullScreen}
                 enterFullScreen={enterFullScreen}
+                shareUrl={fileShare?.shareUrl}
                 reloadFile={reloadFile}
               />
             )}
@@ -494,6 +515,7 @@ interface PreviewActionButtonsProps {
   isFullScreen: boolean;
   enterFullScreen: () => void;
   exitFullScreen: () => void;
+  shareUrl?: string;
   reloadFile: () => void;
 }
 
@@ -504,6 +526,7 @@ function PreviewActionButtons({
   isFullScreen,
   enterFullScreen,
   exitFullScreen,
+  shareUrl,
   reloadFile,
 }: PreviewActionButtonsProps) {
   const clientType = useClientType();
@@ -520,6 +543,25 @@ function PreviewActionButtons({
               variant="ghost"
               size="xs"
               onClick={isFullScreen ? exitFullScreen : enterFullScreen}
+            />
+          }
+        />
+      )}
+      {clientType !== "extension" && (
+        <Tooltip
+          label="Open in a new tab"
+          side="left"
+          tooltipTriggerAsChild
+          trigger={
+            <Button
+              aria-label="Open in a new tab"
+              icon={LinkExternal01}
+              variant="ghost"
+              size="xs"
+              disabled={!shareUrl}
+              onClick={() =>
+                window.open(shareUrl, "_blank", "noopener,noreferrer")
+              }
             />
           }
         />

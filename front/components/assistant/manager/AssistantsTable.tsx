@@ -1,8 +1,10 @@
+import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
 import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetailsSheet";
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
+import { ModelTierChip } from "@app/components/model_picker/ModelTierChip";
 import { getModelMakerLogo } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
@@ -23,7 +25,13 @@ import type {
   AgentUsageType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import { isModelStreamId } from "@app/types/assistant/models/auto";
+import { getTieredReasoningEffort } from "@app/types/assistant/models/model_tiers";
 import { getModelMaker } from "@app/types/assistant/models/providers";
+import type {
+  ModelConfigurationType,
+  ReasoningEffort,
+} from "@app/types/assistant/models/types";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { TagType } from "@app/types/tag";
 import type { UserType, WorkspaceType } from "@app/types/user";
@@ -31,6 +39,7 @@ import { isAdmin } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
+  AvatarCellSkeleton,
   Brackets,
   Checkbox,
   Chip,
@@ -38,12 +47,18 @@ import {
   DataTable,
   Edit04,
   Eye,
+  Label,
+  LoadingBlock,
+  TextCellSkeleton,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
 import type { CellContext, HeaderContext } from "@tanstack/react-table";
+import capitalize from "lodash/capitalize";
 import type { ComponentType, ReactNode } from "react";
 import { useMemo, useState } from "react";
+
+const SKELETON_ROW_COUNT = 16;
 
 type RowData = {
   sId: string;
@@ -57,6 +72,8 @@ type RowData = {
   scope: AgentConfigurationScope;
   model: string;
   modelIcon: ComponentType | undefined;
+  modelConfig: ModelConfigurationType | null;
+  modelReasoningEffort: ReasoningEffort | undefined;
   onClick?: () => void;
   menuItems?: MenuItem[];
   agentTags: TagType[];
@@ -66,25 +83,161 @@ type RowData = {
   canEdit: boolean;
 };
 
-// Global agents (canArchive: false) cannot be edited, so we disable them in batch edit.
-function isDisabled(canArchive: boolean, isBatchEdit: boolean): boolean {
-  return !canArchive && isBatchEdit;
+const ASSISTANTS_TABLE_SKELETON_ROWS: RowData[] = Array.from(
+  { length: SKELETON_ROW_COUNT },
+  (_, index) => ({
+    sId: `assistant-skeleton-${index}`,
+    name: "",
+    description: "",
+    pictureUrl: "",
+    editors: [],
+    usage: undefined,
+    feedbacks: undefined,
+    lastUpdate: null,
+    scope: "hidden",
+    model: "",
+    modelIcon: undefined,
+    modelConfig: null,
+    modelReasoningEffort: undefined,
+    agentTags: [],
+    agentTagsAsString: "",
+    canArchive: false,
+    canEdit: false,
+  })
+);
+
+function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
+  const rowVariant = rowIndex % 5;
+
+  switch (columnId) {
+    case "select":
+      return (
+        <DataTable.CellContent className="size-full items-center justify-center">
+          <LoadingBlock className="h-4 w-4 rounded-sm" />
+        </DataTable.CellContent>
+      );
+    case "name":
+      return (
+        <DataTable.CellContent>
+          <AvatarCellSkeleton
+            rounded={false}
+            className="py-3"
+            avatarClassName="h-9 w-9 rounded-lg"
+          >
+            <div className="flex min-w-0 flex-col">
+              <div className="flex h-5 items-center">
+                <TextCellSkeleton
+                  className={
+                    ["w-32", "w-40", "w-28", "w-36", "w-44"][rowVariant]
+                  }
+                />
+              </div>
+              <div className="flex h-5 items-center">
+                <TextCellSkeleton
+                  className={
+                    ["w-56", "w-64", "w-48", "w-60", "w-52"][rowVariant]
+                  }
+                />
+              </div>
+            </div>
+          </AvatarCellSkeleton>
+        </DataTable.CellContent>
+      );
+    case "model":
+      return (
+        <DataTable.CellContent>
+          <div className="flex items-center">
+            <LoadingBlock className="h-5 w-5 shrink-0 rounded-sm" />
+            <LoadingBlock
+              className={classNames(
+                "ml-2 hidden h-3 @xl:block",
+                ["w-20", "w-24", "w-16", "w-28", "w-20"][rowVariant]
+              )}
+            />
+          </div>
+        </DataTable.CellContent>
+      );
+    case "scope":
+      return (
+        <DataTable.CellContent>
+          <LoadingBlock
+            className={classNames(
+              "h-6 rounded-[9px]",
+              ["w-20", "w-24", "w-20", "w-24", "w-20"][rowVariant]
+            )}
+          />
+        </DataTable.CellContent>
+      );
+    case "editors":
+      return (
+        <DataTable.CellContent>
+          <div className="flex -space-x-2">
+            {Array.from({ length: (rowIndex % 3) + 1 }, (_, index) => (
+              <LoadingBlock
+                key={index}
+                className="h-7 w-7 rounded-full ring-2 ring-background"
+              />
+            ))}
+          </div>
+        </DataTable.CellContent>
+      );
+    case "agentTagsAsString":
+      return (
+        <DataTable.CellContent grow>
+          <LoadingBlock
+            className={classNames(
+              "h-3 max-w-full",
+              ["w-14", "w-20", "w-12", "w-24", "w-16"][rowVariant]
+            )}
+          />
+        </DataTable.CellContent>
+      );
+    case "Usage":
+    case "Feedback":
+      return (
+        <DataTable.CellContent>
+          <LoadingBlock
+            className={classNames(
+              "h-3",
+              ["w-7", "w-9", "w-6", "w-8", "w-10"][rowVariant]
+            )}
+          />
+        </DataTable.CellContent>
+      );
+    case "lastUpdate":
+      return (
+        <DataTable.CellContent>
+          <LoadingBlock
+            className={classNames(
+              "h-3",
+              ["w-14", "w-16", "w-20", "w-16", "w-14"][rowVariant]
+            )}
+          />
+        </DataTable.CellContent>
+      );
+    case "actions":
+      return (
+        <DataTable.CellContent>
+          <LoadingBlock className="h-8 w-8 rounded-xl" />
+        </DataTable.CellContent>
+      );
+    default:
+      return null;
+  }
 }
 
 const getTableColumns = ({
   owner,
   tags,
-  isBatchEdit,
   mutateAgentConfigurations,
 }: {
   owner: WorkspaceType;
   tags: TagType[];
-  isBatchEdit: boolean;
   mutateAgentConfigurations: () => Promise<any>;
 }) => {
   /**
    * Columns order:
-   * - Select (if batch edit)
+   * - Select
    * - Name (always)
    * - Model (hidden on mobile)
    * - Access (hidden on mobile)
@@ -97,74 +250,83 @@ const getTableColumns = ({
    */
 
   return [
-    ...(isBatchEdit
-      ? [
-          {
-            header: (info: HeaderContext<RowData, boolean>) => {
-              const areAllPageRowsSelected =
-                info.table.getIsAllPageRowsSelected();
-              const hasSelection = Object.values(
-                info.table.getState().rowSelection
-              ).some((isSelected) => isSelected);
+    {
+      header: (info: HeaderContext<RowData, boolean>) => {
+        const areAllPageRowsSelected = info.table.getIsAllPageRowsSelected();
+        const hasSelection = Object.values(
+          info.table.getState().rowSelection
+        ).some((isSelected) => isSelected);
 
-              return (
-                <Checkbox
-                  checked={
-                    areAllPageRowsSelected
-                      ? true
-                      : hasSelection
-                        ? "partial"
-                        : false
-                  }
-                  disabled={
-                    !info.table
-                      .getRowModel()
-                      .rows.some((row) => row.getCanSelect())
-                  }
-                  tooltip={
-                    areAllPageRowsSelected
-                      ? "Clear selection"
-                      : "Select all on page"
-                  }
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      info.table.toggleAllPageRowsSelected(true);
-                    } else {
-                      // Unticking clears the whole selection across pages.
-                      info.table.resetRowSelection();
-                    }
-                  }}
-                />
-              );
-            },
-            accessorKey: "select",
-            cell: (info: CellContext<RowData, boolean>) => (
-              <DataTable.CellContent
-                disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
-              >
-                <Checkbox
-                  checked={info.row.getIsSelected()}
-                  disabled={!info.row.getCanSelect()}
-                />
-              </DataTable.CellContent>
-            ),
-            meta: {
-              className: "w-10",
-            },
-            enableSorting: false,
-          },
-        ]
-      : []),
+        return (
+          <DataTable.CellContent className="size-full items-center justify-center">
+            <Checkbox
+              checked={
+                areAllPageRowsSelected ? true : hasSelection ? "partial" : false
+              }
+              disabled={
+                !info.table.getRowModel().rows.some((row) => row.getCanSelect())
+              }
+              tooltip={
+                areAllPageRowsSelected
+                  ? "Clear selection"
+                  : "Select all on page"
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  info.table.toggleAllPageRowsSelected(true);
+                } else {
+                  // Unticking clears the whole selection across pages.
+                  info.table.resetRowSelection();
+                }
+              }}
+            />
+          </DataTable.CellContent>
+        );
+      },
+      accessorKey: "select",
+      cell: (info: CellContext<RowData, boolean>) => {
+        if (!info.row.getCanSelect()) {
+          return null;
+        }
+
+        const checkboxId = `select-agent-${info.row.id}`;
+        const agentName = info.row.original.name;
+
+        return (
+          // `stopPropagation` keeps the click from also reaching the row's `onClick`, which opens the
+          // agent details panel
+          <Label
+            htmlFor={checkboxId}
+            className="flex size-full cursor-pointer items-center justify-center hover:bg-muted-background"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <Checkbox
+              id={checkboxId}
+              aria-label={
+                info.row.getIsSelected()
+                  ? `Deselect ${agentName}`
+                  : `Select ${agentName}`
+              }
+              checked={info.row.getIsSelected()}
+              onCheckedChange={(checked) => info.row.toggleSelected(!!checked)}
+            />
+          </Label>
+        );
+      },
+      meta: {
+        className: "w-10 p-0",
+      },
+      enableSorting: false,
+    },
     {
       header: "Name",
       accessorKey: "name",
       cell: (info: CellContext<RowData, string>) => (
-        <DataTable.CellContent
-          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
-        >
+        <DataTable.CellContent>
           <div className={classNames("flex flex-row items-center gap-2 py-3")}>
             <div>
               <Avatar visual={info.row.original.pictureUrl} size="sm" />
@@ -189,24 +351,53 @@ const getTableColumns = ({
       accessorKey: "model",
       cell: (info: CellContext<RowData, string>) => {
         const modelName = info.getValue() || "-";
-        const modelIcon = info.row.original.modelIcon;
+        const { modelIcon, modelConfig, modelReasoningEffort } =
+          info.row.original;
+
+        // Surface the reasoning effort the tier resolves at: two agents on the
+        // same model can be on different tiers because of it.
+        const reasoningEffort = modelConfig
+          ? getTieredReasoningEffort(modelConfig, modelReasoningEffort)
+          : null;
+        const tooltipLabel =
+          reasoningEffort && reasoningEffort !== "none"
+            ? `${modelName} ${capitalize(reasoningEffort)}`
+            : modelName;
+
+        // Streams are named after their tier: the chip alone carries the info.
+        const isStreamModel = modelConfig
+          ? isModelStreamId(modelConfig.modelId)
+          : false;
 
         return (
           <Tooltip
             tooltipTriggerAsChild
-            label={modelName}
+            label={tooltipLabel}
             trigger={
-              <div className="inline-flex">
+              // Full width so the cell constrains the flex chain: the name
+              // truncates instead of the chip being clipped at the cell edge.
+              <div className="inline-flex w-full min-w-0">
                 <DataTable.CellContent
-                  disabled={isDisabled(
-                    info.row.original.canArchive,
-                    isBatchEdit
-                  )}
+                  className="w-full min-w-0"
                   icon={modelIcon}
-                  iconClassName="mr-0 @xl:mr-2"
+                  iconClassName="mr-2"
                 >
-                  <span className="hidden @xl:inline">{modelName}</span>
-                  {!modelIcon && <span className="@xl:hidden">-</span>}
+                  <div className="flex min-w-0 items-center gap-2">
+                    {!isStreamModel && (
+                      <span className="hidden min-w-0 truncate @xl:inline">
+                        {modelName}
+                      </span>
+                    )}
+                    {!modelIcon && <span className="@xl:hidden">-</span>}
+                    {modelConfig && (
+                      <div className="shrink-0">
+                        <ModelTierChip
+                          model={modelConfig}
+                          reasoningEffort={modelReasoningEffort}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </DataTable.CellContent>
               </div>
             }
@@ -214,16 +405,14 @@ const getTableColumns = ({
         );
       },
       meta: {
-        className: "hidden @sm:w-20 @sm:table-cell @xl:w-48",
+        className: "hidden @sm:w-28 @sm:table-cell @xl:w-56",
       },
     },
     {
       header: "Access",
       accessorKey: "scope",
       cell: (info: CellContext<RowData, AgentConfigurationScope>) => (
-        <DataTable.CellContent
-          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
-        >
+        <DataTable.CellContent>
           {info.getValue() !== "hidden" && (
             <Chip
               size="xs"
@@ -245,12 +434,7 @@ const getTableColumns = ({
         const { editors } = info.row.original;
 
         if (!editors) {
-          return (
-            <DataTable.BasicCellContent
-              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
-              label="-"
-            />
-          );
+          return <DataTable.BasicCellContent label="-" />;
         }
 
         return (
@@ -277,7 +461,6 @@ const getTableColumns = ({
         <DataTable.CellContent
           grow
           className={classNames("flex flex-row items-center")}
-          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
         >
           <div className="group flex flex-row items-center gap-1">
             <div className="truncate text-muted-foreground">
@@ -311,7 +494,6 @@ const getTableColumns = ({
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
           className="font-mono"
-          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           tooltip={assistantUsageMessage({
             assistantName: info.row.original.name,
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -343,7 +525,6 @@ const getTableColumns = ({
           return (
             <DataTable.BasicCellContent
               className="font-mono"
-              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
               tooltip={feedbacksCount}
               label={`${f.up + f.down}`}
             />
@@ -360,7 +541,6 @@ const getTableColumns = ({
       accessorKey: "lastUpdate",
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
-          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           tooltip={
             info.getValue()
               ? formatTimestampToFriendlyDate(info.getValue(), "long")
@@ -381,19 +561,12 @@ const getTableColumns = ({
       cell: (info: CellContext<RowData, number>) => {
         if (info.row.original.scope === "global") {
           return (
-            <DataTable.CellContent
-              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
-            >
+            <DataTable.CellContent>
               {info.row.original.action}
             </DataTable.CellContent>
           );
         }
-        return (
-          <DataTable.MoreButton
-            menuItems={info.row.original.menuItems}
-            disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
-          />
-        );
+        return <DataTable.MoreButton menuItems={info.row.original.menuItems} />;
       },
       meta: {
         className: "hidden @md:table-cell @md:w-14",
@@ -411,10 +584,10 @@ type AssistantsTableProps = {
   ) => Promise<void>;
   showDisabledFreeWorkspacePopup: string | null;
   setShowDisabledFreeWorkspacePopup: (s: string | null) => void;
-  isBatchEdit: boolean;
   selection: string[];
   setSelection: (selection: string[]) => void;
   mutateAgentConfigurations: () => Promise<any>;
+  isLoading?: boolean;
 };
 
 export function AssistantsTable({
@@ -424,10 +597,10 @@ export function AssistantsTable({
   handleToggleAgentStatus,
   showDisabledFreeWorkspacePopup,
   setShowDisabledFreeWorkspacePopup,
-  isBatchEdit,
   selection,
   setSelection,
   mutateAgentConfigurations,
+  isLoading = false,
 }: AssistantsTableProps) {
   const { tags } = useTags({ owner });
   const sortedTags = useMemo(() => [...tags].sort(tagsSorter), [tags]);
@@ -437,10 +610,18 @@ export function AssistantsTable({
       getTableColumns({
         owner,
         tags: sortedTags,
-        isBatchEdit,
         mutateAgentConfigurations,
       }),
-    [owner, sortedTags, isBatchEdit]
+    [owner, sortedTags]
+  );
+  const skeletonColumns = useMemo(
+    () =>
+      columns.map((column) => ({
+        ...column,
+        cell: (info: CellContext<RowData, unknown>) =>
+          renderAssistantsTableSkeletonCell(info.column.id, info.row.index),
+      })),
+    [columns]
   );
 
   const { isDark } = useTheme();
@@ -501,6 +682,8 @@ export function AssistantsTable({
           modelIcon: modelConfig
             ? getModelMakerLogo(getModelMaker(modelConfig), isDark)
             : undefined,
+          modelConfig,
+          modelReasoningEffort: agentConfiguration.model.reasoningEffort,
           agentTags: agentConfiguration.tags,
           agentTagsAsString:
             agentConfiguration.tags.length > 0
@@ -520,13 +703,9 @@ export function AssistantsTable({
                 }
               />
             ) : undefined,
-          // In batch edit, row clicks toggle the selection, which the table
-          // handles through `enableRowSelection`.
-          onClick: isBatchEdit
-            ? undefined
-            : () => {
-                setDetailedAgentId(agentConfiguration.sId);
-              },
+          onClick: () => {
+            setDetailedAgentId(agentConfiguration.sId);
+          },
           menuItems:
             agentConfiguration.scope !== "global" &&
             agentConfiguration.status !== "archived"
@@ -611,10 +790,24 @@ export function AssistantsTable({
       setDetailedAgentId,
       setShowDisabledFreeWorkspacePopup,
       showDisabledFreeWorkspacePopup,
-      isBatchEdit,
       isDark,
       canCreateAgent,
     ]
+  );
+
+  const selectionSet = useMemo(() => new Set(selection), [selection]);
+
+  const selectableRowIds = useMemo(
+    () => rows.filter((row) => row.canArchive).map((row) => row.sId),
+    [rows]
+  );
+  const totalSelectableCount = selectableRowIds.length;
+
+  // Selection only ever contains selectable rows (only those render a
+  // checkbox), so no extra filtering is needed here.
+  const selectedAgents = useMemo(
+    () => agents.filter((a) => selectionSet.has(a.sId)),
+    [agents, selectionSet]
   );
 
   return (
@@ -630,29 +823,60 @@ export function AssistantsTable({
           }));
         }}
       />
-      <div>
-        {rows.length > 0 && (
-          <DataTable
-            className="relative"
-            data={rows}
-            columns={columns}
-            pagination={pagination}
-            setPagination={setPagination}
-            getRowId={(row) => row.sId}
-            enableRowSelection={
-              isBatchEdit ? (row) => row.original.canArchive : false
-            }
-            rowSelection={rowSelection}
-            setRowSelection={(newRowSelection) => {
-              setSelection(
-                Object.keys(newRowSelection).filter(
-                  (agentId) => newRowSelection[agentId]
-                )
-              );
-            }}
-          />
+      <div
+        role={isLoading ? "status" : undefined}
+        aria-label={isLoading ? "Loading agents" : undefined}
+        aria-busy={isLoading || undefined}
+      >
+        {isLoading ? (
+          <div aria-hidden="true" className="flex flex-col gap-2">
+            <DataTable
+              className="relative"
+              data={ASSISTANTS_TABLE_SKELETON_ROWS}
+              columns={skeletonColumns}
+              enableRowSelection={() => false}
+              disableRowClickSelection
+              rowSelection={{}}
+              setRowSelection={() => undefined}
+            />
+            <div className="p-1">
+              <div className="flex h-8 items-center justify-end">
+                <LoadingBlock className="h-3 w-14" />
+              </div>
+            </div>
+          </div>
+        ) : (
+          rows.length > 0 && (
+            <DataTable
+              className="relative"
+              data={rows}
+              columns={columns}
+              pagination={pagination}
+              setPagination={setPagination}
+              getRowId={(row) => row.sId}
+              enableRowSelection={(row) => row.original.canArchive}
+              disableRowClickSelection
+              rowSelection={rowSelection}
+              setRowSelection={(newRowSelection) => {
+                setSelection(
+                  Object.keys(newRowSelection).filter(
+                    (agentId) => newRowSelection[agentId]
+                  )
+                );
+              }}
+            />
+          )
         )}
       </div>
+      <AgentEditBar
+        owner={owner}
+        selectedAgents={selectedAgents}
+        tags={sortedTags}
+        mutateAgentConfigurations={mutateAgentConfigurations}
+        totalCount={totalSelectableCount}
+        onClear={() => setSelection([])}
+        onSelectAll={() => setSelection(selectableRowIds)}
+      />
     </>
   );
 }

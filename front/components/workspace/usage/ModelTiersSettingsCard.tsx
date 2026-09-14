@@ -1,25 +1,21 @@
 import { ModelTierPickerDropdown } from "@app/components/workspace/ModelTierPickerDropdown";
 import { ModelTiersInfoButton } from "@app/components/workspace/ModelTiersInfoModal";
 import { usePublishedAgentsRestrictedModelsToggle } from "@app/hooks/usePublishedAgentsRestrictedModelsToggle";
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
 import { getWorkspaceModelTierOptions } from "@app/lib/client/model_tier_options";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
 import {
   useWorkspaceAllowedModelTierMutations,
   useWorkspaceAllowedModelTiers,
 } from "@app/lib/swr/model_tiers";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Page, SettingsList, SliderToggle } from "@dust-tt/sparkle";
 
 interface ModelTiersSettingsCardProps {
   owner: LightWorkspaceType;
-  readOnly: boolean;
 }
 
-export function ModelTiersSettingsCard({
-  owner,
-  readOnly,
-}: ModelTiersSettingsCardProps) {
+export function ModelTiersSettingsCard({ owner }: ModelTiersSettingsCardProps) {
   const {
     maxTierName: workspaceMaxTierName,
     isWorkspaceAllowedModelTiersLoading,
@@ -53,7 +49,6 @@ export function ModelTiersSettingsCard({
                   tierName: value as ModelsTierName,
                 });
               }}
-              readOnly={readOnly}
               isLoading={isWorkspaceAllowedModelTiersLoading}
               isMutating={isWorkspaceAllowedModelTierMutating}
             />
@@ -65,9 +60,7 @@ export function ModelTiersSettingsCard({
           action={
             <SliderToggle
               selected={isRestrictedModelsForPublishedAgentsEnabled}
-              disabled={
-                readOnly || isRestrictedModelsForPublishedAgentsChanging
-              }
+              disabled={isRestrictedModelsForPublishedAgentsChanging}
               onClick={() => void doTogglePublishedAgentsRestrictedModels()}
             />
           }

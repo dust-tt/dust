@@ -68,12 +68,12 @@ describe("Authenticator.hasWorkspacePermission", () => {
   });
 
   it("returns true for everybody when the global group holds the grant", async () => {
-    const globalGroup = await GroupResource.internalFetchWorkspaceGlobalGroup(
-      workspace.id
-    );
-    if (!globalGroup) {
+    const globalGroupRes =
+      await GroupResource.fetchWorkspaceGlobalGroup(adminAuth);
+    if (globalGroupRes.isErr()) {
       throw new Error("global group should exist");
     }
+    const globalGroup = globalGroupRes.value;
     await GroupPermissionResource.grantTypeWide(adminAuth, {
       group: globalGroup,
       ...CAPABILITY,
@@ -134,24 +134,29 @@ describe("Authenticator.getWorkspacePermissions", () => {
 
   it("returns every type-level verb for an admin", async () => {
     // Admins hold every type-level capability by default; instance-only domains
-    // (space, models_tier) stay empty.
+    // (space, models_tier) stay empty. `read` on skills comes from the global group's `reader`
+    // grant, which every workspace holds (see WorkspaceFactory / seedWorkspaceCapabilities).
     expect(await adminAuth.getWorkspacePermissions()).toEqual({
       ...emptyWorkspacePermissions(),
       agent: ["create", "publish"],
-      skill: ["create", "publish", "make_discoverable"],
+      skill: ["read", "create", "publish", "make_discoverable"],
       frame: ["invite", "publish"],
       billing: ["admin"],
       security: ["admin"],
       dust_app: ["admin"],
+      trigger: ["use_workspace_pool"],
     });
   });
 
   it("returns no permissions for a regular user without grants", async () => {
     const auth = await memberAuthInGroup();
 
-    expect(await auth.getWorkspacePermissions()).toEqual(
-      emptyWorkspacePermissions()
-    );
+    // Every workspace member reads skills through the global group's `reader` grant; nothing else
+    // is granted to a member by default.
+    expect(await auth.getWorkspacePermissions()).toEqual({
+      ...emptyWorkspacePermissions(),
+      skill: ["read"],
+    });
   });
 
   it("reflects a capability granted to everyone", async () => {
@@ -164,6 +169,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
     expect(await auth.getWorkspacePermissions()).toEqual({
       ...emptyWorkspacePermissions(),
       agent: ["create"],
+      skill: ["read"],
     });
   });
 
@@ -179,6 +185,7 @@ describe("Authenticator.getWorkspacePermissions", () => {
     expect(await auth.getWorkspacePermissions()).toEqual({
       ...emptyWorkspacePermissions(),
       agent: ["publish"],
+      skill: ["read"],
     });
   });
 });
@@ -230,43 +237,84 @@ describe("Authenticator.fromKey permission resolution", () => {
     vi.restoreAllMocks();
   });
 
-  it("resolves permissions for unscoped system keys", async () => {
+  it("gives unscoped system keys every verb without reading grants", async () => {
     const workspace = await WorkspaceFactory.basic();
     const { systemGroup } = await GroupFactory.defaults(workspace);
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const includedGroup = await GroupFactory.regularManual(
-      workspace,
-      "included"
-    );
-    const excludedGroup = await GroupResource.makeNew({
-      name: "excluded",
-      kind: "agent_editors",
-      workspaceId: workspace.id,
-    });
+    const group = await GroupFactory.regularManual(workspace, "eng");
     await GroupPermissionResource.grant(adminAuth, {
-      group: includedGroup,
+      group,
       grantType: "editor",
       resourceType: "agent",
       resourceId: 42,
     });
-    await GroupPermissionResource.grant(adminAuth, {
-      group: excludedGroup,
-      grantType: "editor",
-      resourceType: "agent",
-      // A different agent, so the excluded group's grant is observable by its absence below.
-      resourceId: 99,
-    });
+
+    const listForGroups = vi.spyOn(GroupPermissionResource, "listForGroups");
 
     const key = await KeyFactory.system(systemGroup);
-    const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId);
+    const workspaceAuth = await Authenticator.fromKey(key, workspace.sId);
 
-    // The in-scope group's grant on agent 42 is loaded; the out-of-scope group's grant on agent 99
-    // is not — resolved verbs are caller-scoped and carry no group ids.
-    expect(workspaceAuth.getGrantedVerbs("agent", 42).length).toBeGreaterThan(
-      0
+    // A system key holds every group of its workspace, so its grants are stated, not read.
+    expect(listForGroups).not.toHaveBeenCalled();
+
+    // Every verb the registry defines holds, on the granted agent and on one that carries no
+    // grant at all (instance verbs and type-level capabilities alike).
+    expect([...workspaceAuth.getGrantedVerbs("agent", 42)].sort()).toEqual([
+      "admin",
+      "create",
+      "publish",
+      "read",
+      "write",
+    ]);
+    expect([...workspaceAuth.getGrantedVerbs("agent", 99)].sort()).toEqual([
+      "admin",
+      "create",
+      "publish",
+      "read",
+      "write",
+    ]);
+    expect(workspaceAuth.getGrantedVerbs("space", 1234)).toContain("admin");
+
+    // It survives the Temporal round trip the agent loop puts the auth through.
+    const restored = await Authenticator.fromJSON(workspaceAuth.toJSON());
+    expect(restored.getGrantedVerbs("space", 1234)).toContain("admin");
+  });
+
+  it("gives a system key nothing on a workspace that is not its own", async () => {
+    const keyWorkspace = await WorkspaceFactory.basic();
+    const { systemGroup } = await GroupFactory.defaults(keyWorkspace);
+    const otherWorkspace = await WorkspaceFactory.basic();
+    await GroupFactory.defaults(otherWorkspace);
+
+    const key = await KeyFactory.system(systemGroup);
+    const workspaceAuth = await Authenticator.fromKey(key, otherWorkspace.sId);
+
+    expect(workspaceAuth.getGrantedVerbs("space", 1234)).toEqual([]);
+  });
+
+  it("resolves grants for non-system keys", async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const { globalGroup } = await GroupFactory.defaults(workspace);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
     );
+    await GroupPermissionResource.grant(adminAuth, {
+      group: globalGroup,
+      grantType: "editor",
+      resourceType: "agent",
+      resourceId: 42,
+    });
+
+    const key = await KeyFactory.regular(globalGroup);
+    const workspaceAuth = await Authenticator.fromKey(key, workspace.sId);
+
+    expect([...workspaceAuth.getGrantedVerbs("agent", 42)].sort()).toEqual([
+      "admin",
+      "read",
+      "write",
+    ]);
     expect(workspaceAuth.getGrantedVerbs("agent", 99)).toEqual([]);
   });
 
@@ -298,13 +346,16 @@ describe("Authenticator.fromKey permission resolution", () => {
       resourceId: 99,
     });
 
+    const listForGroups = vi.spyOn(GroupPermissionResource, "listForGroups");
+
     const key = await KeyFactory.system(systemGroup);
-    const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId, [
+    const workspaceAuth = await Authenticator.fromKey(key, workspace.sId, [
       includedGroup.sId,
     ]);
 
-    // The in-scope group's grant on agent 42 is loaded; the out-of-scope group's grant on agent 99
-    // is not — resolved verbs are caller-scoped and carry no group ids.
+    // Downscoped by `requestedGroupIds`, so the grants are resolved for real: the in-scope group's
+    // grant on agent 42 is loaded; the out-of-scope group's grant on agent 99 is not.
+    expect(listForGroups).toHaveBeenCalled();
     expect(workspaceAuth.getGrantedVerbs("agent", 42).length).toBeGreaterThan(
       0
     );
@@ -313,7 +364,11 @@ describe("Authenticator.fromKey permission resolution", () => {
 });
 
 describe("Authenticator.refresh permission resolution", () => {
-  it("re-resolves grants for a user-less (system key) auth", async () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("re-resolves grants for a user-less, downscoped key auth", async () => {
     const workspace = await WorkspaceFactory.basic();
     const { systemGroup } = await GroupFactory.defaults(workspace);
     const adminAuth = await Authenticator.internalAdminForWorkspace(
@@ -321,14 +376,16 @@ describe("Authenticator.refresh permission resolution", () => {
     );
     const group = await GroupFactory.regularManual(workspace, "eng");
 
-    // A system-key auth has no user; its grant snapshot is resolved once at build time. The agent
-    // loop freezes it at workflow start and refreshes it on every step.
+    // A key auth has no user; its grant snapshot is resolved once at build time. The agent loop
+    // freezes it at workflow start and refreshes it on every step.
     const key = await KeyFactory.system(systemGroup);
-    const { workspaceAuth } = await Authenticator.fromKey(key, workspace.sId);
+    const workspaceAuth = await Authenticator.fromKey(key, workspace.sId, [
+      group.sId,
+    ]);
     expect(workspaceAuth.getGrantedVerbs("agent", 42)).toEqual([]);
 
     // A grant lands on one of the key's groups AFTER the auth was built (mirrors a backfill or an
-    // updatePermissions write arriving mid-run). `editor` on `agent` confers read + write.
+    // updatePermissions write arriving mid-run). `editor` on `agent` confers read, write and admin.
     await GroupPermissionResource.grant(adminAuth, {
       group,
       grantType: "editor",
@@ -341,8 +398,12 @@ describe("Authenticator.refresh permission resolution", () => {
     await workspaceAuth.refresh();
 
     expect([...workspaceAuth.getGrantedVerbs("agent", 42)].sort()).toEqual([
+      "admin",
       "read",
       "write",
     ]);
+    // It stays scoped to the requested groups: refreshing must not widen it back to everything the
+    // system key itself holds.
+    expect(workspaceAuth.getGrantedVerbs("space", 1234)).toEqual([]);
   });
 });

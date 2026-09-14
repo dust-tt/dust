@@ -108,7 +108,7 @@ The user you're interacting with is granted with the role ${role}. Their name is
     scope: "global",
     model: model,
     actions,
-    skills: ["frames"],
+    codeDefinedSkillIds: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],

@@ -42,18 +42,35 @@ const map = (
 
 interface Hover3DProps {
   children: React.ReactNode;
+  /** Maximum rotation (degrees) around the Y axis as the cursor moves horizontally. */
   xOffset?: number;
+  /** Maximum rotation (degrees) around the X axis as the cursor moves vertically. */
   yOffset?: number;
+  /** Transition duration in seconds when the tilt engages on hover. */
   attack?: number;
+  /** Transition duration in seconds when the tilt settles back on leave. */
   release?: number;
+  /** CSS perspective distance in pixels — smaller values exaggerate the 3D effect. */
   perspective?: number;
   className?: string;
+  /** Z translation in pixels applied to the container itself. */
   depth?: number;
+  /** Multiplier bounding how far the vertical rotation can go. */
   range?: number;
+  /** Tracks the cursor across the whole viewport instead of only while hovering the element. */
   fullscreenSensible?: boolean;
+  /** Whether cursor position is measured against the element ("object") or the page body ("screen"). */
   reference?: "screen" | "object";
 }
 
+/**
+ * A container that tilts in 3D toward the cursor, with nested Div3D children
+ * shifting along the Z axis by their depth to create a parallax, layered
+ * effect (disabled on touch devices). Use it for showcase or marketing
+ * surfaces where playful depth adds delight; keep it off dense, interactive
+ * UI where motion would distract.
+ * @summary Cursor-tracking 3D tilt container.
+ */
 function Hover3D({
   children,
   xOffset = 10,
@@ -177,11 +194,13 @@ function Hover3D({
 }
 
 interface divProps {
+  /** Z translation in pixels applied while the parent Hover3D is hovered — larger values pop the layer further forward. */
   depth: number;
   children: React.ReactNode;
   className?: string;
 }
 
+/** A layer inside Hover3D that shifts along the Z axis by its depth while hovered. */
 const Div3D = ({ depth, children, className = "" }: divProps) => {
   const { isHovered, isTouchDevice } = useHover3D();
   const style = {

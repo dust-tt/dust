@@ -23,7 +23,11 @@ import type { EmailProviderType } from "@app/lib/utils/email_provider_detection"
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
-import type { GroupKind } from "@app/types/groups";
+import type {
+  GroupGrantableRole,
+  GroupGrantableSeatType,
+  UserVisibleGroupKind,
+} from "@app/types/groups";
 import type {
   MembershipOriginType,
   MembershipRoleType,
@@ -306,14 +310,9 @@ async function resolveRoleFilterUserIds({
   workspace: LightWorkspaceType;
   role: ActiveRoleType;
 }): Promise<string[]> {
-  // `builder` is deprecated and surfaced to end users as a regular member, so
-  // filtering on `user` must include both.
-  const roles: ActiveRoleType[] =
-    role === "user" ? ["user", "builder"] : [role];
-
   const { memberships } = await MembershipResource.getActiveMemberships({
     workspace,
-    roles,
+    roles: [role],
   });
 
   // The query's filter make sure `user` is never null, so nothing
@@ -326,7 +325,7 @@ export async function searchMembers(
   options: {
     searchTerm?: string;
     searchEmails?: string[];
-    groupKind?: Exclude<GroupKind, "system">;
+    groupKind?: UserVisibleGroupKind;
     role?: ActiveRoleType;
   },
   paginationParams: SearchMembersPaginationParams
@@ -407,8 +406,8 @@ export async function searchMembers(
 
       if (options.groupKind) {
         const groupsResult = await GroupResource.listUserGroupsInWorkspace({
+          auth,
           user: u,
-          workspace: owner,
           groupKinds: [options.groupKind],
         });
 
@@ -572,6 +571,9 @@ export interface WorkspaceMetadata {
   killSwitched?: WorkspaceKillSwitchValue;
   allowContentCreationFileSharing?: boolean;
   allowEmailAgents?: boolean;
+  // When false, conversation unread email and Slack are not sent. Missing or
+  // true keeps per-user prefs. In-app notifications are not affected.
+  allowConversationExternalNotifications?: boolean;
   emailBlacklistedAgentIds?: string[];
   allowVoiceTranscription?: boolean;
   allowOpenProjects?: boolean;
@@ -587,6 +589,8 @@ export interface WorkspaceMetadata {
   dustMcpServerAllowedRedirectUris?: string[];
   disableAuditLogs?: boolean;
   disableWorkspaceAnalytics?: boolean;
+  // Absent means automatic archival is off.
+  inactiveAgentArchivalThresholdDays?: number;
   isBusiness?: boolean;
   phoneCountry?: string;
   sandboxAllowAgentEgressRequests?: boolean;
@@ -813,10 +817,20 @@ export type GetWorkspaceVerifiedDomainsResponseBody = {
   verifiedDomains: WorkspaceDomain[];
 };
 
-export type GetProvisioningStatusResponseBody = {
-  hasAdminGroup: boolean;
-  hasManagerGroup: boolean;
-  hasBuilderGroup: boolean;
+export type GetWorkspaceGrantedRolesResponseBody = {
+  // Distinct workspace roles granted by at least one group in the workspace
+  // (a subset of ["admin", "manager"]). When non-empty, member roles are
+  // (partly) managed through group membership and manual role editing is
+  // restricted.
+  grantedRoles: GroupGrantableRole[];
+};
+
+export type GetWorkspaceGrantedSeatTypesResponseBody = {
+  // Distinct seat types granted by at least one group in the workspace (full
+  // paid seat types including cadence, e.g. `pro`/`pro_yearly`). A member of any
+  // seat-granting group has their seat managed through group membership, so
+  // manual seat editing is restricted for them.
+  grantedSeatTypes: GroupGrantableSeatType[];
 };
 
 export type GetWelcomeResponseBody = {

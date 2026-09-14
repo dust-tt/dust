@@ -42,8 +42,12 @@ use tracing::{error, info};
 static GLOBAL: Jemalloc = Jemalloc;
 
 lazy_static! {
+    // Defaults to the conventional local-dev port; overridable so multiple
+    // instances (e.g. one per dust-hive environment) can run side by side.
+    static ref SQLITE_WORKER_PORT: String =
+        std::env::var("SQLITE_WORKER_PORT").unwrap_or_else(|_| "3005".to_string());
     static ref WORKER_URL: String = match std::env::var("IS_LOCAL_DEV") {
-        Ok(_) => "http://localhost:3005".to_string(),
+        Ok(_) => format!("http://localhost:{}", *SQLITE_WORKER_PORT),
         _ => {
             let port = std::env::var("POD_PORT").unwrap();
             let ip = std::env::var("POD_IP").unwrap();
@@ -428,8 +432,9 @@ fn main() {
         let (tx1, rx1) = tokio::sync::oneshot::channel::<()>();
         let (tx2, rx2) = tokio::sync::oneshot::channel::<()>();
 
+        let addr: std::net::SocketAddr = format!("[::]:{}", *SQLITE_WORKER_PORT).parse()?;
         let srv = axum::serve(
-            TcpListener::bind::<std::net::SocketAddr>("[::]:3005".parse().unwrap()).await?,
+            TcpListener::bind::<std::net::SocketAddr>(addr).await?,
             app.into_make_service(),
         )
         .with_graceful_shutdown(async {

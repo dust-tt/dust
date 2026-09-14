@@ -21,7 +21,7 @@ export function MCPServerSpaceAvailabilityTable({
   spaceViews,
 }: MCPServerSpaceAvailabilityTableProps) {
   return (
-    <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
+    <div className="my-4 flex flex-grow flex-col rounded-lg border p-4">
       <h2 className="text-md pb-4 font-bold">Available in spaces</h2>
       {spaceViews.length === 0 ? (
         <p className="text-sm text-muted-foreground">

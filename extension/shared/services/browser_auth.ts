@@ -1,4 +1,5 @@
 import logger from "@app/logger/logger";
+import type { CellInfo } from "@app/types/cell";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { datadogLogs } from "@datadog/browser-logs";
@@ -11,14 +12,14 @@ import type { StoredTokens } from "@extension/shared/services/auth";
 import {
   AuthError,
   AuthService,
-  getRegionInfoFromClaims,
+  getCellInfoFromClaims,
 } from "@extension/shared/services/auth";
 import type { StorageService } from "@extension/shared/services/storage";
 import { jwtDecode } from "jwt-decode";
 
 export class ChromeFirefoxAuthService extends AuthService {
-  constructor(storage: StorageService) {
-    super(storage);
+  constructor(storage: StorageService, cells?: CellInfo[]) {
+    super(storage, cells);
   }
 
   // Refresh token sends a message to the background script to call the workos refresh token endpoint.
@@ -55,7 +56,7 @@ export class ChromeFirefoxAuthService extends AuthService {
   }
 
   // Login sends a message to the background script to call the workos login endpoint.
-  // It saves the tokens and auth metadata (regionInfo).
+  // It saves the tokens and auth metadata (cellInfo).
   async login({
     forcedConnection,
     organizationId,
@@ -63,6 +64,10 @@ export class ChromeFirefoxAuthService extends AuthService {
     forcedConnection?: string;
     organizationId?: string;
   }) {
+    if (!this.cells) {
+      return new Err(new AuthError("not_authenticated", "No cells found."));
+    }
+
     try {
       const response = await sendAuthMessage(forcedConnection, organizationId);
       if (!response.success) {
@@ -77,11 +82,11 @@ export class ChromeFirefoxAuthService extends AuthService {
 
       const claims = jwtDecode<Record<string, string>>(tokens.accessToken);
 
-      const regionInfo = getRegionInfoFromClaims(claims);
+      const cellInfo = getCellInfoFromClaims(claims, this.cells);
 
-      await this.storage.set("regionInfo", regionInfo);
+      await this.storage.set("cellInfo", cellInfo);
 
-      return new Ok({ tokens, regionInfo });
+      return new Ok({ tokens, cellInfo });
     } catch (error) {
       return new Err(new AuthError("not_authenticated", error?.toString()));
     }

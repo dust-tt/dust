@@ -3,6 +3,7 @@ import type {
   WakeUpType,
 } from "@app/types/assistant/wakeups";
 import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { CronExpressionParser } from "cron-parser";
 import cronstrue from "cronstrue";
 
@@ -53,8 +54,6 @@ export function getNextWakeUpFireAtFromScheduleConfig(
   }
 }
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
 // Compact label for the sidebar conversation-list wake-up indicator. When
 // the next firing is more than a day away the time of day on its own gives
 // the viewer no sense of when — show the abbreviated weekday instead.
@@ -75,7 +74,9 @@ export function formatWakeUpSidebarLabel(timestamp: number): string {
 //   "*/15 * * * *"   -> "every 15 minutes"
 // Cron times are shown verbatim from the schedule's stored timezone — no
 // shift to the viewer's zone, no zone suffix.
-export function describeWakeUpSchedule(wakeUp: WakeUpType): string {
+export function describeWakeUpSchedule(
+  wakeUp: Pick<WakeUpType, "scheduleConfig">
+): string {
   const config = wakeUp.scheduleConfig;
   switch (config.type) {
     case "one_shot":

@@ -1,47 +1,53 @@
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
 import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_function_mcp_action_resource";
-import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { FileFactory } from "@app/tests/utils/FileFactory";
+import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SandboxFunctionMCPActionFactory } from "@app/tests/utils/SandboxFunctionMCPActionFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { sandboxFunctionContentType } from "@app/types/files";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // In-memory GCS mock: writes persist content that reads can return.
 const gcsStore = new Map<string, Buffer>();
 
-vi.mock("@app/lib/file_storage", () => ({
-  getPrivateUploadBucket: vi.fn(() => ({
-    file: vi.fn((path: string) => ({
-      save: vi.fn(async (data: Buffer) => {
-        gcsStore.set(path, data);
-      }),
-      download: vi.fn(async () => {
-        const buf = gcsStore.get(path);
-        if (!buf) {
-          throw new Error(`GCS file not found: ${path}`);
+vi.mock("@app/lib/file_storage", async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import("@app/lib/file_storage")>();
+
+  return {
+    ...original,
+    getPrivateUploadBucket: vi.fn(() => ({
+      file: vi.fn((path: string) => ({
+        save: vi.fn(async (data: Buffer) => {
+          gcsStore.set(path, data);
+        }),
+        download: vi.fn(async () => {
+          const buf = gcsStore.get(path);
+          if (!buf) {
+            throw new Error(`GCS file not found: ${path}`);
+          }
+          return [buf];
+        }),
+      })),
+      delete: vi.fn(
+        async (path: string, opts?: { ignoreNotFound?: boolean }) => {
+          if (!gcsStore.has(path) && !opts?.ignoreNotFound) {
+            throw new Error(`GCS file not found: ${path}`);
+          }
+          gcsStore.delete(path);
         }
-        return [buf];
-      }),
+      ),
+      uploadBufferToBucket: vi.fn(
+        async ({ buffer, filePath }: { buffer: Buffer; filePath: string }) => {
+          gcsStore.set(filePath, buffer);
+        }
+      ),
     })),
-    delete: vi.fn(async (path: string, opts?: { ignoreNotFound?: boolean }) => {
-      if (!gcsStore.has(path) && !opts?.ignoreNotFound) {
-        throw new Error(`GCS file not found: ${path}`);
-      }
-      gcsStore.delete(path);
-    }),
-    uploadBufferToBucket: vi.fn(
-      async ({ buffer, filePath }: { buffer: Buffer; filePath: string }) => {
-        gcsStore.set(filePath, buffer);
-      }
-    ),
-  })),
-}));
+  };
+});
 
 const inputSchema: JSONSchema = {
   type: "object",
@@ -61,22 +67,10 @@ async function setup() {
   });
 
   const podSpace = await SpaceFactory.project(workspace);
-  const file = await FileFactory.create(authenticator, null, {
-    contentType: sandboxFunctionContentType,
-    fileName: "greet.ts",
-    fileSize: 100,
-    status: "created",
-    useCase: "project_context",
-    useCaseMetadata: { spaceId: podSpace.sId },
-  });
-  const sandboxFunction = await SandboxFunctionResource.makeNew(authenticator, {
-    space: podSpace,
-    file,
-    slug: "greet",
-    description: "Greet someone.",
-    inputSchema,
-    outputSchema,
-  });
+  const { frame, sandboxFunction } = await createTestFrameFunction(
+    authenticator,
+    { space: podSpace, inputSchema, outputSchema }
+  );
   const invocation = await SandboxFunctionInvocationResource.makeNew(
     authenticator,
     { sandboxFunction, input: undefined }
@@ -92,6 +86,7 @@ async function setup() {
   return {
     authenticator,
     workspace,
+    frame,
     sandboxFunction,
     invocation,
     mcpServerView,
@@ -299,7 +294,9 @@ describe("SandboxFunctionMCPActionResource", () => {
     expect(gcsStore.size).toBe(0);
   });
 
-  it("deletes actions across invocations when the sandbox function is deleted", async () => {
+  // A Frame function's rows belong to the Frame: deleting it cascades through
+  // `deleteAllForSandboxFunctionModelIds`, which is the unit under test here.
+  it("deletes actions across invocations when the function's rows are deleted", async () => {
     const { authenticator, sandboxFunction, invocation, mcpServerView } =
       await setup();
     const action = await SandboxFunctionMCPActionFactory.create(authenticator, {
@@ -310,8 +307,12 @@ describe("SandboxFunctionMCPActionResource", () => {
       { content: { type: "text", text: "4" } },
     ]);
 
-    const deleteResult = await sandboxFunction.delete(authenticator);
-    expect(deleteResult.isOk()).toBe(true);
+    await SandboxFunctionInvocationResource.deleteAllForSandboxFunctionModelIds(
+      {
+        workspaceModelId: sandboxFunction.workspaceId,
+        sandboxFunctionModelIds: [sandboxFunction.id],
+      }
+    );
 
     expect(
       await SandboxFunctionMCPActionResource.fetchById(

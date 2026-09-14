@@ -1,15 +1,13 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { SKILL_STATUSES } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
 
-// Backfill: give every current member of a skill's `skill_editors` group the equivalent per-user
+// Backfill: give every current member of a skill's legacy editor group the equivalent per-user
 // grant (`editor` on `skill:<id>`), which `grantToUser` holds in one regular_auto group per skill.
 // The skill mutation paths dual-write both sides from now on; this catches the existing editors.
 // Idempotent: grantToUser is find-or-create on both the group and the membership.
@@ -122,28 +120,16 @@ makeScript(
   async ({ wId, execute }, logger) => {
     logger.info("Starting skill editor user-grant backfill");
 
-    if (wId) {
-      const ws = await WorkspaceResource.fetchById(wId);
-      if (!ws) {
-        throw new Error(`Workspace not found: ${wId}`);
-      }
-      await backfillWorkspaceSkillEditorUserGrants(
-        execute,
-        logger,
-        renderLightWorkspaceType({ workspace: ws })
-      );
-    } else {
-      await runOnAllWorkspaces(
-        async (workspace) => {
-          await backfillWorkspaceSkillEditorUserGrants(
-            execute,
-            logger,
-            workspace
-          );
-        },
-        { concurrency: 4 }
-      );
-    }
+    await runOnAllWorkspaces(
+      async (workspace) => {
+        await backfillWorkspaceSkillEditorUserGrants(
+          execute,
+          logger,
+          workspace
+        );
+      },
+      { concurrency: 4, wId }
+    );
 
     logger.info("Skill editor user-grant backfill completed");
   }

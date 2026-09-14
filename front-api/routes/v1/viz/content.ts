@@ -1,7 +1,6 @@
 import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/access_tokens";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { isInteractiveContentType } from "@app/types/files";
 import type { PublicVizContentResponseBodyType } from "@dust-tt/client";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -67,11 +66,8 @@ app.get("/", async (ctx): HandlerResult<PublicVizContentResponseBodyType> => {
     });
   }
 
-  // Only allow conversation interactive files.
-  if (
-    !file.isInteractiveContent ||
-    !isInteractiveContentType(file.contentType)
-  ) {
+  // Only allow Frame files.
+  if (!file.isShareableFrame) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {

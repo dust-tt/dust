@@ -1,7 +1,7 @@
 import datadogLogger from "@app/logger/datadogLogger";
 import { describe, expectTypeOf, it } from "vitest";
 
-describe("datadog logger status typing", () => {
+describe("datadog logger context typing", () => {
   it("accepts a real Datadog severity as status", () => {
     expectTypeOf(datadogLogger.info).toBeCallableWith(
       { status: "critical" },
@@ -26,6 +26,22 @@ describe("datadog logger status typing", () => {
     expectTypeOf(datadogLogger.child).toBeCallableWith({
       // @ts-expect-error - child bindings are logged as a top-level status too.
       status: "completed",
+    });
+  });
+
+  it("rejects elapsed and accepts elapsedMs", () => {
+    expectTypeOf(datadogLogger.info).toBeCallableWith(
+      { elapsedMs: 12 },
+      "message"
+    );
+    expectTypeOf(datadogLogger.info).toBeCallableWith(
+      // @ts-expect-error - Datadog reserves elapsed and may replace its value.
+      { elapsed: 12 },
+      "message"
+    );
+    expectTypeOf(datadogLogger.child).toBeCallableWith({
+      // @ts-expect-error - child bindings are logged as top-level fields too.
+      elapsed: 12,
     });
   });
 });

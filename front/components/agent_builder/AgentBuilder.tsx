@@ -296,6 +296,7 @@ function AgentBuilderForm({
         autoRespondWithoutMention: channel.autoRespondWithoutMention,
         autoRespondWithoutMentionSkipThreadReplies:
           channel.autoRespondWithoutMentionSkipThreadReplies,
+        isPrivate: channel.isPrivate,
       }));
   }, [agentConfiguration, slackChannelsLinkedWithAgent]);
 
@@ -714,8 +715,8 @@ function AgentBuilderForm({
 
   const title = agentConfiguration
     ? duplicateAgentId
-      ? `Duplicate @${agentConfiguration.name}`
-      : `Edit agent @${agentConfiguration.name}`
+      ? `Duplicate ${agentConfiguration.name}`
+      : `Edit agent ${agentConfiguration.name}`
     : "Create new agent";
 
   // Only load suggestions when not duplicating an existing agent.
@@ -966,7 +967,7 @@ function AgentBuilderContent({
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel
-                agentConfigurationId={agentConfiguration?.sId}
+                agentConfiguration={agentConfiguration}
                 isSidekickDisabled={isEditorLocked}
               />
             </ConversationSidePanelProvider>

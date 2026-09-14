@@ -20,7 +20,9 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op, QueryTypes } from "sequelize";
 
 export type ConversationConsumptionMessageFacts = {
+  conversationId: string;
   agentConfigurationId: string;
+  parentAgentConfigurationId: string | null;
   billedCredits: number | null;
   dustRunIds: string[];
   status: AgentMessageStatus;
@@ -36,6 +38,7 @@ export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
   itemType: "tool";
   runUsageModelId: ModelId;
   action: AgentMCPActionResource;
+  attributedSkillIds: string[];
   /** Estimated tokens in the result returned by this tool execution */
   inputTokensCount: number | null;
   /** Estimated tokens in the model output that emitted the tool name and arguments */
@@ -46,6 +49,7 @@ export type CompletedToolConsumptionItem = ConsumptionItemEvidenceBase & {
 export type PendingToolConsumptionItem = ConsumptionItemEvidenceBase & {
   action: AgentMCPActionResource;
   runUsageModelId: ModelId;
+  attributedSkillIds: string[];
   /** Estimated tokens in the model output that emitted the tool name and arguments */
   outputTokensCount: number | null;
 };
@@ -230,6 +234,8 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       agentMessageId: agentMessageModelId,
       runUsageId: record.runUsageModelId,
       agentMCPActionId: record.itemType === "tool" ? record.action.id : null,
+      attributedSkillIds:
+        record.itemType === "tool" ? record.attributedSkillIds : null,
       itemKey: this.itemKey(record),
       itemType: record.itemType,
       attributionVersion,
@@ -257,6 +263,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       agentMessageId: item.action.agentMessageId,
       runUsageId: item.runUsageModelId,
       agentMCPActionId: item.action.id,
+      attributedSkillIds: item.attributedSkillIds,
       itemKey: `tool-action:${item.action.id}`,
       itemType: "tool",
       attributionVersion,
@@ -364,6 +371,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           {
             itemType: "tool",
             agentMCPActionId: actionModelId,
+            attributedSkillIds: record.attributedSkillIds,
             inputTokensCount: record.inputTokensCount,
             grossAttributedCreditAmountMicro:
               record.grossAttributedCreditAmountMicro,
@@ -644,6 +652,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     const messages: ConversationConsumptionMessageFacts[] = [];
     const visitedConversationIds = new Set([conversation.sId]);
     let conversations = [conversation];
+    let parentAgentIdsByConversationId = new Map<string, string>();
 
     for (
       let depth = 0;
@@ -652,7 +661,11 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     ) {
       const directFacts = await this.fetchDirectConversationsConsumptionFacts(
         auth,
-        { conversations, maxAttributionVersion }
+        {
+          conversations,
+          maxAttributionVersion,
+          parentAgentIdsByConversationId,
+        }
       );
       messages.push(...directFacts.messages);
 
@@ -660,50 +673,62 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         break;
       }
 
-      const childConversationIds = [
-        ...new Set(
-          directFacts.messages
-            .flatMap((message) =>
-              message.actions.map((action) =>
-                action.getRunAgentChildConversationId()
-              )
-            )
-            .filter(
-              (childConversationId): childConversationId is string =>
-                childConversationId !== null &&
-                !visitedConversationIds.has(childConversationId)
-            )
-        ),
-      ];
+      const childConversationIds: string[] = [];
+      const childParentAgentIdsByConversationId = new Map<string, string>();
+      for (const message of directFacts.messages) {
+        for (const action of message.actions) {
+          const childConversationId = action.getRunAgentChildConversationId();
+          if (
+            childConversationId === null ||
+            visitedConversationIds.has(childConversationId)
+          ) {
+            continue;
+          }
 
-      for (const childConversationId of childConversationIds) {
-        visitedConversationIds.add(childConversationId);
+          visitedConversationIds.add(childConversationId);
+          childConversationIds.push(childConversationId);
+          childParentAgentIdsByConversationId.set(
+            childConversationId,
+            message.agentConfigurationId
+          );
+        }
       }
       conversations = await ConversationResource.fetchByIds(
         auth,
         childConversationIds,
         { includeDeleted: true }
       );
+      parentAgentIdsByConversationId = childParentAgentIdsByConversationId;
     }
 
     return { messages };
   }
 
-  private static async fetchDirectConversationsConsumptionFacts(
+  static async fetchDirectConversationsConsumptionFacts(
     auth: Authenticator,
     {
       conversations,
       maxAttributionVersion,
+      parentAgentIdsByConversationId,
     }: {
       conversations: ConversationResource[];
       maxAttributionVersion: number;
+      parentAgentIdsByConversationId: ReadonlyMap<string, string>;
     }
   ): Promise<{
     messages: ConversationConsumptionMessageFacts[];
   }> {
     const workspaceId = auth.getNonNullableWorkspace().id;
-    const conversationModelIds = conversations.map(
-      (conversation) => conversation.id
+    const conversationIdsByModelId = new Map(
+      conversations.map((conversation) => [conversation.id, conversation.sId])
+    );
+    const parentAgentIdsByConversationModelId = new Map(
+      conversations.flatMap((conversation) => {
+        const parentAgentId = parentAgentIdsByConversationId.get(
+          conversation.sId
+        );
+        return parentAgentId ? [[conversation.id, parentAgentId] as const] : [];
+      })
     );
 
     // Agent messages own the authoritative bill and the execution metadata needed to explain it.
@@ -711,23 +736,38 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       attributes: [
         "id",
         "agentConfigurationId",
+        "conversationId",
         "costCredits",
         "runIds",
         "status",
       ],
       where: {
         workspaceId,
-        conversationId: { [Op.in]: conversationModelIds },
+        conversationId: { [Op.in]: [...conversationIdsByModelId.keys()] },
       },
       order: [["id", "ASC"]],
     });
-    const messageFacts = agentMessages.map((agentMessage) => ({
-      agentMessageModelId: agentMessage.id,
-      agentConfigurationId: agentMessage.agentConfigurationId,
-      billedCredits: agentMessage.costCredits,
-      dustRunIds: agentMessage.runIds ?? [],
-      status: agentMessage.status,
-    }));
+
+    const messageFacts = agentMessages.map((agentMessage) => {
+      const conversationId = conversationIdsByModelId.get(
+        agentMessage.conversationId
+      );
+      assert(conversationId, "Agent message conversation not found.");
+
+      return {
+        agentMessageModelId: agentMessage.id,
+        conversationId,
+        agentConfigurationId: agentMessage.agentConfigurationId,
+        parentAgentConfigurationId:
+          parentAgentIdsByConversationModelId.get(
+            agentMessage.conversationId
+          ) ?? null,
+        billedCredits: agentMessage.costCredits,
+        dustRunIds: agentMessage.runIds ?? [],
+        status: agentMessage.status,
+      };
+    });
+
     const fetchedAgentMessageModelIds = messageFacts.map(
       (message) => message.agentMessageModelId
     );

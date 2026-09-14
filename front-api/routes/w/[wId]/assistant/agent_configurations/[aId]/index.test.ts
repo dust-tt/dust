@@ -1,12 +1,14 @@
 import {
+  archiveAgentConfiguration,
   createPendingAgentConfiguration,
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
+import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { setupAgentOwner } from "@app/tests/utils/AgentOwnerFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -88,7 +90,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - additionalRequ
 
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
     const openSpace = await SpaceFactory.regular(workspace);
-    await GroupSpaceFactory.associate(openSpace, globalGroup);
+    await SpaceFactory.attachGroup(openSpace, globalGroup);
 
     const response = await patch(workspace, agent.sId, {
       assistant: {
@@ -142,7 +144,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor adm
 
     const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
       workspace,
-      "builder"
+      "user"
     );
     const agent =
       await AgentConfigurationFactory.createTestAgent(agentOwnerAuth);
@@ -176,6 +178,52 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - non-editor adm
       variant: "light",
     });
     expect(unchanged?.instructions).toBe(agent.instructions);
+  });
+});
+
+describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - archived agent", () => {
+  it("rejects updates until the agent is restored", async () => {
+    const { workspace, user, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "PATCH",
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    await archiveAgentConfiguration(auth, agent.sId);
+
+    const response = await patch(workspace, agent.sId, {
+      assistant: {
+        name: agent.name,
+        description: agent.description,
+        instructions: "Updated instructions",
+        pictureUrl: agent.pictureUrl,
+        status: "active",
+        scope: agent.scope,
+        model: {
+          providerId: agent.model.providerId,
+          modelId: agent.model.modelId,
+          temperature: agent.model.temperature,
+        },
+        actions: [],
+        templateId: null,
+        tags: [],
+        editors: [{ sId: user.sId }],
+        skills: [],
+        additionalRequestedSpaceIds: [],
+      },
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "invalid_request_error",
+        message: "An archived agent cannot be updated. Restore it first.",
+      },
+    });
+
+    const versions = await AgentConfigurationModel.findAll({
+      where: { sId: agent.sId, workspaceId: workspace.id },
+    });
+    expect(versions).toHaveLength(1);
   });
 });
 
@@ -228,5 +276,186 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId - pending agent"
     });
     expect(agents).toHaveLength(1);
     expect(agents[0].status).toBe("active");
+  });
+});
+
+function get(workspace: { sId: string }, aId: string) {
+  return honoApp.request(
+    `/api/w/${workspace.sId}/assistant/agent_configurations/${aId}`,
+    { method: "GET" }
+  );
+}
+
+describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the caller cannot read", () => {
+  it("redacts the private fields of an unpublished agent for a non-editor admin", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "GET",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await get(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.agentConfiguration.sId).toBe(agent.sId);
+    expect(data.agentConfiguration.name).toBe(agent.name);
+    expect(data.agentConfiguration.canRead).toBe(false);
+    expect(data.agentConfiguration.instructions).toBeNull();
+    expect(data.agentConfiguration.instructionsHtml).toBeNull();
+    expect(data.agentConfiguration.actions).toEqual([]);
+    expect(data.agentConfiguration.codeDefinedSkillIds).toEqual([]);
+  });
+
+  it("redacts the private fields of an agent built on a space the admin cannot read", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "GET",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
+      workspace,
+      "user"
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [agentOwner.sId] });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "visible", requestedSpaceIds: [restrictedSpace.id] }
+    );
+
+    const response = await get(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.agentConfiguration.sId).toBe(agent.sId);
+    expect(data.agentConfiguration.name).toBe(agent.name);
+    expect(data.agentConfiguration.canRead).toBe(false);
+    expect(data.agentConfiguration.instructions).toBeNull();
+    expect(data.agentConfiguration.instructionsHtml).toBeNull();
+    expect(data.agentConfiguration.actions).toEqual([]);
+    expect(data.agentConfiguration.codeDefinedSkillIds).toEqual([]);
+  });
+
+  it("keeps returning not found to a non-admin for an unpublished agent", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "builder",
+      method: "GET",
+    });
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(internalAdminAuth);
+
+    const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden" }
+    );
+
+    const response = await get(workspace, agent.sId);
+
+    expect(response.status).toBe(404);
+    const data = await response.json();
+    expect(data.error.type).toBe("agent_configuration_not_found");
+  });
+
+  it("keeps returning not found to a non-admin for an agent built on a space they cannot read", async () => {
+    const { workspace } = await createPrivateApiMockRequest({
+      role: "builder",
+      method: "GET",
+    });
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceFactory.defaults(internalAdminAuth);
+
+    const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
+      workspace,
+      "user"
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(internalAdminAuth, {
+      userIds: [agentOwner.sId],
+    });
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "visible", requestedSpaceIds: [restrictedSpace.id] }
+    );
+
+    const response = await get(workspace, agent.sId);
+
+    expect(response.status).toBe(404);
+    const data = await response.json();
+    expect(data.error.type).toBe("agent_configuration_not_found");
+  });
+
+  it("returns the full agent to a non-editor admin with the admin_can_see_private_entities flag", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "GET",
+    });
+    await SpaceFactory.defaults(auth);
+    await FeatureFlagFactory.basic(auth, "admin_can_see_private_entities");
+
+    const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
+      workspace,
+      "user"
+    );
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    await restrictedSpace.addMembers(auth, { userIds: [agentOwner.sId] });
+    // Both restrictions at once: unpublished, and built on a space the admin cannot read.
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      agentOwnerAuth,
+      { scope: "hidden", requestedSpaceIds: [restrictedSpace.id] }
+    );
+
+    const response = await get(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.agentConfiguration.sId).toBe(agent.sId);
+    expect(data.agentConfiguration.canRead).toBe(true);
+    expect(data.agentConfiguration.instructions).toBe(agent.instructions);
+  });
+
+  it("returns not found to an admin for an agent that does not exist", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "GET",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const response = await get(workspace, "does_not_exist");
+
+    expect(response.status).toBe(404);
+    const data = await response.json();
+    expect(data.error.type).toBe("agent_configuration_not_found");
+  });
+
+  it("returns the full agent to an admin who is one of its editors", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "GET",
+    });
+    await SpaceFactory.defaults(auth);
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth, {
+      scope: "hidden",
+    });
+
+    const response = await get(workspace, agent.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.agentConfiguration.sId).toBe(agent.sId);
+    expect(data.agentConfiguration.instructions).toBe(agent.instructions);
   });
 });

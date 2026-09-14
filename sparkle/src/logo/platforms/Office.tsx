@@ -10,97 +10,102 @@ const SvgOffice = (props: SVGProps<SVGSVGElement>) => (
     viewBox="0 0 24 24"
     {...props}
   >
-    <path
-      fill="url(#Office_svg__a)"
-      d="m10.22 2.465-.102.062a4 4 0 0 0-.458.328l.294-.207h2.5l.455 3.442-2.273 2.273-2.273 1.58v1.822c0 1.272.665 2.452 1.754 3.11l2.393 1.449-5.056 2.949H6.48l-1.817-1.1a3.64 3.64 0 0 1-1.753-3.111V8.936c0-1.273.665-2.453 1.754-3.112l5.455-3.299z"
-    />
-    <path
-      fill="url(#Office_svg__b)"
-      d="m10.22 2.465-.102.062a4 4 0 0 0-.458.328l.294-.207h2.5l.455 3.442-2.273 2.273-2.273 1.58v1.822c0 1.272.665 2.452 1.754 3.11l2.393 1.449-5.056 2.949H6.48l-1.817-1.1a3.64 3.64 0 0 1-1.753-3.111V8.936c0-1.273.665-2.453 1.754-3.112l5.455-3.299z"
-    />
-    <path
-      fill="url(#Office_svg__c)"
-      d="M15.637 9.727v2.036a3.64 3.64 0 0 1-1.754 3.111l-5.455 3.302a3.64 3.64 0 0 1-3.64.073l5.329 3.225c1.157.701 2.608.701 3.766 0l5.455-3.301a3.64 3.64 0 0 0 1.753-3.111V13.59l-.454-.682z"
-    />
-    <path
-      fill="url(#Office_svg__d)"
-      d="M15.637 9.727v2.036a3.64 3.64 0 0 1-1.754 3.111l-5.455 3.302a3.64 3.64 0 0 1-3.64.073l5.329 3.225c1.157.701 2.608.701 3.766 0l5.455-3.301a3.64 3.64 0 0 0 1.753-3.111V13.59l-.454-.682z"
-    />
-    <path
-      fill="url(#Office_svg__e)"
-      d="m19.337 5.824-5.455-3.3a3.64 3.64 0 0 0-3.656-.062l-.108.065A3.64 3.64 0 0 0 8.363 5.64V9.95l1.755-1.061c1.157-.7 2.607-.7 3.764 0l5.455 3.3a3.64 3.64 0 0 1 1.752 2.992q.002-.06.002-.12V8.937a3.64 3.64 0 0 0-1.754-3.112"
-    />
-    <path
-      fill="url(#Office_svg__f)"
-      d="m19.337 5.824-5.455-3.3a3.64 3.64 0 0 0-3.656-.062l-.108.065A3.64 3.64 0 0 0 8.363 5.64V9.95l1.755-1.061c1.157-.7 2.607-.7 3.764 0l5.455 3.3a3.64 3.64 0 0 1 1.752 2.992q.002-.06.002-.12V8.937a3.64 3.64 0 0 0-1.754-3.112"
-    />
+    <g clipPath="url(#Office_svg__a)">
+      <path
+        fill="url(#Office_svg__b)"
+        d="m9.864.559-.123.074q-.292.178-.55.394l.354-.25h3l.546 4.131-2.727 2.728L7.636 9.53v2.186c0 1.527.798 2.943 2.104 3.734l2.871 1.738-6.066 3.538h-1.17l-2.18-1.32a4.36 4.36 0 0 1-2.105-3.733v-7.35c0-1.528.799-2.944 2.106-3.735L9.74.63q.062-.037.123-.071"
+      />
+      <path
+        fill="url(#Office_svg__c)"
+        d="m9.864.559-.123.074q-.292.178-.55.394l.354-.25h3l.546 4.131-2.727 2.728L7.636 9.53v2.186c0 1.527.798 2.943 2.104 3.734l2.871 1.738-6.066 3.538h-1.17l-2.18-1.32a4.36 4.36 0 0 1-2.105-3.733v-7.35c0-1.528.799-2.944 2.106-3.735L9.74.63q.062-.037.123-.071"
+      />
+      <path
+        fill="url(#Office_svg__d)"
+        d="M16.364 9.272v2.444a4.36 4.36 0 0 1-2.104 3.733l-6.546 3.962a4.36 4.36 0 0 1-4.368.088l6.394 3.87c1.39.841 3.13.841 4.52 0l6.545-3.962a4.36 4.36 0 0 0 2.105-3.733v-1.765l-.546-.819z"
+      />
+      <path
+        fill="url(#Office_svg__e)"
+        d="M16.364 9.272v2.444a4.36 4.36 0 0 1-2.104 3.733l-6.546 3.962a4.36 4.36 0 0 1-4.368.088l6.394 3.87c1.39.841 3.13.841 4.52 0l6.545-3.962a4.36 4.36 0 0 0 2.105-3.733v-1.765l-.546-.819z"
+      />
+      <path
+        fill="url(#Office_svg__f)"
+        d="M20.804 4.59 14.26.63A4.36 4.36 0 0 0 9.87.554l-.13.079a4.36 4.36 0 0 0-2.105 3.734V9.54l2.105-1.273a4.36 4.36 0 0 1 4.518 0l6.545 3.959a4.36 4.36 0 0 1 2.103 3.591q.003-.072.003-.143v-7.35a4.36 4.36 0 0 0-2.106-3.735"
+      />
+      <path
+        fill="url(#Office_svg__g)"
+        d="M20.804 4.59 14.26.63A4.36 4.36 0 0 0 9.87.554l-.13.079a4.36 4.36 0 0 0-2.105 3.734V9.54l2.105-1.273a4.36 4.36 0 0 1 4.518 0l6.545 3.959a4.36 4.36 0 0 1 2.103 3.591q.003-.072.003-.143v-7.35a4.36 4.36 0 0 0-2.106-3.735"
+      />
+    </g>
     <defs>
       <radialGradient
-        id="Office_svg__a"
+        id="Office_svg__b"
         cx={0}
         cy={0}
         r={1}
-        gradientTransform="matrix(-5.3185 14.20382 -24.77429 -9.27653 9.008 5.926)"
+        gradientTransform="matrix(-6.38221 17.0446 -29.72922 -11.13186 8.41 4.71)"
         gradientUnits="userSpaceOnUse"
       >
         <stop offset={0.064} stopColor="#AE7FE2" />
         <stop offset={1} stopColor="#0078D4" />
       </radialGradient>
       <radialGradient
-        id="Office_svg__c"
+        id="Office_svg__d"
         cx={0}
         cy={0}
         r={1}
-        gradientTransform="rotate(-8.367 123.316 -31.055)scale(14.1144 9.32348)"
+        gradientTransform="matrix(16.75702 -2.46465 1.62806 11.06911 4.598 18.737)"
         gradientUnits="userSpaceOnUse"
       >
         <stop offset={0.134} stopColor="#D59DFF" />
         <stop offset={1} stopColor="#5E438F" />
       </radialGradient>
       <radialGradient
-        id="Office_svg__e"
+        id="Office_svg__f"
         cx={0}
         cy={0}
         r={1}
-        gradientTransform="rotate(-165.772 10.696 5.336)scale(11.329 19.0713)"
+        gradientTransform="rotate(-165.772 11.486 5.353)scale(13.5949 22.8857)"
         gradientUnits="userSpaceOnUse"
       >
         <stop offset={0.058} stopColor="#50E6FF" />
         <stop offset={1} stopColor="#436DCD" />
       </radialGradient>
       <linearGradient
-        id="Office_svg__b"
-        x1={9.051}
-        x2={6.887}
-        y1={18.304}
-        y2={14.561}
+        id="Office_svg__c"
+        x1={8.461}
+        x2={5.864}
+        y1={19.564}
+        y2={15.073}
         gradientUnits="userSpaceOnUse"
       >
         <stop stopColor="#114A8B" />
         <stop offset={1} stopColor="#0078D4" stopOpacity={0} />
       </linearGradient>
       <linearGradient
-        id="Office_svg__d"
-        x1={19.435}
-        x2={17.116}
-        y1={12.625}
-        y2={15.95}
+        id="Office_svg__e"
+        x1={20.922}
+        x2={18.14}
+        y1={12.75}
+        y2={16.741}
         gradientUnits="userSpaceOnUse"
       >
         <stop stopColor="#493474" />
         <stop offset={1} stopColor="#8C66BA" stopOpacity={0} />
       </linearGradient>
       <linearGradient
-        id="Office_svg__f"
-        x1={8.807}
-        x2={12.221}
-        y1={2.479}
-        y2={2.479}
+        id="Office_svg__g"
+        x1={8.168}
+        x2={12.265}
+        y1={0.575}
+        y2={0.575}
         gradientUnits="userSpaceOnUse"
       >
         <stop stopColor="#2D3F80" />
         <stop offset={1} stopColor="#436DCD" stopOpacity={0} />
       </linearGradient>
+      <clipPath id="Office_svg__a">
+        <path fill="#fff" d="M0 0h24v24H0z" />
+      </clipPath>
     </defs>
   </svg>
 );

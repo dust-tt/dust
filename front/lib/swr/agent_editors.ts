@@ -1,5 +1,9 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import {
+  useAgentConfiguration,
+  useAgentConfigurations,
+} from "@app/lib/swr/assistants";
 import { emptyArray, useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
   AgentEditorsLightResponseBody,
@@ -58,6 +62,19 @@ export function useUpdateEditors({
     agentConfigurationId,
     disabled: true,
   });
+  // Editors change what the caller may see of the agent (`canRead`/`canEdit`, and the private
+  // fields redacted for admins), so the agent itself is refetched too.
+  const { mutateAgentConfiguration } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId,
+    disabled: true, // We only use the hook to mutate the cache
+  });
+  const { mutateRegardlessOfQueryParams: mutateAgentConfigurations } =
+    useAgentConfigurations({
+      workspaceId: owner.sId,
+      agentsGetView: "list", // Anything would work
+      disabled: true, // We only use the hook to mutate the cache
+    });
 
   const updateAgentEditors = useCallback(
     async (body: PatchAgentEditorsRequestBody) => {
@@ -78,6 +95,8 @@ export function useUpdateEditors({
 
       if (res.ok) {
         await mutateEditors();
+        void mutateAgentConfiguration();
+        void mutateAgentConfigurations();
 
         let title = "";
         let description: string | undefined = undefined;
@@ -113,7 +132,14 @@ export function useUpdateEditors({
       });
       return false;
     },
-    [owner, agentConfigurationId, mutateEditors, sendNotification]
+    [
+      owner,
+      agentConfigurationId,
+      mutateEditors,
+      mutateAgentConfiguration,
+      mutateAgentConfigurations,
+      sendNotification,
+    ]
   );
 
   return updateAgentEditors;

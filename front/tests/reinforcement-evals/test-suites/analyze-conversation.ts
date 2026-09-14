@@ -664,14 +664,14 @@ When creating or updating pages, follow these formatting rules:
                   "# GitHub & Jira Combined Report\n\n## GitHub Activity\n\n| Project | Title | Type | Status |\n|---|---|---|---|\n| CoreEngine | Fix auth flow | Issue | Open |\n| CoreEngine | Refactor auth module | PR | Merged |\n| FrontendUI | Update dashboard | Issue | Closed |\n| MobileApp | Add push notifications | PR | Open |\n\n## Jira Sprint Status\n\n**Sprint 24** — 75% complete\n\n| Key | Summary | Status |\n|---|---|---|\n| ENG-401 | API rate limiting | In Progress |\n| ENG-402 | DB migration | Done |\n\n*Generated on 2026-04-10*",
               },
               output:
-                '{"pageId": "page_abc123", "url": "https://notion.so/report-abc123"}',
+                '{"pageId": "page_abc123", "url": "https://app.notion.com/p/report-abc123"}',
             },
           ],
         },
         {
           role: "agent",
           content:
-            "I've published the combined report to Notion. Here's a summary:\n\n**GitHub Activity:**\n- CoreEngine: 1 open issue (Fix auth flow), 1 merged PR (Refactor auth module)\n- FrontendUI: 1 closed issue (Update dashboard)\n- MobileApp: 1 open PR (Add push notifications)\n\n**Jira Sprint 24 (75% complete):**\n- ENG-401: API rate limiting (In Progress)\n- ENG-402: DB migration (Done)\n\nFull report: https://notion.so/report-abc123",
+            "I've published the combined report to Notion. Here's a summary:\n\n**GitHub Activity:**\n- CoreEngine: 1 open issue (Fix auth flow), 1 merged PR (Refactor auth module)\n- FrontendUI: 1 closed issue (Update dashboard)\n- MobileApp: 1 open PR (Add push notifications)\n\n**Jira Sprint 24 (75% complete):**\n- ENG-401: API rate limiting (In Progress)\n- ENG-402: DB migration (Done)\n\nFull report: https://app.notion.com/p/report-abc123",
         },
         {
           role: "user",
@@ -712,7 +712,7 @@ When creating or updating pages, follow these formatting rules:
         {
           role: "agent",
           content:
-            "I've updated the Notion report with the DevCode data. Here's what was added:\n\n**DevCode:**\n- 2 open issues (Implement caching layer, Fix race condition in worker), 1 closed issue (Add retry logic for webhooks)\n- 1 open PR (Add caching middleware), 1 merged PR (Fix worker pool exhaustion)\n\nThe report at https://notion.so/report-abc123 now includes all five repositories.",
+            "I've updated the Notion report with the DevCode data. Here's what was added:\n\n**DevCode:**\n- 2 open issues (Implement caching layer, Fix race condition in worker), 1 closed issue (Add retry logic for webhooks)\n- 1 open PR (Add caching middleware), 1 merged PR (Fix worker pool exhaustion)\n\nThe report at https://app.notion.com/p/report-abc123 now includes all five repositories.",
         },
       ],
       workspaceContext: WORKSPACE_CONTEXT,

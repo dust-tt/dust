@@ -6,6 +6,9 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 
+export const ACTIVATION_POD_KINDS = ["learning", "goal"] as const;
+export type ActivationPodKind = (typeof ACTIVATION_POD_KINDS)[number];
+
 // One row = one Activation Pod: a Pod (project space) provisioned by the
 // activation flow. Canonical record for a pod's owner.
 export class ActivationPodModel extends WorkspaceAwareModel<ActivationPodModel> {
@@ -16,8 +19,7 @@ export class ActivationPodModel extends WorkspaceAwareModel<ActivationPodModel> 
   declare spaceId: ForeignKey<SpaceModel["id"]>;
   // The user for whom we created the activation pod.
   declare userId: ForeignKey<UserModel["id"]>;
-  // Whether the Pod uses the compact UI variant.
-  declare isCompactUIView: CreationOptional<boolean>;
+  declare kind: CreationOptional<ActivationPodKind>;
 
   declare projectMetadata?: NonAttribute<ProjectMetadataModel>;
 }
@@ -34,10 +36,13 @@ ActivationPodModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    isCompactUIView: {
-      type: DataTypes.BOOLEAN,
+    kind: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: false,
+      defaultValue: "learning",
+      validate: {
+        isIn: [ACTIVATION_POD_KINDS],
+      },
     },
   },
   {

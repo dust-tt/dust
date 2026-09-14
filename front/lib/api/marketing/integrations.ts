@@ -63,9 +63,6 @@ const EXCLUDED_MCP_SERVERS = new Set([
   "common_utilities",
   "project_context_management",
   "files",
-  // Debug/dev only
-  "primitive_types_debugger",
-  "jit_testing",
   // Auto/core (not user-configurable, always available)
   "search",
   "query_tables_v2",

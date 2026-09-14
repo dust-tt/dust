@@ -26,7 +26,7 @@ app.post(
     const pluginRun = await PluginRunResource.makeNew(
       plugin,
       {},
-      auth.getNonNullableUser(),
+      auth.getPokePrincipal().email,
       owner,
       {
         resourceId: owner.sId,

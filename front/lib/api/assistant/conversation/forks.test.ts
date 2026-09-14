@@ -13,6 +13,7 @@ import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import * as fileUtilsModule from "@app/lib/api/files/utils";
 import * as uploadFrameContentModule from "@app/lib/api/viz/upload_frame_content";
 import { Authenticator } from "@app/lib/auth";
+import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
@@ -279,7 +280,8 @@ async function attachRunToAgentMessage(
       totalOutputTokens: 20,
       totalTokens: promptTokens + 20,
     },
-    model.modelId
+    model.modelId,
+    { usageType: USAGE_TYPE_USER }
   );
 
   const [updatedCount] = await AgentMessageModel.update(

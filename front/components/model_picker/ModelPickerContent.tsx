@@ -1,17 +1,20 @@
-import { ModelPickerMoreModels } from "@app/components/model_picker/ModelPickerMoreModels";
+import { ModelPickerMakersView } from "@app/components/model_picker/ModelPickerMakersView";
 import { ModelPickerSelectionIndicator } from "@app/components/model_picker/ModelPickerSelectionIndicator";
+import { MODEL_TIER_ICON } from "@app/components/model_picker/modelPickerIcons";
 import type {
   MakerGroup,
+  ModelPickerSelectionModel,
+  ModelTierDefinition,
   ModelTierId,
-  Selection,
 } from "@app/components/model_picker/modelPickerUtils";
 import {
   getModelLockTooltip,
   getTierLockReason,
   getTierResolvedModelLabel,
-  isTierDisplayed,
-  MODEL_TIERS,
+  isTierResolvedModelHostedInRegion,
+  isTierSelected,
 } from "@app/components/model_picker/modelPickerUtils";
+import { RegionalFlag } from "@app/components/shared/RegionalFlag";
 import type {
   EnabledModelConfigurationType,
   ModelStreamResolutionsType,
@@ -21,10 +24,11 @@ import type {
   ModelMakerIdType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
+import type { RegionType } from "@app/types/region";
 import {
-  BarFull,
-  BarHalf,
-  BarLow,
+  Button,
+  ChevronDown,
+  ChevronRight,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -32,82 +36,77 @@ import {
   Icon,
   Lock01,
 } from "@dust-tt/sparkle";
-import type { ComponentType } from "react";
-
-// Tier trigger icons: rising bars from Basic to Premium.
-const TIER_ICON: Record<ModelTierId, ComponentType> = {
-  fast: BarLow,
-  standard: BarHalf,
-  complex: BarFull,
-};
 
 interface ModelPickerContentProps {
   side: "top" | "bottom";
-  // Vetoes the interaction-outside dismissal that a model/effort pick triggers
-  // on the open submenus, so they stay reachable after a pick.
-  shouldBlockDismiss: () => boolean;
-  shown: Selection;
-  agentDefault: Selection;
-  canRevert: boolean;
+  selection: ModelPickerSelectionModel;
   lockPremiumEfforts: boolean;
+  ignoreTierRestrictions: boolean;
+  tiers: ModelTierDefinition[];
+  degradedModelIds: ReadonlySet<string>;
+  hostingRegion: RegionType | null;
   makerGroups: MakerGroup[];
-  allModels: ModelConfigurationType[];
   streamModels: EnabledModelConfigurationType[];
   streams: ModelStreamResolutionsType | null;
-  search: string;
-  onSearchChange: (value: string) => void;
-  moreModelsExpanded: boolean;
-  onToggleMoreModels: () => void;
-  expandedMaker: ModelMakerIdType | null;
+  isMakersExpanded: boolean;
+  onToggleMakers: () => void;
+  expandedMakerId: ModelMakerIdType | null;
   onToggleMaker: (makerId: ModelMakerIdType) => void;
   onSelectTier: (tierId: ModelTierId) => void;
   onSelectModel: (model: ModelConfigurationType) => void;
-  onChangeEffort: (effort: ReasoningEffort) => void;
-  onRevert: () => void;
+  onChangeEffort?: (
+    model: ModelConfigurationType,
+    effort: ReasoningEffort
+  ) => void;
+  // The action closing a menu that only stages a selection (the bulk "Set
+  // model" dropdown); menus that apply their picks immediately pass none.
+  confirm?: {
+    label: string;
+    disabled?: boolean;
+    onClick: () => void;
+  };
 }
 
 export function ModelPickerContent({
   side,
-  shouldBlockDismiss,
-  shown,
-  agentDefault,
-  canRevert,
+  selection,
   lockPremiumEfforts,
+  ignoreTierRestrictions,
+  tiers,
+  degradedModelIds,
+  hostingRegion,
   makerGroups,
-  allModels,
   streamModels,
   streams,
-  search,
-  onSearchChange,
-  moreModelsExpanded,
-  onToggleMoreModels,
-  expandedMaker,
+  isMakersExpanded,
+  onToggleMakers,
+  expandedMakerId,
   onToggleMaker,
   onSelectTier,
   onSelectModel,
   onChangeEffort,
-  onRevert,
+  confirm,
 }: ModelPickerContentProps) {
   return (
     <DropdownMenuContent
       className="w-84 max-w-(--radix-dropdown-menu-content-available-width)"
-      align="start"
+      align="end"
       side={side}
     >
-      <DropdownMenuLabel label="Model" />
+      {tiers.length > 0 && (
+        <DropdownMenuLabel label="Recommendations" className="text-sm" />
+      )}
 
-      {MODEL_TIERS.map((tier) => {
-        const isSelected = isTierDisplayed(tier.id, shown.display);
-        const isDefault = isTierDisplayed(tier.id, agentDefault.display);
-        const lockReason = getTierLockReason(tier.id, {
-          lockPremiumEfforts,
-          streamModels,
-        });
+      {tiers.map((tier) => {
+        const isSelected = isTierSelected(tier.id, selection);
+        const lockReason = ignoreTierRestrictions
+          ? null
+          : getTierLockReason(tier.id, { lockPremiumEfforts, streamModels });
         if (lockReason) {
           return (
             <DropdownMenuItem
               key={tier.id}
-              icon={TIER_ICON[tier.id]}
+              icon={MODEL_TIER_ICON[tier.id]}
               label={tier.name}
               disabled
               tooltip={getModelLockTooltip(lockReason)}
@@ -122,22 +121,30 @@ export function ModelPickerContent({
             />
           );
         }
+        const regionalFlag =
+          hostingRegion !== null &&
+          isTierResolvedModelHostedInRegion(tier, streams, hostingRegion) ? (
+            <RegionalFlag region={hostingRegion} />
+          ) : null;
         return (
           <DropdownMenuItem
             key={tier.id}
-            icon={TIER_ICON[tier.id]}
-            label={`${tier.name}${isDefault ? " (Default)" : ""}`}
+            icon={MODEL_TIER_ICON[tier.id]}
+            label={tier.name}
+            className="text-foreground"
             endComponent={
-              isSelected ? (
-                <ModelPickerSelectionIndicator
-                  canRevert={canRevert}
-                  onRevert={onRevert}
-                />
-              ) : (
-                <span className="whitespace-nowrap text-xs text-faint">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
                   {getTierResolvedModelLabel(tier.id, streams)}
+                  {regionalFlag}
                 </span>
-              )
+                {isSelected && (
+                  <ModelPickerSelectionIndicator
+                    onRevert={selection.onRevert}
+                    size="xs"
+                  />
+                )}
+              </div>
             }
             onClick={() => onSelectTier(tier.id)}
             onSelect={(e) => e.preventDefault()}
@@ -145,26 +152,51 @@ export function ModelPickerContent({
         );
       })}
 
-      <DropdownMenuSeparator />
+      {tiers.length > 0 && <DropdownMenuSeparator />}
 
-      <ModelPickerMoreModels
-        shouldBlockDismiss={shouldBlockDismiss}
-        makerGroups={makerGroups}
-        allModels={allModels}
-        shown={shown}
-        agentDefault={agentDefault}
-        canRevert={canRevert}
-        lockPremiumEfforts={lockPremiumEfforts}
-        search={search}
-        onSearchChange={onSearchChange}
-        isExpanded={moreModelsExpanded}
-        onToggleExpanded={onToggleMoreModels}
-        expandedMaker={expandedMaker}
-        onToggleMaker={onToggleMaker}
-        onSelectModel={onSelectModel}
-        onChangeEffort={onChangeEffort}
-        onRevert={onRevert}
+      <DropdownMenuItem
+        label="More models"
+        endComponent={
+          <Icon
+            visual={isMakersExpanded ? ChevronDown : ChevronRight}
+            size="xs"
+            className="text-muted-foreground"
+          />
+        }
+        onClick={onToggleMakers}
+        onSelect={(e) => e.preventDefault()}
       />
+
+      {isMakersExpanded && (
+        <ModelPickerMakersView
+          makerGroups={makerGroups}
+          selection={selection}
+          ignoreTierRestrictions={ignoreTierRestrictions}
+          lockPremiumEfforts={lockPremiumEfforts}
+          degradedModelIds={degradedModelIds}
+          hostingRegion={hostingRegion}
+          expandedMakerId={expandedMakerId}
+          onToggleMaker={onToggleMaker}
+          onSelectModel={onSelectModel}
+          onChangeEffort={onChangeEffort}
+        />
+      )}
+
+      {confirm && (
+        <>
+          <DropdownMenuSeparator />
+          <div className="p-1">
+            <Button
+              size="sm"
+              variant="primary"
+              className="w-full"
+              label={confirm.label}
+              disabled={confirm.disabled}
+              onClick={confirm.onClick}
+            />
+          </div>
+        </>
+      )}
     </DropdownMenuContent>
   );
 }

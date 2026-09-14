@@ -348,6 +348,24 @@ export async function getOrCreateConversation(
 
   const { conversation } = convRes.value;
 
+  if (
+    !mainConversation.spaceId &&
+    mainConversation.metadata?.useDatabaseFileSystem === true
+  ) {
+    const inheritRes = await ConversationResource.inheritDatabaseFileSystem(
+      auth,
+      conversation.sId
+    );
+    if (inheritRes.isErr()) {
+      await cleanupSubConversationAfterSetupFailure(auth, conversation.sId);
+      return new Err(
+        new MCPError("Failed to inherit the parent filesystem", {
+          cause: inheritRes.error,
+        })
+      );
+    }
+  }
+
   const selectedSpacesResult = await copySelectedConversationSpacesToChild(
     auth,
     {

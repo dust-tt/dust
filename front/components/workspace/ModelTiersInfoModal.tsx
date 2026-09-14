@@ -1,6 +1,8 @@
-import type { ModelsTierName } from "@app/lib/api/assistant/token_pricing/tiers";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import type { ModelTierExplainerTier } from "@app/lib/client/model_tiers_explainer";
 import { getModelTierExplainer } from "@app/lib/client/model_tiers_explainer";
+import { useModels } from "@app/lib/swr/models";
+import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
 import {
   Button,
   ChevronDown,
@@ -14,32 +16,58 @@ import {
   DialogHeader,
   DialogTitle,
   Icon,
+  InfoCircle,
+  Spinner,
 } from "@dust-tt/sparkle";
-import { InformationCircleIcon } from "@heroicons/react/20/solid";
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
-const TIER_PRESENTATION: Record<ModelsTierName, { priceClassName: string }> = {
-  cost_efficient: { priceClassName: "text-emerald-500" },
-  balanced: { priceClassName: "text-blue-500" },
-  premium: { priceClassName: "text-amber-500" },
+const TIER_PRESENTATION: Record<
+  ModelsTierName,
+  { priceClassName: string; costLabel: string }
+> = {
+  cost_efficient: {
+    priceClassName: "text-emerald-500",
+    costLabel: "lowest cost",
+  },
+  balanced: { priceClassName: "text-blue-500", costLabel: "medium cost" },
+  premium: { priceClassName: "text-amber-500", costLabel: "highest cost" },
 };
+
+interface InfoSectionProps {
+  title: string;
+  children: ReactNode;
+}
+
+function InfoSection({ title, children }: InfoSectionProps) {
+  return (
+    <div className="flex flex-col gap-1">
+      <h3 className="heading-sm text-foreground dark:text-foreground-night">
+        {title}
+      </h3>
+      <p>{children}</p>
+    </div>
+  );
+}
 
 interface TierCardProps {
   tier: ModelTierExplainerTier;
 }
 
 function TierCard({ tier }: TierCardProps) {
-  const { priceClassName } = TIER_PRESENTATION[tier.name];
+  const { priceClassName, costLabel } = TIER_PRESENTATION[tier.name];
 
   return (
     <Collapsible>
       <div className="rounded-2xl border border-border bg-muted-background dark:border-border-dark dark:bg-muted-background-night">
         <CollapsibleTrigger
           hideChevron
+          aria-label={`Open ${tier.displayName} tier (${costLabel})`}
           className="w-full rounded-2xl p-4 text-left"
         >
           <div className="flex w-full items-center gap-3">
             <span
+              aria-hidden="true"
               className={`w-8 shrink-0 text-sm font-semibold ${priceClassName}`}
             >
               {"$".repeat(tier.priceLevel)}
@@ -74,17 +102,23 @@ function TierCard({ tier }: TierCardProps) {
                 Reasoning effort
               </span>
             </div>
-            {tier.models.map((model) => (
-              <div
-                key={model.displayName}
-                className="flex items-center justify-between gap-3 border-t border-border py-3 dark:border-border-dark"
-              >
-                <span className="text-sm text-foreground dark:text-foreground-night">
-                  {model.displayName}
-                </span>
-                <Chip size="xs" color="primary" label={model.effortsLabel} />
+            {tier.models.length === 0 ? (
+              <div className="border-t border-border py-3 text-sm text-muted-foreground dark:border-border-dark dark:text-muted-foreground-night">
+                No model in this tier is available in this workspace.
               </div>
-            ))}
+            ) : (
+              tier.models.map((model) => (
+                <div
+                  key={model.displayName}
+                  className="flex items-center justify-between gap-3 border-t border-border py-3 dark:border-border-dark"
+                >
+                  <span className="text-sm text-foreground dark:text-foreground-night">
+                    {model.displayName}
+                  </span>
+                  <Chip size="xs" color="primary" label={model.effortsLabel} />
+                </div>
+              ))
+            )}
           </div>
         </CollapsibleContent>
       </div>
@@ -98,7 +132,12 @@ interface ModelTiersInfoDialogProps {
 }
 
 function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
-  const tiers = useMemo(() => getModelTierExplainer(), []);
+  const owner = useWorkspace();
+  const { models, isModelsLoading } = useModels({ owner, disabled: !isOpen });
+  const tiers = useMemo(
+    () => getModelTierExplainer(new Set(models.map((model) => model.modelId))),
+    [models]
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -110,17 +149,43 @@ function ModelTiersInfoDialog({ isOpen, onClose }: ModelTiersInfoDialogProps) {
             so it scrolls once it hits the dialog's max-height, while staying
             compact (no empty space) when the tiers are collapsed. */}
         <div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-5 py-4">
-          <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Each tier groups <b>model + reasoning-effort</b> options based on
-            cost. A member capped at a tier can use that tier and every cheaper
-            one — “Up to Standard” means Standard and Basic. Open a tier to see
-            what's inside.
-          </p>
-          <div className="flex flex-col gap-2">
-            {tiers.map((tier) => (
-              <TierCard key={tier.name} tier={tier} />
-            ))}
+          <div className="flex flex-col gap-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
+            <p>
+              Model tiers group models and reasoning efforts by typical usage
+              cost. Higher tiers include more capable, more expensive
+              combinations.
+            </p>
+            <InfoSection title="What each tier includes">
+              Each tier includes a range of models and reasoning efforts with
+              similar usage costs. Reasoning effort is how much work a model
+              does before it answers: a higher effort can give better results on
+              complex tasks, but usually costs more.
+            </InfoSection>
+            <InfoSection title="Why costs differ">
+              Usage cost depends on both the model and its reasoning effort. We
+              compare each combination on representative tasks rather than on
+              the model's token price alone. Raising the reasoning effort by one
+              step usually increases the cost by about 30%.
+            </InfoSection>
+            <InfoSection title="How access limits work">
+              A member can use the tier they are assigned and every lower-cost
+              tier: access to Standard also includes Basic.
+            </InfoSection>
+            <InfoSection title="See what's included">
+              Select a tier to see the models and reasoning efforts it includes.
+            </InfoSection>
           </div>
+          {isModelsLoading ? (
+            <div className="flex justify-center py-8">
+              <Spinner size="md" />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {tiers.map((tier) => (
+                <TierCard key={tier.name} tier={tier} />
+              ))}
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
@@ -141,7 +206,7 @@ export function ModelTiersInfoButton({ className }: ModelTiersInfoButtonProps) {
       <Button
         variant="ghost"
         size="xs"
-        icon={InformationCircleIcon}
+        icon={InfoCircle}
         tooltip="How model tiers work"
         className={className}
         onClick={(event) => {

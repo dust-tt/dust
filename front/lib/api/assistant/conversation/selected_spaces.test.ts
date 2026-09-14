@@ -31,7 +31,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
-import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -82,13 +81,10 @@ describe("selected conversation Spaces", () => {
   }
 
   async function regularGroup(space: SpaceResource, auth: Authenticator) {
-    const groupReference = space.groups.find((group) => group.isRegularAuto());
-    if (!groupReference) {
+    const [group] = await space.fetchRegularAutoGroups(auth);
+    if (!group) {
       throw new Error("Expected regular member group on Space");
     }
-    const [group] = await space.fetchGroupResources(auth, {
-      groupReferences: [groupReference],
-    });
     return group;
   }
 
@@ -126,7 +122,7 @@ describe("selected conversation Spaces", () => {
       workspaceId: workspace.id,
       kind: "regular_auto",
     });
-    return SpaceResource.makeNew(
+    const space = await SpaceResource.makeNew(
       await Authenticator.internalAdminForWorkspace(workspace.sId),
       {
         name: "Open Space",
@@ -135,6 +131,11 @@ describe("selected conversation Spaces", () => {
       },
       { members: [memberGroup, globalGroup] }
     );
+    // Membership on the open space comes from the global group's `reader` grant, which lands in the
+    // caller's grant snapshot only after a refresh (the caller is already in the global group, but
+    // the space's grants did not exist when their auth was built).
+    await auth.refresh();
+    return space;
   }
 
   async function conversation() {
@@ -662,7 +663,7 @@ describe("selected conversation Spaces", () => {
     if (globalGroupResult.isErr()) {
       throw globalGroupResult.error;
     }
-    await GroupSpaceFactory.associate(selectedSpace, globalGroupResult.value);
+    await SpaceFactory.attachGroup(selectedSpace, globalGroupResult.value);
 
     await expect(
       getEffectiveSpaceIdsForAgentRun(auth, {

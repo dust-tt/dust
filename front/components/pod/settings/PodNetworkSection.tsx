@@ -2,6 +2,7 @@ import { EgressDomainListEditor } from "@app/components/sandbox/EgressDomainList
 import {
   useDismissPodEgressRequest,
   usePodEgressPolicy,
+  useRequestPodEgressDomain,
   useUpdatePodEgressPolicy,
 } from "@app/lib/swr/pods";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -10,12 +11,18 @@ import { ContentMessage, InfoCircle, Spinner } from "@dust-tt/sparkle";
 interface PodNetworkSectionProps {
   owner: LightWorkspaceType;
   podId: string;
+  // Pod members can view; only workspace admins can edit (matching the API).
+  canEdit: boolean;
 }
 
 // Pod-level sandbox egress allowlist. Merged on top of the workspace-level
-// allowlist for the Pod's Shared Computer. Workspace-admin only (matching the
-// API), gated behind the `sandbox_functions` feature at the call site.
-export function PodNetworkSection({ owner, podId }: PodNetworkSectionProps) {
+// allowlist for the Pod's Shared Computer. Visible to anyone who can open the
+// Pod settings page; editable only by workspace admins.
+export function PodNetworkSection({
+  owner,
+  podId,
+  canEdit,
+}: PodNetworkSectionProps) {
   const {
     policy,
     requestedDomains,
@@ -26,6 +33,8 @@ export function PodNetworkSection({ owner, podId }: PodNetworkSectionProps) {
     useUpdatePodEgressPolicy({ owner, podId });
   const { dismissPodEgressRequest, isDismissingRequest } =
     useDismissPodEgressRequest({ owner, podId });
+  const { requestPodEgressDomain, isRequestingPodEgressDomain } =
+    useRequestPodEgressDomain({ owner, podId });
 
   if (isPodEgressPolicyLoading) {
     return <Spinner />;
@@ -51,6 +60,9 @@ export function PodNetworkSection({ owner, podId }: PodNetworkSectionProps) {
       <p className="text-sm text-muted-foreground">
         This Pod's Computer can reach these domains on top of the workspace
         allowlist. Changes apply to running Computers within about a minute.
+        {!canEdit
+          ? " You can request additional domains; a workspace admin reviews each request."
+          : ""}
       </p>
 
       <EgressDomainListEditor
@@ -65,8 +77,16 @@ export function PodNetworkSection({ owner, podId }: PodNetworkSectionProps) {
         }
         onRejectRequest={(domain) => dismissPodEgressRequest(domain)}
         onSave={(allowedDomains) => updatePodEgressPolicy({ allowedDomains })}
-        isUpdating={isUpdatingPodEgressPolicy || isDismissingRequest}
+        isUpdating={
+          isUpdatingPodEgressPolicy ||
+          isDismissingRequest ||
+          isRequestingPodEgressDomain
+        }
         emptyMessage="No Pod-specific domains are currently allowed."
+        readOnly={!canEdit}
+        onRequestDomain={
+          canEdit ? undefined : (domain) => requestPodEgressDomain(domain)
+        }
       />
     </div>
   );

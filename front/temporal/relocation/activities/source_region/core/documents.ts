@@ -10,33 +10,33 @@ import {
   withJSONSerializationRetry,
   writeToRelocationStorage,
 } from "@app/temporal/relocation/lib/file_storage/relocation";
+import type { CellType } from "@app/types/cell";
 import type {
   CoreAPINodesSearchFilter,
   CoreAPISearchCursorRequest,
 } from "@app/types/core/core_api";
 import { CoreAPI } from "@app/types/core/core_api";
 import type { CoreAPIDocumentBlob } from "@app/types/core/data_source";
-import type { RegionType } from "@app/types/region";
 import type { Ok } from "@app/types/shared/result";
 
 export async function getDataSourceDocuments({
   dataSourceCoreIds,
   pageCursor,
-  sourceRegion,
+  sourceCell,
   workspaceId,
   fileName,
   limit,
 }: {
   dataSourceCoreIds: DataSourceCoreIds;
   pageCursor: string | null;
-  sourceRegion: RegionType;
+  sourceCell: CellType;
   workspaceId: string;
   fileName?: string;
   limit: number;
 }) {
   const localLogger = logger.child({
     dataSourceCoreIds,
-    sourceRegion,
+    sourceCell,
   });
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), localLogger);

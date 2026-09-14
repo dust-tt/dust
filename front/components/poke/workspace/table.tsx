@@ -19,6 +19,7 @@ import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 export function WorkspaceInfoTable({
   owner,
   membersCount,
+  inactiveMembersCount,
   metronomeCustomerId,
   stripeCustomerId,
   workspaceVerifiedDomains,
@@ -31,6 +32,7 @@ export function WorkspaceInfoTable({
 }: {
   owner: WorkspaceType;
   membersCount: number;
+  inactiveMembersCount: number;
   metronomeCustomerId: string | null;
   stripeCustomerId: string | null;
   workspaceVerifiedDomains: WorkspaceDomain[];
@@ -79,7 +81,7 @@ export function WorkspaceInfoTable({
 
   return (
     <div className="flex justify-between gap-3">
-      <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4 pb-2">
+      <div className="flex flex-grow flex-col rounded-lg border p-4 pb-2">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-md flex-grow pb-4 font-bold">Workspace info</h2>
         </div>
@@ -161,7 +163,9 @@ export function WorkspaceInfoTable({
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Members count</PokeTableCell>
-              <PokeTableCell>{membersCount}</PokeTableCell>
+              <PokeTableCell>
+                {`${membersCount} active, ${inactiveMembersCount} inactive`}
+              </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>SSO Enforced</PokeTableCell>

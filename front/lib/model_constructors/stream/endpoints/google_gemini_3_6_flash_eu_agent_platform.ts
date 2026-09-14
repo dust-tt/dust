@@ -3,8 +3,6 @@ import { GoogleAgentPlatformStream } from "@app/lib/model_constructors/stream/cl
 import type { StreamEndpointConstructor } from "@app/lib/model_constructors/stream/configuration";
 import { EUROPE } from "@app/lib/model_constructors/types/regions";
 
-// Not registered in STREAM_ENDPOINTS: this model is not available on the EU
-// agent-platform endpoint. Kept defined for when EU support lands.
 export class GoogleGeminiThreeDotSixFlashEuropeAgentPlatformStream extends WithGoogleGeminiThreeDotSixFlashConfig(
   GoogleAgentPlatformStream
 ) {

@@ -8,6 +8,7 @@ import { PROJECT_FILES_MAX_CONCURRENT_REQUESTS_PER_PROCESS } from ".";
 
 const getAllFilesByPrefixMock = vi.hoisted(() => vi.fn());
 const getSignedUrlMock = vi.hoisted(() => vi.fn());
+const fileExistsMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@app/lib/file_storage/config", () => ({
   default: { getGcsPrivateUploadsBucket: vi.fn(() => "test-bucket") },
@@ -49,7 +50,10 @@ describe("GET /api/v1/w/[wId]/spaces/[spaceId]/project_files", () => {
     getAllFilesByPrefixMock.mockResolvedValue({ files: [], pageFetchCount: 1 });
     getSignedUrlMock.mockReset();
     getSignedUrlMock.mockResolvedValue("https://signed.example/read");
+    fileExistsMock.mockReset();
+    fileExistsMock.mockResolvedValue([true]);
     vi.mocked(getPrivateUploadBucket).mockReturnValue({
+      file: vi.fn(() => ({ exists: fileExistsMock })),
       getAllFilesByPrefix: getAllFilesByPrefixMock,
       getSignedUrl: getSignedUrlMock,
     } as unknown as ReturnType<typeof getPrivateUploadBucket>);

@@ -13,6 +13,7 @@ export type ManagedPermissionsResponse = {
 type ManagedPermissionsError =
   | { type: "connector_rate_limit" }
   | { type: "connector_authorization_error" }
+  | { type: "connector_oauth_user_must_be_admin"; message: string }
   | { type: "internal_error" };
 
 export async function getManagedDataSourcePermissions(
@@ -36,6 +37,12 @@ export async function getManagedDataSourcePermissions(
     }
     if (permissionsRes.error.type === "connector_authorization_error") {
       return new Err({ type: "connector_authorization_error" });
+    }
+    if (permissionsRes.error.type === "connector_oauth_user_must_be_admin") {
+      return new Err({
+        type: "connector_oauth_user_must_be_admin",
+        message: permissionsRes.error.message,
+      });
     }
     return new Err({ type: "internal_error" });
   }

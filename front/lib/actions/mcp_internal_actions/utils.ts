@@ -40,6 +40,18 @@ export function workspaceManagerGuard(auth: Authenticator): MCPError | null {
   return null;
 }
 
+// Returns an MCPError when the caller is not a workspace admin, null otherwise. For internal
+// tools whose scope goes beyond what a manager may see, e.g. unpublished agents belonging to
+// other members.
+export function workspaceAdminGuard(auth: Authenticator): MCPError | null {
+  if (!auth.isAdmin()) {
+    return new MCPError("This tool is restricted to workspace admins.", {
+      tracked: false,
+    });
+  }
+  return null;
+}
+
 export function makePersonalAuthenticationError(
   provider: OAuthProvider,
   scope?: string

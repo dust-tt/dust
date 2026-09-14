@@ -1,28 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const {
-  mockLaunchOrSignalProjectTodoWorkflow,
-  mockStartImmediateProjectTodoWorkflowOnce,
-  mockStopProjectTodoWorkflow,
-} = vi.hoisted(() => ({
-  mockLaunchOrSignalProjectTodoWorkflow: vi.fn(),
-  mockStartImmediateProjectTodoWorkflowOnce: vi.fn(),
-  mockStopProjectTodoWorkflow: vi.fn(),
-}));
-
-vi.mock("@app/temporal/project_task/client", () => ({
-  launchOrSignalProjectTodoWorkflow: mockLaunchOrSignalProjectTodoWorkflow,
-  startImmediateProjectTodoWorkflowOnce:
-    mockStartImmediateProjectTodoWorkflowOnce,
-  stopProjectTodoWorkflow: mockStopProjectTodoWorkflow,
-}));
-
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
+import { ProjectFileFactory } from "@app/tests/utils/ProjectFileFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
+import { frameContentType } from "@app/types/files";
+import {
+  DEFAULT_POD_FILE_TAB_ICON,
+  normalizeTabsOrder,
+} from "@app/types/pod_file_tab";
 import { honoApp } from "@front-api/app";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 function getMetadata(workspace: { sId: string }, spaceId: string) {
   return honoApp.request(
@@ -105,11 +95,7 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId
     );
-    const [spaceGroup] = await projectSpace.fetchGroupResources(adminAuth, {
-      groupReferences: projectSpace.groups.filter((group) =>
-        group.isRegularAuto()
-      ),
-    });
+    const [spaceGroup] = await projectSpace.fetchRegularAutoGroups(adminAuth);
     if (!spaceGroup) {
       throw new Error("Expected the project member group to exist.");
     }
@@ -124,7 +110,7 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     expect(response.status).toBe(403);
   });
 
-  it("stops project tasks workflow when archiving a project", async () => {
+  it("archives a project", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
     });
@@ -140,14 +126,42 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(mockStopProjectTodoWorkflow).toHaveBeenCalledTimes(1);
-    expect(mockStopProjectTodoWorkflow).toHaveBeenCalledWith(
-      expect.objectContaining({ spaceId: projectSpace.sId })
-    );
-    expect(mockLaunchOrSignalProjectTodoWorkflow).not.toHaveBeenCalled();
+    const data = await response.json();
+    expect(data.projectMetadata.archivedAt).not.toBeNull();
   });
 
-  it("updates tasks generation opt-in", async () => {
+  it("disables triggers targeting the pod when archiving", async () => {
+    const { workspace, auth } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+
+    const projectSpace = await SpaceFactory.project(
+      workspace,
+      auth.getNonNullableUser().id
+    );
+    await ProjectMetadataResource.makeNew(auth, projectSpace, {
+      description: "Test description",
+      archivedAt: null,
+    });
+
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+    const trigger = await TriggerFactory.webhook(auth, {
+      agentConfigurationId: agent.sId,
+      status: "enabled",
+      spaceId: projectSpace.id,
+    });
+
+    const response = await patchMetadata(workspace, projectSpace.sId, {
+      archive: true,
+    });
+
+    expect(response.status).toBe(200);
+    const reloaded = await TriggerResource.fetchById(auth, trigger.sId);
+    expect(reloaded?.status).toBe("disabled");
+    expect(reloaded?.spaceId).toBe(projectSpace.id);
+  });
+
+  it("ignores tasks generation opt-in and returns hardcoded false", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
     });
@@ -164,9 +178,8 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data.projectMetadata.todoGenerationEnabled).toBe(true);
-    expect(mockLaunchOrSignalProjectTodoWorkflow).toHaveBeenCalledTimes(1);
-    expect(mockStartImmediateProjectTodoWorkflowOnce).toHaveBeenCalledTimes(1);
+    expect(data.projectMetadata.todoGenerationEnabled).toBe(false);
+    expect(data.projectMetadata.lastTodoAnalysisAt).toBeNull();
   });
 
   it("sets, returns, replaces, and clears default skills (custom + global)", async () => {
@@ -227,7 +240,71 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     expect((await response.json()).error.type).toBe("invalid_request_error");
   });
 
-  it("restarts project tasks workflow when unarchiving a project", async () => {
+  it("allows removing a file tab when another tab has a stale path", async () => {
+    const { workspace, auth, user } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+
+    const projectSpace = await SpaceFactory.project(workspace, user.id);
+
+    const validFrame = await ProjectFileFactory.create(
+      auth,
+      user,
+      projectSpace,
+      {
+        contentType: frameContentType,
+        fileName: "MyView.tsx",
+        fileSize: 100,
+        status: "ready",
+      }
+    );
+    const validPath = validFrame.toScopedPath(auth);
+    if (!validPath) {
+      throw new Error("Expected a scoped Pod Frame path.");
+    }
+
+    const stalePath = `pod-${projectSpace.sId}/frames/Activity.tsx`;
+    const framePaths = [stalePath, validPath];
+
+    await ProjectMetadataResource.makeNew(auth, projectSpace, {
+      description: null,
+      frameTabs: [
+        {
+          path: stalePath,
+          title: "Activity",
+          icon: DEFAULT_POD_FILE_TAB_ICON,
+        },
+        {
+          path: validPath,
+          title: "My View",
+          icon: DEFAULT_POD_FILE_TAB_ICON,
+        },
+      ],
+      tabsOrder: normalizeTabsOrder([stalePath, validPath], framePaths),
+    });
+
+    const response = await patchMetadata(workspace, projectSpace.sId, {
+      frameTabs: [
+        {
+          path: stalePath,
+          title: "Activity",
+          icon: DEFAULT_POD_FILE_TAB_ICON,
+        },
+      ],
+      tabsOrder: normalizeTabsOrder([stalePath], [stalePath]),
+    });
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).projectMetadata.frameTabs).toEqual([
+      {
+        path: stalePath,
+        title: "Activity",
+        icon: DEFAULT_POD_FILE_TAB_ICON,
+      },
+    ]);
+  });
+
+  it("unarchives a project", async () => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
     });
@@ -243,10 +320,7 @@ describe("PATCH /api/w/:wId/spaces/:spaceId/project_metadata", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(mockLaunchOrSignalProjectTodoWorkflow).toHaveBeenCalledTimes(1);
-    expect(mockLaunchOrSignalProjectTodoWorkflow).toHaveBeenCalledWith(
-      expect.objectContaining({ spaceId: projectSpace.sId })
-    );
-    expect(mockStopProjectTodoWorkflow).not.toHaveBeenCalled();
+    const data = await response.json();
+    expect(data.projectMetadata.archivedAt).toBeNull();
   });
 });

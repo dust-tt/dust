@@ -85,61 +85,97 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+// Shared story render: keeps the checkbox controlled so the Controls panel
+// stays in sync, and swaps to the CheckboxWithText /
+// CheckBoxWithTextAndDescription wrappers when `text` / `description` are set.
+const renderCheckbox: Story["render"] = function Render({
+  text,
+  description,
+  ...args
+}) {
+  const [checked, setChecked] = React.useState(args.checked ?? false);
+  const id = React.useId();
+
+  React.useEffect(() => {
+    setChecked(args.checked ?? false);
+  }, [args.checked]);
+
+  const props = {
+    ...args,
+    id,
+    checked,
+    onCheckedChange: (state: boolean | "indeterminate") =>
+      setChecked(state === true),
+  };
+
+  if (text && description) {
+    return (
+      <CheckBoxWithTextAndDescription
+        text={text}
+        description={description}
+        {...props}
+      />
+    );
+  }
+  if (text) {
+    return <CheckboxWithText text={text} {...props} />;
+  }
+  return <Checkbox {...props} />;
+};
+
+/**
+ * The canonical unchecked checkbox. Set **text** (and **description**) from
+ * the Controls panel to switch to the labeled wrapper variants.
+ * @summary Interactive checkbox with optional text and description.
+ */
 export const Default: Story = {
   args: {
     checked: false,
     disabled: false,
   },
-  render: function Render({ text, description, ...args }) {
-    const [checked, setChecked] = React.useState(args.checked ?? false);
-    const id = React.useId();
-
-    React.useEffect(() => {
-      setChecked(args.checked ?? false);
-    }, [args.checked]);
-
-    const props = {
-      ...args,
-      id,
-      checked,
-      onCheckedChange: (state: boolean | "indeterminate") =>
-        setChecked(state === true),
-    };
-
-    if (text && description) {
-      return (
-        <CheckBoxWithTextAndDescription
-          text={text}
-          description={description}
-          {...props}
-        />
-      );
-    }
-    if (text) {
-      return <CheckboxWithText text={text} {...props} />;
-    }
-    return <Checkbox {...props} />;
-  },
+  render: renderCheckbox,
 };
 
+/**
+ * The on state, for an option the user has selected.
+ * @summary Checked state.
+ */
 export const Checked: Story = {
   args: { checked: true },
   tags: ["ai-generated", "needs-work"],
+  render: renderCheckbox,
 };
 
+/**
+ * The partial state, for a "select all" parent whose children are only
+ * partially selected. Clicking resolves it to a boolean state.
+ * @summary Indeterminate (partial) state.
+ */
 export const Indeterminate: Story = {
   args: { checked: "partial" },
   tags: ["ai-generated", "needs-work"],
+  render: renderCheckbox,
 };
 
+/**
+ * A disabled checkbox keeps its checked value visible but ignores
+ * interaction — use it for options the current context does not allow
+ * changing.
+ * @summary Disabled checked state.
+ */
 export const Disabled: Story = {
   args: { checked: true, disabled: true },
   tags: ["ai-generated", "needs-work"],
+  render: renderCheckbox,
 };
 
-// Interaction: an uncontrolled checkbox must flip its aria-checked state on click.
+/**
+ * Interaction test: an uncontrolled checkbox must flip its aria-checked
+ * state on click. The value of this story is its play assertions.
+ * @summary Interaction test for click toggling.
+ */
 export const Interactive: Story = {
-  tags: ["ai-generated", "needs-work"],
+  tags: ["ai-generated", "needs-work", "!manifest"],
   play: async ({ canvas, userEvent }) => {
     const checkbox = canvas.getByRole("checkbox");
     const indicator = checkbox.querySelector('[data-state="unchecked"]');

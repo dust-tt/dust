@@ -4,10 +4,10 @@ import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { getNovuClient } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
+import { fireAndForgetNotification } from "@app/lib/notifications/fire_and_forget";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getPodRoute } from "@app/lib/utils/router";
-import logger from "@app/logger/logger";
 import { POD_ADDED_AS_MEMBER_TRIGGER_ID } from "@app/types/notification_preferences";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -268,15 +268,11 @@ export function notifyPodMembersAdded(
     addedUserIds: string[];
   }
 ): void {
-  void triggerPodAddedAsMemberNotifications(auth, {
-    pod: pod,
-    addedUserIds,
-  }).then((notifRes) => {
-    if (notifRes.isErr()) {
-      logger.error(
-        { error: notifRes.error, podId: pod.sId },
-        "Failed to trigger pod added as member notification"
-      );
+  fireAndForgetNotification(
+    triggerPodAddedAsMemberNotifications(auth, { pod, addedUserIds }),
+    {
+      message: "Failed to trigger pod added as member notification",
+      context: { podId: pod.sId },
     }
-  });
+  );
 }

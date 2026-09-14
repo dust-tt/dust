@@ -34,38 +34,57 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const DocumentAndConversation: Story = {
+/**
+ * A document result: icon visual, truncating title, and a description
+ * snippet. The row is wrapped in `ListGroup`, which renders the separators.
+ *
+ * @summary Document result with icon, title, and snippet.
+ */
+export const DocumentResult: Story = {
   args: {
-    title: "Placeholder",
+    visual: <Icon visual={Type01} size="md" />,
+    title: <span className="min-w-0 truncate">Q4 Report.pdf</span>,
+    description:
+      "Summary: Key findings are consolidated in the sections below.",
   },
-  render: () => (
+  render: (args) => (
     <ListGroup>
-      <UniversalSearchItem
-        visual={<Icon visual={Type01} size="md" />}
-        title={<span className="min-w-0 truncate">Q4 Report.pdf</span>}
-        description="Summary: Key findings are consolidated in the sections below."
+      <UniversalSearchItem {...args} />
+    </ListGroup>
+  ),
+};
+
+/**
+ * A person result marked `selected` (drive this from keyboard navigation).
+ * The `title` composes two spans — a fixed author and a truncating snippet.
+ *
+ * @summary Selected person result with a composed title.
+ */
+export const SelectedPersonResult: Story = {
+  args: {
+    visual: (
+      <Avatar
+        name="Alex Doe"
+        visual="https://i.pravatar.cc/150?img=5"
+        size="xs"
+        isRounded={true}
       />
-      <UniversalSearchItem
-        visual={
-          <Avatar
-            name="Alex Doe"
-            visual="https://i.pravatar.cc/150?img=5"
-            size="xs"
-            isRounded={true}
-          />
-        }
-        title={
-          <>
-            <span className="shrink-0">Alex Doe</span>
-            <span className="min-w-0 truncate text-muted-foreground">
-              Project kickoff notes
-            </span>
-          </>
-        }
-        description="We aligned on milestones, deliverables, and owners for Q1."
-        selected={true}
-        hasSeparator={false}
-      />
+    ),
+    title: (
+      <>
+        <span className="shrink-0">Alex Doe</span>
+        <span className="min-w-0 truncate text-muted-foreground">
+          Project kickoff notes
+        </span>
+      </>
+    ),
+    description: "We aligned on milestones, deliverables, and owners for Q1.",
+    selected: true,
+    hasSeparator: false,
+  },
+  render: (args) => (
+    <ListGroup>
+      <UniversalSearchItem {...args} />
     </ListGroup>
   ),
 };

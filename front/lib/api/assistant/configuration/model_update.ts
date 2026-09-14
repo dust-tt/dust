@@ -125,10 +125,18 @@ async function upgradeAgentConfigurationModel(
     responseFormat?: string;
   }
 ): Promise<Result<void, Error>> {
+  // Admins may batch-update the model of any agent of the workspace, including the ones built on
+  // spaces they cannot read (the manage agents page lists those behind "Show hidden agents").
+  // A model change re-saves the whole configuration, so the agent's spaces and skills have to be
+  // resolved and kept as they are: dropping them would unrestrict the agent and strip its skills.
+  // Nothing the spaces protect is exposed to the caller.
+  const dangerouslySkipPermissionFiltering = auth.isAdmin();
+
   // Resolves the current configuration along with its editors and skills, and rejects agents
   // that cannot be re-saved as-is (archived, global).
   const contextResult = await getAgentConfigurationContext(auth, agentId, {
     requireEditorGroup: true,
+    dangerouslySkipPermissionFiltering,
   });
   if (contextResult.isErr()) {
     return new Err(new Error(contextResult.error.api_error.message));
@@ -167,6 +175,7 @@ async function upgradeAgentConfigurationModel(
       skills: skills.map((skill) => ({ sId: skill.sId })),
       additionalRequestedSpaceIds: agentConfiguration.requestedSpaceIds,
     },
+    dangerouslySkipPermissionFiltering,
   });
   if (res.isErr()) {
     return res;

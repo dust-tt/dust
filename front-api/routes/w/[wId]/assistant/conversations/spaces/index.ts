@@ -1,5 +1,6 @@
 import { listNonArchivedMemberSpacesWithMetadata } from "@app/lib/api/projects/list";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserProjectPreferencesResource } from "@app/lib/resources/user_project_preferences_resource";
 import type { GetBySpacesSummaryResponseBody } from "@app/types/api/assistant/conversation/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -61,7 +62,7 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
     number,
     {
       unreadConversations: ConversationWithoutContentType[];
-      nonParticipantUnreadConversations: ConversationWithoutContentType[];
+      nonParticipantUnreadConversationIds: string[];
     }
   >();
 
@@ -71,7 +72,7 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
       if (spaceModelId && spaceIdToSpaceMap.has(spaceModelId)) {
         const existing = conversationsBySpace.get(spaceModelId) ?? {
           unreadConversations: [],
-          nonParticipantUnreadConversations: [],
+          nonParticipantUnreadConversationIds: [],
         };
         existing.unreadConversations.push(conversation.toJSON());
         conversationsBySpace.set(spaceModelId, existing);
@@ -85,9 +86,9 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
       if (spaceModelId && spaceIdToSpaceMap.has(spaceModelId)) {
         const existing = conversationsBySpace.get(spaceModelId) ?? {
           unreadConversations: [],
-          nonParticipantUnreadConversations: [],
+          nonParticipantUnreadConversationIds: [],
         };
-        existing.nonParticipantUnreadConversations.push(conversation.toJSON());
+        existing.nonParticipantUnreadConversationIds.push(conversation.sId);
         conversationsBySpace.set(spaceModelId, existing);
       }
     }
@@ -97,26 +98,32 @@ app.get("/", async (ctx): HandlerResult<GetBySpacesSummaryResponseBody> => {
   const filteredSpaces = nonArchivedSpaces.filter(
     (space) => space.kind === "project" || conversationsBySpace.has(space.id)
   );
+  const sortedSpaces = sortSpacesSummary(
+    filteredSpaces,
+    conversationsBySpace,
+    lastUserActivityBySpace
+  );
+  const enriched = await SpaceResource.enrichSpacesWithAccess(
+    auth,
+    sortedSpaces
+  );
   return ctx.json({
-    summary: sortSpacesSummary(
-      filteredSpaces,
-      conversationsBySpace,
-      lastUserActivityBySpace
-    ).map((space) => ({
+    summary: sortedSpaces.map((space, i) => ({
       space: {
-        ...space.toJSON(),
+        ...enriched[i],
         description: metadataMap.get(space.id)?.description ?? null,
         // We excluded archived projects and we only list projects where the user is a member.
         archivedAt: null,
         isMember: true,
-        isEditor: space.canAdministrate(auth),
+        isEditor: auth.can("admin", space),
         isStarred: starredSpaceModelIds.has(space.id),
       },
       unreadConversations:
         conversationsBySpace.get(space.id)?.unreadConversations ?? [],
-      nonParticipantUnreadConversations:
-        conversationsBySpace.get(space.id)?.nonParticipantUnreadConversations ??
-        [],
+      nonParticipantUnreadConversationIds:
+        conversationsBySpace.get(space.id)
+          ?.nonParticipantUnreadConversationIds ?? [],
+      nonParticipantUnreadConversations: [],
     })),
   });
 });

@@ -3,6 +3,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { useSidekickSuggestions } from "@app/components/agent_builder/sidekick/SidekickSuggestionsContext";
 import { registerGetAgentConfigTool } from "@app/components/agent_builder/sidekick/tools/getAgentConfig";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useFormContext } from "react-hook-form";
@@ -128,7 +129,7 @@ export function useSidekickMCPServer({
       } catch (err) {
         console.error("[useSidekickMCPServer] Failed to initialize:", err);
         if (isMounted) {
-          setError(err instanceof Error ? err : new Error(String(err)));
+          setError(normalizeError(err));
           setIsConnecting(false);
         }
       }

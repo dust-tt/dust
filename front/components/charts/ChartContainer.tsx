@@ -20,7 +20,7 @@ import { useState } from "react";
 import { ResponsiveContainer } from "recharts";
 
 interface ChartContainerProps {
-  title: ReactNode;
+  title?: ReactNode;
   isLoading: boolean;
   errorMessage?: string;
   emptyMessage?: string;
@@ -64,7 +64,9 @@ export function ChartContainer({
           )}
         >
           <div className="flex shrink-0 items-center justify-between gap-2">
-            <h3 className="text-base font-medium text-foreground">{title}</h3>
+            {title && (
+              <h3 className="text-base font-medium text-foreground">{title}</h3>
+            )}
             {statusChip}
           </div>
           <div className="flex items-center gap-3">

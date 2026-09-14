@@ -1,0 +1,13 @@
+{
+  "scenario": "no readable spaces",
+  "workspaceId": "w_mocked",
+  "workspaceName": "Permission model",
+  "generatedAt": "2026-08-27T00:00:00.000Z",
+  "user": { "sId": "usr_no_spaces", "email": "member@example.com", "fullName": "No spaces" },
+  "role": "user",
+  "groupIds": [],
+  "groups": [],
+  "readableNonPodSpaces": [],
+  "readablePodSpaces": [],
+  "expectedAgentIds": ["agt_global_none", "agt_visible_none"]
+}

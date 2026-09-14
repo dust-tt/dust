@@ -17,7 +17,7 @@ async function authForRole(role: MembershipRoleType): Promise<Authenticator> {
 
 describe("canRoleSeeAudience", () => {
   it("makes 'everyone' visible to every role", async () => {
-    for (const role of ["admin", "manager", "builder", "user"] as const) {
+    for (const role of ["admin", "manager", "user"] as const) {
       const auth = await authForRole(role);
       expect(canRoleSeeAudience("everyone", auth)).toBe(true);
     }
@@ -26,9 +26,6 @@ describe("canRoleSeeAudience", () => {
   it("makes 'admins' visible to admins only", async () => {
     expect(canRoleSeeAudience("admins", await authForRole("admin"))).toBe(true);
     expect(canRoleSeeAudience("admins", await authForRole("manager"))).toBe(
-      false
-    );
-    expect(canRoleSeeAudience("admins", await authForRole("builder"))).toBe(
       false
     );
     expect(canRoleSeeAudience("admins", await authForRole("user"))).toBe(false);
@@ -40,9 +37,6 @@ describe("canRoleSeeAudience", () => {
     );
     expect(canRoleSeeAudience("managers", await authForRole("manager"))).toBe(
       true
-    );
-    expect(canRoleSeeAudience("managers", await authForRole("builder"))).toBe(
-      false
     );
     expect(canRoleSeeAudience("managers", await authForRole("user"))).toBe(
       false

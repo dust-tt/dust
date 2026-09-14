@@ -4,7 +4,11 @@ import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
-import { scheduleMetronomeContractEnd } from "@app/lib/metronome/client";
+import {
+  scheduleMetronomeContractEnd,
+  setMetronomeContractCustomFields,
+} from "@app/lib/metronome/client";
+import { PLAN_CODE_CUSTOM_FIELD_KEY } from "@app/lib/metronome/constants";
 import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
@@ -51,7 +55,6 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
-import { WorkspacePlanLimitOverrideResource } from "@app/lib/resources/workspace_plan_limit_override_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -438,11 +441,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       return null;
     }
 
-    const planLimitOverride =
-      await WorkspacePlanLimitOverrideResource.fetchByWorkspace({
-        workspace,
-        transaction,
-      });
+    const planLimitOverride = await WorkspaceResource.fetchPlanLimitOverride(
+      workspace.id,
+      transaction
+    );
 
     const plan = this.determinePlanFromSubscription(
       lastSubscription,
@@ -513,7 +515,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     );
 
     const planLimitOverrideByWorkspaceModelId =
-      await WorkspacePlanLimitOverrideResource.fetchByWorkspaceModelIds(
+      await WorkspaceResource.fetchPlanLimitOverridesByWorkspaceModelIds(
         workspaceModelIds,
         transaction
       );
@@ -876,10 +878,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
         workspace,
         transaction: t,
       });
-      await WorkspacePlanLimitOverrideResource.deleteAllForWorkspace({
-        workspace,
-        transaction: t,
-      });
+      await WorkspaceResource.deleteAllPlanLimitOverridesForWorkspace(
+        workspace.id,
+        t
+      );
     });
 
     await SubscriptionResource.invalidateSubscriptionCache(workspace.id);
@@ -930,7 +932,7 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     // against the effective cap.
     const { maxUsersInWorkspace } = applyPlanLimitOverrides(
       newPlan.get(),
-      await WorkspacePlanLimitOverrideResource.fetchByWorkspace({ workspace })
+      await WorkspaceResource.fetchPlanLimitOverride(workspace.id)
     );
     if (maxUsersInWorkspace !== -1) {
       const activeSeats = await countActiveSeatsForWorkspace(workspace.sId);
@@ -1183,6 +1185,89 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   }
 
   /**
+   * Low-level plan change for Poke: repoints the active subscription row to a
+   * different plan, mirrors the new plan code onto the Metronome contract (when
+   * the workspace is Metronome-billed) and flushes the subscription + contract
+   * caches. Unlike `pokeUpgradeWorkspaceToPlan` this does not create or end any
+   * subscription, touch Stripe, or run any plan-family guardrails — it is a raw
+   * override for fixing up a workspace's plan.
+   */
+  static async pokeChangePlan({
+    auth,
+    planCode,
+  }: {
+    auth: Authenticator;
+    planCode: string;
+  }): Promise<
+    Result<
+      { previousPlanCode: string; metronomeContractUpdated: boolean },
+      Error
+    >
+  > {
+    const owner = auth.getNonNullableWorkspace();
+
+    if (!auth.isDustSuperUser()) {
+      throw new Error("Cannot change workspace plan: not allowed.");
+    }
+
+    const newPlan = await this.findPlanOrThrow(planCode);
+
+    const activeSubscription = auth.subscriptionResource();
+    if (!activeSubscription) {
+      return new Err(
+        new Error("Workspace has no active subscription to change.")
+      );
+    }
+
+    const previousPlanCode = activeSubscription.plan.code;
+    if (previousPlanCode === newPlan.code) {
+      return new Err(
+        new Error(`Workspace is already on plan ${newPlan.code}.`)
+      );
+    }
+
+    // Repoint the subscription row to the new plan.
+    await SubscriptionModel.update(
+      { planId: newPlan.id },
+      {
+        where: { sId: activeSubscription.sId },
+      }
+    );
+
+    // Mirror the plan code onto the Metronome contract when the workspace is
+    // Metronome-billed, so billing stays consistent with the DB.
+    let metronomeContractUpdated = false;
+    const { metronomeContractId } = activeSubscription;
+    if (metronomeContractId) {
+      const res = await setMetronomeContractCustomFields({
+        contractId: metronomeContractId,
+        customFields: { [PLAN_CODE_CUSTOM_FIELD_KEY]: newPlan.code },
+      });
+      if (res.isErr()) {
+        return res;
+      }
+      metronomeContractUpdated = true;
+    }
+
+    // Flush both the active-subscription cache and the Metronome contract cache.
+    await SubscriptionResource.invalidateSubscriptionCache(owner.id);
+    await invalidateContractCache(owner.sId);
+
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        previousPlanCode,
+        newPlanCode: newPlan.code,
+        metronomeContractUpdated,
+        method: "SubscriptionResource.pokeChangePlan",
+      },
+      "Changed workspace subscription plan via Poke"
+    );
+
+    return new Ok({ previousPlanCode, metronomeContractUpdated });
+  }
+
+  /**
    * Upgrades a Pro subscription to Business plan.
    * Only allowed for workspaces that are whitelisted for Business (metadata.isBusiness = true).
    */
@@ -1367,7 +1452,8 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     const subscription = await SubscriptionResource.model.findOne({
       where: { id: subscriptionModelId },
       include: [WorkspaceModel],
-      // subscription ID is already trusted.
+      // WORKSPACE_ISOLATION_BYPASS: Billing flows supply a trusted subscription ID before its
+      // workspace is resolved by this query.
       // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });

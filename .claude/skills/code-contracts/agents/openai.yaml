@@ -1,0 +1,4 @@
+interface:
+  display_name: "Code Contracts"
+  short_description: "Define, use, and enforce code-contracts."
+  default_prompt: "Use $code-contracts across this code base."

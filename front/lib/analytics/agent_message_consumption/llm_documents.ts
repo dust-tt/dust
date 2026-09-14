@@ -175,6 +175,7 @@ function buildLlmConsumptionDocument({
     // The agent message stores only aggregate model latency, which cannot be split across runs.
     // TODO(2026-08-07 flav): Persist execution duration on each run and index it here.
     execution_time_ms: null,
+    micro_usd: usage.costMicroUsd,
     model: modelForUsage(input.model, usage),
     status: input.messageStatus,
     tool: null,

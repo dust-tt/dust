@@ -17,6 +17,7 @@ pub trait OAuthStore {
         &self,
         provider: ConnectionProvider,
         metadata: serde_json::Value,
+        redirect_uri: Option<String>,
         related_credential_id: Option<String>,
     ) -> Result<Connection>;
     async fn retrieve_connection(&self, connection_id: &str) -> Result<Option<Connection>>;
@@ -91,6 +92,7 @@ impl OAuthStore for PostgresOAuthStore {
         &self,
         provider: ConnectionProvider,
         metadata: serde_json::Value,
+        redirect_uri: Option<String>,
         related_credential_id: Option<String>,
     ) -> Result<Connection> {
         let pool = self.pool.clone();
@@ -103,8 +105,8 @@ impl OAuthStore for PostgresOAuthStore {
         // Create connection
         let stmt = c
             .prepare(
-                "INSERT INTO connections (id, created, provider, secret, status, metadata, related_credential_id)
-                   VALUES (DEFAULT, $1, $2, $3, $4, $5::jsonb, $6) RETURNING id",
+                "INSERT INTO connections (id, created, provider, secret, status, metadata, redirect_uri, related_credential_id)
+                   VALUES (DEFAULT, $1, $2, $3, $4, $5::jsonb, $6, $7) RETURNING id",
             )
             .await?;
         let row_id: i64 = c
@@ -116,6 +118,7 @@ impl OAuthStore for PostgresOAuthStore {
                     &secret,
                     &status.to_string(),
                     &metadata,
+                    &redirect_uri,
                     &related_credential_id,
                 ],
             )
@@ -130,7 +133,7 @@ impl OAuthStore for PostgresOAuthStore {
             provider,
             status,
             metadata,
-            None,
+            redirect_uri,
             None,
             None,
             None,

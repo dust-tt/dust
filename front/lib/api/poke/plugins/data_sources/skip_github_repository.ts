@@ -86,7 +86,7 @@ export const skipGithubRepositoryPlugin = createPlugin({
 
     auditLog(
       {
-        author: auth.user()?.toJSON() ?? "no-author",
+        author: auth.toPokeUserJSON(),
         dataSourceId: dataSource.sId,
         repoId,
         skipReason,

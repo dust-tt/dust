@@ -6,17 +6,22 @@ import { classNames, smoothScrollIntoView } from "@app/lib/utils";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Page } from "@dust-tt/sparkle";
+import type { CSSProperties } from "react";
 import { useCallback } from "react";
 
 interface AgentBrowserContainerProps {
   onAgentConfigurationClick: (agent: LightAgentConfigurationType) => void;
   user: UserType;
   owner: WorkspaceType;
+  // Entrance animation for the root element, e.g. the empty-state hero's
+  // fade-rise-blur-in. Left undefined outside that one call site.
+  style?: CSSProperties;
 }
 
 export function AgentBrowserContainer({
   onAgentConfigurationClick,
   owner,
+  style,
   user,
 }: AgentBrowserContainerProps) {
   // We use this specific hook because this component is involved in the new conversation page.
@@ -54,6 +59,7 @@ export function AgentBrowserContainer({
       className={classNames(
         "duration-400 flex h-full w-full max-w-conversation flex-col gap-2 py-8"
       )}
+      style={style}
     >
       {!isMobileOrExtension && (
         <div id="agents-list-header">

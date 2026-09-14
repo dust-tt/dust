@@ -29,6 +29,7 @@ const MANAGER_CAPABILITIES: CapabilitySpec[] = [
   ...GOVERNANCE_CAPABILITIES.agent,
   ...GOVERNANCE_CAPABILITIES.skill,
   ...GOVERNANCE_CAPABILITIES.frame,
+  ...GOVERNANCE_CAPABILITIES.trigger,
 ];
 
 // Capabilities every admin can manage.

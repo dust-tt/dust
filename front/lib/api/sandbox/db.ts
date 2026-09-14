@@ -10,33 +10,42 @@ import type {
 import { rootCommand } from "@app/lib/api/sandbox/root_command";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
+import type { FileResource } from "@app/lib/resources/file_resource";
 import type { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { concurrentExecutor } from "@app/temporal/workflow_utils";
-import { getPodStateBasePath } from "@app/types/mount_path";
+import {
+  getFrameDatabaseReplicaBasePath,
+  getFrameDatabaseReplicasBasePath,
+} from "@app/types/api/frame_storage";
+import {
+  getPodStateBasePath,
+  SANDBOX_STATE_DATABASES_DIR,
+  SANDBOX_STATE_REPLICA_MOUNT_POINT,
+} from "@app/types/mount_path";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
- * Pod state runtime plumbing: SQLite databases under /pod-state/databases,
+ * Pod state runtime plumbing: SQLite databases under /sandbox-state/databases,
  * continuously replicated by a litestream daemon (running as dust-state) to a
- * gcsfuse-mounted GCS prefix at /pod-state/replica.
+ * gcsfuse-mounted GCS prefix at /sandbox-state/replica.
  *
- * The daemon runs litestream's directory watcher over /pod-state/databases
+ * The daemon runs litestream's directory watcher over /sandbox-state/databases
  * (static /etc/litestream.yml baked at image build): databases created at any
  * point — including publish-time `dsbx db reconcile` — are discovered and
  * replicated automatically within seconds. Replica subdirectories are named
- * by database FILENAME: /pod-state/replica/{db}.db/ltx/...
+ * by database FILENAME: /sandbox-state/replica/{db}.db/ltx/...
  *
  * Lifecycle:
- *  - Cold start (`setupPodStateOnColdStart`, after the gcsfuse mounts): restore
+ *  - Cold start (`setupSandboxStateOnColdStart`, after the gcsfuse mounts): restore
  *    each replicated database (temp file + PRAGMA quick_check + atomic rename),
  *    then start the litestream systemd unit — strictly in that order, so the
  *    watcher never manages files mid-restore or writes to an unmounted
  *    replica dir.
- *  - Pre-sleep (`ensurePodStateHealthOnSleep`, before the provider pause):
+ *  - Pre-sleep (`ensureSandboxStateHealthOnSleep`, before the provider pause):
  *    verify the replica mount is a live FUSE mount and the daemon is active,
  *    then `litestream sync -wait` each database so every committed WAL frame
  *    is in GCS before the VM can be destroyed. On failure the sandbox is NOT
@@ -45,10 +54,6 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  *    daemon, its control socket, the mounts and the database files.
  */
 
-export const POD_STATE_DATABASES_DIR = "/pod-state/databases";
-const POD_STATE_REPLICA_DIR = "/pod-state/replica";
-/** In-sandbox mount point of the state replica gcsfuse mount. */
-export const POD_STATE_REPLICA_MOUNT_POINT = POD_STATE_REPLICA_DIR;
 /** System user running the litestream daemon and owning the replica mount. */
 const POD_STATE_USER = "dust-state";
 
@@ -69,6 +74,12 @@ const RM_BIN = "/usr/bin/rm";
 const CHMOD_BIN = "/usr/bin/chmod";
 const HEAD_BIN = "/usr/bin/head";
 const TEST_BIN = "/usr/bin/test";
+
+// Old sandboxes keep their original image and mount layout until they are
+// recycled after deployment. Only the pre-sleep liveness probe needs this
+// bridge; new cold starts, restores, and mounts always use the canonical path.
+const LEGACY_POD_STATE_REPLICA_MOUNT_POINT = "/pod-state/replica";
+const SANDBOX_STATE_ROOT_DIR = "/sandbox-state";
 
 // Database name shape. Doubles as an allowlist: enumeration outputs are
 // workload-influenced, so anything not matching (dotfiles, litestream sidecar
@@ -176,10 +187,10 @@ function execFailure(
  * Cold-start bring-up, called from the freshlyCreated lifecycle branch AFTER
  * the gcsfuse mounts are up (the restore reads through the replica mount).
  * Failures block sandbox readiness on purpose: `invoke` awaits
- * `ensurePodSandboxReady`, which is what guarantees no function ever runs
+ * `ensureFrameSandboxReady`, which is what guarantees no function ever runs
  * against a half-restored database.
  */
-export async function setupPodStateOnColdStart(
+export async function setupSandboxStateOnColdStart(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<void, Error>> {
@@ -263,7 +274,7 @@ async function listReplicaDatabases(
   const result = await sandbox.execRoot(
     auth,
     asPodStateUser(FIND_BIN, [
-      POD_STATE_REPLICA_DIR,
+      SANDBOX_STATE_REPLICA_MOUNT_POINT,
       "-mindepth",
       "1",
       "-maxdepth",
@@ -287,10 +298,10 @@ async function restorePodDatabase(
   sandbox: SandboxResource,
   name: string
 ): Promise<Result<void, Error>> {
-  const dbPath = `${POD_STATE_DATABASES_DIR}/${name}.db`;
-  const tmpPath = `${POD_STATE_DATABASES_DIR}/.restore-${name}.db`;
+  const dbPath = `${SANDBOX_STATE_DATABASES_DIR}/${name}.db`;
+  const tmpPath = `${SANDBOX_STATE_DATABASES_DIR}/.restore-${name}.db`;
   // Replica subdir named by database FILENAME (directory watcher layout).
-  const replicaUrl = `file://${POD_STATE_REPLICA_DIR}/${name}.db`;
+  const replicaUrl = `file://${SANDBOX_STATE_REPLICA_MOUNT_POINT}/${name}.db`;
 
   const failAndCleanup = async (err: Error): Promise<Result<void, Error>> => {
     // Best effort: a leftover temp file is invisible to enumeration (dotfile)
@@ -415,7 +426,7 @@ async function startLitestreamDaemon(
 /**
  * Restart the litestream daemon: re-derive the managed set from what is live on disk right now.
  *
- * The directory watcher only enumerates /pod-state/databases at start, so a database whose live
+ * The directory watcher only enumerates /sandbox-state/databases at start, so a database whose live
  * files were just deleted stays open in the running daemon — free to keep writing to, and so
  * recreate, the replica prefix a delete is about to wipe. A restart is what makes the daemon let go
  * of it, and the static config (baked at image build) brings back every database that IS still live.
@@ -459,7 +470,7 @@ export async function restartLitestreamDaemon(
  * the sandbox is already gone, there is nothing left to sync, and exec already
  * marked the row deleted.
  */
-export async function ensurePodStateHealthOnSleep(
+export async function ensureSandboxStateHealthOnSleep(
   auth: Authenticator,
   sandbox: SandboxResource,
   opts: {
@@ -551,7 +562,7 @@ export async function ensurePodStateHealthOnSleep(
 
   // 4. Sync each database through the daemon control socket.
   for (const name of names) {
-    const dbPath = `${POD_STATE_DATABASES_DIR}/${name}.db`;
+    const dbPath = `${SANDBOX_STATE_DATABASES_DIR}/${name}.db`;
     const syncResult = await sandbox.execRoot(
       auth,
       rootCommand.exec(LITESTREAM_BIN, [
@@ -597,17 +608,57 @@ export async function ensurePodStateHealthOnSleep(
   return new Ok(undefined);
 }
 
-async function checkReplicaMountLiveness(
+export async function checkReplicaMountLiveness(
   auth: Authenticator,
   sandbox: SandboxResource
 ): Promise<Result<void, Error>> {
   // As dust-state: without allow_other the FUSE layer denies every other uid,
   // including root. `stat -f -c %t` prints the statfs filesystem magic.
-  const result = await sandbox.execRoot(
+  const result = await statReplicaMount(
     auth,
-    asPodStateUser(STAT_BIN, ["-f", "-c", "%t", POD_STATE_REPLICA_MOUNT_POINT]),
+    sandbox,
+    SANDBOX_STATE_REPLICA_MOUNT_POINT
+  );
+  if (result.isErr() || result.value.exitCode === 0) {
+    return validateReplicaMountStat(result);
+  }
+
+  // Sandboxes booted from the previous image do not have /sandbox-state at
+  // all. They keep running during the deployment drain, so allow their old
+  // replica mount to flush before sleep. If the new root exists, fail closed:
+  // the canonical mount is broken rather than legacy.
+  const rootMissingResult = await sandbox.execRoot(
+    auth,
+    rootCommand.exec(TEST_BIN, ["!", "-d", SANDBOX_STATE_ROOT_DIR]),
     { timeoutMs: PROBE_EXEC_TIMEOUT_MS }
   );
+  if (rootMissingResult.isErr()) {
+    return rootMissingResult;
+  }
+  if (rootMissingResult.value.exitCode !== 0) {
+    return validateReplicaMountStat(result);
+  }
+
+  return validateReplicaMountStat(
+    await statReplicaMount(auth, sandbox, LEGACY_POD_STATE_REPLICA_MOUNT_POINT)
+  );
+}
+
+async function statReplicaMount(
+  auth: Authenticator,
+  sandbox: SandboxResource,
+  mountPoint: string
+) {
+  return sandbox.execRoot(
+    auth,
+    asPodStateUser(STAT_BIN, ["-f", "-c", "%t", mountPoint]),
+    { timeoutMs: PROBE_EXEC_TIMEOUT_MS }
+  );
+}
+
+function validateReplicaMountStat(
+  result: Awaited<ReturnType<typeof statReplicaMount>>
+): Result<void, Error> {
   if (result.isErr()) {
     return result;
   }
@@ -631,7 +682,7 @@ async function listLiveDatabases(
   const result = await sandbox.execRoot(
     auth,
     rootCommand.exec(FIND_BIN, [
-      POD_STATE_DATABASES_DIR,
+      SANDBOX_STATE_DATABASES_DIR,
       "-mindepth",
       "1",
       "-maxdepth",
@@ -654,7 +705,7 @@ async function listLiveDatabases(
 
 /**
  * Live databases whose file content starts with the SQLite header magic.
- * /pod-state/databases is workload-writable by design, so enumeration output
+ * /sandbox-state/databases is workload-writable by design, so enumeration output
  * must be treated as untrusted: non-SQLite files are excluded from the
  * managed set (with a warning log) instead of being handed to litestream,
  * where they would fail every sync and wedge the pod's lifecycle. A valid
@@ -673,7 +724,7 @@ async function listValidLiveDatabases(
 
   const valid: string[] = [];
   for (const name of namesResult.value) {
-    const dbPath = `${POD_STATE_DATABASES_DIR}/${name}.db`;
+    const dbPath = `${SANDBOX_STATE_DATABASES_DIR}/${name}.db`;
     const headResult = await sandbox.execRoot(
       auth,
       rootCommand.exec(HEAD_BIN, ["-c", "15", "--", dbPath]),
@@ -758,43 +809,51 @@ export async function deletePodStatePrefix(
  * Delete ONE database's litestream replica: the GCS prefix the directory watcher keys on that
  * database's filename.
  *
- * The replica is the durable copy of a pod database, and `setupPodStateOnColdStart` restores every
- * replica it finds. So a replica that survives resurrects a database whose live files were deleted —
- * which makes this the step that actually makes a database deletion stick.
+ * The replica is the durable copy of a Frame database, and `setupSandboxStateOnColdStart` restores
+ * every replica it finds. So a replica that survives resurrects a database whose live files were
+ * deleted — which makes this the step that actually makes a database deletion stick.
  *
- * Call it AFTER the live files are gone AND the daemon has been restarted (`restartLitestreamDaemon`):
- * a running litestream keeps replicating a database it can still see, and removing the files does not
- * make it let go — the directory watcher only enumerates at start, so until the restart the daemon
- * still holds the database and recreates the prefix this wipes. The delete is verified by re-listing,
- * because a silently-surviving replica is indistinguishable from success until the pod next boots.
+ * Call it AFTER the live files are gone AND the daemon has been restarted
+ * (`restartLitestreamDaemon`): a running litestream keeps replicating a database it can still see,
+ * and removing the files does not make it let go — the directory watcher only enumerates at start,
+ * so until the restart the daemon still holds the database and recreates the prefix this wipes. The
+ * delete is verified by re-listing, because a silently-surviving replica is indistinguishable from
+ * success until the Frame next boots.
  */
-export async function deletePodDatabaseReplica(
+export async function deleteFrameDatabaseReplica(
   auth: Authenticator,
-  space: SpaceResource,
+  frame: Pick<FileResource, "sId">,
   { database }: { database: string }
 ): Promise<Result<void, Error>> {
   if (!isValidPodDatabaseName(database)) {
-    return new Err(new Error(`Invalid pod database name: '${database}'.`));
+    return new Err(new Error(`Invalid sandbox database name: '${database}'.`));
   }
 
-  const statePrefix = getPodStateBasePath({
-    workspaceId: auth.getNonNullableWorkspace().sId,
-    podId: space.sId,
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  const replicasPrefix = getFrameDatabaseReplicasBasePath({
+    workspaceId,
+    frameId: frame.sId,
   });
   const replicaDirName = `${database}.db`;
 
   try {
     const bucket = getPrivateUploadBucket();
-    await bucket.deleteByPrefix(`${statePrefix}${replicaDirName}/`);
+    await bucket.deleteByPrefix(
+      getFrameDatabaseReplicaBasePath({
+        workspaceId,
+        frameId: frame.sId,
+        databaseName: database,
+      })
+    );
 
     const remaining = await bucket.listSubdirectoryNames({
-      prefix: statePrefix,
+      prefix: replicasPrefix,
     });
     if (remaining.includes(replicaDirName)) {
       return new Err(
         new Error(
-          `Replica of pod database '${database}' still present after deletion; ` +
-            "the database would be restored on the pod's next cold start."
+          `Replica of Frame database '${database}' still present after deletion; ` +
+            "the database would be restored on the Frame's next cold start."
         )
       );
     }

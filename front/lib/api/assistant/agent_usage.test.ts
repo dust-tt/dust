@@ -1,16 +1,19 @@
 import { agentMentionsCount } from "@app/lib/api/assistant/agent_usage";
-import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
+import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import { Ok } from "@app/types/shared/result";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/elasticsearch", () => ({
-  searchAnalytics: vi.fn(),
+  searchConsumptionAnalytics: vi.fn(),
 }));
 
 describe("agentMentionsCount", () => {
   it("should return aggregated mentions from Elasticsearch", async () => {
-    const mockSearchAnalytics = vi.mocked(searchAnalytics);
-    mockSearchAnalytics.mockResolvedValue(
+    const mockSearchConsumptionAnalytics = vi.mocked(
+      searchConsumptionAnalytics
+    );
+    mockSearchConsumptionAnalytics.mockResolvedValue(
       new Ok({
         took: 1,
         timed_out: false,
@@ -20,16 +23,18 @@ describe("agentMentionsCount", () => {
           by_agent: {
             buckets: [
               {
-                key: "agent-123",
-                doc_count: 5,
-                conversation_count: { value: 3 },
-                user_count: { value: 2 },
-              },
-              {
                 key: "agent-456",
-                doc_count: 2,
+                doc_count: 12,
+                message_count: { value: 2 },
                 conversation_count: { value: 1 },
                 user_count: { value: 1 },
+              },
+              {
+                key: "agent-123",
+                doc_count: 8,
+                message_count: { value: 5 },
+                conversation_count: { value: 3 },
+                user_count: { value: 2 },
               },
             ],
           },
@@ -53,25 +58,64 @@ describe("agentMentionsCount", () => {
     expect(result.value[1].messageCount).toBe(2);
 
     // Verify the query structure
-    expect(mockSearchAnalytics).toHaveBeenCalledWith(
+    expect(mockSearchConsumptionAnalytics).toHaveBeenCalledWith(
       expect.objectContaining({
         bool: {
           filter: expect.arrayContaining([
             { term: { workspace_id: "workspace-sId" } },
-            { exists: { field: "agent_id" } },
+            { terms: { context_origin: USER_USAGE_ORIGINS } },
+            { term: { consumption_type: "llm" } },
+            { exists: { field: "agent.attributed_id" } },
+            {
+              range: {
+                completed_at: {
+                  gte: "now-30d/d",
+                },
+              },
+            },
           ]),
         },
       }),
       expect.objectContaining({
-        aggregations: expect.any(Object),
+        aggregations: {
+          by_agent: {
+            terms: {
+              field: "agent.attributed_id",
+              order: { message_count: "desc" },
+              size: 1000,
+            },
+            aggs: {
+              message_count: {
+                cardinality: {
+                  field: "agent_message_id",
+                  precision_threshold: 3000,
+                },
+              },
+              conversation_count: {
+                cardinality: {
+                  field: "conversation_id",
+                  precision_threshold: 3000,
+                },
+              },
+              user_count: {
+                cardinality: {
+                  field: "user.id",
+                  precision_threshold: 3000,
+                },
+              },
+            },
+          },
+        },
         size: 0,
       })
     );
   });
 
   it("should return empty array when no aggregations", async () => {
-    const mockSearchAnalytics = vi.mocked(searchAnalytics);
-    mockSearchAnalytics.mockResolvedValue(
+    const mockSearchConsumptionAnalytics = vi.mocked(
+      searchConsumptionAnalytics
+    );
+    mockSearchConsumptionAnalytics.mockResolvedValue(
       new Ok({
         took: 1,
         timed_out: false,

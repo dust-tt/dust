@@ -1,4 +1,5 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentEditorsShadowed } from "@app/lib/api/assistant/editors";
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -39,13 +40,17 @@ function isActiveWorkspaceAgentConfiguration(
 
 export async function getActiveWorkspaceAgentConfiguration(
   auth: Authenticator,
-  agentId: string
+  agentId: string,
+  {
+    dangerouslySkipPermissionFiltering,
+  }: { dangerouslySkipPermissionFiltering?: boolean } = {}
 ): Promise<
   Result<ActiveWorkspaceAgentConfiguration, APIErrorWithContentfulStatusCode>
 > {
   const agentConfiguration = await getAgentConfiguration(auth, {
     agentId,
     variant: "full",
+    dangerouslySkipPermissionFiltering,
   });
 
   if (!agentConfiguration || (!agentConfiguration.canRead && !auth.isAdmin())) {
@@ -74,11 +79,26 @@ export async function getActiveWorkspaceAgentConfiguration(
 export async function getAgentConfigurationContext(
   auth: Authenticator,
   agentId: string,
-  { requireEditorGroup = false }: { requireEditorGroup?: boolean } = {}
+  {
+    requireEditorGroup = false,
+    dangerouslySkipPermissionFiltering,
+  }: {
+    requireEditorGroup?: boolean;
+    // Resolves the agent and its skills even when they request spaces the caller cannot read.
+    // Only for callers re-saving the agent as-is: dropping them would silently strip the agent's
+    // skills from the new version.
+    dangerouslySkipPermissionFiltering?: boolean;
+  } = {}
 ): Promise<
   Result<AgentConfigurationContext, APIErrorWithContentfulStatusCode>
 > {
-  const agentResult = await getActiveWorkspaceAgentConfiguration(auth, agentId);
+  const agentResult = await getActiveWorkspaceAgentConfiguration(
+    auth,
+    agentId,
+    {
+      dangerouslySkipPermissionFiltering,
+    }
+  );
   if (agentResult.isErr()) {
     return agentResult;
   }
@@ -87,7 +107,12 @@ export async function getAgentConfigurationContext(
 
   const skills = await SkillResource.listByAgentConfiguration(
     auth,
-    agentConfiguration
+    agentConfiguration,
+    {
+      permissionFiltering: dangerouslySkipPermissionFiltering
+        ? "dangerously_skip"
+        : "strict",
+    }
   );
   const editorsResult = await GroupResource.findEditorGroupForAgent(
     auth,
@@ -95,6 +120,12 @@ export async function getAgentConfigurationContext(
   );
 
   if (editorsResult.isErr()) {
+    await getAgentEditorsShadowed(
+      auth,
+      agentConfiguration,
+      [],
+      "getAgentConfigurationContext"
+    );
     if (requireEditorGroup) {
       return new Err({
         status_code: 400,
@@ -112,9 +143,12 @@ export async function getAgentConfigurationContext(
     });
   }
 
-  return new Ok({
+  const editorUsers = await getAgentEditorsShadowed(
+    auth,
     agentConfiguration,
-    editorUsers: await editorsResult.value.getActiveMembers(auth),
-    skills,
-  });
+    await editorsResult.value.getActiveMembers(auth),
+    "getAgentConfigurationContext"
+  );
+
+  return new Ok({ agentConfiguration, editorUsers, skills });
 }

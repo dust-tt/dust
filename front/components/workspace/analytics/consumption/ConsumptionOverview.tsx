@@ -1,143 +1,115 @@
-import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { useConsumptionOverview } from "@app/hooks/useConsumptionOverview";
 import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
 import { formatConsumptionDate } from "@app/lib/analytics/consumption_period";
-import type { ConsumptionOverview as ConsumptionOverviewType } from "@app/lib/api/analytics/consumption/overview";
-import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
-import { formatCredits } from "@app/lib/client/credits";
+import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
+import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
+import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { timeAgoFrom } from "@app/lib/utils";
-import type { CreditUsageTarget } from "@app/types/api/credits/usage_status";
-import { ArrowUpRight, Button, Chip } from "@dust-tt/sparkle";
+import { LoadingBlock, Page, Tooltip } from "@dust-tt/sparkle";
 
-const TARGET_CHIP: Record<
-  CreditUsageTarget,
-  { label: string; color: "highlight" | "info" | "warning" }
-> = {
-  on_target: { label: "On target", color: "highlight" },
-  elevated: { label: "Off target", color: "info" },
-  critical: { label: "Critical", color: "warning" },
-};
-
-// The counterpart the used share of the cap is read against.
-function cycleElapsedPercent({
-  startDate,
-  endDate,
-}: ConsumptionPeriod): number {
-  const startMs = new Date(startDate).getTime();
-  const endMs = new Date(endDate).getTime();
-  const elapsedRatio = (Date.now() - startMs) / (endMs - startMs);
-  return Math.round(Math.min(Math.max(elapsedRatio, 0), 1) * 100);
-}
-
-interface ConsumptionSummaryProps {
-  workspaceId: string;
-  overview: ConsumptionOverviewType;
-}
-
-function ConsumptionSummary({
-  workspaceId,
-  overview,
-}: ConsumptionSummaryProps) {
-  const { topAgent, totalCredits, creditUsage } = overview;
-
-  return (
-    <div className="flex flex-col gap-4">
-      {creditUsage && (
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-panel-background p-2">
-          <div className="flex items-center gap-2">
-            <Chip
-              size="mini"
-              color={TARGET_CHIP[creditUsage.status.target].color}
-              label={TARGET_CHIP[creditUsage.status.target].label}
-            />
-            <span className="text-sm text-muted-foreground">
-              {creditUsage.status.usedPercentage}% of the cap used,{" "}
-              {cycleElapsedPercent(overview.period)}% of the cycle elapsed
-            </span>
-          </div>
-          <Button
-            label="Manage in Usage"
-            variant="highlight-ghost"
-            size="xs"
-            iconRight={ArrowUpRight}
-            href={`/w/${workspaceId}/usage`}
-          />
-        </div>
-      )}
-      <div className="flex items-stretch gap-6">
-        <SummaryCard
-          label="Used this period"
-          value={formatCredits(totalCredits)}
-          hint={
-            creditUsage
-              ? `${creditUsage.status.usedPercentage}% of ${formatCredits(creditUsage.capCredits)} cap`
-              : null
-          }
-        />
-        <SummaryCard
-          label="Top agent"
-          value={topAgent?.name ?? "—"}
-          hint={
-            topAgent && totalCredits > 0
-              ? `${Math.round((topAgent.credits / totalCredits) * 100)}% of total spend`
-              : null
-          }
-        />
-      </div>
-    </div>
-  );
-}
-
-interface ConsumptionOverviewProps {
+export interface ConsumptionOverviewProps {
   workspaceId: string;
   period: ConsumptionPeriodSelection;
+  showError?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
+  disabled?: boolean;
 }
 
 export function ConsumptionOverview({
   workspaceId,
   period: periodSelection,
+  showError = false,
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
+  disabled,
 }: ConsumptionOverviewProps) {
   const { overview, isOverviewLoading, isOverviewError } =
-    useConsumptionOverview({ workspaceId, period: periodSelection });
+    useConsumptionOverview({
+      workspaceId,
+      period: periodSelection,
+      analyticsScope,
+      disabled,
+    });
 
+  return (
+    <ConsumptionOverviewView
+      overview={overview}
+      isOverviewLoading={isOverviewLoading}
+      isOverviewError={Boolean(isOverviewError)}
+      showError={showError}
+      analyticsScope={analyticsScope}
+    />
+  );
+}
+
+interface ConsumptionOverviewViewProps {
+  overview: GetConsumptionOverviewResponse | null;
+  isOverviewLoading: boolean;
+  isOverviewError: boolean;
+  showError?: boolean;
+  showIndexingDetails?: boolean;
+  analyticsScope?: ConsumptionAnalyticsScope;
+}
+
+export function ConsumptionOverviewView({
+  overview,
+  isOverviewLoading,
+  isOverviewError,
+  showError = false,
+  showIndexingDetails = false,
+  analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
+}: ConsumptionOverviewViewProps) {
   if (isOverviewLoading) {
-    return (
-      <div className="flex flex-col gap-6">
-        <div className="h-5 w-80 animate-pulse rounded bg-muted-background" />
-        <div className="h-32 w-full animate-pulse rounded-xl bg-muted-background" />
-      </div>
-    );
+    return <LoadingBlock className="h-5 w-80" />;
   }
 
   if (isOverviewError || !overview) {
-    return null;
+    return showError ? (
+      <Page.P variant="secondary">
+        Overview unavailable. Charts and attribution may still load.
+      </Page.P>
+    ) : null;
   }
 
   const { period, members, lastRecordAt } = overview;
 
   const header = [
     `${formatConsumptionDate(period.startDate)} to ${formatConsumptionDate(period.endDate)}`,
-    `${members.active.toLocaleString()} of ${members.total.toLocaleString()} members active`,
+    ...(analyticsScope.kind === "workspace"
+      ? [
+          `${members.active.toLocaleString()} of ${members.total.toLocaleString()} members active`,
+        ]
+      : []),
     ...(lastRecordAt
-      ? [`Updated ${timeAgoFrom(new Date(lastRecordAt).getTime())} ago`]
+      ? [
+          showIndexingDetails
+            ? `Latest indexed record ${timeAgoFrom(new Date(lastRecordAt).getTime())} ago`
+            : `Updated ${timeAgoFrom(new Date(lastRecordAt).getTime())} ago`,
+        ]
       : []),
   ];
 
   return (
-    <div className="flex flex-col gap-4">
-      <p className="text-sm text-muted-foreground">
-        {header.map((item, index) => (
-          <span key={item}>
-            {index > 0 && (
-              <span className="mx-2" aria-hidden="true">
-                |
-              </span>
-            )}
-            {item}
-          </span>
-        ))}
-      </p>
-      <ConsumptionSummary workspaceId={workspaceId} overview={overview} />
-    </div>
+    <Page.P variant="secondary">
+      {header.map((item, index) => (
+        <span key={item}>
+          {index > 0 && (
+            <span className="mx-2" aria-hidden="true">
+              |
+            </span>
+          )}
+          {showIndexingDetails &&
+          lastRecordAt &&
+          index === header.length - 1 ? (
+            <Tooltip
+              label={new Date(lastRecordAt).toLocaleString()}
+              tooltipTriggerAsChild
+              trigger={<span>{item}</span>}
+            />
+          ) : (
+            item
+          )}
+        </span>
+      ))}
+    </Page.P>
   );
 }

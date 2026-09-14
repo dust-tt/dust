@@ -25,7 +25,8 @@ import type {
 } from "@app/types/assistant/agent";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import {
-  getAgentLoopData,
+  getAgentLoopRuntimeData,
+  isAgentLoopDataModelNotFoundError,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
 import type {
@@ -33,7 +34,9 @@ import type {
   AgentMessageType,
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
+import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { ApplicationFailure } from "@temporalio/common";
 import maxBy from "lodash/maxBy";
 import type { InferAttributes, WhereOptions } from "sequelize";
 import { fn, literal } from "sequelize";
@@ -73,12 +76,9 @@ export async function updateAgentMessageDBAndMemory(
         agentMessage: AgentMessageType;
         update:
           | {
-              type: "runIds";
-              runIds: string[];
-            }
-          | {
-              type: "modelInteractionDurationMs";
-              modelInteractionDurationMs: number;
+              type: "usageMetadata";
+              runIds?: string[];
+              modelInteractionDurationMs?: number;
             }
           | {
               type: "prunedContext";
@@ -132,43 +132,44 @@ export async function updateAgentMessageDBAndMemory(
   // Non-terminal metadata updates — no lock needed.
   const { update } = args;
   switch (update.type) {
-    case "modelInteractionDurationMs":
+    case "usageMetadata":
       {
-        const roundedModelInteractionDurationMs = Math.round(
-          update.modelInteractionDurationMs
-        );
-        // Note: we update the modelInteractionDurationMs directly in the database using a function to ensure
-        // an atomic update.
-        await AgentMessageModel.update(
-          {
-            modelInteractionDurationMs: literal(
-              `COALESCE("modelInteractionDurationMs", 0) + ${roundedModelInteractionDurationMs}`
-            ),
-          },
-          { where }
-        );
+        const roundedModelInteractionDurationMs =
+          update.modelInteractionDurationMs !== undefined
+            ? Math.round(update.modelInteractionDurationMs)
+            : null;
 
-        agentMessage.modelInteractionDurationMs =
-          (agentMessage.modelInteractionDurationMs ?? 0) +
-          roundedModelInteractionDurationMs;
-      }
-      break;
+        // Note: both fields are updated directly in the database using functions to ensure
+        // atomic updates, and in a single statement to avoid one commit per field.
+        const values = {
+          ...(roundedModelInteractionDurationMs !== null
+            ? {
+                modelInteractionDurationMs: literal(
+                  `COALESCE("modelInteractionDurationMs", 0) + ${roundedModelInteractionDurationMs}`
+                ),
+              }
+            : {}),
+          ...(update.runIds && update.runIds.length > 0
+            ? {
+                runIds: fn(
+                  "ARRAY",
+                  literal(
+                    `SELECT DISTINCT unnest(COALESCE("runIds", '{}') || ARRAY['${update.runIds.join("','")}']::text[])`
+                  )
+                ),
+              }
+            : {}),
+        };
 
-    case "runIds":
-      {
-        // Note: we update the runIds directly in the database using a function to ensure
-        // an atomic update.
-        await AgentMessageModel.update(
-          {
-            runIds: fn(
-              "ARRAY",
-              literal(
-                `SELECT DISTINCT unnest(COALESCE("runIds", '{}') || ARRAY['${update.runIds.join("','")}']::text[])`
-              )
-            ),
-          },
-          { where }
-        );
+        if (Object.keys(values).length > 0) {
+          await AgentMessageModel.update(values, { where });
+        }
+
+        if (roundedModelInteractionDurationMs !== null) {
+          agentMessage.modelInteractionDurationMs =
+            (agentMessage.modelInteractionDurationMs ?? 0) +
+            roundedModelInteractionDurationMs;
+        }
       }
       break;
 
@@ -233,25 +234,19 @@ export async function processEventForDatabase(
     modelInteractionDurationMs?: number;
   }
 ): Promise<boolean> {
-  // If we have a model interaction duration, store it.
-  if (modelInteractionDurationMs) {
+  // Store the model interaction duration and merge runIds from events that include them, in a
+  // single update. This ensures runIds are persisted incrementally as events are published.
+  const eventRunIds =
+    "runIds" in event && event.runIds && event.runIds.length > 0
+      ? event.runIds
+      : undefined;
+  if (modelInteractionDurationMs || eventRunIds) {
     await updateAgentMessageDBAndMemory(auth, {
       agentMessage,
       update: {
-        type: "modelInteractionDurationMs",
-        modelInteractionDurationMs,
-      },
-    });
-  }
-
-  // Merge runIds from events that include them. This ensures runIds are persisted
-  // incrementally as events are published.
-  if ("runIds" in event && event.runIds && event.runIds.length > 0) {
-    await updateAgentMessageDBAndMemory(auth, {
-      agentMessage,
-      update: {
-        type: "runIds",
-        runIds: event.runIds,
+        type: "usageMetadata",
+        modelInteractionDurationMs: modelInteractionDurationMs || undefined,
+        runIds: eventRunIds,
       },
     });
   }
@@ -517,6 +512,22 @@ async function withContentView(
 const DEFAULT_WORKFLOW_ERROR_MESSAGE =
   "An unexpected error occurred while generating the agent response. Please try again.";
 
+/**
+ * @cc [owner:philipperolet,label:backend] finalize-unavailable-loop
+ * Call only after the loop's conversation or message becomes unavailable; cancel its unfinished
+ * message before exiting, without publishing terminal events or starting another run.
+ */
+export async function finalizeUnavailableAgentLoop(
+  authType: AuthenticatorType,
+  agentLoopArgs: Pick<
+    AgentLoopArgs,
+    "conversationId" | "agentMessageId" | "agentMessageVersion"
+  >
+): Promise<void> {
+  const auth = await AuthenticatorClass.fromJsonWithRefrehedGroups(authType);
+  await ConversationResource.cancelUnavailableAgentMessage(auth, agentLoopArgs);
+}
+
 function toUserFriendlyMessage(error: {
   message: string;
   name: string;
@@ -533,11 +544,14 @@ function toUserFriendlyMessage(error: {
   return error.message;
 }
 
+// Returns the errored agent message's model id (already resolved here) so the caller can
+// attribute the failure without refetching the conversation, or null when the conversation is
+// gone.
 export async function notifyWorkflowError(
   authType: AuthenticatorType,
   { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
   error: { message: string; name: string }
-): Promise<void> {
+): Promise<ModelId | null> {
   const auth = await AuthenticatorClass.fromJsonWithRefrehedGroups(authType);
 
   const conversation = await ConversationResource.fetchById(
@@ -545,7 +559,12 @@ export async function notifyWorkflowError(
     conversationId
   );
   if (!conversation) {
-    return;
+    await finalizeUnavailableAgentLoop(authType, {
+      conversationId,
+      agentMessageId,
+      agentMessageVersion,
+    });
+    return null;
   }
 
   // Fetch the agent message using the proper API function
@@ -628,6 +647,8 @@ export async function notifyWorkflowError(
     conversation: conversation.toJSON(),
     step: 0, // Workflow-level error, not tied to a specific step
   });
+
+  return messageRow.agentMessage.id;
 }
 
 /**
@@ -637,9 +658,13 @@ export async function finalizeCancellation(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  const runAgentDataRes = await getAgentLoopRuntimeData(
+    authType,
+    agentLoopArgs
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      await finalizeUnavailableAgentLoop(authType, agentLoopArgs);
       logger.info(
         {
           conversationId: agentLoopArgs.conversationId,
@@ -648,6 +673,14 @@ export async function finalizeCancellation(
         "Message or conversation was deleted, exiting"
       );
       return;
+    }
+    if (isAgentLoopDataModelNotFoundError(runAgentDataRes.error)) {
+      // The selected model no longer exists. Retrying the
+      // cancel finalizer cannot recover an endpoint and would loop forever.
+      throw ApplicationFailure.nonRetryable(
+        `Failed to get run agent data: ${runAgentDataRes.error.message}`,
+        "ModelNotFound"
+      );
     }
     throw new Error(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
@@ -704,9 +737,13 @@ export async function finalizeInterruption(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  const runAgentDataRes = await getAgentLoopRuntimeData(
+    authType,
+    agentLoopArgs
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      await finalizeUnavailableAgentLoop(authType, agentLoopArgs);
       logger.info(
         {
           conversationId: agentLoopArgs.conversationId,
@@ -788,9 +825,13 @@ export async function finalizeGracefulStop(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  const runAgentDataRes = await getAgentLoopRuntimeData(
+    authType,
+    agentLoopArgs
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      await finalizeUnavailableAgentLoop(authType, agentLoopArgs);
       logger.info(
         {
           conversationId: agentLoopArgs.conversationId,
@@ -849,9 +890,13 @@ export async function finalizeCreditStop(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
+  const runAgentDataRes = await getAgentLoopRuntimeData(
+    authType,
+    agentLoopArgs
+  );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      await finalizeUnavailableAgentLoop(authType, agentLoopArgs);
       logger.info(
         {
           conversationId: agentLoopArgs.conversationId,

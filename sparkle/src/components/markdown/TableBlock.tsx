@@ -25,6 +25,12 @@ interface TableBlockProps {
   node?: MarkdownNode;
 }
 
+/**
+ * Renders GFM tables inside Markdown output in a horizontally scrollable,
+ * bordered container, with a copy button that extracts the table as both HTML
+ * and tab-separated plain text.
+ * @summary Table renderer for Markdown.
+ */
 export const TableBlock = memo(
   ({ children }: TableBlockProps) => {
     const tableData = useMemo(() => {
@@ -96,6 +102,10 @@ interface TableHeadBlockProps {
   node?: MarkdownNode;
 }
 
+/**
+ * Renders the `<thead>` of a Markdown table with the muted header background.
+ * @summary Table-head renderer for Markdown.
+ */
 export const TableHeadBlock = memo(
   ({ children }: TableHeadBlockProps) => {
     return <thead className="bg-muted-background px-2 py-2">{children}</thead>;
@@ -109,6 +119,10 @@ interface TableBodyBlockProps {
   node?: MarkdownNode;
 }
 
+/**
+ * Renders the `<tbody>` of a Markdown table on the standard background.
+ * @summary Table-body renderer for Markdown.
+ */
 export const TableBodyBlock = memo(
   ({ children }: TableBodyBlockProps) => {
     return <tbody className="bg-background">{children}</tbody>;
@@ -122,6 +136,11 @@ interface TableHeaderBlockProps {
   node?: MarkdownNode;
 }
 
+/**
+ * Renders a `<th>` header cell of a Markdown table with truncating,
+ * semibold, muted styling.
+ * @summary Table header-cell renderer for Markdown.
+ */
 export const TableHeaderBlock = memo(
   ({ children }: TableHeaderBlockProps) => {
     return (
@@ -139,6 +158,11 @@ interface TableDataBlockProps {
   node?: MarkdownNode;
 }
 
+/**
+ * Renders a `<td>` data cell of a Markdown table, converting literal "<br>"
+ * children into real line breaks.
+ * @summary Table data-cell renderer for Markdown.
+ */
 export const TableDataBlock = memo(
   ({ children }: TableDataBlockProps) => {
     return (

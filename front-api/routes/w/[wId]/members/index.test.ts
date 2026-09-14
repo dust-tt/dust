@@ -2,13 +2,14 @@ import { parseQueryString } from "@app/lib/utils/router";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { MembershipRoleType } from "@app/types/memberships";
 import { honoApp } from "@front-api/app";
 import { ENSURE_IS_ADMIN_ERROR_MESSAGE } from "@front-api/middlewares/ensure_role";
 import { describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from "./index";
 
-async function setup(role: "builder" | "user" | "admin" = "admin") {
+async function setup(role: MembershipRoleType = "admin") {
   const { workspace } = await createPrivateApiMockRequest({ role });
   return { workspace };
 }
@@ -60,8 +61,8 @@ describe("GET /api/w/:wId/members", () => {
     });
   });
 
-  it("returns 403 for builder users", async () => {
-    const { workspace } = await setup("builder");
+  it("returns 403 for non-admin users", async () => {
+    const { workspace } = await setup("user");
 
     const response = await honoApp.request(membersUrl(workspace.sId));
 

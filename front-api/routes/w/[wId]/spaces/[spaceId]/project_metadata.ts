@@ -1,19 +1,15 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { validatePodFrameTabs } from "@app/lib/api/projects/frame_tabs";
+import { validatePodFileTabs } from "@app/lib/api/projects/file_tabs";
 import { validatePinnedFramePath } from "@app/lib/api/projects/pinned_frame";
-import { hasFeatureFlag } from "@app/lib/auth";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import {
-  launchOrSignalProjectTodoWorkflow,
-  startImmediateProjectTodoWorkflowOnce,
-  stopProjectTodoWorkflow,
-} from "@app/temporal/project_task/client";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type {
   GetPodMetadataResponseBody,
   PatchPodMetadataResponseBody,
 } from "@app/types/api/projects/metadata";
 import { PatchPodMetadataBodySchema } from "@app/types/api/spaces";
+import { resolveCanonicalScopedPath } from "@app/types/mount_path";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -67,7 +63,7 @@ app.patch(
       });
     }
 
-    if (!space.canAdministrate(auth)) {
+    if (!auth.can("admin", space)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
@@ -78,42 +74,6 @@ app.patch(
     }
 
     const body = ctx.req.valid("json");
-
-    if (body.isAdminControlled !== undefined) {
-      if (!(await hasFeatureFlag(auth, "admin_controlled_pods"))) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "feature_flag_not_found",
-            message:
-              "Admin-controlled Pods are not enabled for this workspace.",
-          },
-        });
-      }
-
-      // biome-ignore lint/plugin/noDirectRoleCheck: endpoint can be called by any authenticated user.
-      if (!auth.isAdmin()) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message:
-              "Only workspace admins can change admin-controlled Pod mode.",
-          },
-        });
-      }
-
-      if (space.managementMode !== "manual") {
-        return apiError(ctx, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "Admin-controlled mode requires manual membership management.",
-          },
-        });
-      }
-    }
 
     if (body.pinnedFramePath !== undefined) {
       const validation = await validatePinnedFramePath(
@@ -132,8 +92,8 @@ app.patch(
       }
     }
 
-    let resolvedFrameTabs: {
-      frameTabs: NonNullable<typeof body.frameTabs>;
+    let resolvedFileTabs: {
+      fileTabs: NonNullable<typeof body.frameTabs>;
       tabsOrder: string[];
     } | null = null;
     if (body.frameTabs !== undefined || body.tabsOrder !== undefined) {
@@ -147,21 +107,27 @@ app.patch(
         });
       }
 
-      if (!(await hasFeatureFlag(auth, "pod_frame_tabs"))) {
-        return apiError(ctx, {
-          status_code: 403,
-          api_error: {
-            type: "feature_flag_not_found",
-            message: "Pod frame tabs are not enabled for this workspace.",
-          },
-        });
-      }
+      const existingMetadata = await ProjectMetadataResource.fetchBySpace(
+        auth,
+        space
+      );
+      const existingFileTabPaths = new Set(
+        (existingMetadata?.frameTabs ?? [])
+          .map((tab) =>
+            resolveCanonicalScopedPath(tab.path, {
+              conversationId: null,
+              spaceId: space.sId,
+            })
+          )
+          .filter((path): path is string => path !== null)
+      );
 
-      const validation = await validatePodFrameTabs(
+      const validation = await validatePodFileTabs(
         auth,
         space,
         body.frameTabs,
-        body.tabsOrder
+        body.tabsOrder,
+        { existingFileTabPaths }
       );
       if (validation.isErr()) {
         return apiError(ctx, {
@@ -172,7 +138,7 @@ app.patch(
           },
         });
       }
-      resolvedFrameTabs = validation.value;
+      resolvedFileTabs = validation.value;
     }
 
     // Validate the default agent exists and is usable (handles both global agents like
@@ -218,139 +184,49 @@ app.patch(
 
     let metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
 
-    const priorLastTodoAnalysisAt = metadata?.lastTodoAnalysisAt ?? null;
-    const priorTodoGenerationEnabled = metadata?.todoGenerationEnabled ?? false;
-    const priorIsAdminControlled = metadata?.isAdminControlled ?? false;
-
-    if (
-      body.isAdminControlled !== undefined &&
-      body.isAdminControlled !== priorIsAdminControlled
-    ) {
-      const membershipRes = await space.applyAdminControlledMembershipChange(
-        auth,
-        body.isAdminControlled
-      );
-      if (membershipRes.isErr()) {
-        switch (membershipRes.error.code) {
-          case "unauthorized":
-            return apiError(ctx, {
-              status_code: 403,
-              api_error: {
-                type: "workspace_auth_error",
-                message: membershipRes.error.message,
-              },
-            });
-          case "group_requirements_not_met":
-            return apiError(ctx, {
-              status_code: 400,
-              api_error: {
-                type: "invalid_request_error",
-                message: membershipRes.error.message,
-              },
-            });
-          default:
-            return apiError(ctx, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: membershipRes.error.message,
-              },
-            });
-        }
-      }
-    }
-
-    const shouldTriggerFirstImmediateSync =
-      body.todoGenerationEnabled === true &&
-      !priorTodoGenerationEnabled &&
-      priorLastTodoAnalysisAt === null;
-
     if (!metadata) {
       metadata = await ProjectMetadataResource.makeNew(auth, space, {
         description: body.description ?? null,
         archivedAt: body.archive ? new Date() : null,
-        todoGenerationEnabled: body.todoGenerationEnabled ?? false,
-        initialTodoAnalysisLookback: body.initialTodoAnalysisLookback ?? null,
+        // Automated task generation removed; keep columns with hardcoded defaults.
+        todoGenerationEnabled: false,
+        initialTodoAnalysisLookback: null,
         pinnedFramePath: body.pinnedFramePath ?? null,
-        frameTabs: resolvedFrameTabs?.frameTabs ?? [],
-        tabsOrder: resolvedFrameTabs?.tabsOrder ?? [],
+        frameTabs: resolvedFileTabs?.fileTabs ?? [],
+        tabsOrder: resolvedFileTabs?.tabsOrder ?? [],
         defaultAgentId: body.defaultAgentId ?? null,
-        isAdminControlled: body.isAdminControlled ?? false,
       });
       if (resolvedDefaultSkills) {
         await metadata.setDefaultSkills(resolvedDefaultSkills);
-      }
-      if (!body.archive) {
-        void launchOrSignalProjectTodoWorkflow({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          spaceId: space.sId,
-        });
-      }
-      if (shouldTriggerFirstImmediateSync && !body.archive) {
-        void startImmediateProjectTodoWorkflowOnce({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          spaceId: space.sId,
-        });
       }
     } else {
       if (body.archive !== undefined) {
         if (body.archive) {
           await metadata.archive();
-          void stopProjectTodoWorkflow({
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            spaceId: space.sId,
-          });
         } else {
           await metadata.unarchive();
-          void launchOrSignalProjectTodoWorkflow({
-            workspaceId: auth.getNonNullableWorkspace().sId,
-            spaceId: space.sId,
-          });
         }
       }
       if (body.description !== undefined) {
         await metadata.updateDescription(body.description);
       }
-      if (body.todoGenerationEnabled !== undefined) {
-        await metadata.updateTodoGenerationEnabled(body.todoGenerationEnabled);
-        if (!body.todoGenerationEnabled) {
-          await metadata.updateInitialTodoAnalysisLookback(null);
-        }
-      }
-      if (body.initialTodoAnalysisLookback !== undefined) {
-        await metadata.updateInitialTodoAnalysisLookback(
-          body.initialTodoAnalysisLookback
-        );
-      }
+      // todoGenerationEnabled / initialTodoAnalysisLookback are accepted for
+      // backwards compatibility but ignored (hardcoded off).
       if (body.pinnedFramePath !== undefined) {
         await metadata.updatePinnedFramePath(body.pinnedFramePath);
       }
-      if (resolvedFrameTabs) {
-        await metadata.updateFrameTabs(
-          resolvedFrameTabs.frameTabs,
-          resolvedFrameTabs.tabsOrder
+      if (resolvedFileTabs) {
+        await metadata.updateFileTabs(
+          resolvedFileTabs.fileTabs,
+          resolvedFileTabs.tabsOrder
         );
       }
       if (body.defaultAgentId !== undefined) {
         await metadata.updateDefaultAgentId(body.defaultAgentId);
       }
-      if (body.isAdminControlled !== undefined) {
-        await metadata.updateIsAdminControlled(body.isAdminControlled);
-      }
+
       if (resolvedDefaultSkills) {
         await metadata.setDefaultSkills(resolvedDefaultSkills);
-      }
-      if (body.todoGenerationEnabled === true && !priorTodoGenerationEnabled) {
-        void launchOrSignalProjectTodoWorkflow({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          spaceId: space.sId,
-        });
-      }
-      if (shouldTriggerFirstImmediateSync) {
-        void startImmediateProjectTodoWorkflowOnce({
-          workspaceId: auth.getNonNullableWorkspace().sId,
-          spaceId: space.sId,
-        });
       }
     }
 
@@ -359,6 +235,10 @@ app.patch(
       if (refreshed) {
         metadata = refreshed;
       }
+    }
+
+    if (body.archive) {
+      await TriggerResource.disableAllForSpace(auth, space.id);
     }
 
     return ctx.json({ projectMetadata: metadata.toJSON() });

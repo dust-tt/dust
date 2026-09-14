@@ -1,5 +1,5 @@
-import { ModelsTierResource } from "@app/lib/resources/models_tier_resource";
 import type { GetModelTiersResponseBody } from "@app/types/api/model_tiers";
+import { listTiers } from "@app/types/assistant/models/model_tiers";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -14,7 +14,7 @@ app.get(
   "/",
   ensureIsAdmin(),
   async (ctx): HandlerResult<GetModelTiersResponseBody> => {
-    const tiers = ModelsTierResource.listTiers().map((tier) => ({
+    const tiers = listTiers().map((tier) => ({
       name: tier.name,
       id: tier.id,
       description: tier.description,

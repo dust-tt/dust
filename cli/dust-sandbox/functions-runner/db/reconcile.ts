@@ -1,5 +1,6 @@
 // `dsbx db reconcile` runner backend: bring a live pod database in line with its drizzle schema
-// file, applying ADDITIVE DDL only. Expected refusals come back as Err (ERR1), never thrown.
+// file, applying ADDITIVE DDL only. Expected refusals come back as Err (no-catching-own-errors),
+// never thrown.
 //
 // `reconcile` orchestrates one numbered helper per step:
 //   1. Validate the schema file with the same rejections as `function build` (FK/CHECK/...).

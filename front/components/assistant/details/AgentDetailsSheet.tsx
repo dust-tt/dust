@@ -15,7 +15,6 @@ import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
@@ -24,6 +23,7 @@ import type { TriggerType } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { UserType, WorkspaceType } from "@app/types/user";
+import { isManager } from "@app/types/user";
 import {
   ArrowLeft,
   Avatar,
@@ -65,6 +65,7 @@ function triggerTypeToBuilderType(
         naturalLanguageDescription: trigger.naturalLanguageDescription,
         configuration: trigger.configuration,
         editor: trigger.editor,
+        executionMode: trigger.executionMode,
         spaceId: trigger.spaceId,
       };
     case "webhook":
@@ -163,8 +164,6 @@ export function AgentDetailsSheet({
     !isTriggersTabActive
   );
 
-  const { hasPermission } = useWorkspacePermissions();
-
   const handleAddTrigger = useCallback(() => {
     setTriggerEditMode({ type: "add" });
   }, []);
@@ -203,15 +202,18 @@ export function AgentDetailsSheet({
     agentId != null &&
     !isGlobalAgent &&
     agentConfiguration?.status === "active";
+  // The triggers tab only lists the caller's own triggers, which is pointless on an agent whose
+  // private fields were redacted for an admin (flagged by `canRead: false`).
   const showTriggersTabs =
-    agentId != null && agentConfiguration?.status === "active";
+    agentId != null &&
+    agentConfiguration?.status === "active" &&
+    agentConfiguration.canRead;
   const showAgentMemory = !!agentConfiguration?.actions.find((arg) =>
     isServerSideMCPServerConfigurationWithName(arg, AGENT_MEMORY_SERVER_NAME)
   );
 
   const showInsightsTabs =
-    agentId != null &&
-    (hasPermission("publish", "agent") || agentConfiguration?.canEdit);
+    agentId != null && (agentConfiguration?.canEdit || isManager(owner));
 
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];
@@ -265,7 +267,6 @@ export function AgentDetailsSheet({
             owner={owner}
             agentConfiguration={agentConfiguration}
             isAgentConfigurationValidating={isAgentConfigurationValidating}
-            onClose={onClose}
           />
         )}
 
@@ -384,20 +385,24 @@ export function AgentDetailsSheet({
                           owner={owner}
                         />
                       </TabsContent>
-                      <TabsContent value="insights">
-                        <AgentInsightsTab
-                          owner={owner}
-                          agentConfiguration={agentConfiguration}
-                        />
-                      </TabsContent>
-                      <TabsContent value="triggers">
-                        <AgentTriggersTab
-                          agentConfiguration={agentConfiguration}
-                          owner={owner}
-                          onEditTrigger={handleEditTrigger}
-                          onAddTrigger={handleAddTrigger}
-                        />
-                      </TabsContent>
+                      {showInsightsTabs && (
+                        <TabsContent value="insights">
+                          <AgentInsightsTab
+                            owner={owner}
+                            agentConfiguration={agentConfiguration}
+                          />
+                        </TabsContent>
+                      )}
+                      {showTriggersTabs && (
+                        <TabsContent value="triggers">
+                          <AgentTriggersTab
+                            agentConfiguration={agentConfiguration}
+                            owner={owner}
+                            onEditTrigger={handleEditTrigger}
+                            onAddTrigger={handleAddTrigger}
+                          />
+                        </TabsContent>
+                      )}
                       <TabsContent value="editors">
                         <AgentEditorsTab
                           key={agentConfiguration.sId}
@@ -460,6 +465,7 @@ function TriggerEditView({
     isEditor,
     isOnSelectionPage,
     pageTitle,
+    canUseSelectedExecutionMode,
     handleScheduleSelect,
     handleWebhookSelect,
     handleCancel,
@@ -529,6 +535,7 @@ function TriggerEditView({
           <Button
             label="Save"
             variant="primary"
+            disabled={!canUseSelectedExecutionMode}
             onClick={form.handleSubmit(handleFormSubmit)}
           />
         </div>

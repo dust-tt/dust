@@ -1,5 +1,6 @@
 import { updateAgentMessageWithFinalStatus } from "@app/lib/api/assistant/conversation";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -10,8 +11,10 @@ import type {
   AgentMessageSuccessEvent,
 } from "@app/types/assistant/agent";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
+import { ApplicationFailure } from "@temporalio/common";
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  finalizeCancellation,
   processEventForDatabase,
   updateAgentMessageDBAndMemory,
 } from "./common";
@@ -792,7 +795,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
         update: {
-          type: "modelInteractionDurationMs",
+          type: "usageMetadata",
           modelInteractionDurationMs: 100,
         },
       });
@@ -842,7 +845,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
         update: {
-          type: "modelInteractionDurationMs",
+          type: "usageMetadata",
           modelInteractionDurationMs: 75,
         },
       });
@@ -885,7 +888,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
         update: {
-          type: "modelInteractionDurationMs",
+          type: "usageMetadata",
           modelInteractionDurationMs: 99.7,
         },
       });
@@ -939,7 +942,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
         update: {
-          type: "runIds",
+          type: "usageMetadata",
           runIds: ["run1", "run2"],
         },
       });
@@ -988,7 +991,7 @@ describe("updateAgentMessageDBAndMemory", () => {
       await updateAgentMessageDBAndMemory(auth, {
         agentMessage,
         update: {
-          type: "runIds",
+          type: "usageMetadata",
           runIds: ["run2", "run3"],
         },
       });
@@ -1004,6 +1007,54 @@ describe("updateAgentMessageDBAndMemory", () => {
         expect.arrayContaining(["run1", "run2", "run3"])
       );
       expect(dbMessage?.runIds?.length).toBe(3);
+    });
+
+    it("should update runIds and modelInteractionDurationMs together in a single call", async () => {
+      // Arrange: Create agent message
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        auth,
+        {
+          name: "Test Agent",
+        }
+      );
+      const conversation = await ConversationFactory.create(auth, {
+        agentConfigurationId: agentConfig.sId,
+        messagesCreatedAt: [],
+      });
+      const { agentMessage } = await ConversationFactory.createAgentMessage(
+        auth,
+        {
+          workspace,
+          conversation,
+          agentConfig,
+        }
+      );
+
+      // Act: Update both fields at once
+      await updateAgentMessageDBAndMemory(auth, {
+        agentMessage,
+        update: {
+          type: "usageMetadata",
+          runIds: ["run1", "run2"],
+          modelInteractionDurationMs: 100,
+        },
+      });
+
+      // Assert: Both fields should be updated in database
+      const dbMessage = await AgentMessageModel.findOne({
+        where: {
+          id: agentMessage.agentMessageId,
+          workspaceId: workspace.id,
+        },
+      });
+      expect(dbMessage?.runIds).toEqual(
+        expect.arrayContaining(["run1", "run2"])
+      );
+      expect(dbMessage?.runIds?.length).toBe(2);
+      expect(dbMessage?.modelInteractionDurationMs).toBe(100);
+
+      // Assert: In-memory object should be updated
+      expect(agentMessage.modelInteractionDurationMs).toBe(100);
     });
   });
 
@@ -1207,5 +1258,103 @@ describe("late terminal events after finalization", () => {
       },
     });
     expect(dbMessage?.status).toBe("succeeded");
+  });
+});
+
+describe("finalizeCancellation", () => {
+  it("marks the agent message as cancelled", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    const { messageRow: userMessageRow, userMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Hello",
+      });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig,
+        parentMessageModelId: userMessageRow.id,
+        rank: 1,
+      }
+    );
+
+    await finalizeCancellation(auth.toJSON(), {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+      userMessageOrigin: userMessage.context.origin,
+    });
+
+    const dbMessage = await AgentMessageModel.findOne({
+      where: {
+        id: agentMessage.agentMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+    expect(dbMessage?.status).toBe("cancelled");
+  });
+
+  it("throws a non-retryable failure when the selected model is gone", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    const { messageRow: userMessageRow, userMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Hello",
+      });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig,
+        parentMessageModelId: userMessageRow.id,
+        rank: 1,
+      }
+    );
+
+    await AgentConfigurationModel.update(
+      {
+        // @ts-expect-error retired EAP ids are no longer ModelIdType
+        modelId: "claude-smores-eap",
+      },
+      { where: { sId: agentConfig.sId, workspaceId: workspace.id } }
+    );
+
+    await expect(
+      finalizeCancellation(auth.toJSON(), {
+        agentMessageId: agentMessage.sId,
+        agentMessageVersion: agentMessage.version,
+        conversationId: conversation.sId,
+        conversationTitle: conversation.title,
+        userMessageId: userMessage.sId,
+        userMessageVersion: userMessage.version,
+        userMessageOrigin: userMessage.context.origin,
+      })
+    ).rejects.toSatisfy((error: unknown): boolean => {
+      return (
+        error instanceof ApplicationFailure &&
+        error.nonRetryable === true &&
+        error.type === "ModelNotFound"
+      );
+    });
   });
 });

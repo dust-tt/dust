@@ -20,10 +20,15 @@ export class SandboxFunctionError extends Error {
   }
 }
 
-export class SandboxFunctionInvocationError extends Error {
-  readonly code = "user_authentication_required";
+export type SandboxFunctionInvocationErrorCode =
+  | "user_authentication_required"
+  | "frame_runtime_unavailable";
 
-  constructor(message: string) {
+export class SandboxFunctionInvocationError extends Error {
+  constructor(
+    message: string,
+    readonly code: SandboxFunctionInvocationErrorCode = "user_authentication_required"
+  ) {
     super(message);
     this.name = "SandboxFunctionInvocationError";
   }

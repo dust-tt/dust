@@ -3,7 +3,10 @@ import { SandboxFunctionMCPActionResource } from "@app/lib/resources/sandbox_fun
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { createPersistedSandboxFunctionInvocationTokenTestContext } from "@app/tests/utils/SandboxTokenFactory";
+import {
+  createPersistedFrameFunctionInvocationTokenTestContext,
+  createPersistedSandboxFunctionInvocationTokenTestContext,
+} from "@app/tests/utils/SandboxTokenFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { Ok } from "@app/types/shared/result";
 import { honoApp } from "@front-api/app";
@@ -64,6 +67,26 @@ async function setupWithView({ noTools = false }: { noTools?: boolean } = {}) {
   return { ...context, view };
 }
 
+async function setupFrameWithView({
+  noTools = false,
+}: {
+  noTools?: boolean;
+} = {}) {
+  const context = await createPersistedFrameFunctionInvocationTokenTestContext({
+    noTools,
+  });
+  const commonUtilities = await InternalMCPServerInMemoryResource.makeNew(
+    context.auth,
+    { name: "common_utilities", useCase: null }
+  );
+  const view = await MCPServerViewFactory.create(
+    context.workspace,
+    commonUtilities.id,
+    context.runtimeSpace
+  );
+  return { ...context, view };
+}
+
 describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -113,50 +136,66 @@ describe("POST /api/v1/w/[wId]/sandbox/actions/call (function invocation)", () =
 
     expect(response.status).toBe(403);
     const body = await response.json();
+    expect(body.error.type).toBe("fast_function_called_tools");
+    // Prod frames string-match this phrase to classify the refusal; keep it stable.
     expect(body.error.message).toContain("published as fast");
     expect(vi.mocked(launchSandboxFunctionToolWorkflow)).not.toHaveBeenCalled();
   });
 
-  // The refusal is the only evidence that the published mode is wrong, so it is also what fixes
-  // it: this invocation still fails, the next one runs durably.
-  it("records the function as durable after refusing its tool call", async () => {
-    const { auth, token, workspace, view, sandboxFunction } =
-      await setupWithView({ noTools: true });
-    expect(sandboxFunction.executionMode).toBe("fast");
+  // A published Frame function's mode is immutable: the refusal is the whole outcome, and only a
+  // republish can change how the function runs.
+  it("keeps an immutable Frame publication fast after refusing its tool call", async () => {
+    const {
+      auth,
+      frame,
+      publicationId,
+      token,
+      workspace,
+      view,
+      sandboxFunction,
+    } = await setupFrameWithView({ noTools: true });
 
     const response = await callSandboxTool(workspace, token, {
       serverViewId: view.sId,
       toolName: "generate_random_number",
       arguments: { max: 10 },
     });
-    expect(response.status).toBe(403);
 
-    // The write is deliberately not awaited by the request, so let it settle.
-    await vi.waitFor(async () => {
-      const refetched = await SandboxFunctionResource.fetchById(
-        auth,
-        sandboxFunction.sId
-      );
-      expect(refetched?.executionMode).toBe("durable");
-    });
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body.error.type).toBe("fast_function_called_tools");
+    expect(body.error.message).toContain("Republish the Frame");
+    const refetched =
+      await SandboxFunctionResource.fetchByFramePublicationAndSlug(auth, {
+        frame,
+        publicationId,
+        slug: sandboxFunction.slug,
+      });
+    expect(refetched?.executionMode).toBe("fast");
   });
 
-  it("leaves a durable function's mode alone when its tool call succeeds", async () => {
-    const { auth, token, workspace, view, sandboxFunction } =
-      await setupWithView();
+  it("resolves a durable Frame function in its runtime scope", async () => {
+    const { auth, token, workspace, view, invocation, sandboxFunction } =
+      await setupFrameWithView();
 
     const response = await callSandboxTool(workspace, token, {
       serverViewId: view.sId,
       toolName: "generate_random_number",
       arguments: { max: 10 },
     });
-    expect(response.status).toBe(202);
 
-    const refetched = await SandboxFunctionResource.fetchById(
+    expect(response.status).toBe(202);
+    const body = await response.json();
+    const action = await SandboxFunctionMCPActionResource.fetchById(
       auth,
-      sandboxFunction.sId
+      body.actionId
     );
-    expect(refetched?.executionMode).toBe("durable");
+    expect(sandboxFunction.frame).not.toBeNull();
+    expect(action).toMatchObject({
+      sandboxFunctionInvocationId: invocation.id,
+      status: "running",
+      toolName: "generate_random_number",
+    });
   });
 
   it("returns 404 for an unknown server view", async () => {

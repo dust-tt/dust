@@ -45,7 +45,7 @@ export function TriggerDetailsPage() {
     );
   }
 
-  const { trigger, agent, editorUser } = triggerDetails;
+  const { trigger, agent, editorUser, webhookSource } = triggerDetails;
 
   return (
     <>
@@ -61,6 +61,7 @@ export function TriggerDetailsPage() {
           agent={agent}
           owner={owner}
           editorUser={editorUser}
+          webhookSource={webhookSource}
         />
         <div className="mt-4 flex grow flex-col gap-4">
           <PluginList

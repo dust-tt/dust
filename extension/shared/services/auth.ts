@@ -1,6 +1,7 @@
+import { type CellInfo, type CellType, isCellType } from "@app/types/cell";
 import type { RegionInfo } from "@app/types/region";
+import { isRegionType } from "@app/types/region";
 import type { Result } from "@app/types/shared/result";
-import { DUST_EU_URL, DUST_US_URL } from "@extension/shared/lib/config";
 import type { StorageService } from "@extension/shared/services/storage";
 
 export type StoredTokens = {
@@ -36,14 +37,16 @@ export class AuthError extends Error {
 
 export type LoginResult = {
   tokens: StoredTokens;
-  regionInfo: RegionInfo;
+  cellInfo: CellInfo;
 };
 
 export abstract class AuthService {
   protected storage: StorageService;
+  protected cells?: CellInfo[];
 
-  constructor(storage: StorageService) {
+  constructor(storage: StorageService, cells?: CellInfo[]) {
     this.storage = storage;
+    this.cells = cells;
   }
 
   // Shared methods with implementation
@@ -77,8 +80,26 @@ export abstract class AuthService {
     };
   }
 
-  async getRegionInfoFromStorage(): Promise<RegionInfo | null> {
-    return (await this.storage.get<RegionInfo>("regionInfo")) ?? null;
+  async getCellInfoFromStorage(): Promise<CellInfo | null> {
+    const cellInfo = await this.storage.get<CellInfo>("cellInfo");
+    if (cellInfo) {
+      return cellInfo;
+    }
+
+    // Migrate legacy region-based sessions so token refresh keeps working.
+    const regionInfo = await this.storage.get<RegionInfo>("regionInfo");
+    if (!regionInfo) {
+      return null;
+    }
+
+    const migrated = migrateRegionInfoToCellInfo(regionInfo, this.cells);
+    if (!migrated) {
+      return null;
+    }
+
+    await this.storage.set("cellInfo", migrated);
+    await this.storage.delete("regionInfo");
+    return migrated;
   }
 
   async getSelectedWorkspace(): Promise<string | null> {
@@ -100,30 +121,58 @@ export abstract class AuthService {
   ): Promise<Result<StoredTokens, AuthError>>;
 }
 
+const CELL_CLAIM = `https://dust.tt/cell`;
 const REGION_CLAIM = `https://dust.tt/region`;
 
-export function getRegionInfoFromClaims(
-  claims: Record<string, string>
-): RegionInfo {
+export function getCellInfoFromClaims(
+  claims: Record<string, string>,
+  cells: CellInfo[]
+): CellInfo {
+  const cell = claims[CELL_CLAIM];
+  if (isCellType(cell)) {
+    return cells.find((c) => c.name === cell) ?? cells[0];
+  }
+
+  // Backward compatibility for tokens that still carry the region claim.
   const region = claims[REGION_CLAIM];
-  const regionName: RegionType = isRegionType(region) ? region : "us-central1";
+  if (isRegionType(region)) {
+    return cells.find((c) => c.region === region) ?? cells[0];
+  }
+
+  return cells[0];
+}
+
+function migrateRegionInfoToCellInfo(
+  regionInfo: RegionInfo,
+  cells?: CellInfo[]
+): CellInfo | null {
+  if (cells && cells.length > 0) {
+    const byUrl = cells.find((c) => c.url === regionInfo.url);
+    if (byUrl) {
+      return byUrl;
+    }
+    if (isRegionType(regionInfo.name)) {
+      return cells.find((c) => c.region === regionInfo.name) ?? null;
+    }
+    return null;
+  }
+
+  if (!isRegionType(regionInfo.name) || !regionInfo.url) {
+    return null;
+  }
+
+  // Background scripts may not have the cell catalog; keep the stored URL and
+  // map the legacy region onto the primary cell for that region.
+  const cellName: CellType =
+    regionInfo.name === "europe-west1" ? "cell-00001" : "cell-00000";
+
   return {
-    name: regionName,
-    url: (isRegionType(region) && DOMAIN_FOR_REGION[region]) || DUST_US_URL,
+    name: cellName,
+    region: regionInfo.name,
+    url: regionInfo.url,
   };
 }
 
 export function makeEnterpriseConnectionName(workspaceId: string) {
   return `workspace-${workspaceId}`;
 }
-
-const REGIONS = ["europe-west1", "us-central1"] as const;
-type RegionType = (typeof REGIONS)[number];
-
-const isRegionType = (region: string): region is RegionType =>
-  REGIONS.includes(region as RegionType);
-
-const DOMAIN_FOR_REGION: Record<RegionType, string> = {
-  "us-central1": DUST_US_URL,
-  "europe-west1": DUST_EU_URL,
-};

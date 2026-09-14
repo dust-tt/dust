@@ -1,6 +1,7 @@
 import config from "@app/lib/api/config";
 import { useExportFrameAsPdf } from "@app/lib/swr/frames";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
+import { isFrameV2ContentType } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import { datadogLogs } from "@datadog/browser-logs";
 import {
@@ -23,6 +24,7 @@ interface ExportContentDropdownProps {
   fileId: string;
   fileContent: string | null;
   fileName?: string;
+  contentType?: string;
 }
 
 export function ExportContentDropdown({
@@ -31,6 +33,7 @@ export function ExportContentDropdown({
   fileId,
   fileContent,
   fileName,
+  contentType,
 }: ExportContentDropdownProps) {
   const isMobile = useIsMobile();
   const exportAsPdf = useExportFrameAsPdf({ owner });
@@ -64,6 +67,13 @@ export function ExportContentDropdown({
     setIsExportingPdf(false);
   };
 
+  // A Frames v2 package downloads as a ZIP of its whole source folder, a legacy Frame as its
+  // single code file.
+  const codeDownloadLabel =
+    contentType && isFrameV2ContentType(contentType)
+      ? "Source (.zip)"
+      : "Template";
+
   const handleDownloadAsCode = () => {
     const downloadUrl = `${config.getApiBaseUrl()}/api/w/${owner.sId}/files/${fileId}?action=download`;
     window.open(downloadUrl, "_blank");
@@ -95,7 +105,7 @@ export function ExportContentDropdown({
         </DropdownMenuSub>
         <DropdownMenuItem onClick={handleExportAsPng}>PNG</DropdownMenuItem>
         <DropdownMenuItem onClick={handleDownloadAsCode}>
-          Template
+          {codeDownloadLabel}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

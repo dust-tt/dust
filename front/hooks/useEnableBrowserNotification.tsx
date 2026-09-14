@@ -77,6 +77,7 @@ export const useEnableBrowserNotification = () => {
       ),
       message: "Get notified in your browser when messages arrive.",
       validateLabel: "Enable",
+      validateVariant: "highlight",
       cancelLabel: "Later",
     });
 

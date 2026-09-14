@@ -4,6 +4,7 @@ import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import type { UsageType } from "@app/lib/metronome/types";
+import type { ServiceTier } from "@app/lib/model_constructors/types/input/configuration";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
@@ -15,7 +16,7 @@ import {
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
 import type {
@@ -51,6 +52,7 @@ export interface RunUsageType {
   cacheCreationTokens?: number | null;
   costMicroUsd: number;
   isBatch: boolean;
+  serviceTier?: ServiceTier;
 }
 
 export interface RunUsageWithRunKeyType extends RunUsageType {
@@ -75,7 +77,7 @@ interface PendingRunUsageParameters {
   modelId: ModelIdType;
   providerId: ModelProviderIdType;
   region: Region | null;
-  usageType?: UsageType;
+  usageType: UsageType;
 }
 
 type FetchRunOptions<T extends boolean> = {
@@ -123,7 +125,8 @@ export class RunResource extends BaseResource<RunModel> {
           cacheCreationTokens: null,
           costMicroUsd: 0,
           isBatch: false,
-          usageType: usage.usageType ?? null,
+          serviceTier: "default",
+          usageType: usage.usageType,
           usageState: "pending",
         },
         { transaction }
@@ -271,8 +274,8 @@ export class RunResource extends BaseResource<RunModel> {
     );
   }
 
-  // Stamp the billing usage type onto the usage rows of the given runs.
-  static async setUsageTypeForRuns(
+  // Classify legacy usage rows without ever changing an existing classification.
+  static async setUsageTypeForRunsIfMissing(
     auth: Authenticator,
     { runs, usageType }: { runs: RunResource[]; usageType: UsageType }
   ): Promise<void> {
@@ -285,6 +288,7 @@ export class RunResource extends BaseResource<RunModel> {
       {
         where: {
           runId: { [Op.in]: runModelIds },
+          usageType: null,
           workspaceId: auth.getNonNullableWorkspace().id,
         },
       }
@@ -336,6 +340,7 @@ export class RunResource extends BaseResource<RunModel> {
       cacheCreationTokens: usage.cacheCreationTokens,
       costMicroUsd: usage.costMicroUsd,
       isBatch: usage.isBatch,
+      serviceTier: usage.serviceTier,
       usageType: usage.usageType,
     }));
   }
@@ -449,14 +454,12 @@ export class RunResource extends BaseResource<RunModel> {
    * Run usage.
    */
 
-  // `usageType` tags the created rows with their billing usage type. Pass it for
-  // operations whose type is known at creation (e.g. internal/utility LLM calls
-  // are free); leave it undefined for agent-conversation runs, which the usage
-  // queue classifies from the triggering message origin.
+  // Billing classification is immutable event-time metadata. Every new usage
+  // row must be classified when it is created.
   async recordRunUsage(
     auth: Authenticator,
     usages: RunUsageType[],
-    { usageType }: { usageType?: UsageType } = {}
+    { usageType }: { usageType: UsageType }
   ) {
     await RunUsageModel.bulkCreate(
       usages.map(
@@ -470,6 +473,7 @@ export class RunResource extends BaseResource<RunModel> {
           cacheCreationTokens,
           costMicroUsd,
           isBatch,
+          serviceTier,
         }) => ({
           runId: this.id,
           workspaceId: this.workspaceId,
@@ -484,7 +488,8 @@ export class RunResource extends BaseResource<RunModel> {
           cacheCreationTokens: cacheCreationTokens ?? null,
           costMicroUsd,
           isBatch,
-          usageType: usageType ?? null,
+          serviceTier: serviceTier ?? "default",
+          usageType,
           usageState: "reported",
         })
       )
@@ -500,38 +505,38 @@ export class RunResource extends BaseResource<RunModel> {
         `model_id:${usage.modelId}`,
       ];
 
-      getStatsDClient().increment(
+      statsDMetrics.increment(
         "run_usage.prompt_tokens",
         usage.promptTokens,
         tags
       );
-      getStatsDClient().increment(
+      statsDMetrics.increment(
         "run_usage.completion_tokens",
         usage.completionTokens,
         tags
       );
-      getStatsDClient().increment(
+      statsDMetrics.increment(
         "run_usage.cost_micro_usd",
         usage.costMicroUsd,
         tags
       );
 
       if (usage.cachedTokens) {
-        getStatsDClient().increment(
+        statsDMetrics.increment(
           "run_usage.cached_tokens",
           usage.cachedTokens,
           tags
         );
       }
       if (usage.cacheCreationTokens) {
-        getStatsDClient().increment(
+        statsDMetrics.increment(
           "run_usage.cache_creation_tokens",
           usage.cacheCreationTokens,
           tags
         );
       }
       if (usage.reasoningTokens) {
-        getStatsDClient().increment(
+        statsDMetrics.increment(
           "run_usage.reasoning_tokens",
           usage.reasoningTokens,
           tags
@@ -551,8 +556,8 @@ export class RunResource extends BaseResource<RunModel> {
     }: {
       isBatch?: boolean;
       inferenceRegion?: InferenceRegionType;
-      usageType?: UsageType;
-    } = {}
+      usageType: UsageType;
+    }
   ) {
     const runUsage = this.tokenUsageToRunUsage(usage, modelId, {
       isBatch,
@@ -589,15 +594,14 @@ export class RunResource extends BaseResource<RunModel> {
   async finalizePendingRunUsage(
     auth: Authenticator,
     runUsageModelId: ModelId,
-    usages: RunUsageType[],
-    { usageType }: { usageType?: UsageType } = {}
+    usages: RunUsageType[]
   ): Promise<boolean> {
     const [firstUsage, ...additionalUsages] = usages;
     if (!firstUsage) {
       return false;
     }
 
-    const [updatedCount] = await RunUsageModel.update(
+    const [updatedCount, updatedUsages] = await RunUsageModel.update(
       {
         providerId: firstUsage.providerId,
         modelId: firstUsage.modelId,
@@ -608,10 +612,11 @@ export class RunResource extends BaseResource<RunModel> {
         cacheCreationTokens: firstUsage.cacheCreationTokens ?? null,
         costMicroUsd: firstUsage.costMicroUsd,
         isBatch: firstUsage.isBatch,
-        usageType: usageType ?? null,
+        serviceTier: firstUsage.serviceTier ?? "default",
         usageState: "reported",
       },
       {
+        returning: true,
         where: {
           id: runUsageModelId,
           runId: this.id,
@@ -628,6 +633,12 @@ export class RunResource extends BaseResource<RunModel> {
     }
 
     if (additionalUsages.length > 0) {
+      const usageType = updatedUsages[0]?.usageType;
+      if (!usageType) {
+        throw new Error(
+          "Cannot record additional usage for a run without a billing classification"
+        );
+      }
       await this.recordRunUsage(auth, additionalUsages, { usageType });
     }
     this.emitRunUsageMetrics([firstUsage]);
@@ -641,10 +652,8 @@ export class RunResource extends BaseResource<RunModel> {
     modelId: ModelIdType,
     {
       inferenceRegion = "global",
-      usageType,
     }: {
       inferenceRegion?: InferenceRegionType;
-      usageType?: UsageType;
     } = {}
   ): Promise<number | undefined> {
     const runUsage = this.tokenUsageToRunUsage(usage, modelId, {
@@ -658,8 +667,7 @@ export class RunResource extends BaseResource<RunModel> {
     const wasFinalized = await this.finalizePendingRunUsage(
       auth,
       runUsageModelId,
-      [runUsage],
-      { usageType }
+      [runUsage]
     );
     return wasFinalized ? runUsage.costMicroUsd : undefined;
   }
@@ -693,6 +701,7 @@ export class RunResource extends BaseResource<RunModel> {
       cacheCreationTokens: usage.cacheCreationTokens ?? null,
       longCacheCreationTokens: usage.longCacheCreationTokens ?? null,
       isBatch,
+      serviceTier: usage.serviceTier,
       inferenceRegion,
     });
 
@@ -708,6 +717,7 @@ export class RunResource extends BaseResource<RunModel> {
       // normalize explicitly instead of relying on coercion that differs between inserts and updates.
       costMicroUsd: Math.round(usageCostMicroUsd),
       isBatch,
+      serviceTier: usage.serviceTier ?? "default",
     };
   }
 
@@ -743,6 +753,7 @@ export class RunResource extends BaseResource<RunModel> {
       cacheCreationTokens: usage.cacheCreationTokens,
       costMicroUsd: usage.costMicroUsd,
       isBatch: usage.isBatch,
+      serviceTier: usage.serviceTier,
       usageType: usage.usageType,
       usageState: usage.usageState,
     }));

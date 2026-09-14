@@ -1,0 +1,10 @@
+{
+  "action": "workspace.inactive_agents_archived",
+  "targets": [{ "type": "workspace" }],
+  "metadata": {
+    "threshold_days": "string",
+    "archived_count": "string",
+    "skipped_count": "string",
+    "actor_type": "string"
+  }
+}

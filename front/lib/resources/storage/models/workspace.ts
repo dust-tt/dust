@@ -4,10 +4,7 @@ import { DataTypes } from "@app/lib/resources/storage/data_types";
 import { BaseModel } from "@app/lib/resources/storage/wrappers/base";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type { EmbeddingProviderIdType } from "@app/types/assistant/models/types";
-import type {
-  WorkspacePoolCreditState,
-  WorkspaceProgrammaticCreditState,
-} from "@app/types/credits";
+import type { WorkspacePoolCreditState } from "@app/types/credits";
 import type {
   WorkspaceSegmentationType,
   WorkspaceSharingPolicy,
@@ -39,7 +36,6 @@ export class WorkspaceModel extends BaseModel<WorkspaceModel> {
   declare conversationsRetentionDays: number | null;
   declare metronomeCustomerId: string | null;
   declare poolCreditState: CreationOptional<WorkspacePoolCreditState>;
-  declare programmaticCreditState: CreationOptional<WorkspaceProgrammaticCreditState>;
 }
 WorkspaceModel.init(
   {
@@ -121,11 +117,6 @@ WorkspaceModel.init(
       defaultValue: DEFAULT_SHARING_POLICY,
     },
     poolCreditState: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: "active",
-    },
-    programmaticCreditState: {
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "active",

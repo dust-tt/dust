@@ -41,6 +41,9 @@ export type UserIdentityState =
       // Whether the viewer belongs to one of the Pod's groups (member or editor). Display-only,
       // like isPodEditor: gate what the Frame shows, never what the server allows.
       isPodMember: boolean;
+      // Whether the viewer can modify the source files backing this Frame v2. Display-only: use
+      // frame_author_required to enforce the same capability on a server-side function.
+      isFrameAuthor: boolean;
       user: WorkspaceUserIdentity;
     }
   | {
@@ -48,6 +51,7 @@ export type UserIdentityState =
       isWorkspaceMember: false;
       isPodEditor: false;
       isPodMember: false;
+      isFrameAuthor: false;
       user: null;
     };
 

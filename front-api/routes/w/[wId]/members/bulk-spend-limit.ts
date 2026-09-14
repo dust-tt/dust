@@ -2,11 +2,11 @@ import {
   BulkMemberSelectionSchema,
   resolveBulkMemberSelectionUserIds,
 } from "@app/lib/api/users/bulk_member_selection";
+import { runBulkSetUserSpendLimitWorkflow } from "@app/temporal/bulk_spend_limit/client";
 import {
   MAX_USER_SPEND_LIMIT_AWU_CREDITS,
   MIN_USER_SPEND_LIMIT_AWU_CREDITS,
-} from "@app/lib/api/users/spend_limit";
-import { runBulkSetUserSpendLimitWorkflow } from "@app/temporal/bulk_spend_limit/client";
+} from "@app/types/api/users/spend_limit";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";

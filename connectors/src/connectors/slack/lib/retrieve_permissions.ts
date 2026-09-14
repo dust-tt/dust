@@ -1,5 +1,6 @@
 import type { RetrievePermissionsErrorCode } from "@connectors/connectors/interface";
 import { ConnectorManagerError } from "@connectors/connectors/interface";
+import { isWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
 import { slackChannelInternalIdFromSlackChannelId } from "@connectors/connectors/slack/lib/utils";
 import {
   ExternalOAuthTokenError,
@@ -12,7 +13,6 @@ import type { ConnectorPermission, ContentNode } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import type { WebAPIPlatformError } from "@slack/web-api";
 
 export async function retrievePermissions({
   connectorId,
@@ -105,11 +105,7 @@ export async function retrievePermissions({
       );
     }
 
-    const maybeSlackPlatformError = e as WebAPIPlatformError;
-    if (
-      maybeSlackPlatformError.code === "slack_webapi_platform_error" &&
-      maybeSlackPlatformError.data?.error === "account_inactive"
-    ) {
+    if (isWebAPIPlatformError(e) && e.data.error === "account_inactive") {
       logger.error(
         { connectorId, error: e },
         "Slack account inactive when retrieving permissions."

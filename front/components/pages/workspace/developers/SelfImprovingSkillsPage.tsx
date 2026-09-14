@@ -1,3 +1,4 @@
+import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { SelfImprovingSkillsConsumptionSection } from "@app/components/pages/workspace/developers/SelfImprovingSkillsConsumptionSection";
 import { SelfImprovingSkillsListSection } from "@app/components/workspace/settings/SelfImprovingSkillsListSection";
 import { SelfImprovingSkillsSettingsSection } from "@app/components/workspace/settings/SelfImprovingSkillsSettingsSection";
@@ -66,27 +67,29 @@ export function SelfImprovingSkillsPage() {
   };
 
   return (
-    <div className="mb-4">
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Self-Improving Skills"
-          description={
-            <span>
-              Configure self-improving skills settings for this workspace.{" "}
-              <a
-                href="https://docs.dust.tt/docs/self-improving-skills"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-highlight underline"
-              >
-                Learn more
-              </a>
-              .
-            </span>
-          }
-        />
-        {renderBody()}
-      </Page.Vertical>
-    </div>
+    <AdminPageContainer>
+      <div className="mb-4">
+        <Page.Vertical gap="xl" align="stretch">
+          <Page.Header
+            title="Self-Improving Skills"
+            description={
+              <span>
+                Configure self-improving skills settings for this workspace.{" "}
+                <a
+                  href="https://docs.dust.tt/docs/self-improving-skills"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-highlight underline"
+                >
+                  Learn more
+                </a>
+                .
+              </span>
+            }
+          />
+          {renderBody()}
+        </Page.Vertical>
+      </div>
+    </AdminPageContainer>
   );
 }

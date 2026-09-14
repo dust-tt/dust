@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 
 describe("skill authoring code-defined skill", () => {
   it("is available to every workspace without a feature flag", async () => {
-    const { authenticator } = await createResourceTest({ role: "builder" });
+    const { authenticator } = await createResourceTest({ role: "user" });
 
     const skill = await GlobalSkillsRegistry.getById(
       authenticator,

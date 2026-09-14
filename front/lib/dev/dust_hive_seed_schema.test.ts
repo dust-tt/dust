@@ -38,7 +38,6 @@ The dust-hive seed SQL schema validation test is failing. Please:
    - front/lib/resources/storage/models/workspace.ts
    - front/lib/resources/storage/models/groups.ts
    - front/lib/resources/storage/models/spaces.ts
-   - front/lib/resources/storage/models/group_spaces.ts
    - front/lib/resources/storage/models/membership.ts
    - front/lib/models/plan.ts (for SubscriptionModel)
 
@@ -84,13 +83,6 @@ describe("dust-hive seed SQL schema compatibility", () => {
       );
       await frontSequelize.query(
         `DELETE FROM group_permissions WHERE "workspaceId" = :workspaceId`,
-        {
-          replacements: { workspaceId: createdWorkspaceId },
-          type: QueryTypes.DELETE,
-        }
-      );
-      await frontSequelize.query(
-        `DELETE FROM group_vaults WHERE "workspaceId" = :workspaceId`,
         {
           replacements: { workspaceId: createdWorkspaceId },
           type: QueryTypes.DELETE,

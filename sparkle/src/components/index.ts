@@ -13,6 +13,8 @@ export {
 } from "./AssistantCard";
 export { AttachmentChip } from "./AttachmentChip";
 export { Avatar } from "./Avatar";
+export type { AvatarCellSkeletonProps } from "./AvatarCellSkeleton";
+export { AvatarCellSkeleton } from "./AvatarCellSkeleton";
 export { Bar, BarFooter, BarHeader } from "./Bar";
 export type { BreadcrumbsItem } from "./Breadcrumbs";
 export {
@@ -50,6 +52,8 @@ export {
   CheckboxWithText,
 } from "./Checkbox";
 export { Chip } from "./Chip";
+export type { ChipCellSkeletonProps } from "./ChipCellSkeleton";
+export { ChipCellSkeleton } from "./ChipCellSkeleton";
 export * from "./Citation";
 export { CollapseButton } from "./CollapseButton";
 export {
@@ -100,7 +104,11 @@ export {
   DataTable,
   ScrollableDataTable,
 } from "./DataTable";
-export { DataTableLoadingSkeleton } from "./DataTableLoadingSkeleton";
+export type {
+  DataTableSkeletonCellProps,
+  DataTableSkeletonProps,
+} from "./DataTableSkeleton";
+export { DataTableSkeleton } from "./DataTableSkeleton";
 export {
   Dialog,
   DialogClose,
@@ -150,10 +158,17 @@ export type { EmojiMartData } from "./EmojiPicker";
 export { DataEmojiMart, EmojiPicker } from "./EmojiPicker";
 export { EmptyCTA, EmptyCTAButton } from "./EmptyCTA";
 export { FaviconIcon } from "./FaviconIcon";
-export { FilterChips } from "./FilterChips";
+export {
+  FILTER_CHIP_VARIANTS,
+  FilterChip,
+  type FilterChipProps,
+  FilterChips,
+  type FilterChipVariant,
+} from "./FilterChips";
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
 export { HoveringBar } from "./HoveringBar";
+export type { DoubleIconProps } from "./Icon";
 export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
 export type { ImageGenerationPlaceholderProps } from "./ImageGenerationPlaceholder";
@@ -194,6 +209,7 @@ export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
 export { ListGroup, ListItem, ListItemSection } from "./ListItem";
 export { LoadingBlock } from "./LoadingBlock";
+export { LoadMore } from "./LoadMore";
 export { MessageCard } from "./MessageCard";
 export type {
   MultiPageDialogFooterProps,
@@ -252,6 +268,10 @@ export {
   ResizablePanel,
   ResizablePanelGroup,
 } from "./Resizable";
+export {
+  ResizableSidePanel,
+  type ResizableSidePanelProps,
+} from "./ResizableSidePanel";
 export { ScrollArea, ScrollBar } from "./ScrollArea";
 export { SearchDropdownMenu } from "./SearchDropdownMenu";
 export { SearchInput, SearchInputWithPopover } from "./SearchInput";
@@ -285,6 +305,8 @@ export type { FlexSplitButtonProps } from "./SplitButton";
 export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
+export type { TextCellSkeletonProps } from "./TextCellSkeleton";
+export { TextCellSkeleton } from "./TextCellSkeleton";
 export { Timeline, TimelineItem } from "./Timeline";
 export type {
   ToolbarContentGroup,

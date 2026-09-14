@@ -3,6 +3,7 @@ import type { WorkspaceType } from "@app/types/user";
 import {
   CloudArrowLeftRight,
   Icon,
+  LoadingBlock,
   MessageChatSquare,
   Robot,
   Stars02,
@@ -29,10 +30,10 @@ function DontLoseItem({
   if (isLoading) {
     return (
       <div className="flex items-start gap-3">
-        <div className="h-5 w-5 animate-pulse rounded bg-muted-background" />
+        <LoadingBlock className="h-5 w-5" />
         <div className="flex flex-col gap-1">
-          <div className="h-5 w-32 animate-pulse rounded bg-muted-background" />
-          <div className="h-4 w-48 animate-pulse rounded bg-muted-background" />
+          <LoadingBlock className="h-5 w-32" />
+          <LoadingBlock className="h-4 w-48" />
         </div>
       </div>
     );

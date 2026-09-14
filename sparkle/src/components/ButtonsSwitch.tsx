@@ -56,12 +56,23 @@ export interface ButtonsSwitchListProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof listStyles> {
   size?: ButtonSize;
+  /** Disable every option in the switch. */
   disabled?: boolean;
+  /** Selected option's value (controlled usage). */
   value?: string;
+  /** Initially selected option's value (uncontrolled usage). */
   defaultValue?: string;
+  /** Invoked with the newly selected option's value. */
   onValueChange?: (value: string) => void;
 }
 
+/**
+ * The container of a segmented, single-select toggle: it owns the selected value
+ * (controlled via `value`/`onValueChange` or uncontrolled via `defaultValue`) for
+ * its ButtonsSwitch children. Use it to switch between a small set of mutually
+ * exclusive views or modes; for triggering actions, use Button or ButtonGroup.
+ * @summary Segmented single-select toggle container.
+ */
 export const ButtonsSwitchList = React.forwardRef<
   HTMLDivElement,
   ButtonsSwitchListProps
@@ -121,11 +132,17 @@ ButtonsSwitchList.displayName = "ButtonsSwitchList";
 
 interface ButtonsSwitchProps
   extends Omit<React.ComponentProps<typeof Button>, "size" | "variant"> {
+  /** Unique value identifying this option within the list. */
   value: string;
   label?: string;
   icon?: React.ComponentProps<typeof Button>["icon"];
 }
 
+/**
+ * One option of a segmented toggle, identified by its `value` and rendered with a
+ * `label`. Must be rendered inside a ButtonsSwitchList, which manages selection.
+ * @summary Single option of a ButtonsSwitchList.
+ */
 export const ButtonsSwitch = React.forwardRef<
   HTMLButtonElement,
   ButtonsSwitchProps

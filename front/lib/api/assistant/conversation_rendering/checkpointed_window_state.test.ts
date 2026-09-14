@@ -1,5 +1,6 @@
 import {
   CheckpointedConversationWindowState,
+  ConversationWindowStateSnapshotSchema,
   MINIMUM_PRUNING_BATCH_TOKENS,
 } from "@app/lib/api/assistant/conversation_rendering/checkpointed_window_state";
 import type { InteractionWithTokens } from "@app/lib/api/assistant/conversation_rendering/pruning";
@@ -31,6 +32,27 @@ function assistantMessage(name: string, tokenCount = 10) {
       name: "assistant",
       content: name,
       contents: [{ type: "text_content" as const, value: name }],
+    },
+    tokenCount
+  );
+}
+
+function reasoningMessage(reasoningTokens: number, tokenCount = 10) {
+  return withTokens(
+    {
+      role: "assistant" as const,
+      name: "assistant",
+      contents: [
+        {
+          type: "reasoning" as const,
+          value: {
+            reasoning: "reasoning",
+            metadata: "{}",
+            tokens: reasoningTokens,
+            provider: "openai" as const,
+          },
+        },
+      ],
     },
     tokenCount
   );
@@ -322,5 +344,101 @@ describe("CheckpointedConversationWindowState", () => {
     expect(
       extendedResults.slice(0, 3).map((message) => isPruned(message.content))
     ).toEqual([true, true, false]);
+  });
+
+  it("restores and continues an interaction like uninterrupted rendering", () => {
+    const prefix = [
+      userMessage("question", 10),
+      assistantMessage("call_first"),
+      functionMessage("first", 10_100),
+    ];
+    const continuation = [
+      assistantMessage("call_second"),
+      functionMessage("second", 10_100),
+      assistantMessage("call_third"),
+      functionMessage("third", 1_000),
+    ];
+
+    const uninterrupted = makeState({ pruningBudget: 15_000 });
+    uninterrupted.append(interaction([...prefix, ...continuation]));
+
+    const checkpointed = makeState({ pruningBudget: 15_000 });
+    checkpointed.append(interaction(prefix));
+    const serializedSnapshot: unknown = JSON.parse(
+      JSON.stringify(checkpointed.snapshot())
+    );
+    const parsedSnapshot =
+      ConversationWindowStateSnapshotSchema.safeParse(serializedSnapshot);
+    expect(parsedSnapshot.success).toBe(true);
+    if (!parsedSnapshot.success) {
+      return;
+    }
+
+    const restored = CheckpointedConversationWindowState.restore(
+      parsedSnapshot.data,
+      {
+        pruningBudget: 15_000,
+        budgetForInteractions: 100_000,
+        logDetails: {},
+      }
+    );
+    restored.appendToLatestInteraction(interaction(continuation));
+
+    expect(restored.snapshot()).toEqual(uninterrupted.snapshot());
+    expect(restored.fit()).toEqual(uninterrupted.fit());
+    expect(checkpointed.renderedInteractions()).toHaveLength(1);
+    expect(isPruned(toolResults(checkpointed)[0].content)).toBe(false);
+  });
+
+  it("rejects an inconsistent persisted tool-result phase", () => {
+    const snapshot = {
+      version: 1,
+      interactions: [
+        {
+          messages: [
+            {
+              kind: "tool_result",
+              message: {
+                role: "function",
+                name: "tool",
+                function_call_id: "call_1",
+                content: "result",
+                tokenCount: 100,
+              },
+              tokenSavings: 50,
+              pruned: true,
+              phase: "eligible",
+            },
+          ],
+        },
+      ],
+      retainedTokens: 100,
+      totalTokensBefore: 150,
+      prunedTokens: 50,
+    };
+
+    expect(
+      ConversationWindowStateSnapshotSchema.safeParse(snapshot).success
+    ).toBe(false);
+  });
+
+  it("rejects fractional reasoning token counts", () => {
+    const state = makeState();
+    state.append(interaction([reasoningMessage(1.5)]));
+
+    expect(
+      ConversationWindowStateSnapshotSchema.safeParse(state.snapshot()).success
+    ).toBe(false);
+  });
+
+  it("rejects fractional message token counts even when their total is an integer", () => {
+    const state = makeState();
+    state.append(
+      interaction([userMessage("first", 0.5), userMessage("second", 0.5)])
+    );
+
+    expect(
+      ConversationWindowStateSnapshotSchema.safeParse(state.snapshot()).success
+    ).toBe(false);
   });
 });

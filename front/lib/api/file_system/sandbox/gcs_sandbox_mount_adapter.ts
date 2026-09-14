@@ -72,20 +72,20 @@ function tokenUrl(index: number): string {
  *   users can access it; permissive file/dir modes. All agent-facing mounts
  *   are shared mutable filesystems, so namespace and metadata caching are
  *   disabled: writes from another sandbox or Front must be visible immediately.
- * - "pod_sandbox_functions": same access model as "workload", but without
- *   caching so newly published or replaced functions are visible immediately.
- * - "pod_state_replica": mounted AS `dust-state` (via runuser) so the FUSE
+ * - "frame_publications": same access model as "workload", but without caching so newly
+ *   published or replaced functions are visible immediately.
+ * - "sandbox_state_replica": mounted AS `dust-state` (via runuser) so the FUSE
  *   default — only the mounting user can access the fs — makes it invisible to
  *   every other uid, including the untrusted workload uid 1003 and root. No
  *   `allow_other`, restrictive modes, and NO kernel list caching: litestream
  *   restore must never see a stale LTX listing. Needs the dust-state user and
- *   /pod-state layout in the image; targets with this profile are only ever
- *   constructed when a pod sandbox (the sandbox-functions computer) boots.
+ *   sandbox state layout in the image; targets with this profile are only ever
+ *   constructed for stateful Frame sandboxes.
  */
 export type GCSMountProfile =
+  | "frame_publications"
   | "workload"
-  | "pod_sandbox_functions"
-  | "pod_state_replica";
+  | "sandbox_state_replica";
 
 export type GCSMountTarget = {
   /**
@@ -424,8 +424,8 @@ export function buildMountCommand({
   ];
 
   switch (target.mountProfile) {
-    case "workload":
-    case "pod_sandbox_functions": {
+    case "frame_publications":
+    case "workload": {
       // allow_other lets the unprivileged sandbox user read the root-mounted fs. `ro` is only
       // defense-in-depth: the real write protection is the read-only token scope (see
       // buildAccessBoundaryRules), not this flag.
@@ -456,7 +456,7 @@ export function buildMountCommand({
       );
     }
 
-    case "pod_state_replica": {
+    case "sandbox_state_replica": {
       // Mounted AS dust-state (runuser): with no allow_other, the FUSE layer
       // denies every uid but the mounting one — the kernel-enforced version of
       // "invisible to uid 1003". List caching is OFF: litestream restore reads

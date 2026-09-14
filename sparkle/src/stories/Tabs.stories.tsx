@@ -36,44 +36,64 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * Standard tabs: labeled triggers with icons, plus a right-aligned icon-only
+ * trigger (with a tooltip) pushed to the edge by a flex spacer. The initial
+ * view is picked with `defaultValue`.
+ * @summary Labeled and icon-only triggers.
+ */
 export const Default: Story = {
   render: () => (
     <div className="w-80">
-      <Tabs defaultValue="account">
+      <Tabs defaultValue="conversation">
         <TabsList className="px-2">
-          <TabsTrigger value="account" label="Hello" icon={Command} />
-          <TabsTrigger value="password" label="World" icon={Lightbulb04} />
+          <TabsTrigger
+            value="conversation"
+            label="Conversation"
+            icon={Command}
+          />
+          <TabsTrigger value="knowledge" label="Knowledge" icon={Lightbulb04} />
           <div className="grow" />
           <TabsTrigger value="settings" icon={Settings01} tooltip="Settings" />
         </TabsList>
-        <TabsContent value="account">Hello</TabsContent>
-        <TabsContent value="password">World</TabsContent>
-        <TabsContent value="settings">Settings</TabsContent>
+        <TabsContent value="conversation">Conversation history</TabsContent>
+        <TabsContent value="knowledge">Connected knowledge</TabsContent>
+        <TabsContent value="settings">Workspace settings</TabsContent>
       </Tabs>
     </div>
   ),
 };
 
-export const WithMultipleTabs: Story = {
+/**
+ * Because TabsList is a flex row, arbitrary controls can share it with the
+ * triggers — here a flex spacer pushes a **Button** to the trailing edge, a
+ * common pattern for a section-level action next to many tabs.
+ * @summary Action button inside the tab list.
+ */
+export const WithTrailingAction: Story = {
   render: () => (
     <div className="w-[100%]">
-      <Tabs defaultValue="tab1">
+      <Tabs defaultValue="conversations">
         <TabsList className="px-2">
-          <TabsTrigger value="tab1" label="Tab 1" icon={Command} />
-          <TabsTrigger value="tab2" label="Tab 2" icon={Lightbulb04} />
-          <TabsTrigger value="tab3" label="Tab 3" icon={Settings01} />
-          <TabsTrigger value="tab4" label="Tab 4" icon={Command} />
-          <TabsTrigger value="tab5" label="Tab 5" icon={Lightbulb04} />
-          <TabsTrigger value="tab6" label="Tab 6" icon={Settings01} />
+          <TabsTrigger
+            value="conversations"
+            label="Conversations"
+            icon={Command}
+          />
+          <TabsTrigger value="knowledge" label="Knowledge" icon={Lightbulb04} />
+          <TabsTrigger value="agents" label="Agents" icon={Settings01} />
+          <TabsTrigger value="tools" label="Tools" icon={Command} />
+          <TabsTrigger value="members" label="Members" icon={Lightbulb04} />
+          <TabsTrigger value="settings" label="Settings" icon={Settings01} />
           <div className="grow" />
-          <Button label="Hello" />
+          <Button label="New agent" />
         </TabsList>
-        <TabsContent value="tab1">Content for Tab 1</TabsContent>
-        <TabsContent value="tab2">Content for Tab 2</TabsContent>
-        <TabsContent value="tab3">Content for Tab 3</TabsContent>
-        <TabsContent value="tab4">Content for Tab 4</TabsContent>
-        <TabsContent value="tab5">Content for Tab 5</TabsContent>
-        <TabsContent value="tab6">Content for Tab 6</TabsContent>
+        <TabsContent value="conversations">Recent conversations</TabsContent>
+        <TabsContent value="knowledge">Connected knowledge</TabsContent>
+        <TabsContent value="agents">Available agents</TabsContent>
+        <TabsContent value="tools">Configured tools</TabsContent>
+        <TabsContent value="members">Workspace members</TabsContent>
+        <TabsContent value="settings">Workspace settings</TabsContent>
       </Tabs>
     </div>
   ),

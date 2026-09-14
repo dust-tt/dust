@@ -1,3 +1,4 @@
+import { BulkSelectionBar } from "@app/components/shared/BulkSelectionBar";
 import { useBatchUpdateAgentTags } from "@app/lib/swr/assistants";
 import { useWorkspacePermissions } from "@app/lib/swr/permissions";
 import { compareForFuzzySort, subFilter, tagsSorter } from "@app/lib/utils";
@@ -13,9 +14,6 @@ import {
   DropdownMenuTagItem,
   DropdownMenuTagList,
   DropdownMenuTrigger,
-  Spinner,
-  Tag01,
-  XClose,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
@@ -24,16 +22,20 @@ import { SetModelAssistantsDialog } from "./SetModelAssistantsDialog";
 import { UnpublishAssistantsDialog } from "./UnpublishAssistantsDialog";
 
 type AgentEditBarProps = {
-  onClose: () => void;
+  onClear: () => void;
+  onSelectAll: () => void;
   selectedAgents: LightAgentConfigurationType[];
+  totalCount: number;
   owner: WorkspaceType;
   tags: TagType[];
   mutateAgentConfigurations: () => Promise<any>;
 };
 
 export const AgentEditBar = ({
-  onClose,
+  onClear,
+  onSelectAll,
   selectedAgents,
+  totalCount,
   owner,
   tags,
   mutateAgentConfigurations,
@@ -47,6 +49,8 @@ export const AgentEditBar = ({
 
   const { hasPermission } = useWorkspacePermissions();
   const canPublishAgents = hasPermission("publish", "agent");
+
+  const selectedCount = selectedAgents.length;
 
   const filteredTags = tags
     .filter((t) => canPublishAgents || t.kind !== "protected")
@@ -66,103 +70,99 @@ export const AgentEditBar = ({
     });
 
   return (
-    <>
-      <div className="border-1 mb-2 flex flex-row items-center gap-2 rounded-xl bg-muted-background p-2">
-        <Button
-          size="xs"
-          variant="outline"
-          disabled={isLoading}
-          label="Close edition"
-          icon={XClose}
-          onClick={onClose}
-        />
-        {isLoading && <Spinner size="xs" variant="dark" />}
-        <div className="flex-1" />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="xs"
-              variant="outline"
-              isSelect
-              icon={Tag01}
-              label="Tag selection"
-              disabled={selectedAgents.length === 0 || isLoading}
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-60"
-            dropdownHeaders={
-              <>
-                <DropdownMenuSearchbar
-                  name="tagSearch"
-                  placeholder="Search tags"
-                  value={tagSearch}
-                  onChange={setTagSearch}
-                />
-                <DropdownMenuSeparator />
-              </>
-            }
-          >
-            <DropdownMenuTagList>
-              {filteredTags.map((t) => {
-                return (
-                  <DropdownMenuTagItem
-                    key={t.sId}
-                    label={t.name}
-                    color="info"
-                    onClick={async () => {
-                      setIsLoading(true);
-                      const agentIds = selectedAgents.map((a) => a.sId);
+    <BulkSelectionBar
+      selectedCount={selectedCount}
+      totalCount={totalCount}
+      itemLabel="agent"
+      canSelectAll={totalCount > selectedCount}
+      onSelectAll={onSelectAll}
+      onClear={onClear}
+      disabled={isLoading}
+      isLoading={isLoading}
+    >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            size="sm"
+            variant="primary"
+            isSelect
+            label="Change tag"
+            disabled={isLoading}
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          className="w-60"
+          dropdownHeaders={
+            <>
+              <DropdownMenuSearchbar
+                name="tagSearch"
+                placeholder="Search tags"
+                value={tagSearch}
+                onChange={setTagSearch}
+              />
+              <DropdownMenuSeparator />
+            </>
+          }
+        >
+          <DropdownMenuTagList>
+            {filteredTags.map((t) => {
+              return (
+                <DropdownMenuTagItem
+                  key={t.sId}
+                  label={t.name}
+                  color="info"
+                  onClick={async () => {
+                    setIsLoading(true);
+                    const agentIds = selectedAgents.map((a) => a.sId);
 
-                      if (
-                        selectedAgents.every((a) =>
-                          a.tags.find((agentTag) => agentTag.sId === t.sId)
-                        )
-                      ) {
-                        // Remove tag from all selected agents
-                        await batchUpdateAgentTags(agentIds, {
-                          removeTagIds: [t.sId],
-                        });
-                      } else {
-                        // Add tag to agents that don't have it
-                        const toAdd = selectedAgents.filter(
-                          (a) =>
-                            !a.tags.find((agentTag) => agentTag.sId === t.sId)
-                        );
-                        await batchUpdateAgentTags(
-                          toAdd.map((a) => a.sId),
-                          {
-                            addTagIds: [t.sId],
-                          }
-                        );
-                      }
-                      void mutateAgentConfigurations();
-                      setIsLoading(false);
-                    }}
-                  />
-                );
-              })}
-            </DropdownMenuTagList>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <SetModelAssistantsDialog
-          owner={owner}
-          agentConfigurations={selectedAgents}
-          disabled={selectedAgents.length === 0 || isLoading}
-        />
-        <UnpublishAssistantsDialog
-          owner={owner}
-          agentConfigurations={selectedAgents}
-          disabled={selectedAgents.length === 0 || isLoading}
-          onSave={onClose}
-        />
-        <DeleteAssistantsDialog
-          owner={owner}
-          agentConfigurations={selectedAgents}
-          disabled={selectedAgents.length === 0 || isLoading}
-          onSave={onClose}
-        />
-      </div>
-    </>
+                    if (
+                      selectedAgents.every((a) =>
+                        a.tags.find((agentTag) => agentTag.sId === t.sId)
+                      )
+                    ) {
+                      // Remove tag from all selected agents
+                      await batchUpdateAgentTags(agentIds, {
+                        removeTagIds: [t.sId],
+                      });
+                    } else {
+                      // Add tag to agents that don't have it
+                      const toAdd = selectedAgents.filter(
+                        (a) =>
+                          !a.tags.find((agentTag) => agentTag.sId === t.sId)
+                      );
+                      await batchUpdateAgentTags(
+                        toAdd.map((a) => a.sId),
+                        {
+                          addTagIds: [t.sId],
+                        }
+                      );
+                    }
+                    void mutateAgentConfigurations();
+                    setIsLoading(false);
+                  }}
+                />
+              );
+            })}
+          </DropdownMenuTagList>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <SetModelAssistantsDialog
+        owner={owner}
+        agentConfigurations={selectedAgents}
+        disabled={isLoading}
+      />
+      <UnpublishAssistantsDialog
+        owner={owner}
+        agentConfigurations={selectedAgents}
+        disabled={isLoading}
+        onSave={onClear}
+      />
+      <DeleteAssistantsDialog
+        owner={owner}
+        agentConfigurations={selectedAgents}
+        disabled={isLoading}
+        onSave={onClear}
+      />
+    </BulkSelectionBar>
   );
 };

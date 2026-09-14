@@ -8,6 +8,7 @@ import {
   upsertNotionDatabaseInConnectorsDb,
   upsertNotionPageInConnectorsDb,
 } from "@connectors/connectors/notion/lib/connectors_db_helpers";
+import { isUnhealthyNotionError } from "@connectors/connectors/notion/lib/errors";
 import {
   getBlockParentMemoized,
   getPageOrBlockParent,
@@ -81,6 +82,7 @@ import {
   getNotionDatabaseTableId,
   INTERNAL_MIME_TYPES,
   isDevelopment,
+  normalizeError,
   slugify,
 } from "@connectors/types";
 import { redisClient } from "@connectors/types/shared/redis_client";
@@ -100,6 +102,7 @@ import chunk from "lodash/chunk";
 import { Op } from "sequelize";
 
 const logger = mainLogger.child({ provider: "notion" });
+const NOTION_APP_URL = "https://app.notion.com/p";
 
 // Connector ID hashes for which deletion should be skipped during garbage collection.
 const SKIP_DELETION_CONNECTOR_ID_HASHES = new Set<string>([
@@ -860,6 +863,13 @@ export async function deleteDatabase({
 //   - query notion API and check if we can access the resource
 //   - if the resource is not accessible, delete it from the database (and from the data source if it's a page)
 // - update the lastGarbageCollectionFinishTime
+/**
+ * @cc [owner:spolu,label:product;error-handling] garbage-collection-preserves-unchecked-resources
+ * If an accessibility check fails with an unhealthy Notion error at or beyond the skip threshold,
+ * garbage collection MUST retain the resource. Before that threshold, or for unrecognized failures,
+ * the activity MUST propagate the failure as an `Error` instead of treating the resource as
+ * inaccessible.
+ */
 export async function garbageCollectBatch({
   connectorId,
   batchIndex,
@@ -889,13 +899,6 @@ export async function garbageCollectBatch({
     throw new Error("Could not find notionConnectorState");
   }
   const notionAccessToken = await getNotionAccessToken(connector.id);
-
-  const NOTION_UNHEALTHY_ERROR_CODES = [
-    "internal_server_error",
-    "notionhq_client_request_timeout",
-    "service_unavailable",
-    "notionhq_client_response_error",
-  ];
 
   let deletedPagesCount = 0;
   let deletedDatabasesCount = 0;
@@ -943,30 +946,18 @@ export async function garbageCollectBatch({
         accessibilityCheckRetryOptions
       );
     } catch (e) {
-      // Sometimes a request will consistently fail with a 500 We don't want to delete the page in
-      // that case, so we just log the error and move on.
-      const potentialNotionError = e as {
-        body: unknown;
-        code: string;
-        status: number;
-      };
-      if (
-        (NOTION_UNHEALTHY_ERROR_CODES.includes(potentialNotionError.code) ||
-          (typeof potentialNotionError.status === "number" &&
-            potentialNotionError.status >= 500 &&
-            potentialNotionError.status < 600)) &&
-        shouldSkipUnhealthyNotionResource
-      ) {
+      // Preserve resources when persistent upstream failures prevent checking accessibility.
+      if (isUnhealthyNotionError(e) && shouldSkipUnhealthyNotionResource) {
         iterationLogger.error(
           {
-            error: potentialNotionError,
+            error: e,
             attempt: Context.current().info.attempt,
           },
           "Failed to check if notion resource is accessible. Giving up and moving on"
         );
         resourceIsAccessible = true;
       } else {
-        throw e;
+        throw normalizeError(e);
       }
     }
 
@@ -2579,7 +2570,7 @@ export async function renderAndUpsertPageFromCache({
             mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
             sourceUrl:
               parentDb.notionUrl ??
-              `https://www.notion.so/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
+              `${NOTION_APP_URL}/${parentDb.notionDatabaseId.replace(/-/g, "")}`,
             allowEmptySchema: true,
           })
         );
@@ -3166,7 +3157,7 @@ export async function upsertDatabaseStructuredDataFromCache({
       mimeType: INTERNAL_MIME_TYPES.NOTION.DATABASE,
       sourceUrl:
         dbModel.notionUrl ??
-        `https://www.notion.so/${dbModel.notionDatabaseId.replace(/-/g, "")}`,
+        `${NOTION_APP_URL}/${dbModel.notionDatabaseId.replace(/-/g, "")}`,
       allowEmptySchema: true,
     })
   );
@@ -3213,7 +3204,7 @@ export async function upsertDatabaseStructuredDataFromCache({
         },
         documentUrl:
           dbModel.notionUrl ??
-          `https://www.notion.so/${databaseId.replace(/-/g, "")}`,
+          `${NOTION_APP_URL}/${databaseId.replace(/-/g, "")}`,
         // TODO: see if we actually want to use the Notion last edited time of the database
         // we currently don't have it because we don't fetch the DB object from notion.
         timestampMs: upsertAt.getTime(),

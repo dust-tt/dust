@@ -3,6 +3,7 @@ import type { SandboxFunctionInvocationStreamEvent } from "@app/lib/api/sandbox_
 import { Authenticator } from "@app/lib/auth";
 import { SandboxFunctionResource } from "@app/lib/resources/sandbox_function_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -10,7 +11,7 @@ import type {
   SandboxFunctionInvocationEvent,
   SandboxFunctionUserIdentityPolicy,
 } from "@app/types/api/sandbox_functions";
-import { sandboxFunctionContentType } from "@app/types/files";
+import { frameV2ContentType } from "@app/types/files";
 import { Err, Ok } from "@app/types/shared/result";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -73,28 +74,56 @@ function mockResult(result: unknown, invocationId: string): void {
   );
 }
 
+const PUBLICATION_ID = "publication-1";
+
 async function makeFunction(
   auth: Authenticator,
   space: SpaceResource,
   userIdentity: SandboxFunctionUserIdentityPolicy = "optional"
 ): Promise<SandboxFunctionResource> {
-  const file = await FileFactory.create(auth, null, {
-    contentType: sandboxFunctionContentType,
-    fileName: "greet.ts",
+  const frame = await FileFactory.create(auth, null, {
+    contentType: frameV2ContentType,
+    fileName: "greet.frame.json",
     fileSize: 100,
-    status: "created",
+    status: "ready",
     useCase: "project_context",
-    useCaseMetadata: { spaceId: space.sId },
+    useCaseMetadata: {
+      spaceId: space.sId,
+      activePublicationId: PUBLICATION_ID,
+    },
   });
-  return SandboxFunctionResource.makeNew(auth, {
-    space,
-    file,
-    slug: "greet",
-    description: "Greet a user by name.",
-    userIdentity,
-    inputSchema,
-    outputSchema,
-  });
+  await withTransaction((transaction) =>
+    SandboxFunctionResource.createForFramePublication(
+      auth,
+      {
+        frame,
+        publicationId: PUBLICATION_ID,
+        functions: [
+          {
+            name: "greet",
+            description: "Greet a user by name.",
+            userIdentity,
+            executionMode: "durable",
+            defaultStake: "low",
+            bundleCode: "export default () => 'ok';",
+            inputSchema,
+            outputSchema,
+          },
+        ],
+      },
+      transaction
+    )
+  );
+  const sandboxFunction =
+    await SandboxFunctionResource.fetchByFramePublicationAndSlug(auth, {
+      frame,
+      publicationId: PUBLICATION_ID,
+      slug: "greet",
+    });
+  if (!sandboxFunction) {
+    throw new Error("Expected the Frame function to exist.");
+  }
+  return sandboxFunction;
 }
 
 async function setup(): Promise<{
@@ -204,7 +233,7 @@ describe("callSandboxFunction", () => {
       return;
     }
     expect(result.error.message).toBe(
-      "This Pod Function belongs to another workspace."
+      "This Frame function belongs to another workspace."
     );
     expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
   });
@@ -234,7 +263,7 @@ describe("callSandboxFunction", () => {
     expect(result.error).toEqual({
       code: "user_authentication_required",
       message:
-        "This Pod Function requires a logged-in user from its workspace.",
+        "This Frame function requires a logged-in user from its workspace.",
     });
     expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
     expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();
@@ -263,7 +292,7 @@ describe("callSandboxFunction", () => {
     expect(result.error).toEqual({
       code: "user_authentication_required",
       message:
-        "This Pod Function requires a logged-in workspace member in a live Dust session.",
+        "This Frame function requires a logged-in workspace member in a live Dust session.",
     });
     expect(launchSandboxFunctionInvocationWorkflow).not.toHaveBeenCalled();
     expect(getSandboxFunctionInvocationEvents).not.toHaveBeenCalled();

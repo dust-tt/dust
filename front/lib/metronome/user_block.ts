@@ -1,18 +1,25 @@
 // Redis fast-path cache for credit-state-driven access control.
 //
-// Four keys back the credit state machines:
-//   - `metronome:user_credit_state:<ws>:<user>`: fine-grained user credit state
-//     (mirrors `memberships.creditState`). Replaces the legacy boolean cap and
-//     warning flags — "capped" means blocked, "*_low_balance" means warned.
+// This is the Metronome-credit-state layer. Access-control callers go through
+// `lib/api/credits/access_control.ts`, which enforces spend caps from the Redis
+// rate-limiter counters; the pool/no_seat/personal-seat logic here still backs
+// `isUserBlockedByMetronome` (the caller passes the rate-limiter per-user cap
+// verdict in) and `isPoolDepletedByMetronome`.
+//
+// Keys back the credit state machines:
+//   - `metronome:user_credit_state:<ws>:<user>`: user seat↔pool credit state
+//     (mirrors `memberships.creditState`: `user_seat` / `on_pool`).
 //   - `metronome:pool_credit_status:<ws>`: fine-grained workspace pool state
 //     (mirrors `workspaces.poolCreditState`).
-//   - `metronome:pool_depleted:<ws>`: boolean shortcut for isUserBlocked /
-//     isApiBlocked hot paths (still maintained alongside pool_credit_status).
+//   - `metronome:pool_depleted:<ws>`: boolean shortcut for
+//     isUserBlockedByMetronome / isPoolDepletedByMetronome hot paths (still
+//     maintained alongside pool_credit_status).
 //   - `metronome:programmatic_credit_status:<ws>` / `metronome:programmatic_depleted:<ws>`:
 //     programmatic (API) cap state.
 //
-// `isUserBlocked` is the unified read: a user is blocked iff the pool is
-// depleted or the user's credit state is "capped". It returns the reason
+// `isUserBlockedByMetronome` is the unified read: a user is blocked iff the pool
+// is depleted or the caller-supplied per-user cap verdict is set. It returns the
+// reason
 // ("credits_exhausted" / "user_cap_reached") so callers can surface a tailored
 // message. When both conditions hold, "user_cap_reached" wins: the per-user cap
 // is the user's actionable blocker, whereas refilling the pool would not unblock
@@ -22,27 +29,26 @@
 //
 import { makeFairUseAwuCreditsRateLimitKeyForUser } from "@app/lib/api/assistant/rate_limits";
 import { runOnRedis } from "@app/lib/api/redis";
+import { microCreditsToCredits } from "@app/lib/credits/units";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import type { WeightedRateLimiterEntry } from "@app/lib/utils/rate_limiter";
 import {
-  getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
+  getWeightedRateLimiterEntries,
+  getWeightedRateLimiterUsage,
+  getWeightedRateLimiterUsageForKeys,
 } from "@app/lib/utils/rate_limiter";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type {
-  WorkspacePoolCreditState,
-  WorkspaceProgrammaticCreditState,
-} from "@app/types/credits";
-import {
-  isWorkspacePoolCreditState,
-  isWorkspaceProgrammaticCreditState,
-} from "@app/types/credits";
+import type { WorkspacePoolCreditState } from "@app/types/credits";
+import { isWorkspacePoolCreditState } from "@app/types/credits";
 import type { UserCreditState } from "@app/types/memberships";
 import {
   isSpendingFromPersonalSeat,
   isUserCreditState,
+  normalizeUserCreditState,
 } from "@app/types/memberships";
 import type { MaxAwuCreditsTimeframeType, PlanType } from "@app/types/plan";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -58,12 +64,16 @@ export type FairUseAwuCreditsStatus = {
   limit: number;
   timeframe: MaxAwuCreditsTimeframeType;
   count: number;
+  nextResetAt?: string | null;
+  // Optional for compatibility with clients deployed before the refill schedule was added.
+  refillSchedule?: { date: string; credits: number }[];
 };
 
 const DEFAULT_FAIR_USE_AWU_CREDITS_STATUS: FairUseAwuCreditsStatus = {
   limit: -1,
   timeframe: "lifetime",
   count: 0,
+  nextResetAt: null,
 };
 
 export type GetWorkspaceUsageStatusResponseBody = {
@@ -75,13 +85,14 @@ export type GetWorkspaceUsageStatusResponseBody = {
   // Redis-only flag, independent of the throttling states (active_low_balance etc.).
   programmaticWarningReached: boolean;
   balanceThresholdReached: boolean;
-  // Authoritative block reason from isUserBlocked — null means the user can
+  // Authoritative block reason from access_control's isUserBlocked — null means the user can
   // send messages. Replaces the old client-side derivations (noSeat,
   // awuStatus === "blocked", poolCreditState === "depleted").
   userBlockedReason: UserBlockedReason | null;
   canRequestUpgrade: boolean;
   hasPendingUpgradeRequest: boolean;
   willAutoUpgrade: boolean;
+  requireReason: boolean;
 };
 
 export type GetFairUseCreditsResponseBody = {
@@ -98,12 +109,6 @@ function buildUserCreditStateKey(workspaceId: string, userId: string): string {
   return `metronome:user_credit_state:${workspaceId}:${userId}`;
 }
 
-function buildWorkspaceProgrammaticCreditStatusKey(
-  workspaceId: string
-): string {
-  return `metronome:programmatic_credit_status:${workspaceId}`;
-}
-
 function buildWorkspaceBalanceThresholdReachedKey(workspaceId: string): string {
   return `metronome:balance_threshold_warning:${workspaceId}`;
 }
@@ -112,62 +117,6 @@ async function setFlag(key: string, value: string): Promise<void> {
   await runOnRedis({ origin: REDIS_ORIGIN }, async (client) => {
     await client.set(key, value);
   });
-}
-
-// Per-user "near limit" flag — stored independently of the credit state so
-// the warning signal can be decoupled from the seat↔pool dimension.
-//
-// Set to true by:
-//   - `spend_threshold_reached` (warningAlertId, isPerUser): consumption reached
-//     80% of the per-user cap (seat allowance + pool limit). Pro/max pool users.
-//   - `low_remaining_contract_credit_balance_reached` (threshold > 0): a free
-//     seat's lifetime credit balance crossed the low-balance threshold.
-// Set to false by:
-//   - `spend_threshold_reached` resolved (warningAlertId, isPerUser): cap raised/removed.
-//   - `low_remaining_contract_credit_balance_resolved`: free seat credit recovered.
-//   - Admin removes/raises per-user cap (spend_limit.ts).
-//   - Reconciliation: recomputed from live Metronome balance on each reconcile.
-//
-// Cache-miss fallback: infer from the credit state so that existing
-// `on_pool_low_balance` / `user_seat_low_balance` rows continue to show the
-// banner until they are migrated or reconciled.
-
-function buildUserNearLimitKey(workspaceId: string, userId: string): string {
-  return `metronome:user_near_limit:${workspaceId}:${userId}`;
-}
-
-export async function setUserNearLimit(
-  workspaceId: string,
-  userId: string,
-  nearLimit: boolean
-): Promise<void> {
-  await setFlag(
-    buildUserNearLimitKey(workspaceId, userId),
-    nearLimit ? "1" : "0"
-  );
-}
-
-async function getUserNearLimit(
-  workspaceId: string,
-  userId: string
-): Promise<boolean> {
-  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
-    client.get(buildUserNearLimitKey(workspaceId, userId))
-  );
-  if (cached !== null) {
-    return cached === "1";
-  }
-  // Cache miss: fall back to credit state for existing rows that haven't been
-  // migrated yet (on_pool_low_balance / user_seat_low_balance).
-  const state = await getUserCreditState(workspaceId, userId);
-  return state === "on_pool_low_balance" || state === "user_seat_low_balance";
-}
-
-export async function isUserAwuWarned(
-  workspaceId: string,
-  userId: string
-): Promise<boolean> {
-  return getUserNearLimit(workspaceId, userId);
 }
 
 // Workspace credit-balance threshold reached (admin-configured early warning).
@@ -198,34 +147,25 @@ export async function isWorkspaceBalanceThresholdReached(
   return val === "1";
 }
 
-// Workspace programmatic 80% warning — set when the warning alert fires,
-// cleared on cap reset or reconcile. Redis-only; no DB fallback (cold miss
-// reads as false). Drives the banner independently of the throttling states.
+function getFairUseCreditsRefillSchedule({
+  entries,
+  windowMs,
+}: {
+  entries: WeightedRateLimiterEntry[];
+  windowMs: number;
+}): { date: string; credits: number }[] {
+  const creditsByRefillDay = new Map<string, number>();
+  for (const { timestampMs, microCredits } of entries) {
+    const date = new Date(timestampMs + windowMs).toISOString().slice(0, 10);
+    creditsByRefillDay.set(
+      date,
+      (creditsByRefillDay.get(date) ?? 0) + microCreditsToCredits(microCredits)
+    );
+  }
 
-function buildWorkspaceProgrammaticWarningKey(workspaceId: string): string {
-  return `metronome:programmatic_warning:${workspaceId}`;
-}
-
-export async function setWorkspaceProgrammaticWarningReached(
-  workspaceId: string
-): Promise<void> {
-  await setFlag(buildWorkspaceProgrammaticWarningKey(workspaceId), "1");
-}
-
-export async function clearWorkspaceProgrammaticWarningReached(
-  workspaceId: string
-): Promise<void> {
-  await setFlag(buildWorkspaceProgrammaticWarningKey(workspaceId), "0");
-}
-
-export async function isWorkspaceProgrammaticWarningReached(
-  workspaceId: string
-): Promise<boolean> {
-  const val = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
-    client.get(buildWorkspaceProgrammaticWarningKey(workspaceId))
-  );
-  // Redis miss (null) returns false: prefer not showing the banner over a false positive on cache wipe.
-  return val === "1";
+  return Array.from(creditsByRefillDay.entries())
+    .map(([date, credits]) => ({ date, credits }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export async function getFairUseAwuCreditsStatus({
@@ -249,20 +189,27 @@ export async function getFairUseAwuCreditsStatus({
       limit,
       timeframe,
       count: 0,
+      nextResetAt: null,
     };
   }
 
-  const result = await getRateLimiterCount({
-    key: makeFairUseAwuCreditsRateLimitKeyForUser(workspace, user, timeframe),
-    timeframeSeconds: getTimeframeSecondsFromLiteral(timeframe),
-  });
+  const timeframeSeconds = getTimeframeSecondsFromLiteral(timeframe);
+  const key = makeFairUseAwuCreditsRateLimitKeyForUser(
+    workspace,
+    user,
+    timeframe
+  );
+  const [usageResult, entriesResult] = await Promise.all([
+    getWeightedRateLimiterUsage({ key, timeframeSeconds }),
+    getWeightedRateLimiterEntries({ key, timeframeSeconds }),
+  ]);
 
-  if (result.isErr()) {
+  if (usageResult.isErr()) {
     logger.error(
       {
         workspaceId: workspace.sId,
         userId: user.sId,
-        error: result.error,
+        error: usageResult.error,
       },
       "Failed to read fair-use AWU credits usage status."
     );
@@ -271,14 +218,81 @@ export async function getFairUseAwuCreditsStatus({
       limit,
       timeframe,
       count: 0,
+      nextResetAt: null,
     };
   }
 
+  if (entriesResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        userId: user.sId,
+        error: entriesResult.error,
+      },
+      "Failed to read fair-use AWU credits refill schedule."
+    );
+  }
+
+  const windowMs = timeframeSeconds * 1000;
+
+  // The counter stores microCredits; the status stays credit-denominated (with
+  // decimals), so convert before capping against the credit limit.
   return {
     limit,
     timeframe,
-    count: Math.min(result.value, limit),
+    count: Math.min(microCreditsToCredits(usageResult.value.count), limit),
+    nextResetAt:
+      usageResult.value.oldestTimestampMs === null
+        ? null
+        : new Date(
+            usageResult.value.oldestTimestampMs + windowMs
+          ).toISOString(),
+    refillSchedule: entriesResult.isOk()
+      ? getFairUseCreditsRefillSchedule({
+          entries: entriesResult.value,
+          windowMs,
+        })
+      : [],
   };
+}
+
+// Bulk variant of `getFairUseAwuCreditsStatus`
+export async function getFairUseAwuCreditsUsedCountsByUser({
+  workspace,
+  users,
+  plan,
+}: {
+  workspace: LightWorkspaceType;
+  users: UserType[];
+  plan: PlanType | null;
+}): Promise<Map<string, number>> {
+  if (!plan || plan.limits.assistant.maxAwuCredits === -1) {
+    return new Map();
+  }
+
+  const { maxAwuCredits: limit, maxAwuCreditsTimeframe: timeframe } =
+    plan.limits.assistant;
+  const timeframeSeconds = getTimeframeSecondsFromLiteral(timeframe);
+
+  const keyByUserId = new Map(
+    users.map((user) => [
+      user.sId,
+      makeFairUseAwuCreditsRateLimitKeyForUser(workspace, user, timeframe),
+    ])
+  );
+
+  const result = await getWeightedRateLimiterUsageForKeys({
+    keys: Array.from(keyByUserId.values()),
+    timeframeSeconds,
+  });
+  const usageByKey = result.isOk() ? result.value : new Map();
+
+  return new Map(
+    Array.from(keyByUserId, ([sId, key]) => [
+      sId,
+      Math.min(microCreditsToCredits(usageByKey.get(key)?.count ?? 0), limit),
+    ])
+  );
 }
 
 // Unified read
@@ -303,9 +317,15 @@ function deriveBlockedReason({
   return null;
 }
 
-export async function isUserBlocked(
+export async function isUserBlockedByMetronome(
   workspace: LightWorkspaceType,
-  user: UserResource
+  user: UserResource,
+  // Whether the user has hit their per-user spend cap, resolved from the Redis
+  // rate-limiter counter by the wrapper in
+  // `lib/api/credits/access_control.ts`. The pool/seat logic (no_seat, pool
+  // depletion, personal-seat carve-out) stays defined here so it lives in one
+  // place.
+  { userCapBlocked }: { userCapBlocked: boolean }
 ): Promise<UserBlockedReason | null> {
   const workspaceId = workspace.sId;
   const userId = user.sId;
@@ -319,7 +339,10 @@ export async function isUserBlocked(
     return "no_seat";
   }
 
-  const [creditStateRaw, poolStatusRaw] = await runOnRedis(
+  // Batch both flag reads on a single Redis round-trip; each value keeps its own
+  // DB read-through fallback below (credit state via `resolveUserCreditState`,
+  // pool status via `getWorkspaceCreditPoolStatus`).
+  const [userCreditStateRaw, poolStatusRaw] = await runOnRedis(
     { origin: REDIS_ORIGIN },
     async (client) =>
       Promise.all([
@@ -328,11 +351,11 @@ export async function isUserBlocked(
       ])
   );
 
-  // Both getters have their own DB fallback and cache repopulation.
-  const userCreditState =
-    creditStateRaw && isUserCreditState(creditStateRaw)
-      ? creditStateRaw
-      : await getUserCreditState(workspaceId, userId);
+  const userCreditState = await resolveUserCreditState(
+    workspaceId,
+    userId,
+    userCreditStateRaw
+  );
 
   const poolStatus =
     poolStatusRaw && isWorkspacePoolCreditState(poolStatusRaw)
@@ -341,15 +364,25 @@ export async function isUserBlocked(
 
   let workspacePoolDepleted = poolStatus === "depleted";
 
-  // A user spending from their personal seat balance (`user_seat` /
-  // `user_seat_low_balance`) still has their own credits, so workspace pool
-  // depletion must not block them — only their per-user cap can.
-  if (workspacePoolDepleted && isSpendingFromPersonalSeat(userCreditState)) {
+  // A user spending from their personal seat balance (`user_seat`) still has
+  // their own credits, so workspace pool depletion must not block them — only
+  // their per-user cap can. A free seat is the same case: it spends from its own
+  // lifetime credit allowance (enforced by the per-user rate cap) and never from
+  // the workspace pool, so pool depletion must not block it either. Keying the
+  // free-seat carve-out on `seatType` (rather than the credit state) keeps its
+  // blocking governed solely by the rate-limiter counter, so a credit regrant
+  // unblocks immediately instead of waiting on the webhook that clears the stale
+  // `poolCreditState` / `creditState`.
+  if (
+    workspacePoolDepleted &&
+    (isSpendingFromPersonalSeat(userCreditState) ||
+      membership?.seatType === "free")
+  ) {
     workspacePoolDepleted = false;
   }
 
   return deriveBlockedReason({
-    userCapBlocked: userCreditState === "capped",
+    userCapBlocked,
     workspacePoolDepleted,
   });
 }
@@ -364,14 +397,15 @@ export async function setUserCreditState(
   await setFlag(buildUserCreditStateKey(workspaceId, userId), state);
 }
 
-async function getUserCreditState(
+// Resolve the user credit state from an already-fetched cached value, falling
+// back to the DB (and repopulating the cache) on a miss or a legacy/invalid
+// value. Takes the cached value as an argument so the caller can batch the
+// Redis read with other keys on a single round-trip.
+async function resolveUserCreditState(
   workspaceId: string,
-  userId: string
+  userId: string,
+  cached: string | null
 ): Promise<UserCreditState> {
-  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
-    client.get(buildUserCreditStateKey(workspaceId, userId))
-  );
-
   if (cached && isUserCreditState(cached)) {
     return cached;
   }
@@ -405,10 +439,12 @@ async function getUserCreditState(
       workspace: renderLightWorkspaceType({ workspace }),
     });
 
-  const state: UserCreditState =
-    membership && isUserCreditState(membership.creditState)
-      ? membership.creditState
-      : "on_pool";
+  // Normalize so legacy rows (pre-narrowing `*_low_balance` / `capped` / `normal`
+  // values) map onto the canonical `user_seat` / `on_pool` set until the backfill
+  // migration lands.
+  const state: UserCreditState = membership
+    ? normalizeUserCreditState(membership.creditState)
+    : "on_pool";
 
   await setFlag(buildUserCreditStateKey(workspaceId, userId), state);
   return state;
@@ -456,58 +492,10 @@ export async function getWorkspaceCreditPoolStatus(
   return status;
 }
 
-// Workspace programmatic credit state (monthly cap).
-
-export async function setWorkspaceProgrammaticCreditStatus(
-  workspaceId: string,
-  status: WorkspaceProgrammaticCreditState
-): Promise<void> {
-  await setFlag(buildWorkspaceProgrammaticCreditStatusKey(workspaceId), status);
-}
-
-export async function getWorkspaceProgrammaticCreditStatus(
-  workspaceId: string
-): Promise<WorkspaceProgrammaticCreditState> {
-  const cached = await runOnRedis({ origin: REDIS_ORIGIN }, async (client) =>
-    client.get(buildWorkspaceProgrammaticCreditStatusKey(workspaceId))
-  );
-
-  if (cached && isWorkspaceProgrammaticCreditState(cached)) {
-    return cached;
-  }
-
-  logger.info(
-    {
-      workspaceId,
-      workspaceProgrammaticCreditStatusCacheHit: false,
-    },
-    "[MetronomeUserBlock] Cache miss during programmatic credit status check, falling back to DB"
-  );
-
-  const workspace = await WorkspaceResource.fetchById(workspaceId);
-  if (!workspace) {
-    logger.warn(
-      { workspaceId },
-      "[MetronomeUserBlock] Workspace not found during programmatic credit status cache read-through fallback"
-    );
-    return "active";
-  }
-
-  const status = workspace.programmaticCreditState;
-  await setFlag(buildWorkspaceProgrammaticCreditStatusKey(workspaceId), status);
-  return status;
-}
-
-export async function isProgrammaticApiBlocked(
+// Workspace-pool-only read for API calls (no per-user cap).
+export async function isPoolDepletedByMetronome(
   workspaceId: string
 ): Promise<boolean> {
-  // getWorkspaceProgrammaticCreditStatus has its own DB fallback and cache repopulation.
-  const status = await getWorkspaceProgrammaticCreditStatus(workspaceId);
-  return status === "depleted";
-}
-
-// Workspace-pool-only read for API calls (no per-user cap).
-export async function isApiBlocked(workspaceId: string): Promise<boolean> {
   // getWorkspaceCreditPoolStatus has its own DB fallback and cache repopulation.
   const poolStatus = await getWorkspaceCreditPoolStatus(workspaceId);
   return poolStatus === "depleted";

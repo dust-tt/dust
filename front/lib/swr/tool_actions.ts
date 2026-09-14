@@ -147,9 +147,7 @@ export function useResolveAuthentication({
         }
         await fetcher(request.url, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(request.body),
         });
 
@@ -196,9 +194,7 @@ export function useValidateAction({ owner, onError }: UseValidateActionParams) {
         }
         await fetcher(request.url, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(request.body),
         });
 

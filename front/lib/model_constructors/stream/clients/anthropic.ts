@@ -81,6 +81,10 @@ export abstract class AnthropicStream extends WithAnthropicAIInputConverter(
     super();
     this.client = new AnthropicClient({
       apiKey: ANTHROPIC_API_KEY,
+      // The agent loop owns retries so every attempt has a distinct, observable Dust trace.
+      // Hidden SDK retries can populate the prompt cache on an unobserved attempt, then report
+      // only the cache-hit usage of the successful retry.
+      maxRetries: 0,
     });
   }
 

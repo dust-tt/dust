@@ -16,7 +16,7 @@ import logger from "@connectors/logger/logger";
 /**
  * Utility function to call the Intercom API.
  * It centralizes calling the API and handling global errors.
- * Returns null in case of 404 errors.
+ * Returns null for 404 and other non-retryable errors.
  */
 async function queryIntercomAPI({
   accessToken,
@@ -58,37 +58,14 @@ async function queryIntercomAPI({
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  let text;
+  const text = await rawResponse.text();
+
+  let response;
   try {
-    // We get the text and attempt to parse so that we can log the raw text in case of error (the
-    // body is already consumed by response.json() if used otherwise).
-    text = await rawResponse.text();
-
-    const response = JSON.parse(text);
-
-    if (!rawResponse.ok) {
-      if (
-        response.type === "error.list" &&
-        response.errors &&
-        response.errors.length > 0
-      ) {
-        const error = response.errors[0];
-        // This error is thrown when we are dealing with a revoked OAuth token.
-        if (error.code === "unauthorized") {
-          throw new ExternalOAuthTokenError();
-        }
-        // We return null for 404 errors.
-        if (error.code.toLowerCase() === "not_found") {
-          return null;
-        }
-      }
-    }
-
-    return response;
+    response = JSON.parse(text);
   } catch (e) {
     if (rawResponse.status === 405) {
-      const isCaptchaError = text?.includes("captcha-container");
-
+      const isCaptchaError = text.includes("captcha-container");
       throw new ProviderWorkflowError(
         "intercom",
         `405 - ${isCaptchaError ? "Captcha error" : text}`,
@@ -102,6 +79,40 @@ async function queryIntercomAPI({
     );
     throw e;
   }
+
+  if (!rawResponse.ok) {
+    if (
+      response.type === "error.list" &&
+      response.errors &&
+      response.errors.length > 0
+    ) {
+      const error = response.errors[0];
+      // This error is thrown when we are dealing with a revoked OAuth token.
+      if (error.code === "unauthorized") {
+        throw new ExternalOAuthTokenError();
+      }
+      // We return null for 404 errors.
+      if (error.code.toLowerCase() === "not_found") {
+        return null;
+      }
+    }
+
+    if (rawResponse.status === 429 || rawResponse.status >= 500) {
+      throw new ProviderWorkflowError(
+        "intercom",
+        `${rawResponse.status} - ${text}`,
+        "transient_upstream_activity_error"
+      );
+    }
+
+    logger.warn(
+      { path, statusCode: rawResponse.status, response: text },
+      "[Intercom] Non-retryable API error"
+    );
+    return null;
+  }
+
+  return response;
 }
 
 /**
@@ -472,11 +483,19 @@ export async function fetchIntercomConversation({
   accessToken: string;
   conversationId: string;
 }): Promise<IntercomConversationWithPartsType | null> {
+  if (!conversationId) {
+    return null;
+  }
+
   const response = await queryIntercomAPI({
     accessToken,
     path: `conversations/${conversationId}`,
     method: "GET",
   });
+
+  if (!response?.id) {
+    return null;
+  }
 
   return response;
 }

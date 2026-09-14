@@ -1,10 +1,8 @@
 import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
-import type { PodFrameTab } from "@app/types/pod_frame_tab";
-import {
-  PodFrameTabsSchema,
-  PodTabsOrderSchema,
-} from "@app/types/pod_frame_tab";
-import type { PodType, SpaceType } from "@app/types/space";
+import type { GroupKind } from "@app/types/groups";
+import type { PodFileTab } from "@app/types/pod_file_tab";
+import { PodFileTabsSchema, PodTabsOrderSchema } from "@app/types/pod_file_tab";
+import type { EnrichedSpaceType, PodType, SpaceType } from "@app/types/space";
 import type { SpaceUserType } from "@app/types/user";
 import { z } from "zod";
 
@@ -45,41 +43,33 @@ export const PatchPodMetadataBodySchema = z.object({
   todoGenerationEnabled: z.boolean().optional(),
   initialTodoAnalysisLookback: z.enum(["now", "last_24h", "max"]).optional(),
   pinnedFramePath: z.string().nullable().optional(),
-  frameTabs: PodFrameTabsSchema.optional(),
+  frameTabs: PodFileTabsSchema.optional(),
   tabsOrder: PodTabsOrderSchema.optional(),
   defaultAgentId: z.string().nullable().optional(),
   defaultSkillIds: z.array(z.string()).optional(),
-  isAdminControlled: z.boolean().optional(),
 });
 
 export type PatchPodMetadataBodyType = z.infer<
   typeof PatchPodMetadataBodySchema
 >;
 
-export const PostSpaceRequestBodySchema = z.intersection(
-  z.object({
-    isRestricted: z.boolean(),
-    name: z.string(),
-    spaceKind: z.enum(["regular", "project"]),
-  }),
-  z.discriminatedUnion("managementMode", [
-    z.object({
-      memberIds: z.array(z.string()),
-      managementMode: z.literal("manual"),
-    }),
-    z.object({
-      groupIds: z.array(z.string()),
-      managementMode: z.literal("group"),
-    }),
-  ])
-);
+// A new space's members: its manual member list, the groups given access to it, or both. A
+// dimension the request leaves out is simply not seeded (see
+// `PatchSpaceMembersRequestBodySchema` for the same shape on update).
+export const PostSpaceRequestBodySchema = z.object({
+  isRestricted: z.boolean(),
+  name: z.string(),
+  spaceKind: z.enum(["regular", "project"]),
+  memberIds: z.array(z.string()).optional(),
+  groupIds: z.array(z.string()).optional(),
+});
 
 export type PostSpaceRequestBodyType = z.infer<
   typeof PostSpaceRequestBodySchema
 >;
 
 export type GetSpacesResponseBody = {
-  spaces: (SpaceType | PodType)[];
+  spaces: (EnrichedSpaceType | PodType)[];
 };
 
 export type PostSpacesResponseBody = {
@@ -91,12 +81,24 @@ export type SpaceCategoryInfo = {
   count: number;
 };
 
-export type RichSpaceType = SpaceType & {
+/**
+ * A group given access to a space: who it is, what it confers, and since when. The space's members
+ * are its individual members plus the members of these groups.
+ */
+export type SpaceGroupAccessType = {
+  sId: string;
+  name: string;
+  kind: GroupKind;
+  role: "member" | "editor";
+};
+
+export type RichSpaceType = EnrichedSpaceType & {
   categories: { [key: string]: SpaceCategoryInfo };
   canWrite: boolean;
   canRead: boolean;
   isMember: boolean;
   members: SpaceUserType[];
+  groups: SpaceGroupAccessType[];
   isEditor: boolean;
   // Useful in case of projects
   description: string | null;
@@ -105,10 +107,9 @@ export type RichSpaceType = SpaceType & {
   todoGenerationEnabled: boolean;
   lastTodoAnalysisAt: number | null;
   pinnedFramePath: string | null;
-  frameTabs: PodFrameTab[];
+  frameTabs: PodFileTab[];
   tabsOrder: string[];
-  /** Workspace admins control membership and connected data (project spaces only). */
-  isAdminControlled: boolean;
+  isAdminControlled: false;
 };
 
 export type GetSpaceResponseBody = {

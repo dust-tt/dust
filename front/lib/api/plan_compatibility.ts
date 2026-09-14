@@ -3,7 +3,7 @@ import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import type { Authenticator } from "@app/lib/auth";
 import { doesConnectorProviderCountTowardConnectionsLimit } from "@app/lib/data_sources";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { WorkspacePlanLimitOverrideResource } from "@app/lib/resources/workspace_plan_limit_override_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { PlanType } from "@app/types/plan";
 
 type PlanFitResult = {
@@ -34,8 +34,9 @@ export async function checkWorkspaceFitsPlanLimits(
   const { limits } = plan;
   const violations: string[] = [];
 
-  const planLimitOverride =
-    await WorkspacePlanLimitOverrideResource.fetchByWorkspace({ workspace });
+  const planLimitOverride = await WorkspaceResource.fetchPlanLimitOverride(
+    workspace.id
+  );
   const maxUsers =
     planLimitOverride?.maxUsersInWorkspace ?? limits.users.maxUsers;
   const maxVaults =

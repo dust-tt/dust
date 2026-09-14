@@ -1,12 +1,13 @@
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import { addFileToProject } from "@app/lib/api/projects/context";
-import type { Authenticator } from "@app/lib/auth";
+import { type Authenticator, hasFeatureFlag } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import { isConversationFileUseCase } from "@app/types/files";
+import { frameContentType, isConversationFileUseCase } from "@app/types/files";
 import { readableToReadableStream } from "@app/types/shared/utils/streams";
 import { createHono } from "@front-api/lib/hono";
 import type { WorkspaceAwareCtx } from "@front-api/middlewares/ctx";
@@ -71,7 +72,7 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  * /api/w/{wId}/files/{fileId}:
  *   get:
  *     summary: Get or download a file
- *     description: View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download).
+ *     description: View or download a file. Skill attachments require read access to their associated skill. Use query parameters `version` (original, processed, public) and `action` (view, download). Downloading a Frames v2 file redirects to its source folder as a ZIP archive.
  *     tags:
  *       - Private Files
  *     parameters:
@@ -112,7 +113,7 @@ const app = createHono<WorkspaceAwareCtx & { Bindings: HttpBindings }>();
  *               type: string
  *               format: binary
  *       302:
- *         description: Redirect to signed download URL
+ *         description: Redirect to a signed download URL, or to the source folder ZIP archive for a Frames v2 file
  *       404:
  *         description: File not found
  *   post:
@@ -221,6 +222,26 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
 
   const action = getSecureFileAction(ctx.req.query("action"), file);
   if (action === "view") {
+    if (file.isFrameV2 && (await hasFeatureFlag(auth, "frames_v2"))) {
+      const owner = renderLightWorkspaceType({
+        workspace: auth.getNonNullableWorkspace(),
+      });
+      const uiBundle = await file.getRenderableContent(owner);
+      if (!uiBundle) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "file_not_found",
+            message: "Published Frame not found.",
+          },
+        });
+      }
+
+      return ctx.body(uiBundle, 200, {
+        "Content-Type": frameContentType,
+      });
+    }
+
     const versionParam = ctx.req.query("version");
     // Default to the frame's renderable version (a published frame serves its built bundle);
     // non-frame files and unpublished frames resolve to "original". An explicit ?version wins.
@@ -233,6 +254,10 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
       status: 200,
       headers: { "Content-Type": file.contentType },
     });
+  }
+
+  if (file.isFrameV2) {
+    return redirectToFrameSourceArchive(ctx, file);
   }
 
   // Redirect to a signed URL.
@@ -261,7 +286,7 @@ app.delete("/", validate("param", ParamsSchema), async (ctx) => {
   const isFileAuthor = file.userId === auth.user()?.id;
   const isUploadUseCase =
     file.useCase === "upsert_table" || file.useCase === "folders_document";
-  const canWriteInSpace = space ? space.canWrite(auth) : false;
+  const canWriteInSpace = space ? auth.can("write", space) : false;
 
   if (
     isUploadUseCase &&
@@ -341,7 +366,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const isFileAuthor = file.userId === auth.user()?.id;
   const isUploadUseCase =
     file.useCase === "upsert_table" || file.useCase === "folders_document";
-  const canWriteInSpace = space ? space.canWrite(auth) : false;
+  const canWriteInSpace = space ? auth.can("write", space) : false;
 
   if (
     isUploadUseCase &&
@@ -445,6 +470,40 @@ app.route("/save-in-project", saveInProject);
 app.route("/share", shareApp);
 app.route("/signed-url", signedUrl);
 
+/**
+ * @cc [owner:davidebbo,label:product] frame-v2-downloads-its-sources
+ * Downloading a Frames v2 file must serve its whole source folder as a ZIP archive, never a
+ * canonical stored object: a Frame registered from its mount path has none. It must fail with a
+ * 404 when the Frame has no source folder.
+ */
+function redirectToFrameSourceArchive(
+  ctx: Context<WorkspaceAwareCtx & { Bindings: HttpBindings }>,
+  file: FileResource
+) {
+  const auth = ctx.get("auth");
+  const sourceDirectory = file.getFrameV2SourceDirectoryPath(auth);
+  if (!sourceDirectory) {
+    return apiError(ctx, {
+      status_code: 404,
+      api_error: {
+        type: "file_not_found",
+        message: "Frame source folder not found.",
+      },
+    });
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+  const encodedPath = sourceDirectory
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
+
+  // The Location is relative on purpose, for the reasons `redirectToSse` documents.
+  return ctx.redirect(
+    `/api/w/${owner.sId}/files/path/${encodedPath}?archive=zip`
+  );
+}
+
 async function canWriteSkillFile(
   auth: Authenticator,
   file: FileResource
@@ -512,7 +571,7 @@ async function checkFileAccess(
     file.useCase === "folders_document" ||
     file.useCase === "project_context"
   ) {
-    if (!space || !space.canRead(auth)) {
+    if (!space || !auth.can("read", space)) {
       return apiError(ctx, {
         status_code: 404,
         api_error: { type: "file_not_found", message: "File not found." },

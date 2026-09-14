@@ -11,6 +11,11 @@ import { getNotionUrlStatusHandler } from "@connectors/api/notion_url_status";
 import { pauseConnectorAPIHandler } from "@connectors/api/pause_connector";
 import { setConnectorPermissionsAPIHandler } from "@connectors/api/set_connector_permissions";
 import {
+  deleteSlackBotSummoningWhitelistHandler,
+  getSlackBotSummoningWhitelistHandler,
+  postSlackBotSummoningWhitelistHandler,
+} from "@connectors/api/slack_bot_summoning_whitelist";
+import {
   getSlackChannelsLinkedWithAgentHandler,
   patchSlackChannelsLinkedWithAgentHandler,
 } from "@connectors/api/slack_channels_linked_with_agent";
@@ -133,6 +138,19 @@ export function startServer(port: number) {
   app.get(
     "/slack/channels/linked_with_agent",
     getSlackChannelsLinkedWithAgentHandler
+  );
+
+  app.get(
+    "/slack/bots/summoning_whitelist",
+    getSlackBotSummoningWhitelistHandler
+  );
+  app.post(
+    "/slack/bots/summoning_whitelist",
+    postSlackBotSummoningWhitelistHandler
+  );
+  app.delete(
+    "/slack/bots/summoning_whitelist",
+    deleteSlackBotSummoningWhitelistHandler
   );
 
   app.get("/notion/url/status", getNotionUrlStatusHandler);

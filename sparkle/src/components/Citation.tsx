@@ -36,12 +36,25 @@ const citationVariants = cva(
 
 type CitationProps = CardProps & {
   children: React.ReactNode;
+  /** Lay the parts out on a single row instead of the stacked card layout. */
   compact?: boolean;
+  /** Overlay a spinner while the source is loading. */
   isLoading?: boolean;
+  /** Text shown under the loading spinner. */
   loadingLabel?: React.ReactNode;
+  /** Tooltip shown when hovering the citation. */
   tooltip?: string;
 };
 
+/**
+ * A clickable source reference shown alongside agent answers: a composable surface
+ * filled with CitationIcons (plus an optional CitationIndex), CitationTitle, and
+ * CitationDescription, with CitationImage for image sources and a CitationClose
+ * action to make it dismissable. Use it to attribute an answer to a document, web
+ * page, Slack thread, or table, laid out with CitationGrid; for plain file
+ * attachments, use AttachmentChip instead.
+ * @summary Source reference card.
+ */
 const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
   (
     {
@@ -109,6 +122,7 @@ const Citation = React.forwardRef<HTMLDivElement, CitationProps>(
 
 Citation.displayName = "Citation";
 
+/** Small numbered badge for a citation, used for numbered inline references. */
 const CitationIndex = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -152,10 +166,13 @@ const citationGridVariants = cva("grid gap-2", {
 });
 
 interface CitationGridProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** `grid` for a responsive multi-column grid, `list` for a single column. */
   variant?: CitationGridVariantType;
+  /** Render items in reverse visual order (e.g. newest at the bottom). */
   reversed?: boolean;
 }
 
+/** Responsive container for laying out multiple Citations as a grid or list. */
 const CitationGrid = React.forwardRef<HTMLDivElement, CitationGridProps>(
   ({ children, className, variant, reversed, ...props }, ref) => {
     return (
@@ -179,6 +196,7 @@ interface CitationCloseProps
   onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
+/** Close button for a dismissable Citation, typically passed as its `action`. */
 const CitationClose = React.forwardRef<HTMLButtonElement, CitationCloseProps>(
   ({ className, onClick, ...props }, ref) => {
     return (
@@ -204,13 +222,16 @@ interface CitationImageProps {
   imgSrc: string;
   alt?: string;
   title?: string;
+  /** URL offered for downloading the image. */
   downloadUrl?: string;
   isLoading?: boolean;
+  /** Invoked when the preview's close affordance is clicked; its presence shows it. */
   onClose?: () => void;
   onClick?: (e: React.MouseEvent) => void;
   className?: string;
 }
 
+/** Image preview filling a Citation, for image sources. */
 const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
   (
     { imgSrc, alt, title, downloadUrl, isLoading, onClose, onClick, className },
@@ -236,6 +257,7 @@ const CitationImage = React.forwardRef<HTMLDivElement, CitationImageProps>(
 
 CitationImage.displayName = "CitationImage";
 
+/** Icon row of a Citation: source logo/favicon and optional CitationIndex. */
 const CitationIcons = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -282,6 +304,7 @@ interface CitationTitleProps extends React.HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
 }
 
+/** Single-line, truncating title of a Citation. */
 const CitationTitle = React.forwardRef<HTMLDivElement, CitationTitleProps>(
   ({ children, className, ...props }, ref) => {
     const { compact } = React.useContext(CitationContext);
@@ -310,6 +333,7 @@ interface CitationDescriptionProps
   children: ReactNode;
 }
 
+/** Single-line, truncating muted description of a Citation. */
 const CitationDescription = React.forwardRef<
   HTMLDivElement,
   CitationDescriptionProps

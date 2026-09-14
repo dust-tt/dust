@@ -448,14 +448,14 @@ const maybeApplyProcessing = async (
     return new Ok(undefined);
   }
 
-  const start = performance.now();
+  const startedAtMs = performance.now();
   const res = await entry.process(auth, file);
 
-  const elapsed = performance.now() - start;
+  const elapsedMs = performance.now() - startedAtMs;
   logger.info(
     {
       file: file.toPublicJSON(auth),
-      elapsed,
+      elapsedMs,
       error: res.isErr() ? res.error : undefined,
     },
     "Processed file"

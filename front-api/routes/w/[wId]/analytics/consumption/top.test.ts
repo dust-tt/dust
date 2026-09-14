@@ -8,6 +8,10 @@ import {
   type GetConsumptionTopApiKeysResponse,
 } from "@app/lib/api/analytics/consumption/top_api_keys";
 import {
+  fetchConsumptionTopConversations,
+  type GetConsumptionTopConversationsResponse,
+} from "@app/lib/api/analytics/consumption/top_conversations";
+import {
   fetchConsumptionTopGroups,
   type GetConsumptionTopGroupsResponse,
 } from "@app/lib/api/analytics/consumption/top_groups";
@@ -15,6 +19,10 @@ import {
   fetchConsumptionTopModels,
   type GetConsumptionTopModelsResponse,
 } from "@app/lib/api/analytics/consumption/top_models";
+import {
+  fetchConsumptionTopReasoningEfforts,
+  type GetConsumptionTopReasoningEffortsResponse,
+} from "@app/lib/api/analytics/consumption/top_reasoning_efforts";
 import {
   fetchConsumptionTopSkills,
   type GetConsumptionTopSkillsResponse,
@@ -32,6 +40,7 @@ import {
   type GetConsumptionTopUsersResponse,
 } from "@app/lib/api/analytics/consumption/top_users";
 import { ElasticsearchError } from "@app/lib/api/elasticsearch";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import type { MembershipRoleType } from "@app/types/memberships";
 import { Err, Ok } from "@app/types/shared/result";
@@ -64,6 +73,20 @@ vi.mock(
   async (orig) => {
     const mod = await orig();
     return { ...mod, fetchConsumptionTopModels: vi.fn() };
+  }
+);
+vi.mock(
+  import("@app/lib/api/analytics/consumption/top_reasoning_efforts"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, fetchConsumptionTopReasoningEfforts: vi.fn() };
+  }
+);
+vi.mock(
+  import("@app/lib/api/analytics/consumption/top_conversations"),
+  async (orig) => {
+    const mod = await orig();
+    return { ...mod, fetchConsumptionTopConversations: vi.fn() };
   }
 );
 vi.mock(
@@ -156,6 +179,17 @@ const TOP_API_KEYS: GetConsumptionTopApiKeysResponse = {
   ],
 };
 
+const TOP_CONVERSATIONS: GetConsumptionTopConversationsResponse = {
+  period: PERIOD,
+  conversations: [
+    {
+      conversationId: "conversation1",
+      title: "Quarterly report",
+      totalCredits: 420,
+    },
+  ],
+};
+
 const TOP_MODELS: GetConsumptionTopModelsResponse = {
   period: PERIOD,
   totalCredits: 5000,
@@ -168,6 +202,23 @@ const TOP_MODELS: GetConsumptionTopModelsResponse = {
       credits: 400,
       previousCredits: null,
       messageCount: 8,
+      avgCreditsPerMessage: 50,
+    },
+  ],
+};
+
+const TOP_REASONING_EFFORTS: GetConsumptionTopReasoningEffortsResponse = {
+  period: PERIOD,
+  totalCredits: 5000,
+  totalCount: 2,
+  hasMore: false,
+  reasoningEfforts: [
+    {
+      reasoningEffort: "medium",
+      name: "Medium",
+      credits: 300,
+      previousCredits: null,
+      messageCount: 6,
       avgCreditsPerMessage: 50,
     },
   ],
@@ -193,6 +244,7 @@ const TOP_SOURCES: GetConsumptionTopSourcesResponse = {
 const TOP_GROUPS: GetConsumptionTopGroupsResponse = {
   period: PERIOD,
   totalCredits: 5000,
+  totalActiveMembers: 8,
   totalCount: 1,
   hasMore: false,
   groups: [
@@ -200,6 +252,8 @@ const TOP_GROUPS: GetConsumptionTopGroupsResponse = {
       groupId: "group1",
       name: "Engineering",
       credits: 200,
+      activeMembers: 3,
+      totalMembers: 5,
       previousCredits: null,
       messageCount: 4,
       avgCreditsPerMessage: 50,
@@ -282,6 +336,16 @@ const RANKINGS = [
     lastCall: () => vi.mocked(fetchConsumptionTopModels).mock.lastCall,
   },
   {
+    path: "top-reasoning-efforts",
+    body: TOP_REASONING_EFFORTS,
+    arrangeOk: () =>
+      vi
+        .mocked(fetchConsumptionTopReasoningEfforts)
+        .mockResolvedValue(new Ok(TOP_REASONING_EFFORTS)),
+    lastCall: () =>
+      vi.mocked(fetchConsumptionTopReasoningEfforts).mock.lastCall,
+  },
+  {
     path: "top-sources",
     body: TOP_SOURCES,
     arrangeOk: () =>
@@ -317,6 +381,11 @@ const RANKINGS = [
   },
 ];
 
+const PERSONAL_RANKINGS = RANKINGS.filter(
+  ({ path }) => path !== "top-users" && path !== "top-groups"
+);
+const AGENT_RANKINGS = RANKINGS.filter(({ path }) => path !== "top-agents");
+
 async function setupTest({
   role = "admin",
 }: {
@@ -328,9 +397,16 @@ async function setupTest({
 function postRankingRequest(
   wId: string,
   path: string,
-  body: Record<string, unknown> = {}
+  body: Record<string, unknown> = {},
+  personal = false,
+  agentId?: string
 ) {
-  return honoApp.request(`/api/w/${wId}/analytics/consumption/${path}`, {
+  const analyticsPath = agentId
+    ? `assistant/agent_configurations/${agentId}/analytics`
+    : personal
+      ? "me/analytics"
+      : "analytics";
+  return honoApp.request(`/api/w/${wId}/${analyticsPath}/consumption/${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -359,7 +435,8 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
       offset: 0,
       period: { startDate: expect.any(String), endDate: expect.any(String) },
       search: undefined,
-      filter: undefined,
+      filter: {},
+      sortOrder: "desc",
     });
   });
 
@@ -369,6 +446,84 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     const response = await postRankingRequest(workspace.sId, path);
 
     expect(response.status).toBe(403);
+  });
+
+  it.each(
+    PERSONAL_RANKINGS
+  )("$path lets members read only their own consumption", async ({
+    path,
+    arrangeOk,
+    lastCall,
+  }) => {
+    arrangeOk();
+    const { workspace, user } = await setupTest({ role: "user" });
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      path,
+      { filter: { users: ["another-user"], sources: ["slack"] } },
+      true
+    );
+
+    expect(response.status).toBe(200);
+    expect(lastCall()?.[1]).toEqual(
+      expect.objectContaining({
+        filter: { users: [user.sId], sources: ["slack"] },
+      })
+    );
+  });
+
+  it.each([
+    "top-users",
+    "top-groups",
+  ])("%s is not mounted for personal analytics", async (path) => {
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await postRankingRequest(workspace.sId, path, {}, true);
+
+    expect(response.status).toBe(404);
+  });
+
+  it.each(
+    AGENT_RANKINGS
+  )("$path lets editors rank only the selected agent's consumption", async ({
+    path,
+    arrangeOk,
+    lastCall,
+  }) => {
+    arrangeOk();
+    const { auth, workspace } = await setupTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      path,
+      { filter: { agents: ["another-agent"], sources: ["slack"] } },
+      false,
+      agent.sId
+    );
+
+    expect(response.status).toBe(200);
+    expect(lastCall()?.[1]).toEqual(
+      expect.objectContaining({
+        filter: { agents: [agent.sId], sources: ["slack"] },
+      })
+    );
+  });
+
+  it("does not mount the agent ranking for agent-scoped analytics", async () => {
+    const { auth, workspace } = await setupTest({ role: "user" });
+    const agent = await AgentConfigurationFactory.createTestAgent(auth);
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      "top-agents",
+      {},
+      false,
+      agent.sId
+    );
+
+    expect(response.status).toBe(404);
   });
 
   it("forwards the page, the period, the search and the filter", async () => {
@@ -453,5 +608,61 @@ describe("POST /api/w/:wId/analytics/consumption/top-*", () => {
     expect(await response.json()).toMatchObject({
       error: { type: "internal_server_error" },
     });
+  });
+
+  it("returns the member's most expensive conversations", async () => {
+    vi.mocked(fetchConsumptionTopConversations).mockResolvedValue(
+      new Ok(TOP_CONVERSATIONS)
+    );
+    const { workspace, user } = await setupTest({ role: "user" });
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      "top-conversations",
+      {
+        period: "days",
+        days: 7,
+        filter: { users: ["another-user"], sources: ["web"] },
+      },
+      true
+    );
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual(TOP_CONVERSATIONS);
+    expect(fetchConsumptionTopConversations).toHaveBeenCalledWith(
+      expect.anything(),
+      {
+        period: { startDate: expect.any(String), endDate: expect.any(String) },
+        limit: 10,
+        filter: { users: [user.sId], sources: ["web"] },
+      }
+    );
+  });
+
+  it("does not mount top conversations on workspace analytics", async () => {
+    const { workspace } = await setupTest({ role: "admin" });
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      "top-conversations"
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it("returns 500 when the conversation ranking fails", async () => {
+    vi.mocked(fetchConsumptionTopConversations).mockResolvedValue(
+      new Err(new ElasticsearchError("query_error", "boom"))
+    );
+    const { workspace } = await setupTest({ role: "user" });
+
+    const response = await postRankingRequest(
+      workspace.sId,
+      "top-conversations",
+      {},
+      true
+    );
+
+    expect(response.status).toBe(500);
   });
 });

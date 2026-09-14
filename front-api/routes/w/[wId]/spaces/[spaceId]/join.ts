@@ -4,7 +4,6 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { withSpace } from "@front-api/middlewares/with_space";
@@ -30,23 +29,12 @@ app.post(
       });
     }
 
-    if (space.isProjectAndRestricted()) {
+    if (await space.isRestricted(auth)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {
           type: "workspace_auth_error",
           message: "This Pod is restricted. You need to be invited to join.",
-        },
-      });
-    }
-
-    if (space.managementMode !== "manual") {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "invalid_request_error",
-          message:
-            "You cannot join this Pod, its members are not managed manually.",
         },
       });
     }
@@ -61,24 +49,11 @@ app.post(
       });
     }
 
-    const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-      space,
-      filterOnManagementMode: true,
-    });
-
-    if (memberGroupSpaces.length !== 1) {
-      return apiError(ctx, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "There should be exactly one member group for the Pod.",
-        },
-      });
-    }
-
-    const memberGroupSpace = memberGroupSpaces[0];
+    // The space is an open, manually-managed project and the caller is not yet a member (checked
+    // above), so self-join is authorized; add directly to the member group (from group_permissions).
+    const memberGroup = await space.fetchManualMemberGroup(auth);
     const user = auth.getNonNullableUser();
-    const result = await memberGroupSpace.addMembers(auth, {
+    const result = await memberGroup.dangerouslyAddMembers(auth, {
       users: [user.toJSON()],
     });
     if (result.isErr()) {

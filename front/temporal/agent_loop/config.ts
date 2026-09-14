@@ -63,6 +63,7 @@ export function getQueueForUserMessageOrigin(
     case "zendesk":
       return "programmatic";
     case "agent_sidekick":
+    case "analytics_panel":
     case "onboarding_conversation":
     case "project_kickoff":
     case "reinforced_skill_notification":
@@ -88,7 +89,8 @@ export function getQueueForUserMessageOrigin(
   }
 }
 
-// Max retry attempts for the runModelAndCreateActions activity.
+// Attempt after which run_model surfaces a retryable model error to the user instead of throwing
+// for a Temporal retry (see shouldSurfaceModelError).
 export const RUN_MODEL_MAX_RETRIES = 5;
 
 // Leave room for our code to surface a retryable agent error before Temporal enforces StartToClose.
@@ -96,6 +98,12 @@ export const RUN_MODEL_ACTIVITY_TIMEOUT_SAFETY_MARGIN_MS = 1 * 60 * 1000;
 
 export const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
 export const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
+
+// Heartbeat cadence for the whole model activity. Its setup phase (agent data loading, MCP
+// tools listing, conversation rendering) can stall past the heartbeat timeout, e.g. a hung MCP
+// server's tools/list call times out after 60s, exactly the heartbeat timeout. Aligned with the
+// worker's maxHeartbeatThrottleInterval.
+export const MODEL_ACTIVITY_HEARTBEAT_INTERVAL_MS = 20 * 1000;
 
 // Heartbeat cadence while tool result processing runs (file handling can take minutes): fire
 // comfortably within the heartbeat timeout.

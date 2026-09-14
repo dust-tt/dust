@@ -72,13 +72,7 @@ import {
 } from "@connectors/types";
 import type { DataSourceViewType } from "@dust-tt/client";
 import { DustAPI, Err, Ok } from "@dust-tt/client";
-import type {
-  CodedError,
-  ConversationsInfoResponse,
-  WebAPIPlatformError,
-  WebClient,
-} from "@slack/web-api";
-import { ErrorCode } from "@slack/web-api";
+import type { ConversationsInfoResponse, WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/types/response/ChannelsInfoResponse";
 import type {
   ConversationsHistoryResponse,
@@ -515,11 +509,7 @@ export async function syncNonThreaded({
         { source: "syncNonThreaded" }
       );
     } catch (e) {
-      const maybeSlackPlatformError = e as WebAPIPlatformError;
-      if (
-        maybeSlackPlatformError.code === "slack_webapi_platform_error" &&
-        maybeSlackPlatformError.data?.error === "not_in_channel"
-      ) {
+      if (isWebAPIPlatformError(e) && e.data.error === "not_in_channel") {
         // If the bot is no longer in the channel, we don't upsert anything.
         return;
       }
@@ -889,19 +879,13 @@ export async function syncThread(
     );
     allMessages = allMessages.filter((m) => !!m.user);
   } catch (e) {
-    const slackError = e as CodedError;
-    if (slackError.code === ErrorCode.PlatformError) {
-      const platformError = slackError as WebAPIPlatformError;
-
-      if (platformError.data.error === "thread_not_found") {
+    if (isWebAPIPlatformError(e)) {
+      if (e.data.error === "thread_not_found") {
         // If the thread is not found we just return and don't upsert anything.
         return;
       }
 
-      if (
-        platformError.code === "slack_webapi_platform_error" &&
-        platformError.data?.error === "not_in_channel"
-      ) {
+      if (e.data.error === "not_in_channel") {
         // If the bot is no longer in the channel, we don't upsert anything.
         return;
       }

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React, { ComponentType } from "react";
+import { fn } from "storybook/test";
 
 import { Card, Icon } from "@sparkle/components";
 import {
@@ -74,6 +75,11 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+/**
+ * Interactive single card — tweak any prop from the Controls panel.
+ *
+ * @summary Interactive playground.
+ */
 export const Playground: Story = {
   args: {
     variant: "primary",
@@ -86,6 +92,12 @@ export const Playground: Story = {
   render: (args) => <Card {...args} />,
 };
 
+/**
+ * The default surface for grouped content — a bordered card on the page
+ * background.
+ *
+ * @summary Default primary variant.
+ */
 export const Primary: Story = {
   args: {
     variant: "primary",
@@ -94,6 +106,12 @@ export const Primary: Story = {
   },
 };
 
+/**
+ * A softer, filled surface for content that should sit slightly back from
+ * primary cards.
+ *
+ * @summary Filled secondary variant.
+ */
 export const Secondary: Story = {
   args: {
     variant: "secondary",
@@ -102,6 +120,12 @@ export const Secondary: Story = {
   },
 };
 
+/**
+ * The most minimal treatment, for dense layouts where a full card surface
+ * would be too heavy.
+ *
+ * @summary Minimal tertiary variant.
+ */
 export const Tertiary: Story = {
   args: {
     variant: "tertiary",
@@ -110,6 +134,12 @@ export const Tertiary: Story = {
   },
 };
 
+/**
+ * `disabled` reduces opacity and blocks interactions, for options that are
+ * temporarily unavailable.
+ *
+ * @summary Disabled, non-interactive state.
+ */
 export const DisabledCard: Story = {
   args: {
     variant: "primary",
@@ -119,6 +149,12 @@ export const DisabledCard: Story = {
   },
 };
 
+/**
+ * `selected` highlights the card as the current choice; use it in single- or
+ * multi-select grids.
+ *
+ * @summary Selected highlight state.
+ */
 export const SelectedCard: Story = {
   args: {
     variant: "secondary",
@@ -128,6 +164,12 @@ export const SelectedCard: Story = {
   },
 };
 
+/**
+ * `isPulsing` animates the card to draw the eye. Reserve it for one element
+ * at a time.
+ *
+ * @summary Pulsing attention state.
+ */
 export const PulsingCard: Story = {
   args: {
     variant: "primary",
@@ -137,56 +179,47 @@ export const PulsingCard: Story = {
   },
 };
 
-export const AllVariants: Story = {
-  render: () => {
-    const variants = CARD_VARIANTS;
-    const sizes = CARD_SIZES;
-
-    return (
-      <div className="flex flex-col gap-8 text-foreground">
-        {variants.map((variant) => (
-          <div key={variant} className="flex flex-col gap-4">
-            <h3 className="text-lg font-semibold">
-              {variant.charAt(0).toUpperCase() + variant.slice(1)} Variant
-            </h3>
-            <div className="flex gap-4">
-              {sizes.map((size) => (
-                <div>
-                  <Card
-                    key={size}
-                    variant={variant}
-                    size={size}
-                    onClick={() => {
-                      console.log(
-                        `Button clicked - Size: ${size}, Variant: ${variant}`
-                      );
-                    }}
-                  >
-                    Hello World
-                  </Card>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+/**
+ * An `onClick` makes the whole card the interactive target — prefer this over
+ * nesting a button when the card represents a single action.
+ *
+ * @summary Whole-card click target.
+ */
+export const ClickableCard: Story = {
+  args: {
+    variant: "primary",
+    size: "md",
+    children: "Clickable Card",
+    onClick: fn(),
   },
 };
 
-export const InteractiveStates: Story = {
+/**
+ * Visual reference: every variant crossed with every size. For design review —
+ * not a usage example.
+ *
+ * @summary Visual reference of all variants and sizes.
+ */
+export const AllVariants: Story = {
+  tags: ["!manifest"],
   render: () => (
-    <div className="flex gap-4">
-      <Card
-        variant="primary"
-        onClick={() => alert("Primary Clicked")}
-        className="hover:bg-primary-200"
-      >
-        Hover/Active
-      </Card>
-      <Card variant="secondary" disabled>
-        Disabled
-      </Card>
+    <div className="flex flex-col gap-8 text-foreground">
+      {CARD_VARIANTS.map((variant) => (
+        <div key={variant} className="flex flex-col gap-4">
+          <h3 className="text-lg font-semibold">
+            {variant.charAt(0).toUpperCase() + variant.slice(1)} Variant
+          </h3>
+          <div className="flex gap-4">
+            {CARD_SIZES.map((size) => (
+              <div key={size}>
+                <Card variant={variant} size={size} onClick={fn()}>
+                  Hello World
+                </Card>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   ),
 };
@@ -235,17 +268,21 @@ const cardData: CardData[] = [
   },
 ];
 
+/**
+ * Cards in a responsive **CardGrid**, each exposing a dismiss control through
+ * the `action` slot (a **CardActionButton**).
+ *
+ * @summary Action slot with a dismiss button, in a grid.
+ */
 export const WithActions: Story = {
   render: () => (
     <CardGrid>
-      {cardData.map((card, index) => (
+      {cardData.map((card) => (
         <Card
-          key={index}
+          key={card.title}
           variant="primary"
           size="md"
-          onClick={() => {
-            alert(`You clicked on ${card.title}`);
-          }}
+          onClick={fn()}
           action={<CardActionButton size="icon" icon={XClose} />}
         >
           <div className="flex w-full flex-col gap-1 text-sm">
@@ -263,6 +300,12 @@ export const WithActions: Story = {
   ),
 };
 
+/**
+ * A single-select grid: clicking a card moves the `selected` state, the usual
+ * pattern for picking a tool or data source.
+ *
+ * @summary Single-select card grid.
+ */
 export const SelectableGrid: Story = {
   render: () => {
     const [selected, setSelected] = React.useState(0);
@@ -294,6 +337,12 @@ export const SelectableGrid: Story = {
   },
 };
 
+/**
+ * A binary either/or choice built from two secondary cards sharing one
+ * `selected` state.
+ *
+ * @summary Two-option exclusive choice.
+ */
 export const DualSelectable: Story = {
   render: () => {
     const [selectedIndex, setSelectedIndex] = React.useState(0);

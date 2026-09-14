@@ -73,6 +73,9 @@ export abstract class AnthropicAgentPlatformStream extends WithAnthropicAIInputC
     this.client = new AnthropicVertex({
       region: this.constructor.regionalEndpoint,
       projectId: AGENT_PLATFORM_PROJECT_ID,
+      // The agent loop owns retries so every attempt is observable and billed
+      // from the usage reported by that exact attempt.
+      maxRetries: 0,
     });
   }
 

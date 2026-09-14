@@ -1,30 +1,120 @@
+import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
+import { ConsumptionPeriodSelector } from "@app/components/workspace/analytics/consumption/ConsumptionPeriodSelector";
+import { SummaryCard } from "@app/components/workspace/analytics/SummaryCard";
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
-import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
+import { APIKeysTable } from "@app/components/workspace/api-keys/APIKeysTable";
 import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapDialog";
 import { EditKeyCreditCapDialog } from "@app/components/workspace/api-keys/EditKeyCreditCapDialog";
 import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import type { KeyRole } from "@app/components/workspace/api-keys/utils";
+import { useConsumptionTop } from "@app/hooks/useConsumptionTop";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_period";
+import { DEFAULT_CONSUMPTION_PERIOD } from "@app/lib/analytics/consumption_period";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { formatCredits } from "@app/lib/client/credits";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useKeys } from "@app/lib/swr/apps";
-import { useGroups } from "@app/lib/swr/groups";
-import type { GroupType } from "@app/types/groups";
+import { useKeyScopableSpaces } from "@app/lib/swr/spaces";
+import type { ConsumptionScopeFilter } from "@app/types/api/analytics/consumption";
 import type { KeyType } from "@app/types/key";
 import { isCreditPricedPlan } from "@app/types/plan";
-import type { ModelId } from "@app/types/shared/model_id";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { WorkspaceType } from "@app/types/user";
-import { BookOpen01, Button, Page, Spinner } from "@dust-tt/sparkle";
+import { BookOpen01, Button, LoadingBlock, Page } from "@dust-tt/sparkle";
 import get from "lodash/get";
 import { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
-interface APIKeysProps {
+interface APIKeysPageContentProps {
   owner: WorkspaceType;
+  period: ConsumptionPeriodSelection;
 }
 
-export function APIKeys({ owner }: APIKeysProps) {
+const MAX_API_KEY_CONSUMPTION_ROWS = 100;
+
+interface APIKeysOverviewProps {
+  keys: KeyType[];
+  workspaceId: WorkspaceType["sId"];
+  period: ConsumptionPeriodSelection;
+  isKeysLoading: boolean;
+}
+
+function APIKeysOverview({
+  keys,
+  workspaceId,
+  period,
+  isKeysLoading,
+}: APIKeysOverviewProps) {
+  const apiKeyNames = useMemo(
+    () => [...new Set(keys.map((key) => key.name))].sort(),
+    [keys]
+  );
+  const consumptionFilter = useMemo<ConsumptionScopeFilter | undefined>(
+    () => (apiKeyNames.length > 0 ? { api_keys: apiKeyNames } : undefined),
+    [apiKeyNames]
+  );
+  const {
+    totalCredits,
+    totalCount: consumingKeyCount,
+    isTopLoading: isConsumptionLoading,
+    isTopError: consumptionError,
+  } = useConsumptionTop({
+    workspaceId,
+    dimension: "api_key",
+    period,
+    limit: Math.max(
+      1,
+      Math.min(apiKeyNames.length, MAX_API_KEY_CONSUMPTION_ROWS)
+    ),
+    filter: consumptionFilter,
+    disabled: apiKeyNames.length === 0,
+  });
+  if (isKeysLoading || isConsumptionLoading) {
+    return (
+      <div className="grid gap-4 sm:grid-cols-2">
+        <LoadingBlock className="h-24 rounded-xl" />
+        <LoadingBlock className="h-24 rounded-xl" />
+      </div>
+    );
+  }
+
+  const activeKeyCount = keys.filter((key) => key.status === "active").length;
+  const cappedKeyCount = keys.filter(
+    (key) => key.status === "active" && key.isSpendCapped
+  ).length;
+  const revokedKeyCount = keys.length - activeKeyCount;
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <SummaryCard
+        label="Credits"
+        value={consumptionError ? "—" : formatCredits(totalCredits)}
+        hint={
+          consumptionError
+            ? "Credit consumption is temporarily unavailable"
+            : consumingKeyCount > 0
+              ? `${consumingKeyCount.toLocaleString()} API key${pluralize(consumingKeyCount)} used this period`
+              : "No API key consumption this period"
+        }
+      />
+      <SummaryCard
+        label="Keys active"
+        value={`${activeKeyCount.toLocaleString()} / ${keys.length.toLocaleString()}`}
+        hint={
+          cappedKeyCount > 0
+            ? `${cappedKeyCount.toLocaleString()} at the monthly cap`
+            : revokedKeyCount > 0
+              ? `${revokedKeyCount.toLocaleString()} revoked`
+              : null
+        }
+      />
+    </div>
+  );
+}
+
+export function APIKeysPageContent({ owner, period }: APIKeysPageContentProps) {
   const { mutate } = useSWRConfig();
   const { subscription } = useAuth();
   const showLegacyUsdMonthlyCap = !isCreditPricedPlan(subscription.plan);
@@ -32,15 +122,10 @@ export function APIKeys({ owner }: APIKeysProps) {
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
   const [editCapKey, setEditCapKey] = useState<KeyType | null>(null);
 
-  const { isValidating, keys } = useKeys(owner);
-  const { groups, isGroupsLoading } = useGroups({ owner });
-
-  const groupsById = useMemo(() => {
-    return groups.reduce<Record<ModelId, GroupType>>((acc, group) => {
-      acc[group.id] = group;
-      return acc;
-    }, {});
-  }, [groups]);
+  const { isKeysError, isKeysLoading, keys } = useKeys(owner);
+  const { spaces, isSpacesError, isSpacesLoading } = useKeyScopableSpaces({
+    owner,
+  });
 
   const sendNotification = useSendNotification();
 
@@ -48,13 +133,13 @@ export function APIKeys({ owner }: APIKeysProps) {
     useSubmitFunction(
       async ({
         name,
-        groups: selectedGroups,
+        spaceIds,
         monthlyCapMicroUsd,
         monthlyCapAwuCredits,
         role,
       }: {
         name: string;
-        groups: GroupType[];
+        spaceIds: string[];
         monthlyCapMicroUsd: number | null;
         monthlyCapAwuCredits: number | null;
         role: KeyRole;
@@ -66,7 +151,7 @@ export function APIKeys({ owner }: APIKeysProps) {
           },
           body: JSON.stringify({
             name,
-            group_ids: selectedGroups.map((g) => g.sId),
+            space_ids: spaceIds,
             monthly_cap_micro_usd: monthlyCapMicroUsd,
             monthly_cap_awu_credits: monthlyCapAwuCredits,
             role,
@@ -170,11 +255,6 @@ export function APIKeys({ owner }: APIKeysProps) {
       }
     });
 
-  // Show a loading spinner while API keys or groups are being fetched.
-  if (isValidating || isGroupsLoading) {
-    return <Spinner />;
-  }
-
   return (
     <>
       <APIKeyCreationSheet
@@ -187,35 +267,49 @@ export function APIKeys({ owner }: APIKeysProps) {
         latestKey={keys[0]}
         workspace={owner}
       />
-      <Page.Horizontal align="stretch">
-        <div className="w-full" />
-        <Button
-          label="Read the API reference"
-          size="sm"
-          variant="outline"
-          icon={BookOpen01}
-          onClick={() => {
-            window.open("https://docs.dust.tt/reference", "_blank");
-          }}
-        />
-        <NewAPIKeyDialog
-          groups={groups}
-          isGenerating={isGenerating}
+      <Page.Vertical align="stretch" gap="xl">
+        <Page.Horizontal align="right">
+          <Button
+            label="API Reference"
+            size="sm"
+            variant="outline"
+            icon={BookOpen01}
+            href="https://docs.dust.tt/reference"
+            target="_blank"
+            rel="noreferrer"
+          />
+          <NewAPIKeyDialog
+            spaces={spaces}
+            disabled={isSpacesLoading || isSpacesError}
+            isGenerating={isGenerating}
+            isRevoking={isRevoking}
+            onCreate={handleGenerate}
+            showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
+          />
+        </Page.Horizontal>
+        {!isKeysError && (
+          <APIKeysOverview
+            keys={keys}
+            workspaceId={owner.sId}
+            period={period}
+            isKeysLoading={isKeysLoading}
+          />
+        )}
+        <APIKeysTable
+          keys={keys}
+          workspaceId={owner.sId}
+          period={period}
+          isLoading={isKeysLoading}
+          isError={!!isKeysError}
+          showAnalyticsConsumption={showCreditMonthlyCap}
           isRevoking={isRevoking}
-          onCreate={handleGenerate}
+          isGenerating={isGenerating}
+          onRevoke={handleRevoke}
+          onEditCap={setEditCapKey}
           showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
+          showCreditMonthlyCap={showCreditMonthlyCap}
         />
-      </Page.Horizontal>
-      <APIKeysList
-        keys={keys}
-        groupsById={groupsById}
-        isRevoking={isRevoking}
-        isGenerating={isGenerating}
-        onRevoke={handleRevoke}
-        onEditCap={setEditCapKey}
-        showLegacyUsdMonthlyCap={showLegacyUsdMonthlyCap}
-        showCreditMonthlyCap={showCreditMonthlyCap}
-      />
+      </Page.Vertical>
       {showLegacyUsdMonthlyCap && editCapKey && (
         <EditKeyCapDialog
           keyData={editCapKey}
@@ -240,19 +334,32 @@ export function APIKeys({ owner }: APIKeysProps) {
 
 export function APIKeysPage() {
   const owner = useWorkspace();
+  const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
+    DEFAULT_CONSUMPTION_PERIOD
+  );
 
   return (
-    <>
+    <AdminPageContainer>
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
-          title="API Keys"
-          description="API Keys allow you to securely connect to Dust from other applications and work with your data programmatically."
+          title={
+            <div className="flex w-full flex-col justify-between gap-4 sm:flex-row sm:items-start">
+              <div className="flex max-w-2xl flex-col gap-1">
+                <Page.H variant="h3">Dust API Keys</Page.H>
+                <Page.P variant="secondary">
+                  Create and manage keys to access the Dust API, track their
+                  usage, and control their monthly spend.
+                </Page.P>
+              </div>
+              <ConsumptionPeriodSelector
+                period={period}
+                onPeriodChange={setPeriod}
+              />
+            </div>
+          }
         />
-        <Page.Vertical align="stretch" gap="md">
-          <APIKeys owner={owner} />
-        </Page.Vertical>
+        <APIKeysPageContent owner={owner} period={period} />
       </Page.Vertical>
-      <div className="h-12" />
-    </>
+    </AdminPageContainer>
   );
 }

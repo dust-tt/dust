@@ -18,9 +18,12 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
+import { UniqueConstraintError } from "sequelize";
 
 export interface MembershipUpgradeRequestResource
   extends ReadonlyAttributesType<MembershipUpgradeRequestModel> {}
+
+export class UpgradeRequestReasonRequiredError extends Error {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpgradeRequestModel> {
@@ -64,36 +67,68 @@ export class MembershipUpgradeRequestResource extends BaseResource<MembershipUpg
   }
 
   // Create a pending request for the given member, or return the existing
-  // pending one if there already is one (idempotent — requesting again while a
-  // request is pending is a no-op). The partial unique index also guards
-  // against concurrent duplicates.
+  // pending one if there already is one.
   static async createPending(
     auth: Authenticator,
-    { user, reason }: { user: UserResource; reason: string | null }
+    {
+      user,
+      reason,
+      reasonRequired,
+    }: { user: UserResource; reason: string | null; reasonRequired: boolean }
   ): Promise<Result<MembershipUpgradeRequestResource, Error>> {
     const workspace = auth.getNonNullableWorkspace();
-    const row = await withTransaction(async (transaction) => {
-      const existing = await this.model.findOne({
-        where: {
-          workspaceId: workspace.id,
-          userId: user.id,
-          status: "pending",
-        },
-        transaction,
+    let row;
+    try {
+      row = await withTransaction(async (transaction) => {
+        const existing = await this.model.findOne({
+          where: {
+            workspaceId: workspace.id,
+            userId: user.id,
+            status: "pending",
+          },
+          transaction,
+        });
+        if (existing) {
+          return existing;
+        }
+        if (reasonRequired && !reason?.trim()) {
+          throw new UpgradeRequestReasonRequiredError(
+            "A reason is required to submit an upgrade request."
+          );
+        }
+        return this.model.create(
+          {
+            workspaceId: workspace.id,
+            userId: user.id,
+            status: "pending",
+            reason,
+          },
+          { transaction }
+        );
       });
-      if (existing) {
-        return existing;
+    } catch (err) {
+      if (err instanceof UpgradeRequestReasonRequiredError) {
+        return new Err(err);
       }
-      return this.model.create(
-        {
-          workspaceId: workspace.id,
-          userId: user.id,
-          status: "pending",
-          reason,
-        },
-        { transaction }
-      );
-    });
+      if (err instanceof UniqueConstraintError) {
+        // Lost the race on the partial unique index: another request
+        // created the pending row between our `findOne` and `create`.
+        // Reuse it so `createPending` stays idempotent under concurrency.
+        const existing = await this.model.findOne({
+          where: {
+            workspaceId: workspace.id,
+            userId: user.id,
+            status: "pending",
+          },
+        });
+        if (!existing) {
+          return new Err(normalizeError(err));
+        }
+        row = existing;
+      } else {
+        return new Err(normalizeError(err));
+      }
+    }
     const membership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
         user,

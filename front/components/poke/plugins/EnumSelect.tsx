@@ -98,6 +98,7 @@ export function EnumSelect({
                 return (
                   <PokeCommandItem
                     value={option.label}
+                    keywords={[option.value.replaceAll("_", " ")]}
                     key={option.value}
                     onSelect={() => {
                       onValuesChange([option.value]);

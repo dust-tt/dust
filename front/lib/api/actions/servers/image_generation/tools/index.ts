@@ -21,7 +21,7 @@ import type {
 } from "@app/lib/api/actions/servers/image_generation/imageGeneration";
 import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/image_generation/metadata";
 import type { Authenticator } from "@app/lib/auth";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { Err } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -65,7 +65,7 @@ export function createImageGenerationTools(
 
       const { providerId } = imageGenerationModel;
 
-      getStatsDClient().increment("tools.image_generation.generated", 1, [
+      statsDMetrics.increment("tools.image_generation.generated", 1, [
         `aspect_ratio:${aspectRatio}`,
         `image_count:${referenceImages?.length ?? 0}`,
         `quality:${quality}`,

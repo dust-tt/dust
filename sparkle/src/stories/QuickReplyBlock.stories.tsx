@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
+import { fn } from "storybook/test";
 
 import {
   Button,
@@ -31,37 +32,75 @@ const meta: Meta<typeof QuickReplyBlock> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Examples: Story = {
+// Simulates a network send so the block's pending spinner is visible.
+const sendReply = fn(async () => {
+  await new Promise((resolve) => {
+    setTimeout(resolve, 800);
+  });
+});
+
+/**
+ * The default usage: a group of short, action-oriented replies in a
+ * **QuickReplyContainer**. Clicking one shows the pending state, then the
+ * whole container collapses (the reply was sent). The "Reset" button is story
+ * scaffolding — it remounts the container via a React key so the interaction
+ * can be replayed.
+ * @summary Group of one-tap suggested replies.
+ */
+export const SuggestedReplies: StoryObj = {
   render: () => {
     const [resetKey, setResetKey] = React.useState(0);
-    const handleSend = async () => {
-      await new Promise((resolve) => {
-        setTimeout(resolve, 800);
-      });
-    };
 
     return (
       <div className="flex w-[280px] flex-col gap-3">
         <Button
           variant="outline"
           size="xs"
-          label="Re initiate"
+          label="Reset"
           onClick={() => setResetKey((value) => value + 1)}
         />
         <QuickReplyContainer key={resetKey} className="w-full">
-          <QuickReplyBlock label="Summarize this" onSend={handleSend} />
-          <QuickReplyBlock
-            label="Ask a longer question that should wrap onto multiple lines"
-            onSend={handleSend}
-          />
-          <QuickReplyBlock label="Sending..." onSend={handleSend} />
-          <QuickReplyBlock
-            label="Disabled reply"
-            disabled
-            onSend={handleSend}
-          />
+          <QuickReplyBlock label="Summarize this" onSend={sendReply} />
+          <QuickReplyBlock label="Tell me more" onSend={sendReply} />
+          <QuickReplyBlock label="Draft a follow-up email" onSend={sendReply} />
         </QuickReplyContainer>
       </div>
     );
   },
+};
+
+/**
+ * Labels longer than the container width wrap onto multiple lines instead of
+ * truncating; the block grows vertically to fit.
+ * @summary Long label wrapping onto multiple lines.
+ */
+export const LongLabelWrapping: Story = {
+  args: {
+    label:
+      "Ask a longer follow-up question that does not fit on one line and wraps",
+    onSend: sendReply,
+  },
+  render: (args) => (
+    <QuickReplyContainer className="w-[280px]">
+      <QuickReplyBlock {...args} />
+    </QuickReplyContainer>
+  ),
+};
+
+/**
+ * A disabled reply stays visible but cannot be tapped — for suggestions that
+ * are no longer applicable, or while another send is in flight.
+ * @summary Disabled suggested reply.
+ */
+export const Disabled: Story = {
+  args: {
+    label: "Escalate to support",
+    disabled: true,
+    onSend: sendReply,
+  },
+  render: (args) => (
+    <QuickReplyContainer className="w-[280px]">
+      <QuickReplyBlock {...args} />
+    </QuickReplyContainer>
+  ),
 };

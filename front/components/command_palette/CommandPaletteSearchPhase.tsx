@@ -9,7 +9,7 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { SkillWithoutInstructionsAndToolsType } from "@app/types/assistant/skill_configuration";
 import type { PodType } from "@app/types/space";
-import { Avatar, cn, Icon, SearchInput } from "@dust-tt/sparkle";
+import { Avatar, cn, Icon, LoadingBlock, SearchInput } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 
 export type CommandPaletteItem =
@@ -146,9 +146,9 @@ export function CommandPaletteSearchPhase({
           <div className="flex flex-col gap-1 p-1">
             {Array.from({ length: 9 }, (_, i) => (
               <div key={i} className="flex items-center gap-2.5 px-3 py-2.5">
-                <div className="h-6 w-6 shrink-0 animate-pulse rounded-full bg-muted-background" />
-                <div
-                  className="h-4 animate-pulse rounded bg-muted-background"
+                <LoadingBlock className="h-6 w-6 shrink-0 rounded-full" />
+                <LoadingBlock
+                  className="h-4"
                   style={{ width: `${30 + (i % 3) * 20}%` }}
                 />
               </div>

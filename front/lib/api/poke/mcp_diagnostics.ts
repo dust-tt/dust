@@ -611,6 +611,7 @@ async function runConnectListToolsCheck(
       type: "mcpServerId",
       mcpServerId,
       oAuthUseCase,
+      remoteMCPServerUrl: null,
     },
     toolContext,
   });
@@ -821,9 +822,11 @@ async function resolveServerContext(
 
   let serverViewResource: MCPServerViewResource | null = null;
   if (serverViewId) {
+    // Poke admin diagnostics: surface a restricted server's view too.
     serverViewResource = await MCPServerViewResource.fetchById(
       auth,
-      serverViewId
+      serverViewId,
+      { includeRestricted: true }
     );
     if (!serverViewResource) {
       return {

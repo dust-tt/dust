@@ -1,13 +1,21 @@
-import { getModelLogoByModelId } from "@app/components/providers/types";
-import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { compareForFuzzySort, subFilter } from "@app/lib/utils";
+import { ModelPickerContent } from "@app/components/model_picker/ModelPickerContent";
+import type {
+  ModelPickerSelectionModel,
+  ModelTierId,
+  SelectedEntry,
+} from "@app/components/model_picker/modelPickerUtils";
+import {
+  getModelTier,
+  getTierIdForMetaModelId,
+} from "@app/components/model_picker/modelPickerUtils";
+import { useModelPickerMenuState } from "@app/components/model_picker/useModelPickerMenuState";
+import { useModelPickerModels } from "@app/components/model_picker/useModelPickerModels";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
   CpuChip01,
   DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuSearchbar,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
 import { useState } from "react";
@@ -18,42 +26,71 @@ export type AgentModelFilterType = {
 };
 
 interface ModelsFilterMenuProps {
-  models: AgentModelFilterType[];
+  owner: LightWorkspaceType;
+  // The models the workspace's agents are actually on. Filtering by anything
+  // else would return nothing, and the workspace catalog omits models an agent
+  // may still sit on (feature-flagged, out-of-region or since-retired ones).
+  modelIds: string[];
   selectedModels: AgentModelFilterType[];
   setSelectedModels: (models: AgentModelFilterType[]) => void;
   isCompact?: boolean;
 }
 
-export const ModelsFilterMenu = ({
-  models,
+export function ModelsFilterMenu({
+  owner,
+  modelIds,
   selectedModels,
   setSelectedModels,
   isCompact = false,
-}: ModelsFilterMenuProps) => {
-  const { isDark } = useTheme();
-  const [isDropdownOpen, setDropdownOpen] = useState(false);
-  const [modelSearch, setModelSearch] = useState<string>("");
+}: ModelsFilterMenuProps) {
+  const [isOpen, setIsOpen] = useState(false);
 
-  const selectedModelIds = new Set(selectedModels.map((m) => m.modelId));
+  const { modelProps, allModels } = useModelPickerModels({
+    owner,
+    mode: "filter",
+    modelIds,
+  });
+  const { menuStateProps, resetMenu } = useModelPickerMenuState();
 
-  const searchLower = modelSearch.toLowerCase();
-  const filteredModels = models
-    .filter((m) => subFilter(searchLower, m.displayName.toLowerCase()))
-    .sort((a, b) => {
-      if (modelSearch) {
-        return compareForFuzzySort(searchLower, a.displayName, b.displayName);
-      }
-      return a.displayName.localeCompare(b.displayName);
-    });
+  const selected = selectedModels.flatMap<SelectedEntry>((filter) => {
+    const tierId = getTierIdForMetaModelId(filter.modelId);
+    if (tierId) {
+      return [{ kind: "tier", tierId }];
+    }
+    const model = allModels.find((m) => m.modelId === filter.modelId);
+    return model ? [{ kind: "model", model, effort: null }] : [];
+  });
+
+  const selection: ModelPickerSelectionModel = {
+    selected,
+    agentDefault: null,
+  };
+
+  const toggleFilter = (filter: AgentModelFilterType) => {
+    setSelectedModels(
+      selectedModels.some((f) => f.modelId === filter.modelId)
+        ? selectedModels.filter((f) => f.modelId !== filter.modelId)
+        : [...selectedModels, filter]
+    );
+  };
+
+  const onSelectTier = (tierId: ModelTierId) => {
+    const { metaModelId, name } = getModelTier(tierId);
+    toggleFilter({ modelId: metaModelId, displayName: name });
+  };
+
+  const onSelectModel = (model: ModelConfigurationType) => {
+    toggleFilter({ modelId: model.modelId, displayName: model.displayName });
+  };
 
   return (
     <DropdownMenu
-      open={isDropdownOpen}
+      open={isOpen}
       onOpenChange={(open) => {
-        setDropdownOpen(open);
-        if (!open) {
-          setModelSearch("");
+        if (open) {
+          resetMenu();
         }
+        setIsOpen(open);
       }}
     >
       <DropdownMenuTrigger asChild>
@@ -62,45 +99,16 @@ export const ModelsFilterMenu = ({
           icon={CpuChip01}
           label={isCompact ? undefined : "Models"}
           tooltip={isCompact ? "Models" : undefined}
-          counterValue={selectedModels.length.toString()}
-          isCounter={selectedModels.length > 0}
         />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        className="w-96"
-        dropdownHeaders={
-          <DropdownMenuSearchbar
-            name="modelSearch"
-            placeholder="Search models"
-            value={modelSearch}
-            onChange={setModelSearch}
-          />
-        }
-      >
-        {filteredModels.length === 0 && (
-          <div className="flex items-center justify-center py-4 text-sm">
-            No models found
-          </div>
-        )}
-        {filteredModels.map((model) => (
-          <DropdownMenuCheckboxItem
-            key={model.modelId}
-            label={model.displayName}
-            icon={getModelLogoByModelId(model.modelId, isDark)}
-            truncateText
-            checked={selectedModelIds.has(model.modelId)}
-            onCheckedChange={() => {
-              setSelectedModels(
-                selectedModelIds.has(model.modelId)
-                  ? selectedModels.filter((m) => m.modelId !== model.modelId)
-                  : [...selectedModels, model]
-              );
-            }}
-            // Keep the menu open so several models can be toggled in a row.
-            onSelect={(event) => event.preventDefault()}
-          />
-        ))}
-      </DropdownMenuContent>
+      <ModelPickerContent
+        {...modelProps}
+        {...menuStateProps}
+        side="bottom"
+        selection={selection}
+        onSelectTier={onSelectTier}
+        onSelectModel={onSelectModel}
+      />
     </DropdownMenu>
   );
-};
+}

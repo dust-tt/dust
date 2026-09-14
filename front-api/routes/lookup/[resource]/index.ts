@@ -1,4 +1,3 @@
-import config from "@app/lib/api/config";
 import type {
   InvitationsLookupRequestBodyType,
   InvitationsLookupResponse,
@@ -8,16 +7,17 @@ import type {
   UserLookupResponse,
   WorkspaceLookupRequestBodyType,
   WorkspaceLookupResponse,
-} from "@app/lib/api/regions/lookup";
+} from "@app/lib/api/cells/lookup";
 import {
   handleLookupInvitations,
   handleLookupWorkspace,
-  hasEmailLocalRegionAffinity,
+  hasEmailLocalCellAffinity,
   InvitationsLookupSchema,
   ShareTokenLookupSchema,
   UserLookupSchema,
   WorkspaceLookupSchema,
-} from "@app/lib/api/regions/lookup";
+} from "@app/lib/api/cells/lookup";
+import config from "@app/lib/api/config";
 import { getBearerToken } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -102,7 +102,7 @@ app.post(
           });
         }
         return ctx.json({
-          exists: await hasEmailLocalRegionAffinity(bodyValidation.data.user),
+          exists: await hasEmailLocalCellAffinity(bodyValidation.data.user),
         });
       }
 

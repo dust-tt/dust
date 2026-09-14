@@ -8,18 +8,27 @@ import type {
   RunUsageWithRunKeyType,
 } from "@app/lib/resources/run_resource";
 import type { AgentMCPActionType } from "@app/types/actions";
-import type {
-  AgentMessageConsumptionDetails,
-  AgentMessageConsumptionModelDetails,
-} from "@app/types/assistant/agent_message_consumption";
+import type { AgentMessageConsumptionDetailsWithModels } from "@app/types/assistant/agent_message_consumption";
+import type { ModelId } from "@app/types/shared/model_id";
+import partition from "lodash/partition";
 import type {
   MessageConsumptionAllocation,
   ReconciledCreditAmounts,
 } from "./allocation";
 import { buildLatestMessageConsumptionAllocation } from "./allocation";
 
-export type MessageConsumptionDetails = AgentMessageConsumptionDetails & {
-  models: AgentMessageConsumptionModelDetails[];
+export type MessageConsumptionDetails =
+  AgentMessageConsumptionDetailsWithModels;
+
+export type ToolConsumptionDetailsOverride = {
+  additionalAttributedCredits: number;
+  identity: string;
+  label: string;
+};
+
+export type ToolsAttributedToAgentWork = {
+  additionalAttributedCredits: number;
+  actionModelIds: ReadonlySet<ModelId>;
 };
 
 function buildConsumptionTotals({
@@ -32,12 +41,10 @@ function buildConsumptionTotals({
   agentWorkCredits: number;
 } {
   const reconciledAgentWorkCreditAmountMicro = items.reduce(
-    (total, item) =>
-      item.itemType === "tool"
-        ? total
-        : total + (reconciledCreditAmounts.byItem.get(item) ?? 0),
+    (total, item) => total + (reconciledCreditAmounts.byItem.get(item) ?? 0),
     0
   );
+
   return {
     agentWorkCredits: microCreditsToCredits(
       reconciledAgentWorkCreditAmountMicro
@@ -59,12 +66,18 @@ function buildToolDetails({
   actions,
   items,
   reconciledCreditAmounts,
+  toolDetailsOverridesByActionModelId,
 }: {
   actions: AgentMCPActionResource[];
   items: AgentMessageConsumptionItemResource[];
   reconciledCreditAmounts: ReconciledCreditAmounts;
+  toolDetailsOverridesByActionModelId?: ReadonlyMap<
+    ModelId,
+    ToolConsumptionDetailsOverride
+  >;
 }): MessageConsumptionDetails["tools"] | null {
   const actionByModelId = new Map(actions.map((action) => [action.id, action]));
+  const actionIdsWithAppliedAdditionalCredits = new Set<ModelId>();
   const groupedTools = new Map<
     string,
     MessageConsumptionDetails["tools"][number] & { firstStep: number }
@@ -81,11 +94,17 @@ function buildToolDetails({
     }
 
     const serialized = action.toJSON();
-    const identity = toolIdentity(serialized);
+    const override = toolDetailsOverridesByActionModelId?.get(action.id);
+    const identity = override?.identity ?? toolIdentity(serialized);
     const current = groupedTools.get(identity);
-    const attributedCredits = microCreditsToCredits(
-      reconciledCreditAmounts.byItem.get(item) ?? 0
-    );
+    const additionalAttributedCredits =
+      override && !actionIdsWithAppliedAdditionalCredits.has(action.id)
+        ? override.additionalAttributedCredits
+        : 0;
+    actionIdsWithAppliedAdditionalCredits.add(action.id);
+    const attributedCredits =
+      microCreditsToCredits(reconciledCreditAmounts.byItem.get(item) ?? 0) +
+      additionalAttributedCredits;
     const directCredits = microCreditsToCredits(
       item.directCreditAmountMicro ?? 0
     );
@@ -103,7 +122,7 @@ function buildToolDetails({
     }
 
     groupedTools.set(identity, {
-      label: getToolAggregateDisplayLabel(serialized),
+      label: override?.label ?? getToolAggregateDisplayLabel(serialized),
       internalMCPServerName: serialized.internalMCPServerName,
       toolName: serialized.toolName,
       callCount: 1,
@@ -170,28 +189,46 @@ function buildModelDetails({
 function buildMessageConsumptionDetails({
   actions,
   allocation,
+  toolDetailsOverridesByActionModelId,
+  toolsAttributedToAgentWork,
 }: {
   actions: AgentMCPActionResource[];
   allocation: MessageConsumptionAllocation;
+  toolDetailsOverridesByActionModelId?: ReadonlyMap<
+    ModelId,
+    ToolConsumptionDetailsOverride
+  >;
+  toolsAttributedToAgentWork?: ToolsAttributedToAgentWork;
 }): MessageConsumptionDetails | null {
   const { attributionVersion, items, messageUsages, reconciledCreditAmounts } =
     allocation;
+  const [agentWorkItems, toolItems] = partition(
+    items,
+    (item) =>
+      item.itemType !== "tool" ||
+      (item.agentMCPActionId !== null &&
+        toolsAttributedToAgentWork?.actionModelIds.has(item.agentMCPActionId))
+  );
 
   const tools = buildToolDetails({
     actions,
-    items,
+    items: toolItems,
     reconciledCreditAmounts,
+    toolDetailsOverridesByActionModelId,
   });
   if (!tools) {
     return null;
   }
+  const { agentWorkCredits } = buildConsumptionTotals({
+    items: agentWorkItems,
+    reconciledCreditAmounts,
+  });
 
   return {
     attributionVersion,
-    ...buildConsumptionTotals({
-      items,
-      reconciledCreditAmounts,
-    }),
+    agentWorkCredits:
+      agentWorkCredits +
+      (toolsAttributedToAgentWork?.additionalAttributedCredits ?? 0),
     tools,
     models: buildModelDetails({
       items,
@@ -208,6 +245,8 @@ export function buildLatestAvailableMessageConsumptionDetails({
   dustRunIds,
   items,
   runs,
+  toolDetailsOverridesByActionModelId,
+  toolsAttributedToAgentWork,
   usages,
 }: {
   actions: AgentMCPActionResource[];
@@ -215,9 +254,14 @@ export function buildLatestAvailableMessageConsumptionDetails({
   dustRunIds: string[];
   items: AgentMessageConsumptionItemResource[];
   runs: RunResource[];
+  toolDetailsOverridesByActionModelId?: ReadonlyMap<
+    ModelId,
+    ToolConsumptionDetailsOverride
+  >;
+  toolsAttributedToAgentWork?: ToolsAttributedToAgentWork;
   usages: RunUsageWithRunKeyType[];
 }): MessageConsumptionDetails | null {
-  const allocation = buildLatestMessageConsumptionAllocation({
+  const allocationResult = buildLatestMessageConsumptionAllocation({
     actions,
     billedCredits,
     dustRunIds,
@@ -225,9 +269,14 @@ export function buildLatestAvailableMessageConsumptionDetails({
     runs,
     usages,
   });
-  if (!allocation) {
+  if (allocationResult.isErr()) {
     return null;
   }
 
-  return buildMessageConsumptionDetails({ actions, allocation });
+  return buildMessageConsumptionDetails({
+    actions,
+    allocation: allocationResult.value,
+    toolDetailsOverridesByActionModelId,
+    toolsAttributedToAgentWork,
+  });
 }

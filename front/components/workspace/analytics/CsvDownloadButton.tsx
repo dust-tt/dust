@@ -1,3 +1,4 @@
+import type { ButtonProps } from "@dust-tt/sparkle";
 import { Button, Download01 } from "@dust-tt/sparkle";
 
 interface CsvDownloadButtonProps {
@@ -5,6 +6,7 @@ interface CsvDownloadButtonProps {
   disabled: boolean;
   handleDownload: () => void;
   label?: string;
+  size?: ButtonProps["size"];
 }
 
 export function CsvDownloadButton({
@@ -12,6 +14,7 @@ export function CsvDownloadButton({
   disabled,
   handleDownload,
   label,
+  size,
 }: CsvDownloadButtonProps) {
   return (
     <Button
@@ -19,7 +22,7 @@ export function CsvDownloadButton({
       iconRight={label ? Download01 : undefined}
       label={label}
       variant="outline"
-      size={label ? "sm" : "xs"}
+      size={size ?? (label ? "sm" : "xs")}
       tooltip={label ? undefined : "Download CSV"}
       onClick={handleDownload}
       disabled={disabled}

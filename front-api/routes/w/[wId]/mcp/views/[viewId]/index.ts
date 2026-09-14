@@ -62,6 +62,7 @@ app.patch(
       const updateResult = await updateOAuthUseCaseForMCPServerViews(auth, {
         mcpServerId,
         oAuthUseCase: body.oAuthUseCase,
+        oauthScope: body.oauthScope,
       });
 
       if (updateResult.isErr()) {

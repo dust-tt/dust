@@ -37,7 +37,7 @@ export async function enforcePokeSecurityGates(
   const callerWorkspace = auth.getNonNullableWorkspace();
   const callerUser = auth.user();
 
-  if (!auth.isDustSuperUser()) {
+  if (!callerUser?.isDustSuperUser) {
     return new Err(
       new MCPError(
         "Access denied: poke tools require Dust super user privileges."
@@ -85,8 +85,10 @@ export async function getTargetAuth(
   workspaceId: string
 ): Promise<Result<Authenticator, MCPError>> {
   try {
-    const targetAuth =
-      await Authenticator.internalAdminForWorkspace(workspaceId);
+    const targetAuth = await Authenticator.internalAdminForWorkspace(
+      workspaceId,
+      { dangerouslyRequestAllGroups: true }
+    );
     return new Ok(targetAuth);
   } catch (err) {
     const normalizedErr = normalizeError(err);

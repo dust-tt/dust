@@ -103,10 +103,8 @@ export async function getExitOrPauseEvents(
       const { blockingEvents, state } = exitOutputItem;
 
       if (isAgentLoopRunContext(runContext)) {
-        // Update the action status to blocked_child_action_input_required to break the agent loop.
-        await runContext.action.updateStatus(
-          "blocked_child_action_input_required"
-        );
+        // Break the agent loop without allowing a stale pause event to rewind a final action.
+        await runContext.action.blockForSandboxChild(auth);
 
         // Update the step context to save the resume state.
         await runContext.action.updateStepContext({

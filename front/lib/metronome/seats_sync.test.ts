@@ -17,8 +17,6 @@ const {
   mockListPerUserCreditBalances,
   mockAddPerUserCredit,
   mockRevokePerUserCustomerCredit,
-  mockUpsertPerUserCreditAlerts,
-  mockClearPerUserCreditAlerts,
   mockListSeatBalances,
 } = vi.hoisted(() => ({
   mockGetProductSeatTypes: vi.fn(),
@@ -32,8 +30,6 @@ const {
   mockListPerUserCreditBalances: vi.fn(),
   mockAddPerUserCredit: vi.fn(),
   mockRevokePerUserCustomerCredit: vi.fn(),
-  mockUpsertPerUserCreditAlerts: vi.fn(),
-  mockClearPerUserCreditAlerts: vi.fn(),
   mockListSeatBalances: vi.fn(),
 }));
 
@@ -52,11 +48,6 @@ vi.mock("@app/lib/metronome/client", () => ({
   findSeatCreditSegmentForPeriod: vi.fn(),
   getMetronomeSeatActiveSince: vi.fn(),
   adjustSeatCreditBalances: vi.fn(),
-}));
-
-vi.mock("@app/lib/metronome/alerts/per_user_credit_balance", () => ({
-  upsertPerUserCreditBalanceAlerts: mockUpsertPerUserCreditAlerts,
-  clearPerUserCreditBalanceAlerts: mockClearPerUserCreditAlerts,
 }));
 
 vi.mock("@app/lib/metronome/seat_types", async () => {
@@ -87,6 +78,7 @@ function activeSchedule(minSeats: number, maxSeats: number | null = null) {
 // finally block — stub them so the test never touches Redis.
 vi.mock("@app/lib/utils/cache", () => ({
   cacheWithRedis: (fn: unknown) => fn,
+  cacheWithRedisResult: (fn: unknown) => fn,
   invalidateCacheWithRedis: () => async () => {},
   bestEffortInvalidateCacheWithRedis: () => async () => {},
 }));
@@ -127,8 +119,6 @@ describe("syncSeatCount min clamping", () => {
     mockListPerUserCreditBalances.mockResolvedValue(new Ok(new Map()));
     mockAddPerUserCredit.mockResolvedValue(new Ok(null));
     mockRevokePerUserCustomerCredit.mockResolvedValue(new Ok(undefined));
-    mockUpsertPerUserCreditAlerts.mockResolvedValue(new Ok(undefined));
-    mockClearPerUserCreditAlerts.mockResolvedValue(new Ok(undefined));
     // No seat balances / assignments ⇒ the credit-transfer reconciliation
     // finds nothing to move (the focus of these tests is seat-count sync).
     mockListSeatBalances.mockResolvedValue(new Ok([]));
@@ -525,8 +515,6 @@ describe("syncSeatCount subscription end boundary", () => {
     mockListPerUserCreditBalances.mockResolvedValue(new Ok(new Map()));
     mockAddPerUserCredit.mockResolvedValue(new Ok(null));
     mockRevokePerUserCustomerCredit.mockResolvedValue(new Ok(undefined));
-    mockUpsertPerUserCreditAlerts.mockResolvedValue(new Ok(undefined));
-    mockClearPerUserCreditAlerts.mockResolvedValue(new Ok(undefined));
     mockListSeatBalances.mockResolvedValue(new Ok([]));
   });
 

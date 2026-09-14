@@ -6,7 +6,7 @@
  */
 
 import type { ConversationPruningStats } from "@app/lib/api/assistant/conversation_rendering/window_types";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -67,7 +67,7 @@ export function emitConversationRenderingMetrics({
   tokensUsed: number;
 }): void {
   const metrics = computeConversationRenderingMetrics(stats);
-  const statsD = getStatsDClient();
+  const statsD = statsDMetrics;
   const baseTags = [
     `client_id:${providerId}`,
     `model_id:${modelId}`,
@@ -118,7 +118,7 @@ export function emitConversationRenderingError({
   providerId: ModelProviderIdType;
   modelId: ModelIdType;
 }): void {
-  getStatsDClient().increment("conversation_rendering.errors", 1, [
+  statsDMetrics.increment("conversation_rendering.errors", 1, [
     `client_id:${providerId}`,
     `model_id:${modelId}`,
     `caller:${caller}`,

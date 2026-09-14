@@ -3,11 +3,18 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { useAgentMessageConsumption } from "@app/hooks/conversations/useAgentMessageConsumption";
 import { formatCreditValue, toolUsageLabel } from "@app/lib/client/credits";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import type { AgentMessageConsumptionToolDetails } from "@app/types/assistant/agent_message_consumption";
 import {
   Button,
   Chip,
+  cn,
   Icon,
+  LoadingBlock,
   Plus,
   PopoverContent,
   PopoverRoot,
@@ -15,7 +22,7 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import type { ComponentType, ReactElement } from "react";
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 const MAX_VISIBLE_TOOLS = 3;
 
@@ -31,6 +38,7 @@ function toolDescription(tool: AgentMessageConsumptionToolDetails): string {
 
 interface CreditDetailRowProps {
   description?: string;
+  expandLabelOnHover?: boolean;
   icon?: ComponentType<{ className?: string }>;
   label: string;
   value: string;
@@ -38,30 +46,101 @@ interface CreditDetailRowProps {
 
 function CreditDetailRow({
   description,
+  expandLabelOnHover = false,
   icon,
   label,
   value,
 }: CreditDetailRowProps) {
+  const rowRef = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const [isLabelExpanded, setIsLabelExpanded] = useState(false);
+
+  useEffect(() => {
+    const rowElement = rowRef.current;
+    const labelElement = labelRef.current;
+    if (!expandLabelOnHover || !rowElement || !labelElement) {
+      return;
+    }
+
+    rowElement.style.setProperty(
+      "--credit-label-collapsed-width",
+      `${labelElement.clientWidth}px`
+    );
+  }, [expandLabelOnHover]);
+
   return (
-    <div className="grid min-h-9 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 text-sm">
-      <dt className="flex min-w-0 items-center gap-2 font-medium text-foreground">
-        {icon && (
-          <Icon
-            visual={icon}
-            size="xs"
-            className="shrink-0 text-muted-foreground"
-          />
+    <div
+      ref={rowRef}
+      className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 py-2 text-sm"
+      onPointerEnter={(event) => {
+        const labelElement = labelRef.current;
+        if (
+          expandLabelOnHover &&
+          event.pointerType === "mouse" &&
+          labelElement &&
+          labelElement.scrollWidth > labelElement.clientWidth
+        ) {
+          setIsLabelExpanded(true);
+        }
+      }}
+      onPointerLeave={() => setIsLabelExpanded(false)}
+    >
+      {/* Two spans keep the prefix fixed, then put the full name on top for selection. */}
+      <dt
+        className={cn(
+          "col-span-2 col-start-1 row-start-1",
+          "grid grid-cols-subgrid items-start",
+          "font-medium text-foreground"
         )}
-        <span className="truncate">{label}</span>
-        {description && (
-          <Chip
-            size="mini"
-            label={description}
-            className="shrink-0 font-normal"
-          />
+      >
+        <span className="col-start-1 row-start-1 flex items-center gap-2">
+          {icon && (
+            <Icon visual={icon} size="xs" className="text-muted-foreground" />
+          )}
+          <span
+            ref={labelRef}
+            className={cn(
+              "overflow-hidden whitespace-nowrap",
+              isLabelExpanded
+                ? "pointer-events-none z-10 bg-overlay-background select-none"
+                : "text-ellipsis"
+            )}
+          >
+            {label}
+          </span>
+          {description && (
+            <Chip
+              size="mini"
+              label={description}
+              className={cn(
+                "shrink-0 font-normal",
+                isLabelExpanded && "invisible"
+              )}
+            />
+          )}
+        </span>
+        {isLabelExpanded && (
+          <span
+            aria-hidden
+            className={cn(
+              "col-span-2 col-start-1 row-start-1 z-20",
+              "break-all bg-overlay-background select-text",
+              "animate-credit-label-reveal motion-reduce:animate-none",
+              icon && "ml-6"
+            )}
+          >
+            {label}
+          </span>
         )}
       </dt>
-      <dd className="shrink-0 text-muted-foreground">{value}</dd>
+      <dd
+        className={cn(
+          "col-start-2 row-start-1 text-muted-foreground",
+          isLabelExpanded && "invisible"
+        )}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
@@ -97,9 +176,9 @@ export function CreditCostPopover({
       disabled: !hasOpened,
     });
 
-  const ownCredits = consumption?.billedCredits ?? credits ?? 0;
-  const childCredits = subAgentCredits ?? 0;
-  const totalCredits = ownCredits + childCredits;
+  const totalCredits =
+    consumption?.totalBilledCredits ??
+    (consumption?.billedCredits ?? credits ?? 0) + (subAgentCredits ?? 0);
   const details = consumption?.details;
 
   if (totalCredits <= 0) {
@@ -130,6 +209,16 @@ export function CreditCostPopover({
         if (!open) {
           return;
         }
+        trackEvent({
+          area: TRACKING_AREAS.ANALYTICS,
+          object: "message_breakdown",
+          action: TRACKING_ACTIONS.VIEW,
+          extra: {
+            workspace_id: workspaceId,
+            conversation_id: conversationId,
+            message_id: messageId,
+          },
+        });
         if (hasOpened) {
           void mutateConsumption();
         } else {
@@ -138,7 +227,7 @@ export function CreditCostPopover({
       }}
     >
       <Tooltip
-        label="View credit breakdown"
+        label="View consumption breakdown"
         tooltipTriggerAsChild
         trigger={<PopoverTrigger asChild>{trigger}</PopoverTrigger>}
       />
@@ -159,7 +248,7 @@ export function CreditCostPopover({
           id={headingId}
           className="mb-1 text-sm font-semibold text-muted-foreground"
         >
-          Message credits
+          Message consumption
         </h2>
         <section aria-label="Charge summary">
           <dl>
@@ -172,7 +261,7 @@ export function CreditCostPopover({
 
         <hr className="-mx-3 border-t border-border" />
 
-        <section aria-label="Credit breakdown">
+        <section aria-label="Consumption breakdown">
           {isConsumptionLoading && !consumption ? (
             <div
               aria-busy="true"
@@ -180,27 +269,21 @@ export function CreditCostPopover({
               className="flex min-h-9 items-center text-sm text-muted-foreground"
             >
               <span className="flex-1">Loading details</span>
-              <span className="h-3 w-8 animate-pulse rounded bg-muted-foreground/20" />
+              <LoadingBlock className="h-3 w-8" />
             </div>
           ) : details ? (
             <dl>
               <CreditDetailRow
-                label="Agent work and context"
+                label="Context and reasoning"
                 value={formatCreditValue(details.agentWorkCredits)}
                 icon={InternalActionIcons.ActionBrainIcon}
               />
-              {childCredits > 0 && (
-                <CreditDetailRow
-                  label="Sub-agents"
-                  value={formatCreditValue(childCredits)}
-                  icon={InternalActionIcons.ActionRobotIcon}
-                />
-              )}
               {visibleTools.map((tool) => (
                 <CreditDetailRow
                   key={`${tool.internalMCPServerName ?? "external"}:${tool.toolName}:${tool.label}`}
                   label={tool.label}
                   description={toolDescription(tool)}
+                  expandLabelOnHover
                   value={formatCreditValue(tool.attributedCredits)}
                   icon={getActionStepIcon(tool)}
                 />
@@ -231,7 +314,7 @@ export function CreditCostPopover({
             <Button
               variant="highlight-ghost"
               size="sm"
-              label="Conversation credits"
+              label="Credit usage"
               className="w-full"
               onClick={() => {
                 preventTriggerFocusOnCloseRef.current = true;

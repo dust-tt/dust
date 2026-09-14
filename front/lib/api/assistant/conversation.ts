@@ -16,6 +16,7 @@ import {
   createUserMentions,
   resolveUserMentions,
 } from "@app/lib/api/assistant/conversation/mentions";
+import type { AgentMessageModelResolution } from "@app/lib/api/assistant/conversation/messages";
 import {
   attributeUserFromWorkspaceAndEmail,
   createAgentMessages,
@@ -34,7 +35,7 @@ import {
   batchRenderUserMessagesWithoutMentions,
 } from "@app/lib/api/assistant/messages";
 import { isProviderWhitelistedForAuth } from "@app/lib/api/assistant/models";
-import { checkPremiumModelMessageLimit } from "@app/lib/api/assistant/premium_model_limit";
+import { enforcePremiumModelLimit } from "@app/lib/api/assistant/premium_model_limit";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import {
   MESSAGE_RATE_LIMIT_PER_ACTOR_PER_HOUR,
@@ -64,9 +65,17 @@ import {
   deriveAgentTriggerType,
   emitAuditLogEvent,
 } from "@app/lib/api/audit/workos_audit";
+import {
+  isApiKeyBlocked,
+  isPoolDepleted,
+  isProgrammaticApiBlocked,
+  isUserBlocked,
+  PROGRAMMATIC_CAP_REACHED_MESSAGE,
+} from "@app/lib/api/credits/access_control";
 import { maybeAutoUpgradeSeat } from "@app/lib/api/credits/auto_seat_upgrade";
+import { getProgrammaticRateLimiterCreditState } from "@app/lib/api/credits/programmatic_usage_limit";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
-import { isApiKeySpendLimitRateCapReached } from "@app/lib/api/keys/spend_limit";
+import { PostHogServerSideTracking } from "@app/lib/api/posthog";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
 import {
   checkProgrammaticUsageLimits,
@@ -74,24 +83,18 @@ import {
 } from "@app/lib/api/programmatic_usage/tracking";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { config as regionConfig } from "@app/lib/api/regions/config";
-import {
-  isNonCreditPricedUserSpendLimitReached,
-  isUserSpendLimitRateCapReached,
-} from "@app/lib/api/users/spend_limit";
+import { isNonCreditPricedUserSpendLimitReached } from "@app/lib/api/users/spend_limit";
 import { countActiveSeatsForWorkspace } from "@app/lib/api/workspace_seats";
 import { isModelAvailable } from "@app/lib/assistant";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import {
+  microCreditsToCredits,
+  roundCreditsToMicroCredits,
+} from "@app/lib/credits/units";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { extractFromString, serializeMention } from "@app/lib/mentions/format";
-import { isApiKeyCapped } from "@app/lib/metronome/api_key_block";
 import { isFreeOrigin } from "@app/lib/metronome/events";
-import {
-  getWorkspaceCreditPoolStatus,
-  getWorkspaceProgrammaticCreditStatus,
-  isApiBlocked,
-  isProgrammaticApiBlocked,
-  isUserBlocked,
-} from "@app/lib/metronome/user_block";
+import { getWorkspaceCreditPoolStatus } from "@app/lib/metronome/user_block";
 import { AgentStepContentToolExecutionModel } from "@app/lib/models/agent/actions/agent_step_content_tool_execution";
 import {
   AgentMCPActionModel,
@@ -122,12 +125,12 @@ import { WakeUpResource } from "@app/lib/resources/wakeup_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
-  getRateLimiterCount,
   getTimeframeSecondsFromLiteral,
+  getWeightedRateLimiterCount,
   rateLimiter,
 } from "@app/lib/utils/rate_limiter";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchAgentLoopWorkflow } from "@app/temporal/agent_loop/client";
 import type {
@@ -199,11 +202,11 @@ const POOL_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
 };
 
 // Concurrency limits for programmatic API calls based on the workspace
-// programmatic monthly cap state. Same shape and intent as the pool limits:
+// programmatic monthly cap band, derived from the Redis rate-limiter counter
+// (cycle-to-date spend vs the cap). Same shape and intent as the pool limits:
 // once the workspace is close to its monthly cap, tighten in-flight
-// programmatic requests so concurrent calls can't overshoot before
-// Metronome debits settle. `depleted` is handled upstream by
-// `isProgrammaticApiBlocked`.
+// programmatic requests so concurrent calls can't overshoot before the spend
+// counter settles. `depleted` is handled upstream by `isProgrammaticApiBlocked`.
 const PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS: Record<string, number> = {
   active: 1000,
   active_low_balance: 5,
@@ -508,6 +511,7 @@ export function isUserMessageContextValid(
     case "wakeup":
     case "onboarding_conversation":
     case "agent_sidekick":
+    case "analytics_panel":
     case "project_kickoff":
     case "reinforced_skill_notification":
     case "reinforcement":
@@ -519,9 +523,6 @@ export function isUserMessageContextValid(
   }
 }
 
-// This method is in charge of creating a new user message in database, running the necessary agents
-// in response and updating accordingly the conversation. AgentMentions must point to valid agent
-// configurations from the same workspace or whose scope is global.
 export async function postUserMessage(
   auth: Authenticator,
   {
@@ -590,7 +591,9 @@ export async function postUserMessage(
     // If the Pod is open and there is no user in the context (eg: slack bot message),
     // we allow the message to be posted.
     const skipMembershipCheck =
-      pod.isOpen() && !auth.user() && doNotAssociateUser === true;
+      !auth.user() &&
+      doNotAssociateUser === true &&
+      !(await pod.isRestricted(auth));
     if (!skipMembershipCheck && !pod.isMember(auth)) {
       return new Err({
         status_code: 403,
@@ -824,7 +827,7 @@ export async function postUserMessage(
     configuration: mentionedAgentConfiguration,
     conversation,
   });
-  const modelResolution = mentionedAgentConfiguration
+  let modelResolution = mentionedAgentConfiguration
     ? await resolveModelForMentionedAgent(auth, {
         configuration: mentionedAgentConfiguration,
         selection: modelSelection,
@@ -832,14 +835,15 @@ export async function postUserMessage(
     : null;
 
   if (user && modelResolution) {
-    const premiumModelLimitResult = await checkPremiumModelMessageLimit(auth, {
+    const premiumLimitResult = await enforcePremiumModelLimit(auth, {
       user,
-      resolvedModel: modelResolution.resolvedModel,
+      resolution: modelResolution,
       context,
     });
-    if (premiumModelLimitResult.isErr()) {
-      return premiumModelLimitResult;
+    if (premiumLimitResult.isErr()) {
+      return premiumLimitResult;
     }
+    modelResolution = premiumLimitResult.value;
   }
 
   // In one big transaction create all Message, UserMessage, AgentMessage and Mention rows.
@@ -871,7 +875,7 @@ export async function postUserMessage(
     // this drives api_key_name in usage analytics without affecting authorization.
     const enrichedContext: UserMessageContext = {
       ...context,
-      apiKeyId: auth.attributionKeyModelId() ?? auth.key()?.id ?? null,
+      apiKeyId: auth.keyForUsageAttribution()?.id ?? null,
       authMethod: auth.authMethod(),
     };
 
@@ -1244,7 +1248,7 @@ export async function editUserMessage(
     conversation,
   });
 
-  const modelResolution = mentionedAgentConfiguration
+  let modelResolution = mentionedAgentConfiguration
     ? await resolveModelForMentionedAgent(auth, {
         configuration: mentionedAgentConfiguration,
         selection: message.requestedModel ?? undefined,
@@ -1252,14 +1256,15 @@ export async function editUserMessage(
     : null;
 
   if (user && modelResolution) {
-    const premiumModelLimitResult = await checkPremiumModelMessageLimit(auth, {
+    const premiumLimitResult = await enforcePremiumModelLimit(auth, {
       user,
-      resolvedModel: modelResolution.resolvedModel,
+      resolution: modelResolution,
       context: message.context,
     });
-    if (premiumModelLimitResult.isErr()) {
-      return premiumModelLimitResult;
+    if (premiumLimitResult.isErr()) {
+      return premiumLimitResult;
     }
+    modelResolution = premiumLimitResult.value;
   }
 
   try {
@@ -1817,24 +1822,26 @@ export async function retryAgentMessage(
     return limitResult;
   }
 
+  let retryModelResolution: AgentMessageModelResolution = message.resolvedModel
+    ? {
+        resolvedModel: message.resolvedModel,
+        modelResolutionMethod: message.modelResolutionMethod ?? "agent",
+      }
+    : await resolveModelForMentionedAgent(auth, {
+        configuration: message.configuration,
+      });
+
   const user = auth.user();
   if (user) {
-    const resolvedModel =
-      message.resolvedModel ??
-      (
-        await resolveModelForMentionedAgent(auth, {
-          configuration: message.configuration,
-        })
-      ).resolvedModel;
-
-    const premiumModelLimitResult = await checkPremiumModelMessageLimit(auth, {
+    const premiumLimitResult = await enforcePremiumModelLimit(auth, {
       user,
-      resolvedModel,
+      resolution: retryModelResolution,
       context: parentUserMessage.context,
     });
-    if (premiumModelLimitResult.isErr()) {
-      return premiumModelLimitResult;
+    if (premiumLimitResult.isErr()) {
+      return premiumLimitResult;
     }
+    retryModelResolution = premiumLimitResult.value;
   }
 
   const retryAgentConfiguration = await getAgentConfiguration(auth, {
@@ -1914,6 +1921,7 @@ export async function retryAgentMessage(
           parentId: messageRow.parentId,
           agentMessage: message,
           agentMessageRow: messageRow.agentMessage,
+          modelResolution: retryModelResolution,
         },
         transaction: t,
       });
@@ -2536,7 +2544,7 @@ export async function checkMessagesLimit(
 
   // Credit-state + programmatic rate-limit gate. Two systems coexist:
   // - Credit-priced (Metronome) plans: workspace pool + per-user cap, cached in Redis.
-  //   For API calls (no user), only the workspace pool applies via `isApiBlocked`.
+  //   For API calls (no user), only the workspace pool applies via `isPoolDepleted`.
   //   Pool-balance concurrency limiting (`checkPoolCreditConcurrencyLimit`) prevents
   //   close-to-0 attacks where many requests overshoot the pool before debits settle.
   // - Legacy plans: a per-user credit limit checked from the Redis fixed-window
@@ -2551,9 +2559,12 @@ export async function checkMessagesLimit(
   );
 
   if (isCreditPricedWorkspace) {
+    // `isUserBlocked` / `isPoolDepleted` are flag-aware: with the rate-cap flag on
+    // the per-user cap comes from the Redis fixed-window counters, with it off
+    // from the Metronome credit state (see `user_block.ts`).
     const blockedReason = user
-      ? await isUserBlocked(owner, user)
-      : (await isApiBlocked(owner.sId))
+      ? await isUserBlocked(auth, user)
+      : (await isPoolDepleted(auth))
         ? ("credits_exhausted" as const)
         : null;
     if (blockedReason === "no_seat") {
@@ -2564,6 +2575,7 @@ export async function checkMessagesLimit(
       // message we just unblocked.
       if (user) {
         const upgrade = await maybeAutoUpgradeSeat({
+          auth,
           workspaceId: owner.sId,
           userId: user.sId,
         });
@@ -2587,6 +2599,23 @@ export async function checkMessagesLimit(
     // it reflects membership, not credit state.
     if (!isFreeOrigin(context.origin)) {
       if (blockedReason === "user_cap_reached") {
+        // A seat that has exhausted its cap (a free seat's lifetime allowance,
+        // or a pro seat with its seat balance and pool both spent) is
+        // auto-upgraded one tier (free→pro, pro→max) if the workspace opted in,
+        // so it can proceed with this message. This is the single reactive
+        // driver for all auto-upgrades: it fires exactly when the user is
+        // actually blocked, so we never upgrade a seat that can still spend from
+        // the pool.
+        if (user) {
+          const upgrade = await maybeAutoUpgradeSeat({
+            auth,
+            workspaceId: owner.sId,
+            userId: user.sId,
+          });
+          if (upgrade.isOk() && upgrade.value.upgraded) {
+            return new Ok(undefined);
+          }
+        }
         return new Err({
           status_code: 403,
           api_error: {
@@ -2594,27 +2623,6 @@ export async function checkMessagesLimit(
             message: "You have reached your personal usage cap.",
           },
         });
-      }
-      // Redis fixed-window per-user spend cap: a synchronous backup of the
-      // Metronome per-user cap over the current contract billing cycle. Only
-      // applies to real users (API keys are gated by pool / programmatic caps
-      // instead). Enforcement is gated behind a feature flag while we validate
-      // the counter; usage is recorded regardless (in credit_cost), so the flag
-      // only controls blocking.
-      if (user) {
-        const featureFlags = await getFeatureFlags(auth);
-        if (
-          featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
-          (await isUserSpendLimitRateCapReached(auth, { user }))
-        ) {
-          return new Err({
-            status_code: 403,
-            api_error: {
-              type: "user_cap_reached",
-              message: "You have reached your personal usage cap.",
-            },
-          });
-        }
       }
       if (blockedReason === "credits_exhausted") {
         return new Err({
@@ -2646,21 +2654,11 @@ export async function checkMessagesLimit(
 
     // Programmatic monthly cap: block programmatic calls when the cap is reached.
     if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
-      // Per-API-key credit cap: block when this key's credit state is "capped"
-      // (driven by the Metronome per-key cap alert / reconcile), or when the
-      // Redis fixed-window backup reports the cap reached. The backup is
-      // flag-gated while we validate the counter; usage is recorded regardless
-      // (in credit_cost), so the flag only controls blocking.
-      const key = auth.key();
+      // Per-API-key credit cap. `isApiKeyBlocked` is flag-aware (rate-limiter
+      // counter when the flag is on, Metronome per-key credit state otherwise).
+      const key = auth.keyForUsageAttribution();
       if (key) {
-        const featureFlags = await getFeatureFlags(auth);
-        const capReached =
-          (await isApiKeyCapped(owner.sId, key.id)) ||
-          (featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
-            (await isApiKeySpendLimitRateCapReached(auth, {
-              keyModelId: key.id,
-            })));
-        if (capReached) {
+        if (await isApiKeyBlocked(auth, { keyModelId: key.id })) {
           return new Err({
             status_code: 429,
             api_error: {
@@ -2672,14 +2670,15 @@ export async function checkMessagesLimit(
         }
       }
 
-      const programmaticBlocked = await isProgrammaticApiBlocked(owner.sId);
-      if (programmaticBlocked) {
+      // Workspace programmatic monthly cap. `isProgrammaticApiBlocked` is
+      // flag-aware (rate-limiter counter when the flag is on, Metronome
+      // programmatic credit state otherwise).
+      if (await isProgrammaticApiBlocked(auth)) {
         return new Err({
           status_code: 429,
           api_error: {
             type: "rate_limit_error",
-            message:
-              "Your workspace has reached its programmatic monthly spending cap. An admin can raise the cap in the workspace's usage settings.",
+            message: PROGRAMMATIC_CAP_REACHED_MESSAGE,
           },
         });
       }
@@ -2708,13 +2707,8 @@ export async function checkMessagesLimit(
     // counter, bucketed on the UTC calendar month. Admin-set (poke) workspace
     // default, overridable per member. Free origins produce no billable usage,
     // and API keys have no per-user limit (they are gated by the programmatic
-    // caps below). Flag-gated while we validate the counter; usage is recorded
-    // regardless (in credit_cost), so the flag only controls blocking.
-    const featureFlags = await getFeatureFlags(auth);
-    if (
-      featureFlags.includes("enforce_user_spend_limit_rate_cap") &&
-      (await isNonCreditPricedUserSpendLimitReached(auth, { user }))
-    ) {
+    // caps below).
+    if (await isNonCreditPricedUserSpendLimitReached(auth, { user })) {
       return new Err({
         status_code: 403,
         api_error: {
@@ -2794,7 +2788,7 @@ async function checkPoolCreditConcurrencyLimit(
 
   const maxConcurrent = POOL_CREDIT_CONCURRENCY_LIMITS[status];
   if (maxConcurrent === undefined) {
-    // depleted / overage — handled by isUserBlocked / isApiBlocked upstream.
+    // depleted / overage — handled by isUserBlocked / isPoolDepleted upstream.
     return { isLimitReached: false, limitType: null };
   }
 
@@ -2815,10 +2809,10 @@ async function checkPoolCreditConcurrencyLimit(
       "Pool credit concurrency limit triggered."
     );
 
-    getStatsDClient().increment(
+    statsDMetrics.increment(
       "assistant.rate_limiter.pool_credit.concurrency_limit_triggered",
       1,
-      { workspace_id: owner.sId }
+      [`workspace_id:${owner.sId}`]
     );
 
     return {
@@ -2838,7 +2832,9 @@ async function checkProgrammaticCreditConcurrencyLimit(
   auth: Authenticator
 ): Promise<MessageLimit> {
   const owner = auth.getNonNullableWorkspace();
-  const status = await getWorkspaceProgrammaticCreditStatus(owner.sId);
+  // The concurrency band comes from the Redis rate-limiter counter (cycle-to-date
+  // programmatic spend vs the cap). Matches enforcement in access_control.
+  const status = await getProgrammaticRateLimiterCreditState(auth);
 
   const maxConcurrent = PROGRAMMATIC_CREDIT_CONCURRENCY_LIMITS[status];
   if (maxConcurrent === undefined) {
@@ -2863,10 +2859,10 @@ async function checkProgrammaticCreditConcurrencyLimit(
       "Programmatic credit concurrency limit triggered."
     );
 
-    getStatsDClient().increment(
+    statsDMetrics.increment(
       "assistant.rate_limiter.programmatic_credit.concurrency_limit_triggered",
       1,
-      { workspace_id: owner.sId }
+      [`workspace_id:${owner.sId}`]
     );
 
     return {
@@ -2918,10 +2914,10 @@ async function checkProgrammaticUsageRateLimit(
       "Pre-emptive rate limit triggered for programmatic usage."
     );
 
-    getStatsDClient().increment(
+    statsDMetrics.increment(
       "assistant.rate_limiter.programmatic_usage.credit_based_limit_triggered",
       1,
-      { workspace_id: owner.sId }
+      [`workspace_id:${owner.sId}`]
     );
 
     return {
@@ -2934,7 +2930,7 @@ async function checkProgrammaticUsageRateLimit(
   // Prevents close-to-0 cap attacks where many messages are sent simultaneously.
   const remainingCapMicroUsd = await getRemainingKeyCapMicroUsd(auth);
   if (remainingCapMicroUsd !== null) {
-    const keyAuth = auth.key();
+    const keyAuth = auth.keyForUsageAttribution();
     if (keyAuth) {
       const remainingCapDollars = remainingCapMicroUsd / 1_000_000;
       const keyMaxMessagesPerMinute = Math.max(
@@ -2961,10 +2957,10 @@ async function checkProgrammaticUsageRateLimit(
           "Pre-emptive rate limit triggered for key cap."
         );
 
-        getStatsDClient().increment(
+        statsDMetrics.increment(
           "assistant.rate_limiter.key_cap.credit_based_limit_triggered",
           1,
-          { workspace_id: owner.sId }
+          [`workspace_id:${owner.sId}`]
         );
 
         return {
@@ -2995,7 +2991,7 @@ function getMessageRateLimitActor(auth: Authenticator):
     return { type: "user", id: user.id };
   }
 
-  const apiKey = auth.key();
+  const apiKey = auth.keyForUsageAttribution();
   if (apiKey) {
     return { type: "api_key", id: apiKey.id };
   }
@@ -3084,8 +3080,14 @@ async function isMessagesLimitReached(
   } = plan.limits.assistant;
 
   const user = auth.user();
-  if (user && maxAwuCredits !== -1) {
-    const result = await getRateLimiterCount({
+  const featureFlags = await getFeatureFlags(auth);
+  // Escape hatch: the per-user fair-use AWU cap can be disabled per workspace.
+  if (
+    user &&
+    maxAwuCredits !== -1 &&
+    !featureFlags.includes("disable_fair_use_awu_limit")
+  ) {
+    const result = await getWeightedRateLimiterCount({
       key: makeFairUseAwuCreditsRateLimitKeyForUser(
         owner,
         user.toJSON(),
@@ -3094,7 +3096,26 @@ async function isMessagesLimitReached(
       timeframeSeconds: getTimeframeSecondsFromLiteral(maxAwuCreditsTimeframe),
     });
 
-    if (result.isOk() && result.value >= maxAwuCredits) {
+    // The counter stores microCredits; scale the credit-denominated limit the
+    // same way before comparing.
+    if (
+      result.isOk() &&
+      result.value >= roundCreditsToMicroCredits(maxAwuCredits)
+    ) {
+      // One event per blocked attempt, so we can count the messages a
+      // fair-use-capped user could not send, and over how long.
+      PostHogServerSideTracking.trackEvent({
+        distinctId: user.sId,
+        event: "fair_use_limit_blocked",
+        workspaceId: owner.sId,
+        extra: {
+          limit_credits: maxAwuCredits,
+          timeframe: maxAwuCreditsTimeframe,
+          used_credits: microCreditsToCredits(result.value),
+          origin: context.origin,
+        },
+      });
+
       return {
         isLimitReached: true,
         limitType: "plan_message_limit_exceeded",
@@ -3410,13 +3431,25 @@ export async function updateAgentMessageWithFinalStatus(
     });
 
     // The no-selection default was resolved before the transaction.
-    const modelResolution =
+    let modelResolution =
       defaultModelResolution && !promotedUserMessage.requestedModel
         ? defaultModelResolution
         : await resolveModelForMentionedAgent(promotedAuth, {
             configuration: agentMessage.configuration,
             selection: promotedUserMessage.requestedModel ?? undefined,
           });
+
+    const user = promotedAuth.user();
+    if (user) {
+      const premiumLimitResult = await enforcePremiumModelLimit(promotedAuth, {
+        user,
+        resolution: modelResolution,
+        context: promotedUserMessage.context,
+      });
+      if (premiumLimitResult.isOk()) {
+        modelResolution = premiumLimitResult.value;
+      }
+    }
 
     // Create a new agent message using the last promoted user message.
     const { agentMessages } = await createAgentMessages(promotedAuth, {

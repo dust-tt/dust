@@ -1,0 +1,5 @@
+@cc [owner:Nils-Fedrigo,label:product] replacement-model-preserves-reasoning-effort
+A model config introduced to replace another must expose the same `supportedReasoningEfforts`,
+`defaultReasoningEffort` and `configParsers` as the model it replaces, or ship a migration
+rewriting `agent_configurations.reasoningEffort` for the agents it takes over: repointing
+`agent_configurations.modelId` alone must never change the effort an existing agent runs at.

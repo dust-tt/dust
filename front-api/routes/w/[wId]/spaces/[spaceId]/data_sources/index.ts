@@ -82,7 +82,7 @@ app.post(
     const plan = auth.getNonNullablePlan();
 
     if (space.isSystem()) {
-      if (!space.canAdministrate(auth)) {
+      if (!auth.can("admin", space)) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {
@@ -104,7 +104,7 @@ app.post(
         });
       }
 
-      if (!space.canWrite(auth)) {
+      if (!auth.can("write", space)) {
         return apiError(ctx, {
           status_code: 403,
           api_error: {

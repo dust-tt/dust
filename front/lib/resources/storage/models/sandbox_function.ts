@@ -4,7 +4,6 @@ import {
   DataTypes,
 } from "@app/lib/resources/storage/data_types";
 import { FileModel } from "@app/lib/resources/storage/models/files";
-import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { validateJsonSchema } from "@app/lib/utils/json_schemas";
@@ -51,8 +50,8 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare spaceId: ForeignKey<SpaceModel["id"]>;
   declare fileId: ForeignKey<FileModel["id"]>;
+  declare publicationId: string;
   declare slug: string;
   declare description: string;
   declare userIdentity: SandboxFunctionUserIdentityPolicy | null;
@@ -67,7 +66,6 @@ export class SandboxFunctionModel extends WorkspaceAwareModel<SandboxFunctionMod
   declare inputSchema: JSONSchema;
   declare outputSchema: JSONSchema;
 
-  declare space: NonAttribute<SpaceModel>;
   declare file: NonAttribute<FileModel>;
 }
 
@@ -98,12 +96,12 @@ SandboxFunctionModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    spaceId: {
+    fileId: {
       type: DataTypes.BIGINT,
       allowNull: false,
     },
-    fileId: {
-      type: DataTypes.BIGINT,
+    publicationId: {
+      type: DataTypes.STRING(255),
       allowNull: false,
     },
     slug: {
@@ -164,38 +162,17 @@ SandboxFunctionModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["workspaceId", "spaceId", "fileId"],
-        unique: true,
-        concurrently: true,
-      },
-      {
-        fields: ["workspaceId", "spaceId", "slug"],
-        unique: true,
-        concurrently: true,
-      },
-      {
-        fields: ["spaceId"],
-        concurrently: true,
-      },
-      {
         fields: ["fileId"],
+        concurrently: true,
+      },
+      {
+        fields: ["workspaceId", "fileId", "publicationId", "slug"],
         unique: true,
         concurrently: true,
       },
     ],
   }
 );
-
-SandboxFunctionModel.belongsTo(SpaceModel, {
-  foreignKey: { name: "spaceId", allowNull: false },
-  onDelete: "RESTRICT",
-  as: "space",
-});
-
-SpaceModel.hasMany(SandboxFunctionModel, {
-  foreignKey: { name: "spaceId", allowNull: false },
-  as: "sandboxFunctions",
-});
 
 SandboxFunctionModel.belongsTo(FileModel, {
   foreignKey: { name: "fileId", allowNull: false },

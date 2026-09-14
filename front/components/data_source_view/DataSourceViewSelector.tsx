@@ -122,7 +122,14 @@ function useLazyLoadAllNodes({
 }: UseLazyLoadAllNodesOptions) {
   const [triggered, setTriggered] = useState(false);
 
-  const { nodes, hasNextPage, isLoadingMore, loadMore } = useContentNodes({
+  const {
+    nodes,
+    hasNextPage,
+    isLoadingMore,
+    isNodesFetched,
+    nodesError,
+    loadMore,
+  } = useContentNodes({
     owner,
     dataSourceView: triggered ? dataSourceView : undefined,
     viewType,
@@ -133,15 +140,38 @@ function useLazyLoadAllNodes({
     if (!triggered) {
       return;
     }
-    if (hasNextPage && !isLoadingMore) {
+    if (isLoadingMore) {
+      // A request is in flight: ignore a stale `nodesError` left over from a
+      // previous failed attempt (SWR keeps it cached until this one settles),
+      // otherwise a retry gets aborted before it can complete.
+      return;
+    }
+    if (nodesError) {
+      // The active request (not a stale one) failed: don't spin forever.
+      setTriggered(false);
+      return;
+    }
+    if (hasNextPage) {
       void loadMore();
       return;
     }
-    if (!hasNextPage && !isLoadingMore && nodes.length > 0) {
+    // Complete once at least one page has been fetched, even when the view has
+    // no nodes at all. Requiring nodes.length > 0 here used to leave the
+    // "Select All" button stuck on "Loading..." forever for empty views.
+    if (isNodesFetched) {
       onComplete(nodes);
       setTriggered(false);
     }
-  }, [triggered, hasNextPage, isLoadingMore, loadMore, nodes, onComplete]);
+  }, [
+    triggered,
+    nodesError,
+    hasNextPage,
+    isLoadingMore,
+    isNodesFetched,
+    loadMore,
+    nodes,
+    onComplete,
+  ]);
 
   return {
     trigger: () => setTriggered(true),

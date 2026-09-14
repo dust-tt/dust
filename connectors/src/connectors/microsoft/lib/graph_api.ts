@@ -7,8 +7,10 @@ import type {
   MicrosoftNode,
 } from "@connectors/connectors/microsoft/lib/types";
 import {
+  DRIVE_ITEM_DELTA_SELECTS,
   DRIVE_ITEM_EXPANDS_AND_SELECTS,
   DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS,
+  LIST_ITEM_EXPANDS_AND_SELECTS,
 } from "@connectors/connectors/microsoft/lib/types";
 import {
   internalIdFromTypeAndPath,
@@ -27,6 +29,8 @@ import type {
   Drive,
   Entity,
   ItemReference,
+  List,
+  ListItem,
   Organization,
   Site,
   WorkbookRange,
@@ -161,6 +165,92 @@ export async function getDrives(
   return { results: res.value };
 }
 
+// Only user-created custom lists ("genericList") are synced. SharePoint
+// provisions many built-in lists under other templates — document/picture/page
+// libraries, workflow tasks, publishing reports, calendars, etc. — which are
+// noise as structured tables. Structured system templates (events, tasks,
+// issueTracking, ...) can be added here later if customers ask for them.
+const SYNCABLE_LIST_TEMPLATES = new Set(["genericList"]);
+
+/**
+ * Returns whether a SharePoint list should be synced as a structured table.
+ * Hidden lists are internal SharePoint plumbing; everything that is not a
+ * user-created custom list (`genericList`) is excluded (see
+ * SYNCABLE_LIST_TEMPLATES). Document libraries in particular are already synced
+ * as drives.
+ */
+export function isSyncableList(list: List): boolean {
+  const info = list.list;
+  if (!info || info.hidden) {
+    return false;
+  }
+  return !!info.template && SYNCABLE_LIST_TEMPLATES.has(info.template);
+}
+
+export async function getLists(
+  logger: LoggerInterface,
+  client: Client,
+  parentInternalId: string,
+  nextLink?: string
+): Promise<{ results: List[]; nextLink?: string }> {
+  const { nodeType, itemAPIPath: parentResourcePath } =
+    typeAndPathFromInternalId(parentInternalId);
+
+  if (nodeType !== "site") {
+    throw new Error(
+      `Invalid node type: ${nodeType} for getLists, expected site`
+    );
+  }
+
+  const endpoint = `${parentResourcePath}/lists?$select=id,name,displayName,webUrl,createdDateTime,lastModifiedDateTime,list`;
+
+  const res = nextLink
+    ? await clientApiGet(logger, client, nextLink)
+    : await clientApiGet(logger, client, endpoint);
+
+  const lists: List[] = res.value;
+  const results = lists.filter(isSyncableList);
+
+  if ("@odata.nextLink" in res) {
+    return {
+      results,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+
+  return { results };
+}
+
+export async function getListItems(
+  logger: LoggerInterface,
+  client: Client,
+  listInternalId: string,
+  nextLink?: string
+): Promise<{ results: ListItem[]; nextLink?: string }> {
+  const { nodeType, itemAPIPath } = typeAndPathFromInternalId(listInternalId);
+
+  if (nodeType !== "list") {
+    throw new Error(
+      `Invalid node type: ${nodeType} for getListItems, expected list`
+    );
+  }
+
+  const endpoint = `${itemAPIPath}/items?${LIST_ITEM_EXPANDS_AND_SELECTS}`;
+
+  const res = nextLink
+    ? await clientApiGet(logger, client, nextLink)
+    : await clientApiGet(logger, client, endpoint);
+
+  if ("@odata.nextLink" in res) {
+    return {
+      results: res.value,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+
+  return { results: res.value };
+}
+
 export async function getFilesAndFolders(
   logger: LoggerInterface,
   client: Client,
@@ -209,12 +299,10 @@ export async function getDeltaResults({
   parentInternalId,
   nextLink,
   token,
-  withLabels = false,
 }: {
   logger: LoggerInterface;
   client: Client;
   parentInternalId: string;
-  withLabels?: boolean;
 } & (
   | { nextLink?: string; token?: never }
   | { nextLink?: never; token: string }
@@ -234,13 +322,13 @@ export async function getDeltaResults({
     { parentInternalId, itemAPIPath, nextLink, token },
     "Getting delta"
   );
-  const expandsAndSelects = withLabels
-    ? DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS
-    : DRIVE_ITEM_EXPANDS_AND_SELECTS;
+  // Delta pagination uses the lean projection: every returned item is retained in the
+  // in-memory dedup map until pagination completes, and the heavy list-item fields and
+  // download URL are re-hydrated per file by `syncOneFile` when actually needed.
   const deltaPath =
     (nodeType === "folder"
-      ? `${itemAPIPath}/delta?${expandsAndSelects}`
-      : `${itemAPIPath}/root/delta?${expandsAndSelects}`) +
+      ? `${itemAPIPath}/delta?${DRIVE_ITEM_DELTA_SELECTS}`
+      : `${itemAPIPath}/root/delta?${DRIVE_ITEM_DELTA_SELECTS}`) +
     (token ? `&token=${token}` : "");
 
   const res = nextLink
@@ -570,6 +658,16 @@ export function getWorksheetInternalId(
   return internalIdFromTypeAndPath({
     itemAPIPath: `${parentItemApiPath}/workbook/worksheets/${item.id}`,
     nodeType: "worksheet",
+  });
+}
+
+export function getListInternalId(list: List, siteItemAPIPath: string) {
+  if (!list.id) {
+    throw new Error("Unexpected: no id for list");
+  }
+  return internalIdFromTypeAndPath({
+    nodeType: "list",
+    itemAPIPath: `${siteItemAPIPath}/lists/${list.id}`,
   });
 }
 

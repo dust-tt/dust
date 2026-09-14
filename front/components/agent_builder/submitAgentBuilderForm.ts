@@ -223,6 +223,7 @@ function serializeTrigger(
         configuration: trigger.configuration,
         kind: trigger.kind,
         executionPerDayLimitOverride: trigger.executionPerDayLimitOverride,
+        executionMode: trigger.executionMode,
         webhookSourceViewId: trigger.webhookSourceViewId,
         spaceId: trigger.spaceId ?? null,
       };
@@ -235,6 +236,7 @@ function serializeTrigger(
         naturalLanguageDescription: trigger.naturalLanguageDescription,
         configuration: trigger.configuration,
         kind: trigger.kind,
+        executionMode: trigger.executionMode,
         spaceId: trigger.spaceId ?? null,
       };
     default:
@@ -266,7 +268,7 @@ async function processTriggers({
   // 1. Batch delete triggers
   if (formData.triggersToDelete.length > 0) {
     const deleteRes = await clientFetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+      `/api/w/${owner.sId}/triggers?aId=${agentConfigurationId}`,
       {
         method: "DELETE",
         headers: {
@@ -297,7 +299,7 @@ async function processTriggers({
   // 2. Batch update existing triggers
   if (formData.triggersToUpdate.length > 0) {
     const updateRes = await clientFetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+      `/api/w/${owner.sId}/triggers?aId=${agentConfigurationId}`,
       {
         method: "PATCH",
         headers: {
@@ -336,7 +338,7 @@ async function processTriggers({
   // 3. Batch create new triggers
   if (formData.triggersToCreate.length > 0) {
     const createRes = await clientFetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+      `/api/w/${owner.sId}/triggers?aId=${agentConfigurationId}`,
       {
         method: "POST",
         headers: {
@@ -571,14 +573,12 @@ export async function submitAgentBuilderForm({
     // Make the call even if slackChannels is empty, since if the user deselects all channels,
     // the call need to be made to unlink them.
     if (slackProvider && areSlackChannelsChanged) {
-      const autoRespondWithoutMention =
-        slackChannels.length > 0
-          ? slackChannels[0].autoRespondWithoutMention
-          : false;
-      const autoRespondWithoutMentionSkipThreadReplies =
-        slackChannels.length > 0
-          ? slackChannels[0].autoRespondWithoutMentionSkipThreadReplies
-          : false;
+      const autoRespondWithoutMention = slackChannels.some(
+        (channel) => channel.autoRespondWithoutMention
+      );
+      const autoRespondWithoutMentionSkipThreadReplies = slackChannels.some(
+        (channel) => channel.autoRespondWithoutMentionSkipThreadReplies
+      );
       const slackRequestBody = JSON.stringify({
         provider: slackProvider,
         slack_channel_internal_ids: slackChannels.map(

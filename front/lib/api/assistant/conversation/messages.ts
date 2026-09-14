@@ -8,11 +8,11 @@ import { getFeatureFlags } from "@app/lib/auth";
 import {
   AgentMessageModel,
   CompactionMessageModel,
-  MentionModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { MentionResource } from "@app/lib/resources/mention_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { isEmailValid } from "@app/lib/utils";
@@ -343,6 +343,7 @@ export const createAgentMessages = async (
           agentMessage: AgentMessageType;
           agentMessageRow: AgentMessageModel;
           parentId: number;
+          modelResolution: AgentMessageModelResolution;
         }
       | {
           type: "delete";
@@ -360,7 +361,7 @@ export const createAgentMessages = async (
         }
       | {
           type: "approve_existing_mention";
-          mentionRow: MentionModel;
+          mentionRow: MentionResource;
           configuration: LightAgentConfigurationType;
           skipToolsValidation: boolean;
           nextMessageRank: number;
@@ -382,7 +383,7 @@ export const createAgentMessages = async (
     configuration: LightAgentConfigurationType;
     parentMessageId: string;
     parentAgentMessageId: string | null;
-    mentionRow: MentionModel | null;
+    mentionRow: MentionResource | null;
   }[] = [];
 
   switch (metadata.type) {
@@ -396,14 +397,14 @@ export const createAgentMessages = async (
             agentConfigurationVersion: agentConfiguration.version,
             conversationId: conversation.id,
             workspaceId: owner.id,
-            // Copy over the values from the original agent message row.
             skipToolsValidation: metadata.agentMessageRow.skipToolsValidation,
-            resolvedProviderId: metadata.agentMessageRow.resolvedProviderId,
-            resolvedModelId: metadata.agentMessageRow.resolvedModelId,
+            resolvedProviderId:
+              metadata.modelResolution.resolvedModel.providerId,
+            resolvedModelId: metadata.modelResolution.resolvedModel.modelId,
             resolvedReasoningEffort:
-              metadata.agentMessageRow.resolvedReasoningEffort,
+              metadata.modelResolution.resolvedModel.reasoningEffort,
             modelResolutionMethod:
-              metadata.agentMessageRow.modelResolutionMethod,
+              metadata.modelResolution.modelResolutionMethod,
           },
           { transaction }
         );
@@ -492,8 +493,11 @@ export const createAgentMessages = async (
 
     case "approve_existing_mention":
       // Fall through into the shared create path after marking the existing
-      // mention approved (do not insert a duplicate MentionModel row).
-      await metadata.mentionRow.update({ status: "approved" }, { transaction });
+      // mention approved (do not insert a duplicate mention row).
+      await metadata.mentionRow.updateStatus(auth, {
+        status: "approved",
+        transaction,
+      });
     // falls through
     case "create":
       {
@@ -505,14 +509,14 @@ export const createAgentMessages = async (
           break;
         }
 
-        let mentionRow: MentionModel;
+        let mentionRow: MentionResource;
         if (metadata.type === "approve_existing_mention") {
           mentionRow = metadata.mentionRow;
         } else {
           if (metadata.isRestrictedBySpaceUsage) {
             // This create the mentions from the original user message. Not to be mixed with
             // the mentions from the agent message (which will be filled later).
-            const restrictedMentionRow = await MentionModel.create(
+            const restrictedMentionRow = await MentionResource.makeNew(
               {
                 messageId: metadata.userMessage.id,
                 agentConfigurationId: configuration.sId,
@@ -535,7 +539,7 @@ export const createAgentMessages = async (
 
           // This create the mentions from the original user message. Not to be mixed with the
           // mentions from the agent message (which will be filled later).
-          mentionRow = await MentionModel.create(
+          mentionRow = await MentionResource.makeNew(
             {
               messageId: metadata.userMessage.id,
               agentConfigurationId: configuration.sId,

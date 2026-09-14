@@ -1,11 +1,11 @@
-import { config } from "@app/lib/api/regions/config";
+import { config } from "@app/lib/api/cells/config";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
-import { RELOCATION_QUEUES_PER_REGION } from "@app/temporal/relocation/config";
+import { RELOCATION_QUEUES_PER_CELL } from "@app/temporal/relocation/config";
 import { getTemporalRelocationClient } from "@app/temporal/relocation/temporal";
 import { workspaceRelocateDataSourceCoreWorkflow } from "@app/temporal/relocation/workflows";
-import { isRegionType, SUPPORTED_REGIONS } from "@app/types/region";
+import { isCellType, SUPPORTED_CELLS } from "@app/types/cell";
 import assert from "assert";
 
 makeScript(
@@ -15,14 +15,14 @@ makeScript(
       type: "string",
       required: true,
     },
-    sourceRegion: {
+    sourceCell: {
       type: "string",
-      choices: SUPPORTED_REGIONS,
+      choices: SUPPORTED_CELLS,
       demandOption: true,
     },
-    destRegion: {
+    destCell: {
       type: "string",
-      choices: SUPPORTED_REGIONS,
+      choices: SUPPORTED_CELLS,
       demandOption: true,
     },
     dataSourceId: {
@@ -32,22 +32,22 @@ makeScript(
     },
   },
   async (
-    { workspaceId, sourceRegion, destRegion, dataSourceId, execute },
+    { workspaceId, sourceCell, destCell, dataSourceId, execute },
     logger
   ) => {
-    if (!isRegionType(sourceRegion) || !isRegionType(destRegion)) {
-      logger.error("Invalid region.");
+    if (!isCellType(sourceCell) || !isCellType(destCell)) {
+      logger.error("Invalid cell.");
       return;
     }
 
-    if (sourceRegion === destRegion) {
-      logger.error("Source and destination regions must be different.");
+    if (sourceCell === destCell) {
+      logger.error("Source and destination cells must be different.");
       return;
     }
 
     assert(
-      config.getCurrentRegion() === sourceRegion,
-      "Must run from source region"
+      config.getCurrentCell().name === sourceCell,
+      "Must run from the source cell"
     );
 
     const dataSource = await DataSourceModel.findByPk(dataSourceId, {
@@ -87,12 +87,12 @@ makeScript(
               dustAPIProjectId: dataSource.dustAPIProjectId,
               dustAPIDataSourceId: dataSource.dustAPIDataSourceId,
             },
-            destRegion,
-            sourceRegion,
+            destCell,
+            sourceCell,
             workspaceId,
           },
         ],
-        taskQueue: RELOCATION_QUEUES_PER_REGION[sourceRegion],
+        taskQueue: RELOCATION_QUEUES_PER_CELL[sourceCell],
       });
     }
   }

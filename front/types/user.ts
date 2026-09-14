@@ -1,5 +1,3 @@
-// biome-ignore lint/plugin/enforceClientTypesInPublicApi: existing usage
-import type { WorkOSOrganizationType } from "@dust-tt/client";
 import * as t from "io-ts";
 import { z } from "zod";
 import type {
@@ -29,12 +27,36 @@ function keyObject<T extends readonly string[]>(
   };
 }
 
+type WorkOSOrganizationType = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  externalId: string | null;
+  metadata: Record<string, string>;
+};
+
 export const RoleSchema = t.keyof(keyObject(ROLES));
 
 export type RoleType = t.TypeOf<typeof RoleSchema>;
 
 export function isRoleType(role: string): role is RoleType {
   return ROLES.includes(role as RoleType);
+}
+
+// `ROLES` is ordered from most to least privileged.
+export function lowestRole(a: RoleType, b: RoleType): RoleType {
+  return ROLES.indexOf(a) >= ROLES.indexOf(b) ? a : b;
+}
+
+// `ROLES` is ordered from most to least privileged.
+export function highestRole<T extends RoleType>(a: T, b: T): T {
+  return ROLES.indexOf(a) <= ROLES.indexOf(b) ? a : b;
+}
+
+// Whether `a` is strictly more privileged than `b` (per `ROLES` ordering).
+export function isMorePrivilegedRole(a: RoleType, b: RoleType): boolean {
+  return ROLES.indexOf(a) < ROLES.indexOf(b);
 }
 
 export const ActiveRoleSchema = z.enum(ACTIVE_ROLES);
@@ -52,9 +74,8 @@ export function isAssignableRoleType(role: string): role is AssignableRoleType {
 }
 
 // Roles that can be assigned through the API (invitations, membership role updates). The
-// deprecated `builder` role is rejected here — it is granted only through the `dust-builders`
-// provisioning group — while remaining a valid role value elsewhere (existing memberships, role
-// display, and legacy/pending invitations).
+// deprecated `builder` role is rejected here while remaining a valid role value elsewhere
+// (existing memberships, role display, and legacy/pending invitations).
 function isAssignableRole(role: RoleType): boolean {
   return role !== "builder" && role !== "none";
 }
@@ -110,6 +131,23 @@ export function isWorkspaceAnalyticsEnabled(
   owner: LightWorkspaceType
 ): boolean {
   return owner.metadata?.disableWorkspaceAnalytics !== true;
+}
+
+// Conversation unread email and Slack are on by default. Admins can turn them
+// off workspace-wide; in-app Dust notifications are not affected.
+export function areConversationExternalNotificationsEnabled(
+  owner: LightWorkspaceType
+): boolean {
+  return owner.metadata?.allowConversationExternalNotifications !== false;
+}
+
+// Automatic archival of agents nobody mentions is opt-in per workspace: with no threshold set,
+// nothing is ever archived. There is no default number of days.
+export function getInactiveAgentArchivalThresholdDays(
+  owner: LightWorkspaceType
+): number | null {
+  const value = owner.metadata?.inactiveAgentArchivalThresholdDays;
+  return typeof value === "number" ? value : null;
 }
 
 // When enabled, members can run published agents even if the agent's model

@@ -20,6 +20,8 @@ export type CoreAPIDataSourceConfig = {
   qdrant_config: {
     cluster: QdrantCluster;
     shadow_write_cluster: QdrantCluster | null;
+    // Assigned by core at creation, absent on data sources created before.
+    shard_keys?: Partial<Record<QdrantCluster, string>>;
   } | null;
 };
 

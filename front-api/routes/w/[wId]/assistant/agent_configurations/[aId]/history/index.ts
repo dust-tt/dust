@@ -45,7 +45,7 @@ app.get(
     }
 
     // The schema expects `limit` as a number; query params arrive as strings,
-    // so we parseInt before validation (matches the Next-side handler).
+    // so we parseInt before validation.
     const queryRaw = ctx.req.query();
     const queryValidation = GetAgentConfigurationsHistoryQuerySchema.safeParse({
       ...queryRaw,

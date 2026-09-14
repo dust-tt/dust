@@ -1,5 +1,5 @@
 import {
-  getAttachmentFromContentFragment,
+  getAttachmentFromContentNodeContentFragment,
   isContentNodeAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
@@ -12,6 +12,7 @@ import {
   renameGCSMountFile,
 } from "@app/lib/api/files/gcs_mount/files";
 import { moveMountFileWithinScope } from "@app/lib/api/files/mount_file_ops";
+import { cleanupProjectFileFragments } from "@app/lib/api/projects/file_cleanup";
 import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
@@ -27,6 +28,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { ContentFragmentInputWithContentNode } from "@app/types/api/assistant";
 import type { ConversationAttachmentType } from "@app/types/api/assistant/conversation/attachments";
 import type { FileSystemDirectoryEntry } from "@app/types/api/file_system/types";
+import {
+  isContentNodeContentFragment,
+  isExpiredContentFragment,
+} from "@app/types/content_fragment";
 import type { ContentNodeType } from "@app/types/core/content_node";
 import type { ConnectorProvider } from "@app/types/data_source";
 import { DustFileSystemError, podScopedPath } from "@app/types/file_system";
@@ -99,6 +104,8 @@ export async function listProjectContextAttachments(
   const merged = new Map<string, ConversationAttachmentType>();
 
   for (const fragment of fragments) {
+    // File-backed project files are served by the GCS-backed endpoints, so only content nodes are
+    // turned into attachments here. Their capabilities do not depend on the conversation.
     if (fragment.fileId != null) {
       continue;
     }
@@ -111,10 +118,11 @@ export async function listProjectContextAttachments(
         file: null,
       }
     );
-    const attachment = getAttachmentFromContentFragment(cf);
-    if (!attachment || !isContentNodeAttachmentType(attachment)) {
+    if (isExpiredContentFragment(cf) || !isContentNodeContentFragment(cf)) {
       continue;
     }
+
+    const attachment = getAttachmentFromContentNodeContentFragment({ cf });
 
     const key = attachment.contentFragmentId;
     if (merged.has(key)) {
@@ -521,54 +529,18 @@ export async function removeFileFromProject(
     return new Err(new Error("File not found."));
   }
 
-  // Best-effort cleanup of the project content fragments for this file.
-  const workspaceId = auth.getNonNullableWorkspace().id;
-  const projectFragmentIds = await ContentFragmentModel.findAll({
-    attributes: ["id"],
-    where: {
-      workspaceId,
-      spaceId: space.id,
-      fileId: file.id,
-    },
-  }).then((rows) => rows.map((r) => r.id));
-
-  if (projectFragmentIds.length > 0) {
-    const messagesReferencing = await MessageModel.findAll({
-      attributes: ["contentFragmentId"],
-      where: {
-        workspaceId,
-        contentFragmentId: {
-          [Op.in]: projectFragmentIds,
-        },
-      },
-    });
-
-    const referencedIds = new Set(
-      removeNulls(messagesReferencing.map((m) => m.contentFragmentId))
-    );
-    const orphanIds = projectFragmentIds.filter((id) => !referencedIds.has(id));
-
-    if (orphanIds.length > 0) {
-      await ContentFragmentModel.destroy({
-        where: {
-          workspaceId,
-          id: { [Op.in]: orphanIds },
-        },
-      });
-    }
-
-    if (referencedIds.size > 0) {
-      await ContentFragmentModel.update(
-        { spaceId: null, expiredReason: "file_deleted" },
-        {
-          where: {
-            workspaceId,
-            id: { [Op.in]: Array.from(referencedIds) },
-          },
-        }
-      );
-    }
+  // Frames v2 own their source package and project-fragment cleanup. Let the canonical Frame
+  // deletion path run before this function mutates any fragments so source failures are retryable.
+  if (file.isFrameV2) {
+    return file.delete(auth);
   }
+
+  const workspaceId = auth.getNonNullableWorkspace().id;
+  await cleanupProjectFileFragments({
+    fileModelId: file.id,
+    spaceModelId: space.id,
+    workspaceModelId: workspaceId,
+  });
 
   const deleteRes = await file.delete(auth);
   if (deleteRes.isErr()) {
@@ -626,7 +598,14 @@ export async function createProjectFolder(
     return fsResult;
   }
 
-  return fsResult.value.mkdir(podScopedPath(space.sId, relativeDirPath));
+  const created = await fsResult.value.mkdir(
+    podScopedPath(space.sId, relativeDirPath)
+  );
+  if (created.isErr()) {
+    return created;
+  }
+  // The handler serializes this entry to the client, so the node id stays here.
+  return new Ok(created.value.entry);
 }
 
 /**

@@ -126,7 +126,7 @@ export type ProviderVisibility = "public" | "private";
  * own. This is because the Microsoft API does not allow to query a document or
  * list its children using its id alone. We compute an internal id that contains all
  * information. More details here:
- * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
+ * https://app.notion.com/p/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
 export interface ContentNode {
   childrenCount: number;
@@ -148,6 +148,12 @@ export interface ContentNodeWithParent extends ContentNode {
   parentInternalIds: string[] | null;
   parentTitle: string | null;
 }
+
+export type WhitelistedSlackBotType = {
+  botName: string;
+  spaceIds: string[];
+  createdAt: number;
+};
 
 export class ConnectorsAPI {
   _url: string;
@@ -541,6 +547,7 @@ export class ConnectorsAPI {
         agentConfigurationId: string;
         autoRespondWithoutMention: boolean;
         autoRespondWithoutMentionSkipThreadReplies: boolean;
+        isPrivate: boolean;
       }[];
     }>
   > {
@@ -553,6 +560,73 @@ export class ConnectorsAPI {
       {
         method: "GET",
         headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
+  async getSlackBotSummoningWhitelist({
+    connectorId,
+  }: {
+    connectorId: string;
+  }): Promise<ConnectorsAPIResponse<{ bots: WhitelistedSlackBotType[] }>> {
+    const res = await this._fetchWithError(
+      `${
+        this._url
+      }/slack/bots/summoning_whitelist?connector_id=${encodeURIComponent(
+        connectorId
+      )}`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
+  async whitelistSlackBotToSummon({
+    connectorId,
+    botName,
+    spaceIds,
+  }: {
+    connectorId: string;
+    botName: string;
+    spaceIds: string[];
+  }): Promise<ConnectorsAPIResponse<{ success: true }>> {
+    const res = await this._fetchWithError(
+      `${this._url}/slack/bots/summoning_whitelist`,
+      {
+        method: "POST",
+        headers: this.getDefaultHeaders(),
+        body: JSON.stringify({
+          connector_id: connectorId,
+          bot_name: botName,
+          space_ids: spaceIds,
+        }),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
+  async unwhitelistSlackBotToSummon({
+    connectorId,
+    botName,
+  }: {
+    connectorId: string;
+    botName: string;
+  }): Promise<ConnectorsAPIResponse<{ success: true }>> {
+    const res = await this._fetchWithError(
+      `${this._url}/slack/bots/summoning_whitelist`,
+      {
+        method: "DELETE",
+        headers: this.getDefaultHeaders(),
+        body: JSON.stringify({
+          connector_id: connectorId,
+          bot_name: botName,
+        }),
       }
     );
 

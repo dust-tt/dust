@@ -9,6 +9,7 @@ import { onRequest } from "firebase-functions/v2/https";
 
 import { createApp } from "./app.js";
 import { CONFIG } from "./config.js";
+import { normalizeWebhookRouterConfig } from "./webhook-router-config.js";
 
 const serviceAccount = defineString("SERVICE_ACCOUNT");
 const bucket = defineString("GCP_WEBHOOK_ROUTER_CONFIG_BUCKET");
@@ -48,14 +49,10 @@ export const syncWebhookRouterConfig = onObjectFinalized(
       const [rawConfig] = await webhookRouterConfigFile.download();
 
       const parsedConfig = JSON.parse(rawConfig.toString("utf-8"));
-      if (parsedConfig === null || typeof parsedConfig !== "object") {
-        throw new Error(
-          "Invalid webhook configuration format. Expected an object."
-        );
-      }
+      const normalizedConfig = normalizeWebhookRouterConfig(parsedConfig);
 
       // We set the updated webhook router configuration at the root of Firebase Realtime Database
-      await getDatabase(firebaseApp).ref().set(parsedConfig);
+      await getDatabase(firebaseApp).ref().set(normalizedConfig);
 
       log("Webhook router configuration sync succeeded", {
         component: "webhook-router-config-sync",

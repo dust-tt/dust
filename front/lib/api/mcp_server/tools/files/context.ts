@@ -54,7 +54,7 @@ export async function getDustFileSystemForScope(
   }
 
   const pod = await SpaceResource.fetchById(auth, scope.pod_id);
-  if (!pod || !pod.isProject() || !pod.canRead(auth)) {
+  if (!pod || !pod.isProject() || !auth.can("read", pod)) {
     return new Err(`Pod not found or you do not have access: ${scope.pod_id}`);
   }
 

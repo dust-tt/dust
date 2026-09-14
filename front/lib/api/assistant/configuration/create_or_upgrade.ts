@@ -12,7 +12,6 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { getModelTierAccessErrorForAgentConfiguration } from "@app/lib/model_tiers/access";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -41,11 +40,17 @@ export async function createOrUpgradeAgentConfiguration({
   assistant,
   agentConfigurationId,
   authorId,
+  dangerouslySkipPermissionFiltering,
 }: {
   auth: Authenticator;
   assistant: PostOrPatchAgentConfigurationRequestBody["assistant"];
   agentConfigurationId?: string;
   authorId?: ModelId;
+  // Keeps the requested spaces and the skills of an agent being re-saved even when the caller
+  // cannot read them. Only for callers that re-save an existing agent as-is (admin batch model
+  // updates): without it those spaces are rejected and those skills silently dropped, which would
+  // unrestrict the agent and strip its skills. It grants no access to what the spaces protect.
+  dangerouslySkipPermissionFiltering?: boolean;
 }): Promise<Result<AgentConfigurationType, Error>> {
   const skillsOnlyViews = await MCPServerViewResource.fetchByIds(
     auth,
@@ -101,7 +106,12 @@ export async function createOrUpgradeAgentConfiguration({
   if (assistant.skills && assistant.skills.length > 0) {
     skills = await SkillResource.fetchByIds(
       auth,
-      assistant.skills.map((s) => s.sId)
+      assistant.skills.map((s) => s.sId),
+      {
+        permissionFiltering: dangerouslySkipPermissionFiltering
+          ? "dangerously_skip"
+          : "strict",
+      }
     );
   }
 
@@ -126,18 +136,22 @@ export async function createOrUpgradeAgentConfiguration({
     );
 
     // Validate that all requested spaces were found and user can read them
-    const readableSpaceIds = new Set(
-      additionalSpaces.filter((s) => s.canRead(auth)).map((s) => s.sId)
-    );
-    const inaccessibleSpaces = assistant.additionalRequestedSpaceIds.filter(
-      (sId) => !readableSpaceIds.has(sId)
-    );
-    if (inaccessibleSpaces.length > 0) {
-      return new Err(
-        new Error(
-          `User does not have access to the following spaces: ${inaccessibleSpaces.join(", ")}`
-        )
+    if (!dangerouslySkipPermissionFiltering) {
+      const readableSpaceIds = new Set(
+        additionalSpaces
+          .filter((space) => auth.can("read", space))
+          .map((s) => s.sId)
       );
+      const inaccessibleSpaces = assistant.additionalRequestedSpaceIds.filter(
+        (sId) => !readableSpaceIds.has(sId)
+      );
+      if (inaccessibleSpaces.length > 0) {
+        return new Err(
+          new Error(
+            `User does not have access to the following spaces: ${inaccessibleSpaces.join(", ")}`
+          )
+        );
+      }
     }
 
     const additionalSpaceModelIds = removeNulls(
@@ -156,7 +170,6 @@ export async function createOrUpgradeAgentConfiguration({
     );
   }
 
-  const featureFlags = await getFeatureFlags(auth);
   const modelConfig = getSupportedModelConfig(assistant.model);
   if (!modelConfig) {
     return new Err(
@@ -171,7 +184,6 @@ export async function createOrUpgradeAgentConfiguration({
     agentName: assistant.name,
     model: modelConfig,
     reasoningEffort: assistant.model.reasoningEffort,
-    featureFlags,
   });
   if (accessError) {
     return new Err(new Error(accessError.message));

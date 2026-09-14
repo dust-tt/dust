@@ -38,7 +38,7 @@ async fn delete_orphaned_points_for_document_id(
     };
 
     qdrant_client
-        .delete_points(&ds.embedder_config(), &ds.internal_id().to_string(), filter)
+        .delete_points(&ds.embedder_config(), &ds.qdrant_tenant(), filter)
         .await?;
 
     println!(

@@ -14,7 +14,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use lru::LruCache;
-use tempfile::NamedTempFile;
 use tracing::warn;
 
 use super::{errno, is_writable, INodeNo, Node};
@@ -24,6 +23,9 @@ const CONTENT_CACHE_ENTRY_CAPACITY: usize = 4096;
 // that an unrelated file is very unlikely to share that wait.
 const CONTENT_LOCK_STRIPES: usize = 1024;
 const CACHE_MARKER: &str = ".dust-filesystem-cache-v1";
+// The marker is written under this name and then renamed, so a daemon that dies
+// in between leaves this one file and startup knows it can remove it.
+const CACHE_MARKER_TEMPORARY: &str = ".dust-filesystem-cache-v1.tmp";
 const CACHE_MARKER_CONTENT: &[u8] = b"Dust filesystem staging directory\n";
 
 #[derive(Clone, Debug)]
@@ -371,6 +373,9 @@ pub(super) fn prepare_staging_directory(path: &Path) -> io::Result<()> {
     let entries = fs::read_dir(path)?.collect::<Result<Vec<_>, _>>()?;
     let mut marker_found = false;
     let mut managed_files = Vec::new();
+    // Counted while scanning: these files only make sense in a directory this
+    // cache has already claimed.
+    let mut files_that_need_a_marker = 0_usize;
     for entry in entries {
         let name = entry.file_name();
         let name = name.to_str().ok_or_else(|| errno(libc::EACCES))?;
@@ -380,42 +385,62 @@ pub(super) fn prepare_staging_directory(path: &Path) -> io::Result<()> {
             continue;
         }
         let entry_type = fs::symlink_metadata(entry.path())?.file_type();
-        let managed_name = name.strip_prefix("inode-").is_some_and(|suffix| {
+        // The three kinds of file this cache creates: content staged for an
+        // open file, a download still being written, and the marker on its way
+        // into place.
+        let staged_content = name.strip_prefix("inode-").is_some_and(|suffix| {
             !suffix.is_empty() && suffix.bytes().all(|byte| byte.is_ascii_digit())
-        }) || name.starts_with(".tmp");
-        if !managed_name || !(entry_type.is_file() || entry_type.is_symlink()) {
+        });
+        let download_in_progress = name.starts_with(".tmp");
+        let half_written_marker = name == CACHE_MARKER_TEMPORARY;
+        if !(staged_content || download_in_progress || half_written_marker)
+            || !(entry_type.is_file() || entry_type.is_symlink())
+        {
             // Never clean an arbitrary private directory passed by mistake.
             return Err(errno(libc::EACCES));
         }
+        if !half_written_marker {
+            files_that_need_a_marker += 1;
+        }
         managed_files.push(entry.path());
     }
-    if !marker_found {
-        if !managed_files.is_empty() {
-            return Err(errno(libc::EACCES));
-        }
-        write_cache_marker(path)?;
+    if !marker_found && files_that_need_a_marker > 0 {
+        // With no marker, this cache never finished claiming the directory, so
+        // its files belong to something else and must stay. The one exception is
+        // the marker being written when the daemon died, handled below: staged
+        // content only appears after a startup that did write the marker.
+        return Err(errno(libc::EACCES));
     }
     // The database and GCS are authoritative after a daemon crash. Only names
     // created by this cache are removed; an unexpected name fails closed above.
+    // This runs before the marker is written, because that write uses the same
+    // name as the file a half-written marker leaves here.
     for managed_file in managed_files {
         fs::remove_file(managed_file)?;
+    }
+    if !marker_found {
+        write_cache_marker(path)?;
     }
     Ok(())
 }
 
 fn write_cache_marker(path: &Path) -> io::Result<()> {
-    // Publish the marker only after its complete contents are on disk. A crash
-    // may leave a `.tmp` file, which startup already knows how to clean.
-    let mut marker = NamedTempFile::new_in(path)?;
-    marker
-        .as_file()
-        .set_permissions(fs::Permissions::from_mode(0o600))?;
+    // Write the whole marker under a second name and rename it into place, so
+    // another startup finds either no marker or a complete one. The name is
+    // fixed rather than random, because startup has to tell the file left by a
+    // half-written marker apart from files it must not touch.
+    let temporary = path.join(CACHE_MARKER_TEMPORARY);
+    let mut marker = OpenOptions::new()
+        .write(true)
+        .create(true)
+        .truncate(true)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+        .open(&temporary)?;
     marker.write_all(CACHE_MARKER_CONTENT)?;
-    marker.as_file().sync_data()?;
-    marker
-        .persist_noclobber(path.join(CACHE_MARKER))
-        .map_err(|error| error.error)?;
-    Ok(())
+    marker.sync_data()?;
+    drop(marker);
+    fs::rename(&temporary, path.join(CACHE_MARKER))
 }
 
 fn validate_cache_marker(path: &Path) -> io::Result<()> {
@@ -461,7 +486,8 @@ mod tests {
     use tempfile::tempdir;
 
     use super::{
-        open_staged_file, prepare_staging_directory, CachedContent, ContentCache, CACHE_MARKER,
+        open_staged_file, prepare_staging_directory, validate_cache_marker, CachedContent,
+        ContentCache, CACHE_MARKER, CACHE_MARKER_CONTENT, CACHE_MARKER_TEMPORARY,
         CONTENT_CACHE_ENTRY_CAPACITY,
     };
     use crate::commands::filesystem::inode::INodeNo;
@@ -524,6 +550,52 @@ mod tests {
         let error = prepare_staging_directory(&staging).expect_err("reject staging link");
 
         assert_eq!(error.raw_os_error(), Some(libc::ENOTDIR));
+    }
+
+    #[test]
+    fn staging_startup_finishes_a_marker_left_half_written_by_a_crash() {
+        let directory = tempdir().expect("temporary directory");
+        let staging = directory.path().join("staging");
+        fs::create_dir(&staging).expect("create staging");
+        fs::set_permissions(&staging, fs::Permissions::from_mode(0o700)).expect("restrict staging");
+        // What a daemon that died between writing the marker and renaming it
+        // into place leaves behind. Refusing to start here would make the
+        // staging directory unusable for good.
+        fs::write(staging.join(CACHE_MARKER_TEMPORARY), CACHE_MARKER_CONTENT)
+            .expect("write the half-written marker");
+
+        prepare_staging_directory(&staging).expect("recover and claim the directory");
+
+        let names = fs::read_dir(&staging)
+            .expect("list staging")
+            .map(|entry| entry.expect("staging entry").file_name())
+            .collect::<Vec<_>>();
+        assert_eq!(names, vec![std::ffi::OsString::from(CACHE_MARKER)]);
+        validate_cache_marker(&staging.join(CACHE_MARKER)).expect("the marker is complete");
+    }
+
+    #[test]
+    fn staging_startup_keeps_refusing_an_unmarked_directory_holding_other_files() {
+        let directory = tempdir().expect("temporary directory");
+        let staging = directory.path().join("staging");
+        fs::create_dir(&staging).expect("create staging");
+        fs::set_permissions(&staging, fs::Permissions::from_mode(0o700)).expect("restrict staging");
+        // Staged content and download files only appear after a startup that
+        // wrote the marker, so without one they came from somewhere else.
+        fs::write(staging.join("inode-7"), b"content").expect("write staged content");
+        fs::write(staging.join(".tmpAbC123"), b"download").expect("write a download file");
+
+        let error = prepare_staging_directory(&staging).expect_err("refuse the directory");
+
+        assert_eq!(error.raw_os_error(), Some(libc::EACCES));
+        assert_eq!(
+            fs::read(staging.join("inode-7")).expect("read staged content"),
+            b"content"
+        );
+        assert_eq!(
+            fs::read(staging.join(".tmpAbC123")).expect("read the download file"),
+            b"download"
+        );
     }
 
     #[test]

@@ -1,6 +1,7 @@
+import { queryTracker } from "@app/lib/api/query_tracker";
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import tracer from "@app/logger/tracer";
 import {
@@ -56,32 +57,38 @@ type RouteConcurrencyState = {
 // lifetime. Each route bucket is process-local.
 const routeConcurrencyStates = new Map<string, RouteConcurrencyState>();
 
+/**
+ * @cc [owner:flvndvd,label:api;logging] request-query-tracker-scope
+ * Each Hono request MUST run downstream middleware and handlers within a fresh `queryTracker`
+ * store.
+ */
+/**
+ * @cc [owner:flvndvd,label:api;logging] request-query-tracker-log
+ * Every `Processed request` log MUST report the request store's peak as
+ * `peakConcurrentQueries`.
+ */
 export const requestInstrumentation =
   createMiddleware<RequestInstrumentationEnv>(async (c, next) => {
-    // Mutable: `route` starts as the raw URL path and is updated to the matched
-    // route pattern in the finally block (routePath is only set after routing).
-    // Any unhandled rejection fired from the handler will see the updated value
-    // because routing completes before the handler (and any fire-and-forget
-    // promises it spawns) run.
+    // `-1` points at the leaf handler selected by Hono, which is known before
+    // `next()` runs. Store the normalized route early so queries executed by the
+    // handler can use it without tagging concrete resource IDs.
+    const matchedRoute = routePath(c, -1) || c.req.path;
     const reqCtx: RequestContext = {
       method: c.req.method,
-      route: c.req.path,
+      route: matchedRoute,
       url: c.req.path,
     };
     c.set("requestContext", reqCtx);
     c.set("queryCache", new RequestQueryCache());
+    const queryTrackerStore = { concurrent: 0, peak: 0 };
 
     if (SKIP_LOGGER_PATHS.has(c.req.path) || c.req.method === "OPTIONS") {
       // Also drop the APM trace so these requests don't show up in Datadog.
       tracer.scope().active()?.setTag("manual.drop", true);
-      return next();
+      return queryTracker.run(queryTrackerStore, next);
     }
 
-    // `routePath(c)` defaults to the current middleware route (`/*` here).
-    // `-1` points at the leaf handler route selected by Hono, which is already
-    // known before `next()` runs.
-    const concurrencyRoute = routePath(c, -1) || c.req.path;
-    const concurrencyKey = `${c.req.method} ${concurrencyRoute}`;
+    const concurrencyKey = `${c.req.method} ${matchedRoute}`;
     const routeConcurrencyState = routeConcurrencyStates.get(
       concurrencyKey
     ) ?? {
@@ -105,7 +112,7 @@ export const requestInstrumentation =
 
     const startMs = performance.now();
     try {
-      await next();
+      await queryTracker.run(queryTrackerStore, next);
     } finally {
       routeConcurrencyState.inFlightPeaks.delete(peakRef);
       routeConcurrencyState.activeRequests -= 1;
@@ -146,8 +153,8 @@ export const requestInstrumentation =
       `streaming:${streaming}`,
       `status_code:${statusCode}`,
     ];
-    getStatsDClient().increment("requests.count", 1, tags);
-    getStatsDClient().distribution(
+    statsDMetrics.increment("requests.count", 1, tags);
+    statsDMetrics.distribution(
       "requests.duration.distribution",
       durationMs,
       tags
@@ -163,6 +170,7 @@ export const requestInstrumentation =
           durationMs,
           method: c.req.method,
           peakConcurrency: peakRef.peak,
+          peakConcurrentQueries: queryTrackerStore.peak,
           route,
           sessionId: session?.sessionId ?? "unknown",
           statusCode,

@@ -6,23 +6,26 @@ import {
 import {
   dismissRequestedOwnerPolicyDomain,
   readOwnerPolicy,
+  requestOwnerPolicyDomain,
   writeOwnerPolicy,
 } from "@app/lib/api/sandbox/egress_policy";
 import type {
   GetPodEgressPolicyResponseBody,
+  PostPodEgressPolicyRequestResponseBody,
   PutPodEgressPolicyResponseBody,
 } from "@app/types/api/sandbox/egress_policy";
 import { parseEgressPolicy } from "@app/types/sandbox/egress_policy";
 import { workspaceApp } from "@front-api/middlewares/ctx";
+import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
 import { withSpace } from "@front-api/middlewares/with_space";
 import { z } from "zod";
-import { fromError } from "zod-validation-error";
 
-// Mounted at /api/w/:wId/spaces/:spaceId/sandbox/egress-policy. The parent
-// sandbox sub-app applies the workspace-admin and `sandbox_functions` gates;
-// each handler additionally validates that the space is a Pod (project
-// space).
+// Mounted at /api/w/:wId/spaces/:spaceId/sandbox/egress-policy. GET (and the
+// member request POST) are open to Pod readers; the admin writes (PUT,
+// requests/dismiss) add `ensureIsAdmin`. Each handler validates the space is a
+// Pod.
 //
 // A Pod's allowlist is its owner policy file
 // (`w/{wId}/sandboxes/{spaceSId}.json`) — the same slot conversation
@@ -31,7 +34,7 @@ import { fromError } from "zod-validation-error";
 // activation. Mirrors the workspace egress-policy route.
 const app = workspaceApp();
 
-const DismissRequestBodySchema = z.object({
+const EgressDomainBodySchema = z.object({
   domain: z.string().min(1),
 });
 
@@ -77,6 +80,7 @@ app.get(
 /** @ignoreswagger */
 app.put(
   "/",
+  ensureIsAdmin(),
   withSpace({ requireCanReadOrAdministrate: true }),
   async (ctx): HandlerResult<PutPodEgressPolicyResponseBody> => {
     const auth = ctx.get("auth");
@@ -144,10 +148,56 @@ app.put(
   }
 );
 
+// Any Pod member may request a domain; it records a pending request for admin
+// review and never grants access.
+/** @ignoreswagger */
+app.post(
+  "/requests",
+  withSpace({ requireCanReadOrAdministrate: true }),
+  validate("json", EgressDomainBodySchema),
+  async (ctx): HandlerResult<PostPodEgressPolicyRequestResponseBody> => {
+    const auth = ctx.get("auth");
+    const space = ctx.get("space");
+
+    if (!space.isProject()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Pod egress policy is only available for project spaces.",
+        },
+      });
+    }
+
+    const { domain } = ctx.req.valid("json");
+    const result = await requestOwnerPolicyDomain(auth, {
+      ownerId: space.sId,
+      domain,
+    });
+    if (result.isErr()) {
+      // Caller-actionable: an invalid domain or a full pending-request cap.
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: result.error.message,
+        },
+      });
+    }
+
+    return ctx.json({
+      policy: result.value.policy,
+      outcome: result.value.outcome,
+    });
+  }
+);
+
 /** @ignoreswagger */
 app.post(
   "/requests/dismiss",
+  ensureIsAdmin(),
   withSpace({ requireCanReadOrAdministrate: true }),
+  validate("json", EgressDomainBodySchema),
   async (ctx): HandlerResult<PutPodEgressPolicyResponseBody> => {
     const auth = ctx.get("auth");
     const space = ctx.get("space");
@@ -162,21 +212,10 @@ app.post(
       });
     }
 
-    const body = await ctx.req.json().catch(() => null);
-    const parsedBody = DismissRequestBodySchema.safeParse(body);
-    if (!parsedBody.success) {
-      return apiError(ctx, {
-        status_code: 400,
-        api_error: {
-          type: "invalid_request_error",
-          message: fromError(parsedBody.error).toString(),
-        },
-      });
-    }
-
+    const { domain } = ctx.req.valid("json");
     const result = await dismissRequestedOwnerPolicyDomain(auth, {
       ownerId: space.sId,
-      domain: parsedBody.data.domain,
+      domain,
     });
     if (result.isErr()) {
       return apiError(ctx, {

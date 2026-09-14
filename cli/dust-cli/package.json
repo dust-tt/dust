@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/dust-cli",
-  "version": "0.4.5",
+  "version": "0.4.6",
   "engines": {
     "node": ">=24.16.0"
   },
@@ -27,7 +27,7 @@
     "directory": "cli/dust-cli"
   },
   "dependencies": {
-    "@dust-tt/client": "^1.2.6",
+    "@dust-tt/client": "^1.2.8",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "chalk": "^5.4.1",
     "clipboardy": "^4.0.0",

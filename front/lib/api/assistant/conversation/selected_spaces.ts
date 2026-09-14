@@ -77,13 +77,19 @@ export async function listSelectableSpaces(
     selectedSpaces.map((selectedSpace) => selectedSpace.sId)
   );
 
-  const selectableSpaces = spaces
+  const selectableSpaceResources = spaces
     .filter((space) => space.isRegular())
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((space) => ({
-      ...space.toJSON(),
-      selected: selectedSpaceIds.has(space.sId),
-    }));
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const enriched = await SpaceResource.enrichSpacesWithAccess(
+    auth,
+    selectableSpaceResources
+  );
+
+  const selectableSpaces = selectableSpaceResources.map((space, i) => ({
+    ...enriched[i],
+    selected: selectedSpaceIds.has(space.sId),
+  }));
 
   return new Ok(selectableSpaces);
 }
@@ -134,7 +140,7 @@ export async function validateSelectableSpaces(
     );
   }
 
-  if (spaces.some((space) => !space.canRead(auth))) {
+  if (spaces.some((space) => !auth.can("read", space))) {
     return new Err(
       new SelectedConversationSpacesError(
         "space_not_found",
@@ -200,9 +206,14 @@ export async function addSelectedConversationSpaces(
         }
       );
 
+    const enriched = await SpaceResource.enrichSpacesWithAccess(
+      auth,
+      selectedSpaces
+    );
+
     return new Ok({
-      selectedSpaces: selectedSpaces.map((space) => ({
-        ...space.toJSON(),
+      selectedSpaces: selectedSpaces.map((_space, i) => ({
+        ...enriched[i],
         selected: true,
       })),
       effectiveAcl: {
@@ -306,9 +317,14 @@ export async function addSelectedConversationSpaces(
         }
       );
 
+    const enriched = await SpaceResource.enrichSpacesWithAccess(
+      auth,
+      allSelectedSpaces
+    );
+
     return new Ok({
-      selectedSpaces: allSelectedSpaces.map((space) => ({
-        ...space.toJSON(),
+      selectedSpaces: allSelectedSpaces.map((_space, i) => ({
+        ...enriched[i],
         selected: true,
       })),
       effectiveAcl: {
@@ -411,7 +427,7 @@ async function getValidSelectedSpaceIdsForAgentRun(
     );
 
   return selectedSpaces
-    .filter((space) => space.canRead(auth) && space.isRegular())
+    .filter((space) => auth.can("read", space) && space.isRegular())
     .map((space) => space.sId);
 }
 

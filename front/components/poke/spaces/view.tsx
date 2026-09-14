@@ -6,20 +6,19 @@ import {
   PokeTableHead,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
-import { makeSandboxConnectCommand } from "@app/lib/poke/sandbox";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
-import type { PokeSandboxType, PokeSpaceType } from "@app/types/poke";
+import { isManageableGroupKind } from "@app/types/groups";
+import type { PokeSpaceType } from "@app/types/poke";
 
 interface ViewSpaceTableProps {
-  sandbox: PokeSandboxType | null;
   space: PokeSpaceType;
 }
 
-export function ViewSpaceViewTable({ sandbox, space }: ViewSpaceTableProps) {
+export function ViewSpaceViewTable({ space }: ViewSpaceTableProps) {
   return (
     <div className="flex flex-col space-y-8">
       <div className="flex justify-between gap-3">
-        <div className="border-material-200 my-4 flex flex-grow flex-col rounded-lg border p-4">
+        <div className="my-4 flex flex-grow flex-col rounded-lg border p-4">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-md flex-grow pb-4 font-bold">Overview</h2>
           </div>
@@ -56,37 +55,14 @@ export function ViewSpaceViewTable({ sandbox, space }: ViewSpaceTableProps) {
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
-                <PokeTableHead>Management Mode</PokeTableHead>
-                <PokeTableCell>{space.managementMode}</PokeTableCell>
+                <PokeTableHead>Groups</PokeTableHead>
+                <PokeTableCell>
+                  {space.groups
+                    .filter((g) => isManageableGroupKind(g.kind))
+                    .map((g) => g.name)
+                    .join(", ") || "None"}
+                </PokeTableCell>
               </PokeTableRow>
-              {space.managementMode === "group" && (
-                <PokeTableRow>
-                  <PokeTableHead>Groups</PokeTableHead>
-                  <PokeTableCell>
-                    {space.groups
-                      .filter((g) => g.kind === "provisioned")
-                      .map((g) => g.name)
-                      .join(", ")}
-                  </PokeTableCell>
-                </PokeTableRow>
-              )}
-              {sandbox && (
-                <>
-                  <PokeTableRow>
-                    <PokeTableHead>Sandbox Status</PokeTableHead>
-                    <PokeTableCell>{sandbox.status}</PokeTableCell>
-                  </PokeTableRow>
-                  <PokeTableRow>
-                    <PokeTableHead>Sandbox Connect</PokeTableHead>
-                    {/* The `e2b sandbox connect` command is too wide for the
-                        Overview; the copy button is what matters here. */}
-                    <PokeTableCellWithCopy
-                      label="Copy command"
-                      textToCopy={makeSandboxConnectCommand(sandbox)}
-                    />
-                  </PokeTableRow>
-                </>
-              )}
               <PokeTableRow>
                 <PokeTableHead>Created At</PokeTableHead>
                 <PokeTableCell>

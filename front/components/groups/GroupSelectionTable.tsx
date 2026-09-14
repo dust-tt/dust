@@ -1,7 +1,11 @@
+import { getGroupKindChip } from "@app/components/groups/GroupKinds";
 import { useGroups } from "@app/lib/swr/groups";
-import type { GroupType } from "@app/types/groups";
+import type { GroupKind, GroupType } from "@app/types/groups";
+import { MANAGEABLE_GROUP_KINDS } from "@app/types/groups";
+import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  Chip,
   createSelectionColumn,
   DataTable,
   SearchInput,
@@ -15,9 +19,10 @@ import type {
 } from "@tanstack/react-table";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-interface GroupRowData {
+export interface GroupRowData {
   sId: string;
   name: string;
+  kind: GroupKind;
   memberCount: number;
   onClick?: () => void;
 }
@@ -26,6 +31,7 @@ function getGroupTableRows(groups: GroupType[]): GroupRowData[] {
   return groups.map((group) => ({
     sId: group.sId,
     name: group.name,
+    kind: group.kind,
     memberCount: group.memberCount,
   }));
 }
@@ -34,12 +40,16 @@ interface GroupSelectionTableProps {
   owner: LightWorkspaceType;
   selectedGroupIds: Set<string>;
   onSelectionChange: (ids: Set<string>, groups: GroupType[]) => void;
+  // Appended after the group columns, as `MemberSelectionTable` does — used to pick the role a
+  // selected group gets.
+  extraColumns?: ColumnDef<GroupRowData>[];
 }
 
 export function GroupSelectionTable({
   owner,
   selectedGroupIds,
   onSelectionChange,
+  extraColumns,
 }: GroupSelectionTableProps) {
   const [searchText, setSearchText] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
@@ -54,7 +64,7 @@ export function GroupSelectionTable({
 
   const { groups, isGroupsLoading } = useGroups({
     owner,
-    kinds: ["provisioned"],
+    kinds: MANAGEABLE_GROUP_KINDS,
   });
 
   const groupMapRef = useRef(new Map<string, GroupType>());
@@ -115,24 +125,34 @@ export function GroupSelectionTable({
         meta: {
           className: "w-full",
         },
-        cell: (info: CellContext<GroupRowData, unknown>) => (
-          <DataTable.CellContent icon={Users01}>
-            {info.row.original.name}
-          </DataTable.CellContent>
-        ),
+        cell: (info: CellContext<GroupRowData, unknown>) => {
+          const { name, memberCount } = info.row.original;
+          return (
+            <DataTable.CellContent
+              icon={Users01}
+              description={`${memberCount} member${pluralize(memberCount)}`}
+            >
+              {name}
+            </DataTable.CellContent>
+          );
+        },
       },
       {
-        accessorKey: "memberCount",
-        header: "Members",
-        id: "memberCount",
-        cell: (info: CellContext<GroupRowData, unknown>) => (
-          <DataTable.CellContent>
-            {info.row.original.memberCount}
-          </DataTable.CellContent>
-        ),
+        id: "kind",
+        header: "",
+        meta: { className: "w-[160px]" },
+        cell: (info: CellContext<GroupRowData, unknown>) => {
+          const { label, color } = getGroupKindChip(info.row.original.kind);
+          return (
+            <DataTable.CellContent>
+              <Chip size="xs" color={color} label={label} />
+            </DataTable.CellContent>
+          );
+        },
       },
+      ...(extraColumns ?? []),
     ],
-    []
+    [extraColumns]
   );
 
   return (

@@ -1,23 +1,27 @@
 import { MCPServerViewSchema } from "@app/lib/api/mcp_schemas";
+import type { SkillAvailability } from "@app/types/assistant/skill_configuration_constants";
+import {
+  SKILL_AVAILABILITIES,
+  SKILL_STATUSES,
+} from "@app/types/assistant/skill_configuration_constants";
 import type { AgentsAndSkillsUsageType } from "@app/types/data_source";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { UserType } from "@app/types/user";
 import { z } from "zod";
 
-export const SKILL_STATUSES = ["active", "archived", "suggested"] as const;
-export type SkillStatus = (typeof SKILL_STATUSES)[number];
-
 export const SKILL_REINFORCEMENT_MODES = ["auto", "on", "off"] as const;
 export type SkillReinforcementMode = (typeof SKILL_REINFORCEMENT_MODES)[number];
 
-export const SKILL_AVAILABILITIES = [
-  "editors",
-  "workspace_users",
-  "users_and_agents",
-] as const;
-export type SkillAvailability = (typeof SKILL_AVAILABILITIES)[number];
-
-export const DEFAULT_SKILL_AVAILABILITY = "editors" satisfies SkillAvailability;
+export type {
+  SkillAvailability,
+  SkillStatus,
+} from "@app/types/assistant/skill_configuration_constants";
+// Re-exported from the leaf module so importers do not have to care which file they live in.
+export {
+  DEFAULT_SKILL_AVAILABILITY,
+  SKILL_AVAILABILITIES,
+  SKILL_STATUSES,
+} from "@app/types/assistant/skill_configuration_constants";
 
 // The DB column is availability; isDefault survives as a boolean alias in the API and
 // frontend. Remove these mappings once clients rely on availability directly.
@@ -77,12 +81,18 @@ export const SkillWithoutInstructionsAndToolsSchema = z.object({
   selfImprovementCostsCapMicroUsd: z.number().nullable(),
   selfImprovementCostsCapAwuCredits: z.number().nullable(),
   requestedSpaceIds: z.array(z.string()),
+  // The subset of `requestedSpaceIds` picked by hand under "Data and access". Optional so older
+  // clients that do not send it back are still accepted.
+  manuallyRequestedSpaceIds: z.array(z.string()).optional(),
   fileAttachments: z.array(
     z.object({
       fileId: z.string(),
       fileName: z.string(),
     })
   ),
+  // False when the private fields (instructions, tools, files) were redacted: an admin listing a
+  // skill built on a space they are not a member of.
+  canRead: z.boolean(),
   canWrite: z.boolean(),
   canAdministrate: z.boolean(),
   // @deprecated Use availability instead. Kept while old clients still read it.
@@ -101,6 +111,19 @@ export const SkillSchema = SkillWithoutInstructionsAndToolsSchema.extend({
 });
 
 export type SkillType = z.infer<typeof SkillSchema>;
+
+// A skill as seen from the agent it is attached to: just enough to identify and label it. Kept
+// deliberately small because agent list endpoints serialize it for every agent of the workspace;
+// fetch the skill itself for its description, tools or instructions.
+const AgentSkillSchema = z.object({
+  sId: z.string(),
+  name: z.string(),
+});
+
+/**
+ * @swaggerschema AgentSkill (swagger_schemas.ts)
+ */
+export type AgentSkillType = z.infer<typeof AgentSkillSchema>;
 
 export type UsedBySkillType = {
   sId: string;

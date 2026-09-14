@@ -1,4 +1,4 @@
-import { getStatsDClient } from "@app/lib/utils/statsd";
+import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
 import { METRICS } from "@app/temporal/agent_loop/activities/instrumentation";
@@ -55,7 +55,7 @@ export const instrumentationSinks: InjectedSinks<AgentLoopInstrumentationSinks> 
             { workspaceId, agentMessageId, conversationId, startStep },
             "Agent loop phase execution started"
           );
-          getStatsDClient().increment(METRICS.PHASE_STARTS, 1);
+          statsDMetrics.increment(METRICS.PHASE_STARTS, 1);
         },
       },
       logStepCompletion: {
@@ -71,13 +71,9 @@ export const instrumentationSinks: InjectedSinks<AgentLoopInstrumentationSinks> 
           const incrementTags = [`step:${step}`];
           const distributionTags = [`step:${step < 16 ? step : "16+"}`];
 
-          getStatsDClient().increment(METRICS.STEP_STARTS, 1, incrementTags);
-          getStatsDClient().increment(
-            METRICS.STEP_COMPLETIONS,
-            1,
-            incrementTags
-          );
-          getStatsDClient().distribution(
+          statsDMetrics.increment(METRICS.STEP_STARTS, 1, incrementTags);
+          statsDMetrics.increment(METRICS.STEP_COMPLETIONS, 1, incrementTags);
+          statsDMetrics.distribution(
             METRICS.STEP_DURATION,
             stepDurationMs,
             distributionTags
@@ -112,18 +108,12 @@ export const instrumentationSinks: InjectedSinks<AgentLoopInstrumentationSinks> 
             "Agent loop execution completed"
           );
 
-          getStatsDClient().increment(METRICS.PHASE_COMPLETIONS, 1);
-          getStatsDClient().distribution(
-            METRICS.PHASE_DURATION,
-            phaseDurationMs
-          );
-          getStatsDClient().histogram(METRICS.PHASE_STEPS, stepsCompleted);
+          statsDMetrics.increment(METRICS.PHASE_COMPLETIONS, 1);
+          statsDMetrics.distribution(METRICS.PHASE_DURATION, phaseDurationMs);
+          statsDMetrics.histogram(METRICS.PHASE_STEPS, stepsCompleted);
 
-          getStatsDClient().increment(METRICS.LOOP_COMPLETIONS, 1);
-          getStatsDClient().distribution(
-            METRICS.LOOP_DURATION,
-            totalDurationMs
-          );
+          statsDMetrics.increment(METRICS.LOOP_COMPLETIONS, 1);
+          statsDMetrics.distribution(METRICS.LOOP_DURATION, totalDurationMs);
         },
       },
     },

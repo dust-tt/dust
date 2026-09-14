@@ -30,6 +30,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import { rejectArchivedSkill } from "@front-api/routes/w/[wId]/skills/guards";
 import type { Context, TypedResponse } from "hono";
 import uniq from "lodash/uniq";
 import uniqBy from "lodash/uniqBy";
@@ -72,14 +73,24 @@ const PatchSkillRequestBodySchema = z.object({
 // failure Response. See [API10].
 async function loadSkill(
   ctx: Context,
-  sId: string
+  sId: string,
+  {
+    redactUnreadableForAdmin = false,
+  }: {
+    redactUnreadableForAdmin?: boolean;
+  } = {}
 ): Promise<
   | { skill: SkillResource; sId: string }
   | (Response & TypedResponse<APIErrorResponse>)
 > {
   const auth = ctx.get("auth");
 
-  const skill = await SkillResource.fetchById(auth, sId);
+  const skill = await SkillResource.fetchById(auth, sId, {
+    permissionFiltering:
+      redactUnreadableForAdmin && auth.isAdmin()
+        ? "redact_unreadable"
+        : "strict",
+  });
   if (!skill) {
     return apiError(ctx, {
       status_code: 404,
@@ -116,7 +127,9 @@ app.get(
     const auth = ctx.get("auth");
     const { sId } = ctx.req.valid("param");
 
-    const loaded = await loadSkill(ctx, sId);
+    const loaded = await loadSkill(ctx, sId, {
+      redactUnreadableForAdmin: true,
+    });
     if (loaded instanceof Response) {
       return loaded;
     }
@@ -252,6 +265,11 @@ app.patch(
       });
     }
 
+    const archivedError = rejectArchivedSkill(ctx, skill);
+    if (archivedError) {
+      return archivedError;
+    }
+
     // Editing a skill remains editor-only; non-editors holding the publish permission use
     // PATCH /skills/:sId/availability to publish or unpublish without editing.
     if (!skill.canWrite(auth)) {
@@ -360,6 +378,8 @@ app.patch(
       skill.sId
     );
 
+    // `additionalRequestedSpaceIds` is the wire name of the skill's manual space selection, stored
+    // as `manuallyRequestedSpaceIds`.
     let additionalRequestedSpaceIds: ModelId[];
 
     if (body.additionalRequestedSpaceIds !== undefined) {
@@ -381,32 +401,18 @@ app.patch(
 
       additionalRequestedSpaceIds = additionalRequestedSpaceIdsRes.value;
     } else {
-      const previousAttachedKnowledge = await skill.getAttachedKnowledge(auth);
-      const previousComputedRequestedSpaceIds =
-        await SkillResource.computeRequestedSpaceIds(auth, {
-          mcpServerViews: skill.mcpServerViews,
-          attachedKnowledge: previousAttachedKnowledge,
-        });
-      const previousReferencedSkillSpaceIds =
-        await getReferencedSkillSpaceModelIds(
-          auth,
-          skill.instructions,
-          skill.sId
-        );
-      const previousComputedRequestedSpaceIdsSet = new Set([
-        ...previousComputedRequestedSpaceIds,
-        ...previousReferencedSkillSpaceIds,
-      ]);
-
-      additionalRequestedSpaceIds = skill.requestedSpaceIds.filter(
-        (spaceId) => !previousComputedRequestedSpaceIdsSet.has(spaceId)
-      );
+      // A request that says nothing about the spaces leaves the manual selection as it is.
+      additionalRequestedSpaceIds = [...skill.manuallyRequestedSpaceIds];
     }
 
+    // A skill requests a space for one of four reasons: one of its tools lives there, some of its
+    // attached knowledge does, a skill it references requests it, or a person picked it by hand.
+    // Only the last one is stored; the other three are derived, and disappear with what pulled
+    // them in.
     const requestedSpaceIds = uniq([
-      ...computedRequestedSpaceIds,
-      ...referencedSkillSpaceIds,
-      ...additionalRequestedSpaceIds,
+      ...computedRequestedSpaceIds, // Tools and attached knowledge.
+      ...referencedSkillSpaceIds, // Nested skills.
+      ...additionalRequestedSpaceIds, // Picked by hand.
     ]);
 
     // Adding a restricted space can lock out editors that are already on the skill. `updateSkill`
@@ -479,6 +485,7 @@ app.patch(
       instructions: body.instructions,
       instructionsHtml: body.instructionsHtml,
       availability: requestedAvailability,
+      manuallyRequestedSpaceIds: additionalRequestedSpaceIds,
       mcpServerViews,
       name,
       reinforcement: body.reinforcement,
@@ -501,7 +508,11 @@ app.delete(
     const owner = auth.getNonNullableWorkspace();
     const { sId } = ctx.req.valid("param");
 
-    const loaded = await loadSkill(ctx, sId);
+    // Admins can archive the skills built on spaces they are not a member of (shown to them
+    // redacted).
+    const loaded = await loadSkill(ctx, sId, {
+      redactUnreadableForAdmin: true,
+    });
     if (loaded instanceof Response) {
       return loaded;
     }
@@ -516,6 +527,11 @@ app.delete(
           message: "Only admins and editors can archive this skill.",
         },
       });
+    }
+
+    const archivedDeleteError = rejectArchivedSkill(ctx, skill);
+    if (archivedDeleteError) {
+      return archivedDeleteError;
     }
 
     if (skill.status === "suggested") {

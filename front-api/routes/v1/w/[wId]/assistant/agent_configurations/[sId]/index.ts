@@ -2,6 +2,7 @@ import {
   archiveAgentConfiguration,
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
+import { toAgentConfigurationsWithSkills } from "@app/lib/api/assistant/configuration/helpers";
 import { patchAgentConfigurationFromJSON } from "@app/lib/api/assistant/configuration/yaml_import";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
@@ -15,6 +16,10 @@ import { publicApiApp } from "@front-api/middlewares/ctx";
 import { ensureIsAdmin } from "@front-api/middlewares/ensure_role";
 import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
+import {
+  ARCHIVED_AGENT_API_ERROR,
+  isArchivedAgent,
+} from "@front-api/routes/w/[wId]/assistant/agent_configurations/guards";
 import { z } from "zod";
 
 import yaml from "./export/yaml";
@@ -231,7 +236,7 @@ const VariantQuerySchema = z.object({
  *         description: Internal Server Error.
  *   delete:
  *     summary: Archive agent configuration
- *     description: Archive the agent configuration identified by {sId} in the workspace identified by {wId}. The agent is soft-archived and triggers/editor-group memberships associated with it are disabled.
+ *     description: Archive the agent configuration identified by {sId} in the workspace identified by {wId}. The agent is soft-archived and its triggers are disabled.
  *     tags:
  *       - Agents
  *     parameters:
@@ -260,7 +265,7 @@ const VariantQuerySchema = z.object({
  *                 success:
  *                   type: boolean
  *       400:
- *         description: Bad Request. Invalid or missing parameters.
+ *         description: Bad Request. Invalid parameters or the agent is already archived.
  *       401:
  *         description: Unauthorized. Invalid or missing authentication token.
  *       403:
@@ -311,19 +316,11 @@ app.get(
       });
     }
 
-    if (!agentConfiguration.canRead && !auth.isAdmin()) {
-      return apiError(ctx, {
-        status_code: 403,
-        api_error: {
-          type: "workspace_auth_error",
-          message: "Only admins can access unpublished agents.",
-        },
-      });
-    }
-
-    return ctx.json({
+    const [serialized] = await toAgentConfigurationsWithSkills(auth, [
       agentConfiguration,
-    });
+    ]);
+
+    return ctx.json({ agentConfiguration: serialized });
   }
 );
 
@@ -387,15 +384,21 @@ app.patch(
         return apiError(ctx, patchResult.error);
       }
 
+      const [patched] = await toAgentConfigurationsWithSkills(auth, [
+        patchResult.value.agentConfiguration,
+      ]);
+
       return ctx.json({
-        agentConfiguration: patchResult.value.agentConfiguration,
+        agentConfiguration: patched,
         skippedActions: patchResult.value.skippedActions,
       });
     }
 
-    return ctx.json({
+    const [serialized] = await toAgentConfigurationsWithSkills(auth, [
       agentConfiguration,
-    });
+    ]);
+
+    return ctx.json({ agentConfiguration: serialized });
   }
 );
 
@@ -420,6 +423,10 @@ app.delete(
           message: "The agent configuration you requested was not found.",
         },
       });
+    }
+
+    if (isArchivedAgent(agentConfiguration)) {
+      return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
     // Space-scoping is enforced upstream: `getAgentConfiguration` (called above) returns null

@@ -6,19 +6,108 @@ import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import { isToolSearchEnabledForModel } from "@app/lib/model_constructors/types/tool_search";
 import { tokenCountForTexts } from "@app/lib/tokenization";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type { AttachmentCapabilityContext } from "@app/types/api/assistant/conversation/attachments";
 import {
+  CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG,
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+} from "@app/types/assistant/models/anthropic";
+import { DEEPSEEK_CHAT_MODEL_CONFIG } from "@app/types/assistant/models/deepseek";
+import {
+  FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG,
+  FIREWORKS_GLM_5_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+  FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
+} from "@app/types/assistant/models/fireworks";
+import {
+  GEMINI_2_5_FLASH_LITE_MODEL_CONFIG,
+  GEMINI_2_5_FLASH_MODEL_CONFIG,
+  GEMINI_2_5_PRO_MODEL_CONFIG,
+  GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_CONFIG,
+  GEMINI_3_FLASH_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
+} from "@app/types/assistant/models/google_ai_studio";
+import { MISTRAL_MEDIUM_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
+import {
+  GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
+  GPT_4O_20240806_MODEL_CONFIG,
+  GPT_4O_MINI_MODEL_CONFIG,
+  GPT_4O_MODEL_CONFIG,
+  O1_MINI_MODEL_CONFIG,
+  O1_MODEL_CONFIG,
+  O3_MINI_MODEL_CONFIG,
+  O3_MODEL_CONFIG,
+  O4_MINI_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import {
+  GROK_3_MINI_MODEL_CONFIG,
+  GROK_3_MODEL_CONFIG,
+  GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
+  GROK_4_1_FAST_REASONING_MODEL_CONFIG,
+  GROK_4_FAST_NON_REASONING_MODEL_CONFIG,
+  GROK_4_FAST_REASONING_MODEL_CONFIG,
+  GROK_4_MODEL_CONFIG,
+} from "@app/types/assistant/models/xai";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 // Consumption attribution also runs for historical messages. These models are no longer in the
 // serving registry, but their immutable tokenizer configurations remain valid for old run usage.
 const HISTORICAL_TOKENIZATION_MODEL_CONFIGS = [
+  GPT_3_5_TURBO_MODEL_CONFIG,
+  GPT_4_TURBO_MODEL_CONFIG,
+  GPT_4O_MODEL_CONFIG,
+  GPT_4O_20240806_MODEL_CONFIG,
+  GPT_4O_MINI_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
   GPT_4_1_MINI_MODEL_CONFIG,
+  O1_MODEL_CONFIG,
+  O1_MINI_MODEL_CONFIG,
+  O3_MODEL_CONFIG,
+  O3_MINI_MODEL_CONFIG,
+  O4_MINI_MODEL_CONFIG,
+  CLAUDE_4_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_OPUS_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_SONNET_20240620_DEPRECATED_MODEL_CONFIG,
+  CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
+  CLAUDE_3_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  MISTRAL_MEDIUM_MODEL_CONFIG,
+  GEMINI_2_5_FLASH_MODEL_CONFIG,
+  GEMINI_2_5_FLASH_LITE_MODEL_CONFIG,
+  GEMINI_2_5_PRO_MODEL_CONFIG,
+  GEMINI_3_PRO_MODEL_CONFIG,
+  GEMINI_3_1_FLASH_LITE_PREVIEW_DEPRECATED_MODEL_CONFIG,
+  GEMINI_3_FLASH_MODEL_CONFIG,
+  DEEPSEEK_CHAT_MODEL_CONFIG,
+  FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG,
+  FIREWORKS_KIMI_K2P5_MODEL_CONFIG,
+  FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG,
+  FIREWORKS_GLM_5_MODEL_CONFIG,
+  GROK_3_MODEL_CONFIG,
+  GROK_3_MINI_MODEL_CONFIG,
+  GROK_4_MODEL_CONFIG,
+  GROK_4_FAST_REASONING_MODEL_CONFIG,
+  GROK_4_FAST_NON_REASONING_MODEL_CONFIG,
+  GROK_4_1_FAST_REASONING_MODEL_CONFIG,
+  GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
 ];
 
 function modelForToolFootprintAttribution(
@@ -66,6 +155,9 @@ export interface ToolCallFootprintInput {
 
 export function toolCallFootprintTexts(
   { action, functionCallArguments }: ToolCallFootprintInput,
+  // Attachment capabilities shape the rendered result, so they must match the ones used when the
+  // result was sent to the model, otherwise the measured footprint drifts from what was billed.
+  capabilities: AttachmentCapabilityContext,
   additionalInputText?: string
 ): ToolFootprintTexts {
   return {
@@ -74,7 +166,10 @@ export function toolCallFootprintTexts(
     // Tool input means the model input created by this execution. Most tools contribute only their
     // rendered result. Enabling a skill also adds its instructions and tool definitions to later
     // requests, so those consequences belong to the same tool row.
-    inputText: [renderToolResultForModelAsText(action), additionalInputText]
+    inputText: [
+      renderToolResultForModelAsText(action, capabilities),
+      additionalInputText,
+    ]
       .filter((text): text is string => text !== undefined)
       .join("\n"),
   };
@@ -92,9 +187,11 @@ export async function measureToolCallFootprints(
   {
     modelId,
     toolCalls,
+    capabilities,
   }: {
     modelId: string;
     toolCalls: ToolCallFootprintInput[];
+    capabilities: AttachmentCapabilityContext;
   }
 ): Promise<Result<ToolFootprintMeasurement[], Error>> {
   if (toolCalls.length === 0) {
@@ -131,6 +228,7 @@ export async function measureToolCallFootprints(
   const footprints = toolCalls.map((toolCall) =>
     toolCallFootprintTexts(
       toolCall,
+      capabilities,
       enabledSkillInputTextByActionId.get(toolCall.action.sId)
     )
   );

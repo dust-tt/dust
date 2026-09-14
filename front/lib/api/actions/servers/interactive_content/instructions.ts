@@ -94,7 +94,7 @@ Create a Frame only when the content does not exist yet. When the user asks for 
 const UPDATING_SECTION_COMPUTER_FIRST = `\
 ### Updating Existing Files (edit the source, then publish):
 
-After a Frame is created, its source file is already mounted in the Computer at \`/files/conversation-<conversationId>/<FrameName>.tsx\`. A Frame whose source was moved elsewhere, for example into a Pod app folder, is mounted at its current path instead; resolve it with \`${FILES_RESOLVE_TOOL}\` when unsure. To update the Frame:
+After a Frame is created, its source file is already mounted in the Computer at \`/files/conversation-<conversationId>/<FrameName>.tsx\`. A Frame whose source was moved elsewhere, for example into a Pod app folder, is mounted at its current path instead; resolve it with \`${FILES_RESOLVE_TOOL}\` from its file id, or list the file system with \`${FILES_LIST_TOOL}\` when you know neither. To update the Frame:
 1. Edit that file in place with your file tools, changing only the parts that need to change. Do not rewrite the whole file for partial changes. When the Computer is not available, edit it with \`${FILES_EDIT_TOOL}\` using its scoped path, e.g. \`conversation-<conversationId>/<FrameName>.tsx\`.
 2. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`, passing \`path\` set to the source file's own scoped path (the entry file itself, not the directory holding it), e.g. \`conversation-<conversationId>/<FrameName>.tsx\`.
 
@@ -147,7 +147,7 @@ Give each Frame its own folder on the Pod file system, named after the Frame, an
     MyApp.tsx
 \`\`\`
 
-\`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` creates the Frame's source in the current conversation, so move it into its folder before publishing. Use \`${FILES_MOVE_TOOL}\` (copying does not work on Frame files), then publish it from its Pod path:
+\`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` creates the Frame's source in the current conversation, so move it into its folder before publishing. Use \`${FILES_MOVE_TOOL}\` — never \`mv\` or \`cp\` in the Computer, and never a copy: only \`${FILES_MOVE_TOOL}\` carries the Frame's file record along with its bytes — then publish it from its Pod path:
 
 \`\`\`
 ${FILES_MOVE_TOOL}({
@@ -161,17 +161,14 @@ ${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
 \`\`\`
 
 From then on, edit the source at its Pod path and publish it again. Anything the Frame imports relatively must live under its folder, which is the bundling root.
-`;
 
-// Pod conversations where pod functions are available. Without this, a Frame asked to hold data
-// silently ends up with a `useState` array that dies on reload, and the user only finds out after
-// entering real data.
-const podStorageSection = (podFunctionsSkillName: string) => `\
-### Where The Frame's Data Lives
+#### Changing An Existing Pod Frame
 
-If the Frame lets people add, edit, check off, reorder, delete, save, assign, comment, vote, or upload, its data has to survive the page: store it in a Pod database behind pod functions, and enable the \`${podFunctionsSkillName}\` skill to do it. That is the default for a task list, tracker, backlog, roster, inventory, log, queue, notes app, or any form that keeps its answers.
+A Pod frame you are asked to change was usually built in an earlier conversation, so you know neither its source path nor its file id, and publishing needs both. Never recreate it, and never guess either value: read them off the Pod listing.
 
-Keep in component state only what is genuinely throwaway. e.g. the selected tab, a filter, or a sort order.
+1. List the Pod file system with \`${FILES_LIST_TOOL}\` (\`scope: { type: "pod" }\`). Every Frame is listed as its Pod path followed by \`[id: fil_...]\`, which is its \`file_id\`. Find the frame you're after.
+2. Edit that source in place as described under "Updating Existing Files" below.
+3. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`, passing the \`path\` and \`file_id\` exactly as listed in step 1.
 `;
 
 interface InstructionsVariant {
@@ -412,33 +409,19 @@ const joinPodSections = (sections: string[]): string =>
  * Instructions for a conversation that has the file system.
  *
  * `hasComputer` picks how the Frame's source is edited (in the Computer mount, or through the
- * files server). `isPod` adds the Pod app layout, and `hasPodFunctions` the storage decision that
- * depends on the Pod Functions skill actually being available in the workspace.
+ * files server). `isPod` adds the Pod app layout.
  */
 export const buildInteractiveContentInstructions = ({
   hasComputer,
   isPod,
-  hasPodFunctions,
-  podFunctionsSkillName,
 }: {
   hasComputer: boolean;
   isPod: boolean;
-  hasPodFunctions: boolean;
-  podFunctionsSkillName: string;
 }): string =>
   buildInstructions({
     updatingSection: hasComputer
       ? UPDATING_SECTION_COMPUTER_FIRST
       : UPDATING_SECTION_FILES_FIRST,
     validationFixExample: VALIDATION_FIX_EXAMPLE_SOURCE_EDIT,
-    podSections: joinPodSections(
-      isPod
-        ? [
-            POD_APP_SECTION,
-            ...(hasPodFunctions
-              ? [podStorageSection(podFunctionsSkillName)]
-              : []),
-          ]
-        : []
-    ),
+    podSections: joinPodSections(isPod ? [POD_APP_SECTION] : []),
   });

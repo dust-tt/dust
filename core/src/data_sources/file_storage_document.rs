@@ -1,9 +1,9 @@
 use anyhow::{anyhow, Result};
-use cloud_storage::{ErrorList, GoogleErrorResponse, Object};
+use cloud_storage::{ErrorList, GoogleErrorResponse};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
-use crate::utils;
+use crate::{gcs_client::gcs_client, utils};
 
 use super::data_source::{DataSource, Document, DocumentVersion, Section};
 
@@ -51,7 +51,7 @@ impl FileStorageDocument {
     pub async fn path_exists(path: &str) -> Result<bool> {
         let bucket = FileStorageDocument::get_bucket().await?;
 
-        match Object::read(&bucket, path).await {
+        match gcs_client().await?.object().read(&bucket, path).await {
             Ok(_) => Ok(true),
             Err(_err) => Ok(false),
         }
@@ -60,7 +60,7 @@ impl FileStorageDocument {
     pub async fn delete_if_exists(path: &str) -> Result<bool> {
         let bucket = FileStorageDocument::get_bucket().await?;
 
-        match Object::delete(&bucket, &path).await {
+        match gcs_client().await?.object().delete(&bucket, path).await {
             Ok(_) => Ok(true),
             Err(e) => match e {
                 cloud_storage::Error::Google(GoogleErrorResponse {
@@ -87,7 +87,12 @@ impl FileStorageDocument {
         let bucket = FileStorageDocument::get_bucket().await?;
 
         let now = utils::now();
-        match Object::download(&bucket, &file_path).await {
+        match gcs_client()
+            .await?
+            .object()
+            .download(&bucket, &file_path)
+            .await
+        {
             Ok(bytes) => {
                 info!(
                     data_source_internal_id = data_source.internal_id(),
@@ -153,7 +158,12 @@ impl FileStorageDocument {
         );
 
         let now = utils::now();
-        match Object::delete(&bucket, &document_file_path).await {
+        match gcs_client()
+            .await?
+            .object()
+            .delete(&bucket, &document_file_path)
+            .await
+        {
             Ok(_) => (),
             Err(e) => {
                 match e {
@@ -207,13 +217,16 @@ impl FileStorageDocument {
         let serialized_document = serde_json::to_vec(&file_storage_document)?;
 
         let now = utils::now();
-        let _ = Object::create(
-            &bucket,
-            serialized_document,
-            &document_file_path,
-            "application/json",
-        )
-        .await?;
+        let _ = gcs_client()
+            .await?
+            .object()
+            .create(
+                &bucket,
+                serialized_document,
+                &document_file_path,
+                "application/json",
+            )
+            .await?;
 
         info!(
             data_source_internal_id = data_source_internal_id,

@@ -3,6 +3,7 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import type { MembershipRoleType } from "@app/types/memberships";
 import { Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { describe, expect, it, vi } from "vitest";
@@ -74,7 +75,7 @@ vi.mock(import("@app/lib/user_search/search"), async (importOriginal) => {
 
 import { honoApp } from "@front-api/app";
 
-async function setup(role: "builder" | "user" | "admin" = "admin") {
+async function setup(role: MembershipRoleType = "admin") {
   const { workspace, user } = await createPrivateApiMockRequest({ role });
   return { workspace, user };
 }
@@ -186,16 +187,16 @@ describe("GET /api/w/:wId/members/search", () => {
     );
   });
 
-  it("includes builders when filtering on the member role", async () => {
+  it("returns every member when filtering on the member role", async () => {
     const { workspace } = await setup();
 
-    const [member, builder] = await Promise.all([
+    const [member, otherMember] = await Promise.all([
       UserFactory.basic(),
       UserFactory.basic(),
     ]);
 
     await MembershipFactory.associate(workspace, member, { role: "user" });
-    await MembershipFactory.associate(workspace, builder, { role: "builder" });
+    await MembershipFactory.associate(workspace, otherMember, { role: "user" });
 
     const response = await honoApp.request(
       searchUrl(workspace.sId, { role: "user" })
@@ -205,7 +206,7 @@ describe("GET /api/w/:wId/members/search", () => {
     const data = await response.json();
     expect(data.total).toBe(2);
     expect(data.members.map((m: { sId: string }) => m.sId).sort()).toEqual(
-      [member.sId, builder.sId].sort()
+      [member.sId, otherMember.sId].sort()
     );
   });
 

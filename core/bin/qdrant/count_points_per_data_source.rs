@@ -5,7 +5,7 @@ use csv::Writer;
 use dust::{
     data_sources::{
         data_source::{DataSource, DataSourceConfig},
-        qdrant::{DustQdrantClient, QdrantClients, SHARD_KEY_COUNT},
+        qdrant::{QdrantClients, QdrantTenant},
     },
     project::Project,
     stores::{postgres::PostgresStore, store::Store},
@@ -15,7 +15,7 @@ use std::env;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Shard key id to scan (0..SHARD_KEY_COUNT). If provided, only data sources that
+    /// Shard key id to scan (the numeric part of key_<n>). If provided, only data sources that
     /// map to this shard key will be counted. If omitted, all data sources are counted.
     #[arg(short, long)]
     shard_key_id: Option<u64>,
@@ -24,12 +24,6 @@ struct Args {
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-
-    if let Some(shard_key_id) = args.shard_key_id {
-        if shard_key_id >= SHARD_KEY_COUNT {
-            return Err(anyhow!("shard_key_id must be in [0, {})", SHARD_KEY_COUNT));
-        }
-    }
 
     let store = PostgresStore::new(
         &env::var("CORE_DATABASE_URI").map_err(|_| anyhow!("CORE_DATABASE_URI is required"))?,
@@ -58,7 +52,18 @@ async fn main() -> Result<()> {
             .iter()
             .filter(|row| {
                 let internal_id: String = row.get(2);
-                match DustQdrantClient::shard_key_id_from_internal_id(&internal_id) {
+                let config_json: String = row.get(3);
+                let Ok(config) = serde_json::from_str::<DataSourceConfig>(&config_json) else {
+                    return false;
+                };
+                let tenant = QdrantTenant {
+                    internal_id: &internal_id,
+                    shard_keys: &config.qdrant_config.shard_keys,
+                };
+                match qdrant_clients
+                    .client(config.qdrant_config.cluster)
+                    .shard_key_id(&tenant)
+                {
                     Ok(key_id) => key_id == shard_key_id,
                     Err(_) => false,
                 }
@@ -139,12 +144,7 @@ async fn main() -> Result<()> {
         let qdrant_client = ds.main_qdrant_client(&qdrant_clients);
 
         let (point_count_str, error_str) = match qdrant_client
-            .count_points(
-                &ds.embedder_config(),
-                &ds.internal_id().to_string(),
-                None,
-                false,
-            )
+            .count_points(&ds.embedder_config(), &ds.qdrant_tenant(), None, false)
             .await
         {
             Ok(response) => {

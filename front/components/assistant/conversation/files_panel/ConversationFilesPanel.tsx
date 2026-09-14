@@ -14,7 +14,7 @@ import { isFileAttachmentType } from "@app/lib/api/assistant/conversation/attach
 import { downloadFile } from "@app/lib/swr/files";
 import type { FileSystemFileEntry } from "@app/types/api/file_system/types";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
-import { isInteractiveContentType, opensInSidePanel } from "@app/types/files";
+import { isFrameContentType, opensInSidePanel } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   Button,
@@ -69,7 +69,7 @@ export function ConversationFilesPanel({
       title: string;
       contentType: string;
     }) => {
-      if (isInteractiveContentType(contentType)) {
+      if (isFrameContentType(contentType)) {
         openPanel({ type: "interactive_content", fileId });
       } else if (opensInSidePanel(contentType) && filePath) {
         // Some formats (e.g. presentations) open in the resizable right panel

@@ -2,31 +2,31 @@ import type { ModelConfigurationType } from "./types";
 
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_ID =
   "accounts/fireworks/models/deepseek-v3p2" as const;
-export const FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_ID =
-  "accounts/fireworks/models/deepseek-v4-flash-0731" as const;
+export const FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_ID =
+  "accounts/fireworks/models/deepseek-v4p1-flash" as const;
 export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID =
   "accounts/fireworks/models/deepseek-v4-pro" as const;
 export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID =
   "accounts/fireworks/models/kimi-k2-instruct-0905" as const;
 export const FIREWORKS_KIMI_K2P5_MODEL_ID =
   "accounts/fireworks/models/kimi-k2p5" as const;
-export const FIREWORKS_KIMI_K2P6_MODEL_ID =
-  "accounts/fireworks/models/kimi-k2p6" as const;
 export const FIREWORKS_KIMI_K3_MODEL_ID =
   "accounts/fireworks/models/kimi-k3" as const;
 export const FIREWORKS_MINIMAX_M2P5_MODEL_ID =
   "accounts/fireworks/models/minimax-m2p5" as const;
 export const FIREWORKS_GLM_5_MODEL_ID =
   "accounts/fireworks/models/glm-5" as const;
-export const FIREWORKS_GLM_5P2_MODEL_ID =
-  "accounts/fireworks/models/glm-5p2" as const;
+export const FIREWORKS_GLM_5P3_MODEL_ID =
+  "accounts/fireworks/models/glm-5p3" as const;
+export const FIREWORKS_GLM_5P3_FLASH_MODEL_ID =
+  "accounts/fireworks/models/glm-5p3-flash" as const;
 export const FIREWORKS_INKLING_MODEL_ID =
   "accounts/fireworks/models/inkling" as const;
 export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "deepseek",
   modelId: FIREWORKS_DEEPSEEK_V3P2_MODEL_ID,
-  displayName: "DeepSeek V3.2 (Fireworks)",
+  displayName: "DeepSeek V3.2",
   contextSize: 163_800,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
@@ -48,35 +48,38 @@ export const FIREWORKS_DEEPSEEK_V3P2_MODEL_CONFIG: ModelConfigurationType = {
   },
   defaultReasoningEffort: "none",
   supportsResponseFormat: true,
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,
   },
 };
-// Verified 2026-08-01: https://fireworks.ai/models/deepseek-ai/deepseek-v4-flash-0731
-// Native 1040k/384k, capped to 256k/64k here (see Kimi K3).
-export const FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_CONFIG: ModelConfigurationType =
+// Specs, pricing, and availability verified 2026-09-11 against
+// https://fireworks.ai/models/deepseek-ai/deepseek-v4p1-flash (serverless,
+// 1040k context, function calling, native image input, $0.22/$0.66/$0.007 per
+// 1M) and https://api-docs.deepseek.com/quick_start/pricing (`deepseek-flash`
+// = DeepSeek-V4.1-Flash, 1M context, 384k max output). Native 1040k/384k,
+// capped to 256k/64k here as on V4 Flash 0731 and Kimi K3.
+export const FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_CONFIG: ModelConfigurationType =
   {
     providerId: "fireworks",
     modelMaker: "deepseek",
-    modelId: FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_ID,
-    displayName: "DeepSeek V4 Flash (Fireworks)",
+    modelId: FIREWORKS_DEEPSEEK_V4P1_FLASH_MODEL_ID,
+    displayName: "DeepSeek V4.1 Flash",
     contextSize: 256_000,
     recommendedTopK: 32,
     recommendedExhaustiveTopK: 64,
     largeModel: true,
     description:
-      "DeepSeek's V4 Flash Mixture-of-Experts model (284B total / 13B active) tuned for fast, cost-efficient reasoning, coding and agentic work, with 256k context (served via Fireworks).",
-    shortDescription: "DeepSeek's V4 Flash model.",
+      "DeepSeek's V4.1 Flash multimodal Mixture-of-Experts model (served via Fireworks).",
+    shortDescription: "DeepSeek's V4.1 Flash model with vision support.",
     isLegacy: false,
     isLatest: true,
     generationTokensCount: 64_000,
-    supportsVision: false,
-    // No native `medium`; `mapReasoningEffortToLowHighMax` folds our ladder on.
+    supportsVision: true,
+    // DeepSeek documents low/high/max + disabled, all confirmed live on
+    // 2026-09-11 (https://api-docs.deepseek.com/guides/thinking_mode/). No
+    // native `medium`; `mapReasoningEffortToLowHighMax` folds our ladder on.
     supportedReasoningEfforts: {
       none: true,
       light: true,
@@ -93,20 +96,26 @@ export const FIREWORKS_DEEPSEEK_V4_FLASH_0731_MODEL_CONFIG: ModelConfigurationTy
       "europe-west1": false,
     },
   };
+// Superseded by DeepSeek V4 Pro 0813. Fireworks pulled the preview from
+// serverless (https://fireworks.ai/models/fireworks/deepseek-v4-pro now offers
+// on-demand dedicated deployment only), so every request against it fails.
+// Kept in the registry and priced so historical token accounting stays intact,
+// but dropped from the model picker; `20260911_migrate_deepseek_v4_to_v4p1_flash`
+// repoints agents onto DeepSeek V4.1 Flash.
 export const FIREWORKS_DEEPSEEK_V4_PRO_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "deepseek",
   modelId: FIREWORKS_DEEPSEEK_V4_PRO_MODEL_ID,
-  displayName: "DeepSeek V4 Pro (Fireworks)",
+  displayName: "DeepSeek V4 Pro (preview)",
   contextSize: 1_000_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "DeepSeek's V4 Pro Mixture-of-Experts model with frontier reasoning, advanced coding, and 1M context (served via Fireworks).",
-  shortDescription: "DeepSeek's V4 Pro model.",
-  isLegacy: false,
-  isLatest: true,
+    "DeepSeek's V4 Pro preview Mixture-of-Experts model with frontier reasoning, advanced coding, and 1M context (served via Fireworks).",
+  shortDescription: "DeepSeek's V4 Pro preview model.",
+  isLegacy: true,
+  isLatest: false,
   generationTokensCount: 64_000,
   supportsVision: false,
   supportedReasoningEfforts: {
@@ -127,7 +136,7 @@ export const FIREWORKS_KIMI_K2_INSTRUCT_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "moonshot",
   modelId: FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
-  displayName: "Kimi K2 Instruct (Fireworks)",
+  displayName: "Kimi K2 Instruct",
   contextSize: 131_072,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
@@ -155,7 +164,7 @@ export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "moonshot",
   modelId: FIREWORKS_KIMI_K2P5_MODEL_ID,
-  displayName: "Kimi K2.5 (Fireworks)",
+  displayName: "Kimi K2.5",
   contextSize: 262_100,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
@@ -176,43 +185,6 @@ export const FIREWORKS_KIMI_K2P5_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
-  regionalAvailability: {
-    "us-central1": true,
-    "europe-west1": false,
-  },
-};
-// https://fireworks.ai/models/fireworks/kimi-k2p6
-export const FIREWORKS_KIMI_K2P6_MODEL_CONFIG: ModelConfigurationType = {
-  providerId: "fireworks",
-  modelMaker: "moonshot",
-  modelId: FIREWORKS_KIMI_K2P6_MODEL_ID,
-  displayName: "Kimi K2.6 (Fireworks)",
-  contextSize: 262_000,
-  recommendedTopK: 32,
-  recommendedExhaustiveTopK: 64,
-  largeModel: true,
-  description:
-    "Moonshot AI's K2.6 agentic model with 262k context and vision support (served via Fireworks).",
-  shortDescription: "Kimi K2.6 with vision support.",
-  isLegacy: false,
-  isLatest: false,
-  generationTokensCount: 2048,
-  supportsVision: true,
-  supportedReasoningEfforts: {
-    none: true,
-    light: true,
-    medium: true,
-    high: true,
-  },
-  defaultReasoningEffort: "light",
-  supportsResponseFormat: true,
-  tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,
@@ -229,7 +201,7 @@ export const FIREWORKS_KIMI_K3_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "moonshot",
   modelId: FIREWORKS_KIMI_K3_MODEL_ID,
-  displayName: "Kimi K3 (Fireworks)",
+  displayName: "Kimi K3",
   contextSize: 256_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
@@ -265,7 +237,7 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "minimax",
   modelId: FIREWORKS_MINIMAX_M2P5_MODEL_ID,
-  displayName: "MiniMax M2.5 (Fireworks)",
+  displayName: "MiniMax M2.5",
   contextSize: 196_608,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
@@ -286,38 +258,84 @@ export const FIREWORKS_MINIMAX_M2P5_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,
   },
 };
-// https://fireworks.ai/models/fireworks/glm-5p2
-export const FIREWORKS_GLM_5P2_MODEL_CONFIG: ModelConfigurationType = {
+// Specs and pricing verified 2026-09-11 against
+// https://docs.z.ai/guides/llm/glm-5.3 and
+// https://fireworks.ai/models/fireworks/glm-5p3. The provider supports
+// 1,048,576 context / 131,072 output; Dust rounds those down to 1M / 128k.
+export const FIREWORKS_GLM_5P3_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "zai",
-  modelId: FIREWORKS_GLM_5P2_MODEL_ID,
-  displayName: "GLM-5.2 (Fireworks)",
+  modelId: FIREWORKS_GLM_5P3_MODEL_ID,
+  displayName: "GLM-5.3",
   contextSize: 1_000_000,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
   largeModel: true,
   description:
-    "Z.ai's GLM-5.2 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context, served via Fireworks).",
-  shortDescription: "GLM-5.2 for coding and agentic tasks.",
+    "Z.ai's flagship GLM-5.3 Mixture-of-Experts model with advanced coding and long-horizon agentic capabilities (1M context, served via Fireworks).",
+  shortDescription: "GLM-5.3 for coding and agentic tasks.",
   isLegacy: false,
   isLatest: true,
-  generationTokensCount: 64_000,
+  generationTokensCount: 128_000,
+  // GLM-5.3 is text-only; visual understanding lives in GLM-5.3 Flash.
   supportsVision: false,
+  // GLM-5.3 documents low/high/max with thinking always enabled, so there is no
+  // `none` tier. Dust maps light/medium/high onto those native efforts in the
+  // llms layer.
   supportedReasoningEfforts: {
     none: false,
-    light: false,
-    medium: false,
+    light: true,
+    medium: true,
     high: true,
   },
   defaultReasoningEffort: "high",
+  // Native thinking at `light`, so no chain-of-thought meta prompt.
+  useNativeLightReasoning: true,
+  supportsResponseFormat: true,
+  tokenizer: { type: "tiktoken", base: "o200k_base" },
+  regionalAvailability: {
+    "us-central1": true,
+    "europe-west1": false,
+  },
+};
+// Specs, pricing, and availability verified 2026-08-31 against
+// https://docs.z.ai/guides/vlm/glm-5.3-flash and
+// https://fireworks.ai/models/fireworks/glm-5p3-flash. The provider supports
+// 1,048,576 context / 131,072 output; Dust caps those to 256k / 64k, matching
+// the standard-context GPT and Claude models.
+export const FIREWORKS_GLM_5P3_FLASH_MODEL_CONFIG: ModelConfigurationType = {
+  providerId: "fireworks",
+  modelMaker: "zai",
+  modelId: FIREWORKS_GLM_5P3_FLASH_MODEL_ID,
+  displayName: "GLM-5.3 Flash",
+  contextSize: 256_000,
+  recommendedTopK: 32,
+  recommendedExhaustiveTopK: 64,
+  largeModel: true,
+  description:
+    "Z.ai's efficient native multimodal model for coding, long-horizon agentic work, and visual understanding (256k context, served via Fireworks).",
+  shortDescription: "GLM-5.3 Flash for multimodal coding and agentic tasks.",
+  isLegacy: false,
+  // Flash is the latest model of its own efficiency subfamily; GLM-5.3 is the
+  // latest full-size model.
+  isLatest: true,
+  generationTokensCount: 64_000,
+  supportsVision: true,
+  // GLM-5.3 Flash documents low/high/max. Dust maps light/medium/high onto
+  // those native efforts in the llms layer; thinking cannot be disabled.
+  supportedReasoningEfforts: {
+    none: false,
+    light: true,
+    medium: true,
+    high: true,
+  },
+  defaultReasoningEffort: "light",
+  useNativeLightReasoning: true,
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
   regionalAvailability: {
@@ -329,7 +347,7 @@ export const FIREWORKS_GLM_5_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "zai",
   modelId: FIREWORKS_GLM_5_MODEL_ID,
-  displayName: "GLM-5 (Fireworks)",
+  displayName: "GLM-5",
   contextSize: 202_752,
   recommendedTopK: 32,
   recommendedExhaustiveTopK: 64,
@@ -350,9 +368,6 @@ export const FIREWORKS_GLM_5_MODEL_CONFIG: ModelConfigurationType = {
   defaultReasoningEffort: "light",
   supportsResponseFormat: true,
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,
@@ -369,7 +384,7 @@ export const FIREWORKS_INKLING_MODEL_CONFIG: ModelConfigurationType = {
   providerId: "fireworks",
   modelMaker: "thinking_machines",
   modelId: FIREWORKS_INKLING_MODEL_ID,
-  displayName: "Inkling (Fireworks)",
+  displayName: "Inkling",
   // Fireworks metadata reports 1,048,576 tokens, while the live inference API
   // enforces a 1,000,000-token prompt-plus-completion budget.
   contextSize: 1_000_000,
@@ -401,9 +416,6 @@ export const FIREWORKS_INKLING_MODEL_CONFIG: ModelConfigurationType = {
   // Inkling's official renderer uses an o200k-base tokenizer:
   // https://tinker-docs.thinkingmachines.ai/cookbook/inkling/tml-renderers/
   tokenizer: { type: "tiktoken", base: "o200k_base" },
-  availableIfOneOf: {
-    featureFlag: "fireworks_new_model_feature",
-  },
   regionalAvailability: {
     "us-central1": true,
     "europe-west1": false,
