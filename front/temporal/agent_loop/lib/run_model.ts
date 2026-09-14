@@ -935,9 +935,10 @@ export async function runModel(
         }
 
         const errorMessage =
-          plan.isByok && isByokProviderId(modelConfig.providerId)
+          error.content.userFacingMessage ??
+          (plan.isByok && isByokProviderId(modelConfig.providerId)
             ? getByokUserFacingLLMErrorMessage(type, metadata)
-            : getUserFacingLLMErrorMessage(type, metadata);
+            : getUserFacingLLMErrorMessage(type, metadata));
 
         if (shouldSurfaceModelError({ isRetryable, attempt: currentAttempt })) {
           await publishAgentError(
