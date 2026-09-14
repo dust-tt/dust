@@ -9,6 +9,7 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentConfigurationScope,
@@ -78,7 +79,6 @@ export type AgentResourceContent = {
   templateId: ModelId | null;
   reinforcement: AgentReinforcementMode;
   lastReinforcementAnalysisAt: Date | null;
-  requestedSpaceIds: number[];
   createdAt: Date;
   updatedAt: Date;
 };
@@ -88,6 +88,7 @@ type AgentResourceExtraBlob = {
   name: string;
   description: string;
   versionAuthorId: ModelId | null;
+  requestedSpaceIds: ModelId[];
   content: AgentResourceContent | null;
 };
 
@@ -98,8 +99,8 @@ export interface FullAgentResource extends AgentResource {
 
 // The stable identity of an agent, backed by `AgentModel` (so `id` is the agent's `agentModelId`).
 // It comes in two shapes, discriminated by `variant`:
-// - `light`: identity + `scope`/`name`/`description`/`versionAuthorId`, built without a query from a
-//   configuration already in hand. Sufficient for permission decisions.
+// - `light`: identity + `scope`/`name`/`description`/`versionAuthorId`/`requestedSpaceIds`, built
+//   without a query from a configuration already in hand. Sufficient for permission decisions.
 // - `full`: additionally carries `content` (every remaining `AgentConfigurationModel` column of the
 //   latest active version). Produced by the access-controlled `fetch*` resolvers.
 /**
@@ -123,6 +124,7 @@ export class AgentResource
   readonly name: string;
   readonly description: string;
   private readonly versionAuthorId: ModelId | null;
+  private readonly requestedSpaceIds: ModelId[];
   // Mutable so a light resource can be enriched to full in place once read access is confirmed
   // (see `fromAgentConfigurationModel`). `variant` is derived from its presence.
   private _content: AgentResourceContent | null;
@@ -139,6 +141,7 @@ export class AgentResource
     this.name = extra.name;
     this.description = extra.description;
     this.versionAuthorId = extra.versionAuthorId;
+    this.requestedSpaceIds = extra.requestedSpaceIds;
     this._content = extra.content;
   }
 
@@ -188,6 +191,10 @@ export class AgentResource
         name: configuration.name,
         description: configuration.description,
         versionAuthorId: configuration.versionAuthorId,
+        // `LightAgentConfigurationType.requestedSpaceIds` are space sIds; the resource holds model ids.
+        requestedSpaceIds: removeNulls(
+          configuration.requestedSpaceIds.map(getResourceIdFromSId)
+        ),
         content: null,
       }
     );
@@ -224,6 +231,7 @@ export class AgentResource
         name: configuration.name,
         description: configuration.description,
         versionAuthorId: null,
+        requestedSpaceIds: [],
         content: null,
       }
     );
@@ -251,6 +259,7 @@ export class AgentResource
         name: configuration.name,
         description: configuration.description,
         versionAuthorId: configuration.authorId,
+        requestedSpaceIds: configuration.requestedSpaceIds,
         content: null,
       }
     );
@@ -272,7 +281,6 @@ export class AgentResource
         templateId: configuration.templateId,
         reinforcement: configuration.reinforcement,
         lastReinforcementAnalysisAt: configuration.lastReinforcementAnalysisAt,
-        requestedSpaceIds: configuration.requestedSpaceIds,
         createdAt: configuration.createdAt,
         updatedAt: configuration.updatedAt,
       };
@@ -544,6 +552,22 @@ export class AgentResource
     );
   }
 
+  // Whether the caller can read every space backing the agent's tools/skills/data. Space read comes
+  // from the caller's governance snapshot (`getReadableSpaceModelIds`), so this needs no extra query.
+  // A `kind: "all"` result is the type-wide wildcard grant (a full system key) and reads every space;
+  // a system key downscoped to a group subset (see `Authenticator.fromKey` with `requestedGroupIds`)
+  // enumerates only what those groups grant, so it is checked like any other caller. A missing or
+  // deleted space is absent from the snapshot and therefore fails closed.
+  private requestedSpacesReadable(auth: Authenticator): boolean {
+    const readableSpaces = auth.getReadableSpaceModelIds();
+    return (
+      readableSpaces.kind === "all" ||
+      this.requestedSpaceIds.every((spaceId) =>
+        readableSpaces.resourceIds.includes(spaceId)
+      )
+    );
+  }
+
   /**
    * @cc [owner:philipperolet,label:security] admin-key-agent-write
    * The admin role grants `write` on custom agents to regular API keys only; human and system-key
@@ -553,6 +577,13 @@ export class AgentResource
    * @cc [owner:philipperolet,label:security] hidden-agent-content
    * Admin role alone must not grant `read` on hidden agents, including for regular API keys
    * with role-based write access. Agent details may separately override admin redaction.
+   */
+  /**
+   * @cc [owner:tdraier,label:security;product] agent-read-requires-space-read
+   * `read` on a custom agent requires read access to every space in `requestedSpaceIds` (the spaces
+   * backing its tools/skills/data): a caller who cannot read one of them does not get `read`.
+   * `requestedSpaceIds` is a core field carried by every variant, so the gate applies regardless of
+   * `light`/`full`. Global agents have no requested spaces and are unaffected.
    */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     if (this.scope === "global") {
@@ -584,10 +615,18 @@ export class AgentResource
         ? [...roles, { role: "admin", permissions: ["write"] }]
         : roles;
 
-    return new Set([
+    const verbs = new Set([
       ...(isAuthor ? [...grants, ...AGENT_EDITOR_VERBS] : grants),
       ...verbsFromRoleGrants(auth, roleGrants, this.workspaceId),
     ]);
+
+    // `read` additionally requires read access to every space backing the agent (see
+    // `requestedSpacesReadable`): a caller who cannot read one of them cannot read the agent.
+    if (!this.requestedSpacesReadable(auth)) {
+      verbs.delete("read");
+    }
+
+    return verbs;
   }
 
   toLogJSON(): ResourceLogJSON {
