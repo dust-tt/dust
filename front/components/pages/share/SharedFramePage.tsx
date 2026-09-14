@@ -172,11 +172,9 @@ export function SharedFramePage() {
     // A Frame hidden from this viewer and a token that never existed must render the same page,
     // so the sign-in affordance has to live on the 404 rather than replace it: a logged-out
     // workspace member reaches a Frame with functions only by signing in from here.
-    if (hasSession) {
-      return <Custom404 />;
-    }
-
-    return (
+    return hasSession ? (
+      <Custom404 />
+    ) : (
       <CustomErrorPage
         title="404: Page not found"
         description="If you have access to this page, sign in to open it."
