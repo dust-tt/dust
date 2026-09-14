@@ -22,7 +22,12 @@ import { isString } from "@app/types/shared/utils/general";
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
-import { DataTable, DataTableSkeleton, LoadingBlock } from "@dust-tt/sparkle";
+import {
+  AvatarCellSkeleton,
+  DataTable,
+  DataTableSkeleton,
+  TextCellSkeleton,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import type { ParsedUrlQuery } from "querystring";
 import * as React from "react";
@@ -56,16 +61,18 @@ function SpaceActionSkeletonCell({
   switch (columnId) {
     case "name":
       return (
-        <div className="flex items-center gap-2 py-3">
-          <LoadingBlock className="h-9 w-9 shrink-0 rounded-lg" />
-          <LoadingBlock
+        <AvatarCellSkeleton
+          className="py-3"
+          avatarClassName="h-9 w-9 rounded-lg"
+        >
+          <TextCellSkeleton
             className={rowIndex % 2 === 0 ? "h-4 w-28" : "h-4 w-36"}
           />
-        </div>
+        </AvatarCellSkeleton>
       );
     case "description":
       return (
-        <LoadingBlock
+        <TextCellSkeleton
           className={rowIndex % 2 === 0 ? "h-4 w-3/4" : "h-4 w-1/2"}
         />
       );
