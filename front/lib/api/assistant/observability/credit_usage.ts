@@ -7,11 +7,7 @@ import {
   NOT_API_GROUP_NAME,
 } from "@app/lib/api/assistant/observability/utils";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
-import {
-  bucketsToArray,
-  formatDateFromMillis,
-  searchAnalytics,
-} from "@app/lib/api/elasticsearch";
+import { bucketsToArray, searchAnalytics } from "@app/lib/api/elasticsearch";
 import { getProgrammaticUsageFilterClause } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
@@ -21,6 +17,7 @@ import type { TopConversationCreditsRow } from "@app/types/api/credits/my_top_co
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { formatDateFromMillis } from "@app/types/shared/utils/date_utils";
 import type { estypes } from "@elastic/elasticsearch";
 
 export type CreditBreakdownBy =

@@ -6,11 +6,11 @@ import {
 } from "@app/lib/api/analytics/consumption/scope";
 import {
   bucketsToArray,
-  formatDateFromMillis,
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { formatDateFromMillis } from "@app/types/shared/utils/date_utils";
 import type { estypes } from "@elastic/elasticsearch";
 
 type ToolDateBucket = {

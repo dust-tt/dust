@@ -1,11 +1,11 @@
-import {
-  formatDateFromMillis,
-  searchAnalytics,
-} from "@app/lib/api/elasticsearch";
+import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
+import {
+  formatDateFromMillis,
+  ONE_DAY_MS,
+} from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";

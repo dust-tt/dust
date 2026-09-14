@@ -38,10 +38,10 @@ import {
   resolveConsumptionGroupLabels,
 } from "@app/lib/api/analytics/consumption/top";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { formatDateFromMillis } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types/shared/result";
+import { formatDateFromMillis } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 
 function excludeSkillManagement(

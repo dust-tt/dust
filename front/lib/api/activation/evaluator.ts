@@ -2,6 +2,10 @@ import { fetchUserDayCells } from "@app/lib/api/activation/queries/user_day_cell
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import {
+  formatUTCDateFromMillis,
+  ONE_DAY_MS,
+} from "@app/types/shared/utils/date_utils";
 import { getISOWeek, getISOWeekYear } from "date-fns";
 
 // A user is ACTIVATED when, over the trailing TRAILING_WINDOW_DAYS days, they
@@ -52,14 +56,6 @@ function isoWeekKey(dayMs: number): string {
   return `${getISOWeekYear(asLocal)}-W${String(getISOWeek(asLocal)).padStart(2, "0")}`;
 }
 
-function formatUTCDate(dayMs: number): string {
-  const d = new Date(dayMs);
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
 /**
  * Computes a user's activation verdict from their per-day cells over the trailing
  * window. A day qualifies when the user was a DAU that day AND had an HVUC signal.
@@ -76,7 +72,7 @@ export function computeActivationFromCells(
     if (!cell.isDau || !cell.isHvuc) {
       continue;
     }
-    qualifyingDays.push(formatUTCDate(cell.dayMs));
+    qualifyingDays.push(formatUTCDateFromMillis(cell.dayMs));
     weeks.add(isoWeekKey(cell.dayMs));
   }
 
@@ -117,7 +113,7 @@ export async function evaluateActivation(
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const windowEnd = asOf;
   const windowStart = new Date(
-    asOf.getTime() - TRAILING_WINDOW_DAYS * 24 * 60 * 60 * 1000
+    asOf.getTime() - TRAILING_WINDOW_DAYS * ONE_DAY_MS
   );
 
   const factsResult = await fetchUserDayCells({

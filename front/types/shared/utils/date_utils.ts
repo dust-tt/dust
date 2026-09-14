@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 
 export const ONE_HOUR_MS = 60 * 60 * 1000;
 export const ONE_DAY_MS = 24 * ONE_HOUR_MS;
@@ -28,4 +29,16 @@ export function ordinalDay(day: number): string {
 
 export function getTime(date: number): string {
   return format(new Date(date), "HH:mm");
+}
+
+export function formatUTCDateFromMillis(ms: number): string {
+  const d = new Date(ms);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function formatDateFromMillis(ms: number, timezone: string): string {
+  return formatInTimeZone(ms, timezone, "yyyy-MM-dd");
 }

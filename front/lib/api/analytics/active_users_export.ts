@@ -2,14 +2,14 @@ import {
   COMPLETED_AT_FIELD,
   CONSUMPTION_DIMENSION_FIELDS,
 } from "@app/lib/api/analytics/consumption/scope";
-import {
-  formatDateFromMillis,
-  searchConsumptionAnalytics,
-} from "@app/lib/api/elasticsearch";
+import { searchConsumptionAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
-import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
+import {
+  formatDateFromMillis,
+  ONE_DAY_MS,
+} from "@app/types/shared/utils/date_utils";
 import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 
