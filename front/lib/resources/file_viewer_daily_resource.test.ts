@@ -20,18 +20,13 @@ describe("FileViewerDailyResource", () => {
         verifiedEmail,
         viewedAt: new Date(at),
       });
-    const results = await Promise.all([
+    await Promise.all([
       record("alice@david.co", "2026-09-10T23:59:59Z"),
       record(" ALICE@DAVID.CO ", "2026-09-10T08:00:00Z"),
       record("alice@david.co", "2026-09-10T23:59:59Z"),
     ]);
-    expect(results.every((result) => result.isOk())).toBe(true);
-    expect(
-      (await record("alice@david.co", "2026-09-11T02:00:01+02:00")).isOk()
-    ).toBe(true);
-    expect((await record("bob@david.co", "2026-09-11T10:00:00Z")).isOk()).toBe(
-      true
-    );
+    await record("alice@david.co", "2026-09-11T02:00:01+02:00");
+    await record("bob@david.co", "2026-09-11T10:00:00Z");
     const viewers =
       await FileViewerDailyResource.getViewerSummariesForFile(file);
     expect(viewers).toEqual([
@@ -70,15 +65,14 @@ describe("FileViewerDailyResource", () => {
       return sequence.lastValue;
     };
 
-    expect((await record("2026-09-10T12:00:00Z")).isOk()).toBe(true);
+    await record("2026-09-10T12:00:00Z");
     const sequenceBefore = await readSequence();
-    const results = await Promise.all([
+    await Promise.all([
       record("2026-09-10T08:00:00Z"),
       record("2026-09-10T23:59:59Z"),
       record("2026-09-10T12:00:00Z"),
     ]);
 
-    expect(results.every((result) => result.isOk())).toBe(true);
     expect(await readSequence()).toBe(sequenceBefore);
     expect(
       await FileViewerDailyResource.getViewerSummariesForFile(file)
@@ -108,14 +102,10 @@ describe("FileViewerDailyResource", () => {
       second.user,
       { useCase: "conversation", status: "created" }
     );
-    expect(
-      (
-        await FileViewerDailyResource.recordView(file, {
-          verifiedEmail: "alice@david.co",
-          viewedAt: new Date(),
-        })
-      ).isOk()
-    ).toBe(true);
+    await FileViewerDailyResource.recordView(file, {
+      verifiedEmail: "alice@david.co",
+      viewedAt: new Date(),
+    });
     expect(
       await FileViewerDailyResource.getViewerSummariesForFile(otherFile)
     ).toEqual([]);
@@ -124,22 +114,14 @@ describe("FileViewerDailyResource", () => {
         otherWorkspaceFile
       )
     ).toEqual([]);
-    expect(
-      (
-        await FileViewerDailyResource.recordView(otherFile, {
-          verifiedEmail: "bob@david.co",
-          viewedAt: new Date(),
-        })
-      ).isOk()
-    ).toBe(true);
-    expect(
-      (
-        await FileViewerDailyResource.recordView(otherWorkspaceFile, {
-          verifiedEmail: "charlie@david.co",
-          viewedAt: new Date(),
-        })
-      ).isOk()
-    ).toBe(true);
+    await FileViewerDailyResource.recordView(otherFile, {
+      verifiedEmail: "bob@david.co",
+      viewedAt: new Date(),
+    });
+    await FileViewerDailyResource.recordView(otherWorkspaceFile, {
+      verifiedEmail: "charlie@david.co",
+      viewedAt: new Date(),
+    });
     expect((await file.delete(first.authenticator)).isOk()).toBe(true);
     expect(
       await FileViewerDailyResource.getViewerSummariesForFile(file)
@@ -177,14 +159,10 @@ describe("FileViewerDailyResource", () => {
       useCase: "conversation",
       status: "created",
     });
-    expect(
-      (
-        await FileViewerDailyResource.recordView(file, {
-          verifiedEmail: "alice@david.co",
-          viewedAt: new Date(),
-        })
-      ).isOk()
-    ).toBe(true);
+    await FileViewerDailyResource.recordView(file, {
+      verifiedEmail: "alice@david.co",
+      viewedAt: new Date(),
+    });
     // Direct model deletion verifies the FK guard independently of Resource cleanup.
     await withTransaction(async (transaction) => {
       await expect(
@@ -205,17 +183,18 @@ describe("FileViewerDailyResource", () => {
     ).toEqual([]);
   });
 
-  it("returns database recording failures as a result", async () => {
+  it("propagates database recording failures", async () => {
     const { authenticator, user } = await createResourceTest({ role: "admin" });
     const file = await FileFactory.csv(authenticator, user, {
       useCase: "conversation",
       status: "created",
     });
     expect((await file.delete(authenticator)).isOk()).toBe(true);
-    const result = await FileViewerDailyResource.recordView(file, {
-      verifiedEmail: "alice@david.co",
-      viewedAt: new Date(),
-    });
-    expect(result.isErr()).toBe(true);
+    await expect(
+      FileViewerDailyResource.recordView(file, {
+        verifiedEmail: "alice@david.co",
+        viewedAt: new Date(),
+      })
+    ).rejects.toThrow(ForeignKeyConstraintError);
   });
 });

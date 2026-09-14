@@ -5,11 +5,12 @@ import { FileViewerDailyModel } from "@app/lib/resources/storage/models/file_vie
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { Result } from "@app/types/shared/result";
-import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { Ok } from "@app/types/shared/result";
+import { formatDateFromMillis } from "@app/types/shared/utils/date_utils";
 import type { Attributes, Transaction } from "sequelize";
 import { col, fn } from "sequelize";
 
+// Aggregate projection for one email across the file's daily viewer rows.
 export interface FileViewerSummary {
   email: string;
   firstViewedAt: Date;
@@ -57,32 +58,26 @@ export class FileViewerDailyResource extends BaseResource<FileViewerDailyModel> 
   static async recordView(
     file: FileResource,
     { verifiedEmail, viewedAt }: { verifiedEmail: string; viewedAt: Date }
-  ): Promise<Result<void, Error>> {
+  ): Promise<void> {
     const email = verifiedEmail.trim().toLowerCase();
-    const viewedOn = viewedAt.toISOString().slice(0, 10);
+    const viewedOn = formatDateFromMillis(viewedAt.getTime(), "UTC");
 
-    try {
-      const where = {
-        workspaceId: file.workspaceId,
-        fileId: file.id,
-        email,
-        viewedOn,
-      };
-      const [dailyView, created] = await this.model.findOrCreate({
-        where,
-        defaults: { ...where, firstViewedAt: viewedAt, lastViewedAt: viewedAt },
+    const where = {
+      workspaceId: file.workspaceId,
+      fileId: file.id,
+      email,
+      viewedOn,
+    };
+    const [dailyView, created] = await this.model.findOrCreate({
+      where,
+      defaults: { ...where, firstViewedAt: viewedAt, lastViewedAt: viewedAt },
+    });
+    if (!created) {
+      // Merge against the stored bounds so concurrent views cannot overwrite each other.
+      await dailyView.update({
+        firstViewedAt: fn("LEAST", col("firstViewedAt"), viewedAt),
+        lastViewedAt: fn("GREATEST", col("lastViewedAt"), viewedAt),
       });
-      if (!created) {
-        // Merge against the stored bounds so concurrent views cannot overwrite each other.
-        await dailyView.update({
-          firstViewedAt: fn("LEAST", col("firstViewedAt"), viewedAt),
-          lastViewedAt: fn("GREATEST", col("lastViewedAt"), viewedAt),
-        });
-      }
-      return new Ok(undefined);
-    } catch (error) {
-      // Database failures are handled by the caller without denying file access.
-      return new Err(normalizeError(error));
     }
   }
 
