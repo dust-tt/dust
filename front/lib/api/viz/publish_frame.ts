@@ -49,7 +49,7 @@ function shouldValidate(relPath: string): boolean {
  * Steps, under the per-file edit lock:
  * 1. Bundle from the entry via {@link buildFrameBundle}. Reads are driven by the import graph, so
  *    only files reachable from the entry are pulled from the mount. The shared Frame builder
- *    rejects TS/JSX syntax errors; this publisher collects non-blocking Tailwind warnings for the
+ *    rejects TS/JSX syntax errors. This publisher collects non-blocking Tailwind warnings for the
  *    caller. Files in the mount that the frame does not import are never touched.
  * 2. Refresh the canonical source from the entry so MCP retrieve and the render fallback match.
  * 3. Store the bundle as the processed (rendered) version and record the root and entry in

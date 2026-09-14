@@ -35,7 +35,7 @@ const FRAME_ESBUILD_OPTIONS: BundleEsbuildOptions = {
 
 /**
  * Validate and bundle a Frame for both legacy and v2 publishing. The generic engine walks the
- * import graph; this wrapper validates source syntax before tagging JSX for live edits.
+ * import graph. This wrapper validates source syntax before tagging JSX for live edits.
  */
 /**
  * @cc [owner:flvndvd,label:product] frame-source-syntax-validation
