@@ -33,10 +33,7 @@ import {
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { AlertCircle } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
-
-// How long a fully successful run stays visible before the dialog closes itself.
-const AUTO_CLOSE_DELAY_MS = 1500;
+import { useCallback, useEffect, useState } from "react";
 
 function formatElapsed(seconds: number): string {
   if (seconds < 60) {
@@ -126,11 +123,7 @@ type ExecutePluginDialogProps = {
   onClose: () => void;
   plugin: PluginListItem;
   pluginResourceTarget: PluginResourceTarget;
-  // When set, the plugin runs once per selected cell instead of against
-  // `pluginResourceTarget`. `initiallySelected` defaults to every candidate
-  // cell; `cellSubtitles` appends extra context (e.g. current rollout %) next
-  // to a cell's name, refreshed via `formatSubtitleAfterRun` for cells the run
-  // succeeded on so the new value shows without closing the dialog.
+  // When set, the plugin runs once per selected cell
   cellSelection?: {
     cells: CellInfo[];
     initiallySelected?: CellType[];
@@ -185,21 +178,6 @@ export function RunPluginDialog({
 
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
-  const autoCloseTimeoutRef = useRef<number | null>(null);
-  const clearAutoClose = useCallback(() => {
-    if (autoCloseTimeoutRef.current !== null) {
-      window.clearTimeout(autoCloseTimeoutRef.current);
-      autoCloseTimeoutRef.current = null;
-    }
-  }, []);
-  const scheduleAutoClose = useCallback(() => {
-    clearAutoClose();
-    autoCloseTimeoutRef.current = window.setTimeout(() => {
-      onClose();
-    }, AUTO_CLOSE_DELAY_MS);
-  }, [clearAutoClose, onClose]);
-  useEffect(() => clearAutoClose, [clearAutoClose]);
-
   // Tick an elapsed timer every 5s while the plugin runs so long jobs don't
   // look stalled. Hidden until the first tick so fast plugins stay quiet.
   useEffect(() => {
@@ -225,7 +203,6 @@ export function RunPluginDialog({
   }, [copyToClipboard, result]);
 
   const handleClose = () => {
-    clearAutoClose();
     setError(null);
     setResult(null);
     setCellResults(null);
@@ -236,7 +213,6 @@ export function RunPluginDialog({
 
   const onSubmit = useCallback(
     async (args: object) => {
-      clearAutoClose();
       setError(null);
       setResult(null);
       setCellResults(null);
@@ -287,31 +263,19 @@ export function RunPluginDialog({
               ),
             }));
           }
-          if (results.every((cellResult) => cellResult.ok)) {
-            scheduleAutoClose();
-          }
         } else {
           const runRes = await doRunPlugin(args);
           if (runRes.isErr()) {
             setError(runRes.error);
           } else {
             setResult(runRes.value);
-            scheduleAutoClose();
           }
         }
       } finally {
         setIsRunning(false);
       }
     },
-    [
-      cellSelection,
-      selectedCells,
-      doRunPlugin,
-      plugin.id,
-      pluginResourceTarget,
-      clearAutoClose,
-      scheduleAutoClose,
-    ]
+    [cellSelection, selectedCells, doRunPlugin, plugin.id, pluginResourceTarget]
   );
 
   return (
