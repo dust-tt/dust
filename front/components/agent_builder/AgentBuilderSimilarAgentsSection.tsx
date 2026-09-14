@@ -110,34 +110,26 @@ export function AgentBuilderSimilarAgentsSection({
 
       dispatch({ type: "fetch_start" });
 
-      try {
-        const result = await getSimilarAgents(currentInstructions, {
-          signal,
-        });
+      const result = await getSimilarAgents(currentInstructions, { signal });
 
-        if (signal.aborted) {
-          return;
-        }
+      if (signal.aborted) {
+        return;
+      }
 
-        if (result.isOk()) {
-          const similarAgentIds = new Set(result.value);
-          dispatch({
-            type: "fetch_success",
-            similarAgents: agentConfigurations.filter((agent) =>
-              similarAgentIds.has(agent.sId)
-            ),
-          });
-        } else {
-          lastFetchedInstructionsRef.current = null;
-          dispatch({ type: "fetch_settled" });
-        }
-      } catch {
-        if (signal.aborted) {
-          return;
-        }
+      if (result.isErr()) {
+        // Clear the dedup marker so the same instructions can be retried.
         lastFetchedInstructionsRef.current = null;
         dispatch({ type: "fetch_error" });
+        return;
       }
+
+      const similarAgentIds = new Set(result.value);
+      dispatch({
+        type: "fetch_success",
+        similarAgents: agentConfigurations.filter((agent) =>
+          similarAgentIds.has(agent.sId)
+        ),
+      });
     },
     [agentConfigurations, getSimilarAgents]
   );

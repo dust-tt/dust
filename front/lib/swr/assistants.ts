@@ -37,7 +37,7 @@ import type {
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
 import type { ReasoningEffort } from "@app/types/assistant/models/types";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -171,15 +171,20 @@ export function useSimilarAgents({ owner }: { owner: LightWorkspaceType }) {
       naturalDescription: string,
       options: { signal?: AbortSignal } = {}
     ) => {
-      const response: GetSimilarAgentsResponseBody = await fetcher(
-        `/api/w/${owner.sId}/assistant/agent_configurations/similar`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ naturalDescription }),
-          signal: options?.signal,
-        }
-      );
+      let response: GetSimilarAgentsResponseBody;
+      try {
+        response = await fetcher(
+          `/api/w/${owner.sId}/assistant/agent_configurations/similar`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ naturalDescription }),
+            signal: options?.signal,
+          }
+        );
+      } catch (e: unknown) {
+        return new Err(normalizeError(e));
+      }
       return new Ok(response.similar_agents);
     },
     [owner.sId, fetcher]

@@ -1,5 +1,5 @@
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
-import { Ok } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import type { LightWorkspaceType } from "@app/types/user";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -25,8 +25,12 @@ vi.mock("@app/components/agent_builder/AgentBuilderContext", () => ({
   useAgentBuilderContext: () => ({ owner, user }),
 }));
 
+interface AgentDetailsSheetMockProps {
+  agentId: string | null;
+}
+
 vi.mock("@app/components/assistant/details/AgentDetailsSheet", () => ({
-  AgentDetailsSheet: ({ agentId }: { agentId: string | null }) =>
+  AgentDetailsSheet: ({ agentId }: AgentDetailsSheetMockProps) =>
     agentId ? <div data-testid="agent-details-sheet">{agentId}</div> : null,
 }));
 
@@ -164,6 +168,19 @@ describe("AgentBuilderSimilarAgentsSection", () => {
     });
 
     expect(getSimilarAgentsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows an error message when the check fails", async () => {
+    getSimilarAgentsMock.mockResolvedValue(new Err(new Error("boom")));
+    instructionsMock = "Answer questions about HR policies";
+
+    render(<AgentBuilderSimilarAgentsSection agentConfigurationId={null} />);
+
+    expect(
+      await screen.findByText("Couldn't check for similar agents.", undefined, {
+        timeout: 3000,
+      })
+    ).toBeInTheDocument();
   });
 
   it("does not fetch when editing an existing agent", async () => {
