@@ -165,7 +165,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
             className={
               isMobileForkedConversation
                 ? "flex min-w-0 flex-1 items-center overflow-hidden"
-                : "flex min-w-0 items-center"
+                : "flex shrink-0 items-center"
             }
           >
             <Breadcrumbs
