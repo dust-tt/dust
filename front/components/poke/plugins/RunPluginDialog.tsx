@@ -62,7 +62,11 @@ interface CellRunResult {
   message: string;
 }
 
-function CellRunResults({ results }: { results: CellRunResult[] }) {
+interface CellRunResultsProps {
+  results: CellRunResult[];
+}
+
+function CellRunResults({ results }: CellRunResultsProps) {
   const succeeded = results.filter((result) => result.ok);
   const failed = results.filter((result) => !result.ok);
 
@@ -177,6 +181,9 @@ export function RunPluginDialog({
   });
 
   const [isCopied, copyToClipboard] = useCopyToClipboard();
+
+  // Once a run has started or finished, inputs and cell choices are frozen.
+  const isLocked = result !== null || cellResults !== null || isRunning;
 
   // Tick an elapsed timer every 5s while the plugin runs so long jobs don't
   // look stalled. Hidden until the first tick so fast plugins stay quiet.
@@ -396,7 +403,7 @@ export function RunPluginDialog({
                           ? "Unselect All"
                           : "Select All"
                       }
-                      disabled={cellResults !== null || isRunning}
+                      disabled={isLocked}
                       onClick={() =>
                         setSelectedCells(
                           selectedCells.size === cellSelection.cells.length
@@ -421,7 +428,7 @@ export function RunPluginDialog({
                               : getCellDisplay(cell)
                           }
                           checked={selectedCells.has(cell.name)}
-                          disabled={cellResults !== null || isRunning}
+                          disabled={isLocked}
                           onCheckedChange={(checked) => {
                             const nextSelectedCells = new Set(selectedCells);
                             if (checked === true) {
@@ -438,7 +445,7 @@ export function RunPluginDialog({
                 </div>
               )}
               <PluginForm
-                disabled={result !== null || cellResults !== null || isRunning}
+                disabled={isLocked}
                 initialValues={initialValues}
                 isRunning={isRunning}
                 manifest={manifest}

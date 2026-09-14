@@ -409,10 +409,13 @@ export function FeatureFlagsPage() {
               : undefined,
             formatSubtitleAfterRun: pendingAction.showRolloutPercentage
               ? (args) => {
-                  const rolloutPercentage = (
-                    args as { rolloutPercentage?: number }
-                  ).rolloutPercentage;
-                  return rolloutPercentage === 0
+                  const rolloutPercentage =
+                    "rolloutPercentage" in args &&
+                    typeof args.rolloutPercentage === "number"
+                      ? args.rolloutPercentage
+                      : null;
+                  // 0 removes the global flag, which the table shows as "—".
+                  return rolloutPercentage === null || rolloutPercentage === 0
                     ? "—"
                     : `${rolloutPercentage}%`;
                 }

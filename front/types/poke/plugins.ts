@@ -176,7 +176,11 @@ export function createZodSchemaFromArgs(
         break;
 
       case "number":
-        schemaProps[key] = z.number();
+        // The form leaves a cleared input as "" so the user can retype a value.
+        schemaProps[key] = z.preprocess(
+          (value) => (value === "" ? undefined : value),
+          z.number({ required_error: "Required" })
+        );
         break;
 
       case "boolean":
