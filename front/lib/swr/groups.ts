@@ -789,6 +789,18 @@ export function useUpdateGroupGrantedSeatType({
         await invalidateMembersUsage(owner.sId);
 
         return body;
+      } catch (err) {
+        // Report request failures (e.g. a rejected `clientFetch`) too, not just
+        // non-success HTTP responses.
+        sendNotification({
+          type: "error",
+          title: "Failed to update group seat",
+          description:
+            err instanceof Error
+              ? err.message
+              : "An unexpected error occurred.",
+        });
+        return null;
       } finally {
         setIsUpdating(false);
       }

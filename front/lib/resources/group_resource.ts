@@ -1524,7 +1524,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     return res.reduce<Record<ModelId, ModelId[]>>((acc, m) => {
-      acc[m.groupId] = [...(acc[m.groupId] || []), m.userId];
+      (acc[m.groupId] ??= []).push(m.userId);
       return acc;
     }, {});
   }
@@ -3216,14 +3216,16 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   // Recomputes each given user's seat from their seat-granting group memberships
-  // and applies it through `applyMembershipSeatChange` (which owns the
-  // immediate-vs-deferred timing). See the method body for the per-member rules
-  // (removal, keep-cadence-on-same-tier, reconcile, audit).
+  // and applies it through the batched seat-change core. See the method body for
+  // the per-member rules (removal, keep-cadence-on-same-tier, reconcile).
   /**
-   * @cc [owner:tdraier,label:product] seat-sync-after-commit
+   * @cc [owner:tdraier,label:product;error-handling] seat-sync-after-commit
    * When a `transaction` is provided, this sync MUST run after that transaction
    * commits, never inside it — it makes external Metronome calls and re-reads
-   * committed membership state. Without a transaction it runs inline.
+   * committed membership state. Without a transaction it runs inline. The sync is
+   * best-effort: failures MUST be caught and logged here, never propagated to the
+   * triggering mutation (the membership/mapping change is already committed; the
+   * next mutation and the debounced reconcile recover).
    */
   static async recomputeAndSyncWorkspaceSeatsForUsers(
     auth: Authenticator,
@@ -3233,20 +3235,16 @@ export class GroupResource extends BaseResource<GroupModel> {
     if (users.length === 0) {
       return;
     }
-    if (transaction) {
-      const workspaceId = auth.getNonNullableWorkspace().sId;
-      transaction.afterCommit(() =>
-        GroupResource._recomputeAndSyncWorkspaceSeats(auth, users).catch(
-          (err) =>
-            logger.error(
-              { err, workspaceId },
-              "Failed to sync group-driven seats after commit"
-            )
-        )
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+    const runSync = () =>
+      GroupResource._recomputeAndSyncWorkspaceSeats(auth, users).catch((err) =>
+        logger.error({ err, workspaceId }, "Failed to sync group-driven seats")
       );
+    if (transaction) {
+      transaction.afterCommit(runSync);
       return;
     }
-    await GroupResource._recomputeAndSyncWorkspaceSeats(auth, users);
+    await runSync();
   }
 
   private static async _recomputeAndSyncWorkspaceSeats(
@@ -3406,9 +3404,11 @@ export class GroupResource extends BaseResource<GroupModel> {
   // owns the per-member timing).
   /**
    * @cc [owner:tdraier,label:product] sync-seat-on-mapping-change
-   * On any change to `grantedSeatType`, every current active member's seat MUST be
-   * recomputed. Only manageable group kinds (provisioned, regular_manual) may
-   * carry a granted seat, and only workspace admins may change it.
+   * A change to `grantedSeatType` MUST trigger a seat recompute for the group's
+   * active members (via `recomputeAndSyncWorkspaceSeatsForUsers`). Only workspace
+   * admins may change it, and only manageable group kinds (provisioned,
+   * regular_manual) may carry a granted seat. Applying the recomputed seats is
+   * gated on Metronome seat-billing and is best-effort.
    */
   async setGrantedSeatType(
     auth: Authenticator,

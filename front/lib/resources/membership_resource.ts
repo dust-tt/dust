@@ -1732,22 +1732,35 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     user,
     workspace,
     author,
+    scheduledRow,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     author: UserType | "no-author";
+    // Optional already-fetched pending future row. When provided, the future row
+    // is dropped by id without a lookup (the batched seat sync passes the row it
+    // prefetched, avoiding a per-member query); when omitted, it is looked up.
+    scheduledRow?: MembershipResource | null;
   }): Promise<void> {
     await frontSequelize.transaction(async (transaction) => {
-      const futureRow = await MembershipModel.findOne({
-        where: {
-          userId: user.id,
-          workspaceId: workspace.id,
-          startAt: { [Op.gt]: new Date() },
-        },
-        transaction,
-      });
-      if (futureRow) {
-        await futureRow.destroy({ transaction });
+      const futureRowId =
+        scheduledRow !== undefined
+          ? scheduledRow?.id
+          : (
+              await MembershipModel.findOne({
+                where: {
+                  userId: user.id,
+                  workspaceId: workspace.id,
+                  startAt: { [Op.gt]: new Date() },
+                },
+                transaction,
+              })
+            )?.id;
+      if (futureRowId !== undefined && futureRowId !== null) {
+        await MembershipModel.destroy({
+          where: { id: futureRowId },
+          transaction,
+        });
       }
       await this.update({ endAt: null }, transaction);
     });

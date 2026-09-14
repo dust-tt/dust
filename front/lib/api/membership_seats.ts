@@ -170,12 +170,10 @@ export async function applyMembershipSeatChange({
 /**
  * @cc [owner:tdraier,label:product;backend] classified-seat-write
  * The immediate-vs-deferred timing MUST be decided by `classifySeatChange`
- * (unless `immediate` is set). This helper only writes the DB from prefetched
- * inputs and reports the outcome; it does NOT read the DB (no per-call membership
- * / scheduled / limit / contract fetch), audit, reconcile Metronome, or enforce
- * the free-plan or `maxSeats` guards — its callers own those. `metronome` null
- * means the workspace does not bill seats through Metronome and the change is
- * written straight through with no scheduling.
+ * (unless `immediate` is set). This helper applies the change from its prefetched
+ * inputs and reports the outcome; it does NOT audit, reconcile Metronome, or
+ * enforce the free-plan / `maxSeats` guards — its callers own those. A null
+ * `metronome` writes straight through with no scheduling.
  */
 async function applyClassifiedSeatChange({
   user,
@@ -264,6 +262,7 @@ async function applyClassifiedSeatChange({
         user,
         workspace,
         author,
+        scheduledRow,
       });
       seatChanged = true;
       break;
@@ -275,6 +274,7 @@ async function applyClassifiedSeatChange({
           user,
           workspace,
           author,
+          scheduledRow,
         });
       }
       await membership.updateMembershipSeat({
@@ -323,17 +323,15 @@ export type ApplyMembershipSeatChangeForUser = {
 // seat sync). It computes nothing about targets — each change's `newSeatType` is
 // resolved by the caller — and reuses the same timing/write core as the
 // single-user `applyMembershipSeatChange`, so per-member timing is identical.
-// Unlike the single path it does NOT enforce the one-shot `free` guard, so
-// callers MUST NOT pass `free` as a target.
+// The decision inputs (active/scheduled memberships, seat limits, counts,
+// Metronome context) are fetched once for the whole batch, not per member (see
+// the `batch-database-queries` directory contract). Unlike the single path it
+// does NOT enforce the one-shot `free` guard, so callers MUST NOT pass `free`.
 /**
- * @cc [owner:tdraier,label:performance;backend] batch-seat-change-reads
- * The number of database reads MUST NOT scale with `changes.length`: the active
- * memberships, scheduled future rows, workspace seat limits, seat-type counts,
- * and Metronome context are each read once for the whole batch — no per-member
- * query inside the loop. The per-seat-type `maxSeats` cap MUST be enforced
- * against a running count that is updated as immediate changes are applied within
- * the batch (so N immediate assignments to a capped tier cannot all pass a check
- * against the pre-batch count).
+ * @cc [owner:tdraier,label:product] batch-seat-cap
+ * The per-seat-type `maxSeats` cap MUST be enforced against a running count that
+ * is updated as immediate changes are applied within the batch, so several
+ * assignments to a capped tier in one batch cannot collectively exceed the cap.
  */
 export async function applyMembershipSeatChangesForWorkspace({
   workspace,
@@ -399,45 +397,36 @@ export async function applyMembershipSeatChangesForWorkspace({
       }
     }
 
-    // Isolate an unexpected write failure to its own member (like the single
-    // per-member path did) so one bad row doesn't abort the whole batch.
-    try {
-      const result = await applyClassifiedSeatChange({
-        user,
-        workspace,
-        author,
-        membership,
-        previousSeatType,
-        newSeatType,
-        scheduledRow: scheduledByUser.get(user.id) ?? null,
-        metronome,
-        immediate: false,
-      });
+    const result = await applyClassifiedSeatChange({
+      user,
+      workspace,
+      author,
+      membership,
+      previousSeatType,
+      newSeatType,
+      scheduledRow: scheduledByUser.get(user.id) ?? null,
+      metronome,
+      immediate: false,
+    });
 
-      // Keep the running counts in sync with the active-seat change we just
-      // wrote (immediate move or removal). Deferred changes and cancellations
-      // leave the active count unchanged.
-      if (result.isOk()) {
-        const { resultingActiveSeatType } = result.value;
-        if (resultingActiveSeatType !== previousSeatType) {
-          if (previousSeatType !== "none") {
-            runningCounts[previousSeatType] =
-              (runningCounts[previousSeatType] ?? 0) - 1;
-          }
-          if (resultingActiveSeatType !== "none") {
-            runningCounts[resultingActiveSeatType] =
-              (runningCounts[resultingActiveSeatType] ?? 0) + 1;
-          }
+    // Keep the running counts in sync with the active-seat change we just wrote
+    // (immediate move or removal). Deferred changes and cancellations leave the
+    // active count unchanged.
+    if (result.isOk()) {
+      const { resultingActiveSeatType } = result.value;
+      if (resultingActiveSeatType !== previousSeatType) {
+        if (previousSeatType !== "none") {
+          runningCounts[previousSeatType] =
+            (runningCounts[previousSeatType] ?? 0) - 1;
+        }
+        if (resultingActiveSeatType !== "none") {
+          runningCounts[resultingActiveSeatType] =
+            (runningCounts[resultingActiveSeatType] ?? 0) + 1;
         }
       }
-
-      results.push({ user, result });
-    } catch (err) {
-      logger.error(
-        { err, workspaceId: workspace.sId, userId: user.sId },
-        "Error applying seat change in batch"
-      );
     }
+
+    results.push({ user, result });
   }
 
   return results;
