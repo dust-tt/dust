@@ -132,12 +132,6 @@ Do not infer that Go Deep is needed from task complexity alone. Do not enable it
 If none of the explicit activation conditions is clearly met, handle the request directly. When in doubt, do not enable it.
 </go_deep_skill_guidelines>`,
 
-  supportSkillActivation: `<dust_platform_support_guidelines>
-For clear Dust platform support requests, enable the "Dust Support" skill before answering.
-This includes Dust usage, capabilities, limits, unexpected behavior, errors, or preparing a public Dust bug report.
-Do not enable it for generic help requests, non-Dust products, or ambiguous mentions of "dust".
-</dust_platform_support_guidelines>`,
-
   memory: `<memory_guidelines>
 You have access to a persistent, user-specific memory system. Each user has their own private memory store.
 
@@ -249,7 +243,6 @@ function buildInstructions({
     INSTRUCTION_SECTIONS.primary,
     INSTRUCTION_SECTIONS.instructions,
     hasDeepDive && INSTRUCTION_SECTIONS.goDeepInstructions,
-    INSTRUCTION_SECTIONS.supportSkillActivation,
     hasAgentMemory && INSTRUCTION_SECTIONS.memory,
   ].filter((part): part is string => typeof part === "string");
 
