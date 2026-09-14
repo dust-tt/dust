@@ -83,7 +83,7 @@ app.delete(
       return apiError(ctx, {
         status_code: 403,
         api_error: {
-          type: "workspace_auth_error",
+          type: "app_auth_error",
           message: "Only admins and editors can archive this skill.",
         },
       });
