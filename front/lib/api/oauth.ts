@@ -4,6 +4,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import config from "@app/lib/api/config";
 import { verifyWorkspaceOAuthConnectionForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
+import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -240,6 +241,8 @@ export async function createConnectionAndGetSetupUrl(
   const cRes = await api.createConnection({
     provider,
     metadata,
+    // Stored on the connection so the finalize URI survives redirect base changes.
+    redirectUri: finalizeUriForProvider({ provider, connection: null }),
     relatedCredential,
   });
   if (cRes.isErr()) {
