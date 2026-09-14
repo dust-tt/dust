@@ -153,12 +153,15 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
   declare workspaceId: ForeignKey<WorkspaceModel["id"]>;
   declare workspace: NonAttribute<WorkspaceModel>;
 
+  /**
+   * @cc [owner:flvndvd,label:backend] restrict-workspace-parent-changes
+   * Workspace foreign keys MUST restrict parent ID updates and deletion.
+   */
   static override init<MS extends ModelStatic<Model>>(
     this: MS,
     attributes: ModelAttributes<InstanceType<MS>>,
     options: InitOptions<InstanceType<MS>> & {
       relationship?: "hasMany" | "hasOne";
-      workspaceForeignKeyOnUpdate?: "CASCADE" | "RESTRICT";
       softDeletable?: boolean;
     }
   ): MS {
@@ -174,11 +177,7 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
       },
     };
 
-    const {
-      relationship = "hasMany",
-      workspaceForeignKeyOnUpdate = "CASCADE",
-      ...restOptions
-    } = options;
+    const { relationship = "hasMany", ...restOptions } = options;
 
     // Define a hook to ensure all find queries are properly scoped to a workspace.
     const hooks: Partial<
@@ -210,19 +209,19 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
       WorkspaceModel.hasOne(model, {
         foreignKey: { allowNull: false },
         onDelete: "RESTRICT",
-        onUpdate: workspaceForeignKeyOnUpdate,
+        onUpdate: "RESTRICT",
       });
     } else {
       WorkspaceModel.hasMany(model, {
         foreignKey: { allowNull: false },
         onDelete: "RESTRICT",
-        onUpdate: workspaceForeignKeyOnUpdate,
+        onUpdate: "RESTRICT",
       });
     }
 
     model.belongsTo(WorkspaceModel, {
       foreignKey: { allowNull: false },
-      onUpdate: workspaceForeignKeyOnUpdate,
+      onUpdate: "RESTRICT",
     });
 
     return model;

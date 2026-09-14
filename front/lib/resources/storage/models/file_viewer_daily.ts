@@ -46,7 +46,6 @@ FileViewerDailyModel.init(
   },
   {
     modelName: "file_viewer_daily",
-    workspaceForeignKeyOnUpdate: "RESTRICT",
     sequelize: frontSequelize,
     indexes: [
       { fields: ["workspaceId", "fileId", "email", "viewedOn"], unique: true },
