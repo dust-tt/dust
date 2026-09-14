@@ -26,6 +26,7 @@ import type {
   SystemPromptContext,
   SystemPromptSections,
 } from "@app/lib/api/llm/types/options";
+import { isValidTimezone } from "@app/lib/api/timezone";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
@@ -37,7 +38,6 @@ import type {
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
-import { isValidTimeZone } from "@app/types/shared/utils/date_utils";
 import type { WorkspaceType } from "@app/types/user";
 import { formatInTimeZone } from "date-fns-tz";
 
@@ -59,7 +59,7 @@ function constructContextSection({
   disableFormattingPrompt: boolean;
 }): string {
   const { timezone } = userMessage.context;
-  const resolvedTimezone = isValidTimeZone(timezone) ? timezone : "UTC";
+  const resolvedTimezone = isValidTimezone(timezone) ? timezone : "UTC";
   if (resolvedTimezone !== timezone) {
     logger.warn(
       { timezone },

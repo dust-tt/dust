@@ -1,13 +1,13 @@
 import type { OutlookEvent } from "@app/lib/api/actions/servers/outlook/outlook_api_helper";
+import { isValidTimezone } from "@app/lib/api/timezone";
 import logger from "@app/logger/logger";
-import { isValidTimeZone } from "@app/types/shared/utils/date_utils";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
 
 // Falls back to UTC and logs rather than throwing, so one malformed timezone
 // from an external source doesn't fail the whole event render.
 function resolveTimeZone(timeZone: string): string {
-  if (isValidTimeZone(timeZone)) {
+  if (isValidTimezone(timeZone)) {
     return timeZone;
   }
   logger.warn(
@@ -15,6 +15,31 @@ function resolveTimeZone(timeZone: string): string {
     "Invalid IANA timezone in Outlook event, falling back to UTC"
   );
   return "UTC";
+}
+
+// Source zones are the ones the event's wall-clock strings are expressed in;
+// target zones are the ones we render in (the user's when known). Resolved once
+// per event so the fallback warning fires at most once per zone.
+interface EventTimeZones {
+  startSource: string;
+  endSource: string;
+  startTarget: string;
+  endTarget: string;
+}
+
+function resolveEventTimeZones(
+  event: OutlookEvent,
+  userTimezone?: string
+): EventTimeZones {
+  const startSource = resolveTimeZone(event.start.timeZone ?? "UTC");
+  const endSource = resolveTimeZone(event.end.timeZone ?? "UTC");
+  const userTz = userTimezone ? resolveTimeZone(userTimezone) : undefined;
+  return {
+    startSource,
+    endSource,
+    startTarget: userTz ?? startSource,
+    endTarget: userTz ?? endSource,
+  };
 }
 
 interface EnrichedOutlookEventDateTime {
@@ -48,23 +73,12 @@ function stripHtmlTags(html: string): string {
 
 function enrichEventWithDayOfWeek(
   event: OutlookEvent,
-  userTimezone?: string
+  tz: EventTimeZones
 ): EnrichedOutlookEvent {
-  const startTz = resolveTimeZone(
-    userTimezone ?? event.start.timeZone ?? "UTC"
-  );
-  const endTz = resolveTimeZone(userTimezone ?? event.end.timeZone ?? "UTC");
-
-  const startInstant = fromZonedTime(
-    event.start.dateTime,
-    resolveTimeZone(event.start.timeZone ?? "UTC")
-  );
-  const endInstant = fromZonedTime(
-    event.end.dateTime,
-    resolveTimeZone(event.end.timeZone ?? "UTC")
-  );
-  const startDayOfWeek = formatInTimeZone(startInstant, startTz, "EEEE");
-  const endDayOfWeek = formatInTimeZone(endInstant, endTz, "EEEE");
+  const startInstant = fromZonedTime(event.start.dateTime, tz.startSource);
+  const endInstant = fromZonedTime(event.end.dateTime, tz.endSource);
+  const startDayOfWeek = formatInTimeZone(startInstant, tz.startTarget, "EEEE");
+  const endDayOfWeek = formatInTimeZone(endInstant, tz.endTarget, "EEEE");
 
   return {
     ...event,
@@ -163,7 +177,8 @@ export function renderOutlookEvent(
   event: OutlookEvent,
   userTimezone?: string
 ): string {
-  const enrichedEvent = enrichEventWithDayOfWeek(event, userTimezone);
+  const tz = resolveEventTimeZones(event, userTimezone);
+  const enrichedEvent = enrichEventWithDayOfWeek(event, tz);
 
   const lines: string[] = [];
 
@@ -174,11 +189,8 @@ export function renderOutlookEvent(
 
   if (enrichedEvent.start) {
     const start = enrichedEvent.start;
-    const targetTz = resolveTimeZone(userTimezone ?? start.timeZone ?? "UTC");
-    const startInstant = fromZonedTime(
-      start.dateTime,
-      resolveTimeZone(start.timeZone ?? "UTC")
-    );
+    const targetTz = tz.startTarget;
+    const startInstant = fromZonedTime(start.dateTime, tz.startSource);
 
     if (start.isAllDay) {
       const dateStr = formatInTimeZone(startInstant, targetTz, "MMMM d, yyyy");
@@ -194,11 +206,8 @@ export function renderOutlookEvent(
 
   if (enrichedEvent.end && !enrichedEvent.isAllDay) {
     const end = enrichedEvent.end;
-    const targetTz = resolveTimeZone(userTimezone ?? end.timeZone ?? "UTC");
-    const endInstant = fromZonedTime(
-      end.dateTime,
-      resolveTimeZone(end.timeZone ?? "UTC")
-    );
+    const targetTz = tz.endTarget;
+    const endInstant = fromZonedTime(end.dateTime, tz.endSource);
 
     const timeStr = formatInTimeZone(endInstant, targetTz, "h:mm a");
     const dateStr = formatInTimeZone(endInstant, targetTz, "MMMM d, yyyy");

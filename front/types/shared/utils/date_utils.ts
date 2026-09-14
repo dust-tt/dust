@@ -8,17 +8,6 @@ export function isValidDate(date: Date) {
   return !isNaN(date.valueOf());
 }
 
-// date-fns-tz throws on a timezone Intl doesn't recognize; validate at the
-// boundary before passing to formatInTimeZone/fromZonedTime/toZonedTime.
-export function isValidTimeZone(timeZone: string): boolean {
-  try {
-    Intl.DateTimeFormat(undefined, { timeZone });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export function dateToHumanReadable(date: Date) {
   return format(date, "MMM d, yyyy 'at' h:mm a");
 }

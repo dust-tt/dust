@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  formatDateFromMillis,
-  isValidTimeZone,
-  ordinalDay,
-} from "./date_utils";
+import { formatDateFromMillis, ordinalDay } from "./date_utils";
 
 describe("formatDateFromMillis", () => {
   // 2026-06-09T15:00:00Z is local midnight 2026-06-10 in Asia/Tokyo (UTC+9):
@@ -21,19 +17,6 @@ describe("formatDateFromMillis", () => {
 
   it("keeps the local day for a negative-offset timezone", () => {
     expect(formatDateFromMillis(ms, "America/New_York")).toBe("2026-06-09");
-  });
-});
-
-describe("isValidTimeZone", () => {
-  it("accepts IANA timezone identifiers", () => {
-    expect(isValidTimeZone("UTC")).toBe(true);
-    expect(isValidTimeZone("America/New_York")).toBe(true);
-    expect(isValidTimeZone("Asia/Tokyo")).toBe(true);
-  });
-
-  it("rejects Windows-style and bogus timezone names", () => {
-    expect(isValidTimeZone("Pacific Standard Time")).toBe(false);
-    expect(isValidTimeZone("not_a_real_timezone")).toBe(false);
   });
 });
 

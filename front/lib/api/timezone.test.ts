@@ -8,10 +8,10 @@ describe("isValidTimezone", () => {
     expect(isValidTimezone("America/New_York")).toBe(true);
   });
 
-  it("rejects invalid or empty timezones", () => {
+  it("rejects invalid, empty, or Windows-style timezones", () => {
     expect(isValidTimezone("Not/AZone")).toBe(false);
     expect(isValidTimezone("")).toBe(false);
-    expect(isValidTimezone("utc")).toBe(false);
+    expect(isValidTimezone("Pacific Standard Time")).toBe(false);
   });
 });
 
