@@ -337,14 +337,13 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     agentConfigurationTypes.push(agentConfigurationType);
   }
 
-  if (!useGrants) {
-    await shadowAgentPermissions(
-      auth,
-      agentConfigurations,
-      agentConfigurationTypes,
-      spaceById
-    );
-  }
+  await shadowAgentPermissions(
+    auth,
+    agentConfigurations,
+    agentConfigurationTypes,
+    spaceById,
+    useGrants
+  );
 
   return agentConfigurationTypes;
 }

@@ -113,7 +113,8 @@ editor-list, permission, listing, backfill, and cache-related mismatches to reac
 
 ### PR 12: Flip all grant-backed reads
 
-Split the implementation into four stacked PRs, each with its focused regression tests:
+Start with a small prerequisite that lets shadow comparisons serve either source while keeping
+legacy/grant log fields stable. Split the read flip into four stacked PRs:
 
 - **PR 12a: Permissions and usage.** Reuse `use_legacy_acls` to switch permission decisions,
   usage filters, and suggestions. Preserve API-key status/space checks and internal-caller access.
@@ -133,9 +134,10 @@ when `use_legacy_acls` is disabled. This switches all workspaces together; enabl
 restores legacy reads within its 60-second refresh window.
 
 The switch also covers configuration context, tool/data-source/webhook usage filters, agent
-suggestions, and editor checks when disabling triggers after an agent becomes hidden. Legacy
-reads continue shadow comparisons when `group_permissions_shadow` is enabled. Grant read failures
-propagate; they do not silently fall back to legacy permissions. Dual writes remain active.
+suggestions, and editor checks when disabling triggers after an agent becomes hidden. With
+`group_permissions_shadow` enabled, compare grants while serving legacy reads and compare legacy
+reads while serving grants. Comparison failures are logged without affecting the served result;
+failures reading the selected source propagate. Dual writes remain active.
 
 Use `auth.can("write", agentResource)` for agent authorization, including regular admin API keys via
 the resource ACL. Keep the existing active-status and requested-space checks outside that ACL.

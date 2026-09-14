@@ -27,13 +27,12 @@ export async function shadowCanAdminAgent(
     const resource = AgentResource.fromAgentConfiguration(auth, agent);
     return auth.can("admin", resource);
   };
-  if (!isLegacyAclsEnabled()) {
-    return candidate();
-  }
+  const useGrants = !isLegacyAclsEnabled();
   return shadowCompare({
     auth,
-    legacy: await legacy(),
-    candidate,
+    legacy: useGrants ? await candidate() : await legacy(),
+    candidate: useGrants ? legacy : candidate,
+    reverse: useGrants,
     context: {
       check: "agent_permission",
       callSite,
@@ -62,14 +61,33 @@ export async function shadowEditableAgents(
       .map((resource) => resource.sId)
       .sort();
   };
-  if (!isLegacyAclsEnabled()) {
-    const editableIds = new Set(await candidate());
-    return agents.filter((agent) => editableIds.has(agent.sId));
-  }
-  await shadowCompare({
+  const useGrants = !isLegacyAclsEnabled();
+  const legacyIds = async () => {
+    if (!useGrants) {
+      return legacy.map((agent) => agent.sId).sort();
+    }
+    const groups = auth.user()
+      ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
+      : [];
+    const editorIds = new Set(
+      groups.map((group) => group.agentConfigurationId)
+    );
+    return agents
+      .filter(
+        (agent) =>
+          auth.isAdmin() ||
+          agent.versionAuthorId === auth.user()?.id ||
+          editorIds.has(agent.id) ||
+          (!auth.user() && agent.canEdit)
+      )
+      .map((agent) => agent.sId)
+      .sort();
+  };
+  const selectedIds = await shadowCompare({
     auth,
-    legacy: legacy.map((agent) => agent.sId).sort(),
-    candidate,
+    legacy: useGrants ? await candidate() : await legacyIds(),
+    candidate: useGrants ? legacyIds : candidate,
+    reverse: useGrants,
     context: {
       check: "editable_agents",
       callSite,
@@ -78,7 +96,10 @@ export async function shadowEditableAgents(
     equals: sameIds,
   });
 
-  return legacy;
+  const editableIds = new Set(selectedIds);
+  return useGrants
+    ? agents.filter((agent) => editableIds.has(agent.sId))
+    : legacy;
 }
 
 /**
@@ -90,21 +111,23 @@ export async function shadowUsageConfigIds(
   auth: Authenticator,
   callSite: string
 ): Promise<ModelId[]> {
-  if (!isLegacyAclsEnabled()) {
-    return AgentResource.listEditorConfigModelIds(auth);
-  }
-  const groups = await GroupResource.findAgentIdsForGroups(
-    auth,
-    auth.groupModelIds()
-  );
-  const legacyModelIds = groups.map((group) => group.agentConfigurationId);
+  const useGrants = !isLegacyAclsEnabled();
+  const legacy = async () => {
+    const groups = await GroupResource.findAgentIdsForGroups(
+      auth,
+      auth.groupModelIds()
+    );
+    return groups
+      .map((group) => group.agentConfigurationId)
+      .sort((a, b) => a - b);
+  };
+  const candidate = async () =>
+    (await AgentResource.listEditorConfigModelIds(auth)).sort((a, b) => a - b);
   return shadowCompare({
     auth,
-    legacy: [...legacyModelIds].sort((a, b) => a - b),
-    candidate: async () =>
-      (await AgentResource.listEditorConfigModelIds(auth)).sort(
-        (a, b) => a - b
-      ),
+    legacy: useGrants ? await candidate() : await legacy(),
+    candidate: useGrants ? legacy : candidate,
+    reverse: useGrants,
     context: {
       check: "agent_usage_filter",
       callSite,
