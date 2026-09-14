@@ -553,7 +553,7 @@ describe("PATCH /api/w/:wId/assistant/agent_configurations/:aId/editors", () => 
 });
 
 it("uses grants for editor responses and editor administration", async () => {
-  const { workspace, user, auth } = await createPrivateApiMockRequest({
+  const { workspace, user } = await createPrivateApiMockRequest({
     role: "user",
   });
   const author = await UserFactory.basic();
