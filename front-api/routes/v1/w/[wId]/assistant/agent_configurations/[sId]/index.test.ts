@@ -28,7 +28,10 @@ afterEach(() => {
   }
 });
 
-async function setupTest(role: "admin" | "builder" | "user" = "admin") {
+async function setupTest(
+  role: "admin" | "builder" | "user" = "admin",
+  grants = false
+) {
   const { workspace, key } = await createPublicApiMockRequest({ role });
 
   await SpaceFactory.defaults(
@@ -44,6 +47,9 @@ async function setupTest(role: "admin" | "builder" | "user" = "admin") {
 
   const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
   await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
+  if (grants) {
+    await FeatureFlagFactory.basic(auth, "agent_permission_grants");
+  }
 
   return { workspace, key, agentConfig, auth, user };
 }
@@ -83,9 +89,12 @@ function patchAgentConfiguration(
   );
 }
 
-describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
+describe.each([
+  false,
+  true,
+])("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId] (grants: %s)", (grants) => {
   it("keeps an agent created and edited with an admin key editable on subsequent reads", async () => {
-    const { workspace, key, user } = await setupTest("admin");
+    const { workspace, key, user } = await setupTest("admin", grants);
     const imported = await honoApp.request(
       `/api/v1/w/${workspace.sId}/assistant/agent_configurations/import`,
       {
@@ -133,7 +142,10 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
   });
 
   it("returns the skills attached to the agent", async () => {
-    const { workspace, key, agentConfig, auth } = await setupTest("admin");
+    const { workspace, key, agentConfig, auth } = await setupTest(
+      "admin",
+      grants
+    );
     const skill = await SkillFactory.create(auth, {
       name: "Support Playbook",
     });
@@ -156,7 +168,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
   });
 
   it("returns an empty skills array for an agent without skills", async () => {
-    const { workspace, key, agentConfig } = await setupTest("admin");
+    const { workspace, key, agentConfig } = await setupTest("admin", grants);
 
     const response = await getAgentConfiguration(
       workspace,
@@ -174,7 +186,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     "builder",
     "user",
   ] as const)("reports edit permissions for a %s key on a published agent", async (role) => {
-    const { workspace, key, agentConfig } = await setupTest(role);
+    const { workspace, key, agentConfig } = await setupTest(role, grants);
     const response = await getAgentConfiguration(
       workspace,
       key,
@@ -198,7 +210,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     "admin",
     "builder",
   ] as const)("only allows an admin key to access an unpublished agent (%s)", async (role) => {
-    const { workspace, key, auth } = await setupTest(role);
+    const { workspace, key, auth } = await setupTest(role, grants);
     const agent = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Unpublished Agent",
       scope: "hidden",
@@ -227,7 +239,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
   });
 
   it("does not report global or archived agents as editable with an admin key", async () => {
-    const { workspace, key, agentConfig } = await setupTest("admin");
+    const { workspace, key, agentConfig } = await setupTest("admin", grants);
     const archiveResponse = await honoApp.request(
       `/api/v1/w/${workspace.sId}/assistant/agent_configurations/${agentConfig.sId}`,
       { method: "DELETE", headers: { authorization: `Bearer ${key.secret}` } }
@@ -253,7 +265,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
   });
 
   it("returns 404 for a retired global agent (e.g. gpt-4)", async () => {
-    const { workspace, key } = await setupTest();
+    const { workspace, key } = await setupTest("builder", grants);
 
     const response = await getAgentConfiguration(workspace, key, "gpt-4");
 

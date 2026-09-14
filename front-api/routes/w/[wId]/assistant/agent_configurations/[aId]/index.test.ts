@@ -287,11 +287,17 @@ function get(workspace: { sId: string }, aId: string) {
 }
 
 describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the caller cannot read", () => {
-  it("redacts the private fields of an unpublished agent for a non-editor admin", async () => {
+  it.each([
+    false,
+    true,
+  ])("redacts hidden definitions for a non-editor admin (grants: %s)", async (grants) => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
       method: "GET",
     });
+    if (grants) {
+      await FeatureFlagFactory.basic(auth, "agent_permission_grants");
+    }
     await SpaceFactory.defaults(auth);
 
     const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
@@ -397,13 +403,19 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     expect(data.error.type).toBe("agent_configuration_not_found");
   });
 
-  it("returns the full agent to a non-editor admin with the admin_can_see_private_entities flag", async () => {
+  it.each([
+    false,
+    true,
+  ])("returns the full agent to a non-editor admin with the admin_can_see_private_entities flag (grants: %s)", async (grants) => {
     const { workspace, auth } = await createPrivateApiMockRequest({
       role: "admin",
       method: "GET",
     });
     await SpaceFactory.defaults(auth);
     await FeatureFlagFactory.basic(auth, "admin_can_see_private_entities");
+    if (grants) {
+      await FeatureFlagFactory.basic(auth, "agent_permission_grants");
+    }
 
     const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
       workspace,

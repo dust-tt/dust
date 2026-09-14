@@ -1,4 +1,5 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
+import { areAgentGrantsEnabled } from "@app/lib/api/assistant/agent_grants";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { shadowCompare } from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
@@ -195,6 +196,11 @@ async function shadowAgentPermissions(
 }
 
 /**
+ * @cc [owner:philipperolet,label:security] hidden-agent-content
+ * Admin access alone must not set `canRead` on hidden agent definitions, including for regular
+ * API keys with role-based write access. Agent details may separately override admin redaction.
+ */
+/**
  * Enrich agent configurations with additional data (actions, tags, favorites).
  */
 /**
@@ -204,8 +210,9 @@ async function shadowAgentPermissions(
  */
 /**
  * @cc [owner:philipperolet,label:security] agent-editability
- * Outside regular API keys, `canEdit` allows legacy authors/editors or user-less
- * callers with agent write permission; workspace admin role alone does not grant it.
+ * Outside regular API keys, `canEdit` uses agent write permission when grants are enabled and
+ * otherwise allows legacy authors/editors or user-less callers with agent write permission;
+ * workspace admin role alone does not grant it.
  */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
@@ -223,9 +230,11 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   const user = auth.user();
   const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
 
-  // Compute editor permissions if not provided
+  const useGrants = await areAgentGrantsEnabled(auth);
+
+  // Compute legacy editor permissions if not provided and grants are not serving reads.
   let editorIds = agentIdsForUserAsEditor;
-  if (!editorIds) {
+  if (!useGrants && !editorIds) {
     const agentIdsForGroups = user
       ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
       : [];
@@ -267,19 +276,26 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const tags: TagResource[] = tagsPerAgent[agent.id] ?? [];
 
     const isAuthor = agent.authorId === auth.user()?.id;
-    const isMember = editorIds.includes(agent.id);
+    const isMember = editorIds?.includes(agent.id) ?? false;
+    const resource = AgentResource.fromAgentConfigurationModel(agent);
     const canEditWithoutUser =
-      !user &&
-      !isRegularApiKey &&
-      auth.can("write", AgentResource.fromAgentConfigurationModel(agent));
-
-    const canRead =
-      isAuthor || isMember || canEditWithoutUser || agent.scope === "visible";
-    const canEdit = isRegularApiKey
-      ? auth.isAdmin() &&
-        agent.status === "active" &&
-        canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
+      !user && !isRegularApiKey && auth.can("write", resource);
+    const legacyCanWrite = isRegularApiKey
+      ? auth.isAdmin()
       : isAuthor || isMember || canEditWithoutUser;
+    const canWrite = useGrants ? auth.can("write", resource) : legacyCanWrite;
+    const canEdit =
+      canWrite &&
+      (!isRegularApiKey ||
+        (agent.status === "active" &&
+          canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)));
+    // Admin role access allows management without making hidden definitions readable.
+    const canRead = useGrants
+      ? auth.can("read", resource) &&
+        (!auth.isAdmin() ||
+          (!isRegularApiKey && canWrite) ||
+          agent.scope === "visible")
+      : isAuthor || isMember || canEditWithoutUser || agent.scope === "visible";
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       agentModelId: agent.agentId,
@@ -321,12 +337,14 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     agentConfigurationTypes.push(agentConfigurationType);
   }
 
-  await shadowAgentPermissions(
-    auth,
-    agentConfigurations,
-    agentConfigurationTypes,
-    spaceById
-  );
+  if (!useGrants) {
+    await shadowAgentPermissions(
+      auth,
+      agentConfigurations,
+      agentConfigurationTypes,
+      spaceById
+    );
+  }
 
   return agentConfigurationTypes;
 }

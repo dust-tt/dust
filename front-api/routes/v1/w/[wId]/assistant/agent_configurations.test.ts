@@ -1,5 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -33,11 +34,17 @@ async function agentNames(response: Response): Promise<string[]> {
 
 // Creates, as another workspace member, one published agent, one unpublished agent the API key
 // is not an editor of, and one published agent requesting a space the API key cannot read.
-async function setupTestAgents(workspace: WorkspaceType) {
+async function setupTestAgents(workspace: WorkspaceType, grants: boolean) {
   const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
     workspace.sId
   );
   await SpaceFactory.defaults(internalAdminAuth);
+  if (grants) {
+    await FeatureFlagFactory.basic(
+      internalAdminAuth,
+      "agent_permission_grants"
+    );
+  }
 
   const agentOwner = await UserFactory.basic();
   await MembershipFactory.associate(workspace, agentOwner, { role: "user" });
@@ -81,14 +88,17 @@ async function setupTestAgents(workspace: WorkspaceType) {
   return { skill };
 }
 
-describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
+describe.each([
+  false,
+  true,
+])("GET /api/v1/w/[wId]/assistant/agent_configurations (grants: %s)", (grants) => {
   it.each([
     "admin",
     "builder",
     "user",
   ] as const)("reports edit permissions for a %s key", async (role) => {
     const { workspace, key } = await createPublicApiMockRequest({ role });
-    await setupTestAgents(workspace);
+    await setupTestAgents(workspace, grants);
 
     const response = await listAgents(workspace, key, { view: "all" });
     const {
@@ -111,7 +121,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
-    await setupTestAgents(workspace);
+    await setupTestAgents(workspace, grants);
 
     const response = await listAgents(workspace, key, {
       view: "all_unrestricted",
@@ -138,7 +148,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
-    await setupTestAgents(workspace);
+    await setupTestAgents(workspace, grants);
 
     const response = await listAgents(workspace, key, { view: "all" });
 
@@ -153,7 +163,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations", () => {
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
-    const { skill } = await setupTestAgents(workspace);
+    const { skill } = await setupTestAgents(workspace, grants);
 
     const response = await listAgents(workspace, key, { view: "all" });
 

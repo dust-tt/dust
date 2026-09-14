@@ -1,4 +1,4 @@
-import { shadowCanAdminAgent } from "@app/lib/api/assistant/agent_permissions";
+import { canAdminAgent } from "@app/lib/api/assistant/agent_permissions";
 import {
   getAgentConfiguration,
   updateAgentPermissions,
@@ -213,11 +213,13 @@ app.patch(
     }
 
     const editorGroup = editorGroupRes.value;
-    // TODO(governance) serve the AgentResource permission after shadow verification.
-    const canAdministrate = await shadowCanAdminAgent(
+    // The rollout switch selects the permission source for both editor writes.
+    const canAdministrate = await canAdminAgent(
       auth,
       agent,
-      auth.isAdmin() || (await editorGroup.isMember(auth.getNonNullableUser())),
+      async () =>
+        auth.isAdmin() ||
+        (await editorGroup.isMember(auth.getNonNullableUser())),
       "patchAgentEditorsRoute"
     );
     if (!canAdministrate) {

@@ -1,4 +1,4 @@
-import { shadowUsageConfigIds } from "@app/lib/api/assistant/agent_permissions";
+import { listAgentUsageConfigIds } from "@app/lib/api/assistant/agent_permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { isManagedConnectorProvider } from "@app/lib/data_sources";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
@@ -7,7 +7,6 @@ import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/a
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import type { DataSourceViewCategory } from "@app/types/api/public/spaces";
@@ -242,12 +241,8 @@ export async function getDataSourceViewsUsageByModelIds({
   );
 
   // Step 4: fetch the agent configurations
-  const getAgentsForUser = async () => {
-    const legacy = (
-      await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
-    ).map((group) => group.agentConfigurationId);
-    return shadowUsageConfigIds(auth, legacy, "getDataSourceViewsUsage");
-  };
+  const getAgentsForUser = () =>
+    listAgentUsageConfigIds(auth, "getDataSourceViewsUsage");
 
   const getAgentWhereClauseAdmin = () => ({
     status: "active",

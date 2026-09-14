@@ -42,7 +42,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
 
-describe("getAgentConfigurations", () => {
+describe.each([
+  false,
+  true,
+])("getAgentConfigurations (grants: %s)", (grants) => {
   it.each([
     "system key",
     "Poke",
@@ -50,6 +53,9 @@ describe("getAgentConfigurations", () => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
+    if (grants) {
+      await FeatureFlagFactory.basic(authenticator, "agent_permission_grants");
+    }
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       {
@@ -91,6 +97,9 @@ describe("getAgentConfigurations", () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
+    if (grants) {
+      await FeatureFlagFactory.basic(authenticator, "agent_permission_grants");
+    }
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       { scope: "hidden" }
@@ -114,6 +123,9 @@ describe("getAgentConfigurations", () => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
+    if (grants) {
+      await FeatureFlagFactory.basic(authenticator, "agent_permission_grants");
+    }
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const otherAgent = await AgentConfigurationFactory.createTestAgent(
@@ -150,6 +162,9 @@ describe("getAgentConfigurations", () => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
+    if (grants) {
+      await FeatureFlagFactory.basic(authenticator, "agent_permission_grants");
+    }
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const admin = await UserFactory.basic();

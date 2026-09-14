@@ -1,7 +1,6 @@
-import { shadowUsageConfigIds } from "@app/lib/api/assistant/agent_permissions";
+import { listAgentUsageConfigIds } from "@app/lib/api/assistant/agent_permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { GroupResource } from "@app/lib/resources/group_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import type { AgentsUsageType } from "@app/types/data_source";
@@ -27,12 +26,8 @@ async function getAccessibleAgentsInfoBySId({
     return new Map();
   }
 
-  const getAgentsForUser = async () => {
-    const legacy = (
-      await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
-    ).map((group) => group.agentConfigurationId);
-    return shadowUsageConfigIds(auth, legacy, "getWebhookSourcesUsage");
-  };
+  const getAgentsForUser = () =>
+    listAgentUsageConfigIds(auth, "getWebhookSourcesUsage");
 
   const agentWhereClause = auth.isAdmin()
     ? {
