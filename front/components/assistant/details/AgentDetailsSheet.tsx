@@ -19,14 +19,13 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useSpaces } from "@app/lib/swr/spaces";
 import { useEmailAgentFooter } from "@app/lib/swr/user";
 import { useWebhookSourceViewsFromSpaces } from "@app/lib/swr/webhook_source";
-import { areEmailAgentsAllowed } from "@app/lib/workspace_policies";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { TriggerType } from "@app/types/assistant/triggers";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { isAdmin, isManager } from "@app/types/user";
+import { isManager } from "@app/types/user";
 import {
   ArrowLeft,
   Avatar,
@@ -134,8 +133,8 @@ type AgentDetailsSheetProps = {
 };
 
 /** @cc [owner:philipperolet,label:product] email-agent-footer
- * Active, readable agents not blocked from email show an address footer, with enablement guidance
- * when workspace email agents are disabled, unless the user has dismissed it.
+ * Active, readable agents not blocked from email show the same forwarding/cc tip regardless of
+ * workspace email enablement, unless the user has dismissed it. The email address is not a link.
  */
 export function AgentDetailsSheet({
   agentId,
@@ -229,13 +228,6 @@ export function AgentDetailsSheet({
 
   const showInsightsTabs =
     agentId != null && (agentConfiguration?.canEdit || isManager(owner));
-
-  let emailFooterAction = "Email this agent at";
-  if (!areEmailAgentsAllowed(owner)) {
-    emailFooterAction = isAdmin(owner)
-      ? `[Enable email agents](/w/${owner.sId}/governance) to use`
-      : "Ask an admin to enable email agents to use";
-  }
 
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];
@@ -467,9 +459,13 @@ export function AgentDetailsSheet({
                 )
               ) && (
                 <div className="px-5 pb-4">
-                  <ContentMessageInline variant="primary" icon={Mail01}>
+                  <ContentMessageInline
+                    variant="primary"
+                    icon={Mail01}
+                    className="py-2"
+                  >
                     <Markdown
-                      content={`${emailFooterAction} **${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}**. [Learn more](https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents)`}
+                      content={`Forward emails or cc this agent at \`${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}\`. Learn more [here](https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents).`}
                       forcedTextSize="text-xs"
                       optimizeForStreaming={false}
                     />
