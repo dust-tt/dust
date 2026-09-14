@@ -43,7 +43,7 @@ runs:
               channel: process.env.SLACK_CHANNEL_ID,
               text,
               unfurl_links: true,
-              unfurl_media: false,
+              unfurl_media: true,
             }));
           }
 
