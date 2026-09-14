@@ -53,7 +53,6 @@ type OpenPanelParams =
     }
   | {
       type: "tool";
-      // The MCP server view sId.
       toolId: string;
     };
 

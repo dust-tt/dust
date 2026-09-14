@@ -6,12 +6,56 @@ import {
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { useResolvedMCPServerView } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
 
 interface ConversationToolPanelProps {
   owner: LightWorkspaceType;
+}
+
+function ToolPanelBody({
+  owner,
+  serverView,
+  isError,
+}: {
+  owner: LightWorkspaceType;
+  serverView: MCPServerViewType | null;
+  isError: boolean;
+}) {
+  if (!serverView) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+        This tool could not be loaded.
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        {getAvatar(serverView.server, "md")}
+        <div>
+          <div className="heading-lg text-foreground">
+            {getMcpServerViewDisplayName(serverView)}
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {getMcpServerViewDescription(serverView)}
+          </div>
+        </div>
+      </div>
+      <MCPServerDetailsInfo mcpServerView={serverView} owner={owner} readOnly />
+    </>
+  );
 }
 
 export function ConversationToolPanel({ owner }: ConversationToolPanelProps) {
@@ -29,34 +73,11 @@ export function ConversationToolPanel({ owner }: ConversationToolPanelProps) {
         <span className="text-sm font-medium text-foreground">Tool</span>
       </ConversationSidePanelHeader>
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-4 pb-4">
-        {isError ? (
-          <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-            This tool could not be loaded.
-          </div>
-        ) : !fullServerView ? (
-          <div className="flex h-full items-center justify-center">
-            <Spinner size="lg" />
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-3">
-              {getAvatar(fullServerView.server, "md")}
-              <div>
-                <div className="heading-lg text-foreground">
-                  {getMcpServerViewDisplayName(fullServerView)}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {getMcpServerViewDescription(fullServerView)}
-                </div>
-              </div>
-            </div>
-            <MCPServerDetailsInfo
-              mcpServerView={fullServerView}
-              owner={owner}
-              readOnly
-            />
-          </>
-        )}
+        <ToolPanelBody
+          owner={owner}
+          serverView={fullServerView ?? null}
+          isError={isError}
+        />
       </div>
     </div>
   );
