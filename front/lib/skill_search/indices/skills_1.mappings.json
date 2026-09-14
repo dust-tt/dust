@@ -1,0 +1,68 @@
+{
+  "dynamic": "strict",
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "enabled": false
+    },
+    "workspace_id": {
+      "type": "keyword"
+    },
+    "skill_id": {
+      "type": "keyword"
+    },
+    "status": {
+      "type": "keyword"
+    },
+    "availability": {
+      "type": "keyword"
+    },
+    "name": {
+      "type": "text",
+      "analyzer": "skill_search_analyzer",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        },
+        "autocomplete": {
+          "type": "search_as_you_type",
+          "analyzer": "skill_search_analyzer"
+        }
+      }
+    },
+    "icon": {
+      "type": "keyword"
+    },
+    "edited_by": {
+      "type": "long"
+    },
+    "editor_group_ids": {
+      "type": "keyword"
+    },
+    "requested_space_ids": {
+      "type": "keyword"
+    },
+    "updated_at": {
+      "type": "date"
+    },
+    "description": {
+      "type": "text",
+      "analyzer": "skill_search_analyzer"
+    },
+    "tools": {
+      "type": "keyword"
+    },
+    "active_users": {
+      "type": "integer"
+    },
+    "favorite_count": {
+      "type": "integer"
+    },
+    "is_default": {
+      "type": "boolean"
+    },
+    "editors": {
+      "type": "keyword"
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "number_of_shards": 1,
+  "number_of_replicas": 0,
+  "refresh_interval": "1s",
+  "analysis": {
+    "tokenizer": {
+      "skill_search_tokens": {
+        "type": "pattern",
+        "pattern": "(?<=[\\p{Ll}\\p{N}])(?=\\p{Lu})|(?<=\\p{Lu})(?=\\p{Lu}\\p{Ll})|[^\\p{L}\\p{M}\\p{N}]+"
+      }
+    },
+    "analyzer": {
+      "skill_search_analyzer": {
+        "type": "custom",
+        "tokenizer": "skill_search_tokens",
+        "filter": [
+          "lowercase"
+        ]
+      }
+    }
+  }
+}
