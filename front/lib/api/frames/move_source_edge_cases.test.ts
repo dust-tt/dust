@@ -95,8 +95,8 @@ describe("moveFrameV2Source edge cases", () => {
 
   it("does not delete the source after a typed commit failure", async () => {
     const c = await setupFrameSourceStorageTest();
-    vi.spyOn(FileResource.prototype, "updateMount").mockRejectedValueOnce(
-      new Error("database unavailable")
+    vi.spyOn(FileResource.prototype, "updateMount").mockResolvedValueOnce(
+      new Err(new Error("database unavailable"))
     );
 
     const moved = await moveFrameV2Source(c.auth, {
