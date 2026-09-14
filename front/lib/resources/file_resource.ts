@@ -42,7 +42,13 @@ import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { FileViewerDailyResource } from "@app/lib/resources/file_viewer_daily_resource";
+import type { FileViewerSummary } from "@app/lib/resources/file_viewer_queries";
+import {
+  deleteFileViews,
+  deleteFileViewsForWorkspace,
+  getFileViewerSummaries,
+  recordFileView,
+} from "@app/lib/resources/file_viewer_queries";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -171,6 +177,30 @@ export class FileResource extends BaseResource<FileModel> {
     blob: Attributes<FileModel>
   ) {
     super(FileModel, blob);
+  }
+
+  /**
+   * @cc [owner:flvndvd,label:security] authorized-verified-viewer
+   * Callers MUST authorize the file access and resolve verifiedEmail from a trusted
+   * identity before recording. A viewer record MUST NOT confer access to the file.
+   */
+  async recordView({
+    verifiedEmail,
+    viewedAt,
+  }: {
+    verifiedEmail: string;
+    viewedAt: Date;
+  }): Promise<void> {
+    return recordFileView(this, { verifiedEmail, viewedAt });
+  }
+
+  /**
+   * @cc [owner:flvndvd,label:security] viewer-summary-read-permission
+   * Callers MUST verify permission to manage file sharing before listing viewer
+   * emails. A share token or an external viewer session alone is insufficient.
+   */
+  async getViewerSummaries(): Promise<FileViewerSummary[]> {
+    return getFileViewerSummaries(this);
   }
 
   static async makeNew(
@@ -567,7 +597,7 @@ export class FileResource extends BaseResource<FileModel> {
     const owner = auth.getNonNullableWorkspace();
     const workspaceModelId = owner.id;
 
-    await FileViewerDailyResource.deleteAllForWorkspace(auth);
+    await deleteFileViewsForWorkspace(auth);
     await FrameSandboxAdapter.deleteAllForWorkspace(auth);
     await this.deleteAllFrameFunctionsForWorkspace(workspaceModelId);
     await getPrivateUploadBucket().deleteByPrefix(
@@ -802,7 +832,10 @@ export class FileResource extends BaseResource<FileModel> {
       }
 
       await withTransaction(async (transaction) => {
-        const where = { id: this.id, workspaceId: this.workspaceId };
+        const where: WhereOptions<InferAttributes<FileModel>> = {
+          id: this.id,
+          workspaceId: this.workspaceId,
+        };
         // Lock the file before clearing its viewer rows. A concurrent view insert
         // waits on its foreign key check, then fails once deletion commits, instead
         // of adding a row between the two deletes and making file deletion fail.
@@ -812,7 +845,7 @@ export class FileResource extends BaseResource<FileModel> {
           transaction,
           lock: transaction.LOCK.UPDATE,
         });
-        await FileViewerDailyResource.deleteAllForFile(this, { transaction });
+        await deleteFileViews(this, { transaction });
         await this.model.destroy({ where, transaction });
       });
 

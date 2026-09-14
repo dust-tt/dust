@@ -1,5 +1,4 @@
 import { FileResource } from "@app/lib/resources/file_resource";
-import { FileViewerDailyResource } from "@app/lib/resources/file_viewer_daily_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -8,7 +7,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { ForeignKeyConstraintError, QueryTypes } from "sequelize";
 import { describe, expect, it } from "vitest";
 
-describe("FileViewerDailyResource", () => {
+describe("FileResource viewer history", () => {
   it("preserves daily first/last bounds and counts UTC days for each verified email", async () => {
     const { authenticator, user } = await createResourceTest({ role: "admin" });
     const file = await FileFactory.csv(authenticator, user, {
@@ -16,7 +15,7 @@ describe("FileViewerDailyResource", () => {
       status: "created",
     });
     const record = (verifiedEmail: string, at: string) =>
-      FileViewerDailyResource.recordView(file, {
+      file.recordView({
         verifiedEmail,
         viewedAt: new Date(at),
       });
@@ -27,8 +26,7 @@ describe("FileViewerDailyResource", () => {
     ]);
     await record("alice@david.co", "2026-09-11T02:00:01+02:00");
     await record("bob@david.co", "2026-09-11T10:00:00Z");
-    const viewers =
-      await FileViewerDailyResource.getViewerSummariesForFile(file);
+    const viewers = await file.getViewerSummaries();
     expect(viewers).toEqual([
       {
         email: "bob@david.co",
@@ -52,7 +50,7 @@ describe("FileViewerDailyResource", () => {
       status: "created",
     });
     const record = (at: string) =>
-      FileViewerDailyResource.recordView(file, {
+      file.recordView({
         verifiedEmail: "alice@david.co",
         viewedAt: new Date(at),
       });
@@ -74,9 +72,7 @@ describe("FileViewerDailyResource", () => {
     ]);
 
     expect(await readSequence()).toBe(sequenceBefore);
-    expect(
-      await FileViewerDailyResource.getViewerSummariesForFile(file)
-    ).toEqual([
+    expect(await file.getViewerSummaries()).toEqual([
       {
         email: "alice@david.co",
         firstViewedAt: new Date("2026-09-10T08:00:00Z"),
@@ -102,51 +98,33 @@ describe("FileViewerDailyResource", () => {
       second.user,
       { useCase: "conversation", status: "created" }
     );
-    await FileViewerDailyResource.recordView(file, {
+    await file.recordView({
       verifiedEmail: "alice@david.co",
       viewedAt: new Date(),
     });
-    expect(
-      await FileViewerDailyResource.getViewerSummariesForFile(otherFile)
-    ).toEqual([]);
-    expect(
-      await FileViewerDailyResource.getViewerSummariesForFile(
-        otherWorkspaceFile
-      )
-    ).toEqual([]);
-    await FileViewerDailyResource.recordView(otherFile, {
+    expect(await otherFile.getViewerSummaries()).toEqual([]);
+    expect(await otherWorkspaceFile.getViewerSummaries()).toEqual([]);
+    await otherFile.recordView({
       verifiedEmail: "bob@david.co",
       viewedAt: new Date(),
     });
-    await FileViewerDailyResource.recordView(otherWorkspaceFile, {
+    await otherWorkspaceFile.recordView({
       verifiedEmail: "charlie@david.co",
       viewedAt: new Date(),
     });
     expect((await file.delete(first.authenticator)).isOk()).toBe(true);
-    expect(
-      await FileViewerDailyResource.getViewerSummariesForFile(file)
-    ).toEqual([]);
-    expect(
-      await FileViewerDailyResource.getViewerSummariesForFile(otherFile)
-    ).toHaveLength(1);
-    expect(
-      await FileViewerDailyResource.getViewerSummariesForFile(
-        otherWorkspaceFile
-      )
-    ).toHaveLength(1);
+    expect(await file.getViewerSummaries()).toEqual([]);
+    expect(await otherFile.getViewerSummaries()).toHaveLength(1);
+    expect(await otherWorkspaceFile.getViewerSummaries()).toHaveLength(1);
 
     expect(await FileResource.deleteAllForWorkspace(first.authenticator)).toBe(
       1
     );
+    expect(await otherFile.getViewerSummaries()).toEqual([]);
     expect(
-      await FileViewerDailyResource.getViewerSummariesForFile(otherFile)
-    ).toEqual([]);
-    expect(
-      (
-        await FileViewerDailyResource.getViewerSummariesForFile(
-          otherWorkspaceFile
-        )
-      ).map((viewer) => viewer.email)
+      (await otherWorkspaceFile.getViewerSummaries()).map(
+        (viewer) => viewer.email
+      )
     ).toEqual(["charlie@david.co"]);
     expect(
       await FileResource.fetchById(second.authenticator, otherWorkspaceFile.sId)
@@ -159,7 +137,7 @@ describe("FileViewerDailyResource", () => {
       useCase: "conversation",
       status: "created",
     });
-    await FileViewerDailyResource.recordView(file, {
+    await file.recordView({
       verifiedEmail: "alice@david.co",
       viewedAt: new Date(),
     });
@@ -174,13 +152,9 @@ describe("FileViewerDailyResource", () => {
         })
       ).rejects.toThrow(ForeignKeyConstraintError);
     });
-    expect(
-      await FileViewerDailyResource.getViewerSummariesForFile(file)
-    ).toHaveLength(1);
+    expect(await file.getViewerSummaries()).toHaveLength(1);
     expect((await file.delete(authenticator)).isOk()).toBe(true);
-    expect(
-      await FileViewerDailyResource.getViewerSummariesForFile(file)
-    ).toEqual([]);
+    expect(await file.getViewerSummaries()).toEqual([]);
   });
 
   it("propagates database recording failures", async () => {
@@ -191,7 +165,7 @@ describe("FileViewerDailyResource", () => {
     });
     expect((await file.delete(authenticator)).isOk()).toBe(true);
     await expect(
-      FileViewerDailyResource.recordView(file, {
+      file.recordView({
         verifiedEmail: "alice@david.co",
         viewedAt: new Date(),
       })
