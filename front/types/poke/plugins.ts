@@ -176,7 +176,7 @@ export function createZodSchemaFromArgs(
         break;
 
       case "number":
-        schemaProps[key] = z.number({ required_error: "Required" });
+        schemaProps[key] = z.number();
         break;
 
       case "boolean":
