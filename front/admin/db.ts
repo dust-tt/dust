@@ -93,6 +93,7 @@ import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_sour
 import { FileSystemBlobCleanupModel } from "@app/lib/resources/storage/models/file_system_blob_cleanup";
 import { FileSystemMutationModel } from "@app/lib/resources/storage/models/file_system_mutation";
 import { FileSystemNodeModel } from "@app/lib/resources/storage/models/file_system_node";
+import { FileViewerDailyModel } from "@app/lib/resources/storage/models/file_viewer_daily";
 import {
   AuthorizedFileAccessModel,
   ExternalViewerSessionModel,
@@ -185,6 +186,7 @@ export function loadAllModels() {
     // FileSystemNodeModel first: files references it through fileSystemNodeId.
     FileSystemNodeModel,
     FileModel,
+    FileViewerDailyModel,
     FileSystemMutationModel,
     FileSystemBlobCleanupModel,
     SandboxFunctionModel,
