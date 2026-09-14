@@ -47,11 +47,7 @@ import {
   expandMaxTierName,
 } from "@app/lib/client/model_tiers";
 import { DEFAULT_MAX_MODEL_TIER } from "@app/lib/model_tiers/tier_order";
-import {
-  isCreditPricedFreePlan,
-  isEnterprisePlanPrefix,
-  isFreePlan,
-} from "@app/lib/plans/plan_codes";
+import { isCreditPricedFreePlan, isFreePlan } from "@app/lib/plans/plan_codes";
 import { useSearchParam } from "@app/lib/platform";
 import {
   useAwuPoolCurrentCycle,
@@ -108,7 +104,6 @@ import {
 import { isAdmin, isManager } from "@app/types/user";
 import {
   AlertCircle,
-  ArrowUp,
   Button,
   ButtonsSwitch,
   ButtonsSwitchList,
@@ -126,7 +121,6 @@ import {
   ProgressBar,
   SearchInput,
   Separator,
-  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -500,7 +494,6 @@ export function UsagePage() {
   const {
     awuPoolCurrentCycle,
     isAwuPoolCurrentCycleLoading,
-    isAwuPoolCurrentCycleError,
     mutateAwuPoolCurrentCycle,
   } = useAwuPoolCurrentCycle({
     workspaceId: owner.sId,
@@ -891,7 +884,6 @@ export function UsagePage() {
   });
 
   const plan = subscription.plan;
-  const isEnterprise = isEnterprisePlanPrefix(plan.code);
   const isFreePlanWorkspace = isFreePlan(plan.code);
   const seatsHaveBuiltInAllowance = Object.values(seatPlans).some(
     (info) => (info?.awuCredits ?? 0) > 0
@@ -1137,18 +1129,6 @@ export function UsagePage() {
                       variant="highlight-ghost"
                       href={`/w/${owner.sId}/analytics/consumption`}
                     />
-                    {!isNewUsagePage &&
-                      isCreditPriced &&
-                      usageSettings.topUpEnabled &&
-                      isWorkspaceAdmin && (
-                        <Button
-                          label="Top up"
-                          icon={ArrowUp}
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setShowBuyCreditDialog(true)}
-                        />
-                      )}
                   </div>
                 </div>
               }
@@ -1283,66 +1263,6 @@ export function UsagePage() {
               <div className="flex justify-end">{topUpButton}</div>
               <CreditPoolCards owner={owner} disabled={!isCreditPriced} />
             </div>
-          ) : null}
-
-          {!isNewUsagePage &&
-          isCreditPriced &&
-          !showConsumptionAnalytics &&
-          (isAwuPoolCurrentCycleLoading ||
-            isAwuPoolCurrentCycleError ||
-            hasPool) ? (
-            <Page.Vertical gap="xs" align="stretch">
-              <Page.H variant="h4">Workspace credit pool</Page.H>
-
-              {isAwuPoolCurrentCycleError ? (
-                <ContentMessage
-                  title="Failed to load Workspace Credits Pool"
-                  icon={AlertCircle}
-                  variant="warning"
-                >
-                  An error occurred while loading your Workspace Credits Pool
-                  data. Please refresh the page or contact support if the issue
-                  persists.
-                </ContentMessage>
-              ) : isAwuPoolCurrentCycleLoading ? (
-                <div className="flex justify-center py-8">
-                  <Spinner />
-                </div>
-              ) : (
-                <>
-                  <div className="flex items-baseline gap-1">
-                    <span className="heading-mono-4xl text-foreground">
-                      {formatCredits(totalConsumedCredits)}
-                    </span>
-                    <span className="copy-sm text-muted-foreground">
-                      /{formatCredits(initialTotalCredits)}
-                    </span>
-                  </div>
-                  {hasPool && (
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted-foreground/20">
-                      <div
-                        className="h-full rounded-full bg-foreground/80 transition-all"
-                        style={{
-                          width: `${Math.min(100, initialTotalCredits > 0 ? (totalConsumedCredits / initialTotalCredits) * 100 : 0)}%`,
-                        }}
-                      />
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    {overageCredits !== null && overageCredits > 0 && (
-                      <span className="copy-sm text-muted-foreground">
-                        {formatCredits(overageCredits)} overage credits
-                      </span>
-                    )}
-                    {isEnterprise && (
-                      <span className="copy-sm text-muted-foreground">
-                        Contact your Dust sales representative to buy credits
-                      </span>
-                    )}
-                  </div>
-                </>
-              )}
-            </Page.Vertical>
           ) : null}
 
           <Tabs
