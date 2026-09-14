@@ -5,6 +5,7 @@ import {
   getAuditLogContext,
 } from "@app/lib/api/audit/workos_audit";
 import { reconcileFramePublicationDatabases } from "@app/lib/api/frames/database_reconciliation";
+import { scheduleFrameOgImageGeneration } from "@app/lib/api/frames/og";
 import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { computeAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
@@ -643,6 +644,9 @@ export async function activateFramePublication(
       publication_id: publicationId,
     },
   });
+
+  // Capture a first-viewport OG preview for Slack/mobile unfurls (async).
+  scheduleFrameOgImageGeneration(auth, frame);
 
   return new Ok(undefined);
 }

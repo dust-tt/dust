@@ -12,6 +12,7 @@ import { runConversationForkQueueWorker } from "@app/temporal/conversation_fork_
 import { runCreditAlertsWorker } from "@app/temporal/credit_alerts/worker";
 import { runDataRetentionWorker } from "@app/temporal/data_retention/worker";
 import { runESIndexationQueueWorker } from "@app/temporal/es_indexation/worker";
+import { runFrameOgWorker } from "@app/temporal/frame_og/worker";
 import { runHardDeleteWorker } from "@app/temporal/hard_delete/worker";
 import { runInvitationsWorker } from "@app/temporal/invitations/worker";
 import { runLabsTranscriptsWorker } from "@app/temporal/labs/transcripts/worker";
@@ -48,6 +49,7 @@ export type WorkerName =
   | "credit_alerts"
   | "data_retention"
   | "es_indexation_queue"
+  | "frame_og"
   | "hard_delete"
   | "labs"
   | "invitations"
@@ -82,6 +84,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   conversation_fork_queue: runConversationForkQueueWorker,
   credit_alerts: runCreditAlertsWorker,
   data_retention: runDataRetentionWorker,
+  frame_og: runFrameOgWorker,
   hard_delete: runHardDeleteWorker,
   labs: runLabsTranscriptsWorker,
   invitations: runInvitationsWorker,

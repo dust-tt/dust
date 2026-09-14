@@ -98,6 +98,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/upsert_tables");
     case "es_indexation_queue":
       return path.join(baseDir, "temporal/es_indexation");
+    case "frame_og":
+      return path.join(baseDir, "temporal/frame_og");
     case "workos_events_queue":
       return path.join(baseDir, "temporal/workos_events_queue");
     case "metronome_events_queue":

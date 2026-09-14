@@ -240,11 +240,13 @@ describe("GET /api/share/frame/:token - Frame v2 function gating", () => {
 describe("GET /api/share/frame/:token - title", () => {
   let auth: Authenticator;
   let user: UserResource;
+  let workspace: LightWorkspaceType;
 
   beforeEach(async () => {
     const resources = await createResourceTest({ role: "admin" });
     auth = resources.authenticator;
     user = resources.user;
+    workspace = resources.workspace;
   });
 
   it("uses the formatted file name for a legacy Frame", async () => {
@@ -278,5 +280,31 @@ describe("GET /api/share/frame/:token - title", () => {
 
     expect(response.status).toBe(200);
     expect((await response.json()).title).toBe("Task List");
+  });
+
+  it("prefers a per-frame OG image over workspace branding", async () => {
+    const { file, token } = await createFrameWithScope(auth, user, "public");
+    const { fileStorageMock } = await import(
+      "@app/tests/utils/mocks/file_storage"
+    );
+    const { getFrameOgImagePath } = await import(
+      "@app/types/api/frame_storage"
+    );
+
+    const ogPath = getFrameOgImagePath({
+      workspaceId: workspace.sId,
+      frameId: file.sId,
+    });
+    fileStorageMock.setFileMetadata((path) =>
+      path === ogPath
+        ? { contentType: "image/png", size: "10", generation: "77" }
+        : null
+    );
+
+    const response = await getShareFrame(token);
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.ogImageUrl).toContain(`/api/v1/public/frames/${token}/og?v=77`);
   });
 });
