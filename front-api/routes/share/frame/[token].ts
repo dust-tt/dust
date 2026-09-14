@@ -98,19 +98,21 @@ app.get(
       });
     }
 
-    // Auth resolution is deferred behind the function check so Frames without functions keep
-    // serving metadata with no session lookup at all.
-    if (await file.hasActiveFrameFunctions()) {
-      const auth = await resolveOptionalAuth(ctx, workspace.sId);
-      if (!auth) {
-        return apiError(ctx, {
-          status_code: 404,
-          api_error: {
-            type: "file_not_found",
-            message: "File not found.",
-          },
-        });
-      }
+    const [hasActiveFrameFunctions, auth] = await Promise.all([
+      file.hasActiveFrameFunctions(),
+      resolveOptionalAuth(ctx, workspace.sId),
+    ]);
+
+    // A Frame whose active publication declares functions is unusable without a workspace
+    // session, so it must look unshared to everyone else.
+    if (hasActiveFrameFunctions && !auth) {
+      return apiError(ctx, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
     }
 
     const shareUrl = `${config.getAppUrl()}/share/frame/${token}`;
