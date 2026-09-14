@@ -52,14 +52,17 @@ const meta = {
 
 export default meta;
 
+interface LastUpdatedTooltipProps {
+  data: Pick<Data, "lastUpdated" | "onClick">[];
+  columns: ColumnDef<Pick<Data, "lastUpdated" | "onClick">>[];
+}
+
 /**
  * A compact date cell exposes the full edit date and time on hover. Missing edit
  * dates keep their placeholder without a tooltip.
  * @summary Full date tooltips on compact date cells.
  */
-export const LastUpdatedTooltip: StoryObj<
-  typeof DataTable<Pick<Data, "lastUpdated" | "onClick">>
-> = {
+export const LastUpdatedTooltip: StoryObj<LastUpdatedTooltipProps> = {
   args: {
     data: [
       { lastUpdated: "September 14, 2026 at 3:37:32 PM" },
