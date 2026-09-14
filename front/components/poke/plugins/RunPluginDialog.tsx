@@ -4,15 +4,21 @@ import {
   PokeAlertDescription,
   PokeAlertTitle,
 } from "@app/components/poke/shadcn/ui/alert";
+import type { PokeRunPluginResponseBody } from "@app/lib/api/poke/plugins/run";
 import type { PluginListItem, PluginResponse } from "@app/lib/api/poke/types";
+import { getCellDisplay } from "@app/lib/poke/cells";
+import { fetchPokeFromAllCells } from "@app/poke/swr/cells";
 import {
   usePokePluginAsyncArgs,
   usePokePluginManifest,
   useRunPokePlugin,
 } from "@app/poke/swr/plugins";
+import type { CellInfo, CellType } from "@app/types/cell";
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   Button,
+  CheckboxWithText,
   Clipboard,
   ClipboardCheck,
   cn,
@@ -50,6 +56,46 @@ function pluginResponseToCopyText(result: PluginResponse): string {
   }
 }
 
+interface CellRunResult {
+  cell: CellInfo;
+  ok: boolean;
+  message: string;
+}
+
+function CellRunResults({ results }: { results: CellRunResult[] }) {
+  const succeeded = results.filter((result) => result.ok);
+  const failed = results.filter((result) => !result.ok);
+
+  return (
+    <div className="mb-4 mt-4 flex flex-col gap-2">
+      {succeeded.length > 0 && (
+        <PokeAlert variant="success">
+          <PokeAlertTitle>Succeeded</PokeAlertTitle>
+          <PokeAlertDescription>
+            {succeeded
+              .map(
+                (result) => `${getCellDisplay(result.cell)}: ${result.message}`
+              )
+              .join(" · ")}
+          </PokeAlertDescription>
+        </PokeAlert>
+      )}
+      {failed.length > 0 && (
+        <PokeAlert variant="destructive">
+          <PokeAlertTitle>Failed</PokeAlertTitle>
+          <PokeAlertDescription>
+            {failed
+              .map(
+                (result) => `${getCellDisplay(result.cell)}: ${result.message}`
+              )
+              .join(" · ")}
+          </PokeAlertDescription>
+        </PokeAlert>
+      )}
+    </div>
+  );
+}
+
 function PluginResultHeader({
   isCopied,
   onCopy,
@@ -77,6 +123,9 @@ type ExecutePluginDialogProps = {
   onClose: () => void;
   plugin: PluginListItem;
   pluginResourceTarget: PluginResourceTarget;
+  // When set, the plugin runs once per selected cell instead of against
+  // `pluginResourceTarget`. All candidate cells start selected.
+  cellSelection?: { cells: CellInfo[] };
 };
 
 export function RunPluginDialog({
@@ -84,11 +133,16 @@ export function RunPluginDialog({
   onClose,
   plugin,
   pluginResourceTarget,
+  cellSelection,
 }: ExecutePluginDialogProps) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PluginResponse | null>(null);
+  const [cellResults, setCellResults] = useState<CellRunResult[] | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [selectedCells, setSelectedCells] = useState<Set<CellType>>(
+    () => new Set(cellSelection?.cells.map((cell) => cell.name))
+  );
 
   const { isLoading, manifest } = usePokePluginManifest({
     disabled: false,
@@ -140,6 +194,7 @@ export function RunPluginDialog({
   const handleClose = () => {
     setError(null);
     setResult(null);
+    setCellResults(null);
     setElapsedSeconds(0);
     onClose();
   };
@@ -148,20 +203,56 @@ export function RunPluginDialog({
     async (args: object) => {
       setError(null);
       setResult(null);
+      setCellResults(null);
       setIsRunning(true);
 
       try {
-        const runRes = await doRunPlugin(args);
-        if (runRes.isErr()) {
-          setError(runRes.error);
+        if (cellSelection) {
+          const targetCells = cellSelection.cells.filter((cell) =>
+            selectedCells.has(cell.name)
+          );
+          if (targetCells.length === 0) {
+            setError("Select at least one cell to run this plugin on.");
+            return;
+          }
+          const results =
+            await fetchPokeFromAllCells<PokeRunPluginResponseBody>({
+              cells: targetCells,
+              path: `/api/poke/plugins/${plugin.id}/run?resourceType=${pluginResourceTarget.resourceType}`,
+              init: {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(args),
+              },
+            });
+          setCellResults(
+            results.map((cellResult) =>
+              cellResult.ok
+                ? {
+                    cell: cellResult.cell,
+                    ok: true,
+                    message: pluginResponseToCopyText(cellResult.data.result),
+                  }
+                : {
+                    cell: cellResult.cell,
+                    ok: false,
+                    message: normalizeError(cellResult.error).message,
+                  }
+            )
+          );
         } else {
-          setResult(runRes.value);
+          const runRes = await doRunPlugin(args);
+          if (runRes.isErr()) {
+            setError(runRes.error);
+          } else {
+            setResult(runRes.value);
+          }
         }
       } finally {
         setIsRunning(false);
       }
     },
-    [doRunPlugin]
+    [cellSelection, selectedCells, doRunPlugin, plugin.id, pluginResourceTarget]
   );
 
   return (
@@ -267,8 +358,34 @@ export function RunPluginDialog({
                   </div>
                 </div>
               )}
+              {cellResults && <CellRunResults results={cellResults} />}
+              {cellSelection && (
+                <div className="mb-2 flex flex-col gap-2">
+                  <div className="font-medium">Cells:</div>
+                  <div className="grid grid-cols-2 gap-1">
+                    {cellSelection.cells.map((cell) => (
+                      <CheckboxWithText
+                        key={cell.name}
+                        id={`run-plugin-cell-${cell.name}`}
+                        text={getCellDisplay(cell)}
+                        checked={selectedCells.has(cell.name)}
+                        disabled={cellResults !== null || isRunning}
+                        onCheckedChange={(checked) => {
+                          const nextSelectedCells = new Set(selectedCells);
+                          if (checked === true) {
+                            nextSelectedCells.add(cell.name);
+                          } else {
+                            nextSelectedCells.delete(cell.name);
+                          }
+                          setSelectedCells(nextSelectedCells);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
               <PluginForm
-                disabled={result !== null || isRunning}
+                disabled={result !== null || cellResults !== null || isRunning}
                 initialValues={initialValues}
                 isRunning={isRunning}
                 manifest={manifest}
