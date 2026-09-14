@@ -124,8 +124,14 @@ type ExecutePluginDialogProps = {
   plugin: PluginListItem;
   pluginResourceTarget: PluginResourceTarget;
   // When set, the plugin runs once per selected cell instead of against
-  // `pluginResourceTarget`. All candidate cells start selected.
-  cellSelection?: { cells: CellInfo[] };
+  // `pluginResourceTarget`. `initiallySelected` defaults to every candidate
+  // cell; `cellSubtitles` appends extra context (e.g. current rollout %) next
+  // to a cell's name.
+  cellSelection?: {
+    cells: CellInfo[];
+    initiallySelected?: CellType[];
+    cellSubtitles?: Partial<Record<CellType, string>>;
+  };
 };
 
 export function RunPluginDialog({
@@ -141,7 +147,11 @@ export function RunPluginDialog({
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [selectedCells, setSelectedCells] = useState<Set<CellType>>(
-    () => new Set(cellSelection?.cells.map((cell) => cell.name))
+    () =>
+      new Set(
+        cellSelection?.initiallySelected ??
+          cellSelection?.cells.map((cell) => cell.name)
+      )
   );
 
   const { isLoading, manifest } = usePokePluginManifest({
@@ -267,9 +277,11 @@ export function RunPluginDialog({
       >
         <DialogHeader className="bg-structure-100 rounded-t-2xl pb-4">
           <DialogTitle>Run {plugin.name} plugin</DialogTitle>
-          <DialogDescription className="whitespace-pre-line">
-            {plugin.description}
-          </DialogDescription>
+          {!cellSelection && (
+            <DialogDescription className="whitespace-pre-line">
+              {plugin.description}
+            </DialogDescription>
+          )}
         </DialogHeader>
         <div className="flex flex-col gap-2 px-5 py-4 text-foreground">
           {isLoading || (hasAsyncArgs && isLoadingAsyncArgs) ? (
@@ -361,13 +373,36 @@ export function RunPluginDialog({
               {cellResults && <CellRunResults results={cellResults} />}
               {cellSelection && (
                 <div className="mb-2 flex flex-col gap-2">
-                  <div className="font-medium">Cells:</div>
+                  <div className="flex items-center justify-between">
+                    <div className="font-medium">Cells:</div>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      label={
+                        selectedCells.size === cellSelection.cells.length
+                          ? "Unselect All"
+                          : "Select All"
+                      }
+                      disabled={cellResults !== null || isRunning}
+                      onClick={() =>
+                        setSelectedCells(
+                          selectedCells.size === cellSelection.cells.length
+                            ? new Set()
+                            : new Set(cellSelection.cells.map((c) => c.name))
+                        )
+                      }
+                    />
+                  </div>
                   <div className="grid grid-cols-2 gap-1">
                     {cellSelection.cells.map((cell) => (
                       <CheckboxWithText
                         key={cell.name}
                         id={`run-plugin-cell-${cell.name}`}
-                        text={getCellDisplay(cell)}
+                        text={
+                          cellSelection.cellSubtitles?.[cell.name]
+                            ? `${getCellDisplay(cell)} — ${cellSelection.cellSubtitles[cell.name]}`
+                            : getCellDisplay(cell)
+                        }
                         checked={selectedCells.has(cell.name)}
                         disabled={cellResults !== null || isRunning}
                         onCheckedChange={(checked) => {
