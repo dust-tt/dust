@@ -82,6 +82,7 @@ function callGate(
   } = {}
 ) {
   return applyPremiumModelFairUse(auth, {
+    agentConfigurationId: "agent_test",
     user: USER,
     resolution: { resolvedModel, modelResolutionMethod: "user" },
     context: { origin } as UserMessageContext,
