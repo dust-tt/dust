@@ -95,21 +95,21 @@ describe("getGroupConversationsByDate", () => {
   });
 
   it("buckets conversations by their updated (or created) date", () => {
-    const today = new Date(2026, 8, 10, 9, 0, 0).getTime();
-    const yesterday = new Date(2026, 8, 9, 9, 0, 0).getTime();
-    const lastWeek = new Date(2026, 8, 6, 9, 0, 0).getTime();
-    const lastMonth = new Date(2026, 7, 20, 9, 0, 0).getTime();
-    const lastYear = new Date(2026, 2, 10, 9, 0, 0).getTime();
-    const older = new Date(2024, 8, 10, 9, 0, 0).getTime();
+    const todayMs = new Date(2026, 8, 10, 9, 0, 0).getTime();
+    const yesterdayMs = new Date(2026, 8, 9, 9, 0, 0).getTime();
+    const lastWeekMs = new Date(2026, 8, 6, 9, 0, 0).getTime();
+    const lastMonthMs = new Date(2026, 7, 20, 9, 0, 0).getTime();
+    const lastYearMs = new Date(2026, 2, 10, 9, 0, 0).getTime();
+    const olderMs = new Date(2024, 8, 10, 9, 0, 0).getTime();
 
     const groups = getGroupConversationsByDate({
       conversations: [
-        makeConversation({ sId: "today", updated: today }),
-        makeConversation({ sId: "yesterday", updated: yesterday }),
-        makeConversation({ sId: "lastWeek", updated: lastWeek }),
-        makeConversation({ sId: "lastMonth", updated: lastMonth }),
-        makeConversation({ sId: "lastYear", updated: lastYear }),
-        makeConversation({ sId: "older", updated: older }),
+        makeConversation({ sId: "today", updated: todayMs }),
+        makeConversation({ sId: "yesterday", updated: yesterdayMs }),
+        makeConversation({ sId: "lastWeek", updated: lastWeekMs }),
+        makeConversation({ sId: "lastMonth", updated: lastMonthMs }),
+        makeConversation({ sId: "lastYear", updated: lastYearMs }),
+        makeConversation({ sId: "older", updated: olderMs }),
       ],
       titleFilter: "",
     });
