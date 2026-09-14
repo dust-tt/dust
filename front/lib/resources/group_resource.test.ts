@@ -1723,5 +1723,25 @@ describe("GroupResource", () => {
         }
       });
     });
+
+    describe("listMembersMovedByGrantingSeat", () => {
+      // The tier resolution (monthly-default, keep-cadence-at-same-tier, exclude
+      // higher-granted members) needs the Metronome contract's billed seats, so
+      // it is exercised end-to-end; here we cover the non-Metronome guard.
+      it("returns no members and a null target when the workspace is not Metronome seat-billed", async () => {
+        const member = await UserFactory.basic();
+        await MembershipFactory.associate(workspace, member, { role: "user" });
+
+        const group = await makeSeatGroup("g-target", null, "regular_manual");
+        await group.dangerouslyAddMembers(authenticator, {
+          users: [member.toJSON()],
+        });
+
+        const { members, targetSeatType } =
+          await group.listMembersMovedByGrantingSeat(authenticator, "pro");
+        expect(members).toEqual([]);
+        expect(targetSeatType).toBeNull();
+      });
+    });
   });
 });

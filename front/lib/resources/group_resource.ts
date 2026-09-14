@@ -3180,6 +3180,83 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
   }
 
+  /**
+   * The active members of this group whose seat WOULD change if this group
+   * granted the `seatType` tier, plus the resolved billed seat they'd move to.
+   * Mirrors the sync (highest-wins, monthly-default, keep-cadence-at-same-tier):
+   * a member is included only when the granted tier becomes their highest billed
+   * tier AND they are not already on that tier. Members with a higher granted
+   * seat via another group, or already on the tier (any cadence), are excluded.
+   * Used to preview a group→seat mapping accurately, not "move every member".
+   *
+   * Returns `targetSeatType: null` (and no members) when the workspace isn't
+   * Metronome seat-billed or the contract bills no seat at that tier. Assumes
+   * this group does not already grant a seat (the mapping is being added).
+   */
+  async listMembersMovedByGrantingSeat(
+    auth: Authenticator,
+    seatType: GroupGrantableSeatType
+  ): Promise<{
+    members: UserResource[];
+    targetSeatType: MembershipSeatType | null;
+  }> {
+    const workspace = auth.getNonNullableWorkspace();
+    const members = await this.getActiveMembers(auth);
+    if (members.length === 0 || !workspace.metronomeCustomerId) {
+      return { members: [], targetSeatType: null };
+    }
+
+    const contract = await getActiveContract(workspace.sId);
+    if (!contract || !(await hasContractSeatSubscription(contract))) {
+      return { members: [], targetSeatType: null };
+    }
+    const productSeatTypes = await getProductSeatTypes();
+    const billedSeats = new Set<MembershipSeatType>(
+      getSeatSubscriptionsFromContract(contract, productSeatTypes).keys()
+    );
+    const targetTier = SEAT_TYPE_ORDER[seatType];
+    const targetSeatType = GroupResource.billedSeatForTier(
+      targetTier,
+      billedSeats
+    );
+    if (targetSeatType === null) {
+      return { members: [], targetSeatType: null };
+    }
+
+    const grantedSeatsByUser =
+      await GroupResource.listGrantedSeatsByUserInWorkspace(auth);
+    const { memberships } = await MembershipResource.getActiveMemberships({
+      workspace,
+      users: members,
+    });
+    const currentSeatByUser = new Map<ModelId, MembershipSeatType>(
+      memberships.map((m) => [m.userId, m.seatType])
+    );
+
+    const moved = members.filter((member) => {
+      const otherGrants = grantedSeatsByUser.get(member.id) ?? [];
+      const resultingTierSeat = GroupResource.seatFromGrantedSeats(
+        [...otherGrants, seatType].filter(
+          (s) =>
+            GroupResource.billedSeatForTier(SEAT_TYPE_ORDER[s], billedSeats) !==
+            null
+        )
+      );
+      // A higher granted tier elsewhere wins, so this mapping wouldn't move them.
+      if (
+        resultingTierSeat === null ||
+        SEAT_TYPE_ORDER[resultingTierSeat] !== targetTier
+      ) {
+        return false;
+      }
+      // Already on the granted tier (any cadence): kept, not moved.
+      const currentSeat = currentSeatByUser.get(member.id);
+      return !currentSeat || SEAT_TYPE_ORDER[currentSeat] !== targetTier;
+    });
+
+    return { members: moved, targetSeatType };
+  }
+
   // Builds `userModelId -> granted base seats` for the whole workspace by loading
   // the seat-granting groups (non-null `grantedSeatType`) and their active
   // memberships once. No `canRead` filtering: seat provisioning must consider

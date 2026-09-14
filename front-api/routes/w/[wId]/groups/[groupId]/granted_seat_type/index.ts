@@ -14,6 +14,8 @@ import { apiError, type HandlerResult } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
 
+import preview from "./preview";
+
 const ParamsSchema = z.object({
   groupId: z.string(),
 });
@@ -129,5 +131,7 @@ app.put(
     });
   }
 );
+
+app.route("/preview", preview);
 
 export default app;

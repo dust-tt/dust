@@ -314,7 +314,7 @@ const BulkSeatChangeSeatTotalSchema = z.object({
   assignedAfter: z.number().int(),
 });
 
-const BulkSeatChangePreviewResponseSchema = z.object({
+export const BulkSeatChangePreviewResponseSchema = z.object({
   preview: z.object({
     memberCount: z.number().int(),
     targetSeatType: z.enum(PAID_SEAT_TYPES),
