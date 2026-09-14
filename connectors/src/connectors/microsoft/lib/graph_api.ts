@@ -537,11 +537,15 @@ export async function getAllPaginatedEntities<T extends Entity>(
   ) => Promise<{ results: T[]; nextLink?: string }>
 ): Promise<T[]> {
   let nextLink: string | undefined = undefined;
-  let allItems: T[] = [];
+  // Append into a single accumulator rather than reallocating with concat on
+  // every page, which would be quadratic in the number of items.
+  const allItems: T[] = [];
 
   do {
     const { results, nextLink: newNextLink } = await getEntitiesFn(nextLink);
-    allItems = allItems.concat(results);
+    for (const item of results) {
+      allItems.push(item);
+    }
     nextLink = newNextLink;
   } while (nextLink);
 
