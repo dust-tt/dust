@@ -15,9 +15,13 @@ import type {
 import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
 import type { DataSourceType } from "@app/types/data_source";
 import type { APIError } from "@app/types/error";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
+import useSWRMutation from "swr/mutation";
 
 interface UseConnectorPermissionsReturn<T extends ConnectorPermission | null> {
   resources: T extends ConnectorPermission
@@ -49,15 +53,6 @@ function getConnectorPermissionsUrl({
     url += `&filterPermission=${filterPermission}`;
   }
   return url;
-}
-
-function isVisibleConnectorResource(
-  resource: ContentNode,
-  includePrivateSlackChannels: boolean
-): boolean {
-  return (
-    resource.providerVisibility !== "private" || includePrivateSlackChannels
-  );
 }
 
 export function useConnectorPermissions<T extends ConnectorPermission | null>({
@@ -95,19 +90,17 @@ export function useConnectorPermissions<T extends ConnectorPermission | null>({
     disabled,
   });
 
-  const includePrivateSlackChannels = featureFlags.includes(
-    "index_private_slack_channel"
-  );
-
   return {
     resources: useMemo(
       () =>
         data
-          ? data.resources.filter((resource) =>
-              isVisibleConnectorResource(resource, includePrivateSlackChannels)
+          ? data.resources.filter(
+              (resource) =>
+                resource.providerVisibility !== "private" ||
+                featureFlags.includes("index_private_slack_channel")
             )
           : [],
-      [data, includePrivateSlackChannels]
+      [data, featureFlags]
     ),
     isResourcesLoading: !error && !data,
     isResourcesError: error,
@@ -123,29 +116,40 @@ export function useFetchConnectorPermissions({
   owner: LightWorkspaceType;
   dataSource: DataSourceType;
   viewType?: ContentNodesViewType;
-}): (parentId: string) => Promise<ContentNode[]> {
+}): (parentId: string) => Promise<Result<ContentNode[], Error>> {
   const { fetcher } = useFetcher();
   const { featureFlags } = useFeatureFlags();
-  const includePrivateSlackChannels = featureFlags.includes(
-    "index_private_slack_channel"
+  const { trigger } = useSWRMutation(
+    getConnectorPermissionsUrl({
+      owner,
+      dataSource,
+      parentId: null,
+      viewType,
+    }),
+    async (_key: string, { arg: parentId }: { arg: string }) => {
+      try {
+        const data: GetDataSourcePermissionsResponseBody = await fetcher(
+          getConnectorPermissionsUrl({
+            owner,
+            dataSource,
+            parentId,
+            viewType,
+          })
+        );
+        return new Ok(
+          data.resources.filter(
+            (resource) =>
+              resource.providerVisibility !== "private" ||
+              featureFlags.includes("index_private_slack_channel")
+          )
+        );
+      } catch (error) {
+        return new Err(normalizeError(error));
+      }
+    }
   );
 
-  return useCallback(
-    async (parentId: string) => {
-      const data: GetDataSourcePermissionsResponseBody = await fetcher(
-        getConnectorPermissionsUrl({
-          owner,
-          dataSource,
-          parentId,
-          viewType,
-        })
-      );
-      return data.resources.filter((resource) =>
-        isVisibleConnectorResource(resource, includePrivateSlackChannels)
-      );
-    },
-    [dataSource, fetcher, includePrivateSlackChannels, owner, viewType]
-  );
+  return useCallback(async (parentId: string) => trigger(parentId), [trigger]);
 }
 
 export function useConnectorConfig({

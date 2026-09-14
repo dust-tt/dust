@@ -1,6 +1,13 @@
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
 import type { ContentNode } from "@app/types/connectors/connectors_api";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Ok } from "@app/types/shared/result";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.stubGlobal(
@@ -112,7 +119,7 @@ describe("ContentNodeTree", () => {
       title: "Documents",
     });
     const setSelectedNodes = vi.fn();
-    const fetchChildResources = vi.fn(async () => [drive]);
+    const fetchChildResources = vi.fn(async () => new Ok([drive]));
 
     render(
       <ContentNodeTree
@@ -143,5 +150,59 @@ describe("ContentNodeTree", () => {
         parents: ["site"],
       },
     });
+  });
+
+  it("ignores a Select All result after the search changes", async () => {
+    const site = makeNode({
+      expandable: true,
+      internalId: "site",
+      preventSelection: true,
+      title: "SharePoint site",
+    });
+    const drive = makeNode({
+      internalId: "drive",
+      parentInternalId: "site",
+      title: "Documents",
+    });
+    const setSelectedNodes = vi.fn();
+    const onSelectAllLoadingChange = vi.fn();
+    let resolveFetch: ((value: Ok<ContentNode[]>) => void) | undefined;
+    const fetchChildResources = vi.fn(
+      () =>
+        new Promise<Ok<ContentNode[]>>((resolve) => {
+          resolveFetch = resolve;
+        })
+    );
+
+    render(
+      <ContentNodeTree
+        isTitleFilterEnabled
+        selectedNodes={{}}
+        setSelectedNodes={setSelectedNodes}
+        fetchChildResources={fetchChildResources}
+        onSelectAllLoadingChange={onSelectAllLoadingChange}
+        useResourcesHook={() => ({
+          resources: [site],
+          isResourcesLoading: false,
+          isResourcesError: false,
+        })}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Select All" }));
+    fireEvent.change(screen.getByRole("textbox"), {
+      target: { value: "No match" },
+    });
+
+    await act(async () => {
+      resolveFetch?.(new Ok([drive]));
+    });
+
+    await waitFor(() => {
+      expect(onSelectAllLoadingChange).toHaveBeenLastCalledWith(false);
+    });
+    expect(onSelectAllLoadingChange.mock.calls).toEqual([[true], [false]]);
+    expect(setSelectedNodes).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Select All" })).toBeDisabled();
   });
 });

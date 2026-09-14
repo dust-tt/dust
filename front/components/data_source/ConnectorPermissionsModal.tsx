@@ -2,6 +2,7 @@ import type { ConfirmDataType } from "@app/components/Confirm";
 import { ConfirmContext } from "@app/components/Confirm";
 import type { ContentNodeTreeItemStatus } from "@app/components/ContentNodeTree";
 import { ContentNodeTree } from "@app/components/ContentNodeTree";
+import { getContentNodeParents } from "@app/components/contentNodeTreeSelection";
 import { CreateOrUpdateConnectionBigQueryModal } from "@app/components/data_source/CreateOrUpdateConnectionBigQueryModal";
 import { CreateOrUpdateConnectionSnowflakeModal } from "@app/components/data_source/CreateOrUpdateConnectionSnowflakeModal";
 import { RequestDataSourceModal } from "@app/components/data_source/RequestDataSourceModal";
@@ -744,6 +745,11 @@ interface ConnectorPermissionsModalProps {
   readOnly: boolean;
 }
 
+/**
+ * @cc [owner:frankaloia,label:product;react] wait-for-bulk-selection-before-save
+ * Saving connector permissions MUST remain unavailable while a bulk selection
+ * operation is still loading descendants.
+ */
 export function ConnectorPermissionsModal({
   connector,
   dataSourceView,
@@ -762,6 +768,7 @@ export function ConnectorPermissionsModal({
   const [selectedNodes, setSelectedNodes] = useState<
     Record<string, ContentNodeTreeItemStatus>
   >({});
+  const [isBulkSelectionLoading, setIsBulkSelectionLoading] = useState(false);
 
   const dataSource = dataSourceView.dataSource;
 
@@ -810,14 +817,6 @@ export function ConnectorPermissionsModal({
     viewType: "all",
   });
 
-  const getNodeParents = (node: ContentNodeWithParent) => {
-    if (node.parentInternalId) {
-      return [node.parentInternalId];
-    }
-    return node.parentInternalIds ?? [];
-  };
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: ignored using `--suppress`
   const initialTreeSelectionModel = useMemo(
     () =>
       allSelectedResources.reduce<
@@ -828,7 +827,7 @@ export function ConnectorPermissionsModal({
           [r.internalId]: {
             isSelected: true,
             node: r,
-            parents: getNodeParents(r),
+            parents: getContentNodeParents(r),
           },
         }),
         {}
@@ -873,6 +872,9 @@ export function ConnectorPermissionsModal({
   }
 
   async function save() {
+    if (isBulkSelectionLoading) {
+      return;
+    }
     if (!isUnchanged) {
       if (
         !(await confirmPrivateNodesSync({
@@ -1103,6 +1105,7 @@ export function ConnectorPermissionsModal({
                         isRoundedBackground={true}
                         useResourcesHook={useResourcesHook}
                         fetchChildResources={fetchChildResources}
+                        onSelectAllLoadingChange={setIsBulkSelectionLoading}
                         selectedNodes={
                           canUpdatePermissions ? selectedNodes : undefined
                         }
@@ -1154,7 +1157,9 @@ export function ConnectorPermissionsModal({
                     label: saving ? "Saving..." : "Save",
                     variant: "primary",
                     disabled:
-                      (isUnchanged && !advancedOptionsHasChanges) || saving,
+                      (isUnchanged && !advancedOptionsHasChanges) ||
+                      saving ||
+                      isBulkSelectionLoading,
                     onClick: save,
                   }}
                 />

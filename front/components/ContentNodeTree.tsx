@@ -1,7 +1,8 @@
+import type { FetchChildResources } from "@app/components/contentNodeTreeSelection";
 import {
   collectSelectableNodesForSelectAll,
   unselectVisibleNodesAndDescendants,
-} from "@app/components/ContentNodeTreeSelection";
+} from "@app/components/contentNodeTreeSelection";
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
@@ -21,7 +22,13 @@ import {
   useSheetViewport,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
-import React, { useCallback, useContext, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useContext,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 const unselectedChildren = (
   selection: Record<string, ContentNodeTreeItemStatus>,
@@ -83,7 +90,8 @@ type ContextType = {
   emptyComponent: ReactNode;
   defaultExpandedIds?: string[];
   getLabel?: (node: ContentNode) => string;
-  fetchChildResources?: (parentId: string) => Promise<ContentNode[]>;
+  fetchChildResources?: FetchChildResources;
+  onSelectAllLoadingChange?: (isLoading: boolean) => void;
 };
 
 const ContentNodeTreeContext = React.createContext<ContextType | undefined>(
@@ -190,6 +198,7 @@ function ContentNodeTreeChildren({
     defaultExpandedIds,
     getLabel,
     fetchChildResources,
+    onSelectAllLoadingChange,
   } = useContentNodeTreeContext();
 
   const sendNotification = useSendNotification();
@@ -199,6 +208,7 @@ function ContentNodeTreeChildren({
   // But if the user types in the search bar, we want to reset the button to "select all".
   const [selectAllClicked, setSelectAllClicked] = useState(false);
   const [isSelectAllLoading, setIsSelectAllLoading] = useState(false);
+  const selectAllOperationIdRef = useRef(0);
 
   const {
     resources,
@@ -372,34 +382,43 @@ function ContentNodeTreeChildren({
       return;
     }
 
+    const operationId = ++selectAllOperationIdRef.current;
     setIsSelectAllLoading(true);
-    try {
-      const nodesToSelect = await collectSelectableNodesForSelectAll({
-        nodes: filteredNodes,
-        parentIds,
-        fetchChildResources,
-      });
-      setSelectAllClicked(true);
-      setSelectedNodes((prev) => {
-        const newState = { ...prev };
-        for (const { node, parents } of nodesToSelect) {
-          newState[node.internalId] = {
-            isSelected: true,
-            node,
-            parents,
-          };
-        }
-        return newState;
-      });
-    } catch {
+    onSelectAllLoadingChange?.(true);
+    const selectionResult = await collectSelectableNodesForSelectAll({
+      nodes: filteredNodes,
+      parentIds,
+      fetchChildResources,
+    }).finally(() => {
+      setIsSelectAllLoading(false);
+      onSelectAllLoadingChange?.(false);
+    });
+
+    if (operationId !== selectAllOperationIdRef.current) {
+      return;
+    }
+
+    if (selectionResult.isErr()) {
       sendNotification({
         type: "error",
         title: "Failed to select all",
         description: "Could not load folders to select. Please try again.",
       });
-    } finally {
-      setIsSelectAllLoading(false);
+      return;
     }
+
+    setSelectAllClicked(true);
+    setSelectedNodes((prev) => {
+      const newState = { ...prev };
+      for (const { node, parents } of selectionResult.value) {
+        newState[node.internalId] = {
+          isSelected: true,
+          node,
+          parents,
+        };
+      }
+      return newState;
+    });
   };
 
   return (
@@ -413,6 +432,7 @@ function ContentNodeTreeChildren({
                 placeholder="Search"
                 value={filter}
                 onChange={(v) => {
+                  selectAllOperationIdRef.current += 1;
                   setFilter(v);
                   setSelectAllClicked(false);
                 }}
@@ -505,7 +525,11 @@ interface ContentNodeTreeProps {
    * Fetches children of a node. Used by Select All to expand non-selectable
    * containers (e.g. Microsoft SharePoint sites) and select their libraries.
    */
-  fetchChildResources?: (parentId: string) => Promise<ContentNode[]>;
+  fetchChildResources?: FetchChildResources;
+  /**
+   * Called when a Select All operation starts or finishes.
+   */
+  onSelectAllLoadingChange?: (isLoading: boolean) => void;
 }
 
 export function ContentNodeTree({
@@ -522,21 +546,37 @@ export function ContentNodeTree({
   additionalActionsForContentNode,
   getLabel,
   fetchChildResources,
+  onSelectAllLoadingChange,
 }: ContentNodeTreeProps) {
+  const contextValue = useMemo(
+    () => ({
+      onDocumentViewClick,
+      selectedNodes,
+      setSelectedNodes,
+      showExpand,
+      useResourcesHook,
+      emptyComponent,
+      defaultExpandedIds,
+      getLabel,
+      fetchChildResources,
+      onSelectAllLoadingChange,
+    }),
+    [
+      defaultExpandedIds,
+      emptyComponent,
+      fetchChildResources,
+      getLabel,
+      onDocumentViewClick,
+      onSelectAllLoadingChange,
+      selectedNodes,
+      setSelectedNodes,
+      showExpand,
+      useResourcesHook,
+    ]
+  );
+
   return (
-    <ContentNodeTreeContextProvider
-      value={{
-        onDocumentViewClick,
-        selectedNodes,
-        setSelectedNodes,
-        showExpand,
-        useResourcesHook,
-        emptyComponent,
-        defaultExpandedIds,
-        getLabel,
-        fetchChildResources,
-      }}
-    >
+    <ContentNodeTreeContextProvider value={contextValue}>
       <ContentNodeTreeChildren
         depth={0}
         isRoundedBackground={isRoundedBackground}
