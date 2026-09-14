@@ -2803,7 +2803,8 @@ export class FileResource extends BaseResource<FileModel> {
       },
     });
 
-    if (!grant) {
+    // Keep the email-only interface compatible with grants that have no email.
+    if (!grant || grant.email === null) {
       return new Err(
         new DustError("file_not_found", "Sharing grant not found")
       );
@@ -2857,7 +2858,9 @@ export class FileResource extends BaseResource<FileModel> {
     const users = await UserResource.fetchByModelIds(userIds);
     const usersById = new Map(users.map((u) => [u.id, u]));
 
-    return grants.map((grant) => renderSharingGrant(grant, usersById));
+    return removeNulls(
+      grants.map((grant) => renderSharingGrant(grant, usersById))
+    );
   }
 
   async listAllSharingGrants(): Promise<SharingGrantType[]> {
@@ -2876,7 +2879,9 @@ export class FileResource extends BaseResource<FileModel> {
     const users = await UserResource.fetchByModelIds(userIds);
     const usersById = new Map(users.map((u) => [u.id, u]));
 
-    return grants.map((grant) => renderSharingGrant(grant, usersById));
+    return removeNulls(
+      grants.map((grant) => renderSharingGrant(grant, usersById))
+    );
   }
 
   // Serialization logic.
@@ -3244,10 +3249,18 @@ async function maybeDeleteCoreArtifactsForIndexedFile(
   }
 }
 
+/**
+ * @cc [owner:flvndvd,label:api;backend] legacy-email-grant-shape
+ * Legacy sharing responses MUST omit grants without an email and retain a string
+ * email field for every serialized grant.
+ */
 function renderSharingGrant(
   grant: SharingGrantModel,
   usersById: Map<ModelId, UserResource>
-): SharingGrantType {
+): SharingGrantType | null {
+  if (grant.email === null) {
+    return null;
+  }
   const user = grant.grantedBy ? usersById.get(grant.grantedBy) : null;
 
   return {
