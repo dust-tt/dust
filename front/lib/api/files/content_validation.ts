@@ -93,6 +93,8 @@ export function validateTailwindCode(
  * - TypeScript syntax errors (unexpected tokens, invalid syntax)
  * - Malformed code structure
  *
+ * Pass the source filename to select its language mode. Defaults to TSX for legacy callers.
+ *
  * Note: This performs syntax validation only, not full semantic type checking.
  * Undefined variables and type errors may not be caught, as transpileModule
  * does not perform full type checking without a complete program context.
@@ -103,7 +105,8 @@ export function validateTailwindCode(
  * - Limitation discussion: https://github.com/microsoft/TypeScript/issues/4864
  */
 export function validateTypeScriptSyntax(
-  code: string
+  code: string,
+  fileName = "temp.tsx"
 ): Result<undefined, Error> {
   try {
     // Use transpileModule with diagnostics enabled for syntax validation.
@@ -119,7 +122,7 @@ export function validateTypeScriptSyntax(
         moduleResolution: ts.ModuleResolutionKind.Bundler,
       },
       reportDiagnostics: true,
-      fileName: "temp.tsx",
+      fileName,
     });
 
     // Filter out diagnostics that are expected for generated code.

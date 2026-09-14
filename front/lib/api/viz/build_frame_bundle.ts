@@ -42,6 +42,7 @@ const FRAME_ESBUILD_OPTIONS: BundleEsbuildOptions = {
  * Syntax errors in .ts, .tsx, .js, and .jsx sources read for the bundle MUST fail the build with
  * `invalid_syntax` and diagnostics identifying the source path and original line/column. These
  * diagnostics MUST take precedence over generic bundler errors.
+ * Validation MUST use the source file's language mode so JavaScript rejects TypeScript syntax.
  */
 /**
  * @cc [owner:flvndvd,label:performance] validate-only-bundled-frame-sources
@@ -63,7 +64,7 @@ export async function buildFrameBundle({
       read: async (relPath) => {
         const content = await reader.read(relPath);
         if (content !== null && /\.(?:tsx?|jsx?)$/.test(relPath)) {
-          const syntax = validateTypeScriptSyntax(content);
+          const syntax = validateTypeScriptSyntax(content, relPath);
           if (syntax.isErr()) {
             syntaxErrors.push(`${relPath}:\n${syntax.error.message}`);
           }

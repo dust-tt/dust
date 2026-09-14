@@ -125,6 +125,39 @@ describe("buildFrameBundle", () => {
     }
   });
 
+  it.each([
+    "js",
+    "jsx",
+  ])("rejects TypeScript annotations in imported .%s files with source diagnostics", async (extension) => {
+    const fileName = `value.${extension}`;
+    const result = await build({
+      "dashboard.tsx": `import { value } from "./${fileName}"; export default () => <div>{value}</div>;`,
+      [fileName]: "export const value: number = 1;",
+    });
+
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.code).toBe("invalid_syntax");
+      expect(result.error.message).toContain(`${fileName}:`);
+      expect(result.error.message).toContain(
+        "Line 1, Column 21: error TS8010: Type annotations can only be used in TypeScript files."
+      );
+    }
+  });
+
+  it.each([
+    "ts",
+    "tsx",
+  ])("accepts TypeScript annotations in imported .%s files", async (extension) => {
+    const fileName = `value.${extension}`;
+    const result = await build({
+      "dashboard.tsx": `import { value } from "./${fileName}"; export default () => <div>{value}</div>;`,
+      [fileName]: "export const value: number = 1;",
+    });
+
+    expect(result.isOk()).toBe(true);
+  });
+
   it("skips syntax validation for assets and unrelated sources", async () => {
     const result = await build({
       "dashboard.tsx":
