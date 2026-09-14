@@ -1,23 +1,42 @@
 import type { Authenticator } from "@app/lib/auth";
+import { BaseResource } from "@app/lib/resources/base_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import { FileViewerDailyModel } from "@app/lib/resources/storage/models/file_viewer_daily";
-import type { FileViewerType } from "@app/types/file_viewers";
+import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import type { Transaction } from "sequelize";
+import type { Attributes, Transaction } from "sequelize";
 import { col, fn } from "sequelize";
 
-interface ViewerSummary {
+export interface FileViewerSummary {
   email: string;
   firstViewedAt: Date;
   lastViewedAt: Date;
+  // Number of UTC calendar days with recorded views.
   viewedDays: number;
 }
 
-// A Resource represents a viewer's aggregate, not an independently mutable daily row.
-export class FileViewerResource {
-  private constructor(private readonly summary: ViewerSummary) {}
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface FileViewerDailyResource
+  extends ReadonlyAttributesType<FileViewerDailyModel> {}
+
+/**
+ * @cc [owner:flvndvd,label:backend] one-viewer-day-per-resource
+ * Each instance MUST represent one persisted file/email/day row.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class FileViewerDailyResource extends BaseResource<FileViewerDailyModel> {
+  static model: ModelStaticWorkspaceAware<FileViewerDailyModel> =
+    FileViewerDailyModel;
+
+  constructor(
+    _model: ModelStaticWorkspaceAware<FileViewerDailyModel>,
+    blob: Attributes<FileViewerDailyModel>
+  ) {
+    super(FileViewerDailyModel, blob);
+  }
 
   /**
    * @cc [owner:flvndvd,label:security] authorized-verified-viewer
@@ -49,7 +68,7 @@ export class FileViewerResource {
         email,
         viewedOn,
       };
-      const [dailyView, created] = await FileViewerDailyModel.findOrCreate({
+      const [dailyView, created] = await this.model.findOrCreate({
         where,
         defaults: { ...where, firstViewedAt: viewedAt, lastViewedAt: viewedAt },
       });
@@ -72,8 +91,10 @@ export class FileViewerResource {
    * Callers MUST verify permission to manage file sharing before listing viewer
    * emails. A share token or an external viewer session alone is insufficient.
    */
-  static async listForFile(file: FileResource): Promise<FileViewerResource[]> {
-    const rows = await FileViewerDailyModel.findAll({
+  static async getViewerSummariesForFile(
+    file: FileResource
+  ): Promise<FileViewerSummary[]> {
+    const rows = await this.model.findAll({
       where: { workspaceId: file.workspaceId, fileId: file.id },
       attributes: [
         "email",
@@ -87,39 +108,42 @@ export class FileViewerResource {
         ["email", "ASC"],
       ],
     });
-    return rows.map(
-      (row) =>
-        new FileViewerResource({
-          email: row.email,
-          firstViewedAt: row.firstViewedAt,
-          lastViewedAt: row.lastViewedAt,
-          viewedDays: Number(row.get("viewedDays")),
-        })
-    );
+    return rows.map((row) => ({
+      email: row.email,
+      firstViewedAt: row.firstViewedAt,
+      lastViewedAt: row.lastViewedAt,
+      viewedDays: Number(row.get("viewedDays")),
+    }));
   }
 
   static async deleteAllForFile(
     file: FileResource,
     { transaction }: { transaction: Transaction }
   ): Promise<number> {
-    return FileViewerDailyModel.destroy({
+    return this.model.destroy({
       where: { workspaceId: file.workspaceId, fileId: file.id },
       transaction,
     });
   }
 
   static async deleteAllForWorkspace(auth: Authenticator): Promise<number> {
-    return FileViewerDailyModel.destroy({
+    return this.model.destroy({
       where: { workspaceId: auth.getNonNullableWorkspace().id },
     });
   }
 
-  toJSON(): FileViewerType {
-    return {
-      email: this.summary.email,
-      firstViewedAt: this.summary.firstViewedAt.getTime(),
-      lastViewedAt: this.summary.lastViewedAt.getTime(),
-      viewedDays: this.summary.viewedDays,
-    };
+  async delete(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<undefined, Error>> {
+    await this.model.destroy({
+      where: {
+        id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      transaction,
+    });
+
+    return new Ok(undefined);
   }
 }

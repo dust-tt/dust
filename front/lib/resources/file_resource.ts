@@ -42,7 +42,7 @@ import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { FileViewerResource } from "@app/lib/resources/file_viewer_resource";
+import { FileViewerDailyResource } from "@app/lib/resources/file_viewer_daily_resource";
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
@@ -567,7 +567,7 @@ export class FileResource extends BaseResource<FileModel> {
     const owner = auth.getNonNullableWorkspace();
     const workspaceModelId = owner.id;
 
-    await FileViewerResource.deleteAllForWorkspace(auth);
+    await FileViewerDailyResource.deleteAllForWorkspace(auth);
     await FrameSandboxAdapter.deleteAllForWorkspace(auth);
     await this.deleteAllFrameFunctionsForWorkspace(workspaceModelId);
     await getPrivateUploadBucket().deleteByPrefix(
@@ -803,13 +803,16 @@ export class FileResource extends BaseResource<FileModel> {
 
       await withTransaction(async (transaction) => {
         const where = { id: this.id, workspaceId: this.workspaceId };
+        // Lock the file before clearing its viewer rows. A concurrent view insert
+        // waits on its foreign key check, then fails once deletion commits, instead
+        // of adding a row between the two deletes and making file deletion fail.
         await this.model.findOne({
           attributes: ["id"],
           where,
           transaction,
           lock: transaction.LOCK.UPDATE,
         });
-        await FileViewerResource.deleteAllForFile(this, { transaction });
+        await FileViewerDailyResource.deleteAllForFile(this, { transaction });
         await this.model.destroy({ where, transaction });
       });
 

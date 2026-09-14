@@ -1,5 +1,5 @@
 import { FileResource } from "@app/lib/resources/file_resource";
-import { FileViewerResource } from "@app/lib/resources/file_viewer_resource";
+import { FileViewerDailyResource } from "@app/lib/resources/file_viewer_daily_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -8,7 +8,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { ForeignKeyConstraintError, QueryTypes } from "sequelize";
 import { describe, expect, it } from "vitest";
 
-describe("FileViewerResource", () => {
+describe("FileViewerDailyResource", () => {
   it("preserves daily first/last bounds and counts UTC days for each verified email", async () => {
     const { authenticator, user } = await createResourceTest({ role: "admin" });
     const file = await FileFactory.csv(authenticator, user, {
@@ -16,7 +16,7 @@ describe("FileViewerResource", () => {
       status: "created",
     });
     const record = (verifiedEmail: string, at: string) =>
-      FileViewerResource.recordView(file, {
+      FileViewerDailyResource.recordView(file, {
         verifiedEmail,
         viewedAt: new Date(at),
       });
@@ -32,20 +32,19 @@ describe("FileViewerResource", () => {
     expect((await record("bob@david.co", "2026-09-11T10:00:00Z")).isOk()).toBe(
       true
     );
-    const viewers = (await FileViewerResource.listForFile(file)).map((viewer) =>
-      viewer.toJSON()
-    );
+    const viewers =
+      await FileViewerDailyResource.getViewerSummariesForFile(file);
     expect(viewers).toEqual([
       {
         email: "bob@david.co",
-        firstViewedAt: Date.parse("2026-09-11T10:00:00Z"),
-        lastViewedAt: Date.parse("2026-09-11T10:00:00Z"),
+        firstViewedAt: new Date("2026-09-11T10:00:00Z"),
+        lastViewedAt: new Date("2026-09-11T10:00:00Z"),
         viewedDays: 1,
       },
       {
         email: "alice@david.co",
-        firstViewedAt: Date.parse("2026-09-10T08:00:00Z"),
-        lastViewedAt: Date.parse("2026-09-11T00:00:01Z"),
+        firstViewedAt: new Date("2026-09-10T08:00:00Z"),
+        lastViewedAt: new Date("2026-09-11T00:00:01Z"),
         viewedDays: 2,
       },
     ]);
@@ -58,7 +57,7 @@ describe("FileViewerResource", () => {
       status: "created",
     });
     const record = (at: string) =>
-      FileViewerResource.recordView(file, {
+      FileViewerDailyResource.recordView(file, {
         verifiedEmail: "alice@david.co",
         viewedAt: new Date(at),
       });
@@ -82,14 +81,12 @@ describe("FileViewerResource", () => {
     expect(results.every((result) => result.isOk())).toBe(true);
     expect(await readSequence()).toBe(sequenceBefore);
     expect(
-      (await FileViewerResource.listForFile(file)).map((viewer) =>
-        viewer.toJSON()
-      )
+      await FileViewerDailyResource.getViewerSummariesForFile(file)
     ).toEqual([
       {
         email: "alice@david.co",
-        firstViewedAt: Date.parse("2026-09-10T08:00:00Z"),
-        lastViewedAt: Date.parse("2026-09-10T23:59:59Z"),
+        firstViewedAt: new Date("2026-09-10T08:00:00Z"),
+        lastViewedAt: new Date("2026-09-10T23:59:59Z"),
         viewedDays: 1,
       },
     ]);
@@ -113,19 +110,23 @@ describe("FileViewerResource", () => {
     );
     expect(
       (
-        await FileViewerResource.recordView(file, {
+        await FileViewerDailyResource.recordView(file, {
           verifiedEmail: "alice@david.co",
           viewedAt: new Date(),
         })
       ).isOk()
     ).toBe(true);
-    expect(await FileViewerResource.listForFile(otherFile)).toEqual([]);
-    expect(await FileViewerResource.listForFile(otherWorkspaceFile)).toEqual(
-      []
-    );
+    expect(
+      await FileViewerDailyResource.getViewerSummariesForFile(otherFile)
+    ).toEqual([]);
+    expect(
+      await FileViewerDailyResource.getViewerSummariesForFile(
+        otherWorkspaceFile
+      )
+    ).toEqual([]);
     expect(
       (
-        await FileViewerResource.recordView(otherFile, {
+        await FileViewerDailyResource.recordView(otherFile, {
           verifiedEmail: "bob@david.co",
           viewedAt: new Date(),
         })
@@ -133,27 +134,37 @@ describe("FileViewerResource", () => {
     ).toBe(true);
     expect(
       (
-        await FileViewerResource.recordView(otherWorkspaceFile, {
+        await FileViewerDailyResource.recordView(otherWorkspaceFile, {
           verifiedEmail: "charlie@david.co",
           viewedAt: new Date(),
         })
       ).isOk()
     ).toBe(true);
     expect((await file.delete(first.authenticator)).isOk()).toBe(true);
-    expect(await FileViewerResource.listForFile(file)).toEqual([]);
-    expect(await FileViewerResource.listForFile(otherFile)).toHaveLength(1);
     expect(
-      await FileViewerResource.listForFile(otherWorkspaceFile)
+      await FileViewerDailyResource.getViewerSummariesForFile(file)
+    ).toEqual([]);
+    expect(
+      await FileViewerDailyResource.getViewerSummariesForFile(otherFile)
+    ).toHaveLength(1);
+    expect(
+      await FileViewerDailyResource.getViewerSummariesForFile(
+        otherWorkspaceFile
+      )
     ).toHaveLength(1);
 
     expect(await FileResource.deleteAllForWorkspace(first.authenticator)).toBe(
       1
     );
-    expect(await FileViewerResource.listForFile(otherFile)).toEqual([]);
     expect(
-      (await FileViewerResource.listForFile(otherWorkspaceFile)).map(
-        (viewer) => viewer.toJSON().email
-      )
+      await FileViewerDailyResource.getViewerSummariesForFile(otherFile)
+    ).toEqual([]);
+    expect(
+      (
+        await FileViewerDailyResource.getViewerSummariesForFile(
+          otherWorkspaceFile
+        )
+      ).map((viewer) => viewer.email)
     ).toEqual(["charlie@david.co"]);
     expect(
       await FileResource.fetchById(second.authenticator, otherWorkspaceFile.sId)
@@ -168,7 +179,7 @@ describe("FileViewerResource", () => {
     });
     expect(
       (
-        await FileViewerResource.recordView(file, {
+        await FileViewerDailyResource.recordView(file, {
           verifiedEmail: "alice@david.co",
           viewedAt: new Date(),
         })
@@ -185,9 +196,13 @@ describe("FileViewerResource", () => {
         })
       ).rejects.toThrow(ForeignKeyConstraintError);
     });
-    expect(await FileViewerResource.listForFile(file)).toHaveLength(1);
+    expect(
+      await FileViewerDailyResource.getViewerSummariesForFile(file)
+    ).toHaveLength(1);
     expect((await file.delete(authenticator)).isOk()).toBe(true);
-    expect(await FileViewerResource.listForFile(file)).toEqual([]);
+    expect(
+      await FileViewerDailyResource.getViewerSummariesForFile(file)
+    ).toEqual([]);
   });
 
   it("returns database recording failures as a result", async () => {
@@ -197,7 +212,7 @@ describe("FileViewerResource", () => {
       status: "created",
     });
     expect((await file.delete(authenticator)).isOk()).toBe(true);
-    const result = await FileViewerResource.recordView(file, {
+    const result = await FileViewerDailyResource.recordView(file, {
       verifiedEmail: "alice@david.co",
       viewedAt: new Date(),
     });
