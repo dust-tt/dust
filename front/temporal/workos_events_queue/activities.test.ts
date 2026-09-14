@@ -4,7 +4,6 @@ import { processWorkOSEventActivity } from "@app/temporal/workos_events_queue/ac
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { WorkspaceType } from "@app/types/user";
 import { faker } from "@faker-js/faker";
 import type {
   DsyncGroupUserRemovedEvent,
@@ -108,7 +107,8 @@ describe("processWorkOSEventActivity", () => {
 
     async function setupMemberWithWorkOSUser() {
       const workspace = await WorkspaceFactory.enterprise();
-      if (!workspace.workOSOrganizationId) {
+      const organizationId = workspace.workOSOrganizationId;
+      if (!organizationId) {
         throw new Error("Expected a workspace with a WorkOS organization");
       }
       const workOSUserId = faker.string.uuid();
@@ -118,11 +118,11 @@ describe("processWorkOSEventActivity", () => {
         data: [{ id: workOSUserId, email: user.email }],
       });
 
-      return { workspace, user };
+      return { organizationId, user };
     }
 
     function makeUserRemovedEvent(
-      workspace: WorkspaceType,
+      organizationId: string,
       email: string
     ): DsyncGroupUserRemovedEvent {
       const now = new Date().toISOString();
@@ -137,7 +137,7 @@ describe("processWorkOSEventActivity", () => {
             object: "directory_user",
             id: "directory_user_test",
             directoryId,
-            organizationId: workspace.workOSOrganizationId,
+            organizationId,
             rawAttributes: {},
             customAttributes: {},
             idpId: "idp_user_test",
@@ -155,7 +155,7 @@ describe("processWorkOSEventActivity", () => {
             id: groupId,
             idpId: "idp_group_test",
             directoryId,
-            organizationId: workspace.workOSOrganizationId,
+            organizationId,
             name: "Deleted group",
             createdAt: now,
             updatedAt: now,
@@ -166,7 +166,7 @@ describe("processWorkOSEventActivity", () => {
     }
 
     it("skips the removal when the group is gone locally and in WorkOS", async () => {
-      const { workspace, user } = await setupMemberWithWorkOSUser();
+      const { organizationId, user } = await setupMemberWithWorkOSUser();
       mockGetGroup.mockRejectedValue(
         new NotFoundException({
           path: `/directory_groups/${groupId}`,
@@ -176,7 +176,7 @@ describe("processWorkOSEventActivity", () => {
 
       await expect(
         processWorkOSEventActivity({
-          eventPayload: makeUserRemovedEvent(workspace, user.email),
+          eventPayload: makeUserRemovedEvent(organizationId, user.email),
         })
       ).resolves.toBeUndefined();
 
@@ -185,23 +185,23 @@ describe("processWorkOSEventActivity", () => {
     });
 
     it("still fails when the group is missing locally but exists in WorkOS", async () => {
-      const { workspace, user } = await setupMemberWithWorkOSUser();
+      const { organizationId, user } = await setupMemberWithWorkOSUser();
       mockGetGroup.mockResolvedValue({ id: groupId });
 
       await expect(
         processWorkOSEventActivity({
-          eventPayload: makeUserRemovedEvent(workspace, user.email),
+          eventPayload: makeUserRemovedEvent(organizationId, user.email),
         })
       ).rejects.toThrow(`Group not found for workOSId "${groupId}"`);
     });
 
     it("rethrows unexpected WorkOS errors from the group lookup", async () => {
-      const { workspace, user } = await setupMemberWithWorkOSUser();
+      const { organizationId, user } = await setupMemberWithWorkOSUser();
       mockGetGroup.mockRejectedValue(new Error("WorkOS unavailable"));
 
       await expect(
         processWorkOSEventActivity({
-          eventPayload: makeUserRemovedEvent(workspace, user.email),
+          eventPayload: makeUserRemovedEvent(organizationId, user.email),
         })
       ).rejects.toThrow("WorkOS unavailable");
     });
