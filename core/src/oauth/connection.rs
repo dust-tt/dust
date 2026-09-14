@@ -596,11 +596,12 @@ impl Connection {
         store: Box<dyn OAuthStore + Sync + Send>,
         provider: ConnectionProvider,
         metadata: serde_json::Value,
+        redirect_uri: Option<String>,
         migrated_credentials: Option<MigratedCredentials>,
         related_credential_id: Option<String>,
     ) -> Result<Self> {
         let mut c = store
-            .create_connection(provider, metadata, related_credential_id)
+            .create_connection(provider, metadata, redirect_uri, related_credential_id)
             .await?;
 
         if let Some(creds) = migrated_credentials {
