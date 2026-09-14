@@ -118,10 +118,6 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
 
     const chipLabel = getParentConversationTitleLabel(forkedFrom);
     const tooltipLabel = `Branched from '${chipLabel}'`;
-    // Icon only until the title bar reaches @lg. not-sr-only resets overflow and
-    // white-space, so truncate is re-applied with it.
-    const chipClassName =
-      "max-w-44 shrink-0 dd-privacy-mask [&>span]:sr-only @lg:[&>span]:not-sr-only @lg:[&>span]:truncate";
 
     return (
       <div className="flex h-9 shrink-0 items-center">
@@ -130,8 +126,10 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
           tooltipTriggerAsChild
           trigger={
             <span className="inline-flex h-9 items-center">
+              {/* Icon only until the title bar reaches @lg. not-sr-only resets overflow
+                  and white-space, so truncate is re-applied with it. */}
               <Chip
-                className={chipClassName}
+                className="max-w-44 shrink-0 dd-privacy-mask [&>span]:sr-only @lg:[&>span]:not-sr-only @lg:[&>span]:truncate"
                 color="primary"
                 href={getConversationRoute(
                   owner.sId,
