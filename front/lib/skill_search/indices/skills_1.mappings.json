@@ -1,10 +1,6 @@
 {
   "dynamic": "strict",
   "properties": {
-    "metadata": {
-      "type": "object",
-      "enabled": false
-    },
     "workspace_id": {
       "type": "keyword"
     },
@@ -45,6 +41,9 @@
     },
     "requested_space_ids": {
       "type": "keyword"
+    },
+    "created_at": {
+      "type": "date"
     },
     "updated_at": {
       "type": "date"
