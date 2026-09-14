@@ -1,7 +1,7 @@
 import { MCPServerDetails } from "@app/components/actions/mcp/MCPServerDetails";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import type { MCPServerViewLightType } from "@app/lib/api/mcp";
-import { useResolvedMCPServerView } from "@app/lib/swr/mcp_servers";
+import { useMCPServerView } from "@app/lib/swr/mcp_servers";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 import type { UserType, WorkspaceType } from "@app/types/user";
 
@@ -33,10 +33,9 @@ export function CapabilityDetailsSheets({
     disabled: !selectedSkillId,
   });
 
-  const { serverView: fullMCPServerView } = useResolvedMCPServerView({
+  const { serverView: fullMCPServerView } = useMCPServerView({
     owner,
-    mcpServerView: selectedMCPServerView,
-    mcpServerViewId: selectedMCPServerViewId,
+    viewId: selectedMCPServerView?.sId ?? selectedMCPServerViewId ?? null,
   });
 
   return (

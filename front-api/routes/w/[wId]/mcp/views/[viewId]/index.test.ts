@@ -52,6 +52,10 @@ describe("GET /api/w/:wId/mcp/views/:viewId", () => {
     expect(data.success).toBe(true);
     expect(data.serverView.sId).toBe(serverView.sId);
     expect(data.serverView.server.sId).toBe(server.sId);
+    // Full serialization: tools must be present so callers can resolve a view in one request.
+    expect(data.serverView.server.tools).toEqual([
+      { name: "tool", description: "Tool description" },
+    ]);
   });
 
   it("should return 404 when the view does not exist", async () => {

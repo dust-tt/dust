@@ -7,7 +7,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { useResolvedMCPServerView } from "@app/lib/swr/mcp_servers";
+import { useMCPServerView } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Spinner } from "@dust-tt/sparkle";
 
@@ -61,10 +61,10 @@ function ToolPanelBody({
 export function ConversationToolPanel({ owner }: ConversationToolPanelProps) {
   const { closePanel, data: toolId } = useConversationSidePanelContext();
 
-  const { serverView: fullServerView, isServerViewError: isError } =
-    useResolvedMCPServerView({
+  const { serverView: fullServerView, isMCPServerViewError: isError } =
+    useMCPServerView({
       owner,
-      mcpServerViewId: toolId ?? null,
+      viewId: toolId ?? null,
     });
 
   return (

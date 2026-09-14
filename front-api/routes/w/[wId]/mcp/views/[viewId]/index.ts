@@ -34,7 +34,15 @@ app.get(
 
     const { viewId } = ctx.req.valid("param");
 
-    const serverView = await MCPServerViewResource.fetchById(auth, viewId);
+    const serverView = await MCPServerViewResource.fetchById(auth, viewId, {
+      includeHeavyAttributes: [
+        "authorization",
+        "cachedTools",
+        "customHeaders",
+        "lastError",
+        "sharedSecret",
+      ],
+    });
 
     if (!serverView) {
       return apiError(ctx, {
@@ -48,7 +56,7 @@ app.get(
 
     return ctx.json({
       success: true as const,
-      serverView: serverView.toJSONLight(),
+      serverView: serverView.toJSON(),
     });
   }
 );

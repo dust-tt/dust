@@ -1,7 +1,4 @@
-import type {
-  MCPServerViewLightType,
-  MCPServerViewType,
-} from "@app/lib/api/mcp";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getMCPServerViewNameConflictMessage } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -42,7 +39,7 @@ export type PatchMCPServerViewResponseBody = {
 
 export type GetMCPServerViewResponseBody = {
   success: true;
-  serverView: MCPServerViewLightType;
+  serverView: MCPServerViewType;
 };
 
 async function getAllMCPServerViewsInWorkspace(

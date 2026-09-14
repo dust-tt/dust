@@ -17,7 +17,6 @@ import type {
   GetMCPServerViewsNotActivatedResponseBody,
   MCPServerType,
   MCPServerTypeWithViews,
-  MCPServerViewLightType,
   MCPServerViewNameConflict,
   MCPServerViewType,
   SyncMCPServerResponseBody,
@@ -122,7 +121,7 @@ export function useMCPServer({
 }
 
 /**
- * Hook to fetch a single MCP server view (light serialization) by its sId.
+ * Hook to fetch a single MCP server view (full serialization, tools included) by its sId.
  */
 export function useMCPServerView({
   disabled,
@@ -157,44 +156,6 @@ export function useMCPServerView({
     isMCPServerViewLoading: !error && !data && !disabled,
     isMCPServerViewError: !!error,
     mutateMCPServerView: mutate,
-  };
-}
-
-/**
- * Resolve a full MCP server view (tools included) from a light view or its sId.
- */
-export function useResolvedMCPServerView({
-  owner,
-  mcpServerView,
-  mcpServerViewId,
-}: {
-  owner: LightWorkspaceType;
-  mcpServerView?: MCPServerViewLightType | null;
-  mcpServerViewId?: string | null;
-}) {
-  const { serverView: serverViewFromId, isMCPServerViewError } =
-    useMCPServerView({
-      owner,
-      viewId: mcpServerView ? null : mcpServerViewId,
-    });
-  const lightServerView = mcpServerView ?? serverViewFromId;
-
-  // List surfaces hold light views (no tools, no authorization); resolve the full view on
-  // open from the server endpoint (SWR-deduped with MCPServerDetails' own fetch).
-  const { server: mcpServerWithViews, isMCPServerError } = useMCPServer({
-    owner,
-    serverId: lightServerView?.server.sId ?? "",
-    disabled: !lightServerView,
-  });
-  const serverView =
-    (lightServerView &&
-      mcpServerWithViews?.views.find((v) => v.sId === lightServerView.sId)) ??
-    null;
-
-  return {
-    serverView,
-    isServerViewError:
-      isMCPServerViewError || (!!lightServerView && isMCPServerError),
   };
 }
 

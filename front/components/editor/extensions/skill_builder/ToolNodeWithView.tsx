@@ -83,7 +83,7 @@ function ToolNodeView({
     if (onToolDetailsById) {
       onToolDetailsById(attrs.mcpServerViewId);
     }
-  }
+  };
 
   const isClickable = Boolean((view && onToolDetails) || onToolDetailsById);
   const onRemove = editor.isEditable ? deleteNode : undefined;
