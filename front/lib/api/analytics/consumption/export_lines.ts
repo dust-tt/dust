@@ -24,11 +24,6 @@ import type { estypes } from "@elastic/elasticsearch";
 
 const EXPORT_PAGE_SIZE = 10_000;
 
-/**
- * @cc [owner:aubin-tchoi,label:api] export-action-credits
- * CSV and NDJSON exports MUST expose direct tool charges as `creditsAction`,
- * converted from microcredits to credits and rounded to two decimal places.
- */
 type ConsumptionLineExportRow = {
   completedAt: string;
   conversationId: string;
