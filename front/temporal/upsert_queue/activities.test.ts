@@ -1,4 +1,7 @@
-import { cleanUtf8Content } from "@app/temporal/upsert_queue/activities";
+import {
+  cleanUtf8Content,
+  isNonRetryableUpsertError,
+} from "@app/temporal/upsert_queue/activities";
 import { describe, expect, it } from "vitest";
 
 describe("cleanUtf8Content", () => {
@@ -33,7 +36,7 @@ describe("cleanUtf8Content", () => {
 
   it("cleans a split emoji where the low surrogate was left lone", () => {
     // A spoon emoji 🥄 (U+1F944 = 🥄) whose high surrogate got HTML-entity-encoded
-    // (&#xD83E;) while the low surrogate \uDD44 was left as a lone surrogate. Once serialized,
+    // (&#xD83E;) while the low surrogate \\uDD44 was left as a lone surrogate. Once serialized,
     // \\uDD44 must be replaced so core's serde_json does not reject the body.
     expect(cleanUtf8Content('"&#xD83E;\\uDD44"')).toBe('"&#xD83E;\\u003F"');
   });
@@ -57,5 +60,23 @@ describe("cleanUtf8Content", () => {
 
   it("strips null bytes before the surrogate path runs", () => {
     expect(cleanUtf8Content("\0\\uD800\0")).toBe("\\u003F");
+  });
+});
+
+describe("isNonRetryableUpsertError", () => {
+  it("recognizes provider token-limit failures", () => {
+    expect(
+      isNonRetryableUpsertError(
+        "DataSource chunk embedding error: OpenAIError: [max_tokens_per_request] Requested 319683 tokens, max 300000 tokens per request"
+      )
+    ).toBe(true);
+  });
+
+  it("keeps other upsert failures retryable", () => {
+    expect(
+      isNonRetryableUpsertError(
+        "DataSource chunk embedding error: provider temporarily unavailable"
+      )
+    ).toBe(false);
   });
 });
