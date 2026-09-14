@@ -39,7 +39,7 @@ function archiveSkill(
 }
 
 describe("DELETE /api/v1/w/[wId]/skills/[skillId]", () => {
-  it("archives a custom skill", async () => {
+  it("archives a custom skill with an admin-role API key", async () => {
     const { key, skill, skillOwnerAuth, workspace } = await setupTest({
       role: "admin",
     });
@@ -74,7 +74,7 @@ describe("DELETE /api/v1/w/[wId]/skills/[skillId]", () => {
     });
   });
 
-  it("rejects a non-admin API key", async () => {
+  it("rejects a user-role API key", async () => {
     const { key, skill, skillOwnerAuth, workspace } = await setupTest({
       role: "user",
     });
@@ -82,6 +82,12 @@ describe("DELETE /api/v1/w/[wId]/skills/[skillId]", () => {
     const response = await archiveSkill(workspace, key, skill.sId);
 
     expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "workspace_auth_error",
+        message: "Only admins and editors can archive this skill.",
+      },
+    });
     const unchangedSkill = await SkillResource.fetchById(
       skillOwnerAuth,
       skill.sId
