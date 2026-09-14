@@ -1260,6 +1260,8 @@ function Inbox() {
           selectedRequestId={
             p3View?.kind === "request" ? p3View.requestId : null
           }
+          readRowIds={readRowIds}
+          onRowsRead={handleRowsRead}
           onRequestClick={(request) => {
             setP3View({ kind: "request", requestId: request.id });
             setP4View(null);

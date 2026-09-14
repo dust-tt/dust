@@ -9,13 +9,14 @@ import {
   MessageQuestionCircle,
   User01,
 } from "@dust-tt/sparkle";
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { getRequestTypeIcon, REQUEST_TYPE_LABELS } from "../data/requests";
 import {
   type DateBucket,
   DATE_BUCKET_ORDER,
   getDateBucket,
+  READ_DWELL_MS,
 } from "../data/time";
 import type { AdminRequest } from "../data/types";
 import { EmptyState } from "./EmptyState";
@@ -37,6 +38,10 @@ interface RequestsViewProps {
   onClearHandled?: () => void;
   currentUserId?: string;
   selectedRequestId?: string | null;
+  /** The rows already read, which lose their unread dot here. */
+  readRowIds?: Set<string>;
+  /** Reports rows as read once you have stayed on one. */
+  onRowsRead?: (rowIds: string[]) => void;
   onRequestClick?: (request: AdminRequest) => void;
 }
 
@@ -53,6 +58,8 @@ export function RequestsView({
   onClearHandled,
   currentUserId,
   selectedRequestId = null,
+  readRowIds,
+  onRowsRead,
   onRequestClick,
 }: RequestsViewProps) {
   const [filter, setFilter] = useState<FilterSelection>(null);
@@ -124,6 +131,24 @@ export function RequestsView({
     );
   }, [tabRequests, filter, isHistory]);
 
+  // Three seconds on a request is reading it rather than glancing at it, as in
+  // the Inbox. Leaving before then, or hopping to another row, calls it off.
+  // Only Pending rows carry a dot, so History is left out of it.
+  useEffect(() => {
+    if (isHistory || !selectedRequestId || readRowIds?.has(selectedRequestId)) {
+      return;
+    }
+    if (!filteredRequests.some((request) => request.id === selectedRequestId)) {
+      return;
+    }
+
+    const timeout = setTimeout(
+      () => onRowsRead?.([selectedRequestId]),
+      READ_DWELL_MS
+    );
+    return () => clearTimeout(timeout);
+  }, [filteredRequests, isHistory, onRowsRead, readRowIds, selectedRequestId]);
+
   const bucketedRequests = useMemo(() => {
     const buckets = new Map<DateBucket, AdminRequest[]>();
     for (const request of filteredRequests) {
@@ -140,6 +165,7 @@ export function RequestsView({
       isHistory={isHistory}
       isSelected={selectedRequestId === request.id}
       currentUserId={currentUserId}
+      isRead={readRowIds?.has(request.id) ?? false}
       onClick={() => onRequestClick?.(request)}
     />
   );

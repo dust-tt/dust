@@ -7,6 +7,12 @@ const DAY_MS = 24 * 60 * MINUTE_MS;
 // Past this, minutes stop being the useful unit and the time of day takes over.
 const RELATIVE_MINUTES_LIMIT = 20;
 
+/**
+ * How long a row has to stay open before it counts as read rather than glanced
+ * at, wherever rows carry an unread state.
+ */
+export const READ_DWELL_MS = 3000;
+
 function timeOfDay(date: Date): string {
   return date
     .toLocaleTimeString("en-US", {

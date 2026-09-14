@@ -34,6 +34,7 @@ import {
   DATE_BUCKET_ORDER,
   formatRowTime,
   getDateBucket,
+  READ_DWELL_MS,
 } from "../data/time";
 import { getTriggerById } from "../data/triggers";
 import type {
@@ -57,9 +58,6 @@ import { TriggerRunAvatar } from "./TriggerRunAvatar";
 
 /** How far back the feed reaches. */
 const ROW_WINDOW_DAYS = 7;
-
-/** How long a conversation has to stay open before it counts as read. */
-const READ_DWELL_MS = 3000;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

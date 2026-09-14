@@ -37,7 +37,7 @@ import { getAgentById } from "../data/agents";
 import { getRandomInboxGreetingForName } from "../data/greetings";
 import { isTriggeredConversation } from "../data/myPod";
 import { getRequestTypeIcon, REQUEST_TYPE_LABELS } from "../data/requests";
-import { formatRowTime } from "../data/time";
+import { formatRowTime, READ_DWELL_MS } from "../data/time";
 import { getTriggerById } from "../data/triggers";
 import type {
   AdminRequest,
@@ -218,9 +218,6 @@ function getInboxPodSectionIcon(space: Space) {
   const isRestricted = space.id.charCodeAt(space.id.length - 1) % 2 === 0;
   return isRestricted ? CubeOutline : Cube01;
 }
-
-/** How long a conversation has to stay open before it counts as read. */
-const READ_DWELL_MS = 3000;
 
 export function InboxView({
   spaces,
