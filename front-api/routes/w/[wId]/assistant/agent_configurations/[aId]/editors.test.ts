@@ -4,12 +4,12 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import type * as workosAudit from "@app/lib/api/audit/workos_audit";
 import { emitAuditLogEvent } from "@app/lib/api/audit/workos_audit";
+import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -18,7 +18,11 @@ import type { MembershipRoleType } from "@app/types/memberships";
 import type { UserType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
 import assert from "assert";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 vi.mock("@app/lib/api/assistant/recent_authors", () => ({
   agentConfigurationWasUpdatedBy: vi.fn(),
@@ -576,7 +580,7 @@ it("uses grants for editor responses and editor administration", async () => {
       })
     ).isOk()
   );
-  await FeatureFlagFactory.basic(auth, "agent_permission_grants");
+  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(false);
   const response = await getEditors(workspace, agent.sId);
   expect(response.status).toBe(200);
   expect((await response.json()).editors).toEqual(
