@@ -167,6 +167,14 @@ export async function removeFileBasedOnSensitivityLabel({
   await MicrosoftNodeResource.upsert(resourceBlob);
 }
 
+/**
+ * @cc [owner:tdraier,label:performance] bounded-file-download
+ * File content MUST NOT be downloaded unbounded into memory. The early
+ * `file.size` guard is best-effort: the incremental delta payload can omit
+ * `size`, so it may not fire. The download MUST therefore stay independently
+ * capped at MAX_FILE_SIZE_TO_DOWNLOAD (re-check on hydrated metadata AND a hard
+ * maxContentLength/maxBodyLength on the request), or a huge file OOMs the worker.
+ */
 export async function syncOneFile({
   connectorId,
   dataSourceConfig,
@@ -289,6 +297,18 @@ export async function syncOneFile({
 
     url = item["@microsoft.graph.downloadUrl"];
     fields = item.listItem?.fields;
+
+    // The lean delta payload can omit `size`, so the early guard above may not
+    // have fired. Re-check against the authoritative size from the hydrated item
+    // before downloading, so an oversized file is skipped and never buffered.
+    if (item.size && item.size > MAX_FILE_SIZE_TO_DOWNLOAD) {
+      localLogger.info(
+        { size: item.size },
+        "File size exceeded (hydrated metadata), skipping file."
+      );
+
+      return false;
+    }
   }
 
   if (!url) {
@@ -327,8 +347,28 @@ export async function syncOneFile({
   try {
     downloadRes = await axios.get(`${url}`, {
       responseType: "arraybuffer",
+      // Hard backstop: abort the download once it exceeds the size limit instead
+      // of buffering an unbounded response into memory. This catches files whose
+      // `size` was absent from both the delta payload and the hydrated metadata.
+      maxContentLength: MAX_FILE_SIZE_TO_DOWNLOAD,
+      maxBodyLength: MAX_FILE_SIZE_TO_DOWNLOAD,
     });
   } catch (error) {
+    // The download exceeded maxContentLength/maxBodyLength. Skip the file rather
+    // than throw: throwing would retry the same oversized download indefinitely
+    // and OOM the worker again.
+    if (
+      axios.isAxiosError(error) &&
+      error.code === "ERR_FR_MAX_CONTENT_LENGTH_EXCEEDED"
+    ) {
+      localLogger.info(
+        { fileName: file.name, internalId: documentId },
+        "File download exceeded max size, skipping file."
+      );
+
+      return false;
+    }
+
     if (axios.isAxiosError(error) && error.response?.status === 403) {
       localLogger.info(
         {
