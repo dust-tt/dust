@@ -11,18 +11,23 @@ import {
   subMonths,
   subWeeks,
   subYears,
+  toDate,
 } from "date-fns";
 
 // What moment renders for an invalid date; kept so migrated call sites never throw mid-render.
 const INVALID_DATE_LABEL = "Invalid date";
 
-function isTimestamp(value: Date | number): value is number {
-  return typeof value === "number";
-}
-
-function toDate(value: Date | number): Date {
-  return isTimestamp(value) ? new Date(value) : value;
-}
+/**
+ * Formats a date with a date-fns pattern, rendering invalid input as a sentinel string
+ * instead of throwing.
+ */
+export const formatDate = (
+  date: Date | number | string,
+  pattern: string
+): string => {
+  const dateObj = toDate(date);
+  return isValid(dateObj) ? format(dateObj, pattern) : INVALID_DATE_LABEL;
+};
 
 /**
  * Returns a Date that is `days` days before the given reference date (defaults to now).
@@ -105,7 +110,10 @@ export const formatShortDate = (timestamp: number | string): string => {
  * @returns A formatted string like "Today", "Yesterday", "Last Monday", or "13/10/2025"
  */
 export const formatCalendarDate = (date: Date | number): string => {
-  const dateObj = typeof date === "number" ? new Date(date) : date;
+  const dateObj = toDate(date);
+  if (!isValid(dateObj)) {
+    return INVALID_DATE_LABEL;
+  }
 
   if (isToday(dateObj)) {
     return "Today";
