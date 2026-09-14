@@ -241,11 +241,14 @@ export type GetMCPServerViewsNotActivatedResponseBody = {
   serverViews: MCPServerViewType[];
 };
 
-export type GetMCPServersResponseBody<
-  V extends MCPServerViewLightType = MCPServerViewType,
-> = {
+export type GetMCPServersResponseBody = {
   success: true;
-  servers: MCPServerTypeWithViews<V>[];
+  servers: MCPServerTypeWithViews<MCPServerViewLightType>[];
+};
+
+export type GetAvailableMCPServersResponseBody = {
+  success: boolean;
+  servers: MCPServerType[];
 };
 
 export type CreateMCPServerResponseBody = {

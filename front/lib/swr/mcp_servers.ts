@@ -9,6 +9,7 @@ import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_action
 import type {
   CreateMCPServerResponseBody,
   DeleteMCPServerResponseBody,
+  GetAvailableMCPServersResponseBody,
   GetJITMCPServerViewsListResponseBody,
   GetMCPServerResponseBody,
   GetMCPServersResponseBody,
@@ -16,8 +17,6 @@ import type {
   GetMCPServerViewsListResponseBody,
   GetMCPServerViewsNotActivatedResponseBody,
   MCPServerType,
-  MCPServerTypeWithViews,
-  MCPServerViewLightType,
   MCPServerViewNameConflict,
   MCPServerViewType,
   SyncMCPServerResponseBody,
@@ -132,7 +131,7 @@ export function useAvailableMCPServers({
   swrOptions?: SWRConfiguration;
 }) {
   const { fetcher } = useFetcher();
-  const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
+  const configFetcher: Fetcher<GetAvailableMCPServersResponseBody> = fetcher;
 
   const url = space
     ? `/api/w/${owner.sId}/spaces/${space.sId}/mcp/available`
@@ -149,7 +148,7 @@ export function useAvailableMCPServers({
         ? data.servers.sort((a, b) =>
             mcpServersSortingFn({ mcpServer: a }, { mcpServer: b })
           )
-        : emptyArray<MCPServerTypeWithViews>(),
+        : emptyArray<MCPServerType>(),
     [data]
   );
 
@@ -171,9 +170,7 @@ export function useMCPServers({
   revalidateIfStale?: boolean;
 }) {
   const { fetcher } = useFetcher();
-  const configFetcher: Fetcher<
-    GetMCPServersResponseBody<MCPServerViewLightType>
-  > = fetcher;
+  const configFetcher: Fetcher<GetMCPServersResponseBody> = fetcher;
 
   const url = `/api/w/${owner.sId}/mcp`;
 
@@ -897,7 +894,7 @@ export function useMCPServerViews({
 }
 
 const getOptimisticDataForCreate = (
-  data: GetMCPServersResponseBody<MCPServerViewLightType> | undefined,
+  data: GetMCPServersResponseBody | undefined,
   server: MCPServerType,
   space: SpaceType
 ) => {
@@ -938,7 +935,7 @@ const getOptimisticDataForCreate = (
 };
 
 const getOptimisticDataForRemove = (
-  data: GetMCPServersResponseBody<MCPServerViewLightType> | undefined,
+  data: GetMCPServersResponseBody | undefined,
   serverView: MCPServerViewType
 ) => {
   if (!data) {

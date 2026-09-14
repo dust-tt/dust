@@ -8,10 +8,7 @@ import {
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
-import type {
-  GetMCPServersResponseBody,
-  MCPServerViewLightType,
-} from "@app/lib/api/mcp";
+import type { GetMCPServersResponseBody } from "@app/lib/api/mcp";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
@@ -131,8 +128,7 @@ describe("GET /api/w/:wId/mcp/", () => {
 
     const response = await getMcp(workspace);
     expect(response.status).toBe(200);
-    const body: GetMCPServersResponseBody<MCPServerViewLightType> =
-      await response.json();
+    const body: GetMCPServersResponseBody = await response.json();
     const listedServer = body.servers.find((s) => s.sId === server.sId);
     const listedView = listedServer?.views.find((v) => v.sId === view!.sId);
 

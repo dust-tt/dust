@@ -1,20 +1,15 @@
-import type { MCPServerType } from "@app/lib/api/mcp";
+import type { GetAvailableMCPServersResponseBody } from "@app/lib/api/mcp";
 import { DefaultRemoteMCPServerInMemoryResource } from "@app/lib/resources/default_remote_mcp_server_in_memory_resource";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 
-export type GetMCPServersResponseBody = {
-  success: boolean;
-  servers: MCPServerType[];
-};
-
 // Mounted at /api/w/:wId/mcp/available.
 const app = workspaceApp();
 
 /** @ignoreswagger */
-app.get("/", async (ctx): HandlerResult<GetMCPServersResponseBody> => {
+app.get("/", async (ctx): HandlerResult<GetAvailableMCPServersResponseBody> => {
   const auth = ctx.get("auth");
 
   const internalServers = (

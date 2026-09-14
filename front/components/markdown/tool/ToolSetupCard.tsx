@@ -78,38 +78,35 @@ export function ToolSetupCard({
     [mcpServers]
   );
 
+  const installedMCPServer = useMemo(
+    () => mcpServers.find((s) => matchesInternalMCPServerName(s.sId, toolId)),
+    [mcpServers, toolId]
+  );
+
   // Find the matching MCP server for the tool we want to activate.
-  const matchingMCPServer = useMemo(() => {
-    const installedServer = mcpServers.find((s) =>
-      matchesInternalMCPServerName(s.sId, toolId)
-    );
-    if (installedServer) {
-      return installedServer;
-    }
-    return availableMCPServers.find((server) =>
-      matchesInternalMCPServerName(server.sId, toolId)
-    );
-  }, [mcpServers, availableMCPServers, toolId]);
+  const matchingMCPServer = useMemo(
+    () =>
+      installedMCPServer ??
+      availableMCPServers.find((server) =>
+        matchesInternalMCPServerName(server.sId, toolId)
+      ),
+    [installedMCPServer, availableMCPServers, toolId]
+  );
 
   // Check if the tool is installed at workspace level.
   // A tool is installed if it exists in mcpServers (installed servers list).
-  const isToolActivatedInSystemSpace = useMemo(() => {
-    if (!matchingMCPServer) {
-      return false;
-    }
-    return mcpServers.some((s) => s.sId === matchingMCPServer.sId);
-  }, [matchingMCPServer, mcpServers]);
+  const isToolActivatedInSystemSpace = !!installedMCPServer;
 
   // Check if the tool is in global space.
   // A tool is in global space if it has a view in the global space.
   const isToolActivatedInGlobalSpace = useMemo(() => {
-    if (!globalSpace || !matchingMCPServer || !matchingMCPServer.views) {
+    if (!globalSpace || !installedMCPServer) {
       return false;
     }
-    return matchingMCPServer.views.some(
+    return installedMCPServer.views.some(
       (view) => view.spaceId === globalSpace.sId
     );
-  }, [matchingMCPServer, globalSpace]);
+  }, [installedMCPServer, globalSpace]);
 
   // Don't render the card at all if the tool does not exist.
   if (!matchingMCPServer || !globalSpace) {
