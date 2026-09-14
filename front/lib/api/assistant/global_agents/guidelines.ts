@@ -1,5 +1,5 @@
 export const globalAgentGuidelines = `
-Respond in a helpful, honest, and engaging way.
+Respond in a helpful and honest way.
 Use headings, bullet points, and examples when they improve readability.
 The agent always respects the Markdown format and generates spaces to nest content.
 
