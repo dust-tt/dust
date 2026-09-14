@@ -19,6 +19,11 @@ import { useCookies } from "react-cookie";
 // We hide the header for embedded origins.
 const EMBEDDED_ORIGINS = ["https://dust.tt/blog/"];
 
+function buildLoginUrl() {
+  const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  return `${config.getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(returnTo)}`;
+}
+
 export function SharedFramePage() {
   const token = usePathParam("token");
   const posthog = usePostHog();
@@ -153,11 +158,6 @@ export function SharedFramePage() {
     setIsVerified(true);
     // Refetch the frame now that the cookie is set.
     void mutateFrame();
-  };
-
-  const buildLoginUrl = () => {
-    const returnTo = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-    return `${config.getApiBaseUrl()}/api/workos/login?returnTo=${encodeURIComponent(returnTo)}`;
   };
 
   if (isShareMetadataLoading) {
