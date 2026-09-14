@@ -35,14 +35,8 @@ const GLOBAL_PLUGIN_TARGET: PluginResourceTarget = { resourceType: "global" };
 interface PendingPluginAction {
   pluginId: string;
   flagName: string;
-  // The cell whose row was clicked; preselected in the dialog.
   cell: CellType;
-  // The cells offered in the dialog, matching whichever column was clicked
-  // (global rollout vs. legacy rows can differ, e.g. cells with 0 workspaces).
   candidateCells: PokeFeatureFlagCellStats[];
-  // Whether to show each candidate cell's current rollout percentage in the
-  // dialog; only meaningful for the global rollout column.
-  showRolloutPercentage: boolean;
 }
 
 interface MakeColumnsParams {
@@ -303,7 +297,6 @@ export function FeatureFlagsPage() {
         flagName,
         cell,
         candidateCells,
-        showRolloutPercentage: true,
       });
     },
     []
@@ -320,7 +313,6 @@ export function FeatureFlagsPage() {
         flagName,
         cell,
         candidateCells,
-        showRolloutPercentage: false,
       });
     },
     []
@@ -343,6 +335,8 @@ export function FeatureFlagsPage() {
   const pendingPlugin = pendingAction
     ? plugins.find((plugin) => plugin.id === pendingAction.pluginId)
     : undefined;
+  const isRolloutAction =
+    pendingAction?.pluginId === TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID;
 
   // Most-used flags across all cells come first by default.
   const sortedFeatureFlags = useMemo(
@@ -397,7 +391,7 @@ export function FeatureFlagsPage() {
               return cell ? [cell] : [];
             }),
             initiallySelected: [pendingAction.cell],
-            cellSubtitles: pendingAction.showRolloutPercentage
+            cellSubtitles: isRolloutAction
               ? Object.fromEntries(
                   pendingAction.candidateCells.map((stat) => [
                     stat.cell,
@@ -407,7 +401,7 @@ export function FeatureFlagsPage() {
                   ])
                 )
               : undefined,
-            formatSubtitleAfterRun: pendingAction.showRolloutPercentage
+            formatSubtitleAfterRun: isRolloutAction
               ? (args) => {
                   const rolloutPercentage =
                     "rolloutPercentage" in args &&
