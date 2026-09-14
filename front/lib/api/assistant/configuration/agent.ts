@@ -1,3 +1,4 @@
+import { areAgentGrantsEnabled } from "@app/lib/api/assistant/agent_grants";
 import {
   shadowCanAdminAgent,
   shadowEditableAgents,
@@ -1001,6 +1002,16 @@ export async function createAgentConfiguration(
           agentConfigurationInstance
         );
         await agentResource.grantEditors(auth, { editors, transaction: t });
+        if (await areAgentGrantsEnabled(auth)) {
+          const currentEditors = await agentResource.listEditors(auth, {
+            transaction: t,
+          });
+          assert(currentEditors !== null);
+          const editorIds = new Set(editors.map((editor) => editor.id));
+          removedEditors = currentEditors
+            .filter((editor) => !editorIds.has(editor.id))
+            .map((editor) => editor.toJSON());
+        }
         await agentResource.revokeEditors(auth, {
           editors: removedEditors,
           transaction: t,
@@ -1715,10 +1726,36 @@ export async function updateAgentPermissions(
             )
           );
         }
+        let legacyUsersToRemove = usersToRemove;
+        if (await areAgentGrantsEnabled(auth)) {
+          const editors = await agentResource.listEditors(auth, {
+            transaction: t,
+          });
+          assert(editors !== null);
+          const editorIds = new Set(editors.map((editor) => editor.id));
+          if (usersToRemove.some((user) => !editorIds.has(user.id))) {
+            return new Err(
+              new DustError(
+                "user_not_member",
+                "Cannot remove: user is not an agent editor"
+              )
+            );
+          }
+          const legacyEditors = await editorGroupRes.value.getActiveMembers(
+            auth,
+            { transaction: t }
+          );
+          const legacyEditorIds = new Set(
+            legacyEditors.map((editor) => editor.id)
+          );
+          legacyUsersToRemove = usersToRemove.filter((user) =>
+            legacyEditorIds.has(user.id)
+          );
+        }
         const removeRes = await editorGroupRes.value.dangerouslyRemoveMembers(
           auth,
           {
-            users: usersToRemove,
+            users: legacyUsersToRemove,
             transaction: t,
           }
         );
