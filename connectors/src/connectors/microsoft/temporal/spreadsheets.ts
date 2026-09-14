@@ -166,22 +166,22 @@ async function processSheet({
   // call, and we must never fall through to the content fetch without a known
   // row count (see the reject-oversized-before-load contract on
   // getWorksheetContent).
-  let rowCount: number;
-  try {
-    rowCount = await getWorksheetUsedRangeRowCount(
-      localLogger,
-      client,
-      worksheetInternalId
-    );
-  } catch (error) {
+  const rowCountRes = await wrapMicrosoftGraphAPIWithResult(() =>
+    getWorksheetUsedRangeRowCount(localLogger, client, worksheetInternalId)
+  );
+
+  if (rowCountRes.isErr()) {
     localLogger.error(
-      { ...loggerArgs, error },
+      { ...loggerArgs, error: rowCountRes.error },
       "[Spreadsheet] Failed to fetch sheet row count."
     );
 
     // A 504 on the used-range endpoint is persistent for this sheet; mark it
     // skipped like the content fetch below rather than retrying forever.
-    if (error instanceof GraphError && error.statusCode === 504) {
+    if (
+      rowCountRes.error instanceof GraphError &&
+      rowCountRes.error.statusCode === 504
+    ) {
       await markInternalIdAsSkipped({
         internalId: worksheetInternalId,
         connectorId: connector.id,
@@ -189,23 +189,23 @@ async function processSheet({
         reason: "error_fetching_content",
         file: spreadsheet,
       });
-      return new Err(error);
     }
 
-    // Propagate other failures (e.g. throttling) so the Temporal interceptor can
-    // apply its retry policy; do not silently load the sheet's full content.
-    throw error;
+    // Return the failure as a Result (rather than loading the content or
+    // throwing from this helper) so the activity boundary reports it
+    // (temporal-activity-failure-boundary).
+    return rowCountRes;
   }
 
-  if (rowCount > MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS) {
+  if (rowCountRes.value > MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS) {
     localLogger.info(
-      { ...loggerArgs, rowCount },
+      { ...loggerArgs, rowCount: rowCountRes.value },
       `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}, skipping further processing.`
     );
 
     return new Err(
       new Error(
-        `Too many rows in sheet ${worksheet.name}, rows=${rowCount}, max=${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}`
+        `Too many rows in sheet ${worksheet.name}, rows=${rowCountRes.value}, max=${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}`
       )
     );
   }

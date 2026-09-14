@@ -177,6 +177,25 @@ interface DeltaBatchFromGCS {
   batch: DriveItem[];
 }
 
+// Runtime validation of the delta file's metadata (every field but the
+// changed-items array). The cursor logic trusts `totalItems`, so the parsed JSON
+// must be validated with a type guard rather than cast (no-unsafe-type-assertions).
+function isDeltaMetadata(
+  value: unknown
+): value is Omit<DeltaDataInGCS, "sortedChangedItems"> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "deltaLink" in value &&
+    typeof value.deltaLink === "string" &&
+    "totalItems" in value &&
+    typeof value.totalItems === "number" &&
+    "rootNodeIds" in value &&
+    Array.isArray(value.rootNodeIds) &&
+    value.rootNodeIds.every((id) => typeof id === "string")
+  );
+}
+
 // Reads only the [startIndex, startIndex + batchSize) window of
 // `sortedChangedItems` from a GCS delta file, plus the (small) metadata fields.
 //
@@ -208,10 +227,8 @@ async function readDeltaBatchFromGCSStream(
   const batch: DriveItem[] = [];
 
   try {
-    const metaDone = new Promise<Partial<DeltaDataInGCS>>((resolve, reject) => {
-      metaAssembler.on("done", (asm: Assembler) =>
-        resolve(asm.current as Partial<DeltaDataInGCS>)
-      );
+    const metaDone = new Promise<unknown>((resolve, reject) => {
+      metaAssembler.on("done", (asm: Assembler) => resolve(asm.current));
       ignore.on("error", reject);
     });
 
@@ -244,10 +261,14 @@ async function readDeltaBatchFromGCSStream(
       sourceError,
     ]);
 
+    if (!isDeltaMetadata(meta)) {
+      return new Err(new Error("Delta file metadata is missing or malformed."));
+    }
+
     return new Ok({
-      deltaLink: meta.deltaLink ?? "",
-      rootNodeIds: meta.rootNodeIds ?? [],
-      totalItems: meta.totalItems ?? 0,
+      deltaLink: meta.deltaLink,
+      rootNodeIds: meta.rootNodeIds,
+      totalItems: meta.totalItems,
       batch,
     });
   } catch (error) {
