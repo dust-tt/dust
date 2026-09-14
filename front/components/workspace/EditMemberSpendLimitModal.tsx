@@ -176,9 +176,6 @@ function MemberSpendLimitForm({
     }));
   }
 
-  // The footer wraps non-disabled buttons so a click closes the dialog by
-  // default. Saving is async and can fail, so prevent that and close
-  // explicitly only once the save actually succeeds.
   async function handleValidate(event: React.MouseEvent) {
     event.preventDefault();
     if (!member || isDefaultLimitPending) {
