@@ -28,7 +28,7 @@ afterEach(() => {
   }
 });
 
-async function setupTest(role: "admin" | "builder" | "user" = "builder") {
+async function setupTest(role: "admin" | "builder" | "user" = "admin") {
   const { workspace, key } = await createPublicApiMockRequest({ role });
 
   await SpaceFactory.defaults(
@@ -36,7 +36,7 @@ async function setupTest(role: "admin" | "builder" | "user" = "builder") {
   );
 
   const user = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, user, { role: "builder" });
+  await MembershipFactory.associate(workspace, user, { role: "admin" });
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
     workspace.sId
@@ -191,8 +191,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
       agentConfig.sId,
       { instructions: "Updated through the API" }
     );
-    // The PATCH endpoint still accepts legacy builder keys independently of `canEdit`.
-    expect(patchResponse.status).toBe(role === "user" ? 403 : 200);
+    expect(patchResponse.status).toBe(role === "admin" ? 200 : 403);
   });
 
   it.each([
@@ -219,7 +218,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
         instructions: "Updated through the API",
       }
     );
-    expect(patchResponse.status).toBe(role === "admin" ? 200 : 404);
+    expect(patchResponse.status).toBe(role === "admin" ? 200 : 403);
   });
 
   it("does not report global or archived agents as editable with an admin key", async () => {
