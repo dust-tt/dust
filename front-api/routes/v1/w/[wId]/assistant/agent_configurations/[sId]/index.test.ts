@@ -197,7 +197,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
   it.each([
     "admin",
     "builder",
-  ] as const)("reports whether a %s key can patch an unpublished agent", async (role) => {
+  ] as const)("only allows an admin key to access an unpublished agent (%s)", async (role) => {
     const { workspace, key, auth } = await setupTest(role);
     const agent = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Unpublished Agent",
@@ -206,9 +206,14 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     const response = await getAgentConfiguration(workspace, key, agent.sId);
     const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(data.agentConfiguration.canRead).toBe(false);
-    expect(data.agentConfiguration.canEdit).toBe(role === "admin");
+    if (role === "admin") {
+      expect(response.status).toBe(200);
+      expect(data.agentConfiguration.canRead).toBe(false);
+      expect(data.agentConfiguration.canEdit).toBe(true);
+    } else {
+      expect(response.status).toBe(403);
+      expect(data.error.type).toBe("workspace_auth_error");
+    }
 
     const patchResponse = await patchAgentConfiguration(
       workspace,
