@@ -1,4 +1,4 @@
-import { listAgentUsageConfigIds } from "@app/lib/api/assistant/agent_permissions";
+import { shadowUsageConfigIds } from "@app/lib/api/assistant/agent_permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
@@ -27,7 +27,7 @@ async function getAccessibleAgentsInfoBySId({
   }
 
   const getAgentsForUser = () =>
-    listAgentUsageConfigIds(auth, "getWebhookSourcesUsage");
+    shadowUsageConfigIds(auth, "getWebhookSourcesUsage");
 
   const agentWhereClause = auth.isAdmin()
     ? {

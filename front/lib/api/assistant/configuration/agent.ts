@@ -1,6 +1,6 @@
 import {
-  canAdminAgent,
-  filterEditableAgents,
+  shadowCanAdminAgent,
+  shadowEditableAgents,
 } from "@app/lib/api/assistant/agent_permissions";
 import {
   enrichAgentConfigurations,
@@ -1663,7 +1663,7 @@ export async function updateAgentPermissions(
     return editorGroupRes;
   }
 
-  const canAdministrate = await canAdminAgent(
+  const canAdministrate = await shadowCanAdminAgent(
     auth,
     agent,
     async () =>
@@ -1856,7 +1856,7 @@ export async function updateAgentConfigurationsScope(
     );
   }
 
-  const editableAgents = await filterEditableAgents(
+  const editableAgents = await shadowEditableAgents(
     auth,
     agentConfigs,
     agentConfigs.filter((agent) => agent.canEdit || auth.isAdmin()),

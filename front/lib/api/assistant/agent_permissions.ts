@@ -17,7 +17,7 @@ function sameIds<T extends ModelId | string>(left: T[], right: T[]): boolean {
   );
 }
 
-export async function canAdminAgent(
+export async function shadowCanAdminAgent(
   auth: Authenticator,
   agent: LightAgentConfigurationType,
   legacy: () => Promise<boolean>,
@@ -45,7 +45,7 @@ export async function canAdminAgent(
   });
 }
 
-export async function filterEditableAgents(
+export async function shadowEditableAgents(
   auth: Authenticator,
   agents: LightAgentConfigurationType[],
   legacy: LightAgentConfigurationType[],
@@ -86,7 +86,7 @@ export async function filterEditableAgents(
  * Usage shadow checks must ignore differences outside active workspace configurations, without
  * changing the legacy IDs returned to callers.
  */
-export async function listAgentUsageConfigIds(
+export async function shadowUsageConfigIds(
   auth: Authenticator,
   callSite: string
 ): Promise<ModelId[]> {

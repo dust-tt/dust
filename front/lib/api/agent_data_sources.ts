@@ -1,4 +1,4 @@
-import { listAgentUsageConfigIds } from "@app/lib/api/assistant/agent_permissions";
+import { shadowUsageConfigIds } from "@app/lib/api/assistant/agent_permissions";
 import type { Authenticator } from "@app/lib/auth";
 import { isManagedConnectorProvider } from "@app/lib/data_sources";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
@@ -242,7 +242,7 @@ export async function getDataSourceViewsUsageByModelIds({
 
   // Step 4: fetch the agent configurations
   const getAgentsForUser = () =>
-    listAgentUsageConfigIds(auth, "getDataSourceViewsUsage");
+    shadowUsageConfigIds(auth, "getDataSourceViewsUsage");
 
   const getAgentWhereClauseAdmin = () => ({
     status: "active",

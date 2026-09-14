@@ -1,4 +1,4 @@
-import { filterEditableAgents } from "@app/lib/api/assistant/agent_permissions";
+import { shadowEditableAgents } from "@app/lib/api/assistant/agent_permissions";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { workspaceApp } from "@front-api/middlewares/ctx";
@@ -59,7 +59,7 @@ app.post(
       return apiError(ctx, ARCHIVED_AGENT_API_ERROR);
     }
 
-    const editableAgents = await filterEditableAgents(
+    const editableAgents = await shadowEditableAgents(
       auth,
       agents,
       agents.filter((agent) => agent.canEdit || auth.isAdmin()),

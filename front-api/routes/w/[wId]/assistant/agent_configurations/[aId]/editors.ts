@@ -1,4 +1,4 @@
-import { canAdminAgent } from "@app/lib/api/assistant/agent_permissions";
+import { shadowCanAdminAgent } from "@app/lib/api/assistant/agent_permissions";
 import {
   getAgentConfiguration,
   updateAgentPermissions,
@@ -214,7 +214,7 @@ app.patch(
 
     const editorGroup = editorGroupRes.value;
     // The rollout switch selects the permission source for both editor writes.
-    const canAdministrate = await canAdminAgent(
+    const canAdministrate = await shadowCanAdminAgent(
       auth,
       agent,
       async () =>
