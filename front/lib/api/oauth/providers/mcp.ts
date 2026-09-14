@@ -1,4 +1,7 @@
+import { getDefaultRemoteMCPServerByURL } from "@app/lib/actions/mcp_internal_actions/remote_servers";
+import { MCPOAuthProvider as MCPOAuthClientProvider } from "@app/lib/actions/mcp_oauth_provider";
 import config from "@app/lib/api/config";
+import { MCP_CLIENT_ID_METADATA_DOCUMENT_URL } from "@app/lib/api/mcp_server/urls";
 import type { OAuthError } from "@app/lib/api/oauth";
 import { getWorkspaceOAuthConnectionIdForMCPServer } from "@app/lib/api/oauth/mcp_server_connection_auth";
 import type {
@@ -11,6 +14,7 @@ import {
 } from "@app/lib/api/oauth/utils";
 import { shouldUseStaticIpProxy } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
 import type { MCPOAuthConnectionMetadataType } from "@app/types/api/oauth/providers/mcp";
@@ -45,6 +49,77 @@ const MCPMetadataSchema = BaseMCPMetadataSchema.extend({
 });
 
 type MCPMetadataType = z.infer<typeof MCPMetadataSchema>;
+
+// A client registered before the OAuth redirect cutover carries the old
+// finalize URI in its registration, which the authorization server enforces on
+// every new authorization. The registration cannot be edited (no registration
+// access token is kept), so a stale client is replaced through one discovery
+// pass: CIMD-capable servers switch to the hosted metadata document, the rest
+// get a fresh DCR registration. Fails open to the stored metadata so a
+// discovery hiccup never breaks a path that works today.
+export async function freshenStaleClientMetadata({
+  provider,
+  metadata,
+  serverUrl,
+  customHeaders,
+}: {
+  provider: OAuthProvider;
+  metadata: MCPOAuthConnectionMetadataType;
+  serverUrl: string | undefined;
+  customHeaders?: Record<string, string>;
+}): Promise<MCPOAuthConnectionMetadataType> {
+  const expectedRedirect = finalizeUriForProvider({
+    provider,
+    connection: null,
+  });
+  const isFresh =
+    metadata.client_id === MCP_CLIENT_ID_METADATA_DOCUMENT_URL ||
+    metadata.redirect_uri === expectedRedirect;
+  if (isFresh || !serverUrl) {
+    return metadata;
+  }
+
+  let rediscovery;
+  try {
+    rediscovery = await RemoteMCPServerResource.discoverOAuthMetadata({
+      serverUrl,
+      provider: new MCPOAuthClientProvider(),
+      customHeaders,
+      extraScopes: getDefaultRemoteMCPServerByURL(serverUrl)?.scope,
+    });
+  } catch (e) {
+    logger.warn(
+      { serverUrl, clientId: metadata.client_id, error: e },
+      "MCP OAuth: could not replace stale client registration, keeping stored client"
+    );
+    return metadata;
+  }
+  if (rediscovery.isErr()) {
+    logger.warn(
+      { serverUrl, clientId: metadata.client_id, error: rediscovery.error },
+      "MCP OAuth: could not replace stale client registration, keeping stored client"
+    );
+    return metadata;
+  }
+  if (rediscovery.value.client_secret) {
+    // A confidential client's secret lives in the related credential, which this
+    // path cannot rewrite. Keep the stored client rather than break the exchange.
+    logger.warn(
+      { serverUrl, clientId: metadata.client_id },
+      "MCP OAuth: fresh registration is confidential, keeping stored client"
+    );
+    return metadata;
+  }
+  logger.info(
+    {
+      serverUrl,
+      oldClientId: metadata.client_id,
+      newClientId: rediscovery.value.client_id,
+    },
+    "MCP OAuth: replaced stale client registration"
+  );
+  return rediscovery.value;
+}
 
 export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
   provider: OAuthProvider = "mcp";
@@ -243,18 +318,45 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
         }
         const connection = connectionRes.value.connection;
 
+        // Only the dynamic mcp provider may replace its client: mcp_static
+        // clients are admin-entered credentials, never ours to re-register.
+        let clientMetadata =
+          connection.metadata as MCPOAuthConnectionMetadataType;
+        if (this.provider === "mcp") {
+          const server = await RemoteMCPServerResource.fetchById(
+            auth,
+            mcp_server_id,
+            { includeHeavyAttributes: ["customHeaders"] }
+          );
+          clientMetadata = await freshenStaleClientMetadata({
+            provider: this.provider,
+            metadata: clientMetadata,
+            serverUrl: server?.url ?? connection.metadata.resource,
+            customHeaders: server?.getCustomHeaders() ?? undefined,
+          });
+        }
+
         const { code_verifier, code_challenge } = await getPKCEConfig();
-        const tokenEndpoint = connection.metadata.token_endpoint;
+        const tokenEndpoint = clientMetadata.token_endpoint;
 
         return {
           ...restConfig,
-          client_id: connection.metadata.client_id,
+          client_id: clientMetadata.client_id,
           token_endpoint: tokenEndpoint,
-          authorization_endpoint: connection.metadata.authorization_endpoint,
-          scope: connection.metadata.scope,
-          resource: connection.metadata.resource,
-          token_endpoint_auth_method:
-            connection.metadata.token_endpoint_auth_method,
+          authorization_endpoint: clientMetadata.authorization_endpoint,
+          ...(clientMetadata.scope !== undefined && {
+            scope: clientMetadata.scope,
+          }),
+          ...(clientMetadata.resource !== undefined && {
+            resource: clientMetadata.resource,
+          }),
+          ...(clientMetadata.token_endpoint_auth_method !== undefined && {
+            token_endpoint_auth_method:
+              clientMetadata.token_endpoint_auth_method,
+          }),
+          ...(clientMetadata.redirect_uri !== undefined && {
+            redirect_uri: clientMetadata.redirect_uri,
+          }),
           code_verifier,
           code_challenge,
           use_static_ip_proxy: String(

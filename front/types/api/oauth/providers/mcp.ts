@@ -11,6 +11,9 @@ export const MCPOAuthConnectionMetadataSchema = BaseMCPMetadataSchema.extend({
   scope: z.string().optional(),
   resource: z.string().optional(),
   token_endpoint_auth_method: z.string().optional(),
+  // The finalize URI the client was registered with. Absent on connections
+  // created before it was recorded, which marks their client as unverifiable.
+  redirect_uri: z.string().optional(),
 });
 
 export type MCPOAuthConnectionMetadataType = z.infer<

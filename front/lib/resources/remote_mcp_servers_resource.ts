@@ -777,6 +777,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
           ? url.format(resource, { fragment: false })
           : undefined,
         scope: clientMetadata.scope,
+        redirect_uri: String(clientMetadata.redirect_uris[0]),
       };
       return new Ok(connectionMetadata);
     }
@@ -804,6 +805,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
           : undefined,
         scope: clientMetadata.scope,
         client_secret: fullInformation.client_secret,
+        redirect_uri: String(clientMetadata.redirect_uris[0]),
       };
       return new Ok(connectionMetadata);
     } catch (e) {
