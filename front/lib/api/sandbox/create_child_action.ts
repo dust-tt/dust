@@ -10,14 +10,17 @@ import { makeMCPApproveExecutionEventBase } from "@app/lib/actions/tool_approval
 import { tryGetPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { computeStepContexts } from "@app/lib/actions/utils";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getUserMessageIdFromMessageId } from "@app/lib/api/assistant/conversation/messages";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { batchRenderMessages } from "@app/lib/api/assistant/messages";
+import { resolveAgentMessageModelConfig } from "@app/lib/api/assistant/resolve_model";
 import { resolveSkillMCPServers } from "@app/lib/api/assistant/skill_actions";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import { pauseSandboxBashForBlockedChild } from "@app/lib/api/sandbox/sandbox_child_block";
 import type { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -233,6 +236,31 @@ export async function createSandboxChildAction(
     },
   });
 
+  // The parent step context was computed for the sandbox tool alone, so its
+  // per-step counts (retrievalTopK, websearchResultCount, citationsCount) do not
+  // account for the child tool. Compute them for the child as a single-action
+  // step, resolving the model the same way the agent loop does.
+  // Children are excluded from later steps' citation offset sums, so their
+  // references may overlap them; child outputs only feed the sandbox LLM.
+  const modelConfig = getSupportedModelConfig(
+    await resolveAgentMessageModelConfig(auth, {
+      agentConfiguration,
+      agentMessage,
+    })
+  );
+  if (!modelConfig) {
+    return new Err(
+      new Error(
+        `Model configuration not found: ${agentConfiguration.model.modelId}.`
+      )
+    );
+  }
+  const [childStepContext] = computeStepContexts({
+    model: modelConfig,
+    stepActions: [fullToolConfiguration],
+    citationsRefsOffset: parentAction.stepContext.citationsOffset,
+  });
+
   // Auto-allowed child actions are launched right after creation: persist them as
   // "running" directly (like sandbox function actions) instead of rewriting the row at
   // execution start.
@@ -247,8 +275,7 @@ export async function createSandboxChildAction(
     status: persistedStatus,
     stepContent: parentAction.stepContent,
     stepContext: {
-      ...parentAction.stepContext,
-      resumeState: null,
+      ...childStepContext,
       sandboxChildActionInfo: { parentActionId: parentAction.sId },
     },
   });
