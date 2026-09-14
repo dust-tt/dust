@@ -6,7 +6,7 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("shadowCompare", () => {
+describe.each([false, true])("shadowCompare (reverse: %s)", (reverse) => {
   let auth: Authenticator;
 
   beforeEach(async () => {
@@ -19,6 +19,7 @@ describe("shadowCompare", () => {
 
     const result = await shadowCompare({
       auth,
+      reverse,
       legacy: "legacy",
       candidate,
       context: { check: "test" },
@@ -35,6 +36,7 @@ describe("shadowCompare", () => {
 
     const result = await shadowCompare({
       auth,
+      reverse,
       legacy: "same",
       candidate,
       context: { check: "test" },
@@ -45,12 +47,13 @@ describe("shadowCompare", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it("logs one stable line on mismatch and still serves the legacy result", async () => {
+  it("logs one stable line on mismatch and still serves the selected result", async () => {
     await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
     const warn = vi.spyOn(logger, "warn");
 
     const result = await shadowCompare({
       auth,
+      reverse,
       legacy: true,
       candidate: async () => false,
       context: { check: "can_create_agent", workspaceId: 42 },
@@ -62,19 +65,21 @@ describe("shadowCompare", () => {
       expect.objectContaining({
         check: "can_create_agent",
         workspaceId: 42,
-        legacyResult: true,
-        candidateResult: false,
+        legacyResult: !reverse,
+        candidateResult: reverse,
+        servedSource: reverse ? "grants" : "legacy",
       }),
       "group_permissions_shadow_mismatch"
     );
   });
 
-  it("serves the legacy result when the candidate throws", async () => {
+  it("serves the selected result when the other source throws", async () => {
     await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
     const error = vi.spyOn(logger, "error");
 
     const result = await shadowCompare({
       auth,
+      reverse,
       legacy: "legacy",
       candidate: async () => {
         throw new Error("candidate boom");
