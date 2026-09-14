@@ -19,14 +19,14 @@
     },
     "name": {
       "type": "text",
-      "analyzer": "skill_search_analyzer",
+      "analyzer": "skill_name_analyzer",
       "fields": {
         "keyword": {
           "type": "keyword"
         },
         "autocomplete": {
           "type": "search_as_you_type",
-          "analyzer": "skill_search_analyzer"
+          "analyzer": "skill_name_analyzer"
         }
       }
     },
@@ -47,7 +47,7 @@
     },
     "description": {
       "type": "text",
-      "analyzer": "skill_search_analyzer"
+      "analyzer": "icu_analyzer"
     },
     "tools": {
       "type": "keyword"
