@@ -2,17 +2,18 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ToolContext } from "@app/lib/actions/types";
 import { FILE_GENERATION_TOOL_NAME } from "@app/lib/api/actions/servers/file_generation/metadata";
-import { TOOLS } from "@app/lib/api/actions/servers/file_generation/tools";
+import { createFileGenerationTools } from "@app/lib/api/actions/servers/file_generation/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-function createServer(
+async function createServer(
   auth: Authenticator,
   toolContext?: ToolContext
-): McpServer {
+): Promise<McpServer> {
   const server = makeInternalMCPServer("file_generation");
 
-  for (const tool of TOOLS) {
+  const tools = await createFileGenerationTools(auth);
+  for (const tool of tools) {
     registerTool(auth, toolContext, server, tool, {
       monitoringName: FILE_GENERATION_TOOL_NAME,
     });

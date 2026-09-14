@@ -138,6 +138,54 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     return new this(this.model, toolMetadata.get());
   }
 
+  static async batchUpdateOrCreateSettings(
+    auth: Authenticator,
+    {
+      serverSId,
+      tools,
+    }: {
+      serverSId: string;
+      tools: Array<{
+        toolName: string;
+        permission: MCPToolStakeLevelType;
+        enabled: boolean;
+      }>;
+    }
+  ): Promise<RemoteMCPServerToolMetadataResource[]> {
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
+
+    if (!canAdministrate) {
+      throw new DustError(
+        "unauthorized",
+        "The user is not authorized to update tool metadata"
+      );
+    }
+
+    const { serverType, id: serverId } = getServerTypeAndIdFromSId(serverSId);
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const results: RemoteMCPServerToolMetadataResource[] = [];
+
+    // Use upsert for each tool. The model has two separate unique indexes
+    // (for remote vs internal servers), so bulkCreate with updateOnDuplicate
+    // doesn't work cleanly. Upsert handles the conflict detection correctly.
+    for (const tool of tools) {
+      const [toolMetadata] = await this.model.upsert({
+        ...(serverType === "remote"
+          ? { remoteMCPServerId: serverId }
+          : { internalMCPServerId: serverSId }),
+        toolName: tool.toolName,
+        permission: tool.permission,
+        enabled: tool.enabled,
+        workspaceId,
+      });
+      results.push(new this(this.model, toolMetadata.get()));
+    }
+
+    return results;
+  }
+
   // Deletes tool metadata for tools that are not in the list
   static async deleteStaleTools(
     auth: Authenticator,

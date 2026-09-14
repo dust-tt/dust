@@ -1,4 +1,33 @@
-import { format, isToday, isTomorrow, isYesterday } from "date-fns";
+import {
+  differenceInCalendarDays,
+  format,
+  formatDistance,
+  isToday,
+  isTomorrow,
+  isValid,
+  isYesterday,
+  startOfDay,
+  subDays,
+  subMonths,
+  subWeeks,
+  subYears,
+  toDate,
+} from "date-fns";
+
+// What moment renders for an invalid date; kept so migrated call sites never throw mid-render.
+const INVALID_DATE_LABEL = "Invalid date";
+
+/**
+ * Formats a date with a date-fns pattern, rendering invalid input as a sentinel string
+ * instead of throwing.
+ */
+export const formatDate = (
+  date: Date | number | string,
+  pattern: string
+): string => {
+  const dateObj = toDate(date);
+  return isValid(dateObj) ? format(dateObj, pattern) : INVALID_DATE_LABEL;
+};
 
 /**
  * Returns a Date that is `days` days before the given reference date (defaults to now).
@@ -81,7 +110,10 @@ export const formatShortDate = (timestamp: number | string): string => {
  * @returns A formatted string like "Today", "Yesterday", "Last Monday", or "13/10/2025"
  */
 export const formatCalendarDate = (date: Date | number): string => {
-  const dateObj = typeof date === "number" ? new Date(date) : date;
+  const dateObj = toDate(date);
+  if (!isValid(dateObj)) {
+    return INVALID_DATE_LABEL;
+  }
 
   if (isToday(dateObj)) {
     return "Today";
@@ -108,3 +140,96 @@ export const formatCalendarDate = (date: Date | number): string => {
 
   return format(dateObj, "dd/MM/yyyy");
 };
+
+export const formatRelativeTime = (
+  date: Date | number,
+  now: Date = new Date()
+): string => {
+  const dateObj = toDate(date);
+  if (!isValid(dateObj)) {
+    return INVALID_DATE_LABEL;
+  }
+
+  return formatDistance(dateObj, now, { addSuffix: true });
+};
+
+export const formatCalendarDateTime = (
+  date: Date | number,
+  now: Date = new Date()
+): string => {
+  const dateObj = toDate(date);
+  if (!isValid(dateObj)) {
+    return INVALID_DATE_LABEL;
+  }
+
+  // Calendar-day distance is DST-safe: a 23h or 25h day still counts as exactly one day.
+  const diffDays = differenceInCalendarDays(dateObj, now);
+  const timeWithSeconds = format(dateObj, "h:mm:ss a");
+
+  if (diffDays === 0) {
+    return `Today at ${timeWithSeconds}`;
+  }
+  if (diffDays === -1) {
+    return `Yesterday at ${timeWithSeconds}`;
+  }
+  if (diffDays >= -6 && diffDays < -1) {
+    return `Last ${format(dateObj, "EEEE")} at ${timeWithSeconds}`;
+  }
+
+  // moment's built-in future formats use LT (no seconds), unlike the overridden past ones.
+  const timeWithoutSeconds = format(dateObj, "h:mm a");
+  if (diffDays === 1) {
+    return `Tomorrow at ${timeWithoutSeconds}`;
+  }
+  if (diffDays > 1 && diffDays < 7) {
+    return `${format(dateObj, "EEEE")} at ${timeWithoutSeconds}`;
+  }
+
+  return format(dateObj, "MM/dd/yyyy");
+};
+
+export type RelativeDateBucket =
+  | "Today"
+  | "Yesterday"
+  | "Last Week"
+  | "Last Month"
+  | "Last 12 Months"
+  | "Older";
+
+/**
+ * Builds a bucketing function with the thresholds computed once, for callers that
+ * classify many dates against the same reference point.
+ */
+export const makeRelativeDateBucketer = (
+  now: Date = new Date()
+): ((date: Date | number) => RelativeDateBucket) => {
+  const thresholds: [number, RelativeDateBucket][] = [
+    [startOfDay(now).getTime(), "Today"],
+    [startOfDay(subDays(now, 1)).getTime(), "Yesterday"],
+    [startOfDay(subWeeks(now, 1)).getTime(), "Last Week"],
+    [startOfDay(subMonths(now, 1)).getTime(), "Last Month"],
+    [startOfDay(subYears(now, 1)).getTime(), "Last 12 Months"],
+  ];
+
+  return (date) => {
+    const dateObj = toDate(date);
+    if (!isValid(dateObj)) {
+      // An invalid date silently sorts as "Older" rather than throwing mid-render,
+      // for consistency with the other formatters in this module.
+      return "Older";
+    }
+
+    const timeMs = dateObj.getTime();
+    for (const [thresholdMs, bucket] of thresholds) {
+      if (timeMs >= thresholdMs) {
+        return bucket;
+      }
+    }
+    return "Older";
+  };
+};
+
+export const getRelativeDateBucket = (
+  date: Date | number,
+  now: Date = new Date()
+): RelativeDateBucket => makeRelativeDateBucketer(now)(date);

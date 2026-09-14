@@ -1,3 +1,4 @@
+import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
 import { AutomationsOverview } from "@app/components/workspace/analytics/automations/AutomationsOverview";
 import { AutomationsTriggersTable } from "@app/components/workspace/analytics/automations/AutomationsTriggersTable";
@@ -29,7 +30,8 @@ type AutomationsTab = "triggers" | "slack-workflows";
 
 export function AnalyticsAutomationsPage() {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
+  const { subscription, user } = useAuth();
+  const [agentDetailsId, setAgentDetailsId] = useState<string | null>(null);
   const [period, setPeriod] = useState<ConsumptionPeriodSelection>(
     DEFAULT_CONSUMPTION_PERIOD
   );
@@ -54,6 +56,12 @@ export function AnalyticsAutomationsPage() {
 
   return (
     <AdminPageContainer>
+      <AgentDetailsSheet
+        owner={owner}
+        user={user}
+        agentId={agentDetailsId}
+        onClose={() => setAgentDetailsId(null)}
+      />
       <Page.Vertical align="stretch" gap="xl">
         <Page.Header
           title={
@@ -92,6 +100,7 @@ export function AnalyticsAutomationsPage() {
                 period={period}
                 filter={filter}
                 onFilterChange={setFilter}
+                onAgentClick={setAgentDetailsId}
               />
             </TabsContent>
             <TabsContent value="slack-workflows">
@@ -104,6 +113,7 @@ export function AnalyticsAutomationsPage() {
             period={period}
             filter={filter}
             onFilterChange={setFilter}
+            onAgentClick={setAgentDetailsId}
           />
         )}
       </Page.Vertical>
@@ -116,6 +126,7 @@ interface TriggersSectionProps {
   period: ConsumptionPeriodSelection;
   filter: AutomationsFilter;
   onFilterChange: (filter: AutomationsFilter) => void;
+  onAgentClick: (agentId: string) => void;
 }
 
 function TriggersSection({
@@ -123,6 +134,7 @@ function TriggersSection({
   period,
   filter,
   onFilterChange,
+  onAgentClick,
 }: TriggersSectionProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -132,6 +144,7 @@ function TriggersSection({
         period={period}
         filter={filter}
         onFilterChange={onFilterChange}
+        onAgentClick={onAgentClick}
       />
     </div>
   );

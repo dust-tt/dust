@@ -9,6 +9,7 @@ import {
   AGENT_ROUTER_SERVER_NAME,
   SUGGEST_AGENTS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
+import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type {
   MCPServerViewsForGlobalAgentsMap,
@@ -131,12 +132,6 @@ Do not infer that Go Deep is needed from task complexity alone. Do not enable it
 If none of the explicit activation conditions is clearly met, handle the request directly. When in doubt, do not enable it.
 </go_deep_skill_guidelines>`,
 
-  supportSkillActivation: `<dust_platform_support_guidelines>
-For clear Dust platform support requests, enable the "Dust Support" skill before answering.
-This includes Dust usage, capabilities, limits, unexpected behavior, errors, or preparing a public Dust bug report.
-Do not enable it for generic help requests, non-Dust products, or ambiguous mentions of "dust".
-</dust_platform_support_guidelines>`,
-
   memory: `<memory_guidelines>
 You have access to a persistent, user-specific memory system. Each user has their own private memory store.
 
@@ -188,10 +183,15 @@ Never explicitly say "I remember" or "based on our previous conversation" - just
 </memory_guidelines>`,
 };
 
+/**
+ * @cc [owner:aubin-tchoi,label:product] exclude-skills-only-toolsets
+ * The available toolsets context MUST NOT include MCP server views restricted to skills.
+ */
 export function buildToolsetsContext(
   availableToolsets: MCPServerViewResource[]
 ): string {
   const toolsetsList = availableToolsets
+    .filter((toolset) => !toolset.isRestrictedToSkills)
     .sort((a, b) => {
       const aView = a.toJSON();
       const bView = b.toJSON();
@@ -243,7 +243,6 @@ function buildInstructions({
     INSTRUCTION_SECTIONS.primary,
     INSTRUCTION_SECTIONS.instructions,
     hasDeepDive && INSTRUCTION_SECTIONS.goDeepInstructions,
-    INSTRUCTION_SECTIONS.supportSkillActivation,
     hasAgentMemory && INSTRUCTION_SECTIONS.memory,
   ].filter((part): part is string => typeof part === "string");
 
@@ -478,6 +477,33 @@ export function _getDustGlobalAgent(
     preferredModelConfiguration,
     preferredReasoningEffort,
   });
+}
+
+export function _getDustLeanGlobalAgent(
+  auth: Authenticator,
+  args: DustLikeGlobalAgentArgs
+): AgentConfigurationType | null {
+  const dustAgent = _getDustGlobalAgent(auth, args);
+  if (!dustAgent) {
+    return null;
+  }
+
+  return {
+    ...dustAgent,
+    ...getGlobalAgentMetadata(GLOBAL_AGENTS_SID.DUST_LEAN),
+    instructions: `<primary_goal>
+You are an AI agent created by Dust. Answer questions using your own knowledge and the information provided in this conversation.
+Use only the capabilities explicitly provided in this conversation. When information is missing and no available capability can retrieve it, say so and ask the user to provide it.
+</primary_goal>
+
+<general_guidelines>${globalAgentGuidelines}</general_guidelines>
+
+<critical_thinking_guidelines>
+Keep your thinking as short as possible.
+</critical_thinking_guidelines>`,
+    actions: [],
+    codeDefinedSkillIds: [],
+  };
 }
 
 export function _getDustHighGlobalAgent(

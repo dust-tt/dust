@@ -288,8 +288,8 @@ export async function computeAndStoreAgentMessageCredits(
       void maybeProactivelyAutoUpgradeSeatOnCapReached(auth, { user });
     }
 
-    // Per-API-key cap, for calls authenticated with an API key.
-    const apiKey = auth.key();
+    // Per-API-key cap.
+    const apiKey = auth.keyForUsageAttribution();
     if (apiKey) {
       await recordApiKeySpendLimitUsage(auth, {
         keyModelId: apiKey.id,

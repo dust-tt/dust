@@ -5,12 +5,23 @@ import type {
 } from "@app/lib/api/bundler/bundle_module";
 import { bundleModule } from "@app/lib/api/bundler/bundle_module";
 import type { DustFileSystem } from "@app/lib/api/file_system";
+import { validateTypeScriptSyntax } from "@app/lib/api/files/content_validation";
 import { injectSourceLocationTags } from "@app/lib/api/viz/source_location_tags";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
+import { Err } from "@app/types/shared/result";
 
 // A frame's source tree reader, the generic engine reader under a frame-named alias.
 export type FrameSourceReader = SourceReader;
+
+class FrameSyntaxError extends Error {
+  readonly code = "invalid_syntax";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "FrameSyntaxError";
+  }
+}
 
 // Frames render in an iframe via `react-runner`, which transpiles JSX, so JSX is preserved. Output
 // targets the browser and is not minified so data refs (`fil_...`) stay discoverable by
@@ -23,10 +34,20 @@ const FRAME_ESBUILD_OPTIONS: BundleEsbuildOptions = {
 };
 
 /**
- * Bundle a multi-file frame into a single self-contained module. Thin wrapper over
- * {@link bundleModule} supplying the viz esbuild options and the JSX source-location transform, so
- * live edits on the rendered bundle route back to the correct source file. All graph-walking lives
- * in the generic engine.
+ * Validate and bundle a Frame for both legacy and v2 publishing. The generic engine walks the
+ * import graph. This wrapper validates source syntax before tagging JSX for live edits.
+ */
+/**
+ * @cc [owner:flvndvd,label:product] frame-source-syntax-validation
+ * Syntax errors in .ts, .tsx, .js, and .jsx sources read for the bundle MUST fail the build with
+ * `invalid_syntax` and diagnostics identifying the source path and original line/column. These
+ * diagnostics MUST take precedence over generic bundler errors.
+ * Validation MUST use the source file's language mode so JavaScript rejects TypeScript syntax.
+ */
+/**
+ * @cc [owner:flvndvd,label:performance] validate-only-bundled-frame-sources
+ * Syntax validation MUST use the same source contents read by the bundler and MUST NOT read or
+ * validate files outside the entry's dependency graph.
  */
 export async function buildFrameBundle({
   entryRelPath,
@@ -34,15 +55,35 @@ export async function buildFrameBundle({
 }: {
   entryRelPath: string;
   reader: FrameSourceReader;
-}): Promise<Result<{ code: string }, BundleError>> {
-  return bundleModule({
+}): Promise<Result<{ code: string }, BundleError | FrameSyntaxError>> {
+  const syntaxErrors: string[] = [];
+  const result = await bundleModule({
     entryRelPath,
-    reader,
+    reader: {
+      list: () => reader.list(),
+      read: async (relPath) => {
+        const content = await reader.read(relPath);
+        if (content !== null && /\.(?:tsx?|jsx?)$/.test(relPath)) {
+          const syntax = validateTypeScriptSyntax(content, relPath);
+          if (syntax.isErr()) {
+            syntaxErrors.push(`${relPath}:\n${syntax.error.message}`);
+          }
+        }
+
+        return content;
+      },
+    },
     esbuild: FRAME_ESBUILD_OPTIONS,
     // Stamp each source file with `data-source` tags before inlining so the rendered bundle keeps
     // the origin of every JSX element for live edits.
     transform: injectSourceLocationTags,
   });
+
+  if (syntaxErrors.length > 0) {
+    return new Err(new FrameSyntaxError(syntaxErrors.join("\n\n")));
+  }
+
+  return result;
 }
 
 /**

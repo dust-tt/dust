@@ -1530,11 +1530,9 @@ const CUSTOM_FIELD_KEYS: Array<{
     key: CONTRACT_CREDIT_TYPE_CUSTOM_FIELD_KEY,
   },
   // Stamped per-instance on each free-seat per-user credit, carrying the seat's
-  // user sId (see `addPerUserCreditToCustomer`). Lets a per-user
-  // `low_remaining_contract_credit_balance_reached` alert filter on the
-  // custom field (the only filter a credit-balance alert supports — presentation
-  // specifiers can't be filtered) so it fires as each free user depletes their
-  // individual credit.
+  // user sId (see `addPerUserCreditToCustomer`). Lets us list a customer's
+  // per-user credits keyed by user, since a credit's presentation specifier
+  // can't be filtered on.
   {
     entity: "contract_credit",
     key: PER_USER_CREDIT_USER_CUSTOM_FIELD_KEY,

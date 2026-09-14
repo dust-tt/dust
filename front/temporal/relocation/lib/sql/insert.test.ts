@@ -11,4 +11,17 @@ describe("generateParameterizedInsertStatements", () => {
     expect(statement?.columns).toEqual(["id", "workspaceId", "planId"]);
     expect(statement?.params).toEqual([1, 10, 20, 2, 10, 21]);
   });
+
+  it.each([
+    ["project_metadata", "frameTabs"],
+    ["takeaways", "actionItems"],
+    ["takeaway_versions", "actionItems"],
+    ["workspace_sensitivity_label_configs", "allowedLabels"],
+  ])("stringifies empty JSONB arrays for %s.%s", (tableName, column) => {
+    const [statement] = generateParameterizedInsertStatements(tableName, [
+      { [column]: [] },
+    ]);
+
+    expect(statement?.params).toEqual(["[]"]);
+  });
 });

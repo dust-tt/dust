@@ -1,6 +1,7 @@
 import { formatCredits } from "@app/lib/client/credits";
 import { useAwuTopUpsHistory } from "@app/lib/swr/credits";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
 import {
@@ -8,7 +9,7 @@ import {
   ContentMessage,
   DataTable,
   DataTableSkeleton,
-  LoadingBlock,
+  TextCellSkeleton,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
@@ -25,23 +26,29 @@ type TopUpRowData = {
   onClick?: () => void;
 };
 
-function TopUpHistorySkeletonCell({ columnId }: DataTableSkeletonCellProps) {
+type TopUpColumnId = (typeof COLUMNS)[number]["id"];
+
+function TopUpHistorySkeletonCell({
+  columnId,
+}: DataTableSkeletonCellProps<TopUpColumnId>) {
   switch (columnId) {
     case "date":
-      return <LoadingBlock className="h-3 w-24 max-w-full" />;
+      return <TextCellSkeleton />;
     case "name":
-      return <LoadingBlock className="h-3 w-40 max-w-full" />;
+      return <TextCellSkeleton className="w-40" />;
     case "credits":
-      return <LoadingBlock className="ml-auto h-3 w-16 max-w-full" />;
+      return <TextCellSkeleton className="ml-auto w-16" />;
     case "expiration":
-      return <LoadingBlock className="ml-auto h-3 w-24 max-w-full" />;
+      return <TextCellSkeleton className="ml-auto" />;
     default:
+      assertNeverAndIgnore(columnId);
       return null;
   }
 }
 
-const COLUMNS: ColumnDef<TopUpRowData, string>[] = [
+const COLUMNS = [
   {
+    id: "date" as const,
     accessorKey: "date",
     header: "Date",
     enableSorting: false,
@@ -49,6 +56,7 @@ const COLUMNS: ColumnDef<TopUpRowData, string>[] = [
     cell: ({ row }) => <span className="text-sm">{row.original.date}</span>,
   },
   {
+    id: "name" as const,
     accessorKey: "name",
     header: "Top-up",
     enableSorting: false,
@@ -56,6 +64,7 @@ const COLUMNS: ColumnDef<TopUpRowData, string>[] = [
     cell: ({ row }) => <span className="text-sm">{row.original.name}</span>,
   },
   {
+    id: "credits" as const,
     accessorKey: "credits",
     header: "Credits",
     enableSorting: false,
@@ -65,6 +74,7 @@ const COLUMNS: ColumnDef<TopUpRowData, string>[] = [
     ),
   },
   {
+    id: "expiration" as const,
     accessorKey: "expiration",
     header: "Expiration",
     enableSorting: false,
@@ -75,7 +85,7 @@ const COLUMNS: ColumnDef<TopUpRowData, string>[] = [
       </span>
     ),
   },
-];
+] satisfies ColumnDef<TopUpRowData, string>[];
 
 export function TopUpsHistoryTable({ owner }: TopUpsHistoryTableProps) {
   const { topUps, isTopUpsHistoryLoading, isTopUpsHistoryError } =

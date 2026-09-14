@@ -875,7 +875,7 @@ export async function postUserMessage(
     // this drives api_key_name in usage analytics without affecting authorization.
     const enrichedContext: UserMessageContext = {
       ...context,
-      apiKeyId: auth.attributionKeyModelId() ?? auth.key()?.id ?? null,
+      apiKeyId: auth.keyForUsageAttribution()?.id ?? null,
       authMethod: auth.authMethod(),
     };
 
@@ -2656,7 +2656,7 @@ export async function checkMessagesLimit(
     if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
       // Per-API-key credit cap. `isApiKeyBlocked` is flag-aware (rate-limiter
       // counter when the flag is on, Metronome per-key credit state otherwise).
-      const key = auth.key();
+      const key = auth.keyForUsageAttribution();
       if (key) {
         if (await isApiKeyBlocked(auth, { keyModelId: key.id })) {
           return new Err({
@@ -2930,7 +2930,7 @@ async function checkProgrammaticUsageRateLimit(
   // Prevents close-to-0 cap attacks where many messages are sent simultaneously.
   const remainingCapMicroUsd = await getRemainingKeyCapMicroUsd(auth);
   if (remainingCapMicroUsd !== null) {
-    const keyAuth = auth.key();
+    const keyAuth = auth.keyForUsageAttribution();
     if (keyAuth) {
       const remainingCapDollars = remainingCapMicroUsd / 1_000_000;
       const keyMaxMessagesPerMinute = Math.max(
@@ -2991,7 +2991,7 @@ function getMessageRateLimitActor(auth: Authenticator):
     return { type: "user", id: user.id };
   }
 
-  const apiKey = auth.key();
+  const apiKey = auth.keyForUsageAttribution();
   if (apiKey) {
     return { type: "api_key", id: apiKey.id };
   }

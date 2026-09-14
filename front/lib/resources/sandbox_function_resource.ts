@@ -137,10 +137,12 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     this.file = file;
   }
 
-  get frame(): FileResource | null {
-    return this.publicationId !== null && this.file.isFrameV2
-      ? this.file
-      : null;
+  /**
+   * The Frame that owns this function. Non-null by construction: `baseFetch` is the only path
+   * that builds a resource, and it drops any row that does not hydrate into a Frame function.
+   */
+  get frame(): FileResource {
+    return this.file;
   }
 
   get sId(): string {
@@ -299,6 +301,11 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     }
   }
 
+  /**
+   * @cc [owner:davidebbo,label:backend] frame-owned-rows-only
+   * A row MUST NOT be hydrated into a `SandboxFunctionResource` unless its file is a Frames v2
+   * manifest. Callers rely on `frame` being present on every resource this returns.
+   */
   private static async baseFetch(
     auth: Authenticator,
     options: ResourceFindOptions<SandboxFunctionModel> = {}
@@ -324,12 +331,11 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
     );
     const filesById = new Map(files.map((file) => [file.id, file]));
 
-    // A row we cannot hydrate into a served Frame function is dropped: a legacy Pod function
-    // (no publication), or one whose Frame the caller cannot read.
+    // A row whose Frame the caller cannot read is dropped.
     return sandboxFunctions.flatMap((sandboxFunction) => {
       const blob = sandboxFunction.get();
       const file = filesById.get(blob.fileId);
-      if (blob.publicationId === null || !file?.isFrameV2) {
+      if (!file?.isFrameV2) {
         return [];
       }
 
@@ -634,19 +640,10 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
         )
       );
     }
-    const frame = this.frame;
-    if (!frame) {
-      return new Err(
-        new SandboxFunctionInvocationError(
-          "This function is not owned by a Frame: legacy Pod functions can no longer be run.",
-          "frame_runtime_unavailable"
-        )
-      );
-    }
     const authorization = await authorizeSandboxFunctionInvocation(auth, {
       userIdentity: this.userIdentity,
       origin,
-      owner: { kind: "frame", frame },
+      owner: { kind: "frame", frame: this.frame },
     });
     if (!authorization.authorized) {
       return new Err(
@@ -691,9 +688,7 @@ export class SandboxFunctionResource extends BaseResource<SandboxFunctionModel> 
       bundleSha256: this.bundleSha256,
       inputSchema: this.inputSchema,
       outputSchema: this.outputSchema,
-      isActivePublication:
-        this.publicationId !== null &&
-        this.publicationId === activePublicationId,
+      isActivePublication: this.publicationId === activePublicationId,
     };
   }
 

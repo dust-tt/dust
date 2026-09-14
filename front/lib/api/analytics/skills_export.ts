@@ -1,7 +1,6 @@
 import { CONSUMPTION_DIMENSION_FIELDS } from "@app/lib/api/analytics/consumption/scope";
 import {
   bucketsToArray,
-  formatDateFromMillis,
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,6 +9,7 @@ import { isResourceSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { formatDateFromMillis } from "@app/types/shared/utils/date_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { estypes } from "@elastic/elasticsearch";
 

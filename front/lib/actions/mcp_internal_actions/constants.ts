@@ -25,6 +25,7 @@ import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_uti
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { CONVERSATION_SIDE_PANEL_SERVER } from "@app/lib/api/actions/servers/conversation_side_panel/metadata";
+import { CURSOR_CLOUD_AGENTS_SERVER } from "@app/lib/api/actions/servers/cursor_cloud_agents/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { EXA_SERVER } from "@app/lib/api/actions/servers/exa/metadata";
@@ -178,6 +179,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "confluence",
   "conversation_files",
   "conversation_side_panel",
+  "cursor_cloud_agents",
   "files",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
@@ -1262,6 +1264,18 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: AGENT_DELEGATION_SERVER,
+  },
+  cursor_cloud_agents: {
+    id: 1049,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    requiresBearerToken: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: CURSOR_CLOUD_AGENTS_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

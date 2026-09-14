@@ -10,7 +10,7 @@ import {
   CLAUDE_OPUS_5,
   GEMINI_3_1_PRO,
   GEMINI_3_8_FLASH,
-  GLM_5P2,
+  GLM_5P3,
 } from "@app/lib/model_constructors/types/models";
 import {
   isCreditPricedPlanPrefix,
@@ -113,8 +113,8 @@ describe("getWorkspaceFilter", () => {
 
 describe("legacyModelIdToModel", () => {
   it("strips the Fireworks prefix from legacy ids", () => {
-    expect(legacyModelIdToModel("accounts/fireworks/models/glm-5p2")).toBe(
-      GLM_5P2
+    expect(legacyModelIdToModel("accounts/fireworks/models/glm-5p3")).toBe(
+      GLM_5P3
     );
   });
 

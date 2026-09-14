@@ -17,7 +17,7 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
-import moment from "moment-timezone";
+import { formatInTimeZone } from "date-fns-tz";
 import { Op } from "sequelize";
 
 type TopUserExportBucket = {
@@ -126,7 +126,7 @@ export async function fetchUserExportRows({
           messageCount: Math.round(b.unique_messages?.value ?? 0),
           lastMessageSent:
             typeof lastMessageMs === "number"
-              ? moment(lastMessageMs).tz(timezone).format("YYYY-MM-DD")
+              ? formatInTimeZone(lastMessageMs, timezone, "yyyy-MM-dd")
               : "",
           activeDaysCount: Array.isArray(activeDaysBuckets)
             ? activeDaysBuckets.filter((d) => d.doc_count > 0).length
@@ -182,7 +182,7 @@ export async function fetchUserExportRows({
       userEmail: user.email ?? "",
       userStatus: getUserExportStatus({ membership, user, now }),
       lastLoginAt: user.lastLoginAt
-        ? moment(user.lastLoginAt).tz(timezone).format("YYYY-MM-DD")
+        ? formatInTimeZone(user.lastLoginAt, timezone, "yyyy-MM-dd")
         : "",
       messageCount: metrics?.messageCount ?? 0,
       lastMessageSent: metrics?.lastMessageSent ?? "",

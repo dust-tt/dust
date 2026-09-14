@@ -310,6 +310,72 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
+  "cursor_cloud_agents": {
+    "archive_agent": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "cancel_run": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "create_run": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "delete_agent": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_agent": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_agent_usage": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_api_key_info": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_artifact_download_url": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "get_run": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "launch_agent": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_agents": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_artifacts": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_models": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_repositories": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "list_runs": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+    "unarchive_agent": {
+      "freeUsage": false,
+      "toolCostCategory": "advanced",
+    },
+  },
   "data_sources_file_system": {
     "cat": {
       "freeUsage": false,
@@ -2713,6 +2779,24 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   "conversation_side_panel": {
     "open_frame": "never_ask",
     "set_files_side_panel": "never_ask",
+  },
+  "cursor_cloud_agents": {
+    "archive_agent": "low",
+    "cancel_run": "low",
+    "create_run": "high",
+    "delete_agent": "high",
+    "get_agent": "never_ask",
+    "get_agent_usage": "never_ask",
+    "get_api_key_info": "never_ask",
+    "get_artifact_download_url": "never_ask",
+    "get_run": "never_ask",
+    "launch_agent": "high",
+    "list_agents": "never_ask",
+    "list_artifacts": "never_ask",
+    "list_models": "never_ask",
+    "list_repositories": "never_ask",
+    "list_runs": "never_ask",
+    "unarchive_agent": "low",
   },
   "data_sources_file_system": {
     "cat": "never_ask",

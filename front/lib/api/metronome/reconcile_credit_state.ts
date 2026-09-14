@@ -13,7 +13,11 @@ import { fetchPerUserAwuUsage } from "@app/lib/metronome/per_user_usage";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import { getActiveContract } from "@app/lib/metronome/plan_type";
 import { getWorkspacePoolAwuBalance } from "@app/lib/metronome/pool_balance";
-import { correctStackedSeatCreditsFromBalances } from "@app/lib/metronome/stacked_seat_credits";
+import {
+  buildSeatCreditTierMap,
+  computeSeatIdsWithStrays,
+  correctStackedSeatCreditsFromBalances,
+} from "@app/lib/metronome/stacked_seat_credits";
 import { setUserCreditStateReconciled } from "@app/lib/metronome/user_credit_state_machine";
 import {
   expectedPoolCreditStateFromBalance,
@@ -432,7 +436,12 @@ export async function reconcileWorkspaceUserCreditStates({
  * the NEXT segment that only becomes a live balance when that segment starts —
  * exactly when this runs. The N concurrent segment-start events collapse to one
  * execution (see `launchReconcileWorkspaceUserCreditStatesWorkflow`), so we read
- * balances once here. Never throws — logs and returns on failure.
+ * balances once here.
+ *
+ * Reads the per-user usage that drives the carry only for seats that actually
+ * carry a stray (detected from the balances), so the common no-tier-change path
+ * makes no `/v1/usage/groups` call at all. Never throws — logs and returns on
+ * failure.
  */
 export async function reconcileStackedSeatCreditsForWorkspace({
   workspace,
@@ -485,18 +494,11 @@ export async function reconcileStackedSeatCreditsForWorkspace({
   }
 
   const seatIds = [...currentSeatTypeBySeatId.keys()];
-  const [balancesResult, usageResult] = await Promise.all([
-    listMetronomeSeatBalances({
-      metronomeCustomerId,
-      metronomeContractId,
-      seatIds,
-    }),
-    fetchPerUserAwuUsage({
-      workspaceId,
-      metronomeCustomerId,
-      userIds: seatIds,
-    }),
-  ]);
+  const balancesResult = await listMetronomeSeatBalances({
+    metronomeCustomerId,
+    metronomeContractId,
+    seatIds,
+  });
   if (balancesResult.isErr()) {
     logger.error(
       { workspaceId, err: balancesResult.error },
@@ -504,6 +506,42 @@ export async function reconcileStackedSeatCreditsForWorkspace({
     );
     return;
   }
+
+  // Resolve the per-tier materialized credit ids so we can tell, from the
+  // balances alone, which seats carry a stray credit (a slice for a tier other
+  // than their own). Only those seats can need a correction, so we scope the
+  // per-user usage read (bounded by Metronome's 200-group-value cap) to them —
+  // on the common segment-start path no seat changed tier and this is empty, so
+  // we skip the usage read entirely.
+  const tierMapResult = await buildSeatCreditTierMap({
+    metronomeCustomerId,
+    metronomeContractId,
+    contract,
+    logger,
+  });
+  if (tierMapResult.isErr()) {
+    logger.error(
+      { workspaceId, err: tierMapResult.error },
+      "[StackedSeatCredits] failed to build seat-credit tier map"
+    );
+    return;
+  }
+  const tierByCreditId = tierMapResult.value;
+
+  const straySeatIds = computeSeatIdsWithStrays({
+    seatBalances: balancesResult.value,
+    currentSeatTypeBySeatId,
+    tierByCreditId,
+  });
+  if (straySeatIds.length === 0) {
+    return;
+  }
+
+  const usageResult = await fetchPerUserAwuUsage({
+    workspaceId,
+    metronomeCustomerId,
+    userIds: straySeatIds,
+  });
   if (usageResult.isErr()) {
     logger.error(
       { workspaceId, err: usageResult.error },
@@ -512,14 +550,23 @@ export async function reconcileStackedSeatCreditsForWorkspace({
     return;
   }
 
+  const straySeatTypeBySeatId = new Map<string, MembershipSeatType>();
+  for (const seatId of straySeatIds) {
+    const seatType = currentSeatTypeBySeatId.get(seatId);
+    if (seatType) {
+      straySeatTypeBySeatId.set(seatId, seatType);
+    }
+  }
+
   const result = await correctStackedSeatCreditsFromBalances({
     workspaceId,
     metronomeCustomerId,
     metronomeContractId,
     contract,
     seatBalances: balancesResult.value,
-    currentSeatTypeBySeatId,
+    currentSeatTypeBySeatId: straySeatTypeBySeatId,
     usageBySeatId: usageResult.value,
+    tierByCreditId,
     execute: true,
     logger,
   });

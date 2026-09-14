@@ -4,6 +4,73 @@ import { SERVERS } from "@app/lib/api/actions/servers/bm25_tool_search_utils.tes
 import { describe, expect, it } from "vitest";
 
 const QUERIES: LabeledQuery[] = [
+  // --- cursor_cloud_agents ---
+  {
+    query: "launch a cursor cloud coding agent on this github repository",
+    expected: "cursor_cloud_agents.launch_agent",
+  },
+  {
+    query: "list cursor cloud agent IDs statuses and latest runs",
+    expected: "cursor_cloud_agents.list_agents",
+  },
+  {
+    query: "get the configuration for this cursor cloud agent",
+    expected: "cursor_cloud_agents.get_agent",
+  },
+  {
+    query: "send follow-up coding instructions to a cursor cloud agent",
+    expected: "cursor_cloud_agents.create_run",
+  },
+  {
+    query: "list the runs for this cursor cloud agent",
+    expected: "cursor_cloud_agents.list_runs",
+  },
+  {
+    query: "check the status and result of a cursor agent run",
+    expected: "cursor_cloud_agents.get_run",
+  },
+  {
+    query: "cancel the active cursor cloud agent run",
+    expected: "cursor_cloud_agents.cancel_run",
+  },
+  {
+    query: "show token usage for a cursor cloud agent",
+    expected: "cursor_cloud_agents.get_agent_usage",
+  },
+  {
+    query: "list screenshots and artifacts from a cursor agent",
+    expected: "cursor_cloud_agents.list_artifacts",
+  },
+  {
+    query: "download an artifact produced by a cursor agent",
+    expected: "cursor_cloud_agents.get_artifact_download_url",
+  },
+  {
+    query: "archive this cursor cloud agent",
+    expected: "cursor_cloud_agents.archive_agent",
+  },
+  {
+    query: "unarchive this cursor cloud agent",
+    expected: "cursor_cloud_agents.unarchive_agent",
+  },
+  {
+    query: "permanently delete this cursor cloud agent",
+    expected: "cursor_cloud_agents.delete_agent",
+  },
+  {
+    query: "get identifying metadata for the configured cursor api key",
+    expected: "cursor_cloud_agents.get_api_key_info",
+  },
+  {
+    query: "list models available for cursor cloud agents",
+    expected: "cursor_cloud_agents.list_models",
+  },
+  {
+    query: "list github repositories available to cursor agents",
+    expected: "cursor_cloud_agents.list_repositories",
+    maxRank: 3,
+  },
+
   // --- agent_memory ---
   { query: "what do you remember about me", expected: "agent_memory.retrieve" },
   {
@@ -377,6 +444,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "show the open tickets in freshservice",
     expected: "freshservice.list_tickets",
+    maxRank: 2,
   },
   {
     query: "get the details of freshservice ticket 88",
@@ -608,7 +676,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "remind me tomorrow morning to check the launch",
     expected: "wakeups.schedule_wakeup",
-    maxRank: 4,
+    maxRank: 5,
   },
   {
     query: "check back in 2 hours to see if the import finished",
@@ -938,7 +1006,7 @@ const QUERIES: LabeledQuery[] = [
   {
     query: "have a specialist review this pull request for regressions",
     expected: "run_agent.run_CodeReviewer",
-    maxRank: 4,
+    maxRank: 5,
   },
 
   // --- data_warehouses ---

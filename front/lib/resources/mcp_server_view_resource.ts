@@ -1638,6 +1638,12 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     }
   }
 
+  get remoteMCPServerUrl(): string | null {
+    return this.serverType === "remote"
+      ? this.getRemoteMCPServerResource().url
+      : null;
+  }
+
   /**
    * Computes the sIds of the auto internal MCP servers enabled for the workspace. This is
    * the exact set of servers whose views must exist in the system and global spaces.
@@ -1831,10 +1837,14 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
           .map((v) => [v.internalMCPServerId, v])
       );
 
-      // editedByUserId is only meaningful when an admin triggers the creation (workspace
-      // creation, feature-flag toggle); just-in-time hydration from a member read leaves it
-      // null, the views are platform-created.
-      const editedByUserId = auth.isAdmin() ? (auth.user()?.id ?? null) : null;
+      // editedByUserId is only meaningful when a workspace admin triggers the creation
+      // (workspace creation, feature-flag toggle). A superuser acting from poke is not a
+      // member, and just-in-time hydration from a member read is not an admin action: both
+      // leave it null, the views are platform-created.
+      const editedByUserId =
+        auth.isAdmin() && !auth.isDustSuperUser()
+          ? (auth.user()?.id ?? null)
+          : null;
 
       // Unlike MCPServerViewResource.create, this does not clean up regular-space views of
       // the same server when creating the global view. That case is only reachable on a

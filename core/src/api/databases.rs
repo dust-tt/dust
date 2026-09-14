@@ -6,7 +6,10 @@ use std::sync::Arc;
 
 use crate::api::api_state::APIState;
 use crate::{
-    databases::database::{execute_query, get_tables_schema, QueryDatabaseError},
+    databases::{
+        database::{execute_query, get_tables_schema, QueryDatabaseError},
+        remote_databases::remote_database::QueryIdentityContext,
+    },
     project,
     utils::{error_response, APIResponse},
 };
@@ -92,6 +95,8 @@ pub async fn databases_schema_retrieve(
 pub struct DatabaseQueryRunPayload {
     query: String,
     tables: Vec<(i64, String, String)>,
+    #[serde(default)]
+    query_identity: Option<QueryIdentityContext>,
 }
 
 pub async fn databases_query_run(
@@ -131,11 +136,16 @@ pub async fn databases_query_run(
                     None,
                 )
             } else {
+                let query_identity = payload
+                    .query_identity
+                    .as_ref()
+                    .filter(|identity| !identity.is_empty());
                 match execute_query(
                     tables,
                     &payload.query,
                     state.store.clone(),
                     state.databases_store.clone(),
+                    query_identity,
                 )
                 .await
                 {

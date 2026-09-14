@@ -13,6 +13,8 @@ export {
 } from "./AssistantCard";
 export { AttachmentChip } from "./AttachmentChip";
 export { Avatar } from "./Avatar";
+export type { AvatarCellSkeletonProps } from "./AvatarCellSkeleton";
+export { AvatarCellSkeleton } from "./AvatarCellSkeleton";
 export { Bar, BarFooter, BarHeader } from "./Bar";
 export type { BreadcrumbsItem } from "./Breadcrumbs";
 export {
@@ -50,6 +52,8 @@ export {
   CheckboxWithText,
 } from "./Checkbox";
 export { Chip } from "./Chip";
+export type { ChipCellSkeletonProps } from "./ChipCellSkeleton";
+export { ChipCellSkeleton } from "./ChipCellSkeleton";
 export * from "./Citation";
 export { CollapseButton } from "./CollapseButton";
 export {
@@ -301,6 +305,8 @@ export type { FlexSplitButtonProps } from "./SplitButton";
 export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
+export type { TextCellSkeletonProps } from "./TextCellSkeleton";
+export { TextCellSkeleton } from "./TextCellSkeleton";
 export { Timeline, TimelineItem } from "./Timeline";
 export type {
   ToolbarContentGroup,

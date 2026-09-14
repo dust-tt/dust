@@ -1,8 +1,12 @@
-import { shadowCompare } from "@app/lib/api/permissions/shadow";
+import {
+  hasActiveConfigurations,
+  shadowCompare,
+} from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import type { LightAgentConfigurationType } from "@app/types/assistant/agent";
 import type { ModelId } from "@app/types/shared/model_id";
+import xor from "lodash/xor";
 
 function sameIds<T extends ModelId | string>(left: T[], right: T[]): boolean {
   return (
@@ -70,6 +74,11 @@ export async function shadowEditableAgents(
   return legacy;
 }
 
+/**
+ * @cc [owner:philipperolet,label:permissions] active-usage-shadow
+ * Usage shadow checks must ignore differences outside active workspace configurations, without
+ * changing the legacy IDs returned to callers.
+ */
 export async function shadowUsageConfigIds(
   auth: Authenticator,
   legacyModelIds: ModelId[],
@@ -87,6 +96,8 @@ export async function shadowUsageConfigIds(
       callSite,
       workspaceId: auth.getNonNullableWorkspace().sId,
     },
-    equals: sameIds,
+    // Usage queries only read active configurations; historical editor links do not affect them.
+    equals: async (legacy, candidate) =>
+      !(await hasActiveConfigurations(auth, xor(legacy, candidate))),
   });
 }

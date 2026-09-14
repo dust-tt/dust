@@ -9,6 +9,7 @@ import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
+import { removeAwuContractExcessCreditsForContract } from "@app/lib/metronome/payg_excess_credits";
 import {
   remapMembershipSeatTypesForContract,
   syncSeatCount,
@@ -64,6 +65,16 @@ vi.mock("@app/lib/metronome/seats", async () => {
     ...actual,
     remapMembershipSeatTypesForContract: vi.fn(),
     syncSeatCount: vi.fn(),
+  };
+});
+
+vi.mock("@app/lib/metronome/payg_excess_credits", async () => {
+  const actual = await vi.importActual<
+    typeof import("@app/lib/metronome/payg_excess_credits")
+  >("@app/lib/metronome/payg_excess_credits");
+  return {
+    ...actual,
+    removeAwuContractExcessCreditsForContract: vi.fn(),
   };
 });
 
@@ -295,6 +306,9 @@ beforeEach(() => {
   );
   vi.mocked(provisionMetronomeContract).mockResolvedValue(
     new Ok({ metronomeContractId: NEW_CONTRACT_ID, recovered: false })
+  );
+  vi.mocked(removeAwuContractExcessCreditsForContract).mockResolvedValue(
+    new Ok({ archivedCredits: 0 })
   );
   vi.mocked(remapMembershipSeatTypesForContract).mockResolvedValue(
     new Ok(undefined)
@@ -626,6 +640,8 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — guards", () => {
 
     expect(response.status).toBe(200);
     expect(scheduleSubscriptionCancellation).not.toHaveBeenCalled();
+    // PAYG off: the package-default excess buffer is left in place.
+    expect(removeAwuContractExcessCreditsForContract).not.toHaveBeenCalled();
   });
 });
 
@@ -643,6 +659,10 @@ describe("POST /api/poke/workspaces/[wId]/switch_contract — PAYG", () => {
     );
 
     expect(response.status).toBe(200);
+    // PAYG on: the excess buffer is removed from the newly provisioned contract.
+    expect(removeAwuContractExcessCreditsForContract).toHaveBeenCalledWith(
+      expect.objectContaining({ metronomeContractId: NEW_CONTRACT_ID })
+    );
 
     const adminAuth = await Authenticator.internalAdminForWorkspace(
       workspace.sId

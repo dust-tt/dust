@@ -10,6 +10,7 @@ import {
   DRIVE_ITEM_DELTA_SELECTS,
   DRIVE_ITEM_EXPANDS_AND_SELECTS,
   DRIVE_ITEM_EXPANDS_AND_SELECTS_WITH_LABELS,
+  LIST_ITEM_EXPANDS_AND_SELECTS,
 } from "@connectors/connectors/microsoft/lib/types";
 import {
   internalIdFromTypeAndPath,
@@ -28,6 +29,8 @@ import type {
   Drive,
   Entity,
   ItemReference,
+  List,
+  ListItem,
   Organization,
   Site,
   WorkbookRange,
@@ -151,6 +154,92 @@ export async function getDrives(
   const res = nextLink
     ? await clientApiGet(logger, client, nextLink)
     : await clientApiGet(logger, client, `${parentResourcePath}/drives`);
+
+  if ("@odata.nextLink" in res) {
+    return {
+      results: res.value,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+
+  return { results: res.value };
+}
+
+// Only user-created custom lists ("genericList") are synced. SharePoint
+// provisions many built-in lists under other templates — document/picture/page
+// libraries, workflow tasks, publishing reports, calendars, etc. — which are
+// noise as structured tables. Structured system templates (events, tasks,
+// issueTracking, ...) can be added here later if customers ask for them.
+const SYNCABLE_LIST_TEMPLATES = new Set(["genericList"]);
+
+/**
+ * Returns whether a SharePoint list should be synced as a structured table.
+ * Hidden lists are internal SharePoint plumbing; everything that is not a
+ * user-created custom list (`genericList`) is excluded (see
+ * SYNCABLE_LIST_TEMPLATES). Document libraries in particular are already synced
+ * as drives.
+ */
+export function isSyncableList(list: List): boolean {
+  const info = list.list;
+  if (!info || info.hidden) {
+    return false;
+  }
+  return !!info.template && SYNCABLE_LIST_TEMPLATES.has(info.template);
+}
+
+export async function getLists(
+  logger: LoggerInterface,
+  client: Client,
+  parentInternalId: string,
+  nextLink?: string
+): Promise<{ results: List[]; nextLink?: string }> {
+  const { nodeType, itemAPIPath: parentResourcePath } =
+    typeAndPathFromInternalId(parentInternalId);
+
+  if (nodeType !== "site") {
+    throw new Error(
+      `Invalid node type: ${nodeType} for getLists, expected site`
+    );
+  }
+
+  const endpoint = `${parentResourcePath}/lists?$select=id,name,displayName,webUrl,createdDateTime,lastModifiedDateTime,list`;
+
+  const res = nextLink
+    ? await clientApiGet(logger, client, nextLink)
+    : await clientApiGet(logger, client, endpoint);
+
+  const lists: List[] = res.value;
+  const results = lists.filter(isSyncableList);
+
+  if ("@odata.nextLink" in res) {
+    return {
+      results,
+      nextLink: res["@odata.nextLink"],
+    };
+  }
+
+  return { results };
+}
+
+export async function getListItems(
+  logger: LoggerInterface,
+  client: Client,
+  listInternalId: string,
+  nextLink?: string
+): Promise<{ results: ListItem[]; nextLink?: string }> {
+  const { nodeType, itemAPIPath } = typeAndPathFromInternalId(listInternalId);
+
+  if (nodeType !== "list") {
+    throw new Error(
+      `Invalid node type: ${nodeType} for getListItems, expected list`
+    );
+  }
+
+  const endpoint = `${itemAPIPath}/items?${LIST_ITEM_EXPANDS_AND_SELECTS}`;
+
+  const res = nextLink
+    ? await clientApiGet(logger, client, nextLink)
+    : await clientApiGet(logger, client, endpoint);
 
   if ("@odata.nextLink" in res) {
     return {
@@ -366,6 +455,13 @@ export async function getWorksheets(
   return { results: res.value };
 }
 
+/**
+ * @cc [owner:tdraier,label:performance] reject-oversized-before-load
+ * This fetches the worksheet's entire used range as text and materializes it in
+ * memory. Callers MUST reject sheets whose used-range row count exceeds
+ * MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS (probed via getWorksheetUsedRangeRowCount)
+ * before calling this, so an oversized sheet cannot OOM the worker.
+ */
 export async function getWorksheetContent(
   logger: LoggerInterface,
   client: Client,
@@ -385,6 +481,30 @@ export async function getWorksheetContent(
     `${itemApiPath}/usedRange?$select=text`
   );
   return res;
+}
+
+// `$select=rowCount` returns only the used-range dimensions, not the cell
+// contents, so this is a cheap way to know a sheet's size before fetching (and
+// materializing in memory) the full `text` payload via getWorksheetContent.
+export async function getWorksheetUsedRangeRowCount(
+  logger: LoggerInterface,
+  client: Client,
+  internalId: string
+): Promise<number> {
+  const { nodeType, itemAPIPath: itemApiPath } =
+    typeAndPathFromInternalId(internalId);
+
+  if (nodeType !== "worksheet") {
+    throw new Error(
+      `Invalid node type: ${nodeType} for getWorksheetUsedRangeRowCount, expected worksheet`
+    );
+  }
+  const res: WorkbookRange = await clientApiGet(
+    logger,
+    client,
+    `${itemApiPath}/usedRange?$select=rowCount`
+  );
+  return res.rowCount ?? 0;
 }
 
 export async function getMessagesFromConversation(
@@ -569,6 +689,16 @@ export function getWorksheetInternalId(
   return internalIdFromTypeAndPath({
     itemAPIPath: `${parentItemApiPath}/workbook/worksheets/${item.id}`,
     nodeType: "worksheet",
+  });
+}
+
+export function getListInternalId(list: List, siteItemAPIPath: string) {
+  if (!list.id) {
+    throw new Error("Unexpected: no id for list");
+  }
+  return internalIdFromTypeAndPath({
+    nodeType: "list",
+    itemAPIPath: `${siteItemAPIPath}/lists/${list.id}`,
   });
 }
 

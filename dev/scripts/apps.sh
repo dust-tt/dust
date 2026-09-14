@@ -55,4 +55,14 @@ else
   log "DEV_WORKOS_USER_ID/EMAIL not set — skipping seed (add runtime secrets, then restart apps)"
 fi
 
+# Public HTTPS tunnel so E2B sandboxes can reach local front-api (:3000).
+# Soft-fails when NGROK_AUTHTOKEN is missing; URL is also read by apply_local_overrides.
+bash "${SCRIPT_DIR}/ensure-ngrok.sh" || log "ngrok tunnel not ready; sandbox callbacks to local API will fail"
+SBX_DEV_FRONT_URL_FILE="${SBX_DEV_FRONT_URL_FILE:-${DUST_INFRA_LOG_DIR}/sbx-dev-front-url}"
+if [ -f "${SBX_DEV_FRONT_URL_FILE}" ]; then
+  # Trim trailing newline from the persisted URL.
+  export SBX_DEV_FRONT_URL="$(tr -d '\n' <"${SBX_DEV_FRONT_URL_FILE}")"
+  export SBX_DEV_UNRESTRICTED_EGRESS="${SBX_DEV_UNRESTRICTED_EGRESS:-true}"
+fi
+
 exec bash "${SCRIPT_DIR}/apps-inner.sh"

@@ -9,6 +9,8 @@
 
 import type { SkillReference } from "@app/lib/skills/format";
 import { serializeSkillTag } from "@app/lib/skills/format";
+import type { ToolReference } from "@app/lib/tools/format";
+import { serializeToolTag } from "@app/lib/tools/format";
 import type {
   AgentMention,
   MentionType,
@@ -117,13 +119,15 @@ export function extractFromEditorJSON(node?: JSONContent): {
   text: string;
   mentions: RichMention[];
   skills: SkillReference[];
+  tools: ToolReference[];
 } {
   let textContent = "";
   let mentions: RichMention[] = [];
   let skills: SkillReference[] = [];
+  let tools: ToolReference[] = [];
 
   if (!node) {
-    return { text: textContent, mentions, skills };
+    return { text: textContent, mentions, skills, tools };
   }
 
   // Check if the node is of type 'text' and concatenate its text.
@@ -166,6 +170,25 @@ export function extractFromEditorJSON(node?: JSONContent): {
     }
   }
 
+  if (node.type === "toolNode") {
+    const mcpServerViewId = node.attrs?.mcpServerViewId;
+    const toolIcon = node.attrs?.toolIcon;
+    const toolName = node.attrs?.toolName;
+
+    if (isString(mcpServerViewId) && isString(toolName)) {
+      tools.push({
+        id: mcpServerViewId,
+        icon: isString(toolIcon) ? toolIcon : null,
+        name: toolName,
+      });
+      textContent += serializeToolTag({
+        id: mcpServerViewId,
+        icon: isString(toolIcon) ? toolIcon : null,
+        name: toolName,
+      });
+    }
+  }
+
   // If the node is a 'hardBreak' or a 'paragraph', add a newline character.
   if (node.type && ["hardBreak", "paragraph"].includes(node.type)) {
     textContent += "\n";
@@ -184,8 +207,9 @@ export function extractFromEditorJSON(node?: JSONContent): {
       textContent += childResult.text;
       mentions = mentions.concat(childResult.mentions);
       skills = skills.concat(childResult.skills);
+      tools = tools.concat(childResult.tools);
     });
   }
 
-  return { text: textContent, mentions, skills };
+  return { text: textContent, mentions, skills, tools };
 }

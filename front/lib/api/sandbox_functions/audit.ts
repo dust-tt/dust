@@ -1,5 +1,4 @@
 import type { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
-import assert from "assert";
 
 /**
  * Function identifiers for the shared `tool.*` audit events. Function-initiated tool calls reuse
@@ -10,12 +9,7 @@ export function buildSandboxFunctionAuditMetadata(
   invocation: SandboxFunctionInvocationResource
 ): Record<string, string> {
   const { sandboxFunction } = invocation;
-  const frame = sandboxFunction.frame;
-  assert(frame, "Only Frame functions can be invoked.");
-  assert(
-    sandboxFunction.publicationId !== null,
-    "Frame functions must belong to a publication."
-  );
+  const { frame } = sandboxFunction;
 
   return {
     frame_id: frame.sId,

@@ -53,6 +53,7 @@ export const GroupSelector = ({
             icon={Plus}
             label="Add a group"
             isSelect
+            disabled={disabled}
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="min-w-[320px]" collisionPadding={8}>

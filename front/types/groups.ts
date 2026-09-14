@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import type { MembershipSeatType } from "./memberships";
 import type { ModelId } from "./shared/model_id";
 import type { RoleType } from "./user";
 import { isRoleType } from "./user";
@@ -92,6 +93,28 @@ export function isGroupGrantableRole(
   return GROUP_GRANTABLE_ROLES.includes(value as GroupGrantableRole);
 }
 
+// A group grants a billable seat *tier* to its active members — `workspace`,
+// `pro` or `max`. Only the base (monthly) variants are grantable: cadence is not
+// chosen per group. When a member is already on the granted tier the sync keeps
+// their existing cadence (so a manual yearly upgrade is preserved); otherwise
+// they get the monthly seat (or the yearly one if the contract bills only that).
+// `free`/`none` are not grantable, and a null `grantedSeatType` grants no seat.
+// When a user is in several seat-granting groups the highest tier wins (per
+// `SEAT_TYPE_ORDER`). See `GroupResource.computeUserSeatFromGroups`.
+export const GROUP_GRANTABLE_SEAT_TYPES = [
+  "workspace",
+  "pro",
+  "max",
+] as const satisfies readonly MembershipSeatType[];
+export type GroupGrantableSeatType =
+  (typeof GROUP_GRANTABLE_SEAT_TYPES)[number];
+
+export function isGroupGrantableSeatType(
+  value: unknown
+): value is GroupGrantableSeatType {
+  return GROUP_GRANTABLE_SEAT_TYPES.some((seatType) => seatType === value);
+}
+
 export function isGroupKind(value: unknown): value is GroupKind {
   return GROUP_KINDS.includes(value as GroupKind);
 }
@@ -123,6 +146,10 @@ export type GroupType = {
   // Workspace role granted to this group's active members (admin or manager),
   // or null when the group grants no role.
   grantedRole: GroupGrantableRole | null;
+  // Billable seat type granted to this group's active members — a full paid seat
+  // type including cadence (e.g. `pro` or `pro_yearly`), or null when the group
+  // grants no seat.
+  grantedSeatType: GroupGrantableSeatType | null;
   // Member sIds, only populated when explicitly requested
   memberIds?: string[];
 };

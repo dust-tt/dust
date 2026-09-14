@@ -57,6 +57,8 @@ const PREVIEW: BulkSeatChangePreview = {
   immediateDeltaMonthlyCents: 4000,
   deferredDeltaMonthlyCents: 0,
   nextBillingPeriodAt: null,
+  blockedByCapCount: 0,
+  targetMaxSeats: null,
   seatTotals: [
     {
       seatType: "max",

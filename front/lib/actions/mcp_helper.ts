@@ -197,7 +197,7 @@ export function getMcpServerViewDisplayName(
     | MCPServerConfigurationType
 ) {
   if (view.name) {
-    return asDisplayName(view.name);
+    return view.name;
   }
   return getMcpServerDisplayName(view.server, action);
 }

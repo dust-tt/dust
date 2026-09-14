@@ -18,6 +18,8 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import { usePodDefaultSkills, usePodMetadata } from "@app/lib/swr/pods";
 import { useIsWidthConstrained } from "@app/lib/swr/useIsMobile";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { RelativeDateBucket } from "@app/lib/utils/timestamps";
+import { formatRelativeTime } from "@app/lib/utils/timestamps";
 import type { PodConversationListItemType } from "@app/types/api/assistant/conversation/spaces";
 import type { GetSpaceResponseBody } from "@app/types/api/spaces";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
@@ -45,17 +47,8 @@ import {
   Zap,
   ZapOff,
 } from "@dust-tt/sparkle";
-import moment from "moment";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-
-type GroupLabel =
-  | "Today"
-  | "Yesterday"
-  | "Last Week"
-  | "Last Month"
-  | "Last 12 Months"
-  | "Older";
 
 interface PodConversationsTabProps {
   owner: WorkspaceType;
@@ -158,15 +151,17 @@ export function PodConversationsTab({
     initialSearchText: "",
   });
   const isWidthConstrained = useIsWidthConstrained();
-  const conversationsByDate: Record<GroupLabel, PodConversationListItemType[]> =
-    useMemo(() => {
-      return conversations.length
-        ? (getGroupConversationsByDate({
-            conversations,
-            titleFilter: "",
-          }) as Record<GroupLabel, PodConversationListItemType[]>)
-        : ({} as Record<GroupLabel, typeof conversations>);
-    }, [conversations]);
+  const conversationsByDate: Record<
+    RelativeDateBucket,
+    PodConversationListItemType[]
+  > = useMemo(() => {
+    return conversations.length
+      ? (getGroupConversationsByDate({
+          conversations,
+          titleFilter: "",
+        }) as Record<RelativeDateBucket, PodConversationListItemType[]>)
+      : ({} as Record<RelativeDateBucket, typeof conversations>);
+  }, [conversations]);
 
   const navigateToConversation = useCallback(
     (conversation: ConversationWithoutContentType) => {
@@ -331,7 +326,7 @@ export function PodConversationsTab({
                     renderItem={(conversation, selected) => {
                       const conversationLabel =
                         getConversationDisplayTitle(conversation);
-                      const time = moment(conversation.updated).fromNow();
+                      const time = formatRelativeTime(conversation.updated);
 
                       return (
                         <div
@@ -389,7 +384,7 @@ export function PodConversationsTab({
                   ) : (
                     Object.keys(conversationsByDate).map((dateLabel) => {
                       const dateConversations =
-                        conversationsByDate[dateLabel as GroupLabel];
+                        conversationsByDate[dateLabel as RelativeDateBucket];
                       if (dateConversations.length === 0) {
                         return null;
                       }

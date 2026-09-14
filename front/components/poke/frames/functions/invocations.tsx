@@ -1,6 +1,7 @@
 import { InvocationMCPActions } from "@app/components/poke/frames/functions/mcp_actions";
 import { PokeJsonBlock } from "@app/components/poke/sandbox_functions/json_block";
 import type { PokeSandboxFunctionInvocation } from "@app/lib/api/poke/sandbox_functions";
+import { formatCalendarDateTime } from "@app/lib/utils/timestamps";
 import {
   usePokeSandboxFunctionInvocation,
   usePokeSandboxFunctionInvocations,
@@ -25,7 +26,6 @@ import {
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
-import moment from "moment";
 import type { ComponentProps } from "react";
 import { useState } from "react";
 
@@ -234,11 +234,7 @@ function InvocationRow({
       <CollapsibleTrigger>
         <div className="my-2 flex w-full items-center justify-between gap-4">
           <span className="text-sm">
-            {moment(new Date(invocation.createdAt)).calendar(undefined, {
-              sameDay: "[Today at] LTS",
-              lastDay: "[Yesterday at] LTS",
-              lastWeek: "[Last] dddd [at] LTS",
-            })}
+            {formatCalendarDateTime(new Date(invocation.createdAt))}
           </span>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span>{invocation.user ?? "—"}</span>

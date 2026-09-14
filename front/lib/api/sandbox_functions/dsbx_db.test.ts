@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import {
   getDatabaseSchemaOnReadySandbox,
   listDatabasesOnReadySandbox,
+  queryDatabaseOnReadySandbox,
   reconcileDatabaseOnReadySandbox,
 } from "@app/lib/api/sandbox_functions/dsbx_db";
 import { SandboxResource } from "@app/lib/resources/sandbox_resource";
@@ -189,6 +190,50 @@ describe("listDatabasesOnReadySandbox", () => {
     const result = await listDatabasesOnReadySandbox(authenticator, sandbox);
 
     expect(result.isErr()).toBe(true);
+  });
+});
+
+describe("queryDatabaseOnReadySandbox", () => {
+  it("runs a data-changing statement against the supplied owner sandbox", async () => {
+    const { authenticator, sandbox } = await setup();
+    vi.spyOn(sandbox, "exec").mockResolvedValue(
+      new Ok({
+        exitCode: 0,
+        stdout: JSON.stringify({
+          ok: true,
+          columns: [],
+          rows: [],
+          row_count: 0,
+          changes: 2,
+          results_file: null,
+          note: null,
+        }),
+        stderr: "",
+      })
+    );
+
+    const result = await queryDatabaseOnReadySandbox(authenticator, {
+      sandbox,
+      database: "tasks",
+      sql: "UPDATE tasks SET done = 1 WHERE owner = 'me'",
+    });
+
+    expect(result.isOk() && result.value).toEqual({
+      columns: [],
+      rows: [],
+      rowCount: 0,
+      changes: 2,
+      resultsFile: null,
+      note: null,
+    });
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      authenticator,
+      expect.stringContaining("db query -- 'tasks'"),
+      expect.objectContaining({
+        stdin: "UPDATE tasks SET done = 1 WHERE owner = 'me'",
+        user: "agent-proxied",
+      })
+    );
   });
 });
 

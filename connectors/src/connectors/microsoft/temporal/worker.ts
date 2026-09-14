@@ -22,7 +22,10 @@ export async function runMicrosoftWorker() {
     }),
     activities: { ...activities, ...sync_status },
     taskQueue: QUEUE_NAME,
-    maxConcurrentActivityTaskExecutions: 15,
+    // Bounds how many activities (incl. file/spreadsheet sync) run at once on
+    // this single pod; combined with FILES_SYNC_CONCURRENCY it caps concurrent
+    // in-memory spreadsheet loads to stay within the pod memory limit.
+    maxConcurrentActivityTaskExecutions: 8,
     connection,
     maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     reuseV8Context: true,

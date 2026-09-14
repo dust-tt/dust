@@ -32,7 +32,6 @@ import { useConversationWakeUps } from "@app/lib/swr/wakeups";
 import { classNames } from "@app/lib/utils";
 import {
   isRichAgentMention,
-  isRichUserMention,
   toRichAgentMentionType,
 } from "@app/types/assistant/mentions";
 import { pluralize } from "@app/types/shared/utils/string_utils";
@@ -196,17 +195,6 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
       : null;
 
   const autoMentions = useMemo(() => {
-    // If the user's last message contains only human mentions (no agent),
-    // prefill with just those human mentions.
-    const mentionsFromLastUserMessage = lastUserMessage?.richMentions ?? [];
-
-    if (
-      mentionsFromLastUserMessage.length > 0 &&
-      mentionsFromLastUserMessage.every(isRichUserMention)
-    ) {
-      return mentionsFromLastUserMessage;
-    }
-
     // If we are in the agent builder, we show the draft agent as the sticky mention, all the time.
     // Especially since the draft agent have a new sId every time it is updated.
     if (draftAgent) {

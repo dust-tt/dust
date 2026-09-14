@@ -196,8 +196,8 @@ const FILES_TOOLS_COMMON_METADATA = [
       "When more content remains, the footer provides the `byte_offset` to pass back (without `offset`) " +
       "to continue from the exact position where the response stopped, even inside an oversized line. " +
       "For images (JPEG, PNG, GIF), returns a vision block the model can inspect directly. " +
-      "For binary documents (PDF, DOCX, PPTX, etc.), call " +
-      `\`${getPrefixedToolName(FILES_SERVER_NAME, FILES_EXTRACT_TEXT_ACTION_NAME)}\` first to extract their text content.`,
+      "For binary documents (PDF, DOCX, PPTX, etc.), use the corresponding document skill " +
+      "when the Computer is available, or an available text-extraction tool, then read the extracted text file.",
     schema: {
       path: z
         .string()

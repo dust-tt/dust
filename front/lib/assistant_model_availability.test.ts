@@ -359,3 +359,15 @@ describe("model availability by workspace access", () => {
     });
   }
 });
+
+describe("Fireworks model availability", () => {
+  it("does not gate supported models behind feature flags", () => {
+    const gatedModelIds = SUPPORTED_MODEL_CONFIGS.filter(
+      (model) =>
+        model.providerId === "fireworks" &&
+        model.availableIfOneOf?.featureFlag !== undefined
+    ).map((model) => model.modelId);
+
+    expect(gatedModelIds).toEqual([]);
+  });
+});

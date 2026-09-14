@@ -67,19 +67,15 @@ function getInputBarSlashCommandById({
   return null;
 }
 
-export function buildInputBarSlashCommandItems({
+export function getInputBarSlashCommandItems({
   commands,
   includeAttachKnowledge,
   includePickModel,
-  query,
 }: {
   commands: InputBarSlashCommand[];
   includeAttachKnowledge: boolean;
   includePickModel: boolean;
-  query: string;
 }): SlashCommand[] {
-  const normalizedQuery = query.trim().toLowerCase();
-
   return INPUT_BAR_SLASH_COMMAND_ORDER.flatMap((commandId) => {
     const item = getInputBarSlashCommandById({
       commandId,
@@ -88,10 +84,17 @@ export function buildInputBarSlashCommandItems({
       includePickModel,
     });
 
-    if (!item || !matchesInputBarSlashCommandItem(item, normalizedQuery)) {
-      return [];
-    }
-
-    return [item];
+    return item ? [item] : [];
   });
+}
+
+export function filterInputBarSlashCommandItems(
+  items: SlashCommand[],
+  query: string
+): SlashCommand[] {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  return items.filter((item) =>
+    matchesInputBarSlashCommandItem(item, normalizedQuery)
+  );
 }

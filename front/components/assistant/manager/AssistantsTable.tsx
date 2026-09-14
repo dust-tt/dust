@@ -39,6 +39,7 @@ import { isAdmin } from "@app/types/user";
 import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
+  AvatarCellSkeleton,
   Brackets,
   Checkbox,
   Chip,
@@ -48,6 +49,7 @@ import {
   Eye,
   Label,
   LoadingBlock,
+  TextCellSkeleton,
   Tooltip,
   Trash01,
 } from "@dust-tt/sparkle";
@@ -117,27 +119,28 @@ function renderAssistantsTableSkeletonCell(columnId: string, rowIndex: number) {
     case "name":
       return (
         <DataTable.CellContent>
-          <div className="flex flex-row items-center gap-2 py-3">
-            <LoadingBlock className="h-9 w-9 shrink-0 rounded-lg" />
-            <div className="flex min-w-0 grow flex-col">
+          <AvatarCellSkeleton
+            rounded={false}
+            className="py-3"
+            avatarClassName="h-9 w-9 rounded-lg"
+          >
+            <div className="flex min-w-0 flex-col">
               <div className="flex h-5 items-center">
-                <LoadingBlock
-                  className={classNames(
-                    "h-3 max-w-full",
+                <TextCellSkeleton
+                  className={
                     ["w-32", "w-40", "w-28", "w-36", "w-44"][rowVariant]
-                  )}
+                  }
                 />
               </div>
               <div className="flex h-5 items-center">
-                <LoadingBlock
-                  className={classNames(
-                    "h-3 max-w-full",
+                <TextCellSkeleton
+                  className={
                     ["w-56", "w-64", "w-48", "w-60", "w-52"][rowVariant]
-                  )}
+                  }
                 />
               </div>
             </div>
-          </div>
+          </AvatarCellSkeleton>
         </DataTable.CellContent>
       );
     case "model":

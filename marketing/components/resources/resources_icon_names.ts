@@ -201,6 +201,7 @@ export const INTERNAL_ALLOWED_ICONS = [
   "ConfluenceLogo",
   "ContentsquareLogo",
   "CostoryLogo",
+  "CursorLogo",
   "DriveLogo",
   "FathomLogo",
   "FreshserviceLogo",

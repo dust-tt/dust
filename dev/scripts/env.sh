@@ -149,4 +149,16 @@ apply_local_overrides() {
   export DUST_AUTH_REDIRECT_BASE_URL=${BASE_API_URL}
   export NEXT_PUBLIC_DUST_API_URL=${BASE_API_URL}
   export NEXT_PUBLIC_DUST_APP_URL=${BASE_SPA_URL}
+
+  # Written by ensure-ngrok.sh once the local agent has a public URL. Read the
+  # file only — do not query the agent here (env.sh is sourced via BASH_ENV often).
+  SBX_DEV_FRONT_URL_FILE="${SBX_DEV_FRONT_URL_FILE:-${DUST_INFRA_LOG_DIR:-/tmp/dust-infra}/sbx-dev-front-url}"
+  if [ -f "${SBX_DEV_FRONT_URL_FILE}" ]; then
+    export SBX_DEV_FRONT_URL="$(tr -d '\n' <"${SBX_DEV_FRONT_URL_FILE}")"
+    # Agent-proxied sandbox traffic is redirected through the cloud egress
+    # proxy, whose default allowlist is dust.tt only. Adding the tunnel host to
+    # the E2B allowlist is not enough — tear down in-sandbox nftables and use
+    # direct E2B egress so dsbx can reach the ngrok URL.
+    export SBX_DEV_UNRESTRICTED_EGRESS="${SBX_DEV_UNRESTRICTED_EGRESS:-true}"
+  fi
 }

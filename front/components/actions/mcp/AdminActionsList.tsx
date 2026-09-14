@@ -34,7 +34,17 @@ import type {
 import type { SpaceType } from "@app/types/space";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
 import { ANONYMOUS_USER_IMAGE_URL } from "@app/types/user";
-import { Chip, cn, DataTable, EmptyCTA, Spinner } from "@dust-tt/sparkle";
+import type { DataTableSkeletonCellProps } from "@dust-tt/sparkle";
+import {
+  AvatarCellSkeleton,
+  Chip,
+  cn,
+  DataTable,
+  DataTableSkeleton,
+  EmptyCTA,
+  LoadingBlock,
+  TextCellSkeleton,
+} from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
@@ -47,6 +57,46 @@ type RowData = {
   spaces: SpaceType[];
   onClick: () => void;
 };
+
+function AdminActionSkeletonCell({
+  columnId,
+  rowIndex,
+}: DataTableSkeletonCellProps) {
+  switch (columnId) {
+    case "name":
+      return (
+        <AvatarCellSkeleton
+          className="gap-3 py-3"
+          avatarClassName="h-9 w-9 rounded-lg"
+        >
+          <div className="flex h-10 flex-col justify-center gap-2">
+            <TextCellSkeleton
+              className={rowIndex % 2 === 0 ? "w-28" : "w-36"}
+            />
+            <TextCellSkeleton
+              className={rowIndex % 2 === 0 ? "w-3/4" : "w-1/2"}
+            />
+          </div>
+        </AvatarCellSkeleton>
+      );
+    case "usedBy":
+      return (
+        <div className="flex justify-center">
+          <LoadingBlock className="h-6 w-16 rounded-md" />
+        </div>
+      );
+    case "access":
+      return <TextCellSkeleton className="w-20" />;
+    case "account":
+      return <TextCellSkeleton className="w-14" />;
+    case "by":
+      return <LoadingBlock className="h-7 w-7 rounded-full" />;
+    case "lastUpdated":
+      return <TextCellSkeleton className="w-16" />;
+    default:
+      return null;
+  }
+}
 
 const NameCell = ({ row }: { row: RowData }) => {
   const { mcpServer, mcpServerView, isConnected } = row;
@@ -367,6 +417,11 @@ export const AdminActionsList = ({
         header: "Last updated",
         cell: (info: CellContext<RowData, number>) => (
           <DataTable.BasicCellContent
+            tooltip={
+              info.getValue()
+                ? formatTimestampToFriendlyDate(info.getValue(), "long")
+                : undefined
+            }
             label={
               info.getValue()
                 ? formatTimestampToFriendlyDate(info.getValue(), "compact")
@@ -421,8 +476,12 @@ export const AdminActionsList = ({
         )}
 
       {showLoader && (
-        <div className="mt-16 flex justify-center">
-          <Spinner />
+        <div className="pb-4">
+          <DataTableSkeleton
+            columns={columns}
+            SkeletonCell={AdminActionSkeletonCell}
+            rowHeight={64}
+          />
         </div>
       )}
 

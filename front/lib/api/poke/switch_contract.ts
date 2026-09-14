@@ -34,6 +34,7 @@ import {
   ensureMetronomeCustomerForWorkspace,
   provisionMetronomeContract,
 } from "@app/lib/metronome/contracts";
+import { removeAwuContractExcessCreditsForContract } from "@app/lib/metronome/payg_excess_credits";
 import {
   addDuration,
   commitmentAmount,
@@ -934,6 +935,31 @@ async function stepContractEdits({
   return null;
 }
 
+// The excess "buffer" recurring credit is baked into every credit-priced
+// package, so a freshly provisioned contract always carries it. With PAYG
+// enabled we don't want that buffer to exist at all (over-consumption must bill
+// as PAYG, not be silently absorbed), so remove it from the new contract right
+// after provisioning. No-op when PAYG is off — the package-default buffer stays.
+async function stepDisableExcessCreditsForPayg({
+  metronomeCustomerId,
+  metronomeContractId,
+  workspaceId,
+  body,
+}: PostProvisionCtx): Promise<string | null> {
+  if (!body.paygEnabled) {
+    return null;
+  }
+  const result = await removeAwuContractExcessCreditsForContract({
+    metronomeCustomerId,
+    workspaceId,
+    metronomeContractId,
+  });
+  if (result.isErr()) {
+    return `excess_credits: ${result.error.message}`;
+  }
+  return null;
+}
+
 // Persist the future-state subscription in `created_backend_only`; the
 // `contract.start` webhook flips it to `active` (and ends the current one).
 // Skip entirely when alignedStart is in the past: Metronome fires contract.start
@@ -1124,6 +1150,7 @@ async function stepScheduleContractEnd({
  *
  * Post-provision (best-effort — failures collected as warnings):
  *   - Net payment terms, initial credits, pending subscription
+ *   - Excess-credit buffer removal when PAYG is enabled
  *   - Stripe cancellation schedule, seat configuration, seat remap/sync
  *   - Contract end date
  *
@@ -1299,6 +1326,7 @@ export async function switchContract({
   };
 
   warn(await stepContractEdits(ctx));
+  warn(await stepDisableExcessCreditsForPayg(ctx));
   warn(await stepSeatRemap(ctx));
   warn(await stepSeatSync(ctx));
   warn(await stepPendingSubscription(ctx));

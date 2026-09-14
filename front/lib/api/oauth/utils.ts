@@ -3,11 +3,6 @@ import type { OAuthConnectionType, OAuthProvider } from "@app/types/oauth/lib";
 import { isDevelopment } from "@app/types/shared/env";
 import type { ParsedUrlQuery } from "querystring";
 
-// This is the cutoff date for the OAuth redirect base URL.
-// Before this date, we use the api URL.
-// After this date, we use the app URL.
-const CUTOFF_DATE_FOR_OAUTH_REDIRECT_BASE_URL = new Date("2030-01-01");
-
 export function finalizeUriForProvider({
   provider,
   connection,
@@ -22,15 +17,15 @@ export function finalizeUriForProvider({
     }
   }
 
-  if (
-    connection &&
-    connection.created < CUTOFF_DATE_FOR_OAUTH_REDIRECT_BASE_URL.getTime()
-  ) {
-    // TODO(single-tenant): we need to use the api URL here.
-    return config.getOAuthRedirectBaseUrl() + `/oauth/${provider}/finalize`;
-  } else {
-    return config.getOAuthRedirectBaseUrl() + `/oauth/${provider}/finalize`;
+  // A connection knows the URI it was created with, nothing else is as true.
+  // Finalized connections always have one, pendings have it since it is stored
+  // at creation. The only flows that reach the fallback are popups in flight
+  // across the cutover deploy, which fail once and heal on retry.
+  if (connection?.redirect_uri) {
+    return connection.redirect_uri;
   }
+
+  return config.getAppUrl() + `/oauth/${provider}/finalize`;
 }
 
 export function getStringFromQuery(

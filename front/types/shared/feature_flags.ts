@@ -1,9 +1,21 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  dust_lean_agent: {
+    description:
+      "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",
+    stage: "dust_only",
+    owner: "aubin-tchoi",
+  },
   stateful_conversation_window: {
     description:
       "Restore agent-loop context windows from the previous model step checkpoint",
     stage: "dust_only",
     owner: "flvndvd",
+  },
+  group_seat_provisioning: {
+    description:
+      "Map workspace groups to seat types so group membership drives members' seats",
+    stage: "ask_owner",
+    owner: "tdraier",
   },
   dust_filesystem: {
     description:
@@ -104,11 +116,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Access to DeepSeek models (they cannot use tool so can't be selected in the agent builder)",
     stage: "self_serve",
     owner: "fontanierh",
-  },
-  fireworks_new_model_feature: {
-    description: "Access to Fireworks new model",
-    stage: "self_serve",
-    owner: "pmilliotte",
   },
   exa_people_and_company: {
     description: "Access to Exa MCP server (search_people, search_companies)",
@@ -329,11 +336,23 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "tdraier",
   },
+  remote_db_query_identity_labels: {
+    description:
+      "Attach Dust workspace/agent/user sIds as BigQuery job labels and Snowflake QUERY_TAG for remote database cost attribution",
+    stage: "self_serve",
+    owner: "fraggle",
+  },
   restricted_spaces_in_input_bar: {
     description:
       "Allow users to explicitly select Spaces from the conversation input bar.",
     stage: "dust_only",
     owner: "fontanierh",
+  },
+  inline_tool_knowledge_reference: {
+    description:
+      "Insert selected tools and knowledge as inline chips in the conversation input bar and attach them to the conversation at message submit.",
+    stage: "dust_only",
+    owner: "ykmsd",
   },
   disable_formatting_prompt: {
     description:
@@ -423,13 +442,19 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description:
       "Use the consumption analytics ES index instead of the message analytics index for message exports.",
     stage: "ask_owner",
-    owner: "sylvain",
+    owner: "sfriquet",
   },
   enable_new_usage_page: {
     description:
       "Show the new credit-pool usage page (credit pool cards + compact members table) on the front usage page instead of the legacy usage page.",
     stage: "ask_owner",
     owner: "avervaet",
+  },
+  consumption_export_api: {
+    description:
+      "Enable the public API endpoint for raw consumption analytics export (POST /api/v1/w/:wId/analytics/consumption/export).",
+    stage: "ask_owner",
+    owner: "sfriquet",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

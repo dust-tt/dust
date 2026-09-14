@@ -81,7 +81,8 @@ async function resolveSandboxFunctionTool(
       // Null for remote servers, matching the agent path (see `configuration/actions.ts`).
       internalMCPServerId: view.internalMCPServerId,
     },
-    [{ name: tool.name, description: tool.description }]
+    [{ name: tool.name, description: tool.description }],
+    view.remoteMCPServerUrl
   );
   if (toolConfigurationsRes.isErr()) {
     return new Err(

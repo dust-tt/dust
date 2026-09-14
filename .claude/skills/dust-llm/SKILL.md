@@ -71,7 +71,7 @@ Pick the newest sibling (e.g. for "Gemini 3.6 Flash" the sibling is "Gemini 3.5 
 
 | File | What to add |
 |------|-------------|
-| `front/types/assistant/models/{provider}.ts` | `X_MODEL_ID` const + `X_MODEL_CONFIG`. **Set `isLatest: false` on the previous model in the same family** and drop "latest" from its description. |
+| `front/types/assistant/models/{provider}.ts` | `X_MODEL_ID` const + `X_MODEL_CONFIG`. **Set `isLatest: false` on the previous model in the same family** and drop "latest" from its description. **Carry over the predecessor's `availableIfOneOf` / `unavailableIfOneOf`** (see below). |
 | `front/types/assistant/models/models.ts` | Add id to `STATIC_MODEL_IDS` and config to `SUPPORTED_MODEL_CONFIGS` (imports in both alpha blocks). |
 | `front/types/assistant/models/auto.ts` | If the model should participate in `auto`/`auto_fast`/`auto_complex` routing, add a `ModelStreamCandidate`. |
 | `front/lib/model_constructors/types/models.ts` | Add `export const X = "model-id"` and include it in the `MODELS` array (this is the `model_constructors` id type). |
@@ -85,6 +85,47 @@ Adding the id to `STATIC_MODEL_IDS` makes these fail to compile until updated:
 | `front/lib/api/assistant/token_pricing/global.ts` | `CURRENT_MODEL_PRICING` entry (input/output/`cache_read_input_tokens` per 1M) + doc URL comment. |
 | `front/types/assistant/models/static_model_reasoning_efforts.ts` | `{ none, light, medium, high }` support map (`satisfies Record<StaticModelIdType, ReasoningEffortSupport>`). **Must match the config's `supportedReasoningEfforts`** (enforced by `model_tiers.test.ts`). |
 | `front/types/assistant/models/model_tiers.ts` | `STATIC_MODEL_TIERS` entry mapping each supported effort → tier name. |
+
+And one that is **not** compile-forced, so nothing turns red if you skip it:
+
+| File | What to add |
+|------|-------------|
+| `front/lib/api/assistant/token_pricing/eu.ts` | Add the id to `EU_UPLIFT_MODEL_IDS` **if you register a non-global endpoint that prices above its global sibling.** |
+
+> **EU pricing is a second, silent list.** Any endpoint with `region = EUROPE` bills through
+> `inferenceRegion: "eu"` (`inferenceRegionForEndpointRegion` in `front/lib/api/llm/transitionLLM.ts`),
+> and `computeTokensCostForUsageInMicroUsd` then looks the model up in `EU_MODEL_PRICING` —
+> **falling back to the global rate when it is absent.** `EU_UPLIFT_MODEL_IDS` is
+> `satisfies readonly StaticModelIdType[]`, which validates the ids present but does not force
+> completeness, so a missing entry undercharges EU traffic forever with nothing failing.
+>
+> The uplift is per provider and per endpoint, not per model — **compare the two endpoint
+> classes' `tokenPricing` rather than assuming.** Regional agent-platform (Vertex) endpoints
+> charge 10% over global for both Anthropic and Google, so a new Gemini registered on
+> `eu/agent-platform` belongs in the list just as much as a Claude does. OpenAI uplifts only
+> the models whose pricing page lists a data-residency premium (gpt-5.4/5.5/5.6/6 yes,
+> gpt-5/5.1/5.2 no). Mistral's EU endpoints are its native region with no global sibling, so
+> nothing to add.
+>
+> `EU_MODEL_PRICING` derives every field by multiplying the global entry by
+> `EU_PRICING_MULTIPLIER`, so it is only correct when the EU endpoint is a flat 1.1× of global.
+> A non-uniform regional price needs an explicit entry, not the multiplier.
+
+> **Gating is inherited, and lives in two unlinked places.** A new version of a gated model
+> stays gated — being newer is not a reason to release it. Copy the predecessor's
+> `availableIfOneOf` / `unavailableIfOneOf` onto the new `X_MODEL_CONFIG` (gates the picker,
+> via `isModelAvailable`) **and** declare the same flag on every endpoint you add (gates the
+> router, via `isEndpointAvailable`):
+>
+> ```ts
+> static readonly endpointFilter = {
+>   featureFlags: { contains: "fireworks_new_model_feature" as const },
+> };
+> ```
+>
+> Half-gating fails silently either way: hidden but reachable, or pickable but unroutable —
+> and `resolveModel` swaps in a fallback model instead of erroring. Releasing a gated family
+> is a separate, deliberate change.
 
 ### C. `model_constructors` — the endpoint classes (stream)
 
@@ -436,6 +477,8 @@ on `makeScript`. Template: `front/migrations/20260608_migrate_deepseek_r1_models
 - [ ] Model config added; previous family model `isLatest: false`
 - [ ] `STATIC_MODEL_IDS` + `SUPPORTED_MODEL_CONFIGS` + `model_constructors/types/models.ts`
 - [ ] Pricing/tiers/reasoning trio updated (compile-forced)
+- [ ] `EU_UPLIFT_MODEL_IDS` updated if a registered EU endpoint prices above its global sibling
+      (NOT compile-forced — a miss silently bills EU traffic at global rates)
 - [ ] `model_constructors`: config mixin + endpoint class(es) + `stream/index.ts`
 - [ ] Tests: `.test.ts` per endpoint + `setups.ts`
 - [ ] TDD loop run live: widened schema → all cases `null` → full red run → narrowed schema

@@ -63,6 +63,13 @@ export type BulkSeatChangePreview = {
   // changes applying right away vs. at the next credit refresh.
   immediateDeltaMonthlyCents: number;
   deferredDeltaMonthlyCents: number;
+  // Number of members that apply-time will refuse because the target seat is
+  // at its hard cap (`maxSeats`): the inbound assignments beyond the target's
+  // remaining capacity. The `moves`, `seatTotals`, and cost deltas above
+  // already exclude these — they only account for the members that fit.
+  blockedByCapCount: number;
+  // The target seat type's hard cap (`maxSeats`); null when it is uncapped.
+  targetMaxSeats: number | null;
   // ISO date the deferred changes land on (start of the next billing period,
   // i.e. the current cycle's end). Null when there are no deferred moves or
   // the billing period couldn't be resolved.
@@ -159,6 +166,17 @@ function billedDeltaMonthlyCents({
 }
 
 /**
+ * @cc [owner:thomasdraier,label:product] bulk-seat-preview-respects-maxseats
+ * The preview's `maxSeats` accounting MUST mirror the apply path
+ * (`changeSeatTypeForUsersActivity` -> `updateMembershipSeatAndTrack`): walk the
+ * members in `userIds` order against the target seat's live active assigned
+ * count, and reject a member once that count has reached `maxSeats` (immediate
+ * moves consume a slot, deferred moves do not, matching the apply path's live
+ * count). Rejected members MUST be reported via `blockedByCapCount` and MUST NOT
+ * be counted or priced in `moves`/`seatTotals`, so the preview never surfaces an
+ * assignment the apply path will reject with `seat_limit_reached`.
+ */
+/**
  * Compute the impact summary of moving `userIds` to `targetSeatType`: how many
  * members move from each seat type (and whether each move is immediate or
  * deferred to the next credit refresh), plus the monthly-equivalent invoice
@@ -207,40 +225,88 @@ export async function computeBulkSeatChangePreview(
   const seatTypeByUserModelId = new Map(
     memberships.map((m) => [m.userId, m.seatType])
   );
+  const seatTypeBySId = new Map(
+    users.map((user) => [user.sId, seatTypeByUserModelId.get(user.id)])
+  );
 
-  const countByFromSeatType = new Map<MembershipSeatType, number>();
-  for (const user of users) {
-    const fromSeatType = seatTypeByUserModelId.get(user.id);
+  // Walk the selected members in apply order (`userIds`) and mirror the apply
+  // path's per-member cap check: `updateMembershipSeatAndTrack` reads the
+  // target's live active assigned count and rejects a move once it has reached
+  // `maxSeats`. Only immediate moves grow that live count — deferred ones write
+  // a future-dated row and leave it unchanged — so we bump the running count
+  // for immediate moves only. This matches exactly which members the workflow
+  // accepts vs. rejects, including when origin seats are interleaved. A `null`
+  // cap is uncapped.
+  const targetMaxSeats = targetInfo.maxSeats;
+  let runningTargetAssigned = targetInfo.assignedCount;
+  let blockedByCapCount = 0;
+  let memberCount = 0;
+  const kindByFromSeatType = new Map<
+    MembershipSeatType,
+    BulkSeatChangeMoveKind
+  >();
+  const appliedCountByFromSeatType = new Map<MembershipSeatType, number>();
+  const unchangedCountByFromSeatType = new Map<MembershipSeatType, number>();
+  for (const userId of userIds) {
+    const fromSeatType = seatTypeBySId.get(userId);
     if (fromSeatType === undefined) {
       // No active membership (revoked between selection and preview) — the
-      // apply step will skip them too.
+      // apply step skips them too.
       continue;
     }
-    countByFromSeatType.set(
+    memberCount += 1;
+    let kind = kindByFromSeatType.get(fromSeatType);
+    if (kind === undefined) {
+      kind = classifyMove({ fromSeatType, targetSeatType, seatPlans });
+      kindByFromSeatType.set(fromSeatType, kind);
+    }
+    if (kind === "unchanged") {
+      unchangedCountByFromSeatType.set(
+        fromSeatType,
+        (unchangedCountByFromSeatType.get(fromSeatType) ?? 0) + 1
+      );
+      continue;
+    }
+    if (targetMaxSeats !== null && runningTargetAssigned >= targetMaxSeats) {
+      // Target is full: the apply path rejects this member with
+      // `seat_limit_reached`. Surface via `blockedByCapCount`, never priced.
+      blockedByCapCount += 1;
+      continue;
+    }
+    appliedCountByFromSeatType.set(
       fromSeatType,
-      (countByFromSeatType.get(fromSeatType) ?? 0) + 1
+      (appliedCountByFromSeatType.get(fromSeatType) ?? 0) + 1
     );
+    if (kind === "immediate") {
+      runningTargetAssigned += 1;
+    }
   }
 
-  // Classify the moves and accumulate the net headcount delta each phase
-  // applies to each seat type (members leave their current type and join the
-  // target type either immediately or at the next credit refresh).
+  // Build the displayed moves and accumulate the net headcount delta each
+  // phase applies to each seat type, using only the members that fit (the ones
+  // the apply path accepts) so the rows, totals, and cost stay honest.
   const moves: BulkSeatChangeMove[] = [];
-  let memberCount = 0;
   const immediateHeadcountDeltas = new Map<MembershipSeatType, number>();
   const deferredHeadcountDeltas = new Map<MembershipSeatType, number>();
-  for (const [fromSeatType, count] of countByFromSeatType) {
-    memberCount += count;
-    const kind = classifyMove({ fromSeatType, targetSeatType, seatPlans });
+  for (const [fromSeatType, count] of unchangedCountByFromSeatType) {
+    moves.push({
+      fromSeatType,
+      fromSeatName: seatPlans[fromSeatType]?.name ?? null,
+      kind: "unchanged",
+      count,
+    });
+  }
+  for (const [fromSeatType, count] of appliedCountByFromSeatType) {
+    const kind = kindByFromSeatType.get(fromSeatType);
+    if (kind !== "immediate" && kind !== "deferred") {
+      continue;
+    }
     moves.push({
       fromSeatType,
       fromSeatName: seatPlans[fromSeatType]?.name ?? null,
       kind,
       count,
     });
-    if (kind === "unchanged") {
-      continue;
-    }
     const deltas =
       kind === "immediate" ? immediateHeadcountDeltas : deferredHeadcountDeltas;
     deltas.set(fromSeatType, (deltas.get(fromSeatType) ?? 0) - count);
@@ -325,5 +391,7 @@ export async function computeBulkSeatChangePreview(
     immediateDeltaMonthlyCents: Math.round(immediateDeltaMonthlyCents),
     deferredDeltaMonthlyCents: Math.round(deferredDeltaMonthlyCents),
     nextBillingPeriodAt,
+    blockedByCapCount,
+    targetMaxSeats,
   });
 }

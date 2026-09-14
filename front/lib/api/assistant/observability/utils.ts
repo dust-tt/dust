@@ -2,17 +2,16 @@ import { contextOriginFilter } from "@app/lib/api/assistant/observability/contex
 import type { Authenticator } from "@app/lib/auth";
 import { FREE_ORIGINS } from "@app/lib/metronome/events";
 import type { estypes } from "@elastic/elasticsearch";
-import moment from "moment-timezone";
+import { format, startOfDay, subDays } from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
 export function daysToDateRange(
   days: number,
   timezone: string = "UTC"
 ): { startDate: string; endDate: string } {
-  const end = moment.tz(timezone).format("YYYY-MM-DD");
-  const start = moment
-    .tz(timezone)
-    .subtract(days - 1, "days")
-    .format("YYYY-MM-DD");
+  const zonedNow = toZonedTime(new Date(), timezone);
+  const end = format(zonedNow, "yyyy-MM-dd");
+  const start = format(subDays(zonedNow, days - 1), "yyyy-MM-dd");
   return { startDate: start, endDate: end };
 }
 
@@ -23,13 +22,10 @@ export function daysToInstantRange(
   days: number,
   timezone: string = "UTC"
 ): { startDate: string; endDate: string } {
-  const now = moment.tz(timezone);
+  const now = new Date();
+  const zonedStart = startOfDay(subDays(toZonedTime(now, timezone), days - 1));
   return {
-    startDate: now
-      .clone()
-      .subtract(days - 1, "days")
-      .startOf("day")
-      .toISOString(),
+    startDate: fromZonedTime(zonedStart, timezone).toISOString(),
     endDate: now.toISOString(),
   };
 }

@@ -1,3 +1,4 @@
+import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { AgentResource } from "@app/lib/resources/agent_resource";
@@ -78,6 +79,76 @@ async function seedRevokedEditor() {
 describe("repairEditorMemberships", () => {
   afterEach(() => vi.useRealTimers());
 
+  it.each([
+    false,
+    true,
+  ])("repairs never-ended editor memberships (already rejoined: %s)", async (rejoined) => {
+    const { auth, workspace, user, unrelated, grant, target, legacy } =
+      await seedRevokedEditor();
+    // Reproduce workspace-only revocation: no ended memberships remain in the legacy group.
+    await GroupMembershipModel.update(
+      { endAt: null },
+      {
+        where: {
+          workspaceId: workspace.id,
+          groupId: legacy.id,
+          userId: user.id,
+        },
+      }
+    );
+    if (rejoined) {
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+    } else {
+      assert((await target.delete(auth)).isOk());
+    }
+    const before = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    expect(before.getGrantedVerbs("agent", grant.resourceId)).not.toContain(
+      "write"
+    );
+    const spec = {
+      wId: workspace.sId,
+      logger: logger.child({}, { level: "silent" }),
+    };
+    for (const execute of [false, false, true]) {
+      await expect(
+        repairEditorMemberships({ ...spec, execute })
+      ).resolves.toEqual({ ended: 0, active: 1 });
+    }
+    await expect(
+      repairEditorMemberships({ ...spec, execute: true })
+    ).resolves.toEqual({ ended: 0, active: 0 });
+    const repaired = await GroupPermissionResource.findRegularAutoGroupForGrant(
+      auth,
+      grant
+    );
+    assert(repaired);
+    expect(await repaired.isMember(unrelated)).toBe(false);
+    expect((await repaired.getActiveMembers(auth)).map(({ id }) => id)).toEqual(
+      rejoined ? [user.id] : []
+    );
+    const after = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+    expect(
+      after.getGrantedVerbs("agent", grant.resourceId).includes("write")
+    ).toBe(rejoined);
+
+    if (!rejoined) {
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      const restored = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+      expect(restored.getGrantedVerbs("agent", grant.resourceId)).toContain(
+        "write"
+      );
+    }
+  });
+
   it("rebuilds orphans from all current legacy editors and legacy history", async () => {
     const {
       auth,
@@ -110,7 +181,7 @@ describe("repairEditorMemberships", () => {
     };
     await expect(
       repairEditorMemberships({ ...spec, execute: false })
-    ).resolves.toEqual({ ended: 1, active: 1 });
+    ).resolves.toEqual({ ended: 1, active: 2 });
     expect(await target.isMember(staleEditor)).toBe(true);
     expect(
       await GroupPermissionResource.findRegularAutoGroupForGrant(auth, grant)
@@ -118,7 +189,7 @@ describe("repairEditorMemberships", () => {
 
     await expect(
       repairEditorMemberships({ ...spec, execute: true })
-    ).resolves.toEqual({ ended: 1, active: 1 });
+    ).resolves.toEqual({ ended: 1, active: 2 });
     const rebuilt = await GroupPermissionResource.findRegularAutoGroupForGrant(
       auth,
       grant
@@ -131,7 +202,7 @@ describe("repairEditorMemberships", () => {
     expect((await rebuilt.getActiveMembers(auth)).map(({ id }) => id)).toEqual([
       currentEditor.id,
     ]);
-    expect(await rebuilt.isMember(user)).toBe(false);
+    expect(await rebuilt.isMember(user)).toBe(true);
     const history = await GroupMembershipModel.findOne({
       where: {
         workspaceId: workspace.id,

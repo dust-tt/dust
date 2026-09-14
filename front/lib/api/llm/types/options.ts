@@ -97,7 +97,7 @@ export function systemPromptToText(input: SystemPromptInput): string {
   return [...instructions, ...sharedContext, ...ephemeralContext]
     .map((s) => s.content.trim())
     .filter(Boolean)
-    .join("\n");
+    .join("\n\n");
 }
 
 export type LLMParameters<E> = {

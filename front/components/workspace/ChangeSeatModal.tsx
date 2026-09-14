@@ -86,6 +86,10 @@ interface ChangeSeatModalProps {
   // Fired once the seat change has been persisted successfully (not on cancel
   // or a no-op close). Used to resolve a linked upgrade request as approved.
   onSaved?: () => void;
+  // When true, this member's seat is driven by their group membership (a
+  // seat-granting group). Manual changes are locked: the picker is read-only and
+  // Validate is disabled, because the change would be reverted by the group sync.
+  seatManagedByGroup?: boolean;
 }
 
 export function ChangeSeatModal({
@@ -98,6 +102,7 @@ export function ChangeSeatModal({
   isSeatPlanError = false,
   onSavingChange,
   onSaved,
+  seatManagedByGroup = false,
 }: ChangeSeatModalProps) {
   const { subscription } = useAuth();
   const router = useAppRouter();
@@ -258,12 +263,36 @@ export function ChangeSeatModal({
     doFetchSeatChangePreview,
   ]);
 
+  // A seat type is unavailable when it has reached its hard cap (`maxSeats`)
+  // and isn't the member's current seat — the apply path rejects such a move
+  // with `seat_limit_reached` (immediate and deferred alike), so it must not
+  // be selectable here. The member's current seat is never blocked (its own
+  // assignment is already counted, and re-selecting it is a no-op).
+  function isSeatAtCap(
+    seatType: MembershipSeatType,
+    info: SeatTypeInfo
+  ): boolean {
+    return (
+      seatType !== currentSeatType &&
+      info.maxSeats !== null &&
+      info.assignedCount >= info.maxSeats
+    );
+  }
+
   function getBadge(
     seatType: MembershipSeatType,
     info: SeatTypeInfo
   ): React.ReactNode {
     if (seatType === currentSeatType) {
       return <Chip size="xs" color="highlight" label="Current" />;
+    }
+    if (isSeatAtCap(seatType, info)) {
+      return (
+        <span className="text-xs text-warning-600">
+          Seat limit reached ({info.assignedCount.toLocaleString("en-US")}/
+          {info.maxSeats?.toLocaleString("en-US")})
+        </span>
+      );
     }
     const price =
       info.billingFrequency === "annual" ? (
@@ -380,6 +409,10 @@ export function ChangeSeatModal({
     (invoicePreview?.deferredDeltaMonthlyCents ?? 0);
 
   const selectedSeatInfo = selectedSeat ? seatPlans[selectedSeat] : null;
+  const isSelectedSeatAtCap =
+    !!selectedSeat &&
+    !!selectedSeatInfo &&
+    isSeatAtCap(selectedSeat, selectedSeatInfo);
   // Trust the backend's own classification of this specific move (which
   // bucket its delta landed in) over recomputing it client-side.
   const isInvoiceDeltaDeferred =
@@ -423,6 +456,18 @@ export function ChangeSeatModal({
             </ContentMessage>
           ) : (
             <div className="flex flex-col gap-3">
+              {seatManagedByGroup && (
+                <ContentMessage
+                  title="Seat managed by group"
+                  icon={AlertCircle}
+                  variant="info"
+                >
+                  <p>
+                    This member&apos;s seat is set by their group membership.
+                    Change it from the group-seat mapping in Usage settings.
+                  </p>
+                </ContentMessage>
+              )}
               {availableFrequencies.length > 1 && (
                 <div className="mb-1 self-start">
                   {/* Remount per member so the uncontrolled switch picks up the
@@ -454,6 +499,7 @@ export function ChangeSeatModal({
                     isSelected={selectedSeat === seatType}
                     badge={getBadge(seatType, info)}
                     onClick={() => setSelectedSeat(seatType)}
+                    disabled={isSeatAtCap(seatType, info)}
                   />
                 );
               })}
@@ -515,11 +561,13 @@ export function ChangeSeatModal({
             disabled:
               isSeatPlanLoading ||
               isSeatPlanError ||
+              seatManagedByGroup ||
               (useCheckoutPath
                 ? !selectedSeat || !toCheckoutParams(selectedSeat)
                 : isSaving ||
                   !selectedSeat ||
                   isSubscriptionCancelled ||
+                  isSelectedSeatAtCap ||
                   (selectedSeat === currentSeatType &&
                     !isCancellingScheduledChange)),
             onClick: handleValidate,

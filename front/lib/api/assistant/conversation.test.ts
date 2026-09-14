@@ -563,6 +563,38 @@ describe("retryAgentMessage", () => {
     rateLimiterSpy.mockRestore();
   });
 
+  it("should use the attributed key for rate limiting over the system key", async () => {
+    // A run_agent sub-agent re-authenticates with the system key but carries the
+    // originating key as attribution, so its messages must share that key's
+    // bucket instead of pooling every key's sub-agent traffic under the system
+    // key. No user here: the key branch is only reached when auth has none.
+    const systemKey = await KeyFactory.system(globalGroup);
+    const originatingKey = await KeyFactory.regular(globalGroup);
+    const subAgentAuth = (
+      await Authenticator.fromKey(systemKey, workspace.sId)
+    ).withAttributionKey({
+      id: originatingKey.id,
+      name: originatingKey.name,
+    });
+
+    const rateLimiterSpy = vi
+      .spyOn(rateLimiterModule, "rateLimiter")
+      .mockResolvedValue(0);
+
+    await retryAgentMessage(subAgentAuth, {
+      conversationResource,
+      message: agentMessage,
+    });
+
+    expect(rateLimiterSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: `workspace:${workspace.sId}:api_key:${originatingKey.id}:post_user_message`,
+      })
+    );
+
+    rateLimiterSpy.mockRestore();
+  });
+
   it("should use the actor user key when auth has both user and api key", async () => {
     const systemKey = await KeyFactory.system(globalGroup);
     const mixedAuth = auth.exchangeKey(systemKey.toAuthJSON());

@@ -1,8 +1,5 @@
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
-import {
-  validateTailwindCode,
-  validateTypeScriptSyntax,
-} from "@app/lib/api/files/content_validation";
+import { validateTailwindCode } from "@app/lib/api/files/content_validation";
 import { ensureAuthorizedFileAccessForShare } from "@app/lib/api/viz/authorized_file_access";
 import type { FrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { buildFrameBundle } from "@app/lib/api/viz/build_frame_bundle";
@@ -39,7 +36,7 @@ export function isPublishFrameError(
   return error instanceof PublishFrameError;
 }
 
-// Only code files are syntax and Tailwind validated. Assets (.json, .css, images) are skipped.
+// Only code files are Tailwind validated. Assets (.json, .css, images) are skipped.
 const VALIDATED_EXTENSIONS = [".tsx", ".ts", ".jsx", ".js"];
 
 function shouldValidate(relPath: string): boolean {
@@ -51,14 +48,13 @@ function shouldValidate(relPath: string): boolean {
  *
  * Steps, under the per-file edit lock:
  * 1. Bundle from the entry via {@link buildFrameBundle}. Reads are driven by the import graph, so
- *    only files reachable from the entry are pulled from the mount. A validating wrapper checks
- *    each file as it loads: TS/JSX syntax errors are blocking, Tailwind warnings are not and are
- *    returned to the caller. Files in the mount that the frame does not import are never touched.
- * 2. Validate Pod function references and inputs before writing.
- * 3. Refresh the canonical source from the entry so MCP retrieve and the render fallback match.
- * 4. Store the bundle as the processed (rendered) version and record the root and entry in
+ *    only files reachable from the entry are pulled from the mount. The shared Frame builder
+ *    rejects TS/JSX syntax errors. This publisher collects non-blocking Tailwind warnings for the
+ *    caller. Files in the mount that the frame does not import are never touched.
+ * 2. Refresh the canonical source from the entry so MCP retrieve and the render fallback match.
+ * 3. Store the bundle as the processed (rendered) version and record the root and entry in
  *    metadata, which flips {@link FileResource.getRenderableVersion} to "processed".
- * 5. Recompute the authorized-file allowlist against the rendered bundle.
+ * 4. Recompute the authorized-file allowlist against the rendered bundle.
  *
  * `reader` is injected (rather than a `DustFileSystem`) so this stays unit-testable with an
  * in-memory tree. The handler wires `createMountFrameSourceReader`. `entryRelPath` is resolved by
@@ -93,10 +89,8 @@ export async function publishFrame(
   try {
     return await executeWithLock(`file:edit:${file.sId}`, async () => {
       // 1. Bundle from the entry. The bundler walks the import graph and reads each module
-      //    lazily. This wrapper validates and caches every file as it is pulled, so only the
-      //    frame's actual sources are read and checked, never unrelated files in the mount.
+      //    lazily. This wrapper collects Tailwind warnings and caches the source as it is pulled.
       const warnings: ValidationWarning[] = [];
-      const syntaxErrors: string[] = [];
       const cache = new Map<string, string>();
 
       const validatingReader: FrameSourceReader = {
@@ -109,11 +103,6 @@ export async function publishFrame(
 
           cache.set(relPath, content);
           if (shouldValidate(relPath)) {
-            const syntax = validateTypeScriptSyntax(content);
-            if (syntax.isErr()) {
-              syntaxErrors.push(`${relPath}:\n${syntax.error.message}`);
-            }
-
             const tailwind = validateTailwindCode(content);
             if (tailwind.isErr()) {
               warnings.push(...tailwind.error);
@@ -129,35 +118,19 @@ export async function publishFrame(
         reader: validatingReader,
       });
 
-      // Blocking syntax errors take precedence over the generic build failure so the caller
-      // gets the per-file message rather than esbuild's.
-      if (syntaxErrors.length > 0) {
-        return new Err(
-          new PublishFrameError("invalid_syntax", syntaxErrors.join("\n\n"))
-        );
-      }
       if (buildResult.isErr()) {
-        switch (buildResult.error.code) {
+        const { code, message } = buildResult.error;
+        switch (code) {
           case "entry_not_found":
-            return new Err(
-              new PublishFrameError(
-                "entry_not_found",
-                buildResult.error.message
-              )
-            );
+          case "build_failed":
+          case "invalid_syntax":
+            return new Err(new PublishFrameError(code, message));
 
           case "read_failed":
-            return new Err(
-              new PublishFrameError("internal", buildResult.error.message)
-            );
-
-          case "build_failed":
-            return new Err(
-              new PublishFrameError("build_failed", buildResult.error.message)
-            );
+            return new Err(new PublishFrameError("internal", message));
 
           default:
-            assertNever(buildResult.error.code);
+            assertNever(code);
         }
       }
 

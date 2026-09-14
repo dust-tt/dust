@@ -25,7 +25,6 @@ import {
   microCreditsToCredits,
   roundCreditsToMicroCredits,
 } from "@app/lib/credits/units";
-import { listPerUserCreditBalanceAlertsForWorkspace } from "@app/lib/metronome/alerts/per_user_credit_balance";
 import type {
   MetronomeCapAlertIds,
   MetronomeCapAlertInfo,
@@ -35,7 +34,6 @@ import {
   getCachedPerUserCapAlertIds,
   USER_AWU_WARNING_PERCENTAGE,
 } from "@app/lib/metronome/alerts/spend_limits";
-import type { MetronomeAlertRef } from "@app/lib/metronome/alerts/types";
 import { getCachedCustomerPerUserCreditBalances } from "@app/lib/metronome/client";
 import {
   CONTRACT_CREDIT_TYPE_FREE_SEAT,
@@ -175,11 +173,6 @@ export type MemberUsageType = {
   // Id of the companion 80% warning alert for the effective cap. Null when
   // uncapped or no warning alert exists.
   spendLimitWarningAlertId: string | null;
-  // Per-user free-credit balance alerts (low at 20%, empty at 0), each with its
-  // current Metronome status for the `AlertChip` badges. Free seats only, and
-  // only populated when alert links are requested (poke). Null otherwise.
-  freeCreditLowAlert: MetronomeAlertRef | null;
-  freeCreditEmptyAlert: MetronomeAlertRef | null;
   // Per-user seat↔pool credit state (`user_seat` / `on_pool`) persisted on the
   // membership. Surfaced for debugging.
   creditState: UserCreditState;
@@ -1612,8 +1605,6 @@ export async function getMemberUsage({
         : null,
     spendLimitAlertId: null,
     spendLimitWarningAlertId: null,
-    freeCreditLowAlert: null,
-    freeCreditEmptyAlert: null,
     creditState: normalizeUserCreditState(membership.creditState),
     rateLimiterState: null,
     isSpendCapped,
@@ -2244,7 +2235,6 @@ export async function getMembersUsage({
     seatBalanceByUserId,
     { freeBalanceByUserId, freeStartingByUserId },
     perUserSpendLimits,
-    freeCreditAlertIdsByUserId,
     groupNamesByUserModelId,
     groupCapByUserModelId,
   ] = await Promise.all([
@@ -2287,15 +2277,6 @@ export async function getMembersUsage({
         creditUsageConfig?.defaultPoolCapAwuCredits ?? 0,
       includeAlertLinks,
     }),
-    // Free-seat balance-alert ids (low + empty) for deep-linking — poke-only,
-    // gated on `includeAlertLinks` so the customer page doesn't pay the extra
-    // alert-list call.
-    includeAlertLinks && metronomeCustomerId
-      ? listPerUserCreditBalanceAlertsForWorkspace({
-          metronomeCustomerId,
-          workspaceId: workspace.sId,
-        })
-      : Promise.resolve(null),
     GroupResource.listGroupNamesByUserModelIdInWorkspace({
       auth,
       userModelIds: users.map((u) => u.id),
@@ -2306,10 +2287,6 @@ export async function getMembersUsage({
       userModelIds: users.map((u) => u.id),
     }),
   ]);
-  const freeCreditAlertIds =
-    freeCreditAlertIdsByUserId?.isOk() === true
-      ? freeCreditAlertIdsByUserId.value
-      : null;
   const {
     perUserOverrideAlerts,
     defaultCapAwuCreditsBySeatType,
@@ -2475,11 +2452,6 @@ export async function getMembersUsage({
       return [];
     }
     const userId = u.sId;
-    // Free-seat users' seat balance and credit-balance alerts are keyed by the
-    // prefixed Metronome user id; consumed credits come from the analytics
-    // index, keyed by sId for everyone.
-    const metronomeUserId =
-      membership.seatType === "free" ? toFreeMetronomeUserId(userId) : userId;
     const totalConsumedCredits = perUserTotalConsumedCredits.get(userId) ?? 0;
     const seatData = seatDataByUserId.get(userId);
     const awuAllocation = seatData?.awuAllocation ?? 0;
@@ -2587,14 +2559,6 @@ export async function getMembersUsage({
     const spendLimitWarningAlertId = showMetronomeAlerts
       ? (effectiveCapAlert?.warningAlertId ?? null)
       : null;
-
-    // Free-seat balance-alert deep links (poke-only). Only free seats have
-    // these per-user credit-balance alerts. Alerts are keyed by the
-    // free-prefixed Metronome user id.
-    const freeCreditAlerts =
-      showMetronomeAlerts && membership.seatType === "free"
-        ? (freeCreditAlertIds?.get(metronomeUserId) ?? null)
-        : null;
 
     const rateLimiterSpendAwuCredits =
       rateLimiterSpendByUserId.get(userId) ?? 0;
@@ -2716,8 +2680,6 @@ export async function getMembersUsage({
             : null,
         spendLimitAlertId,
         spendLimitWarningAlertId,
-        freeCreditLowAlert: freeCreditAlerts?.low ?? null,
-        freeCreditEmptyAlert: freeCreditAlerts?.empty ?? null,
         creditState: normalizeUserCreditState(membership.creditState),
         rateLimiterState,
         isSpendCapped,

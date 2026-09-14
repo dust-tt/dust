@@ -38,6 +38,7 @@ type Counts = { ended: number; active: number };
 async function fetchEditorGroups(afterGroupId: ModelId, wId?: string) {
   // Walk group IDs, not workspaces. Membership probes use (workspaceId, groupId, status, startAt).
   // Each editor group belongs to one agent; (agentId, version) supports the latest-version check.
+  // Workspace history uses (workspaceId, userId, startAt, endAt), scoped to each editor.
   return frontSequelize.query<EditorGroup>(
     `SELECT DISTINCT g.id AS "groupModelId", c."agentId" AS "agentModelId", w."sId" AS "workspaceId"
      FROM groups g
@@ -51,7 +52,12 @@ async function fetchEditorGroups(afterGroupId: ModelId, wId?: string) {
        AND EXISTS (
          SELECT 1 FROM group_memberships m
          WHERE m."workspaceId" = g."workspaceId" AND m."groupId" = g.id
-           AND m.status = 'active' AND m."endAt" <= NOW()
+           AND m.status = 'active' AND m."startAt" <= NOW()
+           AND (m."endAt" <= NOW() OR EXISTS (
+             SELECT 1 FROM memberships wm
+             WHERE wm."workspaceId" = m."workspaceId" AND wm."userId" = m."userId"
+               AND wm."endAt" <= NOW()
+           ))
        )
        -- Versions share their editor group; retain only the latest non-draft link.
        AND NOT EXISTS (
@@ -112,7 +118,7 @@ async function fetchGroupHistory(
   });
 }
 
-async function fetchActiveWorkspaceUsers(
+async function fetchPastWorkspaceUsers(
   workspaceId: ModelId,
   userIds: ModelId[],
   now: Date,
@@ -125,7 +131,7 @@ async function fetchActiveWorkspaceUsers(
       workspaceId,
       userId: userIds,
       startAt: { [Op.lte]: now },
-      [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+      endAt: { [Op.lte]: now },
     },
     transaction,
   });
@@ -135,14 +141,14 @@ async function fetchActiveWorkspaceUsers(
 function selectMissingMemberships(
   source: MembershipHistory[],
   target: MembershipHistory[],
-  activeUserIds: Set<ModelId>
+  eligibleUserIds: Set<ModelId>
 ): MembershipToCopy[] {
   // Match history by user/end time; any current target row covers current access.
   const existingKeys = new Set(target.map((membership) => membership.key));
   const missing: MembershipToCopy[] = [];
   for (const membership of source) {
-    // Preserve ended history even for revoked users. Current access requires workspace membership.
-    if (membership.active && !activeUserIds.has(membership.userId)) {
+    // Preserve current rows for revoked users too; Authenticator still requires workspace membership.
+    if (membership.active && !eligibleUserIds.has(membership.userId)) {
       continue;
     }
     if (existingKeys.has(membership.key)) {
@@ -182,21 +188,20 @@ async function fetchMissingMemberships(
   const target = memberships.filter(
     (membership) => membership.groupId === targetGroupModelId
   );
-  // Normally only history-bearing users contribute active rows. Orphans need all legacy editors.
-  const eligibleUserIds = [
-    ...new Set(
-      source
-        .filter((membership) => rebuild || !membership.active)
-        .map((membership) => membership.userId)
-    ),
-  ];
-  const activeUserIds = await fetchActiveWorkspaceUsers(
+  // Workspace revocation can leave editor-group memberships unended.
+  const eligibleUserIds = await fetchPastWorkspaceUsers(
     workspaceId,
-    eligibleUserIds,
+    [...new Set(source.map((membership) => membership.userId))],
     now,
     transaction
   );
-  return selectMissingMemberships(source, target, activeUserIds);
+  // Group history also qualifies users. Orphan rebuilds need all legacy editors.
+  for (const membership of source) {
+    if (rebuild || !membership.active) {
+      eligibleUserIds.add(membership.userId);
+    }
+  }
+  return selectMissingMemberships(source, target, eligibleUserIds);
 }
 
 /**
@@ -313,8 +318,9 @@ async function copyMemberships(
  */
 /**
  * @cc [owner:philipperolet,label:security] repair-current-editors-only
- * Active grants MUST only be copied for users currently in both the legacy group and workspace.
- * Limit this to history-bearing users unless rebuilding an orphan, which needs all legacy editors.
+ * Current group memberships MUST come from current legacy memberships, including revoked users.
+ * Limit this to users with ended group or workspace memberships unless rebuilding an orphan.
+ * Copied rows MUST NOT grant permissions while the user's workspace membership is revoked.
  */
 /**
  * @cc [owner:philipperolet,label:migration] atomic-orphan-rebuild

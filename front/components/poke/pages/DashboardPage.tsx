@@ -18,6 +18,7 @@ import {
 } from "@app/lib/plans/plan_codes";
 import { getCellChipColor, getCellDisplay } from "@app/lib/poke/cells";
 import { classNames } from "@app/lib/utils";
+import { formatDate } from "@app/lib/utils/timestamps";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { PokeWorkspaceWithCell } from "@app/poke/swr/search";
 import { usePokeWorkspacesAllCells } from "@app/poke/swr/search";
@@ -32,7 +33,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { ChevronLeft, ChevronRight, UsersIcon } from "lucide-react";
-import moment from "moment";
 import type { ChangeEvent } from "react";
 // biome-ignore lint/correctness/noUnusedImports: ignored using `--suppress`
 import React, { useCallback, useState } from "react";
@@ -89,7 +89,7 @@ function WorkspaceList({
                   <PokeTableRow>
                     <PokeTableCell className="space-x-2" colSpan={3}>
                       <label>
-                        Created: {moment(ws.createdAt).format("DD-MM-YYYY")}
+                        Created: {formatDate(ws.createdAt, "dd-MM-yyyy")}
                       </label>
                     </PokeTableCell>
                   </PokeTableRow>
