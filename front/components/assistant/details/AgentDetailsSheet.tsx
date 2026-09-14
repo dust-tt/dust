@@ -132,10 +132,6 @@ type AgentDetailsSheetProps = {
   user: UserType;
 };
 
-/** @cc [owner:philipperolet,label:product] email-agent-footer
- * Active, readable agents not blocked from email show the same forwarding tip regardless of
- * workspace email enablement, unless the user has dismissed it. The email address is not a link.
- */
 export function AgentDetailsSheet({
   agentId,
   onClose,
