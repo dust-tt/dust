@@ -240,43 +240,6 @@ export class Authenticator {
     }
   }
 
-  /**
-   * Converts an array of arrays of group sIDs into AccessControlList objects.
-   *
-   * This utility method creates standard read/write permissions for each group.
-   *
-   * Permission logic:
-   * - A user must belong to AT LEAST ONE group from EACH sub-array.
-   *   Each sub-array creates a AccessControlList entry that can be satisfied by ANY of its groups.
-   *   Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
-   *
-   * @param groupIds - Array of arrays of group string identifiers
-   * @param workspaceId - The workspace the resources belong to
-   * @returns Array of AccessControlList objects, one entry per sub-array
-   */
-  static createAccessControlListFromGroupIds(
-    groupIds: string[][],
-    workspaceId: ModelId
-  ): AccessControlList[] {
-    const getIdFromSIdOrThrow = (groupId: string) => {
-      const id = getResourceIdFromSId(groupId);
-      if (!id) {
-        throw new Error(`Unexpected: Could not find id for group ${groupId}`);
-      }
-      return id;
-    };
-
-    // Each group in the same entry enforces OR relationship.
-    return groupIds.map((group) => ({
-      roles: [],
-      groups: group.map((groupId) => ({
-        id: getIdFromSIdOrThrow(groupId),
-        permissions: ["read", "write"],
-      })),
-      workspaceId,
-    }));
-  }
-
   static async userFromSession(
     session: SessionWithUser | null
   ): Promise<UserResource | null> {
@@ -1691,9 +1654,6 @@ export class Authenticator {
   // - Role: the caller's workspace role grants `verb` (and the ACL is in the caller's workspace).
   // - grantedVerbs: the caller's own governance verbs, already resolved — used directly, no
   //   membership step (the caller-scoping is baked in when they are resolved).
-  // - groups: legacy group listing, filtered by the caller's membership here at check time. This is
-  //   what lets the same checker also evaluate ACLs that enumerate every group (e.g. the cross-space
-  //   conversation checks).
   private hasPermissionForAcl(
     verb: GrantVerb,
     acl: AccessControlList
@@ -1709,16 +1669,7 @@ export class Authenticator {
     }
 
     // Governance path: the caller's verbs are pre-resolved, so no membership step is needed.
-    if ((acl.grantedVerbs ?? []).includes(verb)) {
-      return true;
-    }
-
-    // Legacy group path: group membership is inherently workspace-scoped, so it needs no gate.
-    return this._groupModelIds.some((groupId) =>
-      (acl.groups ?? []).some(
-        (g) => g.id === groupId && g.permissions.includes(verb)
-      )
-    );
+    return (acl.grantedVerbs ?? []).includes(verb);
   }
 
   key(): KeyAuthType | null {
