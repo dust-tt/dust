@@ -235,6 +235,13 @@ async function processSheet(
   return false;
 }
 
+/**
+ * @cc [owner:tdraier,label:performance] row-capped-ranges
+ * Every value range requested here MUST be capped at
+ * MAXIMUM_NUMBER_OF_GSHEET_ROWS + 1 rows so an oversized sheet is never fully
+ * materialized in memory (which can OOM the worker). The +1 lets getValidRows
+ * still detect and skip sheets that hit the limit.
+ */
 async function batchGetSheets(
   sheetsAPI: sheets_v4.Sheets,
   spreadsheetId: string,
@@ -242,7 +249,13 @@ async function batchGetSheets(
   localLogger: Logger
 ) {
   const maxCharacters = 1500;
-  const sheetRangeKeys = [...sheetRanges.keys()].map((k) => `'${k}'`);
+  // Cap each range at MAXIMUM_NUMBER_OF_GSHEET_ROWS + 1 rows: without an explicit
+  // range the API returns the whole used range, which materializes an oversized
+  // sheet in memory before getValidRows can reject it (and can OOM the worker).
+  // The +1 lets getValidRows still detect and skip sheets that hit the limit.
+  const sheetRangeKeys = [...sheetRanges.keys()].map(
+    (k) => `'${k}'!1:${MAXIMUM_NUMBER_OF_GSHEET_ROWS + 1}`
+  );
   const allRanges: sheets_v4.Schema$ValueRange[] = [];
 
   // Chunk sheet ranges into groups such that the concatenated length of each group doesn't exceed the maxCharacters limit (1500).
@@ -324,9 +337,8 @@ async function getAllSheetsFromSpreadSheet(
 
   localLogger.info("[Spreadsheet] List sheets in spreadsheet.");
 
-  // Construct the sheet ranges using the sheet name. If we do not provide any
-  // specific A1 notation, the API will capture the maximum range available on
-  // the sheet.
+  // Key the sheet ranges by sheet name; batchGetSheets turns each name into a
+  // row-capped A1 range so oversized sheets are never fully loaded.
   const sheetRanges = new Map<string, Sheet>();
   for (const sheet of spreadsheet.sheets ?? []) {
     const { properties } = sheet;

@@ -6,6 +6,7 @@ import {
   getWorksheetContent,
   getWorksheetInternalId,
   getWorksheets,
+  getWorksheetUsedRangeRowCount,
   wrapMicrosoftGraphAPIWithResult,
 } from "@connectors/connectors/microsoft/lib/graph_api";
 import type { DriveItem } from "@connectors/connectors/microsoft/lib/types";
@@ -149,9 +150,6 @@ async function processSheet({
   if (!worksheet.id) {
     return new Err(new Error("Worksheet has no id"));
   }
-  const content = await wrapMicrosoftGraphAPIWithResult(() =>
-    getWorksheetContent(localLogger, client, worksheetInternalId)
-  );
 
   const loggerArgs = {
     sheet: {
@@ -160,6 +158,38 @@ async function processSheet({
       name: worksheet.name,
     },
   };
+
+  // Reject oversized sheets before fetching their content: getWorksheetContent
+  // returns every cell as text and materializes the whole sheet in memory, so a
+  // sheet with hundreds of thousands of rows can OOM the worker before the
+  // post-load guard below ever runs. The row-count probe is a cheap metadata
+  // call. On probe failure we fall back to the existing content path unchanged.
+  const rowCountRes = await wrapMicrosoftGraphAPIWithResult(() =>
+    getWorksheetUsedRangeRowCount(localLogger, client, worksheetInternalId)
+  );
+  if (rowCountRes.isOk()) {
+    if (rowCountRes.value > MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS) {
+      localLogger.info(
+        { ...loggerArgs, rowCount: rowCountRes.value },
+        `[Spreadsheet] Found sheet with more than ${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}, skipping further processing.`
+      );
+
+      return new Err(
+        new Error(
+          `Too many rows in sheet ${worksheet.name}, rows=${rowCountRes.value}, max=${MAXIMUM_NUMBER_OF_EXCEL_SHEET_ROWS}`
+        )
+      );
+    }
+  } else {
+    localLogger.warn(
+      { ...loggerArgs, error: rowCountRes.error },
+      "[Spreadsheet] Failed to fetch sheet row count; proceeding to content fetch."
+    );
+  }
+
+  const content = await wrapMicrosoftGraphAPIWithResult(() =>
+    getWorksheetContent(localLogger, client, worksheetInternalId)
+  );
 
   if (content.isErr()) {
     localLogger.error(
