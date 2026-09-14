@@ -1,4 +1,5 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
+import { localTimeOfDayToUtc } from "@app/lib/api/timezone";
 import { Authenticator } from "@app/lib/auth";
 import { REINFORCEMENT_EXCLUDED_PLAN_CODES } from "@app/lib/plans/plan_codes";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -14,7 +15,6 @@ import {
   WorkflowExecutionAlreadyStartedError,
   WorkflowNotFoundError,
 } from "@temporalio/client";
-import moment from "moment-timezone";
 import { QUEUE_NAME } from "./config";
 import {
   ensureReinforcementWorkspaceSchedulesWorkflow,
@@ -305,8 +305,7 @@ export async function launchEnsureReinforcementSchedulesWorkflow(): Promise<
   const client = await getTemporalClientForFrontNamespace();
   const region = config.getCurrentRegion();
   const timezone = REGION_TIMEZONES[region];
-  const elevenPmInTz = moment.tz("23:00", "HH:mm", timezone);
-  const utcHour = elevenPmInTz.utc().hour();
+  const { hour: utcHour } = localTimeOfDayToUtc(23, 0, timezone);
 
   try {
     await client.workflow.start(ensureReinforcementWorkspaceSchedulesWorkflow, {

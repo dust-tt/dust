@@ -1,4 +1,8 @@
-import { isValidTimezone, timezoneSchema } from "@app/lib/api/timezone";
+import {
+  isValidTimezone,
+  localTimeOfDayToUtc,
+  timezoneSchema,
+} from "@app/lib/api/timezone";
 import { describe, expect, it } from "vitest";
 
 describe("isValidTimezone", () => {
@@ -12,6 +16,34 @@ describe("isValidTimezone", () => {
     expect(isValidTimezone("Not/AZone")).toBe(false);
     expect(isValidTimezone("")).toBe(false);
     expect(isValidTimezone("Pacific Standard Time")).toBe(false);
+  });
+});
+
+describe("localTimeOfDayToUtc", () => {
+  it("passes through unchanged for UTC", () => {
+    expect(localTimeOfDayToUtc(9, 30, "UTC")).toEqual({ hour: 9, minute: 30 });
+  });
+
+  it("applies a half-hour offset", () => {
+    // Midnight IST (UTC+5:30) is 18:30 UTC the previous day.
+    const reference = new Date("2024-06-15T00:00:00Z");
+    expect(localTimeOfDayToUtc(0, 0, "Asia/Kolkata", reference)).toEqual({
+      hour: 18,
+      minute: 30,
+    });
+  });
+
+  it("resolves against the reference date's own DST offset", () => {
+    const winter = new Date("2024-01-15T00:00:00Z"); // EST, UTC-5
+    const summer = new Date("2024-07-15T00:00:00Z"); // EDT, UTC-4
+    expect(localTimeOfDayToUtc(23, 0, "America/New_York", winter)).toEqual({
+      hour: 4,
+      minute: 0,
+    });
+    expect(localTimeOfDayToUtc(23, 0, "America/New_York", summer)).toEqual({
+      hour: 3,
+      minute: 0,
+    });
   });
 });
 

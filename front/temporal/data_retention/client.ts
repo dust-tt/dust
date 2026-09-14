@@ -1,10 +1,10 @@
 import { config, REGION_TIMEZONES } from "@app/lib/api/regions/config";
+import { localTimeOfDayToUtc } from "@app/lib/api/timezone";
 import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { WorkflowHandle } from "@temporalio/client";
-import moment from "moment-timezone";
 
 import { QUEUE_NAME } from "./config";
 import { runSignal } from "./signals";
@@ -14,8 +14,7 @@ import { dataRetentionWorkflow } from "./workflows";
  * Returns the UTC hour corresponding to midnight in the given timezone.
  */
 function getMidnightUtcHour(timezone: string): number {
-  const midnightInTz = moment.tz("00:00", "HH:mm", timezone);
-  return midnightInTz.utc().hour();
+  return localTimeOfDayToUtc(0, 0, timezone).hour;
 }
 
 export async function launchDataRetentionWorkflow(): Promise<

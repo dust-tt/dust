@@ -1,3 +1,4 @@
+import { localTimeOfDayToUtc } from "@app/lib/api/timezone";
 import type { Authenticator } from "@app/lib/auth";
 import type { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { getTemporalClientForAgentNamespace } from "@app/lib/temporal";
@@ -22,7 +23,6 @@ import {
   ScheduleNotFoundError,
   ScheduleOverlapPolicy,
 } from "@temporalio/client";
-import moment from "moment-timezone";
 
 /**
  * Convert local hour/minute in a given IANA timezone to a UTC-based
@@ -34,9 +34,11 @@ function localTimeToUtcMs(
   minute: number,
   timezone: string
 ): number {
-  const localTime = moment.tz({ hour, minute }, timezone);
-  const utcHour = localTime.utc().hour();
-  const utcMinute = localTime.utc().minute();
+  const { hour: utcHour, minute: utcMinute } = localTimeOfDayToUtc(
+    hour,
+    minute,
+    timezone
+  );
   return (utcHour * 60 + utcMinute) * 60 * 1000;
 }
 
