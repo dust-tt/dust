@@ -263,6 +263,7 @@ describe("verbsForGrantAtLevels", () => {
       "read",
       "write",
       "admin",
+      "use",
     ]);
   });
 });
@@ -322,6 +323,7 @@ describe("GroupPermissions wildcard grant", () => {
       "create",
       "publish",
       "read",
+      "use",
       "write",
     ]);
     expect(perms.resolvedVerbsForResource("billing", 1)).toEqual(["admin"]);
@@ -341,6 +343,7 @@ describe("GroupPermissions wildcard grant", () => {
     expect(perms.resolvedVerbsForResource("agent", 42).sort()).toEqual([
       "admin",
       "read",
+      "use",
       "write",
     ]);
   });
