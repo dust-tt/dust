@@ -83,7 +83,7 @@ Statement 172
 */
 SET SESSION statement_timeout = 3000;
 SET SESSION lock_timeout = 3000;
-ALTER TABLE "public"."file_viewer_dailies" ADD CONSTRAINT "file_viewer_dailies_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES workspaces(id) ON UPDATE RESTRICT ON DELETE RESTRICT NOT VALID;
+ALTER TABLE "public"."file_viewer_dailies" ADD CONSTRAINT "file_viewer_dailies_workspaceId_fkey" FOREIGN KEY ("workspaceId") REFERENCES workspaces(id) ON UPDATE CASCADE ON DELETE RESTRICT NOT VALID;
 
 /*
 Statement 173

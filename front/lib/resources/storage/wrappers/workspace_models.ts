@@ -153,10 +153,6 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
   declare workspaceId: ForeignKey<WorkspaceModel["id"]>;
   declare workspace: NonAttribute<WorkspaceModel>;
 
-  /**
-   * @cc [owner:flvndvd,label:backend] restrict-workspace-parent-changes
-   * Workspace foreign keys MUST restrict parent ID updates and deletion.
-   */
   static override init<MS extends ModelStatic<Model>>(
     this: MS,
     attributes: ModelAttributes<InstanceType<MS>>,
@@ -209,19 +205,16 @@ export class WorkspaceAwareModel<M extends Model = any> extends BaseModel<M> {
       WorkspaceModel.hasOne(model, {
         foreignKey: { allowNull: false },
         onDelete: "RESTRICT",
-        onUpdate: "RESTRICT",
       });
     } else {
       WorkspaceModel.hasMany(model, {
         foreignKey: { allowNull: false },
         onDelete: "RESTRICT",
-        onUpdate: "RESTRICT",
       });
     }
 
     model.belongsTo(WorkspaceModel, {
       foreignKey: { allowNull: false },
-      onUpdate: "RESTRICT",
     });
 
     return model;

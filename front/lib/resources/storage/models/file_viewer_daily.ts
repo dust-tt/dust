@@ -14,8 +14,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
  */
 /**
  * @cc [owner:flvndvd,label:backend] viewer-parent-id-changes
- * File and workspace foreign keys MUST reject parent ID changes while viewer rows
- * reference them.
+ * The file foreign key MUST reject parent ID changes while viewer rows reference it.
  */
 export class FileViewerDailyModel extends WorkspaceAwareModel<FileViewerDailyModel> {
   declare createdAt: CreationOptional<Date>;
