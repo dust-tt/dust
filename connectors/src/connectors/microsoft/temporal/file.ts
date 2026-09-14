@@ -354,12 +354,14 @@ export async function syncOneFile({
       maxBodyLength: MAX_FILE_SIZE_TO_DOWNLOAD,
     });
   } catch (error) {
-    // The download exceeded maxContentLength/maxBodyLength. Skip the file rather
-    // than throw: throwing would retry the same oversized download indefinitely
-    // and OOM the worker again.
+    // The download exceeded maxContentLength. Skip the file rather than throw:
+    // throwing would retry the same oversized download indefinitely and OOM the
+    // worker again. Axios reports this as a generic ERR_BAD_RESPONSE, so match the
+    // specific message too to avoid swallowing unrelated bad responses.
     if (
       axios.isAxiosError(error) &&
-      error.code === "ERR_FR_MAX_CONTENT_LENGTH_EXCEEDED"
+      error.code === "ERR_BAD_RESPONSE" &&
+      error.message.includes("maxContentLength")
     ) {
       localLogger.info(
         { fileName: file.name, internalId: documentId },
