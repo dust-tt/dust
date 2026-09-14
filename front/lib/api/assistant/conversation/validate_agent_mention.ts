@@ -234,6 +234,7 @@ export async function validateAgentMention(
   });
 
   const premiumLimitResult = await enforcePremiumModelLimit(auth, {
+    agentConfigurationId,
     user: auth.getNonNullableUser(),
     resolution,
     context: message.context,
