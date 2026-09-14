@@ -2379,6 +2379,25 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     connectionInstructions:
       "StackOne uses OAuth with dynamic client registration. You will be prompted to sign in with your StackOne account in a browser window to authorize access.",
     authMethod: "oauth-dynamic",
+    toolStakes: {
+      stackone_list_accounts: "never_ask",
+      stackone_search_actions: "never_ask",
+      stackone_execute_action: "high",
+    },
+    toolDisplayLabels: {
+      stackone_list_accounts: {
+        running: "Listing accounts on StackOne",
+        done: "Listed accounts on StackOne",
+      },
+      stackone_search_actions: {
+        running: "Searching actions on StackOne",
+        done: "Searched actions on StackOne",
+      },
+      stackone_execute_action: {
+        running: "Executing action on StackOne",
+        done: "Executed action on StackOne",
+      },
+    },
   },
 ];
 
