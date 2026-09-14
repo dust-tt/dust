@@ -3,6 +3,12 @@
   "number_of_replicas": 1,
   "refresh_interval": "30s",
   "analysis": {
+    "char_filter": {
+      "skill_name_nfc": {
+        "type": "icu_normalizer",
+        "name": "nfc"
+      }
+    },
     "filter": {
       "skill_name_words": {
         "type": "word_delimiter_graph",
@@ -12,8 +18,14 @@
       }
     },
     "analyzer": {
+      "skill_name_exact_analyzer": {
+        "type": "custom",
+        "tokenizer": "keyword",
+        "filter": ["icu_folding"]
+      },
       "skill_name_analyzer": {
         "type": "custom",
+        "char_filter": ["skill_name_nfc"],
         "tokenizer": "icu_tokenizer",
         "filter": [
           "skill_name_words",
