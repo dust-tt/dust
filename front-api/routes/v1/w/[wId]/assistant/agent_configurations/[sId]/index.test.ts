@@ -1,3 +1,4 @@
+import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -9,6 +10,10 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 beforeEach(() => {
   vi.spyOn(logger, "warn");
@@ -47,9 +52,7 @@ async function setupTest(
 
   const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
   await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
-  if (grants) {
-    await FeatureFlagFactory.basic(auth, "agent_permission_grants");
-  }
+  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
 
   return { workspace, key, agentConfig, auth, user };
 }

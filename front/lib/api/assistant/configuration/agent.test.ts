@@ -10,6 +10,7 @@ import {
   updateAgentConfigurationsScope,
 } from "@app/lib/api/assistant/configuration/agent";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
+import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
@@ -40,7 +41,11 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe.each([
   false,
@@ -53,9 +58,7 @@ describe.each([
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
-    if (grants) {
-      await FeatureFlagFactory.basic(authenticator, "agent_permission_grants");
-    }
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       {
@@ -97,9 +100,7 @@ describe.each([
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
-    if (grants) {
-      await FeatureFlagFactory.basic(authenticator, "agent_permission_grants");
-    }
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       { scope: "hidden" }
@@ -123,9 +124,7 @@ describe.each([
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
-    if (grants) {
-      await FeatureFlagFactory.basic(authenticator, "agent_permission_grants");
-    }
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const otherAgent = await AgentConfigurationFactory.createTestAgent(
@@ -162,9 +161,7 @@ describe.each([
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
-    if (grants) {
-      await FeatureFlagFactory.basic(authenticator, "agent_permission_grants");
-    }
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const admin = await UserFactory.basic();

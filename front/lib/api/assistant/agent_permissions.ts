@@ -1,4 +1,4 @@
-import { areAgentGrantsEnabled } from "@app/lib/api/assistant/agent_grants";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import {
   hasActiveConfigurations,
   shadowCompare,
@@ -27,7 +27,7 @@ export async function canAdminAgent(
     const resource = AgentResource.fromAgentConfiguration(auth, agent);
     return auth.can("admin", resource);
   };
-  if (await areAgentGrantsEnabled(auth)) {
+  if (!isLegacyAclsEnabled()) {
     return candidate();
   }
   return shadowCompare({
@@ -62,7 +62,7 @@ export async function filterEditableAgents(
       .map((resource) => resource.sId)
       .sort();
   };
-  if (await areAgentGrantsEnabled(auth)) {
+  if (!isLegacyAclsEnabled()) {
     const editableIds = new Set(await candidate());
     return agents.filter((agent) => editableIds.has(agent.sId));
   }
@@ -90,7 +90,7 @@ export async function listAgentUsageConfigIds(
   auth: Authenticator,
   callSite: string
 ): Promise<ModelId[]> {
-  if (await areAgentGrantsEnabled(auth)) {
+  if (!isLegacyAclsEnabled()) {
     return AgentResource.listEditorConfigModelIds(auth);
   }
   const groups = await GroupResource.findAgentIdsForGroups(

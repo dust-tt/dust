@@ -1,6 +1,6 @@
+import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPublicApiMockRequest } from "@app/tests/utils/generic_public_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -9,7 +9,11 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { AgentConfigurationWithSkillsType } from "@app/types/assistant/agent";
 import type { WorkspaceType } from "@app/types/user";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 function listAgents(
   workspace: { sId: string },
@@ -39,12 +43,7 @@ async function setupTestAgents(workspace: WorkspaceType, grants: boolean) {
     workspace.sId
   );
   await SpaceFactory.defaults(internalAdminAuth);
-  if (grants) {
-    await FeatureFlagFactory.basic(
-      internalAdminAuth,
-      "agent_permission_grants"
-    );
-  }
+  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
 
   const agentOwner = await UserFactory.basic();
   await MembershipFactory.associate(workspace, agentOwner, { role: "user" });

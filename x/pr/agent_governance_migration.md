@@ -115,7 +115,7 @@ editor-list, permission, listing, backfill, and cache-related mismatches to reac
 
 Split the implementation into four stacked PRs, each with its focused regression tests:
 
-- **PR 12a: Permissions and usage.** Add the shared rollout flag and switch permission decisions,
+- **PR 12a: Permissions and usage.** Reuse `use_legacy_acls` to switch permission decisions,
   usage filters, and suggestions. Preserve API-key status/space checks and internal-caller access.
 - **PR 12b: Editor reads.** Switch single/batch editor lists, configuration context, and trigger
   cleanup when hiding an agent. Both editor sources exclude former workspace members.
@@ -124,12 +124,13 @@ Split the implementation into four stacked PRs, each with its focused regression
 - **PR 12d: Views and rollout verification.** Switch list/manage/archive filtering and verify
   editor lists, permissions, views, and rollback together.
 
-**Deployment gate:** keep `agent_permission_grants` disabled until all four parts are deployed.
-Only then enable the flag after satisfying the operational gate below, so all reads switch together.
+**Deployment gate:** enable `use_legacy_acls` before deploying the first part and keep it enabled
+until all four parts are deployed. Only then disable it after satisfying the operational gate below,
+so all reads switch together. New pods serve legacy reads until the switch's value loads.
 
 Serve editor lists, permission decisions, and list/manage/archive filtering from grants together
-when `agent_permission_grants` is enabled for a workspace. The existing `use_legacy_acls` kill switch
-overrides this flag and restores legacy reads (within its 60-second refresh window).
+when `use_legacy_acls` is disabled. This switches all workspaces together; enabling the switch
+restores legacy reads within its 60-second refresh window.
 
 The switch also covers configuration context, tool/data-source/webhook usage filters, agent
 suggestions, and editor checks when disabling triggers after an agent becomes hidden. Legacy
@@ -142,9 +143,9 @@ Keep the legacy admin-key condition only on the fallback path until cleanup.
 `getResourceIdsWithVerb()` only enumerates governance grants, not role-based ACL permissions; account
 for that distinction when using it to filter editable agents.
 
-**Operational gate:** after all PR11 comparisons and the backfill report zero mismatches, enable
-`agent_permission_grants` progressively and observe the complete read flip before removing the
-fallback. Roll back by enabling `use_legacy_acls` or disabling the workspace rollout flag.
+**Operational gate:** after all PR11 comparisons and the backfill report zero mismatches, disable
+`use_legacy_acls` and observe the complete read flip before removing the fallback. Roll back by
+enabling `use_legacy_acls`.
 
 ### PR 13: Remove legacy reads and rollout infrastructure
 

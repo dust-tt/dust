@@ -1,5 +1,5 @@
-import { areAgentGrantsEnabled } from "@app/lib/api/assistant/agent_grants";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
@@ -95,7 +95,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       return new Map();
     }
 
-    if (await areAgentGrantsEnabled(auth)) {
+    if (!isLegacyAclsEnabled()) {
       const resources = AgentResource.fromAgentConfigurations(
         auth,
         agentConfigs

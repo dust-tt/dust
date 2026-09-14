@@ -3,6 +3,7 @@ import {
   createPendingAgentConfiguration,
   getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
+import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -13,7 +14,11 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { honoApp } from "@front-api/app";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 vi.mock("@app/lib/api/assistant/recent_authors", () => ({
   agentConfigurationWasUpdatedBy: vi.fn(),
@@ -295,9 +300,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
       role: "admin",
       method: "GET",
     });
-    if (grants) {
-      await FeatureFlagFactory.basic(auth, "agent_permission_grants");
-    }
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     await SpaceFactory.defaults(auth);
 
     const { agentOwnerAuth } = await setupAgentOwner(workspace, "user");
@@ -413,9 +416,7 @@ describe("GET /api/w/:wId/assistant/agent_configurations/:aId - agents the calle
     });
     await SpaceFactory.defaults(auth);
     await FeatureFlagFactory.basic(auth, "admin_can_see_private_entities");
-    if (grants) {
-      await FeatureFlagFactory.basic(auth, "agent_permission_grants");
-    }
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
 
     const { agentOwner, agentOwnerAuth } = await setupAgentOwner(
       workspace,

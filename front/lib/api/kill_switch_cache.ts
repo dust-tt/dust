@@ -12,15 +12,18 @@ import { normalizeError } from "@app/types/shared/utils/error_utils";
  * most once per `refreshIntervalMs`.
  *
  * Consequences: toggling the switch in Poke takes effect within that window on
- * each pod, a pod reads `false` until its first refresh resolves (a few ms
+ * each pod, a pod reads `initialValue` until its first refresh resolves (a few ms
  * after boot), and a Redis or database blip leaves the last known value in
  * place rather than flipping behaviour.
  */
 export function makeCachedKillSwitch(
   type: KillSwitchType,
-  { refreshIntervalMs }: { refreshIntervalMs: number }
+  {
+    refreshIntervalMs,
+    initialValue = false,
+  }: { refreshIntervalMs: number; initialValue?: boolean }
 ): () => boolean {
-  let cachedValue = false;
+  let cachedValue = initialValue;
   let lastRefreshStartedAtMs = 0;
   let refreshing = false;
 

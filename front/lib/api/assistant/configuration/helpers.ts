@@ -1,6 +1,6 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
-import { areAgentGrantsEnabled } from "@app/lib/api/assistant/agent_grants";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { shadowCompare } from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
@@ -230,7 +230,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   const user = auth.user();
   const isRegularApiKey = auth.isKey() && !auth.isSystemKey();
 
-  const useGrants = await areAgentGrantsEnabled(auth);
+  const useGrants = !isLegacyAclsEnabled();
 
   // Compute legacy editor permissions if not provided and grants are not serving reads.
   let editorIds = agentIdsForUserAsEditor;
