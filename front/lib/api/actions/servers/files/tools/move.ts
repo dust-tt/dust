@@ -80,6 +80,7 @@ export async function moveHandler(
     switch (err.code) {
       case "legacy_path":
       case "unauthorized":
+      case "already_exists":
         return new Err(new MCPError(err.message, { tracked: false }));
 
       case "invalid_path":

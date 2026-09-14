@@ -26,7 +26,9 @@ import {
 import { DocumentRenderer } from "@app/types/shared/document_renderer";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import path from "path";
+import { UniqueConstraintError } from "sequelize";
 import type { Readable } from "stream";
 
 // ---------------------------------------------------------------------------
@@ -276,6 +278,80 @@ function inferDestMountInfo(
   return null;
 }
 
+const DEST_PATH_OCCUPIED_MESSAGE =
+  "A registered file already uses the destination path.";
+
+function mergeDestUseCaseMetadata(
+  existing: FileUseCaseMetadata | null | undefined,
+  dest: FileUseCaseMetadata
+): FileUseCaseMetadata {
+  const {
+    conversationId: _conversationId,
+    spaceId: _spaceId,
+    ...preserved
+  } = existing ?? {};
+
+  return {
+    ...preserved,
+    ...dest,
+  };
+}
+
+async function fetchConflictingDestFileResource(
+  auth: Authenticator,
+  dustFs: DustFileSystem,
+  dest: string,
+  sourceFileId?: number
+): Promise<FileResource | undefined> {
+  const destGcsPath = dustFs.toMountFilePath(dest);
+  if (!destGcsPath) {
+    return undefined;
+  }
+
+  const mountPaths = [destGcsPath];
+  const legacyPath = destGcsPath.replace(/\/pods\//, "/projects/");
+  if (legacyPath !== destGcsPath) {
+    mountPaths.push(legacyPath);
+  }
+
+  const occupants = await FileResource.fetchByMountFilePaths(auth, mountPaths);
+  return occupants.find((file) => file.id !== sourceFileId);
+}
+
+async function updateLinkedFileMount(
+  linkedFileResource: FileResource,
+  dest: string,
+  destGcsPath: string,
+  destInfo: { useCase: FileUseCase; useCaseMetadata: FileUseCaseMetadata }
+): Promise<Result<void, DustFileSystemError>> {
+  try {
+    await linkedFileResource.updateMount({
+      destFileName: dest.split("/").pop() ?? dest,
+      destMountFilePath: destGcsPath,
+      destUseCase: destInfo.useCase,
+      destUseCaseMetadata: mergeDestUseCaseMetadata(
+        linkedFileResource.useCaseMetadata,
+        destInfo.useCaseMetadata
+      ),
+    });
+  } catch (error) {
+    if (error instanceof UniqueConstraintError) {
+      return new Err(
+        new DustFileSystemError("already_exists", DEST_PATH_OCCUPIED_MESSAGE)
+      );
+    }
+
+    return new Err(
+      new DustFileSystemError(
+        "internal",
+        `Failed to update the file record after the path change; the destination may exist without an updated file id: ${normalizeError(error).message}`
+      )
+    );
+  }
+
+  return new Ok(undefined);
+}
+
 /**
  * Rename a file at `scopedPath` to `newFileName` (same directory) and sync the
  * linked FileResource record if one exists.
@@ -307,12 +383,15 @@ export async function renameCanonicalFile(
     const destInfo = inferDestMountInfo(dest);
 
     if (destGcsPath && destInfo) {
-      await linkedFileResource.updateMount({
-        destFileName: newFileName,
-        destMountFilePath: destGcsPath,
-        destUseCase: destInfo.useCase,
-        destUseCaseMetadata: destInfo.useCaseMetadata,
-      });
+      const mountResult = await updateLinkedFileMount(
+        linkedFileResource,
+        dest,
+        destGcsPath,
+        destInfo
+      );
+      if (mountResult.isErr()) {
+        return mountResult;
+      }
     }
   }
 
@@ -325,33 +404,61 @@ export async function renameCanonicalFile(
  *
  * Returns the same result shape as `DustFileSystem.move()`.
  */
+/**
+ * @cc [owner:frankaloia,label:backend] dest-occupancy-before-mutate
+ * `moveCanonicalFile` MUST fail with `already_exists` when another FileResource already
+ * owns the destination `mountFilePath`, and MUST NOT copy or delete storage in that case.
+ */
+/**
+ * @cc [owner:frankaloia,label:backend] preserve-non-scope-metadata
+ * When remounting a linked FileResource, `useCaseMetadata` fields other than
+ * `conversationId` and `spaceId` MUST be preserved. Scope fields MUST match the destination.
+ */
+/**
+ * @cc [owner:frankaloia,label:backend] sequelize-conflict-as-already-exists
+ * A `UniqueConstraintError` from `updateMount` MUST be returned as
+ * `DustFileSystemError("already_exists")`, not thrown as Sequelize's generic
+ * "Validation error".
+ */
 export async function moveCanonicalFile(
   auth: Authenticator,
   dustFs: DustFileSystem,
   src: string,
   dest: string
 ): Promise<Result<{ sourceDeletionFailed: boolean }, DustFileSystemError>> {
-  // Look up the linked FileResource before the bytes move.
   const linkedFileResource = await fetchLinkedFileResource(auth, dustFs, src);
+
+  const occupant = await fetchConflictingDestFileResource(
+    auth,
+    dustFs,
+    dest,
+    linkedFileResource?.id
+  );
+  if (occupant) {
+    return new Err(
+      new DustFileSystemError("already_exists", DEST_PATH_OCCUPIED_MESSAGE)
+    );
+  }
 
   const moveResult = await dustFs.move({ src, dest });
   if (moveResult.isErr()) {
     return moveResult;
   }
 
-  // Update the FileResource to point to the new location.
   if (linkedFileResource) {
     const destGcsPath = dustFs.toMountFilePath(dest);
     const destInfo = inferDestMountInfo(dest);
 
     if (destGcsPath && destInfo) {
-      const destFileName = dest.split("/").pop() ?? dest;
-      await linkedFileResource.updateMount({
-        destFileName,
-        destMountFilePath: destGcsPath,
-        destUseCase: destInfo.useCase,
-        destUseCaseMetadata: destInfo.useCaseMetadata,
-      });
+      const mountResult = await updateLinkedFileMount(
+        linkedFileResource,
+        dest,
+        destGcsPath,
+        destInfo
+      );
+      if (mountResult.isErr()) {
+        return mountResult;
+      }
     }
   }
 

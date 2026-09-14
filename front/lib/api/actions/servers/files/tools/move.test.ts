@@ -5,8 +5,11 @@ import {
   makeExtra,
   setupProjectConversation,
 } from "@app/tests/utils/conversation_test_factories";
+import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { frameContentType } from "@app/types/files";
+import { getPodFilesBasePath } from "@app/types/mount_path";
 import { describe, expect, it } from "vitest";
 
 describe("moveHandler", () => {
@@ -95,6 +98,46 @@ describe("moveHandler", () => {
       return;
     }
     expect(result.error.message).toContain("same path");
+  });
+
+  it("returns Err when another FileResource already owns the destination path", async () => {
+    const { auth, conversation, projectId } = await setupProjectConversation();
+    const workspaceId = auth.getNonNullableWorkspace().sId;
+    const dest = `pod-${projectId}/ProjectTracker/ProjectTracker.tsx`;
+
+    await FileFactory.create(auth, null, {
+      contentType: frameContentType,
+      fileName: "ProjectTracker.tsx",
+      fileSize: 128,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { spaceId: projectId },
+      mountFilePath: `${getPodFilesBasePath({
+        workspaceId,
+        podId: projectId,
+      })}ProjectTracker/ProjectTracker.tsx`,
+    });
+
+    fileStorageMock.setFileExists((filePath) =>
+      filePath.includes("/conversations/")
+    );
+
+    const result = await moveHandler(
+      {
+        source: `conversation-${conversation.sId}/ProjectTracker.tsx`,
+        dest,
+      },
+      makeExtra(auth, conversation)
+    );
+
+    expect(result.isErr()).toBe(true);
+    if (!result.isErr()) {
+      return;
+    }
+    expect(result.error.message).toBe(
+      "A registered file already uses the destination path."
+    );
+    expect(result.error.tracked).toBe(false);
   });
 
   it("returns Err for an invalid source path prefix", async () => {
