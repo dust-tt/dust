@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   deleteByQuery: vi.fn(),
   update: vi.fn(),
+  bulk: vi.fn(),
 }));
 
 vi.mock("@app/lib/api/elasticsearch", async () => {
@@ -26,6 +27,7 @@ import {
   deleteSkillDocument,
   deleteWorkspaceSkillDocuments,
   indexSkillDocument,
+  updateSkillSearchActiveUsers,
 } from "@app/lib/skill_search";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 
@@ -88,6 +90,55 @@ describe("skill search indexing", () => {
       },
       refresh: false,
     });
+  });
+
+  it("updates daily usage in batches, resets unused skills, and never upserts", async () => {
+    mocks.bulk.mockResolvedValue({
+      items: [
+        { update: { status: 200 } },
+        { update: { error: { type: "document_missing_exception" } } },
+      ],
+    });
+    const result = await updateSkillSearchActiveUsers({
+      workspaceId: "workspace-1",
+      skillIds: ["skill-1", "skill-2"],
+      activeUsers: { "skill-1": 4 },
+    });
+    expect(result.isOk()).toBe(true);
+    expect(mocks.bulk).toHaveBeenCalledWith({
+      operations: [
+        {
+          update: {
+            _index: "front.skills",
+            _id: "workspace-1_skill-1",
+            retry_on_conflict: 3,
+          },
+        },
+        { doc: { active_users_count: 4 } },
+        {
+          update: {
+            _index: "front.skills",
+            _id: "workspace-1_skill-2",
+            retry_on_conflict: 3,
+          },
+        },
+        { doc: { active_users_count: 0 } },
+      ],
+    });
+  });
+
+  it("propagates daily usage bulk failures for retry", async () => {
+    mocks.bulk.mockResolvedValue({
+      items: [
+        { update: { error: { type: "version_conflict_engine_exception" } } },
+      ],
+    });
+    const result = await updateSkillSearchActiveUsers({
+      workspaceId: "workspace-1",
+      skillIds: ["skill-1"],
+      activeUsers: {},
+    });
+    expect(result.isErr()).toBe(true);
   });
 
   it("scopes workspace deletion by workspace", async () => {

@@ -7,7 +7,12 @@ import {
   deleteSkillDocument,
   deleteWorkspaceSkillDocuments,
   indexSkillDocument,
+  updateSkillSearchActiveUsers,
 } from "@app/lib/skill_search";
+import {
+  fetchSearchActiveUsers,
+  storeCodeDefinedSkillActiveUsers,
+} from "@app/lib/skill_search/usage";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -135,4 +140,49 @@ export async function deleteWorkspaceSkillSearchActivity({
   if (deleteResult.isErr()) {
     throw deleteResult.error;
   }
+}
+
+export async function listSearchUsageWorkspacesActivity(
+  afterWorkspaceModelId: number
+) {
+  return WorkspaceResource.unsafeListWorkspaceIdBatchAfterModelId({
+    lastWorkspaceModelId: afterWorkspaceModelId,
+    limit: 50,
+  });
+}
+
+export async function refreshWorkspaceSearchUsageActivity({
+  workspaceId,
+  evaluatedAtMs,
+}: {
+  workspaceId: string;
+  evaluatedAtMs: number;
+}): Promise<void> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const activeUsers = await fetchSearchActiveUsers({
+    workspaceId,
+    evaluatedAtMs,
+  });
+  if (activeUsers.isErr()) {
+    throw activeUsers.error;
+  }
+  const skills = await SkillResource.listByWorkspace(auth, {
+    status: ["active", "archived"],
+    onlyCustom: true,
+    withInstructions: false,
+    withTools: false,
+    withFileAttachments: false,
+  });
+  // Batch only the Elasticsearch writes; skills with no usage must reset to zero.
+  for (let offset = 0; offset < skills.length; offset += 500) {
+    const updated = await updateSkillSearchActiveUsers({
+      workspaceId,
+      skillIds: skills.slice(offset, offset + 500).map((skill) => skill.sId),
+      activeUsers: activeUsers.value,
+    });
+    if (updated.isErr()) {
+      throw updated.error;
+    }
+  }
+  await storeCodeDefinedSkillActiveUsers(workspaceId, activeUsers.value);
 }
