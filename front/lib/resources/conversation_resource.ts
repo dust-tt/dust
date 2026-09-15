@@ -851,11 +851,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     status: AgentMessageModel["creditSpendCheckpointStatus"];
     isRootAgentMessage: boolean;
   } | null> {
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
 
     const [agentMessageRow, userMessageRow] = await Promise.all([
       MessageModel.findOne({
-        where: { sId: agentMessageId, workspaceId },
+        where: { sId: agentMessageId, workspaceId: workspaceModelId },
         attributes: ["id"],
         include: [
           {
@@ -867,7 +867,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         ],
       }),
       MessageModel.findOne({
-        where: { sId: userMessageId, workspaceId },
+        where: { sId: userMessageId, workspaceId: workspaceModelId },
         attributes: ["id"],
         include: [
           {
