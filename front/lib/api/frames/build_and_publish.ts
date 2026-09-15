@@ -233,6 +233,12 @@ export async function validateFramePublication(
  * publish its artifacts. Function builds stage the snapshot in the invoking conversation's DSBX;
  * source stays in its authoring scope. No publication storage is touched until every build succeeds.
  */
+/**
+ * @cc [owner:davidebbo,label:product] publish-reports-tailwind-warnings
+ * A successful publication MUST return the Tailwind warnings `validateFramePublication` reports for
+ * the same source snapshot. Warnings MUST NOT prevent the publication from being stored and
+ * activated: callers do not need a separate validation pass to learn about them.
+ */
 export async function buildAndPublishFramePublication(
   auth: Authenticator,
   {
@@ -250,7 +256,7 @@ export async function buildAndPublishFramePublication(
   }
 ): Promise<
   Result<
-    { publicationId: string },
+    { publicationId: string; warnings: ValidationWarning[] },
     FramePublicationError | SandboxFunctionError
   >
 > {
@@ -263,12 +269,20 @@ export async function buildAndPublishFramePublication(
     return buildResult;
   }
 
-  return publishFramePublication(auth, {
+  const published = await publishFramePublication(auth, {
     frame,
     functionArtifacts: buildResult.value.functionArtifacts,
     manifest,
     sourceFiles,
     uiBundleCode: buildResult.value.uiBundleCode,
     publishedByAgentConfigurationId,
+  });
+  if (published.isErr()) {
+    return published;
+  }
+
+  return new Ok({
+    publicationId: published.value.publicationId,
+    warnings: collectFrameTailwindWarnings(sourceFiles),
   });
 }

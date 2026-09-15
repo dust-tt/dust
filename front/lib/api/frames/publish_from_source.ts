@@ -59,6 +59,11 @@ export type PublishFrameFromSourceError =
   | PublishFrameError
   | SandboxFunctionError;
 
+type FrameV2PublicationResult = {
+  publicationId: string;
+  warnings: ValidationWarning[];
+};
+
 export type PublishFrameFromSourceResult =
   | {
       kind: "legacy";
@@ -71,6 +76,7 @@ export type PublishFrameFromSourceResult =
       frameId: string;
       sourcePath: string;
       publicationId: string;
+      warnings: ValidationWarning[];
     };
 
 export type ValidateFrameFromSourceResult = {
@@ -168,6 +174,7 @@ export async function publishFrameFromSource(
       frameId: frame.sId,
       sourcePath: normalizedPath,
       publicationId: publication.value.publicationId,
+      warnings: publication.value.warnings,
     });
   }
 
@@ -440,10 +447,7 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
     publishedByAgentConfigurationId?: string;
   }
 ): Promise<
-  Result<
-    { publicationId: string },
-    FramePublicationError | SandboxFunctionError
-  >
+  Result<FrameV2PublicationResult, FramePublicationError | SandboxFunctionError>
 > {
   const source = await readFrameV2SourceWithSourceLockHeld(auth, {
     frame,
@@ -475,10 +479,7 @@ export async function publishFrameV2FromSource(
     publishedByAgentConfigurationId?: string;
   }
 ): Promise<
-  Result<
-    { publicationId: string },
-    FramePublicationError | SandboxFunctionError
-  >
+  Result<FrameV2PublicationResult, FramePublicationError | SandboxFunctionError>
 > {
   if (!frame.isFrameV2) {
     return frameError(
@@ -528,7 +529,7 @@ export async function editFrameV2TextAtSource(
     oldText: string;
     newText: string;
   }
-): Promise<Result<{ publicationId: string }, PublishFrameFromSourceError>> {
+): Promise<Result<FrameV2PublicationResult, PublishFrameFromSourceError>> {
   if (!frame.isFrameV2) {
     return frameError(
       "invalid_frame",
@@ -542,7 +543,7 @@ export async function editFrameV2TextAtSource(
   }
 
   const publication = await withFrameSourceLock<
-    { publicationId: string },
+    FrameV2PublicationResult,
     PublishFrameFromSourceError
   >(frame.sId, async () => {
     const freshFrame = await frame.fetchFreshFrameV2(auth);

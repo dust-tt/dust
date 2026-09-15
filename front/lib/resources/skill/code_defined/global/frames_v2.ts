@@ -28,15 +28,26 @@ manifest. Do not store durable application state in memory; use a Frame database
 
 ## Create a Frame
 
-Use the Computer to create and register a new Frame folder:
+Every Computer command is a round trip that costs the user several seconds. Create, write, and
+publish a new Frame in one Computer command:
 
 \`\`\`bash
-dsbx frame create /files/conversation-<conversationId>/<frame-folder> --name "<name>"
+FRAME=/files/conversation-<conversationId>/<frame-folder>
+dsbx frame create "$FRAME" --name "<name>" &&
+cat > "$FRAME/index.tsx" <<'EOF'
+export default function Frame() {
+  return <main>...</main>;
+}
+EOF
+dsbx frame publish "$FRAME/manifest.json"
 \`\`\`
 
-In a Pod, create it under \`/files/pod-<podId>/...\` instead. The command scaffolds
-\`manifest.json\` and \`index.tsx\`, then assigns the Frame's stable identity. Edit the generated
-source before publishing it.
+In a Pod, create it under \`/files/pod-<podId>/...\` instead. \`dsbx frame create\` scaffolds a
+placeholder \`manifest.json\` and \`index.tsx\`, then assigns the Frame's stable identity. Do not
+read the scaffolded files back: overwrite \`index.tsx\` with the real component, and write the
+manifest, function, and database files in the same command when the Frame declares any. Do not
+split creating, writing, and publishing across separate commands unless a step needs the output of
+the previous one.
 
 Always pass canonical \`/files/conversation-<conversationId>/...\` or
 \`/files/pod-<podId>/...\` paths to \`dsbx frame\`. Do not pass the convenience aliases
@@ -330,38 +341,39 @@ loading, empty, and error states for every call. Function failures are
 
 ## Publish a Frame
 
-Before publishing a Frames v2 manifest, validate the current source snapshot:
-
-\`\`\`bash
-dsbx frame validate /files/<scope>/<frame-folder>/manifest.json
-\`\`\`
-
-This runs the manifest, UI, function-build, database-contract, Tailwind, and function-reference
-checks without storing or activating a publication or reconciling Frame-owned databases. Fix every
-error and Tailwind warning before publishing.
-
-A function name passed to \`usePodFunction\` or \`usePodFunctionMutation\` as a literal must be a
-bare name declared in this manifest; otherwise validation and \`publish\` fail, listing the declared
-names, where the call would otherwise fail only once a viewer triggers it. A name computed at run
-time is not checked.
-
-Use this command instead of \`bun build\` or an ad hoc regex scan: those do not use the Frame build
-context and report unrelated or noisy failures.
-
-There is no separate v2 function publish. Once validation is clean, publish the manifest once; the
-UI source, all declared functions, and all declared database schemas are built or reconciled,
-stored, and activated atomically:
+There is no separate v2 function publish. Publish the manifest once; the UI source, all declared
+functions, and all declared database schemas are built or reconciled, stored, and activated
+atomically:
 
 \`\`\`bash
 dsbx frame publish /files/<scope>/<frame-folder>/manifest.json
 \`\`\`
 
+Publishing runs the manifest, UI, function-build, database-contract, Tailwind, and
+function-reference checks. If any check, function build, or database reconciliation fails, no
+partial publication becomes active: fix the reported error and rerun the command. Do not run a
+separate validation pass before publishing; it repeats the same build and only adds latency.
+
+A successful publish reports Tailwind warnings in its output. Fix every warning and publish again.
+
+To run the same checks without storing or activating a publication or reconciling Frame-owned
+databases, for example while iterating on a Frame whose active publication must keep working, use:
+
+\`\`\`bash
+dsbx frame validate /files/<scope>/<frame-folder>/manifest.json
+\`\`\`
+
+A function name passed to \`usePodFunction\` or \`usePodFunctionMutation\` as a literal must be a
+bare name declared in this manifest; otherwise \`publish\` and \`validate\` fail, listing the
+declared names, where the call would otherwise fail only once a viewer triggers it. A name computed
+at run time is not checked.
+
+Use these commands instead of \`bun build\` or an ad hoc regex scan: those do not use the Frame
+build context and report unrelated or noisy failures.
+
 After a successful publish, call \`conversation_side_panel.open_frame\` exactly once with \`path\`
 set to the same canonical \`/files/...\` manifest path. This opens the Frame for the user and adds
 the Frame card to the answer. Do not parse the Frame ID from the CLI output for this step.
-
-If validation, a function build, or database reconciliation fails, no partial publication becomes
-active. Fix the reported error and rerun the command.
 
 Call a function from the active publication by its stable Frame ID and bare manifest name:
 
@@ -390,7 +402,8 @@ initial scope.
 ## Editing
 
 Use the Computer to edit Frame source. Never run concurrent file mutations against the same path:
-read the current file, apply one edit, then start the next edit to that file.
+read the current file, apply one edit, then start the next edit to that file. Apply the edit and
+run \`dsbx frame publish\` in the same Computer command.
 
 When fixing a validation or runtime problem, preserve working structure and make the smallest
 targeted edit. Do not replace an entire UI or function for a localized state, schema, or styling bug.
