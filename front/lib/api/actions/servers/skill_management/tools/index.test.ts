@@ -11,7 +11,11 @@ const {
   mockHasFiles,
   mockListForAgentLoop,
   mockUpsertSkillFilesToConversation,
+  mockGetGlobalSkillById,
+  mockPrewarmConversationSandbox,
 } = vi.hoisted(() => ({
+  mockGetGlobalSkillById: vi.fn(),
+  mockPrewarmConversationSandbox: vi.fn(),
   mockEnableForAgent: vi.fn(),
   mockBatchFetchUsedBySkills: vi.fn(),
   mockFetchByName: vi.fn(),
@@ -23,6 +27,16 @@ const {
 
 vi.mock("@app/lib/api/skills/conversation_files", () => ({
   upsertSkillFilesToConversation: mockUpsertSkillFilesToConversation,
+}));
+
+vi.mock("@app/lib/resources/skill/code_defined/global_registry", () => ({
+  GlobalSkillsRegistry: {
+    getById: mockGetGlobalSkillById,
+  },
+}));
+
+vi.mock("@app/lib/api/sandbox/prewarm", () => ({
+  prewarmConversationSandbox: mockPrewarmConversationSandbox,
 }));
 
 vi.mock("@app/lib/resources/skill/skill_resource", () => ({
@@ -91,6 +105,7 @@ describe("skill_management enable_skill tool", () => {
     mockBatchFetchUsedBySkills.mockResolvedValue(new Map());
     mockFetchByName.mockResolvedValue(null);
     mockFetchByIds.mockResolvedValue([]);
+    mockGetGlobalSkillById.mockResolvedValue(null);
     mockEnableForAgent.mockResolvedValue({ wasAlreadyEnabled: false });
     mockHasFiles.mockReturnValue(true);
     mockUpsertSkillFilesToConversation.mockResolvedValue(
@@ -154,6 +169,36 @@ describe("skill_management enable_skill tool", () => {
         "conversation-conversation-id/skills/commit/SKILL.md"
       );
     }
+  });
+
+  it("warms the Computer when the enabled skill asks for it", async () => {
+    mockGetGlobalSkillById.mockResolvedValue({
+      warmsConversationSandbox: vi.fn().mockResolvedValue(true),
+    });
+
+    const result = await getTool().handler(
+      { skillName: "commit" },
+      makeExtra()
+    );
+
+    expect(result.isOk()).toBe(true);
+    expect(mockGetGlobalSkillById).toHaveBeenCalledWith(auth, skill.sId);
+    expect(mockPrewarmConversationSandbox).toHaveBeenCalledWith(
+      auth,
+      conversation
+    );
+  });
+
+  it("does not warm the Computer when the skill declines or is custom", async () => {
+    mockGetGlobalSkillById.mockResolvedValue({
+      warmsConversationSandbox: vi.fn().mockResolvedValue(false),
+    });
+    await getTool().handler({ skillName: "commit" }, makeExtra());
+
+    mockGetGlobalSkillById.mockResolvedValue(null);
+    await getTool().handler({ skillName: "commit" }, makeExtra());
+
+    expect(mockPrewarmConversationSandbox).not.toHaveBeenCalled();
   });
 
   it("skips file loading when the skill has no attachments", async () => {

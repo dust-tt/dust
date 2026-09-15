@@ -238,7 +238,41 @@ export async function ensureConversationSandboxReady(
   return ensureConversationSandboxReadyWithScope(auth, conversation);
 }
 
+const inFlightConversationReady = new Map<
+  string,
+  Promise<
+    Result<EnsureSandboxReadyWithScopeResult<ConversationSandboxScope>, Error>
+  >
+>();
+
+/**
+ * @cc [owner:davidebbo,label:concurrency] single-in-flight-ready-per-conversation
+ * Within one process, concurrent calls for the same workspace and conversation MUST share one
+ * in-flight readiness run and receive its result. The mount and egress phases run outside the
+ * lifecycle lock, so a second run started while a first creation is still setting the sandbox up
+ * would refresh a mount that does not exist yet.
+ */
 export async function ensureConversationSandboxReadyWithScope(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<
+  Result<EnsureSandboxReadyWithScopeResult<ConversationSandboxScope>, Error>
+> {
+  const key = `${auth.getNonNullableWorkspace().sId}:${conversation.sId}`;
+  const inFlight = inFlightConversationReady.get(key);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const run = ensureConversationSandboxReadyUncached(
+    auth,
+    conversation
+  ).finally(() => inFlightConversationReady.delete(key));
+  inFlightConversationReady.set(key, run);
+  return run;
+}
+
+async function ensureConversationSandboxReadyUncached(
   auth: Authenticator,
   conversation: ConversationWithoutContentType
 ): Promise<
