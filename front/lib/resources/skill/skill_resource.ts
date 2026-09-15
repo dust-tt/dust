@@ -4469,18 +4469,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * @cc [owner:aubin-tchoi,label:backend;security] skill-search-serialization
-   * Serialize a custom skill fetched with tools, using supplied editor and last-editor sIds
-   * and usage values; perform no I/O and never include private skill content.
+   * Serialize a custom skill fetched with tools, deriving user sIds from supplied editor
+   * resources; perform no I/O and never include private skill content.
    */
   toSearchDocument(
     workspace: LightWorkspaceType,
     {
-      lastEditedByUserId,
-      editorIds,
+      lastEditedByUser,
+      editors,
       activeUsersCount,
     }: {
-      lastEditedByUserId: string | null;
-      editorIds: readonly string[];
+      lastEditedByUser: UserResource | null;
+      editors: readonly UserResource[];
       activeUsersCount: number | null;
     }
   ): SkillSearchDocument {
@@ -4496,8 +4496,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       name: this.name,
       description: this.userFacingDescription,
       icon: this.icon,
-      last_edited_by_user_id: lastEditedByUserId,
-      editor_ids: uniq(editorIds).sort(),
+      last_edited_by_user_id: lastEditedByUser?.sId ?? null,
+      editor_ids: uniq(editors.map((editor) => editor.sId)).sort(),
       requested_space_ids: this.requestedSpaceIds.map((id) =>
         SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
       ),
