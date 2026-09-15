@@ -52,6 +52,7 @@ export function buildAgentMessageConsumptionAnalyticsDocuments(
     items: input.items,
     runs: input.runs,
     usages: input.usages,
+    useStoredReconciledCredits: input.usesStoredReconciledCredits ?? false,
   });
   if (allocationResult.isErr()) {
     return allocationResult;

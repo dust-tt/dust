@@ -24,31 +24,43 @@ function serverNameForAction(action: AgentMCPActionResource): string {
 
 function summarizeToolConsumptionItem({
   allocation,
-  item,
+  items,
 }: {
   allocation: MessageConsumptionAllocation<BilledRunUsage>;
-  item: AgentMessageToolConsumptionItemResource;
+  items: AgentMessageToolConsumptionItemResource[];
 }): Pick<
   AgentMessageConsumptionAnalyticsToolData,
   "credit_micro" | "gross_credit_micro" | "tokens"
 > {
-  const resultFootprintTokens = item.inputTokensCount ?? 0;
-  const directCreditMicro = item.directCreditAmountMicro ?? 0;
-  const attributedCreditMicro = reconciledCreditMicroForItem(allocation, item);
+  const legacyItem = items.find((item) => item.itemType === "tool");
+  const callItem = items.find((item) => item.itemType === "tool_call");
+  const directItem = items.find((item) => item.itemType === "tool_direct");
+  const resultItem = items.find((item) => item.itemType === "tool_result");
+  const resultFootprintTokens =
+    resultItem?.inputTokensCount ??
+    directItem?.inputTokensCount ??
+    legacyItem?.inputTokensCount ??
+    0;
+  const directCreditMicro = items.reduce(
+    (total, item) => total + (item.directCreditAmountMicro ?? 0),
+    0
+  );
+  const attributedCreditMicro = items.reduce(
+    (total, item) => total + reconciledCreditMicroForItem(allocation, item),
+    0
+  );
   assert(
     attributedCreditMicro >= directCreditMicro,
     "Tool credit is smaller than its direct charge"
   );
 
-  // TODO(2026-08-07 OBSERVABILITY): We currently exclusively store the direct charge credits and
-  // gross credits but we don't have credit consumption just for the result footprint.
   return {
     credit_micro: attributedCreditMicro,
     gross_credit_micro: {
       system: 0,
       input: null,
-      result_footprint: null,
-      output: null,
+      result_footprint: resultItem?.grossAttributedCreditAmountMicro ?? null,
+      output: callItem?.grossAttributedCreditAmountMicro ?? null,
       reasoning: 0,
       direct: directCreditMicro,
       total: attributedCreditMicro,
@@ -57,18 +69,23 @@ function summarizeToolConsumptionItem({
       system: 0,
       input: null,
       result_footprint: resultFootprintTokens,
-      output: item.outputTokensCount ?? 0,
+      output: callItem?.outputTokensCount ?? legacyItem?.outputTokensCount ?? 0,
       reasoning: 0,
     },
   };
 }
 
+/**
+ * @cc [owner:id13,label:backend;data-integrity] persisted-tool-skill-attribution
+ * A tool document MUST use stored skill attribution from its grouped postings when present. It MUST
+ * recompute attribution only when every posting predates the stored attribution field.
+ */
 function buildToolConsumptionDocument({
   action,
   allocation,
   enabledSkillIds,
   input,
-  item,
+  items,
   parentAction,
   usage,
 }: {
@@ -76,21 +93,24 @@ function buildToolConsumptionDocument({
   allocation: MessageConsumptionAllocation<BilledRunUsage>;
   enabledSkillIds: string[];
   input: AgentMessageConsumptionAnalyticsInput;
-  item: AgentMessageToolConsumptionItemResource;
+  items: AgentMessageToolConsumptionItemResource[];
   parentAction: AgentMCPActionResource | undefined;
   usage: BilledRunUsage;
 }): AgentMessageConsumptionAnalyticsToolData {
   const serializedAction = action.toJSON();
+  const attributedSkillIds = items.find(
+    (item) => item.attributedSkillIds !== null
+  )?.attributedSkillIds;
 
   return {
     ...makeBaseDocument(input, {
       attributionVersion: allocation.attributionVersion,
-      consumptionKey: item.itemKey,
-      runUsageModelId: item.runUsageId,
+      consumptionKey: `tool-action:${action.id}`,
+      runUsageModelId: usage.runUsageModelId,
       stepIndex: serializedAction.step,
       usageType: usage.usageType,
     }),
-    ...summarizeToolConsumptionItem({ allocation, item }),
+    ...summarizeToolConsumptionItem({ allocation, items }),
     consumption_type: "tool",
     execution_time_ms: serializedAction.executionDurationMs,
     micro_usd: null,
@@ -102,7 +122,7 @@ function buildToolConsumptionDocument({
       parent_server_name: parentAction ? serverNameForAction(parentAction) : "",
       action_id: action.sId,
       attributed_skill_ids:
-        item.attributedSkillIds ??
+        attributedSkillIds ??
         skillIdsAttributedToAction({
           skills: input.skills,
           action,
@@ -125,34 +145,41 @@ export function buildToolConsumptionDocuments(
   const actionById = new Map(
     input.actions.map((action) => [action.sId, action])
   );
-  const documents: AgentMessageConsumptionAnalyticsToolData[] = [];
+  const toolItemsByActionModelId = new Map<
+    number,
+    AgentMessageToolConsumptionItemResource[]
+  >();
 
   for (const item of allocation.items) {
     if (!item.isToolItem()) {
       continue;
     }
 
-    const usage = usageByModelId.get(item.runUsageId);
-    const action = actionByModelId.get(item.agentMCPActionId);
+    const actionItems =
+      toolItemsByActionModelId.get(item.agentMCPActionId) ?? [];
+    actionItems.push(item);
+    toolItemsByActionModelId.set(item.agentMCPActionId, actionItems);
+  }
+
+  return [...toolItemsByActionModelId].map(([actionModelId, items]) => {
+    const anchorItem =
+      items.find((item) => item.itemType === "tool_call") ?? items[0];
+    assert(anchorItem, "Tool consumption action has no posting");
+    const usage = usageByModelId.get(anchorItem.runUsageId);
+    const action = actionByModelId.get(actionModelId);
     assert(usage, "Tool consumption item references an unknown usage");
     assert(action, "Tool consumption item references an unknown action");
 
     const parentActionId =
       action.stepContext.sandboxChildActionInfo?.parentActionId;
-    documents.push(
-      buildToolConsumptionDocument({
-        action,
-        allocation,
-        enabledSkillIds: input.enabledSkillIdsByActionId.get(action.sId) ?? [],
-        input,
-        item,
-        parentAction: parentActionId
-          ? actionById.get(parentActionId)
-          : undefined,
-        usage,
-      })
-    );
-  }
-
-  return documents;
+    return buildToolConsumptionDocument({
+      action,
+      allocation,
+      enabledSkillIds: input.enabledSkillIdsByActionId.get(action.sId) ?? [],
+      input,
+      items,
+      parentAction: parentActionId ? actionById.get(parentActionId) : undefined,
+      usage,
+    });
+  });
 }
