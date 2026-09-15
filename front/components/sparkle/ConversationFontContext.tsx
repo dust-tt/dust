@@ -1,6 +1,7 @@
-import { clientFetch } from "@app/lib/egress/client";
 import { useUserMetadata } from "@app/lib/swr/user";
+import { setUserMetadataFromClient } from "@app/lib/user";
 import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   createContext,
   memo,
@@ -137,20 +138,16 @@ export function ConversationFontProvider({
     async (font: ConversationFont) => {
       setConversationFontState(font);
 
-      const response = await clientFetch(
-        `/api/user/metadata/${CONVERSATION_FONT_METADATA_KEY}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ value: font }),
-        }
-      ).catch(() => null);
-
-      if (!response?.ok) {
+      try {
+        await setUserMetadataFromClient({
+          key: CONVERSATION_FONT_METADATA_KEY,
+          value: font,
+        });
+      } catch (err) {
         // The local choice still applies; it just won't follow the user to
         // other devices until the next successful save.
         logger.error(
-          { font, httpStatus: response?.status },
+          { font, err: normalizeError(err) },
           "Failed to save conversation font preference"
         );
         return false;

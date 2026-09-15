@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   metadataValue: null as string | null,
   mutateMetadata: vi.fn(),
-  clientFetch: vi.fn(),
+  setUserMetadataFromClient: vi.fn(),
 }));
 
 vi.mock("@app/lib/swr/user", () => ({
@@ -26,8 +26,9 @@ vi.mock("@app/lib/swr/user", () => ({
   }),
 }));
 
-vi.mock("@app/lib/egress/client", () => ({
-  clientFetch: (...args: unknown[]) => mocks.clientFetch(...args),
+vi.mock("@app/lib/user", () => ({
+  setUserMetadataFromClient: (...args: unknown[]) =>
+    mocks.setUserMetadataFromClient(...args),
 }));
 
 vi.mock("@app/logger/logger", () => ({
@@ -46,8 +47,8 @@ beforeEach(() => {
   document.documentElement.removeAttribute("data-conversation-font");
   mocks.metadataValue = null;
   mocks.mutateMetadata.mockReset();
-  mocks.clientFetch.mockReset();
-  mocks.clientFetch.mockResolvedValue({ ok: true });
+  mocks.setUserMetadataFromClient.mockReset();
+  mocks.setUserMetadataFromClient.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -116,13 +117,10 @@ describe("ConversationFontProvider", () => {
     expect(result.current.conversationFont).toBe("serif");
     expect(fontAttribute()).toBe("serif");
     expect(localStorage.getItem("conversationFont")).toBe("serif");
-    expect(mocks.clientFetch).toHaveBeenCalledWith(
-      `/api/user/metadata/${CONVERSATION_FONT_METADATA_KEY}`,
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ value: "serif" }),
-      })
-    );
+    expect(mocks.setUserMetadataFromClient).toHaveBeenCalledWith({
+      key: CONVERSATION_FONT_METADATA_KEY,
+      value: "serif",
+    });
     expect(mocks.mutateMetadata).toHaveBeenCalledWith(
       { metadata: { key: CONVERSATION_FONT_METADATA_KEY, value: "serif" } },
       { revalidate: false }
@@ -130,7 +128,9 @@ describe("ConversationFontProvider", () => {
   });
 
   it("keeps the local choice but reports failure when the save fails", async () => {
-    mocks.clientFetch.mockResolvedValue({ ok: false, status: 500 });
+    mocks.setUserMetadataFromClient.mockRejectedValue(
+      new Error("Error setting user metadata: boom")
+    );
     const { result } = renderHook(() => useConversationFont(), { wrapper });
 
     let saved: boolean | undefined;
