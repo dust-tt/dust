@@ -3,6 +3,8 @@ import { FRAME_DATABASE_NAME_REGEX } from "@app/types/api/frame_manifest";
 const SAFE_FRAME_STORAGE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9_-]*$/;
 
 export const FRAME_PUBLICATION_FILE = "publication.json";
+/** Uncompressed tar of every published function bundle (`<name>.ts`). */
+export const FRAME_PUBLICATION_FUNCTIONS_ARCHIVE_FILE = "functions.tar";
 
 function safeSegment(value: string, label: string): string {
   if (!SAFE_FRAME_STORAGE_SEGMENT.test(value)) {
@@ -94,4 +96,13 @@ export function getFramePublicationFunctionBundlePath(args: {
   functionName: string;
 }): string {
   return `${getFramePublicationBasePath(args)}functions/${safeSegment(args.functionName, "functionName")}.ts`;
+}
+
+/** Sibling of the per-function `functions/` directory: one archive for cold materialization. */
+export function getFramePublicationFunctionsArchivePath(args: {
+  workspaceId: string;
+  frameId: string;
+  publicationId: string;
+}): string {
+  return `${getFramePublicationBasePath(args)}${FRAME_PUBLICATION_FUNCTIONS_ARCHIVE_FILE}`;
 }

@@ -32,6 +32,7 @@ import { FramePublicationDescriptorSchema } from "@app/types/api/frame_publicati
 import {
   getFramePublicationDescriptorPath,
   getFramePublicationFunctionBundlePath,
+  getFramePublicationFunctionsArchivePath,
   getFramePublicationUiBundlePath,
 } from "@app/types/api/frame_storage";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -239,20 +240,28 @@ describe("storeFramePublication", () => {
       ...identity,
       functionName: "add-task",
     });
+    const archivePath = getFramePublicationFunctionsArchivePath(identity);
     const savedPaths = fileStorageMock.saveFileCalls.map(
       ({ filePath }) => filePath
     );
 
     expect(savedPaths).toContain(bundlePath);
+    expect(savedPaths).toContain(archivePath);
     expect(savedPaths.at(-1)).toBe(getFramePublicationDescriptorPath(identity));
     expect(fileStorageMock.getObject(bundlePath)).toBe(
       functionArtifacts[0].bundleCode
     );
+    expect(fileStorageMock.getObject(archivePath)).toBeTruthy();
     expect(
       fileStorageMock.saveFileCalls.find(
         ({ filePath }) => filePath === bundlePath
       )?.contentType
     ).toBe(sandboxFunctionContentType);
+    expect(
+      fileStorageMock.saveFileCalls.find(
+        ({ filePath }) => filePath === archivePath
+      )?.contentType
+    ).toBe("application/x-tar");
     const descriptor = await loadFramePublicationDescriptor(auth, {
       frame,
       publicationId: result.value.publicationId,
