@@ -225,37 +225,68 @@ describe("POST /api/w/:wId/keys — space scoping", () => {
     expect(key.spaces.map((s: SpaceType) => s.sId)).toEqual([pod.sId]);
   });
 
-  it("rejects scoping to an open space", async () => {
-    const { workspace, globalGroup } = await createPrivateApiMockRequest({
+  it("scopes the key to the member group of an open space", async () => {
+    const { workspace, auth, globalGroup } = await createPrivateApiMockRequest({
       role: "admin",
     });
 
     // Attaching the workspace global group as a viewer is what makes a space open.
     const openSpace = await SpaceFactory.regular(workspace);
     await SpaceFactory.attachGroup(openSpace, globalGroup, "project_viewer");
+    const spaceGroups = await SpaceResource.listRegularAutoGroupsForSpaces(
+      auth,
+      [openSpace]
+    );
+    expect(spaceGroups).toHaveLength(1);
 
     const res = await createKey(workspace, {
       name: "open-space-key",
       space_ids: [openSpace.sId],
     });
 
-    expect(res.status).toBe(403);
-    expect((await res.json()).error.type).toBe("workspace_auth_error");
+    expect(res.status).toBe(201);
+    const { key } = await res.json();
+    expect(await keyGroupModelIds(workspace, key.id)).toEqual(
+      [globalGroup.id, spaceGroups[0].id].toSorted()
+    );
+    expect(key.spaces.map((s: SpaceType) => s.sId)).toEqual([openSpace.sId]);
   });
 
-  it("rejects scoping to the global or the system space", async () => {
-    const { workspace, globalSpace, systemSpace } =
+  it("scopes the key to the member group of the global space", async () => {
+    const { workspace, auth, globalGroup, globalSpace } =
       await createPrivateApiMockRequest({ role: "admin" });
 
-    for (const [index, space] of [globalSpace, systemSpace].entries()) {
-      const res = await createKey(workspace, {
-        name: `unique-kind-key-${index}`,
-        space_ids: [space.sId],
-      });
+    const spaceGroups = await SpaceResource.listRegularAutoGroupsForSpaces(
+      auth,
+      [globalSpace]
+    );
+    expect(spaceGroups).toHaveLength(1);
 
-      expect(res.status).toBe(403);
-      expect((await res.json()).error.type).toBe("workspace_auth_error");
-    }
+    const res = await createKey(workspace, {
+      name: "global-space-key",
+      space_ids: [globalSpace.sId],
+    });
+
+    expect(res.status).toBe(201);
+    const { key } = await res.json();
+    expect(await keyGroupModelIds(workspace, key.id)).toEqual(
+      [globalGroup.id, spaceGroups[0].id].toSorted()
+    );
+    expect(key.spaces.map((s: SpaceType) => s.sId)).toEqual([globalSpace.sId]);
+  });
+
+  it("rejects scoping to the system space", async () => {
+    const { workspace, systemSpace } = await createPrivateApiMockRequest({
+      role: "admin",
+    });
+
+    const res = await createKey(workspace, {
+      name: "system-space-key",
+      space_ids: [systemSpace.sId],
+    });
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error.type).toBe("workspace_auth_error");
   });
 
   it("rejects an unknown space id", async () => {

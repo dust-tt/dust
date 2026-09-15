@@ -8,7 +8,6 @@ import {
   monthlyCapDollarsSchema,
   parseCreditsString,
 } from "@app/components/workspace/api-keys/utils";
-import { GLOBAL_SPACE_NAME } from "@app/types/groups";
 import type { SpaceType } from "@app/types/space";
 import {
   Button,
@@ -187,6 +186,11 @@ export const NewAPIKeyDialog = ({
 
               <div className="flex flex-col gap-2">
                 <Label>Spaces</Label>
+                <p className="text-sm text-muted-foreground">
+                  The key can read everything workspace members can, including
+                  open spaces and Company Data. Selecting a space grants the key
+                  read and write access to it, such as uploading files.
+                </p>
                 <div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -231,12 +235,6 @@ export const NewAPIKeyDialog = ({
                   </DropdownMenu>
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  <Button
-                    label={GLOBAL_SPACE_NAME}
-                    size="xs"
-                    variant="outline"
-                    disabled
-                  />
                   {selectedSpaceIds.map((id) => {
                     const space = spacesById[id];
                     if (!space) {

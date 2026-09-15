@@ -31,8 +31,20 @@ type CreateApiKeyErrorCode =
 
 /**
  * A key always carries the workspace global group, so it can reach everything
- * every workspace member can reach; in addition, it can access the spaces it
- * is scoped to.
+ * every workspace member can reach; in addition, it carries the member groups
+ * of the spaces it is scoped to, which is what grants it write on them.
+ */
+/**
+ * @cc [owner:fabiencelier,label:product;security] scopable-spaces
+ * `spaceIds` MUST resolve, in the workspace, to `regular`, `project` or `global` spaces only,
+ * open or restricted. Any other id (unknown, deleted, `system`, `conversations`) MUST fail with
+ * `unauthorized` and no group beyond the workspace global group is returned.
+ */
+/**
+ * @cc [owner:fabiencelier,label:security] scoped-groups
+ * The returned groups are exactly the workspace global group plus the `regular_auto` groups of the
+ * requested spaces; a pod's editor group is included only when `role` is `admin`. The workspace
+ * global group MUST never be counted as a scoped group.
  */
 async function resolveApiKeyGroups(
   auth: Authenticator,
@@ -49,23 +61,24 @@ async function resolveApiKeyGroups(
   const requestedSpaceIds = [...new Set(spaceIds)];
   if (requestedSpaceIds.length > 0) {
     const spaces = await SpaceResource.fetchByIds(auth, requestedSpaceIds);
-    const openSpaceModelIds = await SpaceResource.listOpenSpaceModelIds(
-      auth,
-      spaces
-    );
     const scopableSpaces = spaces.filter(
-      (space) =>
-        (space.isRegular() || space.isProject()) &&
-        !openSpaceModelIds.has(space.id)
+      (space) => space.isRegular() || space.isProject() || space.isGlobal()
     );
 
     if (scopableSpaces.length !== requestedSpaceIds.length) {
       return new Err(
         new DustError(
           "unauthorized",
-          "An API key can only be scoped to restricted spaces or pods."
+          "An API key can only be scoped to spaces, pods or the global space."
         )
       );
+    }
+
+    // Workspaces predating the global space member group get it lazily; without it there would
+    // be no group to carry write on Company Data.
+    const globalSpace = scopableSpaces.find((space) => space.isGlobal());
+    if (globalSpace) {
+      await globalSpace.ensureGlobalSpaceMemberGroup(auth);
     }
 
     resolvedGroups.push(
