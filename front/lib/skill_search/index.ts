@@ -3,20 +3,7 @@ import { SKILL_SEARCH_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import type { Result } from "@app/types/shared/result";
 import { isString } from "@app/types/shared/utils/general";
 import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
-import type { estypes } from "@elastic/elasticsearch";
 import assert from "assert";
-
-function ensureDeletionCompleted(
-  response: estypes.DeleteByQueryResponse
-): void {
-  if (
-    response.timed_out ||
-    (response.failures?.length ?? 0) > 0 ||
-    (response.version_conflicts ?? 0) > 0
-  ) {
-    throw new Error("Skill search deletion did not complete");
-  }
-}
 
 export async function indexSkillDocument(
   document: SkillSearchDocument
@@ -46,7 +33,7 @@ export async function deleteSkillDocument({
 }): Promise<Result<void, ElasticsearchError>> {
   assert(workspaceId.length > 0 && skillId.length > 0);
   return withEs(async (client) => {
-    const response = await client.deleteByQuery({
+    await client.deleteByQuery({
       index: SKILL_SEARCH_ALIAS_NAME,
       query: {
         bool: {
@@ -58,7 +45,6 @@ export async function deleteSkillDocument({
       },
       refresh: false,
     });
-    ensureDeletionCompleted(response);
   });
 }
 
@@ -69,11 +55,10 @@ export async function deleteWorkspaceSkillDocuments({
 }): Promise<Result<void, ElasticsearchError>> {
   assert(workspaceId.length > 0);
   return withEs(async (client) => {
-    const response = await client.deleteByQuery({
+    await client.deleteByQuery({
       index: SKILL_SEARCH_ALIAS_NAME,
       query: { term: { workspace_id: workspaceId } },
       refresh: false,
     });
-    ensureDeletionCompleted(response);
   });
 }
