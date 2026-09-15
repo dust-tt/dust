@@ -58,21 +58,28 @@ function OutletProbe() {
   return <span data-testid="outlet" />;
 }
 
-interface LayoutState {
-  name: string;
+interface PageProps {
   hasTitle: boolean;
   contentWidth: "centered" | "wide" | undefined;
   title: React.ReactNode;
 }
 
-function Page({ hasTitle, contentWidth, title }: Omit<LayoutState, "name">) {
+interface LayoutState extends PageProps {
+  name: string;
+}
+
+interface HarnessProps {
+  state: PageProps;
+}
+
+function Page({ hasTitle, contentWidth, title }: PageProps) {
   useSetHasTitle(hasTitle);
   useSetContentWidth(contentWidth);
   useSetTitle(title);
   return <OutletProbe />;
 }
 
-function Harness({ state }: { state: Omit<LayoutState, "name"> }) {
+function Harness({ state }: HarnessProps) {
   return (
     <AppLayoutProvider>
       <AppContentLayout>
