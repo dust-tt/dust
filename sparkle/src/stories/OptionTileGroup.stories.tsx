@@ -22,11 +22,11 @@ const specimen = (className: string) => (
 );
 
 const FONT_OPTIONS: OptionTile<"sans" | "serif" | "dyslexic">[] = [
-  { value: "sans", label: "Sans serif", visual: specimen("font-sans") },
-  { value: "serif", label: "Serif", visual: specimen("font-serif") },
+  { value: "sans", label: "Default", visual: specimen("font-sans") },
+  { value: "serif", label: "Lora", visual: specimen("font-serif") },
   {
     value: "dyslexic",
-    label: "Dyslexic-friendly",
+    label: "OpenDyslexic",
     visual: specimen("font-dyslexic"),
   },
 ];

@@ -38,10 +38,10 @@ function ConversationFontSample({ font }: ConversationFontSampleProps) {
     >
       <div className="heading-sm text-muted-foreground">
         {font === "sans"
-          ? "Sans serif (Geist)"
+          ? "Default (Geist)"
           : font === "serif"
-            ? "Serif (Lora)"
-            : "Dyslexic-friendly (OpenDyslexic)"}
+            ? "Lora"
+            : "OpenDyslexic"}
       </div>
       <div className="max-w-conversation font-conversation">
         <Markdown content={SAMPLE} />

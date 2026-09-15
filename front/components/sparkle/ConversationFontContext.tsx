@@ -27,9 +27,9 @@ export const CONVERSATION_FONTS = ["sans", "serif", "dyslexic"] as const;
 export type ConversationFont = (typeof CONVERSATION_FONTS)[number];
 
 export const CONVERSATION_FONT_LABELS: Record<ConversationFont, string> = {
-  sans: "Sans serif",
-  serif: "Serif",
-  dyslexic: "Dyslexic-friendly",
+  sans: "Default",
+  serif: "Lora",
+  dyslexic: "OpenDyslexic",
 };
 
 const DEFAULT_CONVERSATION_FONT: ConversationFont = "sans";
