@@ -137,7 +137,6 @@ it.each([
       await shadowEditableAgents(
         auth,
         [grantAgent, legacyAgent],
-        [legacyAgent],
         "test"
       )
     ).map((agent) => agent.sId)
