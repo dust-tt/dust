@@ -1,17 +1,12 @@
 import { Database } from "bun:sqlite";
 import { describe, expect, test } from "bun:test";
-import { mkdirSync, readFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Result } from "#result.ts";
 import type { DbErrorKind } from "#types/db.ts";
 import { DbCommandError, POD_DATABASE_MAX_SIZE_BYTES_ENV } from "./common.ts";
-import {
-  QUERY_INLINE_PAYLOAD_CAP_BYTES,
-  QUERY_INLINE_ROW_CAP,
-  runQuery,
-} from "./query.ts";
+import { QUERY_PAYLOAD_CAP_BYTES, QUERY_ROW_CAP, runQuery } from "./query.ts";
 import { reconcile } from "./reconcile.ts";
 
 const fx = (n: string) =>
@@ -95,20 +90,19 @@ describe("db query", () => {
       );
       expect(result.columns).toEqual(["handle"]);
       expect(result.rows).toEqual([{ handle: "alice" }, { handle: "bob" }]);
-      expect(result.row_count).toBe(2);
-      expect(result.results_file).toBeNull();
+      expect(result.truncated).toBe(false);
       expect(result.note).toBeNull();
     });
   });
 
-  test("spills the complete result set to a file beyond the inline row cap", async () => {
+  test("truncates past the row cap and says so", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "notes.db");
       unwrap(await reconcile(dbPath, fx("notes.db.ts")));
       const db = new Database(dbPath);
       const insert = db.prepare("INSERT INTO notes (label) VALUES (?)");
       db.exec("BEGIN");
-      for (let i = 0; i < QUERY_INLINE_ROW_CAP + 1; i++) {
+      for (let i = 0; i < QUERY_ROW_CAP + 1; i++) {
         insert.run(`row-${i}`);
       }
       db.exec("COMMIT");
@@ -117,22 +111,54 @@ describe("db query", () => {
       const result = unwrap(
         runQuery(dbPath, "SELECT label FROM notes ORDER BY id")
       );
-      expect(result.rows.length).toBe(QUERY_INLINE_ROW_CAP);
-      expect(result.row_count).toBe(QUERY_INLINE_ROW_CAP + 1);
-      expect(result.results_file).not.toBeNull();
-      expect(result.note).toContain(result.results_file ?? "");
-      if (result.results_file !== null) {
-        const lines = readFileSync(result.results_file, "utf8")
-          .trimEnd()
-          .split("\n");
-        // The spill file holds EVERY row, preview included.
-        expect(lines.length).toBe(QUERY_INLINE_ROW_CAP + 1);
-        expect(JSON.parse(lines[0] ?? "")).toEqual({ label: "row-0" });
-        expect(JSON.parse(lines.at(-1) ?? "")).toEqual({
-          label: `row-${QUERY_INLINE_ROW_CAP}`,
-        });
-        await rm(result.results_file, { force: true });
+      expect(result.rows.length).toBe(QUERY_ROW_CAP);
+      expect(result.rows[0]).toEqual({ label: "row-0" });
+      expect(result.rows.at(-1)).toEqual({ label: `row-${QUERY_ROW_CAP - 1}` });
+      expect(result.truncated).toBe(true);
+      expect(result.note).toContain(`first ${QUERY_ROW_CAP} rows`);
+    });
+  });
+
+  test("a result of exactly the row cap is not truncated", async () => {
+    await withDir(async (dir) => {
+      const dbPath = join(dir, "notes.db");
+      unwrap(await reconcile(dbPath, fx("notes.db.ts")));
+      const db = new Database(dbPath);
+      const insert = db.prepare("INSERT INTO notes (label) VALUES (?)");
+      db.exec("BEGIN");
+      for (let i = 0; i < QUERY_ROW_CAP; i++) {
+        insert.run(`row-${i}`);
       }
+      db.exec("COMMIT");
+      db.close();
+
+      const result = unwrap(runQuery(dbPath, "SELECT label FROM notes"));
+      expect(result.rows.length).toBe(QUERY_ROW_CAP);
+      expect(result.truncated).toBe(false);
+      expect(result.note).toBeNull();
+    });
+  });
+
+  test("a truncated RETURNING result still commits the write", async () => {
+    await withDir(async (dir) => {
+      const dbPath = join(dir, "notes.db");
+      unwrap(await reconcile(dbPath, fx("notes.db.ts")));
+      const values = Array.from(
+        { length: QUERY_ROW_CAP + 1 },
+        (_, i) => `('row-${i}')`
+      ).join(", ");
+
+      const result = unwrap(
+        runQuery(
+          dbPath,
+          `INSERT INTO notes (label) VALUES ${values} RETURNING label`
+        )
+      );
+      expect(result.rows.length).toBe(QUERY_ROW_CAP);
+      expect(result.truncated).toBe(true);
+
+      const check = unwrap(runQuery(dbPath, "SELECT count(*) AS n FROM notes"));
+      expect(check.rows).toEqual([{ n: QUERY_ROW_CAP + 1 }]);
     });
   });
 
@@ -148,7 +174,7 @@ describe("db query", () => {
       );
       expect(insert.changes).toBe(1);
       expect(insert.rows).toEqual([]);
-      expect(insert.row_count).toBe(0);
+      expect(insert.truncated).toBe(false);
 
       const update = unwrap(
         runQuery(
@@ -174,7 +200,7 @@ describe("db query", () => {
         )
       );
       expect(result.rows).toEqual([{ handle: "alice" }]);
-      expect(result.row_count).toBe(1);
+      expect(result.truncated).toBe(false);
     });
   });
 
@@ -297,15 +323,15 @@ describe("db query", () => {
     });
   });
 
-  test("spills beyond the inline payload bytes, even for a single oversized row", async () => {
+  test("truncates past the payload cap and never skips a row", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "notes.db");
       unwrap(await reconcile(dbPath, fx("notes.db.ts")));
       const db = new Database(dbPath);
       const insert = db.prepare("INSERT INTO notes (label) VALUES (?)");
-      // Row one fits inline; row two crosses the byte bound; row three is already spilling.
-      insert.run("x".repeat(Math.floor(QUERY_INLINE_PAYLOAD_CAP_BYTES * 0.6)));
-      insert.run("x".repeat(Math.floor(QUERY_INLINE_PAYLOAD_CAP_BYTES * 0.6)));
+      // Row one fits; row two crosses the byte cap; row three would fit but comes after the cut.
+      insert.run("x".repeat(Math.floor(QUERY_PAYLOAD_CAP_BYTES * 0.6)));
+      insert.run("x".repeat(Math.floor(QUERY_PAYLOAD_CAP_BYTES * 0.6)));
       insert.run("small");
       db.close();
 
@@ -313,34 +339,24 @@ describe("db query", () => {
         runQuery(dbPath, "SELECT label FROM notes ORDER BY id")
       );
       expect(result.rows.length).toBe(1);
-      expect(result.row_count).toBe(3);
-      expect(result.results_file).not.toBeNull();
-      if (result.results_file !== null) {
-        const lines = readFileSync(result.results_file, "utf8")
-          .trimEnd()
-          .split("\n");
-        expect(lines.length).toBe(3);
-        await rm(result.results_file, { force: true });
-      }
+      expect(result.truncated).toBe(true);
+      expect(result.note).toContain("shorter columns");
     });
   });
 
-  test("writes the spill file into the provided spill directory", async () => {
+  test("a single row over the payload cap yields no rows but is flagged", async () => {
     await withDir(async (dir) => {
       const dbPath = join(dir, "notes.db");
       unwrap(await reconcile(dbPath, fx("notes.db.ts")));
       const db = new Database(dbPath);
       db.prepare("INSERT INTO notes (label) VALUES (?)").run(
-        "x".repeat(QUERY_INLINE_PAYLOAD_CAP_BYTES + 1)
+        "x".repeat(QUERY_PAYLOAD_CAP_BYTES + 1)
       );
       db.close();
 
-      const spillDir = join(dir, "pod-files");
-      mkdirSync(spillDir);
-      const result = unwrap(
-        runQuery(dbPath, "SELECT label FROM notes", undefined, spillDir)
-      );
-      expect(result.results_file?.startsWith(`${spillDir}/`)).toBe(true);
+      const result = unwrap(runQuery(dbPath, "SELECT label FROM notes"));
+      expect(result.rows).toEqual([]);
+      expect(result.truncated).toBe(true);
     });
   });
 

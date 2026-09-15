@@ -30,9 +30,8 @@ pub struct FrameDatabaseQueryRequest<'a> {
 pub struct FrameDatabaseQueryResponse {
     pub columns: Vec<String>,
     pub rows: Vec<serde_json::Map<String, serde_json::Value>>,
-    pub row_count: u64,
+    pub truncated: bool,
     pub changes: Option<u64>,
-    pub results_file: Option<String>,
     pub note: Option<String>,
 }
 

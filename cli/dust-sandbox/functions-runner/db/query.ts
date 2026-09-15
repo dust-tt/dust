@@ -1,19 +1,17 @@
 import { Database, type Statement } from "bun:sqlite";
-import { closeSync, existsSync, mkdirSync, openSync, writeSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { existsSync } from "node:fs";
 import { Err, Ok, type Result } from "#result.ts";
 import { applyWritePragmas, DbCommandError } from "./common.ts";
 
-export const QUERY_INLINE_ROW_CAP = 100;
-export const QUERY_INLINE_PAYLOAD_CAP_BYTES = 100_000;
+export const QUERY_ROW_CAP = 100;
+export const QUERY_PAYLOAD_CAP_BYTES = 100_000;
 
 export interface QueryOutcome {
   columns: string[];
   rows: Record<string, unknown>[];
-  row_count: number;
+  // True when the statement produced rows beyond the caps that `rows` does not hold.
+  truncated: boolean;
   changes: number | null;
-  results_file: string | null;
   note: string | null;
 }
 
@@ -21,10 +19,7 @@ export function runQuery(
   dbPath: string,
   sql: string,
   // Omitted only by tests that don't exercise the quota; runner.ts always passes it.
-  maxSizeBytes?: number,
-  // Directory the spill file is written to — a pod file, so the caller can read the full result
-  // set. runner.ts passes the pod-files dir from Rust; tests omit it and fall back to a temp dir.
-  spillDir?: string
+  maxSizeBytes?: number
 ): Result<QueryOutcome, DbCommandError> {
   const trimmed = sql.trim();
   if (trimmed.length === 0) {
@@ -93,7 +88,7 @@ export function runQuery(
     // branching on a read/write guess that bun gives us no reliable way to make.
     db.exec("BEGIN IMMEDIATE;");
     const versionBefore = schemaVersion(db);
-    let result = execute(statement, spillDir);
+    let result = execute(statement);
     if (result.isOk() && schemaVersion(db) !== versionBefore) {
       result = new Err(
         new DbCommandError(
@@ -194,14 +189,11 @@ function executionError(e: unknown): DbCommandError {
 // Run one prepared statement and shape its output. A statement that returns no columns is a
 // plain INSERT/UPDATE/DELETE: execute it and report the affected-row count, the only meaningful
 // output run() surfaces. Anything with columns — SELECT, VALUES, or a RETURNING clause — streams
-// its rows through collectRows, spilling past the inline bounds. columnNames is the discriminator,
-// so `INSERT … RETURNING` correctly returns its rows.
-function execute(
-  statement: Statement,
-  spillDir: string | undefined
-): Result<QueryOutcome, DbCommandError> {
+// its rows through collectRows up to the caps. columnNames is the discriminator, so
+// `INSERT … RETURNING` correctly returns its rows.
+function execute(statement: Statement): Result<QueryOutcome, DbCommandError> {
   if (statement.columnNames.length > 0) {
-    return collectRows(statement, spillDir);
+    return collectRows(statement);
   }
   let changes: number;
   try {
@@ -212,69 +204,58 @@ function execute(
   return new Ok({
     columns: [],
     rows: [],
-    row_count: 0,
+    truncated: false,
     changes,
-    results_file: null,
     note: null,
   });
 }
 
-// Execute a result-returning statement, spilling beyond the inline bounds.
+/**
+ * @cc [owner:davidebbo,label:product;performance] bounded-query-results
+ * `rows` MUST hold at most `QUERY_ROW_CAP` rows and at most `QUERY_PAYLOAD_CAP_BYTES` of their
+ * JSON. The first row that would cross either cap MUST be left out and no later row MUST be read
+ * from the statement. Whenever a row was left out, `truncated` MUST be true and `note` MUST tell
+ * the caller how to narrow the query; otherwise both MUST be false and null. Result rows MUST NOT
+ * be written anywhere other than the returned envelope.
+ */
 function collectRows(
-  statement: Statement,
-  spillDir: string | undefined
+  statement: Statement
 ): Result<QueryOutcome, DbCommandError> {
-  const preview: Record<string, unknown>[] = [];
-  let previewBytes = 0;
-  const previewJson: string[] = [];
-  let rowCount = 0;
-  let spillFd: number | null = null;
-  let spillPath: string | null = null;
+  const rows: Record<string, unknown>[] = [];
+  let payloadBytes = 0;
+  let truncated = false;
   try {
     for (const row of statement.iterate()) {
-      rowCount++;
       const rowJson = JSON.stringify(row, jsonReplacer);
-      if (spillFd === null) {
-        if (
-          preview.length < QUERY_INLINE_ROW_CAP &&
-          previewBytes + Buffer.byteLength(rowJson, "utf8") <=
-            QUERY_INLINE_PAYLOAD_CAP_BYTES
-        ) {
-          preview.push(JSON.parse(rowJson));
-          previewBytes += Buffer.byteLength(rowJson, "utf8");
-          previewJson.push(rowJson);
-          continue;
-        }
-        const dir = spillDir ?? tmpdir();
-        // The pod-files spill dir (e.g. /files/pod-<id>/.tool_outputs/db) is not pre-created.
-        mkdirSync(dir, { recursive: true });
-        spillPath = join(dir, `dsbx-query-${crypto.randomUUID()}.jsonl`);
-        spillFd = openSync(spillPath, "w");
-        for (const line of previewJson) {
-          writeSync(spillFd, `${line}\n`);
-        }
+      const rowBytes = Buffer.byteLength(rowJson, "utf8");
+      if (
+        rows.length >= QUERY_ROW_CAP ||
+        payloadBytes + rowBytes > QUERY_PAYLOAD_CAP_BYTES
+      ) {
+        truncated = true;
+        break;
       }
-      writeSync(spillFd, `${rowJson}\n`);
+      rows.push(JSON.parse(rowJson));
+      payloadBytes += rowBytes;
     }
   } catch (e) {
     return new Err(executionError(e));
   } finally {
-    if (spillFd !== null) {
-      closeSync(spillFd);
-    }
+    // Leaving the iterator early keeps the statement stepping, and an in-progress write
+    // statement (`INSERT … RETURNING`) blocks the COMMIT that follows. Finalizing ends it.
+    statement.finalize();
   }
 
   return new Ok({
     columns: statement.columnNames,
-    rows: preview,
-    row_count: rowCount,
+    rows,
+    truncated,
     changes: null,
-    results_file: spillPath,
-    note:
-      spillPath === null
-        ? null
-        : `${rowCount} rows total; the first ${preview.length} are shown here as a preview. ` +
-          `The complete result set is in ${spillPath}, one JSON object per line.`,
+    note: truncated
+      ? `Result truncated to the first ${rows.length} rows (limit: ${QUERY_ROW_CAP} rows or ` +
+        `${QUERY_PAYLOAD_CAP_BYTES} bytes). Narrow the query with WHERE, LIMIT/OFFSET, or fewer ` +
+        "and shorter columns to see the rest."
+      : null,
   });
 }
 
