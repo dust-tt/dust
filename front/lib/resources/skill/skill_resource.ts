@@ -4476,19 +4476,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * @cc [owner:aubin-tchoi,label:backend;security] skill-search-serialization
-   * Serialize a custom skill fetched with tools, using supplied editor sIds,
-   * usage and default values; perform no I/O and never include private skill content.
+   * Serialize a custom skill fetched with tools, using supplied editor and last-editor sIds
+   * and usage values; perform no I/O and never include private skill content.
    */
   toSearchDocument(
     workspace: LightWorkspaceType,
     {
+      lastEditedByUserId,
       editorIds,
       activeUsersCount,
-      isDefault,
     }: {
+      lastEditedByUserId: string | null;
       editorIds: readonly string[];
       activeUsersCount: number;
-      isDefault: boolean;
     }
   ): SkillSearchDocument {
     assert(
@@ -4503,7 +4503,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       name: this.name,
       description: this.userFacingDescription,
       icon: this.icon,
-      last_edited_by_user_id: this.editedBy,
+      last_edited_by_user_id: lastEditedByUserId,
       editor_ids: uniq(editorIds).sort(),
       requested_space_ids: this.requestedSpaceIds.map((id) =>
         SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
@@ -4513,7 +4513,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       ).sort(),
       active_users_count: activeUsersCount,
       favorite_count: this.favoriteCount,
-      is_default: isDefault,
       created_at: this.createdAt.toISOString(),
       updated_at: this.updatedAt.toISOString(),
     };
