@@ -24,15 +24,15 @@ describe("resource-owned skill search indexation", () => {
           .mock.calls.map(([target]) => target.skillId)
       )
     ).toEqual(new Set([active.sId, archived.sId]));
-    const documents = await SkillResource.fetchSearchDocuments(auth, [
+    const skills = await SkillResource.fetchByIds(auth, [
       active.sId,
       archived.sId,
     ]);
-    expect(documents[0]).toMatchObject({
+    expect(skills.find((skill) => skill.sId === active.sId)).toMatchObject({
       name: "Shared name",
       status: "archived",
     });
-    expect(documents[1]).toMatchObject({
+    expect(skills.find((skill) => skill.sId === archived.sId)).toMatchObject({
       name: expect.stringContaining("Shared name (archived on "),
       status: "archived",
     });
@@ -66,20 +66,6 @@ describe("resource-owned skill search indexation", () => {
             .mock.calls.map(([target]) => target.skillId)
         )
       ).toEqual(new Set([childSkill.sId, ...parentIds]));
-      const parents = await SkillResource.fetchByIds(auth, parentIds);
-      const documents = await SkillResource.fetchSearchDocuments(
-        auth,
-        parentIds
-      );
-      expect(
-        new Map(
-          documents.map((document) => [document.skill_id, document.updated_at])
-        )
-      ).toEqual(
-        new Map(
-          parents.map((parent) => [parent.sId, parent.updatedAt.toISOString()])
-        )
-      );
     }
   });
 
@@ -113,19 +99,17 @@ describe("resource-owned skill search indexation", () => {
         target
       );
     }
-    const document = await SkillResource.fetchSearchDocument(auth, skill.sId);
-    expect(document).toMatchObject({
+    const current = await SkillResource.fetchById(auth, skill.sId);
+    expect(current).toMatchObject({
       availability: "editors",
-      favorite_count: 1,
-      created_at: expect.any(String),
+      favoriteCount: 1,
     });
-    expect(document).not.toHaveProperty("metadata");
     vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
     expect((await skill.delete(auth)).isOk()).toBe(true);
     expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledExactlyOnceWith(
       target
     );
-    expect(await SkillResource.fetchSearchDocument(auth, skill.sId)).toBeNull();
+    expect(await SkillResource.fetchById(auth, skill.sId)).toBeNull();
   });
 
   it("deduplicates the provided skill IDs", async () => {
