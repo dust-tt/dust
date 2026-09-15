@@ -1,3 +1,4 @@
+import { ConfirmContext } from "@app/components/Confirm";
 import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { seatTypeDisplayName } from "@app/components/workspace/billing/seatTypeUtils";
 import type { SeatPlanResponseBody } from "@app/lib/api/credits/seat_plan";
@@ -14,7 +15,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useContext, useState } from "react";
 
 // The dropdown value used for "grant no seat" (clears the mapping). Distinct from
 // the seat types so it round-trips through the checkbox items.
@@ -49,6 +50,7 @@ export function GroupSeatPickerDropdown({
   const { doFetchGroupSeatMappingPreview } = useGroupSeatMappingPreview({
     owner,
   });
+  const confirm = useContext(ConfirmContext);
   // The seat awaiting a cost review before the mapping is applied.
   const [reviewSeat, setReviewSeat] = useState<GroupGrantableSeatType | null>(
     null
@@ -63,10 +65,25 @@ export function GroupSeatPickerDropdown({
     value: GroupGrantableSeatType | typeof NO_SEAT
   ) => {
     // Close the dropdown on selection so it never lingers behind (or after) the
-    // review modal.
+    // review/confirmation.
     setIsMenuOpen(false);
     if (value === NO_SEAT) {
-      if (grantedSeatType !== null) {
+      if (grantedSeatType === null) {
+        return;
+      }
+      // Clearing the mapping downgrades members (deferred to period end), so
+      // confirm and show how many are affected before applying.
+      const confirmed = await confirm({
+        title: "Remove group seat",
+        message: `Members of ${groupName} will lose their ${seatTypeDisplayName(
+          grantedSeatType
+        )} seat at the end of the current billing period. Members who also get this seat (or a higher one) from another group keep it. This affects up to ${memberCount.toLocaleString(
+          "en-US"
+        )} member${memberCount === 1 ? "" : "s"}.`,
+        validateLabel: "Remove seat",
+        validateVariant: "warning",
+      });
+      if (confirmed) {
         await doUpdateGroupGrantedSeatType({
           groupId,
           groupName,
