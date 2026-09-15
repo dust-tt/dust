@@ -42,7 +42,7 @@ describe("SkillResource.toSearchDocument", () => {
       withTools: true,
       withFileAttachments: false,
     });
-    const editorIds = [user.id, user.id];
+    const editorIds = [user.sId, user.sId];
     const document = skill.toSearchDocument(workspace, {
       editorIds,
       activeUsersCount: 12,
@@ -58,7 +58,7 @@ describe("SkillResource.toSearchDocument", () => {
       description: skill.userFacingDescription,
       icon: skill.icon,
       last_edited_by_user_id: user.id,
-      editor_ids: [user.id],
+      editor_ids: [user.sId],
       requested_space_ids: [globalSpace.sId, pod.sId],
       mcp_server_view_ids: [tool.sId],
       active_users_count: 12,
@@ -70,7 +70,7 @@ describe("SkillResource.toSearchDocument", () => {
     expect(Object.keys(document).sort()).toEqual(
       Object.keys(skillSearchMapping.properties).sort()
     );
-    expect(editorIds).toEqual([user.id, user.id]);
+    expect(editorIds).toEqual([user.sId, user.sId]);
     expect(JSON.stringify(document)).not.toContain("Private");
     expect(
       skill.toSearchDocument(workspace, {
