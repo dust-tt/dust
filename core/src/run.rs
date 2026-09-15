@@ -340,39 +340,39 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn credential_takes_precedence_over_env() {
+    async fn credential_takes_precedence_over_env() -> Result<()> {
         std::env::set_var("TEST_CREDENTIAL_PRECEDENCE", "from-env");
         let credentials = Credentials::from([(
             "TEST_CREDENTIAL_PRECEDENCE".to_string(),
             "from-credentials".to_string(),
         )]);
 
-        let value = credential_or_env(&credentials, "TEST_CREDENTIAL_PRECEDENCE")
-            .await
-            .unwrap();
+        let value = credential_or_env(&credentials, "TEST_CREDENTIAL_PRECEDENCE").await?;
 
         assert_eq!(value, "from-credentials");
+
+        Ok(())
     }
 
     #[tokio::test]
-    async fn non_byok_falls_back_to_env() {
+    async fn non_byok_falls_back_to_env() -> Result<()> {
         std::env::set_var("TEST_CREDENTIAL_FALLBACK", "from-env");
 
-        let value = credential_or_env(&Credentials::new(), "TEST_CREDENTIAL_FALLBACK")
-            .await
-            .unwrap();
+        let value = credential_or_env(&Credentials::new(), "TEST_CREDENTIAL_FALLBACK").await?;
 
         assert_eq!(value, "from-env");
+
+        Ok(())
     }
 
     #[tokio::test]
     async fn byok_never_falls_back_to_env() {
         std::env::set_var("TEST_CREDENTIAL_BYOK", "dust-managed-key");
 
-        let error = credential_or_env(&byok_credentials(), "TEST_CREDENTIAL_BYOK")
-            .await
-            .unwrap_err()
-            .to_string();
+        let error = match credential_or_env(&byok_credentials(), "TEST_CREDENTIAL_BYOK").await {
+            Ok(value) => panic!("Expected a refusal, resolved `{value}` instead"),
+            Err(error) => error.to_string(),
+        };
 
         assert!(
             error.contains("cannot fall back on Dust-managed"),
@@ -381,7 +381,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn byok_uses_its_own_credential() {
+    async fn byok_uses_its_own_credential() -> Result<()> {
         std::env::set_var("TEST_CREDENTIAL_BYOK_OWN", "dust-managed-key");
         let mut credentials = byok_credentials();
         credentials.insert(
@@ -389,10 +389,10 @@ mod tests {
             "customer-key".to_string(),
         );
 
-        let value = credential_or_env(&credentials, "TEST_CREDENTIAL_BYOK_OWN")
-            .await
-            .unwrap();
+        let value = credential_or_env(&credentials, "TEST_CREDENTIAL_BYOK_OWN").await?;
 
         assert_eq!(value, "customer-key");
+
+        Ok(())
     }
 }
