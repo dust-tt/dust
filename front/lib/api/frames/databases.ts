@@ -47,8 +47,9 @@ export async function listFrameDatabases(
 }
 
 /**
- * Run one SQL statement (SELECT or DML) against a Frame database. Oversized results come back as
- * a bounded inline preview: the caller is not on the Frame sandbox and could not read a spill file.
+ * Run one SQL statement (SELECT or DML) against a Frame database. An oversized result comes back
+ * as a preview plus a `resultsFile` path on the Frame sandbox that the caller cannot read; #32457
+ * replaces the spill with a capped, `truncated`-flagged result.
  */
 export async function queryFrameDatabase(
   auth: Authenticator,

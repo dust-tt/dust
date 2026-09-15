@@ -421,9 +421,9 @@ export interface QueryDatabaseResult {
   // Rows affected for statements that return no columns (plain INSERT/UPDATE/DELETE); null for
   // result-returning statements.
   changes: number | null;
-  // Sandbox path of a full spill of an oversized result. Always null here: no spill directory is
-  // passed to dsbx, so the runner keeps `rows` as a bounded preview and `note` says how to page.
-  // Kept for parity with the local `dsbx db query` envelope.
+  // Path, on the queried sandbox, of the file the runner spills an oversized result into; `rows`
+  // is then a preview. Callers of this helper are never on that sandbox, so they cannot read it.
+  // #32457 replaces the spill with a capped, `truncated`-flagged result.
   resultsFile: string | null;
   note: string | null;
 }
@@ -431,8 +431,9 @@ export interface QueryDatabaseResult {
 /**
  * `dsbx db query`: execute one SQL statement (stdin) against a live database. The runner allows
  * SELECT and DML but refuses DDL/PRAGMA/ATTACH, so the schema only evolves through reconcile.
- * No spill directory (`DUST_POD_QUERY_SPILL_DIR`) is passed: the caller is never on this sandbox,
- * so an oversized result is returned as a bounded inline preview rather than an unreadable path.
+ * No spill directory (`DUST_POD_QUERY_SPILL_DIR`) is passed, so an oversized result spills to a
+ * temp file on the queried sandbox and `resultsFile` names a path the caller cannot read. #32457
+ * replaces the spill with a capped, `truncated`-flagged result.
  */
 export async function queryDatabaseOnReadySandbox(
   auth: Authenticator,
