@@ -1012,6 +1012,7 @@ export async function createAgentConfiguration(
      */
     const agentConfiguration: LightAgentConfigurationType = {
       id: agent.id,
+      agentModelId: agent.agentId,
       sId: agent.sId,
       versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,
@@ -1445,10 +1446,9 @@ export async function unsafeHardDeleteAgentConfiguration(
   const workspaceId = auth.getNonNullableWorkspace().id;
 
   await withTransaction(async (t) => {
-    const agentResource = await AgentResource.fetchByAgentConfiguration(
+    const agentResource = AgentResource.fromAgentConfiguration(
       auth,
-      agentConfiguration,
-      { transaction: t }
+      agentConfiguration
     );
 
     // Clean up MCP server configurations and their children first
@@ -1673,11 +1673,7 @@ export async function updateAgentPermissions(
 
   try {
     const transactionResult = await withTransaction(async (t) => {
-      const agentResource = await AgentResource.fetchByAgentConfiguration(
-        auth,
-        agent,
-        { transaction: t }
-      );
+      const agentResource = AgentResource.fromAgentConfiguration(auth, agent);
 
       if (usersToAdd.length > 0) {
         // TODO(governance) serve the AgentResource permission after shadow verification.

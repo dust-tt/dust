@@ -123,10 +123,7 @@ describe("getAgentConfigurations", () => {
       }
     );
     const group = await GroupFactory.regularManual(workspace, "Agent editors");
-    const resource = await AgentResource.fetchByAgentConfiguration(
-      authenticator,
-      agent
-    );
+    const resource = AgentResource.fromAgentConfiguration(authenticator, agent);
     assert(resource.id !== null);
     await GroupPermissionResource.grant(authenticator, {
       group,
@@ -169,10 +166,7 @@ describe("getAgentConfigurations", () => {
         requestedRole: "admin",
       });
     assert(impersonatedAuth);
-    const resource = await AgentResource.fetchByAgentConfiguration(
-      authenticator,
-      agent
-    );
+    const resource = AgentResource.fromAgentConfiguration(authenticator, agent);
     for (const auth of [adminAuth, impersonatedAuth]) {
       expect(auth.can("write", resource)).toBe(false);
       const configuration = await getAgentConfiguration(auth, {
@@ -257,7 +251,7 @@ describe("stable agent identities", () => {
       authenticator,
       firstVersion.sId
     );
-    const agentResource = await AgentResource.fetchByAgentConfiguration(
+    const agentResource = AgentResource.fromAgentConfiguration(
       authenticator,
       firstVersion
     );

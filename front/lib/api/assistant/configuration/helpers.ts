@@ -282,6 +282,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       : isAuthor || isMember || canEditWithoutUser;
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
+      agentModelId: agent.agentId,
       sId: agent.sId,
       versionCreatedAt: agent.createdAt.toISOString(),
       version: agent.version,

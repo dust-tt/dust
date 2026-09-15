@@ -46,6 +46,7 @@ export function _getGPT35TurboGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -103,6 +104,7 @@ export function _getGPT4GlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -160,6 +162,7 @@ export function _getGPT5GlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -224,6 +227,7 @@ export function _getGPT5ThinkingGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -285,6 +289,7 @@ export function _getGPT5MiniGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -341,6 +346,7 @@ export function _getGPT5NanoGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -398,6 +404,7 @@ export function _getO3MiniGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -452,6 +459,7 @@ export function _getO1GlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -503,6 +511,7 @@ export function _getO1MiniGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -550,6 +559,7 @@ export function _getO1HighReasoningGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,
@@ -604,6 +614,7 @@ export function _getO3GlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,

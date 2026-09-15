@@ -25,10 +25,7 @@ export async function shadowCanAdminAgent(
     auth,
     legacy,
     candidate: async () => {
-      const resource = await AgentResource.fetchByAgentConfiguration(
-        auth,
-        agent
-      );
+      const resource = AgentResource.fromAgentConfiguration(auth, agent);
       return auth.can("admin", resource);
     },
     context: {
@@ -53,7 +50,7 @@ export async function shadowEditableAgents(
     legacy: legacy.map((agent) => agent.sId).sort(),
     candidate: async () => {
       const customAgents = agents.filter((agent) => agent.scope !== "global");
-      const resources = await AgentResource.fetchByAgentConfigurations(
+      const resources = AgentResource.fromAgentConfigurations(
         auth,
         customAgents
       );

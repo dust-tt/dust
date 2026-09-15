@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 // `renderAgentMessageContentView` is pure.
 const agentConfiguration: LightAgentConfigurationType = {
   id: 1,
+  agentModelId: 1,
   versionCreatedAt: null,
   sId: "agent_test",
   version: 0,

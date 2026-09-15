@@ -341,6 +341,7 @@ function _getDustLikeGlobalAgent(
 
   const dustAgent = {
     id: -1,
+    agentModelId: null,
     sId: agentId,
     version: 0,
     versionCreatedAt: null,

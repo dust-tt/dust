@@ -12294,6 +12294,11 @@
           "id": {
             "type": "integer"
           },
+          "agentModelId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Stable identifier of the agent across versions; null for global agents"
+          },
           "sId": {
             "type": "string"
           },
@@ -14702,6 +14707,12 @@
           "id": {
             "type": "integer",
             "example": 12345
+          },
+          "agentModelId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Stable identifier of the agent across versions; null for global agents",
+            "example": 6789
           },
           "sId": {
             "type": "string",

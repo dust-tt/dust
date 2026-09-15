@@ -146,6 +146,11 @@
  *         id:
  *           type: integer
  *           example: 12345
+ *         agentModelId:
+ *           type: integer
+ *           nullable: true
+ *           description: Stable identifier of the agent across versions; null for global agents
+ *           example: 6789
  *         sId:
  *           type: string
  *           description: Unique string identifier for the agent configuration

@@ -60,6 +60,7 @@ vi.mock(
 function makeAgentConfiguration(sId: string): LightAgentConfigurationType {
   return {
     id: 1,
+    agentModelId: 1,
     versionCreatedAt: null,
     sId,
     version: 1,

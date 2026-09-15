@@ -32,7 +32,7 @@ async function seedRevokedEditor() {
   );
   const legacy = await GroupResource.findEditorGroupForAgent(auth, agent);
   assert(legacy.isOk());
-  const resource = await AgentResource.fetchByAgentConfiguration(auth, agent);
+  const resource = AgentResource.fromAgentConfiguration(auth, agent);
   assert(resource.id !== null);
   const grant = {
     grantType: "editor" as const,
