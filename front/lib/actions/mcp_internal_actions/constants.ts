@@ -20,6 +20,7 @@ import { AGENT_SIDEKICK_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agen
 import { AGENT_TEMPLATES_SERVER } from "@app/lib/api/actions/servers/agent_templates/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { ASK_USER_QUESTION_SERVER } from "@app/lib/api/actions/servers/ask_user_question/metadata";
+import { BUILDING_AGENTS_AND_SKILLS_SERVER } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { CLARI_COPILOT_SERVER } from "@app/lib/api/actions/servers/clari_copilot/metadata";
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
@@ -142,6 +143,8 @@ export const TOOLSETS_LIST_TOOL_NAME = "list";
 
 export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
 export const SKILL_AUTHORING_SERVER_NAME = "skill_authoring";
+export const BUILDING_AGENTS_AND_SKILLS_SERVER_NAME =
+  "building_agents_and_skills";
 
 export const GENERATE_IMAGE_TOOL_NAME = "generate_image";
 
@@ -236,6 +239,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   SEARCH_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
   SKILL_AUTHORING_SERVER_NAME,
+  BUILDING_AGENTS_AND_SKILLS_SERVER_NAME,
   "skill_management",
   "triggers_management",
   "pod_manager",
@@ -1264,6 +1268,18 @@ export const INTERNAL_MCP_SERVERS = ensureUniqueToolNames({
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: AGENT_DELEGATION_SERVER,
+  },
+  [BUILDING_AGENTS_AND_SKILLS_SERVER_NAME]: {
+    id: 1050,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) =>
+      !featureFlags.includes("conversational_building"),
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: BUILDING_AGENTS_AND_SKILLS_SERVER,
   },
   cursor_cloud_agents: {
     id: 1049,

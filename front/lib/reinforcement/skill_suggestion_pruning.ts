@@ -10,7 +10,15 @@ import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_
 import type {
   SkillEditSuggestionType,
   SkillInstructionEditItemType,
+  SkillSuggestionSource,
 } from "@app/types/suggestions/skill_suggestion";
+
+// Reviewable suggestions: pruning applies to every source a user may accept or reject, whether
+// it is surfaced in the builder (`reinforcement`) or inline in a conversation (`conversational`).
+const PRUNED_SOURCES: SkillSuggestionSource[] = [
+  "reinforcement",
+  "conversational",
+];
 
 /**
  * Returns true if two sets of instruction edits target overlapping parts of the HTML tree.
@@ -72,7 +80,10 @@ export function hasSuggestionSelfConflict(
 }
 
 /**
- * Marks existing pending skill edit suggestions as outdated when a new suggestion conflicts.
+ * @cc [owner:fabiencelier,label:product] prune-all-reviewable-sources
+ * Conflict pruning MUST consider pending `edit` suggestions from every reviewable source
+ * (`reinforcement` and `conversational`) regardless of the new suggestion's own source, so that two
+ * pending suggestions never target overlapping regions of a skill.
  */
 export async function pruneConflictingSkillEditSuggestions(
   auth: Authenticator,
@@ -85,6 +96,7 @@ export async function pruneConflictingSkillEditSuggestions(
     {
       states: ["pending"],
       kind: "edit",
+      sources: PRUNED_SOURCES,
     }
   );
 
@@ -150,8 +162,9 @@ export async function pruneConflictingSkillEditSuggestions(
 }
 
 /**
- * Marks pending skill edit suggestions as outdated when they can no longer be applied
- * to the skill's current state.
+ * @cc [owner:fabiencelier,label:product] outdate-all-reviewable-sources
+ * After a skill edit, pending `edit` suggestions from every reviewable source (`reinforcement` and
+ * `conversational`) whose target block no longer exists MUST be marked `outdated`.
  */
 export async function pruneOutdatedSkillEditSuggestions(
   auth: Authenticator,
@@ -160,7 +173,7 @@ export async function pruneOutdatedSkillEditSuggestions(
   const pending = await SkillSuggestionResource.listBySkillConfigurationId(
     auth,
     skill.sId,
-    { states: ["pending"], kind: "edit" }
+    { states: ["pending"], kind: "edit", sources: PRUNED_SOURCES }
   );
   if (pending.length === 0) {
     return;

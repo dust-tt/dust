@@ -29,6 +29,13 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+// Sources that are never listed unless explicitly requested: `synthetic` rows are reinforcement
+// intermediates, and `conversational` rows have no reviewing UI yet.
+const HIDDEN_BY_DEFAULT_SOURCES: SkillSuggestionSource[] = [
+  "synthetic",
+  "conversational",
+];
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SkillSuggestionResource
   extends ReadonlyAttributesType<SkillSuggestionModel> {}
@@ -273,12 +280,12 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     }
 
     // Build the where clause with optional filters.
-    // By default, exclude synthetic suggestions unless an explicit sources
-    // filter is provided.
+    // By default, exclude hidden sources unless an explicit sources filter is
+    // provided.
     const sourceFilter =
       filters?.sources && filters.sources.length > 0
         ? { source: filters.sources }
-        : { source: { [Op.ne]: "synthetic" } };
+        : { source: { [Op.notIn]: HIDDEN_BY_DEFAULT_SOURCES } };
 
     const whereClause: WhereOptions<SkillSuggestionModel> = {
       skillConfigurationId: skillModelId,
@@ -317,7 +324,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     const sourceFilter =
       filters?.sources && filters.sources.length > 0
         ? { source: filters.sources }
-        : { source: { [Op.ne]: "synthetic" } };
+        : { source: { [Op.notIn]: HIDDEN_BY_DEFAULT_SOURCES } };
 
     const whereClause: WhereOptions<SkillSuggestionModel> = {
       ...(filters?.states &&

@@ -220,6 +220,12 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "toolCostCategory": "basic",
     },
   },
+  "building_agents_and_skills": {
+    "suggest_skill_update": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+  },
   "clari_copilot": {
     "get_call_details": {
       "freeUsage": false,
@@ -2749,6 +2755,9 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "ask_user_question": {
     "ask_user_question": "never_ask",
+  },
+  "building_agents_and_skills": {
+    "suggest_skill_update": "never_ask",
   },
   "clari_copilot": {
     "get_call_details": "never_ask",

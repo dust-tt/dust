@@ -456,6 +456,12 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "ask_owner",
     owner: "sfriquet",
   },
+  conversational_building: {
+    description:
+      "Enable the building_agents_and_skills MCP server: agents can propose agent and skill updates from a conversation as reviewable suggestions.",
+    stage: "dust_only",
+    owner: "fabiencelier",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "ask_owner" | "self_serve";
