@@ -841,6 +841,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "claude_4_opus_feature"
   | "group_seat_provisioning"
   | "claude_fable_5_feature"
+  | "databricks_tool"
   | "deepseek_feature"
   | "exa_people_and_company"
   | "disable_computer_feature"

@@ -32,6 +32,7 @@ export function isOAuthUseCase(obj: unknown): obj is OAuthUseCase {
 export const OAUTH_PROVIDERS = [
   "confluence",
   "confluence_tools",
+  "databricks",
   "discord",
   "fathom",
   "freshservice",
@@ -64,6 +65,7 @@ export const OAUTH_PROVIDERS = [
 export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   confluence: "Confluence",
   confluence_tools: "Confluence Tools",
+  databricks: "Databricks",
   discord: "Discord",
   fathom: "Fathom",
   freshservice: "Freshservice",
@@ -353,6 +355,32 @@ export function getProviderRequiredOAuthCredentialInputs({
             validator: isValidShopifyStoreDomain,
           },
         };
+      }
+      return null;
+    case "databricks":
+      if (useCase === "personal_actions" || useCase === "platform_actions") {
+        const result: OAuthCredentialInputs = {
+          databricks_workspace_url: {
+            label: "Databricks Workspace URL",
+            value: undefined,
+            helpMessage:
+              "Your Databricks workspace URL (e.g., https://your-workspace.cloud.databricks.com).",
+            validator: isValidUrl,
+          },
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your Databricks OAuth app.",
+            validator: isValidClientIdOrSecret,
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage: "The client secret from your Databricks OAuth app.",
+            validator: isValidClientIdOrSecret,
+          },
+        };
+        return result;
       }
       return null;
     case "servicenow":
