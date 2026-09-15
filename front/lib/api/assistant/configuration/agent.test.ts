@@ -8,8 +8,10 @@ import {
   restoreAgentConfiguration,
   unsafeHardDeleteAgentConfiguration,
   updateAgentConfigurationsScope,
+  updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
+import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import {
   AgentConfigurationModel,
@@ -40,9 +42,16 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WakeUpFactory } from "@app/tests/utils/WakeUpFactory";
 import { Err, Ok } from "@app/types/shared/result";
 import assert from "assert";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-describe("getAgentConfigurations", () => {
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+describe.each([
+  false,
+  true,
+])("getAgentConfigurations (grants: %s)", (grants) => {
   it.each([
     "system key",
     "Poke",
@@ -50,6 +59,7 @@ describe("getAgentConfigurations", () => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       {
@@ -91,6 +101,7 @@ describe("getAgentConfigurations", () => {
     const { authenticator, workspace } = await createResourceTest({
       role: "admin",
     });
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       { scope: "hidden" }
@@ -98,6 +109,8 @@ describe("getAgentConfigurations", () => {
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId, {
       dangerouslyRequestAllGroups,
     });
+    await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
+    const warn = vi.spyOn(logger, "warn");
 
     const configuration = await getAgentConfiguration(auth, {
       agentId: agent.sId,
@@ -108,12 +121,17 @@ describe("getAgentConfigurations", () => {
       canRead: dangerouslyRequestAllGroups,
       canEdit: dangerouslyRequestAllGroups,
     });
+    expect(warn).not.toHaveBeenCalledWith(
+      expect.objectContaining({ check: "agent_permissions" }),
+      "group_permissions_shadow_mismatch"
+    );
   });
 
   it("respects the agent grants of a scoped system key", async () => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const otherAgent = await AgentConfigurationFactory.createTestAgent(
@@ -150,6 +168,7 @@ describe("getAgentConfigurations", () => {
     const { authenticator, workspace, systemGroup } = await createResourceTest({
       role: "admin",
     });
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(!grants);
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);
     const admin = await UserFactory.basic();
@@ -1256,14 +1275,12 @@ describe("publish agent capability", () => {
     const user = await UserFactory.basic();
     await MembershipFactory.associate(workspace, user, { role: "user" });
 
-    const editorGroupRes = await GroupResource.findEditorGroupForAgent(
-      adminAuth,
-      agent
-    );
-    if (editorGroupRes.isErr()) {
-      throw editorGroupRes.error;
-    }
-    await GroupFactory.withMembers(adminAuth, editorGroupRes.value, [user]);
+    const result = await updateAgentPermissions(adminAuth, {
+      agent,
+      usersToAdd: [user.toJSON()],
+      usersToRemove: [],
+    });
+    assert(result.isOk());
 
     if (withPublishCapability) {
       const group = await GroupFactory.regularAuto(workspace, "publishers");

@@ -33,7 +33,7 @@ const AGENT_EDITOR_VERBS: GrantVerb[] = ["read", "write", "admin", "use"];
 // Admins do not receive `use` on hidden agents: a hidden agent is usable only by its editors, not by
 // virtue of the workspace admin role.
 const HIDDEN_AGENT_ROLE_GRANTS: RoleGrant[] = [
-  { role: "admin", permissions: ["read", "admin"] },
+  { role: "admin", permissions: ["admin"] },
 ];
 
 // Visible agents are readable by every workspace role and usable by every active role, including
@@ -312,6 +312,11 @@ export class AgentResource implements WithAccessControl {
    * @cc [owner:philipperolet,label:security] admin-key-agent-write
    * The admin role grants `write` on custom agents to regular API keys only; human and system-key
    * callers receive no agent write access from their role. Global agents remain read-only.
+   */
+  /**
+   * @cc [owner:philipperolet,label:security] hidden-agent-content
+   * Admin role alone must not grant `read` on hidden agents, including for regular API keys
+   * with role-based write access. Agent details may separately override admin redaction.
    */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     switch (this.kind) {
