@@ -168,7 +168,7 @@ fn warm_dir() -> Option<PathBuf> {
 /// Creates the warm dir if needed and verifies it is exactly ours: a real
 /// directory (not a symlink), owned by our euid, mode 0700. Returns None —
 /// meaning "stay cold" — on any deviation.
-fn ensure_trusted_warm_dir() -> Option<PathBuf> {
+pub(crate) fn ensure_trusted_warm_dir() -> Option<PathBuf> {
     let dir = warm_dir()?;
     let mut builder = std::fs::DirBuilder::new();
     builder.mode(0o700);

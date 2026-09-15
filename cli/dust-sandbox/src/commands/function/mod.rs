@@ -9,6 +9,7 @@ use tempfile::TempPath;
 use tokio::io::AsyncReadExt as _;
 use tokio::process::Command;
 
+mod archive;
 mod build;
 mod envelope;
 mod get;
@@ -368,7 +369,7 @@ pub(crate) fn resolve_existing(name: &str) -> Result<PathBuf> {
 }
 
 /// The configured functions directory (`$DUST_FUNCTIONS_DIR`), required.
-fn functions_dir() -> Result<PathBuf> {
+pub(crate) fn functions_dir() -> Result<PathBuf> {
     std::env::var(FUNCTIONS_DIR_ENV)
         .ok()
         .filter(|d| !d.is_empty())
