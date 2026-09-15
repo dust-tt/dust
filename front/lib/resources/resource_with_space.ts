@@ -203,14 +203,14 @@ export abstract class ResourceWithSpace<
     return auth.can("write", this);
   }
 
-  // This method determines if the authenticated user can fetch data, based on workspace ownership.
-  // Changes to this logic can impact data security, so they must be reviewed and tested carefully
-  // to prevent unauthorized access.
-  private canFetch(auth: Authenticator) {
+  /**
+   * @cc [owner:tdraier,label:security] workspace-scoped-fetch
+   * Superusers may fetch any resource. Otherwise the caller MUST NOT fetch a resource whose
+   * `workspaceId` differs from `auth.getNonNullableWorkspace().id`.
+   */
+  canFetch(auth: Authenticator) {
     return (
-      // Superusers can fetch any resource.
       auth.isDustSuperUser() ||
-      // Others, can only fetch resources from their workspace spaces.
       this.workspaceId === auth.getNonNullableWorkspace().id
     );
   }
