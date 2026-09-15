@@ -36,9 +36,6 @@
     "last_edited_by_user_id": {
       "type": "long"
     },
-    "editor_group_ids": {
-      "type": "keyword"
-    },
     "requested_space_ids": {
       "type": "keyword"
     },
