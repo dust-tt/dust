@@ -220,7 +220,7 @@ The "toolsets" tools allow listing and enabling additional tools.
 ${toolsetsList.length > 0 ? toolsetsList : "No additional toolsets are currently available."}
 </available_toolsets>
 
-A \`<tool id="..." />\` tag in a user message means the user attached that toolset, which is ready to use so you don't need to call \`toolsets__enable\`.
+A \`<tool id="..." />\` tag in a user message means the user attached that toolset, which is ready to use so you don't need to call \`toolsets__enable\` for this id.
 For any other tool that might help with the request, find it in the available toolsets above and enable it using \`toolsets__enable\` with its toolsetId (shown in backticks) before attempting to fulfill the request.
 Never assume or reply that you cannot do something before checking if there's a relevant toolset available.
 
