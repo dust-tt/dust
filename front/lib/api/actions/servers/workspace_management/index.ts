@@ -2,7 +2,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { ToolContext } from "@app/lib/actions/types";
 import {
-  LIST_WORKSPACE_MEMBERS_TOOL_NAME,
+  MANAGER_ONLY_TOOL_NAMES,
   WORKSPACE_MANAGEMENT_SERVER_NAME,
 } from "@app/lib/api/actions/servers/workspace_management/metadata";
 import { TOOLS } from "@app/lib/api/actions/servers/workspace_management/tools";
@@ -16,9 +16,12 @@ function createServer(
   const server = makeInternalMCPServer(WORKSPACE_MANAGEMENT_SERVER_NAME);
 
   for (const tool of TOOLS) {
-    // Keep the member listing out of non-managers' tool list entirely; the handler refuses them
-    // anyway, but there is no point offering a tool they cannot use.
-    if (tool.name === LIST_WORKSPACE_MEMBERS_TOOL_NAME && !auth.isManager()) {
+    // Keep the member and group listings out of non-managers' tool list entirely; the handlers
+    // refuse them anyway, but there is no point offering a tool they cannot use.
+    if (
+      MANAGER_ONLY_TOOL_NAMES.some((name) => name === tool.name) &&
+      !auth.isManager()
+    ) {
       continue;
     }
     registerTool(auth, toolContext, server, tool, {
