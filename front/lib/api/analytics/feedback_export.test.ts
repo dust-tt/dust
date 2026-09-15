@@ -6,8 +6,12 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { getNamespace } from "@app/tests/utils/test_cls";
 import type { ModelId } from "@app/types/shared/model_id";
-import moment from "moment-timezone";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
+import { formatInTimeZone } from "date-fns-tz";
 import { describe, expect, it, vi } from "vitest";
+
+const formatUtcDate = (date: Date) =>
+  formatInTimeZone(date, "UTC", "yyyy-MM-dd");
 
 // fetchAgentMetadata and fetchFeedbackExportRows read from the read replica;
 // in tests there is no replica, so point them at the primary test connection.
@@ -69,11 +73,11 @@ describe("fetchFeedbackExportRows", () => {
       dismissed: false,
     });
 
-    const today = moment.utc();
+    const today = new Date();
     const result = await fetchFeedbackExportRows({
       owner: workspace,
-      startDate: today.clone().subtract(1, "day").format("YYYY-MM-DD"),
-      endDate: today.clone().add(1, "day").format("YYYY-MM-DD"),
+      startDate: formatUtcDate(new Date(today.getTime() - ONE_DAY_MS)),
+      endDate: formatUtcDate(new Date(today.getTime() + ONE_DAY_MS)),
       timezone: "UTC",
     });
 
@@ -85,7 +89,11 @@ describe("fetchFeedbackExportRows", () => {
     expect(result.value).toHaveLength(1);
     expect(result.value[0]).toEqual({
       feedbackId: feedback.sId,
-      createdAt: moment(feedback.createdAt).utc().format("YYYY-MM-DD HH:mm:ss"),
+      createdAt: formatInTimeZone(
+        feedback.createdAt,
+        "UTC",
+        "yyyy-MM-dd HH:mm:ss"
+      ),
       assistantId: agent.sId,
       assistantName: "Test Agent",
       conversationUrl: expect.stringContaining(conv.sId),
@@ -135,8 +143,8 @@ describe("fetchFeedbackExportRows", () => {
       agentConfigurationId: agent.sId,
     });
 
-    const startDate = moment.utc().format("YYYY-MM-DD");
-    const startOfDay = moment.utc(startDate, "YYYY-MM-DD").startOf("day");
+    const startDate = formatUtcDate(new Date());
+    const startOfDay = new Date(`${startDate}T00:00:00.000Z`);
 
     const feedback = await AgentMessageFeedbackResource.makeNew({
       workspaceId: workspace.id,
@@ -149,7 +157,7 @@ describe("fetchFeedbackExportRows", () => {
       content: "Right at midnight",
       isConversationShared: true,
       dismissed: false,
-      createdAt: startOfDay.toDate(),
+      createdAt: startOfDay,
     });
 
     const result = await fetchFeedbackExportRows({
@@ -209,11 +217,11 @@ describe("fetchFeedbackExportRows", () => {
       { replacements: { id: feedback.id } }
     );
 
-    const today = moment.utc();
+    const today = new Date();
     const result = await fetchFeedbackExportRows({
       owner: workspace,
-      startDate: today.clone().subtract(1, "day").format("YYYY-MM-DD"),
-      endDate: today.clone().add(1, "day").format("YYYY-MM-DD"),
+      startDate: formatUtcDate(new Date(today.getTime() - ONE_DAY_MS)),
+      endDate: formatUtcDate(new Date(today.getTime() + ONE_DAY_MS)),
       timezone: "UTC",
     });
 
