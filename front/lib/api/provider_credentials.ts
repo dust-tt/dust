@@ -1,6 +1,5 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type {
@@ -94,20 +93,8 @@ export async function getLlmCredentials(
 ): Promise<LLMCredentialsType> {
   const plan = auth.getNonNullablePlan();
 
-  const DUST_MANAGED_BYOK_PROVIDERS_API_KEYS = dustManagedByokProviderKeys();
-  const BASE_VARIABLES = baseCredentialVariables();
-
   if (!plan.isByok) {
     return dangerouslyGetDustManagedLlmCredentials();
-  }
-
-  const featureFlags = await getFeatureFlags(auth);
-
-  if (featureFlags.includes("use_dust_keys")) {
-    return {
-      ...BASE_VARIABLES,
-      ...DUST_MANAGED_BYOK_PROVIDERS_API_KEYS,
-    };
   }
 
   const providerCredentials =
@@ -128,7 +115,7 @@ export async function getLlmCredentials(
   }
 
   return {
-    ...BASE_VARIABLES,
+    ...baseCredentialVariables(),
     ...credentials,
   };
 }
