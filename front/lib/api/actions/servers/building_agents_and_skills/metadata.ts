@@ -9,14 +9,20 @@ export const BUILDING_AGENTS_AND_SKILLS_SERVER_NAME =
 
 export const SUGGEST_SKILL_UPDATE_TOOL_NAME = "suggest_skill_update" as const;
 
+// Bounds the O(n²) pairwise conflict check in hasSuggestionSelfConflict; larger rewrites
+// should target the instructions root block instead.
+const MAX_INSTRUCTION_EDITS = 50;
+
 export const SUGGEST_SKILL_UPDATE_INPUT_SCHEMA = z.object({
   skillId: z.string().describe("The id of the custom skill to update."),
   instructionEdits: z
     .array(SkillInstructionEditItemSchema)
+    .max(MAX_INSTRUCTION_EDITS)
     .optional()
     .describe(
       "Block-targeted edits to the skill instructions. Each item targets one block by its " +
-        `data-block-id. Use "${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" as targetBlockId for a full rewrite.`
+        `data-block-id (at most ${MAX_INSTRUCTION_EDITS} edits). Use ` +
+        `"${INSTRUCTIONS_ROOT_TARGET_BLOCK_ID}" as targetBlockId for a full rewrite.`
     ),
   agentFacingDescriptionEdit: z
     .object({
