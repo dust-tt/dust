@@ -3,6 +3,7 @@ import {
   assistantReasoningMessageToInputItems,
   assistantTextMessageToInputItem,
   assistantToolCallRequestToInputItem,
+  toolNamesCalledWithoutNamespace,
   toolSpecsToOpenAITools,
 } from "@app/lib/model_constructors/sdk/openai_responses/converters/input/utils";
 import { OpenAIGptFiveDotFourGlobalOpenAIResponsesStream } from "@app/lib/model_constructors/stream/endpoints/openai_gpt_five_dot_four_global_openai_responses";
@@ -12,6 +13,7 @@ import type {
   BaseAssistantReasoningMessage,
   BaseAssistantTextMessage,
   BaseAssistantToolCallRequestMessage,
+  BaseConversation,
   BaseUserTextMessage,
   SystemTextMessage,
 } from "@app/lib/model_constructors/types/input/messages";
@@ -438,12 +440,18 @@ describe("toolSpecsToOpenAITools", () => {
     description: "Get the current weather",
     inputSchema: { type: "object", properties: {} },
   };
+  const otherDeferredTool = {
+    name: "get_stock",
+    description: "Get a stock price",
+    inputSchema: { type: "object", properties: {} },
+  };
 
   it("prepends tool search and defers non-eager functions", () => {
     expect(
       toolSpecsToOpenAITools([eagerTool, deferredTool], {
         forceTool: undefined,
         toolSearchEnabled: true,
+        toolNamesRequiringDefaultNamespace: new Set(),
       })
     ).toEqual([
       { type: "tool_search" },
@@ -459,10 +467,82 @@ describe("toolSpecsToOpenAITools", () => {
     const tools = toolSpecsToOpenAITools([deferredTool], {
       forceTool: deferredTool.name,
       toolSearchEnabled: true,
+      toolNamesRequiringDefaultNamespace: new Set(),
     });
 
     expect(tools).toEqual([expect.objectContaining({ name: "get_weather" })]);
     expect(tools[0]).not.toHaveProperty("defer_loading");
+  });
+
+  it("keeps a function replayed without a namespace eager", () => {
+    const tools = toolSpecsToOpenAITools([deferredTool], {
+      forceTool: undefined,
+      toolSearchEnabled: true,
+      toolNamesRequiringDefaultNamespace: new Set([deferredTool.name]),
+    });
+
+    expect(tools).toEqual([expect.objectContaining({ name: "get_weather" })]);
+    expect(tools[0]).not.toHaveProperty("defer_loading");
+  });
+
+  it("keeps deferring the other functions when one is promoted", () => {
+    expect(
+      toolSpecsToOpenAITools([deferredTool, otherDeferredTool], {
+        forceTool: undefined,
+        toolSearchEnabled: true,
+        toolNamesRequiringDefaultNamespace: new Set([deferredTool.name]),
+      })
+    ).toEqual([
+      { type: "tool_search" },
+      expect.objectContaining({ name: "get_weather" }),
+      expect.objectContaining({ name: "get_stock", defer_loading: true }),
+    ]);
+  });
+
+  it("still defers the functions no namespaceless call names", () => {
+    const tools = toolSpecsToOpenAITools([deferredTool], {
+      forceTool: undefined,
+      toolSearchEnabled: true,
+      toolNamesRequiringDefaultNamespace: new Set(["other_tool"]),
+    });
+
+    expect(tools).toEqual([
+      { type: "tool_search" },
+      expect.objectContaining({ name: "get_weather", defer_loading: true }),
+    ]);
+  });
+});
+
+describe("toolNamesCalledWithoutNamespace", () => {
+  function toolCall(
+    toolName: string,
+    namespace?: string
+  ): BaseAssistantToolCallRequestMessage {
+    return {
+      role: "assistant",
+      type: "tool_call_request",
+      content: {
+        callId: `call_${toolName}`,
+        toolName,
+        arguments: "{}",
+        ...(namespace ? { namespace } : {}),
+      },
+    };
+  }
+
+  it("collects only the calls carrying no namespace", () => {
+    const conversation: BaseConversation = {
+      system: [],
+      messages: [
+        { role: "user", type: "text", content: { value: "hello" } },
+        toolCall("get_weather"),
+        toolCall("get_time", "get_time"),
+      ],
+    };
+
+    expect(toolNamesCalledWithoutNamespace(conversation)).toEqual(
+      new Set(["get_weather"])
+    );
   });
 });
 
