@@ -352,6 +352,10 @@ export async function getInternalMCPServer(
       return (
         await import("@app/lib/api/actions/servers/skill_authoring")
       ).default(auth, toolContext);
+    case "agent_authoring":
+      return (
+        await import("@app/lib/api/actions/servers/agent_authoring")
+      ).default(auth, toolContext);
     case "triggers_management":
       return (
         await import("@app/lib/api/actions/servers/triggers_management")
