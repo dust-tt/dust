@@ -25,6 +25,34 @@ import React from "react";
 import { useSWRConfig } from "swr";
 import type { z } from "zod";
 
+// The workspace-count column is inserted right after this plan field, so the columns
+// identifying a plan stay together at the left of a very wide table.
+const WORKSPACES_COLUMN_AFTER_FIELD = "code";
+
+interface PlanWorkspacesCellProps {
+  plan: EditingPlanType;
+  workspaceCount: number | undefined;
+}
+
+// A plan being created has no code yet, so there is nothing to count or link to.
+function PlanWorkspacesCell({ plan, workspaceCount }: PlanWorkspacesCellProps) {
+  return (
+    <td className="w-24 min-w-24 flex-none border px-4 py-2">
+      {plan.isNewPlan ? (
+        <div className="text-center text-muted-foreground">—</div>
+      ) : (
+        <div className="flex flex-row justify-center">
+          <LinkWrapper href={`/poke/plans/${plan.code}`}>
+            <span className="text-highlight-600 hover:underline">
+              {(workspaceCount ?? 0).toLocaleString()}
+            </span>
+          </LinkWrapper>
+        </div>
+      )}
+    </td>
+  );
+}
+
 export function PlansPage() {
   usePokePageMetadata({ name: "Plans" });
 
@@ -127,18 +155,22 @@ export function PlansPage() {
                 const field =
                   PLAN_FIELDS[fieldName as keyof typeof PLAN_FIELDS];
                 return (
-                  <th key={fieldName}>
-                    {"IconComponent" in field ? (
-                      <div className="flex flex-row justify-center">
-                        <field.IconComponent />
-                      </div>
-                    ) : (
-                      field.title
+                  <React.Fragment key={fieldName}>
+                    <th>
+                      {"IconComponent" in field ? (
+                        <div className="flex flex-row justify-center">
+                          <field.IconComponent />
+                        </div>
+                      ) : (
+                        field.title
+                      )}
+                    </th>
+                    {fieldName === WORKSPACES_COLUMN_AFTER_FIELD && (
+                      <th className="px-4 py-2">Workspaces</th>
                     )}
-                  </th>
+                  </React.Fragment>
                 );
               })}
-              <th className="px-4 py-2">Workspaces</th>
               <th className="px-4 py-2">Edit</th>
             </tr>
           </thead>
@@ -161,23 +193,16 @@ export function PlansPage() {
                         setEditingPlan={setEditingPlan}
                         editingPlan={editingPlan}
                       />
+                      {fieldName === WORKSPACES_COLUMN_AFTER_FIELD && (
+                        <PlanWorkspacesCell
+                          plan={plan}
+                          workspaceCount={workspaceCountByPlanCode.get(
+                            plan.code
+                          )}
+                        />
+                      )}
                     </React.Fragment>
                   ))}
-                  <td className="w-24 min-w-24 flex-none border px-4 py-2">
-                    {plan.isNewPlan ? (
-                      <div className="text-center text-muted-foreground">—</div>
-                    ) : (
-                      <div className="flex flex-row justify-center">
-                        <LinkWrapper href={`/poke/plans/${plan.code}`}>
-                          <span className="text-highlight-600 hover:underline">
-                            {workspaceCountByPlanCode
-                              .get(plan.code)
-                              ?.toLocaleString() ?? 0}
-                          </span>
-                        </LinkWrapper>
-                      </div>
-                    )}
-                  </td>
                   <td className="w-12 min-w-16 flex-none border px-4 py-2">
                     {plan.code === editingPlan?.code || plan.isNewPlan ? (
                       <div className="flex flex-row justify-center">
