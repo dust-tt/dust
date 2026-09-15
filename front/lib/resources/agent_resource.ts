@@ -14,7 +14,6 @@ import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
 import type {
-  AccessControlList,
   RoleGrant,
   WithAccessControl,
 } from "@app/types/resource_permissions";
@@ -313,25 +312,21 @@ export class AgentResource implements WithAccessControl {
    * The admin role grants `write` on custom agents to regular API keys only; human and system-key
    * callers receive no agent write access from their role. Global agents remain read-only.
    */
-  getAccessControlLists(auth: Authenticator): AccessControlList[] {
+  getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     switch (this.kind) {
-      case "global":
+      case "global": {
         assert(isGlobalAgentId(this.sId));
 
-        return [
-          {
-            roles: globalAgentReaderRoles(this.sId).map((role) => ({
-              role,
-              permissions: ["read"],
-            })),
-            workspaceId: this.workspaceId,
-          },
-        ];
+        const roleGrants: RoleGrant[] = globalAgentReaderRoles(this.sId).map(
+          (role) => ({ role, permissions: ["read"] })
+        );
+        return auth.resolveAllowedVerbs(roleGrants, this.workspaceId, []);
+      }
       case "custom": {
         assert(this.id !== null);
         assert(this.authorId !== null);
 
-        const grants = auth.getGrantedVerbs("agent", this.id);
+        const grants = auth.getGovernanceGrantVerbs("agent", this.id);
         const isAuthor =
           auth.workspace()?.id === this.workspaceId &&
           auth.user()?.id === this.authorId;
@@ -340,18 +335,13 @@ export class AgentResource implements WithAccessControl {
             ? VISIBLE_AGENT_ROLE_GRANTS
             : HIDDEN_AGENT_ROLE_GRANTS;
 
-        return [
-          {
-            roles:
-              auth.isKey() && !auth.isSystemKey()
-                ? [...roles, { role: "admin", permissions: ["write"] }]
-                : roles,
-            grantedVerbs: isAuthor
-              ? [...new Set([...grants, ...AGENT_EDITOR_VERBS])]
-              : grants,
-            workspaceId: this.workspaceId,
-          },
-        ];
+        return auth.resolveAllowedVerbs(
+          auth.isKey() && !auth.isSystemKey()
+            ? [...roles, { role: "admin", permissions: ["write"] }]
+            : roles,
+          this.workspaceId,
+          isAuthor ? [...grants, ...AGENT_EDITOR_VERBS] : grants
+        );
       }
       default:
         return assertNever(this.kind);

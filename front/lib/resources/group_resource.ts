@@ -55,7 +55,8 @@ import type {
   MembershipSeatType,
 } from "@app/types/memberships";
 import { SEAT_TYPE_ORDER } from "@app/types/memberships";
-import type { AccessControlList } from "@app/types/resource_permissions";
+import type { GrantVerb } from "@app/types/group_permissions";
+import type { RoleGrant } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -2715,47 +2716,30 @@ export class GroupResource extends BaseResource<GroupModel> {
    * NOT inherited, i.e., if you set a permission for role "user", an "admin"
    * will NOT have it
    *
-   * @returns Array of AccessControlList objects defining the default access
-   * configuration
+   * @returns The verbs the caller holds on this group. Group access is role-only (no governance
+   * grants), so the set is the caller's role rules for the group's kind.
    */
-  getAccessControlLists(auth: Authenticator): AccessControlList[] {
+  getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     // regular_manual: admins and managers manage the group; everyone can read.
-    if (this.isRegularManual()) {
-      return [
-        {
-          roles: [
-            { role: "admin", permissions: ["read", "write", "admin"] },
-            { role: "manager", permissions: ["read", "write", "admin"] },
-            { role: "user", permissions: ["read"] },
-            { role: "builder", permissions: ["read"] },
-          ],
-          workspaceId: this.workspaceId,
-        },
-      ];
-    }
-
-    if (this.isGlobal() || this.isProvisioned()) {
-      return [
-        {
-          roles: [
+    const roleGrants: RoleGrant[] = this.isRegularManual()
+      ? [
+          { role: "admin", permissions: ["read", "write", "admin"] },
+          { role: "manager", permissions: ["read", "write", "admin"] },
+          { role: "user", permissions: ["read"] },
+          { role: "builder", permissions: ["read"] },
+        ]
+      : this.isGlobal() || this.isProvisioned()
+        ? [
             { role: "admin", permissions: ["read"] },
             { role: "manager", permissions: ["read"] },
             { role: "user", permissions: ["read"] },
             { role: "builder", permissions: ["read"] },
-          ],
-          workspaceId: this.workspaceId,
-        },
-      ];
-    }
+          ]
+        : // system, regular_auto: no permission for anyone. Access to a regular_auto group is
+          // decided on the resource it is linked to, and its owner fetches it without a check.
+          [];
 
-    // system, regular_auto: no permission for anyone. Access to a regular_auto group is
-    // decided on the resource it is linked to, and its owner fetches it without an ACL check.
-    return [
-      {
-        roles: [],
-        workspaceId: this.workspaceId,
-      },
-    ];
+    return auth.resolveAllowedVerbs(roleGrants, this.workspaceId, []);
   }
 
   canRead(auth: Authenticator): boolean {

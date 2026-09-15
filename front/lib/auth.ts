@@ -63,7 +63,7 @@ import type { GroupKind } from "@app/types/groups";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
 import type {
-  AccessControlList,
+  RoleGrant,
   WithAccessControl,
 } from "@app/types/resource_permissions";
 import { isDevelopment } from "@app/types/shared/env";
@@ -1318,11 +1318,11 @@ export class Authenticator {
       return false;
     }
 
-    return this.hasPermissionForAcl(verb, {
-      roles: [{ role: "admin", permissions: [verb] }],
-      grantedVerbs: this.getGrantedVerbs(resourceType, WHOLE_TYPE_RESOURCE_ID),
-      workspaceId: workspace.id,
-    });
+    return this.resolveAllowedVerbs(
+      [{ role: "admin", permissions: [verb] }],
+      workspace.id,
+      this.getGovernanceGrantVerbs(resourceType, WHOLE_TYPE_RESOURCE_ID)
+    ).has(verb);
   }
 
   /**
@@ -1584,10 +1584,11 @@ export class Authenticator {
   }
 
   /**
-   * The verbs the caller holds on `(resourceType, resourceId)`, resolved from their governance
-   * grants (folding in the type-wide (-1) grants). Caller-scoped and pre-resolved — resources fold
-   * this into their `AccessControlList` as `grantedVerbs`, which the checker uses directly with no
-   * group-membership step. Pass `WHOLE_TYPE_RESOURCE_ID` for a workspace-wide capability.
+   * The verbs the caller holds on `(resourceType, resourceId)` from their governance grants alone
+   * (folding in the type-wide (-1) grants). Caller-scoped and pre-resolved — resources fold this
+   * into the set returned by `getAllowedVerbs`, unioned with their role rules, and the checker uses
+   * the result directly with no group-membership step. Pass `WHOLE_TYPE_RESOURCE_ID` for a
+   * workspace-wide capability.
    */
   /**
    * @cc [owner:tdraier,label:security] governance-verbs-only
@@ -1595,10 +1596,10 @@ export class Authenticator {
    * unioned across the caller's groups and folding in type-wide (-1) grants. Role-derived verbs and
    * any resource-dynamic grants (a resource's per-instance `roles`, e.g. a space's admin role) MUST
    * NOT be included. Callers MUST NOT treat the result as the complete set of verbs the caller can
-   * exercise on the resource: completeness requires an ACL check (`hasPermission` /
-   * `hasPermissionForAcls`) that OR-combines these `grantedVerbs` with the resource's role grants.
+   * exercise on the resource: completeness requires the resource's `getAllowedVerbs` (checked via
+   * `hasPermission` / `can`), which unions these governance verbs with the resource's role grants.
    */
-  getGrantedVerbs(
+  getGovernanceGrantVerbs(
     resourceType: ConcreteResourceType,
     resourceId: number
   ): GrantVerb[] {
@@ -1607,7 +1608,7 @@ export class Authenticator {
 
   /**
    * The instances of `resourceType` the caller may `verb`, resolved from their governance grants.
-   * The enumeration counterpart of `getGrantedVerbs` — "which resources may I act on" rather than
+   * The enumeration counterpart of `getGovernanceGrantVerbs` — "which resources may I act on" rather than
    * "what may I do on this one" — for reverse lookups such as the projects a caller belongs to.
    * Returns `{ kind: "all" }` when a type-wide grant confers the verb on every instance, which a
    * system key holds on every type (see `resolvePermissions`).
@@ -1625,8 +1626,8 @@ export class Authenticator {
    * @cc [owner:tdraier,label:security] type-wide-grant-is-all
    * A type-wide (-1) grant confers `verb` on every instance and names none, so it MUST be reported as
    * `{ kind: "all" }` — never expanded into a concrete id list and never dropped. Dropping it would
-   * make this method answer "no instances" while `getGrantedVerbs` answers "yes" for the same verb on
-   * any single id, since that method folds the -1 grant into every lookup.
+   * make this method answer "no instances" while `getGovernanceGrantVerbs` answers "yes" for the same
+   * verb on any single id, since that method folds the -1 grant into every lookup.
    */
   getResourceIdsWithVerb(
     resourceType: ConcreteResourceType,
@@ -1645,12 +1646,12 @@ export class Authenticator {
   }
 
   /**
-   * Whether the caller holds `verb` on `target` — i.e. on EVERY access-control list the target
-   * declares (a resource may declare multiple ACLs that must all hold). `verb` is a grant verb
-   * (instance verbs like read/write/admin, or type-level capabilities like "create").
+   * Whether the caller holds `verb` on `target` — i.e. `verb` is in the complete set of verbs the
+   * target grants the caller (`getAllowedVerbs`). `verb` is a grant verb (instance verbs like
+   * read/write/admin, or type-level capabilities like "create").
    */
   hasPermission(verb: GrantVerb, target: WithAccessControl): boolean {
-    return this.hasPermissionForAcls(verb, target.getAccessControlLists(this));
+    return target.getAllowedVerbs(this).has(verb);
   }
 
   can(verb: GrantVerb, target: WithAccessControl): boolean {
@@ -1665,36 +1666,39 @@ export class Authenticator {
   }
 
   /**
-   * Whether the caller holds `verb` on every ACL in the list (conjunction). This is the raw-ACL
-   * entry point: callers that already hold built or derived ACLs (e.g. a space's served ACLs, the
-   * cross-space conversation checks) use this directly, rather than going through a
-   * `WithAccessControl` target.
+   * The complete set of verbs the caller holds given a resource's role rules and its already-resolved
+   * governance verbs — the union of the two additive sources. Resources build their `getAllowedVerbs`
+   * on top of this (and `hasWorkspacePermission` uses it for a synthetic type-wide admin rule).
+   * - Role path: gated to the caller's own workspace (a role only applies within its workspace); the
+   *   verbs of every `roleGrants` entry matching the caller's role are added.
+   * - Governance path: `governanceVerbs` are the caller's own verbs, already resolved from their
+   *   grants, so they are added directly with no membership step.
    */
-  hasPermissionForAcls(verb: GrantVerb, acls: AccessControlList[]): boolean {
-    return acls.every((acl) => this.hasPermissionForAcl(verb, acl));
-  }
-
-  // Single-ACL check. The grant sources are additive (OR): the caller passes if any of them grants
-  // `verb`. An absent source contributes nothing, so an ACL with no matching source denies.
-  // - Role: the caller's workspace role grants `verb` (and the ACL is in the caller's workspace).
-  // - grantedVerbs: the caller's own governance verbs, already resolved — used directly, no
-  //   membership step (the caller-scoping is baked in when they are resolved).
-  private hasPermissionForAcl(
-    verb: GrantVerb,
-    acl: AccessControlList
-  ): boolean {
-    // Role path: gated to the caller's workspace (a role only applies within its own workspace).
-    const grantedByRole =
-      this.getNonNullableWorkspace().id === acl.workspaceId &&
-      (acl.roles ?? []).some(
-        (r) => this.role() === r.role && r.permissions.includes(verb)
-      );
-    if (grantedByRole) {
-      return true;
+  /**
+   * @cc [owner:tdraier,label:security] role-verbs-workspace-gated
+   * Verbs from `roleGrants` MUST be added ONLY when the caller's own workspace
+   * (`getNonNullableWorkspace().id`) equals `workspaceId` (the resource's workspace). A workspace
+   * role confers no verb on a resource in another workspace; dropping this gate would let a caller's
+   * role (e.g. admin) grant verbs on cross-workspace resources. `governanceVerbs` are already
+   * caller-scoped (see `getGovernanceGrantVerbs`) and are added unconditionally.
+   */
+  resolveAllowedVerbs(
+    roleGrants: RoleGrant[],
+    workspaceId: ModelId,
+    governanceVerbs: GrantVerb[]
+  ): Set<GrantVerb> {
+    const verbs = new Set<GrantVerb>(governanceVerbs);
+    if (this.getNonNullableWorkspace().id === workspaceId) {
+      const role = this.role();
+      for (const grant of roleGrants) {
+        if (grant.role === role) {
+          for (const verb of grant.permissions) {
+            verbs.add(verb);
+          }
+        }
+      }
     }
-
-    // Governance path: the caller's verbs are pre-resolved, so no membership step is needed.
-    return (acl.grantedVerbs ?? []).includes(verb);
+    return verbs;
   }
 
   key(): KeyAuthType | null {

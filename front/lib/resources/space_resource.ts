@@ -42,10 +42,7 @@ import {
   PROJECT_GROUP_PREFIX,
   SPACE_GROUP_PREFIX,
 } from "@app/types/groups";
-import type {
-  AccessControlList,
-  RoleGrant,
-} from "@app/types/resource_permissions";
+import type { RoleGrant } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -1922,11 +1919,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         return false;
       case "regular":
         return auth
-          .getGrantedVerbs("space", this.id)
+          .getGovernanceGrantVerbs("space", this.id)
           .includes(REGULAR_SPACE_MEMBERSHIP_VERB);
       case "project":
         return auth
-          .getGrantedVerbs("space", this.id)
+          .getGovernanceGrantVerbs("space", this.id)
           .includes(POD_SPACE_MEMBERSHIP_VERB);
       default:
         assertNever(this.kind);
@@ -2070,18 +2067,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * - Read/Write: Group members
    * - Admin: Workspace admins
    *
-   * @returns Array of AccessControlList objects based on space type
+   * @returns The verbs the caller holds on this space, by space type
    */
-  getAccessControlLists(auth: Authenticator): AccessControlList[] {
-    return [
-      {
-        workspaceId: this.workspaceId,
-        roles: this.spaceRoleGrants(),
-        // The caller's own verbs on this space, resolved from `group_permissions` (kept in sync by
-        // `writeGroupPermissions`). The per-kind role rules above are unchanged.
-        grantedVerbs: auth.getGrantedVerbs("space", this.id),
-      },
-    ];
+  getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
+    // The per-kind role rules unioned with the caller's own verbs on this space, resolved from
+    // `group_permissions` (kept in sync by `writeGroupPermissions`).
+    return auth.resolveAllowedVerbs(
+      this.spaceRoleGrants(),
+      this.workspaceId,
+      auth.getGovernanceGrantVerbs("space", this.id)
+    );
   }
 
   // The verbs each workspace role holds on this space, by space kind.
