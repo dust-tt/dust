@@ -19,7 +19,14 @@ export function isSkillSuggestionState(
   );
 }
 
-export const SKILL_SUGGESTION_SOURCES = ["reinforcement", "synthetic"] as const;
+// - `reinforcement`: aggregated by the reinforcement workflow from synthetic suggestions.
+// - `synthetic`: per-conversation intermediate suggestions consumed by reinforcement.
+// - `conversational`: proposed by an agent during a conversation (building_agents_and_skills MCP).
+export const SKILL_SUGGESTION_SOURCES = [
+  "reinforcement",
+  "synthetic",
+  "conversational",
+] as const;
 
 export type SkillSuggestionSource = (typeof SKILL_SUGGESTION_SOURCES)[number];
 

@@ -902,6 +902,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "conversations_slack_notifications"
   | "collapsible_messages"
   | "consumption_export_api"
+  | "conversational_building"
   | "conversation_consumption_details"
   | "use_dust_keys"
   | "sensitivity_labels"

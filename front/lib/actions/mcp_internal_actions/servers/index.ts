@@ -14,6 +14,7 @@ import { default as agentSidekickContextServer } from "@app/lib/api/actions/serv
 import { default as agentTemplatesServer } from "@app/lib/api/actions/servers/agent_templates";
 import { default as ashbyServer } from "@app/lib/api/actions/servers/ashby";
 import { default as askUserQuestionServer } from "@app/lib/api/actions/servers/ask_user_question";
+import { default as buildingAgentsAndSkillsServer } from "@app/lib/api/actions/servers/building_agents_and_skills";
 import { default as clariCopilotServer } from "@app/lib/api/actions/servers/clari_copilot";
 import { default as commonUtilitiesServer } from "@app/lib/api/actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/api/actions/servers/confluence";
@@ -230,6 +231,8 @@ export async function getInternalMCPServer(
       return outlookMailServer(auth, toolContext);
     case "outlook_calendar":
       return outlookCalendarServer(auth, toolContext);
+    case "building_agents_and_skills":
+      return buildingAgentsAndSkillsServer(auth, toolContext);
     case "agent_sidekick_agent_state":
       return agentSidekickAgentStateServer(auth, toolContext);
     case "agent_sidekick_context":
