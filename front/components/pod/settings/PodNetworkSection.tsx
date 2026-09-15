@@ -44,7 +44,7 @@ export function PodNetworkSection({
   if (isPodEgressPolicyError) {
     return (
       <ContentMessage
-        variant="primary"
+        variant="warning"
         icon={InfoCircle}
         size="lg"
         title="Failed to load"
