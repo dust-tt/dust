@@ -105,7 +105,7 @@ export async function resolveConsumptionPeriod(
       const startMs = Date.UTC(
         now.getUTCFullYear(),
         now.getUTCMonth(),
-        now.getUTCDate() - Math.round(input.days - 1)
+        now.getUTCDate() - (input.days - 1)
       );
       return {
         startDate: new Date(startMs).toISOString(),

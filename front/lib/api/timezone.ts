@@ -49,7 +49,8 @@ function getUtcOffsetMinutes(timezone: string, instant: Date): number {
  * `timezone`. A caller that bakes the result into a long-lived fixed schedule (e.g. a daily
  * cron expression) does NOT get its fire time re-resolved across DST transitions: the local
  * fire time will drift by the DST delta (typically 1h) until the schedule is recomputed.
- *
+ */
+/**
  * @cc [owner:avervaet,label:backend;error-handling] unknown-timezone-resolves-as-utc
  * An unrecognized `timezone` never throws: the wall time is returned unchanged (offset 0) and a
  * warning is logged, matching the moment.js fallback this replaces. Callers that need a hard

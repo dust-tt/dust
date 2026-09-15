@@ -197,6 +197,10 @@ export type ResolvedTimeWindow = {
   timezone: string;
 };
 
+function firstOfMonth(year: number, month: number): string {
+  return `${year}-${String(month).padStart(2, "0")}-01`;
+}
+
 // Resolves a TimeWindowInput into concrete ISO start/end instants plus a human
 // label. Explicit startDate/endDate take precedence over `period`; when nothing
 // is provided, falls back to `defaultPeriod`.
@@ -246,11 +250,12 @@ export function resolveTimeWindow(
   const now = new Date();
   // Today's calendar date as seen in `timezone`; every relative window is anchored on it.
   const today = formatInTimeZone(now, timezone, "yyyy-MM-dd");
+  const [year, month] = today.split("-").map(Number);
   let start: Date;
   let label: string;
   switch (period) {
     case "this_month":
-      start = dayBoundaryInTimezone(`${today.slice(0, 7)}-01`, timezone);
+      start = dayBoundaryInTimezone(firstOfMonth(year, month), timezone);
       label = formatInTimeZone(now, timezone, "MMMM yyyy");
       break;
     case "last_7_days":
@@ -265,16 +270,13 @@ export function resolveTimeWindow(
       start = dayBoundaryInTimezone(today, timezone, { offsetDays: -89 });
       label = "the last 90 days";
       break;
-    case "this_quarter": {
-      const [year, month] = today.split("-").map(Number);
-      const quarterStartMonth = month - ((month - 1) % 3);
+    case "this_quarter":
       start = dayBoundaryInTimezone(
-        `${year}-${String(quarterStartMonth).padStart(2, "0")}-01`,
+        firstOfMonth(year, month - ((month - 1) % 3)),
         timezone
       );
       label = formatInTimeZone(now, timezone, "'Q'Q yyyy");
       break;
-    }
     default:
       return assertNever(period);
   }
