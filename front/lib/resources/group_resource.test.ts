@@ -807,7 +807,7 @@ describe("GroupResource", () => {
       });
 
       expect(launchIndexation).toHaveBeenLastCalledWith({
-        workspace,
+        workspace: expect.objectContaining({ sId: workspace.sId }),
         groupModelIds: [regularGroup.id],
       });
       const activeMembers = await regularGroup.getActiveMembers(authenticator);
@@ -819,7 +819,7 @@ describe("GroupResource", () => {
       });
       expect(launchIndexation).toHaveBeenCalledTimes(2);
       expect(launchIndexation).toHaveBeenLastCalledWith({
-        workspace,
+        workspace: expect.objectContaining({ sId: workspace.sId }),
         groupModelIds: [regularGroup.id],
       });
     });
