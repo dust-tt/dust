@@ -461,7 +461,7 @@ export function AgentDetailsSheet({
                     className="py-1"
                   >
                     <Markdown
-                      content={`Forward emails to this agent at \`${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}\`. Learn more [here](https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents).`}
+                      content={`Email this agent at \`${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}\`. Forward an email with your instructions and [get its reply](https://docs.dust.tt/docs/user-documentation/agents/integrations/send-and-forward-email-to-agents) in your inbox.`}
                       forcedTextSize="text-xs"
                       optimizeForStreaming={false}
                     />
