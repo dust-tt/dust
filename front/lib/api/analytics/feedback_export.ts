@@ -1,12 +1,13 @@
+import { formatExportCellDateTime } from "@app/lib/api/analytics/csv_utils";
 import { fetchAgentMetadata } from "@app/lib/api/analytics/enrichment";
 import config from "@app/lib/api/config";
+import { dayRangeInTimezone } from "@app/lib/api/timezone";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { WorkspaceType } from "@app/types/user";
-import moment from "moment-timezone";
 
 export interface FeedbackExportRow {
   feedbackId: string;
@@ -45,12 +46,11 @@ export async function fetchFeedbackExportRows({
   endDate: string;
   timezone: string;
 }): Promise<Result<FeedbackExportRow[], Error>> {
-  const startInstant = moment.tz(startDate, timezone).startOf("day").toDate();
-  const exclusiveEndInstant = moment
-    .tz(endDate, timezone)
-    .add(1, "day")
-    .startOf("day")
-    .toDate();
+  const { startInstant, exclusiveEndInstant } = dayRangeInTimezone(
+    startDate,
+    endDate,
+    timezone
+  );
 
   const feedbacks = await getFrontReplicaDbConnection().transaction(
     async (transaction) =>
@@ -78,9 +78,7 @@ export async function fetchFeedbackExportRows({
 
     return {
       feedbackId: feedback.sId,
-      createdAt: moment(feedback.createdAt)
-        .tz(timezone)
-        .format("YYYY-MM-DD HH:mm:ss"),
+      createdAt: formatExportCellDateTime(feedback.createdAt, timezone),
       assistantId: feedback.agentConfigurationId,
       assistantName: agent?.name ?? feedback.agentConfigurationId,
       conversationUrl:

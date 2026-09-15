@@ -2,6 +2,7 @@ import {
   exportTable,
   stringifyExportTableAsCsv,
 } from "@app/lib/api/analytics/export_tables";
+import { parseCalendarDate, timezoneSchema } from "@app/lib/api/timezone";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
@@ -17,7 +18,10 @@ const AnalyticsDateSchema = z
   .regex(
     /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/,
     "Date must be in YYYY-MM-DD format"
-  );
+  )
+  .refine((s) => parseCalendarDate(s) !== null, {
+    message: "Date must be a real calendar day",
+  });
 
 const QuerySchema = z
   .object({
@@ -35,7 +39,7 @@ const QuerySchema = z
     ]),
     startDate: AnalyticsDateSchema,
     endDate: AnalyticsDateSchema,
-    timezone: z.string().optional(),
+    timezone: timezoneSchema,
     format: z.enum(["csv", "json"]).optional(),
   })
   .refine((d) => d.startDate <= d.endDate, {
@@ -60,7 +64,7 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
     table,
     startDate,
     endDate,
-    timezone: timezone ?? "UTC",
+    timezone,
     owner,
     includeHiddenAgents: false,
   });

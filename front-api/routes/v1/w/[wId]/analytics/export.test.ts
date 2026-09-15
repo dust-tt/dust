@@ -252,6 +252,12 @@ describe("GET /api/v1/w/[wId]/analytics/export", () => {
     expect(response.status).toBe(400);
   });
 
+  it("returns 400 for a startDate naming a non-existent calendar day", async () => {
+    const { response } = await setupTest({ startDate: "2024-02-30" });
+
+    expect(response.status).toBe(400);
+  });
+
   it("returns 400 when startDate is after endDate", async () => {
     const { response } = await setupTest({
       startDate: "2024-06-30",
