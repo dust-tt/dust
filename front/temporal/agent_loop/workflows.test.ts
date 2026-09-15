@@ -372,39 +372,6 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
     expect(checkCreditSpendCheckpointActivity).not.toHaveBeenCalled();
   });
 
-  it("passes the checkpoint's descendant walk into the next step's activity call", async () => {
-    const descendantData = { dustRunIds: ["run-a", "run-b"] };
-    checkCreditSpendCheckpointActivity
-      .mockResolvedValueOnce({
-        crossed: false,
-        skipRemainingChecks: false,
-        descendantData,
-      })
-      .mockResolvedValueOnce({ crossed: true, thresholdAwuCredits: 500 });
-
-    await agentLoopWorkflow({
-      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
-      authType,
-      initialStartTime: 0,
-      startStep: 0,
-    });
-
-    expect(
-      runModelAndCreateActionsActivityWithExplicitCancellation
-    ).toHaveBeenCalledTimes(2);
-    // First step has nothing cached yet.
-    expect(
-      runModelAndCreateActionsActivityWithExplicitCancellation
-    ).toHaveBeenNthCalledWith(
-      1,
-      expect.objectContaining({ descendantData: null })
-    );
-    // Second step reuses what the first step's checkpoint check just walked.
-    expect(
-      runModelAndCreateActionsActivityWithExplicitCancellation
-    ).toHaveBeenNthCalledWith(2, expect.objectContaining({ descendantData }));
-  });
-
   it("breaks out of the loop and finalizes as paused when the checkpoint is crossed", async () => {
     checkCreditSpendCheckpointActivity.mockResolvedValue({
       crossed: true,

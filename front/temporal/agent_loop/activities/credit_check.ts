@@ -7,7 +7,6 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import type { DescendantRunData } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import {
   collectDescendantData,
   getCumulativeCostMicroUsd,
@@ -26,12 +25,7 @@ export async function checkCreditsActivity(
 }
 
 export type CreditSpendCheckpointActivityResult =
-  | { crossed: false; skipRemainingChecks: true }
-  | {
-      crossed: false;
-      skipRemainingChecks: false;
-      descendantData: DescendantRunData;
-    }
+  | { crossed: false; skipRemainingChecks: boolean }
   | { crossed: true; thresholdAwuCredits: number };
 
 const SKIP: CreditSpendCheckpointActivityResult = {
@@ -72,19 +66,21 @@ export async function checkCreditSpendCheckpointActivity(
         userMessageId: agentLoopArgs.userMessageId,
       }
     );
+  // A missing message cannot be paused: nothing to check.
   if (
-    context &&
-    (!context.isRootAgentMessage || context.status === "acknowledged")
+    !context ||
+    !context.isRootAgentMessage ||
+    context.status === "acknowledged"
   ) {
     return SKIP;
   }
 
   // Read after the step completed, so the step's own run is already accounted for.
-  const descendantData = await collectDescendantData(auth, {
+  const { dustRunIds } = await collectDescendantData(auth, {
     rootAgentMessageId: agentLoopArgs.agentMessageId,
   });
   const totalCostMicroUsd = await getCumulativeCostMicroUsd(auth, {
-    dustRunIds: descendantData.dustRunIds,
+    dustRunIds,
   });
 
   const result = checkCreditSpendCheckpointGate(auth, {
@@ -95,7 +91,5 @@ export async function checkCreditSpendCheckpointActivity(
     return { crossed: true, thresholdAwuCredits: result.thresholdAwuCredits };
   }
 
-  return result.exempt
-    ? SKIP
-    : { crossed: false, skipRemainingChecks: false, descendantData };
+  return { crossed: false, skipRemainingChecks: result.exempt };
 }
