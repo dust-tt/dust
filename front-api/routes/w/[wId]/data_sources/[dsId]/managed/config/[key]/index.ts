@@ -23,6 +23,7 @@ const ALLOWED_CONFIG_KEYS = new Set<string>([
   "pdfEnabled",
   "codeSyncEnabled",
   "useMetadataForDBML",
+  "maximumBytesBilled",
   "intercomConversationsNotesSyncEnabled",
   "zendeskSyncUnresolvedTicketsEnabled",
   "zendeskHideCustomerDetails",

@@ -17,8 +17,32 @@ import {
   isBigQueryWithLocationCredentials,
 } from "@connectors/types";
 
-// Must be kept in sync with the tag in core.
+// Must be kept in sync with the tags in core.
 const USE_METADATA_FOR_DBML_TAG = "bigquery:useMetadataForDBML";
+const MAXIMUM_BYTES_BILLED_TAG_PREFIX = "bigquery:maximumBytesBilled:";
+
+function buildBigQuerySyncTags({
+  useMetadataForDBML,
+  maximumBytesBilled,
+}: {
+  useMetadataForDBML: boolean;
+  maximumBytesBilled: number | string | null;
+}): string[] {
+  const tags: string[] = [];
+  if (useMetadataForDBML) {
+    tags.push(USE_METADATA_FOR_DBML_TAG);
+  }
+  if (maximumBytesBilled !== null && maximumBytesBilled !== undefined) {
+    const bytes =
+      typeof maximumBytesBilled === "string"
+        ? Number(maximumBytesBilled)
+        : maximumBytesBilled;
+    if (Number.isFinite(bytes) && bytes > 0) {
+      tags.push(`${MAXIMUM_BYTES_BILLED_TAG_PREFIX}${bytes}`);
+    }
+  }
+  return tags;
+}
 
 export async function syncBigQueryConnection(connectorId: ModelId) {
   const getConnectorAndCredentialsRes = await getConnectorAndCredentials({
@@ -81,11 +105,14 @@ export async function syncBigQueryConnection(connectorId: ModelId) {
     remoteDBTree: tree,
     mimeTypes: INTERNAL_MIME_TYPES.BIGQUERY,
     connector,
-    tags: useMetadataForDBML ? [USE_METADATA_FOR_DBML_TAG] : [],
     // On the skip path a selection may have been saved between the precheck and `sync`'s read;
     // preserve it instead of deleting it so the resync it signaled can recover it. Required by the
     // `remote-databases-skip-enumeration-when-nothing-selected` contract.
     preserveSelectedPermissions: !hasSelection,
+    tags: buildBigQuerySyncTags({
+      useMetadataForDBML,
+      maximumBytesBilled: connectorConfig.maximumBytesBilled,
+    }),
   });
 
   await syncSucceeded(connectorId);
