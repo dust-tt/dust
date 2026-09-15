@@ -69,6 +69,7 @@ export type RedisUsageTagsType =
   | "lock"
   | "sandbox_exec_tokens"
   | "sandbox_function_invocation_events"
+  | "search_usage_snapshot"
   | "mcp_client_side_request"
   | "mcp_client_side_results"
   | "mentions_count"
