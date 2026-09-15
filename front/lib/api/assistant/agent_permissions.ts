@@ -51,10 +51,7 @@ export async function shadowEditableAgents(
 ): Promise<LightAgentConfigurationType[]> {
   const candidate = async () => {
     const customAgents = agents.filter((agent) => agent.scope !== "global");
-    const resources = AgentResource.fromAgentConfigurations(
-      auth,
-      customAgents
-    );
+    const resources = AgentResource.fromAgentConfigurations(auth, customAgents);
     return resources
       .filter((resource) => auth.isAdmin() || auth.can("write", resource))
       .map((resource) => resource.sId)
