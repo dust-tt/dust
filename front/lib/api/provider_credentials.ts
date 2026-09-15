@@ -1,7 +1,6 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
 import { ProviderCredentialResource } from "@app/lib/resources/provider_credential_resource";
 import type { ByokModelProviderIdType } from "@app/types/assistant/models/types";
 import type {
@@ -14,9 +13,6 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import { EnvironmentConfig } from "@app/types/shared/utils/config";
 import assert from "assert";
 import type { z } from "zod";
-
-// Fraction of requests that use BYOK credentials during the transition period.
-const BYOK_TRANSITION_BYOK_KEYS_RATIO = 1; // 100%
 
 export const MISSING_EMBEDDING_API_KEY_ERROR_MESSAGE =
   "An OpenAI API key is required to perform this action. Please configure it in your workspace settings or contact an admin.";
@@ -79,9 +75,8 @@ export function dangerouslyGetDustManagedLlmCredentials(): LLMCredentialsType {
  * Returns LLM credentials for the workspace.
  *
  * - Non-BYOK workspaces: returns Dust-managed keys from environment variables.
- * - BYOK workspaces: resolves customer-provided keys from OAuth credentials.
- *   - For BYOK_TRANSITIONING plan, fallback on Dust-managed keys if customer keys are not provided.
- *   - For all others, do not fallback.
+ * - BYOK workspaces: resolves customer-provided keys from OAuth credentials, with no fallback on
+ *   Dust-managed keys.
  *
  * `OPENAI_EMBEDDING_API_KEY` is set separately from `OPENAI_API_KEY` so Dust apps
  * don't accidentally use the customer's LLM key for embeddings.
@@ -117,28 +112,6 @@ export async function getLlmCredentials(
 
   const providerCredentials =
     await ProviderCredentialResource.listByWorkspace(auth);
-
-  // Use healthy keys only and fallback on Dust keys for this specific plan only
-  if (isByokTransitioningPlan(plan)) {
-    const healthyCredentials = mapOauthCredentialsToLlmCredentials(
-      providerCredentials
-        .filter(({ isHealthy }) => isHealthy)
-        .map((cred) => ({
-          providerId: cred.providerId,
-          content: cred.credentials,
-        }))
-    );
-
-    const shouldUseByokKeys = Math.random() < BYOK_TRANSITION_BYOK_KEYS_RATIO;
-
-    return shouldUseByokKeys
-      ? {
-          ...BASE_VARIABLES,
-          ...DUST_MANAGED_BYOK_PROVIDERS_API_KEYS,
-          ...healthyCredentials,
-        }
-      : { ...BASE_VARIABLES, ...DUST_MANAGED_BYOK_PROVIDERS_API_KEYS };
-  }
 
   const credentials = mapOauthCredentialsToLlmCredentials(
     providerCredentials.map((cred) => ({
