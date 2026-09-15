@@ -4,11 +4,12 @@ import { Outlet } from "react-router-dom";
 
 /**
  * Router layout shared by every surface that shows the agent sidebar: conversations, Pods,
- * get-started, and the agent / skill management pages.
+ * get-started, labs, and the agent / skill management pages.
  *
- * It owns `AssistantLayout` so the sidebar is mounted once and survives navigation between those
- * routes. Pages below must not render `AssistantLayout` themselves — see the
- * `sidebar-owned-by-layout-route` contract.
+ * It renders `AssistantLayout` above the outlet so a single owner sets the sidebar for all of
+ * them, which keeps `AgentSidebarMenu` alive across navigation between these routes. Pages below
+ * must not render `AssistantLayout` themselves — see the
+ * `single-owner-for-sidebar-nav-children` contract.
  */
 export function AgentSurfaceRouterLayout() {
   const owner = useWorkspace();

@@ -17,17 +17,25 @@ interface AssistantLayoutProps {
 }
 
 /**
- * @cc [owner:rfrenoy,label:react;performance] sidebar-owned-by-layout-route
- * `AssistantLayout` MUST be mounted by a router layout route that stays mounted across every
- * agent surface it covers (conversations, Pods, get-started, agent and skill management, labs),
- * and MUST NOT be rendered by the page components of those routes.
+ * @cc [owner:rfrenoy,label:react;performance] single-owner-for-sidebar-nav-children
+ * `AssistantLayout` MUST be the only component that passes `AgentSidebarMenu` to
+ * `useSetNavChildren`, and it MUST be rendered above the route outlet of every agent surface it
+ * covers (conversations, Pods, get-started, agent and skill management, labs) rather than by
+ * those routes' page components.
  *
- * Pages are code-split: when a page owns the sidebar, switching sections unmounts the old page
- * (clearing `navChildren`) before the next page's chunk resolves, so `AgentSidebarMenu` is torn
- * down and rebuilt on every navigation — blanking the sidebar, refetching its conversations and
- * Pods, and dropping its scroll and collapsed-section state.
+ * A single owner above the outlet guarantees that clearing `navChildren` on unmount and setting
+ * it again on mount always happen in the same commit, so the value is never committed as
+ * `undefined` and the sidebar element is reconciled in place instead of being torn down. Page
+ * components cannot provide that guarantee: they are code-split, so switching sections unmounts
+ * the old page — clearing `navChildren` — and the next page's mount effect does not run until
+ * its chunk resolves. `AgentSidebarMenu` is then unmounted for the length of that fetch, blanking
+ * the sidebar, refetching its conversations and Pods, and dropping its scroll and
+ * collapsed-section state.
  *
- * Consequently, no other component may pass `AgentSidebarMenu` to `useSetNavChildren`.
+ * This contract is about ownership, not mount stability: `AssistantLayout` itself does remount
+ * during a navigation, because `AppContentLayout` changes the outlet's depth when `contentWidth`
+ * or `hasTitle` change. That is harmless here precisely because the clear and the set stay
+ * paired within one commit.
  */
 export function AssistantLayout({
   children,
