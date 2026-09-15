@@ -1,5 +1,5 @@
 import type { AgentMessageModelResolution } from "@app/lib/api/assistant/conversation/messages";
-import { getDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
+import { getEffectiveDegradedModelIds } from "@app/lib/api/assistant/effective_degraded_models";
 import {
   makePremiumModelMessageRateLimitKeyForUser,
   PREMIUM_MODEL_MESSAGE_RATE_LIMIT_PER_USER_PER_WEEK,
@@ -44,8 +44,13 @@ type PremiumModelFairUseDecision =
 async function resolveDowngradeTarget(
   auth: Authenticator
 ): Promise<ResolvedRequestedModel | null> {
-  const models = await getEnabledModelsForAuth(auth);
-  const degradedModelIds = getDegradedModelIds();
+  const [models, featureFlags] = await Promise.all([
+    getEnabledModelsForAuth(auth),
+    getFeatureFlags(auth),
+  ]);
+  const degradedModelIds = getEffectiveDegradedModelIds({
+    includeAutomatic: featureFlags.includes("automatic_model_health_routing"),
+  });
 
   for (const streamId of [AUTO_MODEL_ID, AUTO_FAST_MODEL_ID] as const) {
     const { model, reasoningEffort } = resolveStreamModel(

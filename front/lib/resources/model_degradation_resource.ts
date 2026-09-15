@@ -22,6 +22,18 @@ type ModelDegradationListOptions = {
   now?: Date;
 };
 
+type ModelDegradationRecordListOptions = {
+  source?: ModelDegradationSource;
+  now?: Date;
+  includeExpired?: boolean;
+};
+
+export type ModelDegradationRecord = DegradedModelEndpointType & {
+  source: ModelDegradationSource;
+  expiresAt: Date | null;
+  updatedAt: Date;
+};
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface ModelDegradationResource
@@ -46,19 +58,7 @@ export class ModelDegradationResource extends BaseResource<ModelDegradationModel
     source = "manual",
     now = new Date(),
   }: ModelDegradationListOptions = {}): Promise<DegradedModelEndpointType[]> {
-    const rows = await ModelDegradationModel.findAll({
-      where: {
-        source,
-        [Op.or]: [
-          { expiresAt: null },
-          {
-            expiresAt: {
-              [Op.gt]: now,
-            },
-          },
-        ],
-      },
-    });
+    const rows = await this.listDegradationRecords({ source, now });
 
     return rows.map(({ modelId, providerId, host }) => ({
       modelId,
@@ -67,10 +67,152 @@ export class ModelDegradationResource extends BaseResource<ModelDegradationModel
     }));
   }
 
+  static async listDegradationRecords({
+    source,
+    now = new Date(),
+    includeExpired = false,
+  }: ModelDegradationRecordListOptions = {}): Promise<
+    ModelDegradationRecord[]
+  > {
+    const activeWhere = includeExpired
+      ? {}
+      : {
+          [Op.or]: [
+            { expiresAt: null },
+            {
+              expiresAt: {
+                [Op.gt]: now,
+              },
+            },
+          ],
+        };
+    const rows = await ModelDegradationModel.findAll({
+      where: {
+        ...(source ? { source } : {}),
+        ...activeWhere,
+      },
+    });
+
+    return rows.map(
+      ({ modelId, providerId, host, source, expiresAt, updatedAt }) => ({
+        modelId,
+        providerId,
+        host,
+        source,
+        expiresAt,
+        updatedAt,
+      })
+    );
+  }
+
+  /**
+   * @cc [owner:frankaloia,label:backend;concurrency] monotonic-automatic-degradation-renewal
+   * Renewing an automatic degradation MUST NOT shorten its existing expiration.
+   */
+  static async renewAutomaticDegradation(
+    endpoint: DegradedModelEndpointType,
+    expiresAt: Date
+  ): Promise<Date> {
+    const identity = {
+      ...endpoint,
+      source: "automatic" as const,
+    };
+
+    // A conditional update keeps renewals monotonic. If recovery deletes the
+    // row between the read and update, loop once more and recreate it.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const [row, created] = await ModelDegradationModel.findOrCreate({
+        where: identity,
+        defaults: {
+          ...identity,
+          expiresAt,
+        },
+      });
+
+      if (created || (row.expiresAt && row.expiresAt >= expiresAt)) {
+        return row.expiresAt ?? expiresAt;
+      }
+
+      const [updated] = await ModelDegradationModel.update(
+        { expiresAt },
+        {
+          where: {
+            id: row.id,
+            [Op.or]: [
+              { expiresAt: null },
+              {
+                expiresAt: {
+                  [Op.lt]: expiresAt,
+                },
+              },
+            ],
+          },
+        }
+      );
+
+      if (updated > 0) {
+        return expiresAt;
+      }
+
+      const current = await ModelDegradationModel.findOne({
+        where: identity,
+      });
+      if (current?.expiresAt && current.expiresAt >= expiresAt) {
+        return current.expiresAt;
+      }
+    }
+
+    throw new Error("Failed to renew automatic model degradation.");
+  }
+
+  static async getAutomaticDegradationExpiresAt(
+    endpoint: DegradedModelEndpointType,
+    now: Date = new Date()
+  ): Promise<Date | null> {
+    const row = await ModelDegradationModel.findOne({
+      where: {
+        ...endpoint,
+        source: "automatic",
+        expiresAt: {
+          [Op.gt]: now,
+        },
+      },
+    });
+
+    return row?.expiresAt ?? null;
+  }
+
+  /**
+   * @cc [owner:frankaloia,label:backend;concurrency] conditional-automatic-degradation-clear
+   * Clearing an automatic degradation MUST NOT delete a lease renewed beyond the expiration
+   * observed by the recovery attempt.
+   */
+  static async clearAutomaticDegradation(
+    endpoint: DegradedModelEndpointType,
+    observedExpiresAt: Date
+  ): Promise<boolean> {
+    const deleted = await ModelDegradationModel.destroy({
+      where: {
+        ...endpoint,
+        source: "automatic",
+        expiresAt: {
+          [Op.lte]: observedExpiresAt,
+        },
+      },
+    });
+
+    return deleted > 0;
+  }
+
   /**
    * @cc [owner:frankaloia,label:backend] isolate-degradation-sources
    * Updating an endpoint for one source MUST NOT create or delete degradation state owned by
    * another source.
+   */
+  /**
+   * @cc [owner:frankaloia,label:product] degradation-expiration-by-source
+   * Manual degradation rows MUST NOT expire, and newly degraded automatic rows MUST have an
+   * expiration.
    */
   static async updateDegradedEndpoints(
     updates: DegradedModelEndpointUpdateType[],
@@ -95,6 +237,13 @@ export class ModelDegradationResource extends BaseResource<ModelDegradationModel
     const toDegrade = updates
       .filter(({ degraded }) => degraded)
       .map(endpointOf);
+
+    if (source === "manual" && expiresAt !== null) {
+      throw new Error("Manual model degradations cannot expire.");
+    }
+    if (source === "automatic" && toDegrade.length > 0 && expiresAt === null) {
+      throw new Error("Automatic model degradations require an expiration.");
+    }
 
     await frontSequelize.transaction(async (transaction) => {
       await ModelDegradationModel.destroy({

@@ -10,6 +10,7 @@ import {
 } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/model_health/activities";
 import type { Context } from "@temporalio/activity";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import { QUEUE_NAME } from "./config";
 
@@ -37,6 +38,16 @@ export async function runModelHealthWorker() {
           };
         },
       ],
+    },
+    bundlerOptions: {
+      // The workflow imports its timings through `@app/` paths, which webpack
+      // only resolves once the tsconfig aliases are registered here.
+      webpackConfigHook: (config) => {
+        const plugins = config.resolve?.plugins ?? [];
+
+        config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
+        return config;
+      },
     },
   });
 

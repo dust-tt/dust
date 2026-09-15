@@ -1,3 +1,4 @@
+import { isModelEndpointAutomaticallyDegraded } from "@app/lib/api/llm/health/automatic_degradation";
 import {
   ERROR_RATIO_THRESHOLD,
   MIN_ATTEMPTS_IN_WINDOW,
@@ -9,10 +10,11 @@ import {
   PROVIDER_ERRORS_FIELD,
 } from "@app/lib/api/llm/health/keys";
 import { logModelHealthTransition } from "@app/lib/api/llm/health/transitions";
+import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import { launchModelHealthRecovery } from "@app/temporal/model_health/client";
 import { redisMock } from "@app/tests/utils/mocks/redis";
 import { Err, Ok } from "@app/types/shared/result";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/temporal/model_health/client", () => ({
   launchModelHealthRecovery: vi.fn(),
@@ -77,6 +79,13 @@ describe("isBreaching", () => {
 });
 
 describe("evaluateEndpoint", () => {
+  afterEach(async () => {
+    await ModelDegradationResource.updateDegradedEndpoints(
+      [{ ...ENDPOINT, degraded: false }],
+      { source: "automatic" }
+    );
+  });
+
   beforeEach(() => {
     redisMock.reset();
     vi.clearAllMocks();
@@ -94,6 +103,9 @@ describe("evaluateEndpoint", () => {
     });
 
     expect(launchModelHealthRecovery).toHaveBeenCalledWith(ENDPOINT);
+    expect(
+      await isModelEndpointAutomaticallyDegraded(ENDPOINT, NOW.getTime())
+    ).toBe(true);
     expect(logModelHealthTransition).toHaveBeenCalledWith(
       expect.objectContaining({ endpoint: ENDPOINT, transition: "degraded" })
     );
@@ -130,6 +142,9 @@ describe("evaluateEndpoint", () => {
     });
 
     expect(launchModelHealthRecovery).toHaveBeenCalledTimes(1);
+    expect(
+      await isModelEndpointAutomaticallyDegraded(ENDPOINT, NOW.getTime())
+    ).toBe(true);
     expect(logModelHealthTransition).not.toHaveBeenCalled();
   });
 
