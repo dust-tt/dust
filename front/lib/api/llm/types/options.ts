@@ -150,6 +150,9 @@ interface LLMStreamParametersBase {
   // When true, supporting provider clients defer non-eager tools behind tool
   // search.
   toolSearchEnabled?: boolean;
+  // When true, supporting provider clients add the provider's own server-side
+  // web search tool, replacing Dust's `websearch` tool.
+  nativeWebSearchEnabled?: boolean;
   prompt: SystemPromptInput;
   specifications: AgentActionSpecification[];
   omittedThinking?: boolean;

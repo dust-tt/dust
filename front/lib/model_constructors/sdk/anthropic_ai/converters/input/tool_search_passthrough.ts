@@ -4,6 +4,7 @@ import type {
   ServerToolUseBlockParam,
   ToolSearchToolResultBlockParam,
 } from "@anthropic-ai/sdk/resources/messages/messages.mjs";
+import { mergeConsecutiveSameRoleMessages } from "@app/lib/model_constructors/sdk/anthropic_ai/converters/input/message_blocks";
 import logger from "@app/logger/logger";
 import { z } from "zod";
 
@@ -64,10 +65,6 @@ export type AnthropicToolSearchBlock = z.infer<
   typeof anthropicToolSearchBlockSchema
 >;
 
-function hasBlockType(value: unknown): value is { type: unknown } {
-  return typeof value === "object" && value !== null && "type" in value;
-}
-
 // Parses an opaque persisted block back into a typed Anthropic block param.
 // Returns null when the block is not a recognized tool-search block so the
 // caller can skip it rather than send a malformed request.
@@ -76,13 +73,8 @@ export function parseAnthropicToolSearchBlock(
 ): ServerToolUseBlockParam | ToolSearchToolResultBlockParam | null {
   const r = anthropicToolSearchBlockSchema.safeParse(block);
   if (!r.success) {
-    // We only ever store blocks we captured ourselves, so a parse failure means
-    // storage drift or a newly enabled server tool the schema does not know.
-    // Surface it: dropping the block would re-break interleaved thinking.
-    logger.warn(
-      { blockType: hasBlockType(block) ? block.type : undefined },
-      "[tool-search] Dropping unparseable Anthropic passthrough block"
-    );
+    // Silent: the block may be another server tool's. `parseAnthropicServerToolBlock`
+    // tries every family and owns the "unparseable" warning.
     return null;
   }
   // Reconstruct the param explicitly so required fields (e.g. `input`) are
@@ -186,40 +178,6 @@ function findResumableAssistantIndex(messages: MessageParam[]): number {
   }
 
   return -1;
-}
-
-function toContentBlocks(
-  content: MessageParam["content"]
-): ContentBlockParam[] {
-  return typeof content === "string"
-    ? [{ type: "text", text: content }]
-    : content;
-}
-
-// Anthropic rejects consecutive same-role messages, so re-merge neighbors after a message was
-// dropped entirely. O(n) in messages. Merging a run of same-role messages re-copies the merged
-// content at each step, but the input arrives with no same-role neighbors (the renderers already
-// merged them), so runs only form around dropped messages and stay short.
-function mergeConsecutiveSameRoleMessages(
-  messages: MessageParam[]
-): MessageParam[] {
-  const merged: MessageParam[] = [];
-  for (const message of messages) {
-    const previous = merged[merged.length - 1];
-    if (previous && previous.role === message.role) {
-      merged[merged.length - 1] = {
-        ...previous,
-        content: [
-          ...toContentBlocks(previous.content),
-          ...toContentBlocks(message.content),
-        ],
-      };
-    } else {
-      merged.push(message);
-    }
-  }
-
-  return merged;
 }
 
 interface StripUnreplayableToolSearchBlocksOptions {
