@@ -11,6 +11,7 @@ import topReasoningEfforts from "./top-reasoning-efforts";
 import topSkills from "./top-skills";
 import topSources from "./top-sources";
 import topTools from "./top-tools";
+import topTriggers from "./top-triggers";
 import topUsers from "./top-users";
 
 const app = pokeApp();
@@ -26,6 +27,7 @@ app.route("/top-reasoning-efforts", topReasoningEfforts);
 app.route("/top-skills", topSkills);
 app.route("/top-sources", topSources);
 app.route("/top-tools", topTools);
+app.route("/top-triggers", topTriggers);
 app.route("/top-users", topUsers);
 
 export default app;

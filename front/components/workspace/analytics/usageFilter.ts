@@ -24,6 +24,7 @@ export const USAGE_FILTER_CATEGORIES = [
   "tool",
   "skill",
   "source",
+  "trigger",
   "api_key",
 ] as const;
 
@@ -60,6 +61,7 @@ export const USAGE_FILTER_CATEGORY_LABEL: Record<UsageFilterCategory, string> =
     tool: "Tools",
     skill: "Skills",
     source: "Sources",
+    trigger: "Triggers",
     api_key: "API keys",
   };
 
@@ -74,6 +76,7 @@ export const USAGE_FILTER_CATEGORY_SINGULAR_LABEL: Record<
   tool: "Tool",
   skill: "Skill",
   source: "Source",
+  trigger: "Trigger",
   api_key: "API key",
 };
 
@@ -135,6 +138,10 @@ export interface UsageFilterSkillOption extends UsageFilterOptionBase {
   icon: string | null;
 }
 
+export interface UsageFilterTriggerOption extends UsageFilterOptionBase {
+  kind: "trigger";
+}
+
 export interface UsageFilterApiKeyOption extends UsageFilterOptionBase {
   kind: "api_key";
 }
@@ -147,6 +154,7 @@ export type UsageFilterOption =
   | UsageFilterModelOption
   | UsageFilterToolOption
   | UsageFilterSkillOption
+  | UsageFilterTriggerOption
   | UsageFilterApiKeyOption;
 
 export interface UsageFilterGroup {
@@ -178,6 +186,7 @@ export const EMPTY_FACET_OPTIONS: ConsumptionFacetOptions = {
   tool: [],
   skill: [],
   source: [],
+  trigger: [],
   api_key: [],
 };
 
@@ -239,6 +248,7 @@ export function resolveUsageFilter(
     tool: resolveCategory(filter.tool, facetOptions.tool),
     skill: resolveCategory(filter.skill, facetOptions.skill),
     source: resolveCategory(filter.source, facetOptions.source),
+    trigger: resolveCategory(filter.trigger, facetOptions.trigger),
     api_key: resolveCategory(filter.api_key, facetOptions.api_key),
   };
 
@@ -258,6 +268,7 @@ export function usageFilterToIds(filter: UsageFilter): UsageFilterIds {
     tool: filter.tool?.map(({ id }) => id),
     skill: filter.skill?.map(({ id }) => id),
     source: filter.source?.map(({ id }) => id),
+    trigger: filter.trigger?.map(({ id }) => id),
     api_key: filter.api_key?.map(({ id }) => id),
   };
 }
@@ -386,6 +397,8 @@ function usageFilterOptionFromAttributionRow(
         kind: "source",
         connectorProvider: isConnectorProvider(row.id) ? row.id : undefined,
       };
+    case "trigger":
+      return { ...baseOption, kind: "trigger" };
     case "api_key":
       return { ...baseOption, kind: "api_key" };
     default:
@@ -412,6 +425,8 @@ function addUsageFilterOption(
       return selectAllUsageFilterOptions(filter, "skill", [option]);
     case "source":
       return selectAllUsageFilterOptions(filter, "source", [option]);
+    case "trigger":
+      return selectAllUsageFilterOptions(filter, "trigger", [option]);
     case "api_key":
       return selectAllUsageFilterOptions(filter, "api_key", [option]);
     default:

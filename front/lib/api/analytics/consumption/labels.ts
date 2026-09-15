@@ -9,6 +9,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { AgentConfigurationScope } from "@app/types/assistant/agent";
 import { getConversationDisplayTitle } from "@app/types/assistant/conversation";
@@ -34,6 +35,7 @@ import capitalize from "lodash/capitalize";
  * - "tool": MCP server names
  * - "skill": skill sIds
  * - "source": origin slugs
+ * - "trigger": trigger sIds
  * - "conversation": conversation sIds
  * - "tag": agent tag sIds
  */
@@ -215,6 +217,16 @@ export async function resolveDimensionLabels(
       return labelsFromNames(
         new Map(keys.map((key) => [key, sourceLabelForOrigin(key) ?? key]))
       );
+
+    case "trigger": {
+      const triggers = await TriggerResource.fetchByIds(auth, keys);
+      const namesById = new Map(
+        triggers.map((trigger) => [trigger.sId, trigger.name])
+      );
+      return labelsFromNames(
+        new Map(keys.map((key) => [key, namesById.get(key) ?? key]))
+      );
+    }
 
     case "conversation": {
       const conversations = await ConversationResource.fetchByIds(auth, keys, {

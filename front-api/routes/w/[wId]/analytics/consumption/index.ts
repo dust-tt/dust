@@ -20,6 +20,7 @@ import topReasoningEfforts from "./top-reasoning-efforts";
 import topSkills from "./top-skills";
 import topSources from "./top-sources";
 import topTools from "./top-tools";
+import topTriggers from "./top-triggers";
 import topUsers from "./top-users";
 
 const AgentParamsSchema = z.object({
@@ -38,6 +39,7 @@ function mountSharedConsumptionRoutes(
   app.route("/top-skills", topSkills);
   app.route("/top-sources", topSources);
   app.route("/top-tools", topTools);
+  app.route("/top-triggers", topTriggers);
 }
 
 export function createWorkspaceConsumptionRoutes() {

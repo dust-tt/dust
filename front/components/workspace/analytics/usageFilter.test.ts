@@ -23,6 +23,7 @@ describe("getUsageFilterCategories", () => {
       "tool",
       "skill",
       "source",
+      "trigger",
       "api_key",
     ]);
     expect(getUsageFilterCategories({ kind: "personal" })).toEqual([
@@ -31,6 +32,7 @@ describe("getUsageFilterCategories", () => {
       "tool",
       "skill",
       "source",
+      "trigger",
       "api_key",
     ]);
     expect(
@@ -42,6 +44,7 @@ describe("getUsageFilterCategories", () => {
       "tool",
       "skill",
       "source",
+      "trigger",
       "api_key",
     ]);
   });

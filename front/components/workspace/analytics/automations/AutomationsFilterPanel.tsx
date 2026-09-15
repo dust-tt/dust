@@ -31,8 +31,8 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
-// The panel only shows agents and members, so it skips the six other
-// dimensions rather than paying for their Elasticsearch sweeps and catalogs.
+// The panel only shows agents and members, so it skips the other dimensions
+// rather than paying for their Elasticsearch sweeps and catalogs.
 const AUTOMATIONS_FACET_DIMENSIONS: ConsumptionScopeDimension[] = [
   "agent",
   "user",

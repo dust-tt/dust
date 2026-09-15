@@ -35,6 +35,7 @@ const RESPONSE: GetConsumptionFacetsResponse = {
     tool: [],
     skill: [],
     source: [],
+    trigger: [],
   },
 };
 

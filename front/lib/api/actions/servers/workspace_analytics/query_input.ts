@@ -141,6 +141,10 @@ export const consumptionFilterSchema = {
     .array(z.string())
     .optional()
     .describe("Restrict to these skill sIds."),
+  triggerIds: z
+    .array(z.string())
+    .optional()
+    .describe("Restrict to messages started by these trigger sIds."),
 };
 
 const consumptionFilterInputSchema = z.object(consumptionFilterSchema);
@@ -161,6 +165,7 @@ export function toConsumptionScope(
     groups: input.groupIds,
     tools: input.toolNames,
     skills: input.skillIds,
+    triggers: input.triggerIds,
     tags: input.agentTagIds,
   };
 }
