@@ -316,7 +316,8 @@ function PoolCreditUsageBar({
           aria-label="Member pool credit usage"
           aria-valuenow={percentage}
           aria-valuetext={`${formatCredits(consumedFromPool)} of ${limitLabel} pool credits used`}
-          className="h-1 w-full gap-px bg-transparent"
+          className="h-1 w-full gap-px"
+          variant="transparent"
           values={[
             {
               value: percentage,
@@ -497,7 +498,8 @@ export function AwuUsageBar({
             ? sections.map((section) => section.label).join(", ")
             : "No credits available"
         }
-        className="h-1 w-full gap-px bg-transparent"
+        className="h-1 w-full gap-px"
+        variant="transparent"
         values={
           sections.length > 0
             ? sections.map(({ value, className }) => ({ value, className }))
@@ -732,7 +734,8 @@ function buildPremiumMessageUsageColumn(
           aria-label="Premium message usage"
           aria-valuenow={percentage}
           aria-valuetext={`${usedMessages} of ${limitMessages} premium messages used over the last ${windowDays} days`}
-          className="h-1 w-full gap-px bg-transparent"
+          className="h-1 w-full gap-px"
+          variant="transparent"
           values={[
             {
               value: percentage,
@@ -823,7 +826,8 @@ function buildFairUseCreditsColumn(
           aria-label="Fair-use credits usage"
           aria-valuenow={percentage}
           aria-valuetext={`${formatCredits(usedCredits)} of ${formatCreditValue(limitCredits)} used`}
-          className="w-full bg-transparent"
+          className="w-full"
+          variant="transparent"
           values={[
             {
               value: percentage,

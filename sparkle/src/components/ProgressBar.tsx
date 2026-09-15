@@ -11,6 +11,7 @@ const progressBarVariants = cva("h-1.5 overflow-hidden", {
     },
     variant: {
       default: "bg-muted-background",
+      transparent: "bg-transparent",
     },
   },
   defaultVariants: {
@@ -28,6 +29,7 @@ const progressBarFillVariants = cva("h-full", {
     },
     variant: {
       default: "bg-primary-light",
+      transparent: "bg-primary-light",
     },
   },
   defaultVariants: {
