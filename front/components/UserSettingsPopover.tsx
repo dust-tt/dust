@@ -45,12 +45,14 @@ import {
   ANONYMOUS_USER_IMAGE_URL,
   areConversationExternalNotificationsEnabled,
 } from "@app/types/user";
+import type { OptionTile } from "@dust-tt/sparkle";
 import {
   Avatar,
   Bell01,
   Brain,
   Button,
   ContentMessageInline,
+  cn,
   Dialog,
   DialogClose,
   DialogContent,
@@ -64,9 +66,11 @@ import {
   Input,
   Label,
   Mail01,
+  Monitor01,
   Moon01,
   NavigationList,
   NavigationListItem,
+  OptionTileGroup,
   Page,
   Settings01,
   SettingsList,
@@ -293,12 +297,36 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
 // ─── Customization ────────────────────────────────────────────────────────────
 
-// Preview each option in its own face so the user sees what they pick.
-const CONVERSATION_FONT_PREVIEW_CLASSES: Record<ConversationFont, string> = {
+type ThemeChoice = "light" | "dark" | "system";
+
+const THEME_OPTIONS: OptionTile<ThemeChoice>[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon01 },
+  { value: "system", label: "Auto", icon: Monitor01 },
+];
+
+// Each tile previews its option as a type specimen in that face.
+const CONVERSATION_FONT_SPECIMEN_CLASSES: Record<ConversationFont, string> = {
   sans: "font-sans",
   serif: "font-serif",
   dyslexic: "font-dyslexic",
 };
+
+const CONVERSATION_FONT_OPTIONS: OptionTile<ConversationFont>[] =
+  CONVERSATION_FONTS.map((font) => ({
+    value: font,
+    label: CONVERSATION_FONT_LABELS[font],
+    visual: (
+      <span
+        className={cn(
+          CONVERSATION_FONT_SPECIMEN_CLASSES[font],
+          "text-xl leading-none text-foreground"
+        )}
+      >
+        Aa
+      </span>
+    ),
+  }));
 
 function CustomizationSection() {
   const { theme: currentTheme, setTheme } = useTheme();
@@ -330,7 +358,9 @@ function CustomizationSection() {
     typeof document !== "undefined" ? document.body : undefined
   );
 
-  const [localTheme, setLocalTheme] = useState(currentTheme ?? "system");
+  const [localTheme, setLocalTheme] = useState<ThemeChoice>(
+    currentTheme ?? "system"
+  );
   const [submitKey, setSubmitKey] = useState<"enter" | "cmd+enter">(() => {
     if (typeof window === "undefined") {
       return "enter";
@@ -348,7 +378,7 @@ function CustomizationSection() {
     localAgentsSectionVisible !== isAgentsSectionVisible;
 
   const handleSave = () => {
-    setTheme(localTheme as "light" | "dark" | "system");
+    setTheme(localTheme);
     if (typeof window !== "undefined") {
       localStorage.setItem("submitMessageKey", submitKey);
     }
@@ -390,76 +420,26 @@ function CustomizationSection() {
         <SettingsList.Row
           title="Theme"
           description="Choose how Dust looks on this device"
-          action={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={
-                    localTheme === "light"
-                      ? Sun
-                      : localTheme === "dark"
-                        ? Moon01
-                        : Sun
-                  }
-                  label={
-                    localTheme === "light"
-                      ? "Light"
-                      : localTheme === "dark"
-                        ? "Dark"
-                        : "System"
-                  }
-                  isSelect
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent mountPortalContainer={portalContainer}>
-                <DropdownMenuItem
-                  icon={Sun}
-                  label="Light"
-                  onClick={() => setLocalTheme("light")}
-                />
-                <DropdownMenuItem
-                  icon={Moon01}
-                  label="Dark"
-                  onClick={() => setLocalTheme("dark")}
-                />
-                <DropdownMenuItem
-                  icon={Sun}
-                  label="System"
-                  onClick={() => setLocalTheme("system")}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
-          }
-        />
+        >
+          <OptionTileGroup
+            ariaLabel="Theme"
+            options={THEME_OPTIONS}
+            value={localTheme}
+            onValueChange={setLocalTheme}
+          />
+        </SettingsList.Row>
 
         <SettingsList.Row
           title="Conversation font"
-          description="Font used for messages in conversations"
-          action={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  label={CONVERSATION_FONT_LABELS[localConversationFont]}
-                  isSelect
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent mountPortalContainer={portalContainer}>
-                {CONVERSATION_FONTS.map((font) => (
-                  <DropdownMenuItem
-                    key={font}
-                    label={CONVERSATION_FONT_LABELS[font]}
-                    className={CONVERSATION_FONT_PREVIEW_CLASSES[font]}
-                    onClick={() => setLocalConversationFont(font)}
-                  />
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          }
-        />
+          description="Font used for agent answers in conversations"
+        >
+          <OptionTileGroup
+            ariaLabel="Conversation font"
+            options={CONVERSATION_FONT_OPTIONS}
+            value={localConversationFont}
+            onValueChange={setLocalConversationFont}
+          />
+        </SettingsList.Row>
 
         <SettingsList.Row
           title="Send message"

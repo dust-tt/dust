@@ -33,6 +33,8 @@ interface SettingsListRowProps {
   description?: ReactNode;
   /** Trailing control for the row, e.g. a `SliderToggle` or `Input`. */
   action?: ReactNode;
+  /** Full-width control rendered below the title line, for controls too wide for `action` (e.g. `OptionTileGroup`). */
+  children?: ReactNode;
   className?: string;
 }
 
@@ -40,22 +42,21 @@ function SettingsListRow({
   title,
   description,
   action,
+  children,
   className,
 }: SettingsListRowProps) {
   return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-4 px-4 py-4",
-        className
-      )}
-    >
-      <div className="flex min-w-0 flex-col gap-0.5">
-        <span className="heading-sm text-foreground">{title}</span>
-        {description && (
-          <span className="copy-sm text-muted-foreground">{description}</span>
-        )}
+    <div className={cn("flex flex-col gap-4 px-4 py-4", className)}>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="heading-sm text-foreground">{title}</span>
+          {description && (
+            <span className="copy-sm text-muted-foreground">{description}</span>
+          )}
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
       </div>
-      {action && <div className="shrink-0">{action}</div>}
+      {children}
     </div>
   );
 }

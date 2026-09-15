@@ -245,6 +245,8 @@ export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";
 export type { OptionCardProps } from "./OptionCard";
 export { OptionCard } from "./OptionCard";
+export type { OptionTile, OptionTileGroupProps } from "./OptionTileGroup";
+export { OptionTileGroup } from "./OptionTileGroup";
 export { Page } from "./Page";
 export { PaginatedCitationsGrid } from "./PaginatedCitationsGrid";
 export { Pagination } from "./Pagination";
