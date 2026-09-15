@@ -64,10 +64,7 @@ it.each([
       })
     ).isOk()
   );
-  const resource = await AgentResource.fetchByAgentConfiguration(
-    authorAuth,
-    grantAgent
-  );
+  const resource = AgentResource.fromAgentConfiguration(authorAuth, grantAgent);
   assert(resource.id !== null);
   assert(
     (
