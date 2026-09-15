@@ -100,9 +100,13 @@ export function usesWorkspaceProvidedCredentials(auth: Authenticator): boolean {
  * @cc [owner:pmilliotte,label:security;product] byok-credentials-are-customer-owned
  * For a workspace whose plan has `isByok`, every provider credential in the returned object MUST
  * come from the keys that workspace configured (`ProviderCredentialResource`), and the object MUST
- * carry `DUST_BYOK: "true"` so downstream consumers can refuse a Dust-managed substitute. No value
- * read from Dust's environment may be added to it -- neither a provider API key nor an identifier
- * Dust's own service account authenticates against, such as `AGENT_PLATFORM_PROJECT_ID`.
+ * carry `DUST_BYOK: "true"` so downstream consumers can refuse a Dust-managed substitute.
+ *
+ * Nothing that authenticates to a provider may be read from Dust's environment into it: no API key,
+ * and no identifier Dust's own service account authenticates against such as
+ * `AGENT_PLATFORM_PROJECT_ID`. Routing configuration that carries no identity -- the
+ * `baseCredentialVariables()` endpoint selectors -- is allowed, since it decides which host the
+ * customer's own key is presented to.
  */
 export async function getLlmCredentials(
   auth: Authenticator,

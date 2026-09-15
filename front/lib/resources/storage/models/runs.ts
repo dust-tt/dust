@@ -17,13 +17,17 @@ export class RunModel extends WorkspaceAwareModel<RunModel> {
   declare runType: string;
   /**
    * @cc [owner:pmilliotte,label:product] run-records-credential-owner
-   * True when the run reached the provider on credentials the workspace provided -- a BYOK plan, or
-   * the legacy per-app provider keys selected by `use_workspace_credentials`. It must be set from
-   * the plan in force when the run is created and never recomputed afterwards, so a usage row keeps
-   * pointing at whoever actually paid for it.
+   * Records which credential source the run was started on: `true` for credentials the workspace
+   * provided -- a BYOK plan, or the legacy per-app provider keys selected by
+   * `use_workspace_credentials` -- and `false` for Dust-managed ones. It must be set when the run is
+   * created, from the plan in force then, and never recomputed afterwards, so a usage row keeps
+   * pointing at the source that was selected for it.
    *
-   * Runs created before 2026-09-15 hardcoded `false` on the LLM paths, so `false` only distinguishes
-   * Dust-owned credentials from that date on; earlier rows carry no information.
+   * Two limits on reading it. Runs created before 2026-09-15 hardcoded `false` on the LLM paths, so
+   * `false` only distinguishes Dust-owned credentials from that date on. And a legacy app run on
+   * workspace provider keys records `true` from that selection alone: those credentials carry no
+   * `DUST_BYOK` marker, so `core` can still fall back to its own environment key for a provider the
+   * workspace never configured.
    */
   declare useWorkspaceCredentials: boolean | null;
   // Identifies the agent-loop execution this run belongs to (sha256 of the

@@ -35,8 +35,12 @@ pub const BYOK_CREDENTIAL_KEY: &str = "DUST_BYOK";
 /// When `credentials` carries `BYOK_CREDENTIAL_KEY`, the returned value MUST come from
 /// `credentials`, and resolution MUST fail when the key is absent there: reading the process
 /// environment instead would run a BYOK workspace's inference on Dust's own provider account.
-/// A provider resolving a credential that has an environment fallback MUST go through this helper
-/// rather than reading `std::env::var` directly.
+///
+/// A request carrying that key MUST therefore never obtain a provider credential from the
+/// environment. A provider satisfies this either by resolving through this helper, or by rejecting
+/// the request up front when its whole backend runs on Dust's identity -- as
+/// `VertexAnthropicBackend::initialize` and the embedders do before reading their environment
+/// fallback. Reading `std::env::var` for a credential outside one of those two shapes violates it.
 pub async fn credential_or_env(credentials: &Credentials, key: &str) -> Result<String> {
     if let Some(value) = credentials.get(key) {
         return Ok(value.clone());
