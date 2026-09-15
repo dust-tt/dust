@@ -9,12 +9,6 @@ import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
  * PDF instructions MUST use Computer commands for file operations, extraction,
  * and OCR without requiring separate file-management MCP tools.
  */
-/**
- * @cc [owner:flvndvd,label:performance] pdf-ocr-bounded-verification
- * For routine extraction, the instructions MUST allow at most one correction
- * pass over failed or unclear OCR output, then require delivery with remaining
- * uncertainty disclosed. Deeper verification requires a user request.
- */
 const PDF_SKILL_INSTRUCTIONS = `# PDFs
 
 Use the Computer's \`bash\` tool for PDF work. Inputs are mounted under
