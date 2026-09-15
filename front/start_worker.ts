@@ -39,6 +39,10 @@ Runtime.install({
   logger: pinoAdapter,
   telemetryOptions: {
     metrics: {
+      // Datadog treats a literal empty `host` resource attribute as an explicit
+      // hostless metric, and maps OpenTelemetry `host.id` to `instance-id`.
+      // Override both to keep GKE node churn out of Temporal metric cardinality.
+      globalTags: { host: "", "host.id": "" },
       // Datadog Agent OTLP gRPC (4317).
       otel: { url: "grpc://datadog-agent.default.svc.cluster.local:4317" },
     },
