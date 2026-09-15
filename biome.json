@@ -114,6 +114,28 @@
     },
     {
       "includes": [
+        "front-api/**/*.ts",
+        "front/lib/**/*.ts",
+        "front/types/**/*.ts",
+        "front/temporal/**/*.ts",
+        "!front/lib/client/**",
+        "!front/lib/swr/**",
+        "!front/lib/platform.ts",
+        "!front/lib/invitations.ts",
+        "!front/lib/tracking.ts",
+        "!front/lib/tracking/**",
+        "!front/lib/utils/utm_client.ts",
+        "!front/lib/connector_providers_ui.ts",
+        "!front/lib/skill.ts",
+        "!front/lib/editor/build_markdown_editor_extensions.ts",
+        "!front/lib/editor/build_skill_instructions_extensions.ts",
+        "!front/lib/triggers/**/client_side.ts",
+        "!**/*.{test,spec}.{ts,tsx}"
+      ],
+      "plugins": ["./.grit/patterns/noClientImportsInServer.grit"]
+    },
+    {
+      "includes": [
         "front/components/**/*.{js,jsx,ts,tsx}",
         "front/lib/**/*.tsx",
         "front-spa/**/*.{js,jsx,ts,tsx}",
