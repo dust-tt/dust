@@ -116,8 +116,8 @@ export async function indexSkillSearchActivity({
     skill.editedBy === null ? [] : [skill.editedBy]
   );
   const document = skill.toSearchDocument(auth.getNonNullableWorkspace(), {
-    editorIds: (editors ?? []).map((editor) => editor.sId),
-    lastEditedByUserId: lastEditor?.sId ?? null,
+    editors: editors ?? [],
+    lastEditedByUser: lastEditor ?? null,
     activeUsersCount: 0,
   });
   const result = await indexSkillDocument(document);
