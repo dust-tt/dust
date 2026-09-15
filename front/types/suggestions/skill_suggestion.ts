@@ -96,10 +96,13 @@ export type SkillEditSuggestionType = z.infer<typeof SkillEditSuggestionSchema>;
 
 export type SkillSuggestionPayload = SkillEditSuggestionType;
 
-const SkillSuggestionDataSchema = z.object({
-  kind: z.literal("edit"),
-  suggestion: SkillEditSuggestionSchema,
-});
+// One arm per `kind`: the `kind` column picks which schema the JSONB `suggestion` column must match.
+const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("edit"),
+    suggestion: SkillEditSuggestionSchema,
+  }),
+]);
 
 type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
 
