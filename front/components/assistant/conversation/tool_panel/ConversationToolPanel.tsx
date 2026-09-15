@@ -22,14 +22,6 @@ interface ToolPanelBodyProps {
 }
 
 function ToolPanelBody({ owner, serverView, isError }: ToolPanelBodyProps) {
-  if (!serverView) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-
   if (isError) {
     return (
       <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -37,6 +29,15 @@ function ToolPanelBody({ owner, serverView, isError }: ToolPanelBodyProps) {
       </div>
     );
   }
+
+    if (!serverView) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
 
   return (
     <>
