@@ -131,16 +131,18 @@ export function useOAuthSetup({
 export function useOAuthRedirectUri({
   workspaceId,
   provider,
+  useCase,
   disabled,
 }: {
   workspaceId: string;
   provider: OAuthProvider;
+  useCase?: OAuthUseCase;
   disabled?: boolean;
 }) {
   const { fetcher } = useFetcher();
   const redirectUriFetcher: Fetcher<GetOAuthRedirectUriResponseBody> = fetcher;
   const { data, error, isLoading, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/oauth/${provider}/redirect_uri`,
+    `/api/w/${workspaceId}/oauth/${provider}/redirect_uri${useCase ? `?useCase=${useCase}` : ""}`,
     redirectUriFetcher,
     { disabled }
   );

@@ -1,20 +1,28 @@
 import config from "@app/lib/api/config";
-import type { OAuthConnectionType, OAuthProvider } from "@app/types/oauth/lib";
+import type {
+  OAuthConnectionType,
+  OAuthProvider,
+  OAuthUseCase,
+} from "@app/types/oauth/lib";
 import { isDevelopment } from "@app/types/shared/env";
 import type { ParsedUrlQuery } from "querystring";
 
 /**
  * @cc [owner:flvndvd,label:security] provider-callback-default
  * Outside the development override, a stored redirect_uri MUST take precedence.
- * Without one, mcp and mcp_static MUST use DUST_OAUTH_REDIRECT_BASE_URL when set,
- * otherwise the app URL. All other providers MUST default to the app URL.
+ * Without one, the connection use case, mcp, and mcp_static MUST use
+ * DUST_OAUTH_REDIRECT_BASE_URL when set, otherwise the app URL. The use case
+ * comes from the explicit argument, falling back to connection metadata.
+ * All other provider/use-case combinations MUST default to the app URL.
  */
 export function finalizeUriForProvider({
   provider,
   connection,
+  useCase,
 }: {
   provider: OAuthProvider;
   connection: OAuthConnectionType | null;
+  useCase?: OAuthUseCase;
 }): string {
   if (isDevelopment()) {
     const devBaseUrl = config.getDevOAuthRedirectBaseUrl();
@@ -28,11 +36,14 @@ export function finalizeUriForProvider({
     return connection.redirect_uri;
   }
 
-  // Manually registered remote MCP clients may only allow the legacy callback.
-  // Discovery uses this same default for dynamic client registration.
-  if (provider === "mcp" || provider === "mcp_static") {
+  // Connector and remote MCP apps may only allow the legacy cell callback.
+  if (
+    (useCase ?? connection?.metadata.use_case) === "connection" ||
+    provider === "mcp" ||
+    provider === "mcp_static"
+  ) {
     return (
-      config.getRemoteMCPOAuthRedirectBaseUrl() + `/oauth/${provider}/finalize`
+      config.getLegacyOAuthRedirectBaseUrl() + `/oauth/${provider}/finalize`
     );
   }
 

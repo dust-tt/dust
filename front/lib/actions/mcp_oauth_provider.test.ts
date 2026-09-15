@@ -11,7 +11,7 @@ describe("remote MCP OAuth client registration", () => {
     "https://dust.tt",
     "https://eu.dust.tt",
   ])("registers the same legacy callback used for authorization in %s", (legacyBaseUrl) => {
-    vi.spyOn(config, "getRemoteMCPOAuthRedirectBaseUrl").mockReturnValue(
+    vi.spyOn(config, "getLegacyOAuthRedirectBaseUrl").mockReturnValue(
       legacyBaseUrl
     );
     vi.spyOn(config, "getAppUrl").mockReturnValue("https://app.dust.tt");

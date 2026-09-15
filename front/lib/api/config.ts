@@ -133,9 +133,9 @@ const config = {
       config.getApiBaseUrl()
     );
   },
-  // Remote MCP clients can be registered with the legacy regional callback.
-  // Built-in integrations use getAppUrl() instead.
-  getRemoteMCPOAuthRedirectBaseUrl: (): string => {
+  // Data connectors and remote MCP clients can use the legacy cell callback.
+  // Built-in MCP tools and bots use getAppUrl() instead.
+  getLegacyOAuthRedirectBaseUrl: (): string => {
     return (
       EnvironmentConfig.getOptionalEnvVariable(
         "DUST_OAUTH_REDIRECT_BASE_URL"

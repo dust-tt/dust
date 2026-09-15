@@ -62,7 +62,7 @@ describe("OAuth setup handler", () => {
         })
     );
     vi.spyOn(config, "getAppUrl").mockReturnValue("https://app.dust.tt");
-    vi.spyOn(config, "getRemoteMCPOAuthRedirectBaseUrl").mockReturnValue(
+    vi.spyOn(config, "getLegacyOAuthRedirectBaseUrl").mockReturnValue(
       "https://eu.dust.tt"
     );
     vi.spyOn(config, "getOAuthFreshserviceClientId").mockReturnValue(
@@ -229,9 +229,7 @@ describe("OAuth setup handler", () => {
     legacyBase,
     callbackBase,
   }) => {
-    vi.mocked(config.getRemoteMCPOAuthRedirectBaseUrl).mockReturnValue(
-      legacyBase
-    );
+    vi.mocked(config.getLegacyOAuthRedirectBaseUrl).mockReturnValue(legacyBase);
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
@@ -279,13 +277,81 @@ describe("OAuth setup handler", () => {
     expect(authorizationUrl.searchParams.get("client_id")).toBe("new-client");
   });
 
-  it("rejects unknown providers when reading the callback", async () => {
+  it.each([
+    ["google_drive", "connection", "https://dust.tt", "https://dust.tt"],
+    ["google_drive", "connection", "https://eu.dust.tt", "https://eu.dust.tt"],
+    [
+      "google_drive",
+      "connection",
+      "https://app.dust.tt",
+      "https://app.dust.tt",
+    ],
+    ["notion", "connection", "https://eu.dust.tt", "https://eu.dust.tt"],
+    ["notion", "platform_actions", "https://eu.dust.tt", "https://app.dust.tt"],
+    ["slack", "bot", "https://eu.dust.tt", "https://app.dust.tt"],
+    [
+      "slack_tools",
+      "platform_actions",
+      "https://eu.dust.tt",
+      "https://app.dust.tt",
+    ],
+  ] as const)("uses the same advertised, saved, and authorization callback for %s/%s with base %s", async (provider, useCase, legacyBase, callbackBase) => {
+    vi.mocked(config.getLegacyOAuthRedirectBaseUrl).mockReturnValue(legacyBase);
+    vi.spyOn(config, "getOAuthGoogleDriveClientId").mockReturnValue(
+      "drive-client"
+    );
+    vi.spyOn(config, "getOAuthNotionClientId").mockReturnValue(
+      "notion-connector-client"
+    );
+    vi.spyOn(config, "getOAuthNotionPlatformActionsClientId").mockReturnValue(
+      "notion-tools-client"
+    );
+    vi.spyOn(config, "getOAuthSlackBotClientId").mockReturnValue(
+      "slack-bot-client"
+    );
+    vi.spyOn(config, "getOAuthSlackToolsClientId").mockReturnValue(
+      "slack-tools-client"
+    );
+    const { workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const callbackResponse = await honoApp.request(
+      `/api/w/${workspace.sId}/oauth/${provider}/redirect_uri?useCase=${useCase}`
+    );
+    expect(callbackResponse.status).toBe(200);
+    const expectedRedirect = `${callbackBase}/oauth/${provider}/finalize`;
+    expect(await callbackResponse.json()).toEqual({
+      redirectUri: expectedRedirect,
+    });
+
+    const response = await honoApp.request(
+      `/api/w/${workspace.sId}/oauth/${provider}/setup?useCase=${useCase}`
+    );
+    expect(response.status).toBe(200);
+    expect(mocks.createConnection).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        redirectUri: expectedRedirect,
+        metadata: expect.objectContaining({ use_case: useCase }),
+      })
+    );
+    const { redirectUrl } = await response.json();
+    expect(new URL(redirectUrl).searchParams.get("redirect_uri")).toBe(
+      expectedRedirect
+    );
+  });
+
+  it.each([
+    "unknown/redirect_uri",
+    "notion/redirect_uri?useCase=unknown",
+  ])("rejects invalid callback requests: %s", async (path) => {
     const { workspace } = await createPrivateApiMockRequest({
       method: "GET",
       role: "admin",
     });
     const response = await honoApp.request(
-      `/api/w/${workspace.sId}/oauth/unknown/redirect_uri`
+      `/api/w/${workspace.sId}/oauth/${path}`
     );
     expect(response.status).toBe(400);
   });
