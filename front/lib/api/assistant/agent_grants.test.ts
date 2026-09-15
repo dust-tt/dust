@@ -29,10 +29,7 @@ it("keeps author access and admin redaction when grants are enabled", async () =
   const agent = await AgentConfigurationFactory.createTestAgent(authorAuth, {
     scope: "hidden",
   });
-  const resource = await AgentResource.fetchByAgentConfiguration(
-    authorAuth,
-    agent
-  );
+  const resource = AgentResource.fromAgentConfiguration(authorAuth, agent);
   assert(resource.id !== null);
   assert(
     (

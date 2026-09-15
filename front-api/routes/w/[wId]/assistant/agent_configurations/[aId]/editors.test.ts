@@ -565,10 +565,7 @@ it("uses grants for editor responses and editor administration", async () => {
   const agent = await AgentConfigurationFactory.createTestAgent(authorAuth, {
     scope: "hidden",
   });
-  const resource = await AgentResource.fetchByAgentConfiguration(
-    authorAuth,
-    agent
-  );
+  const resource = AgentResource.fromAgentConfiguration(authorAuth, agent);
   assert(resource.id !== null);
   assert(
     (
