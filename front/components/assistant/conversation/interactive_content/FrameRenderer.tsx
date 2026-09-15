@@ -163,11 +163,12 @@ export function FrameRenderer({
 
   const [showCode, setShowCode] = React.useState(false);
 
-  const { isFrameAuthor } = useFramePermissions({
+  const { isFrameAuthor, packageRoot } = useFramePermissions({
     owner,
     frameId: fileId,
     disabled: renderMode !== "v2" || !conversation,
   });
+  const resolvedFramePath = framePath ?? packageRoot;
   const editFrameText = useEditFrameText({
     owner,
     fileId,
@@ -478,7 +479,7 @@ export function FrameRenderer({
               key={`viz-${fileId}`}
               conversationId={conversation?.sId ?? null}
               spaceId={frameSpaceId ?? undefined}
-              framePath={framePath}
+              framePath={resolvedFramePath}
               frameId={renderMode === "v2" ? fileId : undefined}
               isInDrawer={true}
               isEditable={isEditable}

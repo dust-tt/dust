@@ -5,7 +5,7 @@ import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
 import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
 import type { FrameRuntimeImportName } from "@viz/app/lib/frame-runtime-imports";
-import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
+import { extractFileRefs, type FileRef } from "@viz/app/lib/parseFileRefs";
 import {
   PodFunctionHooksProvider,
   usePodFunction,
@@ -53,6 +53,26 @@ const FRAME_MIME_TYPES = new Set([
 ]);
 
 /**
+ * Key for static `import … from "<key>"` resolution into the react-runner import map.
+ * Package-relative useFile refs (`./data.csv`) are loaded at runtime by the useFile hook, not
+ * as static imports — returning null skips them so we never call fetchFile(undefined).
+ */
+function importMapKeyForFileRef(ref: FileRef): string | null {
+  switch (ref.type) {
+    case "fileId":
+      return ref.fileId;
+    case "path":
+      return ref.scopedPath;
+    case "frameRelative":
+      return null;
+    default: {
+      const _exhaustive: never = ref;
+      return _exhaustive;
+    }
+  }
+}
+
+/**
  * Recursively resolves a file ref to its import value.
  * - Frame files (code): compiled via importCode so they can be used as React modules.
  * - Data files: wrapped as { default: File } for direct use.
@@ -86,21 +106,26 @@ async function resolveFileRef(
           ? transformEditableText(text, key)
           : text;
       const refs = extractFileRefs(codeToUse);
-      const nestedEntries = await Promise.all(
-        refs.map(async (ref) => {
-          const nestedKey = ref.type === "fileId" ? ref.fileId : ref.scopedPath;
-          return [
-            nestedKey,
-            await resolveFileRef(
+      const nestedEntries = (
+        await Promise.all(
+          refs.map(async (ref) => {
+            const nestedKey = importMapKeyForFileRef(ref);
+            if (!nestedKey) {
+              return null;
+            }
+            return [
               nestedKey,
-              dataAPI,
-              baseImports,
-              cache,
-              isEditable
-            ),
-          ] as const;
-        })
-      );
+              await resolveFileRef(
+                nestedKey,
+                dataAPI,
+                baseImports,
+                cache,
+                isEditable
+              ),
+            ] as const;
+          })
+        )
+      ).filter((entry): entry is readonly [string, unknown] => entry !== null);
       const nestedScope = Object.fromEntries(nestedEntries);
       return importCode(codeToUse, {
         import: { ...baseImports, ...nestedScope },
@@ -500,20 +525,27 @@ export function VisualizationWrapper({
 
         const refs = extractFileRefs(codeToUse);
         const cache = new Map<string, Promise<unknown>>();
-        const fileEntries = await Promise.all(
-          refs.map(async (ref) => {
-            const key = ref.type === "fileId" ? ref.fileId : ref.scopedPath;
-            return [
-              key,
-              await resolveFileRef(
+        const fileEntries = (
+          await Promise.all(
+            refs.map(async (ref) => {
+              const key = importMapKeyForFileRef(ref);
+              if (!key) {
+                return null;
+              }
+              return [
                 key,
-                api.data,
-                baseImports,
-                cache,
-                isEditable
-              ),
-            ] as const;
-          })
+                await resolveFileRef(
+                  key,
+                  api.data,
+                  baseImports,
+                  cache,
+                  isEditable
+                ),
+              ] as const;
+            })
+          )
+        ).filter(
+          (entry): entry is readonly [string, unknown] => entry !== null
         );
         if (cancelled) {
           return;
