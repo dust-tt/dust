@@ -16,3 +16,5 @@ export const editorUserSchema = z.object({
   lastName: z.string().nullable(),
   lastLoginAt: z.number().nullable().optional(),
 });
+
+export type EditorUser = z.infer<typeof editorUserSchema>;
