@@ -18,7 +18,8 @@ vi.mock("@app/types/oauth/oauth_api", async (importOriginal) => {
   };
 });
 
-const BASE_VARIABLES = {
+const BYOK_BASE_VARIABLES = {
+  DUST_BYOK: "true",
   OPENAI_BASE_URL: "",
   OPENAI_USE_EU_ENDPOINT: "false",
 };
@@ -87,7 +88,7 @@ describe("getLlmCredentials", () => {
       OPENAI_API_KEY: "sk-openai-test",
       OPENAI_EMBEDDING_API_KEY: "sk-openai-test",
       ANTHROPIC_API_KEY: "sk-anthropic-test",
-      ...BASE_VARIABLES,
+      ...BYOK_BASE_VARIABLES,
     });
   });
 
@@ -101,7 +102,7 @@ describe("getLlmCredentials", () => {
       skipEmbeddingApiKeyRequirement: true,
     });
 
-    expect(result).toEqual(BASE_VARIABLES);
+    expect(result).toEqual(BYOK_BASE_VARIABLES);
   });
 
   describe("skipEmbeddingApiKeyRequirement", () => {
@@ -162,7 +163,7 @@ describe("getLlmCredentials", () => {
         skipEmbeddingApiKeyRequirement: true,
       });
 
-      expect(result).toEqual(BASE_VARIABLES);
+      expect(result).toEqual(BYOK_BASE_VARIABLES);
     });
   });
 
@@ -223,7 +224,7 @@ describe("getLlmCredentials", () => {
     });
 
     expect(byokCredentials).toEqual({
-      ...BASE_VARIABLES,
+      ...BYOK_BASE_VARIABLES,
       ANTHROPIC_API_KEY: "sk-test",
     });
   });
