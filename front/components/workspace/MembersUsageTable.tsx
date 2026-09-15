@@ -1146,7 +1146,7 @@ interface MembersUsageTableProps {
   seatChangePendingMemberIds: ReadonlySet<string>;
   isSeatBased: boolean;
   showSpendLimit: boolean;
-  // Disables every row action (Poke's read-only view).
+  // Disables every row action
   readOnly?: boolean;
   // Seat and credits usage columns plus the seat row actions. Off for
   // workspaces that are not on a credit plan.
@@ -1157,8 +1157,6 @@ interface MembersUsageTableProps {
   onChangeSeat: (member: MemberUsageType) => void;
   onRemoveSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
-  // Opens the read-only change-seat recap modal from the off-pace column's
-  // "Unblock" panel.
   onOpenChangeSeatRecap?: (member: MemberUsageType) => void;
   onOpenSpendLimitRecap?: (member: MemberUsageType) => void;
   canUpgradeSeat?: (member: MemberUsageType) => boolean;
