@@ -10,8 +10,10 @@ The browser polls that answer and sends it back to the voice session for speech.
 ## Try it locally
 
 Warm the hive and start its normal services. Enable the `gpt_live` workspace flag
-through Poke, then open an existing conversation and select **Start voice**. Choose
-an agent before starting the call. Microphone access requires localhost or HTTPS.
+through Poke, then select an agent in the composer and press **Voice**. This works
+in a new or existing conversation. Captions, mute, and end controls appear just
+above the composer and stay available while answering a question in chat.
+Microphone access requires localhost or HTTPS.
 
 This POC uses the global OpenAI endpoint and requires an eligible OpenAI key and
 workspace provider configuration. EU workspaces are rejected. The server chooses
@@ -42,7 +44,7 @@ NODE_ENV=development npx tsx scripts/gpt_live_poc/check_harness.ts \
 cd ..
 
 say -v Samantha -o /tmp/dust-live-test.aiff \
-  'Hello. Please use the backend to calculate seventeen times twenty three.'
+  'Please ask the backend to use the math operation tool to calculate seventeen times twenty three. It must call the tool and then tell me the result.'
 afconvert -f WAVE -d LEI16 /tmp/dust-live-test.aiff /tmp/dust-live-test.wav
 
 cd front-api
@@ -55,11 +57,13 @@ The browser test requires Playwright with Chromium installed. It writes
 `/tmp/gpt-live-e2e.json`, `/tmp/gpt-live-e2e.png`, and a final screenshot. The JSON
 contains local test transcripts and tool output, so keep it outside version control.
 
-Verified on 2026-09-14: spoken calculation, real `math_operation`, spoken 391,
+Verified on 2026-09-15: spoken calculation, real `math_operation`, spoken 391,
 mute, received audio, and confirmed session close with final usage. The successful
-run received 367,657 audio bytes and reported 23 seconds of voice usage. API tests
+run received 341,524 audio bytes and reported 22 seconds of voice usage. API tests
 cover access controls and provider restrictions; hook tests cover duplicate events,
 waiting for chat input, resumed results, and cancellation during microphone access.
+Composer coverage checks selected-agent routing, creation before microphone access,
+delayed audio mounting, question-card replacement, and navigation cleanup.
 
 ## POC boundaries
 

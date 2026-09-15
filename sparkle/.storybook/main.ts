@@ -35,6 +35,7 @@ const config: StorybookConfig = {
         ...(config.resolve?.alias || {}),
         "@sparkle": path.resolve(__dirname, "../src/"),
         "@dust-tt/sparkle": path.resolve(__dirname, "../src/index.ts"),
+        "@app": path.resolve(__dirname, "../../front/"),
       },
     };
 

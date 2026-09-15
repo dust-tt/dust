@@ -1,8 +1,10 @@
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { liveDelegationInput, splitLiveAppend } from "@app/lib/client/live";
 import { clientFetch } from "@app/lib/egress/client";
 import { useFetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import { PostConversationsResponseBodySchema } from "@app/types/api/assistant";
 import type { FetchConversationMessageResponse } from "@app/types/api/assistant/messages";
 import {
   isAgentMessageType,
@@ -20,7 +22,63 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { UserType, WorkspaceType } from "@app/types/user";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+export function useCreateLiveConversation(owner: WorkspaceType) {
+  const sendNotification = useSendNotification();
+  return useCallback(
+    async ({
+      spaceId,
+      selectedSpaceIds,
+    }: {
+      spaceId?: string;
+      selectedSpaceIds?: string[];
+    }): Promise<Result<string, undefined>> => {
+      const notifyFailure = () => {
+        sendNotification({
+          type: "error",
+          title: "Could not start voice",
+          description: "Unable to create the conversation. Please try again.",
+        });
+        return new Err(undefined);
+      };
+      let response: Response;
+      try {
+        response = await clientFetch(
+          `/api/w/${owner.sId}/assistant/conversations`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: null,
+              visibility: "unlisted",
+              spaceId: spaceId ?? null,
+              selectedSpaceIds,
+              skipToolsValidation: false,
+              message: null,
+              contentFragments: [],
+            }),
+          }
+        );
+      } catch (error) {
+        if (error instanceof TypeError || error instanceof DOMException) {
+          return notifyFailure();
+        }
+        throw error;
+      }
+      if (!response.ok) {
+        return notifyFailure();
+      }
+      const result = PostConversationsResponseBodySchema.safeParse(
+        await response.json()
+      );
+      return result.success
+        ? new Ok(result.data.conversation.sId)
+        : notifyFailure();
+    },
+    [owner.sId, sendNotification]
+  );
+}
 
 interface LiveConnection {
   peer: RTCPeerConnection;
@@ -513,19 +571,33 @@ export function useLiveConversation({
     });
   }, []);
 
-  return {
-    status,
-    error:
-      error ??
-      (taskError
-        ? "Unable to refresh the Dust task. Check the chat; retrying…"
-        : null),
-    muted,
-    seconds,
-    transcript,
-    taskStatus,
-    start,
-    stop,
-    toggleMute,
-  };
+  return useMemo(
+    () => ({
+      status,
+      error:
+        error ??
+        (taskError
+          ? "Unable to refresh the Dust task. Check the chat; retrying…"
+          : null),
+      muted,
+      seconds,
+      transcript,
+      taskStatus,
+      start,
+      stop,
+      toggleMute,
+    }),
+    [
+      status,
+      error,
+      taskError,
+      muted,
+      seconds,
+      transcript,
+      taskStatus,
+      start,
+      stop,
+      toggleMute,
+    ]
+  );
 }
