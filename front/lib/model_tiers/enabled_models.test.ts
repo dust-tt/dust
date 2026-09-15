@@ -1,11 +1,15 @@
+import { refreshDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { Authenticator } from "@app/lib/auth";
+import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/hosts";
 import { setUserMaxAllowedTier } from "@app/lib/model_tiers/allowed_tiers";
 import {
   getDefaultModelFromEnabledModels,
   getEnabledModelsForAuth,
+  getModelsForAuth,
   resolveStreamModel,
   withModelSelectability,
 } from "@app/lib/model_tiers/enabled_models";
+import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -286,6 +290,29 @@ describe("resolveStreamModel", () => {
       CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId
     );
     expect(resolved.reasoningEffort).toBe("medium");
+  });
+
+  it("refreshes degradation state before returning the model catalog", async () => {
+    const degradation = {
+      modelId: GPT_5_6_LUNA_MODEL_ID,
+      providerId: "openai" as const,
+      host: OPENAI_RESPONSES_HOST,
+    };
+
+    try {
+      await ModelDegradationResource.updateDegradedEndpoints([
+        { ...degradation, degraded: true },
+      ]);
+
+      const response = await getModelsForAuth(adminAuth);
+
+      expect(response.degradedModelIds).toContain(GPT_5_6_LUNA_MODEL_ID);
+    } finally {
+      await ModelDegradationResource.updateDegradedEndpoints([
+        { ...degradation, degraded: false },
+      ]);
+      await refreshDegradedModelIds();
+    }
   });
 
   it("keeps a degraded model out of the last-resort fallback", async () => {

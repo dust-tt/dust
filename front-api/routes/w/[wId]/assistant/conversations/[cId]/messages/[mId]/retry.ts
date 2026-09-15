@@ -4,15 +4,54 @@ import { batchRenderMessages } from "@app/lib/api/assistant/messages";
 import { DustError } from "@app/lib/error";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { ModelSelectionSchema } from "@app/types/assistant/models/types";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const ParamsSchema = z.object({
   cId: z.string(),
   mId: z.string(),
 });
+
+export const PostRetryRequestBodySchema = z.union([
+  z.null(),
+  z.undefined(),
+  z.literal(""),
+  z.object({
+    modelSelection: ModelSelectionSchema.optional(),
+  }),
+]);
+
+const validateParams = validate("param", ParamsSchema);
+
+// Existing clients POST with `Content-Type: application/json` and no body.
+// Hono's JSON validator parses before Zod and 400s on that empty payload, so
+// we normalize it here and still reject malformed nonempty JSON.
+async function parseRetryBody(raw: string) {
+  if (raw.trim() === "") {
+    return { success: true as const, data: undefined };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { success: false as const, message: "malformed JSON" };
+  }
+
+  const result = PostRetryRequestBodySchema.safeParse(parsed);
+  if (!result.success) {
+    return {
+      success: false as const,
+      message: fromError(result.error).toString(),
+    };
+  }
+
+  return { success: true as const, data: result.data };
+}
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/retry.
 const app = workspaceApp();
@@ -46,6 +85,24 @@ const app = workspaceApp();
  *           type: string
  *     security:
  *       - BearerAuth: []
+ *     requestBody:
+ *       required: false
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               modelSelection:
+ *                 type: object
+ *                 description: Optional model tier or concrete model selection for the retry.
+ *                 required: [providerId, modelId]
+ *                 properties:
+ *                   providerId:
+ *                     type: string
+ *                   modelId:
+ *                     type: string
+ *                   reasoningEffort:
+ *                     type: string
  *     responses:
  *       200:
  *         description: Successfully retried message
@@ -60,9 +117,22 @@ const app = workspaceApp();
  *         description: Unauthorized
  */
 
-app.post("/", validate("param", ParamsSchema), async (ctx) => {
+app.post("/", validateParams, async (ctx) => {
   const auth = ctx.get("auth");
   const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
+  const parsedBody = await parseRetryBody(await ctx.req.text());
+  if (!parsedBody.success) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid request body: ${parsedBody.message}`,
+      },
+    });
+  }
+  const body = parsedBody.data;
+  const modelSelection =
+    body !== null && typeof body === "object" ? body.modelSelection : undefined;
 
   const conversationResource = await ConversationResource.fetchById(
     auth,
@@ -172,6 +242,7 @@ app.post("/", validate("param", ParamsSchema), async (ctx) => {
   const retriedMessageRes = await retryAgentMessage(auth, {
     conversationResource,
     message,
+    modelSelection,
   });
   if (retriedMessageRes.isErr()) {
     return apiError(ctx, retriedMessageRes.error);

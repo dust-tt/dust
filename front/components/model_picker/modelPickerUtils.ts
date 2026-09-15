@@ -23,6 +23,7 @@ import type {
   ModelConfigurationType,
   ModelIdType,
   ModelMakerIdType,
+  ModelResolutionMethodType,
   ModelSelectionType,
   ReasoningEffort,
 } from "@app/types/assistant/models/types";
@@ -46,6 +47,46 @@ const MODEL_TIER_LOCKED_TOOLTIP =
 
 export function getDegradedModelTooltip(displayName: string): string {
   return `${displayName} is unstable right now. You may want to select another model.`;
+}
+
+export function isDegradedModelFailure({
+  failedModelId,
+  degradedModelIds,
+}: {
+  failedModelId: string | undefined;
+  degradedModelIds: ReadonlySet<string>;
+}): boolean {
+  return failedModelId !== undefined && degradedModelIds.has(failedModelId);
+}
+
+/**
+ * @cc [owner:frankaloia,label:product;error-handling] degraded-retry-offers-a-choice
+ * The model switcher MUST be offered exactly when a plain retry would re-run the degraded model
+ * that just failed, i.e. when the failed resolution was not one the server re-resolves on retry.
+ */
+export function shouldShowDegradedModelSwitcher({
+  failedModelId,
+  failedModelResolutionMethod,
+  degradedModelIds,
+}: {
+  failedModelId: string | undefined;
+  failedModelResolutionMethod: ModelResolutionMethodType | null | undefined;
+  degradedModelIds: ReadonlySet<string>;
+}): boolean {
+  if (!isDegradedModelFailure({ failedModelId, degradedModelIds })) {
+    return false;
+  }
+
+  // A tier names a stream rather than a model, and the server walks that
+  // stream's candidate pool again on retry, skipping what is now degraded. Any
+  // other resolution pins the model that just failed, so nothing but an
+  // explicit pick moves the next attempt off it.
+  const retryReresolvesTheModel =
+    failedModelResolutionMethod !== null &&
+    failedModelResolutionMethod !== undefined &&
+    isModelStreamId(failedModelResolutionMethod);
+
+  return !retryReresolvesTheModel;
 }
 
 /**
@@ -282,6 +323,23 @@ export function buildModelSelection(
     modelId: model.modelId,
     reasoningEffort: effort,
   };
+}
+
+// The explicit selection a display stands for. `Selection.toSend` is undefined
+// for the agent default, which reads as "no override" — fine when posting a new
+// message, but unusable on paths that must name the model they want.
+export function materializeSelection(
+  display: SelectionDisplay
+): ModelSelectionType {
+  switch (display.kind) {
+    case "tier":
+      return buildTierSelection(display.tierId);
+    case "model":
+      return buildModelSelection(display.model, display.effort);
+    default:
+      assertNeverAndIgnore(display);
+      return buildTierSelection("standard");
+  }
 }
 
 export function getModelKey(providerId: string, modelId: string): string {
