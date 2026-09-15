@@ -5,6 +5,10 @@ import { z } from "zod";
 export type ProvidersHealth = Partial<Record<ByokModelProviderIdType, boolean>>;
 
 export type LLMCredentialsType = {
+  // Set to "true" for workspaces on a BYOK plan. Travels with the credentials so every consumer —
+  // `core` included — can refuse to substitute a Dust-managed credential without re-deriving the
+  // plan from an `Authenticator`.
+  DUST_BYOK?: "true";
   OPENAI_API_KEY?: string;
   OPENAI_EMBEDDING_API_KEY?: string;
   OPENAI_BASE_URL?: string;

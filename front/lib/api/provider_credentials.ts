@@ -87,6 +87,14 @@ export function dangerouslyGetDustManagedLlmCredentials(): LLMCredentialsType {
  * Pass `skipEmbeddingApiKeyRequirement: true` for call sites that only need LLM
  * keys (agent loop, token counting, image generation, etc.).
  */
+/**
+ * @cc [owner:pmilliotte,label:security;product] byok-credentials-are-customer-owned
+ * For a workspace whose plan has `isByok`, every provider credential in the returned object MUST
+ * come from the keys that workspace configured (`ProviderCredentialResource`), and the object MUST
+ * carry `DUST_BYOK: "true"` so downstream consumers can refuse a Dust-managed substitute. No value
+ * read from Dust's environment may be added to it -- neither a provider API key nor an identifier
+ * Dust's own service account authenticates against, such as `AGENT_PLATFORM_PROJECT_ID`.
+ */
 export async function getLlmCredentials(
   auth: Authenticator,
   { skipEmbeddingApiKeyRequirement } = {
@@ -118,6 +126,7 @@ export async function getLlmCredentials(
 
   return {
     ...baseCredentialVariables(),
+    DUST_BYOK: "true",
     ...credentials,
   };
 }
