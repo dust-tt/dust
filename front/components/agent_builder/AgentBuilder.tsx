@@ -31,6 +31,7 @@ import {
 } from "@app/components/agent_builder/transformAgentConfiguration";
 import type { AgentBuilderMCPConfigurationWithId } from "@app/components/agent_builder/types";
 import { ConversationSidePanelProvider } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { FilePreviewProvider } from "@app/components/assistant/conversation/FilePreviewContext";
 import { ConfirmContext } from "@app/components/Confirm";
 import {
   BuilderEditorGateMessage,
@@ -966,10 +967,12 @@ function AgentBuilderContent({
             suppressAutoStart={isCreatedDialogOpen}
           >
             <ConversationSidePanelProvider>
-              <AgentBuilderRightPanel
-                agentConfiguration={agentConfiguration}
-                isSidekickDisabled={isEditorLocked}
-              />
+              <FilePreviewProvider owner={owner}>
+                <AgentBuilderRightPanel
+                  agentConfiguration={agentConfiguration}
+                  isSidekickDisabled={isEditorLocked}
+                />
+              </FilePreviewProvider>
             </ConversationSidePanelProvider>
           </SidekickPanelProvider>
         }
