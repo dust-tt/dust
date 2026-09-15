@@ -6,6 +6,7 @@ import {
   extractFromString,
   replaceMentionsWithAt,
   serializeMention,
+  stripContentNodeMentionUrls,
   USER_MENTION_REGEX,
 } from "./format";
 
@@ -332,5 +333,21 @@ describe("extractFromString", () => {
       expect(result[0]).toEqual({ configurationId: "a1" });
       expect(result[1]).toEqual({ type: "user", userId: "u1" });
     });
+  });
+});
+
+describe("stripContentNodeMentionUrls", () => {
+  it("drops quoted and unquoted url attributes", () => {
+    const content =
+      'See :content_node_mention[Sheet]{url="https://docs.google.com/d/1/edit?gid=0"} and :content_node_mention[Doc]{url=https://example.com/doc}.';
+    expect(stripContentNodeMentionUrls(content)).toBe(
+      "See :content_node_mention[Sheet] and :content_node_mention[Doc]."
+    );
+  });
+
+  it("leaves mentions without url and other text untouched", () => {
+    const content =
+      "Hey :mention[Bot]{sId=b1} :content_node_mention[Doc] https://example.com/a?b=c";
+    expect(stripContentNodeMentionUrls(content)).toBe(content);
   });
 });
