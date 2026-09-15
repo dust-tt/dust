@@ -45,6 +45,16 @@ describe("localTimeOfDayToUtc", () => {
       minute: 0,
     });
   });
+
+  it("resolves against the true offset for an instant just before a DST transition", () => {
+    // US spring-forward on 2024-03-10: 2am EST (07:00 UTC) becomes 3am EDT.
+    // 04:00 UTC is still EST (UTC-5), not yet EDT (UTC-4).
+    const reference = new Date("2024-03-10T04:00:00Z");
+    expect(localTimeOfDayToUtc(23, 0, "America/New_York", reference)).toEqual({
+      hour: 4,
+      minute: 0,
+    });
+  });
 });
 
 describe("timezoneSchema", () => {
