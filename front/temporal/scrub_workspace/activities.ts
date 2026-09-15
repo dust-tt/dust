@@ -21,6 +21,7 @@ import {
   FREE_TEST_PLAN_CODE,
 } from "@app/lib/plans/plan_codes";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
+import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -134,6 +135,7 @@ export async function scrubWorkspaceData({
   });
   await deleteGroupPermissions(auth);
   await deleteAllConversations(auth);
+  await AgentMessageConsumptionEventResource.deleteAllForWorkspace(auth);
   await deleteTakeaways(auth);
   await deleteKeys(auth);
   await archiveAssistants(auth);
