@@ -1,4 +1,5 @@
 import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
+import { formatExportCellDateTime } from "@app/lib/api/analytics/csv_utils";
 import {
   fetchAgentMetadata,
   fetchTagNames,
@@ -24,7 +25,6 @@ import { isReasoningEffort } from "@app/types/assistant/models/reasoning";
 import { isModelResolutionMethod } from "@app/types/assistant/models/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { formatDateTimeInTimezone } from "@app/types/shared/utils/date_utils";
 import type { WorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
 import { buildConsumptionScopeQuery } from "./consumption/scope";
@@ -451,7 +451,7 @@ export async function fetchMessageExportRows({
     const agent = agentMeta.get(doc.agent_id);
     return {
       messageId: doc.message_id,
-      createdAt: formatDateTimeInTimezone(doc.timestamp, timezone),
+      createdAt: formatExportCellDateTime(doc.timestamp, timezone),
       assistantId: doc.agent_id,
       assistantName: agent?.name ?? doc.agent_id,
       assistantSettings: agent?.settings ?? "unknown",

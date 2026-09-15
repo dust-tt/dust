@@ -1,3 +1,4 @@
+import { formatExportCellDateTime } from "@app/lib/api/analytics/csv_utils";
 import { fetchAgentMetadata } from "@app/lib/api/analytics/enrichment";
 import config from "@app/lib/api/config";
 import { dayRangeInTimezone } from "@app/lib/api/timezone";
@@ -6,7 +7,6 @@ import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
-import { formatDateTimeInTimezone } from "@app/types/shared/utils/date_utils";
 import type { WorkspaceType } from "@app/types/user";
 
 export interface FeedbackExportRow {
@@ -78,7 +78,7 @@ export async function fetchFeedbackExportRows({
 
     return {
       feedbackId: feedback.sId,
-      createdAt: formatDateTimeInTimezone(feedback.createdAt, timezone),
+      createdAt: formatExportCellDateTime(feedback.createdAt, timezone),
       assistantId: feedback.agentConfigurationId,
       assistantName: agent?.name ?? feedback.agentConfigurationId,
       conversationUrl:
