@@ -139,7 +139,7 @@ async function shadowAgentPermissions(
         groups.map((group) => group.agentConfigurationId)
       );
       return agentModels.map((agent) => {
-        const resource = AgentResource.fromAgentConfigurationModel(agent);
+        const resource = AgentResource.fromAgentConfigurationModel(auth, agent);
         const legacyAccess =
           agent.authorId === auth.user()?.id ||
           editorIds.has(agent.id) ||
@@ -271,7 +271,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const canEditWithoutUser =
       !user &&
       !isRegularApiKey &&
-      auth.can("write", AgentResource.fromAgentConfigurationModel(agent));
+      auth.can("write", AgentResource.fromAgentConfigurationModel(auth, agent));
 
     const canRead =
       isAuthor || isMember || canEditWithoutUser || agent.scope === "visible";
