@@ -4,6 +4,7 @@ import { DustAnthropicClaudeHaikuFourDotFiveEuropeAgentPlatformStream } from "@a
 import { DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_haiku_four_dot_five_global_anthropic";
 import { DustAnthropicClaudeOpusFiveEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_five_eu_agent_platform";
 import { DustAnthropicClaudeOpusFiveGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_five_global_anthropic";
+import { DustAnthropicClaudeOpusFiveGlobalBedrockStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_five_global_bedrock";
 import { DustAnthropicClaudeOpusFourDotEightEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_four_dot_eight_eu_agent_platform";
 import { DustAnthropicClaudeOpusFourDotEightGlobalAnthropicStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_four_dot_eight_global_anthropic";
 import { DustAnthropicClaudeOpusFourDotSevenEuropeAgentPlatformStream } from "@app/lib/llms/stream/endpoints/anthropic_claude_opus_four_dot_seven_eu_agent_platform";
@@ -52,6 +53,7 @@ import { DustOpenAIGptFiveDotOneGlobalOpenAIResponsesStream } from "@app/lib/llm
 import { DustOpenAIGptFiveDotSixLunaEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_luna_eu_openai_responses";
 import { DustOpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_luna_global_openai_responses";
 import { DustOpenAIGptFiveDotSixSolEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_sol_eu_openai_responses";
+import { DustOpenAIGptFiveDotSixSolGlobalBedrockStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_sol_global_bedrock";
 import { DustOpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_sol_global_openai_responses";
 import { DustOpenAIGptFiveDotSixTerraEuropeOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_terra_eu_openai_responses";
 import { DustOpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream } from "@app/lib/llms/stream/endpoints/openai_gpt_five_dot_six_terra_global_openai_responses";
@@ -119,6 +121,10 @@ export const DUST_STREAM_ENDPOINTS = {
     DustAnthropicClaudeFableFiveGlobalAnthropicStream,
   [DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream.id]:
     DustAnthropicClaudeHaikuFourDotFiveGlobalAnthropicStream,
+  // Registered before the direct Anthropic endpoint: both are `global`, so the
+  // region sort leaves them tied and registration order decides which one wins.
+  [DustAnthropicClaudeOpusFiveGlobalBedrockStream.id]:
+    DustAnthropicClaudeOpusFiveGlobalBedrockStream,
   [DustAnthropicClaudeOpusFiveGlobalAnthropicStream.id]:
     DustAnthropicClaudeOpusFiveGlobalAnthropicStream,
   [DustAnthropicClaudeOpusFourDotEightGlobalAnthropicStream.id]:
@@ -217,6 +223,10 @@ export const DUST_STREAM_ENDPOINTS = {
     DustOpenAIGptFiveDotSixLunaGlobalOpenAIResponsesStream,
   [DustOpenAIGptSixAstraGlobalOpenAIResponsesStream.id]:
     DustOpenAIGptSixAstraGlobalOpenAIResponsesStream,
+  // Before the direct OpenAI endpoint: both are `global`, so registration
+  // order decides which one wins (see the Opus 5 Bedrock note above).
+  [DustOpenAIGptFiveDotSixSolGlobalBedrockStream.id]:
+    DustOpenAIGptFiveDotSixSolGlobalBedrockStream,
   [DustOpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream.id]:
     DustOpenAIGptFiveDotSixSolGlobalOpenAIResponsesStream,
   [DustOpenAIGptFiveDotSixTerraGlobalOpenAIResponsesStream.id]:
