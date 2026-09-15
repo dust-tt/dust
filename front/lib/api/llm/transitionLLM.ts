@@ -2,6 +2,7 @@ import type { InferenceRegionType } from "@app/lib/api/assistant/token_pricing";
 import { withFlexProcessing } from "@app/lib/api/llm/flex_processing";
 import { LLM } from "@app/lib/api/llm/llm";
 import { withConciseOpenAIReasoningSummary } from "@app/lib/api/llm/reasoning_summary";
+import { withToolSchemaErrorMessage } from "@app/lib/api/llm/tool_schema_errors";
 import type {
   BatchDeletionOutcome,
   BatchResult,
@@ -911,7 +912,15 @@ export class StreamEndpointTransition extends BaseTransition {
     try {
       const rawStream = this.model.streamRaw(payload);
       const newEvents = this.model.rawStreamOutputToEvents(rawStream);
-      yield* convertToOldEvents(newEvents, this.metadata);
+      for await (const event of convertToOldEvents(newEvents, this.metadata)) {
+        yield event.type === "error"
+          ? withToolSchemaErrorMessage(
+              event,
+              payload,
+              this.modelConfig.displayName
+            )
+          : event;
+      }
     } catch (err) {
       yield handleGenericError(err, this.metadata);
     }

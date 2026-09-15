@@ -32,6 +32,7 @@ export type LLMErrorType =
 export interface LLMErrorInfo {
   type: LLMErrorType;
   message: string;
+  userFacingMessage?: string;
   isRetryable: boolean;
   originalError?: unknown;
   errorSource: ErrorSource;
