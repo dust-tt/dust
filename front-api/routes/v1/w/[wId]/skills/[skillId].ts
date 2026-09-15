@@ -2,7 +2,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
 import type { DeleteSkillResponseBody } from "@app/types/api/skills";
 import { publicApiApp } from "@front-api/middlewares/ctx";
-import { ensureIsBuilder } from "@front-api/middlewares/ensure_role";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -61,7 +60,6 @@ const app = publicApiApp();
  */
 app.delete(
   "/",
-  ensureIsBuilder(),
   validate("param", ParamsSchema),
   async (ctx): HandlerResult<DeleteSkillResponseBody> => {
     const auth = ctx.get("auth");
@@ -81,7 +79,7 @@ app.delete(
       });
     }
 
-    if (!skill.canAdministrate(auth)) {
+    if (!auth.can("admin", skill)) {
       return apiError(ctx, {
         status_code: 403,
         api_error: {

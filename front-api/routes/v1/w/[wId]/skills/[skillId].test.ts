@@ -8,14 +8,14 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
 
-async function setupTest({ role }: { role: "user" | "builder" }) {
+async function setupTest({ role }: { role: "user" | "builder" | "admin" }) {
   const { workspace, key } = await createPublicApiMockRequest({ role });
   await SpaceFactory.defaults(
     await Authenticator.internalAdminForWorkspace(workspace.sId)
   );
 
   const user = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, user, { role: "builder" });
+  await MembershipFactory.associate(workspace, user, { role: "admin" });
   const skillOwnerAuth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
     workspace.sId
@@ -39,9 +39,9 @@ function archiveSkill(
 }
 
 describe("DELETE /api/v1/w/[wId]/skills/[skillId]", () => {
-  it("archives a custom skill", async () => {
+  it("archives a custom skill with an admin-role API key", async () => {
     const { key, skill, skillOwnerAuth, workspace } = await setupTest({
-      role: "builder",
+      role: "admin",
     });
 
     const response = await archiveSkill(workspace, key, skill.sId);
@@ -57,7 +57,7 @@ describe("DELETE /api/v1/w/[wId]/skills/[skillId]", () => {
   });
 
   it("returns 404 when the skill does not exist", async () => {
-    const { key, workspace } = await setupTest({ role: "builder" });
+    const { key, workspace } = await setupTest({ role: "admin" });
 
     const response = await archiveSkill(
       workspace,
@@ -74,7 +74,7 @@ describe("DELETE /api/v1/w/[wId]/skills/[skillId]", () => {
     });
   });
 
-  it("rejects a non-builder API key", async () => {
+  it("rejects a user-role API key", async () => {
     const { key, skill, skillOwnerAuth, workspace } = await setupTest({
       role: "user",
     });
@@ -82,6 +82,12 @@ describe("DELETE /api/v1/w/[wId]/skills/[skillId]", () => {
     const response = await archiveSkill(workspace, key, skill.sId);
 
     expect(response.status).toBe(403);
+    expect(await response.json()).toEqual({
+      error: {
+        type: "app_auth_error",
+        message: "Only admins and editors can archive this skill.",
+      },
+    });
     const unchangedSkill = await SkillResource.fetchById(
       skillOwnerAuth,
       skill.sId

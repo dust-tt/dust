@@ -28,7 +28,7 @@ afterEach(() => {
   }
 });
 
-async function setupTest(role: "admin" | "builder" | "user" = "builder") {
+async function setupTest(role: "admin" | "builder" | "user" = "admin") {
   const { workspace, key } = await createPublicApiMockRequest({ role });
 
   await SpaceFactory.defaults(
@@ -36,7 +36,7 @@ async function setupTest(role: "admin" | "builder" | "user" = "builder") {
   );
 
   const user = await UserFactory.basic();
-  await MembershipFactory.associate(workspace, user, { role: "builder" });
+  await MembershipFactory.associate(workspace, user, { role: "admin" });
   const auth = await Authenticator.fromUserIdAndWorkspaceId(
     user.sId,
     workspace.sId
@@ -191,14 +191,13 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
       agentConfig.sId,
       { instructions: "Updated through the API" }
     );
-    // The PATCH endpoint still accepts legacy builder keys independently of `canEdit`.
-    expect(patchResponse.status).toBe(role === "user" ? 403 : 200);
+    expect(patchResponse.status).toBe(role === "admin" ? 200 : 403);
   });
 
   it.each([
     "admin",
     "builder",
-  ] as const)("reports whether a %s key can patch an unpublished agent", async (role) => {
+  ] as const)("only allows an admin key to access an unpublished agent (%s)", async (role) => {
     const { workspace, key, auth } = await setupTest(role);
     const agent = await AgentConfigurationFactory.createTestAgent(auth, {
       name: "Unpublished Agent",
@@ -207,9 +206,14 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
     const response = await getAgentConfiguration(workspace, key, agent.sId);
     const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(data.agentConfiguration.canRead).toBe(false);
-    expect(data.agentConfiguration.canEdit).toBe(role === "admin");
+    if (role === "admin") {
+      expect(response.status).toBe(200);
+      expect(data.agentConfiguration.canRead).toBe(false);
+      expect(data.agentConfiguration.canEdit).toBe(true);
+    } else {
+      expect(response.status).toBe(403);
+      expect(data.error.type).toBe("workspace_auth_error");
+    }
 
     const patchResponse = await patchAgentConfiguration(
       workspace,
@@ -219,7 +223,7 @@ describe("GET /api/v1/w/[wId]/assistant/agent_configurations/[sId]", () => {
         instructions: "Updated through the API",
       }
     );
-    expect(patchResponse.status).toBe(role === "admin" ? 200 : 404);
+    expect(patchResponse.status).toBe(role === "admin" ? 200 : 403);
   });
 
   it("does not report global or archived agents as editable with an admin key", async () => {
