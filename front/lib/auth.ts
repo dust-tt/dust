@@ -1589,6 +1589,15 @@ export class Authenticator {
    * this into their `AccessControlList` as `grantedVerbs`, which the checker uses directly with no
    * group-membership step. Pass `WHOLE_TYPE_RESOURCE_ID` for a workspace-wide capability.
    */
+  /**
+   * @cc [owner:tdraier,label:security] governance-verbs-only
+   * The returned verbs are resolved SOLELY from the caller's governance grants (`group_permissions`),
+   * unioned across the caller's groups and folding in type-wide (-1) grants. Role-derived verbs and
+   * any resource-dynamic grants (a resource's per-instance `roles`, e.g. a space's admin role) MUST
+   * NOT be included. Callers MUST NOT treat the result as the complete set of verbs the caller can
+   * exercise on the resource: completeness requires an ACL check (`hasPermission` /
+   * `hasPermissionForAcls`) that OR-combines these `grantedVerbs` with the resource's role grants.
+   */
   getGrantedVerbs(
     resourceType: ConcreteResourceType,
     resourceId: number
@@ -1602,6 +1611,22 @@ export class Authenticator {
    * "what may I do on this one" — for reverse lookups such as the projects a caller belongs to.
    * Returns `{ kind: "all" }` when a type-wide grant confers the verb on every instance, which a
    * system key holds on every type (see `resolvePermissions`).
+   */
+  /**
+   * @cc [owner:tdraier,label:security] governance-ids-only
+   * The returned instances are resolved SOLELY from the caller's governance grants; role-derived
+   * access is excluded, because a resource's `roles` are evaluated per instance (by space/agent kind)
+   * and are not represented in the permission snapshot. Callers MUST NOT treat the result as every
+   * instance the caller may `verb`: instances reachable only via a workspace role (e.g. an admin's
+   * `admin` on all spaces) are absent. Enumerating those requires listing the resources and filtering
+   * with the real ACL check (`hasPermission`), which cannot be done without fetching.
+   */
+  /**
+   * @cc [owner:tdraier,label:security] type-wide-grant-is-all
+   * A type-wide (-1) grant confers `verb` on every instance and names none, so it MUST be reported as
+   * `{ kind: "all" }` — never expanded into a concrete id list and never dropped. Dropping it would
+   * make this method answer "no instances" while `getGrantedVerbs` answers "yes" for the same verb on
+   * any single id, since that method folds the -1 grant into every lookup.
    */
   getResourceIdsWithVerb(
     resourceType: ConcreteResourceType,
