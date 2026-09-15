@@ -73,9 +73,10 @@ grant avoids enumerating IDs; otherwise query size scales with the caller's gran
 
 Candidates are validated in batches against PostgreSQL: lifecycle, row-read
 permission, every requested space, availability and current editor grants. Validation
-compares resource fields directly without loading tools or rebuilding search documents. Stale
-permission fields fail closed. There is no per-skill SQL query or candidate-pod
-special case. A PIT freezes index state, never authorization.
+compares status, availability and requested spaces without loading tools or rebuilding search
+documents. Differences in the complete editor list do not reject a result: editors-only
+skills still require the caller's current write permission. There is no per-skill SQL
+query or candidate-pod special case. A PIT freezes index state, never authorization.
 
 Admins may request `permissionFiltering=redact_unreadable`. ES keeps workspace,
 status and selection filters, but omits visibility gates. The canonical resource
@@ -129,9 +130,10 @@ and indexes the synchronous `toSearchDocument` result. Missing, unreadable or su
 skills are deleted from the index. Archive and restore update the indexed
 status; a name collision during archive also refreshes the older renamed archive.
 
-Editor grant and group-membership mutations enqueue only affected workspace
-skills. Group deletion captures targets before removing grants. Ordinary space
-membership changes do not reindex skills: authorization is checked live. Skill
+Editor additions, upserts and removals enqueue a refresh through `SkillResource`.
+Group, workspace-membership and space-permission changes do not trigger skill reindexing:
+authorization is checked live. Newly granted access absent from `editor_ids` may stay
+hidden by the ES filter until the next skill refresh. Skill
 space requirements, content, tool attachments, favorites and reinforcement metadata
 are indexed through resource mutations, not duplicated route hooks.
 
