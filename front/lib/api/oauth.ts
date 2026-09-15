@@ -107,8 +107,9 @@ export function getProviderStrategy(
 /**
  * @cc [owner:flvndvd,label:security] persist-credential-redirect
  * Connection creation MUST use the related credential's redirectUri when present,
- * otherwise the configured provider callback. Caller-supplied extraConfig MUST NOT
- * override the callback used for creation, authorization, or finalization.
+ * otherwise the configured callback for the provider and use case. Caller-supplied
+ * extraConfig MUST NOT override the callback used for creation, authorization, or
+ * finalization.
  */
 export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
@@ -250,7 +251,7 @@ export async function createConnectionAndGetSetupUrl(
     // Reused clients keep the callback their workspace connection registered.
     redirectUri:
       relatedCredential?.redirectUri ??
-      finalizeUriForProvider({ provider, connection: null }),
+      finalizeUriForProvider({ provider, connection: null, useCase }),
     relatedCredential: relatedCredential && {
       content: relatedCredential.content,
       metadata: relatedCredential.metadata,

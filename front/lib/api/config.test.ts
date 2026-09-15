@@ -48,7 +48,7 @@ describe("getSandboxApiBaseUrl", () => {
   });
 });
 
-describe("getRemoteMCPOAuthRedirectBaseUrl", () => {
+describe("getLegacyOAuthRedirectBaseUrl", () => {
   beforeEach(() => {
     // Each deployment reads its environment once through EnvironmentConfig.
     vi.resetModules();
@@ -66,7 +66,7 @@ describe("getRemoteMCPOAuthRedirectBaseUrl", () => {
     vi.stubEnv("DUST_OAUTH_REDIRECT_BASE_URL", legacyBaseUrl);
     const { default: config } = await import("@app/lib/api/config");
 
-    expect(config.getRemoteMCPOAuthRedirectBaseUrl()).toBe(legacyBaseUrl);
+    expect(config.getLegacyOAuthRedirectBaseUrl()).toBe(legacyBaseUrl);
   });
 
   it("uses the app URL when the legacy override is empty", async () => {
@@ -74,8 +74,6 @@ describe("getRemoteMCPOAuthRedirectBaseUrl", () => {
     vi.stubEnv("DUST_OAUTH_REDIRECT_BASE_URL", "");
     const { default: config } = await import("@app/lib/api/config");
 
-    expect(config.getRemoteMCPOAuthRedirectBaseUrl()).toBe(
-      "https://app.dust.tt"
-    );
+    expect(config.getLegacyOAuthRedirectBaseUrl()).toBe("https://app.dust.tt");
   });
 });
