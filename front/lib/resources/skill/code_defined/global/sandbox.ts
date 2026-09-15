@@ -440,6 +440,7 @@ export const sandboxSkill = {
     });
   },
   mcpServers: [{ name: "sandbox" }],
+  warmsConversationSandbox: async () => true,
   version: 2,
   icon: "TerminalSquareIcon",
   // Auto-enabled for dust-like agents, which are heavy users of it.

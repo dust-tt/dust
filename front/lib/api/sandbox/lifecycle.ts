@@ -238,7 +238,71 @@ export async function ensureConversationSandboxReady(
   return ensureConversationSandboxReadyWithScope(auth, conversation);
 }
 
+/**
+ * Start bringing the conversation's Computer up without waiting for it, so a likely upcoming
+ * Computer command finds it warm. Failures are only logged: the next real command runs the same
+ * readiness path and reports its own error.
+ */
+export function prewarmConversationSandbox(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): void {
+  const logContext = {
+    conversationId: conversation.sId,
+    workspaceId: auth.getNonNullableWorkspace().sId,
+  };
+  void ensureConversationSandboxReady(auth, conversation).then(
+    (result) => {
+      if (result.isErr()) {
+        logger.warn(
+          { ...logContext, err: result.error },
+          "Conversation sandbox pre-warm failed"
+        );
+      }
+    },
+    (err) => {
+      logger.error(
+        { ...logContext, err },
+        "Conversation sandbox pre-warm threw"
+      );
+    }
+  );
+}
+
+const inFlightConversationReady = new Map<
+  string,
+  Promise<
+    Result<EnsureSandboxReadyWithScopeResult<ConversationSandboxScope>, Error>
+  >
+>();
+
+/**
+ * @cc [owner:davidebbo,label:concurrency] single-in-flight-ready-per-conversation
+ * Within one process, concurrent calls for the same workspace and conversation MUST share one
+ * in-flight readiness run and receive its result. The mount and egress phases run outside the
+ * lifecycle lock, so a second run started while a first creation is still setting the sandbox up
+ * would refresh a mount that does not exist yet.
+ */
 export async function ensureConversationSandboxReadyWithScope(
+  auth: Authenticator,
+  conversation: ConversationWithoutContentType
+): Promise<
+  Result<EnsureSandboxReadyWithScopeResult<ConversationSandboxScope>, Error>
+> {
+  const key = `${auth.getNonNullableWorkspace().sId}:${conversation.sId}`;
+  const inFlight = inFlightConversationReady.get(key);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const run = ensureConversationSandboxReadyRun(auth, conversation).finally(
+    () => inFlightConversationReady.delete(key)
+  );
+  inFlightConversationReady.set(key, run);
+  return run;
+}
+
+async function ensureConversationSandboxReadyRun(
   auth: Authenticator,
   conversation: ConversationWithoutContentType
 ): Promise<

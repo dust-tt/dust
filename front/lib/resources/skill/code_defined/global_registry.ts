@@ -58,4 +58,13 @@ export class GlobalSkillsRegistry {
       this.getByIdInternal(sId)?.inheritAgentConfigurationDataSources ?? false
     );
   }
+
+  // Skips the availability filter: the caller has already resolved the skill as available.
+  static async warmsConversationSandbox(
+    auth: Authenticator,
+    sId: string
+  ): Promise<boolean> {
+    const warms = this.getByIdInternal(sId)?.warmsConversationSandbox;
+    return warms ? warms(auth) : false;
+  }
 }
