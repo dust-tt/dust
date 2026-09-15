@@ -10,6 +10,7 @@ import {
   updateAgentConfigurationsScope,
   updateAgentPermissions,
 } from "@app/lib/api/assistant/configuration/agent";
+import { getEditors } from "@app/lib/api/assistant/editors";
 import { setAgentUserFavorite } from "@app/lib/api/assistant/user_relation";
 import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
@@ -1525,4 +1526,42 @@ describe("publish agent capability", () => {
     });
     expect(row!.scope).toBe("visible");
   });
+});
+
+it("revokes grant-only editors when saving the complete editor set", async () => {
+  const { authenticator: auth, workspace } = await createResourceTest({
+    role: "user",
+  });
+  const agent = await AgentConfigurationFactory.createTestAgent(auth);
+  const editor = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, editor, { role: "user" });
+  const resource = AgentResource.fromAgentConfiguration(auth, agent);
+  assert(resource.id !== null);
+  assert(
+    (
+      await GroupPermissionResource.grantToUser(auth, {
+        user: editor.toJSON(),
+        resourceType: "agent",
+        resourceId: resource.id,
+        grantType: "editor",
+      })
+    ).isOk()
+  );
+  vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(false);
+  await AgentConfigurationFactory.updateTestAgent(auth, agent.sId);
+  expect((await getEditors(auth, agent)).map((user) => user.id)).not.toContain(
+    editor.id
+  );
+  const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    editor.sId,
+    workspace.sId
+  );
+  expect(
+    (
+      await getAgentConfiguration(editorAuth, {
+        agentId: agent.sId,
+        variant: "light",
+      })
+    )?.canEdit
+  ).toBe(false);
 });
