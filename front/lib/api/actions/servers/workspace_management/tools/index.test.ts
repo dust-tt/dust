@@ -716,6 +716,422 @@ describe("workspace_management tools", () => {
     });
   });
 
+  describe("list_groups", () => {
+    it("lists provisioned and manual groups with their kind and member count", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "manager",
+      });
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+      const manual = await GroupFactory.regularManual(workspace, "Sales Team");
+      const provisioned = await GroupFactory.provisioned(
+        workspace,
+        "Engineering (IdP)"
+      );
+      // Internal kinds never show up.
+      await GroupFactory.regularAuto(workspace, "Space Members");
+      await GroupFactory.withMembers(authenticator, manual, [member]);
+
+      const lines = await callToolLines("list_groups", {}, authenticator);
+
+      expect(lines).toEqual([
+        `Engineering (IdP) [${provisioned.sId}] - provisioned, members: 0`,
+        `Sales Team [${manual.sId}] - regular_manual, members: 1`,
+      ]);
+    });
+
+    it("shows the role a group grants", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const group = await GroupFactory.regularManual(workspace, "Admins", {
+        grantedRole: "admin",
+      });
+
+      const lines = await callToolLines("list_groups", {}, authenticator);
+
+      expect(lines).toEqual([
+        `Admins [${group.sId}] - regular_manual, members: 0, grants: admin`,
+      ]);
+    });
+
+    it("filters by kind", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const manual = await GroupFactory.regularManual(workspace, "Sales Team");
+      const provisioned = await GroupFactory.provisioned(workspace, "IdP");
+
+      const text = await callTool(
+        "list_groups",
+        { kind: "provisioned" },
+        authenticator
+      );
+
+      expect(text).toContain(provisioned.sId);
+      expect(text).not.toContain(manual.sId);
+    });
+
+    it("reports an empty workspace", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      expect(await callTool("list_groups", {}, authenticator)).toBe(
+        "No groups found."
+      );
+    });
+  });
+
+  describe("get_group_members", () => {
+    it("lists the group's members with their id and name", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "manager",
+      });
+      const groupUser = await UserFactory.basic();
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, groupUser, { role: "user" });
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const group = await GroupFactory.provisioned(workspace, "IdP");
+      await GroupFactory.withMembers(authenticator, group, [groupUser]);
+
+      const lines = await callToolLines(
+        "get_group_members",
+        { groupId: group.sId },
+        authenticator
+      );
+
+      expect(lines).toEqual([`${groupUser.fullName()} [${groupUser.sId}]`]);
+    });
+
+    it("paginates with cursor and limit", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const users = [await UserFactory.basic(), await UserFactory.basic()];
+      for (const user of users) {
+        await MembershipFactory.associate(workspace, user, { role: "user" });
+      }
+      const group = await GroupFactory.regularManual(workspace, "Sales Team");
+      await GroupFactory.withMembers(authenticator, group, users);
+
+      const firstPage = await callToolLines(
+        "get_group_members",
+        { groupId: group.sId, limit: 1 },
+        authenticator
+      );
+      expect(firstPage).toHaveLength(2);
+      expect(firstPage[1]).toBe(
+        "Showing 1 of 2. Pass cursor: 1 for the next page."
+      );
+
+      const secondPage = await callToolLines(
+        "get_group_members",
+        { groupId: group.sId, limit: 1, cursor: 1 },
+        authenticator
+      );
+      expect(secondPage).toEqual([expect.any(String), "Showing 1 of 2."]);
+      expect(secondPage[0]).not.toBe(firstPage[0]);
+    });
+
+    it("reports an empty group", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const group = await GroupFactory.regularManual(workspace, "Empty");
+
+      expect(
+        await callTool(
+          "get_group_members",
+          { groupId: group.sId },
+          authenticator
+        )
+      ).toBe(`Group Empty [${group.sId}] has no members.`);
+    });
+
+    it("hides internal groups and unknown ids alike", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const internal = await GroupFactory.regularAuto(workspace, "Internal");
+
+      for (const groupId of [internal.sId, "unknown"]) {
+        const result = await runTool(
+          "get_group_members",
+          { groupId },
+          authenticator
+        );
+        expect(result.isErr()).toBe(true);
+        if (result.isErr()) {
+          expect(result.error.message).toContain("Group not found");
+        }
+      }
+    });
+  });
+
+  describe("update_group_members", () => {
+    it("adds and removes members of a manual group", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "manager",
+      });
+      const staying = await UserFactory.basic();
+      const leaving = await UserFactory.basic();
+      const joining = await UserFactory.basic();
+      for (const user of [staying, leaving, joining]) {
+        await MembershipFactory.associate(workspace, user, { role: "user" });
+      }
+      const group = await GroupFactory.regularManual(workspace, "Sales Team");
+      await GroupFactory.withMembers(authenticator, group, [staying, leaving]);
+
+      const lines = await callToolLines(
+        "update_group_members",
+        {
+          groupId: group.sId,
+          additions: [joining.sId],
+          removals: [leaving.sId],
+        },
+        authenticator
+      );
+
+      expect(lines).toEqual([
+        `Updated group Sales Team [${group.sId}].`,
+        `Added: ${joining.fullName()} [${joining.sId}]`,
+        `Removed: ${leaving.fullName()} [${leaving.sId}]`,
+      ]);
+
+      const members = await callTool(
+        "get_group_members",
+        { groupId: group.sId },
+        authenticator
+      );
+      expect(members).toContain(staying.sId);
+      expect(members).toContain(joining.sId);
+      expect(members).not.toContain(leaving.sId);
+    });
+
+    it("refuses provisioned groups", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const user = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      const group = await GroupFactory.provisioned(workspace, "IdP");
+
+      const result = await runTool(
+        "update_group_members",
+        { groupId: group.sId, additions: [user.sId] },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("provisioned");
+      }
+    });
+
+    it("refuses an empty change", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const group = await GroupFactory.regularManual(workspace, "Sales Team");
+
+      const result = await runTool(
+        "update_group_members",
+        { groupId: group.sId },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("at least one user id");
+      }
+    });
+
+    it("refuses to remove the last member", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const only = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, only, { role: "user" });
+      const group = await GroupFactory.regularManual(workspace, "Sales Team");
+      await GroupFactory.withMembers(authenticator, group, [only]);
+
+      const result = await runTool(
+        "update_group_members",
+        { groupId: group.sId, removals: [only.sId] },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      const members = await callTool(
+        "get_group_members",
+        { groupId: group.sId },
+        authenticator
+      );
+      expect(members).toContain(only.sId);
+    });
+
+    it("refuses managers on a group that grants the admin role", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "manager",
+      });
+      const admin = await UserFactory.basic();
+      const candidate = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, admin, { role: "admin" });
+      await MembershipFactory.associate(workspace, candidate, { role: "user" });
+      const group = await GroupFactory.regularManual(workspace, "Admins", {
+        grantedRole: "admin",
+      });
+      await GroupFactory.withMembers(authenticator, group, [admin]);
+
+      const result = await runTool(
+        "update_group_members",
+        { groupId: group.sId, additions: [candidate.sId] },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("grants the admin role");
+      }
+      const members = await callTool(
+        "get_group_members",
+        { groupId: group.sId },
+        authenticator
+      );
+      expect(members).not.toContain(candidate.sId);
+    });
+
+    it("lets admins edit a group that grants the admin role", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const candidate = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, candidate, { role: "user" });
+      const group = await GroupFactory.regularManual(workspace, "Admins", {
+        grantedRole: "admin",
+      });
+
+      const lines = await callToolLines(
+        "update_group_members",
+        { groupId: group.sId, additions: [candidate.sId] },
+        authenticator
+      );
+
+      expect(lines[1]).toContain(candidate.sId);
+    });
+
+    it("reports unknown users without changing the group", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const group = await GroupFactory.regularManual(workspace, "Sales Team");
+
+      const result = await runTool(
+        "update_group_members",
+        { groupId: group.sId, additions: ["unknown"] },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("not found");
+      }
+    });
+  });
+
+  describe("create_group", () => {
+    it("creates a manual group with its members", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "manager",
+      });
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+
+      const lines = await callToolLines(
+        "create_group",
+        { name: "Sales Team", memberIds: [member.sId] },
+        authenticator
+      );
+
+      expect(lines).toHaveLength(2);
+      expect(lines[0]).toMatch(/^Created group Sales Team \[.+\]\.$/);
+      expect(lines[1]).toBe(`Members: ${member.fullName()} [${member.sId}]`);
+
+      const groups = await callTool("list_groups", {}, authenticator);
+      expect(groups).toContain("Sales Team");
+      expect(groups).toContain("regular_manual, members: 1");
+    });
+
+    it("refuses a duplicate name", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+      await GroupFactory.regularManual(workspace, "Sales Team");
+
+      const result = await runTool(
+        "create_group",
+        { name: "Sales Team", memberIds: [member.sId] },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("already exists");
+      }
+    });
+
+    it("refuses unknown users", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const result = await runTool(
+        "create_group",
+        { name: "Sales Team", memberIds: ["unknown"] },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("not found");
+      }
+    });
+
+    it("rejects an empty member list at the schema level", () => {
+      const tool = getToolByName("create_group");
+
+      expect(() =>
+        z.object(tool.schema).parse({ name: "Sales Team", memberIds: [] })
+      ).toThrow();
+    });
+  });
+
+  it.each([
+    "list_groups",
+    "get_group_members",
+    "update_group_members",
+    "create_group",
+  ])("%s is manager-only", async (toolName) => {
+    const { authenticator: memberAuth } = await createResourceTest({
+      role: "user",
+    });
+    const { authenticator: managerAuth } = await createResourceTest({
+      role: "manager",
+    });
+
+    const result = await runTool(
+      toolName,
+      { groupId: "unknown", name: "Sales Team", memberIds: ["unknown"] },
+      memberAuth
+    );
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain("admins and managers");
+    }
+
+    expect(await toolNamesFor(memberAuth)).not.toContain(toolName);
+    expect(await toolNamesFor(managerAuth)).toContain(toolName);
+  });
+
   describe("get_skill_details", () => {
     it("returns a custom skill's instructions", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });

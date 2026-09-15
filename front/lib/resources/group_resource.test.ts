@@ -583,6 +583,76 @@ describe("GroupResource", () => {
     );
   }
 
+  describe("makeNewRegularManual", () => {
+    it("creates the group with its members", async () => {
+      const res = await GroupResource.makeNewRegularManual(authenticator, {
+        name: "Sales",
+        memberIds: [user.sId],
+      });
+
+      expect(res.isOk()).toBe(true);
+      if (res.isOk()) {
+        expect(res.value.addedUsers.map((u) => u.sId)).toEqual([user.sId]);
+        expect(
+          (await res.value.group.getActiveMembers(authenticator)).map(
+            (m) => m.sId
+          )
+        ).toEqual([user.sId]);
+      }
+    });
+
+    it.each([
+      ["an unknown user", async () => "unknown"],
+      [
+        "a user outside the workspace",
+        async () => (await UserFactory.basic()).sId,
+      ],
+    ])("leaves no group behind when rejecting %s", async (_label, makeMemberId) => {
+      const res = await GroupResource.makeNewRegularManual(authenticator, {
+        name: "Sales",
+        memberIds: [await makeMemberId()],
+      });
+
+      expect(res.isErr()).toBe(true);
+      if (res.isErr()) {
+        expect(res.error.code).toBe("user_not_found");
+      }
+      expect(
+        await GroupModel.findOne({
+          where: { workspaceId: workspace.id, name: "Sales" },
+        })
+      ).toBeNull();
+    });
+  });
+
+  describe("updateRegularManualGroupMembers", () => {
+    it("rejects the whole update before writing when a removal is invalid", async () => {
+      const joining = await UserFactory.basic();
+      const outsider = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, joining, { role: "user" });
+      await MembershipFactory.associate(workspace, outsider, { role: "user" });
+      const group = await GroupResource.makeNew({
+        name: "Sales",
+        workspaceId: workspace.id,
+        kind: "regular_manual",
+      });
+      await group.dangerouslyAddMembers(authenticator, {
+        users: [user.toJSON()],
+      });
+
+      const res = await group.updateRegularManualGroupMembers(authenticator, {
+        addUserIds: [joining.sId],
+        // Not a group member, so the removal is invalid.
+        removeUserIds: [outsider.sId],
+      });
+
+      expect(res.isErr()).toBe(true);
+      expect(
+        (await group.getActiveMembers(authenticator)).map((m) => m.sId)
+      ).toEqual([user.sId]);
+    });
+  });
+
   describe("restoreMembers", () => {
     it("restores suspended members and returns affected user IDs", async () => {
       const regularGroup = await GroupResource.makeNew({

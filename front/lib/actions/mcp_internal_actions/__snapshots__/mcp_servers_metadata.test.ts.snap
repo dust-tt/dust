@@ -2636,7 +2636,15 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
     },
   },
   "workspace_management": {
+    "create_group": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "get_agent_details": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "get_group_members": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -2648,11 +2656,19 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "list_groups": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
     "list_skills": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
     "list_workspace_members": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
+    "update_group_members": {
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
@@ -3468,11 +3484,15 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
     "get_top_entities_by_message_count": "never_ask",
   },
   "workspace_management": {
+    "create_group": "high",
     "get_agent_details": "never_ask",
+    "get_group_members": "never_ask",
     "get_skill_details": "never_ask",
     "list_agents": "never_ask",
+    "list_groups": "never_ask",
     "list_skills": "never_ask",
     "list_workspace_members": "never_ask",
+    "update_group_members": "high",
   },
   "zendesk": {
     "draft_reply": "low",

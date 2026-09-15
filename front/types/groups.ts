@@ -58,7 +58,11 @@ export const MANAGEABLE_GROUP_KINDS = [
   "regular_manual",
 ] as const;
 
-export function isManageableGroupKind(kind: GroupKind): boolean {
+export type ManageableGroupKind = (typeof MANAGEABLE_GROUP_KINDS)[number];
+
+export function isManageableGroupKind(
+  kind: GroupKind
+): kind is ManageableGroupKind {
   return MANAGEABLE_GROUP_KINDS.some((k) => k === kind);
 }
 

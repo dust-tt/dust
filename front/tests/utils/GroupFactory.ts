@@ -1,6 +1,7 @@
 import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import type { GroupGrantableRole } from "@app/types/groups";
 import type { WorkspaceType } from "@app/types/user";
 
 export class GroupFactory {
@@ -16,11 +17,16 @@ export class GroupFactory {
     });
   }
 
-  static async regularManual(workspace: WorkspaceType, name: string) {
+  static async regularManual(
+    workspace: WorkspaceType,
+    name: string,
+    { grantedRole = null }: { grantedRole?: GroupGrantableRole | null } = {}
+  ) {
     return GroupResource.makeNew({
       name,
       kind: "regular_manual",
       workspaceId: workspace.id,
+      grantedRole,
     });
   }
 
