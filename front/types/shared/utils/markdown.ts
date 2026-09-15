@@ -58,6 +58,17 @@ function replaceContentNodeMentions(text: string): string {
   );
 }
 
+/**
+ * Drops the attributes of `:content_node_mention[title]{url="..."}` for model-facing text.
+ * The referenced content is already attached, and an echoed url streams raw in Slack.
+ */
+export function stripContentNodeMentionUrls(text: string): string {
+  return text.replaceAll(
+    CONTENT_NODE_MENTION_REGEX,
+    (_full, title: string) => `:content_node_mention[${title}]`
+  );
+}
+
 function replacePastedAttachments(text: string): string {
   return text.replaceAll(PASTED_REGEX, (_full, title: string) => {
     return `📎 ${normalizeInlineLabel(title)}`;

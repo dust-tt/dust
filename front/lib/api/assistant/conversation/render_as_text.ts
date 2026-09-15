@@ -1,4 +1,3 @@
-import { stripContentNodeMentionUrls } from "@app/lib/mentions/format";
 import type {
   AgentMessageType,
   AgentMessageWithFeedbackType,
@@ -9,10 +8,10 @@ import type {
   UserMessageType,
   UserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
-
 import { isLightConversationType } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { stripContentNodeMentionUrls } from "@app/types/shared/utils/markdown";
 
 type AnyMessageType =
   | UserMessageType
