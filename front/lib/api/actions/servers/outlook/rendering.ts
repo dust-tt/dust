@@ -1,19 +1,16 @@
 import type { OutlookEvent } from "@app/lib/api/actions/servers/outlook/outlook_api_helper";
 import { isValidTimezone } from "@app/lib/api/timezone";
-import logger from "@app/logger/logger";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import { formatInTimeZone, toDate } from "date-fns-tz";
 
-// Falls back to UTC and logs rather than throwing, so one malformed timezone
-// from an external source doesn't fail the whole event render.
+// Falls back to UTC rather than throwing, so one malformed timezone from an
+// external source doesn't fail the whole event render. Outlook mailbox
+// settings commonly return non-IANA (Windows-style) names, so this is an
+// expected, high-frequency case, not worth logging per event.
 function resolveTimeZone(timeZone: string): string {
   if (isValidTimezone(timeZone)) {
     return timeZone;
   }
-  logger.warn(
-    { timeZone },
-    "Invalid IANA timezone in Outlook event, falling back to UTC"
-  );
   return "UTC";
 }
 
