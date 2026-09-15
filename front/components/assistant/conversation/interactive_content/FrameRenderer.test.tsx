@@ -120,6 +120,7 @@ vi.mock("@app/lib/swr/frames", () => ({
   useEditFrameText: () => mocks.editFrameText,
   useFramePermissions: () => ({
     isFrameAuthor: mocks.isFrameAuthor,
+    packageRoot: null,
     isFramePermissionsLoading: false,
     isFramePermissionsError: null,
   }),

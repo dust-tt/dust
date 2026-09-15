@@ -1,3 +1,4 @@
+import { resolvePackageRelativeToScopedPath } from "@app/lib/api/frames/package_file_ref_paths";
 import type {
   AuthorizedFileAccessAllowlist,
   FileShareScope,
@@ -43,17 +44,23 @@ export function isAuthorizedFileRef(
   requestedRef: string
 ): boolean {
   for (const r of authorizedFileAccess.refs) {
-    if (r.kind === "file_id" && r.ref === requestedRef) {
-      return true;
-    }
-
-    if (r.kind === "canonical_path") {
-      if (
-        r.ref === requestedRef ||
-        legacyScopedPathsMatch(r.legacyPath, requestedRef)
-      ) {
-        return true;
-      }
+    switch (r.kind) {
+      case "file_id":
+      case "frame_relative_path":
+        if (r.ref === requestedRef) {
+          return true;
+        }
+        break;
+      case "canonical_path":
+        if (
+          r.ref === requestedRef ||
+          legacyScopedPathsMatch(r.legacyPath, requestedRef)
+        ) {
+          return true;
+        }
+        break;
+      default:
+        assertNever(r);
     }
   }
 
@@ -81,21 +88,43 @@ export function isVerifiableAuthorizedFileIdRefUseCase(
   }
 }
 
-/** Canonical scoped path to read when a request matches an allowlisted entry. */
+/**
+ * Resolve an allowlisted request to a readable scoped path.
+ * `frame_relative_path` joins against the Frame's *current* package root so moves survive
+ * without republishing.
+ */
 export function resolveAllowlistedCanonicalPath(
   authorizedFileAccess: AuthorizedFileAccessAllowlist,
-  requestedRef: string
+  requestedRef: string,
+  { packageRoot }: { packageRoot: string | null } = { packageRoot: null }
 ): string | null {
   for (const r of authorizedFileAccess.refs) {
-    if (r.kind !== "canonical_path") {
-      continue;
-    }
-
-    if (
-      r.ref === requestedRef ||
-      legacyScopedPathsMatch(r.legacyPath, requestedRef)
-    ) {
-      return r.ref;
+    switch (r.kind) {
+      case "file_id":
+        break;
+      case "frame_relative_path": {
+        if (r.ref !== requestedRef) {
+          break;
+        }
+        if (!packageRoot) {
+          return null;
+        }
+        return resolvePackageRelativeToScopedPath({
+          relativePath: r.ref,
+          frameRoot: packageRoot,
+        });
+      }
+      case "canonical_path": {
+        if (
+          r.ref === requestedRef ||
+          legacyScopedPathsMatch(r.legacyPath, requestedRef)
+        ) {
+          return r.ref;
+        }
+        break;
+      }
+      default:
+        assertNever(r);
     }
   }
 

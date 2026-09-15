@@ -1,14 +1,18 @@
 /* eslint-disable dust/enforce-client-types-in-public-api */
 
+import { formatFramePackageRelativePath } from "@app/lib/api/frames/package_file_ref_paths";
 import { extractAndVerifyVizAccessTokenFromHeader } from "@app/lib/api/viz/access_tokens";
 import {
   assertVizFileAuthorized,
   readAllowlistedScopedVizFile,
   resolveAllowlistedCanonicalPath,
 } from "@app/lib/api/viz/authorized_file_access";
+import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
+import { isSafeFrameRelativePath } from "@app/types/api/frame_manifest";
 import { parseRawVizScope } from "@app/types/mount_path";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
@@ -29,7 +33,8 @@ const app = unauthedApp();
  * @ignoreswagger
  *
  * Serves files referenced from a frame by scoped resource path
- * (e.g., GET /api/v1/viz/files/conversation/chart.png).
+ * (e.g., GET /api/v1/viz/files/conversation/chart.png), or by Frame-package-relative path
+ * (e.g., GET /api/v1/viz/files/frame/data.csv for useFile("./data.csv")).
  * Access is granted via the same JWT used by /api/v1/viz/files/[fileId].
  *
  * Single-segment requests (fil_xxx) are routed to [fileId].ts.
@@ -38,12 +43,13 @@ const app = unauthedApp();
 app.get("/:scope/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
   const { scope: rawScope, rel } = ctx.req.valid("param");
 
-  if (!parseRawVizScope(rawScope)) {
+  const isFramePackageScope = rawScope === "frame";
+  if (!isFramePackageScope && !parseRawVizScope(rawScope)) {
     return apiError(ctx, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Invalid scope prefix "${rawScope}": expected "conversation", "project", "conversation-{id}", or "pod-{id}".`,
+        message: `Invalid scope prefix "${rawScope}": expected "conversation", "project", "conversation-{id}", "pod-{id}", or "frame".`,
       },
     });
   }
@@ -129,13 +135,41 @@ app.get("/:scope/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  const requestedRef = `${rawScope}/${normalizedRel}`;
+  if (isFramePackageScope && !isSafeFrameRelativePath(normalizedRel)) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid Frame package-relative path.",
+      },
+    });
+  }
+
+  const requestedRef = isFramePackageScope
+    ? formatFramePackageRelativePath(normalizedRel)
+    : `${rawScope}/${normalizedRel}`;
+
+  // Resolve package-relative allowlist entries against the Frame's *current* source root.
+  let packageRoot: string | null = null;
+  if (authorizedFileAccess?.generatedByUserId) {
+    const author = await UserResource.fetchByModelId(
+      authorizedFileAccess.generatedByUserId
+    );
+    if (author) {
+      const authorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        author.sId,
+        owner.sId
+      );
+      packageRoot = frameFile.getFrameV2SourceDirectoryPath(authorAuth);
+    }
+  }
 
   const authorizationMode = await assertVizFileAuthorized({
     authorizedFileAccess,
     requestedRef,
     owner,
     frameContent,
+    packageRoot,
   });
   if (authorizationMode === "denied" || !authorizedFileAccess) {
     return apiError(ctx, {
@@ -146,7 +180,8 @@ app.get("/:scope/:rel{.+}", validate("param", ParamsSchema), async (ctx) => {
 
   const canonicalScopedPath = resolveAllowlistedCanonicalPath(
     authorizedFileAccess,
-    requestedRef
+    requestedRef,
+    { packageRoot }
   );
   if (!canonicalScopedPath) {
     return apiError(ctx, {
