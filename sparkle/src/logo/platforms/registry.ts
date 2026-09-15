@@ -91,6 +91,7 @@ import SlabLogo from "./Slab";
 import SlackLogo from "./Slack";
 import SlideLogo from "./Slide";
 import SnowflakeLogo from "./Snowflake";
+import SpendeskLogo from "./Spendesk";
 import StackOneLogo from "./StackOne";
 import StatuspageLogo from "./Statuspage";
 import StripeLogo from "./Stripe";
@@ -207,6 +208,7 @@ export const PLATFORM_LOGOS = {
   SlackLogo,
   SlideLogo,
   SnowflakeLogo,
+  SpendeskLogo,
   StackOneLogo,
   StatuspageLogo,
   StripeLogo,

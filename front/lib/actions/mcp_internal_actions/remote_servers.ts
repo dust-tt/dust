@@ -2404,6 +2404,333 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       },
     },
   },
+  {
+    id: 10033,
+    name: "Spendesk",
+    description:
+      "Spendesk tools for wallet funding, payables, settlements, purchase orders, suppliers, cards, invoices, accounting, and spend analysis.",
+    url: "https://public-api.demo.spendesk.com/v1/mcp",
+    icon: "SpendeskLogo",
+    documentationUrl:
+      "https://helpcenter.spendesk.com/en/articles/15052814-ask-your-spendesk-data-with-ai-mcp-getting-started-guide",
+    connectionInstructions:
+      "Spendesk uses OAuth with dynamic client registration. You will be prompted to sign in with your Spendesk account to authorize access. Access is restricted to Account Owners and Controllers.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      list_companies: "never_ask",
+      get_wallet_summary: "never_ask",
+      get_wallet_loads: "never_ask",
+      get_settlements: "never_ask",
+      get_payable_attachments: "never_ask",
+      get_payable_by_id: "never_ask",
+      get_payables: "never_ask",
+      get_purchase_orders: "never_ask",
+      get_supplier_by_id: "never_ask",
+      get_analytical_fields: "never_ask",
+      get_analytical_field_values: "never_ask",
+      create_analytical_field: "high",
+      update_analytical_field: "high",
+      delete_analytical_field: "high",
+      create_analytical_field_value: "high",
+      update_analytical_field_value: "high",
+      delete_analytical_field_value: "high",
+      get_cost_centers: "never_ask",
+      get_expense_categories: "never_ask",
+      get_expense_category_fields: "never_ask",
+      create_expense_category_field: "high",
+      update_expense_category_field: "high",
+      delete_expense_category_field: "high",
+      create_expense_category: "high",
+      update_expense_category: "high",
+      delete_expense_category: "high",
+      get_suppliers: "never_ask",
+      archive_supplier: "high",
+      create_suppliers: "high",
+      update_supplier: "high",
+      get_users: "never_ask",
+      spendesk_analyze_spend: "never_ask",
+      spendesk_analyze_requests: "never_ask",
+      spendesk_analyze_settlements: "never_ask",
+      spendesk_get_due_invoices: "never_ask",
+      get_chart_of_accounts: "never_ask",
+      create_accounts: "high",
+      update_accounts: "high",
+      delete_accounts: "high",
+      list_cards: "never_ask",
+      get_card: "never_ask",
+      get_card_order: "never_ask",
+      get_card_blocking_history: "never_ask",
+      get_requests: "never_ask",
+      get_request_by_id: "never_ask",
+      get_transactions: "never_ask",
+      mark_payable_as_exported_manually: "high",
+      mark_settlement_as_exported_manually: "high",
+      mark_payable_as_ready: "high",
+      update_payable: "high",
+      get_failed_transactions: "never_ask",
+      create_purchase_order: "high",
+      cancel_purchase_order: "high",
+      close_purchase_order: "high",
+      create_accounting_export: "high",
+      get_accounting_export: "never_ask",
+      get_journal_templates: "never_ask",
+      get_invoices: "never_ask",
+      get_invoice_by_id: "never_ask",
+      get_invoices_summary: "never_ask",
+      get_intakes: "never_ask",
+      get_intake_by_id: "never_ask",
+    },
+    toolDisplayLabels: {
+      list_companies: {
+        running: "Listing companies on Spendesk",
+        done: "List companies on Spendesk",
+      },
+      get_wallet_summary: {
+        running: "Getting wallet summary on Spendesk",
+        done: "Get wallet summary on Spendesk",
+      },
+      get_wallet_loads: {
+        running: "Getting wallet loads on Spendesk",
+        done: "Get wallet loads on Spendesk",
+      },
+      get_settlements: {
+        running: "Getting settlements on Spendesk",
+        done: "Get settlements on Spendesk",
+      },
+      get_payable_attachments: {
+        running: "Getting payable attachments on Spendesk",
+        done: "Get payable attachments on Spendesk",
+      },
+      get_payable_by_id: {
+        running: "Getting payable on Spendesk",
+        done: "Get payable on Spendesk",
+      },
+      get_payables: {
+        running: "Getting payables on Spendesk",
+        done: "Get payables on Spendesk",
+      },
+      get_purchase_orders: {
+        running: "Getting purchase orders on Spendesk",
+        done: "Get purchase orders on Spendesk",
+      },
+      get_supplier_by_id: {
+        running: "Getting supplier on Spendesk",
+        done: "Get supplier on Spendesk",
+      },
+      get_analytical_fields: {
+        running: "Getting analytical fields on Spendesk",
+        done: "Get analytical fields on Spendesk",
+      },
+      get_analytical_field_values: {
+        running: "Getting analytical field values on Spendesk",
+        done: "Get analytical field values on Spendesk",
+      },
+      create_analytical_field: {
+        running: "Creating analytical field on Spendesk",
+        done: "Create analytical field on Spendesk",
+      },
+      update_analytical_field: {
+        running: "Updating analytical field on Spendesk",
+        done: "Update analytical field on Spendesk",
+      },
+      delete_analytical_field: {
+        running: "Deleting analytical field on Spendesk",
+        done: "Delete analytical field on Spendesk",
+      },
+      create_analytical_field_value: {
+        running: "Creating analytical field value on Spendesk",
+        done: "Create analytical field value on Spendesk",
+      },
+      update_analytical_field_value: {
+        running: "Updating analytical field value on Spendesk",
+        done: "Update analytical field value on Spendesk",
+      },
+      delete_analytical_field_value: {
+        running: "Deleting analytical field value on Spendesk",
+        done: "Delete analytical field value on Spendesk",
+      },
+      get_cost_centers: {
+        running: "Getting cost centers on Spendesk",
+        done: "Get cost centers on Spendesk",
+      },
+      get_expense_categories: {
+        running: "Getting expense categories on Spendesk",
+        done: "Get expense categories on Spendesk",
+      },
+      get_expense_category_fields: {
+        running: "Getting expense category fields on Spendesk",
+        done: "Get expense category fields on Spendesk",
+      },
+      create_expense_category_field: {
+        running: "Creating expense category field on Spendesk",
+        done: "Create expense category field on Spendesk",
+      },
+      update_expense_category_field: {
+        running: "Updating expense category field on Spendesk",
+        done: "Update expense category field on Spendesk",
+      },
+      delete_expense_category_field: {
+        running: "Deleting expense category field on Spendesk",
+        done: "Delete expense category field on Spendesk",
+      },
+      create_expense_category: {
+        running: "Creating expense category on Spendesk",
+        done: "Create expense category on Spendesk",
+      },
+      update_expense_category: {
+        running: "Updating expense category on Spendesk",
+        done: "Update expense category on Spendesk",
+      },
+      delete_expense_category: {
+        running: "Deleting expense category on Spendesk",
+        done: "Delete expense category on Spendesk",
+      },
+      get_suppliers: {
+        running: "Getting suppliers on Spendesk",
+        done: "Get suppliers on Spendesk",
+      },
+      archive_supplier: {
+        running: "Archiving supplier on Spendesk",
+        done: "Archive supplier on Spendesk",
+      },
+      create_suppliers: {
+        running: "Creating supplier on Spendesk",
+        done: "Create supplier on Spendesk",
+      },
+      update_supplier: {
+        running: "Updating supplier on Spendesk",
+        done: "Update supplier on Spendesk",
+      },
+      get_users: {
+        running: "Getting users on Spendesk",
+        done: "Get users on Spendesk",
+      },
+      spendesk_analyze_spend: {
+        running: "Analyzing spend on Spendesk",
+        done: "Analyze spend on Spendesk",
+      },
+      spendesk_analyze_requests: {
+        running: "Analyzing requests on Spendesk",
+        done: "Analyze requests on Spendesk",
+      },
+      spendesk_analyze_settlements: {
+        running: "Analyzing settlements on Spendesk",
+        done: "Analyze settlements on Spendesk",
+      },
+      spendesk_get_due_invoices: {
+        running: "Getting due invoices on Spendesk",
+        done: "Get due invoices on Spendesk",
+      },
+      get_chart_of_accounts: {
+        running: "Getting chart of accounts on Spendesk",
+        done: "Get chart of accounts on Spendesk",
+      },
+      create_accounts: {
+        running: "Creating account on Spendesk",
+        done: "Create account on Spendesk",
+      },
+      update_accounts: {
+        running: "Updating account on Spendesk",
+        done: "Update account on Spendesk",
+      },
+      delete_accounts: {
+        running: "Deleting account on Spendesk",
+        done: "Delete account on Spendesk",
+      },
+      list_cards: {
+        running: "Listing cards on Spendesk",
+        done: "List cards on Spendesk",
+      },
+      get_card: {
+        running: "Getting card on Spendesk",
+        done: "Get card on Spendesk",
+      },
+      get_card_order: {
+        running: "Getting card order on Spendesk",
+        done: "Get card order on Spendesk",
+      },
+      get_card_blocking_history: {
+        running: "Getting card blocking history on Spendesk",
+        done: "Get card blocking history on Spendesk",
+      },
+      get_requests: {
+        running: "Getting requests on Spendesk",
+        done: "Get requests on Spendesk",
+      },
+      get_request_by_id: {
+        running: "Getting request on Spendesk",
+        done: "Get request on Spendesk",
+      },
+      get_transactions: {
+        running: "Getting transactions on Spendesk",
+        done: "Get transactions on Spendesk",
+      },
+      mark_payable_as_exported_manually: {
+        running: "Marking payable as exported on Spendesk",
+        done: "Mark payable as exported on Spendesk",
+      },
+      mark_settlement_as_exported_manually: {
+        running: "Marking settlement as exported on Spendesk",
+        done: "Mark settlement as exported on Spendesk",
+      },
+      mark_payable_as_ready: {
+        running: "Marking payable as ready on Spendesk",
+        done: "Mark payable as ready on Spendesk",
+      },
+      update_payable: {
+        running: "Updating payable on Spendesk",
+        done: "Update payable on Spendesk",
+      },
+      get_failed_transactions: {
+        running: "Getting failed transactions on Spendesk",
+        done: "Get failed transactions on Spendesk",
+      },
+      create_purchase_order: {
+        running: "Creating purchase order on Spendesk",
+        done: "Create purchase order on Spendesk",
+      },
+      cancel_purchase_order: {
+        running: "Cancelling purchase order on Spendesk",
+        done: "Cancel purchase order on Spendesk",
+      },
+      close_purchase_order: {
+        running: "Closing purchase order on Spendesk",
+        done: "Close purchase order on Spendesk",
+      },
+      create_accounting_export: {
+        running: "Creating accounting export on Spendesk",
+        done: "Create accounting export on Spendesk",
+      },
+      get_accounting_export: {
+        running: "Getting accounting export on Spendesk",
+        done: "Get accounting export on Spendesk",
+      },
+      get_journal_templates: {
+        running: "Getting journal templates on Spendesk",
+        done: "Get journal templates on Spendesk",
+      },
+      get_invoices: {
+        running: "Getting invoices on Spendesk",
+        done: "Get invoices on Spendesk",
+      },
+      get_invoice_by_id: {
+        running: "Getting invoice on Spendesk",
+        done: "Get invoice on Spendesk",
+      },
+      get_invoices_summary: {
+        running: "Getting invoices summary on Spendesk",
+        done: "Get invoices summary on Spendesk",
+      },
+      get_intakes: {
+        running: "Getting intakes on Spendesk",
+        done: "Get intakes on Spendesk",
+      },
+      get_intake_by_id: {
+        running: "Getting intake on Spendesk",
+        done: "Get intake on Spendesk",
+      },
+    },
+  },
 ];
 
 export const getDefaultRemoteMCPServerByURL = (
