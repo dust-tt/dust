@@ -427,12 +427,45 @@ export function UsagePage() {
     },
     []
   );
+
+  const [pendingEditLimitRequest, setPendingEditLimitRequest] =
+    useState<MembershipUpgradeRequestType | null>(null);
+  const {
+    membersUsage: pendingEditLimitMembersUsage,
+    isMembersUsageLoading: isPendingEditLimitMemberLoading,
+  } = useMembersUsage({
+    workspaceId: owner.sId,
+    searchTerm: pendingEditLimitRequest?.requester.email ?? "",
+    pageIndex: 0,
+    pageSize: 1,
+    disabled: !pendingEditLimitRequest,
+  });
+  useEffect(() => {
+    if (!pendingEditLimitRequest || isPendingEditLimitMemberLoading) {
+      return;
+    }
+    const request = pendingEditLimitRequest;
+    const fetchedMember = pendingEditLimitMembersUsage.find(
+      (m) => m.sId === request.requester.sId
+    );
+    setPendingApproveRequestId(request.sId);
+    setSpendLimitRecapMember(
+      fetchedMember ?? memberFromUpgradeRequest(request)
+    );
+    setRequestResolving(request.sId, false);
+    setPendingEditLimitRequest(null);
+  }, [
+    pendingEditLimitRequest,
+    isPendingEditLimitMemberLoading,
+    pendingEditLimitMembersUsage,
+    setRequestResolving,
+  ]);
   const handleEditLimitRequest = useCallback(
     (request: MembershipUpgradeRequestType) => {
-      setPendingApproveRequestId(request.sId);
-      setSpendLimitRecapMember(memberFromUpgradeRequest(request));
+      setRequestResolving(request.sId, true);
+      setPendingEditLimitRequest(request);
     },
-    []
+    [setRequestResolving]
   );
   const handleApproveOnModalSaved = useCallback(() => {
     if (!pendingApproveRequestId) {
