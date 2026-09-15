@@ -1,0 +1,105 @@
+import { searchSkills } from "@app/lib/api/skills/search";
+import { SkillSearchCursorError } from "@app/lib/skill_search/cursor";
+import { SearchSkillsQuerySchema } from "@app/lib/skill_search/query_schema";
+import logger from "@app/logger/logger";
+import type { SearchSkillsResponseBody } from "@app/types/api/skills";
+import { workspaceApp } from "@front-api/middlewares/ctx";
+import type { HandlerResult } from "@front-api/middlewares/utils";
+import { apiError } from "@front-api/middlewares/utils";
+import { validate } from "@front-api/middlewares/validator";
+
+// Mounted at /api/w/:wId/skills/search.
+const app = workspaceApp();
+
+/**
+ * @ignoreswagger
+ * Optional limit/cursor paginate one ranked stream of custom and code-defined
+ * skills. The response adds nextCursor (null when exhausted) and per-hit score.
+ * Cursors expire after five minutes; an invalid/expired cursor returns 400.
+ * ACL filtering may produce a short or empty page with a continuation cursor.
+ * permissionFiltering defaults to strict. Admins may opt into redact_unreadable:
+ * retains listing metadata with canRead=false for unreadable skills; no private
+ * fields (instructions/tools/files) are returned. Non-admins receive 403.
+ * mode defaults to autocomplete (name only); management sorts by active users,
+ * then name; discovery combines text relevance and usage. Optional comma-separated
+ * spaceIds/toolIds/availability match any selected value within each dimension,
+ * ANDed across dimensions and with ACLs. isDefault/editedByMe accept true or false.
+ * Filters and mode are bound to the pagination cursor.
+ * status defaults to active; use archived or active,archived for management search.
+ * Results include status so mixed active/archive listings can distinguish them.
+ * Suggested skills are excluded. Changing status requires restarting pagination.
+ */
+app.get(
+  "/",
+  validate("query", SearchSkillsQuerySchema),
+  async (ctx): HandlerResult<SearchSkillsResponseBody> => {
+    const auth = ctx.get("auth");
+    const {
+      query,
+      limit,
+      cursor,
+      permissionFiltering,
+      mode,
+      status,
+      spaceIds,
+      toolIds,
+      availability,
+      isDefault,
+      editedByMe,
+    } = ctx.req.valid("query");
+    if (permissionFiltering === "redact_unreadable" && !auth.isAdmin()) {
+      return apiError(ctx, {
+        status_code: 403,
+        api_error: {
+          type: "app_auth_error",
+          message: "Only admins can search unreadable skills.",
+        },
+      });
+    }
+    const result = await searchSkills(auth, {
+      searchTerm: query,
+      limit,
+      cursor,
+      permissionFiltering,
+      mode,
+      filters: {
+        status,
+        spaceIds,
+        toolIds,
+        availability,
+        isDefault,
+        editedByMe,
+      },
+    });
+
+    if (result.isErr()) {
+      if (result.error instanceof SkillSearchCursorError) {
+        return apiError(ctx, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: result.error.message,
+          },
+        });
+      }
+      logger.error(
+        {
+          error: result.error,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+        },
+        "Failed to search skills"
+      );
+      return apiError(ctx, {
+        status_code: 500,
+        api_error: {
+          type: "internal_server_error",
+          message: "Failed to search skills",
+        },
+      });
+    }
+
+    return ctx.json(result.value);
+  }
+);
+
+export default app;
