@@ -220,8 +220,8 @@ The "toolsets" tools allow listing and enabling additional tools.
 ${toolsetsList.length > 0 ? toolsetsList : "No additional toolsets are currently available."}
 </available_toolsets>
 
-When encountering any request that might benefit from specialized tools, review the available toolsets above.
-Enable relevant toolsets using \`toolsets__enable\` with the toolsetId (shown in backticks) before attempting to fulfill the request.
+A \`<tool id="..." />\` tag in a user message means the user attached that toolset, which is ready to use so you don't need to call \`toolsets__enable\`.
+For any other tool that might help with the request, find it in the available toolsets above and enable it using \`toolsets__enable\` with its toolsetId (shown in backticks) before attempting to fulfill the request.
 Never assume or reply that you cannot do something before checking if there's a relevant toolset available.
 
 <toolsets_vs_company_data>
