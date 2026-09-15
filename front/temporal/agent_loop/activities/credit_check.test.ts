@@ -1,7 +1,9 @@
+import type { AuthenticatorType } from "@app/lib/auth";
 import {
   checkCreditSpendCheckpointActivity,
   checkCreditsActivity,
 } from "@app/temporal/agent_loop/activities/credit_check";
+import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const {
@@ -35,6 +37,27 @@ vi.mock("@app/lib/resources/conversation_resource", () => ({
 const FAKE_AUTH = {
   getNonNullableWorkspace: () => ({ sId: "ws_test", id: 1 }),
 } as never;
+
+const FAKE_AUTH_TYPE: AuthenticatorType = {
+  authMethod: "session",
+  workspaceId: "ws_test",
+  userId: "user_test",
+  role: "user",
+  groupIds: [],
+  subscriptionId: null,
+  isByok: false,
+};
+
+const BASE_AGENT_LOOP_ARGS: AgentLoopArgsWithTiming = {
+  agentMessageId: "agent_msg_id",
+  agentMessageVersion: 0,
+  conversationId: "conv_id",
+  conversationTitle: "Test conversation",
+  userMessageId: "user_msg_id",
+  userMessageVersion: 0,
+  userMessageOrigin: "web",
+  initialStartTime: Date.now(),
+};
 
 describe("checkCreditsActivity (pure decision)", () => {
   beforeEach(() => {
@@ -113,8 +136,8 @@ describe("checkCreditSpendCheckpointActivity (pure decision)", () => {
   it("is not crossed when this execution is exempt, without reading the message", async () => {
     mockIsCreditSpendCheckpointExempt.mockReturnValue(true);
 
-    const result = await checkCreditSpendCheckpointActivity({} as never, {
-      agentLoopArgs: { userMessageOrigin: "api" } as never,
+    const result = await checkCreditSpendCheckpointActivity(FAKE_AUTH_TYPE, {
+      agentLoopArgs: { ...BASE_AGENT_LOOP_ARGS, userMessageOrigin: "api" },
     });
 
     expect(mockIsCreditSpendCheckpointExempt).toHaveBeenCalledWith(FAKE_AUTH, {
@@ -125,8 +148,14 @@ describe("checkCreditSpendCheckpointActivity (pure decision)", () => {
   });
 
   it("passes userMessageOrigin: null when the args don't carry one", async () => {
-    await checkCreditSpendCheckpointActivity({} as never, {
-      agentLoopArgs: {} as never,
+    // Models a pre-existing workflow history serialized before `userMessageOrigin` was
+    // added: the column is NOT NULL going forward, but old histories can still replay
+    // without it (see the field's doc comment on `AgentLoopArgs`).
+    const { userMessageOrigin: _omitted, ...historicalArgs } =
+      BASE_AGENT_LOOP_ARGS;
+
+    await checkCreditSpendCheckpointActivity(FAKE_AUTH_TYPE, {
+      agentLoopArgs: historicalArgs as AgentLoopArgsWithTiming,
     });
 
     expect(mockIsCreditSpendCheckpointExempt).toHaveBeenCalledWith(FAKE_AUTH, {
@@ -137,8 +166,8 @@ describe("checkCreditSpendCheckpointActivity (pure decision)", () => {
   it("is not crossed when the agent message cannot be found", async () => {
     mockFetchCheckpointContext.mockResolvedValue(null);
 
-    const result = await checkCreditSpendCheckpointActivity({} as never, {
-      agentLoopArgs: { agentMessageId: "msg_id" } as never,
+    const result = await checkCreditSpendCheckpointActivity(FAKE_AUTH_TYPE, {
+      agentLoopArgs: { ...BASE_AGENT_LOOP_ARGS, agentMessageId: "msg_id" },
     });
 
     expect(result).toEqual({ crossed: false });
@@ -150,8 +179,8 @@ describe("checkCreditSpendCheckpointActivity (pure decision)", () => {
       isRootAgentMessage: true,
     });
 
-    const result = await checkCreditSpendCheckpointActivity({} as never, {
-      agentLoopArgs: { agentMessageId: "msg_id" } as never,
+    const result = await checkCreditSpendCheckpointActivity(FAKE_AUTH_TYPE, {
+      agentLoopArgs: { ...BASE_AGENT_LOOP_ARGS, agentMessageId: "msg_id" },
     });
 
     expect(result).toEqual({ crossed: false });
@@ -163,11 +192,12 @@ describe("checkCreditSpendCheckpointActivity (pure decision)", () => {
       isRootAgentMessage: false,
     });
 
-    const result = await checkCreditSpendCheckpointActivity({} as never, {
+    const result = await checkCreditSpendCheckpointActivity(FAKE_AUTH_TYPE, {
       agentLoopArgs: {
+        ...BASE_AGENT_LOOP_ARGS,
         agentMessageId: "msg_id",
         userMessageId: "user_msg_id",
-      } as never,
+      },
     });
 
     expect(mockFetchCheckpointContext).toHaveBeenCalledWith(FAKE_AUTH, {
@@ -178,11 +208,12 @@ describe("checkCreditSpendCheckpointActivity (pure decision)", () => {
   });
 
   it("is crossed for a pausable root message", async () => {
-    const result = await checkCreditSpendCheckpointActivity({} as never, {
+    const result = await checkCreditSpendCheckpointActivity(FAKE_AUTH_TYPE, {
       agentLoopArgs: {
+        ...BASE_AGENT_LOOP_ARGS,
         agentMessageId: "msg_id",
         userMessageOrigin: "web",
-      } as never,
+      },
     });
 
     expect(result).toEqual({ crossed: true });

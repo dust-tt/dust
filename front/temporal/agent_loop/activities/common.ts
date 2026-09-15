@@ -36,6 +36,8 @@ import type {
   ConversationWithoutContentType,
 } from "@app/types/assistant/conversation";
 import type { ModelId } from "@app/types/shared/model_id";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { ApplicationFailure } from "@temporalio/common";
 import maxBy from "lodash/maxBy";
@@ -953,7 +955,7 @@ export async function finalizeCreditStop(
 export async function finalizeCreditSpendCheckpointPause(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
-): Promise<void> {
+): Promise<Result<void, Error>> {
   const runAgentDataRes = await getAgentLoopRuntimeData(
     authType,
     agentLoopArgs
@@ -968,10 +970,12 @@ export async function finalizeCreditSpendCheckpointPause(
         },
         "Message or conversation was deleted, exiting"
       );
-      return;
+      return new Ok(undefined);
     }
-    throw new Error(
-      `Failed to get run agent data: ${runAgentDataRes.error.message}`
+    return new Err(
+      new Error(
+        `Failed to get run agent data: ${runAgentDataRes.error.message}`
+      )
     );
   }
   const { auth, agentMessage, conversation } = runAgentDataRes.value;
@@ -987,7 +991,7 @@ export async function finalizeCreditSpendCheckpointPause(
       },
       "[CreditSpendCheckpoint] message already finalized, skipping pause"
     );
-    return;
+    return new Ok(undefined);
   }
 
   await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(auth, {
@@ -1003,4 +1007,5 @@ export async function finalizeCreditSpendCheckpointPause(
     },
     "[CreditSpendCheckpoint] agent loop paused at credit spend checkpoint"
   );
+  return new Ok(undefined);
 }
