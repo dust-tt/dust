@@ -11,6 +11,8 @@ import { indexUserDocument } from "@app/lib/user_search";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
+import { removeNulls } from "@app/types/shared/utils/general";
+import uniq from "lodash/uniq";
 
 const SKILL_SEARCH_INDEX_CONCURRENCY = 10;
 
@@ -126,15 +128,31 @@ export async function recreateSkillSearchIndex({
   const skills = await SkillResource.listByWorkspace(auth, {
     status: ["active", "archived"],
     onlyCustom: true,
-    permissionFiltering: "dangerously_skip",
     withInstructions: false,
     withTools: true,
     withFileAttachments: false,
   });
-  const documents = await SkillResource.toSearchDocuments(auth, skills);
+  const editorsBySkillId = await SkillResource.batchListEditors(auth, skills);
+  const lastEditors = await UserResource.fetchByModelIds(
+    uniq(removeNulls(skills.map((skill) => skill.editedBy)))
+  );
+  const lastEditorByModelId = new Map(
+    lastEditors.map((user) => [user.id, user])
+  );
+  const workspace = auth.getNonNullableWorkspace();
   const results = await concurrentExecutor(
-    documents,
-    async (document) => {
+    skills,
+    async (skill) => {
+      const document = skill.toSearchDocument(workspace, {
+        editorIds: (editorsBySkillId.get(skill.sId) ?? []).map(
+          (editor) => editor.sId
+        ),
+        lastEditedByUserId:
+          skill.editedBy === null
+            ? null
+            : (lastEditorByModelId.get(skill.editedBy)?.sId ?? null),
+        activeUsersCount: 0,
+      });
       const result = await indexSkillDocument(document);
       if (result.isErr()) {
         localLogger.error(
@@ -147,11 +165,10 @@ export async function recreateSkillSearchIndex({
     { concurrency: SKILL_SEARCH_INDEX_CONCURRENCY }
   );
   const indexedCount = results.filter(Boolean).length;
-  const skippedCount = skills.length - documents.length;
   const errorCount = results.length - indexedCount;
 
   localLogger.info(
-    { errorCount, indexedCount, skippedCount },
+    { errorCount, indexedCount },
     "[Skill Search] Completed skill search index recreation for workspace"
   );
 
