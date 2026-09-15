@@ -73,6 +73,12 @@ export async function createSchedule({
 }): Promise<Result<string, Error>> {
   const client = await getTemporalClient();
 
+  // Omit connectorId rather than set it undefined: the SDK rejects an undefined
+  // search attribute value.
+  const connectorSearchAttribute = connector
+    ? { connectorId: [connector.id] }
+    : {};
+
   try {
     const scheduleHandle = await client.schedule.create({
       action: {
@@ -80,7 +86,7 @@ export async function createSchedule({
         // Workflow-level search attributes.
         searchAttributes: {
           ...action.searchAttributes,
-          connectorId: connector ? [connector?.id] : undefined,
+          ...connectorSearchAttribute,
         },
         // Workflow-level memo.
         memo: {
@@ -93,7 +99,7 @@ export async function createSchedule({
       spec,
       // Schedule-level search attributes.
       searchAttributes: {
-        connectorId: connector ? [connector?.id] : undefined,
+        ...connectorSearchAttribute,
       },
     });
 
