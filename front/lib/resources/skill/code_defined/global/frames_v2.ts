@@ -28,15 +28,26 @@ manifest. Do not store durable application state in memory; use a Frame database
 
 ## Create a Frame
 
-Use the Computer to create and register a new Frame folder:
+Every Computer command is a round trip that costs the user several seconds. Create, write, and
+publish a new Frame in one Computer command:
 
 \`\`\`bash
-dsbx frame create /files/conversation-<conversationId>/<frame-folder> --name "<name>"
+FRAME=/files/conversation-<conversationId>/<frame-folder>
+dsbx frame create "$FRAME" --name "<name>" &&
+cat > "$FRAME/index.tsx" <<'EOF'
+export default function Frame() {
+  return <main>...</main>;
+}
+EOF
+dsbx frame publish "$FRAME/manifest.json"
 \`\`\`
 
-In a Pod, create it under \`/files/pod-<podId>/...\` instead. The command scaffolds
-\`manifest.json\` and \`index.tsx\`, then assigns the Frame's stable identity. Edit the generated
-source before publishing it.
+In a Pod, create it under \`/files/pod-<podId>/...\` instead. \`dsbx frame create\` scaffolds a
+placeholder \`manifest.json\` and \`index.tsx\`, then assigns the Frame's stable identity. Do not
+read the scaffolded files back: overwrite \`index.tsx\` with the real component, and write the
+manifest, function, and database files in the same command when the Frame declares any. Do not
+split creating, writing, and publishing across separate commands unless a step needs the output of
+the previous one.
 
 Always pass canonical \`/files/conversation-<conversationId>/...\` or
 \`/files/pod-<podId>/...\` paths to \`dsbx frame\`. Do not pass the convenience aliases
@@ -409,7 +420,8 @@ initial scope.
 ## Editing
 
 Use the Computer to edit Frame source. Never run concurrent file mutations against the same path:
-read the current file, apply one edit, then start the next edit to that file.
+read the current file, apply one edit, then start the next edit to that file. Apply the edit and
+run \`dsbx frame publish\` in the same Computer command.
 
 When fixing a validation or runtime problem, preserve working structure and make the smallest
 targeted edit. Do not replace an entire UI or function for a localized state, schema, or styling bug.
