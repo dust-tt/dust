@@ -3,50 +3,54 @@ import { getFeatureFlags } from "@app/lib/auth";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_defined/shared";
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
-// Library choices are limited to the tools registered in api/sandbox/image/registry.ts.
+// Library choices follow api/sandbox/image/registry.ts.
+/**
+ * @cc [owner:flvndvd,label:product] pdf-operations-in-computer
+ * PDF instructions MUST use Computer commands for file operations, extraction,
+ * and OCR without requiring separate file-management MCP tools.
+ */
 /**
  * @cc [owner:flvndvd,label:performance] pdf-ocr-bounded-verification
- * For routine extraction, the instructions MUST limit OCR refinement to one
- * targeted retry per unclear region or failed page, then require delivery with
- * any remaining uncertainty disclosed. Deeper verification requires a user request.
+ * For routine extraction, the instructions MUST allow at most one correction
+ * pass over failed or unclear OCR output, then require delivery with remaining
+ * uncertainty disclosed. Deeper verification requires a user request.
  */
 const PDF_SKILL_INSTRUCTIONS = `# PDFs
 
-Use the Computer's \`bash\` tool for PDF operations. Inputs are mounted under
-\`/files/conversation\` (or \`/files/pod\` inside a Pod). Copy inputs to \`/tmp\`
-before repeated reads or rendering. Keep scratch files there. Save requested
-deliverables under \`/files/conversation\`, using a new filename to preserve the source.
+Use the Computer's \`bash\` tool for PDF work. Inputs are mounted under
+\`/files/conversation\` or \`/files/pod\` inside a Pod. Copy inputs to \`/tmp\`
+for processing and keep intermediate files there. Save requested deliverables
+under \`/files/conversation\` with a new filename to preserve the source.
 
-## Available tools
+## Installed tools
 
-- Poppler: \`pdftotext\` extracts embedded text, \`pdftoppm\` renders pages,
-  and \`pdfimages\` extracts embedded images.
-- \`pypdf\`: page-aware text extraction and PDF manipulation.
-- \`pdfplumber\`: text positions, cropping, and table extraction.
-- \`tesseract\` and \`pytesseract\`: OCR with English (\`eng\`), French (\`fra\`),
-  and orientation/script detection (\`osd\`) data.
-- \`reportlab\`: PDF creation.
-- \`qpdf\`: PDF manipulation and structural checks.
-- \`Pillow\` and \`pdf2image\`: image processing and PDF rendering from Python.
+- Poppler: \`pdftotext\` for embedded text, \`pdftoppm\` for rendering,
+  and \`pdfimages\` for embedded images.
+- \`pypdf\` for page text, forms, merging, splitting, and rotation.
+- \`pdfplumber\` for text positions and tables in text-based PDFs.
+- \`tesseract\` and \`pytesseract\` for OCR with English (\`eng\`), French
+  (\`fra\`), and orientation/script detection (\`osd\`) data.
+- \`reportlab\` for PDF creation and \`qpdf\` for structural checks.
+- \`Pillow\` and \`pdf2image\` for image processing and rendering from Python.
 
-These are already installed. Do not install packages or assume tools such as
-PyMuPDF, pdf-lib, pdftk, or OCRmyPDF are available.
+Do not install packages or assume other PDF libraries are available.
 
-## 1. Read and extract text
+## Read and extract text
 
-Start with embedded text for reading, summarizing, or searching a PDF:
+Start with embedded text:
 
 \`\`\`bash
+set -e
 cp /files/conversation/report.pdf /tmp/report.pdf
 pdftotext /tmp/report.pdf /tmp/report.txt
+sed -n '1,160p' /tmp/report.txt
 \`\`\`
 
-Search the result with \`rg\` and read relevant excerpts instead of returning the
-whole document to the conversation. Use \`-layout\` when physical spacing helps.
-It does not guarantee correct column order or table structure. To limit extraction
-to PDF pages 3 through 5: \`pdftotext -f 3 -l 5 /tmp/report.pdf /tmp/excerpt.txt\`.
+Use \`rg\` to find relevant excerpts. Add \`-layout\` when physical spacing helps,
+without assuming it preserves column order. Limit extraction to requested pages
+with \`-f\` and \`-l\`, for example \`pdftotext -f 3 -l 5 input.pdf excerpt.txt\`.
 
-For page references and detecting pages with no embedded text, use \`pypdf\`:
+For page references and missing-text detection:
 
 \`\`\`python
 from pypdf import PdfReader
@@ -56,18 +60,52 @@ with open("/tmp/report-by-page.txt", "w", encoding="utf-8") as output:
     for page_number, page in enumerate(reader.pages, start=1):
         text = page.extract_text() or ""
         if not text.strip():
-            text = "[No embedded text: inspect the rendered page.]"
+            text = "[No embedded text on this page.]"
         output.write(f"--- PDF page {page_number} ---\\n{text}\\n\\n")
 \`\`\`
 
-PDF page indices in Python start at 0. Command-line page ranges start at 1.
-Distinguish PDF page positions from printed page numbers when citing content.
-A nonempty extract can still miss scanned pages, figures, or text within images.
-Check the pages relevant to the request. Do not treat missing text as an empty page.
+Python page indices start at 0. Command-line page ranges start at 1.
+Distinguish PDF page positions from printed page numbers. A page with no
+embedded text may contain a scan, and a text extract can omit image content.
 
-## 2. Extract tables
+## OCR scans
 
-Use \`pdfplumber\` to inspect a selected page and extract its tables:
+OCR requested pages whose embedded text is missing or unusable. Keep embedded
+text from searchable pages in mixed PDFs. Check \`tesseract --list-langs\` and
+select \`eng\`, \`fra\`, or \`eng+fra\` for mixed text. \`osd\` detects orientation
+and scripts. It is not a recognition language.
+
+Run one OCR pass, read the result, and confirm every requested page has text or
+a failure marker. Deliver when the result answers the request. Retry only for
+a specific problem, such as a timeout, detected rotation, or missing passage.
+Use one correction pass on the affected pages or regions and preserve completed
+output. Do not compare multiple segmentation modes or preprocessing variants.
+Mark remaining uncertainty and stop unless the user requested deeper verification.
+
+Preserve source wording and page references. Mark unclear characters instead of
+inferring them from expected values. Perform additional analysis only when requested.
+
+Render and OCR one page at a time to limit memory usage:
+
+\`\`\`bash
+set -e
+pdftoppm -png -r 300 -f 1 -l 1 -singlefile /tmp/report.pdf /tmp/page-1
+tesseract /tmp/page-1.png /tmp/page-1 -l eng txt tsv
+sed -n '1,160p' /tmp/page-1.txt
+\`\`\`
+
+This produces text and word coordinates with confidence scores in one OCR pass.
+Use the TSV only to investigate a specific extraction problem. Confidence scores
+are not proof of accuracy. Crop with Pillow when the coordinates identify the
+region to retry. Reuse existing renders and run small batches that fit the command
+timeout. After a timeout, keep completed pages and reduce resolution for the retry.
+
+If the engine or required language is unavailable, report the limitation.
+Mark unreadable text, including handwriting that OCR cannot recover.
+
+## Extract tables
+
+For text-based PDFs, use \`pdfplumber\` on the selected page:
 
 \`\`\`python
 import json
@@ -79,111 +117,20 @@ with open("/tmp/page-3-tables.json", "w", encoding="utf-8") as output:
     json.dump(tables, output, ensure_ascii=False, indent=2)
 \`\`\`
 
-Inspect the rendered page to verify headers, merged cells, row boundaries, and units
-before using the values. An empty table list does not prove there is no table.
-Crop to the table or adjust extraction settings if necessary. Preserve blanks and
-source page references. Do not combine unrelated tables or invent missing values.
+Check headers, row boundaries, and units against the page's extracted text and
+positions. Preserve blanks and page references. An empty table list does not prove
+there is no table. For scanned tables, use OCR text and coordinates. \`pdfplumber\`
+does not OCR images, and recognized words alone do not establish cell structure.
+Mark uncertain cells or layout instead of inventing missing values.
 
-## 3. OCR scans and inspect visual content
+## Create or modify PDFs
 
-Use Tesseract when embedded text is missing or garbled in a printed scan.
-For charts, layout, or other visual content, render the relevant pages and
-inspect their images. Neither \`pypdf\` nor \`pdfplumber\` performs OCR on its own.
-
-Check \`tesseract --list-langs\` and select the document's language. Use \`eng\`,
-\`fra\`, or \`eng+fra\` for mixed English/French text. \`osd\` detects orientation
-and scripts. It is not a recognition language. For unsupported languages,
-handwriting, or failed recognition, use vision and mark any illegible content.
-If an older Computer lacks Tesseract, use the same vision fallback and disclose
-that OCR was unavailable. Do not try to install missing engines or language data.
-
-For routine OCR or text extraction, use this stopping rule:
-
-- Run OCR once per requested scanned page. Check the result for page coverage,
-  readability, and obvious omissions. If it answers the request, deliver it.
-- If a specific passage is unclear or missing, inspect that region with
-  \`files__cat\` before retrying. Allow at most one targeted OCR retry per affected
-  region or failed page, using a correction suggested by the image, such as
-  cropping or fixing rotation. Do not sweep page segmentation modes, languages,
-  or preprocessing variants just to compare plausible outputs.
-- After that check or retry, deliver the extracted text and mark any remaining
-  uncertainty or unreadable pages. Do not keep refining unless the user asked
-  for deeper verification. Reuse existing renders for previews and crops.
-
-Transcribe what the document says. Validate identifiers, recalculate totals, or
-check domain rules only when the user requests that analysis. Never replace an
-ambiguous character with a guess derived from a checksum or expected value.
-
-For a scanned PDF, render and OCR one page at a time to bound memory usage:
-
-\`\`\`python
-from pdf2image import convert_from_path
-from pypdf import PdfReader
-import pytesseract
-
-source = "/tmp/report.pdf"
-page_count = len(PdfReader(source).pages)
-with open("/tmp/report-ocr.txt", "w", encoding="utf-8") as output:
-    for page_number in range(1, page_count + 1):
-        pages = convert_from_path(
-            source, dpi=300, first_page=page_number, last_page=page_number,
-            timeout=60,
-        )
-        with pages[0] as page:
-            text = pytesseract.image_to_string(page, lang="eng", timeout=60)
-        if not text.strip():
-            text = "[No text recognized: inspect the rendered page.]"
-        output.write(f"--- PDF page {page_number} ---\\n{text}\\n\\n")
-\`\`\`
-
-Limit the page range to the request. For mixed PDFs, retain embedded text from
-searchable pages and OCR only the scans. A timeout can use the single retry at
-a lower resolution. Report failed pages instead of silently omitting them.
-OCR does not recover table structure reliably. For table extraction, follow
-the table guidance above and keep any OCR retries within the stopping rule.
-
-To make a scanned page searchable, create a PDF containing the page image and
-a recognized text layer:
-
-\`\`\`bash
-pdftoppm -png -r 300 -f 3 -l 3 -singlefile /tmp/report.pdf /tmp/page-3
-tesseract /tmp/page-3.png /tmp/page-3-searchable -l eng pdf
-\`\`\`
-
-Combine the resulting page PDFs in source order with \`pypdf\`. Preserve existing
-searchable pages in mixed PDFs. Verify text extraction from the result as well
-as page count, order, and appearance before calling it searchable.
-
-For visual inspection, publish a smaller preview that fits the image tool limit:
-
-\`\`\`bash
-mkdir -p /files/conversation/.pdf_render/report
-pdftoppm -jpeg -r 120 -f 3 -l 3 -singlefile /tmp/report.pdf /files/conversation/.pdf_render/report/page-3
-\`\`\`
-
-Open the resulting image with the \`files__cat\` tool using its scoped path,
-\`conversation-<id>/.pdf_render/report/page-3.jpg\`, with the real conversation id
-(use \`files__list\` to obtain the path if needed). A shell \`cat\` does not
-show pixels, and \`files__cat\` cannot access \`/tmp\`. Images must
-be at most 2 MB each. Resize or compress with Pillow if needed, keeping text legible.
-Render a few pages at a time for large files. If the result contains no visible
-image, report that limitation. Do not claim to have inspected or transcribed it.
-
-When transcribing with vision, inspect every requested page and preserve page
-boundaries. Describe vision-based transcription as such. It does not add a
-searchable text layer to the original PDF. Only claim a searchable PDF when
-you created and verified its text layer.
-
-## 4. Create or modify PDFs
-
-Use \`reportlab\` for new PDFs. Prefer Platypus (\`SimpleDocTemplate\`,
-\`Paragraph\`, \`Table\`) for flowing text and tables. Use its canvas for precise
-drawing. Set page size, margins, and styles deliberately. Embed fonts that cover
-the requested characters and check their rendered glyphs. Escape user text before
-passing it into Paragraph's markup parser.
+Use \`reportlab\` for new PDFs. Prefer Platypus for flowing text and tables, or
+its canvas for precise drawing. Set page size and margins, embed fonts that cover
+the requested characters, and escape user text passed into Paragraph markup.
 
 Use \`pypdf\` or \`qpdf\` to preserve existing pages when merging, selecting,
-or rotating them. For example, merge two PDFs:
+or rotating them:
 
 \`\`\`python
 from pypdf import PdfWriter
@@ -196,24 +143,31 @@ writer.close()
 \`\`\`
 
 Use \`writer.append(source, pages=(start, stop))\` for a zero-based,
-stop-exclusive page range. For forms, inspect \`PdfReader.get_fields()\` and
-preserve the form structure with pypdf. An image of a form has no editable fields.
-For encrypted inputs, use a password supplied by the user rather than guessing.
+stop-exclusive range. For forms, inspect \`PdfReader.get_fields()\` and preserve
+the form structure. A page image alone has no editable fields. For encrypted inputs,
+use a password supplied by the user.
 
-## 5. Validate and deliver
+To create a searchable PDF from a rendered scan:
 
-For extraction, confirm the requested page coverage, inspect suspicious results,
-and disclose unreadable or omitted content within the OCR stopping rule above.
-Save a text/CSV/JSON file only when it is a requested deliverable, and link it
-from \`/files/conversation\`.
+\`\`\`bash
+tesseract /tmp/page-1.png /tmp/page-1-searchable -l eng pdf
+\`\`\`
 
-Before delivering a created or modified PDF, reopen it with \`pypdf\` and check
-page count and order (\`qpdf --check\` can also check structure). Render every
-new or visually changed page and inspect it with \`files__cat\`: check clipping,
-overlaps, missing glyphs, unreadable text, table alignment, and placeholder content.
-Fix the source, re-render affected pages, and inspect them again. Text extraction
-alone cannot establish that the PDF looks correct. Copy the verified PDF to
-\`/files/conversation\` and provide its file link.
+Choose the requested output formats in the initial OCR call when possible.
+Combine page PDFs in source order with \`pypdf\` and preserve existing searchable
+pages. Verify that the result has extractable text before calling it searchable.
+
+## Check and deliver
+
+For extracted text, confirm page coverage and disclose unreadable or omitted
+content. Save text, CSV, or JSON only when requested and link the resulting file.
+
+For created or modified PDFs, reopen with \`pypdf\` to check page count and order.
+Run \`qpdf --check\` and confirm the expected text with \`pdftotext\`. Render
+changed pages with \`pdftoppm\` to catch rendering failures or produce requested
+previews. These commands check structure and content. They do not provide visual
+inspection through the Computer's text output. Do not claim the appearance was
+visually checked. Save the PDF under \`/files/conversation\` and provide its link.
 `;
 
 /**
@@ -229,8 +183,8 @@ export const pdfSkill = {
     "Read, OCR scans, extract text and tables, create, and edit PDFs in the Computer.",
   agentFacingDescription:
     "Use this skill when working with PDF files in the Computer: reading or extracting text and tables, " +
-    "running OCR on scans, inspecting charts, creating searchable PDFs, or merging, splitting, and editing existing PDFs. " +
-    "Includes page-aware extraction, targeted visual checks, and PDF validation using the installed libraries.",
+    "running OCR on scans, creating searchable PDFs, or merging, splitting, and editing existing PDFs. " +
+    "Uses installed command-line tools and Python libraries for extraction and structural checks.",
   instructions: PDF_SKILL_INSTRUCTIONS,
   exposeInstructions: true,
   mcpServers: [{ name: "sandbox" }],
