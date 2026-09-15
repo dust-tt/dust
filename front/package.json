@@ -178,8 +178,6 @@
     "marklassian": "^1.0.4",
     "mathjs": "^15.0.0",
     "minimist": "^1.2.8",
-    "moment": "^2.29.4",
-    "moment-timezone": "^0.5.43",
     "motion": "^12.7.3",
     "openai": "^6.46.0",
     "pegjs": "^0.10.0",
