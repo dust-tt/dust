@@ -1,8 +1,16 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { CREATE_AGENT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_authoring/metadata";
+import {
+  CREATE_AGENT_TOOL_NAME,
+  DELETE_AGENT_TOOL_NAME,
+} from "@app/lib/api/actions/servers/agent_authoring/metadata";
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentsEditors } from "@app/lib/api/assistant/editors";
 import { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import { describe, expect, it } from "vitest";
 
 import { TOOLS } from "./index";
@@ -76,9 +84,6 @@ describe("agent_authoring tools", () => {
       expect(parsed.agent.name).toBe("Incident Helper");
       expect(parsed.agent.description).toBe("Helps triage incidents.");
 
-      const { getAgentConfiguration } = await import(
-        "@app/lib/api/assistant/configuration/agent"
-      );
       const agent = await getAgentConfiguration(authenticator, {
         agentId: parsed.agent.sId,
         variant: "full",
@@ -89,9 +94,6 @@ describe("agent_authoring tools", () => {
       expect(agent?.instructions).toBe("Collect impact and timeline.");
       expect(agent?.actions).toHaveLength(0);
 
-      const { getAgentsEditors } = await import(
-        "@app/lib/api/assistant/editors"
-      );
       const editors = await getAgentsEditors(authenticator, [agent!]);
       expect(editors[agent!.sId]?.map((e) => e.sId)).toEqual([user.sId]);
     });
@@ -146,6 +148,118 @@ describe("agent_authoring tools", () => {
         throw new Error("Expected an error.");
       }
       expect(result.error.message).toContain("restricted");
+    });
+  });
+
+  describe(DELETE_AGENT_TOOL_NAME, () => {
+    it("archives an agent the caller is an editor of", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const result = await getTool(DELETE_AGENT_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+
+      const reloaded = await getAgentConfiguration(authenticator, {
+        agentId: agent.sId,
+        variant: "light",
+      });
+      expect(reloaded?.status).toBe("archived");
+    });
+
+    it("allows a workspace admin to delete an agent they do not edit", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      const result = await getTool(DELETE_AGENT_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(adminAuth)
+      );
+
+      expect(result.isOk()).toBe(true);
+    });
+
+    it("rejects a member who is not an editor of the agent", async () => {
+      const { authenticator: ownerAuth, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const agent = await AgentConfigurationFactory.createTestAgent(ownerAuth);
+
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, {
+        role: "user",
+      });
+      const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const result = await getTool(DELETE_AGENT_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(otherAuth)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        throw new Error("Expected an error.");
+      }
+      expect(result.error.message).toContain("editor");
+
+      const reloaded = await getAgentConfiguration(ownerAuth, {
+        agentId: agent.sId,
+        variant: "light",
+      });
+      expect(reloaded?.status).toBe("active");
+    });
+
+    it("returns an MCPError for an unknown agent id", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await getTool(DELETE_AGENT_TOOL_NAME).handler(
+        { agentId: "not-an-agent" },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        throw new Error("Expected an error.");
+      }
+      expect(result.error.message).toContain("not found");
+    });
+
+    it("returns an MCPError for an already-archived agent", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const agent =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const firstDelete = await getTool(DELETE_AGENT_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(authenticator)
+      );
+      expect(firstDelete.isOk()).toBe(true);
+
+      const result = await getTool(DELETE_AGENT_TOOL_NAME).handler(
+        { agentId: agent.sId },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isOk()) {
+        throw new Error("Expected an error.");
+      }
+      expect(result.error.message).toContain("not found");
     });
   });
 });
