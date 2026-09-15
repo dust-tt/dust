@@ -34,14 +34,16 @@ export class ServerSideTracking {
     anonymousId?: string;
     userCreated?: boolean;
   }) {
-    try {
-      CustomerioServerSideTracking.trackSignup({ user, anonymousId });
-    } catch (err) {
-      logger.error(
-        { userId: user.sId, err },
-        "Failed to track signup on Customer.io"
-      );
-    }
+    // Fire and forget: the returned promise must be caught here, a synchronous
+    // try/catch would not catch its rejection.
+    void CustomerioServerSideTracking.trackSignup({ user, anonymousId }).catch(
+      (err) => {
+        logger.error(
+          { userId: user.sId, err },
+          "Failed to track signup on Customer.io"
+        );
+      }
+    );
 
     try {
       PostHogServerSideTracking.trackSignup({
