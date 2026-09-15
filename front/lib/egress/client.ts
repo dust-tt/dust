@@ -38,6 +38,12 @@ async function resolveInit(
 // Client-side fetch helper. This is a simple alias for the global fetch, used to satisfy
 // the linter rule that discourages direct use of `fetch`. On the client, we cannot route
 // through a proxy, so this is just a pass-through.
+/**
+ * @cc [owner:aubin-tchoi,label:error-handling] client-fetch-native-errors
+ * This fetch-compatible boundary preserves native fetch rejections. Callers MAY
+ * catch TypeError (network failure) and DOMException (abort) to show retry UI.
+ * Unexpected failures MUST propagate.
+ */
 export async function clientFetch(
   input: RequestInfo | URL,
   init?: RequestInit
