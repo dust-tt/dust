@@ -96,8 +96,6 @@ describe("SkillResource.toSearchDocument", () => {
         activeUsersCount: 0,
         isDefault: false,
       })
-    ).toThrow(
-      "Search documents require an unredacted custom skill in the workspace."
-    );
+    ).toThrow("Search documents require a custom skill in the workspace.");
   });
 });
