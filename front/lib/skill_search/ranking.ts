@@ -103,7 +103,7 @@ export function getSkillSearchScore({
   searchTerm: string;
   name: string;
   description?: string;
-  aliases?: readonly string[];
+  aliases?: string[];
   mode?: SearchMode;
 }): number {
   // Keyword term/prefix case_insensitive folds ASCII only.
