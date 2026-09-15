@@ -92,8 +92,8 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { isDefaultFromAvailability } from "@app/types/assistant/skill_configuration";
 import type { AgentsUsageType } from "@app/types/data_source";
-import { grantKey } from "@app/types/group_permissions";
 import type { GrantVerb } from "@app/types/group_permissions";
+import { grantKey } from "@app/types/group_permissions";
 import type { RoleGrant } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";

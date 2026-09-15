@@ -6,6 +6,7 @@ export const KILL_SWITCH_TYPES = [
   "global_disable_firecrawl",
   "pause_model_health_detection",
   "pause_upsert_queue",
+  "use_legacy_acls",
 ] as const;
 export type KillSwitchType = (typeof KILL_SWITCH_TYPES)[number];
 

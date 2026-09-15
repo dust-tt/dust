@@ -7,8 +7,9 @@ import type { ModelId } from "@app/types/shared/model_id";
  * pre-fetched `spaceId -> SpaceResource` map so callers resolve the spaces once and reuse them
  * across many items.
  *
- * Space access is served from `group_permissions` via `auth.can`. A requested space missing from the
- * map — deleted, or belonging to another workspace — is treated as not readable.
+ * Space access is served from `group_permissions` via `auth.can` (which also honors the
+ * `use_legacy_acls` kill switch). A requested space missing from the map — deleted, or belonging to
+ * another workspace — is treated as not readable.
  */
 export function canReadRequestedSpaces(
   auth: Authenticator,
