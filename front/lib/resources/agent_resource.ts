@@ -1,9 +1,6 @@
 import { globalAgentReaderRoles } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import type { Authenticator } from "@app/lib/auth";
-import {
-  AgentConfigurationModel,
-  AgentModel,
-} from "@app/lib/models/agent/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -93,80 +90,48 @@ export class AgentResource implements WithAccessControl {
     );
   }
 
-  static async fetchByAgentConfiguration(
+  /**
+   * Builds the identity resource for a custom agent from an already-loaded configuration.
+   * Pure: the stable `agentModelId` travels on the configuration, so no query is needed. The
+   * workspace comes from `auth` (a configuration always belongs to the authed workspace).
+   */
+  static fromAgentConfiguration(
     auth: Authenticator,
     configuration: Pick<
       LightAgentConfigurationType,
-      "sId" | "scope" | "versionAuthorId"
-    >,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<AgentResource> {
+      "agentModelId" | "sId" | "scope" | "versionAuthorId"
+    >
+  ): AgentResource {
     assert(configuration.scope !== "global");
+    assert(
+      configuration.agentModelId !== null,
+      "Unexpected: custom agent identity is missing"
+    );
     assert(
       configuration.versionAuthorId !== null,
       "Unexpected: custom agent author is missing"
     );
 
-    // agents.sId is unique, so this resolves one stable ID regardless of version count.
-    const agent = await AgentModel.findOne({
-      where: {
-        sId: configuration.sId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      attributes: ["id", "workspaceId"],
-      transaction,
-    });
-    assert(agent, "Unexpected: agent identity is missing");
-
-    return this.fromAgentConfigurationModel({
-      agentId: agent.id,
-      authorId: configuration.versionAuthorId,
-      sId: configuration.sId,
-      scope: configuration.scope,
-      workspaceId: agent.workspaceId,
-    });
+    return new AgentResource(
+      configuration.agentModelId,
+      configuration.sId,
+      auth.getNonNullableWorkspace().id,
+      "custom",
+      configuration.versionAuthorId,
+      configuration.scope
+    );
   }
 
-  static async fetchByAgentConfigurations(
+  static fromAgentConfigurations(
     auth: Authenticator,
     configurations: Pick<
       LightAgentConfigurationType,
-      "sId" | "scope" | "versionAuthorId"
+      "agentModelId" | "sId" | "scope" | "versionAuthorId"
     >[]
-  ): Promise<AgentResource[]> {
-    if (configurations.length === 0) {
-      return [];
-    }
-
-    // agents.sId is unique, so the batch lookup stays indexed and workspace-scoped.
-    const agents = await AgentModel.findAll({
-      where: {
-        sId: configurations.map((configuration) => configuration.sId),
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      attributes: ["id", "sId", "workspaceId"],
-    });
-    const agentById = new Map(agents.map((agent) => [agent.sId, agent]));
-
-    const resources = configurations.map((configuration) => {
-      assert(configuration.scope !== "global");
-      assert(
-        configuration.versionAuthorId !== null,
-        "Unexpected: custom agent author is missing"
-      );
-      const agent = agentById.get(configuration.sId);
-      assert(agent, "Unexpected: agent identity is missing");
-
-      return this.fromAgentConfigurationModel({
-        agentId: agent.id,
-        authorId: configuration.versionAuthorId,
-        sId: agent.sId,
-        scope: configuration.scope,
-        workspaceId: agent.workspaceId,
-      });
-    });
-
-    return resources;
+  ): AgentResource[] {
+    return configurations.map((configuration) =>
+      this.fromAgentConfiguration(auth, configuration)
+    );
   }
 
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {

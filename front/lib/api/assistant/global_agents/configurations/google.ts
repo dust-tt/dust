@@ -31,6 +31,7 @@ export function _getGeminiProGlobalAgent({
 
   return {
     id: -1,
+    agentModelId: null,
     sId,
     version: 0,
     versionCreatedAt: null,

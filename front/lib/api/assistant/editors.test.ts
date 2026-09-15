@@ -15,10 +15,7 @@ it("serves legacy agent editors and logs grant mismatches", async () => {
   });
   await FeatureFlagFactory.basic(authenticator, "group_permissions_shadow");
 
-  const resource = await AgentResource.fetchByAgentConfiguration(
-    authenticator,
-    agent
-  );
+  const resource = AgentResource.fromAgentConfiguration(authenticator, agent);
   assert(resource.id !== null);
   const revokeResult = await GroupPermissionResource.revokeFromUser(
     authenticator,

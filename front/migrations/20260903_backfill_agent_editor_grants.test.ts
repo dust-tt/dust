@@ -119,7 +119,7 @@ describe("backfillAgentEditorGrants", () => {
       throw staleLink.error;
     }
 
-    const agentResource = await AgentResource.fetchByAgentConfiguration(
+    const agentResource = AgentResource.fromAgentConfiguration(
       authenticator,
       agent
     );

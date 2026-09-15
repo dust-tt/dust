@@ -23,7 +23,7 @@ describe("AgentResource", () => {
       testContext.authenticator
     );
 
-    const resource = await AgentResource.fetchByAgentConfiguration(
+    const resource = AgentResource.fromAgentConfiguration(
       testContext.authenticator,
       agent
     );
@@ -42,7 +42,7 @@ describe("AgentResource", () => {
       testContext.authenticator,
       { name: "Second agent" }
     );
-    const resources = await AgentResource.fetchByAgentConfigurations(
+    const resources = AgentResource.fromAgentConfigurations(
       testContext.authenticator,
       [firstAgent, secondAgent]
     );
