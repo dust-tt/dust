@@ -52,6 +52,7 @@ import {
   AlertCircle,
   Button,
   Chip,
+  Clock,
   CoinsStacked03,
   createSelectionColumn,
   DataTable,
@@ -599,18 +600,37 @@ const seatsIconColumn: ColumnDef<RowData, string> = {
       : `${seatTypeDisplayName(seatType)} seat`;
     return (
       <DataTable.CellContent className="justify-center">
-        <Tooltip
-          tooltipTriggerAsChild
-          label={tooltipLabel}
-          trigger={
-            <Chip
-              size="mini"
-              color={seatTypeChipColor(seatType)}
-              label={seatTypeDisplayName(seatType)}
-              className="cursor-default"
+        <span className="flex items-center gap-1">
+          <Tooltip
+            tooltipTriggerAsChild
+            label={tooltipLabel}
+            trigger={
+              <Chip
+                size="mini"
+                color={seatTypeChipColor(seatType)}
+                label={seatTypeDisplayName(seatType)}
+                className="cursor-default"
+              />
+            }
+          />
+          {scheduledSeatType && (
+            // Visible badge that a seat change is scheduled; hovering it explains
+            // what and when.
+            <Tooltip
+              tooltipTriggerAsChild
+              label={getScheduledSeatChangeLabel(
+                seatType,
+                scheduledSeatType,
+                scheduledSeatChangeAt
+              )}
+              trigger={
+                <span className="cursor-default text-muted-foreground">
+                  <Icon visual={Clock} size="xs" />
+                </span>
+              }
             />
-          }
-        />
+          )}
+        </span>
       </DataTable.CellContent>
     );
   },
