@@ -16,13 +16,17 @@ permissions:
   actions: read
   checks: write
 
+concurrency:
+  group: build-and-test-front-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   tests:
     name: Test Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
     strategy:
       matrix:
-        shardIndex: [ 1, 2, 3, 4, 5, 6 ]
-        shardTotal: [ 6 ]
+        shardIndex: [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
+        shardTotal: [ 10 ]
     runs-on: ubuntu-latest
     services:
       redis:
@@ -34,6 +38,19 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      postgres:
+        image: mirror.gcr.io/postgres:14.13
+        env:
+          POSTGRES_DB: front_test_shard_${{ matrix.shardIndex }}
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Setup Node Dependencies
@@ -41,17 +58,11 @@ jobs:
         with:
           build-sdks: "true"
           build-sparkle: "true"
-      - name: Install Postgres
-        uses: dust-tt/postgresql-action@91c1ba371e7f9529945c312bb2883e9e0630063b
-        with:
-          postgresql docker image: mirror.gcr.io/postgres
-          postgresql version: "14.13"
-          postgresql db: front_test_shard_${{ matrix.shardIndex }}
-          postgresql user: test
-          postgresql password: test
-          postgresql port: 5433
       - name: Install Sandbox
-        run: sudo apt-get update && sudo apt-get install -y ripgrep fd-find sd
+        # The runner image ships with a populated apt cache, so the install
+        # usually succeeds outright; `apt-get update` alone costs ~8s per shard,
+        # so only pay for it when the cached lists are too stale to resolve.
+        run: sudo apt-get install -y ripgrep fd-find sd || (sudo apt-get update && sudo apt-get install -y ripgrep fd-find sd)
       - name: Run Tests
         working-directory: front
         env:
@@ -60,7 +71,7 @@ jobs:
           REDIS_URI: "redis://localhost:5434"
           NODE_ENV: test
           NODE_OPTIONS: "--trace-deprecation" # Show stacktrace to eliminate deprecated calls.
-        run: npx tsx admin/db.ts && npm run test:ci -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --outputFile=junit-shard-${{ matrix.shardIndex }}.xml
+        run: npm run test:ci -- --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --outputFile=junit-shard-${{ matrix.shardIndex }}.xml
       - name: Build Tests Report
         if: always()
         uses: mikepenz/action-junit-report@bccf2e31636835cf0874589931c4116687171386 # v6.4.0
@@ -90,7 +101,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Setup Node Dependencies
-        uses: ./.github/actions/setup-node-deps
+      # No `setup-node-deps` here on purpose: `lint:audit-log-schemas` is a pure
+      # grep over `admin/audit_log_schemas/`, so restoring ~700MB of
+      # node_modules would cost ~50s for nothing.
       - name: Lint audit log schemas
         run: npm -w front run lint:audit-log-schemas

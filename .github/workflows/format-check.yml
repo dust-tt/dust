@@ -24,6 +24,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: format-check-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   format-check:
     runs-on: ubuntu-latest
@@ -34,6 +38,27 @@ jobs:
       - name: Install Grit CLI
         run: npm install --location=global @getgrit/cli
       - name: Format Check
-        run: npm run format:ci
+        # Biome's linter is what costs: on a runner, checking all ~10k files
+        # takes ~275s for the linter and ~8s for the formatter. Branches only
+        # check the files they touch (~10s); `main` still runs the full check,
+        # so anything a per-file check could miss is caught on merge.
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            npm run format:ci
+            exit 0
+          fi
+
+          git fetch --no-tags --prune --depth=1 origin +refs/heads/main:refs/remotes/origin/main
+
+          # Biome's own `--changed` needs a merge base, which a depth-1
+          # checkout does not have, so pass the changed files explicitly.
+          readarray -t CHANGED < <(git diff --name-only --diff-filter=ACMR origin/main "$GITHUB_SHA")
+          if [ ${#CHANGED[@]} -eq 0 ]; then
+            echo "No changed files to check."
+            exit 0
+          fi
+
+          printf "%s\n" "${CHANGED[@]}"
+          npm run format:ci:files -- "${CHANGED[@]}"
       - name: GritQL Plugin Tests
         run: npm run test:grit
