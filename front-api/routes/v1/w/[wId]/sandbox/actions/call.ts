@@ -3,9 +3,14 @@ import {
   isSandboxFunctionInvocationTokenPayload,
 } from "@app/lib/api/sandbox/access_tokens";
 import { createSandboxChildAction } from "@app/lib/api/sandbox/create_child_action";
+import {
+  isUnsupportedUnicodeDatabaseError,
+  SANDBOX_UNSUPPORTED_UNICODE_ERROR_MESSAGE,
+} from "@app/lib/api/sandbox/errors";
 import { createSandboxFunctionMCPAction } from "@app/lib/api/sandbox_functions/create_sandbox_function_mcp_action";
 import logger from "@app/logger/logger";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { CallMCPToolRequestBodySchema } from "@dust-tt/client";
 import { sandboxApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -61,14 +66,35 @@ app.post(
         });
       }
 
-      const result = await createSandboxFunctionMCPAction(auth, {
-        sandboxFunctionId: claims.sandboxFunctionId,
-        invocationId: claims.invocationId,
-        runtimeSpaceId: claims.spaceId,
-        serverViewId,
-        toolName,
-        rawInputs: toolArgs ?? {},
-      });
+      let result: Awaited<
+        ReturnType<typeof createSandboxFunctionMCPAction>
+      >;
+      try {
+        result = await createSandboxFunctionMCPAction(auth, {
+          sandboxFunctionId: claims.sandboxFunctionId,
+          invocationId: claims.invocationId,
+          runtimeSpaceId: claims.spaceId,
+          serverViewId,
+          toolName,
+          rawInputs: toolArgs ?? {},
+        });
+      } catch (error) {
+        if (!isUnsupportedUnicodeDatabaseError(error)) {
+          throw error;
+        }
+
+        return apiError(
+          ctx,
+          {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: SANDBOX_UNSUPPORTED_UNICODE_ERROR_MESSAGE,
+            },
+          },
+          normalizeError(error)
+        );
+      }
 
       if (result.isErr()) {
         switch (result.error.type) {
@@ -111,16 +137,35 @@ app.post(
       });
     }
 
-    const result = await createSandboxChildAction(auth, {
-      parentActionId: claims.actionId,
-      agentId: claims.aId,
-      agentVersion: claims.aV,
-      conversationId: claims.cId,
-      agentMessageId: claims.mId,
-      serverViewId,
-      toolName,
-      rawInputs: toolArgs ?? {},
-    });
+    let result: Awaited<ReturnType<typeof createSandboxChildAction>>;
+    try {
+      result = await createSandboxChildAction(auth, {
+        parentActionId: claims.actionId,
+        agentId: claims.aId,
+        agentVersion: claims.aV,
+        conversationId: claims.cId,
+        agentMessageId: claims.mId,
+        serverViewId,
+        toolName,
+        rawInputs: toolArgs ?? {},
+      });
+    } catch (error) {
+      if (!isUnsupportedUnicodeDatabaseError(error)) {
+        throw error;
+      }
+
+      return apiError(
+        ctx,
+        {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: SANDBOX_UNSUPPORTED_UNICODE_ERROR_MESSAGE,
+          },
+        },
+        normalizeError(error)
+      );
+    }
 
     if (result.isErr()) {
       logger.error(
