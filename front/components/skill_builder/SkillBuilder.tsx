@@ -31,6 +31,7 @@ import {
 } from "@app/components/skill_builder/skillFormData";
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
+import { useBuilderTracking } from "@app/hooks/useBuilderTracking";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -144,6 +145,11 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
   const isCreatingNew = !skill;
   const { isDirty } = form.formState;
 
+  const { trackSave } = useBuilderTracking({
+    builder: "skill",
+    entryPoint: isCreatingNew ? "new" : "edit",
+  });
+
   const isEditorGateVisible =
     !!skill && !isEditorsLoading && !isEditorsError && !isCurrentUserEditor;
 
@@ -204,6 +210,19 @@ export default function SkillBuilder({ skill, onSaved }: SkillBuilderProps) {
     }
 
     const { skill: savedSkill, editorsError } = result.value;
+
+    trackSave({
+      skill_id: savedSkill.sId,
+      is_update: !isCreatingNew,
+      availability: data.availability,
+      reinforcement: data.reinforcement,
+      has_instructions: !!data.instructions,
+      tool_count: data.tools.length,
+      attachment_count: data.fileAttachments.length,
+      knowledge_count: data.attachedKnowledge?.length ?? 0,
+      referenced_skill_count: data.referencedSkills.length,
+      editor_count: data.editors.length,
+    });
 
     if (editorsError) {
       // The skill itself was saved, so we keep going: only the editors list is out of date.
