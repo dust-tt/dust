@@ -4,8 +4,8 @@ import {
   HtmlEditor,
 } from "@app/components/editor/HtmlEditor";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
-import type { GmailSendMailInput } from "@app/lib/api/actions/servers/gmail/types";
-import { isGmailSendMailInput } from "@app/lib/api/actions/servers/gmail/types";
+import type { GmailComposeInput } from "@app/lib/api/actions/servers/gmail/types";
+import { isGmailComposeInput } from "@app/lib/api/actions/servers/gmail/types";
 import {
   AttachmentChip,
   Button,
@@ -43,7 +43,7 @@ function getComposeFormSchema({
 
 // Recipient rows shown read-only, in Gmail's compose order.
 function getRecipientRows(
-  inputs: GmailSendMailInput
+  inputs: GmailComposeInput
 ): { label: string; value: string }[] {
   const rows: { label: string; value: string }[] = [];
   if (inputs.from) {
@@ -59,6 +59,19 @@ function getRecipientRows(
     rows.push({ label: "Bcc", value: inputs.bcc.join(", ") });
   }
   return rows;
+}
+
+function getComposeTitle({
+  isDraft,
+  isReply,
+}: {
+  isDraft: boolean;
+  isReply: boolean;
+}): string {
+  if (isDraft) {
+    return isReply ? "Draft reply" : "New draft";
+  }
+  return isReply ? "Reply" : "New Message";
 }
 
 interface RecipientRowProps {
@@ -77,16 +90,22 @@ function RecipientRow({ label, value }: RecipientRowProps) {
   );
 }
 
-export function GmailSendMailValidation({
+interface GmailComposeValidationProps
+  extends EditableToolValidationComponentProps {
+  isDraft: boolean;
+}
+
+export function GmailComposeValidation({
   blockedAction,
   alwaysAllowLabel,
+  isDraft,
   isSubmitting,
   isPulsing,
   onApproveWithEditedArguments,
-}: EditableToolValidationComponentProps) {
+}: GmailComposeValidationProps) {
   const inputs = useMemo(
     () =>
-      isGmailSendMailInput(blockedAction.inputs) ? blockedAction.inputs : null,
+      isGmailComposeInput(blockedAction.inputs) ? blockedAction.inputs : null,
     [blockedAction.inputs]
   );
 
@@ -147,7 +166,7 @@ export function GmailSendMailValidation({
     <div className="flex flex-col overflow-hidden rounded-lg border border-border bg-background shadow-md">
       <div className="bg-gray-900 px-4 py-2.5">
         <span className="text-sm font-medium text-white">
-          {isReply ? "Reply" : "New Message"}
+          {getComposeTitle({ isDraft, isReply })}
         </span>
       </div>
 
