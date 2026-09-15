@@ -60,7 +60,7 @@ function serveDocuments(
       document,
       score: getSearchRankingScore({
         mode,
-        activeUsers: document.active_users_count,
+        activeUsers: document.active_users_count ?? 0,
         matchScore: getSkillSearchScore({
           searchTerm,
           name: document.name,
@@ -123,7 +123,10 @@ describe("searchSkills pagination", () => {
     mockClosePit.mockReset().mockResolvedValue({ succeeded: true });
   });
 
-  it("paginates one usage-ranked stream of custom and code-defined skills", async () => {
+  it.each([
+    4,
+    null,
+  ])("paginates one usage-ranked stream with active_users_count=%s", async (activeUsersCount) => {
     const { auth, workspace } = await createPrivateApiMockRequest({
       role: "user",
     });
@@ -131,7 +134,7 @@ describe("searchSkills pagination", () => {
     const lastDocument = await createDocument(auth, "ZZZ higher usage");
     const first = {
       ...firstDocument,
-      active_users_count: 4,
+      active_users_count: activeUsersCount,
     };
     const last = {
       ...lastDocument,
@@ -156,7 +159,10 @@ describe("searchSkills pagination", () => {
     expect(
       mockSearch.mock.calls[0][0].query.bool.must[0].script_score
     ).toMatchObject({
-      script: { source: "1 + doc['active_users_count'].value" },
+      script: {
+        source:
+          "1 + (doc['active_users_count'].size() == 0 ? 0 : doc['active_users_count'].value)",
+      },
     });
   });
 
