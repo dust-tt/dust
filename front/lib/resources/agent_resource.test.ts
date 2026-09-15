@@ -1,3 +1,4 @@
+import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentResource } from "@app/lib/resources/agent_resource";
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
@@ -7,6 +8,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import assert from "assert";
 import { beforeEach, describe, expect, it } from "vitest";
 
 const AGENT_MODEL_ID = 42;
@@ -31,6 +33,108 @@ describe("AgentResource", () => {
     expect(resource.id).not.toBeNull();
     expect(resource.sId).toBe(agent.sId);
     expect(resource.workspaceId).toBe(testContext.workspace.id);
+  });
+
+  it("fetches an agent's latest active version by sId and by model id", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+    assert(agent.agentModelId !== null);
+
+    const bySId = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    const byModelId = await AgentResource.fetchByModelIdWithAuth(
+      testContext.authenticator,
+      agent.agentModelId
+    );
+
+    for (const resource of [bySId, byModelId]) {
+      expect(resource).not.toBeNull();
+      expect(resource?.isFull()).toBe(true);
+      expect(resource?.id).toBe(agent.agentModelId);
+      expect(resource?.sId).toBe(agent.sId);
+      expect(resource?.workspaceId).toBe(testContext.workspace.id);
+    }
+  });
+
+  it("returns a light resource when the caller cannot read the agent", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { scope: "hidden" }
+    );
+
+    const otherUser = await UserFactory.basic();
+    await MembershipFactory.associate(testContext.workspace, otherUser, {
+      role: "user",
+    });
+    const otherAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      otherUser.sId,
+      testContext.workspace.sId
+    );
+
+    const asAuthor = await AgentResource.fetchById(
+      testContext.authenticator,
+      agent.sId
+    );
+    const asOther = await AgentResource.fetchById(otherAuth, agent.sId);
+
+    expect(asAuthor?.isFull()).toBe(true);
+    expect(asOther).not.toBeNull();
+    expect(asOther?.isFull()).toBe(false);
+    expect(asOther?.sId).toBe(agent.sId);
+  });
+
+  it("does not resolve an archived agent to a resource", async () => {
+    const agent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator
+    );
+    assert(agent.agentModelId !== null);
+
+    await archiveAgentConfiguration(testContext.authenticator, agent.sId);
+
+    expect(
+      await AgentResource.fetchById(testContext.authenticator, agent.sId)
+    ).toBeNull();
+    expect(
+      await AgentResource.fetchByModelIdWithAuth(
+        testContext.authenticator,
+        agent.agentModelId
+      )
+    ).toBeNull();
+    expect(
+      await AgentResource.fetchByIds(testContext.authenticator, [agent.sId])
+    ).toEqual([]);
+  });
+
+  it("returns one resource per agent when fetching in batches", async () => {
+    const firstAgent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { name: "First agent" }
+    );
+    const secondAgent = await AgentConfigurationFactory.createTestAgent(
+      testContext.authenticator,
+      { name: "Second agent" }
+    );
+    assert(firstAgent.agentModelId !== null);
+    assert(secondAgent.agentModelId !== null);
+
+    const bySIds = await AgentResource.fetchByIds(testContext.authenticator, [
+      firstAgent.sId,
+      secondAgent.sId,
+    ]);
+    const byModelIds = await AgentResource.fetchByModelIds(
+      testContext.authenticator,
+      [firstAgent.agentModelId, secondAgent.agentModelId]
+    );
+
+    expect(bySIds.map((resource) => resource.sId).sort()).toEqual(
+      [firstAgent.sId, secondAgent.sId].sort()
+    );
+    expect(byModelIds.map((resource) => resource.id).sort()).toEqual(
+      [firstAgent.agentModelId, secondAgent.agentModelId].sort()
+    );
   });
 
   it("lists agent editors from grants individually and in batches", async () => {
@@ -67,13 +171,17 @@ describe("AgentResource", () => {
   });
 
   it("applies author, admin, and editor permissions to custom agents", async () => {
-    const resource = AgentResource.fromAgentConfigurationModel({
-      agentId: AGENT_MODEL_ID,
-      authorId: testContext.user.id,
-      sId: "custom-agent",
-      scope: "hidden",
-      workspaceId: testContext.workspace.id,
-    });
+    const resource = AgentResource.fromAgentConfiguration(
+      testContext.authenticator,
+      {
+        agentModelId: AGENT_MODEL_ID,
+        sId: "custom-agent",
+        scope: "hidden",
+        versionAuthorId: testContext.user.id,
+        name: "Custom agent",
+        description: "Custom agent description",
+      }
+    );
 
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(testContext.workspace, otherUser, {
@@ -133,49 +241,55 @@ describe("AgentResource", () => {
     "admin",
     "builder",
   ] as const)("applies the %s API-key write policy only to workspace custom agents", async (role) => {
-    const { auth, workspace } = await createPublicApiMockRequest({ role });
+    const { auth } = await createPublicApiMockRequest({ role });
     const configuration = {
-      agentId: AGENT_MODEL_ID,
-      authorId: testContext.user.id,
+      agentModelId: AGENT_MODEL_ID,
       sId: "custom-agent",
       scope: "hidden" as const,
-      workspaceId: workspace.id,
+      versionAuthorId: testContext.user.id,
+      name: "Custom agent",
+      description: "Custom agent description",
     };
 
     expect(
       auth.can(
         "write",
-        AgentResource.fromAgentConfigurationModel(configuration)
+        AgentResource.fromAgentConfiguration(auth, configuration)
       )
     ).toBe(role === "admin");
     expect(
       auth.can(
         "write",
-        AgentResource.fromAgentConfigurationModel({
-          ...configuration,
-          workspaceId: testContext.workspace.id,
-        })
+        AgentResource.fromAgentConfiguration(
+          testContext.authenticator,
+          configuration
+        )
       )
     ).toBe(false);
     expect(
       auth.can(
         "write",
-        AgentResource.fromGlobalAgent({
-          agentId: GLOBAL_AGENTS_SID.HELPER,
-          workspaceModelId: workspace.id,
+        AgentResource.fromGlobalAgent(auth, {
+          sId: GLOBAL_AGENTS_SID.HELPER,
+          name: "Helper",
+          description: "Helper description",
         })
       )
     ).toBe(false);
   });
 
   it("lets workspace members read visible agents without editing them", async () => {
-    const resource = AgentResource.fromAgentConfigurationModel({
-      agentId: AGENT_MODEL_ID,
-      authorId: testContext.user.id,
-      sId: "custom-agent",
-      scope: "visible",
-      workspaceId: testContext.workspace.id,
-    });
+    const resource = AgentResource.fromAgentConfiguration(
+      testContext.authenticator,
+      {
+        agentModelId: AGENT_MODEL_ID,
+        sId: "custom-agent",
+        scope: "visible",
+        versionAuthorId: testContext.user.id,
+        name: "Custom agent",
+        description: "Custom agent description",
+      }
+    );
 
     const otherUser = await UserFactory.basic();
     await MembershipFactory.associate(testContext.workspace, otherUser, {
@@ -192,13 +306,15 @@ describe("AgentResource", () => {
   });
 
   it("keeps code-defined global agents read-only and audience-scoped", async () => {
-    const helper = AgentResource.fromGlobalAgent({
-      agentId: GLOBAL_AGENTS_SID.HELPER,
-      workspaceModelId: testContext.workspace.id,
+    const helper = AgentResource.fromGlobalAgent(testContext.authenticator, {
+      sId: GLOBAL_AGENTS_SID.HELPER,
+      name: "Helper",
+      description: "Helper description",
     });
-    const analyst = AgentResource.fromGlobalAgent({
-      agentId: GLOBAL_AGENTS_SID.ANALYST,
-      workspaceModelId: testContext.workspace.id,
+    const analyst = AgentResource.fromGlobalAgent(testContext.authenticator, {
+      sId: GLOBAL_AGENTS_SID.ANALYST,
+      name: "Analyst",
+      description: "Analyst description",
     });
 
     const manager = await UserFactory.basic();
