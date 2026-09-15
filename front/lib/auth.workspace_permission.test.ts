@@ -266,6 +266,7 @@ describe("Authenticator.fromKey permission resolution", () => {
       "create",
       "publish",
       "read",
+      "use",
       "write",
     ]);
     expect([...workspaceAuth.getGrantedVerbs("agent", 99)].sort()).toEqual([
@@ -273,6 +274,7 @@ describe("Authenticator.fromKey permission resolution", () => {
       "create",
       "publish",
       "read",
+      "use",
       "write",
     ]);
     expect(workspaceAuth.getGrantedVerbs("space", 1234)).toContain("admin");
@@ -313,6 +315,7 @@ describe("Authenticator.fromKey permission resolution", () => {
     expect([...workspaceAuth.getGrantedVerbs("agent", 42)].sort()).toEqual([
       "admin",
       "read",
+      "use",
       "write",
     ]);
     expect(workspaceAuth.getGrantedVerbs("agent", 99)).toEqual([]);
@@ -400,6 +403,7 @@ describe("Authenticator.refresh permission resolution", () => {
     expect([...workspaceAuth.getGrantedVerbs("agent", 42)].sort()).toEqual([
       "admin",
       "read",
+      "use",
       "write",
     ]);
     // It stays scoped to the requested groups: refreshing must not widen it back to everything the

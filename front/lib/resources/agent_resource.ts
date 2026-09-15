@@ -30,18 +30,23 @@ import type { Transaction } from "sequelize";
 
 // Legacy `canEdit` also allows changing the editor set, so the author fallback mirrors the full
 // editor role rather than granting write alone.
-const AGENT_EDITOR_VERBS: GrantVerb[] = ["read", "write", "admin"];
+const AGENT_EDITOR_VERBS: GrantVerb[] = ["read", "write", "admin", "use"];
 
 // Human workspace admins manage editors but must grant themselves editor access to change the agent.
+// Admins do not receive `use` on hidden agents: a hidden agent is usable only by its editors, not by
+// virtue of the workspace admin role.
 const HIDDEN_AGENT_ROLE_GRANTS: RoleGrant[] = [
   { role: "admin", permissions: ["read", "admin"] },
 ];
 
+// Visible agents are readable by every workspace role and usable by every active role, including
+// admins (who additionally keep the hidden-grant `admin` verb). The `none` role — a revoked /
+// non-member caller — can read but not use.
 const VISIBLE_AGENT_ROLE_GRANTS: RoleGrant[] = [
-  ...HIDDEN_AGENT_ROLE_GRANTS,
-  { role: "manager", permissions: ["read"] },
-  { role: "builder", permissions: ["read"] },
-  { role: "user", permissions: ["read"] },
+  { role: "admin", permissions: ["read", "admin", "use"] },
+  { role: "manager", permissions: ["read", "use"] },
+  { role: "builder", permissions: ["read", "use"] },
+  { role: "user", permissions: ["read", "use"] },
   { role: "none", permissions: ["read"] },
 ];
 
