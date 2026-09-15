@@ -14,7 +14,6 @@ import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
 
 export { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
-// Re-exported so existing billing callers keep a single import site.
 export { awuFromMicroUsd };
 
 // Historical and non-agent-loop usages may not have a run key. Keep them in one
