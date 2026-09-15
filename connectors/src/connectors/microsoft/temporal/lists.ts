@@ -17,7 +17,10 @@ import {
 import { TablesError } from "@connectors/lib/error";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
-import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
+import {
+  MicrosoftNodeResource,
+  MicrosoftRootResource,
+} from "@connectors/resources/microsoft_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import {
   cacheWithRedis,
@@ -146,9 +149,13 @@ async function fetchItemsAsMap(
   logger: Logger,
   client: Client,
   itemsEndpoint: string,
-  valueGetter: (fields: Record<string, unknown>) => string | null
+  valueGetter: (fields: Record<string, unknown>) => string | null,
+  heartbeat: () => Promise<void>
 ): Promise<Record<string, string>> {
   const items = await getAllPaginatedEntities<ListItem>(async (nextLink) => {
+    // The referenced list (User Information List / lookup target) can be large;
+    // heartbeat per page so we don't trip the activity's heartbeat timeout.
+    await heartbeat();
     const res = nextLink
       ? await clientApiGet(logger, client, nextLink)
       : await clientApiGet(logger, client, itemsEndpoint);
@@ -183,12 +190,14 @@ const getUserInfoMap = cacheWithRedis(
     logger,
     client,
     siteAPIPath,
+    heartbeat,
   }: {
     logger: Logger;
     client: Client;
     connectorId: ModelId;
     startSyncTs: number;
     siteAPIPath: string;
+    heartbeat: () => Promise<void>;
   }): Promise<Record<string, string>> => {
     // `system` must be selected for Graph to include system lists (the User
     // Information List is one); without it they are omitted and person columns
@@ -217,7 +226,8 @@ const getUserInfoMap = cacheWithRedis(
       client,
       `${siteAPIPath}/lists/${userList.id}/items?$expand=fields($select=Title,EMail)`,
       (fields) =>
-        formatFieldValue(fields.Title) ?? formatFieldValue(fields.EMail)
+        formatFieldValue(fields.Title) ?? formatFieldValue(fields.EMail),
+      heartbeat
     );
   },
   ({ connectorId, startSyncTs, siteAPIPath }) =>
@@ -236,6 +246,7 @@ const getLookupMap = cacheWithRedis(
     siteAPIPath,
     listId,
     columnName,
+    heartbeat,
   }: {
     logger: Logger;
     client: Client;
@@ -244,12 +255,14 @@ const getLookupMap = cacheWithRedis(
     siteAPIPath: string;
     listId: string;
     columnName: string;
+    heartbeat: () => Promise<void>;
   }): Promise<Record<string, string>> =>
     fetchItemsAsMap(
       logger,
       client,
       `${siteAPIPath}/lists/${listId}/items?$expand=fields($select=${columnName})`,
-      (fields) => formatFieldValue(fields[columnName])
+      (fields) => formatFieldValue(fields[columnName]),
+      heartbeat
     ),
   ({ connectorId, startSyncTs, siteAPIPath, listId, columnName }) =>
     `microsoft-lookup-${connectorId}-${siteAPIPath}-${listId}-${columnName}-syncms-${startSyncTs}`,
@@ -270,7 +283,8 @@ async function buildLookupResolvers(
   connectorId: ModelId,
   startSyncTs: number,
   listItemAPIPath: string,
-  columns: ColumnDefinition[]
+  columns: ColumnDefinition[],
+  heartbeat: () => Promise<void>
 ): Promise<LookupResolvers> {
   const siteAPIPath = siteAPIPathForList(listItemAPIPath);
   const resolvers: LookupResolvers = {};
@@ -287,6 +301,7 @@ async function buildLookupResolvers(
           connectorId,
           startSyncTs,
           siteAPIPath,
+          heartbeat,
         });
       } else if (column.lookup?.listId && column.lookup.columnName) {
         resolvers[column.name] = await getLookupMap({
@@ -297,6 +312,7 @@ async function buildLookupResolvers(
           siteAPIPath,
           listId: column.lookup.listId,
           columnName: column.lookup.columnName,
+          heartbeat,
         });
       }
     } catch (err) {
@@ -422,7 +438,38 @@ export async function syncOneList({
     );
   }
 
-  const list = await getItem<List>(localLogger, client, itemAPIPath);
+  let list: List;
+  try {
+    list = await getItem<List>(localLogger, client, itemAPIPath);
+  } catch (err) {
+    // The list was deleted in SharePoint. List nodes are excluded from garbage
+    // collection, so without this the activity would 404 forever and wedge the
+    // whole list-sync loop. Treat it as a deletion: drop the table, the node and
+    // the (now stale) root, then return successfully.
+    if (isItemNotFoundError(err)) {
+      localLogger.info(
+        { listInternalId },
+        "[List] List not found (deleted in SharePoint); removing."
+      );
+      await deleteList(
+        dataSourceConfigFromConnector(connector),
+        connectorId,
+        listInternalId
+      );
+      const node = await MicrosoftNodeResource.fetchByInternalId(
+        connectorId,
+        listInternalId
+      );
+      await node?.delete();
+      const root = await MicrosoftRootResource.fetchByInternalId(
+        connectorId,
+        listInternalId
+      );
+      await root?.delete();
+      return new Ok(null);
+    }
+    throw err;
+  }
 
   if (skipIfUnchanged) {
     const existing = await MicrosoftNodeResource.fetchByInternalId(
@@ -500,7 +547,8 @@ export async function syncOneList({
     connectorId,
     startSyncTs,
     itemAPIPath,
-    columns
+    columns,
+    heartbeat
   );
 
   const rows = listItemsToRows(columns, items, resolvers);

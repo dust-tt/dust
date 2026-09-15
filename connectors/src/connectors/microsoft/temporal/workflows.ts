@@ -14,6 +14,7 @@ import uniq from "lodash/uniq";
 
 const {
   getRootNodesToSync,
+  getListNodesToSync,
   syncFiles,
   markNodeAsSeen,
   populateDeltas,
@@ -22,6 +23,13 @@ const {
   launchMicrosoftFullSyncForDrive,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
+});
+
+const { syncOneListActivity } = proxyActivities<typeof activities>({
+  startToCloseTimeout: "120 minutes",
+  // Longer than the drive activities' 5 min: the table upsert can retry
+  // internally for ~6 min without an intermediate heartbeat.
+  heartbeatTimeout: "15 minutes",
 });
 
 const { microsoftDeletionActivity, microsoftGarbageCollectionActivity } =
@@ -174,6 +182,19 @@ export async function fullSyncWorkflow({
     });
   }
 
+  // SharePoint lists are not part of the drive/folder BFS above: they live at
+  // the site level and are synced as standalone tables. Re-sync all selected
+  // lists once the drive sync has drained.
+  const listNodeIds = await getListNodesToSync(connectorId);
+  for (const listInternalId of listNodeIds) {
+    await syncOneListActivity({
+      connectorId,
+      listInternalId,
+      skipIfUnchanged: false,
+      startSyncTs,
+    });
+  }
+
   const hasPendingNodeUpdates =
     nodeIdsToSync.length > 0 || nodeIdsToDelete.length > 0;
 
@@ -290,6 +311,18 @@ export async function incrementalSyncWorkflowV2({
         gcsFilePath,
       });
     }
+  }
+
+  // Lists have no delta endpoint in this pipeline: re-sync each selected list,
+  // skipping the upload when its lastModifiedDateTime has not advanced.
+  const listNodeIds = await getListNodesToSync(connectorId);
+  for (const listInternalId of listNodeIds) {
+    await syncOneListActivity({
+      connectorId,
+      listInternalId,
+      skipIfUnchanged: true,
+      startSyncTs,
+    });
   }
 
   if (!fullSyncRunning) {
