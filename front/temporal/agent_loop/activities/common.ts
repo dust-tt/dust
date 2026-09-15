@@ -976,6 +976,20 @@ export async function finalizeCreditSpendCheckpointPause(
   }
   const { auth, agentMessage, conversation } = runAgentDataRes.value;
 
+  // A stop or cancellation can land around the pause. The terminal status wins: a cancelled
+  // message must not be flagged paused and waiting for the user.
+  if (agentMessage.status !== "created") {
+    logger.info(
+      {
+        agentMessageId: agentMessage.sId,
+        conversationId: conversation.sId,
+        messageStatus: agentMessage.status,
+      },
+      "[CreditSpendCheckpoint] message already finalized, skipping pause"
+    );
+    return;
+  }
+
   await ConversationResource.markAgentMessageCreditSpendCheckpointPaused(auth, {
     agentMessageModelId: agentMessage.agentMessageId,
   });

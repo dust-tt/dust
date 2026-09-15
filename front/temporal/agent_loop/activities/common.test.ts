@@ -1417,4 +1417,66 @@ describe("finalizeCreditSpendCheckpointPause", () => {
       );
     expect(actionRequired).toBe(true);
   });
+
+  it("leaves a message already finalized by another path untouched", async () => {
+    const { authenticator: auth, workspace } = await createResourceTest({});
+    const agentConfig = await AgentConfigurationFactory.createTestAgent(auth);
+    const conversation = await ConversationFactory.create(auth, {
+      agentConfigurationId: agentConfig.sId,
+      messagesCreatedAt: [],
+    });
+    await ConversationResource.upsertParticipation(auth, {
+      conversation,
+      action: "posted",
+      user: auth.getNonNullableUser().toJSON(),
+    });
+    const { messageRow: userMessageRow, userMessage } =
+      await ConversationFactory.createUserMessage({
+        auth,
+        workspace,
+        conversation,
+        content: "Hello",
+      });
+    const { agentMessage } = await ConversationFactory.createAgentMessage(
+      auth,
+      {
+        workspace,
+        conversation,
+        agentConfig,
+        parentMessageModelId: userMessageRow.id,
+        rank: 1,
+      }
+    );
+    await ConversationFactory.setAgentMessageStatus({
+      workspace,
+      agentMessageModelId: agentMessage.agentMessageId,
+      status: "cancelled",
+    });
+
+    await finalizeCreditSpendCheckpointPause(auth.toJSON(), {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+      userMessageOrigin: userMessage.context.origin,
+    });
+
+    const dbMessage = await AgentMessageModel.findOne({
+      where: {
+        id: agentMessage.agentMessageId,
+        workspaceId: workspace.id,
+      },
+    });
+    expect(dbMessage?.status).toBe("cancelled");
+    expect(dbMessage?.creditSpendCheckpointStatus).toBeNull();
+
+    const { actionRequired } =
+      await ConversationResource.getActionRequiredAndLastReadAtForUser(
+        auth,
+        conversation.id
+      );
+    expect(actionRequired).toBe(false);
+  });
 });

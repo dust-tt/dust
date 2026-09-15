@@ -8,7 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
-import { CLIENT_MESSAGE_ORIGINS } from "@app/types/assistant/conversation";
+import { isAttendedMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 
 export type CreditCheckResult =
@@ -57,10 +57,6 @@ export async function checkPoolCreditGate(
   return DO_NOT_STOP;
 }
 
-// Origins whose author is in a Dust client UI, where the pause can be seen and resumed.
-const CREDIT_SPEND_CHECKPOINT_RESUMABLE_ORIGINS: ReadonlySet<UserMessageOrigin> =
-  new Set<UserMessageOrigin>(CLIENT_MESSAGE_ORIGINS);
-
 export function isCreditSpendCheckpointExempt(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin: UserMessageOrigin | null }
@@ -68,7 +64,7 @@ export function isCreditSpendCheckpointExempt(
   return (
     !auth.user() ||
     !userMessageOrigin ||
-    !CREDIT_SPEND_CHECKPOINT_RESUMABLE_ORIGINS.has(userMessageOrigin)
+    !isAttendedMessageOrigin(userMessageOrigin)
   );
 }
 
