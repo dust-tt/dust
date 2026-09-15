@@ -17,6 +17,11 @@ import {
   filePreviewDirective,
   getFilePreviewPlugin,
 } from "@app/components/markdown/FilePreviewBlock";
+import type { KnowledgeChipDirectiveProps } from "@app/components/markdown/KnowledgeChipDirective";
+import {
+  KnowledgeChipDirectiveBlock,
+  knowledgeChipDirective,
+} from "@app/components/markdown/KnowledgeChipDirective";
 import {
   PastedAttachmentBlock,
   pastedAttachmentDirective,
@@ -26,6 +31,10 @@ import {
   taskDirective,
 } from "@app/components/markdown/TaskDirectiveBlock";
 import {
+  KNOWLEDGE_TAG_REGEX,
+  parseKnowledgeTag,
+} from "@app/lib/knowledge/format";
+import {
   agentMentionDirective,
   getAgentMentionPlugin,
   getUserMentionPlugin,
@@ -34,7 +43,8 @@ import {
 import { getSkillIcon } from "@app/lib/skill";
 import { parseSkillTag, SKILL_TAG_REGEX } from "@app/lib/skills/format";
 import { parseToolTag, TOOL_TAG_REGEX } from "@app/lib/tools/format";
-import type { UserMessageType } from "@app/types/assistant/conversation";
+import type { UserMessageTypeWithContentFragments } from "@app/types/assistant/conversation";
+import { isContentNodeContentFragment } from "@app/types/content_fragment";
 import {
   SKILL_SIDE_PANEL_TYPE,
   TOOL_SIDE_PANEL_TYPE,
@@ -47,7 +57,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 interface UserMessageMarkdownProps {
   owner: WorkspaceType;
-  message: UserMessageType;
+  message: UserMessageTypeWithContentFragments;
   isLastMessage: boolean;
 }
 
@@ -93,9 +103,27 @@ export const UserMessageMarkdown = ({
           }
         />
       ),
+      knowledge: ({ id, title, dsv, url }: KnowledgeChipDirectiveProps) => {
+        // The composer sends one content fragment per inlined knowledge node,
+        // so the fragment carries the node metadata (type, provider, source
+        // URL) the chip needs — no fetch required.
+        const fragment = message.contentFragments
+          .filter(isContentNodeContentFragment)
+          .find(
+            (f) => f.nodeId === id && (!dsv || f.nodeDataSourceViewId === dsv)
+          );
+
+        return (
+          <KnowledgeChipDirectiveBlock
+            title={title}
+            sourceUrl={fragment?.sourceUrl ?? url ?? null}
+            nodeData={fragment?.contentNodeData ?? null}
+          />
+        );
+      },
       project_task: getTaskDirectiveBlock(owner),
     }),
-    [owner, togglePanel]
+    [owner, togglePanel, message.contentFragments]
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
@@ -109,6 +137,7 @@ export const UserMessageMarkdown = ({
       filePreviewDirective,
       skillDirective,
       toolDirective,
+      knowledgeChipDirective,
     ],
     []
   );
@@ -135,6 +164,26 @@ export const UserMessageMarkdown = ({
           const iconAttribute = tool.icon ? ` icon=${tool.icon}` : "";
 
           return `:tool[${tool.name}]{sId=${tool.id}${iconAttribute}}`;
+        })
+        .replace(KNOWLEDGE_TAG_REGEX, (match) => {
+          const knowledge = parseKnowledgeTag(match);
+          if (!knowledge) {
+            return match;
+          }
+
+          const spaceAttribute = knowledge.spaceId
+            ? ` space=${knowledge.spaceId}`
+            : "";
+          const dsvAttribute = knowledge.dataSourceViewId
+            ? ` dsv=${knowledge.dataSourceViewId}`
+            : "";
+          // Quoted: URLs contain characters an unquoted directive attribute
+          // cannot hold.
+          const urlAttribute = knowledge.sourceUrl
+            ? ` url="${knowledge.sourceUrl}"`
+            : "";
+
+          return `:knowledge[${knowledge.title}]{id=${knowledge.id}${spaceAttribute}${dsvAttribute}${urlAttribute}}`;
         }),
     [message.content]
   );

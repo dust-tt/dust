@@ -1,4 +1,4 @@
-import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
+import { useMaybeSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import {
   InlineKnowledgeChip,
   KnowledgeErrorChip,
@@ -122,7 +122,7 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
   node,
   updateAttributes,
 }) => {
-  const { owner, isSpacesLoading } = useSpacesContext();
+  const spacesContext = useMaybeSpacesContext();
   const { selectedItems } = node.attrs as KnowledgeNodeAttributes;
 
   const handleRemove = useCallback(
@@ -143,15 +143,33 @@ export const KnowledgeNodeView: React.FC<NodeViewProps> = ({
     return null;
   }
 
+  const item = selectedItems[0];
+  const onRemove = editor.isEditable ? handleRemove : undefined;
+
   return (
     <NodeViewWrapper className="inline-flex align-middle" data-drag-handle="">
-      <KnowledgeDisplayComponent
-        item={selectedItems[0]}
-        owner={owner}
-        isSpacesLoading={isSpacesLoading}
-        onRemove={editor.isEditable ? handleRemove : undefined}
-        updateAttributes={updateAttributes}
-      />
+      {spacesContext ? (
+        <KnowledgeDisplayComponent
+          item={item}
+          owner={spacesContext.owner}
+          isSpacesLoading={spacesContext.isSpacesLoading}
+          onRemove={onRemove}
+          updateAttributes={updateAttributes}
+        />
+      ) : isFullKnowledgeItem(item) ? (
+        <InlineKnowledgeChip
+          node={item.node}
+          onRemove={onRemove}
+          title={item.label}
+        />
+      ) : (
+        <Chip
+          label={item.label}
+          color="primary"
+          size="xs"
+          onRemove={onRemove}
+        />
+      )}
     </NodeViewWrapper>
   );
 };
