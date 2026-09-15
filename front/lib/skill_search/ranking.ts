@@ -3,7 +3,7 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { estypes } from "@elastic/elasticsearch";
 
 // Fixed scores make indexed and code-defined skills comparable without corpus
-// statistics. Keep the predicates and normalization identical on both sides.
+// statistics. Code-defined matching is a lightweight approximation of ES analysis.
 const MATCH_SCORES = {
   exact: 100,
   prefix: 80,
