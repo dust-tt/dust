@@ -57,6 +57,7 @@ import type {
 } from "@app/types/memberships";
 import { SEAT_TYPE_ORDER } from "@app/types/memberships";
 import type { RoleGrant } from "@app/types/resource_permissions";
+import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -2752,7 +2753,8 @@ export class GroupResource extends BaseResource<GroupModel> {
         assertNever(this.kind);
     }
 
-    return auth.resolveAllowedVerbs(roleGrants, this.workspaceId, []);
+    // Group access is role-only (no governance grants).
+    return new Set(verbsFromRoleGrants(auth, roleGrants, this.workspaceId));
   }
 
   canRead(auth: Authenticator): boolean {

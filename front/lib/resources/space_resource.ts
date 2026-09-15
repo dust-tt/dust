@@ -43,6 +43,7 @@ import {
   SPACE_GROUP_PREFIX,
 } from "@app/types/groups";
 import type { RoleGrant } from "@app/types/resource_permissions";
+import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -2070,13 +2071,12 @@ export class SpaceResource extends BaseResource<SpaceModel> {
    * @returns The verbs the caller holds on this space, by space type
    */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
-    // The per-kind role rules unioned with the caller's own verbs on this space, resolved from
-    // `group_permissions` (kept in sync by `writeGroupPermissions`).
-    return auth.resolveAllowedVerbs(
-      this.spaceRoleGrants(),
-      this.workspaceId,
-      auth.getGovernanceGrantVerbs("space", this.id)
-    );
+    // The caller's own verbs on this space from `group_permissions` (kept in sync by
+    // `writeGroupPermissions`), plus the per-kind role rules.
+    return new Set([
+      ...auth.getGovernanceGrantVerbs("space", this.id),
+      ...verbsFromRoleGrants(auth, this.spaceRoleGrants(), this.workspaceId),
+    ]);
   }
 
   // The verbs each workspace role holds on this space, by space kind.

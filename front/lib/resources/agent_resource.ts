@@ -17,6 +17,7 @@ import type {
   RoleGrant,
   WithAccessControl,
 } from "@app/types/resource_permissions";
+import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -320,7 +321,7 @@ export class AgentResource implements WithAccessControl {
         const roleGrants: RoleGrant[] = globalAgentReaderRoles(this.sId).map(
           (role) => ({ role, permissions: ["read"] })
         );
-        return auth.resolveAllowedVerbs(roleGrants, this.workspaceId, []);
+        return new Set(verbsFromRoleGrants(auth, roleGrants, this.workspaceId));
       }
       case "custom": {
         assert(this.id !== null);
@@ -334,14 +335,15 @@ export class AgentResource implements WithAccessControl {
           this.scope === "visible"
             ? VISIBLE_AGENT_ROLE_GRANTS
             : HIDDEN_AGENT_ROLE_GRANTS;
-
-        return auth.resolveAllowedVerbs(
+        const roleGrants: RoleGrant[] =
           auth.isKey() && !auth.isSystemKey()
             ? [...roles, { role: "admin", permissions: ["write"] }]
-            : roles,
-          this.workspaceId,
-          isAuthor ? [...grants, ...AGENT_EDITOR_VERBS] : grants
-        );
+            : roles;
+
+        return new Set([
+          ...(isAuthor ? [...grants, ...AGENT_EDITOR_VERBS] : grants),
+          ...verbsFromRoleGrants(auth, roleGrants, this.workspaceId),
+        ]);
       }
       default:
         return assertNever(this.kind);

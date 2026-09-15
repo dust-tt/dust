@@ -95,6 +95,7 @@ import type { AgentsUsageType } from "@app/types/data_source";
 import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
 import type { RoleGrant } from "@app/types/resource_permissions";
+import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
@@ -2304,10 +2305,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     // Global skills carry no row, so there is no grant to look up (and their synthetic `id` of -1
     // is the type-wide sentinel, which would resolve the workspace-wide capability grants instead).
     if (this.globalSId) {
-      return auth.resolveAllowedVerbs(
-        GLOBAL_SKILL_ROLE_GRANTS,
-        this.workspaceId,
-        []
+      return new Set(
+        verbsFromRoleGrants(auth, GLOBAL_SKILL_ROLE_GRANTS, this.workspaceId)
       );
     }
 
@@ -2321,11 +2320,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     skill: { id: ModelId; workspaceId: ModelId }
   ): Set<GrantVerb> {
-    return auth.resolveAllowedVerbs(
-      SKILL_ROLE_GRANTS,
-      skill.workspaceId,
-      auth.getGovernanceGrantVerbs("skill", skill.id)
-    );
+    return new Set([
+      ...auth.getGovernanceGrantVerbs("skill", skill.id),
+      ...verbsFromRoleGrants(auth, SKILL_ROLE_GRANTS, skill.workspaceId),
+    ]);
   }
 
   // `canRead` against a custom skill's row: the fetch path filters before building resources, so a

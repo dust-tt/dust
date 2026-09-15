@@ -62,10 +62,7 @@ import { WHOLE_TYPE_RESOURCE_ID } from "@app/types/group_permissions";
 import type { GroupKind } from "@app/types/groups";
 import type { PlanType, SubscriptionType } from "@app/types/plan";
 import type { ProvidersHealth } from "@app/types/provider_credential";
-import type {
-  RoleGrant,
-  WithAccessControl,
-} from "@app/types/resource_permissions";
+import type { WithAccessControl } from "@app/types/resource_permissions";
 import { isDevelopment } from "@app/types/shared/env";
 import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
@@ -1313,16 +1310,19 @@ export class Authenticator {
       `Verb "${verb}" is not allowed (no type-level role grants it) on resource type "${resourceType}".`
     );
 
-    const workspace = this.workspace();
-    if (!workspace) {
+    if (!this.workspace()) {
       return false;
     }
 
-    return this.resolveAllowedVerbs(
-      [{ role: "admin", permissions: [verb] }],
-      workspace.id,
-      this.getGovernanceGrantVerbs(resourceType, WHOLE_TYPE_RESOURCE_ID)
-    ).has(verb);
+    // Admins hold every type-level capability by default; everyone else derives it from their
+    // type-wide (-1) governance grants.
+    if (this.role() === "admin") {
+      return true;
+    }
+    return this.getGovernanceGrantVerbs(
+      resourceType,
+      WHOLE_TYPE_RESOURCE_ID
+    ).includes(verb);
   }
 
   /**
@@ -1663,42 +1663,6 @@ export class Authenticator {
    */
   hasPermissionForAll(verb: GrantVerb, targets: WithAccessControl[]): boolean {
     return targets.every((target) => this.hasPermission(verb, target));
-  }
-
-  /**
-   * The complete set of verbs the caller holds given a resource's role rules and its already-resolved
-   * governance verbs — the union of the two additive sources. Resources build their `getAllowedVerbs`
-   * on top of this (and `hasWorkspacePermission` uses it for a synthetic type-wide admin rule).
-   * - Role path: gated to the caller's own workspace (a role only applies within its workspace); the
-   *   verbs of every `roleGrants` entry matching the caller's role are added.
-   * - Governance path: `governanceVerbs` are the caller's own verbs, already resolved from their
-   *   grants, so they are added directly with no membership step.
-   */
-  /**
-   * @cc [owner:tdraier,label:security] role-verbs-workspace-gated
-   * Verbs from `roleGrants` MUST be added ONLY when the caller's own workspace
-   * (`getNonNullableWorkspace().id`) equals `workspaceModelId` (the resource's workspace). A
-   * workspace role confers no verb on a resource in another workspace; dropping this gate would let a
-   * caller's role (e.g. admin) grant verbs on cross-workspace resources. `governanceVerbs` are
-   * already caller-scoped (see `getGovernanceGrantVerbs`) and are added unconditionally.
-   */
-  resolveAllowedVerbs(
-    roleGrants: RoleGrant[],
-    workspaceModelId: ModelId,
-    governanceVerbs: GrantVerb[]
-  ): Set<GrantVerb> {
-    const verbs = new Set<GrantVerb>(governanceVerbs);
-    if (this.getNonNullableWorkspace().id === workspaceModelId) {
-      const role = this.role();
-      for (const grant of roleGrants) {
-        if (grant.role === role) {
-          for (const verb of grant.permissions) {
-            verbs.add(verb);
-          }
-        }
-      }
-    }
-    return verbs;
   }
 
   key(): KeyAuthType | null {
