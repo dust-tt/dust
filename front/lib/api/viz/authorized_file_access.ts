@@ -3,6 +3,7 @@ import {
   isAllowlistShareScopeStale,
   isAllowlistStale,
   isAuthorizedFileRef,
+  resolveAllowlistedCanonicalPath,
 } from "@app/lib/api/viz/authorized_file_access_policy";
 import { emitFrameAuthorizedFilesUpdatedAuditLog } from "@app/lib/api/viz/frame_authorized_files_audit";
 import { Authenticator } from "@app/lib/auth";
@@ -248,11 +249,13 @@ export async function assertVizFileAuthorized({
   requestedRef,
   owner,
   frameContent,
+  packageRoot = null,
 }: {
   authorizedFileAccess: AuthorizedFileAccessAllowlist | null;
   requestedRef: string;
   owner: LightWorkspaceType;
   frameContent: string;
+  packageRoot?: string | null;
 }): Promise<VizFileAuthorizationMode> {
   if (!authorizedFileAccess || authorizedFileAccess.refs.length === 0) {
     return "denied";
@@ -269,7 +272,8 @@ export async function assertVizFileAuthorized({
   const hasAccess = await reverifyAuthorAccess(
     authorizedFileAccess,
     requestedRef,
-    owner
+    owner,
+    { packageRoot }
   );
   return hasAccess ? "authorized" : "denied";
 }
@@ -277,7 +281,8 @@ export async function assertVizFileAuthorized({
 export async function reverifyAuthorAccess(
   authorizedFileAccess: AuthorizedFileAccessAllowlist,
   requestedRef: string,
-  workspace: LightWorkspaceType
+  workspace: LightWorkspaceType,
+  { packageRoot }: { packageRoot: string | null } = { packageRoot: null }
 ): Promise<boolean> {
   if (!isAuthorizedFileRef(authorizedFileAccess, requestedRef)) {
     return false;
@@ -322,16 +327,21 @@ export async function reverifyAuthorAccess(
     return file !== null;
   }
 
-  // Package-root resolution for frame_relative_path is handled in the read PR.
-  if (matchingRef.kind === "frame_relative_path") {
+  const canonicalPath =
+    matchingRef.kind === "frame_relative_path"
+      ? resolveAllowlistedCanonicalPath(authorizedFileAccess, requestedRef, {
+          packageRoot,
+        })
+      : matchingRef.ref;
+  if (!canonicalPath) {
     return false;
   }
 
-  const fsResult = await DustFileSystem.fromScopedPath(auth, matchingRef.ref);
+  const fsResult = await DustFileSystem.fromScopedPath(auth, canonicalPath);
   if (fsResult.isErr()) {
     return false;
   }
 
-  const statResult = await fsResult.value.stat(matchingRef.ref);
+  const statResult = await fsResult.value.stat(canonicalPath);
   return statResult.isOk() && statResult.value !== null;
 }
