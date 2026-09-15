@@ -39,7 +39,7 @@ export function isSkillSuggestionSource(
   );
 }
 
-export const SKILL_SUGGESTION_KINDS = ["edit"] as const;
+export const SKILL_SUGGESTION_KINDS = ["edit", "editors"] as const;
 
 export type SkillSuggestionKind = (typeof SKILL_SUGGESTION_KINDS)[number];
 
@@ -94,17 +94,59 @@ export const SkillEditSuggestionSchema = z
 
 export type SkillEditSuggestionType = z.infer<typeof SkillEditSuggestionSchema>;
 
-export type SkillSuggestionPayload = SkillEditSuggestionType;
+// One suggestion per change set, mirroring the `PATCH /editors` contract. User sIds are stored
+// as-is and humanized at render time.
+export const SkillEditorsSuggestionSchema = z
+  .object({
+    addUserIds: z
+      .array(z.string())
+      .describe("sIds of the workspace members to add as editors."),
+    removeUserIds: z
+      .array(z.string())
+      .describe("sIds of the current editors to remove."),
+  })
+  .refine(
+    (d) => d.addUserIds.length > 0 || d.removeUserIds.length > 0,
+    "At least one of addUserIds or removeUserIds must be non-empty."
+  );
 
-const SkillSuggestionDataSchema = z.object({
+export type SkillEditorsSuggestionType = z.infer<
+  typeof SkillEditorsSuggestionSchema
+>;
+
+export type SkillSuggestionPayload =
+  | SkillEditSuggestionType
+  | SkillEditorsSuggestionType;
+
+const SkillEditSuggestionDataSchema = z.object({
   kind: z.literal("edit"),
   suggestion: SkillEditSuggestionSchema,
 });
+
+// One arm per `kind`: the `kind` column picks which schema the JSONB `suggestion` column must match.
+// Only the `edit` arm is part of the public `SkillSuggestionType` so far; `editors` rows are
+// reviewed from the conversation and have no serialization yet.
+const SkillSuggestionDataSchema = z.discriminatedUnion("kind", [
+  SkillEditSuggestionDataSchema,
+  z.object({
+    kind: z.literal("editors"),
+    suggestion: SkillEditorsSuggestionSchema,
+  }),
+]);
 
 type SkillSuggestionData = z.infer<typeof SkillSuggestionDataSchema>;
 
 export function parseSkillSuggestionData(data: unknown): SkillSuggestionData {
   return SkillSuggestionDataSchema.parse(data);
+}
+
+// `kind` and `suggestion` are separate columns, so a row cannot be narrowed by `kind` alone.
+export function getSkillEditSuggestion(row: {
+  kind: SkillSuggestionKind;
+  suggestion: SkillSuggestionPayload;
+}): SkillEditSuggestionType | null {
+  const data = parseSkillSuggestionData(row);
+  return data.kind === "edit" ? data.suggestion : null;
 }
 
 const SkillSuggestionUpdatedBySchema = z.object({
@@ -133,7 +175,7 @@ const BaseSkillSuggestionSchema = z.object({
 });
 
 export const SkillSuggestionSchema = BaseSkillSuggestionSchema.and(
-  SkillSuggestionDataSchema
+  SkillEditSuggestionDataSchema
 );
 
 export type SkillSuggestionType = z.infer<typeof SkillSuggestionSchema>;
