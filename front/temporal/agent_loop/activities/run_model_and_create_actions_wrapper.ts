@@ -14,7 +14,6 @@ import {
   finalizeUnavailableAgentLoop,
   updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
-import type { DescendantRunData } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import {
   AGENT_LOOP_COST_HARD_CAP_USD,
   AGENT_LOOP_SUBAGENT_HARD_CAP,
@@ -80,7 +79,6 @@ export async function runModelAndCreateActionsActivity({
   runIds,
   step,
   forceDisableToolUse = false,
-  descendantData = null,
 }: {
   authType: AuthenticatorType;
   checkForResume?: boolean;
@@ -88,9 +86,6 @@ export async function runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
   forceDisableToolUse?: boolean;
-  // Descendant walk cached from the previous step's credit spend checkpoint check, so the
-  // guardrail check below doesn't repeat it.
-  descendantData?: DescendantRunData | null;
 }): Promise<RunModelAndCreateActionsResult | null> {
   // The pre-stream setup (agent data loading, MCP tools listing, conversation rendering) can
   // stall past the heartbeat timeout, e.g. on a hung MCP server's tools/list call: heartbeat
@@ -107,7 +102,6 @@ export async function runModelAndCreateActionsActivity({
           runIds,
           step,
           forceDisableToolUse,
-          descendantData,
         })
       ),
     {
@@ -124,7 +118,6 @@ async function _runModelAndCreateActionsActivity({
   runIds,
   step,
   forceDisableToolUse,
-  descendantData,
 }: {
   authType: AuthenticatorType;
   checkForResume: boolean;
@@ -132,7 +125,6 @@ async function _runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
   forceDisableToolUse: boolean;
-  descendantData: DescendantRunData | null;
 }): Promise<RunModelAndCreateActionsResult | null> {
   const activityTimeoutDeadlineMs = getActivityTimeoutDeadlineMs();
   const durationRecorder = DurationRecorder.create([]);
@@ -185,7 +177,6 @@ async function _runModelAndCreateActionsActivity({
         conversationId: runAgentArgs.conversationId,
         step,
       },
-      descendantData,
     });
   } catch (error) {
     logger.warn(
