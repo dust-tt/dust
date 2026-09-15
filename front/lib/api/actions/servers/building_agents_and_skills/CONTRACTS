@@ -1,4 +1,4 @@
-@cc [owner:fabiencelier,label:product;mcp] suggestions-not-applied
+@cc [owner:fabiencelier,label:product;mcp] changes-are-suggestions
 Tools of the `building_agents_and_skills` MCP server MUST NOT modify an agent or a skill directly.
 Each tool records a `pending` agent or skill suggestion with source `conversational` for the
 editors to review, marks conflicting pending suggestions `outdated`, and returns the suggestion
