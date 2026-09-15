@@ -318,13 +318,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "self_serve",
     owner: "davidebbo",
   },
-  use_dust_keys: {
-    description:
-      "Force BYOK workspaces to use Dust-managed keys instead of customer-provided keys",
-    // Not really self-serve but we want to be able to enable it for customers
-    stage: "self_serve",
-    owner: "pmilliotte",
-  },
   dummy_feature_for_flag_testing: {
     description: "Dummy feature flag used for testing feature flag behavior",
     stage: "dust_only",
