@@ -7,6 +7,12 @@ export default defineComponent({
     claapApiKey: { type: "string", label: "Claap API key", secret: true },
     rootFolderId: { type: "string", label: "Google Drive root folder ID" },
     lookbackHours: { type: "integer", label: "Lookback hours", default: 48 },
+    maxPerRun: {
+      type: "integer",
+      label: "Max new archives per run",
+      default: 8,
+      optional: true,
+    },
     recordingId: {
       type: "string",
       label: "Force-archive one recording ID",
@@ -20,6 +26,7 @@ export default defineComponent({
     const FOLDER = "application/vnd.google-apps.folder";
     const forceId = String(this.recordingId || "").trim();
     const lookbackHours = Number(this.lookbackHours) > 0 ? Number(this.lookbackHours) : 48;
+    const maxPerRun = Number(this.maxPerRun) > 0 ? Number(this.maxPerRun) : 8;
 
     async function claap(path) {
       const res = await fetch(`https://api.claap.io/${path}`, { headers });
@@ -92,6 +99,22 @@ export default defineComponent({
       ? `corpora=drive&driveId=${encodeURIComponent(root.driveId)}&includeItemsFromAllDrives=true&supportsAllDrives=true`
       : "corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true";
 
+    async function listChildren(parentId) {
+      const files = [];
+      let pageToken;
+      do {
+        const q = encodeURIComponent(`'${parentId}' in parents and trashed=false`);
+        const tokenQs = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "";
+        const data = await drive(
+          `https://www.googleapis.com/drive/v3/files?q=${q}&${driveQs}` +
+            `&fields=nextPageToken,files(id,name,mimeType,webViewLink)&pageSize=100${tokenQs}`
+        );
+        files.push(...(data.files || []));
+        pageToken = data.nextPageToken;
+      } while (pageToken);
+      return files;
+    }
+
     async function findInFolder(parentId, name, mime) {
       const safe = String(name).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
       const q = encodeURIComponent(
@@ -104,17 +127,47 @@ export default defineComponent({
       return found.files?.[0] || null;
     }
 
+    const folderByEmail = new Map();
+    const namesByFolderId = new Map();
+    for (const child of await listChildren(root.id)) {
+      if (child.mimeType === FOLDER) folderByEmail.set(String(child.name).toLowerCase(), child);
+    }
+
+    async function fileNames(folderId) {
+      if (!namesByFolderId.has(folderId)) {
+        namesByFolderId.set(folderId, new Set((await listChildren(folderId)).map((f) => f.name)));
+      }
+      return namesByFolderId.get(folderId);
+    }
+
+    function archiveNames(recording) {
+      const date = String(recording.createdAt || "").slice(0, 10);
+      return { email: (recording.recorder?.email || "unknown").toLowerCase(), base: `${date}_${recording.id}` };
+    }
+
+    async function alreadyArchived(recording) {
+      const { email, base } = archiveNames(recording);
+      const folder = folderByEmail.get(email);
+      if (!folder?.id) return false;
+      const names = await fileNames(folder.id);
+      return names.has(`${base}.md`) && names.has(`${base}.json`);
+    }
+
     async function ensureEmailFolder(email) {
-      let folder = await findInFolder(root.id, email, FOLDER);
+      let folder = folderByEmail.get(email);
       if (!folder?.id) {
-        folder = await drive(
-          "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,webViewLink",
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ name: email, mimeType: FOLDER, parents: [root.id] }),
-          }
-        );
+        folder = await findInFolder(root.id, email, FOLDER);
+        if (!folder?.id) {
+          folder = await drive(
+            "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,webViewLink",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: email, mimeType: FOLDER, parents: [root.id] }),
+            }
+          );
+        }
+        folderByEmail.set(email, folder);
       }
       if (!folder.id) throw new Error(`Drive folder create returned no id: ${JSON.stringify(folder)}`);
       return folder;
@@ -139,6 +192,8 @@ export default defineComponent({
         body,
       });
       if (!file.id) throw new Error(`Drive upload missing id ${name}: ${JSON.stringify(file)}`);
+      const cached = namesByFolderId.get(folderId);
+      if (cached) cached.add(name);
       return file;
     }
 
@@ -184,15 +239,15 @@ export default defineComponent({
       } catch (error) {
         console.warn("Transcript missing", error);
       }
-      const segs =
-        (tr?.segments || [])
-          .map((s) => `${(s.speaker || "unknown").trim()}: ${String(s.text || "").trim()}`)
-          .join("\n") || "_No transcript was available for this recording._";
       const email = (rec.recorder?.email || "unknown").toLowerCase();
       const date = String(rec.createdAt || "").slice(0, 10);
       const md =
         `---\nclaap_id: ${rec.id}\ntitle: ${JSON.stringify(rec.title || "")}\n` +
-        `recorder_email: ${email}\nclaap_url: ${rec.url}\n---\n\n# Transcript\n\n${segs}\n`;
+        `recorder_email: ${email}\nclaap_url: ${rec.url}\n---\n\n# Transcript\n\n` +
+        ((tr?.segments || [])
+          .map((s) => `${(s.speaker || "unknown").trim()}: ${String(s.text || "").trim()}`)
+          .join("\n") || "_No transcript was available for this recording._") +
+        "\n";
       const json = JSON.stringify(
         { archivedAt: new Date().toISOString(), recording: rec, transcript: tr },
         null,
@@ -231,7 +286,7 @@ export default defineComponent({
     }
 
     const createdAfter = new Date(Date.now() - lookbackHours * 3600 * 1000).toISOString();
-    const results = [];
+    const listed = [];
     let cursor;
     let totalCount = 0;
     let pages = 0;
@@ -239,32 +294,58 @@ export default defineComponent({
       const query = new URLSearchParams({ createdAfter, limit: "50", sort: "created_asc" });
       if (cursor) query.set("cursor", cursor);
       const page = await claap(`v1/recordings?${query}`);
-      const recordings = page.result?.recordings || [];
+      listed.push(...(page.result?.recordings || []));
       totalCount = page.result?.pagination?.totalCount ?? totalCount;
       pages += 1;
-      for (const recording of recordings) {
-        results.push(await archiveOne(recording.id));
-      }
       cursor = page.result?.pagination?.nextCursor;
-    } while (cursor);
+    } while (cursor && pages < 20);
+
+    const results = [];
+    let archivedThisRun = 0;
+    for (const recording of listed) {
+      const item = {
+        recordingId: recording.id,
+        title: recording.title || "",
+        recorderEmail: (recording.recorder?.email || "unknown").toLowerCase(),
+        createdAt: recording.createdAt,
+        state: recording.state,
+      };
+      if (recording.state !== "Ready") {
+        results.push({ ...item, status: "skipped", reason: recording.state });
+        continue;
+      }
+      if (await alreadyArchived(recording)) {
+        results.push({ ...item, status: "skipped", reason: "already_archived" });
+        continue;
+      }
+      if (archivedThisRun >= maxPerRun) {
+        results.push({ ...item, status: "deferred", reason: "maxPerRun" });
+        continue;
+      }
+      results.push(await archiveOne(recording.id));
+      archivedThisRun += 1;
+    }
 
     const archived = results.filter((r) => r.status === "archived").length;
     const skipped = results.filter((r) => r.status === "skipped").length;
+    const deferred = results.filter((r) => r.status === "deferred").length;
     $.export(
       "summary",
-      `Archived ${archived}/${results.length} (skipped ${skipped}) since ${createdAfter} pages=${pages} listedTotal=${totalCount}`
+      `Archived ${archived}/${results.length} (skipped ${skipped}, deferred ${deferred}) since ${createdAfter} pages=${pages} listedTotal=${totalCount}`
     );
     return {
       mode: "poll",
       createdAfter,
       lookbackHours,
+      maxPerRun,
       driveId: root.driveId || null,
       rootName: root.name,
       rootId: root.id,
       pages,
-      listedTotal: totalCount,
+      listedTotal: totalCount || listed.length,
       archived,
       skipped,
+      deferred,
       results,
     };
   },

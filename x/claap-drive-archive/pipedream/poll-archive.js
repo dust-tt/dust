@@ -219,6 +219,12 @@ export default defineComponent({
     claapApiKey: { type: "string", label: "Claap API key", secret: true },
     rootFolderId: { type: "string", label: "Google Drive root folder ID" },
     lookbackHours: { type: "integer", label: "Lookback hours", default: 48 },
+    maxPerRun: {
+      type: "integer",
+      label: "Max new archives per run",
+      default: 8,
+      optional: true,
+    },
     recordingId: {
       type: "string",
       label: "Force-archive one recording ID",
@@ -230,28 +236,57 @@ export default defineComponent({
     const root = await resolveRoot(token, this.rootFolderId);
     const forceId = String(this.recordingId || "").trim();
     const lookbackHours = Number(this.lookbackHours) > 0 ? Number(this.lookbackHours) : 48;
+    const maxPerRun = Number(this.maxPerRun) > 0 ? Number(this.maxPerRun) : 8;
     if (forceId) {
       const result = await archiveOne(this.claapApiKey, token, root, forceId);
       $.export("summary", `${result.status} ${forceId}`);
       return { mode: "single", rootId: root.id, rootName: root.name, ...result };
     }
     const createdAfter = new Date(Date.now() - lookbackHours * 3600 * 1000).toISOString();
-    const results = [];
+    const listed = [];
     let cursor;
+    let pages = 0;
     do {
       const query = new URLSearchParams({ createdAfter, limit: "50", sort: "created_asc" });
       if (cursor) {
         query.set("cursor", cursor);
       }
       const page = await claapGet(this.claapApiKey, `v1/recordings?${query}`);
-      for (const recording of page.result.recordings || []) {
-        results.push(await archiveOne(this.claapApiKey, token, root, recording.id));
-      }
+      listed.push(...(page.result.recordings || []));
+      pages += 1;
       cursor = page.result.pagination?.nextCursor;
-    } while (cursor);
+    } while (cursor && pages < 20);
+
+    const results = [];
+    let archivedThisRun = 0;
+    for (const recording of listed) {
+      const item = {
+        recordingId: recording.id,
+        title: recording.title || "",
+        recorderEmail: (recording.recorder?.email || "unknown").toLowerCase(),
+        createdAt: recording.createdAt,
+        state: recording.state,
+      };
+      if (recording.state !== "Ready") {
+        results.push({ ...item, status: "skipped", reason: recording.state });
+        continue;
+      }
+      if (archivedThisRun >= maxPerRun) {
+        results.push({ ...item, status: "deferred", reason: "maxPerRun" });
+        continue;
+      }
+      results.push(await archiveOne(this.claapApiKey, token, root, recording.id));
+      if (results.at(-1)?.status === "archived") {
+        archivedThisRun += 1;
+      }
+    }
     const archived = results.filter((result) => result.status === "archived").length;
     const skipped = results.filter((result) => result.status === "skipped").length;
-    $.export("summary", `Archived ${archived}/${results.length} (skipped ${skipped}) since ${createdAfter}`);
-    return { mode: "poll", createdAfter, lookbackHours, archived, skipped, results };
+    const deferred = results.filter((result) => result.status === "deferred").length;
+    $.export(
+      "summary",
+      `Archived ${archived}/${results.length} (skipped ${skipped}, deferred ${deferred}) since ${createdAfter}`
+    );
+    return { mode: "poll", createdAfter, lookbackHours, maxPerRun, archived, skipped, deferred, results };
   },
 });
