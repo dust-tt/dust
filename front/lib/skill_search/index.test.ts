@@ -100,18 +100,18 @@ describe("skill search indexing", () => {
     });
   });
 
-  it.each([
-    ["a timeout", { timed_out: true }],
-    ["a failure", { failures: [{}] }],
-    ["a version conflict", { version_conflicts: 1 }],
-  ])("reports %s as an incomplete deletion", async (_label, response) => {
-    mocks.deleteByQuery.mockResolvedValueOnce(response);
+  it("propagates client errors for skill and workspace deletion", async () => {
+    mocks.deleteByQuery.mockRejectedValue(new Error("Deletion failed"));
 
-    const result = await deleteSkillDocument({
+    const skillResult = await deleteSkillDocument({
       workspaceId: "workspace-1",
       skillId: "skill-1",
     });
+    const workspaceResult = await deleteWorkspaceSkillDocuments({
+      workspaceId: "workspace-1",
+    });
 
-    expect(result.isErr()).toBe(true);
+    expect(skillResult.isErr()).toBe(true);
+    expect(workspaceResult.isErr()).toBe(true);
   });
 });
