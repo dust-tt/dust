@@ -33,7 +33,6 @@ import type {
   BatchStatus,
 } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
-import { usesWorkspaceProvidedCredentials } from "@app/lib/api/provider_credentials";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
@@ -43,6 +42,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
 import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
+import { usesWorkspaceProvidedCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
