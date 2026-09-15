@@ -8,7 +8,7 @@ import type {
   WorkAreaSectionCopy,
 } from "@app/components/activation/WorkAreaSection";
 import { WorkAreaSection } from "@app/components/activation/WorkAreaSection";
-import { AssistantLayout } from "@app/components/assistant/AssistantLayout";
+import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -184,16 +184,16 @@ export function GetStartedPage() {
   // above is taking effect, so the page never flashes for a Pod-less user.
   if (isActivationPodLoading || activationPodId === null) {
     return (
-      <AssistantLayout owner={owner} user={user}>
+      <BlockedActionsProvider owner={owner}>
         <div className="flex min-h-full w-full items-center justify-center">
           <Spinner size="md" />
         </div>
-      </AssistantLayout>
+      </BlockedActionsProvider>
     );
   }
 
   return (
-    <AssistantLayout owner={owner} user={user}>
+    <BlockedActionsProvider owner={owner}>
       <ActivationSurface
         highlightedTitle="This is your learning space"
         description={
@@ -251,6 +251,6 @@ export function GetStartedPage() {
         </div>
         <RecentConversations owner={owner} podId={activationPodId} />
       </ActivationSurface>
-    </AssistantLayout>
+    </BlockedActionsProvider>
   );
 }

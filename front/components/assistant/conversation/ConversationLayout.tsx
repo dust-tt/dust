@@ -1,4 +1,4 @@
-import { AssistantLayout } from "@app/components/assistant/AssistantLayout";
+import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import {
   ConversationErrorDisplay,
   ErrorDisplay,
@@ -94,7 +94,7 @@ const ConversationLayoutContent = ({
   useSetPageTitle(pageTitle);
 
   return (
-    <AssistantLayout owner={owner} user={user} conversation={conversation}>
+    <BlockedActionsProvider owner={owner} conversation={conversation}>
       <FilePreviewProvider owner={owner}>
         <ConversationSidePanelProvider>
           <ConversationInnerLayout
@@ -118,7 +118,7 @@ const ConversationLayoutContent = ({
           onTourGuideEnd={onTourGuideEnd}
         />
       )}
-    </AssistantLayout>
+    </BlockedActionsProvider>
   );
 };
 

@@ -1,4 +1,3 @@
-import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
 import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
@@ -6,7 +5,6 @@ import { useSetNavChildren } from "@app/components/sparkle/AppLayoutContext";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAppRouter } from "@app/lib/platform";
-import type { ConversationListItemType } from "@app/types/assistant/conversation";
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type React from "react";
@@ -16,20 +14,33 @@ interface AssistantLayoutProps {
   children: React.ReactNode;
   owner: LightWorkspaceType;
   user: AuthContextValue["user"];
-  conversation?: ConversationListItemType;
 }
 
 /**
- * Shared layout for any surface where the user interacts with agents
- * (conversation pages, pod pages). Provides the sidebar nav, the URL-driven
- * agent / member detail sheets, and the BlockedActionsProvider that the
- * input bar depends on.
+ * @cc [owner:rfrenoy,label:react;performance] single-owner-for-sidebar-nav-children
+ * `AssistantLayout` MUST be the only component that passes `AgentSidebarMenu` to
+ * `useSetNavChildren`, and it MUST be rendered above the route outlet of every agent surface it
+ * covers (conversations, Pods, get-started, agent and skill management, labs) rather than by
+ * those routes' page components.
+ *
+ * A single owner above the outlet guarantees that clearing `navChildren` on unmount and setting
+ * it again on mount always happen in the same commit, so the value is never committed as
+ * `undefined` and the sidebar element is reconciled in place instead of being torn down. Page
+ * components cannot provide that guarantee: they are code-split, so switching sections unmounts
+ * the old page — clearing `navChildren` — and the next page's mount effect does not run until
+ * its chunk resolves. `AgentSidebarMenu` is then unmounted for the length of that fetch, blanking
+ * the sidebar, refetching its conversations and Pods, and dropping its scroll and
+ * collapsed-section state.
+ *
+ * This contract is about ownership, not mount stability: `AssistantLayout` itself does remount
+ * during a navigation, because `AppContentLayout` changes the outlet's depth when `contentWidth`
+ * or `hasTitle` change. That is harmless here precisely because the clear and the set stay
+ * paired within one commit.
  */
 export function AssistantLayout({
   children,
   owner,
   user,
-  conversation,
 }: AssistantLayoutProps) {
   const router = useAppRouter();
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
@@ -52,7 +63,7 @@ export function AssistantLayout({
   useSetNavChildren(navChildren);
 
   return (
-    <BlockedActionsProvider owner={owner} conversation={conversation}>
+    <>
       <AgentDetailsSheet
         owner={owner}
         user={user}
@@ -65,6 +76,6 @@ export function AssistantLayout({
         onClose={() => onOpenChangeUserModal(false)}
       />
       {children}
-    </BlockedActionsProvider>
+    </>
   );
 }
