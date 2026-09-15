@@ -1,6 +1,5 @@
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
-import type { Transaction } from "sequelize";
 
 const SKILL_SEARCH_INDEXATION_CONCURRENCY = 8;
 
@@ -9,7 +8,7 @@ export async function launchSkillsSearchIndexation({
   skillIds,
 }: {
   workspaceId: string;
-  skillIds: readonly string[];
+  skillIds: string[];
 }): Promise<void> {
   const results = await concurrentExecutor(
     skillIds,
