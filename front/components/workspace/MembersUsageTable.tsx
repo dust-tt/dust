@@ -19,7 +19,10 @@ import type {
   MemberFairUseUsage,
   MemberUsageType,
 } from "@app/lib/api/credits/members_usage";
-import { computeSeatUsage } from "@app/lib/api/credits/seat_usage";
+import {
+  computePoolLimitAwuCredits,
+  computeSeatUsage,
+} from "@app/lib/api/credits/seat_usage";
 import { formatCredits, formatCreditValue } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import {
@@ -247,8 +250,6 @@ interface AwuUsageBarProps {
   spendLimitGroupName: string | null;
   seatType: MembershipSeatType | null;
   isTotalAllowedUsagePending: boolean;
-  // TODO(avervaet, 2026-09-01): remove once the app page and Poke page usage tables are uniformized.
-  poolOnly?: boolean;
 }
 
 // Human-readable origin of the effective spend limit, or null when there is
@@ -274,6 +275,66 @@ function spendLimitSourceLabel(
   }
 }
 
+interface PoolCreditUsageBarProps {
+  consumedFromPool: number;
+  memberUsageLimit: number | null;
+  // Resolved spend cap including the seat allowance; `null` means no pool
+  // access, i.e. a zero pool limit.
+  effectiveLimit: number | null;
+  isTotalAllowedUsagePending: boolean;
+}
+
+// Single-segment bar showing only the workspace pool share of a member's
+// spend against their pool headroom (spend cap minus seat allowance).
+function PoolCreditUsageBar({
+  consumedFromPool,
+  memberUsageLimit,
+  effectiveLimit,
+  isTotalAllowedUsagePending: isPending,
+}: PoolCreditUsageBarProps) {
+  const poolLimit = computePoolLimitAwuCredits({
+    memberUsageLimit,
+    effectiveLimit,
+  });
+  const isOverPoolLimit = consumedFromPool > poolLimit;
+  const isAtPoolLimit = poolLimit > 0 && consumedFromPool === poolLimit;
+  const percentage =
+    poolLimit > 0
+      ? Math.min(100, (consumedFromPool / poolLimit) * 100)
+      : consumedFromPool > 0
+        ? 100
+        : 0;
+  const limitLabel = formatCredits(poolLimit);
+  return (
+    <div className="flex w-full flex-col gap-1">
+      <div className="flex justify-between text-xs tabular-nums text-foreground">
+        <span>{formatCredits(consumedFromPool)}</span>
+        {isPending ? <Spinner size="xs" /> : <span>{limitLabel}</span>}
+      </div>
+      <div className="flex h-3 w-full items-center">
+        <ProgressBar
+          aria-label="Member pool credit usage"
+          aria-valuenow={percentage}
+          aria-valuetext={`${formatCredits(consumedFromPool)} of ${limitLabel} pool credits used`}
+          className="h-1 w-full gap-px"
+          variant="transparent"
+          values={[
+            {
+              value: percentage,
+              className: isOverPoolLimit
+                ? OVER_POOL_LIMIT_BAR_CLASSES.fill
+                : isAtPoolLimit
+                  ? AT_POOL_LIMIT_BAR_CLASSES.fill
+                  : MUTED_BAR_CLASSES.fill,
+            },
+            { value: 100 - percentage, className: MUTED_BAR_CLASSES.track },
+          ]}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function AwuUsageBar({
   consumed,
   consumedFromAllowance,
@@ -285,7 +346,6 @@ export function AwuUsageBar({
   spendLimitGroupName,
   seatType,
   isTotalAllowedUsagePending: isPending,
-  poolOnly = false,
 }: AwuUsageBarProps) {
   const seatColors = getSeatBarClasses(seatType);
   const allowance = memberUsageLimit ?? 0;
@@ -314,51 +374,15 @@ export function AwuUsageBar({
     ? seatBalanceAwu!
     : Math.max(0, allowance - seatConsumed);
   const resolvedEffectiveLimit = effectiveLimit ?? allowance;
-  const poolLimit = Math.max(0, resolvedEffectiveLimit - allowance);
+  const poolLimit = computePoolLimitAwuCredits({
+    memberUsageLimit,
+    effectiveLimit,
+  });
   // Of the pool consumption, the part within the pool limit vs. the overage
   // beyond it.
   const poolConsumed = Math.min(consumedFromPool, poolLimit);
   const poolRemaining = Math.max(0, poolLimit - poolConsumed);
   const overage = Math.max(0, consumedFromPool - poolLimit);
-
-  if (poolOnly) {
-    const isOverPoolLimit = consumedFromPool > poolLimit;
-    const isAtPoolLimit = poolLimit > 0 && consumedFromPool === poolLimit;
-    const percentage =
-      poolLimit > 0
-        ? Math.min(100, (consumedFromPool / poolLimit) * 100)
-        : consumedFromPool > 0
-          ? 100
-          : 0;
-    const limitLabel = formatCredits(poolLimit);
-    return (
-      <div className="flex w-full flex-col gap-1">
-        <div className="flex justify-between text-xs tabular-nums text-foreground">
-          <span>{formatCredits(consumedFromPool)}</span>
-          {isPending ? <Spinner size="xs" /> : <span>{limitLabel}</span>}
-        </div>
-        <div className="flex h-3 w-full items-center">
-          <ProgressBar
-            aria-label="Member pool credit usage"
-            aria-valuenow={percentage}
-            aria-valuetext={`${formatCredits(consumedFromPool)} of ${limitLabel} pool credits used`}
-            className="h-1 w-full gap-px bg-transparent"
-            values={[
-              {
-                value: percentage,
-                className: isOverPoolLimit
-                  ? OVER_POOL_LIMIT_BAR_CLASSES.fill
-                  : isAtPoolLimit
-                    ? AT_POOL_LIMIT_BAR_CLASSES.fill
-                    : MUTED_BAR_CLASSES.fill,
-              },
-              { value: 100 - percentage, className: MUTED_BAR_CLASSES.track },
-            ]}
-          />
-        </div>
-      </div>
-    );
-  }
 
   const sections: Array<{
     value: number;
@@ -474,7 +498,8 @@ export function AwuUsageBar({
             ? sections.map((section) => section.label).join(", ")
             : "No credits available"
         }
-        className="h-1 w-full gap-px bg-transparent"
+        className="h-1 w-full gap-px"
+        variant="transparent"
         values={
           sections.length > 0
             ? sections.map(({ value, className }) => ({ value, className }))
@@ -655,22 +680,13 @@ function buildPoolCreditUsageColumn(
     accessorFn: (row) => row.consumedFromPoolAwuCredits.toString(),
     cell: (info: Info) => (
       <div className="w-full pr-3">
-        <AwuUsageBar
-          consumed={info.row.original.consumedAwuCredits}
-          consumedFromAllowance={
-            info.row.original.consumedFromAllowanceAwuCredits
-          }
+        <PoolCreditUsageBar
           consumedFromPool={info.row.original.consumedFromPoolAwuCredits}
           memberUsageLimit={info.row.original.memberUsageLimit}
-          seatBalanceAwu={info.row.original.seatBalanceAwu}
           effectiveLimit={info.row.original.spendLimitAwuCredits}
-          spendLimitSource={info.row.original.spendLimitSource}
-          spendLimitGroupName={info.row.original.spendLimitGroupName}
-          seatType={info.row.original.seatType}
           isTotalAllowedUsagePending={
             info.row.original.isTotalAllowedUsagePending
           }
-          poolOnly
         />
       </div>
     ),
@@ -718,7 +734,8 @@ function buildPremiumMessageUsageColumn(
           aria-label="Premium message usage"
           aria-valuenow={percentage}
           aria-valuetext={`${usedMessages} of ${limitMessages} premium messages used over the last ${windowDays} days`}
-          className="h-1 w-full gap-px bg-transparent"
+          className="h-1 w-full gap-px"
+          variant="transparent"
           values={[
             {
               value: percentage,
@@ -809,7 +826,8 @@ function buildFairUseCreditsColumn(
           aria-label="Fair-use credits usage"
           aria-valuenow={percentage}
           aria-valuetext={`${formatCredits(usedCredits)} of ${formatCreditValue(limitCredits)} used`}
-          className="w-full bg-transparent"
+          className="w-full"
+          variant="transparent"
           values={[
             {
               value: percentage,
@@ -1132,7 +1150,7 @@ interface MembersUsageTableProps {
   seatChangePendingMemberIds: ReadonlySet<string>;
   isSeatBased: boolean;
   showSpendLimit: boolean;
-  // Disables every row action (Poke's read-only view).
+  // Disables every row action
   readOnly?: boolean;
   // Seat and credits usage columns plus the seat row actions. Off for
   // workspaces that are not on a credit plan.
@@ -1143,8 +1161,6 @@ interface MembersUsageTableProps {
   onChangeSeat: (member: MemberUsageType) => void;
   onRemoveSeat: (member: MemberUsageType) => void;
   onEditSpendLimit: (member: MemberUsageType) => void;
-  // Opens the read-only change-seat recap modal from the off-pace column's
-  // "Unblock" panel.
   onOpenChangeSeatRecap?: (member: MemberUsageType) => void;
   onOpenSpendLimitRecap?: (member: MemberUsageType) => void;
   canUpgradeSeat?: (member: MemberUsageType) => boolean;
