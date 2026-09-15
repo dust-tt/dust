@@ -14,6 +14,7 @@ import {
 import { InstructionsDocumentExtension } from "@app/components/editor/extensions/instructions/InstructionsDocumentExtension";
 import { InstructionsRootExtension } from "@app/components/editor/extensions/instructions/InstructionsRootExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
+import { SkillNode } from "@app/components/editor/extensions/skill_builder/SkillNode";
 import { EditorFactory } from "@app/components/editor/extensions/tests/utils";
 import { preprocessMarkdownForEditor } from "@app/components/editor/lib/preprocessMarkdownForEditor";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
@@ -2002,5 +2003,82 @@ describe("Root-targeting suggestions", () => {
       expect(editor.getText()).toContain("Hello world");
       expect(getActiveSuggestionIds(editor.state)).toHaveLength(0);
     });
+  });
+});
+
+// Inline skill references serialize as an empty <skill></skill> tag, so the
+// addition widget has to label them itself or they render as a blank gap.
+describe("inline skill references in addition widgets", () => {
+  let skillEditor: Editor;
+
+  beforeEach(() => {
+    skillEditor = EditorFactory(
+      [
+        InstructionBlockExtension,
+        InstructionSuggestionExtension,
+        BlockIdExtension,
+        ListItemExtension,
+        SkillNode,
+      ],
+      { starterKit: { listItem: false } }
+    );
+  });
+
+  afterEach(() => {
+    skillEditor.destroy();
+  });
+
+  function applySkillSuggestion(content: string): void {
+    skillEditor.commands.setContent("Resolve the attendees.", {
+      contentType: "markdown",
+    });
+    const targetBlockId = getBlockIds(skillEditor).find(
+      (id) => id !== INSTRUCTIONS_ROOT_TARGET_BLOCK_ID
+    );
+    expect(targetBlockId).toBeDefined();
+
+    skillEditor.commands.applySuggestion({
+      id: "skill-reference",
+      targetBlockId: targetBlockId!,
+      content,
+    });
+  }
+
+  it("labels an added skill reference with its name", () => {
+    applySkillSuggestion(
+      '<p>Resolve the attendees with <skill id="skil_abc" name="Contact search"></skill> first.</p>'
+    );
+
+    const additions = getAdditions(skillEditor);
+    expect(additions.length).toBeGreaterThan(0);
+    expect(additions.map((a) => a.text).join(" ")).toContain(
+      "Skill Contact search"
+    );
+  });
+
+  it("labels an added unavailable skill reference", () => {
+    applySkillSuggestion(
+      '<p>Resolve the attendees with <unavailable_skill id="skil_gone"></unavailable_skill> first.</p>'
+    );
+
+    const additions = getAdditions(skillEditor);
+    expect(additions.map((a) => a.text).join(" ")).toContain(
+      "Unavailable skill"
+    );
+  });
+
+  it("leaves the document untouched, so persisted HTML keeps empty skill tags", () => {
+    applySkillSuggestion(
+      '<p>Resolve the attendees with <skill id="skil_abc" name="Contact search"></skill> first.</p>'
+    );
+
+    expect(skillEditor.getHTML()).not.toContain("Skill Contact search");
+
+    skillEditor.commands.acceptSuggestion("skill-reference");
+
+    expect(skillEditor.getHTML()).toContain(
+      '<skill id="skil_abc" name="Contact search"></skill>'
+    );
+    expect(skillEditor.getHTML()).not.toContain("Skill Contact search");
   });
 });

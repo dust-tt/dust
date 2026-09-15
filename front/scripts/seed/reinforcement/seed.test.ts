@@ -131,10 +131,10 @@ describe("reinforcement seed script integration test", () => {
     expect(bookKeeper!.instructionsHtml).toContain("knowledge-node");
     expect(bookKeeper!.instructionsHtml).toContain("books.xml");
 
-    // Verify skill suggestions: 2 for SearchInfoContactWithSuggestion + 2 for MeetingNotesFormatter + 1 for BookKeeper
+    // Verify skill suggestions: 3 for SearchInfoContactWithSuggestion + 3 for MeetingNotesFormatter + 1 for BookKeeper
     const skillSuggestions =
       await SkillSuggestionResource.listByWorkspace(authenticator);
-    expect(skillSuggestions).toHaveLength(6);
+    expect(skillSuggestions).toHaveLength(7);
 
     const allPending = skillSuggestions.every((s) => s.state === "pending");
     expect(allPending).toBe(true);
@@ -174,6 +174,20 @@ describe("reinforcement seed script integration test", () => {
       );
     });
     expect(multiBlockSuggestion).toBeDefined();
+
+    // One MeetingNotesFormatter suggestion references another seeded skill
+    // inline, with the placeholder resolved to that skill's real sId.
+    const contactSkill = skills.find(
+      (s) => s.name === "SearchInfoContactWithSuggestion"
+    );
+    expect(contactSkill).toBeDefined();
+    const withInlineSkillReference = skillSuggestions.find((s) => {
+      const json = s.toJSON();
+      return json.suggestion.instructionEdits?.some((edit) =>
+        edit.content.includes(`<skill id="${contactSkill!.sId}"`)
+      );
+    });
+    expect(withInlineSkillReference).toBeDefined();
 
     // Verify idempotency
     await seedReinforcement(ctx, { skipAnalytics: true });

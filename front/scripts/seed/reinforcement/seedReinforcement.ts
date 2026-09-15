@@ -183,6 +183,9 @@ export async function seedReinforcement(
     const created = await seedSkill(ctx, resolvedAsset);
     if (created) {
       createdSkills.set(skillAsset.name, created);
+      // Publish the created sId so later skills and the skill suggestions can
+      // reference this skill inline through a <skill> tag.
+      placeholders[skillIdPlaceholder(skillAsset.name)] = created.sId;
     }
   }
   const skillsToLink = Array.from(createdSkills.values());
@@ -275,6 +278,14 @@ export async function seedReinforcement(
     const conversationIds = allConversations.map((c) => c.sId);
     await seedAnalytics(ctx, conversationIds);
   }
+}
+
+/**
+ * Placeholder standing for a seeded skill's sId, e.g.
+ * `__BOOKKEEPER_SKILL_ID__` for the skill named "BookKeeper".
+ */
+function skillIdPlaceholder(skillName: string): string {
+  return `__${skillName.toUpperCase()}_SKILL_ID__`;
 }
 
 function resolveSkillPlaceholders(
