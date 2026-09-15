@@ -33,7 +33,7 @@ export const CONVERSATION_FONT_LABELS: Record<ConversationFont, string> = {
 };
 
 const DEFAULT_CONVERSATION_FONT: ConversationFont = "sans";
-export const CONVERSATION_FONT_METADATA_KEY = "conversationFont";
+export const CONVERSATION_FONT_METADATA_KEY = "conversation_font";
 const STORAGE_KEY = "conversationFont";
 const DATA_ATTRIBUTE = "data-conversation-font";
 
