@@ -55,6 +55,8 @@ describe("makeFileAttachment", () => {
       contentType: "text/vnd.dust.attachment.pasted",
     });
 
+    expect(attachment.isIncludable).toBe(true);
+    expect(attachment.isQueryable).toBe(false);
     expect(attachment.isSearchable).toBe(false);
   });
 
@@ -68,12 +70,14 @@ describe("makeFileAttachment", () => {
     expect(attachment.isSearchable).toBe(true);
   });
 
-  it("should not be searchable when snippet is null regardless", () => {
+  it("should remain readable when snippet is null, without query or search", () => {
     const attachment = makeFileAttachment({
       ...baseArgs,
       snippet: null,
     });
 
+    expect(attachment.isIncludable).toBe(true);
+    expect(attachment.isQueryable).toBe(false);
     expect(attachment.isSearchable).toBe(false);
   });
 
@@ -274,6 +278,25 @@ describe("renderAttachmentXml", () => {
     expect(xml).toMatch(/<attachment [^>]+\/>/);
   });
 
+  it("advertises cat for snippet-less files in legacy conversations without semantic search", () => {
+    const attachment = getAttachmentFromFileContentFragment({
+      cf: makeFileContentFragment({
+        contentType: "text/plain",
+        snippet: null,
+      }),
+      capabilities: LEGACY,
+    });
+
+    const xml = renderAttachmentXml({
+      attachment: attachment!,
+      usage: legacyUsage,
+    });
+
+    expect(xml).toContain(`Use: read with \`${CAT_TOOL}\`.`);
+    expect(xml).not.toContain(SEARCH_TOOL);
+    expect(xml).not.toContain(DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME);
+  });
+
   it("omits the Use line entirely when the content is inlined", () => {
     const attachment = getAttachmentFromFileContentFragment({
       cf: makeFileContentFragment({ contentType: "text/plain" }),
@@ -318,9 +341,23 @@ describe("getAttachmentFromFileContentFragment", () => {
       capabilities: LEGACY,
     });
 
-    // Without a snippet, canDoJIT is false so all JIT flags stay off.
-    expect(attachment?.isIncludable).toBe(false);
+    expect(attachment?.isIncludable).toBe(true);
+    expect(attachment?.isQueryable).toBe(false);
     expect(attachment?.isSearchable).toBe(false);
+  });
+
+  it("keeps snippet-less CSV files readable without making them queryable", () => {
+    const attachment = getAttachmentFromFileContentFragment({
+      cf: makeFileContentFragment({
+        contentType: "text/csv",
+        snippet: null,
+      }),
+      capabilities: LEGACY,
+    });
+
+    expect(attachment?.isIncludable).toBe(true);
+    expect(attachment?.isQueryable).toBe(false);
+    expect(attachment?.generatedTables).toEqual([]);
   });
 
   it("suppresses queryable and includable hints for raw sandbox delimited files", () => {
