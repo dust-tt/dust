@@ -61,13 +61,6 @@ export async function checkPoolCreditGate(
 const CREDIT_SPEND_CHECKPOINT_RESUMABLE_ORIGINS: ReadonlySet<UserMessageOrigin> =
   new Set<UserMessageOrigin>(CLIENT_MESSAGE_ORIGINS);
 
-/**
- * @cc [owner:avervaet,label:product] checkpoint-exempts-unattended-usage
- * The check MUST return exempt when there is no user on the auth or when the message origin is
- * not one set by a Dust client UI (web app, extension, ...). Programmatic usage, email, Slack,
- * triggers and every other unattended flow have nobody in the conversation to resume the pause,
- * so pausing would only hang the caller. A missing origin is treated as unattended.
- */
 export function isCreditSpendCheckpointExempt(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin: UserMessageOrigin | null }
