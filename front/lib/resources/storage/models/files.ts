@@ -229,14 +229,19 @@ ShareableFileModel.belongsTo(UserModel, {
 });
 
 /**
- * Sharing grants: email-level ACL for restricted sharing.
+ * Sharing grants: email or domain access rules for restricted sharing.
  */
-
+/**
+ * @cc [owner:flvndvd,label:backend] active-domain-grant-uniqueness
+ * A workspace and shareable file MUST have at most one non-revoked grant per domain.
+ * Revoked grants MUST NOT prevent granting the same domain again.
+ */
 export class SharingGrantModel extends WorkspaceAwareModel<SharingGrantModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare email: string;
+  declare email: string | null;
+  declare domain: string | null;
   declare grantedAt: Date;
   declare expiresAt: Date | null;
   declare revokedAt: Date | null;
@@ -263,7 +268,14 @@ SharingGrantModel.init(
     },
     email: {
       type: DataTypes.STRING(255),
-      allowNull: false,
+      allowNull: true,
+      defaultValue: null,
+    },
+    domain: {
+      // DNS names allow 253 ASCII characters without the trailing dot.
+      type: DataTypes.STRING(253),
+      allowNull: true,
+      defaultValue: null,
     },
     grantedAt: {
       type: DataTypes.DATE,
@@ -290,6 +302,12 @@ SharingGrantModel.init(
     modelName: "sharing_grants",
     sequelize: frontSequelize,
     indexes: [
+      {
+        fields: ["workspaceId", "shareableFileId", "domain"],
+        unique: true,
+        concurrently: true,
+        where: { revokedAt: null, domain: { [Op.ne]: null } },
+      },
       {
         fields: ["workspaceId", "shareableFileId"],
         where: { revokedAt: null },
