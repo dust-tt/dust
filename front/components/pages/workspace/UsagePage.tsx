@@ -229,7 +229,6 @@ export function UsagePage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const { hasFeature } = useFeatureFlags();
-  const isNewUsagePage = true;
   const groupSeatProvisioningEnabled = hasFeature("group_seat_provisioning");
   const isCreditPriced = isCreditPricedPlan(subscription.plan);
   // Workspaces off a credit plan see this page without the credit pool, seat
@@ -1068,7 +1067,6 @@ export function UsagePage() {
   const membersTable = (
     <MembersUsageTable
       members={membersUsage}
-      creditsResetAt={creditsResetAt}
       isLoading={isMembersUsageLoading}
       isRefreshing={isMembersUsageRefreshing}
       showSeatAndCredits={isCreditPriced}
@@ -1100,7 +1098,6 @@ export function UsagePage() {
       enableSelection={isCreditPriced}
       rowSelection={selection.rowSelection}
       onRowSelectionChange={selection.onRowSelectionChange}
-      variant={isNewUsagePage ? "compact" : undefined}
       hasPool={hasPool}
     />
   );
