@@ -10,10 +10,11 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import type { VirtuosoMessageListContext } from "@app/components/assistant/conversation/types";
 import type { AnalyticsViewInput } from "@app/components/workspace/analytics/analyticsView";
 import { useAnalyticsConversation } from "@app/hooks/useAnalyticsConversation";
+import { useAnalyticsMCPServer } from "@app/hooks/useAnalyticsMCPServer";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { UserType, WorkspaceType } from "@app/types/user";
 import { Button, Icon, Robot, Spinner, XClose } from "@dust-tt/sparkle";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 interface AnalyticsConversationPanelHeaderProps {
   onClose: () => void;
@@ -42,7 +43,9 @@ function AnalyticsConversationPanelHeader({
 interface AnalyticsConversationPanelBodyProps {
   owner: WorkspaceType;
   user: UserType;
+  analyticsClientSideMCPServerId: string | undefined;
   conversation: ConversationType | null;
+  isMCPServerRegistering: boolean;
   isOpen: boolean;
   isCreatingConversation: boolean;
   creationFailed: boolean;
@@ -53,7 +56,9 @@ interface AnalyticsConversationPanelBodyProps {
 function AnalyticsConversationPanelBody({
   owner,
   user,
+  analyticsClientSideMCPServerId,
   conversation,
+  isMCPServerRegistering,
   isOpen,
   isCreatingConversation,
   creationFailed,
@@ -76,6 +81,11 @@ function AnalyticsConversationPanelBody({
     }),
     [resetConversation]
   );
+  const clientSideMCPServerIds = useMemo(
+    () =>
+      analyticsClientSideMCPServerId ? [analyticsClientSideMCPServerId] : [],
+    [analyticsClientSideMCPServerId]
+  );
 
   if (creationFailed) {
     return (
@@ -93,7 +103,7 @@ function AnalyticsConversationPanelBody({
     );
   }
 
-  if (isCreatingConversation || !conversation) {
+  if (isCreatingConversation || !conversation || isMCPServerRegistering) {
     return (
       <div className="flex h-full min-h-0 items-center justify-center">
         <div className="flex items-center gap-3">
@@ -120,6 +130,7 @@ function AnalyticsConversationPanelBody({
             conversationId={conversation.sId}
             disabled={!isOpen}
             agentBuilderContext={analystAgentContext}
+            clientSideMCPServerIds={clientSideMCPServerIds}
             key={conversation.sId}
           />
         </div>
@@ -162,12 +173,25 @@ export function AnalyticsConversationPanel({
     startConversation,
     resetConversation,
   } = useAnalyticsConversation({ owner, user, view });
+  const [mcpServerEnabled, setMCPServerEnabled] = useState(false);
 
+  const { serverId: analyticsClientSideMCPServerId, status: mcpServerStatus } =
+    useAnalyticsMCPServer({
+      enabled: mcpServerEnabled,
+      view,
+      workspaceId: owner.sId,
+    });
   // `ResizableSidePanel` keeps this panel mounted while closed, so a mount effect would bootstrap
   // a conversation on every Analytics page load. Wait for filter resolution too: the opening
   // message names the filters and is never regenerated, so starting early would name raw ids.
   useEffect(() => {
-    if (isOpen && !isFacetsLoading) {
+    if (!isOpen) {
+      return;
+    }
+
+    setMCPServerEnabled(true);
+
+    if (!isFacetsLoading) {
       void startConversation();
     }
   }, [isOpen, isFacetsLoading, startConversation]);
@@ -197,7 +221,11 @@ export function AnalyticsConversationPanel({
                 <AnalyticsConversationPanelBody
                   owner={owner}
                   user={user}
+                  analyticsClientSideMCPServerId={
+                    analyticsClientSideMCPServerId
+                  }
                   conversation={conversation}
+                  isMCPServerRegistering={mcpServerStatus === "registering"}
                   isOpen={isOpen}
                   isCreatingConversation={isCreatingConversation}
                   creationFailed={creationFailed}

@@ -1,4 +1,9 @@
 import {
+  ANALYTICS_PANEL_SERVER_NAME,
+  GET_ANALYTICS_VIEW_TOOL_NAME,
+} from "@app/components/workspace/analytics/tools/getAnalyticsView";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
+import {
   GET_CONSUMPTION_OVERVIEW_TOOL_NAME,
   GET_CREDIT_TIMESERIES_TOOL_NAME,
   GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME,
@@ -18,6 +23,18 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_define
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { isWorkspaceAnalyticsEnabled } from "@app/types/user";
 
+function analyticsToolName(toolName: string): string {
+  return getPrefixedToolName(WORKSPACE_ANALYTICS_SERVER_NAME, toolName);
+}
+
+function managementToolName(toolName: string): string {
+  return getPrefixedToolName(WORKSPACE_MANAGEMENT_SERVER_NAME, toolName);
+}
+
+function analyticsPanelToolName(toolName: string): string {
+  return getPrefixedToolName(ANALYTICS_PANEL_SERVER_NAME, toolName);
+}
+
 const WORKSPACE_ANALYTICS_INSTRUCTIONS = `
 You help workspace admins and managers understand how their Dust workspace is used.
 Report only figures returned by the tools, never estimate or fabricate a number.
@@ -29,19 +46,23 @@ the user's groups, the agent's tags, the skills and tools involved, and the bill
 Credits combine model compute and tool usage and are the same billed credits the workspace Analytics page shows.
 
 # Choosing a tool
-- Headline figures for a time period: ${GET_CONSUMPTION_OVERVIEW_TOOL_NAME}, in one call.
-- Who or what costs the most: ${GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME} with the dimension asked about.
-- Who or what is most active, by volume rather than cost: ${GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME} with the dimension asked about, or ${GET_TOP_ENTITIES_BY_EXECUTION_COUNT_TOOL_NAME} for how often tools and skills ran.
-- Anything over time (trend, evolution, per day, per week): a single ${GET_CREDIT_TIMESERIES_TOOL_NAME} call. Set breakdownBy to split the trend along a dimension into its top groups plus an 'others' series. Never rebuild a trend by calling a ranking tool once per period, and never make one filtered call per entity when a breakdown does it in one call.
-- What an agent does: ${GET_AGENT_DETAILS_TOOL_NAME} with the agent's id.
-- What exists rather than what is used (which agents or skills the workspace has, whether they are published, which ones nobody uses): ${LIST_AGENTS_TOOL_NAME} or ${LIST_SKILLS_TOOL_NAME}, then ${GET_AGENT_DETAILS_TOOL_NAME} or ${GET_SKILL_DETAILS_TOOL_NAME} to inspect a single one. Listing the agents other members have not published is admin-only, so fall back to the default view on an authorization error.
+- Headline figures for a time period: ${analyticsToolName(GET_CONSUMPTION_OVERVIEW_TOOL_NAME)}, in one call.
+- Who or what costs the most: ${analyticsToolName(GET_TOP_ENTITIES_BY_CREDITS_TOOL_NAME)} with the dimension asked about.
+- Who or what is most active, by volume rather than cost: ${analyticsToolName(GET_TOP_ENTITIES_BY_MESSAGE_COUNT_TOOL_NAME)} with the dimension asked about, or ${analyticsToolName(GET_TOP_ENTITIES_BY_EXECUTION_COUNT_TOOL_NAME)} for how often tools and skills ran.
+- Anything over time (trend, evolution, per day, per week): a single ${analyticsToolName(GET_CREDIT_TIMESERIES_TOOL_NAME)} call. Set breakdownBy to split the trend along a dimension into its top groups plus an 'others' series. Never rebuild a trend by calling a ranking tool once per period, and never make one filtered call per entity when a breakdown does it in one call.
+- What an agent does: ${managementToolName(GET_AGENT_DETAILS_TOOL_NAME)} with the agent's id.
+- What exists rather than what is used (which agents or skills the workspace has, whether they are published, which ones nobody uses): ${managementToolName(LIST_AGENTS_TOOL_NAME)} or ${managementToolName(LIST_SKILLS_TOOL_NAME)}, then ${managementToolName(GET_AGENT_DETAILS_TOOL_NAME)} or ${managementToolName(GET_SKILL_DETAILS_TOOL_NAME)} to inspect a single one. Listing the agents other members have not published is admin-only, so fall back to the default view on an authorization error.
 
 # Filters
 Filters take ids, not names. Every ranking row carries the entity's id: feed those back as filters to narrow any other call, and never guess an id from a display name.
 
+# Analytics page
+When the user writes from the workspace Analytics page, a ${analyticsPanelToolName(GET_ANALYTICS_VIEW_TOOL_NAME)} tool reads the period
+and filters they are looking at. Use it whenever a question refers to what they see. If this tool is unavailable, say you cannot see their current view rather than assuming one.
+
 # Reporting
 - Lead with the answer, as a ranked list or a single figure. Chart timeseries results so the trend is visible.
-- Rankings report the credit total over the whole time period separately from the rows. Rows can overlap (an agent can carry several tags, a member can belong to several groups, a tool call can be attributed to several skills), so never sum rows to get a total: use that figure or ${GET_CONSUMPTION_OVERVIEW_TOOL_NAME}.
+- Rankings report the credit total over the whole time period separately from the rows. Rows can overlap (an agent can carry several tags, a member can belong to several groups, a tool call can be attributed to several skills), so never sum rows to get a total: use that figure or ${analyticsToolName(GET_CONSUMPTION_OVERVIEW_TOOL_NAME)}.
 - Credits are billed credits, not estimates.`.trim();
 
 export const workspaceAnalyticsSkill = {
@@ -61,7 +82,7 @@ export const workspaceAnalyticsSkill = {
     { name: WORKSPACE_ANALYTICS_SERVER_NAME },
     { name: WORKSPACE_MANAGEMENT_SERVER_NAME },
   ],
-  version: 9,
+  version: 10,
   icon: "ActionPieChartIcon",
   isRestricted: async (auth: Authenticator) => {
     if (!auth.isManager()) {
