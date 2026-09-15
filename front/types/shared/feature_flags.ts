@@ -206,6 +206,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     stage: "dust_only",
     owner: "davidebbo",
   },
+  simulated_failure_model_feature: {
+    description: "Access to the simulated failure model",
+    stage: "dust_only",
+    owner: "frankaloia",
+  },
   automatic_model_health_routing: {
     description: "Route automatic model streams around unhealthy endpoints",
     stage: "dust_only",
