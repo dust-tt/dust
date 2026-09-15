@@ -836,6 +836,38 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
+  static async fetchCreditSpendCheckpointStateForAgentMessage(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<{
+    status: AgentMessageModel["creditSpendCheckpointStatus"];
+  } | null> {
+    const messageRow = await MessageModel.findOne({
+      where: {
+        sId: agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: ["id"],
+      include: [
+        {
+          model: AgentMessageModel,
+          as: "agentMessage",
+          required: true,
+          attributes: ["creditSpendCheckpointStatus"],
+        },
+      ],
+    });
+
+    const agentMessage = messageRow?.agentMessage;
+    if (!agentMessage) {
+      return null;
+    }
+
+    return {
+      status: agentMessage.creditSpendCheckpointStatus,
+    };
+  }
+
   /**
    * Loads what the credit spend checkpoint check needs to decide whether it applies: the agent
    * message's checkpoint status and whether its triggering user message is a root (non-agentic)
@@ -851,23 +883,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     status: AgentMessageModel["creditSpendCheckpointStatus"];
     isRootAgentMessage: boolean;
   } | null> {
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-
-    const [agentMessageRow, userMessageRow] = await Promise.all([
-      MessageModel.findOne({
-        where: { sId: agentMessageId, workspaceId: workspaceModelId },
-        attributes: ["id"],
-        include: [
-          {
-            model: AgentMessageModel,
-            as: "agentMessage",
-            required: true,
-            attributes: ["creditSpendCheckpointStatus"],
-          },
-        ],
+    const [state, userMessageRow] = await Promise.all([
+      this.fetchCreditSpendCheckpointStateForAgentMessage(auth, {
+        agentMessageId,
       }),
       MessageModel.findOne({
-        where: { sId: userMessageId, workspaceId: workspaceModelId },
+        where: {
+          sId: userMessageId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
         attributes: ["id"],
         include: [
           {
@@ -880,15 +904,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       }),
     ]);
 
-    const agentMessage = agentMessageRow?.agentMessage;
     const userMessage = userMessageRow?.userMessage;
     // Without both rows the sub-agent check cannot be made, so the caller must not pause.
-    if (!agentMessage || !userMessage) {
+    if (!state || !userMessage) {
       return null;
     }
 
     return {
-      status: agentMessage.creditSpendCheckpointStatus,
+      status: state.status,
       isRootAgentMessage: !userMessage.agenticMessageType,
     };
   }
@@ -906,6 +929,33 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       }
     );
+  }
+
+  // Conditional so concurrent resolutions of the same pause cannot both apply.
+  static async transitionAgentMessageCreditSpendCheckpointStatus(
+    auth: Authenticator,
+    {
+      agentMessageModelId,
+      from,
+      to,
+    }: {
+      agentMessageModelId: ModelId;
+      from: NonNullable<AgentMessageModel["creditSpendCheckpointStatus"]>;
+      to: AgentMessageModel["creditSpendCheckpointStatus"];
+    }
+  ): Promise<{ applied: boolean }> {
+    const [updatedCount] = await AgentMessageModel.update(
+      { creditSpendCheckpointStatus: to },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+          creditSpendCheckpointStatus: from,
+        },
+      }
+    );
+
+    return { applied: updatedCount > 0 };
   }
 
   /**
