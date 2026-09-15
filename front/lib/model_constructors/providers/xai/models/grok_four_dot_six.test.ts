@@ -1,8 +1,11 @@
 // @vitest-environment node
 
 import { MODEL_PRICING } from "@app/lib/api/assistant/token_pricing";
+import { DustXaiGrokFourDotFiveGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_five_global_xai";
 import { DustXaiGrokFourDotSixGlobalXaiStream } from "@app/lib/llms/stream/endpoints/xai_grok_four_dot_six_global_xai";
+import { isEndpointAvailable } from "@app/lib/llms/stream/utils/is_endpoint_available";
 import { XaiGrokFourDotSixGlobalXaiStream } from "@app/lib/model_constructors/stream/endpoints/xai_grok_four_dot_six_global_xai";
+import { GROK_4_5, GROK_4_6 } from "@app/lib/model_constructors/types/models";
 import {
   GROK_4_6_MODEL_CONFIG,
   GROK_4_6_MODEL_ID,
@@ -39,6 +42,23 @@ describe("Grok 4.6 model configuration", () => {
       GROK_4_6_MODEL_CONFIG.contextSize -
         GROK_4_6_MODEL_CONFIG.generationTokensCount
     ).toBe(EXPECTED_MAX_INPUT_TOKENS);
+  });
+
+  it.each([
+    [DustXaiGrokFourDotFiveGlobalXaiStream, GROK_4_5],
+    [DustXaiGrokFourDotSixGlobalXaiStream, GROK_4_6],
+  ])("makes %s available without feature flags", (endpoint, model) => {
+    expect(
+      isEndpointAvailable(
+        endpoint,
+        {
+          featureFlags: [],
+          isCreditPriced: false,
+          isEnterprise: false,
+        },
+        { model: { eq: model } }
+      )
+    ).toBe(true);
   });
 
   it("uses documented reasoning efforts with high as the default", () => {
