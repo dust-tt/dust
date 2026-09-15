@@ -4,32 +4,8 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
-import type { ConsumptionPeriod } from "@app/lib/api/analytics/consumption/period";
 import { formatCredits } from "@app/lib/client/credits";
 import { ArrowUpRight, Button, LoadingBlock } from "@dust-tt/sparkle";
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-/**
- * @cc [owner:avervaet,label:product] cycle-day-within-bounds
- * `day` is a 1-indexed count of elapsed days in the cycle, always in
- * `[1, totalDays]` regardless of how `now` relates to `startDate`/`endDate`:
- * before the cycle starts it is 1, once the cycle has ended it is `totalDays`.
- */
-function cycleDayProgress({ startDate, endDate }: ConsumptionPeriod): {
-  day: number;
-  totalDays: number;
-} {
-  const startMs = new Date(startDate).getTime();
-  const endMs = new Date(endDate).getTime();
-  const totalDays = Math.max(Math.round((endMs - startMs) / MS_PER_DAY), 1);
-  const elapsedMs = Math.min(
-    Math.max(Date.now() - startMs, 0),
-    endMs - startMs
-  );
-  const day = Math.min(Math.floor(elapsedMs / MS_PER_DAY) + 1, totalDays);
-  return { day, totalDays };
-}
 
 export interface ConsumptionSummaryProps {
   workspaceId: string;
@@ -129,26 +105,17 @@ export function ConsumptionSummaryView({
   const { topAgent, totalCredits } = overview;
   const creditUsage =
     analyticsScope.kind === "workspace" ? overview.creditUsage : null;
-  const cycleProgress = creditUsage ? cycleDayProgress(overview.period) : null;
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between gap-4">
-        {creditUsage && cycleProgress && (
-          <span className="text-sm text-muted-foreground">
-            {formatCredits(totalCredits)} credits used this cycle, day{" "}
-            {cycleProgress.day}/{cycleProgress.totalDays} of the cycle
-          </span>
-        )}
-        <div className="ml-auto">
-          <Button
-            label={usageLinkLabel}
-            variant="highlight-ghost"
-            size="xs"
-            iconRight={ArrowUpRight}
-            href={usageHref}
-          />
-        </div>
+      <div className="flex justify-end">
+        <Button
+          label={usageLinkLabel}
+          variant="highlight-ghost"
+          size="xs"
+          iconRight={ArrowUpRight}
+          href={usageHref}
+        />
       </div>
       <div
         className={
