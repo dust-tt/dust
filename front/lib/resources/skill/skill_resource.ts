@@ -618,7 +618,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   /**
    * @cc [owner:aubin-tchoi,label:security] canonical-skill-search-authorization
    * Results must match the requested statuses (active by default). Strict results must pass
-   * live editor, row and all-space checks and match indexed permissions;
+   * live editor, row and all-space checks and match indexed status, availability and spaces;
    * only admins may retain unreadable resources through canonical metadata redaction.
    */
   static async authorizeSearchDocuments(
@@ -688,8 +688,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * Fail closed when an Elasticsearch document's permission-bearing fields no
-   * longer match the canonical database state.
+   * Check live permissions and indexed status, availability and space requirements.
+   * Editor lists may lag behind mutations; only the caller's current editor access matters.
    */
   private static async fetchSearchResourcesByCurrentState(
     auth: Authenticator,
@@ -712,10 +712,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const editorFilteredSkills = skills.filter(
       (skill) => skill.availability !== "editors" || skill.canWrite(auth)
     );
-    const editorsBySkillId = await this.batchListEditors(
-      auth,
-      editorFilteredSkills
-    );
     const skillById = new Map(
       editorFilteredSkills.map((skill) => [skill.sId, skill])
     );
@@ -734,13 +730,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             .map((id) =>
               SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
             )
-            .sort()
-        ) &&
-        Array.isArray(document.editor_ids) &&
-        isEqual(
-          [...document.editor_ids].sort(),
-          (editorsBySkillId.get(skill.sId) ?? [])
-            .map((editor) => editor.sId)
             .sort()
         )
       );

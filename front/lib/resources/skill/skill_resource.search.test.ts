@@ -1,11 +1,14 @@
+import { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import skillSearchMapping from "@app/lib/skill_search/indices/skills_1.mappings.json";
 import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import {
   SkillListItemSchema,
@@ -41,7 +44,7 @@ describe("SkillResource", () => {
     expect(listing).toMatchObject({ status: "active", canRead: true });
   });
 
-  it("rejects missing or stale indexed editors", async () => {
+  it("requires the caller in indexed editor IDs for editors-only candidates", async () => {
     const { authenticator: auth } = testContext;
     const skill = await SkillFactory.create(auth, { availability: "editors" });
     const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
@@ -58,6 +61,41 @@ describe("SkillResource", () => {
       { document: { ...document, editor_ids: [] }, score: 1 },
     ]);
     expect(stale.size).toBe(0);
+  });
+
+  it.each([
+    "workspace_users",
+    "editors",
+  ] as const)("allows stale editor lists for %s skills while checking current access", async (availability) => {
+    const { authenticator: auth, workspace, user } = testContext;
+    const formerEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, formerEditor, {
+      role: "user",
+    });
+    const skill = await SkillFactory.create(auth, { availability });
+    expect((await skill.addEditors(auth, [formerEditor])).isOk()).toBe(true);
+    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
+    assert(document);
+
+    expect((await skill.removeEditors(auth, [formerEditor])).isOk()).toBe(true);
+    const editors = await skill.listEditors(auth);
+    expect(editors?.map((editor) => editor.sId)).toEqual([user.sId]);
+    expect(document.editor_ids).toContain(formerEditor.sId);
+
+    const visible = await SkillResource.authorizeSearchDocuments(auth, [
+      { document, score: 1 },
+    ]);
+    expect(visible.has(skill.sId)).toBe(true);
+
+    const formerEditorAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      formerEditor.sId,
+      workspace.sId
+    );
+    const formerEditorResults = await SkillResource.authorizeSearchDocuments(
+      formerEditorAuth,
+      [{ document, score: 1 }]
+    );
+    expect(formerEditorResults.has(skill.sId)).toBe(availability !== "editors");
   });
 
   it.each([
