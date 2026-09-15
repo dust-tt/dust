@@ -130,7 +130,7 @@ describe("FileResource", () => {
       value: domain,
     });
     expect(await frame.canCurrentUserUseFrame(memberAuth)).toBe(true);
-    expect((await grant.revoke()).isOk()).toBe(true);
+    expect((await grant.revoke(auth)).isOk()).toBe(true);
     expect(await frame.canCurrentUserUseFrame(memberAuth)).toBe(false);
   });
 

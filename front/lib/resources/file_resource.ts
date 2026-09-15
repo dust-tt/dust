@@ -2680,11 +2680,10 @@ export class FileResource extends BaseResource<FileModel> {
     return new Ok(await this.listActiveSharingGrants());
   }
 
-  async revokeSharingGrant({
-    grantId,
-  }: {
-    grantId: ModelId;
-  }): Promise<Result<{ email: string }, DustError>> {
+  async revokeSharingGrant(
+    auth: Authenticator,
+    { grantId }: { grantId: ModelId }
+  ): Promise<Result<{ email: string }, DustError>> {
     assert(this.isShareableFrame, "revokeSharingGrant requires a Frame file");
     if (!Number.isSafeInteger(grantId) || grantId < 0) {
       return new Err(
@@ -2700,7 +2699,7 @@ export class FileResource extends BaseResource<FileModel> {
         new DustError("file_not_found", "Sharing grant not found")
       );
     }
-    const revoked = await grant.revoke();
+    const revoked = await grant.revoke(auth);
     if (revoked.isErr()) {
       return revoked;
     }

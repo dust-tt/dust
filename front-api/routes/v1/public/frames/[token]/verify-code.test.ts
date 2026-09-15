@@ -87,7 +87,7 @@ describe("POST /api/v1/public/frames/[token]/verify-code", () => {
       email: "bob@example.com",
     });
     assert(bobOtp.isOk());
-    expect((await grant.revoke()).isOk()).toBe(true);
+    expect((await grant.revoke(auth)).isOk()).toBe(true);
     expect(
       (
         await postVerifyCode(shareToken, {

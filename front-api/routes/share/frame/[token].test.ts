@@ -76,7 +76,7 @@ describe("GET /api/share/frame/:token - requiresEmailVerification", () => {
     expect(
       (await (await getShareFrame(token)).json()).requiresEmailVerification
     ).toBe(true);
-    expect((await grant.revoke()).isOk()).toBe(true);
+    expect((await grant.revoke(auth)).isOk()).toBe(true);
     expect(
       (await (await getShareFrame(token)).json()).requiresEmailVerification
     ).toBe(false);

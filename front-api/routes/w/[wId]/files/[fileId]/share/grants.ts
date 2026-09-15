@@ -1,17 +1,12 @@
-import {
-  buildAuditLogTarget,
-  emitAuditLogEvent,
-  getAuditLogContext,
-} from "@app/lib/api/audit/workos_audit";
-import type { FrameSharingState } from "@app/lib/api/share/frame_grants";
+import type { FrameSharingState } from "@app/lib/api/share/frame_sharing";
 import {
   addFrameSharingGrants,
   listFrameSharing,
-  revokeFrameSharingGrant,
-} from "@app/lib/api/share/frame_grants";
+} from "@app/lib/api/share/frame_sharing";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { isConversationFileUseCase } from "@app/types/files";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { SharingGrantsResponse } from "@app/types/sharing_grants";
@@ -43,7 +38,8 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     return file;
   }
 
-  return ctx.json(serializeFrameSharing(await listFrameSharing(auth, file)));
+  const sharing = await listFrameSharing(auth, file);
+  return ctx.json(serializeFrameSharing(sharing));
 });
 
 app.post(
@@ -93,7 +89,17 @@ app.delete(
 
     const { grantId } = ctx.req.valid("json");
     if (typeof grantId === "string") {
-      const result = await revokeFrameSharingGrant(auth, file, grantId);
+      const grant = await SharingGrantResource.fetchById(file, grantId);
+      if (!grant) {
+        return apiError(ctx, {
+          status_code: 404,
+          api_error: {
+            type: "file_not_found",
+            message: "Sharing grant not found",
+          },
+        });
+      }
+      const result = await grant.revoke(auth);
       if (result.isErr()) {
         return apiError(ctx, {
           status_code: 404,
@@ -103,7 +109,7 @@ app.delete(
       return ctx.body(null, 204);
     }
 
-    const result = await file.revokeSharingGrant({ grantId });
+    const result = await file.revokeSharingGrant(auth, { grantId });
 
     if (result.isErr()) {
       return apiError(ctx, {
@@ -114,23 +120,6 @@ app.delete(
         },
       });
     }
-
-    void emitAuditLogEvent({
-      auth,
-      action: "frame.email_grant_revoked",
-      targets: [
-        buildAuditLogTarget("workspace", auth.getNonNullableWorkspace()),
-        buildAuditLogTarget("frame", {
-          sId: file.sId,
-          name: file.fileName ?? file.sId,
-        }),
-      ],
-      context: getAuditLogContext(auth),
-      metadata: {
-        frame_name: file.fileName ?? file.sId,
-        email: result.value.email,
-      },
-    });
 
     return ctx.body(null, 204);
   }

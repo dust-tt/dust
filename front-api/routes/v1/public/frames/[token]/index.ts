@@ -1,9 +1,9 @@
 import config from "@app/lib/api/config";
-import { recordFrameView } from "@app/lib/api/share/frame_grants";
 import {
   FRAME_SESSION_COOKIE_NAME,
   getFrameSessionEmail,
 } from "@app/lib/api/share/frame_session";
+import { recordFrameView } from "@app/lib/api/share/frame_sharing";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";

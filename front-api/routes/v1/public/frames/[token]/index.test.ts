@@ -112,7 +112,7 @@ describe("GET /api/v1/public/frames/[token]", () => {
     );
     expect((await requestAs("alice@sub.example.com")).status).toBe(404);
     expect((await requestAs("alice@notexample.com")).status).toBe(404);
-    expect((await grant.revoke()).isOk()).toBe(true);
+    expect((await grant.revoke(auth)).isOk()).toBe(true);
     expect((await requestAs("alice@example.com")).status).toBe(404);
     expect(await file.getViewerSummaries()).toEqual(viewers);
   });

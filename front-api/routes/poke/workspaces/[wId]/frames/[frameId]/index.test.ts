@@ -118,7 +118,7 @@ describe("GET /api/poke/workspaces/:wId/frames/:frameId", () => {
     if (!toRevoke) {
       throw new Error("Expected the grant to revoke to exist.");
     }
-    const revokeResult = await frame.revokeSharingGrant({
+    const revokeResult = await frame.revokeSharingGrant(adminAuth, {
       grantId: toRevoke.id,
     });
     expect(revokeResult.isOk()).toBe(true);
