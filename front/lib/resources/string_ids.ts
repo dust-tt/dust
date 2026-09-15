@@ -19,6 +19,7 @@ const LEGACY_SHARD_BIT = 1;
 
 export const RESOURCES_PREFIX = {
   file: "fil",
+  sharing_grant: "shg",
   group: "grp",
   // TODO(2024-10-31 flav) Add new prefix for space.
   space: "vlt",
