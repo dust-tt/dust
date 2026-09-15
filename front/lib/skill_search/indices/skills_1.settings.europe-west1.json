@@ -10,7 +10,7 @@
       }
     },
     "filter": {
-      "skill_name_words_preserve": {
+      "skill_name_preserve_words": {
         "type": "word_delimiter_graph",
         "split_on_case_change": true,
         "split_on_numerics": false,
@@ -28,7 +28,7 @@
         "char_filter": ["skill_name_nfc"],
         "tokenizer": "icu_tokenizer",
         "filter": [
-          "skill_name_words_preserve",
+          "skill_name_preserve_words",
           "icu_folding"
         ]
       }
