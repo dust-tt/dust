@@ -6,6 +6,7 @@ import {
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { default as activationRecommendationsServer } from "@app/lib/api/actions/servers/activation_recommendations";
+import { default as agentAuthoringServer } from "@app/lib/api/actions/servers/agent_authoring";
 import { default as agentDelegationServer } from "@app/lib/api/actions/servers/agent_delegation";
 import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
@@ -267,6 +268,8 @@ export async function getInternalMCPServer(
       return skillManagementServer(auth, toolContext);
     case "skill_authoring":
       return skillAuthoringServer(auth, toolContext);
+    case "agent_authoring":
+      return agentAuthoringServer(auth, toolContext);
     case "triggers_management":
       return triggersManagementServer(auth, toolContext);
     case "productboard":
