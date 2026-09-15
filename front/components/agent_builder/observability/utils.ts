@@ -10,7 +10,8 @@ import {
 import type { ObservabilityMode } from "@app/components/agent_builder/observability/ObservabilityContext";
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { formatShortDate } from "@app/lib/utils/timestamps";
-import moment from "moment-timezone";
+import { addDays, startOfDay, subDays } from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
 type VersionMarker = { version: string; timestamp: number };
 
@@ -104,17 +105,25 @@ export function filterTimeSeriesByVersionWindow<
 }
 
 // Generates an array of midnight timestamps for each day in the range,
-// stepping via moment to respect DST transitions.
+// stepping in the timezone's local calendar to respect DST transitions.
 export function getDayTimestamps(
   periodDays: number,
   timezone: string
 ): number[] {
-  const startOfTomorrow = moment.tz(timezone).add(1, "day").startOf("day");
-  const cursor = startOfTomorrow.clone().subtract(periodDays, "days");
+  const zonedNow = toZonedTime(new Date(), timezone);
+  const startOfTomorrowZoned = startOfDay(addDays(zonedNow, 1));
+  const startOfTomorrowMs = fromZonedTime(
+    startOfTomorrowZoned,
+    timezone
+  ).getTime();
+
   const timestamps: number[] = [];
-  while (cursor.isBefore(startOfTomorrow)) {
-    timestamps.push(cursor.valueOf());
-    cursor.add(1, "day");
+  let cursorZoned = subDays(startOfTomorrowZoned, periodDays);
+  let cursorMs = fromZonedTime(cursorZoned, timezone).getTime();
+  while (cursorMs < startOfTomorrowMs) {
+    timestamps.push(cursorMs);
+    cursorZoned = addDays(cursorZoned, 1);
+    cursorMs = fromZonedTime(cursorZoned, timezone).getTime();
   }
   return timestamps;
 }

@@ -1,5 +1,6 @@
 import type { ModelId } from "@app/types/shared/model_id";
-import moment from "moment-timezone";
+import { startOfDay } from "date-fns";
+import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
 // A pod's numeric model id is already a well-distributed, stable integer, so
 // taking it modulo the window size gives a deterministic per-pod offset
@@ -27,12 +28,13 @@ export function getNudgeSlotAtMs({
   windowMinutes: number;
   now: Date;
 }): number {
-  const windowStart = moment
-    .tz(now, timezone)
-    .startOf("day")
-    .add(windowStartMinutes, "minutes");
+  const startOfDayMs = fromZonedTime(
+    startOfDay(toZonedTime(now, timezone)),
+    timezone
+  ).getTime();
+  const windowStartMs = startOfDayMs + windowStartMinutes * 60_000;
 
   const slotMinutes = getPodNudgeSlotMinutes(podModelId, windowMinutes);
 
-  return windowStart.add(slotMinutes, "minutes").valueOf();
+  return windowStartMs + slotMinutes * 60_000;
 }
