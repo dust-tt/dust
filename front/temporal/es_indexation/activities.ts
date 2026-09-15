@@ -1,6 +1,9 @@
+import { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { deleteWorkspaceSkillDocuments } from "@app/lib/skill_search";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -75,5 +78,27 @@ export async function indexUserSearchActivity({
         );
       }
     }
+  }
+}
+
+export async function indexSkillSearchActivity({
+  workspaceId,
+  skillId,
+}: {
+  workspaceId: string;
+  skillId: string;
+}): Promise<void> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  await SkillResource.indexSearchDocument(auth, skillId);
+}
+
+export async function deleteWorkspaceSkillSearchActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<void> {
+  const deleteResult = await deleteWorkspaceSkillDocuments({ workspaceId });
+  if (deleteResult.isErr()) {
+    throw deleteResult.error;
   }
 }

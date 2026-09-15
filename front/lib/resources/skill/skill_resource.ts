@@ -58,6 +58,8 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { deleteSkillDocument, indexSkillDocument } from "@app/lib/skill_search";
+import { launchSkillsSearchIndexation } from "@app/lib/skill_search/indexation";
 import {
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
@@ -570,6 +572,138 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await auth.refresh();
 
     return skillResource;
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;concurrency] skill-search-after-commit
+   * Skill mutations enqueue workspace-scoped custom IDs after their existing writes.
+   * Callers launch outside their transaction; code-defined skills are never indexed.
+   */
+  static async launchSearchIndexation(
+    auth: Authenticator,
+    skillIds: readonly string[]
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    const customSkillIds = [...new Set(skillIds)].filter((skillId) => {
+      const parsed = getResourceNameAndIdFromSId(skillId);
+      if (!parsed) {
+        return false;
+      }
+      assert(
+        parsed.resourceName === "skill" &&
+          parsed.workspaceModelId === workspace.id,
+        "Search indexation must target skills in the caller's workspace."
+      );
+      return true;
+    });
+    if (customSkillIds.length === 0) {
+      return;
+    }
+    await launchSkillsSearchIndexation({
+      workspaceId: workspace.sId,
+      skillIds: customSkillIds,
+    });
+  }
+
+  static async fetchSearchDocument(
+    auth: Authenticator,
+    skillId: string
+  ): Promise<SkillSearchDocument | null> {
+    const [document] = await this.fetchSearchDocuments(auth, [skillId]);
+    return document ?? null;
+  }
+
+  static async fetchSearchDocuments(
+    auth: Authenticator,
+    skillIds: readonly string[]
+  ): Promise<SkillSearchDocument[]> {
+    const workspace = auth.getNonNullableWorkspace();
+    const ids = skillIds.filter((skillId) => {
+      const parsed = getResourceNameAndIdFromSId(skillId);
+      return (
+        parsed?.resourceName === "skill" &&
+        parsed.workspaceModelId === workspace.id
+      );
+    });
+    const skills = await this.fetchByIds(auth, ids, {
+      permissionFiltering: "dangerously_skip",
+      withInstructions: false,
+      withTools: true,
+      withFileAttachments: false,
+    });
+    const documents = await this.toSearchDocuments(auth, skills);
+    const byId = new Map(
+      documents.map((document) => [document.skill_id, document])
+    );
+    return removeNulls(ids.map((id) => byId.get(id) ?? null));
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;security] skill-search-document
+   * Serialize workspace-local active or archived resources fetched with tools;
+   * invalid space requirements are excluded and private skill content is never serialized.
+   */
+  static async toSearchDocuments(
+    auth: Authenticator,
+    resources: SkillResource[]
+  ): Promise<SkillSearchDocument[]> {
+    const workspace = auth.getNonNullableWorkspace();
+    const skills = resources.filter(
+      (skill) =>
+        !skill.globalSId &&
+        skill.workspaceId === workspace.id &&
+        (skill.status === "active" || skill.status === "archived")
+    );
+    if (skills.length === 0) {
+      return [];
+    }
+    const editorsBySkillId = await this.batchListEditors(auth, skills);
+    const spaces = await SpaceResource.fetchByIds(
+      auth,
+      uniq(skills.flatMap((skill) => skill.requestedSpaceIds)).map((id) =>
+        SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
+      )
+    );
+    const spaceIds = new Set(spaces.map((space) => space.id));
+    return removeNulls(
+      skills.map((skill) => {
+        if (
+          new Set(skill.requestedSpaceIds).size !==
+            skill.requestedSpaceIds.length ||
+          !skill.requestedSpaceIds.every((id) => spaceIds.has(id))
+        ) {
+          return null;
+        }
+        return skill.toSearchDocument(workspace, {
+          editorIds: (editorsBySkillId.get(skill.sId) ?? []).map(
+            (user) => user.sId
+          ),
+          // Normal reindexing preserves the daily usage snapshot.
+          activeUsersCount: 0,
+          isDefault: isDefaultFromAvailability(skill.availability),
+        });
+      })
+    );
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;security] searchable-skill-index-projection
+   * Index the workspace's committed active or archived projection; delete missing, suggested or invalid documents.
+   */
+  static async indexSearchDocument(
+    auth: Authenticator,
+    skillId: string
+  ): Promise<void> {
+    const document = await this.fetchSearchDocument(auth, skillId);
+    const result = document
+      ? await indexSkillDocument(document)
+      : await deleteSkillDocument({
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          skillId,
+        });
+    if (result.isErr()) {
+      throw result.error;
+    }
   }
 
   static async makeSuggestion(
