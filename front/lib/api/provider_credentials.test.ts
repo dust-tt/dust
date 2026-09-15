@@ -186,4 +186,45 @@ describe("getLlmCredentials", () => {
       })
     ).rejects.toThrow("Failed to fetch OAuth credentials for provider openai");
   });
+
+  // Last in the file on purpose: `EnvironmentConfig` caches every value it reads, so the env
+  // stubbed here would leak into any test declared after it.
+  it("hands Dust-managed keys and the Vertex project id to non-BYOK workspaces only", async () => {
+    vi.stubEnv("VERTEX_AI_PROJECT_ID", "dust-vertex-project");
+    vi.stubEnv("DUST_MANAGED_ANTHROPIC_API_KEY", "sk-dust-anthropic");
+    vi.stubEnv("DUST_MANAGED_OPENAI_API_KEY", "sk-dust-openai");
+    vi.stubEnv("DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY", "sk-dust-google");
+
+    const { authenticator: nonByokAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const nonByokCredentials = await getLlmCredentials(nonByokAuth, {
+      skipEmbeddingApiKeyRequirement: true,
+    });
+
+    expect(nonByokCredentials).toMatchObject({
+      AGENT_PLATFORM_PROJECT_ID: "dust-vertex-project",
+      ANTHROPIC_API_KEY: "sk-dust-anthropic",
+      OPENAI_API_KEY: "sk-dust-openai",
+      GOOGLE_AI_STUDIO_API_KEY: "sk-dust-google",
+    });
+
+    const { authenticator: byokAuth } = await createResourceTest({
+      role: "admin",
+      isByok: true,
+    });
+    await ProviderCredentialFactory.basic(
+      byokAuth.getNonNullableWorkspace(),
+      "anthropic"
+    );
+
+    const byokCredentials = await getLlmCredentials(byokAuth, {
+      skipEmbeddingApiKeyRequirement: true,
+    });
+
+    expect(byokCredentials).toEqual({
+      ...BASE_VARIABLES,
+      ANTHROPIC_API_KEY: "sk-test",
+    });
+  });
 });
