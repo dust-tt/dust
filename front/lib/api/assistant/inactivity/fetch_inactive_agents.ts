@@ -1,7 +1,4 @@
-import {
-  fetchFirstVersionCreatedAtByAgentId,
-  getAgentConfigurations,
-} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type {
   AgentArchivalExclusionReason,
   AgentInactivitySnapshot,
@@ -9,6 +6,7 @@ import type {
 } from "@app/lib/api/assistant/inactivity/policy";
 import { evaluateAgentArchivalEligibility } from "@app/lib/api/assistant/inactivity/policy";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentResource } from "@app/lib/resources/agent_resource";
 import { MentionResource } from "@app/lib/resources/mention_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { AgentConfigurationStatus } from "@app/types/assistant/agent";
@@ -112,7 +110,7 @@ export async function fetchArchivableAgents(
   });
 
   const agentIds = idleAgents.map(({ agentId }) => agentId);
-  const createdAtByAgentId = await fetchFirstVersionCreatedAtByAgentId(
+  const createdAtByAgentId = await AgentResource.listCreatedAtByAgentId(
     auth,
     agentIds
   );

@@ -4,8 +4,10 @@ import {
   AgentConfigurationModel,
   AgentModel,
 } from "@app/lib/models/agent/agent";
+
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
+
 import { GroupPermissionResource } from "@app/lib/resources/group_permission_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
@@ -37,6 +39,7 @@ import { removeNulls } from "@app/types/shared/utils/general";
 import type { UserType } from "@app/types/user";
 import assert from "assert";
 import type { Attributes, Transaction } from "sequelize";
+import { Op } from "sequelize";
 
 // Legacy `canEdit` also allows changing the editor set, so the author fallback mirrors the full
 // editor role rather than granting write alone.
@@ -444,6 +447,25 @@ export class AgentResource
     }
 
     return result;
+  }
+
+  static async listCreatedAtByAgentId(
+    auth: Authenticator,
+    agentIds: string[]
+  ): Promise<Map<string, Date>> {
+    if (agentIds.length === 0) {
+      return new Map();
+    }
+
+    const agents = await AgentModel.findAll({
+      attributes: ["sId", "createdAt"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        sId: { [Op.in]: agentIds },
+      },
+    });
+
+    return new Map(agents.map(({ sId, createdAt }) => [sId, createdAt]));
   }
 
   static async listEditorConfigModelIds(
