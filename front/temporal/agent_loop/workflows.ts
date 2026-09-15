@@ -6,7 +6,7 @@ import {
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
-import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
+import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
 import type { DescendantRunData } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
@@ -306,7 +306,7 @@ export async function agentLoopWorkflow({
   let creditSpendCheckpointPause: { thresholdAwuCredits: number } | null = null;
 
   // Cached per execution: once the check says to skip, nothing within this execution can bring
-  // it back (see checkCreditSpendCheckpointActivity).
+  // it back.
   let skipCreditSpendCheckpointChecks = false;
 
   let descendantData: DescendantRunData | null = null;
@@ -360,7 +360,6 @@ export async function agentLoopWorkflow({
           runId,
           shouldContinue,
           retryWithoutTools,
-          isRootAgentMessage,
           preStepTotalCostMicroUsd,
         } = await executeStepIteration({
           authType,
@@ -428,21 +427,18 @@ export async function agentLoopWorkflow({
           break;
         }
 
-        if (isRootAgentMessage === false) {
-          skipCreditSpendCheckpointChecks = true;
-        }
-
-        // Check here to avoid unecessary activity call
-        const isClearlyBelowCheckpointFloor =
+        // Cheap pre-filter on the spend measured before this step ran. The step itself may
+        // have crossed the threshold, in which case the pause lands one step late: accepted to
+        // avoid scheduling the activity on every step of every message.
+        const wasBelowThresholdBeforeStep =
           preStepTotalCostMicroUsd !== undefined &&
-          Math.ceil(
-            preStepTotalCostMicroUsd / MODEL_COST_MICRO_USD_PER_AWU_CREDIT
-          ) < CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS;
+          awuFromMicroUsd(preStepTotalCostMicroUsd) <
+            CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS;
 
         if (
           patched("credit-spend-checkpoint-gate") &&
           !skipCreditSpendCheckpointChecks &&
-          !isClearlyBelowCheckpointFloor
+          !wasBelowThresholdBeforeStep
         ) {
           try {
             const checkpointResult = await checkCreditSpendCheckpointActivity(
@@ -462,12 +458,17 @@ export async function agentLoopWorkflow({
             }
             if (checkpointResult.skipRemainingChecks) {
               skipCreditSpendCheckpointChecks = true;
+            } else {
+              descendantData = checkpointResult.descendantData;
             }
-            descendantData = checkpointResult.descendantData ?? null;
           } catch (err) {
             if (!(err instanceof ActivityFailure) || isCancellation(err)) {
               throw err;
             }
+            log.warn(
+              "Credit spend checkpoint check failed, continuing without it",
+              { agentMessageId, step: currentStep, error: String(err) }
+            );
           }
         }
       }
@@ -593,10 +594,8 @@ async function executeStepIteration({
   runId: string | null;
   shouldContinue: boolean;
   retryWithoutTools?: boolean;
-  // Passed through so the caller can skip the credit spend checkpoint for sub-agent messages.
-  isRootAgentMessage?: boolean;
   // Passed through so the caller can cheaply decide whether the credit spend checkpoint activity
-  // is even worth scheduling (see `RunModelAndCreateActionsResult.preStepTotalCostMicroUsd`).
+  // is even worth scheduling.
   preStepTotalCostMicroUsd?: number;
 }> {
   const result = await runModelAndCreateActionsActivity({
@@ -621,7 +620,6 @@ async function executeStepIteration({
     runId,
     actionBlobs,
     retryWithoutTools = false,
-    isRootAgentMessage,
     preStepTotalCostMicroUsd,
   } = result;
 
@@ -635,7 +633,6 @@ async function executeStepIteration({
       // disabled to force a final answer.
       shouldContinue: runId === null || retryWithoutTools,
       retryWithoutTools,
-      isRootAgentMessage,
       preStepTotalCostMicroUsd,
     };
   }
@@ -647,7 +644,6 @@ async function executeStepIteration({
     return {
       runId,
       shouldContinue: false,
-      isRootAgentMessage,
       preStepTotalCostMicroUsd,
     };
   }
@@ -687,7 +683,6 @@ async function executeStepIteration({
       return {
         runId,
         shouldContinue: false,
-        isRootAgentMessage,
         preStepTotalCostMicroUsd,
       };
     }
@@ -696,7 +691,6 @@ async function executeStepIteration({
   return {
     runId,
     shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
-    isRootAgentMessage,
     preStepTotalCostMicroUsd,
   };
 }

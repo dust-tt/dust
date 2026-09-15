@@ -83,7 +83,15 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   await finalizeGracefulStop(authType, agentLoopArgs);
+  await launchStoppedLoopSideEffects(authType, agentLoopArgs);
+}
 
+// Post-finalize side effects shared by the paths that stop the loop with the message still
+// resumable by the user.
+async function launchStoppedLoopSideEffects(
+  authType: AuthenticatorType,
+  agentLoopArgs: AgentLoopArgs
+): Promise<void> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
 
   await Promise.all([
@@ -183,20 +191,7 @@ export async function finalizeCreditSpendCheckpointPausedAgentLoopActivity(
   await finalizeCreditSpendCheckpointPause(authType, agentLoopArgs, {
     thresholdAwuCredits,
   });
-
-  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
-
-  await Promise.all([
-    launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
-      auth,
-      agentLoopArgs
-    ),
-    launchTrackProgrammaticUsage(auth, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    conversationUnreadNotification(auth, agentLoopArgs),
-    handleMentions(auth, agentLoopArgs),
-  ]);
+  await launchStoppedLoopSideEffects(authType, agentLoopArgs);
 }
 
 // Attribute the failure to the tools that never finished. The worker that ran them may have died

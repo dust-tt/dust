@@ -45,7 +45,8 @@ export type RunModelAndCreateActionsResult = {
   // The model returned nothing at all: the loop should run one more step with
   // tool use disabled to force a final answer.
   retryWithoutTools?: boolean;
-  isRootAgentMessage?: boolean;
+  // Tree cost measured by the guardrail before this step's model run; lets the workflow skip
+  // the credit spend checkpoint activity while spend is still far from the threshold.
   preStepTotalCostMicroUsd?: number;
 };
 
@@ -87,8 +88,8 @@ export async function runModelAndCreateActionsActivity({
   runIds: string[];
   step: number;
   forceDisableToolUse?: boolean;
-  // Descendant walk cached from the previous step's credit spend checkpoint check (see
-  // `checkCreditSpendCheckpointActivity`), so the guardrail check below doesn't repeat it.
+  // Descendant walk cached from the previous step's credit spend checkpoint check, so the
+  // guardrail check below doesn't repeat it.
   descendantData?: DescendantRunData | null;
 }): Promise<RunModelAndCreateActionsResult | null> {
   // The pre-stream setup (agent data loading, MCP tools listing, conversation rendering) can
@@ -275,7 +276,6 @@ async function _runModelAndCreateActionsActivity({
       return {
         actionBlobs: existingData.actionBlobs,
         runId: null,
-        isRootAgentMessage,
         preStepTotalCostMicroUsd: hardCapCheckResult?.totalCostMicroUsd,
       };
     }
@@ -316,7 +316,6 @@ async function _runModelAndCreateActionsActivity({
       runId,
       actionBlobs: [],
       retryWithoutTools,
-      isRootAgentMessage,
       preStepTotalCostMicroUsd: hardCapCheckResult?.totalCostMicroUsd,
     };
   }
@@ -358,7 +357,6 @@ async function _runModelAndCreateActionsActivity({
   return {
     runId,
     actionBlobs: createResult.actionBlobs,
-    isRootAgentMessage,
     preStepTotalCostMicroUsd: hardCapCheckResult?.totalCostMicroUsd,
   };
 }

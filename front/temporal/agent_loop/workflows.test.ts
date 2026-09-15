@@ -394,7 +394,6 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
         },
       ],
       runId: "run-1",
-      isRootAgentMessage: true,
     });
     runToolActivityWithExplicitCancellation.mockResolvedValue({
       deferredEvents: [],
@@ -416,7 +415,6 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
         },
       ],
       runId: "run-1",
-      isRootAgentMessage: true,
       // 0 AWU credits: nowhere near the fixed checkpoint threshold.
       preStepTotalCostMicroUsd: 0,
     });
@@ -508,7 +506,6 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
           },
         ],
         runId: "run-1",
-        isRootAgentMessage: true,
       })
       .mockResolvedValue({ actionBlobs: [], runId: "run-2" });
 
@@ -520,32 +517,6 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
         startStep: 0,
       })
     ).rejects.toThrow("boom");
-  });
-
-  it("never schedules the check for sub-agent messages", async () => {
-    runModelAndCreateActionsActivityWithExplicitCancellation
-      .mockResolvedValueOnce({
-        actionBlobs: [
-          {
-            actionId: "action-1",
-            needsApproval: false,
-            retryPolicy: "no_retry",
-          },
-        ],
-        runId: "run-1",
-        isRootAgentMessage: false,
-      })
-      .mockResolvedValue({ actionBlobs: [], runId: "run-2" });
-
-    await agentLoopWorkflow({
-      agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
-      authType,
-      initialStartTime: 0,
-      startStep: 0,
-    });
-
-    expect(checkCreditSpendCheckpointActivity).not.toHaveBeenCalled();
-    expect(finalizeSuccessfulAgentLoopActivity).toHaveBeenCalledOnce();
   });
 
   it("does not schedule the check when replaying without the patch marker", async () => {
@@ -560,7 +531,6 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
           },
         ],
         runId: "run-1",
-        isRootAgentMessage: true,
       })
       .mockResolvedValue({ actionBlobs: [], runId: "run-2" });
 
