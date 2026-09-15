@@ -28,6 +28,7 @@ import {
   updateConversationRequirements,
 } from "@app/lib/api/assistant/conversation/permissions";
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
+import { refreshDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { RUNNING_AGENT_SWITCH_BLOCK_MESSAGE } from "@app/lib/api/assistant/errors";
 import { isRetiredGlobalAgent } from "@app/lib/api/assistant/global_agents/global_agents";
 import {
@@ -1842,6 +1843,16 @@ export async function retryAgentMessage(
           reasoningEffort: "none" as const,
         }
       : undefined);
+
+  // Stream resolution reads the process-local degraded set. Await a refresh
+  // here so a retry on another pod does not reuse a stale or empty cache and
+  // pick the model we just told the user we would skip.
+  if (
+    effectiveModelSelection &&
+    isModelStreamId(effectiveModelSelection.modelId)
+  ) {
+    await refreshDegradedModelIds();
+  }
 
   let retryModelResolution: AgentMessageModelResolution =
     effectiveModelSelection

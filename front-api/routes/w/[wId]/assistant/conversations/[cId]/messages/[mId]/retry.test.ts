@@ -22,6 +22,31 @@ describe("POST /api/w/:wId/assistant/conversations/:cId/messages/:mId/retry", ()
     expect(response.status).toBe(404);
   });
 
+  it("keeps accepting the previous client's empty JSON body", async () => {
+    const response = await honoApp.request(
+      `/api/w/${workspaceId}/assistant/conversations/missing/messages/missing/retry`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    expect(response.status).toBe(404);
+  });
+
+  it("rejects malformed nonempty JSON", async () => {
+    const response = await honoApp.request(
+      `/api/w/${workspaceId}/assistant/conversations/missing/messages/missing/retry`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{",
+      }
+    );
+
+    expect(response.status).toBe(400);
+  });
+
   it("rejects an invalid model selection", async () => {
     const response = await honoApp.request(
       `/api/w/${workspaceId}/assistant/conversations/missing/messages/missing/retry`,
