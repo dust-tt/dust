@@ -19,6 +19,8 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { getRunExecutionsDeletionCutoffDate } from "@app/temporal/hard_delete/utils";
+import { isModelId } from "@app/types/assistant/models/models";
+import { isModelProviderId } from "@app/types/assistant/models/providers";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -70,6 +72,26 @@ export interface RunUsageAttemptType extends RunUsageType {
   runUsageModelId: ModelId;
   usageState: RunUsageState | null;
   usageType: UsageType | null;
+}
+
+function runUsageAttributes(usage: RunUsageModel): RunUsageType {
+  assert(isModelId(usage.modelId), `Unknown model id: ${usage.modelId}`);
+  assert(
+    isModelProviderId(usage.providerId),
+    `Unknown model provider id: ${usage.providerId}`
+  );
+
+  return {
+    completionTokens: usage.completionTokens,
+    reasoningTokens: usage.reasoningTokens,
+    modelId: usage.modelId,
+    promptTokens: usage.promptTokens,
+    providerId: usage.providerId,
+    cachedTokens: usage.cachedTokens,
+    cacheCreationTokens: usage.cacheCreationTokens,
+    costMicroUsd: usage.costMicroUsd,
+    isBatch: usage.isBatch,
+  };
 }
 
 interface PendingRunUsageParameters {
@@ -295,6 +317,42 @@ export class RunResource extends BaseResource<RunModel> {
     );
   }
 
+  static async listRunUsagesByModelIds(
+    auth: Authenticator,
+    { runUsageModelIds }: { runUsageModelIds: ModelId[] }
+  ): Promise<RunUsageWithRunKeyType[]> {
+    if (runUsageModelIds.length === 0) {
+      return [];
+    }
+
+    const usages = await RunUsageModel.findAll({
+      where: {
+        id: { [Op.in]: runUsageModelIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    const runs = await RunModel.findAll({
+      attributes: ["id", "runKey"],
+      where: {
+        id: { [Op.in]: usages.map((usage) => usage.runId) },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+    const runKeyByModelId = new Map<ModelId, string | null>(
+      runs.map((run) => [run.id, run.runKey])
+    );
+
+    return usages.map((usage) => ({
+      ...runUsageAttributes(usage),
+      runUsageModelId: usage.id,
+      runModelId: usage.runId,
+      runKey: runKeyByModelId.get(usage.runId) ?? null,
+      inferenceProvider: usage.inferenceProvider,
+      region: usage.region,
+      usageType: usage.usageType,
+    }));
+  }
+
   static async listRunUsagesForRuns(
     auth: Authenticator,
     {
@@ -326,21 +384,12 @@ export class RunResource extends BaseResource<RunModel> {
     });
 
     return usages.map((usage) => ({
+      ...runUsageAttributes(usage),
       runUsageModelId: usage.id,
       runModelId: usage.runId,
       runKey: runKeyByModelId.get(usage.runId) ?? null,
-      completionTokens: usage.completionTokens,
-      reasoningTokens: usage.reasoningTokens,
       inferenceProvider: usage.inferenceProvider,
       region: usage.region,
-      modelId: usage.modelId as ModelIdType,
-      promptTokens: usage.promptTokens,
-      providerId: usage.providerId as ModelProviderIdType,
-      cachedTokens: usage.cachedTokens,
-      cacheCreationTokens: usage.cacheCreationTokens,
-      costMicroUsd: usage.costMicroUsd,
-      isBatch: usage.isBatch,
-      serviceTier: usage.serviceTier,
       usageType: usage.usageType,
     }));
   }
@@ -741,19 +790,10 @@ export class RunResource extends BaseResource<RunModel> {
     });
 
     return usages.map((usage) => ({
+      ...runUsageAttributes(usage),
       runUsageModelId: usage.id,
-      completionTokens: usage.completionTokens,
-      reasoningTokens: usage.reasoningTokens,
       inferenceProvider: usage.inferenceProvider,
       region: usage.region,
-      modelId: usage.modelId as ModelIdType,
-      promptTokens: usage.promptTokens,
-      providerId: usage.providerId as ModelProviderIdType,
-      cachedTokens: usage.cachedTokens,
-      cacheCreationTokens: usage.cacheCreationTokens,
-      costMicroUsd: usage.costMicroUsd,
-      isBatch: usage.isBatch,
-      serviceTier: usage.serviceTier,
       usageType: usage.usageType,
       usageState: usage.usageState,
     }));
