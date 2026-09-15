@@ -657,28 +657,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
             candidate.editor_ids.includes(user.sId)))
       );
     });
-    const visible = await this.filterSearchDocumentsByCurrentState(
+    const visible = await this.fetchSearchResourcesByCurrentState(
       auth,
       editorFiltered.map(({ document }) => document)
     );
     return new Map(
-      visible.map((document) => {
-        const score = scoreById.get(document.skill_id);
+      visible.map((skill) => {
+        const score = scoreById.get(skill.sId);
         assert(score !== undefined);
-        return [
-          document.skill_id,
-          {
-            editedBy: document.last_edited_by_user_id,
-            icon: document.icon ?? null,
-            name: document.name,
-            requestedSpaceIds: document.requested_space_ids,
-            sId: document.skill_id,
-            userFacingDescription: document.description ?? "",
-            status: document.status,
-            canRead: true,
-            score,
-          },
-        ];
+        return [skill.sId, skill.toSearchJSON(auth, score)];
       })
     );
   }
@@ -687,10 +674,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    * Fail closed when an Elasticsearch document's permission-bearing fields no
    * longer match the canonical database state.
    */
-  static async filterSearchDocumentsByCurrentState(
+  private static async fetchSearchResourcesByCurrentState(
     auth: Authenticator,
     documents: readonly SkillSearchDocument[]
-  ): Promise<SkillSearchDocument[]> {
+  ): Promise<SkillResource[]> {
     if (documents.length === 0) {
       return [];
     }
@@ -700,44 +687,50 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       auth,
       documents.map((document) => document.skill_id),
       {
-        permissionFiltering: "dangerously_skip",
         withInstructions: false,
-        withTools: true,
+        withTools: false,
         withFileAttachments: false,
       }
     );
-    const readableSkills = skills.filter(
-      (skill) =>
-        skill.canRead(auth) &&
-        (skill.availability !== "editors" || skill.canWrite(auth)) &&
-        skill.requestedSpaceIds.every((spaceModelId) =>
-          auth.getGrantedVerbs("space", spaceModelId).includes("read")
-        )
+    const editorFilteredSkills = skills.filter(
+      (skill) => skill.availability !== "editors" || skill.canWrite(auth)
     );
-    const currentDocuments = await this.toSearchDocuments(auth, readableSkills);
-    const currentDocumentBySkillId = new Map(
-      currentDocuments.map((document) => [document.skill_id, document])
+    const editorsBySkillId = await this.batchListEditors(
+      auth,
+      editorFilteredSkills
+    );
+    const skillById = new Map(
+      editorFilteredSkills.map((skill) => [skill.sId, skill])
     );
 
-    return documents.filter((document) => {
-      const currentDocument = currentDocumentBySkillId.get(document.skill_id);
+    const current = documents.filter((document) => {
+      const skill = skillById.get(document.skill_id);
       return (
         document.workspace_id === workspace.sId &&
-        currentDocument !== undefined &&
-        document.status === currentDocument.status &&
-        document.availability === currentDocument.availability &&
+        skill !== undefined &&
+        document.status === skill.status &&
+        document.availability === skill.availability &&
         Array.isArray(document.requested_space_ids) &&
         isEqual(
           [...document.requested_space_ids].sort(),
-          [...currentDocument.requested_space_ids].sort()
+          skill.requestedSpaceIds
+            .map((id) =>
+              SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
+            )
+            .sort()
         ) &&
         Array.isArray(document.editor_ids) &&
         isEqual(
           [...document.editor_ids].sort(),
-          [...currentDocument.editor_ids].sort()
+          (editorsBySkillId.get(skill.sId) ?? [])
+            .map((editor) => editor.sId)
+            .sort()
         )
       );
     });
+    return removeNulls(
+      current.map((document) => skillById.get(document.skill_id) ?? null)
+    );
   }
 
   static async makeSuggestion(
