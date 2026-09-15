@@ -181,7 +181,6 @@ export async function refreshWorkspaceSearchUsageActivity({
   const skills = await SkillResource.listByWorkspace(auth, {
     status: ["active", "archived"],
     onlyCustom: true,
-    permissionFiltering: "dangerously_skip",
     withInstructions: false,
     withTools: false,
     withFileAttachments: false,
