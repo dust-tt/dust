@@ -4483,7 +4483,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       activeUsersCount,
     }: {
       lastEditedByUser: UserResource | null;
-      editors: readonly UserResource[];
+      editors: UserResource[];
       activeUsersCount: number | null;
     }
   ): SkillSearchDocument {
