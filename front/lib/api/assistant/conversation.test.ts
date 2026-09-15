@@ -62,6 +62,11 @@ import {
   isRichAgentMention,
   isRichUserMention,
 } from "@app/types/assistant/mentions";
+import { AUTO_FAST_MODEL_ID } from "@app/types/assistant/models/auto";
+import {
+  GPT_5_6_LUNA_MODEL_ID,
+  GPT_5_6_SOL_MODEL_ID,
+} from "@app/types/assistant/models/openai";
 import { Ok } from "@app/types/shared/result";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -294,6 +299,75 @@ describe("retryAgentMessage", () => {
       // Configuration should remain the same
       expect(newAgentMessage.configuration.sId).toBe(
         agentMessage.configuration.sId
+      );
+    }
+  });
+
+  it("should resolve an explicit model tier for the new version", async () => {
+    const result = await retryAgentMessage(auth, {
+      conversationResource,
+      message: agentMessage,
+      modelSelection: {
+        providerId: AUTO_FAST_MODEL_ID,
+        modelId: AUTO_FAST_MODEL_ID,
+        reasoningEffort: "none",
+      },
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.modelResolutionMethod).toBe(AUTO_FAST_MODEL_ID);
+      expect(result.value.resolvedModel).not.toBeNull();
+      expect(result.value.resolvedModel?.modelId).not.toBe(AUTO_FAST_MODEL_ID);
+    }
+  });
+
+  it("should preserve an existing model resolution without an override", async () => {
+    const resolvedMessage: AgentMessageType = {
+      ...agentMessage,
+      resolvedModel: {
+        providerId: "openai",
+        modelId: GPT_5_6_LUNA_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      modelResolutionMethod: "user",
+    };
+
+    const result = await retryAgentMessage(auth, {
+      conversationResource,
+      message: resolvedMessage,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.resolvedModel).toEqual(resolvedMessage.resolvedModel);
+      expect(result.value.modelResolutionMethod).toBe(
+        resolvedMessage.modelResolutionMethod
+      );
+    }
+  });
+
+  it("should re-resolve an existing stream selection without an override", async () => {
+    const resolvedMessage: AgentMessageType = {
+      ...agentMessage,
+      resolvedModel: {
+        providerId: "openai",
+        modelId: GPT_5_6_SOL_MODEL_ID,
+        reasoningEffort: "high",
+      },
+      modelResolutionMethod: "auto",
+    };
+
+    const result = await retryAgentMessage(auth, {
+      conversationResource,
+      message: resolvedMessage,
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.modelResolutionMethod).toBe("auto");
+      expect(result.value.resolvedModel?.modelId).not.toBe(
+        GPT_5_6_SOL_MODEL_ID
       );
     }
   });

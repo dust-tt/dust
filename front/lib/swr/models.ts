@@ -5,8 +5,9 @@ import type {
 } from "@app/types/api/assistant/models";
 import { isStaticModelId } from "@app/types/assistant/models/models";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
+import { useSWRConfig } from "swr";
 
 const EMPTY_DEGRADED_MODEL_IDS: ReadonlySet<string> = new Set();
 
@@ -15,6 +16,19 @@ const EMPTY_DEGRADED_MODEL_IDS: ReadonlySet<string> = new Set();
 // hours without a reload. Polling pauses while the tab is hidden, and focus
 // revalidation (throttled to the same cadence) covers coming back to it.
 const MODELS_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
+function getModelsSWRKey(workspaceId: string): string {
+  return `/api/w/${workspaceId}/models`;
+}
+
+export function useRevalidateModels(owner: LightWorkspaceType) {
+  const { mutate } = useSWRConfig();
+
+  return useCallback(
+    () => mutate(getModelsSWRKey(owner.sId)),
+    [mutate, owner.sId]
+  );
+}
 
 export function useModels({
   owner,
@@ -27,7 +41,7 @@ export function useModels({
   const modelsFetcher: Fetcher<GetEnabledModelsResponseType> = fetcher;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/models`,
+    getModelsSWRKey(owner.sId),
     modelsFetcher,
     {
       disabled,

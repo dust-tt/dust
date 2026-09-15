@@ -7,7 +7,35 @@ const REFRESH_INTERVAL_MS = 60 * 1000;
 
 let cachedDegradedModelIds: ReadonlySet<string> = new Set();
 let lastRefreshStartedAtMs = 0;
-let refreshing = false;
+let refreshPromise: Promise<void> | null = null;
+
+function startRefresh(): Promise<void> {
+  lastRefreshStartedAtMs = Date.now();
+  refreshPromise = ModelDegradationResource.listDegradedEndpoints()
+    .then((degradedEndpoints) => {
+      cachedDegradedModelIds = new Set(
+        degradedEndpoints.map((endpoint) => endpoint.modelId)
+      );
+    })
+    .catch((err) => {
+      // Keep the last known set: a database blip must not silently bring a
+      // degraded model back into the streams.
+      logger.error(
+        { err: normalizeError(err) },
+        "Failed to refresh the degraded models"
+      );
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+}
+
+export async function refreshDegradedModelIds(): Promise<ReadonlySet<string>> {
+  await (refreshPromise ?? startRefresh());
+  return cachedDegradedModelIds;
+}
 
 /**
  * The models an operator marked as degraded, i.e. having an ongoing incident on
@@ -27,27 +55,8 @@ let refreshing = false;
  */
 export function getDegradedModelIds(): ReadonlySet<string> {
   const now = Date.now();
-  if (!refreshing && now - lastRefreshStartedAtMs > REFRESH_INTERVAL_MS) {
-    refreshing = true;
-    lastRefreshStartedAtMs = now;
-
-    void ModelDegradationResource.listDegradedEndpoints()
-      .then((degradedEndpoints) => {
-        cachedDegradedModelIds = new Set(
-          degradedEndpoints.map((endpoint) => endpoint.modelId)
-        );
-      })
-      .catch((err) => {
-        // Keep the last known set: a database blip must not silently bring a
-        // degraded model back into the streams.
-        logger.error(
-          { err: normalizeError(err) },
-          "Failed to refresh the degraded models"
-        );
-      })
-      .finally(() => {
-        refreshing = false;
-      });
+  if (!refreshPromise && now - lastRefreshStartedAtMs > REFRESH_INTERVAL_MS) {
+    void startRefresh();
   }
 
   return cachedDegradedModelIds;
