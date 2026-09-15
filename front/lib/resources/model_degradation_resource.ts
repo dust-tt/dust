@@ -4,12 +4,23 @@ import type {
 } from "@app/lib/model_constructors/types/degradations";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
+import type { ModelDegradationSource } from "@app/lib/resources/storage/models/model_degradations";
 import { ModelDegradationModel } from "@app/lib/resources/storage/models/model_degradations";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
 import type { Attributes, ModelStatic } from "sequelize";
 import { Op } from "sequelize";
+
+type ModelDegradationUpdateOptions = {
+  source?: ModelDegradationSource;
+  expiresAt?: Date | null;
+};
+
+type ModelDegradationListOptions = {
+  source?: ModelDegradationSource;
+  now?: Date;
+};
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -27,8 +38,27 @@ export class ModelDegradationResource extends BaseResource<ModelDegradationModel
   }
 
   // Bounded by the endpoint catalog: at most a few dozen rows.
-  static async listDegradedEndpoints(): Promise<DegradedModelEndpointType[]> {
-    const rows = await ModelDegradationModel.findAll();
+  /**
+   * @cc [owner:frankaloia,label:backend] only-list-active-degradations
+   * Listing a source MUST NOT return its degradation rows whose `expiresAt` is in the past.
+   */
+  static async listDegradedEndpoints({
+    source = "manual",
+    now = new Date(),
+  }: ModelDegradationListOptions = {}): Promise<DegradedModelEndpointType[]> {
+    const rows = await ModelDegradationModel.findAll({
+      where: {
+        source,
+        [Op.or]: [
+          { expiresAt: null },
+          {
+            expiresAt: {
+              [Op.gt]: now,
+            },
+          },
+        ],
+      },
+    });
 
     return rows.map(({ modelId, providerId, host }) => ({
       modelId,
@@ -37,8 +67,14 @@ export class ModelDegradationResource extends BaseResource<ModelDegradationModel
     }));
   }
 
+  /**
+   * @cc [owner:frankaloia,label:backend] isolate-degradation-sources
+   * Updating an endpoint for one source MUST NOT create or delete degradation state owned by
+   * another source.
+   */
   static async updateDegradedEndpoints(
-    updates: DegradedModelEndpointUpdateType[]
+    updates: DegradedModelEndpointUpdateType[],
+    { source = "manual", expiresAt = null }: ModelDegradationUpdateOptions = {}
   ): Promise<void> {
     // An empty `Op.or` below would clear the whole table.
     if (updates.length === 0) {
@@ -62,12 +98,22 @@ export class ModelDegradationResource extends BaseResource<ModelDegradationModel
 
     await frontSequelize.transaction(async (transaction) => {
       await ModelDegradationModel.destroy({
-        where: { [Op.or]: named },
+        where: {
+          [Op.or]: named,
+          source,
+        },
         transaction,
       });
 
       if (toDegrade.length > 0) {
-        await ModelDegradationModel.bulkCreate(toDegrade, { transaction });
+        await ModelDegradationModel.bulkCreate(
+          toDegrade.map((endpoint) => ({
+            ...endpoint,
+            source,
+            expiresAt,
+          })),
+          { transaction }
+        );
       }
     });
   }
