@@ -442,6 +442,7 @@ function CustomizationSection() {
   return (
     <SectionContent
       title="Customization"
+      description="Adjust how Dust looks and behaves for you."
       footer={
         <Button
           label="Save"
