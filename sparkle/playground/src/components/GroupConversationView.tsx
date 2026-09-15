@@ -1,5 +1,4 @@
 import {
-  Archive,
   ArrowRight,
   Avatar,
   Button,
@@ -7,14 +6,6 @@ import {
   ButtonsSwitchList,
   Check,
   CheckDouble,
-  Chip,
-  ContentMessage,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DotsHorizontal,
   DropdownMenu,
   DropdownMenuContent,
@@ -26,11 +17,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-  EmptyCTA,
-  EmptyCTAButton,
-  File02,
   Icon,
-  Input,
   ListGroup,
   ListItemSection,
   MagicWand02,
@@ -44,20 +31,15 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SliderToggle,
   Tabs,
   TabsContent,
   Trash01,
   TypingAnimation,
   Umbrella03,
-  Upload01,
   User01,
-  Users01,
-  XClose,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import { cn } from "@sparkle/lib/utils";
-import type { ColumnDef } from "@tanstack/react-table";
 import {
   Fragment,
   useCallback,
@@ -81,6 +63,10 @@ import {
   isMyPodMineConversation,
   isTriggeredConversation,
 } from "../data/myPod";
+import {
+  DEFAULT_POD_NOTIFICATION_CONDITION,
+  type PodNotificationCondition,
+} from "../data/podSettings";
 import { formatRowTime } from "../data/time";
 import { getTriggerById } from "../data/triggers";
 import type {
@@ -92,10 +78,7 @@ import type {
   User,
 } from "../data/types";
 import { getUserById } from "../data/users";
-import {
-  PodCustomizationSection,
-  type PodTabCustomizationItem,
-} from "./PodCustomizationSection";
+import type { PodTabCustomizationItem } from "./PodCustomizationSection";
 import { buildConversationRowMenuItems } from "./conversationRowMenu";
 import { EmptyState } from "./EmptyState";
 import {
@@ -105,7 +88,6 @@ import {
   type FilterGroup,
   type FilterSelection,
 } from "./FilterMenu";
-import { DataTable } from "./DataTableDnd";
 import { FilePreviewPanel } from "./FilePreviewPanel";
 import { FilesBrowser } from "./FilesBrowser";
 import { FrameSheetHeader } from "./FrameSheetHeader";
@@ -114,6 +96,7 @@ import {
   DATA_SOURCE_FILE_NAME_DRAG_MIME,
 } from "./FreeButtonSwitch";
 import { InputBar, type InputBarTaskCommand } from "./InputBar";
+import { PodSettingsSection } from "./PodSettingsSection";
 import { SuggestionBox } from "./SuggestionBox";
 import { TaskItem } from "./TaskItem";
 import { TriggerRunAvatar } from "./TriggerRunAvatar";
@@ -133,6 +116,11 @@ interface GroupConversationViewProps {
   onUpdateSpaceName?: (spaceId: string, newName: string) => void;
   onUpdateSpacePublic?: (spaceId: string, isPublic: boolean) => void;
   spacePublicSettings?: Map<string, boolean>;
+  onUpdateSpaceNotifications?: (
+    spaceId: string,
+    condition: PodNotificationCondition
+  ) => void;
+  spaceNotificationSettings?: Map<string, PodNotificationCondition>;
   isProjectJoined?: boolean;
   onJoinProject?: () => void;
   onLeaveProject?: () => void;
@@ -169,6 +157,7 @@ interface GroupConversationViewProps {
     addableFiles: DataSource[];
     onReorder: (draggedValue: string, targetValue: string) => void;
     onChangeIcon: (tabValue: string, iconName: string) => void;
+    onRename: (tabValue: string, title: string) => void;
     onRemove: (tabValue: string) => void;
     onAdd: (file: DataSource) => void;
   };
@@ -1348,6 +1337,8 @@ export function GroupConversationView({
   onUpdateSpaceName,
   onUpdateSpacePublic,
   spacePublicSettings,
+  onUpdateSpaceNotifications,
+  spaceNotificationSettings,
   isProjectJoined = false,
   onJoinProject = () => {},
   onLeaveProject = () => {},
@@ -1456,29 +1447,6 @@ export function GroupConversationView({
   const pendingFocusTodoItemKeyRef = useRef<string | null>(null);
   const todoItemEditorRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  // Settings state
-  const [roomName, setRoomName] = useState(space.name);
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [roomDescription, setRoomDescription] = useState(
-    space.description ?? ""
-  );
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
-  const [editorIds, setEditorIds] = useState<string[]>(editorUserIds);
-  const [isPublic, setIsPublic] = useState(
-    spacePublicSettings?.get(space.id) ?? space.isPublic ?? true
-  );
-  const [showNameSaveDialog, setShowNameSaveDialog] = useState(false);
-  const [showPublicToggleDialog, setShowPublicToggleDialog] = useState(false);
-  const [pendingPublicValue, setPendingPublicValue] = useState<boolean | null>(
-    null
-  );
-
-  const [isProjectArchived, setIsProjectArchived] = useState(false);
-  const [archivedAt, setArchivedAt] = useState<Date | null>(null);
-  const [archivedByName, setArchivedByName] = useState<string | null>(null);
-  const [showDeleteProjectDialog, setShowDeleteProjectDialog] = useState(false);
-  const [deleteConfirmDraft, setDeleteConfirmDraft] = useState("");
-
   // Active tab — controlled externally if activeTab/onTabChange props are provided
   const [internalActiveTab, setInternalActiveTab] = useState("conversations");
   const activeTab = controlledActiveTab ?? internalActiveTab;
@@ -1512,13 +1480,8 @@ export function GroupConversationView({
   );
 
   // Members tab state
-  const [membersSearchText, setMembersSearchText] = useState("");
   const [selectedMember, setSelectedMember] = useState<User | null>(null);
   const [isMemberSheetOpen, setIsMemberSheetOpen] = useState(false);
-  const [removeMemberDialogOpen, setRemoveMemberDialogOpen] = useState(false);
-  const [selectedMemberIdToRemove, setSelectedMemberIdToRemove] = useState<
-    string | null
-  >(null);
   const [conversationIdToShowFocus, setConversationIdToShowFocus] = useState<
     string | null
   >(null);
@@ -2116,54 +2079,6 @@ export function GroupConversationView({
       }
     };
   }, []);
-
-  // Handle room name save confirmation
-  const handleNameSaveConfirm = () => {
-    onUpdateSpaceName?.(space.id, roomName);
-    setIsEditingName(false);
-    setShowNameSaveDialog(false);
-  };
-
-  // Handle public toggle confirmation
-  const handlePublicToggleConfirm = () => {
-    if (pendingPublicValue !== null) {
-      setIsPublic(pendingPublicValue);
-      onUpdateSpacePublic?.(space.id, pendingPublicValue);
-      setPendingPublicValue(null);
-    }
-    setShowPublicToggleDialog(false);
-  };
-
-  const handleArchiveProject = () => {
-    setIsProjectArchived(true);
-    setArchivedAt(new Date());
-    setArchivedByName(users[0]?.fullName ?? users[0]?.email ?? "Unknown");
-  };
-
-  const handleUnarchiveProject = () => {
-    setIsProjectArchived(false);
-    setArchivedAt(null);
-    setArchivedByName(null);
-  };
-
-  // Reset room name when space changes
-  useEffect(() => {
-    setRoomName(space.name);
-    setIsEditingName(false);
-    setRoomDescription(space.description ?? "");
-    setIsEditingDescription(false);
-    setEditorIds(editorUserIds);
-    setIsPublic(spacePublicSettings?.get(space.id) ?? space.isPublic ?? true);
-    setIsProjectArchived(false);
-    setArchivedAt(null);
-    setArchivedByName(null);
-    setShowDeleteProjectDialog(false);
-    setDeleteConfirmDraft("");
-  }, [space.id, space.name, spacePublicSettings, space.isPublic]);
-
-  useEffect(() => {
-    setEditorIds(editorUserIds);
-  }, [editorUserIds]);
 
   useEffect(() => {
     if (!hasHistory) {
@@ -3153,162 +3068,6 @@ export function GroupConversationView({
     };
   }, [checkedSummaryItems, handleCleanTodoItems]);
 
-  // Handle remove member confirmation
-  const handleRemoveMemberConfirm = () => {
-    if (selectedMemberIdToRemove) {
-      // For prototyping, we'll just filter from the members list
-      // In a real app, this would call a callback prop
-      setSelectedMemberIdToRemove(null);
-    }
-    setRemoveMemberDialogOpen(false);
-  };
-
-  const toggleMemberEditor = (userId: string) => {
-    setEditorIds((prev) => {
-      if (prev.includes(userId)) {
-        return prev.filter((id) => id !== userId);
-      }
-      return [...prev, userId];
-    });
-  };
-
-  // Format date for display
-  const formatDate = (date: Date): string => {
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
-  // Create member table columns
-  const memberColumns: ColumnDef<Member>[] = useMemo(
-    () => [
-      {
-        accessorKey: "userId",
-        header: "Name",
-        id: "name",
-        sortingFn: "text",
-        meta: {
-          className: "w-full",
-        },
-        cell: (info) => {
-          const userId = info.getValue() as string;
-          const user = getUserById(userId);
-          if (!user) return <DataTable.BasicCellContent label="Unknown" />;
-          return (
-            <DataTable.CellContent>
-              <div className="flex items-center gap-2">
-                <Avatar
-                  name={user.fullName}
-                  visual={user.portrait}
-                  size="xs"
-                  isRounded={true}
-                />
-                <span className="text-sm">{user.fullName}</span>
-              </div>
-            </DataTable.CellContent>
-          );
-        },
-      },
-      {
-        accessorKey: "userId",
-        header: "Email",
-        id: "email",
-        meta: {
-          className: "w-[200px]",
-        },
-        cell: (info) => {
-          const userId = info.getValue() as string;
-          const user = getUserById(userId);
-          if (!user) return <DataTable.BasicCellContent label="Unknown" />;
-          return <DataTable.BasicCellContent label={user.email} />;
-        },
-      },
-      {
-        accessorKey: "userId",
-        header: "Role",
-        id: "role",
-        meta: {
-          className: "w-[120px]",
-        },
-        cell: (info) => {
-          const userId = info.getValue() as string;
-          return editorIds.includes(userId) ? (
-            <DataTable.CellContent>
-              <Chip size="xs" color="success" label="editor" />
-            </DataTable.CellContent>
-          ) : (
-            <DataTable.BasicCellContent label="" />
-          );
-        },
-      },
-      {
-        accessorKey: "joinedAt",
-        header: "Joined at",
-        id: "joinedAt",
-        meta: {
-          className: "w-[140px]",
-        },
-        cell: (info) => {
-          const date = info.getValue() as Date;
-          return <DataTable.BasicCellContent label={formatDate(date)} />;
-        },
-      },
-      {
-        id: "actions",
-        header: "",
-        meta: {
-          className: "w-12",
-        },
-        cell: (info) => (
-          <DataTable.MoreButton
-            menuItems={[
-              {
-                kind: "item",
-                icon: editorIds.includes(info.row.original.userId)
-                  ? XClose
-                  : Check,
-                label: editorIds.includes(info.row.original.userId)
-                  ? "Remove from editors"
-                  : "Set as editor",
-                onClick: () => {
-                  toggleMemberEditor(info.row.original.userId);
-                },
-              },
-              {
-                kind: "item",
-                label: "Remove from the Pod",
-                icon: Trash01,
-                variant: "warning",
-                onClick: () => {
-                  setSelectedMemberIdToRemove(info.row.original.userId);
-                  setRemoveMemberDialogOpen(true);
-                },
-              },
-            ]}
-          />
-        ),
-      },
-    ],
-    [editorIds]
-  );
-
-  // Filter members based on search text
-  const filteredMembers = useMemo(() => {
-    if (!membersSearchText.trim()) {
-      return members;
-    }
-    const searchLower = membersSearchText.toLowerCase();
-    return members.filter((member) => {
-      const user = getUserById(member.userId);
-      if (!user) return false;
-      return (
-        user.fullName.toLowerCase().includes(searchLower) ||
-        user.email.toLowerCase().includes(searchLower)
-      );
-    });
-  }, [members, membersSearchText]);
   const isShowingTodoSuggestions = todoSuggestionStatus !== "idle";
   const showMineGroupAll =
     !hideConversationFilters &&
@@ -4054,235 +3813,25 @@ export function GroupConversationView({
         )}
 
         {/* Settings Tab */}
-        <GroupConversationTabContent value="settings" contentClassName="gap-8">
-          <div className="flex justify-end">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" icon={DotsHorizontal} />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {isProjectArchived ? (
-                  <DropdownMenuItem
-                    icon={Upload01}
-                    label="Unarchive project"
-                    onClick={handleUnarchiveProject}
-                  />
-                ) : (
-                  <DropdownMenuItem
-                    icon={Archive}
-                    label="Archive project"
-                    variant="warning"
-                    onClick={handleArchiveProject}
-                  />
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-          {isProjectArchived && (
-            <ContentMessage variant="info" size="lg">
-              This project has been archived.
-            </ContentMessage>
-          )}
-          <div className="flex w-full flex-col gap-2">
-            <h3 className="heading-lg">Name</h3>
-            <div className="flex w-full min-w-0 gap-2">
-              <Input
-                value={roomName}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  setRoomName(e.target.value);
-                  setIsEditingName(e.target.value !== space.name);
-                }}
-                placeholder="Enter room name"
-                containerClassName="flex-1"
-                className="has-[input:not(:placeholder-shown)]:border-border-form [&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-background"
-              />
-              {isEditingName && (
-                <>
-                  <Button
-                    label="Save"
-                    variant="highlight"
-                    onClick={() => setShowNameSaveDialog(true)}
-                  />
-                  <Button
-                    label="Cancel"
-                    variant="outline"
-                    onClick={() => {
-                      setRoomName(space.name);
-                      setIsEditingName(false);
-                    }}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-          <div className="flex w-full flex-col gap-2">
-            <h3 className="heading-lg">Description</h3>
-            <div className="flex w-full min-w-0 gap-2">
-              <Input
-                value={roomDescription}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  setRoomDescription(e.target.value);
-                  setIsEditingDescription(
-                    e.target.value !== (space.description ?? "")
-                  );
-                }}
-                placeholder="Enter room description"
-                containerClassName="flex-1"
-                className="has-[input:not(:placeholder-shown)]:border-border-form [&:has(input:not(:placeholder-shown)):not(:focus-within)]:bg-background"
-              />
-              {isEditingDescription && (
-                <>
-                  <Button
-                    label="Save"
-                    variant="highlight"
-                    onClick={() => {
-                      setIsEditingDescription(false);
-                    }}
-                  />
-                  <Button
-                    label="Cancel"
-                    variant="outline"
-                    onClick={() => {
-                      setRoomDescription(space.description ?? "");
-                      setIsEditingDescription(false);
-                    }}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-          {/* Open to Everyone Section */}
-
-          <div className="flex w-full flex-col gap-2">
-            <h3 className="heading-lg">Visibility</h3>
-            <div className="flex items-start items-center justify-between gap-4 border-y py-4">
-              <div className="flex flex-col">
-                <div className="heading-sm text-foreground">
-                  Opened to everyone
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Anyone in the workspace can find and join the room.
-                </div>
-              </div>
-              <SliderToggle
-                selected={isPublic}
-                onClick={() => {
-                  const nextValue = !isPublic;
-                  setShowPublicToggleDialog(true);
-                  // Store the intended new value temporarily
-                  setPendingPublicValue(nextValue);
-                }}
-              />
-            </div>
-          </div>
-          {podTabCustomization && (
-            <PodCustomizationSection
-              tabs={podTabCustomization.tabs}
-              addableFiles={podTabCustomization.addableFiles}
-              onReorder={podTabCustomization.onReorder}
-              onChangeIcon={podTabCustomization.onChangeIcon}
-              onRemove={podTabCustomization.onRemove}
-              onAdd={podTabCustomization.onAdd}
-            />
-          )}
-          {/* Members Section */}
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <h3 className="heading-lg flex-1">Members & Editors</h3>
-              <Button
-                label="Manage"
-                variant="outline"
-                icon={Users01}
-                onClick={() => onInviteMembers?.()}
-              />
-            </div>
-            {members.length === 0 ? (
-              <EmptyCTA
-                message="Feeling lonely? Invite participants!."
-                action={
-                  <EmptyCTAButton
-                    icon={Users01}
-                    label="Invite"
-                    onClick={() => onInviteMembers?.()}
-                  />
-                }
-              />
-            ) : (
-              <>
-                <SearchInput
-                  name="members-search"
-                  value={membersSearchText}
-                  onChange={setMembersSearchText}
-                  placeholder="Search members..."
-                  className="w-full min-w-0 max-w-80"
-                />
-                <DataTable
-                  columns={memberColumns}
-                  data={filteredMembers}
-                  sorting={[{ id: "name", desc: false }]}
-                />
-              </>
-            )}
-          </div>
-
-          <div className="flex w-full flex-col gap-8 border-t pt-8">
-            <div className="flex w-full flex-col gap-3">
-              <h3 className="heading-lg">Danger Zone</h3>
-              <h4 className="heading-base">Archive</h4>
-              {!isProjectArchived && (
-                <p className="text-sm text-muted-foreground">
-                  This project will be removed from the sidebar. Its data stays
-                  intact and can still be used as a data source.
-                </p>
-              )}
-              {isProjectArchived ? (
-                <div className="flex flex-col gap-3">
-                  {archivedAt && archivedByName && (
-                    <p className="text-sm text-foreground">
-                      Archived on{" "}
-                      <span className="font-medium">
-                        {formatDate(archivedAt)} ·{" "}
-                        {archivedAt.toLocaleTimeString("en-US", {
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
-                      </span>{" "}
-                      by <span className="font-medium">{archivedByName}</span>.
-                    </p>
-                  )}
-                  <div className="flex w-full flex-col items-start">
-                    <Button
-                      icon={Upload01}
-                      variant="outline"
-                      label="Unarchive"
-                      onClick={handleUnarchiveProject}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex w-full flex-col items-start">
-                  <Button
-                    icon={Archive}
-                    variant="warning-secondary"
-                    label="Archive"
-                    onClick={handleArchiveProject}
-                  />
-                </div>
-              )}
-              <h4 className="heading-base">Delete</h4>
-              <p className="text-sm text-muted-foreground">
-                {`This permanently removes all content—conversations, folders, websites, and data sources. Assistants using this project's tools will be impacted. This cannot be undone.`}
-              </p>
-              <div className="flex w-full flex-col items-start">
-                <Button
-                  icon={Trash01}
-                  variant="warning"
-                  label="Delete project"
-                  onClick={() => setShowDeleteProjectDialog(true)}
-                />
-              </div>
-            </div>
-          </div>
+        <GroupConversationTabContent value="settings" fullBleed>
+          <PodSettingsSection
+            key={space.id}
+            space={space}
+            members={members}
+            editorUserIds={editorUserIds}
+            isPublic={
+              spacePublicSettings?.get(space.id) ?? space.isPublic ?? true
+            }
+            notificationCondition={
+              spaceNotificationSettings?.get(space.id) ??
+              DEFAULT_POD_NOTIFICATION_CONDITION
+            }
+            onUpdateSpaceName={onUpdateSpaceName}
+            onUpdateSpacePublic={onUpdateSpacePublic}
+            onUpdateSpaceNotifications={onUpdateSpaceNotifications}
+            onInviteMembers={onInviteMembers}
+            podTabCustomization={podTabCustomization}
+          />
         </GroupConversationTabContent>
       </Tabs>
 
@@ -4306,174 +3855,6 @@ export function GroupConversationView({
           </div>
         </div>
       )}
-
-      {/* Confirmation Dialogs */}
-      {/* Name Save Dialog */}
-      <Dialog
-        open={showNameSaveDialog}
-        onOpenChange={(open: boolean) => {
-          if (!open) {
-            setShowNameSaveDialog(false);
-          }
-        }}
-      >
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Change name to "{roomName}"?</DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            This updates the name for everyone and may impact Agents set to post
-            here.
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => setShowNameSaveDialog(false),
-            }}
-            rightButtonProps={{
-              label: "Rename",
-              variant: "warning",
-              onClick: handleNameSaveConfirm,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete project (playground mockup) */}
-      <Dialog
-        open={showDeleteProjectDialog}
-        onOpenChange={(open: boolean) => {
-          setShowDeleteProjectDialog(open);
-          if (!open) {
-            setDeleteConfirmDraft("");
-          }
-        }}
-      >
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Delete {space.name}?</DialogTitle>
-          </DialogHeader>
-          <DialogContainer className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground">
-              Type <span className="font-semibold text-foreground">delete</span>{" "}
-              below to confirm. This permanently removes all project content and
-              cannot be undone.
-            </p>
-            <Input
-              name="delete-confirm"
-              value={deleteConfirmDraft}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setDeleteConfirmDraft(e.target.value)
-              }
-              placeholder="Type delete to confirm"
-              containerClassName="w-full"
-            />
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => {
-                setShowDeleteProjectDialog(false);
-                setDeleteConfirmDraft("");
-              },
-            }}
-            rightButtonProps={{
-              label: "Delete permanently",
-              variant: "warning",
-              disabled: deleteConfirmDraft.trim().toLowerCase() !== "delete",
-              onClick: () => {
-                setShowDeleteProjectDialog(false);
-                setDeleteConfirmDraft("");
-              },
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Public Toggle Dialog */}
-      <Dialog
-        open={showPublicToggleDialog}
-        onOpenChange={(open: boolean) => {
-          if (!open) {
-            setShowPublicToggleDialog(false);
-            setPendingPublicValue(null);
-          }
-        }}
-      >
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>
-              {pendingPublicValue === true
-                ? "Switch to public?"
-                : "Switch to restricted?"}
-            </DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            {pendingPublicValue === true
-              ? "Everyone in the workspace will be able to see and join this room."
-              : "Access will be limited to invited members only."}
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => {
-                setShowPublicToggleDialog(false);
-                setPendingPublicValue(null);
-              },
-            }}
-            rightButtonProps={{
-              label: "Confirm",
-              variant: "warning",
-              onClick: handlePublicToggleConfirm,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Remove Member Dialog */}
-      <Dialog
-        open={removeMemberDialogOpen}
-        onOpenChange={(open: boolean) => {
-          if (!open) {
-            setRemoveMemberDialogOpen(false);
-            setSelectedMemberIdToRemove(null);
-          }
-        }}
-      >
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>Remove member from room?</DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            {selectedMemberIdToRemove && (
-              <div>
-                Are you sure you want to remove "
-                {getUserById(selectedMemberIdToRemove)?.fullName ||
-                  "this member"}
-                " from this room?
-              </div>
-            )}
-          </DialogContainer>
-          <DialogFooter
-            leftButtonProps={{
-              label: "Cancel",
-              variant: "outline",
-              onClick: () => {
-                setRemoveMemberDialogOpen(false);
-                setSelectedMemberIdToRemove(null);
-              },
-            }}
-            rightButtonProps={{
-              label: "Remove",
-              variant: "warning",
-              onClick: handleRemoveMemberConfirm,
-            }}
-          />
-        </DialogContent>
-      </Dialog>
 
       {/* Document View Sheet */}
       <Sheet
