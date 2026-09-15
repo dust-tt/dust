@@ -7,7 +7,6 @@ import { AgentBrowserContainer } from "@app/components/assistant/conversation/Ag
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { LiveConversation } from "@app/components/assistant/conversation/LiveConversation";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useConversations } from "@app/hooks/conversations";
@@ -328,29 +327,15 @@ export function ConversationContainerVirtuoso({
       title="Attach files to the conversation"
     >
       {activeConversationId ? (
-        <div className="flex h-full w-full flex-col">
-          {hasFeature("gpt_live") && (
-            <div className="shrink-0 px-5 py-2 md:px-8">
-              <LiveConversation
-                key={activeConversationId}
-                owner={owner}
-                user={user}
-                conversationId={activeConversationId}
-              />
-            </div>
-          )}
-          <div className="min-h-0 flex-1">
-            <ConversationViewer
-              owner={owner}
-              user={user}
-              conversationId={activeConversationId}
-              setLimitReachedCode={setLimitReachedCode}
-              limitReachedCode={limitReachedCode}
-              key={conversationViewerKey}
-              clientSideMCPServerIds={clientSideMCPServerIds}
-            />
-          </div>
-        </div>
+        <ConversationViewer
+          owner={owner}
+          user={user}
+          conversationId={activeConversationId}
+          setLimitReachedCode={setLimitReachedCode}
+          limitReachedCode={limitReachedCode}
+          key={conversationViewerKey}
+          clientSideMCPServerIds={clientSideMCPServerIds}
+        />
       ) : (
         <>
           <div

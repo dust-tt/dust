@@ -6,32 +6,26 @@ import type {
 } from "@app/types/assistant/live";
 import {
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  Headphones01,
+  Icon,
+  Microphone01,
+  XClose,
 } from "@dust-tt/sparkle";
-import type { RefObject } from "react";
 
 interface LiveConversationPanelProps {
-  agents: { sId: string; name: string }[];
-  agentId: string;
-  agentsLoading: boolean;
+  agentName: string;
   status: LiveConnectionStatus;
   muted: boolean;
   seconds: number;
   transcript: LiveTranscriptFragment[];
   error: string | null;
   taskStatus: string | null;
-  audioRef: RefObject<HTMLAudioElement>;
-  onAgentChange: (agentId: string) => void;
-  onStart: () => void;
   onStop: () => void;
   onToggleMute: () => void;
 }
 
 const STATUS_LABELS: Record<LiveConnectionStatus, string> = {
-  idle: "Live voice",
+  idle: "Ready",
   connecting: "Connecting…",
   connected: "Listening",
   closing: "Ending call…",
@@ -40,123 +34,97 @@ const STATUS_LABELS: Record<LiveConnectionStatus, string> = {
 };
 
 export function LiveConversationPanel({
-  agents,
-  agentId,
-  agentsLoading,
+  agentName,
   status,
   muted,
   seconds,
   transcript,
   error,
   taskStatus,
-  audioRef,
-  onAgentChange,
-  onStart,
   onStop,
   onToggleMute,
 }: LiveConversationPanelProps) {
-  const active =
-    status === "connected" || status === "connecting" || status === "closing";
-  const agent = agents.find((candidate) => candidate.sId === agentId);
-  const captions = mergeLiveTranscript(transcript).slice(-4);
-
+  const caption = mergeLiveTranscript(transcript).at(-1);
   return (
     <section
       aria-label="Live voice"
-      className="mx-auto flex w-full max-w-conversation flex-col gap-3 rounded-xl border border-border bg-background p-3 text-foreground"
+      className="mb-2 flex w-full flex-col gap-2 rounded-2xl border border-border bg-muted/70 p-3 text-foreground"
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold" role="status">
-            {status === "connected" && muted
-              ? "Microphone muted"
-              : STATUS_LABELS[status]}
-          </span>
-          {active && (
-            <span className="text-xs tabular-nums text-muted-foreground">
-              {Math.floor(seconds / 60)}:
-              {String(Math.floor(seconds % 60)).padStart(2, "0")}
-            </span>
-          )}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Icon
+            visual={Headphones01}
+            size="sm"
+            className="shrink-0 text-highlight"
+          />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">
+              <span className="hidden sm:inline">Voice with </span>@{agentName}
+            </p>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span role="status">
+                {status === "connected" && muted
+                  ? "Microphone muted"
+                  : STATUS_LABELS[status]}
+              </span>
+              {status === "connected" && (
+                <span className="tabular-nums">
+                  {Math.floor(seconds / 60)}:
+                  {String(Math.floor(seconds % 60)).padStart(2, "0")}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                label={agent ? `@${agent.name}` : "Choose an agent"}
-                variant="ghost"
-                isSelect
-                disabled={active || agentsLoading}
-                isLoading={agentsLoading}
-              />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {agents.map((candidate) => (
-                <DropdownMenuItem
-                  key={candidate.sId}
-                  label={`@${candidate.name}`}
-                  onClick={() => onAgentChange(candidate.sId)}
-                />
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="flex shrink-0 items-center gap-1">
           {status === "connected" && (
             <Button
+              icon={Microphone01}
               label={muted ? "Unmute" : "Mute"}
-              variant="outline"
-              size="md"
+              variant={muted ? "outline" : "ghost"}
+              size="sm"
+              isRounded
               onClick={onToggleMute}
             />
           )}
-          {active ? (
-            <Button
-              label={status === "connecting" ? "Cancel" : "End call"}
-              variant="warning"
-              size="md"
-              disabled={status === "closing"}
-              isLoading={status === "closing"}
-              onClick={onStop}
-            />
-          ) : (
-            <Button
-              label="Start voice"
-              variant="highlight"
-              size="md"
-              disabled={!agent || agentsLoading}
-              onClick={onStart}
-            />
-          )}
+          <Button
+            icon={XClose}
+            label={
+              status === "connecting"
+                ? "Cancel"
+                : status === "error"
+                  ? "Dismiss"
+                  : "End"
+            }
+            aria-label={
+              status === "connecting"
+                ? "Cancel voice"
+                : status === "error"
+                  ? "Dismiss voice error"
+                  : "End call"
+            }
+            variant="ghost"
+            size="sm"
+            isRounded
+            disabled={status === "closing"}
+            isLoading={status === "closing"}
+            onClick={onStop}
+          />
         </div>
       </div>
-      {active && (
-        <>
-          <p className="text-xs text-muted-foreground">
-            GPT-Live voice · Approvals and questions appear in chat. Ending the
-            call leaves Dust tasks running.
-          </p>
-          <div
-            aria-label="Live captions"
-            className="max-h-28 overflow-y-auto text-sm"
-          >
-            {captions.length === 0 ? (
-              <p className="text-muted-foreground">
-                Speak naturally. You can interrupt at any time.
-              </p>
-            ) : (
-              captions.map((caption) => (
-                <p key={caption.id}>
-                  <span className="font-medium">
-                    {caption.speaker === "user" ? "You" : "Voice"}:{" "}
-                  </span>
-                  {caption.text}
-                </p>
-              ))
-            )}
-          </div>
-        </>
+      {caption && (
+        <p
+          aria-label="Live captions"
+          className="line-clamp-2 text-sm text-muted-foreground"
+        >
+          <span className="font-medium">
+            {caption.speaker === "user" ? "You" : `@${agentName}`}:{" "}
+          </span>
+          {caption.text}
+        </p>
       )}
       {taskStatus && (
-        <p role="status" className="text-sm text-muted-foreground">
+        <p role="status" className="text-xs text-muted-foreground">
           {taskStatus}
         </p>
       )}
@@ -165,13 +133,6 @@ export function LiveConversationPanel({
           {error}
         </p>
       )}
-      <audio
-        ref={audioRef}
-        autoPlay
-        controls={active}
-        aria-label="Voice playback"
-        className={active ? "h-8 w-full" : "hidden"}
-      />
     </section>
   );
 }

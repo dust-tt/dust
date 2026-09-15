@@ -1,7 +1,10 @@
+import { LiveConversationProvider } from "@app/components/assistant/conversation/LiveConversationContext";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useAuth, useFeatureFlags } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   RichAgentMention,
   RichMention,
@@ -302,7 +305,14 @@ interface InputBarProviderProps {
 export function InputBarProvider({ children }: InputBarProviderProps) {
   const conversationId = useActiveConversationId();
 
-  const { workspace } = useAuth();
+  const { workspace, user } = useAuth();
+  const router = useAppRouter();
+  const onVoiceConversationCreated = useCallback(
+    (id: string) => {
+      void router.push(getConversationRoute(workspace.sId, id));
+    },
+    [router, workspace.sId]
+  );
   const { featureFlags } = useFeatureFlags();
 
   const useCaseMetadata = useMemo(() => {
@@ -333,7 +343,19 @@ export function InputBarProvider({ children }: InputBarProviderProps) {
 
   return (
     <InputBarContextProvider fileUploaderService={fileUploaderService}>
-      {children}
+      {featureFlags.includes("gpt_live") && user ? (
+        <LiveConversationProvider
+          key={workspace.sId}
+          owner={workspace}
+          user={user}
+          conversationId={conversationId}
+          onConversationCreated={onVoiceConversationCreated}
+        >
+          {children}
+        </LiveConversationProvider>
+      ) : (
+        children
+      )}
     </InputBarContextProvider>
   );
 }

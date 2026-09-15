@@ -1,3 +1,7 @@
+import {
+  LiveConversationProvider,
+  useLiveConversationContext,
+} from "@app/components/assistant/conversation/LiveConversationContext";
 import { FetcherProvider } from "@app/lib/swr/FetcherContext";
 import { fetcher, fetcherWithBody } from "@app/lib/swr/fetcher";
 import { useLiveConversation } from "@app/lib/swr/live";
@@ -238,6 +242,155 @@ describe("live delegation lifecycle", () => {
     expect(result.current.status).toBe("closed");
     expect(track.stop).toHaveBeenCalledOnce();
     expect(fetch).not.toHaveBeenCalled();
+    unmount();
+  });
+});
+
+// The audio and session sit outside the input that question cards replace.
+function VoiceAudio() {
+  const voice = useLiveConversationContext();
+  return createElement("audio", { ref: voice?.audioRef });
+}
+
+describe("composer voice session", () => {
+  it("waits for the conversation audio to mount and keeps the call through composer replacement", async () => {
+    let audioMounted = false;
+    let showComposer = true;
+    let conversationId = "conversation";
+    const cache = new Map();
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(
+        SWRConfig,
+        { value: { provider: () => cache } },
+        createElement(FetcherProvider, {
+          fetcher,
+          fetcherWithBody,
+          children: createElement(LiveConversationProvider, {
+            owner,
+            user,
+            conversationId,
+            onConversationCreated: vi.fn(),
+            children: createElement(
+              "div",
+              null,
+              children,
+              audioMounted && createElement(VoiceAudio),
+              showComposer
+                ? createElement("input")
+                : createElement("p", null, "Answer in chat")
+            ),
+          }),
+        })
+      );
+    const { result, rerender, unmount } = renderHook(
+      useLiveConversationContext,
+      { wrapper }
+    );
+    expect(getUserMedia).not.toHaveBeenCalled();
+    await act(async () => {
+      await result.current?.start({
+        conversationId,
+        agent: { sId: "selected-agent", name: "Selected agent" },
+      });
+    });
+    expect(getUserMedia).not.toHaveBeenCalled();
+    audioMounted = true;
+    await act(async () => {
+      rerender();
+    });
+    expect(getUserMedia).toHaveBeenCalledOnce();
+    expect(fetch).toHaveBeenCalledWith(
+      expect.stringContaining("/conversations/conversation/live"),
+      expect.objectContaining({
+        body: JSON.stringify({ agentId: "selected-agent", sdp: "offer" }),
+      })
+    );
+    act(() => channel.emit({ type: "session.started" }));
+    showComposer = false;
+    rerender();
+    expect(result.current?.live.status).toBe("connected");
+    expect(closePeer).not.toHaveBeenCalled();
+    expect(track.stop).not.toHaveBeenCalled();
+    conversationId = "another-conversation";
+    rerender();
+    expect(result.current?.live.status).toBe("closing");
+    expect(track.enabled).toBe(false);
+    act(() =>
+      channel.emit({
+        type: "session.closed",
+        reason: "close_requested",
+        usage: { seconds: 1 },
+      })
+    );
+    conversationId = "conversation";
+    rerender();
+    expect(getUserMedia).toHaveBeenCalledOnce();
+    expect(track.stop).toHaveBeenCalledOnce();
+    unmount();
+  });
+});
+
+describe("starting voice from a new conversation", () => {
+  it("creates an empty conversation with the selected spaces before requesting the microphone", async () => {
+    let conversationId: string | null = null;
+    const onConversationCreated = vi.fn();
+    vi.mocked(fetch).mockResolvedValueOnce(
+      Response.json({
+        conversation: { sId: "new-conversation" },
+        contentFragments: [],
+      })
+    );
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(FetcherProvider, {
+        fetcher,
+        fetcherWithBody,
+        children: createElement(LiveConversationProvider, {
+          owner,
+          user,
+          conversationId,
+          onConversationCreated,
+          children: createElement(
+            "div",
+            null,
+            children,
+            conversationId && createElement(VoiceAudio)
+          ),
+        }),
+      });
+    const { result, rerender, unmount } = renderHook(
+      useLiveConversationContext,
+      { wrapper }
+    );
+    await act(async () => {
+      await result.current?.start({
+        conversationId: null,
+        agent: { sId: "dust", name: "Dust" },
+        spaceId: "project",
+        selectedSpaceIds: ["knowledge"],
+      });
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      "/api/w/workspace/assistant/conversations",
+      expect.objectContaining({
+        body: JSON.stringify({
+          title: null,
+          visibility: "unlisted",
+          spaceId: "project",
+          selectedSpaceIds: ["knowledge"],
+          skipToolsValidation: false,
+          message: null,
+          contentFragments: [],
+        }),
+      })
+    );
+    expect(onConversationCreated).toHaveBeenCalledWith("new-conversation");
+    expect(getUserMedia).not.toHaveBeenCalled();
+    conversationId = "new-conversation";
+    await act(async () => {
+      rerender();
+    });
+    expect(getUserMedia).toHaveBeenCalledOnce();
+    expect(result.current?.request?.conversationId).toBe("new-conversation");
     unmount();
   });
 });

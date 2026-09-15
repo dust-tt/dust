@@ -242,7 +242,7 @@ makeScript(
       await page.screenshot({ path: `${outputDir}.png`, timeout: 10_000 });
       await page.getByRole("button", { name: "End call", exact: true }).click();
       await page
-        .getByText("Call ended", { exact: true })
+        .getByRole("button", { name: "Start voice", exact: true })
         .waitFor({ timeout: 15_000 });
       const audioBytes = await page.evaluate(() =>
         Number(document.documentElement.dataset.liveAudioBytes)
