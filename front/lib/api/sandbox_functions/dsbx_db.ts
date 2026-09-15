@@ -406,9 +406,8 @@ const queryEnvelopeSchema = z.union([
     ok: z.literal(true),
     columns: z.array(z.string()),
     rows: z.array(z.record(z.unknown())),
-    row_count: z.number(),
+    truncated: z.boolean(),
     changes: z.number().nullable(),
-    results_file: z.string().nullable(),
     note: z.string().nullable(),
   }),
   dbErrorEnvelopeSchema,
@@ -417,22 +416,20 @@ const queryEnvelopeSchema = z.union([
 export interface QueryDatabaseResult {
   columns: string[];
   rows: Record<string, unknown>[];
-  rowCount: number;
+  // True when the statement produced more rows than the runner's caps allow; `rows` then holds
+  // the first ones and `note` tells the caller how to narrow the query.
+  truncated: boolean;
   // Rows affected for statements that return no columns (plain INSERT/UPDATE/DELETE); null for
   // result-returning statements.
   changes: number | null;
-  // Sandbox path of a full spill of an oversized result. Always null here: no spill directory is
-  // passed to dsbx, so the runner keeps `rows` as a bounded preview and `note` says how to page.
-  // Kept for parity with the local `dsbx db query` envelope.
-  resultsFile: string | null;
   note: string | null;
 }
 
 /**
  * `dsbx db query`: execute one SQL statement (stdin) against a live database. The runner allows
  * SELECT and DML but refuses DDL/PRAGMA/ATTACH, so the schema only evolves through reconcile.
- * No spill directory (`DUST_POD_QUERY_SPILL_DIR`) is passed: the caller is never on this sandbox,
- * so an oversized result is returned as a bounded inline preview rather than an unreadable path.
+ * Results are capped by the runner (see `collectRows` in cli/dust-sandbox/functions-runner), which
+ * bounds what flows back through Front.
  */
 export async function queryDatabaseOnReadySandbox(
   auth: Authenticator,
@@ -461,9 +458,8 @@ export async function queryDatabaseOnReadySandbox(
     return new Ok({
       columns: envelope.columns,
       rows: envelope.rows,
-      rowCount: envelope.row_count,
+      truncated: envelope.truncated,
       changes: envelope.changes,
-      resultsFile: envelope.results_file,
       note: envelope.note,
     });
   }
