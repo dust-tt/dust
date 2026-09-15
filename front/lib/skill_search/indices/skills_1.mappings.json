@@ -34,7 +34,7 @@
       "type": "keyword"
     },
     "last_edited_by_user_id": {
-      "type": "long"
+      "type": "keyword"
     },
     "requested_space_ids": {
       "type": "keyword"
@@ -57,9 +57,6 @@
     },
     "favorite_count": {
       "type": "integer"
-    },
-    "is_default": {
-      "type": "boolean"
     },
     "editor_ids": {
       "type": "keyword"
