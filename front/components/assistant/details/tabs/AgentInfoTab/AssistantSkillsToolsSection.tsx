@@ -16,6 +16,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import type {
   MCPServerTypeWithViews,
+  MCPServerViewLightType,
   MCPServerViewType,
 } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
@@ -263,7 +264,7 @@ function useAvailableToolsets({
 
 function renderOtherAction(
   action: MCPServerConfigurationType,
-  mcpServers: MCPServerTypeWithViews[]
+  mcpServers: MCPServerTypeWithViews<MCPServerViewLightType>[]
 ): ActionData | null {
   if (isServerSideMCPServerConfiguration(action)) {
     const mcpServer = mcpServers.find((s) =>

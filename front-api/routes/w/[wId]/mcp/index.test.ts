@@ -8,6 +8,7 @@ import {
   INTERNAL_MCP_SERVERS,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
+import type { GetMCPServersResponseBody } from "@app/lib/api/mcp";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
@@ -98,6 +99,50 @@ describe("GET /api/w/:wId/mcp/", () => {
     const body = await response.json();
     expect(body.servers).toBeInstanceOf(Array);
     expect(body.servers).toHaveLength(0);
+  });
+
+  it("returns light views with space, account and editor metadata", async () => {
+    const { workspace, auth } = await setup();
+    const server = await RemoteMCPServerFactory.create(workspace, {
+      tools: [
+        {
+          name: "search",
+          description: "Search things",
+          inputSchema: {
+            type: "object",
+            properties: { query: { type: "string" } },
+          },
+        },
+      ],
+    });
+    const view = await MCPServerViewResource.getMCPServerViewForSystemSpace(
+      auth,
+      server.sId
+    );
+    expect(view).not.toBeNull();
+    const updateResult = await view!.updateOAuthUseCase(
+      auth,
+      "personal_actions"
+    );
+    expect(updateResult.isOk()).toBe(true);
+
+    const response = await getMcp(workspace);
+    expect(response.status).toBe(200);
+    const body: GetMCPServersResponseBody = await response.json();
+    const listedServer = body.servers.find((s) => s.sId === server.sId);
+    const listedView = listedServer?.views.find((v) => v.sId === view!.sId);
+
+    expect(listedServer?.tools[0].inputSchema).toBeDefined();
+    expect(listedView).toMatchObject({
+      sId: view!.sId,
+      spaceId: view!.space.sId,
+      oAuthUseCase: "personal_actions",
+      editedByUser: { userId: auth.getNonNullableUser().sId },
+      server: { sId: server.sId, tools: [] },
+    });
+    expect(listedView?.server).not.toHaveProperty("authorization");
+    expect(listedView?.server).not.toHaveProperty("sharedSecret");
+    expect(listedView?.server).not.toHaveProperty("customHeaders");
   });
 });
 

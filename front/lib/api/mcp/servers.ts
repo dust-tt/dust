@@ -15,8 +15,8 @@ import { getMCPConnectionAccessToken } from "@app/lib/actions/mcp_oauth_access_t
 import type {
   MCPServerType,
   MCPServerTypeWithViews,
+  MCPServerViewLightType,
   MCPServerViewNameConflict,
-  MCPServerViewType,
   MCPToolType,
 } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
@@ -40,7 +40,7 @@ type CustomHeader = { key: string; value: string };
 
 export async function listMCPServersWithViews(
   auth: Authenticator
-): Promise<MCPServerTypeWithViews[]> {
+): Promise<MCPServerTypeWithViews<MCPServerViewLightType>[]> {
   const [remoteMCPs, internalMCPs] = await Promise.all([
     RemoteMCPServerResource.listByWorkspace(auth, {
       includeHeavyAttributes: [
@@ -73,10 +73,10 @@ export async function listMCPServersWithViews(
     }
   );
 
-  const viewsByServerId = new Map<string, MCPServerViewType[]>();
+  const viewsByServerId = new Map<string, MCPServerViewLightType[]>();
   for (const view of allViews) {
     const existing = viewsByServerId.get(view.mcpServerId) ?? [];
-    existing.push(view.toJSON());
+    existing.push(view.toJSONLight());
     viewsByServerId.set(view.mcpServerId, existing);
   }
 

@@ -59,6 +59,9 @@ const createdServerView = {
   sId: "view-id",
   name: null,
   description: "Search Notion pages.",
+  spaceId: "space-id",
+  oAuthUseCase: null,
+  editedByUser: null,
   server: {
     sId: "server-id",
     name: "notion",

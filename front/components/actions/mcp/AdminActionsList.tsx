@@ -17,7 +17,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import type { MCPServerType, MCPServerViewType } from "@app/lib/api/mcp";
+import type { MCPServerType, MCPServerViewLightType } from "@app/lib/api/mcp";
 import { filterMCPServer } from "@app/lib/mcp";
 import {
   useCreateInternalMCPServer,
@@ -50,7 +50,7 @@ import { useMemo, useState } from "react";
 
 type RowData = {
   mcpServer: MCPServerType;
-  mcpServerView?: MCPServerViewType;
+  mcpServerView?: MCPServerViewLightType;
   usage: AgentsUsageType | AgentsAndSkillsUsageType | null;
   isConnected: boolean;
   account: string;

@@ -96,8 +96,10 @@ describe("GET /api/w/:wId/mcp/views/jit", () => {
     // fetch the full server on demand).
     expect(plainView).toBeDefined();
     expect(plainView?.server.tools).toEqual([]);
+    expect(plainView?.spaceId).toBe(globalSpace.sId);
+    expect(plainView?.oAuthUseCase).toBeNull();
 
-    // The light payload carries exactly the display fields — no authorization, no tool input
+    // The light server payload carries exactly the display fields — no authorization, no tool input
     // schemas, no remote server specifics (url, secrets, lastError).
     expect(Object.keys(plainView?.server ?? {}).sort()).toEqual([
       "description",
@@ -109,9 +111,12 @@ describe("GET /api/w/:wId/mcp/views/jit", () => {
     for (const view of serverViews) {
       expect(Object.keys(view).sort()).toEqual([
         "description",
+        "editedByUser",
         "name",
+        "oAuthUseCase",
         "sId",
         "server",
+        "spaceId",
       ]);
       for (const tool of view.server.tools) {
         expect(Object.keys(tool).sort()).toEqual(["description", "name"]);
