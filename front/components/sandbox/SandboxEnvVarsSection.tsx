@@ -444,7 +444,7 @@ export function SandboxEnvVarsSection({
     if (isSandboxEnvVarsError) {
       return (
         <ContentMessage
-          variant="warning"
+          variant="primary"
           icon={InfoCircle}
           size="lg"
           title="Failed to load"
