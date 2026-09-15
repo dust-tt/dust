@@ -1,10 +1,10 @@
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   AGENT_ROUTER_SERVER_NAME,
   SUGGEST_AGENTS_TOOL_NAME,
@@ -123,7 +123,7 @@ Keep your thinking as short as possible.
 4. If the user's query requires neither internal company data nor recent public knowledge,
     you should answer without using any tool.
 
-Only use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME} tool if the user explicitly asks about other agents available in the workspace. Never use it proactively.
+Only use the ${getPrefixedToolName(AGENT_ROUTER_SERVER_NAME, SUGGEST_AGENTS_TOOL_NAME)} tool if the user explicitly asks about other agents available in the workspace. Never use it proactively.
 </instructions>`,
 
   goDeepInstructions: `<go_deep_skill_guidelines>

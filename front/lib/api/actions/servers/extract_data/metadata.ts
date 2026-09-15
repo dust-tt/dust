@@ -1,12 +1,15 @@
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { TagsInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import {
   FIND_TAGS_BASE_DESCRIPTION,
   findTagsSchema,
 } from "@app/lib/api/actions/tools/find_tags/metadata";
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { z } from "zod";
+
+const EXTRACT_DATA_SERVER_NAME = "extract_data" as const;
 
 export const EXTRACT_DATA_MAIN_TOOL_NAME =
   "extract_information_from_documents" as const;
@@ -142,7 +145,7 @@ export function makeExtractDataToolsWithTagsMetadata({
       name: "find_tags",
       description:
         FIND_TAGS_BASE_DESCRIPTION +
-        ` This tool is meant to be used before the ${EXTRACT_DATA_MAIN_TOOL_NAME} tool.`,
+        ` This tool is meant to be used before the ${getPrefixedToolName(EXTRACT_DATA_SERVER_NAME, EXTRACT_DATA_MAIN_TOOL_NAME)} tool.`,
       schema: findTagsSchema,
       stake: "never_ask",
       displayLabels: {
@@ -185,7 +188,7 @@ const EXTRACT_DATA_BASE_TOOLS_METADATA = makeExtractDataBaseToolsMetadata({
 // Server metadata - used in constants.ts
 export const EXTRACT_DATA_SERVER = {
   serverInfo: {
-    name: "extract_data",
+    name: EXTRACT_DATA_SERVER_NAME,
     version: "1.0.0",
     description: "Parse documents to create structured datasets.",
     icon: "ActionScanIcon",

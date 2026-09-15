@@ -1,12 +1,14 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { isAgentLoopRunContext } from "@app/lib/actions/types";
 import {
   CLOSE_PLAN_TOOL_NAME,
   CREATE_PLAN_TOOL_NAME,
   EDIT_PLAN_TOOL_NAME,
   PLAN_FILE_NAME,
+  PLAN_MODE_SERVER_NAME,
   PLAN_MODE_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/plan_mode/metadata";
 import {
@@ -22,6 +24,10 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import assert from "assert";
 
+function planModeToolName(toolName: string): string {
+  return getPrefixedToolName(PLAN_MODE_SERVER_NAME, toolName);
+}
+
 const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
   create_plan: async ({ content }, { auth, runContext }) => {
     assert(isAgentLoopRunContext(runContext), "AgentLoopRunContext expected");
@@ -35,8 +41,8 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
       if (existing.value !== null) {
         return new Err(
           new MCPError(
-            `A plan already exists for this conversation. Use \`${EDIT_PLAN_TOOL_NAME}\` to update it, or ` +
-              `\`${CLOSE_PLAN_TOOL_NAME}\` first if the user explicitly wants to drop it and start over.`
+            `A plan already exists for this conversation. Use \`${planModeToolName(EDIT_PLAN_TOOL_NAME)}\` to update it, or ` +
+              `\`${planModeToolName(CLOSE_PLAN_TOOL_NAME)}\` first if the user explicitly wants to drop it and start over.`
           )
         );
       }
@@ -71,7 +77,7 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
         if (currentContent === null) {
           return new Err(
             new MCPError(
-              `No active ${PLAN_FILE_NAME} for this conversation. Call \`${CREATE_PLAN_TOOL_NAME}\` first to start one.`
+              `No active ${PLAN_FILE_NAME} for this conversation. Call \`${planModeToolName(CREATE_PLAN_TOOL_NAME)}\` first to start one.`
             )
           );
         }
@@ -159,7 +165,7 @@ const handlers: ToolHandlers<typeof PLAN_MODE_TOOLS_METADATA> = {
         type: "text",
         text:
           `Plan closed. The ${PLAN_FILE_NAME} is now archived and will no longer be referenced. If the ` +
-          `user later asks for a new plan, call \`${CREATE_PLAN_TOOL_NAME}\` to start a fresh one.`,
+          `user later asks for a new plan, call \`${planModeToolName(CREATE_PLAN_TOOL_NAME)}\` to start a fresh one.`,
       },
     ]);
   },
