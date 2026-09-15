@@ -45,6 +45,7 @@ import type {
 } from "@app/types/assistant/generation";
 import type { ModelConfigurationType } from "@app/types/assistant/models/types";
 import { removeNulls } from "@app/types/shared/utils/general";
+import { stripContentNodeMentionUrls } from "@app/types/shared/utils/markdown";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 const RENDER_ACTIONS_CONCURRENCY = 5;
@@ -461,7 +462,7 @@ export function renderUserMessage(
   conversation: ConversationWithoutContentType,
   m: UserMessageType
 ): UserMessageTypeModel {
-  const content = replaceMentionsWithAt(m.content);
+  const content = stripContentNodeMentionUrls(replaceMentionsWithAt(m.content));
 
   const metadataItems: string[] = [];
   let additionalInstructions = "";

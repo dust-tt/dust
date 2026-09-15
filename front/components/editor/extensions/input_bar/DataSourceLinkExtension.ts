@@ -2,9 +2,10 @@ import { DataSourceLinkComponent } from "@app/components/editor/input_bar/DataSo
 import { mergeAttributes, Node } from "@tiptap/core";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 
-// Regex to match :content_node_mention[title]{url=...}
+// Matches :content_node_mention[title]{url="..."}. The value is quoted since
+// remark-directive stops an unquoted value at "=". Unquoted is still parsed.
 const DATA_SOURCE_LINK_REGEX_BEGINNING =
-  /^:content_node_mention\[([^\]]+)](\{url=([^}]+)})?/;
+  /^:content_node_mention\[([^\]]+)](\{url="?([^"}]+)"?})?/;
 
 export const DataSourceLinkExtension = Node.create({
   name: "dataSourceLink",
@@ -74,6 +75,13 @@ export const DataSourceLinkExtension = Node.create({
   },
 
   renderMarkdown: (node) => {
-    return `:content_node_mention[${node.attrs?.title ?? ""}]`;
+    const title = node.attrs?.title ?? "";
+    const url = node.attrs?.url;
+    if (!url) {
+      return `:content_node_mention[${title}]`;
+    }
+    // A double quote would close the attribute value early.
+    const escapedUrl = url.replaceAll('"', "%22");
+    return `:content_node_mention[${title}]{url="${escapedUrl}"}`;
   },
 });

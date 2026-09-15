@@ -11,6 +11,7 @@ import type {
 import { isLightConversationType } from "@app/types/assistant/conversation";
 import type { ContentFragmentType } from "@app/types/content_fragment";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { stripContentNodeMentionUrls } from "@app/types/shared/utils/markdown";
 
 type AnyMessageType =
   | UserMessageType
@@ -252,7 +253,7 @@ function renderUserMessageAsText(
     };
   }
 
-  const rawContent = msg.content ?? "";
+  const rawContent = stripContentNodeMentionUrls(msg.content ?? "");
   const { text: content, truncated } = truncateMessageContent(
     rawContent,
     options
