@@ -248,6 +248,33 @@ describe("/api/w/[wId]/groups/[groupId]/granted_seat_type/preview", () => {
     expect(body.preview.memberCount).toBe(1);
   });
 
+  it("succeeds for an empty group when the contract bills the tier", async () => {
+    // Regression: an empty group must not be reported as "contract does not bill
+    // this seat tier" — the tier is resolved from the contract, not the members.
+    const workspace = await WorkspaceFactory.creditPriced();
+    const { auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+      workspace,
+    });
+    const group = await makeProvisionedGroup(workspace);
+    await enableFlag(auth);
+
+    setupEntitledSeats(["pro"]);
+    vi.mocked(getSeatPlan).mockResolvedValue(
+      new Ok({ pro: seatInfo({ name: "Pro", awuCredits: 100 }) })
+    );
+
+    const response = await postPreview(workspace.sId, group.sId, {
+      grantedSeatType: "pro",
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.preview.targetSeatType).toBe("pro");
+    expect(body.preview.memberCount).toBe(0);
+  });
+
   it("includes members already on the granted tier (shown as unchanged)", async () => {
     // Re-granting a seat members already hold must not produce an empty preview:
     // those members are still affected (a pending removal would be cancelled), so

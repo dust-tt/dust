@@ -3241,11 +3241,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     targetSeatType: MembershipSeatType | null;
   }> {
     const workspace = auth.getNonNullableWorkspace();
-    const members = await this.getActiveMembers(auth);
-    if (members.length === 0 || !workspace.metronomeCustomerId) {
+
+    // Resolve whether the contract bills this tier FIRST — independent of the
+    // group's membership. A `null` targetSeatType must mean "the contract does
+    // not bill this tier", never "the group happens to be empty": callers surface
+    // it as a billing error.
+    if (!workspace.metronomeCustomerId) {
       return { members: [], targetSeatType: null };
     }
-
     const contract = await getActiveContract(workspace.sId);
     if (!contract || !(await hasContractSeatSubscription(contract))) {
       return { members: [], targetSeatType: null };
@@ -3261,6 +3264,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
     if (targetSeatType === null) {
       return { members: [], targetSeatType: null };
+    }
+
+    // The contract bills the tier; an empty group is a valid mapping with no
+    // members to move.
+    const members = await this.getActiveMembers(auth);
+    if (members.length === 0) {
+      return { members: [], targetSeatType };
     }
 
     const grantedSeatsByUser =
