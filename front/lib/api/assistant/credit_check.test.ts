@@ -204,6 +204,8 @@ describe("isCreditSpendCheckpointExempt", () => {
     "wakeup",
     "transcript",
     "zendesk",
+    "project_kickoff",
+    "cli",
   ] as const)("is exempt for %s: the author cannot resume the pause from a Dust client", (origin) => {
     const auth = makeAuth({ hasUser: true });
     expect(
