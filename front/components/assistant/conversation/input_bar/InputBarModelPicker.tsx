@@ -11,6 +11,7 @@ type InputBarModelPickerProps = Omit<
   | "showDropdownArrow"
   | "showLabel"
   | "setStickyModelOverride"
+  | "shownModelRef"
   | "stickyModelOverride"
   | "trackingSurface"
 >;
@@ -27,8 +28,12 @@ export function InputBarModelPicker({
   onSelectionChange,
   commitApiRef,
 }: InputBarModelPickerProps) {
-  const { stickyModelOverride, setStickyModelOverride, openModelPickerRef } =
-    useContext(InputBarContext);
+  const {
+    stickyModelOverride,
+    setStickyModelOverride,
+    openModelPickerRef,
+    modelPickerShownModelRef,
+  } = useContext(InputBarContext);
 
   // On mobile (and in the narrow extension) the input bar has no room for the
   // model name, so the trigger stays icon-only with its tooltip.
@@ -48,6 +53,7 @@ export function InputBarModelPicker({
         side={side}
         disabled={disabled}
         selectionRef={selectionRef}
+        shownModelRef={modelPickerShownModelRef}
         onSelectionChange={onSelectionChange}
         stickyModelOverride={stickyModelOverride}
         setStickyModelOverride={setStickyModelOverride}

@@ -25,6 +25,7 @@ import {
   getTierLockReason,
   isPremiumModel,
   isSameSelection,
+  materializeSelection,
   resolveShownSelection,
 } from "@app/components/model_picker/modelPickerUtils";
 import { useModelPickerMenuState } from "@app/components/model_picker/useModelPickerMenuState";
@@ -68,7 +69,13 @@ export interface ModelPickerProps {
   disabled?: boolean;
   // Read-at-submit sink. The picker writes the current toSend here (including
   // derived changes like agent switches); never triggers a parent re-render.
+  // Stays undefined on the untouched agent default, so send omits the model and
+  // the agent's own config applies.
   selectionRef?: MutableRefObject<ModelSelectionType | undefined>;
+  // Same pick, but always named: the agent default is materialized instead of
+  // left undefined. Retry needs this because an omitted model there means
+  // "re-run the model that just failed", not "use the agent's config".
+  shownModelRef?: MutableRefObject<ModelSelectionType | undefined>;
   // Fired only on intentional user picks / revert — safe to setState.
   onSelectionChange?: (modelSelection: ModelSelectionType | undefined) => void;
   stickyModelOverride?: ModelSelectionType | undefined;
@@ -100,6 +107,7 @@ export function ModelPicker({
   side = "top",
   disabled,
   selectionRef,
+  shownModelRef,
   onSelectionChange,
   stickyModelOverride,
   setStickyModelOverride,
@@ -156,6 +164,10 @@ export function ModelPicker({
   // render is fine and avoids any parent re-render.
   if (selectionRef) {
     selectionRef.current = shownModelSelection;
+  }
+  if (shownModelRef) {
+    shownModelRef.current =
+      shownModelSelection ?? materializeSelection(shown.display);
   }
 
   const canRevert = !isSameSelection(shown.display, agentDefault.display);

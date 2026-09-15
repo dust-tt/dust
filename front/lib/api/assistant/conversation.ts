@@ -1732,16 +1732,23 @@ export async function createAgentMessageFromText(
   return created;
 }
 
-// This method is in charge of re-running an agent interaction (generating a new
-// AgentMessage as a result)
+/**
+ * @cc [owner:frankaloia,label:product;api] retry-model-selection
+ * A retry with `modelSelection` MUST resolve that selection for the new agent-message version.
+ * A retry without it MUST re-resolve a previous stream selection so newly degraded models are skipped.
+ * A retry without it MUST preserve a failed concrete model and resolution method when present.
+ * Legacy messages without a resolution MUST continue to resolve the agent's configured model.
+ */
 export async function retryAgentMessage(
   auth: Authenticator,
   {
     conversationResource,
     message,
+    modelSelection,
   }: {
     conversationResource: ConversationResource;
     message: AgentMessageType;
+    modelSelection?: ModelSelectionType;
   }
 ): Promise<Result<AgentMessageType, APIErrorWithContentfulStatusCode>> {
   const conversation: ConversationWithoutContentType =
@@ -1824,14 +1831,31 @@ export async function retryAgentMessage(
     return limitResult;
   }
 
-  let retryModelResolution: AgentMessageModelResolution = message.resolvedModel
-    ? {
-        resolvedModel: message.resolvedModel,
-        modelResolutionMethod: message.modelResolutionMethod ?? "agent",
-      }
-    : await resolveModelForMentionedAgent(auth, {
-        configuration: message.configuration,
-      });
+  const effectiveModelSelection =
+    modelSelection ??
+    (message.modelResolutionMethod &&
+    isModelStreamId(message.modelResolutionMethod)
+      ? {
+          providerId: message.modelResolutionMethod,
+          modelId: message.modelResolutionMethod,
+          reasoningEffort: "none" as const,
+        }
+      : undefined);
+
+  let retryModelResolution: AgentMessageModelResolution =
+    effectiveModelSelection
+      ? await resolveModelForMentionedAgent(auth, {
+          configuration: message.configuration,
+          selection: effectiveModelSelection,
+        })
+      : message.resolvedModel
+        ? {
+            resolvedModel: message.resolvedModel,
+            modelResolutionMethod: message.modelResolutionMethod ?? "agent",
+          }
+        : await resolveModelForMentionedAgent(auth, {
+            configuration: message.configuration,
+          });
 
   const user = auth.user();
   if (user) {
