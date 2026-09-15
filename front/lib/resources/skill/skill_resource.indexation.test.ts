@@ -1,11 +1,67 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import * as skillIndex from "@app/lib/skill_search";
+import { indexSkillSearchActivity } from "@app/temporal/es_indexation/activities";
 import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
+import { Ok } from "@app/types/shared/result";
 import assert from "assert";
 import { describe, expect, it, vi } from "vitest";
 
 describe("resource-owned skill search indexation", () => {
+  it("refreshes indexed editor IDs after add, upsert and remove", async () => {
+    const {
+      authenticator: auth,
+      workspace,
+      user,
+    } = await createResourceTest({
+      role: "admin",
+    });
+    const skill = await SkillFactory.create(auth);
+    const editor = await UserFactory.basic();
+    const secondEditor = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, editor, { role: "user" });
+    await MembershipFactory.associate(workspace, secondEditor, {
+      role: "user",
+    });
+    const indexDocument = vi
+      .spyOn(skillIndex, "indexSkillDocument")
+      .mockResolvedValue(new Ok(undefined));
+    const target = { workspaceId: workspace.sId, skillId: skill.sId };
+    const mutations = [
+      {
+        update: () => skill.addEditors(auth, [editor]),
+        editorIds: [user.sId, editor.sId],
+      },
+      {
+        update: () => skill.upsertEditors(auth, [editor, secondEditor]),
+        editorIds: [user.sId, editor.sId, secondEditor.sId],
+      },
+      {
+        update: () => skill.removeEditors(auth, [editor, secondEditor]),
+        editorIds: [user.sId],
+      },
+    ];
+    for (const { update, editorIds } of mutations) {
+      vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
+      indexDocument.mockClear();
+      expect((await update()).isOk()).toBe(true);
+      expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledExactlyOnceWith(
+        target
+      );
+      await indexSkillSearchActivity(target);
+      expect(indexDocument).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          workspace_id: workspace.sId,
+          skill_id: skill.sId,
+          editor_ids: [...editorIds].sort(),
+        })
+      );
+    }
+  });
+
   it("refreshes an older archived skill renamed to avoid a name collision", async () => {
     const { authenticator: auth } = await createResourceTest({ role: "admin" });
     const archived = await SkillFactory.create(auth, {
