@@ -16,7 +16,9 @@ export type SkillNodeAttributes = {
   skillUnavailable?: boolean;
 };
 
-export const SKILL_NODE_TYPE = "skill";
+import { SKILL_NODE_TYPE } from "@app/lib/editor/node_constants";
+
+export { SKILL_NODE_TYPE };
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {

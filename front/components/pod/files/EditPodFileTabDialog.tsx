@@ -1,4 +1,3 @@
-import { isCustomResourceIconType } from "@app/components/resources/resources_icon_names";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { usePodFileTabs } from "@app/hooks/usePodFileTabs";
 import type { PodFileTab } from "@app/types/pod_file_tab";
@@ -6,6 +5,7 @@ import {
   DEFAULT_POD_FILE_TAB_ICON,
   MAX_POD_FILE_TAB_TITLE_LENGTH,
 } from "@app/types/pod_file_tab";
+import { isCustomResourceIconType } from "@app/types/resources_icon_names";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
   ActionIcons,

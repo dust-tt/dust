@@ -3,8 +3,11 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import { serializeToolTag } from "@app/lib/tools/format";
 import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
+import { setupSkillInstructionsMarkdownPipeline } from "@app/tests/utils/skill_instructions_html";
 import { honoApp } from "@front-api/app";
 import { describe, expect, it } from "vitest";
+
+setupSkillInstructionsMarkdownPipeline();
 
 describe("POST /api/poke/workspaces/:wId/skills/suggestions", () => {
   it("stores inline tool and skill references", async () => {

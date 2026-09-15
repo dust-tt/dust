@@ -20,7 +20,6 @@ import {
   searchConsumptionAnalytics,
 } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
-import type { BillingCycle } from "@app/lib/client/subscription";
 import {
   microCreditsToCredits,
   roundCreditsToMicroCredits,
@@ -54,6 +53,7 @@ import {
   getFairUseAwuCreditsStatus,
   getFairUseAwuCreditsUsedCountsByUser,
 } from "@app/lib/metronome/user_block";
+import type { BillingCycle } from "@app/lib/plans/billing_cycle";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";

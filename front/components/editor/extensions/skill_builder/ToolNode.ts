@@ -1,4 +1,5 @@
 import type { ToolNodeAttributes } from "@app/components/editor/extensions/skill_builder/ToolNodeTypes";
+import { TOOL_NODE_TYPE } from "@app/lib/editor/node_constants";
 import {
   parseToolTag,
   serializeToolTag,
@@ -8,7 +9,7 @@ import {
 import { isString } from "@app/types/shared/utils/general";
 import { Node } from "@tiptap/core";
 
-export const TOOL_NODE_TYPE = "toolNode";
+export { TOOL_NODE_TYPE };
 
 const TOOL_CHIP_CLASS =
   "inline-flex items-center gap-0.5 border border-current/40 rounded px-0.5 text-xs leading-tight";
