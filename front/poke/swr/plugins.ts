@@ -7,7 +7,7 @@ import {
   useFetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import { getUniqueCells } from "@app/poke/swr/cells";
+import { fetchPokeFromAllCells } from "@app/poke/swr/cells";
 import type { PokeListPluginRunsResponseBody } from "@app/types/api/poke/plugin_manager";
 import type { PokeGetPluginAsyncArgsResponseBody } from "@app/types/api/poke/plugins/async_args";
 import type { PokeGetPluginDetailsResponseBody } from "@app/types/api/poke/plugins/manifest";
@@ -140,39 +140,41 @@ export function useRunPokePlugin({
     urlSearchParams.append("workspaceId", pluginResourceTarget.workspace.sId);
   }
 
-  // An absolute base URL bypasses the selected-cell rewrite in clientFetch,
-  // which is how a run is targeted at a specific cell.
-  const runPlugin = async (
-    args: object,
-    baseUrl = ""
-  ): Promise<Result<PokeRunPluginResponseBody["result"], string>> => {
-    const url = `${baseUrl}/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`;
-    // Check if any of the args are File objects
+  // Args carrying a File must go over FormData; otherwise JSON keeps the
+  // request body typed for the API route.
+  const buildRunRequestInit = (args: object): RequestInit => {
     const hasFiles = Object.values(args).some((arg) => arg instanceof File);
-    let res;
     if (hasFiles) {
-      // Use FormData for multipart/form-data when files are present
       const formData = new FormData();
       Object.entries(args).forEach(([key, value]) => {
         formData.append(key, value);
       });
 
-      res = await clientFetch(url, {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-    } else {
-      // Use JSON when no files are present
-      res = await clientFetch(url, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(args),
-      });
+      return { method: "POST", credentials: "include", body: formData };
     }
+
+    return {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(args),
+    };
+  };
+
+  const runPath = `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`;
+
+  // An absolute base URL bypasses the selected-cell URL rewrite, which is
+  // how a run gets targeted at a specific cell.
+  const runPlugin = async (
+    args: object,
+    baseUrl = ""
+  ): Promise<Result<PokeRunPluginResponseBody["result"], string>> => {
+    const res = await clientFetch(
+      `${baseUrl}${runPath}`,
+      buildRunRequestInit(args)
+    );
 
     if (res.ok) {
       const response: PokeRunPluginResponseBody = await res.json();
@@ -187,18 +189,25 @@ export function useRunPokePlugin({
 
   const doRunPlugin = (args: object) => runPlugin(args);
 
-  const doRunPluginOnCells = (
+  const doRunPluginOnCells = async (
     args: object,
     cells: CellInfo[]
-  ): Promise<CellPluginRunResult[]> =>
-    Promise.all(
-      getUniqueCells(cells).map(async (cell) => ({
-        cell,
-        result: await runPlugin(args, cell.url).catch(
-          (e) => new Err(normalizeError(e).message)
-        ),
-      }))
+  ): Promise<CellPluginRunResult[]> => {
+    const results = await fetchPokeFromAllCells<PokeRunPluginResponseBody>({
+      cells,
+      path: runPath,
+      init: buildRunRequestInit(args),
+    });
+
+    return results.map((result) =>
+      result.ok
+        ? { cell: result.cell, result: new Ok(result.data.result) }
+        : {
+            cell: result.cell,
+            result: new Err(normalizeError(result.error).message),
+          }
     );
+  };
 
   return { doRunPlugin, doRunPluginOnCells };
 }

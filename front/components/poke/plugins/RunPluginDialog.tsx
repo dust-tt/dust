@@ -174,8 +174,12 @@ export function RunPluginDialog({
 
   const [isCopied, copyToClipboard] = useCopyToClipboard();
 
-  // Once a run has started or finished, inputs and cell choices are frozen.
-  const isLocked = result !== null || cellResults !== null || isRunning;
+  // Inputs and cell choices are frozen while running or after a fully
+  // successful run; a run with failures stays editable so it can be retried.
+  const hasCellFailures =
+    cellResults?.some((cellResult) => !cellResult.ok) ?? false;
+  const isLocked =
+    isRunning || result !== null || (cellResults !== null && !hasCellFailures);
 
   // Tick an elapsed timer every 5s while the plugin runs so long jobs don't
   // look stalled. Hidden until the first tick so fast plugins stay quiet.
