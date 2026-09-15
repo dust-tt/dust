@@ -43,12 +43,17 @@ const specifications: AgentActionSpecification[] = [
 const PROMPT = `# Role
 You identify existing agents in a workspace that duplicate or overlap with a new agent being created.
 
+# Input
+You receive the instructions (system prompt) of the new agent, followed by the instructions of each existing agent, identified by its agent ID.
+Instructions describe how an agent should behave and what it should do. Compare what the agents are for, not how their instructions are phrased.
+Instructions may be long or truncated; focus on the core purpose they express.
+
 # Similarity Criteria
 Agents are similar when they serve the same user need or solve the same problem.
 Ask yourself: "Would you be confused about which agent to use?"
 
 Examples of similar agents:
-- "Answer questions about our HR policies" and "HR policy assistant" (same purpose)
+- "You answer employee questions about our HR policies" and "You are an HR policy assistant. Help employees find answers in the HR handbook." (same purpose)
 - "Summarize customer support tickets" and "Summarize Zendesk tickets" (same outcome)
 
 Examples of agents that are NOT similar:
@@ -64,36 +69,36 @@ Only return agent IDs when you are confident there is a genuine duplicate. When 
 
 # Examples
 ## Example 1 - Clear duplicates
-Input: "Answer questions about our HR policies"
+Input: "You are an assistant that answers employee questions about our HR policies. Use the HR handbook to ground your answers and cite the relevant section."
 Existing agents:
 ---
-Agent ID abc12: "HR policy assistant, answers employee questions about HR policies"
+Agent ID abc12: "You are the HR policy assistant. Answer employee questions about HR policies using the company handbook. Be concise and link to the source."
 ---
-Agent ID xxx15: "Drafts HR policy documents for the People team"
+Agent ID xxx15: "You help the People team draft new HR policy documents. Follow the company template and use formal language."
 ---
-Agent ID 20aaa: "Helps employees understand company HR policies"
+Agent ID 20aaa: "Help employees understand company HR policies. When asked, explain the policy in plain language and point to the official document."
 ---
-Agent ID 25iju: "Manages customer support emails"
+Agent ID 25iju: "You manage incoming customer support emails: triage them, suggest a reply, and flag urgent ones."
 
 Output: set_similar_agents({ "similar_agents_array": ["abc12", "20aaa"] })
-Reasoning: abc12 and 20aaa both answer questions about HR policies.
+Reasoning: abc12 and 20aaa both answer employee questions about HR policies.
 
 ## Example 2 - No duplicates
-Input: "Generate PowerPoint-like presentations"
+Input: "You generate PowerPoint-like presentations from a short brief. Propose a slide outline first, then write the content of each slide."
 Existing agents:
 ---
-Agent ID abc12: "HR policy assistant"
+Agent ID abc12: "You are the HR policy assistant. Answer employee questions about HR policies using the company handbook."
 ---
-Agent ID xxx15: "Summarizes Zendesk tickets"
+Agent ID xxx15: "Summarize Zendesk tickets. For each ticket, output the customer issue, the current status and the next action."
 
 Output: set_similar_agents({ "similar_agents_array": [] })
 Reasoning: None of the existing agents handle presentations.
 
 ## Example 3 - Same domain, different action
-Input: "Draft HR policy documents"
+Input: "You help the People team draft HR policy documents. Follow the company template and use formal language."
 Existing agents:
 ---
-Agent ID aaa01: "Answers employee questions about HR policies"
+Agent ID aaa01: "Answer employee questions about HR policies using the company handbook."
 
 Output: set_similar_agents({ "similar_agents_array": [] })
 Reasoning: Both concern HR policies but actions don't overlap.
@@ -126,7 +131,7 @@ async function findSimilarAgentsInBatch(
 "${truncateInstructions(a.instructions ?? "")}"`
     )
     .join("\n---\n");
-  const inputText = `Input description:"${naturalDescription}"
+  const inputText = `Input: "${naturalDescription}"
 Existing agents:
 ${existingAgents}
 `;
