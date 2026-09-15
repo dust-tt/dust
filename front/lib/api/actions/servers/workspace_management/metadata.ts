@@ -378,6 +378,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
       "by admins.",
     schema: updateGroupMembersSchema,
     stake: "high",
+    eager: true,
     displayLabels: {
       running: "Updating group members",
       done: "Updated group members",
@@ -392,6 +393,7 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
       "members. Admin and manager only.",
     schema: createGroupSchema,
     stake: "high",
+    eager: true,
     displayLabels: {
       running: "Creating group",
       done: "Created group",
