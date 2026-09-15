@@ -1,16 +1,11 @@
 import type { CreditCheckResult } from "@app/lib/api/assistant/credit_check";
 import {
-  checkCreditSpendCheckpointGate,
   checkPoolCreditGate,
+  isCreditSpendCheckpointExempt,
 } from "@app/lib/api/assistant/credit_check";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import {
-  collectDescendantData,
-  getCumulativeCostMicroUsd,
-} from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
 
 export async function checkCreditsActivity(
@@ -24,39 +19,46 @@ export async function checkCreditsActivity(
   });
 }
 
-export type CreditSpendCheckpointActivityResult =
-  | { crossed: false; skipRemainingChecks: boolean }
-  | { crossed: true; thresholdAwuCredits: number };
+export type CreditSpendCheckpointActivityResult = { crossed: boolean };
 
-const SKIP: CreditSpendCheckpointActivityResult = {
-  crossed: false,
-  skipRemainingChecks: true,
-};
+const NOT_CROSSED: CreditSpendCheckpointActivityResult = { crossed: false };
 
 /**
  * @cc [owner:avervaet,label:backend] checkpoint-pure-check
- * This activity MUST NOT persist, publish or notify anything: it only returns whether the
- * threshold was crossed. Recording the pause belongs to the finalize path, so a failed or timed
- * out check never leaves a message marked paused while its loop keeps running.
+ * This activity MUST NOT persist, publish or notify anything: it only returns whether the message
+ * pauses. Recording the pause belongs to the finalize path, so a failed or timed out check never
+ * leaves a message marked paused while its loop keeps running.
+ */
+/**
+ * @cc [owner:avervaet,label:performance] checkpoint-caller-owns-threshold
+ * Callers MUST only schedule this activity once the message tree's spend, as measured by the
+ * step's guardrail, has reached the checkpoint threshold. The activity does not re-measure spend:
+ * usage only grows, so re-walking the tree here could never change the outcome.
  */
 /**
  * @cc [owner:avervaet,label:product] checkpoint-acknowledged-skips
- * When the message's checkpoint status is `acknowledged`, the activity MUST return not crossed
- * with `skipRemainingChecks: true`, whatever the spend. A user who chose to continue is never
- * asked again for the same message.
+ * When the message's checkpoint status is `acknowledged`, the activity MUST return not crossed,
+ * whatever the spend. A user who chose to continue is never asked again for the same message.
  */
 /**
  * @cc [owner:avervaet,label:product] checkpoint-root-messages-only
  * When the triggering user message is agentic (the agent message belongs to a sub-agent), the
- * activity MUST return not crossed with `skipRemainingChecks: true`, whatever the spend. Only the
- * root message can pause: a paused sub-agent would hang its parent's tool call with no one able
- * to acknowledge it.
+ * activity MUST return not crossed, whatever the spend. Only the root message can pause: a paused
+ * sub-agent would hang its parent's tool call with no one able to acknowledge it.
  */
 export async function checkCreditSpendCheckpointActivity(
   authType: AuthenticatorType,
   { agentLoopArgs }: { agentLoopArgs: AgentLoopArgsWithTiming }
 ): Promise<CreditSpendCheckpointActivityResult> {
   const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
+
+  if (
+    isCreditSpendCheckpointExempt(auth, {
+      userMessageOrigin: agentLoopArgs.userMessageOrigin ?? null,
+    })
+  ) {
+    return NOT_CROSSED;
+  }
 
   const context =
     await ConversationResource.fetchCreditSpendCheckpointContextForAgentMessage(
@@ -72,24 +74,8 @@ export async function checkCreditSpendCheckpointActivity(
     !context.isRootAgentMessage ||
     context.status === "acknowledged"
   ) {
-    return SKIP;
+    return NOT_CROSSED;
   }
 
-  // Read after the step completed, so the step's own run is already accounted for.
-  const { dustRunIds } = await collectDescendantData(auth, {
-    rootAgentMessageId: agentLoopArgs.agentMessageId,
-  });
-  const totalCostMicroUsd = await getCumulativeCostMicroUsd(auth, {
-    dustRunIds,
-  });
-
-  const result = checkCreditSpendCheckpointGate(auth, {
-    consumedAwuCredits: awuFromMicroUsd(totalCostMicroUsd),
-    userMessageOrigin: agentLoopArgs.userMessageOrigin ?? null,
-  });
-  if (result.crossed) {
-    return { crossed: true, thresholdAwuCredits: result.thresholdAwuCredits };
-  }
-
-  return { crossed: false, skipRemainingChecks: result.exempt };
+  return { crossed: true };
 }

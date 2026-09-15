@@ -1,9 +1,11 @@
 import {
-  checkCreditSpendCheckpointGate,
   checkPoolCreditGate,
+  hasReachedCreditSpendCheckpoint,
+  isCreditSpendCheckpointExempt,
 } from "@app/lib/api/assistant/credit_check";
 import type { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
+import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -160,55 +162,40 @@ describe("checkPoolCreditGate", () => {
   });
 });
 
-describe("checkCreditSpendCheckpointGate", () => {
+describe("isCreditSpendCheckpointExempt", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIsProgrammaticUsage.mockReturnValue(false);
   });
 
-  function callCheckpointGate(
-    auth: Authenticator,
-    consumedAwuCredits: number,
-    userMessageOrigin: UserMessageOrigin | null = null
-  ) {
-    return checkCreditSpendCheckpointGate(auth, {
-      consumedAwuCredits,
-      userMessageOrigin,
-    });
-  }
-
   it("applies to non-credit-priced plans too, unlike the pool gate", () => {
     const auth = makeAuth({ isCreditPriced: false, hasUser: true });
-    expect(callCheckpointGate(auth, 5000)).toEqual({
-      crossed: true,
-      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
-    });
+    expect(
+      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: null })
+    ).toBe(false);
   });
 
   it("applies even when metronomeCustomerId is null, unlike the pool gate", () => {
     const auth = makeAuth({ metronomeCustomerId: null, hasUser: true });
-    expect(callCheckpointGate(auth, 5000)).toEqual({
-      crossed: true,
-      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
-    });
+    expect(
+      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: null })
+    ).toBe(false);
   });
 
   it("is exempt when there is no user to answer the pause", () => {
     const auth = makeAuth({ hasUser: false });
-    expect(callCheckpointGate(auth, 5000)).toEqual({
-      crossed: false,
-      exempt: true,
-    });
+    expect(
+      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: "web" })
+    ).toBe(true);
     expect(mockIsProgrammaticUsage).not.toHaveBeenCalled();
   });
 
   it("is exempt for programmatic usage even with a user on the auth", () => {
     mockIsProgrammaticUsage.mockReturnValue(true);
     const auth = makeAuth({ hasUser: true });
-    expect(callCheckpointGate(auth, 5000, "api")).toEqual({
-      crossed: false,
-      exempt: true,
-    });
+    expect(
+      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: "api" })
+    ).toBe(true);
     expect(mockIsProgrammaticUsage).toHaveBeenCalledWith(auth, {
       userMessageOrigin: "api",
     });
@@ -217,29 +204,29 @@ describe("checkCreditSpendCheckpointGate", () => {
   it("is not exempt when the origin is not programmatic usage", () => {
     mockIsProgrammaticUsage.mockReturnValue(false);
     const auth = makeAuth({ hasUser: true });
-    expect(callCheckpointGate(auth, 5000, "web")).toEqual({
-      crossed: true,
-      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
-    });
+    expect(
+      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: "web" })
+    ).toBe(false);
+  });
+});
+
+describe("hasReachedCreditSpendCheckpoint", () => {
+  const thresholdMicroUsd =
+    CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS *
+    MODEL_COST_MICRO_USD_PER_AWU_CREDIT;
+
+  it("is false while the spend is below the threshold", () => {
+    expect(
+      hasReachedCreditSpendCheckpoint({
+        totalCostMicroUsd:
+          thresholdMicroUsd - MODEL_COST_MICRO_USD_PER_AWU_CREDIT,
+      })
+    ).toBe(false);
   });
 
-  it("does not notify when this message's consumed credits are below the threshold", () => {
-    const auth = makeAuth({ hasUser: true });
+  it("is true once the spend reaches the threshold", () => {
     expect(
-      callCheckpointGate(
-        auth,
-        CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS - 1
-      )
-    ).toEqual({ crossed: false, exempt: false });
-  });
-
-  it("notifies with the fixed threshold once this message's consumed credits reach it", () => {
-    const auth = makeAuth({ hasUser: true });
-    expect(
-      callCheckpointGate(auth, CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS)
-    ).toEqual({
-      crossed: true,
-      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
-    });
+      hasReachedCreditSpendCheckpoint({ totalCostMicroUsd: thresholdMicroUsd })
+    ).toBe(true);
   });
 });

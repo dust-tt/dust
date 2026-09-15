@@ -394,6 +394,7 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
         },
       ],
       runId: "run-1",
+      preStepReachedCreditSpendCheckpoint: true,
     });
     runToolActivityWithExplicitCancellation.mockResolvedValue({
       deferredEvents: [],
@@ -405,7 +406,7 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
     );
   });
 
-  it("skips scheduling the checkpoint activity when this step's spend is clearly below the threshold", async () => {
+  it("skips scheduling the checkpoint activity while the pre-step spend is below the threshold", async () => {
     runModelAndCreateActionsActivityWithExplicitCancellation.mockResolvedValue({
       actionBlobs: [
         {
@@ -415,8 +416,7 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
         },
       ],
       runId: "run-1",
-      // 0 AWU credits: nowhere near the fixed checkpoint threshold.
-      preStepTotalCostMicroUsd: 0,
+      preStepReachedCreditSpendCheckpoint: false,
     });
     checkCreditsActivity
       .mockResolvedValueOnce({ shouldStop: false, reason: null })
@@ -436,10 +436,7 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
   });
 
   it("breaks out of the loop and finalizes as paused when the checkpoint is crossed", async () => {
-    checkCreditSpendCheckpointActivity.mockResolvedValue({
-      crossed: true,
-      thresholdAwuCredits: 500,
-    });
+    checkCreditSpendCheckpointActivity.mockResolvedValue({ crossed: true });
 
     await agentLoopWorkflow({
       agentLoopArgs: { ...agentLoopArgs, conversationTitle: "Existing" },
@@ -455,8 +452,7 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
       finalizeCreditSpendCheckpointPausedAgentLoopActivity
     ).toHaveBeenCalledWith(
       authType,
-      expect.objectContaining({ agentMessageId: "am123" }),
-      { thresholdAwuCredits: 500 }
+      expect.objectContaining({ agentMessageId: "am123" })
     );
     expect(finalizeSuccessfulAgentLoopActivity).not.toHaveBeenCalled();
   });
@@ -473,6 +469,7 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
           },
         ],
         runId: "run-1",
+        preStepReachedCreditSpendCheckpoint: true,
       })
       .mockResolvedValue({ actionBlobs: [], runId: "run-2" });
 
@@ -498,6 +495,7 @@ describe("agentLoopWorkflow credit spend checkpoint", () => {
           },
         ],
         runId: "run-1",
+        preStepReachedCreditSpendCheckpoint: true,
       })
       .mockResolvedValue({ actionBlobs: [], runId: "run-2" });
 
