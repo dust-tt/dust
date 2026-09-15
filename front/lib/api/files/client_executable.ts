@@ -1,8 +1,6 @@
+import { DustFileSystem } from "@app/lib/api/file_system";
 import type { ValidationWarning } from "@app/lib/api/files/content_validation";
-import {
-  validateTailwindCode,
-  validateTypeScriptSyntax,
-} from "@app/lib/api/files/content_validation";
+import { validateTailwindCode } from "@app/lib/api/files/content_validation";
 import {
   getFileContent,
   getUpdatedContentAndOccurrences,
@@ -12,7 +10,9 @@ import {
   fetchShareableFileAllowlistState,
   formatPublicShareReferencedFilesChangeNoticeForLLM,
 } from "@app/lib/api/viz/authorized_file_access";
+import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { uploadFrameContent } from "@app/lib/api/viz/upload_frame_content";
+import { validateFrameContent } from "@app/lib/api/viz/validate_frame_types";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -81,13 +81,11 @@ export async function createClientExecutableFile(
     { tracked: boolean; message: string }
   >
 > {
-  // TODO(2026-01-16 flav): Implement warning logic.
-  // Validate TypeScript/JSX syntax (blocking). File creation fails if invalid.
-  const syntaxValidation = validateTypeScriptSyntax(content);
+  const syntaxValidation = await validateFrameContent(content, fileName);
   if (syntaxValidation.isErr()) {
     return new Err({
       message: syntaxValidation.error.message,
-      tracked: false,
+      tracked: syntaxValidation.error.tracked,
     });
   }
 
@@ -238,13 +236,29 @@ export async function editClientExecutableFile(
         }
       }
 
-      // TODO(2026-01-16 flav): Implement warning logic.
-      // Validate TypeScript/JSX syntax (blocking). File creation fails if invalid.
-      const syntaxValidation = validateTypeScriptSyntax(updatedContent);
+      const root = fileResource.useCaseMetadata?.frameBundleRootPath;
+      const entryRelPath =
+        fileResource.useCaseMetadata?.frameEntryRelPath ??
+        fileResource.fileName;
+      const sourceFs = root
+        ? await DustFileSystem.fromScopedPath(auth, root)
+        : null;
+      if (sourceFs?.isErr()) {
+        return new Err({ tracked: false, message: sourceFs.error.message });
+      }
+      const sourceReader =
+        root && sourceFs?.isOk()
+          ? createMountFrameSourceReader(sourceFs.value, root)
+          : undefined;
+      const syntaxValidation = await validateFrameContent(
+        updatedContent,
+        entryRelPath,
+        sourceReader
+      );
       if (syntaxValidation.isErr()) {
         return new Err({
           message: syntaxValidation.error.message,
-          tracked: false,
+          tracked: syntaxValidation.error.tracked,
         });
       }
 

@@ -18,6 +18,7 @@ import { SandboxResource } from "@app/lib/resources/sandbox_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { mockFrameRuntimeTypes } from "@app/tests/utils/frame_runtime_types";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -159,11 +160,37 @@ async function setup(): Promise<{
 }
 
 beforeEach(() => {
+  mockFrameRuntimeTypes();
   vi.clearAllMocks();
   fileStorageMock.reset();
 });
 
 describe("buildAndPublishFramePublication", () => {
+  it("rejects fake React exports without starting a sandbox or publishing", async () => {
+    const { auth, conversation, frame } = await setup();
+    const result = await buildAndPublishFramePublication(auth, {
+      conversation,
+      frame,
+      manifest: uiOnlyManifest,
+      sourceFiles: [
+        {
+          relativePath: "index.tsx",
+          content: Buffer.from(
+            'import { fakeThing } from "react";\nexport default () => <div>{fakeThing()}</div>'
+          ),
+          contentType: "text/typescript",
+        },
+      ],
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "index.tsx: Line 1, Column 10: error TS2305"
+      );
+    }
+    expect(ensureConversationSandboxReadyWithScope).not.toHaveBeenCalled();
+    expect(frame.useCaseMetadata?.activePublicationId).toBeUndefined();
+  });
   it("validates UI and Tailwind without writing a publication", async () => {
     const { auth, conversation, frame } = await setup();
     const activePublicationId = "b8c2b796-534a-4ad2-a5ad-071da692ca0b";

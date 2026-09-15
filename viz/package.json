@@ -6,12 +6,14 @@
   },
   "private": true,
   "scripts": {
+    "predev": "npm run build:validator",
     "dev": "next dev -p 3007",
-    "build": "next build",
+    "build": "npm run build:validator && next build",
     "start": "next start",
     "test": "vitest --run",
     "format": "biome format --write .",
-    "format:check": "biome format ."
+    "format:check": "biome format .",
+    "build:validator": "node --experimental-strip-types scripts/build-frame-validator.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
@@ -79,6 +81,7 @@
     "@types/papaparse": "^5.3.14",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "esbuild": "^0.27.3",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "vitest": "^4.0.16"

@@ -1,12 +1,12 @@
 import type {
-  BundleError,
   BundleEsbuildOptions,
   SourceReader,
 } from "@app/lib/api/bundler/bundle_module";
-import { bundleModule } from "@app/lib/api/bundler/bundle_module";
+import { BundleError, bundleModule } from "@app/lib/api/bundler/bundle_module";
 import type { DustFileSystem } from "@app/lib/api/file_system";
 import { validateTypeScriptSyntax } from "@app/lib/api/files/content_validation";
 import { injectSourceLocationTags } from "@app/lib/api/viz/source_location_tags";
+import { validateFrameTypes } from "@app/lib/api/viz/validate_frame_types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err } from "@app/types/shared/result";
@@ -57,12 +57,23 @@ export async function buildFrameBundle({
   reader: FrameSourceReader;
 }): Promise<Result<{ code: string }, BundleError | FrameSyntaxError>> {
   const syntaxErrors: string[] = [];
+  const sourcePaths = [...(await reader.list())];
+  const sourceCache = new Map<string, string | null>();
+  const cachedReader: FrameSourceReader = {
+    list: async () => sourcePaths,
+    read: async (relativePath) => {
+      if (!sourceCache.has(relativePath)) {
+        sourceCache.set(relativePath, await reader.read(relativePath));
+      }
+      return sourceCache.get(relativePath) ?? null;
+    },
+  };
   const result = await bundleModule({
     entryRelPath,
     reader: {
-      list: () => reader.list(),
+      list: () => cachedReader.list(),
       read: async (relPath) => {
-        const content = await reader.read(relPath);
+        const content = await cachedReader.read(relPath);
         if (content !== null && /\.(?:tsx?|jsx?)$/.test(relPath)) {
           const syntax = validateTypeScriptSyntax(content, relPath);
           if (syntax.isErr()) {
@@ -81,6 +92,17 @@ export async function buildFrameBundle({
 
   if (syntaxErrors.length > 0) {
     return new Err(new FrameSyntaxError(syntaxErrors.join("\n\n")));
+  }
+
+  if (result.isErr()) {
+    return result;
+  }
+  const typeCheck = await validateFrameTypes({
+    entryRelPath,
+    reader: cachedReader,
+  });
+  if (typeCheck.isErr()) {
+    return new Err(new BundleError("build_failed", typeCheck.error.message));
   }
 
   return result;
