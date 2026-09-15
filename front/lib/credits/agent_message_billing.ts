@@ -14,7 +14,6 @@ import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
 
 export { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
-export { awuFromMicroUsd };
 
 // Historical and non-agent-loop usages may not have a run key. Keep them in one
 // group to preserve the former message-level rounding behavior for those rows.

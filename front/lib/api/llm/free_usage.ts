@@ -1,11 +1,9 @@
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import {
-  awuFromMicroUsd,
-  isFreeOrigin,
-} from "@app/lib/credits/agent_message_billing";
+import { isFreeOrigin } from "@app/lib/credits/agent_message_billing";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
+import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import { isEnterpriseOrDust } from "@app/lib/plans/plan_codes";
 import {
   addRateLimiterCount,
