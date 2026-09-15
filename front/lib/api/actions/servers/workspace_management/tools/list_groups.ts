@@ -53,7 +53,9 @@ export async function listGroups(
 
   const lines = page.map(
     (group) =>
-      `${group.name} [${group.sId}] - ${group.kind}, members: ${memberCounts.get(group.id) ?? 0}`
+      `${group.name} [${group.sId}] - ${group.kind}, members: ${memberCounts.get(group.id) ?? 0}` +
+      // Membership of such a group changes workspace roles, so the agent must know before editing.
+      (group.grantedRole ? `, grants: ${group.grantedRole}` : "")
   );
 
   if (total > page.length) {

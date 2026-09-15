@@ -342,8 +342,8 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     name: LIST_GROUPS_TOOL_NAME,
     description:
       "List the workspace's groups with their id, name, kind (provisioned " +
-      "from the identity provider, or manually managed in Dust) and member " +
-      "count. Admin and manager only.",
+      "from the identity provider, or manually managed in Dust), member " +
+      "count and the workspace role they grant, if any. Admin and manager only.",
     schema: listGroupsSchema,
     stake: "never_ask",
     eager: true,
@@ -374,7 +374,8 @@ export const WORKSPACE_MANAGEMENT_TOOLS_METADATA = [
     description:
       "Add and/or remove members of a manually managed group, leaving its " +
       "other members untouched. Provisioned groups cannot be edited. Admin " +
-      "and manager only.",
+      "and manager only; groups that grant the admin role can only be edited " +
+      "by admins.",
     schema: updateGroupMembersSchema,
     stake: "high",
     displayLabels: {

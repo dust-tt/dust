@@ -740,6 +740,21 @@ describe("workspace_management tools", () => {
       ]);
     });
 
+    it("shows the role a group grants", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const group = await GroupFactory.regularManual(workspace, "Admins", {
+        grantedRole: "admin",
+      });
+
+      const lines = await callToolLines("list_groups", {}, authenticator);
+
+      expect(lines).toEqual([
+        `Admins [${group.sId}] - regular_manual, members: 0, grants: admin`,
+      ]);
+    });
+
     it("filters by kind", async () => {
       const { workspace, authenticator } = await createResourceTest({
         role: "admin",
@@ -952,6 +967,56 @@ describe("workspace_management tools", () => {
         authenticator
       );
       expect(members).toContain(only.sId);
+    });
+
+    it("refuses managers on a group that grants the admin role", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "manager",
+      });
+      const admin = await UserFactory.basic();
+      const candidate = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, admin, { role: "admin" });
+      await MembershipFactory.associate(workspace, candidate, { role: "user" });
+      const group = await GroupFactory.regularManual(workspace, "Admins", {
+        grantedRole: "admin",
+      });
+      await GroupFactory.withMembers(authenticator, group, [admin]);
+
+      const result = await runTool(
+        "update_group_members",
+        { groupId: group.sId, additions: [candidate.sId] },
+        authenticator
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("grants the admin role");
+      }
+      const members = await callTool(
+        "get_group_members",
+        { groupId: group.sId },
+        authenticator
+      );
+      expect(members).not.toContain(candidate.sId);
+    });
+
+    it("lets admins edit a group that grants the admin role", async () => {
+      const { workspace, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+      const candidate = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, candidate, { role: "user" });
+      const group = await GroupFactory.regularManual(workspace, "Admins", {
+        grantedRole: "admin",
+      });
+
+      const lines = await callToolLines(
+        "update_group_members",
+        { groupId: group.sId, additions: [candidate.sId] },
+        authenticator
+      );
+
+      expect(lines[1]).toContain(candidate.sId);
     });
 
     it("reports unknown users without changing the group", async () => {
