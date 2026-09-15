@@ -29,6 +29,9 @@ function dustManagedByokProviderKeys(): Record<ProviderCredentialKey, string> {
 
 function dustManagedOtherProviderKeys() {
   return {
+    // Vertex authenticates with a Dust service account scoped to this project, so the project id
+    // is itself a Dust-managed credential and must never reach a BYOK workspace.
+    AGENT_PLATFORM_PROJECT_ID: config.getVertexAiProjectId(),
     AZURE_OPENAI_API_KEY: env("DUST_MANAGED_AZURE_OPENAI_API_KEY"),
     AZURE_OPENAI_ENDPOINT: env("DUST_MANAGED_AZURE_OPENAI_ENDPOINT"),
     MISTRAL_API_KEY: env("DUST_MANAGED_MISTRAL_API_KEY"),
@@ -47,7 +50,6 @@ function baseCredentialVariables() {
     OPENAI_USE_EU_ENDPOINT:
       config.getRegion() === "europe-west1" ? "true" : "false",
     OPENAI_BASE_URL: env("DUST_MANAGED_OPENAI_BASE_URL"),
-    AGENT_PLATFORM_PROJECT_ID: config.getVertexAiProjectId(),
   };
 }
 
