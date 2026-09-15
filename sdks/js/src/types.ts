@@ -117,6 +117,7 @@ export type KnownModelLLMId =
   | "grok-4-fast-reasoning-latest"
   | "grok-4-1-fast-non-reasoning-latest"
   | "grok-4-1-fast-reasoning-latest"
+  | "simulated-failure-model" // Internal synthetic failure model
   | "noop" // Noop
   | "auto" // Auto
   | "auto_fast" // Fast stream tier
