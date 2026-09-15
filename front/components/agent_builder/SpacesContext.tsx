@@ -23,6 +23,10 @@ export const useSpacesContext = () => {
   return context;
 };
 
+export const useMaybeSpacesContext = () => {
+  return useContext(SpacesContext);
+};
+
 interface SpacesProviderProps {
   owner: LightWorkspaceType;
   children: ReactNode;
