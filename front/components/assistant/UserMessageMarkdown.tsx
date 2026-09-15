@@ -17,6 +17,11 @@ import {
   filePreviewDirective,
   getFilePreviewPlugin,
 } from "@app/components/markdown/FilePreviewBlock";
+import type { KnowledgeChipDirectiveProps } from "@app/components/markdown/KnowledgeChipDirective";
+import {
+  KnowledgeChipDirectiveBlock,
+  knowledgeChipDirective,
+} from "@app/components/markdown/KnowledgeChipDirective";
 import {
   PastedAttachmentBlock,
   pastedAttachmentDirective,
@@ -25,6 +30,10 @@ import {
   getTaskDirectiveBlock,
   taskDirective,
 } from "@app/components/markdown/TaskDirectiveBlock";
+import {
+  KNOWLEDGE_TAG_REGEX,
+  parseKnowledgeTag,
+} from "@app/lib/knowledge/format";
 import {
   agentMentionDirective,
   getAgentMentionPlugin,
@@ -93,6 +102,15 @@ export const UserMessageMarkdown = ({
           }
         />
       ),
+      knowledge: ({ id, title, space, dsv }: KnowledgeChipDirectiveProps) => (
+        <KnowledgeChipDirectiveBlock
+          owner={owner}
+          nodeId={id}
+          title={title}
+          spaceId={space ?? null}
+          dataSourceViewId={dsv ?? null}
+        />
+      ),
       project_task: getTaskDirectiveBlock(owner),
     }),
     [owner, togglePanel]
@@ -109,6 +127,7 @@ export const UserMessageMarkdown = ({
       filePreviewDirective,
       skillDirective,
       toolDirective,
+      knowledgeChipDirective,
     ],
     []
   );
@@ -135,6 +154,21 @@ export const UserMessageMarkdown = ({
           const iconAttribute = tool.icon ? ` icon=${tool.icon}` : "";
 
           return `:tool[${tool.name}]{sId=${tool.id}${iconAttribute}}`;
+        })
+        .replace(KNOWLEDGE_TAG_REGEX, (match) => {
+          const knowledge = parseKnowledgeTag(match);
+          if (!knowledge) {
+            return match;
+          }
+
+          const spaceAttribute = knowledge.spaceId
+            ? ` space=${knowledge.spaceId}`
+            : "";
+          const dsvAttribute = knowledge.dataSourceViewId
+            ? ` dsv=${knowledge.dataSourceViewId}`
+            : "";
+
+          return `:knowledge[${knowledge.title}]{id=${knowledge.id}${spaceAttribute}${dsvAttribute}}`;
         }),
     [message.content]
   );
