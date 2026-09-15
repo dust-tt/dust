@@ -129,10 +129,10 @@ export function PodSettingsParticipantsTab({
 
       <Separator />
 
-      {/* Individual members */}
+      {/* Members */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <h3 className="heading-lg flex-1">Individual members</h3>
+          <h3 className="heading-lg flex-1">Members</h3>
           {isPodEditor && onOpenMembersPanel && (
             <Button
               label="Manage"
@@ -142,7 +142,7 @@ export function PodSettingsParticipantsTab({
             />
           )}
         </div>
-        {podMembers.length > 0 && (
+        {podMembers.length > 0 ? (
           <>
             <SearchInput
               name="search"
@@ -161,13 +161,17 @@ export function PodSettingsParticipantsTab({
               />
             </ScrollArea>
           </>
+        ) : (
+          <p className="text-sm italic text-muted-foreground">
+            No members yet. Add people to give them access to this Pod.
+          </p>
         )}
       </div>
 
-      {/* Group members */}
+      {/* Groups */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <h3 className="heading-lg flex-1">Group members</h3>
+          <h3 className="heading-lg flex-1">Groups</h3>
           {isPodEditor && (
             <Button
               label="Manage"
@@ -177,7 +181,7 @@ export function PodSettingsParticipantsTab({
             />
           )}
         </div>
-        {podGroups.length > 0 && (
+        {podGroups.length > 0 ? (
           <ScrollArea className="h-full" orientation="horizontal">
             <PodGroupMembersTable
               owner={owner}
@@ -187,6 +191,11 @@ export function PodSettingsParticipantsTab({
               mutatePodInfo={() => mutatePodInfo()}
             />
           </ScrollArea>
+        ) : (
+          <p className="text-sm italic text-muted-foreground">
+            No groups yet. Add a group to give all of its members access at
+            once.
+          </p>
         )}
       </div>
 
