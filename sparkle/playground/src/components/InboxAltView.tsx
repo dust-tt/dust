@@ -485,13 +485,7 @@ export function InboxAltView({
 
   const renderLabel = (row: InboxAltRow) => {
     const chip = getRowChip(row);
-    // The column the label sits in stretches its children, so the chip needs a
-    // row of its own to keep to its content's width.
-    return (
-      <div className="flex">
-        <Chip size="xs" icon={chip.icon} label={chip.label} />
-      </div>
-    );
+    return <Chip size="mini" icon={chip.icon} label={chip.label} />;
   };
 
   const renderRow = (row: InboxAltRow) => {

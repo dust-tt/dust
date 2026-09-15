@@ -36,7 +36,7 @@ const meta = {
 - Use **leadingVisual** when the avatar itself has to carry the category, as an avatar with a badge; keep **creator** alongside it so the name still sits by the title.
 - Use the **ReplySection** component for the **replySection** slot to display reply / unread / mention counts consistently.
 - Use **trailing** instead of **time** when the right side of the row has to carry its own state and actions, and stop clicks on those actions from reaching **onClick**.
-- Use **label** when the whole row needs a label above its title line, as in a mixed feed where each row says which list it came from.
+- Use **label** when the whole row needs a label flowing into its description, as in a mixed feed where each row says which list it came from.
 - Use **menuItems** for actions that belong to the conversation rather than to the list, reached by right-clicking the row.
 - Group rows inside **ListGroup** so dividers and spacing stay consistent across the list.`,
       },
@@ -226,10 +226,10 @@ export const WithTrailing: Story = {
 };
 
 /**
- * `label` sits above the title line, for a label the whole row answers to —
- * here the list a mixed feed drew the row from, said by a chip.
+ * `label` flows at the start of the description, for a label the whole row
+ * answers to — here the list a mixed feed drew the row from, said by a chip.
  *
- * @summary Row labelled above its title line.
+ * @summary Row labelled at the start of its description.
  */
 export const WithLabel: Story = {
   args: {
@@ -245,11 +245,7 @@ export const WithLabel: Story = {
       fullName: "Sari Sari",
       portrait: "https://i.pravatar.cc/150?img=9",
     },
-    label: (
-      <div className="flex">
-        <Chip size="mini" icon={Cube01} label="Mobile Engineering" />
-      </div>
-    ),
+    label: <Chip size="mini" icon={Cube01} label="Mobile Engineering" />,
     time: "04:16",
     onClick: fn(),
   },

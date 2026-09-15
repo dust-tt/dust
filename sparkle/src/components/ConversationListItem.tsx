@@ -124,8 +124,8 @@ export interface ConversationListItemProps {
   /** Icon shown before the title, for lists whose rows are labelled by a category. */
   titleIcon?: React.ComponentType<{ className?: string }>;
   /**
-   * Content above the title line, for a label the whole row answers to — a chip
-   * saying which list it came from, say.
+   * Content flowing at the start of the description, for a label the whole row
+   * answers to — a chip saying which list it came from, say.
    */
   label?: ReactNode;
   /** Formatted timestamp displayed on the right of the title. */
@@ -157,7 +157,7 @@ export interface ConversationListItemProps {
  * leadingVisual, with an optional titleIcon before the title and an optional
  * replySection for reply/unread/mention counts. The timestamp gives way to a
  * trailing node when the right side carries its own state and actions instead,
- * and a label sits above the title line when the row has to be labelled as a
+ * and a label flows into the description when the row has to be labelled as a
  * whole. Rows given menuItems answer to a right-click with them. Use it to
  * render an inbox or activity feed of conversations, grouping rows inside
  * ListGroup so dividers and spacing stay consistent.
@@ -239,7 +239,6 @@ export function ConversationListItem({
           />
         ) : null}
         <div className="mb-0.5 flex min-w-0 grow flex-col gap-1">
-          {label}
           <div className="heading-sm flex w-full items-center justify-between gap-2 text-foreground">
             <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
               {titleIcon && (
@@ -267,8 +266,9 @@ export function ConversationListItem({
               )}
             </div>
           </div>
-          {conversation.description && (
+          {(label || conversation.description) && (
             <div className="line-clamp-2 text-sm font-normal text-muted-foreground">
+              {label && <span className="mr-1 align-middle">{label}</span>}
               {textAnimation === "streaming" ? (
                 <AnimatedText variant="muted">
                   {conversation.description}

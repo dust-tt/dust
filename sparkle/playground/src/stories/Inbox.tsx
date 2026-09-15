@@ -1750,7 +1750,7 @@ function Inbox() {
     if (p2View.kind === "inboxAlt")
       return (
         <Breadcrumbs
-          items={[{ label: "Inbox Alt", icon: LayersThree01 }]}
+          items={[{ label: "Inbox Alt", icon: Inbox01 }]}
           size="sm"
           hasLighterFont
         />
@@ -1926,7 +1926,7 @@ function Inbox() {
               />
               <NavigationListItem
                 label="Inbox Alt"
-                icon={LayersThree01}
+                icon={Inbox01}
                 selected={p2View.kind === "inboxAlt"}
                 onClick={() => {
                   setP2View({ kind: "inboxAlt" });

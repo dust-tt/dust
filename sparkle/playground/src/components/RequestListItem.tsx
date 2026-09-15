@@ -103,7 +103,7 @@ interface RequestListItemProps {
   isHistory?: boolean;
   isSelected?: boolean;
   currentUserId?: string;
-  /** Sits above the title line, for lists that label their rows with a type. */
+  /** Flows into the description, for lists that label their rows with a type. */
   label?: ReactNode;
   /** A request you have read drops its unread dot, as a conversation does. */
   isRead?: boolean;
