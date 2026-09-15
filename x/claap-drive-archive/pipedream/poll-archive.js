@@ -71,20 +71,45 @@ async function driveJson(token, url, init = {}) {
   return response.status === 204 ? null : response.json();
 }
 
-async function findFile(token, query) {
+async function findFile(token, query, driveId) {
   const url = new URL("https://www.googleapis.com/drive/v3/files");
   url.searchParams.set("q", query);
-  url.searchParams.set("fields", "files(id,name)");
+  url.searchParams.set("fields", "files(id,name,webViewLink,driveId)");
   url.searchParams.set("pageSize", "1");
   url.searchParams.set("includeItemsFromAllDrives", "true");
   url.searchParams.set("supportsAllDrives", "true");
+  if (driveId) {
+    url.searchParams.set("corpora", "drive");
+    url.searchParams.set("driveId", driveId);
+  } else {
+    url.searchParams.set("corpora", "allDrives");
+  }
   return (await driveJson(token, url)).files?.[0] ?? null;
 }
 
-async function ensureFolder(token, parentId, name) {
+async function resolveRoot(token, requestedRootId) {
+  const fields = "id,name,driveId,parents";
+  const sharedDriveId = "0AHg4obkq7gi_Uk9PVA";
+  try {
+    return await driveJson(
+      token,
+      `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(requestedRootId)}?fields=${fields}&supportsAllDrives=true`
+    );
+  } catch (getErr) {
+    const q = "name='Claap Recordings' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+    const named = await findFile(token, q, sharedDriveId);
+    if (named?.id) {
+      return named;
+    }
+    throw new Error(`${getErr.message} | namedFolder=${JSON.stringify(named)}`);
+  }
+}
+
+async function ensureFolder(token, parentId, name, driveId) {
   const existing = await findFile(
     token,
-    `mimeType='${FOLDER}' and name='${esc(name)}' and '${esc(parentId)}' in parents and trashed=false`
+    `mimeType='${FOLDER}' and name='${esc(name)}' and '${esc(parentId)}' in parents and trashed=false`,
+    driveId
   );
   if (existing?.id) {
     return existing.id;
@@ -97,14 +122,14 @@ async function ensureFolder(token, parentId, name) {
   return created.id;
 }
 
-async function upsertFile(token, { parentId, name, mimeType, content, kind, recordingId }) {
+async function upsertFile(token, { parentId, name, mimeType, content, driveId }) {
   const existing = await findFile(
     token,
-    `appProperties has { key='claapRecordingId' and value='${esc(recordingId)}' } and appProperties has { key='kind' and value='${esc(kind)}' } and '${esc(parentId)}' in parents and trashed=false`
+    `name='${esc(name)}' and '${esc(parentId)}' in parents and trashed=false`,
+    driveId
   );
-  const meta = { name, appProperties: { claapRecordingId: recordingId, kind } };
   const boundary = "claaparchive";
-  const metadata = existing ? meta : { ...meta, mimeType, parents: [parentId] };
+  const metadata = existing ? { name, mimeType } : { name, mimeType, parents: [parentId] };
   const body =
     `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
     `--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n${content}\r\n--${boundary}--`;
@@ -145,12 +170,12 @@ async function resolveRecordingId(apiKey, recordingId) {
   }
 }
 
-async function archiveOne(apiKey, token, rootFolderId, recordingId) {
+async function archiveOne(apiKey, token, root, recordingId) {
   recordingId = await resolveRecordingId(apiKey, recordingId);
   const recording = (await claapGet(apiKey, `v1/recordings/${encodeURIComponent(recordingId)}`)).result
     .recording;
   if (recording.state !== "Ready") {
-    return { status: "skipped", recordingId, reason: recording.state };
+    return { status: "skipped", recordingId, reason: recording.state, title: recording.title };
   }
   let transcript = null;
   try {
@@ -160,29 +185,30 @@ async function archiveOne(apiKey, token, rootFolderId, recordingId) {
   } catch (error) {
     console.warn("Transcript missing", error);
   }
-  const folderId = await ensureFolder(
-    token,
-    rootFolderId,
-    slug((recording.recorder?.email || "_unknown").toLowerCase())
-  );
-  const base = `${String(recording.createdAt || "").slice(0, 10)}_${slug(recording.title).slice(0, 80)}_${recording.id}`;
+  const email = slug((recording.recorder?.email || "_unknown").toLowerCase());
+  const folderId = await ensureFolder(token, root.id, email, root.driveId);
+  const base = `${String(recording.createdAt || "").slice(0, 10)}_${recording.id}`;
   await upsertFile(token, {
     parentId: folderId,
     name: `${base}.md`,
     mimeType: "text/markdown",
     content: markdown(recording, transcript),
-    kind: "transcript",
-    recordingId,
+    driveId: root.driveId,
   });
   await upsertFile(token, {
     parentId: folderId,
     name: `${base}.json`,
     mimeType: "application/json",
     content: `${JSON.stringify({ archivedAt: new Date().toISOString(), recording, transcript }, null, 2)}\n`,
-    kind: "raw",
-    recordingId,
+    driveId: root.driveId,
   });
-  return { status: "archived", recordingId, folderId };
+  return {
+    status: "archived",
+    recordingId,
+    title: recording.title || "",
+    recorderEmail: email,
+    folderId,
+  };
 }
 
 export default defineComponent({
@@ -201,12 +227,15 @@ export default defineComponent({
   },
   async run({ $ }) {
     const token = this.googleDrive.$auth.oauth_access_token;
-    if (this.recordingId) {
-      const result = await archiveOne(this.claapApiKey, token, this.rootFolderId, this.recordingId);
-      $.export("summary", `${result.status} ${this.recordingId}`);
-      return result;
+    const root = await resolveRoot(token, this.rootFolderId);
+    const forceId = String(this.recordingId || "").trim();
+    const lookbackHours = Number(this.lookbackHours) > 0 ? Number(this.lookbackHours) : 48;
+    if (forceId) {
+      const result = await archiveOne(this.claapApiKey, token, root, forceId);
+      $.export("summary", `${result.status} ${forceId}`);
+      return { mode: "single", rootId: root.id, rootName: root.name, ...result };
     }
-    const createdAfter = new Date(Date.now() - this.lookbackHours * 3600 * 1000).toISOString();
+    const createdAfter = new Date(Date.now() - lookbackHours * 3600 * 1000).toISOString();
     const results = [];
     let cursor;
     do {
@@ -215,13 +244,14 @@ export default defineComponent({
         query.set("cursor", cursor);
       }
       const page = await claapGet(this.claapApiKey, `v1/recordings?${query}`);
-      for (const recording of page.result.recordings) {
-        results.push(await archiveOne(this.claapApiKey, token, this.rootFolderId, recording.id));
+      for (const recording of page.result.recordings || []) {
+        results.push(await archiveOne(this.claapApiKey, token, root, recording.id));
       }
       cursor = page.result.pagination?.nextCursor;
     } while (cursor);
     const archived = results.filter((result) => result.status === "archived").length;
-    $.export("summary", `Archived ${archived}/${results.length} since ${createdAfter}`);
-    return { createdAfter, archived, results };
+    const skipped = results.filter((result) => result.status === "skipped").length;
+    $.export("summary", `Archived ${archived}/${results.length} (skipped ${skipped}) since ${createdAfter}`);
+    return { mode: "poll", createdAfter, lookbackHours, archived, skipped, results };
   },
 });

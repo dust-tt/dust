@@ -1,14 +1,25 @@
 export default defineComponent({
-  name: "Archive one Claap recording to Drive",
+  name: "Poll Claap recordings into Google Drive",
+  description:
+    "Hourly poll of GET /v1/recordings. Optional recordingId forces one. Upsert by filename on Shared Drive.",
   props: {
     googleDrive: { type: "app", app: "google_drive" },
     claapApiKey: { type: "string", label: "Claap API key", secret: true },
     rootFolderId: { type: "string", label: "Google Drive root folder ID" },
-    recordingId: { type: "string", label: "Claap recording ID or URL slug" },
+    lookbackHours: { type: "integer", label: "Lookback hours", default: 48 },
+    recordingId: {
+      type: "string",
+      label: "Force-archive one recording ID",
+      optional: true,
+    },
   },
   async run({ $ }) {
     const headers = { Accept: "application/json", "X-Claap-Key": this.claapApiKey };
     const token = this.googleDrive.$auth.oauth_access_token;
+    const SHARED_DRIVE_ID = "0AHg4obkq7gi_Uk9PVA";
+    const FOLDER = "application/vnd.google-apps.folder";
+    const forceId = String(this.recordingId || "").trim();
+    const lookbackHours = Number(this.lookbackHours) > 0 ? Number(this.lookbackHours) : 48;
 
     async function claap(path) {
       const res = await fetch(`https://api.claap.io/${path}`, { headers });
@@ -16,53 +27,6 @@ export default defineComponent({
       if (!res.ok) throw new Error(`Claap ${res.status} ${path}: ${text}`);
       return JSON.parse(text);
     }
-
-    let recordingId = this.recordingId;
-    let listed = [];
-    try {
-      await claap(`v1/recordings/${encodeURIComponent(recordingId)}`);
-    } catch (error) {
-      if (!String(error.message).includes(" 404 ")) throw error;
-      const page = await claap("v1/recordings?limit=50&sort=created_desc");
-      listed = (page.result.recordings || []).map((r) => ({
-        id: r.id,
-        title: r.title,
-        url: r.url,
-        state: r.state,
-      }));
-      const suffix = recordingId.includes("-") ? recordingId.split("-").pop() : recordingId;
-      const hit = listed.find(
-        (r) =>
-          r.id === recordingId ||
-          r.id === suffix ||
-          recordingId.endsWith(r.id) ||
-          (r.url && (r.url.includes(recordingId) || r.url.endsWith(r.id)))
-      );
-      if (!hit) {
-        throw new Error(
-          `Claap recording 404 for ${recordingId}. Listed ${listed.length}: ${JSON.stringify(listed)}`
-        );
-      }
-      recordingId = hit.id;
-    }
-
-    const rec = (await claap(`v1/recordings/${encodeURIComponent(recordingId)}`)).result.recording;
-    let tr = null;
-    try {
-      tr = (await claap(`v1/recordings/${encodeURIComponent(recordingId)}/transcript?format=json`))
-        .result.transcript;
-    } catch (error) {
-      console.warn("Transcript missing", error);
-    }
-    const segs = (tr?.segments || [])
-      .map((s) => `${(s.speaker || "unknown").trim()}: ${String(s.text || "").trim()}`)
-      .join("\n") || "_No transcript was available for this recording._";
-    const email = (rec.recorder?.email || "unknown").toLowerCase();
-    const date = String(rec.createdAt || "").slice(0, 10);
-    const md =
-      `---\nclaap_id: ${rec.id}\ntitle: ${JSON.stringify(rec.title || "")}\n` +
-      `recorder_email: ${email}\nclaap_url: ${rec.url}\n---\n\n# Transcript\n\n${segs}\n`;
-    const json = JSON.stringify({ archivedAt: new Date().toISOString(), recording: rec, transcript: tr }, null, 2);
 
     async function drive(url, init = {}) {
       const res = await fetch(url, {
@@ -91,16 +55,26 @@ export default defineComponent({
           `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?fields=${fields}&supportsAllDrives=true`
         );
       } catch (getErr) {
-        const named = await drive(
+        const q = encodeURIComponent(
+          "name='Claap Recordings' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+        );
+        const namedOnDrive = await drive(
           "https://www.googleapis.com/drive/v3/files?" +
-            `q=${encodeURIComponent("name='Claap Recordings' and mimeType='application/vnd.google-apps.folder' and trashed=false")}` +
-            "&corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true" +
+            `q=${q}&corpora=drive&driveId=${encodeURIComponent(SHARED_DRIVE_ID)}` +
+            "&includeItemsFromAllDrives=true&supportsAllDrives=true" +
             `&fields=files(${fields})&pageSize=10`
         );
+        const namedAll = await drive(
+          "https://www.googleapis.com/drive/v3/files?" +
+            `q=${q}&corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true` +
+            `&fields=files(${fields})&pageSize=10`
+        );
+        const namedFiles = [...(namedOnDrive.files || []), ...(namedAll.files || [])];
         const hit =
-          (named.files || []).find((f) => f.id === id) ||
-          (named.files || []).find((f) => f.driveId) ||
-          named.files?.[0];
+          namedFiles.find((f) => f.id === id) ||
+          namedFiles.find((f) => f.driveId === SHARED_DRIVE_ID) ||
+          namedFiles.find((f) => f.driveId) ||
+          namedFiles[0];
         if (hit?.id) return hit;
         let drives = {};
         try {
@@ -109,7 +83,7 @@ export default defineComponent({
           drives = { error: String(driveErr.message).slice(0, 300) };
         }
         throw new Error(
-          `${getErr.message} | namedFolders=${JSON.stringify(named.files || [])} | drives=${JSON.stringify(drives).slice(0, 400)}`
+          `${getErr.message} | namedFolders=${JSON.stringify(namedFiles)} | drives=${JSON.stringify(drives).slice(0, 400)}`
         );
       }
     }
@@ -130,27 +104,24 @@ export default defineComponent({
       return found.files?.[0] || null;
     }
 
-    let folder = await findInFolder(root.id, email, "application/vnd.google-apps.folder");
-    if (!folder?.id) {
-      folder = await drive(
-        "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,webViewLink",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: email,
-            mimeType: "application/vnd.google-apps.folder",
-            parents: [root.id],
-          }),
-        }
-      );
+    async function ensureEmailFolder(email) {
+      let folder = await findInFolder(root.id, email, FOLDER);
+      if (!folder?.id) {
+        folder = await drive(
+          "https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name,webViewLink",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: email, mimeType: FOLDER, parents: [root.id] }),
+          }
+        );
+      }
+      if (!folder.id) throw new Error(`Drive folder create returned no id: ${JSON.stringify(folder)}`);
+      return folder;
     }
-    const folderId = folder.id;
-    if (!folderId) throw new Error(`Drive folder create returned no id: ${JSON.stringify(folder)}`);
 
-    const base = `${date}_${rec.id}`;
     const boundary = "xxx";
-    async function put(name, mime, content) {
+    async function put(folderId, name, mime, content) {
       const existing = await findInFolder(folderId, name);
       const meta = existing?.id
         ? { name, mimeType: mime }
@@ -162,28 +133,139 @@ export default defineComponent({
       const url = existing?.id
         ? `https://www.googleapis.com/upload/drive/v3/files/${existing.id}?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink`
         : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,name,webViewLink";
-      return drive(url, {
+      const file = await drive(url, {
         method: existing?.id ? "PATCH" : "POST",
         headers: { "Content-Type": `multipart/related; boundary=${boundary}` },
         body,
       });
+      if (!file.id) throw new Error(`Drive upload missing id ${name}: ${JSON.stringify(file)}`);
+      return file;
     }
 
-    const mdFile = await put(`${base}.md`, "text/markdown", md);
-    const jsonFile = await put(`${base}.json`, "application/json", json);
-    if (!mdFile.id || !jsonFile.id) {
-      throw new Error(`Drive upload missing id md=${JSON.stringify(mdFile)} json=${JSON.stringify(jsonFile)}`);
+    async function resolveRecordingId(recordingId) {
+      try {
+        await claap(`v1/recordings/${encodeURIComponent(recordingId)}`);
+        return { recordingId, listed: [] };
+      } catch (error) {
+        if (!String(error.message).includes(" 404 ")) throw error;
+        const page = await claap("v1/recordings?limit=50&sort=created_desc");
+        const listed = (page.result.recordings || []).map((r) => ({
+          id: r.id,
+          title: r.title,
+          url: r.url,
+          state: r.state,
+        }));
+        const suffix = recordingId.includes("-") ? recordingId.split("-").pop() : recordingId;
+        const hit = listed.find(
+          (r) =>
+            r.id === recordingId ||
+            r.id === suffix ||
+            recordingId.endsWith(r.id) ||
+            (r.url && (r.url.includes(recordingId) || r.url.endsWith(r.id)))
+        );
+        if (!hit) {
+          throw new Error(
+            `Claap recording 404 for ${recordingId}. Listed ${listed.length}: ${JSON.stringify(listed)}`
+          );
+        }
+        return { recordingId: hit.id, listed };
+      }
     }
-    $.export("summary", `Archived ${recordingId} to ${folderId}`);
+
+    async function archiveOne(recordingId) {
+      const rec = (await claap(`v1/recordings/${encodeURIComponent(recordingId)}`)).result.recording;
+      if (rec.state !== "Ready") {
+        return { status: "skipped", recordingId, reason: rec.state, title: rec.title };
+      }
+      let tr = null;
+      try {
+        tr = (await claap(`v1/recordings/${encodeURIComponent(recordingId)}/transcript?format=json`))
+          .result.transcript;
+      } catch (error) {
+        console.warn("Transcript missing", error);
+      }
+      const segs =
+        (tr?.segments || [])
+          .map((s) => `${(s.speaker || "unknown").trim()}: ${String(s.text || "").trim()}`)
+          .join("\n") || "_No transcript was available for this recording._";
+      const email = (rec.recorder?.email || "unknown").toLowerCase();
+      const date = String(rec.createdAt || "").slice(0, 10);
+      const md =
+        `---\nclaap_id: ${rec.id}\ntitle: ${JSON.stringify(rec.title || "")}\n` +
+        `recorder_email: ${email}\nclaap_url: ${rec.url}\n---\n\n# Transcript\n\n${segs}\n`;
+      const json = JSON.stringify(
+        { archivedAt: new Date().toISOString(), recording: rec, transcript: tr },
+        null,
+        2
+      );
+      const folder = await ensureEmailFolder(email);
+      const base = `${date}_${rec.id}`;
+      const mdFile = await put(folder.id, `${base}.md`, "text/markdown", md);
+      const jsonFile = await put(folder.id, `${base}.json`, "application/json", json);
+      return {
+        status: "archived",
+        recordingId: rec.id,
+        title: rec.title || "",
+        recorderEmail: email,
+        createdAt: rec.createdAt,
+        folderId: folder.id,
+        folderLink: folder.webViewLink || null,
+        mdFile,
+        jsonFile,
+      };
+    }
+
+    if (forceId) {
+      const resolved = await resolveRecordingId(forceId);
+      const result = await archiveOne(resolved.recordingId);
+      $.export("summary", `${result.status} ${resolved.recordingId}`);
+      return {
+        mode: "single",
+        requestedId: forceId,
+        listed: resolved.listed,
+        driveId: root.driveId || null,
+        rootName: root.name,
+        rootId: root.id,
+        ...result,
+      };
+    }
+
+    const createdAfter = new Date(Date.now() - lookbackHours * 3600 * 1000).toISOString();
+    const results = [];
+    let cursor;
+    let totalCount = 0;
+    let pages = 0;
+    do {
+      const query = new URLSearchParams({ createdAfter, limit: "50", sort: "created_asc" });
+      if (cursor) query.set("cursor", cursor);
+      const page = await claap(`v1/recordings?${query}`);
+      const recordings = page.result?.recordings || [];
+      totalCount = page.result?.pagination?.totalCount ?? totalCount;
+      pages += 1;
+      for (const recording of recordings) {
+        results.push(await archiveOne(recording.id));
+      }
+      cursor = page.result?.pagination?.nextCursor;
+    } while (cursor);
+
+    const archived = results.filter((r) => r.status === "archived").length;
+    const skipped = results.filter((r) => r.status === "skipped").length;
+    $.export(
+      "summary",
+      `Archived ${archived}/${results.length} (skipped ${skipped}) since ${createdAfter} pages=${pages} listedTotal=${totalCount}`
+    );
     return {
-      recordingId,
-      requestedId: this.recordingId,
-      listed,
+      mode: "poll",
+      createdAfter,
+      lookbackHours,
       driveId: root.driveId || null,
       rootName: root.name,
-      folderId,
-      mdFile,
-      jsonFile,
+      rootId: root.id,
+      pages,
+      listedTotal: totalCount,
+      archived,
+      skipped,
+      results,
     };
   },
 });
