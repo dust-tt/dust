@@ -16,6 +16,7 @@ import {
   AUTO_FAST_MODEL_ID,
   AUTO_MODEL_CONFIG,
   AUTO_MODEL_ID,
+  isModelStreamId,
   MODEL_STREAM_IDS,
   MODEL_STREAMS,
 } from "@app/types/assistant/models/auto";
@@ -220,6 +221,7 @@ export function resolveStreamModelWithFallback(
   );
   const didFallback =
     degradedModelIds.has(nominalResolution.model.modelId) &&
+    !isModelStreamId(actualResolution.model.modelId) &&
     (nominalResolution.model.providerId !== actualResolution.model.providerId ||
       nominalResolution.model.modelId !== actualResolution.model.modelId ||
       nominalResolution.reasoningEffort !== actualResolution.reasoningEffort);

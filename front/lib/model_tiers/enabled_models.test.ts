@@ -27,6 +27,7 @@ import {
   AUTO_COMPLEX_MODEL_CONFIG,
   AUTO_FAST_MODEL_CONFIG,
   AUTO_MODEL_CONFIG,
+  isModelStreamId,
   MODEL_STREAMS,
 } from "@app/types/assistant/models/auto";
 import { GPT_5_6_LUNA_MODEL_ID } from "@app/types/assistant/models/openai";
@@ -338,6 +339,26 @@ describe("resolveStreamModel", () => {
       ]);
       await refreshDegradedModelIds();
     }
+  });
+
+  it("does not report a fallback when the replacement is another stream", async () => {
+    const models = (await getEnabledModelsForAuth(adminAuth)).map((model) => ({
+      ...model,
+      isSelectable:
+        isModelStreamId(model.modelId) ||
+        model.modelId === GPT_5_6_LUNA_MODEL_ID,
+    }));
+    const resolved = resolveStreamModelWithFallback(
+      models,
+      "auto",
+      new Set([GPT_5_6_LUNA_MODEL_ID])
+    );
+
+    expect(isModelStreamId(resolved.model.modelId)).toBe(true);
+    expect(resolved.didFallback).toBe(false);
+    expect(
+      getFallbackStreamIds(models, new Set([GPT_5_6_LUNA_MODEL_ID]))
+    ).toEqual([]);
   });
 
   it("does not report a fallback when degradation does not change the resolution", async () => {
