@@ -1,34 +1,64 @@
 import {
   Avatar,
+  Bell01,
   Button,
   Check,
-  Collapsible,
-  CollapsibleContent,
-  ConversationListItem,
+  CheckDouble,
   Cube01,
   CubeOutline,
+  DotsHorizontal,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Icon,
-  Mail01,
   ListGroup,
   MessageChatSquare,
+  MessageQuestionCircle,
   ReplySection,
-  SearchInput,
+  Robot,
   SearchInputWithPopover,
   UniversalSearchItem,
+  User01,
   Zap,
+  Umbrella03,
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import {
+  type ComponentType,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { getAgentById } from "../data/agents";
-import { getRandomInboxGreetingForName } from "../data/greetings";
 import { isTriggeredConversation } from "../data/myPod";
-import type { Agent, Conversation, Space, User } from "../data/types";
+import { getRequestTypeIcon, REQUEST_TYPE_LABELS } from "../data/requests";
+import { formatRowTime, READ_DWELL_MS } from "../data/time";
+import { getTriggerById } from "../data/triggers";
+import type {
+  AdminRequest,
+  Agent,
+  Conversation,
+  Space,
+  Trigger,
+  User,
+} from "../data/types";
 import { getUserById } from "../data/users";
+import { buildConversationRowMenuItems } from "./conversationRowMenu";
 import { EmptyState } from "./EmptyState";
-import { TaskItem } from "./TaskItem";
-
-type InboxTab = "conversations" | "tasks";
+import {
+  collectAgents,
+  collectUsers,
+  FilterMenu,
+  type FilterGroup,
+  type FilterSelection,
+} from "./FilterMenu";
+import { RequestListItem } from "./RequestListItem";
+import { TriggerRunAvatar } from "./TriggerRunAvatar";
+import { ConversationListItem } from "./ConversationListItem";
 
 type InboxConversationSearchItem = {
   type: "conversation";
@@ -39,75 +69,37 @@ type InboxConversationSearchItem = {
   score: number;
 };
 
-interface InboxTask {
-  id: string;
-  text: string;
-}
-
 interface InboxViewProps {
   spaces: Space[];
   conversations: Conversation[];
   users: User[];
   agents: Agent[];
-  activeTab?: InboxTab;
+  /** The requests queue; only the pending ones surface here. */
+  requests?: AdminRequest[];
+  /** The triggers behind the automated work rows, which name their agent and type. */
+  triggers?: Trigger[];
   selectedConversationId?: string | null;
+  selectedRequestId?: string | null;
+  /** The rows already read — conversations and requests — which lose their
+   * unread state here. */
+  readRowIds?: Set<string>;
+  /** Reports rows as read, either by dwelling on one or by clearing. */
+  onRowsRead?: (rowIds: string[]) => void;
+  /** The rows put back to unread from a row's menu, dot and all. */
+  unreadRowIds?: Set<string>;
+  /** Reports rows as unread, from a row's menu. */
+  onRowsUnread?: (rowIds: string[]) => void;
+  /** Leaves a conversation, which is the end of it in every list. */
+  onLeaveConversation?: (conversationId: string) => void;
   currentUserId?: string;
   onConversationClick?: (conversation: Conversation) => void;
+  onRequestClick?: (request: AdminRequest) => void;
   onMyPodClick?: () => void;
   onAutomationsClick?: () => void;
   onSpaceClick?: (space: Space) => void;
+  /** Opens the full requests queue from the section header. */
+  onRequestsClick?: () => void;
   personalSectionLabel?: string;
-}
-
-const INBOX_TASK_ITEMS: InboxTask[] = [
-  {
-    id: "fake-todo-design-copy",
-    text: "Tighten the onboarding copy for a sharper first-run flow.",
-  },
-  {
-    id: "fake-todo-risk-log",
-    text: "Add the latest mitigation notes to the weekly risk log.",
-  },
-  {
-    id: "fake-todo-customer-brief",
-    text: "Prepare the customer brief for the roadmap sync.",
-  },
-  {
-    id: "fake-todo-data-check",
-    text: "Validate the dashboard numbers against the source export.",
-  },
-  {
-    id: "fake-todo-launch-owner",
-    text: "Document who owns each beta rollout checklist item.",
-  },
-  {
-    id: "fake-todo-budget-follow-up",
-    text: "Resolve the budget question before planning closes.",
-  },
-  {
-    id: "fake-todo-doc-update",
-    text: "Update the implementation notes with the latest constraints.",
-  },
-  {
-    id: "fake-todo-support-plan",
-    text: "Draft the first-week support plan.",
-  },
-  {
-    id: "fake-todo-qa-scope",
-    text: "Split the QA scope into smoke tests and regression checks.",
-  },
-  {
-    id: "fake-todo-api-contract",
-    text: "Write down the API contract changes for the integrations team.",
-  },
-];
-
-function seededRandom(seed: string, index: number): number {
-  const hash = seed
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const x = Math.sin((hash + index) * 12.9898) * 43758.5453;
-  return x - Math.floor(x);
 }
 
 function buildInboxConversationSearchResults(
@@ -150,23 +142,6 @@ function buildInboxConversationSearchResults(
       }
       return a.title.localeCompare(b.title);
     });
-}
-
-function getTasksForPod(podKey: string): InboxTask[] {
-  const count =
-    Math.floor(seededRandom(podKey, 0) * 3) + (podKey === "my-pod" ? 2 : 1);
-
-  return [...INBOX_TASK_ITEMS]
-    .sort(
-      (a, b) =>
-        seededRandom(`${podKey}-${a.id}`, 0) -
-        seededRandom(`${podKey}-${b.id}`, 0)
-    )
-    .slice(0, Math.min(count, INBOX_TASK_ITEMS.length))
-    .map((task) => ({
-      ...task,
-      id: `${podKey}-${task.id}`,
-    }));
 }
 
 function getRandomParticipants(
@@ -237,13 +212,7 @@ function participantsToAvatarProps(
 }
 
 function getConversationListItemMeta(conversation: Conversation) {
-  const time = conversation.updatedAt
-    .toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    })
-    .replace("24:", "00:");
+  const time = formatRowTime(conversation.updatedAt);
 
   const replyCount = Math.floor(Math.random() * 8 + 1);
   const messageCount = Math.floor(Math.random() * replyCount + 1);
@@ -262,59 +231,34 @@ export function InboxView({
   conversations,
   users,
   agents,
-  activeTab = "conversations",
+  requests,
+  triggers,
   selectedConversationId = null,
+  selectedRequestId = null,
+  readRowIds,
+  onRowsRead,
+  unreadRowIds,
+  onRowsUnread,
+  onLeaveConversation,
   currentUserId,
   onConversationClick,
+  onRequestClick,
   onMyPodClick,
   onAutomationsClick,
   onSpaceClick,
+  onRequestsClick,
   personalSectionLabel = "My Pod",
 }: InboxViewProps) {
-  const currentUserFirstName = currentUserId
-    ? (getUserById(currentUserId)?.firstName ?? "there")
-    : "there";
-  const [greeting, setGreeting] = useState<string>("");
-  useEffect(() => {
-    setGreeting(getRandomInboxGreetingForName(currentUserFirstName));
-  }, [currentUserFirstName]);
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
-    new Set()
-  );
-  const [collapsedTaskSections, setCollapsedTaskSections] = useState<
-    Set<string>
-  >(new Set());
-  const [checkedTaskKeys, setCheckedTaskKeys] = useState<Set<string>>(
-    new Set()
+  // Read before this visit means dealt with, so those rows are gone. What gets
+  // read during the visit keeps its place rather than vanishing under the
+  // cursor, which is why the snapshot is taken once, on arrival.
+  const [hiddenConversationIds, setHiddenConversationIds] = useState(
+    () => new Set(readRowIds)
   );
   const [conversationSearchText, setConversationSearchText] = useState("");
   const [isConversationSearchOpen, setIsConversationSearchOpen] =
     useState(false);
-  const [taskSearchText, setTaskSearchText] = useState("");
-
-  const toggleSectionCollapse = (sectionKey: string) => {
-    setCollapsedSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(sectionKey)) {
-        next.delete(sectionKey);
-      } else {
-        next.add(sectionKey);
-      }
-      return next;
-    });
-  };
-
-  const toggleTaskSectionCollapse = (sectionKey: string) => {
-    setCollapsedTaskSections((prev) => {
-      const next = new Set(prev);
-      if (next.has(sectionKey)) {
-        next.delete(sectionKey);
-      } else {
-        next.add(sectionKey);
-      }
-      return next;
-    });
-  };
+  const [filter, setFilter] = useState<FilterSelection>(null);
 
   const myConversations = useMemo(() => {
     const now = new Date();
@@ -417,15 +361,119 @@ export function InboxView({
     return result;
   }, [unreadConversations]);
 
-  const spacesWithUnread = useMemo(() => {
-    return spaces.filter((space) => conversationsBySpace.has(space.id));
-  }, [spaces, conversationsBySpace]);
+  // Filtering a conversation by request type, or by an agent for a request,
+  // matches nothing, so those sections drop out on their own.
+  const matchesConversationFilter = useCallback(
+    (conversation: Conversation) => {
+      if (!filter) {
+        return true;
+      }
+      if (filter.kind === "member") {
+        return conversation.userParticipants.includes(filter.value);
+      }
+      if (filter.kind === "agent") {
+        return conversation.agentParticipants.includes(filter.value);
+      }
+      return false;
+    },
+    [filter]
+  );
+
+  const matchesRequestFilter = useCallback(
+    (request: AdminRequest) => {
+      if (!filter) {
+        return true;
+      }
+      if (filter.kind === "member") {
+        return (
+          request.requesterId === filter.value ||
+          request.resolvedByUserId === filter.value
+        );
+      }
+      if (filter.kind === "type") {
+        return request.type === filter.value;
+      }
+      return false;
+    },
+    [filter]
+  );
+
+  // Cleared rows and the filter are applied here rather than inside the memos
+  // above: those draw their rows at random, so re-running them on every clear
+  // or filter change would reshuffle what is left.
+  const visibleMyConversations = useMemo(
+    () =>
+      myConversations.filter(
+        (conversation) =>
+          !hiddenConversationIds.has(conversation.id) &&
+          matchesConversationFilter(conversation)
+      ),
+    [myConversations, hiddenConversationIds, matchesConversationFilter]
+  );
+
+  const visibleAutomationConversations = useMemo(
+    () =>
+      automationConversations.filter(
+        (conversation) =>
+          !hiddenConversationIds.has(conversation.id) &&
+          matchesConversationFilter(conversation)
+      ),
+    [automationConversations, hiddenConversationIds, matchesConversationFilter]
+  );
+
+  const visibleConversationsBySpace = useMemo(() => {
+    const result = new Map<string, Conversation[]>();
+    conversationsBySpace.forEach((spaceConversations, spaceId) => {
+      const visible = spaceConversations.filter(
+        (conversation) =>
+          !hiddenConversationIds.has(conversation.id) &&
+          matchesConversationFilter(conversation)
+      );
+      if (visible.length > 0) {
+        result.set(spaceId, visible);
+      }
+    });
+    return result;
+  }, [conversationsBySpace, hiddenConversationIds, matchesConversationFilter]);
+
+  const spacesWithConversations = useMemo(
+    () => spaces.filter((space) => visibleConversationsBySpace.has(space.id)),
+    [spaces, visibleConversationsBySpace]
+  );
+
+  const visibleConversations = useMemo(
+    () => [
+      ...visibleMyConversations,
+      ...visibleAutomationConversations,
+      ...Array.from(visibleConversationsBySpace.values()).flat(),
+    ],
+    [
+      visibleAutomationConversations,
+      visibleConversationsBySpace,
+      visibleMyConversations,
+    ]
+  );
+
+  // Clearing is reading in bulk: the rows go now, and stay gone on the next
+  // visit because they leave as read.
+  const clearConversations = useCallback(
+    (conversationIds: string[]) => {
+      if (conversationIds.length === 0) {
+        return;
+      }
+      onRowsRead?.(conversationIds);
+      setHiddenConversationIds(
+        (prev) => new Set([...prev, ...conversationIds])
+      );
+    },
+    [onRowsRead]
+  );
 
   // Stabilize the random per-conversation display data (participants, creator,
-  // reply/message/mention counts) so unrelated re-renders don't reshuffle the
-  // lists. Recomputed only when the displayed conversations change.
-  const conversationDisplayById = useMemo(() => {
-    const map = new Map<
+  // reply/message/mention counts) so unrelated re-renders — or leaving another
+  // conversation — don't reshuffle the lists. Cached by id, computed once.
+  const conversationDisplayCacheRef = useRef(
+    new Map<
       string,
       {
         creator?: User;
@@ -435,7 +483,10 @@ export function InboxView({
         messageCount: number;
         mentionCount: number;
       }
-    >();
+    >()
+  );
+  const conversationDisplayById = useMemo(() => {
+    const map = conversationDisplayCacheRef.current;
 
     const displayed = [
       ...myConversations,
@@ -466,105 +517,136 @@ export function InboxView({
     agents,
   ]);
 
-  const hasConversationContent =
-    myConversations.length > 0 ||
-    automationConversations.length > 0 ||
-    spacesWithUnread.length > 0;
+  // A request leaves the Inbox the moment it is handled: nothing pins it here
+  // the way the requests queue pins the rows you just decided.
+  const pendingRequests = useMemo(
+    () =>
+      [...(requests ?? [])]
+        .filter((request) => request.status === "pending")
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+    [requests]
+  );
 
-  const baseInboxTaskGroups = useMemo(() => {
-    const groups: Array<{
-      key: string;
-      label: string;
-      onHeaderClick?: () => void;
-      tasks: InboxTask[];
-    }> = [];
+  const visibleRequests = useMemo(
+    () => pendingRequests.filter(matchesRequestFilter),
+    [matchesRequestFilter, pendingRequests]
+  );
 
-    const myPodTasks = getTasksForPod("my-pod").filter(
-      (task) => !checkedTaskKeys.has(task.id)
-    );
-    if (myPodTasks.length > 0) {
-      groups.push({
-        key: "my-pod",
-        label: personalSectionLabel,
-        onHeaderClick: onMyPodClick,
-        tasks: myPodTasks,
-      });
+  const visibleRowIds = useMemo(
+    () =>
+      new Set([
+        ...visibleConversations.map((conversation) => conversation.id),
+        ...visibleRequests.map((request) => request.id),
+      ]),
+    [visibleConversations, visibleRequests]
+  );
+
+  // Three seconds on a row is reading it rather than glancing at it, whether it
+  // is a conversation or a request. Leaving before then, or hopping to another
+  // row, calls it off.
+  const selectedRowId = selectedConversationId ?? selectedRequestId;
+
+  useEffect(() => {
+    if (
+      !selectedRowId ||
+      !visibleRowIds.has(selectedRowId) ||
+      readRowIds?.has(selectedRowId)
+    ) {
+      return;
     }
 
-    spaces.forEach((space) => {
-      const tasks = getTasksForPod(space.id).filter(
-        (task) => !checkedTaskKeys.has(task.id)
-      );
-      if (tasks.length > 0) {
-        groups.push({
-          key: space.id,
-          label: space.name,
-          onHeaderClick: () => onSpaceClick?.(space),
-          tasks,
-        });
-      }
-    });
+    const timeout = setTimeout(
+      () => onRowsRead?.([selectedRowId]),
+      READ_DWELL_MS
+    );
+    return () => clearTimeout(timeout);
+  }, [onRowsRead, readRowIds, selectedRowId, visibleRowIds]);
 
-    return groups;
+  // Options come from the rows the Inbox holds before the filter narrows them,
+  // so a pick never empties the menu it came from.
+  const filterGroups = useMemo((): FilterGroup[] => {
+    const listedConversations = [
+      ...myConversations,
+      ...automationConversations,
+      ...Array.from(conversationsBySpace.values()).flat(),
+    ];
+
+    return [
+      {
+        kind: "member",
+        label: "Member",
+        icon: User01,
+        options: collectUsers([
+          ...listedConversations.flatMap(
+            (conversation) => conversation.userParticipants
+          ),
+          ...pendingRequests.flatMap((request) => [
+            request.requesterId,
+            request.resolvedByUserId,
+          ]),
+        ]),
+      },
+      {
+        kind: "agent",
+        label: "Agent",
+        icon: Robot,
+        options: collectAgents(
+          listedConversations.flatMap(
+            (conversation) => conversation.agentParticipants
+          )
+        ),
+      },
+      {
+        kind: "type",
+        label: "Request",
+        icon: Bell01,
+        options: Array.from(
+          new Set(pendingRequests.map((request) => request.type))
+        ).map((type) => ({
+          value: type,
+          label: REQUEST_TYPE_LABELS[type],
+          icon: getRequestTypeIcon(type),
+        })),
+      },
+    ];
   }, [
-    checkedTaskKeys,
-    onMyPodClick,
-    onSpaceClick,
-    personalSectionLabel,
-    spaces,
+    automationConversations,
+    conversationsBySpace,
+    myConversations,
+    pendingRequests,
   ]);
 
-  const inboxTaskGroups = useMemo(() => {
-    const normalizedSearch = taskSearchText.trim().toLowerCase();
+  // An Inbox with nothing left in it is caught up; a filter that matches
+  // nothing is not, so the two are told apart before the filter applies.
+  // Requests are out of reach of clearing, so a queue of them keeps the Inbox
+  // from reading as caught up.
+  const isCaughtUp = useMemo(
+    () =>
+      pendingRequests.length === 0 &&
+      [
+        ...myConversations,
+        ...automationConversations,
+        ...Array.from(conversationsBySpace.values()).flat(),
+      ].every((conversation) => hiddenConversationIds.has(conversation.id)),
+    [
+      automationConversations,
+      conversationsBySpace,
+      hiddenConversationIds,
+      myConversations,
+      pendingRequests,
+    ]
+  );
 
-    return baseInboxTaskGroups
-      .map((group) => ({
-        ...group,
-        tasks:
-          normalizedSearch.length === 0
-            ? group.tasks
-            : group.tasks.filter((task) =>
-                task.text.toLowerCase().includes(normalizedSearch)
-              ),
-      }))
-      .filter((group) => group.tasks.length > 0);
-  }, [baseInboxTaskGroups, taskSearchText]);
+  const hasNoMatches =
+    visibleConversations.length === 0 && visibleRequests.length === 0;
 
-  const hasTaskContent = baseInboxTaskGroups.length > 0;
-  const hasFilteredTaskContent = inboxTaskGroups.length > 0;
-
-  const allConversationSectionsCollapsed = useMemo(() => {
-    if (!hasConversationContent) return true;
-
-    const myConversationsCollapsed =
-      myConversations.length === 0 || collapsedSections.has("my-conversations");
-
-    const automationsCollapsed =
-      automationConversations.length === 0 ||
-      collapsedSections.has("automations");
-
-    const allSpacesCollapsed =
-      spacesWithUnread.length === 0 ||
-      spacesWithUnread.every((space) => collapsedSections.has(space.id));
-
-    return (
-      myConversationsCollapsed && automationsCollapsed && allSpacesCollapsed
-    );
-  }, [
-    automationConversations.length,
-    collapsedSections,
-    hasConversationContent,
-    myConversations.length,
-    spacesWithUnread,
-  ]);
-
-  const allTaskSectionsCollapsed = useMemo(() => {
-    if (!hasFilteredTaskContent) return true;
-
-    return inboxTaskGroups.every((group) =>
-      collapsedTaskSections.has(group.key)
-    );
-  }, [collapsedTaskSections, hasFilteredTaskContent, inboxTaskGroups]);
+  const clearableReadIds = useMemo(
+    () =>
+      visibleConversations
+        .filter((conversation) => readRowIds?.has(conversation.id))
+        .map((conversation) => conversation.id),
+    [readRowIds, visibleConversations]
+  );
 
   const handleConversationSearchSelect = (
     item: InboxConversationSearchItem
@@ -610,16 +692,6 @@ export function InboxView({
     );
   };
 
-  const handleMarkAllConversationsAsRead = () => {
-    setCollapsedSections((prev) => {
-      const next = new Set(prev);
-      next.add("my-conversations");
-      next.add("automations");
-      spacesWithUnread.forEach((space) => next.add(space.id));
-      return next;
-    });
-  };
-
   const renderConversationsToolbar = () => (
     <div className="flex items-center gap-2">
       <SearchInputWithPopover
@@ -634,7 +706,7 @@ export function InboxView({
         open={isConversationSearchOpen}
         onOpenChange={setIsConversationSearchOpen}
         placeholder="Search in Inbox"
-        className="w-full"
+        className="w-full min-w-0 max-w-80"
         items={conversationSearchResults}
         availableHeight
         noResults={
@@ -647,53 +719,84 @@ export function InboxView({
           renderConversationSearchItem(item, selected)
         }
       />
-      <Button
-        label="Mark all as read"
-        icon={Check}
-        size="sm"
-        variant="outline"
-        tooltip="Mark all as read"
-        onClick={handleMarkAllConversationsAsRead}
+      <FilterMenu
+        filter={filter}
+        groups={filterGroups}
+        onFilterChange={setFilter}
+        searchName="inbox-filter-search"
+        searchPlaceholder="Filter by member, agent or request"
       />
+      <div className="ml-auto flex shrink-0 items-center gap-2">
+        {clearableReadIds.length > 0 && (
+          <Button
+            label="Clear read"
+            icon={CheckDouble}
+            size="sm"
+            variant="outline"
+            tooltip="Remove the conversations you have already read."
+            onClick={() => clearConversations(clearableReadIds)}
+          />
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={DotsHorizontal}
+              size="sm"
+              variant="outline"
+              tooltip="Inbox options"
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent collisionPadding={8}>
+            <DropdownMenuItem
+              label="Clear all conversations"
+              icon={CheckDouble}
+              onClick={() =>
+                clearConversations(
+                  visibleConversations.map((conversation) => conversation.id)
+                )
+              }
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 
-  const renderTasksToolbar = () => (
-    <SearchInput
-      name="inbox-task-search"
-      value={taskSearchText}
-      onChange={setTaskSearchText}
-      placeholder="Search tasks..."
-      className="w-full"
-    />
-  );
-
-  const renderInboxSectionHeader = (
-    label: string,
-    onHeaderClick: (() => void) | undefined,
-    onAction: () => void,
-    actionLabel: string,
-    icon?: ComponentType<{ className?: string }>
-  ) => (
+  const renderInboxSectionHeader = ({
+    label,
+    icon,
+    onHeaderClick,
+    action,
+  }: {
+    label: string;
+    icon?: ComponentType<{ className?: string }>;
+    onHeaderClick?: () => void;
+    /** Sections nothing can clear — requests — leave this out. */
+    action?: { label: string; onAction: () => void };
+  }) => (
     <div
-      className="mt-2 flex cursor-pointer items-center justify-between rounded-2xl bg-muted-background p-1.5 pl-3.5 heading-sm"
+      // The 44px floor is the height the action button gives a header, held
+      // here so the sections without one stand just as tall.
+      className="mt-2 flex min-h-11 cursor-pointer items-center justify-between rounded-2xl bg-muted-background p-1.5 pl-3.5 heading-sm"
       onClick={onHeaderClick}
     >
       <span className="flex min-w-0 items-center gap-1.5">
         {icon ? <Icon visual={icon} size="sm" /> : null}
         {label}
       </span>
-      <Button
-        label={actionLabel}
-        icon={Check}
-        size="sm"
-        variant="ghost-secondary"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onAction();
-        }}
-      />
+      {action && (
+        <Button
+          label={action.label}
+          icon={Check}
+          size="sm"
+          variant="ghost-secondary"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            action.onAction();
+          }}
+        />
+      )}
     </div>
   );
 
@@ -706,26 +809,48 @@ export function InboxView({
     const messageCount = display?.messageCount ?? 0;
     const mentionCount = display?.mentionCount ?? 0;
     const isSelected = selectedConversationId === conversation.id;
+    // A conversation you have stayed on is read: the row keeps its place until
+    // you leave the Inbox, but it stops calling for attention. Putting it back
+    // to unread from the row's menu has the last word.
+    const isForcedUnread = unreadRowIds?.has(conversation.id) ?? false;
+    const isRead =
+      !isForcedUnread && (readRowIds?.has(conversation.id) ?? false);
+
+    // A run is an agent working alone, so it wears the agent badged with what
+    // made it fire, and nobody in it can have mentioned you.
+    const trigger = conversation.triggerId
+      ? getTriggerById(triggers ?? [], conversation.triggerId)
+      : undefined;
 
     return (
       <ConversationListItem
         key={conversation.id}
         conversation={conversation}
         creator={creator || undefined}
+        leadingVisual={
+          trigger ? <TriggerRunAvatar trigger={trigger} /> : undefined
+        }
         className={cn(
           "px-3 rounded-2xl border-transparent!",
           isSelected && "bg-highlight-50"
         )}
         time={time}
+        unread={isForcedUnread || (!isRead && messageCount > 0)}
         replySection={
           <ReplySection
             replyCount={replyCount}
-            unreadCount={messageCount}
-            mentionCount={mentionCount}
+            unreadCount={isRead ? 0 : messageCount}
+            mentionCount={trigger || isRead ? 0 : mentionCount}
             avatars={avatarProps}
             lastMessageBy={avatarProps[0]?.name || "Unknown"}
           />
         }
+        menuItems={buildConversationRowMenuItems({
+          isUnread: isForcedUnread || (!isRead && messageCount > 0),
+          onMarkRead: () => onRowsRead?.([conversation.id]),
+          onMarkUnread: () => onRowsUnread?.([conversation.id]),
+          onLeave: () => onLeaveConversation?.(conversation.id),
+        })}
         onClick={() => {
           onConversationClick?.(conversation);
         }}
@@ -733,34 +858,27 @@ export function InboxView({
     );
   };
 
-  const renderEmptyState = (title: string, description: React.ReactNode) => (
-    <EmptyState icon={Mail01} title={title} description={description} />
-  );
-
   const renderConversationsTab = () => {
-    if (!hasConversationContent) {
-      return renderEmptyState(
-        "Inbox",
-        <>
-          You're all caught up!
-          <br />
-          Nothing new under the sun.
-        </>
+    // Nothing to search or filter through, so the toolbar goes too.
+    if (isCaughtUp) {
+      return (
+        <EmptyState
+          icon={Umbrella03}
+          title="You're all caught up"
+          description="Nothing new under the sun."
+        />
       );
     }
 
-    if (allConversationSectionsCollapsed) {
+    if (hasNoMatches) {
       return (
         <div className="flex flex-1 flex-col gap-3">
           {renderConversationsToolbar()}
-          {renderEmptyState(
-            "Inbox",
-            <>
-              You're all caught up!
-              <br />
-              Nothing new under the sun.
-            </>
-          )}
+          <div className="flex flex-1 items-center justify-center">
+            <p className="text-center text-lg text-muted-foreground">
+              No rows match your filter.
+            </p>
+          </div>
         </div>
       );
     }
@@ -769,228 +887,108 @@ export function InboxView({
       <div className="flex flex-col gap-3">
         {renderConversationsToolbar()}
         <div className="flex flex-col">
-          {myConversations.length > 0 && (
-            <Collapsible
-              key="my-conversations"
-              open={!collapsedSections.has("my-conversations")}
-              onOpenChange={(open) => {
-                if (!open) {
-                  setCollapsedSections((prev) =>
-                    new Set(prev).add("my-conversations")
-                  );
-                } else {
-                  setCollapsedSections((prev) => {
-                    const next = new Set(prev);
-                    next.delete("my-conversations");
-                    return next;
-                  });
-                }
-              }}
-              className="flex flex-col"
-            >
-              <CollapsibleContent>
-                <div className="flex flex-col gap-1">
-                  {renderInboxSectionHeader(
-                    personalSectionLabel,
-                    onMyPodClick,
-                    () => toggleSectionCollapse("my-conversations"),
-                    "Mark as read",
-                    MessageChatSquare
-                  )}
-                  <ListGroup className="border-transparent! gap-0.5">
-                    {myConversations.map(renderInboxConversationItem)}
-                  </ListGroup>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+          {visibleMyConversations.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {renderInboxSectionHeader({
+                label: personalSectionLabel,
+                icon: MessageChatSquare,
+                onHeaderClick: onMyPodClick,
+                action: {
+                  label: "Mark as read & clear",
+                  onAction: () =>
+                    clearConversations(
+                      visibleMyConversations.map(
+                        (conversation) => conversation.id
+                      )
+                    ),
+                },
+              })}
+              <ListGroup className="border-transparent! gap-0.5">
+                {visibleMyConversations.map(renderInboxConversationItem)}
+              </ListGroup>
+            </div>
           )}
-          {automationConversations.length > 0 && (
-            <Collapsible
-              key="automations"
-              open={!collapsedSections.has("automations")}
-              onOpenChange={(open) => {
-                if (!open) {
-                  setCollapsedSections((prev) =>
-                    new Set(prev).add("automations")
-                  );
-                } else {
-                  setCollapsedSections((prev) => {
-                    const next = new Set(prev);
-                    next.delete("automations");
-                    return next;
-                  });
-                }
-              }}
-              className="flex flex-col"
-            >
-              <CollapsibleContent>
-                <div className="flex flex-col gap-1">
-                  {renderInboxSectionHeader(
-                    "Automations",
-                    onAutomationsClick,
-                    () => toggleSectionCollapse("automations"),
-                    "Mark as read",
-                    Zap
-                  )}
-                  <ListGroup className="border-transparent! gap-0.5">
-                    {automationConversations.map(renderInboxConversationItem)}
-                  </ListGroup>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+          {visibleAutomationConversations.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {renderInboxSectionHeader({
+                label: "Automated work",
+                icon: Zap,
+                onHeaderClick: onAutomationsClick,
+                action: {
+                  label: "Mark as read & clear",
+                  onAction: () =>
+                    clearConversations(
+                      visibleAutomationConversations.map(
+                        (conversation) => conversation.id
+                      )
+                    ),
+                },
+              })}
+              <ListGroup className="border-transparent! gap-0.5">
+                {visibleAutomationConversations.map(
+                  renderInboxConversationItem
+                )}
+              </ListGroup>
+            </div>
           )}
-          {spacesWithUnread.map((space) => {
-            const spaceConversations = conversationsBySpace.get(space.id) || [];
-            if (spaceConversations.length === 0) return null;
+          {spacesWithConversations.map((space) => {
+            const spaceConversations =
+              visibleConversationsBySpace.get(space.id) ?? [];
 
             return (
-              <Collapsible
-                key={space.id}
-                open={!collapsedSections.has(space.id)}
-                onOpenChange={(open) => {
-                  if (!open) {
-                    setCollapsedSections((prev) => new Set(prev).add(space.id));
-                  } else {
-                    setCollapsedSections((prev) => {
-                      const next = new Set(prev);
-                      next.delete(space.id);
-                      return next;
-                    });
-                  }
-                }}
-                className="flex flex-col"
-              >
-                <CollapsibleContent>
-                  <div className="flex flex-col gap-1">
-                    {renderInboxSectionHeader(
-                      space.name,
-                      () => onSpaceClick?.(space),
-                      () => toggleSectionCollapse(space.id),
-                      "Mark as read",
-                      getInboxPodSectionIcon(space)
-                    )}
-                    <ListGroup className="border-transparent! gap-0.5">
-                      {spaceConversations.map(renderInboxConversationItem)}
-                    </ListGroup>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  const renderTasksTab = () => {
-    if (!hasTaskContent) {
-      return renderEmptyState(
-        "All tasks done",
-        "No ongoing tasks across your pods."
-      );
-    }
-
-    if (!hasFilteredTaskContent) {
-      return (
-        <div className="flex flex-1 flex-col gap-3">
-          {renderTasksToolbar()}
-          <div className="flex flex-1 flex-col items-center justify-center gap-2">
-            <p className="text-center text-lg text-muted-foreground">
-              No tasks match your search.
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    if (allTaskSectionsCollapsed) {
-      return (
-        <div className="flex flex-1 flex-col gap-3">
-          {renderTasksToolbar()}
-          {renderEmptyState(
-            "All tasks done",
-            "No ongoing tasks across your pods."
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex flex-col gap-3">
-        {renderTasksToolbar()}
-        {inboxTaskGroups.map((group) => (
-          <Collapsible
-            key={group.key}
-            open={!collapsedTaskSections.has(group.key)}
-            onOpenChange={(open) => {
-              if (!open) {
-                setCollapsedTaskSections((prev) =>
-                  new Set(prev).add(group.key)
-                );
-              } else {
-                setCollapsedTaskSections((prev) => {
-                  const next = new Set(prev);
-                  next.delete(group.key);
-                  return next;
-                });
-              }
-            }}
-            className="flex flex-col"
-          >
-            <CollapsibleContent>
-              <div className="flex flex-col gap-1">
-                {renderInboxSectionHeader(
-                  group.label,
-                  group.onHeaderClick,
-                  () => toggleTaskSectionCollapse(group.key),
-                  "Mark as done"
-                )}
-
+              <div className="flex flex-col gap-1" key={space.id}>
+                {renderInboxSectionHeader({
+                  label: space.name,
+                  icon: getInboxPodSectionIcon(space),
+                  onHeaderClick: () => onSpaceClick?.(space),
+                  action: {
+                    label: "Mark as read & clear",
+                    onAction: () =>
+                      clearConversations(
+                        spaceConversations.map(
+                          (conversation) => conversation.id
+                        )
+                      ),
+                  },
+                })}
                 <ListGroup className="border-transparent! gap-0.5">
-                  <div className="flex flex-col gap-2 px-3 py-1">
-                    {group.tasks.map((task) => (
-                      <TaskItem
-                        key={task.id}
-                        id={task.id}
-                        text={task.text}
-                        isEditable
-                        isChecked={checkedTaskKeys.has(task.id)}
-                        isMutedAfterCheck
-                        className="w-full py-1"
-                        onCheckedChange={(checked) => {
-                          setCheckedTaskKeys((prev) => {
-                            const next = new Set(prev);
-                            if (checked) {
-                              next.add(task.id);
-                            } else {
-                              next.delete(task.id);
-                            }
-                            return next;
-                          });
-                        }}
-                      />
-                    ))}
-                  </div>
+                  {spaceConversations.map(renderInboxConversationItem)}
                 </ListGroup>
               </div>
-            </CollapsibleContent>
-          </Collapsible>
-        ))}
+            );
+          })}
+          {visibleRequests.length > 0 && (
+            <div className="flex flex-col gap-1">
+              {renderInboxSectionHeader({
+                label: "Requests",
+                icon: MessageQuestionCircle,
+                onHeaderClick: onRequestsClick,
+              })}
+              <ListGroup className="border-transparent! gap-0.5">
+                {visibleRequests.map((request) => (
+                  <RequestListItem
+                    key={request.id}
+                    request={request}
+                    isSelected={selectedRequestId === request.id}
+                    currentUserId={currentUserId}
+                    isRead={readRowIds?.has(request.id) ?? false}
+                    onClick={() => onRequestClick?.(request)}
+                  />
+                ))}
+              </ListGroup>
+            </div>
+          )}
+        </div>
       </div>
     );
   };
 
   return (
     <div className="flex h-full w-full flex-col overflow-x-clip overflow-y-auto bg-background">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-4 pt-8 pb-8">
-        {greeting && (
-          <div className="heading-2xl text-center text-foreground">
-            {greeting}
-          </div>
-        )}
-        {activeTab === "conversations"
-          ? renderConversationsTab()
-          : renderTasksTab()}
+      {/* flex-1 so an empty state, which grows to fill its parent, centers on
+          the panel rather than collapsing against the toolbar. */}
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 pt-6 pb-8">
+        {renderConversationsTab()}
       </div>
     </div>
   );

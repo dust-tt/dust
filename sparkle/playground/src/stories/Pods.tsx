@@ -2,7 +2,6 @@ import {
   Archive,
   Avatar,
   Bell01,
-  Brackets,
   Breadcrumbs,
   Button,
   CheckDone01,
@@ -27,16 +26,14 @@ import {
   Edit04,
   Eye,
   File02,
-  FolderOpen,
   Heart,
   Icon,
   IntersectDust,
+  LayersThree01,
   Lightbulb04,
   Link01,
   LogOut01,
-  MagicWand02,
   MessageCircle01,
-  MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListCompactLabel,
@@ -45,13 +42,10 @@ import {
   NavTabPill,
   NavTabPillList,
   NavTabPillTrigger,
-  Planet,
   Plus,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
-  PuzzlePiece01,
-  Robot,
   ScrollArea,
   ScrollBar,
   SearchInput,
@@ -76,6 +70,7 @@ import {
 } from "react";
 
 import { AgentBuilderView } from "../components/AgentBuilderView";
+import { BuildNav } from "../components/BuildNav";
 import {
   ConversationActions,
   isFileView,
@@ -267,7 +262,7 @@ function Pods() {
   } | null>(null);
 
   // ── Sidebar UI state ──────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
+  const [activeTab, setActiveTab] = useState<"chat" | "build" | "admin">(
     "chat"
   );
   const [searchText, setSearchText] = useState("");
@@ -1448,14 +1443,14 @@ function Pods() {
   const navTopBar = (
     <NavTabPill
       value={activeTab}
-      onValueChange={(v) => setActiveTab(v as "chat" | "spaces" | "admin")}
+      onValueChange={(v) => setActiveTab(v as "chat" | "build" | "admin")}
     >
       <NavTabPillList>
         <NavTabPillTrigger value="chat" icon={IntersectDust}>
           Work
         </NavTabPillTrigger>
-        <NavTabPillTrigger value="spaces" icon={Planet}>
-          Spaces
+        <NavTabPillTrigger value="build" icon={LayersThree01}>
+          Build
         </NavTabPillTrigger>
         <NavTabPillTrigger value="admin" icon={Settings01}>
           Admin
@@ -1485,7 +1480,7 @@ function Pods() {
                 variant="highlight"
                 tooltip="Create a new conversation"
                 size="sm"
-                icon={MessagePlusCircle}
+                icon={Plus}
                 label="New"
                 className="shrink-0"
                 onClick={() => {
@@ -1495,103 +1490,6 @@ function Pods() {
                 }}
               />
             </div>
-
-            <NavigationList className="mx-sidebar-side-spacing pt-1">
-              <NavigationListItem
-                icon={Robot}
-                label="Agents"
-                keepHoverOnMoreMenu
-                moreMenu={
-                  <div
-                    className={cn(
-                      "absolute right-2 top-1.5",
-                      "transition-opacity",
-                      "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                      "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                      "has-[[data-state=open]]:opacity-100"
-                    )}
-                  >
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="xs"
-                          icon={Plus}
-                          label="New"
-                          variant="ghost-secondary"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        side="bottom"
-                        align="center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <DropdownMenuLabel label="New agent" />
-                        <DropdownMenuItem icon={File02} label="From scratch" />
-                        <DropdownMenuItem
-                          icon={MagicWand02}
-                          label="From template"
-                          onClick={() => {
-                            setP2View({ kind: "templates" });
-                            setP3View(null);
-                          }}
-                        />
-                        <DropdownMenuItem icon={Brackets} label="From YAML" />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                }
-              />
-              <NavigationListItem
-                icon={PuzzlePiece01}
-                label="Skills"
-                keepHoverOnMoreMenu
-                moreMenu={
-                  <div
-                    className={cn(
-                      "absolute right-2 top-1.5",
-                      "transition-opacity",
-                      "[@media(hover:hover)_and_(pointer:fine)]:opacity-0",
-                      "group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100",
-                      "has-[[data-state=open]]:opacity-100"
-                    )}
-                  >
-                    <DropdownMenu modal={false}>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          size="xs"
-                          icon={Plus}
-                          label="New"
-                          variant="ghost-secondary"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        />
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        side="bottom"
-                        align="center"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <DropdownMenuLabel label="New skill" />
-                        <DropdownMenuItem
-                          icon={PuzzlePiece01}
-                          label="From scratch"
-                        />
-                        <DropdownMenuItem
-                          icon={FolderOpen}
-                          label="From existing"
-                        />
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                }
-              />
-            </NavigationList>
 
             {inboxConversations.length > 0 && (
               <NavigationListCollapsibleSection
@@ -1895,12 +1793,13 @@ function Pods() {
         </div>
       )}
 
-      {activeTab === "spaces" && (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex flex-1 items-center justify-center text-muted-foreground">
-            Spaces — TBD
-          </div>
-        </div>
+      {activeTab === "build" && (
+        <BuildNav
+          onNewAgentFromTemplate={() => {
+            setP2View({ kind: "templates" });
+            setP3View(null);
+          }}
+        />
       )}
       {activeTab === "admin" && (
         <div className="flex min-h-0 flex-1 flex-col">

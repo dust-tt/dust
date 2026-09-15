@@ -275,7 +275,7 @@ function getRandomUserId(index: number, seed: string): string {
 }
 
 // Map file type to logo/icon component
-function getIconForFileType(
+export function getIconForFileType(
   fileType: DataSourceFileType
 ): React.ComponentType<{ className?: string }> {
   switch (fileType) {

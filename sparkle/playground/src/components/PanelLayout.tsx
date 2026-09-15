@@ -1,9 +1,10 @@
 import {
   ArrowLeft,
   Button,
-  Menu01,
+  HideMenu,
   Maximize01,
   Minimize01,
+  ShowMenu,
   XClose,
 } from "@dust-tt/sparkle";
 import { customColors } from "@dust-tt/sparkle/lib/colors";
@@ -842,7 +843,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
     <Button
       variant="ghost"
       size="sm"
-      icon={Menu01}
+      icon={showNavOverlay ? HideMenu : ShowMenu}
       onClick={isMobile ? () => setNavIntent(true) : toggleNav}
       tooltip={showNavOverlay ? "Hide navigation" : "Show navigation"}
     />
@@ -893,7 +894,7 @@ export function PanelLayout({ children }: PanelLayoutProps) {
                         <Button
                           variant="ghost"
                           size="sm"
-                          icon={Menu01}
+                          icon={HideMenu}
                           onClick={() => setNavIntent(false)}
                           tooltip="Hide navigation"
                         />

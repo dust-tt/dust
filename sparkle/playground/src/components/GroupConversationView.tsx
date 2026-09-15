@@ -9,7 +9,6 @@ import {
   CheckDouble,
   Chip,
   ContentMessage,
-  ConversationListItem,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -37,6 +36,7 @@ import {
   MagicWand02,
   MessageChatSquare,
   ReplySection,
+  Robot,
   SearchInput,
   SearchInputWithPopover,
   Sheet,
@@ -49,11 +49,11 @@ import {
   TabsContent,
   Trash01,
   TypingAnimation,
+  Umbrella03,
   Upload01,
+  User01,
   Users01,
   XClose,
-  Zap,
-  ZapOff,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import { cn } from "@sparkle/lib/utils";
@@ -81,11 +81,14 @@ import {
   isMyPodMineConversation,
   isTriggeredConversation,
 } from "../data/myPod";
+import { formatRowTime } from "../data/time";
+import { getTriggerById } from "../data/triggers";
 import type {
   Agent,
   Conversation,
   DataSource,
   Space,
+  Trigger,
   User,
 } from "../data/types";
 import { getUserById } from "../data/users";
@@ -93,7 +96,15 @@ import {
   PodCustomizationSection,
   type PodTabCustomizationItem,
 } from "./PodCustomizationSection";
+import { buildConversationRowMenuItems } from "./conversationRowMenu";
 import { EmptyState } from "./EmptyState";
+import {
+  collectAgents,
+  collectUsers,
+  FilterMenu,
+  type FilterGroup,
+  type FilterSelection,
+} from "./FilterMenu";
 import { DataTable } from "./DataTableDnd";
 import { FilePreviewPanel } from "./FilePreviewPanel";
 import { FilesBrowser } from "./FilesBrowser";
@@ -105,7 +116,9 @@ import {
 import { InputBar, type InputBarTaskCommand } from "./InputBar";
 import { SuggestionBox } from "./SuggestionBox";
 import { TaskItem } from "./TaskItem";
+import { TriggerRunAvatar } from "./TriggerRunAvatar";
 import { TodoInputBar } from "./TodoInputBar";
+import { ConversationListItem } from "./ConversationListItem";
 
 interface GroupConversationViewProps {
   space: Space;
@@ -137,6 +150,20 @@ interface GroupConversationViewProps {
   showComposer?: boolean;
   hideConversationFilters?: boolean;
   currentUserId?: string;
+  /** The rows read elsewhere, which stop calling for attention here too. */
+  readRowIds?: Set<string>;
+  /** Reports rows as read, from a row's menu. */
+  onRowsRead?: (rowIds: string[]) => void;
+  /** The rows put back to unread from a row's menu, dot and all. */
+  unreadRowIds?: Set<string>;
+  /** Reports rows as unread, from a row's menu. */
+  onRowsUnread?: (rowIds: string[]) => void;
+  /** Leaves a conversation, which is the end of it in every list. */
+  onLeaveConversation?: (conversationId: string) => void;
+  /** The conversations already left, kept out of the list. */
+  leftConversationIds?: Set<string>;
+  /** The triggers behind automated rows, which name their agent and type. */
+  triggers?: Trigger[];
   podTabCustomization?: {
     tabs: PodTabCustomizationItem[];
     addableFiles: DataSource[];
@@ -329,55 +356,69 @@ function generateConversationsWithDates(
   const now = new Date();
   const generated: Conversation[] = [];
 
-  // Duplicate and vary existing conversations
-  for (let i = 0; i < count; i++) {
-    const baseConversation = conversations[i % conversations.length];
-    const rowSeed = `${seed}-${baseConversation.id}-${i}`;
-    const daysAgo = Math.floor(seededRandom(rowSeed, 0) * 35); // Up to 35 days ago
-    const hoursAgo = Math.floor(seededRandom(rowSeed, 1) * 24);
-    const minutesAgo = Math.floor(seededRandom(rowSeed, 2) * 60);
-    const title =
-      GENERATED_CONVERSATION_TITLES[
-        Math.floor(
-          seededRandom(rowSeed, 3) * GENERATED_CONVERSATION_TITLES.length
-        )
-      ];
-    const descriptionTemplate =
-      GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES[
-        Math.floor(
-          seededRandom(rowSeed, 4) *
-            GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES.length
-        )
-      ];
+  // Duplicate and vary existing conversations. Each copy is seeded by the
+  // conversation it comes from rather than its rank in the list, so dropping
+  // one conversation leaves every other row exactly as it was.
+  const copiesPerConversation = Math.ceil(count / conversations.length);
 
-    const updatedAt = new Date(now);
-    updatedAt.setDate(updatedAt.getDate() - daysAgo);
-    updatedAt.setHours(updatedAt.getHours() - hoursAgo);
-    updatedAt.setMinutes(updatedAt.getMinutes() - minutesAgo);
+  for (const baseConversation of conversations) {
+    for (let copy = 0; copy < copiesPerConversation; copy++) {
+      const rowSeed = `${seed}-${baseConversation.id}-${copy}`;
+      const daysAgo = Math.floor(seededRandom(rowSeed, 0) * 35); // Up to 35 days ago
+      const hoursAgo = Math.floor(seededRandom(rowSeed, 1) * 24);
+      const minutesAgo = Math.floor(seededRandom(rowSeed, 2) * 60);
+      const title =
+        GENERATED_CONVERSATION_TITLES[
+          Math.floor(
+            seededRandom(rowSeed, 3) * GENERATED_CONVERSATION_TITLES.length
+          )
+        ];
+      const descriptionTemplate =
+        GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES[
+          Math.floor(
+            seededRandom(rowSeed, 4) *
+              GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES.length
+          )
+        ];
 
-    const createdAt = new Date(updatedAt);
-    createdAt.setDate(
-      createdAt.getDate() - Math.floor(seededRandom(rowSeed, 5) * 5)
-    );
+      const updatedAt = new Date(now);
+      updatedAt.setDate(updatedAt.getDate() - daysAgo);
+      updatedAt.setHours(updatedAt.getHours() - hoursAgo);
+      updatedAt.setMinutes(updatedAt.getMinutes() - minutesAgo);
 
-    generated.push({
-      ...baseConversation,
-      id: `${baseConversation.id}-${i}`,
-      updatedAt,
-      createdAt,
-      title,
-      description: descriptionTemplate.replace("{title}", title.toLowerCase()),
-    });
+      const createdAt = new Date(updatedAt);
+      createdAt.setDate(
+        createdAt.getDate() - Math.floor(seededRandom(rowSeed, 5) * 5)
+      );
+
+      // A run is named by the trigger that started it, so repeats of the same
+      // automation keep that name instead of borrowing a human thread's.
+      const isRun = baseConversation.triggerId !== undefined;
+
+      generated.push({
+        ...baseConversation,
+        id: `${baseConversation.id}-${copy}`,
+        updatedAt,
+        createdAt,
+        title: isRun ? baseConversation.title : title,
+        description: isRun
+          ? baseConversation.description
+          : descriptionTemplate.replace("{title}", title.toLowerCase()),
+      });
+    }
   }
 
   return generated;
 }
 
-// Seeded random function for deterministic randomness
+// Seeded random function for deterministic randomness. The hash folds in the
+// position of each character, so seeds that share the same letters — two
+// conversation ids apart only in their digits — don't land on the same row.
 function seededRandom(seed: string, index: number): number {
-  const hash = seed
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  let hash = 5381;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 33 + seed.charCodeAt(i)) | 0;
+  }
   const x = Math.sin((hash + index) * 12.9898) * 43758.5453;
   return x - Math.floor(x);
 }
@@ -1234,7 +1275,9 @@ function GroupConversationTabContent({
         <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-4">
           <div
             className={cn(
-              "mx-auto flex w-full max-w-4xl flex-col gap-3 py-8",
+              // flex-1 so an empty state below the input centers on what is
+              // left of the panel instead of hugging it.
+              "mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 py-8",
               contentClassName
             )}
           >
@@ -1275,6 +1318,7 @@ function ProjectSetupEmptyState({
 }) {
   return (
     <EmptyState
+      icon={Umbrella03}
       title="It's quiet in here."
       description="Your Pod is ready but empty! Let us help you invite people, add key data, and more."
       action={
@@ -1320,6 +1364,13 @@ export function GroupConversationView({
   showComposer = true,
   hideConversationFilters = false,
   currentUserId,
+  readRowIds,
+  onRowsRead,
+  unreadRowIds,
+  onRowsUnread,
+  onLeaveConversation,
+  leftConversationIds,
+  triggers = [],
   podTabCustomization,
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
@@ -1333,6 +1384,8 @@ export function GroupConversationView({
   const [goodToKnowFilter, setGoodToKnowFilter] = useState<
     "all" | "shared" | "mine"
   >("all");
+  const [conversationFilter, setConversationFilter] =
+    useState<FilterSelection>(null);
   const [todoSearchText, setTodoSearchText] = useState("");
   const [todoReassignSearchText, setTodoReassignSearchText] = useState("");
   const [todoSuggestionStatus, setTodoSuggestionStatus] =
@@ -1513,6 +1566,39 @@ export function GroupConversationView({
     users,
   ]);
 
+  // The conversations the tab holds before the filter narrows them, so the
+  // options never drop out of the menu they were picked from.
+  const filterSourceConversations =
+    podVariant === "personal"
+      ? myPodEnrichedConversations
+      : expandedConversations;
+
+  const conversationFilterGroups = useMemo(
+    (): FilterGroup[] => [
+      {
+        kind: "member",
+        label: "Member",
+        icon: User01,
+        options: collectUsers(
+          filterSourceConversations.flatMap(
+            (conversation) => conversation.userParticipants
+          )
+        ),
+      },
+      {
+        kind: "agent",
+        label: "Agent",
+        icon: Robot,
+        options: collectAgents(
+          filterSourceConversations.flatMap(
+            (conversation) => conversation.agentParticipants
+          )
+        ),
+      },
+    ],
+    [filterSourceConversations]
+  );
+
   const visibleConversations = useMemo(() => {
     const source =
       podVariant === "personal"
@@ -1520,6 +1606,18 @@ export function GroupConversationView({
         : expandedConversations;
 
     return source.filter((conversation) => {
+      if (leftConversationIds?.has(conversation.id)) {
+        return false;
+      }
+      if (conversationFilter) {
+        const matches =
+          conversationFilter.kind === "member"
+            ? conversation.userParticipants.includes(conversationFilter.value)
+            : conversation.agentParticipants.includes(conversationFilter.value);
+        if (!matches) {
+          return false;
+        }
+      }
       if (podVariant === "personal" && !hideConversationFilters) {
         if (isTriggeredConversation(conversation)) {
           return false;
@@ -1546,11 +1644,13 @@ export function GroupConversationView({
       return true;
     });
   }, [
+    conversationFilter,
     currentUserId,
     expandedConversations,
     goodToKnowFilter,
     hideConversationFilters,
     hideTriggeredConversations,
+    leftConversationIds,
     myPodEnrichedConversations,
     podVariant,
   ]);
@@ -1799,6 +1899,8 @@ export function GroupConversationView({
         messageCount: number;
         replyCount: number;
         time: string;
+        unread: boolean;
+        trigger?: Trigger;
       }
     >();
 
@@ -1812,24 +1914,28 @@ export function GroupConversationView({
         seededRandom(rowSeed, 2) * (messageCount + 1)
       );
 
+      // A thread you have not read yet is most often a recent one, so age
+      // weights the odds rather than deciding them outright.
+      const ageInDays =
+        (Date.now() - conversation.updatedAt.getTime()) / (24 * 60 * 60 * 1000);
+      const unreadOdds = ageInDays < 1 ? 0.6 : ageInDays < 7 ? 0.4 : 0.25;
+
       itemMap.set(conversation.id, {
         avatarProps: participantsToAvatarProps(participants),
         creator: getRandomCreator(conversation, users),
         mentionCount,
         messageCount,
         replyCount,
-        time: conversation.updatedAt
-          .toLocaleTimeString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          })
-          .replace("24:", "00:"),
+        time: formatRowTime(conversation.updatedAt),
+        unread: seededRandom(rowSeed, 3) < unreadOdds,
+        trigger: conversation.triggerId
+          ? getTriggerById(triggers, conversation.triggerId)
+          : undefined,
       });
     });
 
     return itemMap;
-  }, [agents, space.id, users, visibleConversations]);
+  }, [agents, space.id, triggers, users, visibleConversations]);
 
   const getAutoCheckRationales = (
     summary: OngoingSummary,
@@ -3207,7 +3313,7 @@ export function GroupConversationView({
   const showMineGroupAll =
     !hideConversationFilters &&
     (podVariant === "personal" || spaceMemberIds.length > 1);
-  const showTriggeredToggle =
+  const canHideTriggered =
     !hideConversationFilters && podVariant !== "personal";
 
   return (
@@ -3243,58 +3349,40 @@ export function GroupConversationView({
           )}
           {hasHistory && (
             <div className="flex w-full flex-wrap items-center gap-2">
-              {(showMineGroupAll || showTriggeredToggle) && (
+              {showMineGroupAll && (
                 <div className="flex flex-none flex-nowrap items-center gap-2">
-                  {showMineGroupAll && (
-                    <ButtonsSwitchList
-                      defaultValue={goodToKnowFilter}
-                      onValueChange={(value) => {
-                        if (
-                          value === "all" ||
-                          value === "shared" ||
-                          value === "mine"
-                        ) {
-                          setGoodToKnowFilter(value);
-                        }
-                      }}
-                    >
-                      <ButtonsSwitch
-                        value="mine"
-                        label="Mine"
-                        tooltip="Conversations where you have sent a message."
-                      />
-                      <ButtonsSwitch
-                        value="shared"
-                        label="Group"
-                        tooltip="Conversations with more than one person"
-                      />
-                      <ButtonsSwitch
-                        value="all"
-                        label="All"
-                        tooltip="Every conversation in this Pod."
-                      />
-                    </ButtonsSwitchList>
-                  )}
-                  {showTriggeredToggle && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      icon={hideTriggeredConversations ? ZapOff : Zap}
-                      tooltip={
-                        hideTriggeredConversations
-                          ? "Show triggered"
-                          : "Hide triggered"
+                  <ButtonsSwitchList
+                    defaultValue={goodToKnowFilter}
+                    onValueChange={(value) => {
+                      if (
+                        value === "all" ||
+                        value === "shared" ||
+                        value === "mine"
+                      ) {
+                        setGoodToKnowFilter(value);
                       }
-                      className="shrink-0"
-                      onClick={() =>
-                        setHideTriggeredConversations((current) => !current)
-                      }
+                    }}
+                  >
+                    <ButtonsSwitch
+                      value="mine"
+                      label="Mine"
+                      tooltip="Conversations where you have sent a message."
                     />
-                  )}
+                    <ButtonsSwitch
+                      value="shared"
+                      label="Group"
+                      tooltip="Conversations with more than one person"
+                    />
+                    <ButtonsSwitch
+                      value="all"
+                      label="All"
+                      tooltip="Every conversation in this Pod."
+                    />
+                  </ButtonsSwitchList>
                 </div>
               )}
               <div className="flex min-w-[20rem] flex-1 items-center gap-2">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 max-w-80 flex-1">
                   <SearchInputWithPopover
                     name="conversation-search"
                     value={searchText}
@@ -3320,12 +3408,31 @@ export function GroupConversationView({
                     )}
                   />
                 </div>
+                <FilterMenu
+                  filter={conversationFilter}
+                  groups={conversationFilterGroups}
+                  onFilterChange={setConversationFilter}
+                  toggles={
+                    canHideTriggered
+                      ? [
+                          {
+                            id: "hide-triggered",
+                            label: "Hide triggered",
+                            checked: hideTriggeredConversations,
+                            onChange: setHideTriggeredConversations,
+                          },
+                        ]
+                      : []
+                  }
+                  searchName="conversation-filter-search"
+                  searchPlaceholder="Filter by member or agent"
+                />
                 <Button
                   size="sm"
                   variant="outline"
                   icon={CheckDouble}
                   label="Mark all as read"
-                  className="shrink-0"
+                  className="ml-auto shrink-0"
                 />
               </div>
             </div>
@@ -3363,6 +3470,22 @@ export function GroupConversationView({
                             id: baseConversationId,
                           };
 
+                          // The row that opened what is on screen, rather than
+                          // every row of that conversation: the same thread can
+                          // appear more than once in this list.
+                          const isSelected =
+                            selectedConversationRow?.rowId === conversation.id;
+
+                          // Read state belongs to the thread, not to the row
+                          // that shows it, and what the row's menu says of it
+                          // outranks whether anything new came in.
+                          const isForcedUnread =
+                            unreadRowIds?.has(baseConversationId) ?? false;
+                          const isUnread =
+                            isForcedUnread ||
+                            (listItem.unread &&
+                              !readRowIds?.has(baseConversationId));
+
                           return (
                             <div
                               id={getConversationRowDomId(conversation.id)}
@@ -3371,8 +3494,19 @@ export function GroupConversationView({
                               <ConversationListItem
                                 conversation={conversation}
                                 creator={listItem.creator || undefined}
-                                className="border-t-0 border-b-0 rounded-2xl hover:bg-hover"
+                                leadingVisual={
+                                  listItem.trigger ? (
+                                    <TriggerRunAvatar
+                                      trigger={listItem.trigger}
+                                    />
+                                  ) : undefined
+                                }
+                                className={cn(
+                                  "border-t-0 border-b-0 rounded-2xl hover:bg-hover",
+                                  isSelected && "bg-highlight-50"
+                                )}
                                 time={listItem.time}
+                                unread={isUnread}
                                 showFocus={
                                   conversationIdToShowFocus === conversation.id
                                 }
@@ -3380,14 +3514,12 @@ export function GroupConversationView({
                                   <ReplySection
                                     replyCount={listItem.replyCount}
                                     unreadCount={
-                                      bucketKey === "Today"
-                                        ? listItem.messageCount
-                                        : 0
+                                      isUnread ? listItem.messageCount : 0
                                     }
                                     mentionCount={
-                                      bucketKey === "Today"
-                                        ? listItem.mentionCount
-                                        : 0
+                                      listItem.trigger || !isUnread
+                                        ? 0
+                                        : listItem.mentionCount
                                     }
                                     avatars={listItem.avatarProps}
                                     lastMessageBy={
@@ -3395,6 +3527,17 @@ export function GroupConversationView({
                                     }
                                   />
                                 }
+                                menuItems={buildConversationRowMenuItems({
+                                  isUnread,
+                                  onMarkRead: () =>
+                                    onRowsRead?.([baseConversationId]),
+                                  onMarkUnread: () =>
+                                    onRowsUnread?.([baseConversationId]),
+                                  // Leaving takes out the row you clicked, not
+                                  // every row sharing its base conversation.
+                                  onLeave: () =>
+                                    onLeaveConversation?.(conversation.id),
+                                })}
                                 onClick={() => {
                                   setSelectedConversationRow({
                                     rowId: conversation.id,
@@ -3532,7 +3675,7 @@ export function GroupConversationView({
                   value={todoSearchText}
                   onChange={setTodoSearchText}
                   placeholder="Search tasks..."
-                  className="w-full"
+                  className="w-full min-w-0 max-w-80"
                 />
               </div>
               {hasDisplayedTodoItems ? (
@@ -4071,7 +4214,7 @@ export function GroupConversationView({
                   value={membersSearchText}
                   onChange={setMembersSearchText}
                   placeholder="Search members..."
-                  className="w-full"
+                  className="w-full min-w-0 max-w-80"
                 />
                 <DataTable
                   columns={memberColumns}
