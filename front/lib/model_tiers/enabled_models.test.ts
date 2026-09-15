@@ -1,4 +1,8 @@
 import { refreshDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
+import {
+  clearAutomaticModelDegradation,
+  markModelAutomaticallyDegraded,
+} from "@app/lib/api/llm/health/automatic_degradation";
 import { Authenticator } from "@app/lib/auth";
 import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/hosts";
 import { setUserMaxAllowedTier } from "@app/lib/model_tiers/allowed_tiers";
@@ -359,6 +363,25 @@ describe("resolveStreamModel", () => {
     expect(
       getFallbackStreamIds(models, new Set([GPT_5_6_LUNA_MODEL_ID]))
     ).toEqual([]);
+  });
+
+  it("includes automatic degradation in the catalog behind its feature flag", async () => {
+    const degradation = {
+      modelId: GPT_5_6_LUNA_MODEL_ID,
+      providerId: "openai" as const,
+      host: OPENAI_RESPONSES_HOST,
+    };
+    await FeatureFlagFactory.basic(adminAuth, "automatic_model_health_routing");
+    await markModelAutomaticallyDegraded(degradation);
+
+    try {
+      const response = await getModelsForAuth(adminAuth);
+
+      expect(response.degradedModelIds).toContain(GPT_5_6_LUNA_MODEL_ID);
+      expect(response.fallbackStreamIds).toEqual(["auto", "auto_fast"]);
+    } finally {
+      await clearAutomaticModelDegradation(degradation);
+    }
   });
 
   it("does not report a fallback when degradation does not change the resolution", async () => {

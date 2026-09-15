@@ -1,6 +1,7 @@
 import { getDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { PREFERRED_LARGE_MODEL_CONFIGS } from "@app/lib/api/assistant/model_preferences";
 import { selectEnabledModel } from "@app/lib/api/assistant/models";
+import { getAutomaticallyDegradedModelIds } from "@app/lib/api/llm/health/automatic_degradation";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { getAgentAllowedTierNamesOverride } from "@app/lib/model_tiers/agent_tier_overrides";
@@ -107,11 +108,13 @@ export async function resolveModel(
         configuration.sId
       ),
     });
-    const resolution = resolveStreamModel(
-      models,
-      streamId,
-      getDegradedModelIds()
-    );
+    const degradedModelIds = new Set(getDegradedModelIds());
+    if (featureFlags.includes("automatic_model_health_routing")) {
+      for (const modelId of getAutomaticallyDegradedModelIds()) {
+        degradedModelIds.add(modelId);
+      }
+    }
+    const resolution = resolveStreamModel(models, streamId, degradedModelIds);
     enabled = resolution.model;
 
     if (resolution.fromPool) {

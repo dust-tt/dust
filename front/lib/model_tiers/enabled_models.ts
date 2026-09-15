@@ -1,7 +1,9 @@
 import { refreshDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { pickPreferredLargeModel } from "@app/lib/api/assistant/model_preferences";
 import { getAvailableModelsForWorkspace } from "@app/lib/api/assistant/workspace_capabilities";
+import { refreshAutomaticallyDegradedModelIds } from "@app/lib/api/llm/health/automatic_degradation";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { resolveAllowedTierNames } from "@app/lib/model_tiers/allowed_tiers";
 import type {
   EnabledModelConfigurationType,
@@ -287,10 +289,18 @@ export function getFallbackStreamIds(
 export async function getModelsForAuth(
   auth: Authenticator
 ): Promise<GetEnabledModelsResponseType> {
-  const [models, degradedModelIds] = await Promise.all([
+  const [models, featureFlags, manuallyDegradedModelIds] = await Promise.all([
     getEnabledModelsForAuth(auth),
+    getFeatureFlags(auth),
     refreshDegradedModelIds(),
   ]);
+  const degradedModelIds = new Set(manuallyDegradedModelIds);
+
+  if (featureFlags.includes("automatic_model_health_routing")) {
+    for (const modelId of await refreshAutomaticallyDegradedModelIds()) {
+      degradedModelIds.add(modelId);
+    }
+  }
 
   return {
     models,

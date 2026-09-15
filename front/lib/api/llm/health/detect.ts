@@ -1,3 +1,4 @@
+import { markModelAutomaticallyDegraded } from "@app/lib/api/llm/health/automatic_degradation";
 import {
   ERROR_RATIO_THRESHOLD,
   MIN_ATTEMPTS_IN_WINDOW,
@@ -58,6 +59,7 @@ export async function evaluateEndpoint(
 
   switch (launchRes.value.outcome) {
     case "started":
+      await markModelAutomaticallyDegraded(endpoint, now.getTime());
       logModelHealthTransition({ endpoint, transition: "degraded", window });
       return {
         outcome: "recovery_started",
@@ -66,6 +68,9 @@ export async function evaluateEndpoint(
 
     case "already_degraded":
       // Not a state change: another pod already logged the transition.
+      // Refreshing the projection here repairs a missed or expired write
+      // without emitting a duplicate transition.
+      await markModelAutomaticallyDegraded(endpoint, now.getTime());
       return launchRes.value;
 
     default:

@@ -8,11 +8,7 @@ export type ModelHealthTransitionType =
   | "recovered"
   | "probe_failed";
 
-/**
- * The only output of the shadow phase. Nothing is persisted, so these logs and
- * the matching Datadog series are the whole record of what the breaker would
- * have done.
- */
+/** Logs and counts each breaker state transition. */
 export function logModelHealthTransition({
   endpoint,
   transition,

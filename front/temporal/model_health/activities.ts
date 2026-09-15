@@ -1,3 +1,7 @@
+import {
+  clearAutomaticModelDegradation,
+  markModelAutomaticallyDegraded,
+} from "@app/lib/api/llm/health/automatic_degradation";
 import { probeEndpoint } from "@app/lib/api/llm/health/probe";
 import { logModelHealthTransition } from "@app/lib/api/llm/health/transitions";
 import type { DegradedModelEndpointType } from "@app/lib/model_constructors/types/degradations";
@@ -15,6 +19,7 @@ export async function logModelHealthRecoveryActivity({
   endpoint: DegradedModelEndpointType;
   degradedForMs: number;
 }): Promise<void> {
+  await clearAutomaticModelDegradation(endpoint);
   logModelHealthTransition({
     endpoint,
     transition: "recovered",
@@ -29,9 +34,16 @@ export async function logModelHealthProbeFailedActivity({
   endpoint: DegradedModelEndpointType;
   degradedForMs: number;
 }): Promise<void> {
+  await markModelAutomaticallyDegraded(endpoint);
   logModelHealthTransition({
     endpoint,
     transition: "probe_failed",
     degradedForMs,
   });
+}
+
+export async function clearAutomaticModelDegradationActivity(
+  endpoint: DegradedModelEndpointType
+): Promise<void> {
+  await clearAutomaticModelDegradation(endpoint);
 }

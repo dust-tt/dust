@@ -1,3 +1,4 @@
+import { isModelEndpointAutomaticallyDegraded } from "@app/lib/api/llm/health/automatic_degradation";
 import {
   ERROR_RATIO_THRESHOLD,
   MIN_ATTEMPTS_IN_WINDOW,
@@ -94,6 +95,9 @@ describe("evaluateEndpoint", () => {
     });
 
     expect(launchModelHealthRecovery).toHaveBeenCalledWith(ENDPOINT);
+    expect(
+      await isModelEndpointAutomaticallyDegraded(ENDPOINT, NOW.getTime())
+    ).toBe(true);
     expect(logModelHealthTransition).toHaveBeenCalledWith(
       expect.objectContaining({ endpoint: ENDPOINT, transition: "degraded" })
     );
@@ -130,6 +134,9 @@ describe("evaluateEndpoint", () => {
     });
 
     expect(launchModelHealthRecovery).toHaveBeenCalledTimes(1);
+    expect(
+      await isModelEndpointAutomaticallyDegraded(ENDPOINT, NOW.getTime())
+    ).toBe(true);
     expect(logModelHealthTransition).not.toHaveBeenCalled();
   });
 
