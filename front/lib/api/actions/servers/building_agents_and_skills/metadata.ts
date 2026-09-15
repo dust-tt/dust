@@ -8,6 +8,7 @@ export const BUILDING_AGENTS_AND_SKILLS_SERVER_NAME =
   "building_agents_and_skills" as const;
 
 export const SUGGEST_SKILL_UPDATE_TOOL_NAME = "suggest_skill_update" as const;
+export const SUGGEST_SKILL_EDITORS_TOOL_NAME = "suggest_skill_editors" as const;
 
 // Bounds the O(n²) pairwise conflict check in hasSuggestionSelfConflict; larger rewrites
 // should target the instructions root block instead.
@@ -53,6 +54,35 @@ export type SuggestSkillUpdateArgs = z.infer<
   typeof SUGGEST_SKILL_UPDATE_INPUT_SCHEMA
 >;
 
+export const SUGGEST_SKILL_EDITORS_INPUT_SCHEMA = z.object({
+  skillId: z
+    .string()
+    .describe("The id of the custom skill whose editors to change."),
+  addUserIds: z
+    .array(z.string())
+    .optional()
+    .describe("sIds of the workspace members to add as editors of the skill."),
+  removeUserIds: z
+    .array(z.string())
+    .optional()
+    .describe("sIds of the current editors to remove from the skill."),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Why this change to the editors is needed."),
+  title: z
+    .string()
+    .max(25)
+    .optional()
+    .describe(
+      "A short, action-oriented user-facing title for this suggestion (at most 25 characters)."
+    ),
+});
+
+export type SuggestSkillEditorsArgs = z.infer<
+  typeof SUGGEST_SKILL_EDITORS_INPUT_SCHEMA
+>;
+
 export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
   {
     name: SUGGEST_SKILL_UPDATE_TOOL_NAME,
@@ -65,6 +95,22 @@ export const BUILDING_AGENTS_AND_SKILLS_TOOLS_METADATA = [
     displayLabels: {
       running: "Suggesting skill update",
       done: "Suggest skill update",
+    },
+    toolCostCategory: "basic",
+    freeUsage: true,
+  },
+  {
+    name: SUGGEST_SKILL_EDITORS_TOOL_NAME,
+    description:
+      "Suggest a change to the editors of an existing custom Skill. The change is not applied " +
+      "directly: it is recorded as a pending suggestion that the skill's editors can review, " +
+      "accept, or reject. Provide user sIds in at least one of `addUserIds` or `removeUserIds`. " +
+      "A change that would leave the skill without any editor is refused.",
+    schema: SUGGEST_SKILL_EDITORS_INPUT_SCHEMA.shape,
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting skill editors change",
+      done: "Suggest skill editors change",
     },
     toolCostCategory: "basic",
     freeUsage: true,
