@@ -24,6 +24,13 @@ describe("localTimeOfDayToUtc", () => {
     expect(localTimeOfDayToUtc(9, 30, "UTC")).toEqual({ hour: 9, minute: 30 });
   });
 
+  it("falls back to UTC for an unrecognized timezone", () => {
+    expect(localTimeOfDayToUtc(9, 30, "Not/AZone")).toEqual({
+      hour: 9,
+      minute: 30,
+    });
+  });
+
   it("applies a half-hour offset", () => {
     // Midnight IST (UTC+5:30) is 18:30 UTC the previous day.
     const reference = new Date("2024-06-15T00:00:00Z");
