@@ -71,6 +71,7 @@ import type {
   ConversationListItemType,
 } from "@app/types/assistant/conversation";
 import {
+  isCompactionMessageType,
   isLightAgentMessageType,
   isUserMessageTypeWithContentFragments,
 } from "@app/types/assistant/conversation";
@@ -365,6 +366,11 @@ export const ConversationViewer = ({
     options: { disabled: true },
   });
 
+  const notifyCompactionCompleted = useCallback(() => {
+    void mutateContextUsage();
+    window.dispatchEvent(new CompactionCompletedEvent());
+  }, [mutateContextUsage]);
+
   const submitMessage = useSubmitMessage({
     owner,
     user,
@@ -529,6 +535,39 @@ export const ConversationViewer = ({
 
     const messagesFromBackend = messages.flatMap((m) => m.messages);
 
+    const refreshedCompactionsById = new Map(
+      messagesFromBackend
+        .filter(isCompactionMessageType)
+        .map((message) => [message.sId, message])
+    );
+
+    // The refresh has already updated SWR. Reconcile Virtuoso and notify local listeners.
+    if (
+      virtuosoMessageListRef.current.data.get().some((message) => {
+        if (!isCompactionMessage(message) || message.status !== "created") {
+          return false;
+        }
+
+        const refreshedMessage = refreshedCompactionsById.get(message.sId);
+        return (
+          refreshedMessage?.status !== undefined &&
+          refreshedMessage.status !== "created"
+        );
+      })
+    ) {
+      virtuosoMessageListRef.current.data.map((message) => {
+        if (!isCompactionMessage(message) || message.status !== "created") {
+          return message;
+        }
+
+        const refreshedMessage = refreshedCompactionsById.get(message.sId);
+        return refreshedMessage && refreshedMessage.status !== "created"
+          ? refreshedMessage
+          : message;
+      });
+      notifyCompactionCompleted();
+    }
+
     const olderMessagesFromBackend = messagesFromBackend.filter(
       (m) => m.rank < minRank
     );
@@ -562,7 +601,11 @@ export const ConversationViewer = ({
         )
       );
     }
-  }, [conversation?.forkingData?.forkedChildren, messages]);
+  }, [
+    conversation?.forkingData?.forkedChildren,
+    messages,
+    notifyCompactionCompleted,
+  ]);
 
   useEffect(() => {
     if (
@@ -1021,8 +1064,20 @@ export const ConversationViewer = ({
                   : m
               );
             }
-            void mutateContextUsage();
-            window.dispatchEvent(new CompactionCompletedEvent());
+            void mutateMessages(
+              (pages) =>
+                pages?.map((page) => ({
+                  ...page,
+                  messages: page.messages.map((message) =>
+                    isCompactionMessageType(message) &&
+                    message.sId === event.messageId
+                      ? event.message
+                      : message
+                  ),
+                })),
+              { revalidate: false }
+            );
+            notifyCompactionCompleted();
             break;
           case "plan_updated": {
             // The acting client already updates via the per-message plan tool action; this handles
@@ -1081,6 +1136,7 @@ export const ConversationViewer = ({
       mutateConversations,
       mutateMessages,
       mutateWakeUps,
+      notifyCompactionCompleted,
       owner.sId,
       user.sId,
     ]

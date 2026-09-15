@@ -1,4 +1,5 @@
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
+import { CompactionProgress } from "@app/components/assistant/conversation/CompactionProgress";
 import { ContextUsageWarningBanner } from "@app/components/assistant/conversation/ContextUsageWarningBanner";
 import { useGenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -21,6 +22,7 @@ import { WakeUpBanner } from "@app/components/assistant/conversation/WakeUpBanne
 import { PodJoinCTA } from "@app/components/pod/conversation/PodJoinCTA";
 import {
   useCancelMessage,
+  useCompactConversation,
   useConversation,
   useConversationContextUsage,
 } from "@app/hooks/conversations";
@@ -164,11 +166,32 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
     options: { disabled: !context.conversation },
   });
 
-  const isCompactionInProgress = allMessages.some(
-    (message) => isCompactionMessage(message) && message.status === "created"
-  );
+  const activeCompactionMessage = allMessages
+    .filter(isCompactionMessage)
+    .findLast((message) => message.status === "created");
+  const lastMessage = allMessages.at(-1);
+  // Keep the terminal state docked until the next message moves it into the transcript.
+  const latestTerminalCompactionMessage =
+    lastMessage &&
+    isCompactionMessage(lastMessage) &&
+    lastMessage.status !== "created"
+      ? lastMessage
+      : undefined;
+  const dockedCompactionMessage =
+    activeCompactionMessage ?? latestTerminalCompactionMessage;
+  const isCompactionInProgress = activeCompactionMessage !== undefined;
+  const { compact: retryCompaction, isCompacting: isRetryingCompaction } =
+    useCompactConversation({
+      owner: context.owner,
+      conversationId: context.conversation?.sId,
+    });
+  const handleRetryCompaction = () => {
+    if (contextUsage?.model) {
+      void retryCompaction(contextUsage.model);
+    }
+  };
   const compactionBlockMessage = isCompactionInProgress
-    ? "Wait for compaction to finish."
+    ? "Compaction in progress. Sending resumes when it finishes."
     : contextUsagePercentage >=
         CONTEXT_USAGE_PERCENT_THRESHOLDS["force_compaction"]
       ? "Context is full, compact to continue."
@@ -639,6 +662,15 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           isOwner={isActiveWakeUpOwner}
         />
       )}
+      {dockedCompactionMessage && (
+        <CompactionProgress
+          key={dockedCompactionMessage.sId}
+          message={dockedCompactionMessage}
+          canRetry={!!contextUsage?.model}
+          isRetrying={isRetryingCompaction}
+          onRetry={handleRetryCompaction}
+        />
+      )}
       <div
         className={classNames(
           "relative w-full",
@@ -711,6 +743,7 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
                 actions={agentBuilderContext?.actionsToShow}
                 isSubmitting={agentBuilderContext?.isSubmitting === true}
                 isAgentBuilder={!!agentBuilderContext}
+                disableInput={isCompactionInProgress}
                 submitBlockMessage={
                   forkBlockMessage ??
                   wakeUpBlockMessage ??

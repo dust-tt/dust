@@ -1,0 +1,60 @@
+import {
+  CompactionProgress,
+  getCompactionFill,
+  getCompactionProgressTier,
+} from "@app/components/assistant/conversation/CompactionProgress";
+import { render, screen } from "@testing-library/react";
+import { createElement } from "react";
+import { describe, expect, it, vi } from "vitest";
+
+describe("getCompactionFill", () => {
+  it("fits the typical and rare durations", () => {
+    expect(getCompactionFill(90)).toBeCloseTo(85);
+    expect(getCompactionFill(270)).toBeCloseTo(97);
+  });
+
+  it("approaches 99 without reaching it", () => {
+    expect(getCompactionFill(0)).toBe(0);
+    expect(getCompactionFill(10_000)).toBeLessThan(99);
+    expect(getCompactionFill(10_000)).toBeGreaterThan(98);
+  });
+});
+
+describe("getCompactionProgressTier", () => {
+  it("changes tiers at the expected durations", () => {
+    expect(getCompactionProgressTier({ elapsedSeconds: 89 })).toBe("normal");
+    expect(getCompactionProgressTier({ elapsedSeconds: 90 })).toBe(
+      "past-typical"
+    );
+    expect(getCompactionProgressTier({ elapsedSeconds: 149 })).toBe(
+      "past-typical"
+    );
+    expect(getCompactionProgressTier({ elapsedSeconds: 150 })).toBe("slow");
+    expect(getCompactionProgressTier({ elapsedSeconds: 269 })).toBe("slow");
+    expect(getCompactionProgressTier({ elapsedSeconds: 270 })).toBe("tail");
+  });
+});
+
+describe("CompactionProgress", () => {
+  it("shows 100% when a compaction succeeds", () => {
+    render(
+      createElement(CompactionProgress, {
+        message: { created: Date.now(), status: "succeeded" },
+        canRetry: true,
+        isRetrying: false,
+        onRetry: vi.fn(),
+      })
+    );
+
+    expect(screen.getByText("100%")).toBeDefined();
+    const progressBar = screen.getByRole("progressbar");
+    expect(progressBar.getAttribute("aria-valuenow")).toBe("100");
+    expect(progressBar.classList.contains("bg-success-100")).toBe(true);
+    expect(
+      progressBar.firstElementChild?.classList.contains("bg-success-700")
+    ).toBe(true);
+    expect(
+      screen.getByText("The conversation is compacted. You can keep going.")
+    ).toBeDefined();
+  });
+});
