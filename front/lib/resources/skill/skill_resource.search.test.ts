@@ -208,11 +208,16 @@ describe("SkillResource", () => {
     });
     expect(
       current.toSearchDocument(workspace, {
-        lastEditedByUserId: document.last_edited_by_user_id,
-        editorIds: document.editor_ids,
+        lastEditedByUser: null,
+        editors: [],
         activeUsersCount: null,
       })
-    ).toEqual({ ...document, active_users_count: null });
+    ).toEqual({
+      ...document,
+      last_edited_by_user_id: null,
+      editor_ids: [],
+      active_users_count: null,
+    });
     expect(document).not.toHaveProperty("instructions");
     expect(document).not.toHaveProperty("metadata");
     expect(document).not.toHaveProperty("is_default");
