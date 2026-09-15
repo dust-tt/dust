@@ -16,6 +16,7 @@ import type { GetConsumptionTopReasoningEffortsResponse } from "@app/lib/api/ana
 import type { GetConsumptionTopSkillsResponse } from "@app/lib/api/analytics/consumption/top_skills";
 import type { GetConsumptionTopSourcesResponse } from "@app/lib/api/analytics/consumption/top_sources";
 import type { GetConsumptionTopToolsResponse } from "@app/lib/api/analytics/consumption/top_tools";
+import type { GetConsumptionTopTriggersResponse } from "@app/lib/api/analytics/consumption/top_triggers";
 import type { GetConsumptionTopUsersResponse } from "@app/lib/api/analytics/consumption/top_users";
 import type { ElasticsearchError } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
@@ -33,6 +34,7 @@ type ConsumptionTopResponse =
   | GetConsumptionTopSkillsResponse
   | GetConsumptionTopSourcesResponse
   | GetConsumptionTopToolsResponse
+  | GetConsumptionTopTriggersResponse
   | GetConsumptionTopUsersResponse;
 
 type ConsumptionTopFetcher = (

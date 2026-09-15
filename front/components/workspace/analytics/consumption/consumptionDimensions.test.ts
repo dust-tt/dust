@@ -25,6 +25,7 @@ describe("consumption dimension URL state", () => {
       "tool",
       "skill",
       "source",
+      "trigger",
       "api_key",
     ]);
     expect(CONSUMPTION_DIMENSION_CONFIG.api_key.label).toBe("API keys");
@@ -40,6 +41,7 @@ describe("consumption dimension URL state", () => {
       "tool",
       "skill",
       "source",
+      "trigger",
       "api_key",
       "conversation",
     ]);
@@ -48,7 +50,16 @@ describe("consumption dimension URL state", () => {
         kind: "agent",
         agentId: "agent-1",
       })
-    ).toEqual(["user", "group", "model", "tool", "skill", "source", "api_key"]);
+    ).toEqual([
+      "user",
+      "group",
+      "model",
+      "tool",
+      "skill",
+      "source",
+      "trigger",
+      "api_key",
+    ]);
   });
 
   it("adds conversations only to attribution tabs", () => {
@@ -60,6 +71,7 @@ describe("consumption dimension URL state", () => {
       "tool",
       "skill",
       "source",
+      "trigger",
       "api_key",
       "conversation",
     ]);

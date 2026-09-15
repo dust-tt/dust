@@ -14,6 +14,7 @@ export const CONSUMPTION_SCOPE_DIMENSIONS = [
   "tool",
   "skill",
   "source",
+  "trigger",
 ] as const;
 
 export type ConsumptionScopeDimension =
@@ -31,6 +32,7 @@ export const CONSUMPTION_SCOPE_FILTER_KEYS = [
   "tools",
   "skills",
   "sources",
+  "triggers",
   "tags",
 ] as const;
 
@@ -53,6 +55,7 @@ export const CONSUMPTION_DIMENSION_FILTER_KEYS: Record<
   tool: "tools",
   skill: "skills",
   source: "sources",
+  trigger: "triggers",
 };
 
 export const CONSUMPTION_TOP_SORT_ORDER = ["asc", "desc"] as const;

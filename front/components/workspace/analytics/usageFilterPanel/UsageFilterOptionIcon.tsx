@@ -63,6 +63,7 @@ export function UsageFilterOptionIcon({ option }: UsageFilterOptionIconProps) {
       return <Icon visual={getSkillIcon(option.icon)} size="sm" />;
     case "source":
     case "group":
+    case "trigger":
     case "api_key":
       return null;
     default:

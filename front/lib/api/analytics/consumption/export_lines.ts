@@ -47,6 +47,7 @@ type ConsumptionLineExportRow = {
   userGroupIds: string;
   userGroupNames: string;
   triggerId: string;
+  triggerName: string;
   contextOrigin: string;
   apiKeyName: string;
   toolName: string;
@@ -91,6 +92,7 @@ const CONSUMPTION_LINE_EXPORT_HEADERS: (keyof ConsumptionLineExportRow)[] = [
   "userGroupIds",
   "userGroupNames",
   "triggerId",
+  "triggerName",
   "contextOrigin",
   "apiKeyName",
   "toolName",
@@ -206,6 +208,7 @@ async function buildConsumptionLineExportRows(
     skillLabels,
     groupLabels,
     sourceLabels,
+    triggerLabels,
   ] = await Promise.all([
     resolve("agent", [...new Set(docs.map((doc) => doc.agent.attributed_id))]),
     resolve("user", [...new Set(removeNulls(docs.map((doc) => doc.user?.id)))]),
@@ -223,6 +226,9 @@ async function buildConsumptionLineExportRows(
     ]),
     resolve("source", [
       ...new Set(removeNulls(docs.map((doc) => doc.context_origin))),
+    ]),
+    resolve("trigger", [
+      ...new Set(removeNulls(docs.map((doc) => doc.trigger_id))),
     ]),
   ]);
 
@@ -267,6 +273,9 @@ async function buildConsumptionLineExportRows(
         .map((id) => groupLabels.get(id)?.name ?? id)
         .join("; "),
       triggerId: doc.trigger_id ?? "",
+      triggerName: doc.trigger_id
+        ? (triggerLabels.get(doc.trigger_id)?.name ?? doc.trigger_id)
+        : "",
       contextOrigin: doc.context_origin
         ? (sourceLabels.get(doc.context_origin)?.name ?? doc.context_origin)
         : "",

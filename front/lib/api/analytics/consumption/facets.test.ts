@@ -99,6 +99,7 @@ describe("fetchConsumptionFacets", () => {
       tool: [],
       skill: [],
       source: [],
+      trigger: [],
     });
     vi.mocked(searchConsumptionAnalytics).mockImplementation(
       async (_query, options) => {
@@ -271,7 +272,7 @@ describe("fetchConsumptionFacets", () => {
           callOptions?.aggregations?.values?.composite?.sources?.[0]?.value
             ?.terms?.field
       );
-    expect(queriedFields).toHaveLength(9);
+    expect(queriedFields).toHaveLength(10);
     expect(new Set(queriedFields)).toEqual(
       new Set([
         "agent.attributed_id",
@@ -282,6 +283,7 @@ describe("fetchConsumptionFacets", () => {
         "tool.server_name",
         "tool.attributed_skill_ids",
         "normalized_origin",
+        "trigger_id",
       ])
     );
     expect(
@@ -300,6 +302,7 @@ describe("fetchConsumptionFacets", () => {
       tool: [],
       skill: [],
       source: [],
+      trigger: [],
     });
 
     let releaseQueries = () => {};
@@ -324,7 +327,7 @@ describe("fetchConsumptionFacets", () => {
 
     const result = await facetsPromise;
     expect(result.isOk()).toBe(true);
-    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(8);
+    expect(searchConsumptionAnalytics).toHaveBeenCalledTimes(9);
   });
 
   it("restricts the automations scope to trigger-originated documents", async () => {
@@ -338,6 +341,7 @@ describe("fetchConsumptionFacets", () => {
       tool: [],
       skill: [],
       source: [],
+      trigger: [],
     });
     vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
       esResponse({ values: { buckets: [] } })
@@ -373,6 +377,7 @@ describe("fetchConsumptionFacets", () => {
       tool: [],
       skill: [],
       source: [],
+      trigger: [],
     });
     vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
       esResponse({ values: { buckets: [] } })
@@ -401,6 +406,7 @@ describe("fetchConsumptionFacets", () => {
       tool: [],
       skill: [],
       source: [],
+      trigger: [],
     });
     vi.mocked(resolveDimensionLabels).mockResolvedValue(new Map());
     vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
