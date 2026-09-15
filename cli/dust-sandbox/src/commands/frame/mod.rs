@@ -112,7 +112,21 @@ fn scoped_manifest_path(path: &Path) -> anyhow::Result<String> {
     scoped_path(path)
 }
 
-fn print_response(response: &impl serde::Serialize) -> anyhow::Result<()> {
+pub(crate) fn validate_frame_id(frame_id: &str) -> anyhow::Result<()> {
+    let Some(encoded) = frame_id.strip_prefix("fil_") else {
+        bail!("invalid Frame ID: {frame_id}");
+    };
+    if encoded.is_empty()
+        || !encoded
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric())
+    {
+        bail!("invalid Frame ID: {frame_id}");
+    }
+    Ok(())
+}
+
+pub(crate) fn print_response(response: &impl serde::Serialize) -> anyhow::Result<()> {
     println!("{}", serde_json::to_string(response)?);
     Ok(())
 }

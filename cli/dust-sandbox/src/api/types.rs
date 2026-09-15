@@ -3,6 +3,39 @@ use std::io::IsTerminal;
 use anyhow::Context;
 use serde::{Deserialize, Serialize};
 
+/// A database listing entry. Deserialized from Front's camelCase JSON; serialized as the
+/// snake_case `dsbx db list` envelope, so local and remote listings print identically.
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all(deserialize = "camelCase"))]
+pub struct DatabaseEntry {
+    pub name: String,
+    pub size_bytes: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FrameDatabaseListResponse {
+    pub items: Vec<DatabaseEntry>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FrameDatabaseQueryRequest<'a> {
+    pub sql: &'a str,
+}
+
+/// Same convention as `DatabaseEntry`: camelCase in from Front, snake_case out as the
+/// `dsbx db query` envelope the Bun runner prints for local queries.
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all(deserialize = "camelCase"))]
+pub struct FrameDatabaseQueryResponse {
+    pub columns: Vec<String>,
+    pub rows: Vec<serde_json::Map<String, serde_json::Value>>,
+    pub row_count: u64,
+    pub changes: Option<u64>,
+    pub results_file: Option<String>,
+    pub note: Option<String>,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FrameCallByIdRequest<'a> {

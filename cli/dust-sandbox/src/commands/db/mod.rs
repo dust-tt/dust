@@ -1,6 +1,6 @@
-//! `dsbx db` — pod database subcommands (reconcile/schema/list/query).
+//! `dsbx db` database subcommands (reconcile/schema/list/query).
 //!
-//! Databases are per-pod SQLite files `{name}.db` under `$DUST_POD_DATABASES_DIR`
+//! Databases are sandbox-owned SQLite files `{name}.db` under `$DUST_POD_DATABASES_DIR`
 //! (falling back to the image's `/sandbox-state/databases`). This Rust layer owns name
 //! validation and path resolution; the DDL/SQL
 //! work runs in the embedded Bun runner (same privilege-drop machinery as
@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use anyhow::{anyhow, Result};
 use clap::Subcommand;
 
+use super::frame::validate_frame_id;
 use super::function::spawn_runner;
 
 mod list;
@@ -34,30 +35,90 @@ pub(crate) use super::function::emit_error;
 /// definition (these here are the superset: PathBuf-typed helper + empty-value fallback).
 pub(crate) const POD_DATABASES_DIR_ENV: &str = "DUST_POD_DATABASES_DIR";
 pub(crate) const DEFAULT_POD_DATABASES_DIR: &str = "/sandbox-state/databases";
+const CONVERSATION_ID_ENV: &str = "CONVERSATION_ID";
+const NO_LOCAL_DATABASES_MESSAGE: &str = "conversation sandboxes have no local databases";
 
 #[derive(Subcommand)]
 pub enum DbCommand {
-    /// Reconcile a pod database with a drizzle schema file (additive DDL only)
+    /// Reconcile a sandbox database with a drizzle schema file (additive DDL only)
     Reconcile {
         /// Database name (resolved to <name>.db in ${DUST_POD_DATABASES_DIR})
         name: String,
         /// Path to the drizzle schema file (databases/{db}.db.ts)
         schema_file: String,
     },
-    /// Regenerate a drizzle schema file from a live pod database
+    /// Regenerate a drizzle schema file from a live sandbox database
     Schema {
         /// Database name (resolved to <name>.db in ${DUST_POD_DATABASES_DIR})
         name: String,
         /// Output path for the regenerated schema file
         out_schema: String,
     },
-    /// List pod databases with sizes
-    List,
-    /// Execute one SQL statement (from stdin) against a pod database (SELECT/DML; DDL is refused)
+    /// List databases with sizes
+    List {
+        /// Target Frame ID. Only valid from a conversation sandbox.
+        #[arg(long)]
+        frame: Option<String>,
+    },
+    /// Execute one SQL statement (from stdin) against a database (SELECT/DML; DDL is refused)
     Query {
         /// Database name (resolved to <name>.db in ${DUST_POD_DATABASES_DIR})
         name: String,
+        /// Target Frame ID. Only valid from a conversation sandbox.
+        #[arg(long)]
+        frame: Option<String>,
     },
+}
+
+#[derive(Debug, PartialEq)]
+pub(crate) enum DbExecutionTarget<'a> {
+    Local,
+    RemoteFrame(&'a str),
+}
+
+/// Front sets `CONVERSATION_ID` on conversation-owned sandboxes only (see
+/// `getSandboxOwnerEnvVars` in front/lib/api/sandbox/owner.ts).
+fn in_conversation_sandbox() -> bool {
+    std::env::var_os(CONVERSATION_ID_ENV).is_some_and(|value| !value.is_empty())
+}
+
+/**
+ * @cc [owner:davidebbo,label:product] frame-target-only-from-conversation
+ * `--frame` MUST be accepted only in a conversation sandbox (`CONVERSATION_ID` set). A conversation
+ * sandbox without `--frame` MUST fail instead of inspecting its empty local database directory;
+ * any other sandbox MUST keep using its local databases.
+ */
+pub(crate) fn resolve_execution_target(
+    requested_frame_id: Option<&str>,
+    in_conversation: bool,
+) -> Result<DbExecutionTarget<'_>> {
+    match (requested_frame_id, in_conversation) {
+        (Some(frame_id), true) => {
+            validate_frame_id(frame_id)?;
+            Ok(DbExecutionTarget::RemoteFrame(frame_id))
+        }
+        (Some(_), false) => Err(anyhow!(
+            "--frame can only be used from a conversation sandbox"
+        )),
+        (None, true) => Err(anyhow!(
+            "{NO_LOCAL_DATABASES_MESSAGE}; pass --frame <frame-id>"
+        )),
+        (None, false) => Ok(DbExecutionTarget::Local),
+    }
+}
+
+/// Resolve where `db list` / `db query` run, emitting the stdout error envelope on failure.
+pub(crate) fn execution_target(frame_id: Option<&str>) -> Result<DbExecutionTarget<'_>> {
+    resolve_execution_target(frame_id, in_conversation_sandbox()).map_err(emit_error)
+}
+
+/// Guard for the local-only subcommands (`reconcile`, `schema`): a conversation sandbox has no
+/// databases of its own, so creating one there would leave it invisible to `db list`.
+pub(crate) fn require_local_databases() -> Result<()> {
+    if in_conversation_sandbox() {
+        return Err(emit_error(anyhow!(NO_LOCAL_DATABASES_MESSAGE)));
+    }
+    Ok(())
 }
 
 /// The configured pod databases directory, falling back to the image constant.
@@ -80,13 +141,20 @@ pub(crate) fn is_valid_db_name(name: &str) -> bool {
         && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
 }
 
+/// Reject a database name outside the contract. Also guards the remote path, where the name
+/// becomes a URL segment.
+pub(crate) fn ensure_valid_db_name(name: &str) -> Result<()> {
+    if !is_valid_db_name(name) {
+        return Err(anyhow!(
+            "invalid database name {name:?}: must match ^[a-z][a-z0-9_]{{0,63}}$"
+        ));
+    }
+    Ok(())
+}
+
 /// Resolve a database name to its `{name}.db` file path, or emit a typed error.
 pub(crate) fn db_file_path(name: &str) -> Result<PathBuf> {
-    if !is_valid_db_name(name) {
-        return Err(emit_error(anyhow!(
-            "invalid database name {name:?}: must match ^[a-z][a-z0-9_]{{0,63}}$"
-        )));
-    }
+    ensure_valid_db_name(name).map_err(emit_error)?;
     Ok(databases_dir().join(format!("{name}.db")))
 }
 
@@ -159,5 +227,25 @@ mod tests {
     fn db_file_path_rejects_invalid_names() {
         assert!(db_file_path("../escape").is_err());
         assert!(db_file_path("Chat").is_err());
+    }
+
+    #[test]
+    fn routes_frame_targets_only_from_conversation_sandboxes() {
+        assert_eq!(
+            resolve_execution_target(Some("fil_abc123"), true)
+                .expect("conversation sandbox may target a Frame"),
+            DbExecutionTarget::RemoteFrame("fil_abc123")
+        );
+        assert!(resolve_execution_target(Some("fil_abc123"), false).is_err());
+        assert!(resolve_execution_target(Some("not-a-frame"), true).is_err());
+    }
+
+    #[test]
+    fn requires_frame_target_in_conversation_sandboxes() {
+        assert!(resolve_execution_target(None, true).is_err());
+        assert_eq!(
+            resolve_execution_target(None, false).expect("other sandboxes use local databases"),
+            DbExecutionTarget::Local
+        );
     }
 }
