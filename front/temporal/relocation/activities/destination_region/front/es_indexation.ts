@@ -144,13 +144,11 @@ export async function recreateSkillSearchIndex({
     skills,
     async (skill) => {
       const document = skill.toSearchDocument(workspace, {
-        editorIds: (editorsBySkillId.get(skill.sId) ?? []).map(
-          (editor) => editor.sId
-        ),
-        lastEditedByUserId:
+        editors: editorsBySkillId.get(skill.sId) ?? [],
+        lastEditedByUser:
           skill.editedBy === null
             ? null
-            : (lastEditorByModelId.get(skill.editedBy)?.sId ?? null),
+            : (lastEditorByModelId.get(skill.editedBy) ?? null),
         activeUsersCount: 0,
       });
       const result = await indexSkillDocument(document);
