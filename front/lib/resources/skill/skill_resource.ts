@@ -58,6 +58,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { launchSkillsSearchIndexation } from "@app/lib/skill_search/indexation";
 import {
   extractUniqueSkillReferenceIds,
   parseSkillReferenceTag,
@@ -570,6 +571,25 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     await auth.refresh();
 
     return skillResource;
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;concurrency] skill-search-after-commit
+   * Skill mutations enqueue workspace-scoped custom IDs after their existing writes.
+   * Code-defined skills are never indexed.
+   */
+  static async launchSearchIndexation(
+    auth: Authenticator,
+    skillIds: string[]
+  ): Promise<void> {
+    const workspace = auth.getNonNullableWorkspace();
+    if (skillIds.length === 0) {
+      return;
+    }
+    await launchSkillsSearchIndexation({
+      workspaceId: workspace.sId,
+      skillIds: uniq(skillIds),
+    });
   }
 
   static async makeSuggestion(

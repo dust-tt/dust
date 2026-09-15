@@ -1,0 +1,22 @@
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
+
+const SKILL_SEARCH_INDEXATION_CONCURRENCY = 8;
+
+export async function launchSkillsSearchIndexation({
+  workspaceId,
+  skillIds,
+}: {
+  workspaceId: string;
+  skillIds: string[];
+}): Promise<void> {
+  const results = await concurrentExecutor(
+    skillIds,
+    (skillId) => launchIndexSkillSearchWorkflow({ workspaceId, skillId }),
+    { concurrency: SKILL_SEARCH_INDEXATION_CONCURRENCY }
+  );
+  const failedResult = results.find((result) => result.isErr());
+  if (failedResult?.isErr()) {
+    throw failedResult.error;
+  }
+}
