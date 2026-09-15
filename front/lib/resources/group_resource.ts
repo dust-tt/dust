@@ -29,6 +29,7 @@ import {
 } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
+import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
@@ -2980,6 +2981,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       { transaction }
     );
 
+    let didUpdateRole = false;
+
     for (const user of users) {
       const currentMembership =
         await MembershipResource.getActiveMembershipOfUserInWorkspace({
@@ -3036,6 +3039,8 @@ export class GroupResource extends BaseResource<GroupModel> {
         );
       }
 
+      didUpdateRole = true;
+
       logger.info(
         {
           workspaceId: workspace.sId,
@@ -3045,6 +3050,14 @@ export class GroupResource extends BaseResource<GroupModel> {
         },
         "Synced workspace role from group membership"
       );
+    }
+
+    // A group-driven role change can add or remove an admin. `updateMembershipRole`
+    // above bypasses `updateMembershipRoleAndTrack` (transaction + import cycle),
+    // so enqueue the debounced WorkOS IT-contacts sync here. One coalesced run
+    // covers the whole batch; the activity re-reads the admin set at run time.
+    if (didUpdateRole) {
+      await launchSyncWorkOSITContactsWorkflow({ workspaceId: workspace.sId });
     }
   }
 

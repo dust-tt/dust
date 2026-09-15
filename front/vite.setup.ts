@@ -130,6 +130,18 @@ vi.mock("@app/temporal/es_indexation/client", async (importOriginal) => {
   };
 });
 
+// Mock Temporal WorkOS IT contacts sync workflow - must be at module level
+vi.mock("@app/temporal/workos_events_queue/client", async (importOriginal) => {
+  const mod = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...mod,
+    launchSyncWorkOSITContactsWorkflow: vi.fn(async () => {
+      const { Ok } = await import("@app/types/shared/result");
+      return new Ok(undefined);
+    }),
+  };
+});
+
 beforeEach(async (c) => {
   vi.clearAllMocks();
   fileStorageMock.reset();
