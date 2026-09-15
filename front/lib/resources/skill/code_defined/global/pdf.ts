@@ -4,6 +4,12 @@ import type { GlobalSkillDefinition } from "@app/lib/resources/skill/code_define
 import { isComputerFeatureEnabled } from "@app/types/shared/feature_flags";
 
 // Library choices are limited to the tools registered in api/sandbox/image/registry.ts.
+/**
+ * @cc [owner:flvndvd,label:performance] pdf-ocr-bounded-verification
+ * For routine extraction, the instructions MUST limit OCR refinement to one
+ * targeted retry per unclear region or failed page, then require delivery with
+ * any remaining uncertainty disclosed. Deeper verification requires a user request.
+ */
 const PDF_SKILL_INSTRUCTIONS = `# PDFs
 
 Use the Computer's \`bash\` tool for PDF operations. Inputs are mounted under
@@ -80,9 +86,9 @@ source page references. Do not combine unrelated tables or invent missing values
 
 ## 3. OCR scans and inspect visual content
 
-When text is missing, garbled, or insufficient to understand a chart or layout,
-render the affected pages and inspect their images. Use Tesseract for printed
-scans. Neither \`pypdf\` nor \`pdfplumber\` performs OCR on its own.
+Use Tesseract when embedded text is missing or garbled in a printed scan.
+For charts, layout, or other visual content, render the relevant pages and
+inspect their images. Neither \`pypdf\` nor \`pdfplumber\` performs OCR on its own.
 
 Check \`tesseract --list-langs\` and select the document's language. Use \`eng\`,
 \`fra\`, or \`eng+fra\` for mixed English/French text. \`osd\` detects orientation
@@ -90,6 +96,23 @@ and scripts. It is not a recognition language. For unsupported languages,
 handwriting, or failed recognition, use vision and mark any illegible content.
 If an older Computer lacks Tesseract, use the same vision fallback and disclose
 that OCR was unavailable. Do not try to install missing engines or language data.
+
+For routine OCR or text extraction, use this stopping rule:
+
+- Run OCR once per requested scanned page. Check the result for page coverage,
+  readability, and obvious omissions. If it answers the request, deliver it.
+- If a specific passage is unclear or missing, inspect that region with
+  \`files__cat\` before retrying. Allow at most one targeted OCR retry per affected
+  region or failed page, using a correction suggested by the image, such as
+  cropping or fixing rotation. Do not sweep page segmentation modes, languages,
+  or preprocessing variants just to compare plausible outputs.
+- After that check or retry, deliver the extracted text and mark any remaining
+  uncertainty or unreadable pages. Do not keep refining unless the user asked
+  for deeper verification. Reuse existing renders for previews and crops.
+
+Transcribe what the document says. Validate identifiers, recalculate totals, or
+check domain rules only when the user requests that analysis. Never replace an
+ambiguous character with a guess derived from a checksum or expected value.
 
 For a scanned PDF, render and OCR one page at a time to bound memory usage:
 
@@ -114,11 +137,10 @@ with open("/tmp/report-ocr.txt", "w", encoding="utf-8") as output:
 \`\`\`
 
 Limit the page range to the request. For mixed PDFs, retain embedded text from
-searchable pages and OCR only the scans. If rendering or OCR times out, reduce
-the resolution or process the affected page separately. Report failed pages
-instead of silently omitting them. Check OCR text against the rendered pages,
-especially names, numbers, symbols, and tables. OCR does not recover table
-structure reliably. Correct skew or rotation when the rendered page requires it.
+searchable pages and OCR only the scans. A timeout can use the single retry at
+a lower resolution. Report failed pages instead of silently omitting them.
+OCR does not recover table structure reliably. For table extraction, follow
+the table guidance above and keep any OCR retries within the stopping rule.
 
 To make a scanned page searchable, create a PDF containing the page image and
 a recognized text layer:
@@ -147,10 +169,10 @@ be at most 2 MB each. Resize or compress with Pillow if needed, keeping text leg
 Render a few pages at a time for large files. If the result contains no visible
 image, report that limitation. Do not claim to have inspected or transcribed it.
 
-For a full transcription, inspect every requested page and preserve page boundaries.
-Describe vision-based transcription as such. It does not add a searchable text
-layer to the original PDF. Only claim a searchable PDF when you created and
-verified its text layer.
+When transcribing with vision, inspect every requested page and preserve page
+boundaries. Describe vision-based transcription as such. It does not add a
+searchable text layer to the original PDF. Only claim a searchable PDF when
+you created and verified its text layer.
 
 ## 4. Create or modify PDFs
 
@@ -181,8 +203,9 @@ For encrypted inputs, use a password supplied by the user rather than guessing.
 ## 5. Validate and deliver
 
 For extraction, confirm the requested page coverage, inspect suspicious results,
-and disclose unreadable or omitted content. Save a text/CSV/JSON file only when it
-is a requested deliverable, and link it from \`/files/conversation\`.
+and disclose unreadable or omitted content within the OCR stopping rule above.
+Save a text/CSV/JSON file only when it is a requested deliverable, and link it
+from \`/files/conversation\`.
 
 Before delivering a created or modified PDF, reopen it with \`pypdf\` and check
 page count and order (\`qpdf --check\` can also check structure). Render every
@@ -207,11 +230,11 @@ export const pdfSkill = {
   agentFacingDescription:
     "Use this skill when working with PDF files in the Computer: reading or extracting text and tables, " +
     "running OCR on scans, inspecting charts, creating searchable PDFs, or merging, splitting, and editing existing PDFs. " +
-    "Includes page-aware extraction and visual verification using the installed PDF libraries.",
+    "Includes page-aware extraction, targeted visual checks, and PDF validation using the installed libraries.",
   instructions: PDF_SKILL_INSTRUCTIONS,
   exposeInstructions: true,
   mcpServers: [{ name: "sandbox" }],
-  version: 1,
+  version: 2,
   icon: "ActionDocumentTextIcon",
   isRestricted: async (auth: Authenticator) => {
     const flags = await getFeatureFlags(auth);
