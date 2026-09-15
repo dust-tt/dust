@@ -1,60 +1,39 @@
 /** @jsxRuntime automatic */
+import { useLiveConversationContext } from "@app/components/assistant/conversation/LiveConversationContext";
 import { LiveConversationPanel } from "@app/components/assistant/conversation/LiveConversationPanel";
-import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useLiveConversation } from "@app/lib/swr/live";
-import type { UserType, WorkspaceType } from "@app/types/user";
-import { getWorkspaceDefaultAgentId } from "@app/types/user";
-import { useRef, useState } from "react";
 
 interface LiveConversationProps {
-  owner: WorkspaceType;
-  user: UserType;
   conversationId: string;
 }
 
-export function LiveConversation({
-  owner,
-  user,
-  conversationId,
-}: LiveConversationProps) {
-  const [selectedAgentId, setAgentId] = useState(
-    getWorkspaceDefaultAgentId(owner)
-  );
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const {
-    agentConfigurations,
-    isAgentConfigurationsLoading,
-    isAgentConfigurationsError,
-  } = useAgentConfigurations({
-    workspaceId: owner.sId,
-    agentsGetView: "list",
-    sort: "priority",
-  });
-  const agentId =
-    selectedAgentId ??
-    agentConfigurations.find((agent) => agent.canRead)?.sId ??
-    "";
-  const live = useLiveConversation({ owner, user, conversationId, agentId });
-
+export function LiveConversation({ conversationId }: LiveConversationProps) {
+  const voice = useLiveConversationContext();
+  if (!voice) {
+    return null;
+  }
+  const visible =
+    voice.request?.conversationId === conversationId &&
+    voice.live.status !== "idle" &&
+    voice.live.status !== "closed";
+  const showPlayback =
+    visible && !!voice.live.error && voice.live.status === "connected";
   return (
-    <LiveConversationPanel
-      {...live}
-      agents={agentConfigurations.filter((agent) => agent.canRead)}
-      agentsLoading={isAgentConfigurationsLoading}
-      agentId={agentId}
-      audioRef={audioRef}
-      error={
-        live.error ??
-        (isAgentConfigurationsError ? "Unable to load your agents." : null)
-      }
-      onAgentChange={setAgentId}
-      onStart={() => {
-        if (audioRef.current) {
-          void live.start(audioRef.current);
-        }
-      }}
-      onStop={live.stop}
-      onToggleMute={live.toggleMute}
-    />
+    <>
+      {visible && voice.request && (
+        <LiveConversationPanel
+          {...voice.live}
+          agentName={voice.request.agent.name}
+          onStop={voice.live.stop}
+          onToggleMute={voice.live.toggleMute}
+        />
+      )}
+      <audio
+        ref={voice.audioRef}
+        autoPlay
+        controls={showPlayback}
+        aria-label="Voice playback"
+        className={showPlayback ? "mb-2 h-8 w-full" : "hidden"}
+      />
+    </>
   );
 }

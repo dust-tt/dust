@@ -5,6 +5,7 @@ import { InputBar } from "@app/components/assistant/conversation/input_bar/Input
 import { InputBarMessageNavigation } from "@app/components/assistant/conversation/input_bar/InputBarMessageNavigation";
 import { INPUT_BAR_COMPACT_NAV_ENTER_ANIMATION_CLASSES } from "@app/components/assistant/conversation/input_bar/inputBarCompactStyles";
 import { useInputBarCompactMode } from "@app/components/assistant/conversation/input_bar/useInputBarCompactMode";
+import { LiveConversation } from "@app/components/assistant/conversation/LiveConversation";
 import type {
   VirtuosoMessage,
   VirtuosoMessageListContext,
@@ -638,6 +639,9 @@ export const AgentInputBar = ({ context }: AgentInputBarProps) => {
           conversationId={context.conversation.sId}
           isOwner={isActiveWakeUpOwner}
         />
+      )}
+      {context.conversation && (
+        <LiveConversation conversationId={context.conversation.sId} />
       )}
       <div
         className={classNames(
