@@ -4,7 +4,7 @@ use crate::providers::llm::ChatFunction;
 use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{Provider, ProviderID};
-use crate::run::Credentials;
+use crate::run::{credential_or_env, Credentials};
 use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 
@@ -58,21 +58,8 @@ impl LLM for DeepseekLLM {
     }
 
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
-        match credentials.get("DEEPSEEK_API_KEY") {
-            Some(api_key) => {
-                self.api_key = Some(api_key.clone());
-            }
-            None => {
-                match tokio::task::spawn_blocking(|| std::env::var("DEEPSEEK_API_KEY")).await? {
-                    Ok(key) => {
-                        self.api_key = Some(key);
-                    }
-                    Err(_) => Err(anyhow!(
-                        "Credentials or environment variable `DEEPSEEK_API_KEY` is not set."
-                    ))?,
-                }
-            }
-        }
+        self.api_key = Some(credential_or_env(&credentials, "DEEPSEEK_API_KEY").await?);
+
         Ok(())
     }
 

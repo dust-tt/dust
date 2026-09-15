@@ -1,6 +1,6 @@
 use crate::blocks::block::BlockType;
 use crate::utils;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use serde::ser::Serializer;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -27,6 +27,42 @@ pub struct ExecutionWithTimestamp {
 }
 
 pub type Credentials = HashMap<String, String>;
+
+/// Credential key `front` sets for workspaces on a BYOK plan.
+pub const BYOK_CREDENTIAL_KEY: &str = "DUST_BYOK";
+
+/// @cc [owner:pmilliotte,label:security] byok-credentials-never-fall-back-to-env
+/// When `credentials` carries `BYOK_CREDENTIAL_KEY`, the returned value MUST come from
+/// `credentials`, and resolution MUST fail when the key is absent there: reading the process
+/// environment instead would run a BYOK workspace's inference on Dust's own provider account.
+///
+/// A request carrying that key MUST therefore never obtain a provider credential from the
+/// environment. A provider satisfies this either by resolving through this helper, or by rejecting
+/// the request up front when its whole backend runs on Dust's identity -- as
+/// `VertexAnthropicBackend::initialize` and the embedders do before reading their environment
+/// fallback. Reading `std::env::var` for a credential outside one of those two shapes violates it.
+pub async fn credential_or_env(credentials: &Credentials, key: &str) -> Result<String> {
+    if let Some(value) = credentials.get(key) {
+        return Ok(value.clone());
+    }
+
+    if credentials.contains_key(BYOK_CREDENTIAL_KEY) {
+        return Err(anyhow!(
+            "Credential `{}` is not set; a BYOK workspace cannot fall back on Dust-managed \
+             credentials.",
+            key
+        ));
+    }
+
+    let env_key = key.to_string();
+    match tokio::task::spawn_blocking(move || std::env::var(env_key)).await? {
+        Ok(value) => Ok(value),
+        Err(_) => Err(anyhow!(
+            "Credentials or environment variable `{}` is not set.",
+            key
+        )),
+    }
+}
 
 #[derive(Clone)]
 pub struct Secrets {
@@ -296,5 +332,71 @@ impl Run {
                 block.status = Status::Errored;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn byok_credentials() -> Credentials {
+        Credentials::from([(BYOK_CREDENTIAL_KEY.to_string(), "true".to_string())])
+    }
+
+    #[tokio::test]
+    async fn credential_takes_precedence_over_env() -> Result<()> {
+        std::env::set_var("TEST_CREDENTIAL_PRECEDENCE", "from-env");
+        let credentials = Credentials::from([(
+            "TEST_CREDENTIAL_PRECEDENCE".to_string(),
+            "from-credentials".to_string(),
+        )]);
+
+        let value = credential_or_env(&credentials, "TEST_CREDENTIAL_PRECEDENCE").await?;
+
+        assert_eq!(value, "from-credentials");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn non_byok_falls_back_to_env() -> Result<()> {
+        std::env::set_var("TEST_CREDENTIAL_FALLBACK", "from-env");
+
+        let value = credential_or_env(&Credentials::new(), "TEST_CREDENTIAL_FALLBACK").await?;
+
+        assert_eq!(value, "from-env");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn byok_never_falls_back_to_env() {
+        std::env::set_var("TEST_CREDENTIAL_BYOK", "dust-managed-key");
+
+        let error = match credential_or_env(&byok_credentials(), "TEST_CREDENTIAL_BYOK").await {
+            Ok(value) => panic!("Expected a refusal, resolved `{value}` instead"),
+            Err(error) => error.to_string(),
+        };
+
+        assert!(
+            error.contains("cannot fall back on Dust-managed"),
+            "{error}"
+        );
+    }
+
+    #[tokio::test]
+    async fn byok_uses_its_own_credential() -> Result<()> {
+        std::env::set_var("TEST_CREDENTIAL_BYOK_OWN", "dust-managed-key");
+        let mut credentials = byok_credentials();
+        credentials.insert(
+            "TEST_CREDENTIAL_BYOK_OWN".to_string(),
+            "customer-key".to_string(),
+        );
+
+        let value = credential_or_env(&credentials, "TEST_CREDENTIAL_BYOK_OWN").await?;
+
+        assert_eq!(value, "customer-key");
+
+        Ok(())
     }
 }
