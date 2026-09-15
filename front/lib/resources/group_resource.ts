@@ -33,6 +33,7 @@ import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import type { GrantVerb } from "@app/types/group_permissions";
 import type {
   GroupGrantableRole,
   GroupGrantableSeatType,
@@ -55,11 +56,11 @@ import type {
   MembershipSeatType,
 } from "@app/types/memberships";
 import { SEAT_TYPE_ORDER } from "@app/types/memberships";
-import type { GrantVerb } from "@app/types/group_permissions";
 import type { RoleGrant } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 import { removeNulls } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType, UserType } from "@app/types/user";
@@ -2720,24 +2721,36 @@ export class GroupResource extends BaseResource<GroupModel> {
    * grants), so the set is the caller's role rules for the group's kind.
    */
   getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
-    // regular_manual: admins and managers manage the group; everyone can read.
-    const roleGrants: RoleGrant[] = this.isRegularManual()
-      ? [
+    let roleGrants: RoleGrant[];
+    switch (this.kind) {
+      // regular_manual: admins and managers manage the group; everyone can read.
+      case "regular_manual":
+        roleGrants = [
           { role: "admin", permissions: ["read", "write", "admin"] },
           { role: "manager", permissions: ["read", "write", "admin"] },
           { role: "user", permissions: ["read"] },
           { role: "builder", permissions: ["read"] },
-        ]
-      : this.isGlobal() || this.isProvisioned()
-        ? [
-            { role: "admin", permissions: ["read"] },
-            { role: "manager", permissions: ["read"] },
-            { role: "user", permissions: ["read"] },
-            { role: "builder", permissions: ["read"] },
-          ]
-        : // system, regular_auto: no permission for anyone. Access to a regular_auto group is
-          // decided on the resource it is linked to, and its owner fetches it without a check.
-          [];
+        ];
+        break;
+      case "global":
+      case "provisioned":
+        roleGrants = [
+          { role: "admin", permissions: ["read"] },
+          { role: "manager", permissions: ["read"] },
+          { role: "user", permissions: ["read"] },
+          { role: "builder", permissions: ["read"] },
+        ];
+        break;
+      // system, regular_auto, agent_editors: no permission for anyone. Access to a regular_auto
+      // group is decided on the resource it is linked to, and its owner fetches it without a check.
+      case "system":
+      case "regular_auto":
+      case "agent_editors":
+        roleGrants = [];
+        break;
+      default:
+        assertNever(this.kind);
+    }
 
     return auth.resolveAllowedVerbs(roleGrants, this.workspaceId, []);
   }

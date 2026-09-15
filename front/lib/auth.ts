@@ -1677,18 +1677,18 @@ export class Authenticator {
   /**
    * @cc [owner:tdraier,label:security] role-verbs-workspace-gated
    * Verbs from `roleGrants` MUST be added ONLY when the caller's own workspace
-   * (`getNonNullableWorkspace().id`) equals `workspaceId` (the resource's workspace). A workspace
-   * role confers no verb on a resource in another workspace; dropping this gate would let a caller's
-   * role (e.g. admin) grant verbs on cross-workspace resources. `governanceVerbs` are already
-   * caller-scoped (see `getGovernanceGrantVerbs`) and are added unconditionally.
+   * (`getNonNullableWorkspace().id`) equals `workspaceModelId` (the resource's workspace). A
+   * workspace role confers no verb on a resource in another workspace; dropping this gate would let a
+   * caller's role (e.g. admin) grant verbs on cross-workspace resources. `governanceVerbs` are
+   * already caller-scoped (see `getGovernanceGrantVerbs`) and are added unconditionally.
    */
   resolveAllowedVerbs(
     roleGrants: RoleGrant[],
-    workspaceId: ModelId,
+    workspaceModelId: ModelId,
     governanceVerbs: GrantVerb[]
   ): Set<GrantVerb> {
     const verbs = new Set<GrantVerb>(governanceVerbs);
-    if (this.getNonNullableWorkspace().id === workspaceId) {
+    if (this.getNonNullableWorkspace().id === workspaceModelId) {
       const role = this.role();
       for (const grant of roleGrants) {
         if (grant.role === role) {
