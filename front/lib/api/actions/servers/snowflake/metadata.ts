@@ -1,7 +1,10 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { z } from "zod";
 
 export const MAX_QUERY_ROWS = 1000;
+
+const SNOWFLAKE_SERVER_NAME = "snowflake" as const;
 
 const SNOWFLAKE_LIST_DATABASES_TOOL_NAME = "list_databases" as const;
 const SNOWFLAKE_LIST_SCHEMAS_TOOL_NAME = "list_schemas" as const;
@@ -10,6 +13,10 @@ const SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME = "describe_table" as const;
 const SNOWFLAKE_DESCRIBE_SEMANTIC_VIEW_TOOL_NAME =
   "describe_semantic_view" as const;
 const SNOWFLAKE_QUERY_TOOL_NAME = "query" as const;
+
+function snowflakeToolName(toolName: string): string {
+  return getPrefixedToolName(SNOWFLAKE_SERVER_NAME, toolName);
+}
 
 export const SNOWFLAKE_TOOLS_METADATA = [
   {
@@ -78,7 +85,7 @@ export const SNOWFLAKE_TOOLS_METADATA = [
   },
   {
     name: SNOWFLAKE_DESCRIBE_SEMANTIC_VIEW_TOOL_NAME,
-    description: `Get the structure (dimensions and metrics) of a Snowflake semantic view. Use this instead of ${SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME} when the object kind is SEMANTIC_VIEW.`,
+    description: `Get the structure (dimensions and metrics) of a Snowflake semantic view. Use this instead of ${snowflakeToolName(SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME)} when the object kind is SEMANTIC_VIEW.`,
     schema: {
       database: z.string().describe("The name of the database."),
       schema: z.string().describe("The name of the schema."),
@@ -96,7 +103,7 @@ export const SNOWFLAKE_TOOLS_METADATA = [
   },
   {
     name: SNOWFLAKE_QUERY_TOOL_NAME,
-    description: `Execute a read-only SQL SELECT query against Snowflake to analyze data, answer questions, calculate metrics such as revenue, or retrieve rows. Write operations are not permitted. Before writing a query, use ${SNOWFLAKE_LIST_DATABASES_TOOL_NAME}, ${SNOWFLAKE_LIST_SCHEMAS_TOOL_NAME}, ${SNOWFLAKE_LIST_TABLES_TOOL_NAME}, and ${SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME} (or ${SNOWFLAKE_DESCRIBE_SEMANTIC_VIEW_TOOL_NAME} for semantic views) to explore the schema when database, schema, table, view, or column names are unknown.`,
+    description: `Execute a read-only SQL SELECT query against Snowflake to analyze data, answer questions, calculate metrics such as revenue, or retrieve rows. Write operations are not permitted. Before writing a query, use ${snowflakeToolName(SNOWFLAKE_LIST_DATABASES_TOOL_NAME)}, ${snowflakeToolName(SNOWFLAKE_LIST_SCHEMAS_TOOL_NAME)}, ${snowflakeToolName(SNOWFLAKE_LIST_TABLES_TOOL_NAME)}, and ${snowflakeToolName(SNOWFLAKE_DESCRIBE_TABLE_TOOL_NAME)} (or ${snowflakeToolName(SNOWFLAKE_DESCRIBE_SEMANTIC_VIEW_TOOL_NAME)} for semantic views) to explore the schema when database, schema, table, view, or column names are unknown.`,
     schema: {
       sql: z
         .string()
@@ -135,7 +142,7 @@ export const SNOWFLAKE_TOOLS_METADATA = [
 
 export const SNOWFLAKE_SERVER = {
   serverInfo: {
-    name: "snowflake",
+    name: SNOWFLAKE_SERVER_NAME,
     version: "1.0.0",
     description:
       "Execute read-only SQL queries and browse schema in Snowflake.",

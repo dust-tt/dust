@@ -1,8 +1,5 @@
 import { FILE_OFFLOAD_TEXT_SIZE_BYTES } from "@app/lib/actions/action_output_limits";
-import {
-  ENABLE_SKILL_TOOL_NAME,
-  TOOL_NAME_SEPARATOR,
-} from "@app/lib/actions/constants";
+import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
 import {
   INTERNAL_SERVERS_WITH_WEBSEARCH,
@@ -199,7 +196,10 @@ function constructSkillsSection({
 }: {
   systemSkills: SkillResource[];
 }): string {
-  const toolDisplayName = `${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}`;
+  const toolDisplayName = getPrefixedToolName(
+    SKILL_MANAGEMENT_SERVER_NAME,
+    ENABLE_SKILL_TOOL_NAME
+  );
 
   let skillsSection =
     "## SKILLS\n\n" +

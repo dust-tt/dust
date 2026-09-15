@@ -1,9 +1,13 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { UserQuestionSchema } from "@app/lib/actions/types";
 
+export const ASK_USER_QUESTION_SERVER_NAME = "ask_user_question" as const;
+
+export const ASK_USER_QUESTION_TOOL_NAME = "ask_user_question" as const;
+
 export const ASK_USER_QUESTION_TOOLS_METADATA = [
   {
-    name: "ask_user_question",
+    name: ASK_USER_QUESTION_TOOL_NAME,
     description:
       "Ask the user a question during execution.\n\n" +
       "This tool can serve multiple purposes:\n" +
@@ -43,7 +47,7 @@ export const ASK_USER_QUESTION_TOOLS_METADATA = [
 
 export const ASK_USER_QUESTION_SERVER = {
   serverInfo: {
-    name: "ask_user_question",
+    name: ASK_USER_QUESTION_SERVER_NAME,
     version: "1.0.0",
     description: "Ask the user a question with multiple-choice options.",
     icon: "ActionChatBubbleThoughtIcon",

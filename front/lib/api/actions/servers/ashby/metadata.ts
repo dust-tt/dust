@@ -1,11 +1,19 @@
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { getPrefixedToolName } from "@app/lib/actions/tool_name_utils";
 import { AshbyCreateReferralInputSchema } from "@app/lib/api/actions/servers/ashby/types";
 import { z } from "zod";
 
 const DEFAULT_SEARCH_LIMIT = 20;
+
+const ASHBY_SERVER_NAME = "ashby" as const;
+
 export const GET_REFERRAL_FORM_TOOL_NAME = "get_referral_form";
 export const CREATE_REFERRAL_TOOL_NAME = "create_referral";
 export const UPDATE_JOB_POSTING_TOOL_NAME = "update_job_posting";
+
+function ashbyToolName(toolName: string): string {
+  return getPrefixedToolName(ASHBY_SERVER_NAME, toolName);
+}
 
 const CandidateSearchSchema = {
   email: z
@@ -150,10 +158,10 @@ export const ASHBY_TOOLS_METADATA = [
     name: CREATE_REFERRAL_TOOL_NAME,
     description:
       "Create a referral for a candidate in Ashby. " +
-      `You must call ${GET_REFERRAL_FORM_TOOL_NAME} first to know the available fields. ` +
+      `You must call ${ashbyToolName(GET_REFERRAL_FORM_TOOL_NAME)} first to know the available fields. ` +
       "The credited user is resolved automatically from the authenticated user. " +
       "Field values must be provided as {title, value} pairs where title is " +
-      `the human-readable field title exactly as returned by ${GET_REFERRAL_FORM_TOOL_NAME}.`,
+      `the human-readable field title exactly as returned by ${ashbyToolName(GET_REFERRAL_FORM_TOOL_NAME)}.`,
     schema: AshbyCreateReferralInputSchema.shape,
     stake: "high",
     displayLabels: {
@@ -270,7 +278,7 @@ export const ASHBY_TOOLS_METADATA = [
 
 export const ASHBY_SERVER = {
   serverInfo: {
-    name: "ashby",
+    name: ASHBY_SERVER_NAME,
     version: "1.0.0",
     description:
       "Access and manage Ashby ATS (applicant tracking system) data for recruiting: candidates, job postings, interview feedback, referrals, and hiring.",

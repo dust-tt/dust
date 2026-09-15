@@ -21,6 +21,7 @@ import {
   CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   FRAME_RECREATE_WASTE_RATIONALE,
+  INTERACTIVE_CONTENT_SERVER_NAME,
   PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
@@ -48,10 +49,14 @@ const FILES_MOVE_TOOL = getPrefixedToolName(
   FILES_MOVE_ACTION_NAME
 );
 
+function interactiveContentToolName(toolName: string): string {
+  return getPrefixedToolName(INTERACTIVE_CONTENT_SERVER_NAME, toolName);
+}
+
 const UPDATING_SECTION_LEGACY = `\
 ### Updating Existing Files:
-- To modify existing Interactive Content files, always use \`${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` first to read the current content
-- Then use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
+- To modify existing Interactive Content files, always use \`${interactiveContentToolName(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` first to read the current content
+- Then use \`${interactiveContentToolName(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to make targeted changes by replacing specific text
 - The edit tool requires exact text matching, include surrounding context for unique identification
 - Never attempt to edit without first retrieving the current file content
 
@@ -59,7 +64,7 @@ Example:
 
 **Step 1: Retrieve the current file content first**
 \`\`\`
-${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+${interactiveContentToolName(RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}({
   file_id: "fil_abc123"
 })
 // This returns the current file content. Examine it carefully to identify the exact text to replace.
@@ -67,7 +72,7 @@ ${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
 
 **Step 2: Make targeted edits using the retrieved content**
 \`\`\`
-${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+${interactiveContentToolName(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}({
   file_id: "fil_abc123",
   old_string: "  for (let x = 0; x <= 360; x += 10) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
   new_string: "  for (let x = 0; x <= 720; x += 5) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
@@ -96,7 +101,7 @@ const UPDATING_SECTION_COMPUTER_FIRST = `\
 
 After a Frame is created, its source file is already mounted in the Computer at \`/files/conversation-<conversationId>/<FrameName>.tsx\`. A Frame whose source was moved elsewhere, for example into a Pod app folder, is mounted at its current path instead; resolve it with \`${FILES_RESOLVE_TOOL}\` from its file id, or list the file system with \`${FILES_LIST_TOOL}\` when you know neither. To update the Frame:
 1. Edit that file in place with your file tools, changing only the parts that need to change. Do not rewrite the whole file for partial changes. When the Computer is not available, edit it with \`${FILES_EDIT_TOOL}\` using its scoped path, e.g. \`conversation-<conversationId>/<FrameName>.tsx\`.
-2. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`, passing \`path\` set to the source file's own scoped path (the entry file itself, not the directory holding it), e.g. \`conversation-<conversationId>/<FrameName>.tsx\`.
+2. Publish with \`${interactiveContentToolName(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`, passing \`path\` set to the source file's own scoped path (the entry file itself, not the directory holding it), e.g. \`conversation-<conversationId>/<FrameName>.tsx\`.
 
 If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it and retry the targeted edit. Never respond to a failed match by resending the whole file.
 
@@ -111,7 +116,7 @@ const UPDATING_SECTION_FILES_FIRST = `\
 After a Frame is created, its source file is available to your file tools at \`conversation-<conversationId>/<FrameName>.tsx\`. A Frame whose source was moved elsewhere, for example into a Pod app folder, is available at its current path instead. To update the Frame:
 1. Read the source with \`${FILES_CAT_TOOL}\` if you need the current content. If you are unsure of the exact path, list the directory with \`${FILES_LIST_TOOL}\` or resolve the Frame's file id with \`${FILES_RESOLVE_TOOL}\`.
 2. Make targeted edits with \`${FILES_EDIT_TOOL}\`, replacing only the text that changes. Do not rewrite the whole file for partial changes.
-3. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`, passing \`path\` set to the source file's own scoped path (the entry file itself, not the directory holding it).
+3. Publish with \`${interactiveContentToolName(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`, passing \`path\` set to the source file's own scoped path (the entry file itself, not the directory holding it).
 
 If an edit fails because the text to replace is not found, the file differs from what you remember: re-read it with \`${FILES_CAT_TOOL}\` and retry the targeted edit. Never respond to a failed match by resending the whole file.
 
@@ -122,7 +127,7 @@ ${FILES_EDIT_TOOL}({
   old_string: "const REGIONS = [\\"EMEA\\", \\"AMER\\"];",
   new_string: "const REGIONS = [\\"EMEA\\", \\"AMER\\", \\"APAC\\"];",
 })
-${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+${interactiveContentToolName(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}({
   file_id: "fil_abc123",
   path: "conversation-<conversationId>/Dashboard.tsx",
 })
@@ -147,14 +152,14 @@ Give each Frame its own folder on the Pod file system, named after the Frame, an
     MyApp.tsx
 \`\`\`
 
-\`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` creates the Frame's source in the current conversation, so move it into its folder before publishing. Use \`${FILES_MOVE_TOOL}\` — never \`mv\` or \`cp\` in the Computer, and never a copy: only \`${FILES_MOVE_TOOL}\` carries the Frame's file record along with its bytes — then publish it from its Pod path:
+\`${interactiveContentToolName(CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` creates the Frame's source in the current conversation, so move it into its folder before publishing. Use \`${FILES_MOVE_TOOL}\` — never \`mv\` or \`cp\` in the Computer, and never a copy: only \`${FILES_MOVE_TOOL}\` carries the Frame's file record along with its bytes — then publish it from its Pod path:
 
 \`\`\`
 ${FILES_MOVE_TOOL}({
   source: "conversation-<conversationId>/MyApp.tsx",
   dest: "pod-<podId>/MyApp/MyApp.tsx",
 })
-${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+${interactiveContentToolName(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}({
   file_id: "fil_abc123",
   path: "pod-<podId>/MyApp/MyApp.tsx",
 })
@@ -168,7 +173,7 @@ A Pod frame you are asked to change was usually built in an earlier conversation
 
 1. List the Pod file system with \`${FILES_LIST_TOOL}\` (\`scope: { type: "pod" }\`). Every Frame is listed as its Pod path followed by \`[id: fil_...]\`, which is its \`file_id\`. Find the frame you're after.
 2. Edit that source in place as described under "Updating Existing Files" below.
-3. Publish with \`${PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`, passing the \`path\` and \`file_id\` exactly as listed in step 1.
+3. Publish with \`${interactiveContentToolName(PUBLISH_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\`, passing the \`path\` and \`file_id\` exactly as listed in step 1.
 `;
 
 interface InstructionsVariant {
@@ -191,7 +196,7 @@ This toolset is called Frame in the product, users may refer to it as such.
 ${CREATE_VS_UPDATE_SECTION}
 ${podSections}### Creating Files
 
-Use the \`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files:
+Use the \`${interactiveContentToolName(CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` tool to create JavaScript/TypeScript files:
 - Use MIME type \`${VIZ_MIME_TYPE}\` for visualizations/dashboards or \`${VIZ_SLIDESHOW_MIME_TYPE}\` for slideshows
 - Supported file extensions: .js, .jsx, .ts, .tsx
 - Files are automatically made available to the user for execution
@@ -205,7 +210,7 @@ Use when: Creating new visualizations from scratch or providing code you've writ
 How it works: You provide the complete React component code directly as a string in the source parameter.
 Example:
 \`\`\`
-${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+${interactiveContentToolName(CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}({
   file_name: "SineCosineChart.tsx",
   mime_type: "${VIZ_MIME_TYPE}",
   mode: "inline",
@@ -225,7 +230,7 @@ How it works:
 Example:
 \`\`\`
 // After finding code with <knowledge id="template_node_id">
-${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+${interactiveContentToolName(CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}({
   file_name: "NewVisualization.tsx",
   mime_type: "${VIZ_MIME_TYPE}",
   mode: "template",
@@ -273,12 +278,12 @@ ${validationFixExample}
 Fix syntax errors before the file can be created/edited.
 
 ### Reverting Files:
-- Use \`${REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to restore the file to its previous version.
+- Use \`${interactiveContentToolName(REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to restore the file to its previous version.
 - Each revert moves back one version in the file's history. Reverting multiple times in sequence moves progressively backward through versions (not a toggle).
 - Each edit creates a new version. If you made multiple edits in a single message, one revert will only undo the most recent edit.
 
 ### Renaming Files:
-- Use \`${RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to rename an existing Interactive Content file
+- Use \`${interactiveContentToolName(RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}\` to rename an existing Interactive Content file
 - The new file name must include a valid extension (e.g., .js, .jsx, .ts, .tsx)
 - Renaming only changes the file name; the content remains unchanged
 `;
@@ -371,7 +376,7 @@ ${INTERACTIVE_CONTENT_CHART_EXAMPLES_V2}
 `;
 
 const VALIDATION_FIX_EXAMPLE_LEGACY = `\
-${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+${interactiveContentToolName(EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME)}({
   file_id: "fil_abc123",
   old_string: "className=\\"text-[14px]\\"",  // EXACTLY as provided in warning
   new_string: "className=\\"text-sm\\"",
