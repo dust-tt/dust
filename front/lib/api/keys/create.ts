@@ -31,8 +31,21 @@ type CreateApiKeyErrorCode =
 
 /**
  * A key always carries the workspace global group, so it can reach everything
- * every workspace member can reach; in addition, it can access the spaces it
- * is scoped to.
+ * every workspace member can reach; in addition, it carries the member groups
+ * of the spaces it is scoped to, which is what grants it write on them.
+ */
+/**
+ * @cc [owner:fabiencelier,label:product;security] scopable-spaces
+ * `spaceIds` MUST resolve, in the workspace, to `regular`, `project` or `global` spaces only,
+ * open or restricted. Any other id (unknown, deleted, `system`, `conversations`) MUST fail with
+ * `unauthorized`. A resolved space without a `regular_auto` group MUST fail with
+ * `group_not_found`. On failure no group beyond the workspace global group is returned.
+ */
+/**
+ * @cc [owner:fabiencelier,label:security] scoped-groups
+ * The returned groups are exactly the workspace global group plus the `regular_auto` groups of the
+ * requested spaces; a pod's editor group is included only when `role` is `admin`. The workspace
+ * global group MUST never be counted as a scoped group.
  */
 async function resolveApiKeyGroups(
   auth: Authenticator,
@@ -49,34 +62,41 @@ async function resolveApiKeyGroups(
   const requestedSpaceIds = [...new Set(spaceIds)];
   if (requestedSpaceIds.length > 0) {
     const spaces = await SpaceResource.fetchByIds(auth, requestedSpaceIds);
-    const openSpaceModelIds = await SpaceResource.listOpenSpaceModelIds(
-      auth,
-      spaces
-    );
     const scopableSpaces = spaces.filter(
-      (space) =>
-        (space.isRegular() || space.isProject()) &&
-        !openSpaceModelIds.has(space.id)
+      (space) => space.isRegular() || space.isProject() || space.isGlobal()
     );
 
     if (scopableSpaces.length !== requestedSpaceIds.length) {
       return new Err(
         new DustError(
           "unauthorized",
-          "An API key can only be scoped to restricted spaces or pods."
+          "An API key can only be scoped to spaces, pods or the global space."
         )
       );
     }
 
-    resolvedGroups.push(
-      ...(await SpaceResource.listRegularAutoGroupsForSpaces(
-        auth,
-        scopableSpaces,
-        {
-          includeEditors: role === "admin",
-        }
-      ))
+    const spaceGroups = await SpaceResource.listRegularAutoGroupsForSpaces(
+      auth,
+      scopableSpaces,
+      {
+        includeEditors: role === "admin",
+      }
     );
+
+    // Every space owns at least one regular_auto group (its member group) and no two spaces share
+    // one, so fewer groups than spaces means a space has none: the key could not write on it.
+    // Company Data gets its member group at workspace creation or through the
+    // `20260908_backfill_global_space_member_group` migration.
+    if (spaceGroups.length < scopableSpaces.length) {
+      return new Err(
+        new DustError(
+          "group_not_found",
+          "A requested space has no member group to scope the key to."
+        )
+      );
+    }
+
+    resolvedGroups.push(...spaceGroups);
   }
 
   return new Ok(resolvedGroups);
