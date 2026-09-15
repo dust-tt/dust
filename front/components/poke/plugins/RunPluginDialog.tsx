@@ -230,23 +230,17 @@ export function RunPluginDialog({
             return;
           }
           const results = await doRunPluginOnCells(args, targetCells);
-          const mappedResults = results.map(({ cell, result }) =>
-            result.isOk()
-              ? {
-                  cell,
-                  ok: true,
-                  message: pluginResponseToCopyText(result.value),
-                }
-              : { cell, ok: false, message: result.error }
+          setCellResults(
+            results.map(({ cell, result }) =>
+              result.isOk()
+                ? {
+                    cell,
+                    ok: true,
+                    message: pluginResponseToCopyText(result.value),
+                  }
+                : { cell, ok: false, message: result.error }
+            )
           );
-          setCellResults(mappedResults);
-
-          // Narrow the selection to only the failed cells so a retry
-          // doesn't re-run the plugin against cells that already succeeded.
-          const failedCells = mappedResults.filter((r) => !r.ok);
-          if (failedCells.length > 0) {
-            setSelectedCells(new Set(failedCells.map((r) => r.cell.name)));
-          }
         } else {
           const runRes = await doRunPlugin(args);
           if (runRes.isErr()) {
