@@ -62,3 +62,41 @@ export async function deleteWorkspaceSkillDocuments({
     });
   });
 }
+
+export async function updateSkillSearchActiveUsers({
+  workspaceId,
+  skillIds,
+  activeUsers,
+}: {
+  workspaceId: string;
+  skillIds: string[];
+  activeUsers: Record<string, number>;
+}): Promise<Result<void, ElasticsearchError>> {
+  assert(workspaceId.length > 0 && skillIds.length <= 500);
+  return withEs(async (client) => {
+    if (skillIds.length === 0) {
+      return;
+    }
+    const operations = skillIds.flatMap((skillId) => [
+      {
+        update: {
+          _index: SKILL_SEARCH_ALIAS_NAME,
+          _id: `${workspaceId}_${skillId}`,
+          retry_on_conflict: 3,
+        },
+      },
+      { doc: { active_users_count: activeUsers[skillId] ?? 0 } },
+    ]);
+    const result = await client.bulk({ operations });
+    const failures = result.items.filter(
+      (item) =>
+        item.update?.error &&
+        item.update.error.type !== "document_missing_exception"
+    );
+    if (failures.length > 0) {
+      throw new Error(
+        `Failed to update ${failures.length} skill usage snapshots`
+      );
+    }
+  });
+}
