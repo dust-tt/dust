@@ -19,6 +19,44 @@ export interface EditableSpanMeta {
 // even when the same visible text appears multiple times in the file (e.g. repeated table labels).
 const CONTEXT_CHARS = 60;
 
+const HIGH_SURROGATE_FIRST = 0xd800;
+const HIGH_SURROGATE_LAST = 0xdbff;
+const LOW_SURROGATE_FIRST = 0xdc00;
+const LOW_SURROGATE_LAST = 0xdfff;
+
+function isHighSurrogate(charCode: number): boolean {
+  return charCode >= HIGH_SURROGATE_FIRST && charCode <= HIGH_SURROGATE_LAST;
+}
+
+function isLowSurrogate(charCode: number): boolean {
+  return charCode >= LOW_SURROGATE_FIRST && charCode <= LOW_SURROGATE_LAST;
+}
+
+// The context windows are cut at a fixed count of UTF-16 code units, which lands mid-surrogate-pair
+// whenever an astral character (an emoji) straddles the cut. encodeURIComponent throws
+// `URIError: URI malformed` on a lone surrogate, so shrink the window to the nearest code point
+// boundary. One code unit of context is irrelevant to the uniqueness of the match.
+function contextStart(code: string, pos: number): number {
+  const start = Math.max(0, pos - CONTEXT_CHARS);
+  const splitsPair =
+    start > 0 &&
+    isHighSurrogate(code.charCodeAt(start - 1)) &&
+    isLowSurrogate(code.charCodeAt(start));
+
+  return splitsPair ? start + 1 : start;
+}
+
+function contextEnd(code: string, pos: number): number {
+  const end = Math.min(code.length, pos + CONTEXT_CHARS);
+  const splitsPair =
+    end > 0 &&
+    end < code.length &&
+    isHighSurrogate(code.charCodeAt(end - 1)) &&
+    isLowSurrogate(code.charCodeAt(end));
+
+  return splitsPair ? end - 1 : end;
+}
+
 // Prefix on data-file-id attributes so extractFileRefs skips them (avoids deadlocking the cache).
 export const EDITABLE_FILE_ID_PREFIX = "edit:";
 
@@ -40,8 +78,8 @@ function collectJsxTextNodes(code: string): JSXTextReplacement[] {
         start: pos,
         end,
         rawText: code.slice(pos, end),
-        ctxBefore: code.slice(Math.max(0, pos - CONTEXT_CHARS), pos),
-        ctxAfter: code.slice(end, Math.min(code.length, end + CONTEXT_CHARS)),
+        ctxBefore: code.slice(contextStart(code, pos), pos),
+        ctxAfter: code.slice(end, contextEnd(code, end)),
       });
     }
     ts.forEachChild(node, visit);
