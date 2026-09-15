@@ -20,7 +20,7 @@ import { cleanupProjectFileFragments } from "@app/lib/api/projects/file_cleanup"
 import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
 import {
   getDefaultFrameShareScope,
-  sendFrameSharedEmail,
+  notifyFrameSharingInvitations,
 } from "@app/lib/api/share/frame_sharing";
 import {
   computeFrameContentHash,
@@ -465,23 +465,6 @@ export class FileResource extends BaseResource<FileModel> {
       shareableFileId: shareableFile.id,
       authorizedFileAccess,
     });
-  }
-
-  static async getActiveGrantForEmail(
-    workspace: LightWorkspaceType | WorkspaceResource,
-    {
-      email,
-      shareableFileId,
-    }: {
-      email: string;
-      shareableFileId: ModelId;
-    }
-  ): Promise<SharingGrantType | null> {
-    const grant = await SharingGrantResource.findLegacyEmailGrant(workspace, {
-      email,
-      shareableFileId,
-    });
-    return grant?.toLegacyJSON() ?? null;
   }
 
   static async unsafeFetchByIdInWorkspace(
@@ -2098,15 +2081,7 @@ export class FileResource extends BaseResource<FileModel> {
       return true;
     }
 
-    return (
-      (await FileResource.getActiveGrantForEmail(
-        auth.getNonNullableWorkspace(),
-        {
-          email: user.email,
-          shareableFileId: shareableFile.id,
-        }
-      )) !== null
-    );
+    return (await SharingGrantResource.findForEmail(this, user.email)) !== null;
   }
 
   /**
@@ -2684,53 +2659,7 @@ export class FileResource extends BaseResource<FileModel> {
     if (createdEmails.length === 0) {
       return new Ok([]);
     }
-    const user = auth.getNonNullableUser();
-
-    const sendNotifications = async () => {
-      const shareInfo = await this.getShareInfo();
-      if (!shareInfo) {
-        return;
-      }
-      const frameUrl = shareInfo.shareUrl;
-      const shareToken = frameUrl.split("/").at(-1) ?? "";
-
-      for (const email of createdEmails) {
-        void sendFrameSharedEmail({
-          to: email,
-          sharedByName: user.toJSON().fullName,
-          frameUrl,
-          shareToken,
-        }).catch((error) => {
-          logger.info(
-            {
-              email,
-              error: normalizeError(error),
-              fileId: this.sId,
-              workspaceId: this.workspaceId,
-            },
-            "Failed to send sharing notification email"
-          );
-        });
-      }
-    };
-    const scheduleNotifications = () => {
-      void sendNotifications().catch((error) => {
-        logger.error(
-          {
-            error: normalizeError(error),
-            fileId: this.sId,
-            workspaceId: this.workspaceId,
-          },
-          "Failed to send Frame sharing notifications"
-        );
-      });
-    };
-
-    if (transaction) {
-      transaction.afterCommit(scheduleNotifications);
-    } else {
-      scheduleNotifications();
-    }
+    notifyFrameSharingInvitations(auth, this, createdEmails, { transaction });
 
     return new Ok(createdEmails);
   }
@@ -2751,11 +2680,10 @@ export class FileResource extends BaseResource<FileModel> {
     return new Ok(await this.listActiveSharingGrants());
   }
 
-  async revokeSharingGrant({
-    grantId,
-  }: {
-    grantId: ModelId;
-  }): Promise<Result<{ email: string }, DustError>> {
+  async revokeSharingGrant(
+    auth: Authenticator,
+    { grantId }: { grantId: ModelId }
+  ): Promise<Result<{ email: string }, DustError>> {
     assert(this.isShareableFrame, "revokeSharingGrant requires a Frame file");
     if (!Number.isSafeInteger(grantId) || grantId < 0) {
       return new Err(
@@ -2771,28 +2699,11 @@ export class FileResource extends BaseResource<FileModel> {
         new DustError("file_not_found", "Sharing grant not found")
       );
     }
-    const revoked = await grant.revoke();
+    const revoked = await grant.revoke(auth);
     if (revoked.isErr()) {
       return revoked;
     }
     return new Ok({ email: grant.email });
-  }
-
-  static async recordGrantView(
-    workspace: WorkspaceResource,
-    {
-      email,
-      shareableFileId,
-    }: {
-      email: string;
-      shareableFileId: ModelId;
-    }
-  ): Promise<void> {
-    const grant = await SharingGrantResource.findLegacyEmailGrant(workspace, {
-      email,
-      shareableFileId,
-    });
-    await grant?.recordLegacyView();
   }
 
   async listActiveSharingGrants(): Promise<SharingGrantType[]> {

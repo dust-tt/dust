@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import type { FileShareScope } from "@app/types/files";
 import { frameContentType } from "@app/types/files";
 import { honoApp } from "@front-api/app";
@@ -58,6 +59,31 @@ describe("verify-email endpoint", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+
+  it("sends OTP to individual domain addresses without admitting subdomains", async () => {
+    const { file, token } = await createFrameWithScope(
+      auth,
+      user,
+      "emails_only"
+    );
+    await SharingGrantFactory.create(auth, file, {
+      kind: "domain",
+      value: "example.com",
+    });
+    expect(sendEmailWithTemplate).not.toHaveBeenCalled();
+    expect(
+      (await postVerifyEmail(token, { email: "ALICE@EXAMPLE.COM" })).status
+    ).toBe(200);
+    expect(sendEmailWithTemplate).toHaveBeenCalledOnce();
+    expect(sendEmailWithTemplate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "alice@example.com" })
+    );
+    vi.mocked(sendEmailWithTemplate).mockClear();
+    expect(
+      (await postVerifyEmail(token, { email: "alice@sub.example.com" })).status
+    ).toBe(200);
+    expect(sendEmailWithTemplate).not.toHaveBeenCalled();
+  });
 
   it("returns 200 and sends email for valid email with active grant", async () => {
     const { file, token } = await createFrameWithScope(

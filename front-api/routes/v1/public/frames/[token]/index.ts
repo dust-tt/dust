@@ -3,9 +3,11 @@ import {
   FRAME_SESSION_COOKIE_NAME,
   getFrameSessionEmail,
 } from "@app/lib/api/share/frame_session";
+import { recordFrameView } from "@app/lib/api/share/frame_sharing";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getConversationRoute, getPodRoute } from "@app/lib/utils/router";
@@ -65,7 +67,7 @@ app.get(
       });
     }
 
-    const { file, shareScope, shareableFileId } = result.value;
+    const { file, shareScope } = result.value;
     // TODO: Refactor FileResource.fetchByShareToken to return the WorkspaceResource directly to avoid this extra query.
     const workspace = await WorkspaceResource.fetchByModelId(file.workspaceId);
     if (!workspace) {
@@ -169,14 +171,11 @@ app.get(
         }
 
         // Check if the verified email has an active grant for this frame.
-        const hasGrant =
-          verifiedEmail &&
-          (await FileResource.getActiveGrantForEmail(workspace, {
-            email: verifiedEmail,
-            shareableFileId,
-          }));
+        const grant = verifiedEmail
+          ? await SharingGrantResource.findForEmail(file, verifiedEmail)
+          : null;
 
-        if (!hasGrant) {
+        if (!verifiedEmail || !grant) {
           return apiError(ctx, {
             status_code: 404,
             api_error: {
@@ -186,10 +185,7 @@ app.get(
           });
         }
 
-        await FileResource.recordGrantView(workspace, {
-          email: verifiedEmail!,
-          shareableFileId,
-        });
+        await recordFrameView(file, grant, verifiedEmail);
       }
     }
 

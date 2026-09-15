@@ -4,6 +4,7 @@ import {
   sendFrameOtpEmail,
 } from "@app/lib/api/share/frame_sharing";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { auditLog } from "@app/logger/logger";
 import { unauthedApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
@@ -41,7 +42,7 @@ app.post(
       return ctx.json({ success: true });
     }
 
-    const { shareScope, shareableFileId, workspace } = result.value;
+    const { file, shareScope } = result.value;
 
     // Only email-based scopes require OTP — return 200 to prevent scope enumeration.
     if (shareScope !== "emails_only" && shareScope !== "workspace_and_emails") {
@@ -49,10 +50,7 @@ app.post(
     }
 
     // Check if grant exists. If not, return 200 to prevent enumeration but don't send email.
-    const activeGrant = await FileResource.getActiveGrantForEmail(workspace, {
-      email,
-      shareableFileId,
-    });
+    const activeGrant = await SharingGrantResource.findForEmail(file, email);
     if (!activeGrant) {
       auditLog(
         { author: "no-author", email, shareToken: token },
@@ -78,7 +76,7 @@ app.post(
     await sendFrameOtpEmail({
       to: email,
       code: otpResult.value.code,
-      sharedByName: activeGrant.grantedBy?.fullName ?? "Someone",
+      sharedByName: activeGrant.grantingUser?.fullName() ?? "Someone",
     });
 
     return ctx.json({ success: true });

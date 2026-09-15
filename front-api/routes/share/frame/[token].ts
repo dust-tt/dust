@@ -3,6 +3,7 @@ import config from "@app/lib/api/config";
 import { getWorkspaceBrandingPublicUrls } from "@app/lib/api/workspace_branding";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
 import type { GetShareFrameMetadataResponseBody } from "@app/types/api/files/share";
@@ -122,7 +123,7 @@ app.get(
     const isEmailScope =
       shareScope === "emails_only" || shareScope === "workspace_and_emails";
     const hasActiveGrants = isEmailScope
-      ? (await file.listActiveSharingGrants()).length > 0
+      ? (await SharingGrantResource.listForFile(file)).length > 0
       : false;
     const requiresEmailVerification = isEmailScope && hasActiveGrants;
 

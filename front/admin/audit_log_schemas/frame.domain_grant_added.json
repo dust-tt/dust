@@ -1,0 +1,5 @@
+{
+  "action": "frame.domain_grant_added",
+  "targets": [{ "type": "workspace" }, { "type": "frame" }],
+  "metadata": { "frame_name": "string", "domains": "string" }
+}

@@ -856,6 +856,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_lean_agent"
   | "dust_pod_goal"
   | "fireworks_new_model_feature"
+  | "frame_domain_sharing"
   | "frames_v2"
   | "google_sheets_tool"
   | "gpt_5_6_terra_long_context"

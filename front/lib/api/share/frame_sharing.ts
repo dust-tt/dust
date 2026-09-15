@@ -4,7 +4,9 @@ import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { FileResource } from "@app/lib/resources/file_resource";
+import type { FileViewerSummary } from "@app/lib/resources/file_viewer_queries";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
@@ -12,9 +14,138 @@ import type { FileShareScope } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+import { removeNulls } from "@app/types/shared/utils/general";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import crypto from "crypto";
 import { escape } from "html-escaper";
+import type { Transaction } from "sequelize";
+import { BaseError } from "sequelize";
+
+export interface FrameSharingState {
+  grants: SharingGrantResource[];
+  viewers: FileViewerSummary[];
+  blockedGrantIds: Set<string>;
+  membersOnly: boolean;
+  canGrantDomains: boolean;
+}
+
+async function canGrantFrameDomains(
+  auth: Authenticator,
+  membersOnly: boolean
+): Promise<boolean> {
+  return (
+    !membersOnly &&
+    (await auth.hasFeatureFlag("frame_domain_sharing")) &&
+    (await auth.hasWorkspacePermission("invite", "frame"))
+  );
+}
+
+async function frameRequiresMembership(
+  auth: Authenticator,
+  file: FileResource
+): Promise<boolean> {
+  return (
+    auth.getNonNullableWorkspace().sharingPolicy === "workspace_only" ||
+    (await file.hasActiveFrameFunctions())
+  );
+}
+
+export async function listFrameSharing(
+  auth: Authenticator,
+  file: FileResource
+): Promise<FrameSharingState> {
+  const [grants, viewers, membersOnly] = await Promise.all([
+    SharingGrantResource.listForFile(file),
+    file.getViewerSummaries(),
+    frameRequiresMembership(auth, file),
+  ]);
+  const blockedGrantIds = new Set<string>();
+  if (membersOnly && grants.length > 0) {
+    const emails = removeNulls(grants.map((grant) => grant.email));
+    const memberEmails = await getFrameWorkspaceMemberEmails(auth, emails);
+    for (const grant of grants) {
+      if (grant.email === null || !memberEmails.has(grant.email)) {
+        blockedGrantIds.add(grant.sId);
+      }
+    }
+  }
+  return {
+    grants,
+    viewers,
+    blockedGrantIds,
+    membersOnly,
+    canGrantDomains: await canGrantFrameDomains(auth, membersOnly),
+  };
+}
+
+/**
+ * @cc [owner:flvndvd,label:security] domain-invitation-permission
+ * Domain grants require the rollout flag, invite-frame permission and a frame that allows external viewers.
+ */
+export async function addFrameSharingGrants(
+  auth: Authenticator,
+  file: FileResource,
+  { emails = [], domains = [] }: { emails?: string[]; domains?: string[] }
+): Promise<Result<FrameSharingState, DustError>> {
+  if (
+    domains.length > 0 &&
+    !(await canGrantFrameDomains(
+      auth,
+      await frameRequiresMembership(auth, file)
+    ))
+  ) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "You cannot share this frame with an email domain."
+      )
+    );
+  }
+  const permission = await checkFrameEmailGrantPermission(auth, emails, file);
+  if (permission.isErr()) {
+    return permission;
+  }
+  await file.ensureShareableFrame(auth);
+  const created = await SharingGrantResource.add(auth, file, {
+    emails,
+    domains,
+  });
+  if (created.isErr()) {
+    return created;
+  }
+  const createdEmails = removeNulls(created.value.map((grant) => grant.email));
+  notifyFrameSharingInvitations(auth, file, createdEmails);
+  return new Ok(await listFrameSharing(auth, file));
+}
+
+/**
+ * @cc [owner:flvndvd,label:error-handling] frame-view-recording-failures
+ * This boundary may catch Sequelize errors from view recording so analytics cannot deny access.
+ * Other exceptions must propagate.
+ */
+export async function recordFrameView(
+  file: FileResource,
+  grant: SharingGrantResource,
+  verifiedEmail: string
+): Promise<void> {
+  const viewedAt = new Date();
+  const results = await Promise.allSettled([
+    file.recordView({ verifiedEmail, viewedAt }),
+    grant.recordLegacyView({ viewedAt }),
+  ]);
+  for (const result of results) {
+    if (result.status === "rejected") {
+      if (!(result.reason instanceof BaseError)) {
+        throw result.reason;
+      }
+      logger.warn(
+        { error: result.reason, fileId: file.sId },
+        "Failed to record shared file view"
+      );
+    }
+  }
+}
 
 export function getDefaultFrameShareScope(
   sharingPolicy: WorkspaceSharingPolicy
@@ -99,19 +230,7 @@ export async function checkFrameEmailGrantPermission(
   }
 
   const emails = rawEmails.map((email) => email.toLowerCase());
-  const users = await UserResource.fetchByEmails(emails);
-  const userModelIdToEmail = new Map(
-    users.map((user) => [user.id, user.email.toLowerCase()])
-  );
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    users,
-    workspace,
-  });
-  const memberEmails = new Set(
-    memberships
-      .map((membership) => userModelIdToEmail.get(membership.userId))
-      .filter((email): email is string => email !== undefined)
-  );
+  const memberEmails = await getFrameWorkspaceMemberEmails(auth, emails);
 
   const areAllEmailsMemberEmails = emails.every((email) =>
     memberEmails.has(email)
@@ -134,6 +253,26 @@ export async function checkFrameEmailGrantPermission(
     : "You do not have permission to invite people outside the workspace. Only workspace members can be invited.";
 
   return new Err(new DustError("unauthorized", errorMessage));
+}
+
+async function getFrameWorkspaceMemberEmails(
+  auth: Authenticator,
+  emails: string[]
+): Promise<Set<string>> {
+  if (emails.length === 0) {
+    return new Set();
+  }
+  const users = await UserResource.fetchByEmails(emails);
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users,
+    workspace: auth.getNonNullableWorkspace(),
+  });
+  const memberIds = new Set(memberships.map((membership) => membership.userId));
+  return new Set(
+    users
+      .filter((user) => memberIds.has(user.id))
+      .map((user) => user.email.toLowerCase())
+  );
 }
 
 const OTP_TTL_SECONDS = 15 * 60; // 15 minutes.
@@ -238,6 +377,68 @@ export async function sendFrameSharedEmail({
     buttonLabel: "View frame",
     buttonUrl: frameUrl,
   });
+}
+
+/**
+ * @cc [owner:flvndvd,label:error-handling] sharing-notification-failures
+ * Failures fetching share links or sending invitations are logged without failing grant creation.
+ */
+export function notifyFrameSharingInvitations(
+  auth: Authenticator,
+  file: FileResource,
+  emails: string[],
+  { transaction }: { transaction?: Transaction } = {}
+): void {
+  if (emails.length === 0) {
+    return;
+  }
+  const user = auth.getNonNullableUser();
+
+  const sendNotifications = async () => {
+    const shareInfo = await file.getShareInfo();
+    if (!shareInfo) {
+      return;
+    }
+    const frameUrl = shareInfo.shareUrl;
+    const shareToken = frameUrl.split("/").at(-1) ?? "";
+
+    for (const email of emails) {
+      void sendFrameSharedEmail({
+        to: email,
+        sharedByName: user.fullName(),
+        frameUrl,
+        shareToken,
+      }).catch((error) => {
+        logger.info(
+          {
+            email,
+            error: normalizeError(error),
+            fileId: file.sId,
+            workspaceId: file.workspaceId,
+          },
+          "Failed to send sharing notification email"
+        );
+      });
+    }
+  };
+  const scheduleNotifications = () => {
+    void sendNotifications().catch((error) => {
+      logger.error(
+        {
+          error: normalizeError(error),
+          fileId: file.sId,
+          workspaceId: file.workspaceId,
+        },
+        "Failed to send Frame sharing notifications"
+      );
+    });
+  };
+
+  if (transaction) {
+    transaction.afterCommit(scheduleNotifications);
+  } else {
+    scheduleNotifications();
+  }
 }
 
 type ValidateOtpError =

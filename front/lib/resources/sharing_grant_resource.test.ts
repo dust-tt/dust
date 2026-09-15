@@ -1,12 +1,22 @@
-import { FileResource } from "@app/lib/resources/file_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { makeSId } from "@app/lib/resources/string_ids";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { frameContentType } from "@app/types/files";
-import { assert, describe, expect, it } from "vitest";
+import { assert, describe, expect, it, vi } from "vitest";
+
+const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
+  mockEmitAuditLogEvent: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/audit/workos_audit", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@app/lib/api/audit/workos_audit")>();
+  return { ...actual, emitAuditLogEvent: mockEmitAuditLogEvent };
+});
 
 async function setup() {
   const context = await createResourceTest({ role: "admin" });
@@ -74,13 +84,13 @@ describe("SharingGrantResource", () => {
       (await SharingGrantResource.findForEmail(file, "alice@example.com"))?.sId
     ).toBe(email.sId);
 
-    const revokedEmail = await email.revoke();
+    const revokedEmail = await email.revoke(authenticator);
     assert(revokedEmail.isOk());
     expect(email.revokedAt).not.toBeNull();
     expect(
       (await SharingGrantResource.findForEmail(file, "alice@example.com"))?.sId
     ).toBe(domain.sId);
-    expect((await domain.revoke()).isOk()).toBe(true);
+    expect((await domain.revoke(authenticator)).isOk()).toBe(true);
     expect(
       await SharingGrantResource.findForEmail(file, "alice@example.com")
     ).toBeNull();
@@ -95,7 +105,7 @@ describe("SharingGrantResource", () => {
       value: "example.com",
     });
     expect(replacement.sId).not.toBe(domain.sId);
-    expect((await domain.revoke()).isErr()).toBe(true);
+    expect((await domain.revoke(authenticator)).isErr()).toBe(true);
     expect(
       (await SharingGrantResource.findForEmail(file, "bob@example.com"))?.sId
     ).toBe(replacement.sId);
@@ -103,6 +113,7 @@ describe("SharingGrantResource", () => {
 
   it("returns normalized Resources with consistent granting-user serialization", async () => {
     const { authenticator, user, file } = await setup();
+    mockEmitAuditLogEvent.mockClear();
     const result = await SharingGrantResource.add(authenticator, file, {
       emails: [" ALICE@EXAMPLE.COM ", "alice@example.com"],
       domains: ["@EXAMPLE.COM", "example.com"],
@@ -117,6 +128,28 @@ describe("SharingGrantResource", () => {
       { kind: "email", value: "alice@example.com" },
       { kind: "domain", value: "example.com" },
     ]);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledTimes(2);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        auth: authenticator,
+        action: "frame.email_grant_added",
+        targets: [
+          expect.objectContaining({
+            type: "workspace",
+            id: authenticator.getNonNullableWorkspace().sId,
+          }),
+          expect.objectContaining({ type: "frame", id: file.sId }),
+        ],
+        metadata: { frame_name: file.fileName, emails: "alice@example.com" },
+      })
+    );
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "frame.domain_grant_added",
+        metadata: { frame_name: file.fileName, domains: "example.com" },
+      })
+    );
+    mockEmitAuditLogEvent.mockClear();
     const duplicate = await SharingGrantResource.add(authenticator, file, {
       emails: ["alice@example.com"],
       domains: ["EXAMPLE.COM"],
@@ -126,6 +159,7 @@ describe("SharingGrantResource", () => {
     const empty = await SharingGrantResource.add(authenticator, file, {});
     assert(empty.isOk());
     expect(empty.value).toEqual([]);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
 
     const listed = await SharingGrantResource.listForFile(file);
     const found = await SharingGrantResource.findForEmail(
@@ -133,7 +167,7 @@ describe("SharingGrantResource", () => {
       "alice@example.com"
     );
     assert(found);
-    const revoked = await found.revoke();
+    const revoked = await found.revoke(authenticator);
     assert(revoked.isOk());
     const fetched = await SharingGrantResource.fetchById(file, found.sId);
     assert(fetched);
@@ -188,6 +222,10 @@ describe("SharingGrantResource", () => {
         domains: ["other.co"],
       })
     ).rejects.toThrow("workspace mismatch");
+
+    await expect(grant.revoke(otherWorkspace.authenticator)).rejects.toThrow(
+      "workspace mismatch"
+    );
 
     const forgedId = makeSId("sharing_grant", {
       id: grant.id,
@@ -246,17 +284,90 @@ describe("SharingGrantResource", () => {
     });
     const otherInstance = await SharingGrantResource.fetchById(file, grant.sId);
     assert(otherInstance);
-    const results = await Promise.all([grant.revoke(), otherInstance.revoke()]);
+    mockEmitAuditLogEvent.mockClear();
+    const results = await Promise.all([
+      grant.revoke(authenticator),
+      otherInstance.revoke(authenticator),
+    ]);
     expect(results.filter((result) => result.isOk())).toHaveLength(1);
     expect(results.filter((result) => result.isErr())).toHaveLength(1);
+    expect(mockEmitAuditLogEvent).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        auth: authenticator,
+        action: "frame.domain_grant_revoked",
+        metadata: { frame_name: file.fileName, domain: "example.com" },
+      })
+    );
+  });
+
+  it("emits after commit and omits rolled-back creations and revocations", async () => {
+    const { authenticator, file } = await setup();
+    mockEmitAuditLogEvent.mockClear();
+    await withTransaction(async (parent) => {
+      const transaction = await frontSequelize.transaction({
+        transaction: parent,
+      });
+      const added = await SharingGrantResource.add(
+        authenticator,
+        file,
+        {
+          domains: ["example.com"],
+        },
+        { transaction }
+      );
+      assert(added.isOk());
+      expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+      await transaction.commit();
+      expect(mockEmitAuditLogEvent).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          action: "frame.domain_grant_added",
+        })
+      );
+      const [grant] = added.value;
+      assert(grant);
+      mockEmitAuditLogEvent.mockClear();
+      const rollback = await frontSequelize.transaction({
+        transaction: parent,
+      });
+      const extra = await SharingGrantResource.add(
+        authenticator,
+        file,
+        {
+          emails: ["alice@example.com"],
+        },
+        { transaction: rollback }
+      );
+      assert(extra.isOk());
+      expect(
+        (await grant.revoke(authenticator, { transaction: rollback })).isOk()
+      ).toBe(true);
+      expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+      await rollback.rollback();
+      expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+      const remaining = await SharingGrantResource.listForFile(file, {
+        transaction: parent,
+      });
+      expect(remaining.map((g) => g.target)).toEqual([
+        { kind: "domain", value: "example.com" },
+      ]);
+      const revoke = await frontSequelize.transaction({ transaction: parent });
+      expect(
+        (
+          await remaining[0].revoke(authenticator, { transaction: revoke })
+        ).isOk()
+      ).toBe(true);
+      expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
+      await revoke.commit();
+      expect(mockEmitAuditLogEvent).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          action: "frame.domain_grant_revoked",
+        })
+      );
+    });
   });
 
   it("preserves the legacy email interface while domain grants exist", async () => {
     const { authenticator, file } = await setup();
-    const workspace = await WorkspaceResource.fetchById(
-      authenticator.getNonNullableWorkspace().sId
-    );
-    assert(workspace);
     const domain = await SharingGrantFactory.create(authenticator, file, {
       kind: "domain",
       value: "example.com",
@@ -264,15 +375,13 @@ describe("SharingGrantResource", () => {
     expect(domain.toLegacyJSON()).toBeNull();
     expect(await file.listActiveSharingGrants()).toEqual([]);
     expect(
-      (await file.revokeSharingGrant({ grantId: domain.id })).isErr()
+      (
+        await file.revokeSharingGrant(authenticator, { grantId: domain.id })
+      ).isErr()
     ).toBe(true);
-    expect((await file.revokeSharingGrant({ grantId: -1 })).isErr()).toBe(true);
     expect(
-      await FileResource.getActiveGrantForEmail(workspace, {
-        email: "alice@example.com",
-        shareableFileId: domain.shareableFileId,
-      })
-    ).toBeNull();
+      (await file.revokeSharingGrant(authenticator, { grantId: -1 })).isErr()
+    ).toBe(true);
 
     const added = await file.addSharingGrants(authenticator, {
       emails: ["alice@example.com"],
@@ -281,9 +390,9 @@ describe("SharingGrantResource", () => {
     const [email] = added.value;
     assert(email);
     expect(email.lastViewedAt).toBeNull();
-    const emailResource = await SharingGrantResource.findLegacyEmailGrant(
-      workspace,
-      { email: email.email, shareableFileId: domain.shareableFileId }
+    const emailResource = await SharingGrantResource.findForEmail(
+      file,
+      "ALICE@EXAMPLE.COM"
     );
     assert(emailResource);
     await emailResource.recordLegacyView();
@@ -291,19 +400,14 @@ describe("SharingGrantResource", () => {
     expect(emailResource.toLegacyJSON()?.lastViewedAt).toBe(
       emailResource.lastViewedAt?.getTime()
     );
-    await FileResource.recordGrantView(workspace, {
-      email: "ALICE@EXAMPLE.COM",
-      shareableFileId: domain.shareableFileId,
-    });
-    const viewed = await FileResource.getActiveGrantForEmail(workspace, {
-      email: "alice@example.com",
-      shareableFileId: domain.shareableFileId,
-    });
+    const viewed = (await file.listActiveSharingGrants())[0];
     expect(viewed?.id).toBe(email.id);
     expect(viewed?.lastViewedAt).toEqual(expect.any(Number));
-    expect((await file.revokeSharingGrant({ grantId: email.id })).isOk()).toBe(
-      true
-    );
+    expect(
+      (
+        await file.revokeSharingGrant(authenticator, { grantId: email.id })
+      ).isOk()
+    ).toBe(true);
     await emailResource.recordLegacyView();
     await domain.recordLegacyView();
     expect(
