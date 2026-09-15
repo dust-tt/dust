@@ -247,4 +247,43 @@ describe("/api/w/[wId]/groups/[groupId]/granted_seat_type/preview", () => {
     expect(body.preview.targetSeatType).toBe("pro");
     expect(body.preview.memberCount).toBe(1);
   });
+
+  it("includes members already on the granted tier (shown as unchanged)", async () => {
+    // Re-granting a seat members already hold must not produce an empty preview:
+    // those members are still affected (a pending removal would be cancelled), so
+    // they are counted and surfaced as "unchanged".
+    const workspace = await WorkspaceFactory.creditPriced();
+    const { auth } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "admin",
+      workspace,
+    });
+    const group = await makeProvisionedGroup(workspace);
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, {
+      role: "user",
+      seatType: "pro",
+    });
+    await GroupFactory.withMembers(auth, group, [user]);
+    await enableFlag(auth);
+
+    setupEntitledSeats(["pro"]);
+    const seatPlans: SeatPlanResponseBody = {
+      pro: seatInfo({ name: "Pro", awuCredits: 100, priceCents: 2000 }),
+    };
+    vi.mocked(getSeatPlan).mockResolvedValue(new Ok(seatPlans));
+
+    const response = await postPreview(workspace.sId, group.sId, {
+      grantedSeatType: "pro",
+    });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.preview.memberCount).toBe(1);
+    const unchanged = body.preview.moves.find(
+      (m: { kind: string }) => m.kind === "unchanged"
+    );
+    expect(unchanged?.count).toBe(1);
+  });
 });
