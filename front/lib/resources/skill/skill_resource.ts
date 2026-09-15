@@ -693,7 +693,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   private static async fetchSearchResourcesByCurrentState(
     auth: Authenticator,
-    documents: readonly SkillSearchDocument[]
+    documents: SkillSearchDocument[]
   ): Promise<SkillResource[]> {
     if (documents.length === 0) {
       return [];
