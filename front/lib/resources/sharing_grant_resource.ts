@@ -168,10 +168,6 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
    * @cc [owner:flvndvd,label:security;backend] authorized-grant-creation
    * Callers MUST authorize each target before adding grants.
    */
-  /**
-   * @cc [owner:flvndvd,label:backend;concurrency] newly-created-grants
-   * Return only grants inserted by this call, including during concurrent additions.
-   */
   static async add(
     auth: Authenticator,
     file: FileResource,
