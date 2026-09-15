@@ -1535,7 +1535,7 @@ it("revokes grant-only editors when saving the complete editor set", async () =>
   const agent = await AgentConfigurationFactory.createTestAgent(auth);
   const editor = await UserFactory.basic();
   await MembershipFactory.associate(workspace, editor, { role: "user" });
-  const resource = await AgentResource.fetchByAgentConfiguration(auth, agent);
+  const resource = AgentResource.fromAgentConfiguration(auth, agent);
   assert(resource.id !== null);
   assert(
     (
