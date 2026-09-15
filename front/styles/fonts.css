@@ -23,3 +23,54 @@
   font-style: normal;
   font-display: swap;
 }
+
+/* Lora Variable Font Family (serif option for conversations) */
+@font-face {
+  font-family: "Lora";
+  src: url("/static/fonts/LoraVariable.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lora";
+  src: url("/static/fonts/LoraVariable-Italic.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* OpenDyslexic (dyslexia-friendly option for conversations). Static faces
+   only: 400 and 700 upright and italic. */
+@font-face {
+  font-family: "OpenDyslexic";
+  src: url("/static/fonts/OpenDyslexic-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "OpenDyslexic";
+  src: url("/static/fonts/OpenDyslexic-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "OpenDyslexic";
+  src: url("/static/fonts/OpenDyslexic-Italic.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "OpenDyslexic";
+  src: url("/static/fonts/OpenDyslexic-BoldItalic.woff2") format("woff2");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}

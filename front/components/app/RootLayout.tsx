@@ -1,5 +1,6 @@
 import { ConfirmPopupArea } from "@app/components/Confirm";
 import { NoOpDesktopNavigationProvider } from "@app/components/navigation/DesktopNavigationContext";
+import { ConversationFontProvider } from "@app/components/sparkle/ConversationFontContext";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useStripUtmParams } from "@app/hooks/useStripUtmParams";
@@ -14,15 +15,17 @@ export function RootLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeProvider>
-      <SidebarProvider>
-        <NoOpDesktopNavigationProvider>
-          <ConfirmPopupArea>
-            <ConversationSidePanelProvider>
-              <Notification.Area>{children}</Notification.Area>
-            </ConversationSidePanelProvider>
-          </ConfirmPopupArea>
-        </NoOpDesktopNavigationProvider>
-      </SidebarProvider>
+      <ConversationFontProvider>
+        <SidebarProvider>
+          <NoOpDesktopNavigationProvider>
+            <ConfirmPopupArea>
+              <ConversationSidePanelProvider>
+                <Notification.Area>{children}</Notification.Area>
+              </ConversationSidePanelProvider>
+            </ConfirmPopupArea>
+          </NoOpDesktopNavigationProvider>
+        </SidebarProvider>
+      </ConversationFontProvider>
     </ThemeProvider>
   );
 }

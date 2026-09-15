@@ -76,6 +76,11 @@ function getMessageTopMargin({
   return "mt-8";
 }
 
+// Shared wrapper for every message type: the reading column plus the
+// user-selected conversation font (Settings > Customization). The input bar
+// deliberately does not use it and stays in the app font.
+const MESSAGE_WRAPPER_CLASSES = "mx-auto max-w-conversation font-conversation";
+
 interface MessageItemProps {
   data: VirtuosoMessage;
   context: VirtuosoMessageListContext;
@@ -253,7 +258,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         <div
           ref={ref}
           className={cn(
-            "mx-auto max-w-conversation",
+            MESSAGE_WRAPPER_CLASSES,
             topMargin,
             !nextData && "mb-10"
           )}
@@ -279,7 +284,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         <div
           ref={ref}
           className={cn(
-            "mx-auto max-w-conversation",
+            MESSAGE_WRAPPER_CLASSES,
             topMargin,
             !nextData && "mb-10"
           )}
@@ -300,7 +305,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             key={`message-id-${sId}`}
             ref={ref}
             className={cn(
-              "mx-auto max-w-conversation",
+              MESSAGE_WRAPPER_CLASSES,
               topMargin,
               !nextData && "mb-8"
             )}
@@ -318,7 +323,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           key={`message-id-${sId}`}
           ref={ref}
           className={cn(
-            "mx-auto max-w-conversation",
+            MESSAGE_WRAPPER_CLASSES,
             topMargin,
             !nextData && "mb-10"
           )}

@@ -8,6 +8,12 @@ import {
   SoundNotificationPreferences,
   useSoundNotificationPreferencesForm,
 } from "@app/components/me/SoundNotificationPreferences";
+import type { ConversationFont } from "@app/components/sparkle/ConversationFontContext";
+import {
+  CONVERSATION_FONT_LABELS,
+  CONVERSATION_FONTS,
+  useConversationFont,
+} from "@app/components/sparkle/ConversationFontContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
@@ -24,6 +30,11 @@ import {
   useUserMemory,
 } from "@app/lib/swr/user";
 import { useAuthContext } from "@app/lib/swr/workspaces";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import {
   MAX_USER_MEMORY_CHARS,
   MAX_USER_MEMORY_CONTENT_LENGTH,
@@ -282,8 +293,19 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
 // ─── Customization ────────────────────────────────────────────────────────────
 
+// Preview each option in its own face so the user sees what they pick.
+const CONVERSATION_FONT_PREVIEW_CLASSES: Record<ConversationFont, string> = {
+  sans: "font-sans",
+  serif: "font-serif",
+  dyslexic: "font-dyslexic",
+};
+
 function CustomizationSection() {
   const { theme: currentTheme, setTheme } = useTheme();
+  const { conversationFont, setConversationFont } = useConversationFont();
+  const sendNotification = useSendNotification();
+  const [localConversationFont, setLocalConversationFont] =
+    useState<ConversationFont>(conversationFont);
   const isMac = useIsMac();
   const { isAgentsSectionVisible, setAgentsSectionVisible } =
     useAgentsSectionVisibility();
@@ -318,6 +340,7 @@ function CustomizationSection() {
   });
   const isDirty =
     localTheme !== currentTheme ||
+    localConversationFont !== conversationFont ||
     submitKey !==
       (typeof window !== "undefined"
         ? (localStorage.getItem("submitMessageKey") ?? "enter")
@@ -330,6 +353,24 @@ function CustomizationSection() {
       localStorage.setItem("submitMessageKey", submitKey);
     }
     setAgentsSectionVisible(localAgentsSectionVisible);
+    if (localConversationFont !== conversationFont) {
+      trackEvent({
+        area: TRACKING_AREAS.SETTINGS,
+        object: "conversation_font",
+        action: TRACKING_ACTIONS.SELECT,
+        extra: { font: localConversationFont },
+      });
+      void setConversationFont(localConversationFont).then((saved) => {
+        if (!saved) {
+          sendNotification({
+            type: "error",
+            title: "Could not save the conversation font",
+            description:
+              "It applies on this device, but could not be saved to your account.",
+          });
+        }
+      });
+    }
   };
 
   return (
@@ -388,6 +429,33 @@ function CustomizationSection() {
                   label="System"
                   onClick={() => setLocalTheme("system")}
                 />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          }
+        />
+
+        <SettingsList.Row
+          title="Conversation font"
+          description="Font used for messages in conversations"
+          action={
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label={CONVERSATION_FONT_LABELS[localConversationFont]}
+                  isSelect
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent mountPortalContainer={portalContainer}>
+                {CONVERSATION_FONTS.map((font) => (
+                  <DropdownMenuItem
+                    key={font}
+                    label={CONVERSATION_FONT_LABELS[font]}
+                    className={CONVERSATION_FONT_PREVIEW_CLASSES[font]}
+                    onClick={() => setLocalConversationFont(font)}
+                  />
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           }
