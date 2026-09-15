@@ -335,8 +335,19 @@ export function FeatureFlagsPage() {
   const pendingPlugin = pendingAction
     ? plugins.find((plugin) => plugin.id === pendingAction.pluginId)
     : undefined;
-  const isRolloutAction =
-    pendingAction?.pluginId === TOGGLE_GLOBAL_ROLLOUT_PLUGIN_ID;
+  const pendingCellSelection = useMemo(
+    () =>
+      pendingAction
+        ? {
+            cells: pendingAction.candidateCells.flatMap((stat) => {
+              const cell = cells.find((c) => c.name === stat.cell);
+              return cell ? [cell] : [];
+            }),
+            initiallySelected: [pendingAction.cell],
+          }
+        : undefined,
+    [cells, pendingAction]
+  );
 
   // Most-used flags across all cells come first by default.
   const sortedFeatureFlags = useMemo(
@@ -385,36 +396,7 @@ export function FeatureFlagsPage() {
           onClose={handlePluginDialogClose}
           plugin={pendingPlugin}
           pluginResourceTarget={GLOBAL_PLUGIN_TARGET}
-          cellSelection={{
-            cells: pendingAction.candidateCells.flatMap((stat) => {
-              const cell = cells.find((c) => c.name === stat.cell);
-              return cell ? [cell] : [];
-            }),
-            initiallySelected: [pendingAction.cell],
-            cellSubtitles: isRolloutAction
-              ? Object.fromEntries(
-                  pendingAction.candidateCells.map((stat) => [
-                    stat.cell,
-                    stat.globalRolloutPercentage === null
-                      ? "—"
-                      : `${stat.globalRolloutPercentage}%`,
-                  ])
-                )
-              : undefined,
-            formatSubtitleAfterRun: isRolloutAction
-              ? (args) => {
-                  const rolloutPercentage =
-                    "rolloutPercentage" in args &&
-                    typeof args.rolloutPercentage === "number"
-                      ? args.rolloutPercentage
-                      : null;
-                  // 0 removes the global flag, which the table shows as "—".
-                  return rolloutPercentage === null || rolloutPercentage === 0
-                    ? "—"
-                    : `${rolloutPercentage}%`;
-                }
-              : undefined,
-          }}
+          cellSelection={pendingCellSelection}
         />
       )}
     </div>

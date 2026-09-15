@@ -4,10 +4,8 @@ import {
   PokeAlertDescription,
   PokeAlertTitle,
 } from "@app/components/poke/shadcn/ui/alert";
-import type { PokeRunPluginResponseBody } from "@app/lib/api/poke/plugins/run";
 import type { PluginListItem, PluginResponse } from "@app/lib/api/poke/types";
 import { getCellDisplay } from "@app/lib/poke/cells";
-import { fetchPokeFromAllCells } from "@app/poke/swr/cells";
 import {
   usePokePluginAsyncArgs,
   usePokePluginManifest,
@@ -15,7 +13,6 @@ import {
 } from "@app/poke/swr/plugins";
 import type { CellInfo, CellType } from "@app/types/cell";
 import type { PluginResourceTarget } from "@app/types/poke/plugins";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
 import {
   Button,
   CheckboxWithText,
@@ -131,8 +128,6 @@ type ExecutePluginDialogProps = {
   cellSelection?: {
     cells: CellInfo[];
     initiallySelected?: CellType[];
-    cellSubtitles?: Partial<Record<CellType, string>>;
-    formatSubtitleAfterRun?: (args: object) => string;
   };
 };
 
@@ -146,9 +141,6 @@ export function RunPluginDialog({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PluginResponse | null>(null);
   const [cellResults, setCellResults] = useState<CellRunResult[] | null>(null);
-  const [cellSubtitleOverrides, setCellSubtitleOverrides] = useState<
-    Partial<Record<CellType, string>>
-  >({});
   const [isRunning, setIsRunning] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [selectedCells, setSelectedCells] = useState<Set<CellType>>(
@@ -175,7 +167,7 @@ export function RunPluginDialog({
     pluginResourceTarget,
   });
 
-  const { doRunPlugin } = useRunPokePlugin({
+  const { doRunPlugin, doRunPluginOnCells } = useRunPokePlugin({
     pluginId: plugin.id,
     pluginResourceTarget,
   });
@@ -213,7 +205,6 @@ export function RunPluginDialog({
     setError(null);
     setResult(null);
     setCellResults(null);
-    setCellSubtitleOverrides({});
     setElapsedSeconds(0);
     onClose();
   };
@@ -234,42 +225,18 @@ export function RunPluginDialog({
             setError("Select at least one cell to run this plugin on.");
             return;
           }
-          const results =
-            await fetchPokeFromAllCells<PokeRunPluginResponseBody>({
-              cells: targetCells,
-              path: `/api/poke/plugins/${plugin.id}/run?resourceType=${pluginResourceTarget.resourceType}`,
-              init: {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(args),
-              },
-            });
+          const results = await doRunPluginOnCells(args, targetCells);
           setCellResults(
-            results.map((cellResult) =>
-              cellResult.ok
+            results.map(({ cell, result }) =>
+              result.isOk()
                 ? {
-                    cell: cellResult.cell,
+                    cell,
                     ok: true,
-                    message: pluginResponseToCopyText(cellResult.data.result),
+                    message: pluginResponseToCopyText(result.value),
                   }
-                : {
-                    cell: cellResult.cell,
-                    ok: false,
-                    message: normalizeError(cellResult.error).message,
-                  }
+                : { cell, ok: false, message: result.error }
             )
           );
-          if (cellSelection.formatSubtitleAfterRun) {
-            const newSubtitle = cellSelection.formatSubtitleAfterRun(args);
-            setCellSubtitleOverrides((overrides) => ({
-              ...overrides,
-              ...Object.fromEntries(
-                results
-                  .filter((cellResult) => cellResult.ok)
-                  .map((cellResult) => [cellResult.cell.name, newSubtitle])
-              ),
-            }));
-          }
         } else {
           const runRes = await doRunPlugin(args);
           if (runRes.isErr()) {
@@ -282,7 +249,7 @@ export function RunPluginDialog({
         setIsRunning(false);
       }
     },
-    [cellSelection, selectedCells, doRunPlugin, plugin.id, pluginResourceTarget]
+    [cellSelection, selectedCells, doRunPlugin, doRunPluginOnCells]
   );
 
   return (
@@ -414,33 +381,24 @@ export function RunPluginDialog({
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-1">
-                    {cellSelection.cells.map((cell) => {
-                      const subtitle =
-                        cellSubtitleOverrides[cell.name] ??
-                        cellSelection.cellSubtitles?.[cell.name];
-                      return (
-                        <CheckboxWithText
-                          key={cell.name}
-                          id={`run-plugin-cell-${cell.name}`}
-                          text={
-                            subtitle
-                              ? `${getCellDisplay(cell)} — ${subtitle}`
-                              : getCellDisplay(cell)
+                    {cellSelection.cells.map((cell) => (
+                      <CheckboxWithText
+                        key={cell.name}
+                        id={`run-plugin-cell-${cell.name}`}
+                        text={getCellDisplay(cell)}
+                        checked={selectedCells.has(cell.name)}
+                        disabled={isLocked}
+                        onCheckedChange={(checked) => {
+                          const nextSelectedCells = new Set(selectedCells);
+                          if (checked === true) {
+                            nextSelectedCells.add(cell.name);
+                          } else {
+                            nextSelectedCells.delete(cell.name);
                           }
-                          checked={selectedCells.has(cell.name)}
-                          disabled={isLocked}
-                          onCheckedChange={(checked) => {
-                            const nextSelectedCells = new Set(selectedCells);
-                            if (checked === true) {
-                              nextSelectedCells.add(cell.name);
-                            } else {
-                              nextSelectedCells.delete(cell.name);
-                            }
-                            setSelectedCells(nextSelectedCells);
-                          }}
-                        />
-                      );
-                    })}
+                          setSelectedCells(nextSelectedCells);
+                        }}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
