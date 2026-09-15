@@ -1401,12 +1401,15 @@ describe("finalizeCreditSpendCheckpointPause", () => {
       userMessageOrigin: userMessage.context.origin,
     });
 
-    const dbMessage = await AgentMessageModel.findOne({
-      where: {
-        id: agentMessage.agentMessageId,
-        workspaceId: workspace.id,
-      },
-    });
+    const messageRes = await ConversationResource.getMessageByIdInConversation(
+      auth,
+      conversation,
+      agentMessage.sId
+    );
+    if (messageRes.isErr()) {
+      throw messageRes.error;
+    }
+    const dbMessage = messageRes.value.agentMessage;
     expect(dbMessage?.creditSpendCheckpointStatus).toBe("paused");
     expect(dbMessage?.status).toBe("created");
 
@@ -1463,12 +1466,15 @@ describe("finalizeCreditSpendCheckpointPause", () => {
       userMessageOrigin: userMessage.context.origin,
     });
 
-    const dbMessage = await AgentMessageModel.findOne({
-      where: {
-        id: agentMessage.agentMessageId,
-        workspaceId: workspace.id,
-      },
-    });
+    const messageRes = await ConversationResource.getMessageByIdInConversation(
+      auth,
+      conversation,
+      agentMessage.sId
+    );
+    if (messageRes.isErr()) {
+      throw messageRes.error;
+    }
+    const dbMessage = messageRes.value.agentMessage;
     expect(dbMessage?.status).toBe("cancelled");
     expect(dbMessage?.creditSpendCheckpointStatus).toBeNull();
 
