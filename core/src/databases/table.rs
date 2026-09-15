@@ -373,7 +373,7 @@ impl LocalTable {
 
         match self.table.schema {
             None => format!("Table {} {{\n}}", name),
-            Some(ref schema) => schema.render_dbml(name, self.table.description(), false),
+            Some(ref schema) => schema.render_dbml(name, self.table.description(), false, None),
         }
     }
 

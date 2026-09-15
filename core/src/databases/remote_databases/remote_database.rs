@@ -185,6 +185,13 @@ mod tests {
     }
 }
 
+/// Schema for a remote table, optionally enriched with storage metadata notes
+/// (e.g. BigQuery partitioning / clustering) shown to agents in DBML.
+pub struct RemoteTableSchema {
+    pub schema: TableSchema,
+    pub table_metadata_note: Option<String>,
+}
+
 #[async_trait]
 pub trait RemoteDatabase {
     fn dialect(&self) -> SqlDialect;
@@ -197,7 +204,16 @@ pub trait RemoteDatabase {
         query: &str,
         query_identity: Option<&QueryIdentityContext>,
     ) -> Result<(Vec<QueryResult>, TableSchema, String), QueryDatabaseError>;
-    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<Option<TableSchema>>>;
+    /**
+     * @cc [label:product] schema-includes-storage-metadata
+     * When the remote dialect exposes partitioning or clustering metadata, it is
+     * returned on `RemoteTableSchema.table_metadata_note` so agents can prefer
+     * filtered reads over full-table scans.
+     */
+    async fn get_tables_schema(
+        &self,
+        opaque_ids: &Vec<&str>,
+    ) -> Result<Vec<Option<RemoteTableSchema>>>;
     fn should_use_column_description(&self, _table: &Table) -> bool {
         false
     }

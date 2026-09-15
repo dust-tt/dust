@@ -25,7 +25,9 @@ use crate::{
     search_filter::Filterable,
 };
 
-use super::remote_database::{QueryIdentityContext, RemoteDatabase, QUERY_TIMEOUT};
+use super::remote_database::{
+    QueryIdentityContext, RemoteDatabase, RemoteTableSchema, QUERY_TIMEOUT,
+};
 
 const SERVICE_ACCOUNT_REQUIRED_FIELDS: [&str; 3] = ["private_key", "client_email", "token_uri"];
 
@@ -724,7 +726,10 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
             .await
     }
 
-    async fn get_tables_schema(&self, opaque_ids: &Vec<&str>) -> Result<Vec<Option<TableSchema>>> {
+    async fn get_tables_schema(
+        &self,
+        opaque_ids: &Vec<&str>,
+    ) -> Result<Vec<Option<RemoteTableSchema>>> {
         let bq_tables: Vec<gcp_bigquery_client::model::table::Table> =
             try_join_all(opaque_ids.iter().map(|opaque_id| async move {
                 let parts: Vec<&str> = opaque_id.split('.').collect();
@@ -745,9 +750,17 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
             }))
             .await?;
 
-        let schemas: Vec<Option<TableSchema>> = bq_tables
+        let schemas: Vec<Option<RemoteTableSchema>> = bq_tables
             .into_iter()
-            .map(|table| TableSchema::try_from(&table.schema).map(Some))
+            .map(|table| {
+                let table_metadata_note = table_storage_metadata_note(&table);
+                TableSchema::try_from(&table.schema).map(|schema| {
+                    Some(RemoteTableSchema {
+                        schema,
+                        table_metadata_note,
+                    })
+                })
+            })
             .collect::<Result<Vec<_>>>()?;
 
         Ok(schemas)
@@ -757,6 +770,128 @@ impl RemoteDatabase for BigQueryRemoteDatabase {
         table
             .get_tags()
             .contains(&USE_METADATA_FOR_DBML_TAG.to_string())
+    }
+}
+
+/**
+ * @cc [label:product] bigquery-storage-metadata-note
+ * When a BigQuery table is time- or range-partitioned and/or clustered, returns a
+ * single agent-facing note with partition type, partition column, require_partition_filter,
+ * and clustering fields so queries can avoid full-table scans. Returns `None` when the
+ * table has none of these storage properties.
+ */
+pub(crate) fn table_storage_metadata_note(
+    table: &gcp_bigquery_client::model::table::Table,
+) -> Option<String> {
+    let mut parts: Vec<String> = Vec::new();
+
+    if let Some(time_partitioning) = &table.time_partitioning {
+        let column = time_partitioning
+            .field
+            .as_deref()
+            .unwrap_or("_PARTITIONTIME");
+        parts.push(format!(
+            "Partition type: {}; Partition column: {}",
+            time_partitioning.r#type, column
+        ));
+    } else if let Some(field) = table
+        .range_partitioning
+        .as_ref()
+        .and_then(|range_partitioning| range_partitioning.field.as_ref())
+    {
+        parts.push(format!(
+            "Partition type: RANGE; Partition column: {}",
+            field
+        ));
+    }
+
+    if table.require_partition_filter.unwrap_or(false) {
+        parts.push("Require partition filter: true".to_string());
+    }
+
+    if let Some(fields) = table
+        .clustering
+        .as_ref()
+        .and_then(|clustering| clustering.fields.as_ref())
+    {
+        if !fields.is_empty() {
+            parts.push(format!("Clustering fields: {}", fields.join(", ")));
+        }
+    }
+
+    if parts.is_empty() {
+        return None;
+    }
+
+    parts.push(
+        "Filter on the partition column (and clustering fields when useful) to avoid full table scans."
+            .to_string(),
+    );
+    Some(parts.join(". "))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::table_storage_metadata_note;
+    use gcp_bigquery_client::model::{
+        clustering::Clustering, range_partitioning::RangePartitioning, table::Table,
+        time_partitioning::TimePartitioning,
+    };
+
+    #[test]
+    fn storage_metadata_note_none_when_unpartitioned() {
+        assert!(table_storage_metadata_note(&Table::default()).is_none());
+    }
+
+    #[test]
+    fn storage_metadata_note_time_partition_clustering_and_require_filter() {
+        let mut table = Table::default();
+        table.time_partitioning = Some(TimePartitioning {
+            expiration_ms: None,
+            field: Some("event_date".to_string()),
+            require_partition_filter: None,
+            r#type: "DAY".to_string(),
+        });
+        table.require_partition_filter = Some(true);
+        table.clustering = Some(Clustering {
+            fields: Some(vec!["user_id".to_string(), "country".to_string()]),
+        });
+
+        let note = table_storage_metadata_note(&table).expect("note");
+        assert!(note.contains("Partition type: DAY"));
+        assert!(note.contains("Partition column: event_date"));
+        assert!(note.contains("Require partition filter: true"));
+        assert!(note.contains("Clustering fields: user_id, country"));
+        assert!(note.contains("avoid full table scans"));
+    }
+
+    #[test]
+    fn storage_metadata_note_ingestion_time_partition_uses_pseudo_column() {
+        let mut table = Table::default();
+        table.time_partitioning = Some(TimePartitioning {
+            expiration_ms: None,
+            field: None,
+            require_partition_filter: None,
+            r#type: "HOUR".to_string(),
+        });
+
+        let note = table_storage_metadata_note(&table).expect("note");
+        assert!(note.contains("Partition type: HOUR"));
+        assert!(note.contains("Partition column: _PARTITIONTIME"));
+        assert!(!note.contains("Require partition filter"));
+    }
+
+    #[test]
+    fn storage_metadata_note_range_partition() {
+        let mut table = Table::default();
+        table.range_partitioning = Some(RangePartitioning {
+            field: Some("customer_id".to_string()),
+            range: None,
+        });
+
+        let note = table_storage_metadata_note(&table).expect("note");
+        assert!(note.contains("Partition type: RANGE"));
+        assert!(note.contains("Partition column: customer_id"));
     }
 }
 

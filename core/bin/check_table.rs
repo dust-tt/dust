@@ -105,11 +105,14 @@ async fn main() -> Result<()> {
                 .get_tables_schema(&vec![remote_database_table_id])
                 .await?;
 
-            if let Some(Some(schema)) = schemas.first() {
+            if let Some(Some(remote_schema)) = schemas.first() {
                 println!("Schema retrieved successfully:");
-                println!("  Columns: {}", schema.columns().len());
-                for column in schema.columns() {
+                println!("  Columns: {}", remote_schema.schema.columns().len());
+                for column in remote_schema.schema.columns() {
                     println!("    - {} ({:?})", column.name, column.value_type);
+                }
+                if let Some(note) = &remote_schema.table_metadata_note {
+                    println!("  Storage metadata: {}", note);
                 }
             } else {
                 println!("Warning: Could not retrieve schema for table");
