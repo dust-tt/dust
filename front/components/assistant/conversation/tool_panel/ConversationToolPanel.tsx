@@ -30,14 +30,13 @@ function ToolPanelBody({ owner, serverView, isError }: ToolPanelBodyProps) {
     );
   }
 
-    if (!serverView) {
+  if (!serverView) {
     return (
       <div className="flex h-full items-center justify-center">
         <Spinner size="lg" />
       </div>
     );
   }
-
 
   return (
     <>
