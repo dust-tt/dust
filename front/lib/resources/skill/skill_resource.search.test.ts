@@ -206,6 +206,13 @@ describe("SkillResource", () => {
       requested_space_ids: [globalSpace.sId],
       created_at: skill.createdAt.toISOString(),
     });
+    expect(
+      current.toSearchDocument(workspace, {
+        lastEditedByUserId: document.last_edited_by_user_id,
+        editorIds: document.editor_ids,
+        activeUsersCount: null,
+      })
+    ).toEqual({ ...document, active_users_count: null });
     expect(document).not.toHaveProperty("instructions");
     expect(document).not.toHaveProperty("metadata");
     expect(document).not.toHaveProperty("is_default");

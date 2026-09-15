@@ -84,7 +84,10 @@ export function applySearchRanking(
       return {
         script_score: {
           query,
-          script: { source: "1 + doc['active_users_count'].value" },
+          script: {
+            source:
+              "1 + (doc['active_users_count'].size() == 0 ? 0 : doc['active_users_count'].value)",
+          },
         },
       };
     case "discovery":
@@ -92,7 +95,8 @@ export function applySearchRanking(
         script_score: {
           query,
           script: {
-            source: "_score + Math.log1p(doc['active_users_count'].value)",
+            source:
+              "_score + Math.log1p(doc['active_users_count'].size() == 0 ? 0 : doc['active_users_count'].value)",
           },
         },
       };
