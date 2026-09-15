@@ -110,6 +110,7 @@ import {
   createMockTriggers,
   createSpace,
   createTriggeredConversations,
+  DEFAULT_POD_NOTIFICATION_CONDITION,
   getAgentById,
   getMembersBySpaceId,
   getRandomAgents,
@@ -121,6 +122,8 @@ import {
   mockConversations,
   mockUsers,
   MY_POD_SPACE,
+  POD_NOTIFICATION_OPTIONS,
+  type PodNotificationCondition,
   type Space,
   type Trigger,
   type User,
@@ -148,8 +151,6 @@ import TemplateSelection, { type Template } from "./TemplateSelection";
 type Collaborator =
   | { type: "agent"; data: Agent }
   | { type: "person"; data: User };
-
-type SpaceNotificationPreference = "never" | "mentions" | "all";
 
 type PodTabsState = {
   mainTabOrder: string[];
@@ -361,7 +362,16 @@ function PeopleAgent() {
   >(null);
   const [isWelcomeToolbarPinned, setIsWelcomeToolbarPinned] = useState(false);
   const [spaceNotificationPreferences, setSpaceNotificationPreferences] =
-    useState<Map<string, SpaceNotificationPreference>>(new Map());
+    useState<Map<string, PodNotificationCondition>>(new Map());
+
+  const updateSpaceNotificationPreference = (
+    spaceId: string,
+    condition: PodNotificationCondition
+  ) => {
+    setSpaceNotificationPreferences((prev) =>
+      new Map(prev).set(spaceId, condition)
+    );
+  };
   const [starredSpaceIds, setStarredSpaceIds] = useState<Set<string>>(
     new Set()
   );
@@ -813,6 +823,29 @@ function PeopleAgent() {
     [podContext]
   );
 
+  const handlePodTabRename = useCallback(
+    (tabValue: string, title: string) => {
+      if (!podContext) {
+        return;
+      }
+
+      setPodTabsBySpaceId((prev) => {
+        const existing = prev.get(podContext.spaceId);
+        if (!existing) {
+          return prev;
+        }
+
+        return new Map(prev).set(podContext.spaceId, {
+          ...existing,
+          dynamicFileTabs: existing.dynamicFileTabs.map((tab) =>
+            tab.value === tabValue ? { ...tab, label: title } : tab
+          ),
+        });
+      });
+    },
+    [podContext]
+  );
+
   const handleShowFileInFiles = useCallback(
     (tabValue: string) => {
       if (!tabValue.startsWith("file-")) {
@@ -1118,25 +1151,24 @@ function PeopleAgent() {
                 <DropdownMenuSubTrigger label="Notifications" icon={Bell01} />
                 <DropdownMenuSubContent>
                   <DropdownMenuRadioGroup
-                    value={spaceNotificationPreferences.get(space.id) ?? "all"}
+                    value={
+                      spaceNotificationPreferences.get(space.id) ??
+                      DEFAULT_POD_NOTIFICATION_CONDITION
+                    }
                     onValueChange={(v) =>
-                      setSpaceNotificationPreferences((prev) =>
-                        new Map(prev).set(
-                          space.id,
-                          v as SpaceNotificationPreference
-                        )
+                      updateSpaceNotificationPreference(
+                        space.id,
+                        v as PodNotificationCondition
                       )
                     }
                   >
-                    <DropdownMenuRadioItem
-                      value="never"
-                      label="Don't notify me"
-                    />
-                    <DropdownMenuRadioItem
-                      value="mentions"
-                      label="Only when mentioned"
-                    />
-                    <DropdownMenuRadioItem value="all" label="All messages" />
+                    {POD_NOTIFICATION_OPTIONS.map((option) => (
+                      <DropdownMenuRadioItem
+                        key={option.value}
+                        value={option.value}
+                        label={option.label}
+                      />
+                    ))}
                   </DropdownMenuRadioGroup>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
@@ -1390,6 +1422,8 @@ function PeopleAgent() {
               : undefined
           }
           spacePublicSettings={spacePublicSettings}
+          onUpdateSpaceNotifications={updateSpaceNotificationPreference}
+          spaceNotificationSettings={spaceNotificationPreferences}
           activeTab={
             podContext.variant === "personal" ? "conversations" : activePodTab
           }
@@ -1418,6 +1452,7 @@ function PeopleAgent() {
                   addableFiles: addablePodFiles,
                   onReorder: handlePodFileReorder,
                   onChangeIcon: handlePodTabIconChange,
+                  onRename: handlePodTabRename,
                   onRemove: handlePodRemoveTab,
                   onAdd: (file) =>
                     handlePodFileDrop(file.id, { activateTab: false }),
@@ -1656,16 +1691,25 @@ function PeopleAgent() {
             <DropdownMenuSub>
               <DropdownMenuSubTrigger label="Notifications" icon={Bell01} />
               <DropdownMenuSubContent>
-                <DropdownMenuRadioGroup value="all">
-                  <DropdownMenuRadioItem
-                    value="never"
-                    label="Don't notify me"
-                  />
-                  <DropdownMenuRadioItem
-                    value="mentions"
-                    label="Only when mentioned"
-                  />
-                  <DropdownMenuRadioItem value="all" label="All messages" />
+                <DropdownMenuRadioGroup
+                  value={
+                    spaceNotificationPreferences.get(podContext.spaceId) ??
+                    DEFAULT_POD_NOTIFICATION_CONDITION
+                  }
+                  onValueChange={(v) =>
+                    updateSpaceNotificationPreference(
+                      podContext.spaceId,
+                      v as PodNotificationCondition
+                    )
+                  }
+                >
+                  {POD_NOTIFICATION_OPTIONS.map((option) => (
+                    <DropdownMenuRadioItem
+                      key={option.value}
+                      value={option.value}
+                      label={option.label}
+                    />
+                  ))}
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>
             </DropdownMenuSub>

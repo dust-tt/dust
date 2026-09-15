@@ -12,10 +12,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  File02,
   FilterFunnel01,
-  Globe01,
-  Image01,
   Monitor01,
   InfoCircle,
   MessageChatSquare,
@@ -24,10 +21,8 @@ import {
   SearchInput,
   Settings01,
   Stars02,
-  Table,
   Terminal,
   Tooltip,
-  Type01,
   User01,
   Users01,
 } from "@dust-tt/sparkle";
@@ -42,7 +37,7 @@ import {
 } from "@dust-tt/sparkle/logo/platforms";
 import { type ComponentType, useEffect, useRef, useState } from "react";
 
-import { mockAgents, mockUsers } from "../data";
+import { mockAgents, mockSkills, mockUsers, type Skill } from "../data";
 import type { Agent, Space } from "../data/types";
 import { ConversationTopSection } from "./ConversationTopSection";
 import type { FreeButtonSwitchOption } from "./FreeButtonSwitch";
@@ -115,54 +110,6 @@ function getDefaultSortForTab(tab: WelcomeAgentTab): AgentSort {
   }
   return DEFAULT_SORT_BY_TAB.discover;
 }
-
-// Skills live alongside agents in the browser. A skill is rendered with a
-// highlight-tinted avatar (highlight-50 background, highlight-700 icon).
-type Skill = {
-  id: string;
-  name: string;
-  description: string;
-  icon: ComponentType<{ className?: string }>;
-};
-
-const mockSkills: Skill[] = [
-  {
-    id: "skill-web-search",
-    name: "Web search",
-    description: "Search the web for up-to-date information.",
-    icon: Globe01,
-  },
-  {
-    id: "skill-summarize",
-    name: "Summarize",
-    description: "Condense long documents into key takeaways.",
-    icon: File02,
-  },
-  {
-    id: "skill-image",
-    name: "Image generation",
-    description: "Create images from a text prompt.",
-    icon: Image01,
-  },
-  {
-    id: "skill-code",
-    name: "Code interpreter",
-    description: "Run code to analyze data and files.",
-    icon: Terminal,
-  },
-  {
-    id: "skill-tables",
-    name: "Query tables",
-    description: "Ask questions over structured tables.",
-    icon: Table,
-  },
-  {
-    id: "skill-translate",
-    name: "Translate",
-    description: "Translate text across languages.",
-    icon: Type01,
-  },
-];
 
 type BrowserItem = ({ kind: "agent" } & Agent) | ({ kind: "skill" } & Skill);
 
