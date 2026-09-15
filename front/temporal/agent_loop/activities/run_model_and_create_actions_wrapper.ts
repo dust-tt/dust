@@ -45,8 +45,6 @@ export type RunModelAndCreateActionsResult = {
   // The model returned nothing at all: the loop should run one more step with
   // tool use disabled to force a final answer.
   retryWithoutTools?: boolean;
-  // Decided from the tree cost the guardrail measured before this step's model run; lets the
-  // workflow schedule the credit spend checkpoint activity only once spend reached the threshold.
   preStepReachedCreditSpendCheckpoint?: boolean;
 };
 

@@ -24,18 +24,6 @@ export type CreditSpendCheckpointActivityResult = { crossed: boolean };
 const NOT_CROSSED: CreditSpendCheckpointActivityResult = { crossed: false };
 
 /**
- * @cc [owner:avervaet,label:backend] checkpoint-pure-check
- * This activity MUST NOT persist, publish or notify anything: it only returns whether the message
- * pauses. Recording the pause belongs to the finalize path, so a failed or timed out check never
- * leaves a message marked paused while its loop keeps running.
- */
-/**
- * @cc [owner:avervaet,label:performance] checkpoint-caller-owns-threshold
- * Callers MUST only schedule this activity once the message tree's spend, as measured by the
- * step's guardrail, has reached the checkpoint threshold. The activity does not re-measure spend:
- * usage only grows, so re-walking the tree here could never change the outcome.
- */
-/**
  * @cc [owner:avervaet,label:product] checkpoint-acknowledged-skips
  * When the message's checkpoint status is `acknowledged`, the activity MUST return not crossed,
  * whatever the spend. A user who chose to continue is never asked again for the same message.
