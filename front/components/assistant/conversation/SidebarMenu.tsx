@@ -286,11 +286,16 @@ function SearchResults({
                 icon={Plus}
                 label="New"
                 variant="ghost-secondary"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onCreatePod();
-                }}
+                onClick={withTracking(
+                  TRACKING_AREAS.NAVIGATION,
+                  "new_pod",
+                  (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onCreatePod();
+                  },
+                  { location: "search_results" }
+                )}
               />
               <PodsBrowsePopover owner={owner} />
             </>
@@ -801,11 +806,16 @@ export function AgentSidebarMenu({
                   icon={Plus}
                   label="New"
                   variant="ghost-secondary"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsCreatePodModalOpen(true);
-                  }}
+                  onClick={withTracking(
+                    TRACKING_AREAS.NAVIGATION,
+                    "new_pod",
+                    (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsCreatePodModalOpen(true);
+                    },
+                    { location: "pods_section" }
+                  )}
                 />
               )}
               <PodsBrowsePopover owner={owner} />
@@ -827,7 +837,12 @@ export function AgentSidebarMenu({
             <NavigationListItem
               label="Create a Pod"
               icon={Plus}
-              onClick={() => setIsCreatePodModalOpen(true)}
+              onClick={withTracking(
+                TRACKING_AREAS.NAVIGATION,
+                "new_pod",
+                () => setIsCreatePodModalOpen(true),
+                { location: "pods_empty_state" }
+              )}
             />
           )}
         </NavigationListCollapsibleSection>
@@ -898,10 +913,14 @@ export function AgentSidebarMenu({
                         variant="ghost-secondary"
                         className="data-[state=open]:bg-hover"
                         disabled={noHealthyProviders}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
+                        onClick={withTracking(
+                          TRACKING_AREAS.NAVIGATION,
+                          "new_agent",
+                          (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }
+                        )}
                       />
                     </DropdownMenuTrigger>
                     <CreateAgentDropdownContent
@@ -947,10 +966,14 @@ export function AgentSidebarMenu({
                         label="New"
                         variant="ghost-secondary"
                         className="data-[state=open]:bg-hover"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                        }}
+                        onClick={withTracking(
+                          TRACKING_AREAS.NAVIGATION,
+                          "new_skill",
+                          (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }
+                        )}
                       />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
@@ -963,7 +986,11 @@ export function AgentSidebarMenu({
                         href={getSkillBuilderRoute(owner.sId, "new")}
                         icon={SKILL_ICON}
                         label="From scratch"
-                        onClick={() => setSidebarOpen(false)}
+                        onClick={withTracking(
+                          TRACKING_AREAS.BUILDER,
+                          "create_skill",
+                          () => setSidebarOpen(false)
+                        )}
                       />
                       <DropdownMenuItem
                         icon={FolderOpen}
@@ -1101,10 +1128,15 @@ export function AgentSidebarMenu({
                       <DropdownMenuItem
                         icon={Plus}
                         label="New Pod"
-                        onClick={() => {
-                          setPendingMoveToNewPod(true);
-                          setIsCreatePodModalOpen(true);
-                        }}
+                        onClick={withTracking(
+                          TRACKING_AREAS.NAVIGATION,
+                          "new_pod",
+                          () => {
+                            setPendingMoveToNewPod(true);
+                            setIsCreatePodModalOpen(true);
+                          },
+                          { location: "move_conversations" }
+                        )}
                       />
                       <DropdownMenuSeparator />
                       <DropdownMenuLabel label="Pods" />
@@ -1156,7 +1188,11 @@ export function AgentSidebarMenu({
                     variant="highlight"
                     className="shrink-0"
                     tooltip="Create a new conversation"
-                    onClick={handleNewClick}
+                    onClick={withTracking(
+                      TRACKING_AREAS.NAVIGATION,
+                      "new_conversation",
+                      handleNewClick
+                    )}
                   />
                 </div>
               </div>
