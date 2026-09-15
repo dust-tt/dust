@@ -4,7 +4,6 @@ import {
   Button,
   Check,
   CheckDouble,
-  ConversationListItem,
   Cube01,
   CubeOutline,
   DotsHorizontal,
@@ -13,7 +12,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
-  Inbox01,
   ListGroup,
   MessageChatSquare,
   MessageQuestionCircle,
@@ -23,6 +21,7 @@ import {
   UniversalSearchItem,
   User01,
   Zap,
+  Umbrella03,
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
 import {
@@ -59,6 +58,7 @@ import {
 } from "./FilterMenu";
 import { RequestListItem } from "./RequestListItem";
 import { TriggerRunAvatar } from "./TriggerRunAvatar";
+import { ConversationListItem } from "./ConversationListItem";
 
 type InboxConversationSearchItem = {
   type: "conversation";
@@ -616,9 +616,28 @@ export function InboxView({
     pendingRequests,
   ]);
 
+  // An Inbox with nothing left in it is caught up; a filter that matches
+  // nothing is not, so the two are told apart before the filter applies.
   // Requests are out of reach of clearing, so a queue of them keeps the Inbox
-  // from ever reading as empty.
-  const isEmpty =
+  // from reading as caught up.
+  const isCaughtUp = useMemo(
+    () =>
+      pendingRequests.length === 0 &&
+      [
+        ...myConversations,
+        ...automationConversations,
+        ...Array.from(conversationsBySpace.values()).flat(),
+      ].every((conversation) => hiddenConversationIds.has(conversation.id)),
+    [
+      automationConversations,
+      conversationsBySpace,
+      hiddenConversationIds,
+      myConversations,
+      pendingRequests,
+    ]
+  );
+
+  const hasNoMatches =
     visibleConversations.length === 0 && visibleRequests.length === 0;
 
   const clearableReadIds = useMemo(
@@ -839,19 +858,28 @@ export function InboxView({
     );
   };
 
-  const renderEmptyState = (title: string, description: React.ReactNode) => (
-    <EmptyState icon={Inbox01} title={title} description={description} />
-  );
-
   const renderConversationsTab = () => {
-    if (isEmpty) {
-      return renderEmptyState(
-        "Inbox",
-        <>
-          You're all caught up!
-          <br />
-          Nothing new under the sun.
-        </>
+    // Nothing to search or filter through, so the toolbar goes too.
+    if (isCaughtUp) {
+      return (
+        <EmptyState
+          icon={Umbrella03}
+          title="You're all caught up"
+          description="Nothing new under the sun."
+        />
+      );
+    }
+
+    if (hasNoMatches) {
+      return (
+        <div className="flex flex-1 flex-col gap-3">
+          {renderConversationsToolbar()}
+          <div className="flex flex-1 items-center justify-center">
+            <p className="text-center text-lg text-muted-foreground">
+              No rows match your filter.
+            </p>
+          </div>
+        </div>
       );
     }
 

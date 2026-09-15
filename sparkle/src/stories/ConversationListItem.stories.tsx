@@ -3,19 +3,9 @@ import React from "react";
 import { fn } from "storybook/test";
 
 import {
-  Avatar,
-  Button,
-  CheckDouble,
-  Chip,
-  Clock,
   ConversationListItem,
-  Cube01,
-  Icon,
   ListGroup,
-  Lock01,
-  LogOut01,
   ReplySection,
-  XClose,
 } from "../index_with_tw_base";
 
 const meta = {
@@ -32,12 +22,7 @@ const meta = {
 
 **Guidelines**
 - Pass either **avatar** for direct conversations or **creator** for group conversations, not both.
-- Use **titleIcon** when the rows are labelled by a category rather than a unique subject, so the title reads as icon plus category.
-- Use **leadingVisual** when the avatar itself has to carry the category, as an avatar with a badge; keep **creator** alongside it so the name still sits by the title.
 - Use the **ReplySection** component for the **replySection** slot to display reply / unread / mention counts consistently.
-- Use **trailing** instead of **time** when the right side of the row has to carry its own state and actions, and stop clicks on those actions from reaching **onClick**.
-- Use **label** when the whole row needs a label flowing into its description, as in a mixed feed where each row says which list it came from.
-- Use **menuItems** for actions that belong to the conversation rather than to the list, reached by right-clicking the row.
 - Group rows inside **ListGroup** so dividers and spacing stay consistent across the list.`,
       },
     },
@@ -158,177 +143,6 @@ export const WithMentions: Story = {
         lastMessageBy="Alice"
       />
     ),
-    onClick: fn(),
-  },
-  render: renderInListGroup,
-};
-
-/**
- * `titleIcon` prefixes the title with an icon, for lists whose rows are
- * labelled by a category — here the row's kind, with the person who raised it
- * carried by `creator` and the specifics in the description.
- *
- * @summary Row titled by category rather than subject.
- */
-export const WithTitleIcon: Story = {
-  args: {
-    unread: true,
-    conversation: {
-      id: "conv-2",
-      title: "Pod access",
-      description:
-        "Access to the Security & Compliance Pod — I'm taking over the SOC 2 evidence collection from Marco.",
-      updatedAt: new Date(),
-    },
-    creator: {
-      fullName: "Marco Ferrari",
-      portrait: "https://i.pravatar.cc/150?img=5",
-    },
-    titleIcon: Lock01,
-    time: "5h",
-    onClick: fn(),
-  },
-  render: renderInListGroup,
-};
-
-/**
- * `trailing` takes the timestamp's place when the right side of the row carries
- * its own state and actions — here what the row is waiting on, and the button
- * that calls it off. Keep the actions out of the row's `onClick` by stopping
- * the click from propagating.
- *
- * @summary Row whose right side holds state and an action.
- */
-export const WithTrailing: Story = {
-  args: {
-    unread: false,
-    conversation: {
-      id: "conv-4",
-      title: "Staging deploy",
-      description: "Check whether the staging deploy went through at 17:30.",
-      updatedAt: new Date(),
-    },
-    avatar: aliceAvatar,
-    trailing: (
-      <>
-        <span className="flex items-center gap-1">
-          <Icon visual={Clock} size="xs" />
-          17:30
-        </span>
-        <span onClick={(event) => event.stopPropagation()}>
-          <Button variant="ghost" size="xs" icon={XClose} tooltip="Dismiss" />
-        </span>
-      </>
-    ),
-    onClick: fn(),
-  },
-  render: renderInListGroup,
-};
-
-/**
- * `label` flows at the start of the description, for a label the whole row
- * answers to — here the list a mixed feed drew the row from, said by a chip.
- *
- * @summary Row labelled at the start of its description.
- */
-export const WithLabel: Story = {
-  args: {
-    unread: true,
-    conversation: {
-      id: "conv-5",
-      title: "Project Milestone Celebration",
-      description:
-        "Follow-up conversation about project milestone celebration implementation details.",
-      updatedAt: new Date(),
-    },
-    creator: {
-      fullName: "Sari Sari",
-      portrait: "https://i.pravatar.cc/150?img=9",
-    },
-    label: <Chip size="mini" icon={Cube01} label="Mobile Engineering" />,
-    time: "04:16",
-    onClick: fn(),
-  },
-  render: renderInListGroup,
-};
-
-/**
- * `leadingVisual` replaces the avatar with any node, here a portrait badged with
- * the row's category, so the icon travels with the person instead of prefixing
- * the title. `creator` still supplies the name next to the title.
- *
- * @summary Row led by a badged avatar.
- */
-export const WithLeadingVisual: Story = {
-  args: {
-    unread: true,
-    conversation: {
-      id: "conv-3",
-      title: "Pod access",
-      description:
-        "Access to the Security & Compliance Pod — I'm taking over the SOC 2 evidence collection from Marco.",
-      updatedAt: new Date(),
-    },
-    creator: {
-      fullName: "Marco Ferrari",
-      portrait: "https://i.pravatar.cc/150?img=5",
-    },
-    leadingVisual: (
-      <div className="relative inline-flex overflow-visible">
-        <Avatar
-          name="Marco Ferrari"
-          visual="https://i.pravatar.cc/150?img=5"
-          size="sm"
-          isRounded
-        />
-        <span className="pointer-events-none absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-background px-0.5 text-foreground shadow-sm ring-1 ring-border">
-          <Lock01 className="h-3 w-3" />
-        </span>
-      </div>
-    ),
-    time: "5h",
-    onClick: fn(),
-  },
-  render: renderInListGroup,
-};
-
-/**
- * `menuItems` answer to a right-click on the row, for the actions that belong to
- * the conversation rather than to the list. Use `variant: "warning"` on the
- * ones you cannot take back.
- *
- * @summary Row with a right-click menu.
- */
-export const WithContextMenu: Story = {
-  args: {
-    unread: true,
-    conversation: {
-      id: "conv-6",
-      title: "Design review",
-      description:
-        "Right-click the row to mark it read or leave the conversation.",
-      updatedAt: new Date(),
-    },
-    creator: {
-      fullName: "Alice Dubois",
-      portrait: "https://i.pravatar.cc/150?img=1",
-    },
-    time: "11:24",
-    menuItems: [
-      {
-        kind: "item",
-        label: "Mark as read",
-        icon: CheckDouble,
-        onClick: fn(),
-      },
-      {
-        kind: "item",
-        label: "Leave the conversation",
-        icon: LogOut01,
-        variant: "warning",
-        onClick: fn(),
-      },
-    ],
     onClick: fn(),
   },
   render: renderInListGroup,

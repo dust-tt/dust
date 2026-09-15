@@ -9,7 +9,6 @@ import {
   CheckDouble,
   Chip,
   ContentMessage,
-  ConversationListItem,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -119,6 +118,7 @@ import { SuggestionBox } from "./SuggestionBox";
 import { TaskItem } from "./TaskItem";
 import { TriggerRunAvatar } from "./TriggerRunAvatar";
 import { TodoInputBar } from "./TodoInputBar";
+import { ConversationListItem } from "./ConversationListItem";
 
 interface GroupConversationViewProps {
   space: Space;

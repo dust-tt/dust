@@ -1,6 +1,5 @@
 import {
   Avatar,
-  ConversationListItem,
   ListGroup,
   ListItemSection,
   ReplySection,
@@ -17,6 +16,7 @@ import { formatRowTime } from "../data/time";
 import type { Agent, Conversation, User } from "../data/types";
 import { getUserById } from "../data/users";
 import { InputBar } from "./InputBar";
+import { ConversationListItem } from "./ConversationListItem";
 
 interface PersonAgentViewProps {
   collaborator: { type: "agent" | "person"; data: Agent | User };

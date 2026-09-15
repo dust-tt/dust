@@ -4,42 +4,20 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  type DropdownMenuItemProps,
   DropdownMenuPortal,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-} from "@sparkle/components/Dropdown";
-import { ScrollArea, ScrollBar } from "@sparkle/components/ScrollArea";
+  type MenuItem,
+  ScrollArea,
+  ScrollBar,
+} from "@dust-tt/sparkle";
 import React from "react";
 
-interface BaseMenuItem {
-  kind: "item" | "submenu";
-  label: string;
-  disabled?: boolean;
-}
+export type { MenuItem };
 
-interface RegularMenuItem
-  extends BaseMenuItem,
-    Omit<DropdownMenuItemProps, "children" | "label"> {
-  kind: "item";
-}
-
-type SubmenuEntry = {
-  id: string;
-  name: string;
-  checked?: boolean;
-  description?: string;
-};
-
-interface SubmenuMenuItem extends BaseMenuItem {
-  kind: "submenu";
-  items: SubmenuEntry[];
-  onSelect: (itemId: string) => void;
-  selectionMode?: "default" | "checkbox";
-}
-
-export type MenuItem = RegularMenuItem | SubmenuMenuItem;
+type RegularMenuItem = Extract<MenuItem, { kind: "item" }>;
+type SubmenuMenuItem = Extract<MenuItem, { kind: "submenu" }>;
 
 const preventMenuItemClickThrough = (event: React.PointerEvent) => {
   // Prevent the subsequent click from reaching elements behind the menu when

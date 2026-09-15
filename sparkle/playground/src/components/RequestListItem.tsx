@@ -1,4 +1,6 @@
-import { Avatar, ConversationListItem } from "@dust-tt/sparkle";
+import { Avatar } from "@dust-tt/sparkle";
+
+import { ConversationListItem } from "./ConversationListItem";
 import { cn } from "@sparkle/lib/utils";
 import type { ReactNode } from "react";
 

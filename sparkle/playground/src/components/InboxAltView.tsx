@@ -2,10 +2,8 @@ import {
   Button,
   CheckDouble,
   Chip,
-  ConversationListItem,
   Cube01,
   CubeOutline,
-  Inbox01,
   ListGroup,
   ListItemSection,
   MessageChatSquare,
@@ -15,6 +13,7 @@ import {
   SearchInput,
   User01,
   Zap,
+  Umbrella03,
 } from "@dust-tt/sparkle";
 import { cn } from "@sparkle/lib/utils";
 import {
@@ -57,6 +56,7 @@ import {
 } from "./FilterMenu";
 import { RequestListItem } from "./RequestListItem";
 import { TriggerRunAvatar } from "./TriggerRunAvatar";
+import { ConversationListItem } from "./ConversationListItem";
 
 /** How far back the feed reaches. */
 const ROW_WINDOW_DAYS = 7;
@@ -474,6 +474,17 @@ export function InboxAltView({
     setHiddenConversationIds((prev) => new Set([...prev, ...clearableReadIds]));
   }, [clearableReadIds, onRowsRead]);
 
+  // Requests can only leave by being handled elsewhere, so a queue of them
+  // keeps the page from reading as caught up.
+  const isCaughtUp = useMemo(
+    () =>
+      rows.every(
+        (row) =>
+          row.kind === "conversation" && hiddenConversationIds.has(row.id)
+      ),
+    [hiddenConversationIds, rows]
+  );
+
   const bucketedRows = useMemo(() => {
     const buckets = new Map<DateBucket, InboxAltRow[]>();
     for (const row of visibleRows) {
@@ -551,18 +562,14 @@ export function InboxAltView({
   };
 
   const renderContent = () => {
-    if (rows.length === 0) {
+    // Nothing left to search or filter through, so the toolbar goes too. A
+    // filter matching nothing keeps it, and says so below.
+    if (isCaughtUp) {
       return (
         <EmptyState
-          icon={Inbox01}
-          title="Inbox"
-          description={
-            <>
-              You're all caught up!
-              <br />
-              Nothing new under the sun.
-            </>
-          }
+          icon={Umbrella03}
+          title="You're all caught up"
+          description="Nothing new under the sun."
         />
       );
     }

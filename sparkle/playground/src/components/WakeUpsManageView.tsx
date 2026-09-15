@@ -1,7 +1,6 @@
 import {
   Button,
   Clock,
-  ConversationListItem,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -28,6 +27,7 @@ import type { Conversation, WakeUp } from "../data/types";
 import { getUserById } from "../data/users";
 import { getWakeUpDescription } from "../data/wakeups";
 import { EmptyState } from "./EmptyState";
+import { ConversationListItem } from "./ConversationListItem";
 
 interface WakeUpsManageViewProps {
   wakeUps: WakeUp[];
