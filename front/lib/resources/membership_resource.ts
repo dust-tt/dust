@@ -974,9 +974,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
   protected override async update(
     blob: Partial<Attributes<MembershipModel>>,
-    transaction?: Transaction
+    transaction?: Transaction,
+    where?: WhereOptions<Attributes<MembershipModel>>
   ): Promise<[affectedCount: number]> {
-    const result = await super.update(blob, transaction);
+    const result = await super.update(blob, transaction, where);
 
     const [workspace] = await WorkspaceResource.fetchByModelIds([
       this.workspaceId,

@@ -65,9 +65,11 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       (this.email !== null) !== (this.domain !== null),
       "A sharing grant requires exactly one target"
     );
+
     if (this.email !== null) {
       return { kind: "email", value: this.email };
     }
+
     assert(this.domain !== null);
     return { kind: "domain", value: this.domain };
   }
@@ -88,6 +90,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
         },
       ],
     });
+
     return this.fromModels(grants, options.transaction ?? undefined);
   }
 
@@ -104,6 +107,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
     if (!parsedEmail.success) {
       return null;
     }
+
     const normalizedEmail = parsedEmail.data;
     const domain = normalizedEmail.slice(normalizedEmail.lastIndexOf("@") + 1);
     const where: WhereOptions<SharingGrantModel> = {
@@ -111,19 +115,19 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       revokedAt: null,
       [Op.or]: [{ email: normalizedEmail }, { domain }],
     };
-    // Grant expiration is not configurable yet, matching the existing email lookup.
+
+    // Note: expiresAt is not enforced here because it cannot be set yet.
+    // When grant expiration is implemented, add query clause + index
+    // expiresAt: { [Op.or]: [null, { [Op.gt]: new Date() }] }
     const [grant] = await this.baseFetch(file, {
       where,
       order: [["email", "ASC NULLS LAST"]],
       limit: 1,
     });
+
     return grant ?? null;
   }
 
-  /**
-   * @cc [owner:flvndvd,label:security] authorized-grant-listing
-   * Callers MUST expose grant details only to users allowed to manage sharing.
-   */
   static async listForFile(
     file: FileResource,
     {
@@ -135,6 +139,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       workspaceId: file.workspaceId,
       ...(!includeRevoked && { revokedAt: null }),
     };
+
     return this.baseFetch(file, {
       where,
       order: [
@@ -178,6 +183,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       auth.getNonNullableWorkspace().id === file.workspaceId,
       "Sharing grant workspace mismatch"
     );
+
     const normalizedEmails = [
       ...new Set(emails.map((email) => sharingEmailSchema.parse(email))),
     ];
@@ -191,12 +197,14 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
     if (!targets.length) {
       return [];
     }
+
     const shareableFile = await ShareableFileModel.findOne({
       attributes: ["id"],
       where: { fileId: file.id, workspaceId: file.workspaceId },
       transaction,
     });
     assert(shareableFile, "File must be shareable before adding grants");
+
     const where: WhereOptions<SharingGrantModel> = {
       workspaceId: file.workspaceId,
       shareableFileId: shareableFile.id,
@@ -222,6 +230,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
     if (!missing.length) {
       return [];
     }
+
     const user = auth.getNonNullableUser();
     const grantedAt = new Date();
     const created = await this.model.bulkCreate(
@@ -235,8 +244,9 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       })),
       { transaction, ignoreDuplicates: true, returning: true }
     );
-    // The pre-read skips existing grants. Concurrent inserts may still race;
-    // rows skipped by ignoreDuplicates have no id.
+
+    // Another request may insert the same grant after our lookup.
+    // ignoreDuplicates skips that insert and returns a row without an id.
     return created
       .filter((grant) => Number.isInteger(grant.id))
       .map((grant) => new this(this.model, grant.get(), user));
@@ -255,6 +265,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
     ) {
       return null;
     }
+
     const where: WhereOptions<SharingGrantModel> = {
       id: parsed.resourceModelId,
       workspaceId: file.workspaceId,
@@ -264,6 +275,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       limit: 1,
       transaction,
     });
+
     return grant ?? null;
   }
 
@@ -277,20 +289,20 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
     transaction?: Transaction;
   } = {}): Promise<Result<undefined, DustError>> {
     const where: WhereOptions<SharingGrantModel> = {
-      id: this.id,
       workspaceId: this.workspaceId,
       revokedAt: null,
     };
-    const [count, revoked] = await this.model.update(
+    const [count] = await this.update(
       { revokedAt: new Date() },
-      { where, returning: true, transaction }
+      transaction,
+      where
     );
     if (count === 0) {
       return new Err(
         new DustError("file_not_found", "Sharing grant not found")
       );
     }
-    Object.assign(this, revoked[0].get());
+
     return new Ok(undefined);
   }
 
@@ -322,25 +334,25 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
         revokedAt: null,
       },
     });
+
     const [resource] = await this.fromModels(grant ? [grant] : []);
     return resource ?? null;
   }
 
-  static async recordLegacyView(
-    workspace: WorkspaceResource,
-    { email, shareableFileId }: { email: string; shareableFileId: ModelId }
-  ): Promise<void> {
-    await this.model.update(
-      { lastViewedAt: new Date() },
-      {
-        where: {
-          workspaceId: workspace.id,
-          shareableFileId,
-          email: email.toLowerCase(),
-          revokedAt: null,
-        },
-      }
-    );
+  async recordLegacyView({
+    transaction,
+  }: {
+    transaction?: Transaction;
+  } = {}): Promise<void> {
+    if (this.email === null) {
+      return;
+    }
+
+    const where: WhereOptions<SharingGrantModel> = {
+      workspaceId: this.workspaceId,
+      revokedAt: null,
+    };
+    await this.update({ lastViewedAt: new Date() }, transaction, where);
   }
 
   async delete(

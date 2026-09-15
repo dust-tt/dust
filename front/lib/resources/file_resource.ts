@@ -2778,10 +2778,11 @@ export class FileResource extends BaseResource<FileModel> {
       shareableFileId: ModelId;
     }
   ): Promise<void> {
-    await SharingGrantResource.recordLegacyView(workspace, {
+    const grant = await SharingGrantResource.findLegacyEmailGrant(workspace, {
       email,
       shareableFileId,
     });
+    await grant?.recordLegacyView();
   }
 
   async listActiveSharingGrants(): Promise<SharingGrantType[]> {

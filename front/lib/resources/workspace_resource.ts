@@ -275,7 +275,8 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
 
   protected override async update(
     blob: ResourceUpdateBlob<WorkspaceModel>,
-    transaction?: Transaction
+    transaction?: Transaction,
+    where?: WhereOptions<Attributes<WorkspaceModel>>
   ): Promise<[affectedCount: number]> {
     // Dual write: keep sharingPolicy in sync when metadata.allowContentCreationFileSharing changes.
     // TODO(2026-03-19: Frame sharing) Remove dual write once reads switch to sharingPolicy.
@@ -289,7 +290,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       }
     }
 
-    const result = await super.update(blob, transaction);
+    const result = await super.update(blob, transaction, where);
     await WorkspaceResource.store.invalidateBlob(this.blob, transaction);
     return result;
   }

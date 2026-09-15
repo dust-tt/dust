@@ -233,7 +233,9 @@ describe("SharingGrantResource", () => {
       kind: "domain",
       value: "david.co",
     });
-    const results = await Promise.all([grant.revoke(), grant.revoke()]);
+    const otherInstance = await SharingGrantResource.fetchById(file, grant.sId);
+    assert(otherInstance);
+    const results = await Promise.all([grant.revoke(), otherInstance.revoke()]);
     expect(results.filter((result) => result.isOk())).toHaveLength(1);
     expect(results.filter((result) => result.isErr())).toHaveLength(1);
   });
@@ -266,6 +268,16 @@ describe("SharingGrantResource", () => {
     });
     assert(email);
     expect(email.lastViewedAt).toBeNull();
+    const emailResource = await SharingGrantResource.findLegacyEmailGrant(
+      workspace,
+      { email: email.email, shareableFileId: domain.shareableFileId }
+    );
+    assert(emailResource);
+    await emailResource.recordLegacyView();
+    expect(emailResource.lastViewedAt).toEqual(expect.any(Date));
+    expect(emailResource.toLegacyJSON()?.lastViewedAt).toBe(
+      emailResource.lastViewedAt?.getTime()
+    );
     await FileResource.recordGrantView(workspace, {
       email: "ALICE@DAVID.CO",
       shareableFileId: domain.shareableFileId,
@@ -279,6 +291,16 @@ describe("SharingGrantResource", () => {
     expect((await file.revokeSharingGrant({ grantId: email.id })).isOk()).toBe(
       true
     );
+    await emailResource.recordLegacyView();
+    await domain.recordLegacyView();
+    expect(
+      (
+        await SharingGrantResource.fetchById(file, emailResource.sId)
+      )?.lastViewedAt?.getTime()
+    ).toBe(viewed?.lastViewedAt);
+    expect(
+      (await SharingGrantResource.fetchById(file, domain.sId))?.lastViewedAt
+    ).toBeNull();
     expect(await file.listActiveSharingGrants()).toEqual([]);
     expect(await file.listAllSharingGrants()).toHaveLength(1);
     expect(
