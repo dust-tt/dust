@@ -1,8 +1,7 @@
-import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
-import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
-import { useSpaceDataSourceView } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType } from "@app/types/user";
-import { AttachmentChip } from "@dust-tt/sparkle";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
+import { getVisualForContentNodeType } from "@app/lib/content_nodes";
+import type { ContentFragmentNodeData } from "@app/types/content_fragment";
+import { AttachmentChip, DoubleIcon } from "@dust-tt/sparkle";
 import { visit } from "unist-util-visit";
 
 export interface KnowledgeChipDirectiveProps {
@@ -10,50 +9,68 @@ export interface KnowledgeChipDirectiveProps {
   title: string;
   space?: string;
   dsv?: string;
+  url?: string;
 }
 
 interface KnowledgeChipDirectiveBlockProps {
-  owner: LightWorkspaceType;
-  nodeId: string;
   title: string;
-  spaceId: string | null;
-  dataSourceViewId: string | null;
+  sourceUrl: string | null;
+  nodeData: ContentFragmentNodeData | null;
 }
 
-// Chip rendered for an inline <knowledge> tag in a user message. The tag only
-// carries ids and a title, so the content node is fetched to display the same
-// icon as the skill builder's knowledge chip. While loading — or when the
-// viewer cannot access the node — the chip degrades to the title alone.
+// Chip rendered for an inline <knowledge> tag in a user message. The icon is
+// derived from the content fragment the composer sent for that node (carried on
+// the message), so no fetch is needed — mirroring the skill builder's knowledge
+// chip: a single node-type icon for websites and folders, a DoubleIcon with the
+// connector logo otherwise. Without a matching fragment (e.g. the tag predates
+// fragment support) the chip degrades to the title, still linking to the source
+// URL from the tag.
 export function KnowledgeChipDirectiveBlock({
-  owner,
-  nodeId,
   title,
-  spaceId,
-  dataSourceViewId,
+  sourceUrl,
+  nodeData,
 }: KnowledgeChipDirectiveBlockProps) {
-  const canFetch = Boolean(spaceId && dataSourceViewId);
+  const icon = nodeData ? getKnowledgeIcon(nodeData) : undefined;
 
-  const { dataSourceView } = useSpaceDataSourceView({
-    dataSourceViewId,
-    disabled: !canFetch,
-    owner,
-    spaceId,
-  });
-
-  const { nodes } = useDataSourceViewContentNodes({
-    owner,
-    dataSourceView,
-    internalIds: [nodeId],
-    viewType: "all",
-    disabled: !canFetch || !dataSourceView,
-  });
-
-  const node = nodes.find((n) => n.internalId === nodeId);
-  if (!node) {
-    return <AttachmentChip label={title} color="primary" size="xs" />;
+  if (sourceUrl) {
+    return (
+      <AttachmentChip
+        label={title}
+        icon={icon ? { visual: icon } : undefined}
+        href={sourceUrl}
+        target="_blank"
+        color="primary"
+        size="xs"
+      />
+    );
   }
 
-  return <KnowledgeChip node={node} title={title} />;
+  return (
+    <AttachmentChip
+      label={title}
+      icon={icon ? { visual: icon } : undefined}
+      color="primary"
+      size="xs"
+    />
+  );
+}
+
+function getKnowledgeIcon({ nodeType, provider }: ContentFragmentNodeData) {
+  const mainIcon = getVisualForContentNodeType(nodeType);
+
+  // Websites (webcrawler) and folders (no connector) get a single icon, like
+  // the skill builder's KnowledgeChip.
+  if (!provider || provider === "webcrawler") {
+    return mainIcon;
+  }
+
+  return () => (
+    <DoubleIcon
+      size="sm"
+      mainIcon={mainIcon}
+      secondaryIcon={getConnectorProviderLogoWithFallback({ provider })}
+    />
+  );
 }
 
 export function knowledgeChipDirective() {
@@ -70,6 +87,7 @@ export function knowledgeChipDirective() {
           title: node.children[0].value,
           space: node.attributes.space,
           dsv: node.attributes.dsv,
+          url: node.attributes.url,
         };
       }
     });
