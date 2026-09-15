@@ -3232,7 +3232,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Metronome seat-billed or the contract bills no seat at that tier. Assumes
    * this group does not already grant a seat (the mapping is being added).
    */
-  async listMembersMovedByGrantingSeat(
+  async listMembersAffectedByGrantingSeat(
     auth: Authenticator,
     seatType: GroupGrantableSeatType
   ): Promise<{
@@ -3240,11 +3240,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     targetSeatType: MembershipSeatType | null;
   }> {
     const workspace = auth.getNonNullableWorkspace();
-    const members = await this.getActiveMembers(auth);
-    if (members.length === 0 || !workspace.metronomeCustomerId) {
+
+    // Resolve whether the contract bills this tier FIRST — independent of the
+    // group's membership. A `null` targetSeatType must mean "the contract does
+    // not bill this tier", never "the group happens to be empty": callers surface
+    // it as a billing error.
+    if (!workspace.metronomeCustomerId) {
       return { members: [], targetSeatType: null };
     }
-
     const contract = await getActiveContract(workspace.sId);
     if (!contract || !(await hasContractSeatSubscription(contract))) {
       return { members: [], targetSeatType: null };
@@ -3262,17 +3265,22 @@ export class GroupResource extends BaseResource<GroupModel> {
       return { members: [], targetSeatType: null };
     }
 
+    // The contract bills the tier; an empty group is a valid mapping with no
+    // members to move.
+    const members = await this.getActiveMembers(auth);
+    if (members.length === 0) {
+      return { members: [], targetSeatType };
+    }
+
     const grantedSeatsByUser =
       await GroupResource.listGrantedSeatsByUserInWorkspace(auth);
-    const { memberships } = await MembershipResource.getActiveMemberships({
-      workspace,
-      users: members,
-    });
-    const currentSeatByUser = new Map<ModelId, MembershipSeatType>(
-      memberships.map((m) => [m.userId, m.seatType])
-    );
 
-    const moved = members.filter((member) => {
+    // Members whose resulting highest-wins tier IS this grant's tier. This
+    // includes members already on the tier (shown as "unchanged" in the preview,
+    // and whose pending removal would be cancelled) — only members covered by a
+    // higher tier from another group are excluded, since this mapping wouldn't
+    // affect them.
+    const affected = members.filter((member) => {
       const otherGrants = grantedSeatsByUser.get(member.id) ?? [];
       const resultingTierSeat = GroupResource.seatFromGrantedSeats(
         [...otherGrants, seatType].filter(
@@ -3281,19 +3289,13 @@ export class GroupResource extends BaseResource<GroupModel> {
             null
         )
       );
-      // A higher granted tier elsewhere wins, so this mapping wouldn't move them.
-      if (
-        resultingTierSeat === null ||
-        SEAT_TYPE_ORDER[resultingTierSeat] !== targetTier
-      ) {
-        return false;
-      }
-      // Already on the granted tier (any cadence): kept, not moved.
-      const currentSeat = currentSeatByUser.get(member.id);
-      return !currentSeat || SEAT_TYPE_ORDER[currentSeat] !== targetTier;
+      return (
+        resultingTierSeat !== null &&
+        SEAT_TYPE_ORDER[resultingTierSeat] === targetTier
+      );
     });
 
-    return { members: moved, targetSeatType };
+    return { members: affected, targetSeatType };
   }
 
   // Builds `userModelId -> granted base seats` for the whole workspace by loading
