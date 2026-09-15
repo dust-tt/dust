@@ -49,6 +49,13 @@ export function getDegradedModelTooltip(displayName: string): string {
   return `${displayName} is unstable right now. You may want to select another model.`;
 }
 
+export function getTierFallbackTooltip(
+  tierName: string,
+  replacementModelName: string
+): string {
+  return `${tierName} is temporarily using ${replacementModelName} while its preferred model is unstable.`;
+}
+
 export function isDegradedModelFailure({
   failedModelId,
   degradedModelIds,

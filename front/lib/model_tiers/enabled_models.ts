@@ -16,6 +16,8 @@ import {
   AUTO_FAST_MODEL_ID,
   AUTO_MODEL_CONFIG,
   AUTO_MODEL_ID,
+  isModelStreamId,
+  MODEL_STREAM_IDS,
   MODEL_STREAMS,
 } from "@app/types/assistant/models/auto";
 import type { ModelsTierName } from "@app/types/assistant/models/model_tiers";
@@ -155,6 +157,10 @@ export interface StreamResolutionType {
   fromPool: boolean;
 }
 
+export interface StreamResolutionWithFallbackType extends StreamResolutionType {
+  didFallback: boolean;
+}
+
 // Walks a stream's ordered candidate pool and picks the first one available
 // or a fallback large model.
 //
@@ -194,6 +200,35 @@ export function resolveStreamModel(
     model: { ...fallback, isSelectable: true },
     reasoningEffort: fallback.defaultReasoningEffort,
     fromPool: false,
+  };
+}
+
+/**
+ * @cc [owner:frankaloia,label:product;error-handling] operational-model-fallback
+ * `didFallback` MUST be true only when excluding a degraded nominal stream resolution selects a
+ * different concrete provider, model, or reasoning effort.
+ */
+export function resolveStreamModelWithFallback(
+  models: EnabledModelConfigurationType[],
+  streamId: ModelStreamIdType,
+  degradedModelIds: ReadonlySet<string>
+): StreamResolutionWithFallbackType {
+  const nominalResolution = resolveStreamModel(models, streamId, new Set());
+  const actualResolution = resolveStreamModel(
+    models,
+    streamId,
+    degradedModelIds
+  );
+  const didFallback =
+    degradedModelIds.has(nominalResolution.model.modelId) &&
+    !isModelStreamId(actualResolution.model.modelId) &&
+    (nominalResolution.model.providerId !== actualResolution.model.providerId ||
+      nominalResolution.model.modelId !== actualResolution.model.modelId ||
+      nominalResolution.reasoningEffort !== actualResolution.reasoningEffort);
+
+  return {
+    ...actualResolution,
+    didFallback,
   };
 }
 
@@ -238,6 +273,17 @@ export function getStreamResolutions(
   };
 }
 
+export function getFallbackStreamIds(
+  models: EnabledModelConfigurationType[],
+  degradedModelIds: ReadonlySet<string>
+): ModelStreamIdType[] {
+  return MODEL_STREAM_IDS.filter(
+    (streamId) =>
+      resolveStreamModelWithFallback(models, streamId, degradedModelIds)
+        .didFallback
+  );
+}
+
 export async function getModelsForAuth(
   auth: Authenticator
 ): Promise<GetEnabledModelsResponseType> {
@@ -250,6 +296,7 @@ export async function getModelsForAuth(
     models,
     defaultModel: getDefaultModelFromEnabledModels(models),
     streams: getStreamResolutions(models, degradedModelIds),
+    fallbackStreamIds: getFallbackStreamIds(models, degradedModelIds),
     degradedModelIds: models
       .filter((m) => degradedModelIds.has(m.modelId))
       .map((m) => m.modelId),
