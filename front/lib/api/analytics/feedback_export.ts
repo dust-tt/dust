@@ -6,8 +6,8 @@ import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { Result } from "@app/types/shared/result";
 import { Ok } from "@app/types/shared/result";
+import { formatDateTimeInTimezone } from "@app/types/shared/utils/date_utils";
 import type { WorkspaceType } from "@app/types/user";
-import { formatInTimeZone } from "date-fns-tz";
 
 export interface FeedbackExportRow {
   feedbackId: string;
@@ -77,11 +77,7 @@ export async function fetchFeedbackExportRows({
 
     return {
       feedbackId: feedback.sId,
-      createdAt: formatInTimeZone(
-        feedback.createdAt,
-        timezone,
-        "yyyy-MM-dd HH:mm:ss"
-      ),
+      createdAt: formatDateTimeInTimezone(feedback.createdAt, timezone),
       assistantId: feedback.agentConfigurationId,
       assistantName: agent?.name ?? feedback.agentConfigurationId,
       conversationUrl:

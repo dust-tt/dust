@@ -42,3 +42,16 @@ export function formatUTCDateFromMillis(ms: number): string {
 export function formatDateFromMillis(ms: number, timezone: string): string {
   return formatInTimeZone(ms, timezone, "yyyy-MM-dd");
 }
+
+// Export cell for a timestamp. An unparseable value renders as a placeholder
+// instead of failing the whole export.
+export function formatDateTimeInTimezone(
+  value: Date | string | number,
+  timezone: string
+): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Invalid date";
+  }
+  return formatInTimeZone(date, timezone, "yyyy-MM-dd HH:mm:ss");
+}

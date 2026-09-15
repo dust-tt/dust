@@ -1,5 +1,5 @@
 import logger from "@app/logger/logger";
-import { addDays, endOfDay, startOfDay } from "date-fns";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { fromZonedTime } from "date-fns-tz";
 import { z } from "zod";
 
@@ -69,19 +69,50 @@ export function localTimeOfDayToUtc(
   return { hour: Math.floor(minutesOfDay / 60), minute: minutesOfDay % 60 };
 }
 
+const CALENDAR_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * @cc [owner:avervaet,label:product] calendar-date-must-exist
+ * A `yyyy-MM-dd` string that matches the shape but names a day that does not exist
+ * (e.g. `2024-02-30`) is rejected as `null`; it never rolls over into the next month.
+ */
+export function parseCalendarDate(
+  isoDate: string
+): { year: number; month: number; day: number } | null {
+  if (!CALENDAR_DATE_RE.test(isoDate)) {
+    return null;
+  }
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const probe = new Date(Date.UTC(year, month - 1, day));
+  const exists =
+    probe.getUTCFullYear() === year &&
+    probe.getUTCMonth() === month - 1 &&
+    probe.getUTCDate() === day;
+  return exists ? { year, month, day } : null;
+}
+
 /**
  * @cc [owner:avervaet,label:product] bare-date-is-already-local
- * `isoDate` is a bare `yyyy-MM-dd` calendar date with no attached offset, already local to
- * `timezone` — matching `moment.tz(isoDate, timezone)`'s treatment of a date-only string. It is
+ * `isoDate` is a bare `yyyy-MM-dd` calendar day read as a wall-clock day in `timezone`. It is
  * NOT parsed as a UTC instant and then re-observed in `timezone`, which for most timezones would
  * resolve to the wrong calendar day.
  */
 /**
  * @cc [owner:avervaet,label:product] calendar-day-offset-is-dst-safe
- * `offsetDays` shifts by whole calendar days in `timezone`'s local calendar (via zoned-time
- * arithmetic), not by a fixed `86400000 * offsetDays` milliseconds. A 23h or 25h local day
- * (a DST transition day) still counts as exactly one day, matching how every call site's
- * pre-migration `moment` chain behaved.
+ * `offsetDays` shifts by whole calendar days, not by a fixed `86400000 * offsetDays`
+ * milliseconds. A 23h or 25h local day (a DST transition day) still counts as exactly one day.
+ */
+/**
+ * @cc [owner:avervaet,label:backend] day-boundary-is-host-tz-independent
+ * The wall clock is built from UTC components and handed to date-fns-tz as an offset-less
+ * string, so the result never depends on the process timezone, even on a host whose own DST
+ * transition falls at local midnight.
+ */
+/**
+ * @cc [owner:avervaet,label:error-handling] day-boundary-degrades-to-invalid-date
+ * An unparseable `isoDate`, a non-existent calendar day, or an unknown `timezone` yields an
+ * `Invalid Date` rather than throwing; callers that serialize the result are responsible for
+ * handling it.
  */
 export function dayBoundaryInTimezone(
   isoDate: string,
@@ -91,13 +122,18 @@ export function dayBoundaryInTimezone(
     boundary = "start",
   }: { offsetDays?: number; boundary?: "start" | "end" } = {}
 ): Date {
-  const [year, month, day] = isoDate.split("-").map(Number);
-  const naiveLocalDate = new Date(year, month - 1, day);
-  const shifted =
-    offsetDays === 0 ? naiveLocalDate : addDays(naiveLocalDate, offsetDays);
-  const bounded =
-    boundary === "start" ? startOfDay(shifted) : endOfDay(shifted);
-  return fromZonedTime(bounded, timezone);
+  const parsed = parseCalendarDate(isoDate);
+  if (!parsed) {
+    return new Date(NaN);
+  }
+  const wallClockMs =
+    Date.UTC(parsed.year, parsed.month - 1, parsed.day + offsetDays) +
+    (boundary === "end" ? ONE_DAY_MS - 1 : 0);
+  // Dropping the trailing "Z" makes date-fns-tz read the string as local to `timezone`.
+  return fromZonedTime(
+    new Date(wallClockMs).toISOString().slice(0, -1),
+    timezone
+  );
 }
 
 export const timezoneSchema = z

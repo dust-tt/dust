@@ -9,7 +9,6 @@ import {
 } from "@app/types/shared/utils/date_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import type { estypes } from "@elastic/elasticsearch";
-import { formatInTimeZone } from "date-fns-tz";
 
 export interface ActiveUsersMetricsPoint {
   timestamp: number;
@@ -85,12 +84,11 @@ export async function fetchActiveUsersMetrics(
 ): Promise<Result<ActiveUsersMetricsPoint[], Error>> {
   const workspaceId = workspace.sId;
 
-  const extendedStart = formatInTimeZone(
+  const extendedStart = formatDateFromMillis(
     dayBoundaryInTimezone(startDate, timezone, {
       offsetDays: -(MAU_WINDOW_DAYS - 1),
-    }),
-    timezone,
-    "yyyy-MM-dd"
+    }).getTime(),
+    timezone
   );
   const rangeFilter: estypes.QueryDslQueryContainer = {
     range: { timestamp: { gte: extendedStart, lte: endDate } },

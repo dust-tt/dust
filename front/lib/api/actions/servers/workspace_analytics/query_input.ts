@@ -3,41 +3,17 @@ import type { ConsumptionScopeFilter } from "@app/lib/api/analytics/consumption/
 import {
   dayBoundaryInTimezone,
   isValidTimezone,
+  parseCalendarDate,
   timezoneSchema,
 } from "@app/lib/api/timezone";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
-import {
-  differenceInCalendarDays,
-  format,
-  getQuarter,
-  getYear,
-  startOfDay,
-  startOfMonth,
-  startOfQuarter,
-  subDays,
-} from "date-fns";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
+import { formatInTimeZone } from "date-fns-tz";
 import { z } from "zod";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
-// Parses a bare "YYYY-MM-DD" string, rejecting anything that isn't a real calendar date
-// (e.g. "2024-02-30") rather than letting it silently roll over into the next month.
-function parseCalendarDate(isoDate: string): Date | null {
-  const match = DATE_RE.exec(isoDate);
-  if (!match) {
-    return null;
-  }
-  const [year, month, day] = isoDate.split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  const isValid =
-    date.getFullYear() === year &&
-    date.getMonth() === month - 1 &&
-    date.getDate() === day;
-  return isValid ? date : null;
-}
 
 // Caps the span an explicit start/end range may scan so a single query can't
 // sweep an unbounded history. Relative periods are bounded by construction and
@@ -244,10 +220,12 @@ export function resolveTimeWindow(
     if (!start || !end) {
       return new Err("startDate and endDate must be valid YYYY-MM-DD dates.");
     }
-    if (end < start) {
+    const startDayMs = Date.UTC(start.year, start.month - 1, start.day);
+    const endDayMs = Date.UTC(end.year, end.month - 1, end.day);
+    if (endDayMs < startDayMs) {
       return new Err("endDate must be on or after startDate.");
     }
-    const inclusiveDays = differenceInCalendarDays(end, start) + 1;
+    const inclusiveDays = (endDayMs - startDayMs) / ONE_DAY_MS + 1;
     if (inclusiveDays > MAX_QUERY_WINDOW_DAYS) {
       return new Err(
         `The query window cannot exceed ${MAX_QUERY_WINDOW_DAYS} days. ` +
@@ -265,38 +243,45 @@ export function resolveTimeWindow(
   }
 
   const period = input.period ?? defaultPeriod;
-  const nowInstant = new Date();
-  const zonedNow = toZonedTime(nowInstant, timezone);
-  let zonedStart: Date;
+  const now = new Date();
+  // Today's calendar date as seen in `timezone`; every relative window is anchored on it.
+  const today = formatInTimeZone(now, timezone, "yyyy-MM-dd");
+  let start: Date;
   let label: string;
   switch (period) {
     case "this_month":
-      zonedStart = startOfMonth(zonedNow);
-      label = format(zonedNow, "MMMM yyyy");
+      start = dayBoundaryInTimezone(`${today.slice(0, 7)}-01`, timezone);
+      label = formatInTimeZone(now, timezone, "MMMM yyyy");
       break;
     case "last_7_days":
-      zonedStart = startOfDay(subDays(zonedNow, 6));
+      start = dayBoundaryInTimezone(today, timezone, { offsetDays: -6 });
       label = "the last 7 days";
       break;
     case "last_30_days":
-      zonedStart = startOfDay(subDays(zonedNow, 29));
+      start = dayBoundaryInTimezone(today, timezone, { offsetDays: -29 });
       label = "the last 30 days";
       break;
     case "last_90_days":
-      zonedStart = startOfDay(subDays(zonedNow, 89));
+      start = dayBoundaryInTimezone(today, timezone, { offsetDays: -89 });
       label = "the last 90 days";
       break;
-    case "this_quarter":
-      zonedStart = startOfQuarter(zonedNow);
-      label = `Q${getQuarter(zonedNow)} ${getYear(zonedNow)}`;
+    case "this_quarter": {
+      const [year, month] = today.split("-").map(Number);
+      const quarterStartMonth = month - ((month - 1) % 3);
+      start = dayBoundaryInTimezone(
+        `${year}-${String(quarterStartMonth).padStart(2, "0")}-01`,
+        timezone
+      );
+      label = formatInTimeZone(now, timezone, "'Q'Q yyyy");
       break;
+    }
     default:
       return assertNever(period);
   }
 
   return new Ok({
-    startDate: fromZonedTime(zonedStart, timezone).toISOString(),
-    endDate: nowInstant.toISOString(),
+    startDate: start.toISOString(),
+    endDate: now.toISOString(),
     label,
     timezone,
   });

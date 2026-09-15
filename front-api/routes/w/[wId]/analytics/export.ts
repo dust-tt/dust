@@ -2,6 +2,7 @@ import {
   exportTable,
   stringifyExportTableAsCsv,
 } from "@app/lib/api/analytics/export_tables";
+import { isValidTimezone } from "@app/lib/api/timezone";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
@@ -60,7 +61,8 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
     table,
     startDate,
     endDate,
-    timezone: timezone ?? "UTC",
+    // An unknown zone is read as UTC rather than rejected.
+    timezone: timezone && isValidTimezone(timezone) ? timezone : "UTC",
     owner,
     includeHiddenAgents: false,
   });
