@@ -548,7 +548,11 @@ export const FILE_FORMATS = {
     isSafeToDisplay: true,
   },
   "text/calendar": { cat: "data", exts: [".ics"], isSafeToDisplay: true },
-  "application/json": { cat: "data", exts: [".json"], isSafeToDisplay: true },
+  "application/json": {
+    cat: "data",
+    exts: [".json", ".har"],
+    isSafeToDisplay: true,
+  },
   "application/msword": {
     cat: "data",
     exts: [".doc", ".docx"],
@@ -1069,6 +1073,10 @@ const EXTENSION_CONTENT_TYPE_OVERRIDES: Record<
   ".ttf": "font/ttf",
   ".ttc": "font/collection",
   ".otc": "font/collection",
+  // Browsers report .eml and .har as application/octet-stream; map them to the
+  // text-based types they actually are so the content is readable.
+  ".eml": "message/rfc822",
+  ".har": "application/json",
 };
 
 export function stripMimeParameters(contentType: string): string {
