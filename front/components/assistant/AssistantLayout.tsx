@@ -1,7 +1,5 @@
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { AgentDetailsSheet } from "@app/components/assistant/details/AgentDetailsSheet";
-import { MemberDetails } from "@app/components/assistant/details/MemberDetails";
 import { useSetNavChildren } from "@app/components/sparkle/AppLayoutContext";
 import { useURLSheet } from "@app/hooks/useURLSheet";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
@@ -10,7 +8,18 @@ import type { ConversationListItemType } from "@app/types/assistant/conversation
 import { isString } from "@app/types/shared/utils/general";
 import type { LightWorkspaceType } from "@app/types/user";
 import type React from "react";
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
+
+const AgentDetailsSheet = lazy(() =>
+  import("@app/components/assistant/details/AgentDetailsSheet").then(
+    (mod) => ({ default: mod.AgentDetailsSheet })
+  )
+);
+const MemberDetails = lazy(() =>
+  import("@app/components/assistant/details/MemberDetails").then((mod) => ({
+    default: mod.MemberDetails,
+  }))
+);
 
 interface AssistantLayoutProps {
   children: React.ReactNode;
@@ -53,17 +62,21 @@ export function AssistantLayout({
 
   return (
     <BlockedActionsProvider owner={owner} conversation={conversation}>
-      <AgentDetailsSheet
-        owner={owner}
-        user={user}
-        agentId={agentId}
-        onClose={() => onOpenChangeAgentModal(false)}
-      />
-      <MemberDetails
-        owner={owner}
-        userId={userId}
-        onClose={() => onOpenChangeUserModal(false)}
-      />
+      <Suspense fallback={null}>
+        <AgentDetailsSheet
+          owner={owner}
+          user={user}
+          agentId={agentId}
+          onClose={() => onOpenChangeAgentModal(false)}
+        />
+      </Suspense>
+      <Suspense fallback={null}>
+        <MemberDetails
+          owner={owner}
+          userId={userId}
+          onClose={() => onOpenChangeUserModal(false)}
+        />
+      </Suspense>
       {children}
     </BlockedActionsProvider>
   );
