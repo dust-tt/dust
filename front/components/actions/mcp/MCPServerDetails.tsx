@@ -69,7 +69,7 @@ export function MCPServerDetails({
   const { server: mcpServerWithViews, mutateMCPServer } = useMCPServer({
     owner,
     serverId: mcpServerView?.server.sId ?? "",
-    disabled: !isOpen || !mcpServerView,
+    disabled: !isOpen || !mcpServerView || readOnly,
   });
 
   const { featureFlags } = useFeatureFlags();

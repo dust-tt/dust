@@ -30,6 +30,45 @@ function patchView(wId: string, viewId: string, body: unknown) {
   });
 }
 
+function getView(wId: string, viewId: string) {
+  return honoApp.request(viewUrl(wId, viewId), { method: "GET" });
+}
+
+describe("GET /api/w/:wId/mcp/views/:viewId", () => {
+  it("should return the view for a regular user", async () => {
+    const { workspace, globalSpace } = await setup("user");
+
+    const server = await RemoteMCPServerFactory.create(workspace);
+    const serverView = await MCPServerViewFactory.create(
+      workspace,
+      server.sId,
+      globalSpace
+    );
+
+    const response = await getView(workspace.sId, serverView.sId);
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.success).toBe(true);
+    expect(data.serverView.sId).toBe(serverView.sId);
+    expect(data.serverView.server.sId).toBe(server.sId);
+    // Full serialization: tools must be present so callers can resolve a view in one request.
+    expect(data.serverView.server.tools).toEqual([
+      { name: "tool", description: "Tool description" },
+    ]);
+  });
+
+  it("should return 404 when the view does not exist", async () => {
+    const { workspace } = await setup("user");
+
+    const response = await getView(workspace.sId, "mcpsv_nonexistent");
+
+    expect(response.status).toBe(404);
+    const data = await response.json();
+    expect(data.error.type).toBe("mcp_server_view_not_found");
+  });
+});
+
 describe("PATCH /api/w/:wId/mcp/views/:viewId", () => {
   it("should return 400 when no update fields are provided", async () => {
     const { workspace, auth } = await setup("admin");

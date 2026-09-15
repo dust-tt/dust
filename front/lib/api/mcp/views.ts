@@ -37,6 +37,11 @@ export type PatchMCPServerViewResponseBody = {
   serverView: MCPServerViewType;
 };
 
+export type GetMCPServerViewResponseBody = {
+  success: true;
+  serverView: MCPServerViewType;
+};
+
 async function getAllMCPServerViewsInWorkspace(
   auth: Authenticator,
   mcpServerId: string

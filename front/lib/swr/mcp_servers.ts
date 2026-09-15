@@ -22,6 +22,7 @@ import type {
   SyncMCPServerResponseBody,
 } from "@app/lib/api/mcp";
 import type {
+  GetMCPServerViewResponseBody,
   PatchMCPServerViewBody,
   PatchMCPServerViewResponseBody,
 } from "@app/lib/api/mcp/views";
@@ -116,6 +117,45 @@ export function useMCPServer({
     isMCPServerLoading: !error && !data && !disabled,
     isMCPServerError: !!error,
     mutateMCPServer: mutate,
+  };
+}
+
+/**
+ * Hook to fetch a single MCP server view (full serialization, tools included) by its sId.
+ */
+export function useMCPServerView({
+  disabled,
+  owner,
+  viewId,
+}: {
+  disabled?: boolean;
+  owner: LightWorkspaceType;
+  viewId?: string | null;
+}) {
+  const { fetcher } = useFetcher();
+  const viewFetcher: Fetcher<GetMCPServerViewResponseBody> = fetcher;
+
+  const url = viewId ? `/api/w/${owner.sId}/mcp/views/${viewId}` : null;
+
+  const { data, error, mutate } = useSWRWithDefaults(url, viewFetcher, {
+    disabled,
+    revalidateOnFocus: false,
+  });
+
+  if (!viewId) {
+    return {
+      serverView: null,
+      isMCPServerViewLoading: false,
+      isMCPServerViewError: false,
+      mutateMCPServerView: () => {},
+    };
+  }
+
+  return {
+    serverView: data?.serverView ?? null,
+    isMCPServerViewLoading: !error && !data && !disabled,
+    isMCPServerViewError: !!error,
+    mutateMCPServerView: mutate,
   };
 }
 

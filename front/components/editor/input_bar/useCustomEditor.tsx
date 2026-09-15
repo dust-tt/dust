@@ -344,6 +344,7 @@ export interface CustomEditorProps {
     onDetailsRef?: React.RefObject<((item: SlashCommand) => void) | undefined>;
     onSkillDetails?: (skillId: string) => void;
     selectedMCPServerViewIdsRef: React.RefObject<Set<string>>;
+    onToolDetailsById?: (mcpServerViewId: string) => void;
     slashCommandsRef: React.RefObject<InputBarSlashCommand[]>;
     includeAttachKnowledgeRef: React.RefObject<boolean>;
     includePickModelRef: React.RefObject<boolean>;
@@ -481,7 +482,9 @@ export const buildEditorExtensions = ({
     SkillNode.configure({
       onSkillDetails: slashSuggestion?.onSkillDetails,
     }),
-    ToolNodeWithView,
+    ToolNodeWithView.configure({
+      onToolDetailsById: slashSuggestion?.onToolDetailsById,
+    }),
     VoicePartialNode,
     createEmojiExtension({ onActiveChange: notifySuggestionActiveChange }),
     Placeholder.configure({
