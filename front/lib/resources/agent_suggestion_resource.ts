@@ -31,7 +31,7 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-// TODO(agent-governance): Remove the legacy variant on cleanup.
+// TODO(agent-governance): Remove AgentAccess and use AgentResource directly on cleanup.
 type AgentAccess =
   | { kind: "legacy"; groupId: ModelId }
   | { kind: "grants"; resource: AgentResource };

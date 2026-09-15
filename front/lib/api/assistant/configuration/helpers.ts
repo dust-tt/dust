@@ -275,6 +275,10 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const resource = AgentResource.fromAgentConfigurationModel(agent);
     const canEditWithoutUser =
       !user && !isRegularApiKey && auth.can("write", resource);
+
+    const canRead = useGrants
+      ? auth.can("read", resource)
+      : isAuthor || isMember || canEditWithoutUser || agent.scope === "visible";
     const canEdit = isRegularApiKey
       ? (useGrants ? auth.can("write", resource) : auth.isAdmin()) &&
         agent.status === "active" &&
@@ -282,9 +286,6 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       : useGrants
         ? auth.can("write", resource)
         : isAuthor || isMember || canEditWithoutUser;
-    const canRead = useGrants
-      ? auth.can("read", resource)
-      : isAuthor || isMember || canEditWithoutUser || agent.scope === "visible";
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,
       agentModelId: agent.agentId,
