@@ -133,20 +133,14 @@ export function ConsumptionSummaryView({
 
   return (
     <div className="flex flex-col gap-4">
-      {creditUsage && cycleProgress && (
-        <div
-          className={
-            responsiveLayout
-              ? "flex flex-col items-start justify-between gap-3 rounded-xl border border-border bg-panel-background p-2 sm:flex-row sm:items-center"
-              : "flex items-center justify-between gap-4 rounded-xl border border-border bg-panel-background p-2"
-          }
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              {formatCredits(totalCredits)} credits used this cycle, day{" "}
-              {cycleProgress.day}/{cycleProgress.totalDays} of the cycle
-            </span>
-          </div>
+      <div className="flex items-center justify-between gap-4">
+        {creditUsage && cycleProgress && (
+          <span className="text-sm text-muted-foreground">
+            {formatCredits(totalCredits)} credits used this cycle, day{" "}
+            {cycleProgress.day}/{cycleProgress.totalDays} of the cycle
+          </span>
+        )}
+        <div className="ml-auto">
           <Button
             label={usageLinkLabel}
             variant="highlight-ghost"
@@ -155,7 +149,7 @@ export function ConsumptionSummaryView({
             href={usageHref}
           />
         </div>
-      )}
+      </div>
       <div
         className={
           responsiveLayout
