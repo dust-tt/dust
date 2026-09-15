@@ -133,13 +133,9 @@ it.each([
     await shadowCanAdminAgent(auth, legacyAgent, legacyPermission, "test")
   ).toBe(mode !== "grants");
   expect(
-    (
-      await shadowEditableAgents(
-        auth,
-        [grantAgent, legacyAgent],
-        "test"
-      )
-    ).map((agent) => agent.sId)
+    (await shadowEditableAgents(auth, [grantAgent, legacyAgent], "test")).map(
+      (agent) => agent.sId
+    )
   ).toEqual([selected.sId]);
   expect(await shadowUsageConfigIds(auth, "test")).toEqual([selected.id]);
   expect(await AgentSuggestionResource.fetchById(auth, suggestion.sId)).toEqual(
