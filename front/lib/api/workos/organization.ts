@@ -10,6 +10,7 @@ import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkOSPortalIntent } from "@app/lib/types/workos";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
+import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -101,6 +102,10 @@ export async function getOrCreateWorkOSOrganization(
         ...workspace,
         workOSOrganizationId: organization.id,
       });
+
+      // Seed the workspace admins as WorkOS IT contacts (debounced). Ongoing
+      // changes are re-synced from the membership mutation paths.
+      await launchSyncWorkOSITContactsWorkflow({ workspaceId: workspace.sId });
     }
 
     return new Ok(organization);

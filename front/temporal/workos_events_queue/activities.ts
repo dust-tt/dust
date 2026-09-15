@@ -8,6 +8,7 @@ import {
 } from "@app/lib/api/membership";
 import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { getWorkOS } from "@app/lib/api/workos/client";
+import { syncWorkOSITContacts } from "@app/lib/api/workos/it_contacts";
 import {
   getOrCreateWorkOSOrganization,
   getWorkOSOrganizationDSyncDirectories,
@@ -1312,4 +1313,63 @@ async function handleGroupDelete(
       directory_id: String(eventData.directoryId ?? "unknown"),
     },
   });
+}
+
+// Reconciles the WorkOS IT contacts of a workspace's organization with its
+// current active admins. Recomputes the admin set at run time (not enqueue time)
+// so the debounced workflow always applies the latest membership state.
+export async function syncWorkOSITContactsActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<void> {
+  const localLogger = logger.child({ workspaceId });
+
+  const workspace = await getWorkspaceInfos(workspaceId);
+  if (!workspace) {
+    localLogger.warn("Workspace not found, skipping WorkOS IT contacts sync");
+    return;
+  }
+
+  if (!workspace.workOSOrganizationId) {
+    localLogger.info(
+      "No WorkOS organization, skipping WorkOS IT contacts sync"
+    );
+    return;
+  }
+
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    workspace,
+    roles: ["admin"],
+  });
+
+  const adminEmails = Array.from(
+    new Set(
+      memberships
+        .map((membership) => membership.user?.email)
+        .filter((email): email is string => Boolean(email))
+    )
+  );
+
+  const syncResult = await syncWorkOSITContacts({
+    workspace,
+    emails: adminEmails,
+  });
+
+  if (syncResult.isErr()) {
+    // Throw so Temporal retries the activity.
+    throw syncResult.error;
+  }
+
+  const { created, deleted, unchanged, skippedForCap } = syncResult.value;
+  localLogger.info(
+    {
+      workOSOrganizationId: workspace.workOSOrganizationId,
+      created: created.length,
+      deleted: deleted.length,
+      unchanged,
+      skippedForCap: skippedForCap.length,
+    },
+    "Synced workspace admins as WorkOS IT contacts"
+  );
 }
