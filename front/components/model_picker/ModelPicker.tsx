@@ -22,6 +22,7 @@ import {
   getModelTier,
   getModelWithReasoningEffortLabel,
   getReasoningEffortLabel,
+  getTierFallbackTooltip,
   getTierLockReason,
   isPremiumModel,
   isSameSelection,
@@ -130,6 +131,7 @@ export function ModelPicker({
     streamModels,
     lockPremiumEfforts,
     degradedModelIds,
+    fallbackStreamIds,
   } = useModelPickerModels({ owner, showDegradations });
   const { menuStateProps, resetMenu } = useModelPickerMenuState();
 
@@ -298,6 +300,18 @@ export function ModelPicker({
     degradedModelIds.has(shown.display.model.modelId)
       ? getDegradedModelTooltip(shown.display.model.displayName)
       : null;
+  const shownTier =
+    shown.display.kind === "tier" ? getModelTier(shown.display.tierId) : null;
+  const fallbackResolution = shownTier
+    ? modelProps.streams?.[shownTier.metaModelId]
+    : null;
+  const tierFallbackTooltip =
+    shownTier &&
+    fallbackResolution &&
+    fallbackStreamIds.has(shownTier.metaModelId)
+      ? getTierFallbackTooltip(shownTier.name, fallbackResolution.displayName)
+      : null;
+  const degradationTooltip = degradedModelTooltip ?? tierFallbackTooltip;
 
   // Model name and reasoning effort read as one string for the tooltip and the
   // accessible name, but the visible trigger splits the effort into its own
@@ -331,7 +345,7 @@ export function ModelPicker({
           variant={buttonVariant}
           size={buttonSize}
           icon={
-            degradedModelTooltip !== null ? (
+            degradationTooltip !== null ? (
               <DegradedModelIcon icon={buttonIcon} surface="composer" />
             ) : (
               buttonIcon
@@ -349,7 +363,7 @@ export function ModelPicker({
           }
           isSelect={showLabel && showDropdownArrow}
           tooltip={
-            degradedModelTooltip ??
+            degradationTooltip ??
             (showLabel ? undefined : `Model picker: ${label}`)
           }
           aria-label={`Model picker: ${label}`}

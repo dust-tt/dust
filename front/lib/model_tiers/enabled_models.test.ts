@@ -5,8 +5,10 @@ import { setUserMaxAllowedTier } from "@app/lib/model_tiers/allowed_tiers";
 import {
   getDefaultModelFromEnabledModels,
   getEnabledModelsForAuth,
+  getFallbackStreamIds,
   getModelsForAuth,
   resolveStreamModel,
+  resolveStreamModelWithFallback,
   withModelSelectability,
 } from "@app/lib/model_tiers/enabled_models";
 import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
@@ -292,6 +294,28 @@ describe("resolveStreamModel", () => {
     expect(resolved.reasoningEffort).toBe("medium");
   });
 
+  it("reports an operational fallback when degradation changes the resolution", async () => {
+    const models = await getEnabledModelsForAuth(adminAuth);
+    const resolved = resolveStreamModelWithFallback(
+      models,
+      "auto",
+      new Set([GPT_5_6_LUNA_MODEL_ID])
+    );
+
+    expect(resolved.didFallback).toBe(true);
+    expect(resolved.model.modelId).toBe(
+      CLAUDE_SONNET_5_DEFAULT_MODEL_CONFIG.modelId
+    );
+  });
+
+  it("reports every stream whose preferred resolution is degraded", async () => {
+    const models = await getEnabledModelsForAuth(adminAuth);
+
+    expect(
+      getFallbackStreamIds(models, new Set([GPT_5_6_LUNA_MODEL_ID]))
+    ).toEqual(["auto", "auto_fast"]);
+  });
+
   it("refreshes degradation state before returning the model catalog", async () => {
     const degradation = {
       modelId: GPT_5_6_LUNA_MODEL_ID,
@@ -307,12 +331,25 @@ describe("resolveStreamModel", () => {
       const response = await getModelsForAuth(adminAuth);
 
       expect(response.degradedModelIds).toContain(GPT_5_6_LUNA_MODEL_ID);
+      expect(response.fallbackStreamIds).toEqual(["auto", "auto_fast"]);
     } finally {
       await ModelDegradationResource.updateDegradedEndpoints([
         { ...degradation, degraded: false },
       ]);
       await refreshDegradedModelIds();
     }
+  });
+
+  it("does not report a fallback when degradation does not change the resolution", async () => {
+    const models = await getEnabledModelsForAuth(adminAuth);
+    const resolved = resolveStreamModelWithFallback(
+      models,
+      "auto",
+      new Set([CLAUDE_OPUS_4_8_DEFAULT_MODEL_CONFIG.modelId])
+    );
+
+    expect(resolved.didFallback).toBe(false);
+    expect(resolved.model.modelId).toBe(GPT_5_6_LUNA_MODEL_ID);
   });
 
   it("keeps a degraded model out of the last-resort fallback", async () => {
