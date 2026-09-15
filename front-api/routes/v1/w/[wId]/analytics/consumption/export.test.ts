@@ -82,7 +82,41 @@ const MOCK_ES_DOC: AgentMessageConsumptionAnalyticsData = {
   tool: null,
 };
 
-function mockEsSuccess() {
+const MOCK_ES_TOOL_DOC: AgentMessageConsumptionAnalyticsData = {
+  ...MOCK_ES_DOC,
+  consumption_key: "action:1",
+  consumption_type: "tool",
+  credit_micro: 1_234_567,
+  micro_usd: null,
+  model: null,
+  gross_credit_micro: {
+    system: 0,
+    input: null,
+    result_footprint: null,
+    output: null,
+    reasoning: 0,
+    direct: 1_234_567,
+    total: 1_234_567,
+  },
+  tokens: {
+    system: 0,
+    input: null,
+    result_footprint: 0,
+    output: 0,
+    reasoning: 0,
+  },
+  tool: {
+    name: "search",
+    server_name: "web_search",
+    parent_server_name: "",
+    action_id: "action-1",
+    attributed_skill_ids: [],
+  },
+};
+
+function mockEsSuccess(
+  doc: AgentMessageConsumptionAnalyticsData = MOCK_ES_DOC
+) {
   mockedSearchConsumptionAnalytics.mockResolvedValueOnce(
     new Ok({
       took: 0,
@@ -92,7 +126,7 @@ function mockEsSuccess() {
         hits: [
           {
             _index: "consumption_analytics",
-            _source: MOCK_ES_DOC,
+            _source: doc,
             sort: [],
           },
         ],
@@ -136,7 +170,7 @@ function consumptionExportRequest({
 describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
   it("returns 200 CSV for admin API key with feature flag", async () => {
     enableFeatureFlag();
-    mockEsSuccess();
+    mockEsSuccess(MOCK_ES_TOOL_DOC);
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
@@ -158,11 +192,16 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     const csv = await response.text();
     expect(csv).toContain("completedAt");
     expect(csv).toContain("conv-1");
+    const [header, row] = csv.trim().split("\n");
+    const headers = header.split(",");
+    expect(headers).toContain("creditsAction");
+    expect(headers).not.toContain("creditsDirect");
+    expect(row.split(",")[headers.indexOf("creditsAction")]).toBe("1.23");
   });
 
   it("returns 200 NDJSON when format=ndjson", async () => {
     enableFeatureFlag();
-    mockEsSuccess();
+    mockEsSuccess(MOCK_ES_TOOL_DOC);
     const { workspace, key } = await createPublicApiMockRequest({
       role: "admin",
     });
@@ -182,6 +221,8 @@ describe("POST /api/v1/w/[wId]/analytics/consumption/export", () => {
     const text = await response.text();
     const parsed = JSON.parse(text.trim());
     expect(parsed.conversationId).toBe("conv-1");
+    expect(parsed.creditsAction).toBe(1.23);
+    expect(parsed).not.toHaveProperty("creditsDirect");
   });
 
   it("returns 403 when feature flag is not enabled", async () => {
