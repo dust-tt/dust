@@ -381,6 +381,61 @@ describe("getToolSlashCommandItem", () => {
 });
 
 describe("buildCapabilitySlashCommandItems", () => {
+  it("preserves server ranking instead of reranking each skill page", () => {
+    const result = buildCapabilitySlashCommandItems({
+      query: "guide",
+      useSearchRanking: true,
+      skills: [
+        {
+          ...skillSuggestion({ name: "Create detailed guide", sId: "a" }),
+          score: 60,
+        },
+        { ...skillSuggestion({ name: "Create guide", sId: "b" }), score: 60 },
+      ],
+      tools: [],
+    });
+    // Same score: ES keyword name order wins, not substring position.
+    expect(result.map((item) => item.id)).toEqual(["a", "b"]);
+  });
+
+  it("merges tools with server-ranked skills using the shared match tiers", () => {
+    const result = buildCapabilitySlashCommandItems({
+      query: "guide",
+      useSearchRanking: true,
+      skills: [
+        {
+          ...skillSuggestion({ name: "Guide builder", sId: "prefix" }),
+          score: 80,
+        },
+        {
+          ...skillSuggestion({ name: "A guide", sId: "substring" }),
+          score: 60,
+          isFavorite: true,
+        },
+      ],
+      tools: [toolSuggestion({ label: "Guide", sId: "tool" })],
+    });
+    expect(result.map((item) => item.id)).toEqual([
+      "tool",
+      "prefix",
+      "substring",
+    ]);
+  });
+
+  it("falls back to shared scoring when talking to an older search server", () => {
+    const result = buildCapabilitySlashCommandItems({
+      query: "Deep Dive",
+      useSearchRanking: true,
+      skills: [
+        skillSuggestion({ name: "Deep Dive Assistant", sId: "custom" }),
+        skillSuggestion({ name: "Go Deep", sId: "go-deep" }),
+        skillSuggestion({ name: "Unrelated", sId: "unrelated" }),
+      ],
+      tools: [],
+    });
+    expect(result.map((item) => item.id)).toEqual(["go-deep", "custom"]);
+  });
+
   it("matches a global skill by its configured search aliases", () => {
     const goDeep = skillSuggestion({
       name: "Go Deep",

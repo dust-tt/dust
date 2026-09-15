@@ -16,6 +16,10 @@ import type {
   GetSkillsResponseBody,
   GetSkillsWithRelationsResponseBody,
   GetSkillWithRelationsResponseBody,
+  SearchMode,
+  SearchSkillsResponseBody,
+  SkillSearchFilters,
+  SkillSearchPermissionFiltering,
 } from "@app/types/api/skills";
 import type { GetSimilarSkillsResponseBody } from "@app/types/api/skills/existing_skill_checker";
 import type {
@@ -30,12 +34,13 @@ import { isAPIErrorResponse } from "@app/types/error";
 import { Ok } from "@app/types/shared/result";
 import { pluralize } from "@app/types/shared/utils/string_utils";
 import type { LightWorkspaceType } from "@app/types/user";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 import type { SWRMutationConfiguration } from "swr/mutation";
 import useSWRMutation from "swr/mutation";
 
 const DETECT_SKILLS_DEBOUNCE_MS = 1_000;
+const SEARCH_SKILLS_DEBOUNCE_MS = 250;
 
 export function useSkill(options: {
   workspaceId: string;
@@ -161,6 +166,98 @@ export function useSkills({
     isSkillsError: !!error,
     isSkillsLoading: isLoading,
     mutateSkills: mutate,
+  };
+}
+
+export function useSearchSkills({
+  owner,
+  searchTerm,
+  cursor,
+  limit,
+  permissionFiltering,
+  mode,
+  filters,
+  disabled,
+  swrOptions,
+}: {
+  owner: LightWorkspaceType;
+  searchTerm: string;
+  cursor?: string;
+  limit?: number;
+  permissionFiltering?: SkillSearchPermissionFiltering;
+  mode?: SearchMode;
+  filters?: SkillSearchFilters;
+  disabled?: boolean;
+  swrOptions?: SWRConfiguration;
+}) {
+  const { fetcher } = useFetcher();
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState(searchTerm);
+
+  // Debounce the external request. Never mix scores from the previous query
+  // with current-query tool scores while this timer or the request is pending.
+  useEffect(() => {
+    const timeout = setTimeout(
+      () => setDebouncedSearchTerm(searchTerm),
+      SEARCH_SKILLS_DEBOUNCE_MS
+    );
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
+
+  const queryParams = new URLSearchParams({
+    query: debouncedSearchTerm.slice(0, 200),
+  });
+  if (cursor) {
+    queryParams.set("cursor", cursor);
+  }
+  if (limit !== undefined) {
+    queryParams.set("limit", String(limit));
+  }
+  if (permissionFiltering) {
+    queryParams.set("permissionFiltering", permissionFiltering);
+  }
+  if (mode) {
+    queryParams.set("mode", mode);
+  }
+  for (const field of [
+    "status",
+    "spaceIds",
+    "toolIds",
+    "availability",
+  ] as const) {
+    const values = filters?.[field];
+    if (values?.length) {
+      queryParams.set(field, [...new Set(values)].sort().join(","));
+    }
+  }
+  for (const field of ["isDefault", "editedByMe"] as const) {
+    if (filters?.[field] !== undefined) {
+      queryParams.set(field, String(filters[field]));
+    }
+  }
+  const skillsFetcher: Fetcher<SearchSkillsResponseBody> = fetcher;
+  const { data, error, isValidating } = useSWRWithDefaults(
+    `/api/w/${owner.sId}/skills/search?${queryParams.toString()}`,
+    skillsFetcher,
+    {
+      ...swrOptions,
+      disabled,
+      keepPreviousData: false,
+    }
+  );
+
+  return {
+    skills:
+      searchTerm === debouncedSearchTerm && !disabled
+        ? (data?.skills ??
+          emptyArray<SearchSkillsResponseBody["skills"][number]>())
+        : emptyArray<SearchSkillsResponseBody["skills"][number]>(),
+    nextCursor:
+      searchTerm === debouncedSearchTerm ? (data?.nextCursor ?? null) : null,
+    isSkillsError: !!error,
+    isSkillsLoading:
+      !disabled &&
+      (searchTerm !== debouncedSearchTerm ||
+        (!error && (!data || isValidating))),
   };
 }
 
