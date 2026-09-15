@@ -1,5 +1,8 @@
-import { getUserFromSession } from "@app/lib/iam/session";
-import { UserResource } from "@app/lib/resources/user_resource";
+import { fetchUserFromSession } from "@app/lib/iam/users";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   GetUserMetadataResponseBody,
   PostUserMetadataKeyResponseBody as PostUserMetadataResponseBody,
@@ -21,18 +24,35 @@ const ParamsSchema = z.object({
   key: z.string(),
 });
 
+const QuerySchema = z.object({
+  workspaceId: z.string().optional(),
+});
+
 // Mounted at /api/user/metadata/:key. sessionAuth is applied by the parent
 // `/api/user` sub-app.
 const app = sessionApp();
 
+/**
+ * @cc [owner:smb2268,label:performance] cached-lookups-only
+ * This route is called several times on every app load. Resolving the caller MUST only use
+ * cached lookups (session user, workspace by sId, membership role) and MUST NOT load the
+ * user's workspace list; the only uncached query per request is the metadata row itself.
+ */
+/**
+ * @cc [owner:smb2268,label:security] workspace-scope-requires-membership
+ * When `workspaceId` is provided, `workspaceModelId` is set only if the session user has an
+ * active membership in that workspace. Otherwise the request falls back to user-scoped
+ * metadata rather than failing.
+ */
 async function loadUserAndWorkspace(
-  ctx: Context
+  ctx: Context,
+  workspaceId: string | undefined
 ): Promise<
-  | { u: UserResource; workspaceModelId: number | undefined }
+  | { user: UserResource; workspaceModelId: number | undefined }
   | { err: Response & TypedResponse<APIErrorResponse> }
 > {
   const session = ctx.get("session");
-  const user = await getUserFromSession(session);
+  const user = await fetchUserFromSession(session);
   if (!user) {
     return {
       err: apiError(ctx, {
@@ -45,80 +65,82 @@ async function loadUserAndWorkspace(
     };
   }
 
-  // We get the UserResource from the session userId. Temporary, as we'd need
-  // to refactor getUserFromSession to return the UserResource directly.
-  const u = await UserResource.fetchByModelId(user.id);
-  if (!u) {
-    return {
-      err: apiError(ctx, {
-        status_code: 404,
-        api_error: {
-          type: "user_not_found" as const,
-          message: "Could not find the user.",
-        },
-      }),
-    };
-  }
-
-  const wIdQuery = ctx.req.query("workspaceId");
   let workspaceModelId: number | undefined;
-  if (wIdQuery) {
-    const ws = user.workspaces.find((w) => w.sId === wIdQuery);
-    if (ws) {
-      workspaceModelId = ws.id;
+  if (workspaceId) {
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    if (workspace) {
+      const role = await MembershipResource.getActiveRoleForUserInWorkspace({
+        user,
+        workspace: renderLightWorkspaceType({ workspace }),
+      });
+      if (role !== "none") {
+        workspaceModelId = workspace.id;
+      }
     }
   }
 
-  return { u, workspaceModelId };
+  return { user, workspaceModelId };
 }
 
 /** @ignoreswagger */
 app.get(
   "/",
   validate("param", ParamsSchema),
+  validate("query", QuerySchema),
   async (ctx): HandlerResult<GetUserMetadataResponseBody> => {
-    const r = await loadUserAndWorkspace(ctx);
+    const { workspaceId } = ctx.req.valid("query");
+    const r = await loadUserAndWorkspace(ctx, workspaceId);
     if ("err" in r) {
       return r.err;
     }
 
     const { key } = ctx.req.valid("param");
-    const metadata = await r.u.getMetadata(key, r.workspaceModelId);
-    return ctx.json({ metadata });
+    const metadata = await r.user.getMetadata(key, r.workspaceModelId);
+    return ctx.json({
+      metadata: metadata ? { key: metadata.key, value: metadata.value } : null,
+    });
   }
 );
 
 app.post(
   "/",
   validate("param", ParamsSchema),
+  validate("query", QuerySchema),
   validate("json", PostUserMetadataBodySchema),
   async (ctx): HandlerResult<PostUserMetadataResponseBody> => {
-    const r = await loadUserAndWorkspace(ctx);
+    const { workspaceId } = ctx.req.valid("query");
+    const r = await loadUserAndWorkspace(ctx, workspaceId);
     if ("err" in r) {
       return r.err;
     }
 
     const { key } = ctx.req.valid("param");
     const { value } = ctx.req.valid("json");
-    await r.u.setMetadata(key, value, r.workspaceModelId);
+    await r.user.setMetadata(key, value, r.workspaceModelId);
     return ctx.json({ metadata: { key, value } });
   }
 );
 
-app.delete("/", validate("param", ParamsSchema), async (ctx) => {
-  const r = await loadUserAndWorkspace(ctx);
-  if ("err" in r) {
-    return r.err;
-  }
+app.delete(
+  "/",
+  validate("param", ParamsSchema),
+  validate("query", QuerySchema),
+  async (ctx) => {
+    const { workspaceId } = ctx.req.valid("query");
+    const r = await loadUserAndWorkspace(ctx, workspaceId);
+    if ("err" in r) {
+      return r.err;
+    }
 
-  const { key } = ctx.req.valid("param");
-  await r.u.deleteMetadata({
-    workspaceId: r.workspaceModelId ?? null,
-    key: {
-      [Op.like]: `${key}%`,
-    },
-  });
-  return ctx.body(null, 200);
-});
+    const { key } = ctx.req.valid("param");
+    await r.user.deleteMetadata({
+      workspaceId: r.workspaceModelId ?? null,
+      key: {
+        [Op.like]: `${key}%`,
+      },
+    });
+    return ctx.body(null, 200);
+  }
+);
 
 export default app;
