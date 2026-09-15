@@ -52,13 +52,13 @@ import {
 import { FrameSandboxAdapter } from "@app/lib/resources/frame_sandbox_adapter";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SandboxFunctionInvocationResource } from "@app/lib/resources/sandbox_function_invocation_resource";
+import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   AuthorizedFileAccessModel,
   ExternalViewerSessionModel,
   FileModel,
   ShareableFileModel,
-  SharingGrantModel,
 } from "@app/lib/resources/storage/models/files";
 import { SandboxOwnerModel } from "@app/lib/resources/storage/models/sandbox";
 import { SandboxFunctionModel } from "@app/lib/resources/storage/models/sandbox_function";
@@ -477,31 +477,11 @@ export class FileResource extends BaseResource<FileModel> {
       shareableFileId: ModelId;
     }
   ): Promise<SharingGrantType | null> {
-    // Note: expiresAt is not enforced here because it cannot be set yet.
-    // When grant expiration is implemented, add query clause + index
-    // expiresAt: { [Op.or]: [null, { [Op.gt]: new Date() }] }
-    const grant = await SharingGrantModel.findOne({
-      where: {
-        workspaceId: workspace.id,
-        shareableFileId,
-        email: email.toLowerCase(),
-        revokedAt: null,
-      },
+    const grant = await SharingGrantResource.findLegacyEmailGrant(workspace, {
+      email,
+      shareableFileId,
     });
-
-    if (!grant) {
-      return null;
-    }
-
-    const usersById: Map<ModelId, UserResource> = new Map();
-    if (grant?.grantedBy) {
-      const user = await UserResource.fetchByModelId(grant.grantedBy);
-      if (user) {
-        usersById.set(grant.grantedBy, user);
-      }
-    }
-
-    return renderSharingGrant(grant, usersById);
+    return grant?.toLegacyJSON() ?? null;
   }
 
   static async unsafeFetchByIdInWorkspace(
@@ -614,9 +594,7 @@ export class FileResource extends BaseResource<FileModel> {
     });
 
     // Delete sharing grants before shareable files (FK constraint).
-    await SharingGrantModel.destroy({
-      where: { workspaceId: workspaceModelId },
-    });
+    await SharingGrantResource.deleteAllForWorkspace(auth);
 
     // Delete authorized file accesses before shareable files (FK constraint).
     await this.authorizedFileAccessModel.destroy({
@@ -808,12 +786,10 @@ export class FileResource extends BaseResource<FileModel> {
           where: { fileId: this.id, workspaceId: this.workspaceId },
         });
         if (shareableFile) {
-          await SharingGrantModel.destroy({
-            where: {
-              shareableFileId: shareableFile.id,
-              workspaceId: this.workspaceId,
-            },
-          });
+          await SharingGrantResource.deleteForShareableFile(
+            auth.getNonNullableWorkspace(),
+            shareableFile.id
+          );
           await FileResource.authorizedFileAccessModel.destroy({
             where: {
               shareableFileId: shareableFile.id,
@@ -2684,55 +2660,31 @@ export class FileResource extends BaseResource<FileModel> {
 
   // Sharing grants logic.
 
-  private async getShareableFileId(
-    transaction?: Transaction
-  ): Promise<ModelId> {
-    return (await this.getShareableFile(transaction)).id;
-  }
-
   async addSharingGrantsAndGetCreatedEmails(
     auth: Authenticator,
     { emails }: { emails: string[] },
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<string[]> {
+  ): Promise<Result<string[], DustError>> {
     assert(
       this.isShareableFrame,
       "addSharingGrantsAndGetCreatedEmails requires a Frame file"
     );
-    const user = auth.getNonNullableUser();
-    const shareableFileId = await this.getShareableFileId(transaction);
-
-    const normalizedEmails = [
-      ...new Set(emails.map((email) => email.toLowerCase().trim())),
-    ];
-    const existingGrants = await SharingGrantModel.findAll({
-      where: {
-        workspaceId: this.workspaceId,
-        shareableFileId,
-        email: { [Op.in]: normalizedEmails },
-        revokedAt: null,
-      },
-      transaction,
-    });
-    const existingEmails = new Set(existingGrants.map((grant) => grant.email));
-    const createdEmails = normalizedEmails.filter(
-      (email) => !existingEmails.has(email)
-    );
-
-    if (createdEmails.length === 0) {
-      return [];
-    }
-
-    await SharingGrantModel.bulkCreate(
-      createdEmails.map((email) => ({
-        workspaceId: this.workspaceId,
-        shareableFileId,
-        email,
-        grantedBy: user.id,
-        grantedAt: new Date(),
-      })),
+    const created = await SharingGrantResource.add(
+      auth,
+      this,
+      { emails },
       { transaction }
     );
+    if (created.isErr()) {
+      return created;
+    }
+    const createdEmails = removeNulls(
+      created.value.map((grant) => grant.email)
+    );
+    if (createdEmails.length === 0) {
+      return new Ok([]);
+    }
+    const user = auth.getNonNullableUser();
 
     const sendNotifications = async () => {
       const shareInfo = await this.getShareInfo();
@@ -2780,18 +2732,23 @@ export class FileResource extends BaseResource<FileModel> {
       scheduleNotifications();
     }
 
-    return createdEmails;
+    return new Ok(createdEmails);
   }
 
   async addSharingGrants(
     auth: Authenticator,
     { emails }: { emails: string[] }
-  ): Promise<SharingGrantType[]> {
+  ): Promise<Result<SharingGrantType[], DustError>> {
     assert(this.isShareableFrame, "addSharingGrants requires a Frame file");
     await this.ensureShareableFrame(auth);
-    await this.addSharingGrantsAndGetCreatedEmails(auth, { emails });
+    const created = await this.addSharingGrantsAndGetCreatedEmails(auth, {
+      emails,
+    });
+    if (created.isErr()) {
+      return created;
+    }
 
-    return this.listActiveSharingGrants();
+    return new Ok(await this.listActiveSharingGrants());
   }
 
   async revokeSharingGrant({
@@ -2800,26 +2757,24 @@ export class FileResource extends BaseResource<FileModel> {
     grantId: ModelId;
   }): Promise<Result<{ email: string }, DustError>> {
     assert(this.isShareableFrame, "revokeSharingGrant requires a Frame file");
-    const shareableFileId = await this.getShareableFileId();
-
-    const grant = await SharingGrantModel.findOne({
-      where: {
-        id: grantId,
-        workspaceId: this.workspaceId,
-        shareableFileId,
-        revokedAt: null,
-      },
-    });
-
-    // Keep the email-only interface compatible with grants that have no email.
+    if (!Number.isSafeInteger(grantId) || grantId < 0) {
+      return new Err(
+        new DustError("file_not_found", "Sharing grant not found")
+      );
+    }
+    const grant = await SharingGrantResource.fetchById(
+      this,
+      makeSId("sharing_grant", { id: grantId, workspaceId: this.workspaceId })
+    );
     if (!grant || grant.email === null) {
       return new Err(
         new DustError("file_not_found", "Sharing grant not found")
       );
     }
-
-    await grant.update({ revokedAt: new Date() });
-
+    const revoked = await grant.revoke();
+    if (revoked.isErr()) {
+      return revoked;
+    }
     return new Ok({ email: grant.email });
   }
 
@@ -2833,17 +2788,11 @@ export class FileResource extends BaseResource<FileModel> {
       shareableFileId: ModelId;
     }
   ): Promise<void> {
-    await SharingGrantModel.update(
-      { lastViewedAt: new Date() },
-      {
-        where: {
-          shareableFileId,
-          email: email.toLowerCase(),
-          revokedAt: null,
-          workspaceId: workspace.id,
-        },
-      }
-    );
+    const grant = await SharingGrantResource.findLegacyEmailGrant(workspace, {
+      email,
+      shareableFileId,
+    });
+    await grant?.recordLegacyView();
   }
 
   async listActiveSharingGrants(): Promise<SharingGrantType[]> {
@@ -2851,45 +2800,16 @@ export class FileResource extends BaseResource<FileModel> {
       this.isShareableFrame,
       "listActiveSharingGrants requires a Frame file"
     );
-    const shareableFileId = await this.getShareableFileId();
-
-    const grants = await SharingGrantModel.findAll({
-      where: {
-        workspaceId: this.workspaceId,
-        shareableFileId,
-        revokedAt: null,
-      },
-      order: [["grantedAt", "DESC"]],
-    });
-
-    const userIds = removeNulls(grants.map((g) => g.grantedBy));
-    const users = await UserResource.fetchByModelIds(userIds);
-    const usersById = new Map(users.map((u) => [u.id, u]));
-
-    return removeNulls(
-      grants.map((grant) => renderSharingGrant(grant, usersById))
-    );
+    const grants = await SharingGrantResource.listForFile(this);
+    return removeNulls(grants.map((grant) => grant.toLegacyJSON()));
   }
 
   async listAllSharingGrants(): Promise<SharingGrantType[]> {
     assert(this.isShareableFrame, "listAllSharingGrants requires a Frame file");
-    const shareableFileId = await this.getShareableFileId();
-
-    const grants = await SharingGrantModel.findAll({
-      where: {
-        workspaceId: this.workspaceId,
-        shareableFileId,
-      },
-      order: [["grantedAt", "DESC"]],
+    const grants = await SharingGrantResource.listForFile(this, {
+      includeRevoked: true,
     });
-
-    const userIds = removeNulls(grants.map((g) => g.grantedBy));
-    const users = await UserResource.fetchByModelIds(userIds);
-    const usersById = new Map(users.map((u) => [u.id, u]));
-
-    return removeNulls(
-      grants.map((grant) => renderSharingGrant(grant, usersById))
-    );
+    return removeNulls(grants.map((grant) => grant.toLegacyJSON()));
   }
 
   // Serialization logic.
@@ -3255,29 +3175,4 @@ async function maybeDeleteCoreArtifactsForIndexedFile(
     }
     await deleteCoreFileArtifactsFromDataSource(auth, dataSource, file);
   }
-}
-
-/**
- * @cc [owner:flvndvd,label:api;backend] legacy-email-grant-shape
- * Legacy sharing responses MUST omit grants without an email and retain a string
- * email field for every serialized grant.
- */
-function renderSharingGrant(
-  grant: SharingGrantModel,
-  usersById: Map<ModelId, UserResource>
-): SharingGrantType | null {
-  if (grant.email === null) {
-    return null;
-  }
-  const user = grant.grantedBy ? usersById.get(grant.grantedBy) : null;
-
-  return {
-    id: grant.id,
-    email: grant.email,
-    grantedAt: grant.grantedAt.getTime(),
-    grantedBy: user?.toJSON() ?? null,
-    expiresAt: grant.expiresAt ? grant.expiresAt.getTime() : null,
-    revokedAt: grant.revokedAt ? grant.revokedAt.getTime() : null,
-    lastViewedAt: grant.lastViewedAt ? grant.lastViewedAt.getTime() : null,
-  };
 }

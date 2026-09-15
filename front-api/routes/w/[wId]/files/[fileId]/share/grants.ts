@@ -111,6 +111,15 @@ app.post(
     }
 
     const grants = await file.addSharingGrants(auth, { emails: rawEmails });
+    if (grants.isErr()) {
+      return apiError(ctx, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: grants.error.message,
+        },
+      });
+    }
 
     void emitAuditLogEvent({
       auth,
@@ -129,7 +138,7 @@ app.post(
       },
     });
 
-    return ctx.json({ grants });
+    return ctx.json({ grants: grants.value });
   }
 );
 

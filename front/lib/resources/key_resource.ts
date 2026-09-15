@@ -32,7 +32,12 @@ import type {
 import { formatUserFullName } from "@app/types/user";
 import { blake3 } from "@napi-rs/blake-hash";
 import assert from "assert";
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
@@ -153,10 +158,11 @@ export class KeyResource extends BaseResource<KeyModel> {
 
   protected override async update(
     blob: Partial<Attributes<KeyModel>>,
-    transaction?: Transaction
+    transaction?: Transaction,
+    where?: WhereOptions<Attributes<KeyModel>>
   ): Promise<[affectedCount: number]> {
     const oldSecret = this.secret;
-    const result = await super.update(blob, transaction);
+    const result = await super.update(blob, transaction, where);
     invalidateCacheAfterCommit(transaction, () =>
       KeyResource.invalidateKeyCache(oldSecret)
     );

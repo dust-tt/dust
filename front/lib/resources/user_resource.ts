@@ -103,9 +103,10 @@ export class UserResource extends BaseResource<UserModel> {
 
   protected async update(
     blob: Partial<Attributes<UserModel>>,
-    transaction?: Transaction
+    transaction?: Transaction,
+    where?: WhereOptions<Attributes<UserModel>>
   ): Promise<[affectedCount: number]> {
-    const result = await super.update(blob, transaction);
+    const result = await super.update(blob, transaction, where);
 
     const workOSUserId = this.workOSUserId;
     if (workOSUserId) {

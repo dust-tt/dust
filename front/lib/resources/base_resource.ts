@@ -7,7 +7,9 @@ import type {
   ModelStatic,
   Transaction,
   WhereAttributeHashValue,
+  WhereOptions,
 } from "sequelize";
+import { Op } from "sequelize";
 
 interface BaseResourceConstructor<
   T extends BaseResource<M>,
@@ -76,7 +78,8 @@ export abstract class BaseResource<M extends Model & ResourceWithId> {
 
   protected async update(
     blob: Partial<Attributes<M>>,
-    transaction?: Transaction
+    transaction?: Transaction,
+    where?: WhereOptions<Attributes<M>>
   ): Promise<[affectedCount: number]> {
     const [affectedCount, affectedRows] = await this.model.update(blob, {
       where: {
@@ -87,6 +90,7 @@ export abstract class BaseResource<M extends Model & ResourceWithId> {
         id: this.id as WhereAttributeHashValue<
           Attributes<M>[keyof Attributes<M>]
         >,
+        ...(where && { [Op.and]: where }),
       },
       transaction,
       returning: true,
