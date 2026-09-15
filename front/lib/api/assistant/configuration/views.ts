@@ -6,6 +6,7 @@ import type {
 } from "@app/lib/api/assistant/configuration/types";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
+import { isLegacyAclsEnabled } from "@app/lib/api/permissions/legacy_acls";
 import { shadowCompare } from "@app/lib/api/permissions/shadow";
 import type { Authenticator } from "@app/lib/auth";
 import {
@@ -329,6 +330,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
 }
 
 type ShadowCompareAgentViewArgs = {
+  reverse: boolean;
   auth: Authenticator;
   owner: WorkspaceType;
   view: "list" | "manage" | "archived";
@@ -345,6 +347,7 @@ type ShadowCompareAgentViewArgs = {
  * When IDs differ, recheck the legacy view once; log a mismatch only if they still differ.
  */
 async function shadowCompareAgentView({
+  reverse,
   auth,
   owner,
   view,
@@ -368,15 +371,31 @@ async function shadowCompareAgentView({
 
   await shadowCompare({
     auth,
+    reverse,
     legacy: stableAgentModelIds(legacyModels),
     candidate: async () => {
       const grantResources = auth.getResourceIdsWithVerb("agent", "write");
-      const editorFilter: EditorFilter =
+      let editorFilter: EditorFilter =
         auth.isAdmin() && view === "archived"
           ? { kind: "all" }
           : grantResources.kind === "all"
             ? { kind: "all" }
             : { kind: "agent", modelIds: grantResources.resourceIds };
+      if (reverse) {
+        const groupAgents = auth.user()
+          ? await GroupResource.findAgentIdsForGroups(
+              auth,
+              auth.groupModelIds()
+            )
+          : [];
+        editorFilter =
+          auth.isAdmin() && view === "archived"
+            ? { kind: "all" }
+            : {
+                kind: "configuration",
+                modelIds: groupAgents.map((g) => g.agentConfigurationId),
+              };
+      }
       const candidateModels =
         await fetchWorkspaceAgentConfigurationsWithoutActions(auth, {
           ...queryOptions,
@@ -449,9 +468,11 @@ async function fetchWorkspaceAgentConfigurationsForView(
 ) {
   const user = auth.user();
 
-  const agentIdsForGroups = user
-    ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
-    : [];
+  const useGrants = !isLegacyAclsEnabled();
+  const agentIdsForGroups =
+    !useGrants && user
+      ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
+      : [];
 
   const agentIdsForUserAsEditor = agentIdsForGroups.map(
     (g) => g.agentConfigurationId
@@ -460,15 +481,25 @@ async function fetchWorkspaceAgentConfigurationsForView(
     ? { kind: "all" }
     : { kind: "configuration", modelIds: agentIdsForUserAsEditor };
 
+  let editorFilter: EditorFilter =
+    agentsGetView === "archived"
+      ? legacyEditorFilter
+      : { kind: "configuration", modelIds: agentIdsForUserAsEditor };
+  if (useGrants) {
+    const grantResources = auth.getResourceIdsWithVerb("agent", "write");
+    editorFilter =
+      (auth.isAdmin() && agentsGetView === "archived") ||
+      grantResources.kind === "all"
+        ? { kind: "all" }
+        : { kind: "agent", modelIds: grantResources.resourceIds };
+  }
+
   const agentModels = await fetchWorkspaceAgentConfigurationsWithoutActions(
     auth,
     {
       agentPrefix,
       agentsGetView,
-      editorFilter:
-        agentsGetView === "archived"
-          ? legacyEditorFilter
-          : { kind: "configuration", modelIds: agentIdsForUserAsEditor },
+      editorFilter,
       limit,
       owner,
       sort,
@@ -496,6 +527,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
     agentsGetView === "archived"
   ) {
     void shadowCompareAgentView({
+      reverse: useGrants,
       auth,
       owner,
       view: agentsGetView,
@@ -512,6 +544,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
           check: "agent_view",
           view: agentsGetView,
           workspaceId: owner.sId,
+          servedSource: useGrants ? "grants" : "legacy",
         },
         "group_permissions_shadow_candidate_error"
       );
@@ -520,7 +553,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
 
   return enrichAgentConfigurations(auth, allowedAgentModels, {
     variant,
-    agentIdsForUserAsEditor,
+    agentIdsForUserAsEditor: useGrants ? undefined : agentIdsForUserAsEditor,
   });
 }
 

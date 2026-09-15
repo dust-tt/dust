@@ -1,5 +1,6 @@
 import { archiveAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import * as legacyAcls from "@app/lib/api/permissions/legacy_acls";
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import logger from "@app/logger/logger";
@@ -11,7 +12,11 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { LightWorkspaceType } from "@app/types/user";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 async function authenticatorForNewMember(
   workspace: LightWorkspaceType,
@@ -252,6 +257,7 @@ describe("getAgentConfigurationsForView, 'archived' view", () => {
 
 describe("getAgentConfigurationsForView, grant shadow", () => {
   it("serves the legacy archived view and logs stable-id mismatches", async () => {
+    vi.spyOn(legacyAcls, "isLegacyAclsEnabled").mockReturnValue(true);
     const { workspace, authenticator: authorAuth } = await createResourceTest({
       role: "user",
     });
