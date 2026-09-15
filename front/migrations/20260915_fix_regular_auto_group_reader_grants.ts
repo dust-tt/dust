@@ -1,9 +1,12 @@
+import { Authenticator } from "@app/lib/auth";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupPermissionModel } from "@app/lib/resources/storage/models/group_permissions";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { LightWorkspaceType } from "@app/types/user";
 import { Op } from "sequelize";
 
@@ -11,9 +14,15 @@ import { Op } from "sequelize";
 // on the space, whether the space is open or restricted: that grant is what lets its members — and
 // API keys scoped to the space — write to it (see `SpaceResource.spaceGroupRoles`). Some open
 // regular spaces ended up with that group holding a `reader` grant instead, which makes the space's
-// member list meaningless and blocks writes. This flips those grants to `member`.
+// member list meaningless and blocks writes.
 //
-// Idempotent: only `reader` grants of `regular_auto` groups on `regular` spaces are touched.
+// The affected spaces are detected with a direct query, but repaired through
+// `SpaceResource.writeGroupPermissions`, which re-derives every grant of the space from its current
+// group set (`member` for the auto group, `reader` for the workspace global group) and invalidates
+// the per-group grants cache; a raw `group_permissions` update would leave the stale `reader` grant
+// served from Redis.
+//
+// Idempotent: a space whose auto group already holds `member` is not touched.
 async function fixWorkspaceRegularAutoGroupGrants(
   execute: boolean,
   logger: Logger,
@@ -21,7 +30,7 @@ async function fixWorkspaceRegularAutoGroupGrants(
 ): Promise<void> {
   const [regularSpaces, regularAutoGroups] = await Promise.all([
     SpaceModel.findAll({
-      attributes: ["id", "name"],
+      attributes: ["id"],
       where: { workspaceId: workspace.id, kind: "regular" },
     }),
     GroupModel.findAll({
@@ -34,6 +43,7 @@ async function fixWorkspaceRegularAutoGroupGrants(
   }
 
   const readerGrants = await GroupPermissionModel.findAll({
+    attributes: ["groupId", "resourceId"],
     where: {
       workspaceId: workspace.id,
       resourceType: "space",
@@ -46,39 +56,42 @@ async function fixWorkspaceRegularAutoGroupGrants(
     return;
   }
 
-  const spaceNameById = new Map(
-    regularSpaces.map((space) => [space.id, space.name])
-  );
-  const context = {
-    workspaceId: workspace.sId,
-    grants: readerGrants.map((grant) => ({
-      groupId: grant.groupId,
-      spaceId: grant.resourceId,
-      spaceName: spaceNameById.get(grant.resourceId),
-    })),
-  };
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+  const spaces = await SpaceResource.fetchByModelIds(auth, [
+    ...new Set(readerGrants.map((grant) => grant.resourceId)),
+  ]);
 
-  if (!execute) {
-    logger.info(
-      context,
-      "Dry run: would set regular_auto group grants from reader to member"
-    );
-    return;
-  }
+  for (const space of spaces) {
+    const context = {
+      workspaceId: workspace.sId,
+      spaceId: space.sId,
+      spaceName: space.name,
+      groupIds: readerGrants
+        .filter((grant) => grant.resourceId === space.id)
+        .map((grant) => grant.groupId),
+    };
 
-  const [updated] = await GroupPermissionModel.update(
-    { grantType: "member" },
-    {
-      where: {
-        workspaceId: workspace.id,
-        id: { [Op.in]: readerGrants.map((grant) => grant.id) },
-      },
+    if (!execute) {
+      logger.info(
+        context,
+        "Dry run: would rewrite the space grants (regular_auto reader -> member)"
+      );
+      continue;
     }
-  );
-  logger.info(
-    { ...context, updated },
-    "Set regular_auto group grants from reader to member"
-  );
+
+    try {
+      // Regular spaces have no editors; every attached group (auto group, provisioned groups, the
+      // workspace global group when open) is a member and `spaceGroupRoles` picks its grant.
+      const groups = await space.fetchGroupResources(auth);
+      await space.writeGroupPermissions(auth, { members: groups, editors: [] });
+      logger.info(context, "Rewrote the space grants");
+    } catch (err) {
+      logger.error(
+        { ...context, error: normalizeError(err).message },
+        "Failed to rewrite the space grants"
+      );
+    }
+  }
 }
 
 makeScript(
