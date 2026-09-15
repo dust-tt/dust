@@ -8,12 +8,14 @@ import { isToolExecutionStatusBillable } from "@app/lib/actions/statuses";
 import type { ToolCostCategory } from "@app/lib/api/mcp";
 import { TOOL_COST_CATEGORIES } from "@app/lib/api/mcp";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
-import { MODEL_COST_MICRO_USD_PER_AWU_CREDIT } from "@app/lib/metronome/constants";
+import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { createHash } from "crypto";
 
 export { TOOL_COST_CATEGORIES, type ToolCostCategory } from "@app/lib/api/mcp";
+// Re-exported so existing billing callers keep a single import site.
+export { awuFromMicroUsd };
 
 // Historical and non-agent-loop usages may not have a run key. Keep them in one
 // group to preserve the former message-level rounding behavior for those rows.
@@ -129,12 +131,6 @@ export function computeRunFingerprint(dustRunIds: string[]): string {
 // keys and are consequently rounded and billed independently.
 export function computeRunKey(dustRunIds: string[]): string {
   return computeRunFingerprint(dustRunIds).slice(0, 8);
-}
-
-// Convert provider cost in micro-USD to credits, rounding up exactly as the
-// Metronome event does (1 credit = $0.0085).
-export function awuFromMicroUsd(microUsd: number): number {
-  return Math.ceil(microUsd / MODEL_COST_MICRO_USD_PER_AWU_CREDIT);
 }
 
 export function isToolCostCategory(value: string): value is ToolCostCategory {
