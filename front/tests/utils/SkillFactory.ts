@@ -5,6 +5,7 @@ import type { GlobalSkillId } from "@app/lib/resources/skill/code_defined/global
 import type { SystemSkillId } from "@app/lib/resources/skill/code_defined/system_registry";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { SKILL_ICON } from "@app/lib/skill";
 import { serializeSkillTag } from "@app/lib/skills/format";
 import { grantWorkspacePermission } from "@app/tests/utils/permissions";
@@ -14,7 +15,10 @@ import type {
 } from "@app/types/assistant/skill_configuration";
 import { DEFAULT_SKILL_AVAILABILITY } from "@app/types/assistant/skill_configuration";
 import type { ModelId } from "@app/types/shared/model_id";
+import { removeNulls } from "@app/types/shared/utils/general";
+import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import assert from "assert";
+import uniq from "lodash/uniq";
 
 type CreateSkillOverrides = Partial<{
   availability: SkillAvailability;
@@ -33,6 +37,29 @@ type CreateSkillOverrides = Partial<{
 }>;
 
 export class SkillFactory {
+  static async createSearchDocuments(
+    auth: Authenticator,
+    skills: SkillResource[]
+  ): Promise<SkillSearchDocument[]> {
+    const editors = await SkillResource.batchListEditors(auth, skills);
+    const lastEditors = await UserResource.fetchByModelIds(
+      uniq(removeNulls(skills.map((skill) => skill.editedBy)))
+    );
+    const lastEditorByModelId = new Map(
+      lastEditors.map((user) => [user.id, user])
+    );
+    return skills.map((skill) =>
+      skill.toSearchDocument(auth.getNonNullableWorkspace(), {
+        editors: editors.get(skill.sId) ?? [],
+        lastEditedByUser:
+          skill.editedBy === null
+            ? null
+            : (lastEditorByModelId.get(skill.editedBy) ?? null),
+        activeUsersCount: 0,
+      })
+    );
+  }
+
   static async create(
     auth: Authenticator,
     overrides: CreateSkillOverrides = {}
