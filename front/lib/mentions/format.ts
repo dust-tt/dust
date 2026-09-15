@@ -116,6 +116,17 @@ export function replaceMentionsWithAt(text: string): string {
     );
 }
 
+const CONTENT_NODE_MENTION_URL_REGEX =
+  /(:content_node_mention\[[^\]]+])\{url="?[^"}]*"?}/g;
+
+/**
+ * Drops the url of `:content_node_mention[title]{url="..."}` for model-facing text.
+ * The referenced content is already attached, and an echoed url streams raw in Slack.
+ */
+export function stripContentNodeMentionUrls(text: string): string {
+  return text.replaceAll(CONTENT_NODE_MENTION_URL_REGEX, "$1");
+}
+
 /**
  * Extracts text and mentions from a TipTap JSON node structure.
  * Recursively processes the node tree and returns concatenated text with

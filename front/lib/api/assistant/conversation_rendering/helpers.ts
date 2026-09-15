@@ -19,6 +19,7 @@ import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   replaceMentionsWithAt,
   serializeMention,
+  stripContentNodeMentionUrls,
 } from "@app/lib/mentions/format";
 import { renderLightContentFragmentForModel } from "@app/lib/resources/content_fragment_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -461,7 +462,7 @@ export function renderUserMessage(
   conversation: ConversationWithoutContentType,
   m: UserMessageType
 ): UserMessageTypeModel {
-  const content = replaceMentionsWithAt(m.content);
+  const content = stripContentNodeMentionUrls(replaceMentionsWithAt(m.content));
 
   const metadataItems: string[] = [];
   let additionalInstructions = "";

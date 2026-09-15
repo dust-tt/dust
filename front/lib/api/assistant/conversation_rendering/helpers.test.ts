@@ -74,6 +74,20 @@ describe("renderUserMessage", () => {
     expect(text).not.toContain(":mention[John Doe]{user_123}");
   });
 
+  it("drops the url of content node mentions", async () => {
+    const { conversation, userMessage } = await buildMessage({
+      content:
+        'See :content_node_mention[Sheet]{url="https://docs.google.com/d/1/edit?gid=0"} please',
+      context: {},
+    });
+
+    const res = renderUserMessage(conversation, userMessage);
+    const text = (res.content[0] as TextContent).text;
+
+    expect(text).toContain("See :content_node_mention[Sheet] please");
+    expect(text).not.toContain("docs.google.com");
+  });
+
   it("adds Sender metadata with full name, username and email", async () => {
     const { conversation, userMessage } = await buildMessage({
       content: "Hello!",
