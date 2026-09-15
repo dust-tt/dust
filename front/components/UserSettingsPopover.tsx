@@ -64,7 +64,6 @@ import {
   Edit04,
   InfoCircle,
   Input,
-  Label,
   Mail01,
   Monitor01,
   Moon01,
@@ -121,7 +120,7 @@ function SectionContent({
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-5 pb-8 pt-5 sm:px-6 sm:pt-8">
         <header className="flex flex-col gap-1">
-          <h2 className="heading-2xl text-foreground">{title}</h2>
+          <h2 className="heading-xl text-foreground">{title}</h2>
           {description && (
             <p className="copy-sm text-muted-foreground">{description}</p>
           )}
@@ -221,6 +220,7 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
   return (
     <SectionContent
       title="Personal Information"
+      description="How you appear to other members of the workspace"
       footer={
         <Button
           label="Save"
@@ -241,55 +241,86 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
           onChange={handleImageUpload}
         />
 
-        <div className="group relative w-fit">
-          <Avatar size="lg" visual={currentImageUrl} isRounded />
-          <Button
-            variant="outline"
-            size="sm"
-            icon={Edit04}
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
-            disabled={isUploadingImage || isProvisioned}
-            isLoading={isUploadingImage}
+        <SettingsList>
+          <SettingsList.Row
+            title="Profile picture"
+            description={
+              isProvisioned
+                ? "Managed by your identity provider"
+                : "Shown next to your messages"
+            }
+            action={
+              <div className="group relative w-fit">
+                <Avatar size="md" visual={currentImageUrl} isRounded />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  icon={Edit04}
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  // Circular overlay the exact size of the avatar, so the
+                  // hover state reads as "edit this picture", not a square
+                  // button floating over a circle.
+                  className="absolute inset-0 h-full w-full rounded-full opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                  disabled={isUploadingImage || isProvisioned}
+                  isLoading={isUploadingImage}
+                />
+              </div>
+            }
           />
-        </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Input
-                label="First Name"
-                {...form.register("firstName")}
-                placeholder="First Name"
-                disabled={isProvisioned}
-                isError={!!form.formState.errors.firstName}
-                message={form.formState.errors.firstName?.message}
-                messageStatus={
-                  form.formState.errors.firstName ? "error" : undefined
-                }
-              />
-            </div>
-            <div className="flex-1">
-              <Input
-                label="Last Name"
-                {...form.register("lastName")}
-                placeholder="Last Name"
-                disabled={isProvisioned}
-                isError={!!form.formState.errors.lastName}
-                message={form.formState.errors.lastName?.message}
-                messageStatus={
-                  form.formState.errors.lastName ? "error" : undefined
-                }
-              />
-            </div>
-          </div>
+          <SettingsList.Row
+            title="First name"
+            description={
+              isProvisioned ? "Managed by your identity provider" : undefined
+            }
+            action={
+              <div className="w-64">
+                <Input
+                  {...form.register("firstName")}
+                  placeholder="First name"
+                  disabled={isProvisioned}
+                  isError={!!form.formState.errors.firstName}
+                  message={form.formState.errors.firstName?.message}
+                  messageStatus={
+                    form.formState.errors.firstName ? "error" : undefined
+                  }
+                />
+              </div>
+            }
+          />
 
-          <div className="flex items-center gap-2">
-            <Label>Email</Label>
-            <span className="text-sm text-muted-foreground">{user?.email}</span>
-          </div>
-        </div>
+          <SettingsList.Row
+            title="Last name"
+            description={
+              isProvisioned ? "Managed by your identity provider" : undefined
+            }
+            action={
+              <div className="w-64">
+                <Input
+                  {...form.register("lastName")}
+                  placeholder="Last name"
+                  disabled={isProvisioned}
+                  isError={!!form.formState.errors.lastName}
+                  message={form.formState.errors.lastName?.message}
+                  messageStatus={
+                    form.formState.errors.lastName ? "error" : undefined
+                  }
+                />
+              </div>
+            }
+          />
+
+          <SettingsList.Row
+            title="Email"
+            description="Used to sign in and receive notifications"
+            action={
+              <span className="copy-sm text-muted-foreground">
+                {user?.email}
+              </span>
+            }
+          />
+        </SettingsList>
       </FormProvider>
     </SectionContent>
   );
@@ -414,6 +445,7 @@ function CustomizationSection() {
   return (
     <SectionContent
       title="Customization"
+      description="Adjust how Dust looks and behaves for you."
       footer={
         <Button
           label="Save"
