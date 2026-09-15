@@ -63,43 +63,53 @@ export const SkillSourceMetadataSchema = z.object({
 
 export type SkillSourceMetadata = z.infer<typeof SkillSourceMetadataSchema>;
 
-export const SkillWithoutInstructionsAndToolsSchema = z.object({
-  id: z.number(),
+/**
+ * @cc [owner:aubin-tchoi,label:security] skill-list-item
+ * Listings expose only identity, display fields, space requirements, status and readability;
+ * they never require execution, builder, source or reinforcement data.
+ */
+export const SkillListItemSchema = z.object({
   sId: z.string(),
-  createdAt: z.number().nullable(),
-  updatedAt: z.number().nullable(),
   editedBy: z.number().nullable(),
   status: z.enum(SKILL_STATUSES),
   name: z.string(),
-  agentFacingDescription: z.string(),
   userFacingDescription: z.string(),
   icon: z.string().nullable(),
-  source: z.enum(SKILL_SOURCES).nullable(),
-  sourceMetadata: SkillSourceMetadataSchema.nullable(),
-  reinforcement: z.enum(SKILL_REINFORCEMENT_MODES),
-  lastReinforcementAnalysisAt: z.string().nullable().optional(),
-  selfImprovementLock: z.boolean(),
-  selfImprovementCostsCapMicroUsd: z.number().nullable(),
-  selfImprovementCostsCapAwuCredits: z.number().nullable(),
   requestedSpaceIds: z.array(z.string()),
-  // The subset of `requestedSpaceIds` picked by hand under "Data and access". Optional so older
-  // clients that do not send it back are still accepted.
-  manuallyRequestedSpaceIds: z.array(z.string()).optional(),
-  fileAttachments: z.array(
-    z.object({
-      fileId: z.string(),
-      fileName: z.string(),
-    })
-  ),
-  // False when the private fields (instructions, tools, files) were redacted: an admin listing a
-  // skill built on a space they are not a member of.
+  // False for an unreadable listing retained by admin-only redact_unreadable.
   canRead: z.boolean(),
-  canWrite: z.boolean(),
-  canAdministrate: z.boolean(),
-  // @deprecated Use availability instead. Kept while old clients still read it.
-  isDefault: z.boolean(),
-  availability: z.enum(SKILL_AVAILABILITIES),
 });
+
+export type SkillListItemType = z.infer<typeof SkillListItemSchema>;
+
+export const SkillWithoutInstructionsAndToolsSchema =
+  SkillListItemSchema.extend({
+    id: z.number(),
+    createdAt: z.number().nullable(),
+    updatedAt: z.number().nullable(),
+    agentFacingDescription: z.string(),
+    source: z.enum(SKILL_SOURCES).nullable(),
+    sourceMetadata: SkillSourceMetadataSchema.nullable(),
+    reinforcement: z.enum(SKILL_REINFORCEMENT_MODES),
+    lastReinforcementAnalysisAt: z.string().nullable().optional(),
+    selfImprovementLock: z.boolean(),
+    selfImprovementCostsCapMicroUsd: z.number().nullable(),
+    selfImprovementCostsCapAwuCredits: z.number().nullable(),
+    // The subset of `requestedSpaceIds` picked by hand under "Data and access". Optional so older
+    // clients that do not send it back are still accepted.
+    manuallyRequestedSpaceIds: z.array(z.string()).optional(),
+    fileAttachments: z.array(
+      z.object({
+        fileId: z.string(),
+        fileName: z.string(),
+      })
+    ),
+    canWrite: z.boolean(),
+    canAdministrate: z.boolean(),
+    // @deprecated Use availability instead. Kept while old clients still read it.
+    isDefault: z.boolean(),
+    availability: z.enum(SKILL_AVAILABILITIES),
+  });
 
 export type SkillWithoutInstructionsAndToolsType = z.infer<
   typeof SkillWithoutInstructionsAndToolsSchema

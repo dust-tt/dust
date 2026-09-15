@@ -77,6 +77,10 @@ import {
   launchIndexSkillSearchWorkflow,
 } from "@app/temporal/es_indexation/client";
 import type {
+  SkillSearchFilters,
+  SkillSearchPermissionFiltering,
+} from "@app/types/api/skills";
+import type {
   AgentConfigurationWithoutModelType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
@@ -90,6 +94,7 @@ import { isPodConversation } from "@app/types/assistant/conversation";
 import type {
   AgentSkillType,
   SkillAvailability,
+  SkillListItemType,
   SkillReinforcementMode,
   SkillSourceMetadata,
   SkillSourceType,
@@ -608,6 +613,148 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         "Failed to launch skill search indexation"
       );
     }
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:security] canonical-skill-search-authorization
+   * Results must match the requested statuses (active by default). Strict results must pass
+   * live editor, row and all-space checks and match indexed permissions;
+   * only admins may retain unreadable resources through canonical metadata redaction.
+   */
+  static async authorizeSearchDocuments(
+    auth: Authenticator,
+    candidates: { document: SkillSearchDocument; score: number }[],
+    permissionFiltering: SkillSearchPermissionFiltering = "strict",
+    status: SkillSearchFilters["status"] = ["active"]
+  ): Promise<Map<string, SkillListItemType & { score: number }>> {
+    assert(permissionFiltering !== "redact_unreadable" || auth.isAdmin());
+    const workspace = auth.getNonNullableWorkspace();
+    const scoped = candidates.filter(
+      ({ document: candidate }) =>
+        candidate.workspace_id === workspace.sId &&
+        status.some((value) => value === candidate.status)
+    );
+    const scoreById = new Map(
+      scoped.map(({ document, score }) => [document.skill_id, score])
+    );
+    if (permissionFiltering === "redact_unreadable") {
+      const resources = await SkillResource.fetchByIds(
+        auth,
+        scoped.map(({ document }) => document.skill_id),
+        {
+          permissionFiltering,
+          withInstructions: false,
+          withTools: false,
+          withFileAttachments: false,
+        }
+      );
+      return new Map(
+        resources
+          .filter((resource) =>
+            status.some((value) => value === resource.status)
+          )
+          .map((resource) => {
+            const score = scoreById.get(resource.sId);
+            assert(score !== undefined);
+            return [resource.sId, resource.toSearchJSON(auth, score)];
+          })
+      );
+    }
+    const canEditAllSkills =
+      auth.getResourceIdsWithVerb("skill", "write").kind === "all";
+    const editorFiltered = scoped.filter(({ document: candidate }) => {
+      if (candidate.availability !== "editors" || auth.isKey()) {
+        return true;
+      }
+      const user = auth.user();
+      return (
+        user !== null &&
+        (canEditAllSkills ||
+          (Array.isArray(candidate.editor_ids) &&
+            candidate.editor_ids.includes(user.sId)))
+      );
+    });
+    const visible = await this.filterSearchDocumentsByCurrentState(
+      auth,
+      editorFiltered.map(({ document }) => document)
+    );
+    return new Map(
+      visible.map((document) => {
+        const score = scoreById.get(document.skill_id);
+        assert(score !== undefined);
+        return [
+          document.skill_id,
+          {
+            editedBy: document.last_edited_by_user_id,
+            icon: document.icon ?? null,
+            name: document.name,
+            requestedSpaceIds: document.requested_space_ids,
+            sId: document.skill_id,
+            userFacingDescription: document.description ?? "",
+            status: document.status,
+            canRead: true,
+            score,
+          },
+        ];
+      })
+    );
+  }
+
+  /**
+   * Fail closed when an Elasticsearch document's permission-bearing fields no
+   * longer match the canonical database state.
+   */
+  static async filterSearchDocumentsByCurrentState(
+    auth: Authenticator,
+    documents: readonly SkillSearchDocument[]
+  ): Promise<SkillSearchDocument[]> {
+    if (documents.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+    const skills = await this.fetchByIds(
+      auth,
+      documents.map((document) => document.skill_id),
+      {
+        permissionFiltering: "dangerously_skip",
+        withInstructions: false,
+        withTools: true,
+        withFileAttachments: false,
+      }
+    );
+    const readableSkills = skills.filter(
+      (skill) =>
+        skill.canRead(auth) &&
+        (skill.availability !== "editors" || skill.canWrite(auth)) &&
+        skill.requestedSpaceIds.every((spaceModelId) =>
+          auth.getGrantedVerbs("space", spaceModelId).includes("read")
+        )
+    );
+    const currentDocuments = await this.toSearchDocuments(auth, readableSkills);
+    const currentDocumentBySkillId = new Map(
+      currentDocuments.map((document) => [document.skill_id, document])
+    );
+
+    return documents.filter((document) => {
+      const currentDocument = currentDocumentBySkillId.get(document.skill_id);
+      return (
+        document.workspace_id === workspace.sId &&
+        currentDocument !== undefined &&
+        document.status === currentDocument.status &&
+        document.availability === currentDocument.availability &&
+        Array.isArray(document.requested_space_ids) &&
+        isEqual(
+          [...document.requested_space_ids].sort(),
+          [...currentDocument.requested_space_ids].sort()
+        ) &&
+        Array.isArray(document.editor_ids) &&
+        isEqual(
+          [...document.editor_ids].sort(),
+          [...currentDocument.editor_ids].sort()
+        )
+      );
+    });
   }
 
   static async makeSuggestion(
@@ -2363,10 +2510,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   // `canRead` against a custom skill's row: the fetch path filters before building resources, so a
   // skill the caller cannot read is never hydrated.
-  private static canReadRow(
+  static canReadRow(
     auth: Authenticator,
-    skill: SkillConfigurationModel
+    skill: { id: ModelId; workspaceId: ModelId }
   ): boolean {
+    if (skill.workspaceId !== auth.getNonNullableWorkspace().id) {
+      return false;
+    }
     // See canWrite: API keys hold no skill grant, so any key reads any skill.
     if (auth.isKey()) {
       return true;
@@ -4622,6 +4772,33 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       created_at: this.createdAt.toISOString(),
       updated_at: this.updatedAt.toISOString(),
     };
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:security] skill-listing-redaction
+   * Listing serialization exposes only display fields and the canonical canRead
+   * flag, never instructions, tools, file attachments, or editor grants.
+   */
+  toListJSON(auth: Authenticator): SkillListItemType {
+    return {
+      editedBy: this.globalSId ? null : this.editedBy,
+      icon: this.icon ?? null,
+      name: this.name,
+      requestedSpaceIds: this.requestedSpaceIds.map((id) =>
+        SpaceResource.modelIdToSId({ id, workspaceId: this.workspaceId })
+      ),
+      sId: this.sId,
+      userFacingDescription: this.userFacingDescription ?? "",
+      status: this.status,
+      canRead: this.canRead(auth),
+    };
+  }
+
+  toSearchJSON(
+    auth: Authenticator,
+    score: number
+  ): SkillListItemType & { score: number } {
+    return { ...this.toListJSON(auth), score };
   }
 
   toJSON(auth: Authenticator): SkillType {
