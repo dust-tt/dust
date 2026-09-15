@@ -36,6 +36,8 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
+import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface SharingGrantResource
@@ -178,24 +180,35 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
     file: FileResource,
     { emails = [], domains = [] }: { emails?: string[]; domains?: string[] },
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<SharingGrantResource[]> {
+  ): Promise<Result<SharingGrantResource[], DustError>> {
     assert(
       auth.getNonNullableWorkspace().id === file.workspaceId,
       "Sharing grant workspace mismatch"
     );
 
-    const normalizedEmails = [
-      ...new Set(emails.map((email) => sharingEmailSchema.parse(email))),
-    ];
-    const normalizedDomains = [
-      ...new Set(domains.map((domain) => sharingDomainSchema.parse(domain))),
-    ];
+    const parsed = z
+      .object({
+        emails: sharingEmailSchema.array(),
+        domains: sharingDomainSchema.array(),
+      })
+      .safeParse({ emails, domains });
+    if (!parsed.success) {
+      return new Err(
+        new DustError(
+          "invalid_request_error",
+          fromError(parsed.error).toString()
+        )
+      );
+    }
+
+    const normalizedEmails = [...new Set(parsed.data.emails)];
+    const normalizedDomains = [...new Set(parsed.data.domains)];
     const targets: SharingGrantTarget[] = [
       ...normalizedEmails.map((value) => ({ kind: "email" as const, value })),
       ...normalizedDomains.map((value) => ({ kind: "domain" as const, value })),
     ];
     if (!targets.length) {
-      return [];
+      return new Ok([]);
     }
 
     const shareableFile = await ShareableFileModel.findOne({
@@ -228,7 +241,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       (target) => !existingTargets.has(`${target.kind}:${target.value}`)
     );
     if (!missing.length) {
-      return [];
+      return new Ok([]);
     }
 
     const user = auth.getNonNullableUser();
@@ -247,9 +260,11 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
 
     // Another request may insert the same grant after our lookup.
     // ignoreDuplicates skips that insert and returns a row without an id.
-    return created
-      .filter((grant) => Number.isInteger(grant.id))
-      .map((grant) => new this(this.model, grant.get(), user));
+    return new Ok(
+      created
+        .filter((grant) => Number.isInteger(grant.id))
+        .map((grant) => new this(this.model, grant.get(), user))
+    );
   }
 
   static async fetchById(

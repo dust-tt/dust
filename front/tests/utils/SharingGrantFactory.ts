@@ -11,13 +11,15 @@ export class SharingGrantFactory {
     target: SharingGrantTarget
   ): Promise<SharingGrantResource> {
     await file.ensureShareableFrame(auth);
-    const [grant] = await SharingGrantResource.add(
+    const result = await SharingGrantResource.add(
       auth,
       file,
       target.kind === "email"
         ? { emails: [target.value] }
         : { domains: [target.value] }
     );
+    assert(result.isOk(), "Expected valid sharing grant targets");
+    const [grant] = result.value;
     assert(grant, "Expected a newly created sharing grant");
     return grant;
   }

@@ -2664,7 +2664,7 @@ export class FileResource extends BaseResource<FileModel> {
     auth: Authenticator,
     { emails }: { emails: string[] },
     { transaction }: { transaction?: Transaction } = {}
-  ): Promise<string[]> {
+  ): Promise<Result<string[], DustError>> {
     assert(
       this.isShareableFrame,
       "addSharingGrantsAndGetCreatedEmails requires a Frame file"
@@ -2675,9 +2675,14 @@ export class FileResource extends BaseResource<FileModel> {
       { emails },
       { transaction }
     );
-    const createdEmails = removeNulls(created.map((grant) => grant.email));
+    if (created.isErr()) {
+      return created;
+    }
+    const createdEmails = removeNulls(
+      created.value.map((grant) => grant.email)
+    );
     if (createdEmails.length === 0) {
-      return [];
+      return new Ok([]);
     }
     const user = auth.getNonNullableUser();
 
@@ -2727,18 +2732,23 @@ export class FileResource extends BaseResource<FileModel> {
       scheduleNotifications();
     }
 
-    return createdEmails;
+    return new Ok(createdEmails);
   }
 
   async addSharingGrants(
     auth: Authenticator,
     { emails }: { emails: string[] }
-  ): Promise<SharingGrantType[]> {
+  ): Promise<Result<SharingGrantType[], DustError>> {
     assert(this.isShareableFrame, "addSharingGrants requires a Frame file");
     await this.ensureShareableFrame(auth);
-    await this.addSharingGrantsAndGetCreatedEmails(auth, { emails });
+    const created = await this.addSharingGrantsAndGetCreatedEmails(auth, {
+      emails,
+    });
+    if (created.isErr()) {
+      return created;
+    }
 
-    return this.listActiveSharingGrants();
+    return new Ok(await this.listActiveSharingGrants());
   }
 
   async revokeSharingGrant({

@@ -10,7 +10,7 @@ import { UserFactory } from "@app/tests/utils/UserFactory";
 import { frameContentType } from "@app/types/files";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import { honoApp } from "@front-api/app";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { assert, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockEmitAuditLogEvent } = vi.hoisted(() => ({
   mockEmitAuditLogEvent: vi.fn(),
@@ -158,6 +158,36 @@ describe("sharing grants endpoint", () => {
         ],
       })
     );
+  });
+
+  it("returns 400 for Resource validation errors without adding grants or emitting an audit event", async () => {
+    const { auth, user, workspace } = await createPrivateApiMockRequest({
+      method: "POST",
+      role: "user",
+    });
+    await grantInviteToEveryone(workspace);
+    const file = await FileFactory.create(auth, user, {
+      contentType: frameContentType,
+      fileName: "test-frame.tsx",
+      fileSize: 1024,
+      status: "ready",
+      useCase: "conversation",
+    });
+    mockEmitAuditLogEvent.mockClear();
+
+    const response = await postGrants(workspace, file.sId, {
+      emails: ["alice@david.co", `${"a".repeat(256)}@david.co`],
+    });
+
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: {
+        type: "invalid_request_error",
+        message: expect.stringContaining("255"),
+      },
+    });
+    expect(await file.listActiveSharingGrants()).toEqual([]);
+    expect(mockEmitAuditLogEvent).not.toHaveBeenCalled();
   });
 
   it("should populate grantedBy with the granting user", async () => {
@@ -749,9 +779,11 @@ describe("sharing grants endpoint", () => {
       await grantInviteToEveryone(workspace);
       const space = await SpaceFactory.project(workspace);
       const { frame } = await createTestFrameFunction(auth, { space });
-      const [grant] = await frame.addSharingGrants(auth, {
+      const result = await frame.addSharingGrants(auth, {
         emails: ["external@example.com"],
       });
+      assert(result.isOk());
+      const [grant] = result.value;
 
       const response = await deleteGrant(workspace, frame.sId, {
         grantId: grant.id,
