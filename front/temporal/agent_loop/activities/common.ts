@@ -1010,7 +1010,6 @@ export async function finalizeCreditSpendCheckpointPause(
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
     },
   });
   logger.info(
