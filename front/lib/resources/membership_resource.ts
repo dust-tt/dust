@@ -19,6 +19,7 @@ import {
 } from "@app/lib/utils/cache";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import { launchSyncWorkOSITContactsWorkflow } from "@app/temporal/workos_events_queue/client";
 import type {
   MembershipOriginType,
   MembershipRoleType,
@@ -1121,6 +1122,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       throw workflowResult.error;
     }
 
+    // Keep the workspace admins mirrored into WorkOS IT contacts (debounced,
+    // best-effort). The launcher logs on failure; do not fail the mutation.
+    await launchSyncWorkOSITContactsWorkflow({ workspaceId: workspace.sId });
+
     // Invalidate the active seats cache for this workspace.
     const workspaceId = workspace.sId;
     const userModelId = user.id;
@@ -1257,6 +1262,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       // Throw if it fails to launch (unexpected).
       throw workflowResult.error;
     }
+
+    // Keep the workspace admins mirrored into WorkOS IT contacts (debounced,
+    // best-effort). The launcher logs on failure; do not fail the mutation.
+    await launchSyncWorkOSITContactsWorkflow({ workspaceId: workspace.sId });
 
     // Invalidate the active seats cache for this workspace.
     const workspaceId = workspace.sId;
@@ -1420,6 +1429,10 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       // Throw if it fails to launch (unexpected).
       throw workflowResult.error;
     }
+
+    // Keep the workspace admins mirrored into WorkOS IT contacts (debounced,
+    // best-effort). The launcher logs on failure; do not fail the mutation.
+    await launchSyncWorkOSITContactsWorkflow({ workspaceId: workspace.sId });
 
     return new Ok({ previousRole, newRole });
   }
