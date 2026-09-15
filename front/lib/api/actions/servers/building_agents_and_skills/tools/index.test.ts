@@ -1,5 +1,8 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { SUGGEST_SKILL_UPDATE_TOOL_NAME } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
+import {
+  DESCRIBE_SKILL_TOOL_NAME,
+  SUGGEST_SKILL_UPDATE_TOOL_NAME,
+} from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -66,6 +69,45 @@ function extractSuggestionId(text: string): string {
 }
 
 describe("building_agents_and_skills tools", () => {
+  describe(DESCRIBE_SKILL_TOOL_NAME, () => {
+    it("returns the skill with its block-structured instructions", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, {
+        name: "Described",
+        agentFacingDescription: "Use when describing things.",
+        instructionsHtml: '<p data-block-id="blk00001">Describe it.</p>',
+      });
+
+      const result = await getTool(DESCRIBE_SKILL_TOOL_NAME).handler(
+        { skillId: skill.sId },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      expect(result.value[0].text).toContain(`ID="${skill.sId}"`);
+      expect(result.value[0].text).toContain('name="Described"');
+      expect(result.value[0].text).toContain("Use when describing things.");
+      expect(result.value[0].text).toContain('data-block-id="blk00001"');
+    });
+
+    it("rejects non-custom skill ids", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+
+      const result = await getTool(DESCRIBE_SKILL_TOOL_NAME).handler(
+        { skillId: "not-a-skill" },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+  });
+
   describe(SUGGEST_SKILL_UPDATE_TOOL_NAME, () => {
     it("creates a pending conversational suggestion and returns its sId embedded", async () => {
       const { authenticator } = await createResourceTest({ role: "user" });
