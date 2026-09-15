@@ -165,16 +165,10 @@ export function useRunPokePlugin({
 
   const runPath = `/api/poke/plugins/${pluginId}/run?${urlSearchParams.toString()}`;
 
-  // An absolute base URL bypasses the selected-cell URL rewrite, which is
-  // how a run gets targeted at a specific cell.
   const runPlugin = async (
-    args: object,
-    baseUrl = ""
+    args: object
   ): Promise<Result<PokeRunPluginResponseBody["result"], string>> => {
-    const res = await clientFetch(
-      `${baseUrl}${runPath}`,
-      buildRunRequestInit(args)
-    );
+    const res = await clientFetch(runPath, buildRunRequestInit(args));
 
     if (res.ok) {
       const response: PokeRunPluginResponseBody = await res.json();
@@ -193,6 +187,8 @@ export function useRunPokePlugin({
     args: object,
     cells: CellInfo[]
   ): Promise<CellPluginRunResult[]> => {
+    // Each cell's own URL is prefixed onto runPath by fetchPokeFromAllCells,
+    // which is how the run gets targeted at that cell.
     const results = await fetchPokeFromAllCells<PokeRunPluginResponseBody>({
       cells,
       path: runPath,
