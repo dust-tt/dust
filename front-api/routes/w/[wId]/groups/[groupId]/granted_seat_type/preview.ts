@@ -83,7 +83,8 @@ app.post(
 
     const group = groupRes.value;
     // `targetSeatType` is the seat the contract bills for this tier (monthly
-    // preferred); `members` are only those who'd actually move to it.
+    // preferred); `members` are those this grant applies to — movers plus those
+    // already on the tier (excluding members covered by a higher tier elsewhere).
     const { members, targetSeatType } =
       await group.listMembersAffectedByGrantingSeat(auth, grantedSeatType);
     if (targetSeatType === null || !isPaidSeatType(targetSeatType)) {
