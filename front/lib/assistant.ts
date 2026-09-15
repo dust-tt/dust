@@ -109,6 +109,11 @@ export function isModelAvailable(
     return false;
   }
 
+  // EAP models are served from Dust's own Anthropic EAP organization, on Dust's key.
+  if (plan?.isByok && m.useEapKey) {
+    return false;
+  }
+
   if (regionalModelsOnly && m.regionalAvailability[region] !== true) {
     return false;
   }

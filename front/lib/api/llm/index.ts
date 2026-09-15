@@ -27,6 +27,7 @@ import type { Model } from "@app/lib/model_constructors/types/models";
 import { isModel, NOOP_MODEL } from "@app/lib/model_constructors/types/models";
 import type { Region } from "@app/lib/model_constructors/types/regions";
 import { EUROPE } from "@app/lib/model_constructors/types/regions";
+import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import { BYOK_MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import type {
   ModelIdType,
@@ -64,6 +65,12 @@ function withEapAnthropicKey(
   }
   return { ...credentials, ANTHROPIC_API_KEY: eapApiKey };
 }
+
+const EAP_MODELS = compact(
+  SUPPORTED_MODEL_CONFIGS.filter(({ useEapKey }) => useEapKey).map(
+    ({ modelId }) => legacyModelIdToModel(modelId)
+  )
+);
 
 function getRegionFilter(auth: Authenticator): ValueFilter<Region> | undefined {
   const dustRegion = multiRegionsConfig.getCurrentRegion();
@@ -150,6 +157,16 @@ function getLabAndHostFilter(
  * Any new Dust-hosted `Host` value must be added to that exclusion, and every model reachable by a
  * BYOK workspace must keep at least one lab-hosted endpoint.
  */
+/**
+ * @cc [owner:pmilliotte,label:security;product] eap-models-are-never-byok-reachable
+ * A model whose config carries `useEapKey` is served from Dust's own Anthropic EAP organization, on
+ * Dust's key. This filter must leave a BYOK workspace no endpoint for such a model, and must derive
+ * the exclusion from `useEapKey` itself so a newly flagged model is covered without a second edit.
+ * `isModelAvailable` must reject it too, so it never reaches the model picker.
+ *
+ * The `DUST_BYOK` check in `withEapAnthropicKey` is a backstop, not the guarantee: it turns a leak
+ * into an error instead of a request billed to Dust's Anthropic organization.
+ */
 export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
   const byok = auth.getNonNullablePlan().isByok;
   const providerIds = getWhitelistedProviderIds(auth);
@@ -159,7 +176,14 @@ export function getWorkspaceFilter(auth: Authenticator): Where<EndpointConfig> {
     region: getRegionFilter(auth),
     // Conversely we route all non-byok gemini requests to agent platform.
     ...(byok
-      ? { not: { host: { eq: AGENT_PLATFORM_HOST } } }
+      ? {
+          not: {
+            or: [
+              { host: { eq: AGENT_PLATFORM_HOST } },
+              { model: { in: EAP_MODELS } },
+            ],
+          },
+        }
       : { not: { host: { eq: GOOGLE_AI_STUDIO_HOST } } }),
   };
 }
