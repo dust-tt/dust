@@ -171,14 +171,14 @@ describe("isCreditSpendCheckpointExempt", () => {
   it("applies to non-credit-priced plans too, unlike the pool gate", () => {
     const auth = makeAuth({ isCreditPriced: false, hasUser: true });
     expect(
-      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: null })
+      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: "web" })
     ).toBe(false);
   });
 
   it("applies even when metronomeCustomerId is null, unlike the pool gate", () => {
     const auth = makeAuth({ metronomeCustomerId: null, hasUser: true });
     expect(
-      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: null })
+      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: "web" })
     ).toBe(false);
   });
 
@@ -187,25 +187,37 @@ describe("isCreditSpendCheckpointExempt", () => {
     expect(
       isCreditSpendCheckpointExempt(auth, { userMessageOrigin: "web" })
     ).toBe(true);
-    expect(mockIsProgrammaticUsage).not.toHaveBeenCalled();
   });
 
-  it("is exempt for programmatic usage even with a user on the auth", () => {
-    mockIsProgrammaticUsage.mockReturnValue(true);
+  it("is exempt when the origin is unknown", () => {
     const auth = makeAuth({ hasUser: true });
     expect(
-      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: "api" })
+      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: null })
     ).toBe(true);
-    expect(mockIsProgrammaticUsage).toHaveBeenCalledWith(auth, {
-      userMessageOrigin: "api",
-    });
   });
 
-  it("is not exempt when the origin is not programmatic usage", () => {
-    mockIsProgrammaticUsage.mockReturnValue(false);
+  it.each([
+    "api",
+    "email",
+    "slack",
+    "triggered",
+    "wakeup",
+    "transcript",
+    "zendesk",
+  ] as const)("is exempt for %s: the author cannot resume the pause from a Dust client", (origin) => {
     const auth = makeAuth({ hasUser: true });
     expect(
-      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: "web" })
+      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: origin })
+    ).toBe(true);
+  });
+
+  it.each([
+    "web",
+    "extension",
+  ] as const)("is not exempt for %s: the author is in a Dust client UI", (origin) => {
+    const auth = makeAuth({ hasUser: true });
+    expect(
+      isCreditSpendCheckpointExempt(auth, { userMessageOrigin: origin })
     ).toBe(false);
   });
 });
