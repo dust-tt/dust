@@ -39,6 +39,10 @@ interface BaseSkillDefinition<
   // opted in per skill (e.g. docs/pptx/xlsx). System skills stay hidden.
   readonly exposeInstructions?: boolean;
   readonly isRestricted?: (auth: Authenticator) => Promise<boolean>;
+  // When it resolves to true, enabling the skill starts bringing the conversation's Computer up
+  // in the background: the skill's workflow begins with a Computer command, and a cold sandbox
+  // takes several seconds to create.
+  readonly warmsConversationSandbox?: (auth: Authenticator) => Promise<boolean>;
   // Optional callback to auto-add a code-defined skill for an agent loop
   // (subject to isRestricted), without adding it to the agent configuration.
   // For global skills, returning "enabled" promotes it to a system skill.
