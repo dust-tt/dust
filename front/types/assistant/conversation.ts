@@ -257,18 +257,6 @@ export function isHiddenMessageOrigin(origin: UserMessageOrigin): boolean {
   return HIDDEN_MESSAGE_ORIGINS.includes(origin);
 }
 
-// Origins whose author is in a Dust conversation UI, where an agent that stops to ask something
-// can be seen and answered. Every other origin (API, integrations, email, triggers, hidden
-// messages) is unattended: nobody is there to resume the agent.
-export const ATTENDED_MESSAGE_ORIGINS: UserMessageOrigin[] = [
-  "web",
-  "extension",
-];
-
-export function isAttendedMessageOrigin(origin: UserMessageOrigin): boolean {
-  return ATTENDED_MESSAGE_ORIGINS.includes(origin);
-}
-
 export function isVisibleMessage(m: LightMessageType): boolean {
   return (
     m.visibility !== "deleted" &&
