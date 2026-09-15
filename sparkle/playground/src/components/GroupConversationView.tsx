@@ -97,6 +97,7 @@ import {
   PodCustomizationSection,
   type PodTabCustomizationItem,
 } from "./PodCustomizationSection";
+import { buildConversationRowMenuItems } from "./conversationRowMenu";
 import { EmptyState } from "./EmptyState";
 import {
   collectAgents,
@@ -149,6 +150,18 @@ interface GroupConversationViewProps {
   showComposer?: boolean;
   hideConversationFilters?: boolean;
   currentUserId?: string;
+  /** The rows read elsewhere, which stop calling for attention here too. */
+  readRowIds?: Set<string>;
+  /** Reports rows as read, from a row's menu. */
+  onRowsRead?: (rowIds: string[]) => void;
+  /** The rows put back to unread from a row's menu, dot and all. */
+  unreadRowIds?: Set<string>;
+  /** Reports rows as unread, from a row's menu. */
+  onRowsUnread?: (rowIds: string[]) => void;
+  /** Leaves a conversation, which is the end of it in every list. */
+  onLeaveConversation?: (conversationId: string) => void;
+  /** The conversations already left, kept out of the list. */
+  leftConversationIds?: Set<string>;
   /** The triggers behind automated rows, which name their agent and type. */
   triggers?: Trigger[];
   podTabCustomization?: {
@@ -343,61 +356,69 @@ function generateConversationsWithDates(
   const now = new Date();
   const generated: Conversation[] = [];
 
-  // Duplicate and vary existing conversations
-  for (let i = 0; i < count; i++) {
-    const baseConversation = conversations[i % conversations.length];
-    const rowSeed = `${seed}-${baseConversation.id}-${i}`;
-    const daysAgo = Math.floor(seededRandom(rowSeed, 0) * 35); // Up to 35 days ago
-    const hoursAgo = Math.floor(seededRandom(rowSeed, 1) * 24);
-    const minutesAgo = Math.floor(seededRandom(rowSeed, 2) * 60);
-    const title =
-      GENERATED_CONVERSATION_TITLES[
-        Math.floor(
-          seededRandom(rowSeed, 3) * GENERATED_CONVERSATION_TITLES.length
-        )
-      ];
-    const descriptionTemplate =
-      GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES[
-        Math.floor(
-          seededRandom(rowSeed, 4) *
-            GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES.length
-        )
-      ];
+  // Duplicate and vary existing conversations. Each copy is seeded by the
+  // conversation it comes from rather than its rank in the list, so dropping
+  // one conversation leaves every other row exactly as it was.
+  const copiesPerConversation = Math.ceil(count / conversations.length);
 
-    const updatedAt = new Date(now);
-    updatedAt.setDate(updatedAt.getDate() - daysAgo);
-    updatedAt.setHours(updatedAt.getHours() - hoursAgo);
-    updatedAt.setMinutes(updatedAt.getMinutes() - minutesAgo);
+  for (const baseConversation of conversations) {
+    for (let copy = 0; copy < copiesPerConversation; copy++) {
+      const rowSeed = `${seed}-${baseConversation.id}-${copy}`;
+      const daysAgo = Math.floor(seededRandom(rowSeed, 0) * 35); // Up to 35 days ago
+      const hoursAgo = Math.floor(seededRandom(rowSeed, 1) * 24);
+      const minutesAgo = Math.floor(seededRandom(rowSeed, 2) * 60);
+      const title =
+        GENERATED_CONVERSATION_TITLES[
+          Math.floor(
+            seededRandom(rowSeed, 3) * GENERATED_CONVERSATION_TITLES.length
+          )
+        ];
+      const descriptionTemplate =
+        GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES[
+          Math.floor(
+            seededRandom(rowSeed, 4) *
+              GENERATED_CONVERSATION_DESCRIPTION_TEMPLATES.length
+          )
+        ];
 
-    const createdAt = new Date(updatedAt);
-    createdAt.setDate(
-      createdAt.getDate() - Math.floor(seededRandom(rowSeed, 5) * 5)
-    );
+      const updatedAt = new Date(now);
+      updatedAt.setDate(updatedAt.getDate() - daysAgo);
+      updatedAt.setHours(updatedAt.getHours() - hoursAgo);
+      updatedAt.setMinutes(updatedAt.getMinutes() - minutesAgo);
 
-    // A run is named by the trigger that started it, so repeats of the same
-    // automation keep that name instead of borrowing a human thread's.
-    const isRun = baseConversation.triggerId !== undefined;
+      const createdAt = new Date(updatedAt);
+      createdAt.setDate(
+        createdAt.getDate() - Math.floor(seededRandom(rowSeed, 5) * 5)
+      );
 
-    generated.push({
-      ...baseConversation,
-      id: `${baseConversation.id}-${i}`,
-      updatedAt,
-      createdAt,
-      title: isRun ? baseConversation.title : title,
-      description: isRun
-        ? baseConversation.description
-        : descriptionTemplate.replace("{title}", title.toLowerCase()),
-    });
+      // A run is named by the trigger that started it, so repeats of the same
+      // automation keep that name instead of borrowing a human thread's.
+      const isRun = baseConversation.triggerId !== undefined;
+
+      generated.push({
+        ...baseConversation,
+        id: `${baseConversation.id}-${copy}`,
+        updatedAt,
+        createdAt,
+        title: isRun ? baseConversation.title : title,
+        description: isRun
+          ? baseConversation.description
+          : descriptionTemplate.replace("{title}", title.toLowerCase()),
+      });
+    }
   }
 
   return generated;
 }
 
-// Seeded random function for deterministic randomness
+// Seeded random function for deterministic randomness. The hash folds in the
+// position of each character, so seeds that share the same letters — two
+// conversation ids apart only in their digits — don't land on the same row.
 function seededRandom(seed: string, index: number): number {
-  const hash = seed
-    .split("")
-    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  let hash = 5381;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 33 + seed.charCodeAt(i)) | 0;
+  }
   const x = Math.sin((hash + index) * 12.9898) * 43758.5453;
   return x - Math.floor(x);
 }
@@ -1343,6 +1364,12 @@ export function GroupConversationView({
   showComposer = true,
   hideConversationFilters = false,
   currentUserId,
+  readRowIds,
+  onRowsRead,
+  unreadRowIds,
+  onRowsUnread,
+  onLeaveConversation,
+  leftConversationIds,
   triggers = [],
   podTabCustomization,
 }: GroupConversationViewProps) {
@@ -1579,6 +1606,9 @@ export function GroupConversationView({
         : expandedConversations;
 
     return source.filter((conversation) => {
+      if (leftConversationIds?.has(conversation.id)) {
+        return false;
+      }
       if (conversationFilter) {
         const matches =
           conversationFilter.kind === "member"
@@ -1620,6 +1650,7 @@ export function GroupConversationView({
     goodToKnowFilter,
     hideConversationFilters,
     hideTriggeredConversations,
+    leftConversationIds,
     myPodEnrichedConversations,
     podVariant,
   ]);
@@ -3445,6 +3476,16 @@ export function GroupConversationView({
                           const isSelected =
                             selectedConversationRow?.rowId === conversation.id;
 
+                          // Read state belongs to the thread, not to the row
+                          // that shows it, and what the row's menu says of it
+                          // outranks whether anything new came in.
+                          const isForcedUnread =
+                            unreadRowIds?.has(baseConversationId) ?? false;
+                          const isUnread =
+                            isForcedUnread ||
+                            (listItem.unread &&
+                              !readRowIds?.has(baseConversationId));
+
                           return (
                             <div
                               id={getConversationRowDomId(conversation.id)}
@@ -3465,7 +3506,7 @@ export function GroupConversationView({
                                   isSelected && "bg-highlight-50"
                                 )}
                                 time={listItem.time}
-                                unread={listItem.unread}
+                                unread={isUnread}
                                 showFocus={
                                   conversationIdToShowFocus === conversation.id
                                 }
@@ -3473,12 +3514,10 @@ export function GroupConversationView({
                                   <ReplySection
                                     replyCount={listItem.replyCount}
                                     unreadCount={
-                                      listItem.unread
-                                        ? listItem.messageCount
-                                        : 0
+                                      isUnread ? listItem.messageCount : 0
                                     }
                                     mentionCount={
-                                      listItem.trigger || !listItem.unread
+                                      listItem.trigger || !isUnread
                                         ? 0
                                         : listItem.mentionCount
                                     }
@@ -3488,6 +3527,17 @@ export function GroupConversationView({
                                     }
                                   />
                                 }
+                                menuItems={buildConversationRowMenuItems({
+                                  isUnread,
+                                  onMarkRead: () =>
+                                    onRowsRead?.([baseConversationId]),
+                                  onMarkUnread: () =>
+                                    onRowsUnread?.([baseConversationId]),
+                                  // Leaving takes out the row you clicked, not
+                                  // every row sharing its base conversation.
+                                  onLeave: () =>
+                                    onLeaveConversation?.(conversation.id),
+                                })}
                                 onClick={() => {
                                   setSelectedConversationRow({
                                     rowId: conversation.id,

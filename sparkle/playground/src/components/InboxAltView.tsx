@@ -23,6 +23,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
@@ -45,6 +46,7 @@ import type {
   User,
 } from "../data/types";
 import { getUserById } from "../data/users";
+import { buildConversationRowMenuItems } from "./conversationRowMenu";
 import { EmptyState } from "./EmptyState";
 import {
   collectAgents,
@@ -107,6 +109,12 @@ interface InboxAltViewProps {
   readRowIds?: Set<string>;
   /** Reports rows as read, either by dwelling on one or by clearing. */
   onRowsRead?: (rowIds: string[]) => void;
+  /** The rows put back to unread from a row's menu, dot and all. */
+  unreadRowIds?: Set<string>;
+  /** Reports rows as unread, from a row's menu. */
+  onRowsUnread?: (rowIds: string[]) => void;
+  /** Leaves a conversation, which is the end of it in every list. */
+  onLeaveConversation?: (conversationId: string) => void;
   onConversationClick?: (conversation: Conversation) => void;
   onRequestClick?: (request: AdminRequest) => void;
 }
@@ -257,6 +265,9 @@ export function InboxAltView({
   selectedRequestId = null,
   readRowIds,
   onRowsRead,
+  unreadRowIds,
+  onRowsUnread,
+  onLeaveConversation,
   onConversationClick,
   onRequestClick,
 }: InboxAltViewProps) {
@@ -328,9 +339,11 @@ export function InboxAltView({
   }, [conversations, requests, spacesById, triggers]);
 
   // Stabilize the random per-conversation display data so unrelated re-renders
-  // — a keystroke in the search field — don't reshuffle the rows under you.
+  // — a keystroke in the search field, leaving another conversation — don't
+  // reshuffle the rows under you. Cached by id and never recomputed once set.
+  const displayCacheRef = useRef(new Map<string, RowDisplay>());
   const displayById = useMemo(() => {
-    const map = new Map<string, RowDisplay>();
+    const map = displayCacheRef.current;
     rows.forEach((row) => {
       if (row.kind === "conversation" && !map.has(row.id)) {
         map.set(row.id, buildRowDisplay(row.conversation));
@@ -500,8 +513,10 @@ export function InboxAltView({
     const trigger =
       row.source.kind === "automated" ? row.source.trigger : undefined;
     // A conversation you have stayed on is read: the row keeps its place until
-    // you leave the page, but it stops calling for attention.
-    const isRead = readRowIds?.has(row.id) ?? false;
+    // you leave the page, but it stops calling for attention. Putting it back
+    // to unread from the row's menu has the last word.
+    const isForcedUnread = unreadRowIds?.has(row.id) ?? false;
+    const isRead = !isForcedUnread && (readRowIds?.has(row.id) ?? false);
     const unreadCount = isRead ? 0 : (display?.messageCount ?? 0);
 
     return (
@@ -516,7 +531,7 @@ export function InboxAltView({
           "px-3 rounded-2xl border-transparent!",
           selectedConversationId === row.id && "bg-highlight-50"
         )}
-        unread={unreadCount > 0}
+        unread={isForcedUnread || unreadCount > 0}
         label={renderLabel(row)}
         time={formatRowTime(row.date)}
         replySection={
@@ -530,6 +545,12 @@ export function InboxAltView({
             lastMessageBy={display?.avatars[0]?.name ?? "Unknown"}
           />
         }
+        menuItems={buildConversationRowMenuItems({
+          isUnread: isForcedUnread || unreadCount > 0,
+          onMarkRead: () => onRowsRead?.([row.id]),
+          onMarkUnread: () => onRowsUnread?.([row.id]),
+          onLeave: () => onLeaveConversation?.(row.id),
+        })}
         onClick={() => onConversationClick?.(row.conversation)}
       />
     );

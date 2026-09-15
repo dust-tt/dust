@@ -30,11 +30,11 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 
 import { getAgentById } from "../data/agents";
-import { getRandomInboxGreetingForName } from "../data/greetings";
 import { isTriggeredConversation } from "../data/myPod";
 import { getRequestTypeIcon, REQUEST_TYPE_LABELS } from "../data/requests";
 import { formatRowTime, READ_DWELL_MS } from "../data/time";
@@ -48,6 +48,7 @@ import type {
   User,
 } from "../data/types";
 import { getUserById } from "../data/users";
+import { buildConversationRowMenuItems } from "./conversationRowMenu";
 import { EmptyState } from "./EmptyState";
 import {
   collectAgents,
@@ -84,6 +85,12 @@ interface InboxViewProps {
   readRowIds?: Set<string>;
   /** Reports rows as read, either by dwelling on one or by clearing. */
   onRowsRead?: (rowIds: string[]) => void;
+  /** The rows put back to unread from a row's menu, dot and all. */
+  unreadRowIds?: Set<string>;
+  /** Reports rows as unread, from a row's menu. */
+  onRowsUnread?: (rowIds: string[]) => void;
+  /** Leaves a conversation, which is the end of it in every list. */
+  onLeaveConversation?: (conversationId: string) => void;
   currentUserId?: string;
   onConversationClick?: (conversation: Conversation) => void;
   onRequestClick?: (request: AdminRequest) => void;
@@ -230,6 +237,9 @@ export function InboxView({
   selectedRequestId = null,
   readRowIds,
   onRowsRead,
+  unreadRowIds,
+  onRowsUnread,
+  onLeaveConversation,
   currentUserId,
   onConversationClick,
   onRequestClick,
@@ -239,13 +249,6 @@ export function InboxView({
   onRequestsClick,
   personalSectionLabel = "My Pod",
 }: InboxViewProps) {
-  const currentUserFirstName = currentUserId
-    ? (getUserById(currentUserId)?.firstName ?? "there")
-    : "there";
-  const [greeting, setGreeting] = useState<string>("");
-  useEffect(() => {
-    setGreeting(getRandomInboxGreetingForName(currentUserFirstName));
-  }, [currentUserFirstName]);
   // Read before this visit means dealt with, so those rows are gone. What gets
   // read during the visit keeps its place rather than vanishing under the
   // cursor, which is why the snapshot is taken once, on arrival.
@@ -467,10 +470,10 @@ export function InboxView({
   );
 
   // Stabilize the random per-conversation display data (participants, creator,
-  // reply/message/mention counts) so unrelated re-renders don't reshuffle the
-  // lists. Recomputed only when the displayed conversations change.
-  const conversationDisplayById = useMemo(() => {
-    const map = new Map<
+  // reply/message/mention counts) so unrelated re-renders — or leaving another
+  // conversation — don't reshuffle the lists. Cached by id, computed once.
+  const conversationDisplayCacheRef = useRef(
+    new Map<
       string,
       {
         creator?: User;
@@ -480,7 +483,10 @@ export function InboxView({
         messageCount: number;
         mentionCount: number;
       }
-    >();
+    >()
+  );
+  const conversationDisplayById = useMemo(() => {
+    const map = conversationDisplayCacheRef.current;
 
     const displayed = [
       ...myConversations,
@@ -785,8 +791,11 @@ export function InboxView({
     const mentionCount = display?.mentionCount ?? 0;
     const isSelected = selectedConversationId === conversation.id;
     // A conversation you have stayed on is read: the row keeps its place until
-    // you leave the Inbox, but it stops calling for attention.
-    const isRead = readRowIds?.has(conversation.id) ?? false;
+    // you leave the Inbox, but it stops calling for attention. Putting it back
+    // to unread from the row's menu has the last word.
+    const isForcedUnread = unreadRowIds?.has(conversation.id) ?? false;
+    const isRead =
+      !isForcedUnread && (readRowIds?.has(conversation.id) ?? false);
 
     // A run is an agent working alone, so it wears the agent badged with what
     // made it fire, and nobody in it can have mentioned you.
@@ -807,7 +816,7 @@ export function InboxView({
           isSelected && "bg-highlight-50"
         )}
         time={time}
-        unread={!isRead && messageCount > 0}
+        unread={isForcedUnread || (!isRead && messageCount > 0)}
         replySection={
           <ReplySection
             replyCount={replyCount}
@@ -817,6 +826,12 @@ export function InboxView({
             lastMessageBy={avatarProps[0]?.name || "Unknown"}
           />
         }
+        menuItems={buildConversationRowMenuItems({
+          isUnread: isForcedUnread || (!isRead && messageCount > 0),
+          onMarkRead: () => onRowsRead?.([conversation.id]),
+          onMarkUnread: () => onRowsUnread?.([conversation.id]),
+          onLeave: () => onLeaveConversation?.(conversation.id),
+        })}
         onClick={() => {
           onConversationClick?.(conversation);
         }}
@@ -943,13 +958,8 @@ export function InboxView({
   return (
     <div className="flex h-full w-full flex-col overflow-x-clip overflow-y-auto bg-background">
       {/* flex-1 so an empty state, which grows to fill its parent, centers on
-          the panel rather than collapsing under the greeting. */}
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 pt-8 pb-8">
-        {greeting && !isEmpty && (
-          <div className="heading-2xl text-center text-foreground">
-            {greeting}
-          </div>
-        )}
+          the panel rather than collapsing against the toolbar. */}
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-3 px-4 pt-6 pb-8">
         {renderConversationsTab()}
       </div>
     </div>

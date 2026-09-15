@@ -34,7 +34,6 @@ import {
   Link01,
   LogOut01,
   MessageCircle01,
-  MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListCompactLabel,
@@ -1481,7 +1480,7 @@ function Pods() {
                 variant="highlight"
                 tooltip="Create a new conversation"
                 size="sm"
-                icon={MessagePlusCircle}
+                icon={Plus}
                 label="New"
                 className="shrink-0"
                 onClick={() => {

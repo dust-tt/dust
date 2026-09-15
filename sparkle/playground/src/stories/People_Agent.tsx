@@ -39,7 +39,6 @@ import {
   LogOut01,
   MessageChatSquare,
   MessageCircle01,
-  MessagePlusCircle,
   NavigationList,
   NavigationListCollapsibleSection,
   NavigationListItem,
@@ -1846,7 +1845,7 @@ function PeopleAgent() {
                 variant="highlight"
                 tooltip="Create a new conversation"
                 size="sm"
-                icon={MessagePlusCircle}
+                icon={Plus}
                 label="New"
                 className="shrink-0"
                 onClick={() => {

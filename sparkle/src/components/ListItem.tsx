@@ -38,6 +38,8 @@ type ListItemProps = {
   className?: string;
   /** Invoked when the row is clicked; also enables the hover/pressed background. */
   onClick?: () => void;
+  /** Invoked when the row is right-clicked, for rows carrying a context menu. */
+  onContextMenu?: (event: React.MouseEvent) => void;
   /** Shows a bottom border divider under the row (default true). */
   hasSeparator?: boolean;
   /** Keeps the divider on the last row of a group instead of hiding it (default false). */
@@ -63,6 +65,7 @@ export function ListItem({
   children,
   className,
   onClick,
+  onContextMenu,
   hasSeparator = true,
   hasSeparatorIfLast = false,
   groupName = "list-item",
@@ -92,7 +95,12 @@ export function ListItem({
         className
       )}
       onClick={onClick}
+      onContextMenu={onContextMenu}
       onMouseDown={(event) => {
+        // A right-click opens the context menu rather than pressing the row.
+        if (event.button !== 0) {
+          return;
+        }
         if (!onClick || shouldIgnorePress(event.target)) {
           return;
         }

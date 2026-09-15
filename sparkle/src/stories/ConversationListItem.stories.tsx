@@ -5,6 +5,7 @@ import { fn } from "storybook/test";
 import {
   Avatar,
   Button,
+  CheckDouble,
   Chip,
   Clock,
   ConversationListItem,
@@ -12,6 +13,7 @@ import {
   Icon,
   ListGroup,
   Lock01,
+  LogOut01,
   ReplySection,
   XClose,
 } from "../index_with_tw_base";
@@ -35,6 +37,7 @@ const meta = {
 - Use the **ReplySection** component for the **replySection** slot to display reply / unread / mention counts consistently.
 - Use **trailing** instead of **time** when the right side of the row has to carry its own state and actions, and stop clicks on those actions from reaching **onClick**.
 - Use **label** when the whole row needs a label above its title line, as in a mixed feed where each row says which list it came from.
+- Use **menuItems** for actions that belong to the conversation rather than to the list, reached by right-clicking the row.
 - Group rows inside **ListGroup** so dividers and spacing stay consistent across the list.`,
       },
     },
@@ -288,6 +291,48 @@ export const WithLeadingVisual: Story = {
       </div>
     ),
     time: "5h",
+    onClick: fn(),
+  },
+  render: renderInListGroup,
+};
+
+/**
+ * `menuItems` answer to a right-click on the row, for the actions that belong to
+ * the conversation rather than to the list. Use `variant: "warning"` on the
+ * ones you cannot take back.
+ *
+ * @summary Row with a right-click menu.
+ */
+export const WithContextMenu: Story = {
+  args: {
+    unread: true,
+    conversation: {
+      id: "conv-6",
+      title: "Design review",
+      description:
+        "Right-click the row to mark it read or leave the conversation.",
+      updatedAt: new Date(),
+    },
+    creator: {
+      fullName: "Alice Dubois",
+      portrait: "https://i.pravatar.cc/150?img=1",
+    },
+    time: "11:24",
+    menuItems: [
+      {
+        kind: "item",
+        label: "Mark as read",
+        icon: CheckDouble,
+        onClick: fn(),
+      },
+      {
+        kind: "item",
+        label: "Leave the conversation",
+        icon: LogOut01,
+        variant: "warning",
+        onClick: fn(),
+      },
+    ],
     onClick: fn(),
   },
   render: renderInListGroup,

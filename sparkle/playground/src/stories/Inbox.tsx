@@ -38,7 +38,6 @@ import {
   MessageChatSquare,
   MessageCircle01,
   MessageLightning01,
-  MessagePlusCircle,
   MessageQuestionCircle,
   NavigationList,
   NavigationListCollapsibleSection,
@@ -303,6 +302,15 @@ function Inbox() {
   // during a visit to the Inbox keep their place there; the next visit starts
   // without them.
   const [readRowIds, setReadRowIds] = useState<Set<string>>(new Set());
+  // Rows put back to unread from a row's menu, which outranks whether the
+  // conversation itself has anything new in it. A row is in one set or the
+  // other, never both.
+  const [unreadRowIds, setUnreadRowIds] = useState<Set<string>>(new Set());
+  // Conversations you have left. They are gone from every list that draws on
+  // `allConversations`, which is all of them.
+  const [leftConversationIds, setLeftConversationIds] = useState<Set<string>>(
+    new Set()
+  );
   const [requests, setRequests] = useState<AdminRequest[]>(createMockRequests);
   // Requests handled since the list was last refreshed. They stay in Pending,
   // showing their outcome, instead of vanishing under the cursor.
@@ -389,12 +397,13 @@ function Inbox() {
   // Automated work is nothing but the runs of your triggers, so it joins the
   // conversations from the trigger list rather than from a coin flip.
   const allConversations = useMemo(
-    () => [
-      ...conversationsWithMessages,
-      ...mockConversations,
-      ...triggeredConversations,
-    ],
-    [conversationsWithMessages, triggeredConversations]
+    () =>
+      [
+        ...conversationsWithMessages,
+        ...mockConversations,
+        ...triggeredConversations,
+      ].filter((conversation) => !leftConversationIds.has(conversation.id)),
+    [conversationsWithMessages, leftConversationIds, triggeredConversations]
   );
 
   const unreadCount = useMemo(() => {
@@ -528,6 +537,32 @@ function Inbox() {
 
   const handleRowsRead = useCallback((rowIds: string[]) => {
     setReadRowIds((prev) => new Set([...prev, ...rowIds]));
+    setUnreadRowIds((prev) => {
+      const next = new Set(prev);
+      rowIds.forEach((rowId) => next.delete(rowId));
+      return next;
+    });
+  }, []);
+
+  const handleRowsUnread = useCallback((rowIds: string[]) => {
+    setReadRowIds((prev) => {
+      const next = new Set(prev);
+      rowIds.forEach((rowId) => next.delete(rowId));
+      return next;
+    });
+    setUnreadRowIds((prev) => new Set([...prev, ...rowIds]));
+  }, []);
+
+  // Leaving a conversation takes it out of every list, and closes it if you
+  // were looking at it.
+  const handleLeaveConversation = useCallback((conversationId: string) => {
+    setLeftConversationIds((prev) => new Set([...prev, conversationId]));
+    setP3View((prev) =>
+      prev?.kind === "conversation" && prev.conversationId === conversationId
+        ? null
+        : prev
+    );
+    setP4View(null);
   }, []);
 
   const handleToggleTrigger = useCallback(
@@ -1185,6 +1220,9 @@ function Inbox() {
           }
           readRowIds={readRowIds}
           onRowsRead={handleRowsRead}
+          unreadRowIds={unreadRowIds}
+          onRowsUnread={handleRowsUnread}
+          onLeaveConversation={handleLeaveConversation}
           onConversationClick={(conversation) => {
             setP3View({
               kind: "conversation",
@@ -1235,6 +1273,9 @@ function Inbox() {
           }
           readRowIds={readRowIds}
           onRowsRead={handleRowsRead}
+          unreadRowIds={unreadRowIds}
+          onRowsUnread={handleRowsUnread}
+          onLeaveConversation={handleLeaveConversation}
           onConversationClick={(conversation) => {
             setP3View({
               kind: "conversation",
@@ -1334,6 +1375,12 @@ function Inbox() {
           showComposer={false}
           hideConversationFilters
           currentUserId={user.id}
+          readRowIds={readRowIds}
+          onRowsRead={handleRowsRead}
+          unreadRowIds={unreadRowIds}
+          onRowsUnread={handleRowsUnread}
+          onLeaveConversation={handleLeaveConversation}
+          leftConversationIds={leftConversationIds}
           triggers={triggers}
           selectedConversationId={
             p3View?.kind === "conversation" ? p3View.conversationId : null
@@ -1401,6 +1448,12 @@ function Inbox() {
           podVariant={podContext.variant}
           showComposer
           currentUserId={user.id}
+          readRowIds={readRowIds}
+          onRowsRead={handleRowsRead}
+          unreadRowIds={unreadRowIds}
+          onRowsUnread={handleRowsUnread}
+          onLeaveConversation={handleLeaveConversation}
+          leftConversationIds={leftConversationIds}
           podTabCustomization={
             podContext.variant === "shared"
               ? {
@@ -1848,7 +1901,7 @@ function Inbox() {
                 variant="highlight"
                 tooltip="Create a new conversation"
                 size="sm"
-                icon={MessagePlusCircle}
+                icon={Plus}
                 label="New"
                 className="shrink-0"
                 onClick={() => {

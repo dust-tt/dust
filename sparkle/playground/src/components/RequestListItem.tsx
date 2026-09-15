@@ -154,7 +154,9 @@ export function RequestListItem({
             badgeIcon={getRequestIcon(request)}
             badgeLabel={REQUEST_TYPE_LABELS[request.type]}
             // Money is the one category worth spotting before reading the row.
-            variant={request.type === "creditManagement" ? "info" : "primary"}
+            variant={
+              request.type === "creditManagement" ? "highlight" : "outline"
+            }
           />
         ) : undefined
       }
