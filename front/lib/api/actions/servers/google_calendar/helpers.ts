@@ -3,6 +3,7 @@ import {
   isAgentLoopRunContext,
   isSandboxFunctionRunContext,
 } from "@app/lib/actions/types";
+import { isValidTimezone } from "@app/lib/api/timezone";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import { google } from "googleapis";
 import { DateTime, Interval } from "luxon";
@@ -142,15 +143,6 @@ export async function getCalendarClient(authInfo?: AuthInfo) {
   });
 }
 
-function isValidTimeZone(timezone: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: timezone });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export function normalizeTimezone(
   timezone: string | null | undefined
 ): string | null {
@@ -158,7 +150,7 @@ export function normalizeTimezone(
     return null;
   }
 
-  if (isValidTimeZone(timezone)) {
+  if (isValidTimezone(timezone)) {
     return timezone;
   }
 
@@ -168,7 +160,7 @@ export function normalizeTimezone(
   if (offsetMatch) {
     const [, sign, hours, minutes = "00"] = offsetMatch;
     const candidate = `${sign}${hours.padStart(2, "0")}:${minutes}`;
-    if (isValidTimeZone(candidate)) {
+    if (isValidTimezone(candidate)) {
       return candidate;
     }
   }

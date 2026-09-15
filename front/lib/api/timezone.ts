@@ -1,10 +1,14 @@
-import moment from "moment-timezone";
 import { z } from "zod";
 
-const VALID_TIMEZONES = new Set(moment.tz.names());
-
+// Intl throws on a timezone it doesn't recognize, and date-fns-tz relies on Intl
+// for zone resolution, so a value that passes here is safe to hand to it.
 export function isValidTimezone(timezone: string): boolean {
-  return VALID_TIMEZONES.has(timezone);
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export const timezoneSchema = z

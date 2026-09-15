@@ -26,8 +26,10 @@ import type {
   SystemPromptContext,
   SystemPromptSections,
 } from "@app/lib/api/llm/types/options";
+import { isValidTimezone } from "@app/lib/api/timezone";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import logger from "@app/logger/logger";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
@@ -37,7 +39,7 @@ import type {
 } from "@app/types/assistant/conversation";
 import type { UserMessageTypeModel } from "@app/types/assistant/generation";
 import type { WorkspaceType } from "@app/types/user";
-import moment from "moment-timezone";
+import { formatInTimeZone } from "date-fns-tz";
 
 // This section is included in the system prompt, which benefits from prompt caching.
 // To maximize cache hits, avoid adding high-entropy data (e.g., timestamps with time precision,
@@ -56,11 +58,23 @@ function constructContextSection({
   owner: WorkspaceType | null;
   disableFormattingPrompt: boolean;
 }): string {
-  const d = moment(new Date()).tz(userMessage.context.timezone);
+  const { timezone } = userMessage.context;
+  const resolvedTimezone = isValidTimezone(timezone) ? timezone : "UTC";
+  if (resolvedTimezone !== timezone) {
+    logger.warn(
+      { timezone },
+      "Invalid IANA timezone in user message context, falling back to UTC"
+    );
+  }
+  const currentDate = formatInTimeZone(
+    new Date(),
+    resolvedTimezone,
+    "yyyy-MM-dd (EEE)"
+  );
 
   let context = "# CONTEXT\n\n";
   context += `assistant: @${agentConfiguration.name}\n`;
-  context += `current_date: ${d.format("YYYY-MM-DD (ddd)")}\n`;
+  context += `current_date: ${currentDate}\n`;
   if (owner) {
     context += `workspace: ${owner.name}\n`;
   }

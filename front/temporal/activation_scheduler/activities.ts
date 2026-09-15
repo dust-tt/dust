@@ -20,7 +20,7 @@ import {
   DEFAULT_ACTIVATION_NUDGE_MAX_USERS_PER_RUN,
 } from "@app/temporal/activation_scheduler/config";
 import { getNudgeSlotAtMs } from "@app/temporal/activation_scheduler/slots";
-import moment from "moment-timezone";
+import { toZonedTime } from "date-fns-tz";
 
 const ACTIVATION_PODS_CONCURRENCY = 4;
 
@@ -53,7 +53,7 @@ export async function enumerateEligiblePodsForNudgeActivity({
 }): Promise<EligiblePodNudge[]> {
   const timezone = REGION_TIMEZONES[config.getCurrentRegion()];
   const now = new Date();
-  const dayOfWeek = moment.tz(now, timezone).day();
+  const dayOfWeek = toZonedTime(now, timezone).getDay();
 
   // Scheduled runs skip Sat/Sun in the regional timezone. Poke one-offs
   // (`userIds` or overrideChecks) still fire immediately, including weekends.
