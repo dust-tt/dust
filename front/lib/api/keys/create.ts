@@ -38,7 +38,8 @@ type CreateApiKeyErrorCode =
  * @cc [owner:fabiencelier,label:product;security] scopable-spaces
  * `spaceIds` MUST resolve, in the workspace, to `regular`, `project` or `global` spaces only,
  * open or restricted. Any other id (unknown, deleted, `system`, `conversations`) MUST fail with
- * `unauthorized` and no group beyond the workspace global group is returned.
+ * `unauthorized`. A resolved space without a `regular_auto` group MUST fail with
+ * `group_not_found`. On failure no group beyond the workspace global group is returned.
  */
 /**
  * @cc [owner:fabiencelier,label:security] scoped-groups
@@ -74,22 +75,28 @@ async function resolveApiKeyGroups(
       );
     }
 
-    // Workspaces predating the global space member group get it lazily; without it there would
-    // be no group to carry write on Company Data.
-    const globalSpace = scopableSpaces.find((space) => space.isGlobal());
-    if (globalSpace) {
-      await globalSpace.ensureGlobalSpaceMemberGroup(auth);
+    const spaceGroups = await SpaceResource.listRegularAutoGroupsForSpaces(
+      auth,
+      scopableSpaces,
+      {
+        includeEditors: role === "admin",
+      }
+    );
+
+    // Every space owns at least one regular_auto group (its member group) and no two spaces share
+    // one, so fewer groups than spaces means a space has none: the key could not write on it.
+    // Company Data gets its member group at workspace creation or through the
+    // `20260908_backfill_global_space_member_group` migration.
+    if (spaceGroups.length < scopableSpaces.length) {
+      return new Err(
+        new DustError(
+          "group_not_found",
+          "A requested space has no member group to scope the key to."
+        )
+      );
     }
 
-    resolvedGroups.push(
-      ...(await SpaceResource.listRegularAutoGroupsForSpaces(
-        auth,
-        scopableSpaces,
-        {
-          includeEditors: role === "admin",
-        }
-      ))
-    );
+    resolvedGroups.push(...spaceGroups);
   }
 
   return new Ok(resolvedGroups);
