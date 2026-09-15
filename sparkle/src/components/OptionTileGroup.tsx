@@ -64,7 +64,10 @@ export function OptionTileGroup<T extends string = string>({
           disabled={option.disabled}
           className={cn(
             "flex min-w-24 flex-col items-center justify-center gap-1 px-3 py-2",
-            "rounded-2xl border border-border bg-background text-foreground",
+            // Muted glyph and label at rest; the selected tile reads in the
+            // full foreground, like an active Tab.
+            "rounded-2xl border border-border bg-background text-muted-foreground",
+            "data-[state=checked]:text-foreground",
             "transition-colors duration-100 ease-out motion-reduce:transition-none",
             "hover:bg-muted-background",
             "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-200/70",
@@ -76,12 +79,12 @@ export function OptionTileGroup<T extends string = string>({
         >
           <span
             aria-hidden="true"
-            className="flex h-6 items-center justify-center text-muted-foreground"
+            className="flex h-6 items-center justify-center"
           >
             {option.visual ??
               (option.icon && <Icon visual={option.icon} size="md" />)}
           </span>
-          <span className="heading-sm truncate">{option.label}</span>
+          <span className="label-sm truncate">{option.label}</span>
         </RadioGroupPrimitive.Item>
       ))}
     </RadioGroupPrimitive.Root>
