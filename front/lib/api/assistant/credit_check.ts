@@ -8,7 +8,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
-import { isAttendedMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 
 export type CreditCheckResult =
@@ -57,6 +56,11 @@ export async function checkPoolCreditGate(
   return DO_NOT_STOP;
 }
 
+const CREDIT_SPEND_CHECKPOINT_RESUMABLE_ORIGINS: UserMessageOrigin[] = [
+  "web",
+  "extension",
+];
+
 export function isCreditSpendCheckpointExempt(
   auth: Authenticator,
   { userMessageOrigin }: { userMessageOrigin: UserMessageOrigin | null }
@@ -64,7 +68,7 @@ export function isCreditSpendCheckpointExempt(
   return (
     !auth.user() ||
     !userMessageOrigin ||
-    !isAttendedMessageOrigin(userMessageOrigin)
+    !CREDIT_SPEND_CHECKPOINT_RESUMABLE_ORIGINS.includes(userMessageOrigin)
   );
 }
 
