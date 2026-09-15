@@ -258,7 +258,10 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
                   icon={Edit04}
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
+                  // Circular overlay the exact size of the avatar, so the
+                  // hover state reads as "edit this picture", not a square
+                  // button floating over a circle.
+                  className="absolute inset-0 h-full w-full rounded-full opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
                   disabled={isUploadingImage || isProvisioned}
                   isLoading={isUploadingImage}
                 />
