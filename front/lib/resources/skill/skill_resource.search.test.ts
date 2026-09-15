@@ -1,15 +1,11 @@
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import { makeSId } from "@app/lib/resources/string_ids";
 import skillSearchMapping from "@app/lib/skill_search/indices/skills_1.mappings.json";
 import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
-import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { UserFactory } from "@app/tests/utils/UserFactory";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import {
   SkillListItemSchema,
@@ -45,89 +41,10 @@ describe("SkillResource", () => {
     expect(listing).toMatchObject({ status: "active", canRead: true });
   });
 
-  it("batch-hydrates active and archived documents in input order, excluding suggestions", async () => {
-    const regularSpace = await SpaceFactory.regular(testContext.workspace);
-    const pod = await SpaceFactory.project(
-      testContext.workspace,
-      testContext.user.id
-    );
-    const firstSkill = await SkillFactory.create(testContext.authenticator, {
-      name: "First skill",
-      requestedSpaceIds: [regularSpace.id, pod.id],
-    });
-    const additionalEditor = await UserFactory.basic();
-    await MembershipFactory.associate(testContext.workspace, additionalEditor, {
-      role: "user",
-    });
-    const addEditorResult = await firstSkill.addEditors(
-      testContext.authenticator,
-      [additionalEditor]
-    );
-    expect(addEditorResult.isOk()).toBe(true);
-    const secondSkill = await SkillFactory.create(testContext.authenticator, {
-      name: "Second skill",
-    });
-    const archivedSkill = await SkillFactory.create(testContext.authenticator, {
-      name: "Archived skill",
-      status: "archived",
-    });
-    const suggestedSkill = await SkillFactory.create(
-      testContext.authenticator,
-      {
-        name: "Suggested skill",
-        status: "suggested",
-      }
-    );
-
-    const documents = await SkillResource.fetchSearchDocuments(
-      testContext.authenticator,
-      [
-        secondSkill.sId,
-        "invalid",
-        firstSkill.sId,
-        archivedSkill.sId,
-        suggestedSkill.sId,
-      ]
-    );
-
-    expect(documents.map((document) => document.skill_id)).toEqual([
-      secondSkill.sId,
-      firstSkill.sId,
-      archivedSkill.sId,
-    ]);
-    expect(documents[2].status).toBe("archived");
-    expect(documents[1]).toMatchObject({
-      workspace_id: testContext.workspace.sId,
-      status: "active",
-      editor_ids: [testContext.user.sId, additionalEditor.sId].sort(),
-      requested_space_ids: [regularSpace.sId, pod.sId],
-      mcp_server_view_ids: [],
-      active_users_count: 0,
-      favorite_count: 0,
-      is_default: false,
-    });
-  });
-
-  it("rejects a skill ID encoded for another workspace", async () => {
-    const skill = await SkillFactory.create(testContext.authenticator);
-    const otherWorkspace = await WorkspaceFactory.basic();
-    const crossWorkspaceSkillId = makeSId("skill", {
-      id: skill.id,
-      workspaceId: otherWorkspace.id,
-    });
-
-    await expect(
-      SkillResource.fetchSearchDocument(
-        testContext.authenticator,
-        crossWorkspaceSkillId
-      )
-    ).resolves.toBeNull();
-  });
-
   it("rejects missing or stale indexed editors", async () => {
     const { authenticator: auth } = testContext;
     const skill = await SkillFactory.create(auth, { availability: "editors" });
-    const document = await SkillResource.fetchSearchDocument(auth, skill.sId);
+    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
     assert(document);
     expect(document.editor_ids).toHaveLength(1);
     const { editor_ids: _editors, ...malformedDocument } = document;
@@ -173,7 +90,7 @@ describe("SkillResource", () => {
       withTools: false,
       withFileAttachments: false,
     });
-    const document = await SkillResource.fetchSearchDocument(auth, skill.sId);
+    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
     assert(canonical && document);
     expect(canonical.canRead(auth)).toBe(readable);
 
@@ -208,7 +125,7 @@ describe("SkillResource", () => {
     expect(JSON.stringify(document)).not.toContain("Private instructions");
   });
 
-  it("projects tools, favorites, and default availability without indexing instructions", async () => {
+  it("serializes tools and favorites without indexing instructions", async () => {
     const { authenticator: auth, workspace, globalSpace } = testContext;
     const server = await RemoteMCPServerFactory.create(workspace);
     const tool = await MCPServerViewFactory.create(
@@ -232,24 +149,28 @@ describe("SkillResource", () => {
       workspaceId: workspace.sId,
       skillId: skill.sId,
     });
-    const document = await SkillResource.fetchSearchDocument(auth, skill.sId);
+    const current = await SkillResource.fetchById(auth, skill.sId);
+    assert(current);
+    const [document] = await SkillFactory.createSearchDocuments(auth, [
+      current,
+    ]);
     assert(document);
     expect(Object.keys(document).sort()).toEqual(
       Object.keys(skillSearchMapping.properties).sort()
     );
     expect(document).toMatchObject({
       description: skill.userFacingDescription,
-      last_edited_by_user_id: skill.editedBy,
+      last_edited_by_user_id: auth.getNonNullableUser().sId,
       editor_ids: [auth.getNonNullableUser().sId],
       mcp_server_view_ids: [tool.sId],
       favorite_count: 1,
       active_users_count: 0,
-      is_default: true,
       requested_space_ids: [globalSpace.sId],
       created_at: skill.createdAt.toISOString(),
     });
     expect(document).not.toHaveProperty("instructions");
     expect(document).not.toHaveProperty("metadata");
+    expect(document).not.toHaveProperty("is_default");
     expect(skillSearchMapping.properties.created_at).toEqual({ type: "date" });
     expect(document).not.toHaveProperty("non_pod_space_ids");
     expect(document).not.toHaveProperty("non_pod_space_count");
@@ -257,7 +178,11 @@ describe("SkillResource", () => {
 
     const unfavorited = await skill.setFavorite(auth, false);
     expect(unfavorited.isOk()).toBe(true);
-    const updated = await SkillResource.fetchSearchDocument(auth, skill.sId);
+    const updatedSkill = await SkillResource.fetchById(auth, skill.sId);
+    assert(updatedSkill);
+    const [updated] = await SkillFactory.createSearchDocuments(auth, [
+      updatedSkill,
+    ]);
     expect(updated?.favorite_count).toBe(0);
     expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledTimes(2);
   });
@@ -268,9 +193,9 @@ describe("SkillResource", () => {
     const skill = await SkillFactory.create(testContext.authenticator, {
       requestedSpaceIds: [regularSpace.id],
     });
-    const document = await SkillResource.fetchSearchDocument(
+    const [document] = await SkillFactory.createSearchDocuments(
       testContext.authenticator,
-      skill.sId
+      [skill]
     );
     expect(document).not.toBeNull();
     if (!document) {
@@ -292,20 +217,20 @@ describe("SkillResource", () => {
       { ...document, workspace_id: "workspace-invalid" },
     ];
 
-    await expect(
-      SkillResource.filterSearchDocumentsByCurrentState(
-        testContext.authenticator,
-        [document, ...staleDocuments]
-      )
-    ).resolves.toEqual([document]);
+    const visible = await SkillResource.authorizeSearchDocuments(
+      testContext.authenticator,
+      [document, ...staleDocuments].map((document) => ({ document, score: 1 }))
+    );
+    expect([...visible.values()]).toEqual([
+      skill.toSearchJSON(testContext.authenticator, 1),
+    ]);
 
     await skill.archive(testContext.authenticator);
-    await expect(
-      SkillResource.filterSearchDocumentsByCurrentState(
-        testContext.authenticator,
-        [document]
-      )
-    ).resolves.toEqual([]);
+    const archived = await SkillResource.authorizeSearchDocuments(
+      testContext.authenticator,
+      [{ document, score: 1 }]
+    );
+    expect(archived.size).toBe(0);
   });
 
   it("lists backfill candidates through listByWorkspace, excluding code-defined and suggested skills", async () => {
@@ -331,7 +256,6 @@ describe("SkillResource", () => {
       {
         status: ["active", "archived"],
         onlyCustom: true,
-        permissionFiltering: "dangerously_skip",
         withInstructions: false,
         withTools: false,
         withFileAttachments: false,

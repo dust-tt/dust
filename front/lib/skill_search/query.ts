@@ -123,7 +123,12 @@ function buildSelectionFilters(
     }
   }
   if (filters.isDefault !== undefined) {
-    selected.push({ term: { is_default: filters.isDefault } });
+    const defaultFilter = { term: { availability: "users_and_agents" } };
+    selected.push(
+      filters.isDefault
+        ? defaultFilter
+        : { bool: { must_not: [defaultFilter] } }
+    );
   }
   if (filters.editedByMe !== undefined) {
     const editorFilter = buildEditorFilter(auth);

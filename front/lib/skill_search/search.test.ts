@@ -14,7 +14,7 @@ vi.mock("@app/lib/api/elasticsearch", async () => {
 });
 
 import { Authenticator } from "@app/lib/auth";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   MAX_SKILL_SEARCH_RESULTS,
@@ -51,7 +51,6 @@ function makeSkillDocument(
     mcp_server_view_ids: [],
     active_users_count: 0,
     favorite_count: 0,
-    is_default: false,
     created_at: "2026-08-01T00:00:00.000Z",
     updated_at: "2026-08-01T00:00:00.000Z",
     ...overrides,
@@ -130,6 +129,27 @@ describe("skill_search/search", () => {
     );
   });
 
+  it.each([
+    true,
+    false,
+  ])("filters isDefault=%s through availability", async (isDefault) => {
+    const { authenticator: auth, workspace } = await createResourceTest({
+      role: "user",
+    });
+    const query = prepareSkillSearchQuery(auth, "", "strict", {
+      filters: { isDefault },
+    });
+    const defaultFilter = { term: { availability: "users_and_agents" } };
+
+    expect(query.bool?.filter).toEqual(
+      expect.arrayContaining([
+        { term: { workspace_id: workspace.sId } },
+        isDefault ? defaultFilter : { bool: { must_not: [defaultFilter] } },
+      ])
+    );
+    expect(JSON.stringify(query)).not.toContain("is_default");
+  });
+
   it.each(
     (
       [
@@ -202,7 +222,7 @@ describe("skill_search/search", () => {
     ];
     const esCandidateIds = new Set<string>();
     const expectedSkillIds: string[] = [];
-    const skillIds: string[] = [];
+    const skills: SkillResource[] = [];
 
     // Bounded Cartesian product: 5 space cases × 3 pod cases × 3 availabilities × 2 editor states.
     // Fixtures and auth/grant hydration stay real; only the ES boundary is mocked.
@@ -219,7 +239,7 @@ describe("skill_search/search", () => {
                 (space) => space.id
               ),
             });
-            skillIds.push(skill.sId);
+            skills.push(skill);
             const visibleByAvailability =
               availability !== "editors" || isEditor || keyFactory !== null;
             if (
@@ -234,11 +254,11 @@ describe("skill_search/search", () => {
         }
       }
     }
-    const documents = await SkillResource.fetchSearchDocuments(
+    const documents = await SkillFactory.createSearchDocuments(
       authorAuth,
-      skillIds
+      skills
     );
-    expect(documents).toHaveLength(skillIds.length);
+    expect(documents).toHaveLength(skills.length);
     let auth = authorAuth;
     if (keyFactory) {
       const key = await keyFactory([
@@ -355,7 +375,7 @@ describe("skill_search/search", () => {
       assert(members);
       await GroupFactory.withMembers(auth, members, [user]);
     }
-    const skillIds: string[] = [];
+    const skills: SkillResource[] = [];
     const expectedSkillIds: string[] = [];
     for (const availability of SKILL_AVAILABILITIES) {
       for (const isEditor of [false, true]) {
@@ -365,7 +385,7 @@ describe("skill_search/search", () => {
           addCurrentUserAsEditor: isEditor,
           requestedSpaceIds: [pod.id],
         });
-        skillIds.push(skill.sId);
+        skills.push(skill);
         if (access !== "denied" && (availability !== "editors" || isEditor)) {
           expectedSkillIds.push(skill.sId);
         }
@@ -374,8 +394,8 @@ describe("skill_search/search", () => {
     await auth.refresh();
     expect(auth.can("read", pod)).toBe(access !== "denied");
     expect(pod.isMember(auth)).toBe(access === "member" || access === "editor");
-    const documents = await SkillResource.fetchSearchDocuments(auth, skillIds);
-    expect(documents).toHaveLength(skillIds.length);
+    const documents = await SkillFactory.createSearchDocuments(auth, skills);
+    expect(documents).toHaveLength(skills.length);
     // Deliberately include non-editor hits: the live editor guard must also fail closed.
     mockHits(documents);
     const result = await searchSkillDocuments(auth, {
@@ -398,7 +418,7 @@ describe("skill_search/search", () => {
       availability: "editors",
       requestedSpaceIds: [pod.id],
     });
-    const document = await SkillResource.fetchSearchDocument(auth, skill.sId);
+    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
     assert(document);
     mockHits([document]);
     const before = await searchSkillDocuments(auth, {
@@ -640,7 +660,7 @@ describe("skill_search/search", () => {
       availability: "editors",
       addCurrentUserAsEditor: false,
     });
-    const document = await SkillResource.fetchSearchDocument(auth, skill.sId);
+    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
     assert(document);
     expect(skill.canWrite(auth)).toBe(false);
     mockHits([
@@ -669,7 +689,7 @@ describe("skill_search/search", () => {
       role: "user",
     });
     const skill = await SkillFactory.create(auth, { availability: "editors" });
-    const document = await SkillResource.fetchSearchDocument(auth, skill.sId);
+    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
     assert(document);
     const user = auth.getNonNullableUser();
     const malformedSkill = {
@@ -722,7 +742,7 @@ describe("skill_search/search", () => {
       name: "My editors-only search skill",
     });
     await auth.refresh();
-    const document = await SkillResource.fetchSearchDocument(auth, skill.sId);
+    const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
     expect(document).not.toBeNull();
     if (!document) {
       return;
@@ -751,9 +771,9 @@ describe("skill_search/search", () => {
     const skill = await SkillFactory.create(authorAuth, {
       availability: "editors",
     });
-    const editorsOnlySkill = await SkillResource.fetchSearchDocument(
+    const [editorsOnlySkill] = await SkillFactory.createSearchDocuments(
       authorAuth,
-      skill.sId
+      [skill]
     );
     assert(editorsOnlySkill);
     const key = await KeyFactory.readOnly(globalGroup);
