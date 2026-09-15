@@ -10,7 +10,6 @@ import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
 const EMPTY_DEGRADED_MODEL_IDS: ReadonlySet<string> = new Set();
-const EMPTY_FALLBACK_STREAM_IDS: ReadonlySet<string> = new Set();
 
 // The catalog itself barely moves, but the degraded models it reports do: an
 // operator flagging a model mid-incident must reach tabs that stay open for
@@ -56,10 +55,7 @@ export function useModels({
     [data]
   );
   const fallbackStreamIds = useMemo(
-    () =>
-      data?.fallbackStreamIds
-        ? new Set(data.fallbackStreamIds)
-        : EMPTY_FALLBACK_STREAM_IDS,
+    () => new Set(data?.fallbackStreamIds ?? []),
     [data]
   );
 
