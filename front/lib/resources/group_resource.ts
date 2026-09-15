@@ -487,12 +487,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    const group = await GroupResource.makeNew({
-      name,
-      kind: "regular_manual",
-      workspaceId: owner.id,
-    });
-
+    // Everything that can reject the request is checked before the group row exists: a rejected
+    // creation must not leave an empty group behind, which would also block retrying the name.
     const uniqueMemberIds = [...new Set(memberIds)];
     const users = await UserResource.fetchByIds(uniqueMemberIds);
     if (users.length !== uniqueMemberIds.length) {
@@ -500,7 +496,27 @@ export class GroupResource extends BaseResource<GroupModel> {
         new DustError("user_not_found", "Some users were not found.")
       );
     }
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({
+        users,
+        workspace: owner,
+      });
+    if (workspaceMemberships.length !== users.length) {
+      return new Err(
+        new DustError(
+          "user_not_found",
+          "Cannot add: users are not members of the workspace"
+        )
+      );
+    }
     const memberUsers = users.map((u) => u.toJSON());
+
+    const group = await GroupResource.makeNew({
+      name,
+      kind: "regular_manual",
+      workspaceId: owner.id,
+    });
+    // Cannot fail past this point: the users were validated above and the group is empty.
     const addResult = await group.dangerouslyAddMembers(auth, {
       users: memberUsers,
     });
@@ -2385,36 +2401,6 @@ export class GroupResource extends BaseResource<GroupModel> {
   }
 
   /**
-   * Whether applying `addUserIds` then `removeUserIds` could leave the group without any active
-   * member. `addUserIds` and `removeUserIds` must be deduplicated; a user in both lists ends up
-   * removed, since members are added first and removed second.
-   *
-   * Only reads the current members when the answer is not already settled by the two lists, so
-   * the common add-only and add-and-remove cases cost no query.
-   */
-  private async wouldBeEmptyAfterMemberChange(
-    auth: Authenticator,
-    {
-      addUserIds,
-      removeUserIds,
-    }: { addUserIds: string[]; removeUserIds: string[] }
-  ): Promise<boolean> {
-    // Removing nothing can only grow the group.
-    if (removeUserIds.length === 0) {
-      return false;
-    }
-
-    // Any added user that is not removed again survives the change.
-    const removedUserIds = new Set(removeUserIds);
-    if (addUserIds.some((userId) => !removedUserIds.has(userId))) {
-      return false;
-    }
-
-    const currentMembers = await this.getActiveMembers(auth);
-    return currentMembers.every((member) => removedUserIds.has(member.sId));
-  }
-
-  /**
    * Adds and/or removes members of a manually-managed group, leaving the other members untouched.
    */
   /**
@@ -2493,13 +2479,67 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Checked before any mutation so a rejected update leaves the members untouched.
-    if (
-      await this.wouldBeEmptyAfterMemberChange(auth, {
-        addUserIds: uniqueAddUserIds,
-        removeUserIds: uniqueRemoveUserIds,
-      })
-    ) {
+    // Everything that can reject the request is checked before any mutation: the additions and
+    // removals below run as two separate writes, so a late rejection would leave the first one
+    // persisted (and unaudited by the caller).
+    const owner = auth.getNonNullableWorkspace();
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({
+        users,
+        workspace: owner,
+      });
+    const activeWorkspaceUserIds = new Set(
+      workspaceMemberships.map((m) => m.userId)
+    );
+    const userModelIdBySId = new Map(users.map((u) => [u.sId, u.id]));
+    const isActiveWorkspaceMember = (userId: string) => {
+      const modelId = userModelIdBySId.get(userId);
+      return modelId !== undefined && activeWorkspaceUserIds.has(modelId);
+    };
+    if (!uniqueAddUserIds.every(isActiveWorkspaceMember)) {
+      return new Err(
+        new DustError(
+          "user_not_found",
+          "Cannot add: users are not members of the workspace"
+        )
+      );
+    }
+    if (!uniqueRemoveUserIds.every(isActiveWorkspaceMember)) {
+      return new Err(
+        new DustError(
+          "user_not_member",
+          "Cannot remove: users are not members of the workspace"
+        )
+      );
+    }
+
+    const currentMemberIds = new Set(
+      (await this.getActiveMembers(auth)).map((m) => m.sId)
+    );
+    if (uniqueAddUserIds.some((userId) => currentMemberIds.has(userId))) {
+      return new Err(
+        new DustError(
+          "user_already_member",
+          "Cannot add: users are already members of the group"
+        )
+      );
+    }
+    if (!uniqueRemoveUserIds.every((userId) => currentMemberIds.has(userId))) {
+      return new Err(
+        new DustError(
+          "user_not_member",
+          "Cannot remove: users are not members of the group"
+        )
+      );
+    }
+
+    // Members are added first and removed second, so a user in both lists ends up removed.
+    const removedUserIds = new Set(uniqueRemoveUserIds);
+    const remainingCount =
+      [...currentMemberIds].filter((userId) => !removedUserIds.has(userId))
+        .length +
+      uniqueAddUserIds.filter((userId) => !removedUserIds.has(userId)).length;
+    if (remainingCount === 0) {
       return new Err(
         new DustError("last_group_member", LAST_GROUP_MEMBER_ERROR_MESSAGE)
       );
