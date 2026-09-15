@@ -4473,7 +4473,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * @cc [owner:aubin-tchoi,label:backend;security] skill-search-serialization
-   * Serialize an unredacted custom skill fetched with tools, using supplied editor,
+   * Serialize a custom skill fetched with tools, using supplied editor,
    * usage and default values; perform no I/O and never include private skill content.
    */
   toSearchDocument(
@@ -4491,10 +4491,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   ): SkillSearchDocument {
     assert(
-      !this.globalSId &&
-        !this.redactedForCaller &&
-        this.workspaceId === workspace.id,
-      "Search documents require an unredacted custom skill in the workspace."
+      !this.globalSId && this.workspaceId === workspace.id,
+      "Search documents require a custom skill in the workspace."
     );
     return {
       workspace_id: workspace.sId,
