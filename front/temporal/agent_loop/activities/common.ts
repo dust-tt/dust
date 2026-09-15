@@ -948,9 +948,9 @@ export async function finalizeCreditStop(
 }
 
 /**
- * Credit spend checkpoint pause: persists the pause on the message and flags the conversation as
- * needing the user's attention. Runs in the non-cancellable finalize so the persisted status can
- * never say "paused" while the loop is still running.
+ * Credit spend checkpoint pause: persists the pause on the message, flags the conversation as
+ * needing the user's attention and notifies the client. Runs in the non-cancellable finalize so
+ * the persisted status can never say "paused" while the loop is still running.
  */
 export async function finalizeCreditSpendCheckpointPause(
   authType: AuthenticatorType,
@@ -978,7 +978,10 @@ export async function finalizeCreditSpendCheckpointPause(
       )
     );
   }
-  const { auth, agentMessage, conversation } = runAgentDataRes.value;
+  const { auth, agentConfiguration, agentMessage, conversation } =
+    runAgentDataRes.value;
+
+  const step = maxBy(agentMessage.contents, "step")?.step ?? 0;
 
   // A stop or cancellation can land around the pause. The terminal status wins: a cancelled
   // message must not be flagged paused and waiting for the user.
@@ -999,6 +1002,16 @@ export async function finalizeCreditSpendCheckpointPause(
   });
   await ConversationResource.markAsActionRequired(auth, { conversation });
 
+  await publishConversationRelatedEvent({
+    conversationId: conversation.sId,
+    step,
+    event: {
+      type: "agent_credit_spend_checkpoint_reached",
+      created: Date.now(),
+      configurationId: agentConfiguration.sId,
+      messageId: agentMessage.sId,
+    },
+  });
   logger.info(
     {
       agentMessageId: agentMessage.sId,
