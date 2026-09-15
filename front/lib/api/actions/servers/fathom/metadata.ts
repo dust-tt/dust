@@ -5,13 +5,13 @@ export const FATHOM_TOOLS_METADATA = [
   {
     name: "list_meetings",
     description:
-      "List and browse your Fathom meeting and call recordings with optional filters for date range, team, attendee domain, recorded-by email, and CRM data. Returns each Fathom recording with its summary, action items, and metadata.",
+      "List and browse your Fathom meeting and call recordings with optional filters for date range, team, attendee domain, recorded-by email, and CRM data. Returns each Fathom recording with its summary, action items, and metadata, along with a machine-readable JSON block of the form {meetings, nextCursor}.",
     schema: {
       cursor: z
         .string()
         .optional()
         .describe(
-          "Pagination cursor returned as next_cursor in a previous response. Omit to start from the beginning."
+          "Pagination cursor returned as nextCursor in a previous response. Omit to start from the beginning."
         ),
       start_date: z
         .string()
