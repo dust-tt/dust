@@ -4484,7 +4484,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }: {
       lastEditedByUserId: string | null;
       editorIds: readonly string[];
-      activeUsersCount: number;
+      activeUsersCount: number | null;
     }
   ): SkillSearchDocument {
     assert(
