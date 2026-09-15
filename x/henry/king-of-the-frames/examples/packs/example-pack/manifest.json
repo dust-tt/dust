@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "packId": "example-pack",
+  "source": {
+    "kind": "synthetic-example"
+  },
+  "files": [
+    {
+      "path": "context/data/regional_metrics.csv",
+      "description": "Synthetic monthly throughput and quality metrics",
+      "provenance": "Generated for the committed example"
+    },
+    {
+      "path": "context/INDEX.md",
+      "description": "File inventory and column definitions",
+      "provenance": "Generated for the committed example"
+    }
+  ]
+}
