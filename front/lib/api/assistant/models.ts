@@ -3,14 +3,12 @@ import { isProviderWhitelisted } from "@app/lib/api/assistant/provider_whitelist
 import { config as regionConfig } from "@app/lib/api/regions/config";
 import { isModelEnabled } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { isByokTransitioningPlan } from "@app/lib/plans/plan_codes";
 import { CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG } from "@app/types/assistant/models/anthropic";
 import { GEMINI_3_8_FLASH_MODEL_CONFIG } from "@app/types/assistant/models/google_ai_studio";
 import { MISTRAL_SMALL_MODEL_CONFIG } from "@app/types/assistant/models/mistral";
 import { isModelId } from "@app/types/assistant/models/models";
 import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import {
-  BYOK_MODEL_PROVIDER_IDS,
   isModelProviderId,
   MODEL_PROVIDER_IDS,
 } from "@app/types/assistant/models/providers";
@@ -41,18 +39,6 @@ export function getWhitelistedProviders(
 
   if (!plan.isByok) {
     return whiteListedProviders;
-  }
-
-  // For BYOK_TRANSITIONING workspaces, we fall back on Dust-managed keys for BYOK providers when
-  // the customer hasn't configured their own. Whitelist all BYOK providers so they remain available
-  // even if not yet configured.
-  if (isByokTransitioningPlan(plan)) {
-    const allByokProviderIds = new Set<ModelProviderIdType>(
-      BYOK_MODEL_PROVIDER_IDS
-    );
-    allByokProviderIds.add("noop");
-
-    return allByokProviderIds;
   }
 
   const providersHealth = auth.providersHealth();
