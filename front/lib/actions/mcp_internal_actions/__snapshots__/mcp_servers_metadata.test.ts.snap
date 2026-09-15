@@ -37,6 +37,10 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool billing info ac
       "freeUsage": true,
       "toolCostCategory": "basic",
     },
+    "delete_agent": {
+      "freeUsage": true,
+      "toolCostCategory": "basic",
+    },
   },
   "agent_delegation": {
     "run_agent": {
@@ -2705,6 +2709,7 @@ exports[`MCP Servers Metadata Snapshot > should have stable tool stakes across a
   },
   "agent_authoring": {
     "create_agent": "high",
+    "delete_agent": "high",
   },
   "agent_delegation": {
     "run_agent": "never_ask",
