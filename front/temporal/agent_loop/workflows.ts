@@ -8,7 +8,6 @@ import type { AuthenticatorType } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
-import type { DescendantRunData } from "@app/temporal/agent_loop/activities/cost_threshold_warnings";
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
 import type * as finalizeActivities from "@app/temporal/agent_loop/activities/finalize";
@@ -309,8 +308,6 @@ export async function agentLoopWorkflow({
   // it back.
   let skipCreditSpendCheckpointChecks = false;
 
-  let descendantData: DescendantRunData | null = null;
-
   const runIds: string[] = [];
   const ongoingAgentLoop =
     authType.userId !== null && patched("track-user-agent-loops-in-redis")
@@ -351,11 +348,6 @@ export async function agentLoopWorkflow({
 
         const stepStartTime = Date.now();
 
-        // Valid only for this one call: consume it now regardless of outcome, and let the
-        // checkpoint check below repopulate it for the next step if it runs again.
-        const stepDescendantData = descendantData;
-        descendantData = null;
-
         const {
           runId,
           shouldContinue,
@@ -371,7 +363,6 @@ export async function agentLoopWorkflow({
           runIds,
           startStep,
           forceDisableToolUse,
-          descendantData: stepDescendantData,
         });
 
         forceDisableToolUse = retryWithoutTools ?? false;
@@ -458,8 +449,6 @@ export async function agentLoopWorkflow({
             }
             if (checkpointResult.skipRemainingChecks) {
               skipCreditSpendCheckpointChecks = true;
-            } else {
-              descendantData = checkpointResult.descendantData;
             }
           } catch (err) {
             if (!(err instanceof ActivityFailure) || isCancellation(err)) {
@@ -581,7 +570,6 @@ async function executeStepIteration({
   runIds,
   startStep,
   forceDisableToolUse,
-  descendantData,
 }: {
   authType: AuthenticatorType;
   currentStep: number;
@@ -589,7 +577,6 @@ async function executeStepIteration({
   runIds: string[];
   startStep: number;
   forceDisableToolUse: boolean;
-  descendantData: DescendantRunData | null;
 }): Promise<{
   runId: string | null;
   shouldContinue: boolean;
@@ -605,7 +592,6 @@ async function executeStepIteration({
     runIds,
     step: currentStep,
     forceDisableToolUse,
-    descendantData,
   });
 
   if (!result) {
