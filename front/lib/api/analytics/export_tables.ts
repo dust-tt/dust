@@ -31,7 +31,10 @@ import {
   USER_EXPORT_HEADERS,
 } from "@app/lib/api/analytics/users_export";
 import { fetchContextOriginDailyBreakdown } from "@app/lib/api/assistant/observability/context_origin";
-import { dayBoundaryInTimezone } from "@app/lib/api/timezone";
+import {
+  dayBoundaryInTimezone,
+  dayRangeInTimezone,
+} from "@app/lib/api/timezone";
 import type { Authenticator } from "@app/lib/auth";
 import { hasFeatureFlag } from "@app/lib/auth";
 import type { Result } from "@app/types/shared/result";
@@ -263,15 +266,16 @@ function buildExportConsumptionScopeQuery(
     timezone,
   }: { startDate: string; endDate: string; timezone: string }
 ): estypes.QueryDslQueryContainer {
-  const startInstant = dayBoundaryInTimezone(startDate, timezone).toISOString();
-  const exclusiveEndInstant = dayBoundaryInTimezone(endDate, timezone, {
-    offsetDays: 1,
-  }).toISOString();
+  const { startInstant, exclusiveEndInstant } = dayRangeInTimezone(
+    startDate,
+    endDate,
+    timezone
+  );
 
   return buildConsumptionScopeQuery({
     auth,
-    startDate: startInstant,
-    endDate: exclusiveEndInstant,
+    startDate: startInstant.toISOString(),
+    endDate: exclusiveEndInstant.toISOString(),
   });
 }
 

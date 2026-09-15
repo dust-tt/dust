@@ -1,6 +1,6 @@
 import { fetchAgentMetadata } from "@app/lib/api/analytics/enrichment";
 import config from "@app/lib/api/config";
-import { dayBoundaryInTimezone } from "@app/lib/api/timezone";
+import { dayRangeInTimezone } from "@app/lib/api/timezone";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -46,10 +46,11 @@ export async function fetchFeedbackExportRows({
   endDate: string;
   timezone: string;
 }): Promise<Result<FeedbackExportRow[], Error>> {
-  const startInstant = dayBoundaryInTimezone(startDate, timezone);
-  const exclusiveEndInstant = dayBoundaryInTimezone(endDate, timezone, {
-    offsetDays: 1,
-  });
+  const { startInstant, exclusiveEndInstant } = dayRangeInTimezone(
+    startDate,
+    endDate,
+    timezone
+  );
 
   const feedbacks = await getFrontReplicaDbConnection().transaction(
     async (transaction) =>

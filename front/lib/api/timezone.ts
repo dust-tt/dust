@@ -136,6 +136,25 @@ export function dayBoundaryInTimezone(
   );
 }
 
+/**
+ * Resolves an inclusive `[startDate, endDate]` calendar-day range in `timezone` to a
+ * half-open `[startInstant, exclusiveEndInstant)` instant range, for the common case of
+ * querying a store whose range filter treats the end bound as exclusive (e.g.
+ * Elasticsearch's date_histogram-backed indices).
+ */
+export function dayRangeInTimezone(
+  startDate: string,
+  endDate: string,
+  timezone: string
+): { startInstant: Date; exclusiveEndInstant: Date } {
+  return {
+    startInstant: dayBoundaryInTimezone(startDate, timezone),
+    exclusiveEndInstant: dayBoundaryInTimezone(endDate, timezone, {
+      offsetDays: 1,
+    }),
+  };
+}
+
 export const timezoneSchema = z
   .string()
   .optional()
