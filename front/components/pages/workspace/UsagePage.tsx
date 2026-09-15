@@ -1,6 +1,5 @@
 import { ConfirmContext } from "@app/components/Confirm";
 import { AdminPageContainer } from "@app/components/layouts/AdminPageContainer";
-import { SeatProvisioningSection } from "@app/components/pages/workspace/usage/SeatProvisioningSection";
 import { BulkChangeSeatModal } from "@app/components/workspace/BulkChangeSeatModal";
 import { BulkEditSpendLimitModal } from "@app/components/workspace/BulkEditSpendLimitModal";
 import { BuyAwuCreditsDialog } from "@app/components/workspace/BuyAwuCreditsDialog";
@@ -1389,6 +1388,13 @@ export function UsagePage() {
                 owner={owner}
                 showSpendLimitColumn={isCreditPriced}
                 showModelTiersColumn={isWorkspaceAdmin}
+                showSeatColumn={
+                  isCreditPriced &&
+                  isWorkspaceAdmin &&
+                  groupSeatProvisioningEnabled
+                }
+                seatPlans={seatPlans}
+                grantableSeatTypes={grantableSeatTypes}
               />
             </TabsContent>
 
@@ -1409,13 +1415,6 @@ export function UsagePage() {
                     />
                   )}
                   <ModelTiersSettingsCard owner={owner} />
-                  {isCreditPriced && groupSeatProvisioningEnabled && (
-                    <SeatProvisioningSection
-                      owner={owner}
-                      availableSeatTypes={grantableSeatTypes}
-                      seatPlans={seatPlans}
-                    />
-                  )}
                   {isCreditPriced && (
                     <LockedSection
                       locked={!isAwuPoolCurrentCycleLoading && !hasPool}
