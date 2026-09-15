@@ -257,12 +257,19 @@ export function ConversationSidePanelProvider({
   const showPanel = useCallback(
     (params: OpenPanelParams) => {
       setIsPanelClosing(false);
+      const previous = currentParamsRef.current;
       currentParamsRef.current = params;
       setCurrentPanel(params.type);
       setData(panelDataKey(params));
+      // Only FrameRenderer can leave full screen, so a panel of another type would otherwise be
+      // stranded at 100% with the nav bar hidden. Same-type shows keep it, so a refreshing Frame
+      // does not drop out.
+      if (previous && previous.type !== params.type) {
+        setFullScreenHash(undefined);
+      }
       panelRef.current?.expand(getDefaultRightPanelSize(params.type));
     },
-    [setCurrentPanel, setData]
+    [setCurrentPanel, setData, setFullScreenHash]
   );
 
   const closePanel = useCallback(() => {

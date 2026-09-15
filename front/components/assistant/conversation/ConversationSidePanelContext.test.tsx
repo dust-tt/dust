@@ -216,6 +216,36 @@ describe("ConversationSidePanelProvider and the URL hash", () => {
   });
 });
 
+describe("ConversationSidePanelProvider full screen", () => {
+  it("leaves full screen when another panel takes over", () => {
+    const { result } = renderSidePanel();
+    act(() =>
+      result.current.openPanel({ type: "interactive_content", fileId: "fil_1" })
+    );
+    act(() => hash.set({ fullScreen: "true" }));
+
+    act(() => result.current.openPanel({ type: "files" }));
+    expect(hash.values.fullScreen).toBeUndefined();
+  });
+
+  it("stays full screen while the same Frame refreshes", () => {
+    const { result } = renderSidePanel();
+    act(() =>
+      result.current.openPanel({ type: "interactive_content", fileId: "fil_1" })
+    );
+    act(() => hash.set({ fullScreen: "true" }));
+
+    act(() =>
+      result.current.openPanel({
+        type: "interactive_content",
+        fileId: "fil_1",
+        timestamp: "123",
+      })
+    );
+    expect(hash.values.fullScreen).toBe("true");
+  });
+});
+
 describe("ConversationSidePanelProvider hash encoding", () => {
   it.each([
     [{ type: "actions", messageId: "msg_1" }, "msg_1"],
