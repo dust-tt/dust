@@ -26,8 +26,7 @@ import {
 
 /**
  * Convert local hour/minute in a given IANA timezone to a UTC-based
- * millisecond-of-day value. Uses the current UTC offset of the timezone,
- * so DST changes may shift the firing time by ~1h (accepted trade-off).
+ * millisecond-of-day value.
  */
 function localTimeToUtcMs(
   hour: number,

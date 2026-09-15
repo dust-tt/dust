@@ -10,20 +10,13 @@ import { QUEUE_NAME } from "./config";
 import { runSignal } from "./signals";
 import { dataRetentionWorkflow } from "./workflows";
 
-/**
- * Returns the UTC hour corresponding to midnight in the given timezone.
- */
-function getMidnightUtcHour(timezone: string): number {
-  return localTimeOfDayToUtc(0, 0, timezone).hour;
-}
-
 export async function launchDataRetentionWorkflow(): Promise<
   Result<undefined, Error>
 > {
   const client = await getTemporalClientForFrontNamespace();
   const region = config.getCurrentRegion();
   const timezone = REGION_TIMEZONES[region];
-  const utcHour = getMidnightUtcHour(timezone);
+  const { hour: utcHour } = localTimeOfDayToUtc(0, 0, timezone);
 
   await client.workflow.signalWithStart(dataRetentionWorkflow, {
     args: [],
