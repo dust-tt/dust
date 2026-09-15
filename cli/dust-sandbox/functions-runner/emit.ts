@@ -18,6 +18,7 @@
 import { mkdirSync, writeFileSync, writeSync } from "node:fs";
 import { join } from "node:path";
 
+import type { InvokePhaseTimingsMs } from "./invoke.ts";
 import type { Output } from "./protocol.ts";
 
 function isRetryableWriteError(error: unknown): boolean {
@@ -50,6 +51,22 @@ export interface ResultSpillPointer {
 }
 
 export type DeliverableOutput = Output | ResultSpillPointer;
+
+/** Sidecar key the cold Bun child stamps on its stdout JSON; dsbx strips it
+ * into the outer envelope `timingsMs` so front's strict outcome schema never
+ * sees it. */
+export const DUST_RUNNER_TIMINGS_MS_KEY = "_dustTimingsMs";
+
+export type DeliverableWithRunnerTimings = DeliverableOutput & {
+  [DUST_RUNNER_TIMINGS_MS_KEY]?: InvokePhaseTimingsMs;
+};
+
+export function attachRunnerTimings(
+  out: DeliverableOutput,
+  timingsMs: InvokePhaseTimingsMs
+): DeliverableWithRunnerTimings {
+  return { ...out, [DUST_RUNNER_TIMINGS_MS_KEY]: timingsMs };
+}
 
 /**
  * Apply the size policy to a run outcome: inline under the cap, spill file +

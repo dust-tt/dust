@@ -891,6 +891,7 @@ export class SandboxFunctionInvocationResource extends BaseResource<SandboxFunct
           ...(parsed.spill === null
             ? {}
             : { spilledResultBytes: parsed.spill.resultBytes }),
+          ...(timings === null ? {} : { timingsMs: timings }),
         },
         "Sandbox function stdout result delivery"
       );

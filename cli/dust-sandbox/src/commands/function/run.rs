@@ -3,11 +3,14 @@ use std::time::Instant;
 use anyhow::{anyhow, Result};
 use tokio::io::AsyncReadExt as _;
 
-use super::envelope::{ResultEnvelope, RunnerKind, TimingsMs};
+use super::envelope::{ResolveKind, ResultEnvelope, RunnerKind, TimingsMs};
 use super::warm::{self, WarmRun};
 use super::{emit_error, resolve_existing, spawn_function_at};
 
 const NON_JSON_SNIPPET_MAX_CHARS: usize = 512;
+/// Sidecar the Bun runner stamps on its stdout JSON; lifted into the outer
+/// envelope and stripped so front's strict outcome schema never sees it.
+const DUST_RUNNER_TIMINGS_MS_KEY: &str = "_dustTimingsMs";
 
 /// Execute a function and deliver its response.
 ///
@@ -36,7 +39,8 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
         deliver_stdout_envelope(ResultEnvelope::stdout_invocation_failed(err.to_string()), 0);
     }
 
-    if let WarmRun::Outcome(outcome, import_kind) = warm::try_warm_run(name, &input).await {
+    let warm_started = Instant::now();
+    if let WarmRun::Outcome(outcome, import_kind, phase) = warm::try_warm_run(name, &input).await {
         let runner_ms = started.elapsed().as_millis() as u64;
         deliver_stdout_envelope(
             ResultEnvelope::stdout_outcome(
@@ -46,31 +50,33 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
                     runner: runner_ms,
                     runner_kind: Some(RunnerKind::Warm),
                     import_kind,
+                    warm_attempt: None,
+                    resolve: None,
+                    resolve_kind: None,
+                    child: None,
+                    import: phase.as_ref().and_then(|p| p.import),
+                    handler: phase.as_ref().and_then(|p| p.handler),
                 }),
             ),
             0,
         );
     }
+    let warm_attempt_ms = warm_started.elapsed().as_millis() as u64;
 
-    // Cold path. A stamped invocation whose bundle already sits in the local
-    // content-addressed cache runs from the cached copy, skipping the
-    // gcsfuse-backed functions dir entirely (both the resolution readdir and
-    // the bundle read) — the dominant cost of a first invocation. The cache
-    // key is the publish-time hash, so it can never serve a republished
-    // function's old bytes. A cache hit also skips resolve_existing's
-    // existence check, so an invocation stamped just before its function was
-    // deleted can still execute: acceptable, front only stamps invocations
-    // for functions that exist at dispatch time, and that window is the one
-    // in-flight request. Everything else resolves as before.
+    // Cold path. Prefer the local sha cache, else gcsfuse readdir of DUST_FUNCTIONS_DIR.
     let stamped_sha256 = stamped_bundle_sha256(&input);
-    let resolved = match stamped_sha256
+    let resolve_started = Instant::now();
+    let (resolved, resolve_kind) = match stamped_sha256
         .as_deref()
         .filter(|_| super::is_valid_name(name))
         .and_then(warm::cached_bundle_path)
     {
-        Some(cached) => Ok(cached),
-        None => resolve_existing(name),
+        Some(cached) => (Ok(cached), ResolveKind::Cache),
+        None => (resolve_existing(name), ResolveKind::Gcsfuse),
     };
+    let resolve_ms = resolve_started.elapsed().as_millis() as u64;
+
+    let child_started = Instant::now();
     let (spawned, handler) = match resolved {
         Ok(handler) => {
             let spawned = spawn_function_at(&handler, "run", Some(&input), true).await;
@@ -80,6 +86,7 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
         // (bad name, unset dir, missing or ambiguous bundle) propagates.
         Err(e) => (Err(e), None),
     };
+    let child_ms = child_started.elapsed().as_millis() as u64;
     let runner_ms = started.elapsed().as_millis() as u64;
 
     if let Some(handler) = &handler {
@@ -102,6 +109,12 @@ pub async fn cmd_function_run(name: &str) -> Result<()> {
             runner: runner_ms,
             runner_kind: Some(RunnerKind::Cold),
             import_kind: None,
+            warm_attempt: Some(warm_attempt_ms),
+            resolve: Some(resolve_ms),
+            resolve_kind: Some(resolve_kind),
+            child: Some(child_ms),
+            import: None,
+            handler: None,
         },
     )
 }
@@ -153,7 +166,10 @@ fn stdout_result(
     }
 
     match serde_json::from_str::<serde_json::Value>(line) {
-        Ok(outcome) => (ResultEnvelope::stdout_outcome(outcome, Some(timings_ms)), 0),
+        Ok(mut outcome) => {
+            let timings_ms = merge_runner_phase_timings(&mut outcome, timings_ms);
+            (ResultEnvelope::stdout_outcome(outcome, Some(timings_ms)), 0)
+        }
         Err(_) => {
             let snippet = truncate_chars(line, NON_JSON_SNIPPET_MAX_CHARS);
             if line.starts_with('{') || line.starts_with('[') {
@@ -188,6 +204,28 @@ fn stdout_result(
     }
 }
 
+/// Lift `_dustTimingsMs` from the Bun child's stdout JSON into the outer
+/// envelope timings and remove the sidecar so the outcome stays
+/// `{ok,output|error}` for front.
+fn merge_runner_phase_timings(
+    outcome: &mut serde_json::Value,
+    mut timings_ms: TimingsMs,
+) -> TimingsMs {
+    let Some(obj) = outcome.as_object_mut() else {
+        return timings_ms;
+    };
+    let Some(sidecar) = obj.remove(DUST_RUNNER_TIMINGS_MS_KEY) else {
+        return timings_ms;
+    };
+    if let Some(import) = sidecar.get("import").and_then(|v| v.as_u64()) {
+        timings_ms.import = Some(import);
+    }
+    if let Some(handler) = sidecar.get("handler").and_then(|v| v.as_u64()) {
+        timings_ms.handler = Some(handler);
+    }
+    timings_ms
+}
+
 fn last_non_empty_line(response: &str) -> &str {
     response
         .lines()
@@ -220,6 +258,12 @@ mod tests {
             runner,
             runner_kind: Some(RunnerKind::Cold),
             import_kind: None,
+            warm_attempt: None,
+            resolve: None,
+            resolve_kind: None,
+            child: None,
+            import: None,
+            handler: None,
         }
     }
 
@@ -235,6 +279,28 @@ mod tests {
             envelope.outcome,
             serde_json::json!({ "ok": true, "output": 1 })
         );
+    }
+
+    #[test]
+    fn stdout_result_lifts_runner_phase_timings_sidecar() {
+        let (envelope, code) = stdout_result(
+            Ok((
+                0,
+                Some(
+                    r#"{"ok":true,"output":1,"_dustTimingsMs":{"import":40,"handler":5}}"#
+                        .to_string(),
+                ),
+            )),
+            timings(12, 8),
+        );
+        assert_eq!(code, 0);
+        assert_eq!(
+            envelope.outcome,
+            serde_json::json!({ "ok": true, "output": 1 })
+        );
+        let timings = envelope.timings_ms.expect("timings present");
+        assert_eq!(timings.import, Some(40));
+        assert_eq!(timings.handler, Some(5));
     }
 
     #[test]

@@ -1,4 +1,5 @@
 import {
+  extractResultEnvelopeTimings,
   extractResultSpillPointer,
   normalizeSandboxFunctionResult,
   SANDBOX_FUNCTION_RESULT_PROTOCOL_VERSION,
@@ -259,5 +260,51 @@ describe("extractResultSpillPointer", () => {
     ]) {
       expect(extractResultSpillPointer(value)).toBeNull();
     }
+  });
+});
+
+describe("extractResultEnvelopeTimings", () => {
+  it("extracts phase timings when present", () => {
+    expect(
+      extractResultEnvelopeTimings({
+        protocolVersion: 3,
+        delivery: "stdout",
+        outcome: { ok: true, output: 1 },
+        timingsMs: {
+          total: 7000,
+          runner: 6950,
+          runnerKind: "cold",
+          warmAttempt: 12,
+          resolve: 4200,
+          resolveKind: "gcsfuse",
+          child: 2700,
+          import: 2400,
+          handler: 15,
+          futureField: "ignored",
+        },
+      })
+    ).toEqual({
+      total: 7000,
+      runner: 6950,
+      runnerKind: "cold",
+      warmAttempt: 12,
+      resolve: 4200,
+      resolveKind: "gcsfuse",
+      child: 2700,
+      import: 2400,
+      handler: 15,
+      futureField: "ignored",
+    });
+  });
+
+  it("still accepts legacy runnerKind-only timings", () => {
+    expect(
+      extractResultEnvelopeTimings({
+        protocolVersion: 3,
+        delivery: "stdout",
+        outcome: { ok: true, output: 1 },
+        timingsMs: { runnerKind: "warm", importKind: "cached" },
+      })
+    ).toEqual({ runnerKind: "warm", importKind: "cached" });
   });
 });

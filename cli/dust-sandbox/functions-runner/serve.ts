@@ -642,10 +642,15 @@ export async function serve(
       return;
     }
 
+    const ensureStartedAt = performance.now();
     const ensured = await ensureBundle(socket, request, input.bundleSha256);
     if (ensured === null) {
       return;
     }
+    const ensureMs = Math.max(
+      0,
+      Math.round(performance.now() - ensureStartedAt)
+    );
     const { bundle, importKind } = ensured;
 
     // The ack is the point of no return: from here the client must never
@@ -685,9 +690,15 @@ export async function serve(
     }, INVOCATION_DEADLINE_MS);
 
     try {
-      const outcome = await invoke(bundle.handlerPath, input, request.env);
+      const { output, timingsMs } = await invoke(
+        bundle.handlerPath,
+        input,
+        request.env
+      );
       // Same size policy as the cold runner: one set of numbers everywhere.
-      const delivered = applyResultSpillPolicy(outcome);
+      // Warm import cost is mostly ensureBundle (module already in registry
+      // by the time invoke runs); report ensureBundle's importMs as `import`.
+      const delivered = applyResultSpillPolicy(output);
       if (deadlineFired) {
         // The client is long gone; nothing useful to write.
         socket.end();
@@ -696,6 +707,12 @@ export async function serve(
           v: WARM_PROTOCOL_VERSION,
           outcome: delivered,
           importKind,
+          timingsMs: {
+            // Fresh warm imports pay in ensureBundle; invoke's import is then a
+            // module-cache hit. Cached warm imports report invoke's (tiny) import.
+            import: importKind === "fresh" ? ensureMs : timingsMs.import,
+            handler: timingsMs.handler,
+          },
         });
       }
     } finally {
