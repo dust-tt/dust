@@ -2,7 +2,7 @@ import { ConsumptionSummary } from "@app/components/workspace/analytics/consumpt
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockUseConsumptionOverview } = vi.hoisted(() => ({
   mockUseConsumptionOverview: vi.fn(),
@@ -107,5 +107,44 @@ describe("ConsumptionSummary", () => {
     expect(container.firstElementChild).toHaveClass("gap-4");
     expect(screen.queryByText("Active Users")).not.toBeInTheDocument();
     expect(screen.queryByText("Total cost")).not.toBeInTheDocument();
+  });
+
+  describe("credit usage banner", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-08-11T00:00:00.000Z"));
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("shows credits used this cycle and the day of the cycle instead of a target chip", () => {
+      mockUseConsumptionOverview.mockReturnValue({
+        overview: {
+          ...overview,
+          totalCredits: 120,
+          creditUsage: {
+            capCredits: 500,
+            status: {
+              usedPercentage: 24,
+              resetAt: overview.period.endDate,
+              target: "on_target",
+            },
+          },
+        },
+        isOverviewLoading: false,
+        isOverviewError: undefined,
+      });
+
+      render(<ConsumptionSummary workspaceId="workspace-id" period={period} />);
+
+      // Cycle runs 2026-08-01T00:00 -> 2026-08-31T23:59:59.999 (rounds to 31
+      // days); "now" is 10 days in, so this is day 11.
+      expect(
+        screen.getByText("120 credits used this cycle, day 11/31 of the cycle")
+      ).toBeInTheDocument();
+      expect(screen.queryByText("On target")).not.toBeInTheDocument();
+    });
   });
 });
