@@ -110,6 +110,7 @@ export function usePokeWorkspacesAllCells({
   search,
   upgraded,
   planType,
+  planCode,
   cell,
   limit,
   offset,
@@ -119,6 +120,8 @@ export function usePokeWorkspacesAllCells({
   search?: string;
   upgraded?: boolean;
   planType?: PokePlanTypeFilter;
+  // Restrict to the workspaces whose active subscription is on this exact plan code.
+  planCode?: string;
   // Restrict fetching to a single cell instead of merging all of them.
   cell?: CellType;
   limit?: number;
@@ -155,6 +158,9 @@ export function usePokeWorkspacesAllCells({
     }
     if (planType !== undefined) {
       queryParams.set("planType", planType);
+    }
+    if (planCode !== undefined) {
+      queryParams.set("planCode", planCode);
     }
     if (limit !== undefined) {
       queryParams.set("limit", String(limit));
@@ -221,7 +227,17 @@ export function usePokeWorkspacesAllCells({
     return () => {
       abortController.abort();
     };
-  }, [disabled, search, upgraded, planType, cell, limit, offset, cells]);
+  }, [
+    disabled,
+    search,
+    upgraded,
+    planType,
+    planCode,
+    cell,
+    limit,
+    offset,
+    cells,
+  ]);
 
   return {
     workspaces,

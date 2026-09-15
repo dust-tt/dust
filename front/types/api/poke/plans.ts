@@ -62,6 +62,12 @@ export type UpsertPokePlanResponseBody = {
   plan: PlanType;
 };
 
+// A plan plus how many workspaces are currently subscribed to it, in the cell that served the
+// request. Poke's plan list is per-cell, so this count is per-cell too.
+export type PokePlanWithUsage = PlanType & {
+  workspaceCount: number;
+};
+
 export type GetPokePlansResponseBody = {
-  plans: PlanType[];
+  plans: PokePlanWithUsage[];
 };

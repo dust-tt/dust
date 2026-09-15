@@ -4,10 +4,10 @@ import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import type {
   GetPokePlansResponseBody,
+  PokePlanWithUsage,
   UpsertPokePlanResponseBody,
 } from "@app/types/api/poke/plans";
 import { PlanTypeSchema } from "@app/types/api/poke/plans";
-import type { PlanType } from "@app/types/plan";
 import { pokeApp } from "@front-api/middlewares/ctx";
 import type { HandlerResult } from "@front-api/middlewares/utils";
 import { apiError } from "@front-api/middlewares/utils";
@@ -18,12 +18,17 @@ const app = pokeApp();
 
 /** @ignoreswagger */
 app.get("/", async (ctx): HandlerResult<GetPokePlansResponseBody> => {
-  const planModels = await PlanModel.findAll({
-    order: [["createdAt", "ASC"]],
-  });
-  const plans: PlanType[] = planModels.map((plan) =>
-    renderPlanFromModel({ plan })
-  );
+  const [planModels, workspaceCountByPlanCode] = await Promise.all([
+    PlanModel.findAll({
+      order: [["createdAt", "ASC"]],
+    }),
+    SubscriptionResource.countActiveWorkspacesByPlanCode(),
+  ]);
+
+  const plans: PokePlanWithUsage[] = planModels.map((plan) => ({
+    ...renderPlanFromModel({ plan }),
+    workspaceCount: workspaceCountByPlanCode.get(plan.code) ?? 0,
+  }));
 
   return ctx.json({ plans });
 });

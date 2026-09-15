@@ -49,6 +49,7 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
   const limitQuery = ctx.req.query("limit");
   const offsetQuery = ctx.req.query("offset");
   const planTypeQuery = ctx.req.query("planType");
+  const planCodeQuery = ctx.req.query("planCode");
 
   let listUpgraded: boolean | undefined;
   if (upgradedQuery !== undefined) {
@@ -218,35 +219,43 @@ app.get("/", async (ctx): HandlerResult<GetPokeWorkspacesResponseBody> => {
     ? { [Op.and]: conditions }
     : {};
 
-  // For non-free buckets, filter directly via an inner join on the matching
-  // plan code so the DB does the filtering *and* the pagination in one
-  // query — we never materialize the (possibly large) matching id set in
-  // Node. "free" is instead expressed as an exclude condition above (see
-  // `conditions`), so the subscriptions include here stays a plain left
-  // join in that case, same as when there's no plan-type filter at all.
-  const subscriptionsInclude: Includeable =
-    planTypeFilter !== undefined && planTypeFilter !== "free"
-      ? {
-          model: SubscriptionModel,
-          as: "subscriptions",
-          where: { status: "active" },
-          required: true,
-          include: [
-            {
-              model: PlanModel,
-              as: "plan",
-              where: buildPokePlanCodeWhere(planTypeFilter),
-              required: true,
-            },
-          ],
-        }
-      : {
-          model: SubscriptionModel,
-          as: "subscriptions",
-          where: { status: "active" },
-          required: false,
-          include: [{ model: PlanModel, as: "plan" }],
-        };
+  // `planCode` (one exact plan) and `planType` (a coarse bucket of plan codes) are separate
+  // axes; when both are given the active plan must satisfy both.
+  const planConditions: WhereOptions<PlanModel>[] = [];
+  if (planCodeQuery !== undefined) {
+    planConditions.push({ code: planCodeQuery });
+  }
+  if (planTypeFilter !== undefined && planTypeFilter !== "free") {
+    planConditions.push(buildPokePlanCodeWhere(planTypeFilter));
+  }
+
+  // When there is a plan-level condition, filter directly via an inner join on the matching
+  // plan so the DB does the filtering *and* the pagination in one query — we never materialize
+  // the (possibly large) matching id set in Node. "free" is instead expressed as an exclude
+  // condition above (see `conditions`), so with `planType=free` alone the subscriptions include
+  // here stays a plain left join, same as when there's no plan filter at all.
+  const subscriptionsInclude: Includeable = planConditions.length
+    ? {
+        model: SubscriptionModel,
+        as: "subscriptions",
+        where: { status: "active" },
+        required: true,
+        include: [
+          {
+            model: PlanModel,
+            as: "plan",
+            where: { [Op.and]: planConditions },
+            required: true,
+          },
+        ],
+      }
+    : {
+        model: SubscriptionModel,
+        as: "subscriptions",
+        where: { status: "active" },
+        required: false,
+        include: [{ model: PlanModel, as: "plan" }],
+      };
 
   // Fetch one extra row past the requested page so we can tell whether a
   // next page exists without a second query.

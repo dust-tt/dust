@@ -1,3 +1,4 @@
+import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { createPokeApiMockRequest } from "@app/tests/utils/generic_poke_api_tests";
@@ -200,6 +201,132 @@ describe("GET /api/poke/workspaces — plan type filter", () => {
     const response = await fetchWorkspaces({ planType: "not_a_real_bucket" });
 
     expect(response.status).toBe(400);
+  });
+});
+
+describe("GET /api/poke/workspaces — planCode filter", () => {
+  it("returns only the workspaces whose active subscription is on that plan code", async () => {
+    const onPlan = await createNamedWorkspace("Wibble Plan Code On", () =>
+      WorkspaceFactory.basic()
+    );
+    const onOtherPlan = await createNamedWorkspace("Wibble Plan Code Off", () =>
+      WorkspaceFactory.byok()
+    );
+    await createPokeApiMockRequest({ isSuperUser: true, workspace: onPlan });
+
+    const response = await fetchWorkspaces({
+      search: encodeURIComponent("Wibble Plan Code"),
+      limit: "20",
+      planCode: PRO_PLAN_SEAT_29_CODE,
+    });
+
+    expect(response.status).toBe(200);
+    const { workspaces } = await response.json();
+    const sIds = workspaces.map((w: { sId: string }) => w.sId);
+    expect(sIds).toContain(onPlan.sId);
+    expect(sIds).not.toContain(onOtherPlan.sId);
+  });
+
+  it("excludes a workspace whose subscription to that plan has ended", async () => {
+    const workspace = await createNamedWorkspace("Wibble Plan Code Ended", () =>
+      WorkspaceFactory.basic()
+    );
+    await SubscriptionResource.endActiveSubscription(workspace);
+    await createPokeApiMockRequest({ isSuperUser: true, workspace });
+
+    const response = await fetchWorkspaces({
+      search: encodeURIComponent("Wibble Plan Code Ended"),
+      limit: "20",
+      planCode: PRO_PLAN_SEAT_29_CODE,
+    });
+
+    expect(response.status).toBe(200);
+    const { workspaces } = await response.json();
+    expect(
+      workspaces.some((w: { sId: string }) => w.sId === workspace.sId)
+    ).toBe(false);
+  });
+
+  it("returns no workspace for an unknown plan code", async () => {
+    await createNamedWorkspace("Wibble Plan Code Unknown");
+    await createPokeApiMockRequest({ isSuperUser: true });
+
+    const response = await fetchWorkspaces({
+      search: encodeURIComponent("Wibble Plan Code Unknown"),
+      limit: "20",
+      planCode: "NOT_A_REAL_PLAN_CODE",
+    });
+
+    expect(response.status).toBe(200);
+    const { workspaces } = await response.json();
+    expect(workspaces).toEqual([]);
+  });
+
+  it("intersects planCode with a planType bucket", async () => {
+    const workspace = await createNamedWorkspace(
+      "Wibble Plan Code Bucket",
+      () => WorkspaceFactory.basic()
+    );
+    await createPokeApiMockRequest({ isSuperUser: true, workspace });
+
+    const matchingBucket = await fetchWorkspaces({
+      search: encodeURIComponent("Wibble Plan Code Bucket"),
+      limit: "20",
+      planCode: PRO_PLAN_SEAT_29_CODE,
+      planType: "legacy_pro",
+    });
+    expect(matchingBucket.status).toBe(200);
+    expect(
+      (await matchingBucket.json()).workspaces.map(
+        (w: { sId: string }) => w.sId
+      )
+    ).toContain(workspace.sId);
+
+    const conflictingBucket = await fetchWorkspaces({
+      search: encodeURIComponent("Wibble Plan Code Bucket"),
+      limit: "20",
+      planCode: PRO_PLAN_SEAT_29_CODE,
+      planType: "enterprise",
+    });
+    expect(conflictingBucket.status).toBe(200);
+    expect((await conflictingBucket.json()).workspaces).toEqual([]);
+  });
+
+  it("pages through the workspaces on a plan", async () => {
+    // Created in order, so they sort newest-first (createdAt DESC).
+    const first = await createNamedWorkspace("Wibble Plan Page One", () =>
+      WorkspaceFactory.basic()
+    );
+    const second = await createNamedWorkspace("Wibble Plan Page Two", () =>
+      WorkspaceFactory.basic()
+    );
+    await createPokeApiMockRequest({ isSuperUser: true, workspace: first });
+
+    const firstPage = await fetchWorkspaces({
+      search: encodeURIComponent("Wibble Plan Page"),
+      limit: "1",
+      offset: "0",
+      planCode: PRO_PLAN_SEAT_29_CODE,
+    });
+    expect(firstPage.status).toBe(200);
+    const firstPageBody = await firstPage.json();
+    expect(firstPageBody.workspaces.map((w: { sId: string }) => w.sId)).toEqual(
+      [second.sId]
+    );
+    expect(firstPageBody.hasMore).toBe(true);
+
+    const secondPage = await fetchWorkspaces({
+      search: encodeURIComponent("Wibble Plan Page"),
+      limit: "1",
+      offset: "1",
+      planCode: PRO_PLAN_SEAT_29_CODE,
+    });
+    expect(secondPage.status).toBe(200);
+    const secondPageBody = await secondPage.json();
+    expect(
+      secondPageBody.workspaces.map((w: { sId: string }) => w.sId)
+    ).toEqual([first.sId]);
+    expect(secondPageBody.hasMore).toBe(false);
   });
 });
 

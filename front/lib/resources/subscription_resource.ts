@@ -90,8 +90,9 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, Sequelize } from "sequelize";
 import type Stripe from "stripe";
+import { z } from "zod";
 
 export type GetSubscriptionPricingResponseBody = {
   perSeatPricing: SubscriptionPerSeatPricing | null;
@@ -143,6 +144,12 @@ type CachedSubscription = {
 export interface SubscriptionResource
   extends ReadonlyAttributesType<SubscriptionModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+// Shape of one row of the `countActiveWorkspacesByPlanCode` grouped aggregate.
+const PlanCodeCountRowSchema = z.object({
+  planCode: z.string(),
+  count: z.coerce.number(),
+});
+
 export class SubscriptionResource extends BaseResource<SubscriptionModel> {
   static model: ModelStaticWorkspaceAware<SubscriptionModel> =
     SubscriptionModel;
@@ -827,6 +834,49 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     });
 
     return subscriptions.map((s) => s.workspaceId);
+  }
+
+  /**
+   * @cc [owner:davidebbo,label:backend] count-active-subscriptions-only
+   * Counts, per plan code, the workspaces currently subscribed to that plan. Only subscriptions
+   * whose `status` is `"active"` are counted: a workspace whose subscription to a plan has ended
+   * MUST NOT contribute to that plan's count. A plan code with no active subscriber MUST be
+   * absent from the returned map rather than mapped to `0`.
+   */
+  static async countActiveWorkspacesByPlanCode(): Promise<Map<string, number>> {
+    // One grouped aggregate rather than a query per plan, so callers can annotate a whole plan
+    // list without an N+1.
+    const rows = await this.model.findAll({
+      where: { status: "active" },
+      attributes: [
+        [Sequelize.col("plan.code"), "planCode"],
+        [Sequelize.fn("COUNT", Sequelize.col("plan.code")), "count"],
+      ],
+      // WORKSPACE_ISOLATION_BYPASS: Internal poke-only aggregate that counts, across all
+      // workspaces, how many sit on each plan.
+      // biome-ignore lint/plugin/noUnverifiedWorkspaceBypass: WORKSPACE_ISOLATION_BYPASS verified
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+      include: [
+        {
+          model: PlanModel,
+          as: "plan",
+          attributes: [],
+          required: true,
+        },
+      ],
+      group: [Sequelize.col("plan.code")],
+      raw: true,
+    });
+
+    // `raw` aggregates fall outside the model's attribute types, and Postgres returns COUNT as a
+    // string, so the rows are parsed rather than asserted.
+    const countByPlanCode = new Map<string, number>();
+    for (const row of rows) {
+      const { planCode, count } = PlanCodeCountRowSchema.parse(row);
+      countByPlanCode.set(planCode, count);
+    }
+
+    return countByPlanCode;
   }
 
   static async internalListEndedBackendOnly(): Promise<SubscriptionResource[]> {
