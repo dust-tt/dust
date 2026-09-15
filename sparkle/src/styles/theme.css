@@ -37,6 +37,9 @@
   /* Font families. */
   --font-sans: Geist, sans-serif;
   --font-mono: "Geist Mono", monospace;
+  /* Conversation font options (see `font-conversation` below). */
+  --font-serif: Lora, Georgia, serif;
+  --font-dyslexic: OpenDyslexic, Geist, sans-serif;
 
   /* Font weight overrides (shared by sparkle/front/marketing). */
   --font-weight-medium: 450;
@@ -173,6 +176,32 @@
     --text-2xl--letter-spacing: -0.0175em;
     --text-4xl--line-height: 1.2;
   }
+}
+
+/*
+ * Conversation font. Users pick Sans (Geist), Serif (Lora) or Dyslexic
+ * (OpenDyslexic) in Settings > Customization; `ConversationFontProvider` in
+ * front sets `data-conversation-font` on <html> (any ancestor works, which
+ * Storybook uses to show variants side by side). Only the agent's answer
+ * opts in via the `font-conversation` utility (AgentMessage); user messages,
+ * thinking, the input bar and the rest of the app stay in Geist. `font-size-adjust` renders every option at
+ * Geist's x-height (0.53) so the perceived size does not jump between fonts.
+ */
+:root {
+  --font-conversation: var(--font-sans);
+  --font-conversation-size-adjust: none;
+}
+[data-conversation-font="serif"] {
+  --font-conversation: var(--font-serif);
+  --font-conversation-size-adjust: 0.53;
+}
+[data-conversation-font="dyslexic"] {
+  --font-conversation: var(--font-dyslexic);
+  --font-conversation-size-adjust: 0.53;
+}
+@utility font-conversation {
+  font-family: var(--font-conversation);
+  font-size-adjust: var(--font-conversation-size-adjust);
 }
 
 /*

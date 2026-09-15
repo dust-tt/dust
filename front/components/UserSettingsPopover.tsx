@@ -8,6 +8,12 @@ import {
   SoundNotificationPreferences,
   useSoundNotificationPreferencesForm,
 } from "@app/components/me/SoundNotificationPreferences";
+import type { ConversationFont } from "@app/components/sparkle/ConversationFontContext";
+import {
+  CONVERSATION_FONT_LABELS,
+  CONVERSATION_FONTS,
+  useConversationFont,
+} from "@app/components/sparkle/ConversationFontContext";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useAgentsSectionVisibility } from "@app/hooks/useAgentsSectionVisibility";
@@ -25,6 +31,11 @@ import {
 } from "@app/lib/swr/user";
 import { useAuthContext } from "@app/lib/swr/workspaces";
 import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
+import {
   MAX_USER_MEMORY_CHARS,
   MAX_USER_MEMORY_CONTENT_LENGTH,
 } from "@app/types/api/me/memory";
@@ -34,12 +45,14 @@ import {
   ANONYMOUS_USER_IMAGE_URL,
   areConversationExternalNotificationsEnabled,
 } from "@app/types/user";
+import type { OptionTile } from "@dust-tt/sparkle";
 import {
   Avatar,
   Bell01,
   Brain,
   Button,
   ContentMessageInline,
+  cn,
   Dialog,
   DialogClose,
   DialogContent,
@@ -53,9 +66,11 @@ import {
   Input,
   Label,
   Mail01,
+  Monitor01,
   Moon01,
   NavigationList,
   NavigationListItem,
+  OptionTileGroup,
   Page,
   Settings01,
   SettingsList,
@@ -282,8 +297,43 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
 
 // ─── Customization ────────────────────────────────────────────────────────────
 
+type ThemeChoice = "light" | "dark" | "system";
+
+const THEME_OPTIONS: OptionTile<ThemeChoice>[] = [
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon01 },
+  { value: "system", label: "Auto", icon: Monitor01 },
+];
+
+// Each tile previews its option as a type specimen in that face.
+const CONVERSATION_FONT_SPECIMEN_CLASSES: Record<ConversationFont, string> = {
+  sans: "font-sans",
+  serif: "font-serif",
+  dyslexic: "font-dyslexic",
+};
+
+const CONVERSATION_FONT_OPTIONS: OptionTile<ConversationFont>[] =
+  CONVERSATION_FONTS.map((font) => ({
+    value: font,
+    label: CONVERSATION_FONT_LABELS[font],
+    visual: (
+      <span
+        className={cn(
+          CONVERSATION_FONT_SPECIMEN_CLASSES[font],
+          "text-xl leading-none"
+        )}
+      >
+        Aa
+      </span>
+    ),
+  }));
+
 function CustomizationSection() {
   const { theme: currentTheme, setTheme } = useTheme();
+  const { conversationFont, setConversationFont } = useConversationFont();
+  const sendNotification = useSendNotification();
+  const [localConversationFont, setLocalConversationFont] =
+    useState<ConversationFont>(conversationFont);
   const isMac = useIsMac();
   const { isAgentsSectionVisible, setAgentsSectionVisible } =
     useAgentsSectionVisibility();
@@ -308,7 +358,9 @@ function CustomizationSection() {
     typeof document !== "undefined" ? document.body : undefined
   );
 
-  const [localTheme, setLocalTheme] = useState(currentTheme ?? "system");
+  const [localTheme, setLocalTheme] = useState<ThemeChoice>(
+    currentTheme ?? "system"
+  );
   const [submitKey, setSubmitKey] = useState<"enter" | "cmd+enter">(() => {
     if (typeof window === "undefined") {
       return "enter";
@@ -318,6 +370,7 @@ function CustomizationSection() {
   });
   const isDirty =
     localTheme !== currentTheme ||
+    localConversationFont !== conversationFont ||
     submitKey !==
       (typeof window !== "undefined"
         ? (localStorage.getItem("submitMessageKey") ?? "enter")
@@ -325,11 +378,29 @@ function CustomizationSection() {
     localAgentsSectionVisible !== isAgentsSectionVisible;
 
   const handleSave = () => {
-    setTheme(localTheme as "light" | "dark" | "system");
+    setTheme(localTheme);
     if (typeof window !== "undefined") {
       localStorage.setItem("submitMessageKey", submitKey);
     }
     setAgentsSectionVisible(localAgentsSectionVisible);
+    if (localConversationFont !== conversationFont) {
+      trackEvent({
+        area: TRACKING_AREAS.SETTINGS,
+        object: "conversation_font",
+        action: TRACKING_ACTIONS.SELECT,
+        extra: { font: localConversationFont },
+      });
+      void setConversationFont(localConversationFont).then((saved) => {
+        if (!saved) {
+          sendNotification({
+            type: "error",
+            title: "Could not save the conversation font",
+            description:
+              "It applies on this device, but could not be saved to your account.",
+          });
+        }
+      });
+    }
   };
 
   return (
@@ -350,46 +421,25 @@ function CustomizationSection() {
           title="Theme"
           description="Choose how Dust looks on this device"
           action={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  icon={
-                    localTheme === "light"
-                      ? Sun
-                      : localTheme === "dark"
-                        ? Moon01
-                        : Sun
-                  }
-                  label={
-                    localTheme === "light"
-                      ? "Light"
-                      : localTheme === "dark"
-                        ? "Dark"
-                        : "System"
-                  }
-                  isSelect
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent mountPortalContainer={portalContainer}>
-                <DropdownMenuItem
-                  icon={Sun}
-                  label="Light"
-                  onClick={() => setLocalTheme("light")}
-                />
-                <DropdownMenuItem
-                  icon={Moon01}
-                  label="Dark"
-                  onClick={() => setLocalTheme("dark")}
-                />
-                <DropdownMenuItem
-                  icon={Sun}
-                  label="System"
-                  onClick={() => setLocalTheme("system")}
-                />
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <OptionTileGroup
+              ariaLabel="Theme"
+              options={THEME_OPTIONS}
+              value={localTheme}
+              onValueChange={setLocalTheme}
+            />
+          }
+        />
+
+        <SettingsList.Row
+          title="Conversation font"
+          description="Font used for agent answers in conversations"
+          action={
+            <OptionTileGroup
+              ariaLabel="Conversation font"
+              options={CONVERSATION_FONT_OPTIONS}
+              value={localConversationFont}
+              onValueChange={setLocalConversationFont}
+            />
           }
         />
 
