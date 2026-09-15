@@ -1734,6 +1734,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     author,
     scheduledRow,
+    transaction: parentTransaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
@@ -1742,8 +1743,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     // is dropped by id without a lookup (the batched seat sync passes the row it
     // prefetched, avoiding a per-member query); when omitted, it is looked up.
     scheduledRow?: MembershipResource | null;
+    transaction?: Transaction;
   }): Promise<void> {
-    await frontSequelize.transaction(async (transaction) => {
+    const txOptions = parentTransaction
+      ? { transaction: parentTransaction }
+      : {};
+    await frontSequelize.transaction(txOptions, async (transaction) => {
       const futureRowId =
         scheduledRow !== undefined
           ? scheduledRow?.id
@@ -1759,7 +1764,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
             )?.id;
       if (futureRowId !== undefined && futureRowId !== null) {
         await MembershipModel.destroy({
-          where: { id: futureRowId },
+          where: { id: futureRowId, workspaceId: workspace.id },
           transaction,
         });
       }
