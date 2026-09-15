@@ -54,7 +54,15 @@ export interface SkillSearchOptions {
   mode?: SearchMode;
   filters?: SkillSearchFilters;
   permissionFiltering?: SkillSearchPermissionFiltering;
+  limit?: number;
+  cursor?: string;
 }
+
+export type SearchSkillsResponseBody = {
+  skills: SkillSearchResult[];
+  // Null means exhausted; optional for clients talking to an older server.
+  nextCursor?: string | null;
+};
 
 /**
  * @cc [owner:aubin-tchoi,label:api] skill-usage-compatibility

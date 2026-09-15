@@ -2409,6 +2409,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
   }
 
+  // Definitions must come from the caller-authorized global/system registry.
+  static async fromCodeDefinedSkillForSearch(
+    auth: Authenticator,
+    definition: SkillDefinition
+  ): Promise<SkillResource> {
+    return this.fromGlobalSkill(auth, definition, {
+      effectiveSpaceIds: [],
+      mcpServerViews: [],
+      withInstructions: false,
+    });
+  }
+
   canRead(auth: Authenticator): boolean {
     if (this.redactedForCaller) {
       return false;
