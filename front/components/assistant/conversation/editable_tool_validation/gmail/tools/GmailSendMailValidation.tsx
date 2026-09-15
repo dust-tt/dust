@@ -1,4 +1,8 @@
 import type { EditableToolValidationComponentProps } from "@app/components/assistant/conversation/editable_tool_validation/types";
+import {
+  canEditorRenderHtml,
+  HtmlEditor,
+} from "@app/components/editor/HtmlEditor";
 import type { MCPValidationOutputType } from "@app/lib/actions/constants";
 import type { GmailSendMailInput } from "@app/lib/api/actions/servers/gmail/types";
 import { isGmailSendMailInput } from "@app/lib/api/actions/servers/gmail/types";
@@ -12,7 +16,7 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMemo } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 interface ComposeFormValues {
@@ -89,6 +93,13 @@ export function GmailSendMailValidation({
   const originalSubject = inputs?.subject ?? "";
   const originalBody = inputs?.body ?? "";
   const isReply = !!inputs?.replyToMessageId;
+  const isHtmlBody = inputs?.contentType === "text/html" || isReply;
+  // Rich editing only where the editor renders every element of the body;
+  // anything else is edited as source, which round-trips the string exactly.
+  const useRichEditor = useMemo(
+    () => isHtmlBody && canEditorRenderHtml(originalBody),
+    [isHtmlBody, originalBody]
+  );
 
   const { editableArguments } = blockedAction;
   const isSubjectEditable =
@@ -101,6 +112,7 @@ export function GmailSendMailValidation({
   );
 
   const {
+    control,
     register,
     handleSubmit,
     formState: { errors },
@@ -163,7 +175,27 @@ export function GmailSendMailValidation({
         </div>
       )}
 
-      {isBodyEditable ? (
+      {useRichEditor ? (
+        <div className="px-4 py-3">
+          <Controller
+            control={control}
+            name="body"
+            render={({ field }) => (
+              <HtmlEditor
+                initialHtml={originalBody}
+                isReadOnly={!isBodyEditable}
+                onChange={field.onChange}
+                className="max-h-96 min-h-64 overflow-auto text-sm text-foreground"
+              />
+            )}
+          />
+          {errors.body && (
+            <p className="mt-1 text-xs text-warning-800">
+              {errors.body.message}
+            </p>
+          )}
+        </div>
+      ) : isBodyEditable ? (
         <div className="px-4 py-3">
           <textarea
             {...register("body")}
