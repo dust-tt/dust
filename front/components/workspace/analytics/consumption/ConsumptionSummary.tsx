@@ -4,6 +4,7 @@ import type { ConsumptionPeriodSelection } from "@app/lib/analytics/consumption_
 import type { ConsumptionAnalyticsScope } from "@app/lib/analytics/consumption_scope";
 import { WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE } from "@app/lib/analytics/consumption_scope";
 import type { GetConsumptionOverviewResponse } from "@app/lib/api/analytics/consumption/overview";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { formatCredits } from "@app/lib/client/credits";
 import { ArrowUpRight, Button, LoadingBlock } from "@dust-tt/sparkle";
 
@@ -16,6 +17,8 @@ export interface ConsumptionSummaryProps {
   disabled?: boolean;
 }
 
+// The usage page this summary links to is manager-only, so the link itself
+// only shows for managers (mirrors the gating in UsageUpgradeButton).
 export function ConsumptionSummary({
   workspaceId,
   period: periodSelection,
@@ -24,6 +27,7 @@ export function ConsumptionSummary({
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
   disabled,
 }: ConsumptionSummaryProps) {
+  const { isManager } = useAuth();
   const { overview, isOverviewLoading, isOverviewError } =
     useConsumptionOverview({
       workspaceId,
@@ -40,6 +44,7 @@ export function ConsumptionSummary({
       usageHref={usageHref}
       usageLinkLabel={usageLinkLabel}
       analyticsScope={analyticsScope}
+      showUsageLink={isManager}
     />
   );
 }
@@ -55,6 +60,7 @@ interface ConsumptionSummaryViewProps extends ConsumptionSummaryData {
   usageLinkLabel: string;
   responsiveLayout?: boolean;
   analyticsScope?: ConsumptionAnalyticsScope;
+  showUsageLink?: boolean;
 }
 
 export function ConsumptionSummaryView({
@@ -65,6 +71,7 @@ export function ConsumptionSummaryView({
   usageLinkLabel,
   responsiveLayout = false,
   analyticsScope = WORKSPACE_CONSUMPTION_ANALYTICS_SCOPE,
+  showUsageLink = true,
 }: ConsumptionSummaryViewProps) {
   if (analyticsScope.kind === "agent") {
     return (
@@ -108,15 +115,17 @@ export function ConsumptionSummaryView({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <Button
-          label={usageLinkLabel}
-          variant="highlight-ghost"
-          size="xs"
-          iconRight={ArrowUpRight}
-          href={usageHref}
-        />
-      </div>
+      {showUsageLink && (
+        <div className="flex justify-end">
+          <Button
+            label={usageLinkLabel}
+            variant="highlight-ghost"
+            size="xs"
+            iconRight={ArrowUpRight}
+            href={usageHref}
+          />
+        </div>
+      )}
       <div
         className={
           responsiveLayout
