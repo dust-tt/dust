@@ -82,6 +82,7 @@ describe("agent-message consumption aggregate counters", () => {
       expectedRevision: 0,
       totals: { totalCreditAmountMicro: 0, subagentCount: 0 },
       executionCreditAmountMicroByRunKey: new Map(),
+      subagentAgentMessageIds: [],
     });
   });
 
@@ -155,6 +156,7 @@ describe("agent-message consumption aggregate counters", () => {
       expectedRevision: 0,
       totals: { totalCreditAmountMicro: 4_000_000, subagentCount: 3 },
       executionCreditAmountMicroByRunKey: new Map([[RUN_KEY, 4_000_000]]),
+      subagentAgentMessageIds: [101, 102, 103],
     });
     await consumptionCounters.seedRootTotals({
       workspaceId: WORKSPACE_ID,
@@ -162,6 +164,7 @@ describe("agent-message consumption aggregate counters", () => {
       expectedRevision: 0,
       totals: { totalCreditAmountMicro: 9_000_000, subagentCount: 7 },
       executionCreditAmountMicroByRunKey: new Map([[RUN_KEY, 9_000_000]]),
+      subagentAgentMessageIds: [101, 102, 103, 104, 105, 106, 107],
     });
 
     expect(
@@ -177,6 +180,17 @@ describe("agent-message consumption aggregate counters", () => {
         runKey: RUN_KEY,
       })
     ).toBe(4_000_000);
+
+    await applyTotal({
+      totalCreditAmountMicro: 4_500_000,
+      agentMessageId: 101,
+    });
+    expect(
+      await consumptionCounters.readRootTotals({
+        workspaceId: WORKSPACE_ID,
+        rootAgentMessageId: ROOT_AGENT_MESSAGE_ID,
+      })
+    ).toEqual({ totalCreditAmountMicro: 4_500_000, subagentCount: 3 });
   });
 
   it("rejects a stale rebuild after an execution changed", async () => {
@@ -203,6 +217,7 @@ describe("agent-message consumption aggregate counters", () => {
         expectedRevision: 0,
         totals: { totalCreditAmountMicro: 0, subagentCount: 0 },
         executionCreditAmountMicroByRunKey: new Map(),
+        subagentAgentMessageIds: [],
       })
     ).resolves.toBe(false);
 
@@ -217,6 +232,7 @@ describe("agent-message consumption aggregate counters", () => {
         expectedRevision: revision,
         totals: { totalCreditAmountMicro: 1_000_000, subagentCount: 0 },
         executionCreditAmountMicroByRunKey: new Map([[RUN_KEY, 1_000_000]]),
+        subagentAgentMessageIds: [],
       })
     ).resolves.toBe(true);
   });

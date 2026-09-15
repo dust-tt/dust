@@ -1,13 +1,22 @@
+import {
+  readRootRevision,
+  readRootTotals,
+  seedRootTotals,
+} from "@app/lib/api/assistant/consumption/counters";
+import { microCreditsToMicroUsd } from "@app/lib/api/assistant/consumption/keys";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
+import type { ModelId } from "@app/types/shared/model_id";
 
 import { Op } from "sequelize";
 
@@ -30,10 +39,12 @@ export async function checkCostAndSubagentsThresholds({
   auth,
   isRootAgentMessage,
   eventData,
+  useAgentMessageConsumption,
 }: {
   auth: Authenticator;
   isRootAgentMessage: boolean;
   eventData: CostThresholdEventData;
+  useAgentMessageConsumption: boolean;
 }): Promise<{
   totalCostMicroUsd: number;
   hardCapExceeded: boolean;
@@ -50,13 +61,9 @@ export async function checkCostAndSubagentsThresholds({
     };
   }
 
-  const { dustRunIds, descendantAgenticUserMessageCount } =
-    await collectDescendantData(auth, {
-      rootAgentMessageId: eventData.agentMessageId,
-    });
-
-  const totalCostMicroUsd = await getCumulativeCostMicroUsd(auth, {
-    dustRunIds,
+  const { subagentLaunchCount, totalCostMicroUsd } = await readTreeSpend(auth, {
+    rootAgentMessageId: eventData.agentMessageId,
+    useAgentMessageConsumption,
   });
 
   if (totalCostMicroUsd > 0) {
@@ -101,10 +108,116 @@ export async function checkCostAndSubagentsThresholds({
   return {
     totalCostMicroUsd,
     hardCapExceeded: totalCostMicroUsd >= AGENT_LOOP_COST_HARD_CAP_MICRO_USD,
-    subagentLaunchCount: descendantAgenticUserMessageCount,
+    subagentLaunchCount,
     subagentHardCapExceeded:
-      descendantAgenticUserMessageCount >= AGENT_LOOP_SUBAGENT_HARD_CAP,
+      subagentLaunchCount >= AGENT_LOOP_SUBAGENT_HARD_CAP,
   };
+}
+
+async function readTreeSpend(
+  auth: Authenticator,
+  {
+    rootAgentMessageId,
+    useAgentMessageConsumption,
+  }: {
+    rootAgentMessageId: string;
+    useAgentMessageConsumption: boolean;
+  }
+): Promise<{ subagentLaunchCount: number; totalCostMicroUsd: number }> {
+  if (useAgentMessageConsumption) {
+    return readConsumptionTreeSpend(auth, { rootAgentMessageId });
+  }
+
+  const { descendantAgenticUserMessageCount, dustRunIds } =
+    await collectDescendantData(auth, { rootAgentMessageId });
+
+  return {
+    subagentLaunchCount: descendantAgenticUserMessageCount,
+    totalCostMicroUsd: await getCumulativeCostMicroUsd(auth, { dustRunIds }),
+  };
+}
+
+async function readConsumptionTreeSpend(
+  auth: Authenticator,
+  { rootAgentMessageId }: { rootAgentMessageId: string }
+): Promise<{ subagentLaunchCount: number; totalCostMicroUsd: number }> {
+  const workspaceId = auth.getNonNullableWorkspace().sId;
+  let rebuiltTotals = {
+    subagentLaunchCount: 0,
+    totalCostMicroUsd: 0,
+  };
+  const rootContext = await ConversationResource.fetchAgentMessageCreditContext(
+    auth,
+    {
+      agentMessageId: rootAgentMessageId,
+    }
+  );
+  if (!rootContext) {
+    return rebuiltTotals;
+  }
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const totals = await readRootTotals({
+      workspaceId,
+      rootAgentMessageId: rootContext.agentMessageModelId,
+    });
+    if (totals) {
+      return {
+        subagentLaunchCount: totals.subagentCount,
+        totalCostMicroUsd: microCreditsToMicroUsd(
+          totals.totalCreditAmountMicro
+        ),
+      };
+    }
+    const expectedRootRevision = await readRootRevision({
+      workspaceId,
+      rootAgentMessageId: rootContext.agentMessageModelId,
+    });
+    const { agentMessageModelIds, subagentAgentMessageModelIds } =
+      await collectDescendantData(auth, { rootAgentMessageId });
+    const executionCreditAmountMicroByRunKey =
+      await AgentMessageConsumptionItemResource.sumConsumptionCreditAmountMicroByRunKeyForAgentMessages(
+        auth,
+        { agentMessageModelIds }
+      );
+    const totalCreditAmountMicro = [
+      ...executionCreditAmountMicroByRunKey.values(),
+    ].reduce((total, executionTotal) => total + executionTotal, 0);
+    const subagentCount = subagentAgentMessageModelIds.length;
+    rebuiltTotals = {
+      subagentLaunchCount: subagentCount,
+      totalCostMicroUsd: microCreditsToMicroUsd(totalCreditAmountMicro),
+    };
+    const seeded = await seedRootTotals({
+      workspaceId,
+      rootAgentMessageId: rootContext.agentMessageModelId,
+      expectedRevision: expectedRootRevision,
+      totals: {
+        totalCreditAmountMicro,
+        subagentCount,
+      },
+      executionCreditAmountMicroByRunKey,
+      subagentAgentMessageIds: subagentAgentMessageModelIds,
+    });
+    if (seeded) {
+      logger.info(
+        {
+          workspaceId,
+          rootAgentMessageId,
+          totalCreditAmountMicro,
+          subagentCount,
+        },
+        "[Consumption] Recomputed a missing root hash from the rows."
+      );
+      return rebuiltTotals;
+    }
+  }
+
+  logger.warn(
+    { workspaceId, rootAgentMessageId },
+    "[Consumption] Root hash changed while it was being rebuilt."
+  );
+  return rebuiltTotals;
 }
 
 async function getCumulativeCostMicroUsd(
@@ -135,11 +248,15 @@ async function collectDescendantData(
   auth: Authenticator,
   { rootAgentMessageId }: { rootAgentMessageId: string }
 ): Promise<{
+  agentMessageModelIds: ModelId[];
   dustRunIds: string[];
   descendantAgenticUserMessageCount: number;
+  subagentAgentMessageModelIds: ModelId[];
 }> {
   const workspace = auth.getNonNullableWorkspace();
   const visitedAgentMessageIds = new Set<string>();
+  const agentMessageModelIds = new Set<ModelId>();
+  const subagentAgentMessageModelIds = new Set<ModelId>();
   const runIds = new Set<string>();
   const descendantAgenticUserMessageRowIds = new Set<number>();
   let frontierAgentMessageIds = [rootAgentMessageId];
@@ -165,7 +282,7 @@ async function collectDescendantData(
         {
           model: AgentMessageModel,
           as: "agentMessage",
-          attributes: ["runIds"],
+          attributes: ["id", "runIds"],
           required: true,
         },
       ],
@@ -175,11 +292,15 @@ async function collectDescendantData(
       visitedAgentMessageIds.add(row.sId);
 
       const agentMessage = row.agentMessage;
-      if (!agentMessage?.runIds) {
+      if (!agentMessage) {
         continue;
       }
 
-      for (const runId of agentMessage.runIds) {
+      agentMessageModelIds.add(agentMessage.id);
+      if (row.sId !== rootAgentMessageId) {
+        subagentAgentMessageModelIds.add(agentMessage.id);
+      }
+      for (const runId of agentMessage.runIds ?? []) {
         runIds.add(runId);
       }
     }
@@ -238,7 +359,9 @@ async function collectDescendantData(
   }
 
   return {
+    agentMessageModelIds: [...agentMessageModelIds],
     dustRunIds: [...runIds],
     descendantAgenticUserMessageCount: descendantAgenticUserMessageRowIds.size,
+    subagentAgentMessageModelIds: [...subagentAgentMessageModelIds],
   };
 }
