@@ -2,21 +2,37 @@ import { upsertTableFromCsv } from "@app/lib/api/tables";
 import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
-import { EnqueueUpsertTable } from "@app/lib/upsert_queue";
+import {
+  EnqueueUpsertTable,
+  fetchUpsertQueuePayload,
+} from "@app/lib/upsert_queue";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import mainLogger from "@app/logger/logger";
 
-import config from "@app/temporal/config";
-import { Storage } from "@google-cloud/storage";
+import { ApplicationFailure } from "@temporalio/common";
 import { fromError } from "zod-validation-error";
 
 export async function upsertTableActivity(
   upsertQueueId: string,
   enqueueTimestamp: number
 ) {
-  const storage = new Storage({ keyFilename: config.getServiceAccount() });
-  const bucket = storage.bucket(config.getUpsertQueueBucket());
-  const content = await bucket.file(`${upsertQueueId}.json`).download();
+  const content = await fetchUpsertQueuePayload(upsertQueueId);
+  if (!content) {
+    mainLogger.error(
+      {
+        upsertQueueId,
+        delaySinceEnqueueMs: Date.now() - enqueueTimestamp,
+      },
+      "[UpsertQueue] Payload missing from GCS, giving up"
+    );
+    statsDMetrics.increment("upsert_queue_payload_missing.count", 1, [
+      "kind:table",
+    ]);
+    throw ApplicationFailure.nonRetryable(
+      `Upsert queue payload ${upsertQueueId} is missing from GCS.`,
+      "upsert_queue_payload_missing"
+    );
+  }
 
   const upsertDocument = JSON.parse(content.toString());
 

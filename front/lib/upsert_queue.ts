@@ -1,4 +1,5 @@
 import { getUpsertQueueBucket } from "@app/lib/file_storage";
+import { isGCSNotFoundError } from "@app/lib/file_storage/types";
 import { statsDMetrics } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 
@@ -118,6 +119,31 @@ export async function enqueueUpsertTable({
   });
 }
 
+function getUpsertQueuePayloadPath(upsertQueueId: string): string {
+  return `${upsertQueueId}.json`;
+}
+
+/**
+ * Downloads the payload written by `enqueueUpsert`. Returns `null` when the object no longer
+ * exists in the bucket: the payload is gone for good, so callers must not retry.
+ */
+export async function fetchUpsertQueuePayload(
+  upsertQueueId: string
+): Promise<Buffer | null> {
+  try {
+    // GCS `download()` returns a `[Buffer]` tuple (callback-style API converted to a promise).
+    const [buffer] = await getUpsertQueueBucket()
+      .file(getUpsertQueuePayloadPath(upsertQueueId))
+      .download();
+    return buffer;
+  } catch (error) {
+    if (isGCSNotFoundError(error)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 async function enqueueUpsert({
   upsertItem,
   upsertQueueId,
@@ -136,7 +162,7 @@ async function enqueueUpsert({
   try {
     const now = Date.now();
     await getUpsertQueueBucket()
-      .file(`${upsertQueueId}.json`)
+      .file(getUpsertQueuePayloadPath(upsertQueueId))
       .save(JSON.stringify(upsertItem), {
         contentType: "application/json",
       });
