@@ -32,7 +32,7 @@ export interface DescendantRunData {
 }
 
 /**
- * @cc [owner:avervaet,label:concurrency] descendant-data-cache-freshness
+ * @cc [owner:avervaet,label:backend] descendant-data-cache-freshness
  * `descendantData`, when passed, MUST come from a descendant walk with no run-creating
  * activity between that walk and this call. Passing a walk result from further back yields cost
  * and subagent counts computed from an incomplete run set.

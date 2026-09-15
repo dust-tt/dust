@@ -836,35 +836,58 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
-  static async fetchCreditSpendCheckpointStateForAgentMessage(
+  /**
+   * Loads what the credit spend checkpoint check needs to decide whether it applies: the agent
+   * message's checkpoint status and whether its triggering user message is a root (non-agentic)
+   * message. Returns null when the agent message cannot be found.
+   */
+  static async fetchCreditSpendCheckpointContextForAgentMessage(
     auth: Authenticator,
-    { agentMessageId }: { agentMessageId: string }
+    {
+      agentMessageId,
+      userMessageId,
+    }: { agentMessageId: string; userMessageId: string }
   ): Promise<{
     status: AgentMessageModel["creditSpendCheckpointStatus"];
+    isRootAgentMessage: boolean;
   } | null> {
-    const messageRow = await MessageModel.findOne({
-      where: {
-        sId: agentMessageId,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      attributes: ["id"],
-      include: [
-        {
-          model: AgentMessageModel,
-          as: "agentMessage",
-          required: true,
-          attributes: ["creditSpendCheckpointStatus"],
-        },
-      ],
-    });
+    const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const agentMessage = messageRow?.agentMessage;
+    const [agentMessageRow, userMessageRow] = await Promise.all([
+      MessageModel.findOne({
+        where: { sId: agentMessageId, workspaceId },
+        attributes: ["id"],
+        include: [
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: true,
+            attributes: ["creditSpendCheckpointStatus"],
+          },
+        ],
+      }),
+      MessageModel.findOne({
+        where: { sId: userMessageId, workspaceId },
+        attributes: ["id"],
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: true,
+            attributes: ["agenticMessageType"],
+          },
+        ],
+      }),
+    ]);
+
+    const agentMessage = agentMessageRow?.agentMessage;
     if (!agentMessage) {
       return null;
     }
 
     return {
       status: agentMessage.creditSpendCheckpointStatus,
+      isRootAgentMessage: !userMessageRow?.userMessage?.agenticMessageType,
     };
   }
 
