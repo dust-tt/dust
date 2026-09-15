@@ -1,4 +1,5 @@
 import { clientFetch } from "@app/lib/egress/client";
+import { getErrorFromResponse } from "@app/lib/swr/swr";
 import type { CellInfo } from "@app/types/cell";
 
 /**
@@ -44,9 +45,8 @@ export async function fetchPokeFromAllCells<T>({
         ...init,
       });
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch from ${cell.name}: ${response.status}`
-        );
+        const { message } = await getErrorFromResponse(response);
+        throw new Error(`Failed to fetch from ${cell.name}: ${message}`);
       }
       const data = (await response.json()) as T;
       return { cell, ok: true, data };
