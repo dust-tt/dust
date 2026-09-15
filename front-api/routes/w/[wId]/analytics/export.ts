@@ -2,6 +2,7 @@ import {
   exportTable,
   stringifyExportTableAsCsv,
 } from "@app/lib/api/analytics/export_tables";
+import { emitAnalyticsExportedEvent } from "@app/lib/api/audit/analytics_export";
 import logger from "@app/logger/logger";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { ensureIsManager } from "@front-api/middlewares/ensure_role";
@@ -84,6 +85,19 @@ app.get("/", ensureIsManager(), validate("query", QuerySchema), async (ctx) => {
     },
     "Analytics export downloaded"
   );
+
+  void emitAnalyticsExportedEvent(auth, {
+    exportName: "analytics_table",
+    dataset: table,
+    format: format ?? "csv",
+    fileName:
+      format === "json"
+        ? undefined
+        : `dust_${table}_${startDate}_${endDate}.csv`,
+    rowCount: result.value.rows.length,
+    period: { start: startDate, end: endDate },
+    query: { timezone: timezone ?? "UTC" },
+  });
 
   if (format === "json") {
     return ctx.json(result.value.rows);
