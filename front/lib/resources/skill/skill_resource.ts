@@ -584,24 +584,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     skillIds: readonly string[]
   ): Promise<void> {
     const workspace = auth.getNonNullableWorkspace();
-    const customSkillIds = [...new Set(skillIds)].filter((skillId) => {
-      const parsed = getResourceNameAndIdFromSId(skillId);
-      if (!parsed) {
-        return false;
-      }
-      assert(
-        parsed.resourceName === "skill" &&
-          parsed.workspaceModelId === workspace.id,
-        "Search indexation must target skills in the caller's workspace."
-      );
-      return true;
-    });
-    if (customSkillIds.length === 0) {
+    if (skillIds.length === 0) {
       return;
     }
     await launchSkillsSearchIndexation({
       workspaceId: workspace.sId,
-      skillIds: customSkillIds,
+      skillIds: uniq(skillIds),
     });
   }
 
@@ -617,15 +605,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     skillIds: readonly string[]
   ): Promise<SkillSearchDocument[]> {
-    const workspace = auth.getNonNullableWorkspace();
-    const ids = skillIds.filter((skillId) => {
-      const parsed = getResourceNameAndIdFromSId(skillId);
-      return (
-        parsed?.resourceName === "skill" &&
-        parsed.workspaceModelId === workspace.id
-      );
-    });
-    const skills = await this.fetchByIds(auth, ids, {
+    const skills = await this.fetchByIds(auth, [...skillIds], {
       permissionFiltering: "dangerously_skip",
       withInstructions: false,
       withTools: true,
@@ -635,7 +615,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const byId = new Map(
       documents.map((document) => [document.skill_id, document])
     );
-    return removeNulls(ids.map((id) => byId.get(id) ?? null));
+    return removeNulls(skillIds.map((id) => byId.get(id) ?? null));
   }
 
   /**
