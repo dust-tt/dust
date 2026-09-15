@@ -9,7 +9,7 @@ use crate::providers::tiktoken::tiktoken::{
     batch_tokenize_async, cl100k_base_singleton, r50k_base_singleton, CoreBPE,
 };
 use crate::providers::tiktoken::tiktoken::{decode_async, encode_async};
-use crate::run::Credentials;
+use crate::run::{credential_or_env, Credentials, BYOK_CREDENTIAL_KEY};
 use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 use anyhow::{anyhow, Result};
@@ -771,19 +771,7 @@ impl LLM for OpenAILLM {
     }
 
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
-        match credentials.get("OPENAI_API_KEY") {
-            Some(api_key) => {
-                self.api_key = Some(api_key.clone());
-            }
-            None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_API_KEY")).await? {
-                Ok(key) => {
-                    self.api_key = Some(key);
-                }
-                Err(_) => Err(anyhow!(
-                    "Credentials or environment variable `OPENAI_API_KEY` is not set."
-                ))?,
-            },
-        }
+        self.api_key = Some(credential_or_env(&credentials, "OPENAI_API_KEY").await?);
         self.use_eu_endpoint = match credentials.get("OPENAI_USE_EU_ENDPOINT") {
             Some(use_eu_endpoint_str) => use_eu_endpoint_str == "true",
             None => match tokio::task::spawn_blocking(|| std::env::var("OPENAI_USE_EU_ENDPOINT"))
@@ -1206,6 +1194,11 @@ impl Embedder for OpenAIEmbedder {
             self.api_key = Some(embedding_key.clone());
             // TODO(BYOK): add support openai EU host
             self.host = Some("api.openai.com".to_string());
+        } else if credentials.contains_key(BYOK_CREDENTIAL_KEY) {
+            return Err(anyhow!(
+                "Credential `OPENAI_EMBEDDING_API_KEY` is not set; a BYOK workspace cannot embed \
+                 with Dust's data-source key."
+            ));
         } else {
             let raw_key = std::env::var("CORE_DATA_SOURCES_OPENAI_API_KEY").map_err(|_| {
                 anyhow!(

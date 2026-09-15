@@ -42,6 +42,7 @@ import type {
 } from "@app/lib/api/llm/types/options";
 import { emitTokenUsageMetrics } from "@app/lib/api/llm/usage_metrics";
 import { isProgrammaticUsageFromContext } from "@app/lib/api/programmatic_usage/common";
+import { usesWorkspaceProvidedCredentials } from "@app/lib/api/provider_credentials";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustBatchEndpointConstructor } from "@app/lib/llms/batch/dust_batch_endpoint";
 import type { DustStreamEndpointConstructor } from "@app/lib/llms/stream/dust_stream_endpoint";
@@ -706,7 +707,9 @@ export abstract class LLM<
         appId: null,
         dustRunId: traceId,
         runType: "deploy",
-        useWorkspaceCredentials: false,
+        useWorkspaceCredentials: usesWorkspaceProvidedCredentials(
+          this.authenticator
+        ),
         workspaceId: this.authenticator.getNonNullableWorkspace().id,
       });
 

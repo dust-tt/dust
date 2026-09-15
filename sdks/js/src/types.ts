@@ -904,7 +904,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "consumption_export_api"
   | "conversational_building"
   | "conversation_consumption_details"
-  | "use_dust_keys"
   | "sensitivity_labels"
   | "use_vertex_for_supported_models"
   | "workspace_default_agent"

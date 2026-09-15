@@ -13,7 +13,7 @@ use crate::providers::sentencepiece::sentencepiece::{
     mistral_instruct_tokenizer_240216_model_v3_base_singleton,
     mistral_tokenizer_model_v1_base_singleton,
 };
-use crate::run::Credentials;
+use crate::run::{credential_or_env, Credentials, BYOK_CREDENTIAL_KEY};
 use crate::types::tokenizer::{SentencePieceTokenizerBase, TokenizerConfig};
 use crate::utils::{self, now, ParseError};
 use anyhow::{anyhow, Result};
@@ -912,19 +912,7 @@ impl LLM for MistralAILLM {
         self.id.clone()
     }
     async fn initialize(&mut self, credentials: Credentials) -> Result<()> {
-        match credentials.get("MISTRAL_API_KEY") {
-            Some(api_key) => {
-                self.api_key = Some(api_key.clone());
-            }
-            None => match tokio::task::spawn_blocking(|| std::env::var("MISTRAL_API_KEY")).await? {
-                Ok(key) => {
-                    self.api_key = Some(key);
-                }
-                Err(_) => Err(anyhow!(
-                    "Credentials or environment variable `MISTRAL_API_KEY` is not set."
-                ))?,
-            },
-        }
+        self.api_key = Some(credential_or_env(&credentials, "MISTRAL_API_KEY").await?);
 
         Ok(())
     }
@@ -1156,6 +1144,14 @@ impl Embedder for MistralEmbedder {
                 "Unexpected embedder model id (`{}`) for provider `mistral`",
                 self.id
             ));
+        }
+
+        // A BYOK workspace embeds with its own key only: Dust's data-source key and the
+        // environment fallback below are Dust-managed credentials.
+        if credentials.contains_key(BYOK_CREDENTIAL_KEY) {
+            self.api_key = Some(credential_or_env(&credentials, "MISTRAL_API_KEY").await?);
+
+            return Ok(());
         }
 
         match std::env::var("CORE_DATA_SOURCES_MISTRAL_API_KEY") {
