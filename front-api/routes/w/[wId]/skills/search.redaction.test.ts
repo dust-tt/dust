@@ -62,9 +62,9 @@ describe("GET /api/w/:wId/skills/search redaction integration", () => {
       name: "RedactionTest foreign",
       status,
     });
-    const foreignDocument = await SkillResource.fetchSearchDocument(
+    const [foreignDocument] = await SkillFactory.createSearchDocuments(
       other.auth,
-      foreign.sId
+      [foreign]
     );
     assert(foreignDocument);
 
@@ -92,10 +92,10 @@ describe("GET /api/w/:wId/skills/search redaction integration", () => {
     const archivedSkill = await SkillFactory.create(auth, {
       name: "RedactionTest archived",
     });
-    const documents = await SkillResource.fetchSearchDocuments(auth, [
-      readableSkill.sId,
-      hiddenSkill.sId,
-      archivedSkill.sId,
+    const documents = await SkillFactory.createSearchDocuments(auth, [
+      readableSkill,
+      hiddenSkill,
+      archivedSkill,
     ]);
     await archivedSkill.archive(auth);
     const hits = [...documents, foreignDocument].map((document, index) => ({

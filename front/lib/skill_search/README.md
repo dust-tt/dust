@@ -13,16 +13,18 @@ merged at query time: changing their definitions requires no ES migration.
 | `name` | `text`, `keyword`, `search_as_you_type` (`name.autocomplete`) |
 | `description` | `text` |
 | `requested_space_ids`, `editor_ids`, `mcp_server_view_ids` | `keyword` arrays |
-| `icon`, `last_edited_by_user_id` | `keyword`, `long` |
+| `icon`, `last_edited_by_user_id` | `keyword` |
 | `created_at`, `updated_at` | `date` |
-| `active_users_count`, `favorite_count`, `is_default` | `integer`, `integer`, `boolean` |
+| `active_users_count`, `favorite_count` | `integer` |
 
 All requested spaces, including manually selected spaces and projects/pods, use
 `requested_space_ids`; manual selections are already part of the canonical
-`requestedSpaceIds` union. Duplicate,
-missing or foreign-workspace references invalidate a document. Tools are MCP
+`requestedSpaceIds` union. Normal resource fetching enforces workspace and requested-space
+access before indexing. Tools are MCP
 server view sIds; editor IDs are user sIds matched against `auth.user().sId`.
 Individual editors are projected from their auto group; editor group IDs are not indexed.
+The last editor is resolved separately from the skill's `editedBy` user to its sId,
+including when that user is no longer an editor. Missing users produce `null`.
 
 `name` uses a keyword tokenizer followed by `icu_folding` for a case- and
 accent-insensitive whole-name match. `name.keyword` stays raw for deterministic
@@ -43,13 +45,15 @@ tokenization and Unicode folding are not guaranteed to match ICU.
 Creation and update times are indexed dates. Agent-facing descriptions,
 source/import details and reinforcement settings remain in PostgreSQL; there is
 no metadata payload in `_source`. After authorization, `SkillResource` serializes
-the search listing directly from the indexed fields, without reconstructing a
-full resource. `SkillListItemType` is the listing-only shape: identity, name,
+the listing from the resource already fetched for validation. The existing API's
+numeric `editedBy` remains unchanged; the ES field contains the user's string sId.
+`SkillListItemType` is the listing-only shape: identity, name,
 description, icon, last editor, requested spaces, status and readability. Search
 adds a score; the fuller skill types remain reserved for consumers that need
 builder or execution data. Instructions, tool configurations and files are never indexed.
-`SkillResource` derives documents through its existing fetchers and resource serializers,
-without a separate SQL projection or transaction wrapper.
+Indexing calls the normal resource fetchers, loads editor users, and passes their sIds
+to the synchronous `SkillResource.toSearchDocument`. There is no search-specific fetcher
+or asynchronous serializer.
 
 ## Authorization
 
@@ -68,7 +72,8 @@ grants. An admin role alone does not imply access to every space. A type-wide re
 grant avoids enumerating IDs; otherwise query size scales with the caller's grants.
 
 Candidates are validated in batches against PostgreSQL: lifecycle, row-read
-permission, every requested space, availability and current editor grants. Stale
+permission, every requested space, availability and current editor grants. Validation
+compares resource fields directly without loading tools or rebuilding search documents. Stale
 permission fields fail closed. There is no per-skill SQL query or candidate-pod
 special case. A PIT freezes index state, never authorization.
 
@@ -95,8 +100,9 @@ but `sand` no longer finds `Search And Navigate Data`. Punctuation is not query
 syntax, and description-only matches never enter autocomplete results.
 
 Comma-separated `status`, `spaceIds`, `toolIds` and `availability` use OR within a dimension
-and AND across dimensions. `isDefault` and `editedByMe` accept true/false. These
-selection filters never replace ACLs and apply to code-defined skills too.
+and AND across dimensions. `isDefault` and `editedByMe` accept true/false.
+`isDefault` filters by `availability: users_and_agents`, without a separate indexed field.
+These selection filters never replace ACLs and apply to code-defined skills too.
 `status=archived` searches archives; `status=active,archived` searches both. Omitting
 status keeps slash/discovery results active-only. Code-defined skills are always
 active and never appear in archive-only results. Changing status requires a new cursor.
@@ -118,8 +124,9 @@ Skill mutation methods own indexation, enqueueing a per-skill Temporal workflow
 after their existing writes. Transaction boundaries and mutation APIs are unchanged.
 Operations passed a transaction leave indexation to the owning resource after its
 writes complete; there are no search-specific commit hooks. The activity
-calls `SkillResource` to rebuild the latest committed active or archived document or
-delete a missing, suggested or invalid one. Archive and restore update the indexed
+fetches the skill through `SkillResource.fetchByIds`, loads its editors and last editor,
+and indexes the synchronous `toSearchDocument` result. Missing, unreadable or suggested
+skills are deleted from the index. Archive and restore update the indexed
 status; a name collision during archive also refreshes the older renamed archive.
 
 Editor grant and group-membership mutations enqueue only affected workspace
