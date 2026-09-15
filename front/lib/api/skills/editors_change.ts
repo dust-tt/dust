@@ -2,10 +2,15 @@ import { findSkillEditorsWithoutSpaceAccess } from "@app/lib/api/skills/space_re
 import type { Authenticator } from "@app/lib/auth";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import {
+  parseSkillSuggestionData,
+  SKILL_SUGGESTION_SOURCES,
+} from "@app/types/suggestions/skill_suggestion";
 
 export type SkillEditorsChangeErrorCode =
   | "not_authorized"
@@ -13,7 +18,8 @@ export type SkillEditorsChangeErrorCode =
   | "user_not_found"
   | "user_not_member"
   | "space_access_denied"
-  | "last_editor_removed";
+  | "last_editor_removed"
+  | "apply_failed";
 
 export class SkillEditorsChangeError extends Error {
   constructor(
@@ -142,4 +148,78 @@ export async function validateSkillEditorsChange(
   }
 
   return new Ok({ usersToAdd, usersToRemove });
+}
+
+/**
+ * @cc [owner:achilleburah,label:security] editors-revalidated-at-accept
+ * Approving an editors suggestion MUST re-run `validateSkillEditorsChange` against live state
+ * before writing anything: the caller's authorization, archived status, the target users' active
+ * workspace membership, the added editors' access to the skill's requested spaces (which may have
+ * moved since creation) and the last-editor rule. Nothing validated at creation time is trusted.
+ */
+/**
+ * @cc [owner:achilleburah,label:product] one-applied-editors-suggestion
+ * Once the change is applied, every other `pending` editors suggestion for the same skill MUST be
+ * marked `outdated`, whatever its source. Pending editors suggestions are not capped.
+ */
+export async function applySkillEditorsSuggestion(
+  auth: Authenticator,
+  skill: SkillResource,
+  suggestion: SkillSuggestionResource
+): Promise<Result<undefined, SkillEditorsChangeError>> {
+  const data = parseSkillSuggestionData(suggestion);
+  if (data.kind !== "editors") {
+    return new Err(
+      new SkillEditorsChangeError(
+        "apply_failed",
+        "Only editors suggestions can be applied this way."
+      )
+    );
+  }
+
+  const validation = await validateSkillEditorsChange(
+    auth,
+    skill,
+    data.suggestion
+  );
+  if (validation.isErr()) {
+    return validation;
+  }
+  const { usersToAdd, usersToRemove } = validation.value;
+
+  // Same order as the manual route: adds first, then removals.
+  const addRes = await skill.addEditors(auth, usersToAdd);
+  if (addRes.isErr()) {
+    return new Err(applyFailed(addRes.error));
+  }
+  const removeRes = await skill.removeEditors(auth, usersToRemove);
+  if (removeRes.isErr()) {
+    return new Err(applyFailed(removeRes.error));
+  }
+
+  const pending = await SkillSuggestionResource.listBySkillConfigurationId(
+    auth,
+    skill.sId,
+    {
+      states: ["pending"],
+      kind: "editors",
+      sources: [...SKILL_SUGGESTION_SOURCES],
+    }
+  );
+  await SkillSuggestionResource.bulkUpdateState(
+    auth,
+    pending.filter((s) => s.sId !== suggestion.sId),
+    "outdated"
+  );
+
+  return new Ok(undefined);
+}
+
+// `writeEditorUserGrants` folds every grant failure into `user_not_found`, so the code carries no
+// information here: surface a generic apply failure with the underlying message.
+function applyFailed(error: Error): SkillEditorsChangeError {
+  return new SkillEditorsChangeError(
+    "apply_failed",
+    `Failed to apply the editors change: ${error.message}`
+  );
 }

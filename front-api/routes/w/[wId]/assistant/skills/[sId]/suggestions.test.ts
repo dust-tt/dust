@@ -1,12 +1,15 @@
 import { Authenticator } from "@app/lib/auth";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { MembershipRoleType } from "@app/types/memberships";
 import type { SkillSuggestionState } from "@app/types/suggestions/skill_suggestion";
+import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/reinforcement/workspace_check", () => ({
@@ -425,6 +428,186 @@ describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions", () => {
     expect((await response.json()).error.message).toContain(
       "Self-improving skills are not enabled"
     );
+  });
+});
+
+describe("PATCH /api/w/:wId/assistant/skills/:sId/suggestions (editors)", () => {
+  async function addMember(workspace: WorkspaceType) {
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+    return user;
+  }
+
+  it("applies the change and approves the suggestion", async () => {
+    const { workspace, auth, skill } = await setup();
+    const newEditor = await addMember(workspace);
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      kind: "editors",
+      suggestion: { addUserIds: [newEditor.sId], removeUserIds: [] },
+      source: "conversational",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(200);
+    // `editors` rows have no public serialization yet, so the body omits them.
+    const body = await response.json();
+    expect(body.suggestions).toEqual([]);
+
+    const reloaded = await SkillSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(reloaded?.state).toBe("approved");
+    const editors = (await skill.listEditors(auth)) ?? [];
+    expect(editors.map((u) => u.sId).sort()).toEqual(
+      [auth.getNonNullableUser().sId, newEditor.sId].sort()
+    );
+  });
+
+  it("approves a conversational suggestion even when reinforcement is disabled", async () => {
+    const { hasReinforcementEnabled } = await import(
+      "@app/lib/reinforcement/workspace_check"
+    );
+    // Not a one-shot value: the conversational path never consults the check, and a queued
+    // `false` would leak into the next test.
+    vi.mocked(hasReinforcementEnabled).mockResolvedValue(false);
+    try {
+      const { workspace, auth, skill } = await setup();
+      const newEditor = await addMember(workspace);
+      const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+        kind: "editors",
+        suggestion: { addUserIds: [newEditor.sId], removeUserIds: [] },
+        source: "conversational",
+      });
+
+      const response = await patch(workspace, skill.sId, {
+        suggestionIds: [suggestion.sId],
+        state: "approved",
+      });
+
+      expect(response.status).toBe(200);
+      const reloaded = await SkillSuggestionResource.fetchById(
+        auth,
+        suggestion.sId
+      );
+      expect(reloaded?.state).toBe("approved");
+    } finally {
+      vi.mocked(hasReinforcementEnabled).mockResolvedValue(true);
+    }
+  });
+
+  it("returns 403 when the caller is no longer allowed to administrate the skill", async () => {
+    const { workspace, skill, suggestion } =
+      await setupAdminWithOtherBuilderSkill();
+    // Re-mock the session as a plain member of the same workspace who does not edit the skill.
+    await createPrivateApiMockRequest({ role: "user", workspace });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("rejects a target who left the workspace since the suggestion was created", async () => {
+    const { workspace, auth, skill } = await setup();
+    const leaver = await addMember(workspace);
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      kind: "editors",
+      suggestion: { addUserIds: [leaver.sId], removeUserIds: [] },
+      source: "conversational",
+    });
+    const revoked = await MembershipResource.revokeMembership({
+      user: leaver,
+      workspace,
+    });
+    expect(revoked.isOk()).toBe(true);
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(400);
+    const { error } = await response.json();
+    expect(error.message).toContain("not active members");
+    const reloaded = await SkillSuggestionResource.fetchById(
+      auth,
+      suggestion.sId
+    );
+    expect(reloaded?.state).toBe("pending");
+    const editors = (await skill.listEditors(auth)) ?? [];
+    expect(editors.map((u) => u.sId)).toEqual([auth.getNonNullableUser().sId]);
+  });
+
+  it("rejects an added editor who lacks access to the skill's requested spaces at accept time", async () => {
+    const { workspace, auth } = await setup();
+    const restrictedSpace = await SpaceFactory.regular(workspace);
+    const adminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await restrictedSpace.addMembers(adminAuth, {
+      userIds: [auth.getNonNullableUser().sId],
+    });
+    await auth.refresh();
+    const skill = await SkillFactory.create(auth, {
+      name: "Restricted",
+      requestedSpaceIds: [restrictedSpace.id],
+    });
+    await auth.refresh();
+    const outsider = await addMember(workspace);
+    // The factory bypasses creation-time validation, like a space change after creation would.
+    const suggestion = await SkillSuggestionFactory.create(auth, skill, {
+      kind: "editors",
+      suggestion: { addUserIds: [outsider.sId], removeUserIds: [] },
+      source: "conversational",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [suggestion.sId],
+      state: "approved",
+    });
+
+    expect(response.status).toBe(400);
+    const { error } = await response.json();
+    expect(error.message).toContain("do not have access");
+  });
+
+  it("outdates the other pending editors suggestions once one is approved", async () => {
+    const { workspace, auth, skill } = await setup();
+    const a = await addMember(workspace);
+    const b = await addMember(workspace);
+    const approved = await SkillSuggestionFactory.create(auth, skill, {
+      kind: "editors",
+      suggestion: { addUserIds: [a.sId], removeUserIds: [] },
+      source: "conversational",
+    });
+    const sibling = await SkillSuggestionFactory.create(auth, skill, {
+      kind: "editors",
+      suggestion: { addUserIds: [b.sId], removeUserIds: [] },
+      source: "conversational",
+    });
+    const unrelatedEdit = await SkillSuggestionFactory.create(auth, skill, {
+      state: "pending",
+    });
+
+    const response = await patch(workspace, skill.sId, {
+      suggestionIds: [approved.sId],
+      state: "approved",
+    });
+    expect(response.status).toBe(200);
+
+    const [reloadedSibling, reloadedEdit] = await Promise.all([
+      SkillSuggestionResource.fetchById(auth, sibling.sId),
+      SkillSuggestionResource.fetchById(auth, unrelatedEdit.sId),
+    ]);
+    expect(reloadedSibling?.state).toBe("outdated");
+    expect(reloadedEdit?.state).toBe("pending");
   });
 });
 
