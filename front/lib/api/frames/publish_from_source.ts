@@ -9,6 +9,7 @@ import {
 import { withFrameSourceLock } from "@app/lib/api/frames/operation_lock";
 import type { FramePublicationSourceFile } from "@app/lib/api/frames/publication_storage";
 import { FramePublicationError } from "@app/lib/api/frames/publication_storage";
+import { rewriteFrameSourcePackageFileRefs } from "@app/lib/api/frames/rewrite_package_file_refs";
 import { SandboxFunctionError } from "@app/lib/api/sandbox_functions/errors";
 import { createMountFrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import {
@@ -21,6 +22,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import type { FrameManifest } from "@app/types/api/frame_manifest";
 import {
   FRAME_MANIFEST_FILE,
@@ -453,10 +455,50 @@ async function publishFrameV2FromSourceWithSourceLockHeld(
     return source;
   }
 
+  const resolved = await resolveWritableFrameV2Source(auth, frame);
+  if (resolved.isErr()) {
+    return resolved;
+  }
+  const { canonicalManifestPath, dustFs } = resolved.value;
+  const frameRoot = path.posix.dirname(canonicalManifestPath);
+
+  const { sourceFiles, rewrittenPaths } = rewriteFrameSourcePackageFileRefs({
+    sourceFiles: source.value.sourceFiles,
+    frameRoot,
+  });
+
+  if (rewrittenPaths.length > 0) {
+    const byPath = new Map(
+      sourceFiles.map((sourceFile) => [sourceFile.relativePath, sourceFile])
+    );
+    for (const relativePath of rewrittenPaths) {
+      const sourceFile = byPath.get(relativePath);
+      if (!sourceFile) {
+        continue;
+      }
+      const writeResult = await dustFs.write(
+        path.posix.join(frameRoot, relativePath),
+        sourceFile.content,
+        sourceFile.contentType
+      );
+      if (writeResult.isErr()) {
+        return frameError("invalid_source", writeResult.error.message);
+      }
+    }
+    logger.info(
+      {
+        frameId: frame.sId,
+        rewrittenPaths,
+      },
+      "Rewrote in-package useFile paths to package-relative form on publish"
+    );
+  }
+
   return buildAndPublishFramePublication(auth, {
     conversation,
     frame,
-    ...source.value,
+    manifest: source.value.manifest,
+    sourceFiles,
     publishedByAgentConfigurationId,
   });
 }

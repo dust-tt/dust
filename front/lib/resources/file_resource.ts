@@ -15,6 +15,10 @@ import {
   hasProcessedVersion,
 } from "@app/lib/api/files/processing";
 import { withFramePublishLock } from "@app/lib/api/frames/operation_lock";
+import {
+  formatFramePackageRelativePath,
+  resolvePackageRelativeToScopedPath,
+} from "@app/lib/api/frames/package_file_ref_paths";
 import { fetchProjectDataSource } from "@app/lib/api/projects/data_sources";
 import { cleanupProjectFileFragments } from "@app/lib/api/projects/file_cleanup";
 import { requestDustProjectIncrementalSync } from "@app/lib/api/projects/request_incremental_sync";
@@ -2279,9 +2283,11 @@ export class FileResource extends BaseResource<FileModel> {
     {
       fileRef,
       frameContext,
+      packageRoot,
     }: {
       fileRef: FileRef;
       frameContext: FrameScopedPathContext;
+      packageRoot: string | null;
     }
   ): Promise<
     | {
@@ -2381,6 +2387,50 @@ export class FileResource extends BaseResource<FileModel> {
           nestedContentType: contentType,
         };
       }
+      case "frameRelative": {
+        if (!packageRoot) {
+          return { verified: false };
+        }
+
+        const packageRelativeRef = formatFramePackageRelativePath(
+          fileRef.relativePath
+        );
+        const canonicalPath = resolvePackageRelativeToScopedPath({
+          relativePath: packageRelativeRef,
+          frameRoot: packageRoot,
+        });
+        if (!canonicalPath) {
+          return { verified: false };
+        }
+
+        const fsResult = await DustFileSystem.fromScopedPath(
+          auth,
+          canonicalPath
+        );
+        if (fsResult.isErr()) {
+          return { verified: false };
+        }
+
+        const statResult = await fsResult.value.stat(canonicalPath);
+        if (statResult.isErr() || !statResult.value) {
+          return { verified: false };
+        }
+
+        const fileName = canonicalPath.split("/").pop();
+        // Store the portable `./…` identity; resolve against the current package root at read.
+        const entry: AuthorizedFileRef = {
+          kind: "frame_relative_path",
+          ref: packageRelativeRef,
+          ...(fileName ? { fileName } : {}),
+        };
+
+        return {
+          verified: true,
+          entry,
+          nestedContent: undefined,
+          nestedContentType: statResult.value.contentType,
+        };
+      }
       default:
         return assertNever(fileRef);
     }
@@ -2391,10 +2441,12 @@ export class FileResource extends BaseResource<FileModel> {
     {
       frameContent,
       frameContext,
+      packageRoot,
       visited,
     }: {
       frameContent: string;
       frameContext: FrameScopedPathContext;
+      packageRoot: string | null;
       visited: Set<string>;
     }
   ): Promise<{
@@ -2414,6 +2466,9 @@ export class FileResource extends BaseResource<FileModel> {
         case "path":
           key = fileRef.scopedPath;
           break;
+        case "frameRelative":
+          key = formatFramePackageRelativePath(fileRef.relativePath);
+          break;
         default:
           assertNever(fileRef);
       }
@@ -2425,6 +2480,7 @@ export class FileResource extends BaseResource<FileModel> {
       const result = await this.verifyAndNormalizeAuthorizedFileRef(auth, {
         fileRef,
         frameContext,
+        packageRoot,
       });
       if (!result.verified) {
         unverifiableRefs.push(key);
@@ -2438,9 +2494,20 @@ export class FileResource extends BaseResource<FileModel> {
         result.nestedContentType &&
         FRAME_CONTENT_TYPES.has(result.nestedContentType)
       ) {
+        const nestedPackageRoot =
+          result.entry.kind === "file_id"
+            ? ((
+                await FileResource.fetchById(auth, result.entry.ref)
+              )?.getFrameV2SourceDirectoryPath(auth) ?? null)
+            : result.entry.kind === "canonical_path"
+              ? path.posix.dirname(result.entry.ref)
+              : // frame_relative_path assets are data files, not nested frames.
+                null;
+
         const nested = await this.collectVerifiedAuthorizedFileRefs(auth, {
           frameContent: result.nestedContent,
           frameContext,
+          packageRoot: nestedPackageRoot,
           visited,
         });
         refs.push(...nested.refs);
@@ -2456,10 +2523,12 @@ export class FileResource extends BaseResource<FileModel> {
     { frameContent }: { frameContent: string }
   ): Promise<ComputedAuthorizedFileAccess> {
     const frameContext = await this.resolveFrameScopedPathContext(auth);
+    const packageRoot = this.getFrameV2SourceDirectoryPath(auth);
     const { refs, unverifiableRefs } =
       await this.collectVerifiedAuthorizedFileRefs(auth, {
         frameContent,
         frameContext,
+        packageRoot,
         visited: new Set(),
       });
 
@@ -2515,6 +2584,12 @@ export class FileResource extends BaseResource<FileModel> {
           kind: "canonical_path",
           ref: row.ref,
           ...(row.legacyPath ? { legacyPath: row.legacyPath } : {}),
+          ...(row.fileName ? { fileName: row.fileName } : {}),
+        };
+      case "frame_relative_path":
+        return {
+          kind: "frame_relative_path",
+          ref: row.ref,
           ...(row.fileName ? { fileName: row.fileName } : {}),
         };
       default:
