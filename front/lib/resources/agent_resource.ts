@@ -14,10 +14,10 @@ import { isGlobalAgentId } from "@app/types/assistant/assistant";
 import type { GrantVerb } from "@app/types/group_permissions";
 import { grantKey } from "@app/types/group_permissions";
 import type {
-  AccessControlList,
   RoleGrant,
   WithAccessControl,
 } from "@app/types/resource_permissions";
+import { verbsFromRoleGrants } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { removeNulls } from "@app/types/shared/utils/general";
@@ -313,25 +313,21 @@ export class AgentResource implements WithAccessControl {
    * The admin role grants `write` on custom agents to regular API keys only; human and system-key
    * callers receive no agent write access from their role. Global agents remain read-only.
    */
-  getAccessControlLists(auth: Authenticator): AccessControlList[] {
+  getAllowedVerbs(auth: Authenticator): Set<GrantVerb> {
     switch (this.kind) {
-      case "global":
+      case "global": {
         assert(isGlobalAgentId(this.sId));
 
-        return [
-          {
-            roles: globalAgentReaderRoles(this.sId).map((role) => ({
-              role,
-              permissions: ["read"],
-            })),
-            workspaceId: this.workspaceId,
-          },
-        ];
+        const roleGrants: RoleGrant[] = globalAgentReaderRoles(this.sId).map(
+          (role) => ({ role, permissions: ["read"] })
+        );
+        return new Set(verbsFromRoleGrants(auth, roleGrants, this.workspaceId));
+      }
       case "custom": {
         assert(this.id !== null);
         assert(this.authorId !== null);
 
-        const grants = auth.getGrantedVerbs("agent", this.id);
+        const grants = auth.getGovernanceGrantVerbs("agent", this.id);
         const isAuthor =
           auth.workspace()?.id === this.workspaceId &&
           auth.user()?.id === this.authorId;
@@ -339,19 +335,15 @@ export class AgentResource implements WithAccessControl {
           this.scope === "visible"
             ? VISIBLE_AGENT_ROLE_GRANTS
             : HIDDEN_AGENT_ROLE_GRANTS;
+        const roleGrants: RoleGrant[] =
+          auth.isKey() && !auth.isSystemKey()
+            ? [...roles, { role: "admin", permissions: ["write"] }]
+            : roles;
 
-        return [
-          {
-            roles:
-              auth.isKey() && !auth.isSystemKey()
-                ? [...roles, { role: "admin", permissions: ["write"] }]
-                : roles,
-            grantedVerbs: isAuthor
-              ? [...new Set([...grants, ...AGENT_EDITOR_VERBS])]
-              : grants,
-            workspaceId: this.workspaceId,
-          },
-        ];
+        return new Set([
+          ...(isAuthor ? [...grants, ...AGENT_EDITOR_VERBS] : grants),
+          ...verbsFromRoleGrants(auth, roleGrants, this.workspaceId),
+        ]);
       }
       default:
         return assertNever(this.kind);
