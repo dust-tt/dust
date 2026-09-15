@@ -51,9 +51,9 @@ numeric `editedBy` remains unchanged; the ES field contains the user's string sI
 description, icon, last editor, requested spaces, status and readability. Search
 adds a score; the fuller skill types remain reserved for consumers that need
 builder or execution data. Instructions, tool configurations and files are never indexed.
-Indexing calls the normal resource fetchers, loads editor users, and passes their sIds
-to the synchronous `SkillResource.toSearchDocument`. There is no search-specific fetcher
-or asynchronous serializer.
+Indexing calls the normal resource fetchers and passes the editor and last-editor resources
+to the synchronous `SkillResource.toSearchDocument`, which extracts their sIds.
+There is no search-specific fetcher or asynchronous serializer.
 
 ## Authorization
 
