@@ -320,7 +320,7 @@ const CONVERSATION_FONT_OPTIONS: OptionTile<ConversationFont>[] =
       <span
         className={cn(
           CONVERSATION_FONT_SPECIMEN_CLASSES[font],
-          "text-xl leading-none text-foreground"
+          "text-xl leading-none"
         )}
       >
         Aa
@@ -420,26 +420,28 @@ function CustomizationSection() {
         <SettingsList.Row
           title="Theme"
           description="Choose how Dust looks on this device"
-        >
-          <OptionTileGroup
-            ariaLabel="Theme"
-            options={THEME_OPTIONS}
-            value={localTheme}
-            onValueChange={setLocalTheme}
-          />
-        </SettingsList.Row>
+          action={
+            <OptionTileGroup
+              ariaLabel="Theme"
+              options={THEME_OPTIONS}
+              value={localTheme}
+              onValueChange={setLocalTheme}
+            />
+          }
+        />
 
         <SettingsList.Row
           title="Conversation font"
           description="Font used for agent answers in conversations"
-        >
-          <OptionTileGroup
-            ariaLabel="Conversation font"
-            options={CONVERSATION_FONT_OPTIONS}
-            value={localConversationFont}
-            onValueChange={setLocalConversationFont}
-          />
-        </SettingsList.Row>
+          action={
+            <OptionTileGroup
+              ariaLabel="Conversation font"
+              options={CONVERSATION_FONT_OPTIONS}
+              value={localConversationFont}
+              onValueChange={setLocalConversationFont}
+            />
+          }
+        />
 
         <SettingsList.Row
           title="Send message"

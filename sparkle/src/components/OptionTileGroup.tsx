@@ -24,8 +24,10 @@ export interface OptionTileGroupProps<T extends string = string> {
 }
 
 /**
- * A single-select row of equal-width tiles, each showing an icon (or custom
- * visual) above a label, with the current choice outlined. Built on a radio
+ * A single-select row of equal-width compact tiles, each showing an icon (or
+ * custom visual) above a label, with the current choice outlined in the
+ * highlight color. Sized to its content, so it fits a `SettingsList.Row`
+ * `action` slot. Built on a radio
  * group, so it is keyboard navigable with arrow keys and announces as one
  * control. Use it for a small set (2-4) of mutually exclusive settings such as
  * theme or font; for longer or descriptive choices use `RadioGroup`, and for
@@ -53,7 +55,7 @@ export function OptionTileGroup<T extends string = string>({
       aria-label={ariaLabel}
       disabled={disabled}
       orientation="horizontal"
-      className={cn("grid auto-cols-fr grid-flow-col gap-3", className)}
+      className={cn("grid auto-cols-fr grid-flow-col gap-2", className)}
     >
       {options.map((option) => (
         <RadioGroupPrimitive.Item
@@ -61,20 +63,20 @@ export function OptionTileGroup<T extends string = string>({
           value={option.value}
           disabled={option.disabled}
           className={cn(
-            "flex min-w-0 flex-col items-center justify-center gap-2 px-3 py-4",
+            "flex min-w-24 flex-col items-center justify-center gap-1 px-3 py-2",
             "rounded-2xl border border-border bg-background text-foreground",
             "transition-colors duration-100 ease-out motion-reduce:transition-none",
             "hover:bg-muted-background",
             "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-highlight-200/70",
             "disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-background",
-            // Selected: a foreground outline, no fill, so the tile's own
+            // Selected: a highlight outline, no fill, so the tile's own
             // visual (icon or specimen) stays the focus.
-            "data-[state=checked]:border-foreground data-[state=checked]:shadow-[inset_0_0_0_1px_var(--color-foreground)]"
+            "data-[state=checked]:border-highlight data-[state=checked]:shadow-[inset_0_0_0_1px_var(--color-highlight)]"
           )}
         >
           <span
             aria-hidden="true"
-            className="flex h-6 items-center justify-center"
+            className="flex h-6 items-center justify-center text-muted-foreground"
           >
             {option.visual ??
               (option.icon && <Icon visual={option.icon} size="md" />)}

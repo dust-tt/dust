@@ -18,9 +18,7 @@ const THEME_OPTIONS: OptionTile<"light" | "dark" | "system">[] = [
 ];
 
 const specimen = (className: string) => (
-  <span className={`${className} text-xl leading-none text-foreground`}>
-    Aa
-  </span>
+  <span className={`${className} text-xl leading-none`}>Aa</span>
 );
 
 const FONT_OPTIONS: OptionTile<"sans" | "serif" | "dyslexic">[] = [
@@ -45,9 +43,11 @@ const meta = {
 - For 2-4 mutually exclusive settings where a glyph makes the options scannable at a glance (theme, font, density).
 
 **Guidelines**
-- Keep labels to one or two words; tiles share the row width equally and truncate.
+- Keep labels to one or two words; tiles share the group width equally and truncate. The group sizes to its content, so it fits a \`SettingsList.Row\` \`action\` slot.
 - Prefer \`icon\` for abstract choices and \`visual\` when the option can show itself (a type specimen, a swatch).
-- For longer or descriptive options use **RadioGroup**; for agent-prompt answers use **OptionCard**.`,
+- For longer or descriptive options use **RadioGroup**;
+for agent-prompt answers use **OptionCard**
+.`,
       },
     },
   },
@@ -60,7 +60,7 @@ type Story = StoryObj<typeof meta>;
 function ThemeTiles() {
   const [value, setValue] = useState<"light" | "dark" | "system">("light");
   return (
-    <div className="w-[480px]">
+    <div>
       <OptionTileGroup
         ariaLabel="Theme"
         options={THEME_OPTIONS}
@@ -98,7 +98,7 @@ export const Theme: Story = {
 function FontTiles() {
   const [value, setValue] = useState<"sans" | "serif" | "dyslexic">("sans");
   return (
-    <div className="w-[480px]">
+    <div>
       <OptionTileGroup
         ariaLabel="Conversation font"
         options={FONT_OPTIONS}
@@ -124,8 +124,8 @@ export const FontSpecimens: Story = {
 };
 
 /**
- * Inside a `SettingsList.Row`, using the row's full-width `children` slot
- * because three tiles are too wide for the trailing `action` slot.
+ * Inside a `SettingsList.Row`, in the trailing `action` slot where a
+ * dropdown would otherwise go.
  * @summary In a settings row.
  */
 export const InSettingsRow: Story = {
@@ -136,17 +136,18 @@ export const InSettingsRow: Story = {
     onValueChange: () => {},
   },
   render: () => (
-    <div className="w-[560px]">
+    <div className="w-[640px]">
       <SettingsList>
-        <SettingsList.Row title="Theme" description="Choose how Dust looks">
-          <ThemeTiles />
-        </SettingsList.Row>
+        <SettingsList.Row
+          title="Theme"
+          description="Choose how Dust looks"
+          action={<ThemeTiles />}
+        />
         <SettingsList.Row
           title="Conversation font"
           description="Font used for agent answers"
-        >
-          <FontTiles />
-        </SettingsList.Row>
+          action={<FontTiles />}
+        />
       </SettingsList>
     </div>
   ),
