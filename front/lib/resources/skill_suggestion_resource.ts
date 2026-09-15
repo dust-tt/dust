@@ -78,7 +78,7 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     }
     // Editors of a skill hold its `editor` grant, which resolves to write (see ROLE_REGISTRY).
     return auth
-      .getGrantedVerbs("skill", this.skillConfigurationId)
+      .getGovernanceGrantVerbs("skill", this.skillConfigurationId)
       .includes("write");
   }
 

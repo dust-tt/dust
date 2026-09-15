@@ -183,8 +183,8 @@ export abstract class ResourceWithSpace<
 
   // Permissions.
 
-  getAccessControlLists(auth: Authenticator) {
-    return this.space.getAccessControlLists(auth);
+  getAllowedVerbs(auth: Authenticator) {
+    return this.space.getAllowedVerbs(auth);
   }
 
   canAdministrate(auth: Authenticator) {
