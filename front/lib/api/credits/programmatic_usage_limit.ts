@@ -17,11 +17,11 @@ import {
 } from "@app/lib/metronome/alerts/programmatic_cap";
 import { CreditUsageConfigurationResource } from "@app/lib/resources/credit_usage_configuration_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
-import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
   readFixedWindowCountWithLazySeed,
 } from "@app/lib/utils/rate_limiter";
+import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type { WorkspaceProgrammaticCreditState } from "@app/types/credits";
 import type { Result } from "@app/types/shared/result";

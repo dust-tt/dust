@@ -1365,7 +1365,10 @@ async function isUserRateLimiterSpendCapped(
         user.toJSON()
       )
     : makeSpendLimitAwuCreditsRateLimitKeyForUser(workspace, user.toJSON());
-  const result = await getFixedWindowCount({ key, bounds });
+  const result = await getFixedWindowCount({
+    key,
+    bounds,
+  });
   if (result.isErr()) {
     return false;
   }
@@ -2351,7 +2354,10 @@ export async function getMembersUsage({
         // Non-free seat with no resolvable contract cycle: nothing to read.
         return [u.sId, 0] as const;
       }
-      const result = await getFixedWindowCount({ key, bounds });
+      const result = await getFixedWindowCount({
+        key,
+        bounds,
+      });
       // The counter stores microCredits; convert back to credits so it
       // lines up with the ES/MT figures (all in credits).
       return [

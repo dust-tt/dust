@@ -4,11 +4,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { roundCreditsToMicroCredits } from "@app/lib/credits/units";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { resolveSpendLimitCycleBounds } from "@app/lib/spend_limits/cycle";
-import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import {
   addFixedWindowCount,
   readFixedWindowCountWithLazySeed,
 } from "@app/lib/utils/rate_limiter";
+import type { FixedWindowBounds } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type {
   ApiKeySpendLimit,

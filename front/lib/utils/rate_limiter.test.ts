@@ -34,6 +34,7 @@ const keysToExpire = new Set<string>();
 
 type RedisModule = typeof import("@app/lib/api/redis");
 type RateLimiterModule = typeof import("@app/lib/utils/rate_limiter");
+type StatsModule = typeof import("@app/lib/utils/statsd");
 
 let closeRedisClients: RedisModule["closeRedisClients"];
 let runOnRedis: RedisModule["runOnRedis"];
@@ -44,7 +45,11 @@ let getRateLimiterTimestamps: RateLimiterModule["getRateLimiterTimestamps"];
 let getWeightedRateLimiterCount: RateLimiterModule["getWeightedRateLimiterCount"];
 let getWeightedRateLimiterUsage: RateLimiterModule["getWeightedRateLimiterUsage"];
 let rateLimiter: RateLimiterModule["rateLimiter"];
+let reportRedisCounterError: RateLimiterModule["reportRedisCounterError"];
 let RATE_LIMITER_PREFIX: RateLimiterModule["RATE_LIMITER_PREFIX"];
+let addFixedWindowCount: RateLimiterModule["addFixedWindowCount"];
+let getFixedWindowCount: RateLimiterModule["getFixedWindowCount"];
+let statsDMetrics: StatsModule["statsDMetrics"];
 
 async function expireTestKey(key: string) {
   keysToExpire.add(key);
@@ -55,6 +60,7 @@ describe("rateLimiter", () => {
   beforeAll(async () => {
     const redisModule = await import("@app/lib/api/redis");
     const rateLimiterModule = await import("@app/lib/utils/rate_limiter");
+    const statsModule = await import("@app/lib/utils/statsd");
 
     closeRedisClients = redisModule.closeRedisClients;
     runOnRedis = redisModule.runOnRedis;
@@ -64,6 +70,8 @@ describe("rateLimiter", () => {
     getRateLimiterTimestamps = rateLimiterModule.getRateLimiterTimestamps;
     RATE_LIMITER_PREFIX = rateLimiterModule.RATE_LIMITER_PREFIX;
     rateLimiter = rateLimiterModule.rateLimiter;
+    reportRedisCounterError = rateLimiterModule.reportRedisCounterError;
+    statsDMetrics = statsModule.statsDMetrics;
   });
 
   afterEach(async () => {
@@ -107,6 +115,28 @@ describe("rateLimiter", () => {
         logger,
       })
     ).resolves.toBe(0);
+  });
+
+  it("reports Redis counter failures through the shared alert", () => {
+    const error = new Error("Redis unavailable");
+    const errorLogger = { ...logger, error: vi.fn() };
+
+    reportRedisCounterError({
+      operation: "test_operation",
+      error,
+      context: { key: "test-key" },
+      logger: errorLogger,
+    });
+
+    expect(statsDMetrics.increment).toHaveBeenCalledWith(
+      "ratelimiter.error.count",
+      1,
+      ["operation:test_operation"]
+    );
+    expect(errorLogger.error).toHaveBeenCalledWith(
+      { key: "test-key", operation: "test_operation", error },
+      "Redis counter operation failed"
+    );
   });
 
   it("can consume more than one unit atomically", async () => {
@@ -391,13 +421,8 @@ describe("addRateLimiterCount", () => {
   });
 });
 
-describe("fixed-window counter", () => {
-  let addFixedWindowCount: RateLimiterModule["addFixedWindowCount"];
-  let getFixedWindowCount: RateLimiterModule["getFixedWindowCount"];
-
-  const fixedWindowKeysToExpire = new Set<string>();
-
-  // A far-future window boundary so entries persist for the whole test run.
+describe("fixed-window counters", () => {
+  const redisKeysToDelete = new Set<string>();
   const boundsFor = (label: string) => ({
     label,
     windowEndMs: Date.UTC(2999, 0, 1),
@@ -408,18 +433,18 @@ describe("fixed-window counter", () => {
     const rateLimiterModule = await import("@app/lib/utils/rate_limiter");
 
     closeRedisClients = redisModule.closeRedisClients;
-    expireRateLimiterKey = rateLimiterModule.expireRateLimiterKey;
+    runOnRedis = redisModule.runOnRedis;
     addFixedWindowCount = rateLimiterModule.addFixedWindowCount;
     getFixedWindowCount = rateLimiterModule.getFixedWindowCount;
   });
 
   afterEach(async () => {
-    // Fixed-window keys are suffixed with the window label, so expire the
-    // fully-qualified key rather than the base.
-    await Promise.all(
-      [...fixedWindowKeysToExpire].map((key) => expireRateLimiterKey({ key }))
-    );
-    fixedWindowKeysToExpire.clear();
+    if (redisKeysToDelete.size > 0) {
+      await runOnRedis({ origin: "rate_limiter" }, (redis) =>
+        redis.del([...redisKeysToDelete])
+      );
+    }
+    redisKeysToDelete.clear();
   });
 
   afterAll(async () => {
@@ -429,39 +454,53 @@ describe("fixed-window counter", () => {
   it("accumulates increments within the same window", async () => {
     const key = `test:${crypto.randomUUID()}`;
     const bounds = boundsFor("w1");
-    fixedWindowKeysToExpire.add(`${key}:${bounds.label}`);
+    redisKeysToDelete.add(`rate_limiter:${key}:${bounds.label}`);
 
-    await addFixedWindowCount({ key, bounds, incrementBy: 9, logger });
-    await addFixedWindowCount({ key, bounds, incrementBy: 2, logger });
+    await addFixedWindowCount({
+      key,
+      bounds,
+      incrementBy: 9,
+      logger,
+    });
+    await addFixedWindowCount({
+      key,
+      bounds,
+      incrementBy: 2,
+      logger,
+    });
 
     const count = await getFixedWindowCount({ key, bounds });
-    expect(count.isOk()).toBe(true);
-    if (count.isOk()) {
-      // Unlike the limit-guarded rolling limiter, the fixed-window counter
-      // records the full amount even past any threshold.
-      expect(count.value).toBe(11);
-    }
+    expect(count.isOk() && count.value).toBe(11);
   });
 
   it("returns 0 for a window with no entries", async () => {
-    const key = `test:${crypto.randomUUID()}`;
+    const count = await getFixedWindowCount({
+      key: `test:${crypto.randomUUID()}`,
+      bounds: boundsFor("w1"),
+    });
 
-    const count = await getFixedWindowCount({ key, bounds: boundsFor("w1") });
-    expect(count.isOk()).toBe(true);
-    if (count.isOk()) {
-      expect(count.value).toBe(0);
-    }
+    expect(count.isOk() && count.value).toBe(0);
   });
 
   it("keeps separate counts per window label", async () => {
     const key = `test:${crypto.randomUUID()}`;
     const windowA = boundsFor("wA");
     const windowB = boundsFor("wB");
-    fixedWindowKeysToExpire.add(`${key}:${windowA.label}`);
-    fixedWindowKeysToExpire.add(`${key}:${windowB.label}`);
+    redisKeysToDelete.add(`rate_limiter:${key}:${windowA.label}`);
+    redisKeysToDelete.add(`rate_limiter:${key}:${windowB.label}`);
 
-    await addFixedWindowCount({ key, bounds: windowA, incrementBy: 4, logger });
-    await addFixedWindowCount({ key, bounds: windowB, incrementBy: 7, logger });
+    await addFixedWindowCount({
+      key,
+      bounds: windowA,
+      incrementBy: 4,
+      logger,
+    });
+    await addFixedWindowCount({
+      key,
+      bounds: windowB,
+      incrementBy: 7,
+      logger,
+    });
 
     const countA = await getFixedWindowCount({ key, bounds: windowA });
     const countB = await getFixedWindowCount({ key, bounds: windowB });
@@ -469,19 +508,17 @@ describe("fixed-window counter", () => {
     expect(countB.isOk() && countB.value).toBe(7);
   });
 
-  // Mirrors the spend-cap recorder/enforcer: the counter stores microCredits
-  // (credits × 1e6) so it survives a switch to fractional credits. Recording a
-  // fractional 2.5-credit delta must land as 2_500_000 microCredits, and
-  // enforcement blocks once the counter reaches the cap scaled up the same way
-  // (cap × 1e6).
-  it("stores fractional credits as integer microCredits and enforces caps at the microCredit scale", async () => {
+  it("stores fractional credits at the microcredit scale", async () => {
     const key = `test:${crypto.randomUUID()}`;
     const bounds = boundsFor("microcredits");
-    fixedWindowKeysToExpire.add(`${key}:${bounds.label}`);
+    redisKeysToDelete.add(`rate_limiter:${key}:${bounds.label}`);
 
-    const capCredits = 5;
-
-    // First fractional delta: 2.5 credits recorded as microCredits.
+    await addFixedWindowCount({
+      key,
+      bounds,
+      incrementBy: roundCreditsToMicroCredits(2.5),
+      logger,
+    });
     await addFixedWindowCount({
       key,
       bounds,
@@ -489,32 +526,8 @@ describe("fixed-window counter", () => {
       logger,
     });
 
-    const afterFirst = await getFixedWindowCount({ key, bounds });
-    expect(afterFirst.isOk() && afterFirst.value).toBe(2_500_000);
-    // 2.5 < 5 credits: enforcement does not block yet.
-    expect(
-      afterFirst.isOk() &&
-        afterFirst.value >= roundCreditsToMicroCredits(capCredits)
-    ).toBe(false);
-
-    // Second fractional delta brings the total to exactly the cap.
-    await addFixedWindowCount({
-      key,
-      bounds,
-      incrementBy: roundCreditsToMicroCredits(2.5),
-      logger,
-    });
-
-    const afterSecond = await getFixedWindowCount({ key, bounds });
-    expect(afterSecond.isOk() && afterSecond.value).toBe(5_000_000);
-    // Reached cap × 1e6: enforcement blocks.
-    expect(
-      afterSecond.isOk() &&
-        afterSecond.value >= roundCreditsToMicroCredits(capCredits)
-    ).toBe(true);
-    // The poke read converts the counter back to whole credits.
-    expect(afterSecond.isOk() && microCreditsToCredits(afterSecond.value)).toBe(
-      5
-    );
+    const count = await getFixedWindowCount({ key, bounds });
+    expect(count.isOk() && count.value).toBe(5_000_000);
+    expect(count.isOk() && microCreditsToCredits(count.value)).toBe(5);
   });
 });
