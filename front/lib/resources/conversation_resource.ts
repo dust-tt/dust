@@ -837,6 +837,78 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   /**
+   * Loads what the credit spend checkpoint check needs to decide whether it applies: the agent
+   * message's checkpoint status and whether its triggering user message is a root (non-agentic)
+   * message. Returns null when either message cannot be found.
+   */
+  static async fetchCreditSpendCheckpointContextForAgentMessage(
+    auth: Authenticator,
+    {
+      agentMessageId,
+      userMessageId,
+    }: { agentMessageId: string; userMessageId: string }
+  ): Promise<{
+    status: AgentMessageModel["creditSpendCheckpointStatus"];
+    isRootAgentMessage: boolean;
+  } | null> {
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+
+    const [agentMessageRow, userMessageRow] = await Promise.all([
+      MessageModel.findOne({
+        where: { sId: agentMessageId, workspaceId: workspaceModelId },
+        attributes: ["id"],
+        include: [
+          {
+            model: AgentMessageModel,
+            as: "agentMessage",
+            required: true,
+            attributes: ["creditSpendCheckpointStatus"],
+          },
+        ],
+      }),
+      MessageModel.findOne({
+        where: { sId: userMessageId, workspaceId: workspaceModelId },
+        attributes: ["id"],
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: true,
+            attributes: ["agenticMessageType"],
+          },
+        ],
+      }),
+    ]);
+
+    const agentMessage = agentMessageRow?.agentMessage;
+    const userMessage = userMessageRow?.userMessage;
+    // Without both rows the sub-agent check cannot be made, so the caller must not pause.
+    if (!agentMessage || !userMessage) {
+      return null;
+    }
+
+    return {
+      status: agentMessage.creditSpendCheckpointStatus,
+      isRootAgentMessage: !userMessage.agenticMessageType,
+    };
+  }
+
+  static async markAgentMessageCreditSpendCheckpointPaused(
+    auth: Authenticator,
+    { agentMessageModelId }: { agentMessageModelId: ModelId }
+  ): Promise<void> {
+    await AgentMessageModel.update(
+      { creditSpendCheckpointStatus: "paused" },
+      {
+        where: {
+          id: agentMessageModelId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        },
+      }
+    );
+  }
+
+  /**
    * Loads the message graph needed to build consumption analytics without exposing Sequelize rows
    * outside the Resource layer.
    *

@@ -1,4 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
+import { hasReachedCreditSpendCheckpoint } from "@app/lib/api/assistant/credit_check";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
@@ -44,6 +45,7 @@ export type RunModelAndCreateActionsResult = {
   // The model returned nothing at all: the loop should run one more step with
   // tool use disabled to force a final answer.
   retryWithoutTools?: boolean;
+  preStepReachedCreditSpendCheckpoint?: boolean;
 };
 
 const AGENT_LOOP_COST_CAP_ERROR_CODE = "agent_loop_cost_cap_exceeded";
@@ -244,6 +246,10 @@ async function _runModelAndCreateActionsActivity({
     return null;
   }
 
+  const preStepReachedCreditSpendCheckpoint = hasReachedCreditSpendCheckpoint({
+    totalCostMicroUsd: hardCapCheckResult.totalCostMicroUsd,
+  });
+
   // Tool test run: bypass LLM and directly execute tool commands.
   if (featureFlags.includes("run_tools_from_prompt")) {
     const result = await handlePromptCommand(auth, runAgentData, step, runIds);
@@ -264,6 +270,7 @@ async function _runModelAndCreateActionsActivity({
       return {
         actionBlobs: existingData.actionBlobs,
         runId: null,
+        preStepReachedCreditSpendCheckpoint,
       };
     }
   }
@@ -299,7 +306,12 @@ async function _runModelAndCreateActionsActivity({
   // Generation completed (text response, no tool calls) — runModel returns
   // { actions: [], runId } so we still capture the runId for tracking.
   if (actions.length === 0) {
-    return { runId, actionBlobs: [], retryWithoutTools };
+    return {
+      runId,
+      actionBlobs: [],
+      retryWithoutTools,
+      preStepReachedCreditSpendCheckpoint,
+    };
   }
 
   // Enforce a limit on actions per step, reducing by depth (8/8/4/2)
@@ -339,6 +351,7 @@ async function _runModelAndCreateActionsActivity({
   return {
     runId,
     actionBlobs: createResult.actionBlobs,
+    preStepReachedCreditSpendCheckpoint,
   };
 }
 
