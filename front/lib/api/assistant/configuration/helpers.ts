@@ -124,7 +124,7 @@ async function shadowAgentPermissions(
     legacy: legacyAgents.map((agent) => ({
       agentId: agent.sId,
       agentConfigurationModelId: agent.id,
-      read: agent.canRead || auth.isAdmin(),
+      read: agent.canRead,
       write: agent.canEdit,
       admin: agent.canEdit || auth.isAdmin(),
     })),
@@ -146,7 +146,7 @@ async function shadowAgentPermissions(
           editorIds.has(agent.id) ||
           (!auth.user() && !isRegularApiKey && auth.can("write", resource));
         const read = reverse
-          ? legacyAccess || agent.scope === "visible" || auth.isAdmin()
+          ? legacyAccess || agent.scope === "visible"
           : auth.can("read", resource);
         const write =
           (reverse
@@ -195,11 +195,6 @@ async function shadowAgentPermissions(
   });
 }
 
-/**
- * @cc [owner:philipperolet,label:security] hidden-agent-content
- * Admin access alone must not set `canRead` on hidden agent definitions, including for regular
- * API keys with role-based write access. Agent details may separately override admin redaction.
- */
 /**
  * Enrich agent configurations with additional data (actions, tags, favorites).
  */
@@ -280,21 +275,15 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
     const resource = AgentResource.fromAgentConfigurationModel(agent);
     const canEditWithoutUser =
       !user && !isRegularApiKey && auth.can("write", resource);
-    const legacyCanWrite = isRegularApiKey
-      ? auth.isAdmin()
-      : isAuthor || isMember || canEditWithoutUser;
-    const canWrite = useGrants ? auth.can("write", resource) : legacyCanWrite;
-    const canEdit =
-      canWrite &&
-      (!isRegularApiKey ||
-        (agent.status === "active" &&
-          canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)));
-    // Admin role access allows management without making hidden definitions readable.
+    const canEdit = isRegularApiKey
+      ? (useGrants ? auth.can("write", resource) : auth.isAdmin()) &&
+        agent.status === "active" &&
+        canReadRequestedSpaces(auth, spaceById, agent.requestedSpaceIds)
+      : useGrants
+        ? auth.can("write", resource)
+        : isAuthor || isMember || canEditWithoutUser;
     const canRead = useGrants
-      ? auth.can("read", resource) &&
-        (!auth.isAdmin() ||
-          (!isRegularApiKey && canWrite) ||
-          agent.scope === "visible")
+      ? auth.can("read", resource)
       : isAuthor || isMember || canEditWithoutUser || agent.scope === "visible";
     const agentConfigurationType: AgentConfigurationType = {
       id: agent.id,

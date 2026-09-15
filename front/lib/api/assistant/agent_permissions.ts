@@ -47,7 +47,6 @@ export async function shadowCanAdminAgent(
 export async function shadowEditableAgents(
   auth: Authenticator,
   agents: LightAgentConfigurationType[],
-  legacy: LightAgentConfigurationType[],
   callSite: string
 ): Promise<LightAgentConfigurationType[]> {
   const candidate = async () => {
@@ -63,22 +62,24 @@ export async function shadowEditableAgents(
   };
   const useGrants = !isLegacyAclsEnabled();
   const legacyIds = async () => {
-    if (!useGrants) {
-      return legacy.map((agent) => agent.sId).sort();
+    if (auth.isAdmin()) {
+      return agents.map((agent) => agent.sId).sort();
     }
-    const groups = auth.user()
-      ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
-      : [];
+    if (!auth.user()) {
+      // Legacy editability already uses agent ACLs for user-less callers, except regular keys.
+      return auth.isKey() && !auth.isSystemKey() ? [] : candidate();
+    }
+    const groups = await GroupResource.findAgentIdsForGroups(
+      auth,
+      auth.groupModelIds()
+    );
     const editorIds = new Set(
       groups.map((group) => group.agentConfigurationId)
     );
     return agents
       .filter(
         (agent) =>
-          auth.isAdmin() ||
-          agent.versionAuthorId === auth.user()?.id ||
-          editorIds.has(agent.id) ||
-          (!auth.user() && agent.canEdit)
+          agent.versionAuthorId === auth.user()?.id || editorIds.has(agent.id)
       )
       .map((agent) => agent.sId)
       .sort();
@@ -97,9 +98,7 @@ export async function shadowEditableAgents(
   });
 
   const editableIds = new Set(selectedIds);
-  return useGrants
-    ? agents.filter((agent) => editableIds.has(agent.sId))
-    : legacy;
+  return agents.filter((agent) => editableIds.has(agent.sId));
 }
 
 /**

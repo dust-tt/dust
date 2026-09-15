@@ -109,6 +109,8 @@ describe.each([
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId, {
       dangerouslyRequestAllGroups,
     });
+    await FeatureFlagFactory.basic(auth, "group_permissions_shadow");
+    const warn = vi.spyOn(logger, "warn");
 
     const configuration = await getAgentConfiguration(auth, {
       agentId: agent.sId,
@@ -119,6 +121,10 @@ describe.each([
       canRead: dangerouslyRequestAllGroups,
       canEdit: dangerouslyRequestAllGroups,
     });
+    expect(warn).not.toHaveBeenCalledWith(
+      expect.objectContaining({ check: "agent_permissions" }),
+      "group_permissions_shadow_mismatch"
+    );
   });
 
   it("respects the agent grants of a scoped system key", async () => {

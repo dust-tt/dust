@@ -1859,7 +1859,6 @@ export async function updateAgentConfigurationsScope(
   const editableAgents = await shadowEditableAgents(
     auth,
     agentConfigs,
-    agentConfigs.filter((agent) => agent.canEdit || auth.isAdmin()),
     "updateAgentConfigurationsScope"
   );
   if (editableAgents.length === 0) {
