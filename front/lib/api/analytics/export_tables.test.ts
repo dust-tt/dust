@@ -4,8 +4,12 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { Ok } from "@app/types/shared/result";
-import moment from "moment-timezone";
+import { ONE_DAY_MS } from "@app/types/shared/utils/date_utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// UTC has no DST, so shifting an instant by whole-day multiples of
+// ONE_DAY_MS always lands on the correct UTC calendar day.
+const formatUtcDate = (date: Date) => date.toISOString().slice(0, 10);
 
 // Keep `bucketsToArray` (and everything else) real; only stub the
 // Elasticsearch query so the test does not depend on a live cluster.
@@ -134,19 +138,16 @@ describe("exportTable users", () => {
     // The user's membership is created "now" by createResourceTest, so the
     // window has to cover the present rather than a fixed historical range
     // (unlike the agents test, this one hits the real memberships table).
-    const today = moment.utc();
-    const startDate = today.clone().subtract(30, "days").format("YYYY-MM-DD");
-    const endDate = today.format("YYYY-MM-DD");
-    const startInstant = moment
-      .tz(startDate, "UTC")
-      .startOf("day")
-      .toISOString();
-    const exclusiveEndInstant = moment
-      .tz(endDate, "UTC")
-      .add(1, "day")
-      .startOf("day")
-      .toISOString();
-    const lastMessageAt = today.clone().subtract(1, "day");
+    const today = new Date();
+    const startDate = formatUtcDate(
+      new Date(today.getTime() - 30 * ONE_DAY_MS)
+    );
+    const endDate = formatUtcDate(today);
+    const startInstant = new Date(`${startDate}T00:00:00.000Z`).toISOString();
+    const exclusiveEndInstant = new Date(
+      new Date(`${endDate}T00:00:00.000Z`).getTime() + ONE_DAY_MS
+    ).toISOString();
+    const lastMessageAt = new Date(today.getTime() - ONE_DAY_MS);
 
     vi.mocked(searchConsumptionAnalytics).mockResolvedValue(
       new Ok({
@@ -224,7 +225,7 @@ describe("exportTable users", () => {
     expect(row!.messageCount).toBe(4);
     expect(row!.activeDaysCount).toBe(2);
     expect(row!.credits).toBe(3);
-    expect(row!.lastMessageSent).toBe(lastMessageAt.format("YYYY-MM-DD"));
+    expect(row!.lastMessageSent).toBe(formatUtcDate(lastMessageAt));
   });
 });
 
