@@ -8,6 +8,8 @@ import type {
 } from "@app/types/assistant/models/types";
 import type { CreationOptional } from "sequelize";
 
+export type ModelDegradationSource = "manual" | "automatic";
+
 export class ModelDegradationModel extends BaseModel<ModelDegradationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -15,6 +17,8 @@ export class ModelDegradationModel extends BaseModel<ModelDegradationModel> {
   declare modelId: ModelIdType;
   declare providerId: ModelProviderIdType;
   declare host: Host;
+  declare source: CreationOptional<ModelDegradationSource>;
+  declare expiresAt: CreationOptional<Date | null>;
 }
 ModelDegradationModel.init(
   {
@@ -40,11 +44,25 @@ ModelDegradationModel.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    source: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "manual",
+    },
+    expiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     modelName: "model_degradations",
     tableName: "model_degradations",
     sequelize: frontSequelize,
-    indexes: [{ unique: true, fields: ["modelId", "providerId", "host"] }],
+    indexes: [
+      {
+        unique: true,
+        fields: ["modelId", "providerId", "host", "source"],
+      },
+    ],
   }
 );
