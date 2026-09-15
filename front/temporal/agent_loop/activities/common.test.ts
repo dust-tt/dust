@@ -1391,19 +1391,15 @@ describe("finalizeCreditSpendCheckpointPause", () => {
       }
     );
 
-    await finalizeCreditSpendCheckpointPause(
-      auth.toJSON(),
-      {
-        agentMessageId: agentMessage.sId,
-        agentMessageVersion: agentMessage.version,
-        conversationId: conversation.sId,
-        conversationTitle: conversation.title,
-        userMessageId: userMessage.sId,
-        userMessageVersion: userMessage.version,
-        userMessageOrigin: userMessage.context.origin,
-      },
-      { thresholdAwuCredits: 500 }
-    );
+    await finalizeCreditSpendCheckpointPause(auth.toJSON(), {
+      agentMessageId: agentMessage.sId,
+      agentMessageVersion: agentMessage.version,
+      conversationId: conversation.sId,
+      conversationTitle: conversation.title,
+      userMessageId: userMessage.sId,
+      userMessageVersion: userMessage.version,
+      userMessageOrigin: userMessage.context.origin,
+    });
 
     const dbMessage = await AgentMessageModel.findOne({
       where: {

@@ -107,7 +107,7 @@ export async function checkCostAndSubagentsThresholds({
   };
 }
 
-export async function getCumulativeCostMicroUsd(
+async function getCumulativeCostMicroUsd(
   auth: Authenticator,
   { dustRunIds }: { dustRunIds: string[] }
 ): Promise<number> {
@@ -131,7 +131,7 @@ export async function getCumulativeCostMicroUsd(
  * - Queries fetch only IDs/runIds and rely on
  *   `user_messages_workspace_agentic_origin_idx` for fast descendant lookup.
  */
-export async function collectDescendantData(
+async function collectDescendantData(
   auth: Authenticator,
   { rootAgentMessageId }: { rootAgentMessageId: string }
 ): Promise<{

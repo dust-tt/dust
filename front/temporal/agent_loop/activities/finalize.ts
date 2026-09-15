@@ -185,12 +185,9 @@ export async function finalizeCreditStoppedAgentLoopActivity(
 
 export async function finalizeCreditSpendCheckpointPausedAgentLoopActivity(
   authType: AuthenticatorType,
-  agentLoopArgs: AgentLoopArgs,
-  { thresholdAwuCredits }: { thresholdAwuCredits: number }
+  agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  await finalizeCreditSpendCheckpointPause(authType, agentLoopArgs, {
-    thresholdAwuCredits,
-  });
+  await finalizeCreditSpendCheckpointPause(authType, agentLoopArgs);
   await launchStoppedLoopSideEffects(authType, agentLoopArgs);
 }
 

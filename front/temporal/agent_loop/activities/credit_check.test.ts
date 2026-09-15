@@ -7,19 +7,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   mockFromJson,
   mockCheckPoolCreditGate,
-  mockCheckCreditSpendCheckpointGate,
+  mockIsCreditSpendCheckpointExempt,
   mockFetchCheckpointContext,
-  mockCollectDescendantData,
-  mockGetCumulativeCostMicroUsd,
-  mockAwuFromMicroUsd,
 } = vi.hoisted(() => ({
   mockFromJson: vi.fn(),
   mockCheckPoolCreditGate: vi.fn(),
-  mockCheckCreditSpendCheckpointGate: vi.fn(),
+  mockIsCreditSpendCheckpointExempt: vi.fn(),
   mockFetchCheckpointContext: vi.fn(),
-  mockCollectDescendantData: vi.fn(),
-  mockGetCumulativeCostMicroUsd: vi.fn(),
-  mockAwuFromMicroUsd: vi.fn(),
 }));
 
 vi.mock("@app/lib/auth", () => ({
@@ -28,7 +22,7 @@ vi.mock("@app/lib/auth", () => ({
 
 vi.mock("@app/lib/api/assistant/credit_check", () => ({
   checkPoolCreditGate: mockCheckPoolCreditGate,
-  checkCreditSpendCheckpointGate: mockCheckCreditSpendCheckpointGate,
+  isCreditSpendCheckpointExempt: mockIsCreditSpendCheckpointExempt,
 }));
 
 vi.mock("@app/lib/resources/conversation_resource", () => ({
@@ -36,15 +30,6 @@ vi.mock("@app/lib/resources/conversation_resource", () => ({
     fetchCreditSpendCheckpointContextForAgentMessage:
       mockFetchCheckpointContext,
   },
-}));
-
-vi.mock("@app/temporal/agent_loop/activities/cost_threshold_warnings", () => ({
-  collectDescendantData: mockCollectDescendantData,
-  getCumulativeCostMicroUsd: mockGetCumulativeCostMicroUsd,
-}));
-
-vi.mock("@app/lib/metronome/constants", () => ({
-  awuFromMicroUsd: mockAwuFromMicroUsd,
 }));
 
 const FAKE_AUTH = {
@@ -118,28 +103,48 @@ describe("checkCreditSpendCheckpointActivity (pure decision)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFromJson.mockResolvedValue(FAKE_AUTH);
+    mockIsCreditSpendCheckpointExempt.mockReturnValue(false);
     mockFetchCheckpointContext.mockResolvedValue({
       status: null,
       isRootAgentMessage: true,
     });
-    mockCollectDescendantData.mockResolvedValue({ dustRunIds: [] });
-    mockGetCumulativeCostMicroUsd.mockResolvedValue(0);
-    mockAwuFromMicroUsd.mockReturnValue(0);
   });
 
-  it("skips further checks when the agent message cannot be found", async () => {
+  it("is not crossed when this execution is exempt, without reading the message", async () => {
+    mockIsCreditSpendCheckpointExempt.mockReturnValue(true);
+
+    const result = await checkCreditSpendCheckpointActivity({} as never, {
+      agentLoopArgs: { userMessageOrigin: "api" } as never,
+    });
+
+    expect(mockIsCreditSpendCheckpointExempt).toHaveBeenCalledWith(FAKE_AUTH, {
+      userMessageOrigin: "api",
+    });
+    expect(mockFetchCheckpointContext).not.toHaveBeenCalled();
+    expect(result).toEqual({ crossed: false });
+  });
+
+  it("passes userMessageOrigin: null when the args don't carry one", async () => {
+    await checkCreditSpendCheckpointActivity({} as never, {
+      agentLoopArgs: {} as never,
+    });
+
+    expect(mockIsCreditSpendCheckpointExempt).toHaveBeenCalledWith(FAKE_AUTH, {
+      userMessageOrigin: null,
+    });
+  });
+
+  it("is not crossed when the agent message cannot be found", async () => {
     mockFetchCheckpointContext.mockResolvedValue(null);
 
     const result = await checkCreditSpendCheckpointActivity({} as never, {
       agentLoopArgs: { agentMessageId: "msg_id" } as never,
     });
 
-    expect(mockCollectDescendantData).not.toHaveBeenCalled();
-    expect(mockCheckCreditSpendCheckpointGate).not.toHaveBeenCalled();
-    expect(result).toEqual({ crossed: false, skipRemainingChecks: true });
+    expect(result).toEqual({ crossed: false });
   });
 
-  it("skips further checks once acknowledged, without consulting the gate", async () => {
+  it("is not crossed once acknowledged", async () => {
     mockFetchCheckpointContext.mockResolvedValue({
       status: "acknowledged",
       isRootAgentMessage: true,
@@ -149,12 +154,10 @@ describe("checkCreditSpendCheckpointActivity (pure decision)", () => {
       agentLoopArgs: { agentMessageId: "msg_id" } as never,
     });
 
-    expect(result).toEqual({ crossed: false, skipRemainingChecks: true });
-    expect(mockCheckCreditSpendCheckpointGate).not.toHaveBeenCalled();
-    expect(mockCollectDescendantData).not.toHaveBeenCalled();
+    expect(result).toEqual({ crossed: false });
   });
 
-  it("skips further checks for sub-agent messages, whatever the spend", async () => {
+  it("is not crossed for sub-agent messages", async () => {
     mockFetchCheckpointContext.mockResolvedValue({
       status: null,
       isRootAgentMessage: false,
@@ -171,26 +174,10 @@ describe("checkCreditSpendCheckpointActivity (pure decision)", () => {
       agentMessageId: "msg_id",
       userMessageId: "user_msg_id",
     });
-    expect(result).toEqual({ crossed: false, skipRemainingChecks: true });
-    expect(mockCheckCreditSpendCheckpointGate).not.toHaveBeenCalled();
-    expect(mockCollectDescendantData).not.toHaveBeenCalled();
+    expect(result).toEqual({ crossed: false });
   });
 
-  it("computes consumed AWU credits from this message's whole subagent tree and passes them to the gate", async () => {
-    mockFetchCheckpointContext.mockResolvedValue({
-      status: null,
-      isRootAgentMessage: true,
-    });
-    mockCollectDescendantData.mockResolvedValue({
-      dustRunIds: ["run_1", "run_2"],
-    });
-    mockGetCumulativeCostMicroUsd.mockResolvedValue(350);
-    mockAwuFromMicroUsd.mockReturnValue(42);
-    mockCheckCreditSpendCheckpointGate.mockReturnValue({
-      crossed: false,
-      exempt: false,
-    });
-
+  it("is crossed for a pausable root message", async () => {
     const result = await checkCreditSpendCheckpointActivity({} as never, {
       agentLoopArgs: {
         agentMessageId: "msg_id",
@@ -198,43 +185,6 @@ describe("checkCreditSpendCheckpointActivity (pure decision)", () => {
       } as never,
     });
 
-    expect(mockCollectDescendantData).toHaveBeenCalledWith(FAKE_AUTH, {
-      rootAgentMessageId: "msg_id",
-    });
-    expect(mockGetCumulativeCostMicroUsd).toHaveBeenCalledWith(FAKE_AUTH, {
-      dustRunIds: ["run_1", "run_2"],
-    });
-    expect(mockAwuFromMicroUsd).toHaveBeenCalledWith(350);
-    expect(mockCheckCreditSpendCheckpointGate).toHaveBeenCalledWith(FAKE_AUTH, {
-      consumedAwuCredits: 42,
-      userMessageOrigin: "web",
-    });
-    expect(result).toEqual({ crossed: false, skipRemainingChecks: false });
-  });
-
-  it("skips further checks when the gate says this execution is exempt", async () => {
-    mockCheckCreditSpendCheckpointGate.mockReturnValue({
-      crossed: false,
-      exempt: true,
-    });
-
-    const result = await checkCreditSpendCheckpointActivity({} as never, {
-      agentLoopArgs: {} as never,
-    });
-
-    expect(result).toEqual({ crossed: false, skipRemainingChecks: true });
-  });
-
-  it("returns the gate's threshold when crossed", async () => {
-    mockCheckCreditSpendCheckpointGate.mockReturnValue({
-      crossed: true,
-      thresholdAwuCredits: 1500,
-    });
-
-    const result = await checkCreditSpendCheckpointActivity({} as never, {
-      agentLoopArgs: {} as never,
-    });
-
-    expect(result).toEqual({ crossed: true, thresholdAwuCredits: 1500 });
+    expect(result).toEqual({ crossed: true });
   });
 });
