@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import { isWithAccessControl } from "@app/types/resource_permissions";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
 import type {
@@ -74,6 +75,24 @@ export abstract class BaseResource<M extends Model & ResourceWithId> {
 
     // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
     return new this(this.model, blob.get());
+  }
+
+  /**
+   * @cc [owner:tdraier,label:security] access-controlled-fetch
+   * Superusers may fetch any resource. Otherwise, when the resource implements `WithAccessControl`,
+   * the caller MUST hold at least one verb on it (`getAllowedVerbs(auth)` is non-empty); a resource
+   * that is not access-controlled is fetchable.
+   */
+  canFetch(auth: Authenticator): boolean {
+    if (auth.isDustSuperUser()) {
+      return true;
+    }
+
+    if (isWithAccessControl(this)) {
+      return this.getAllowedVerbs(auth).size > 0;
+    }
+
+    return true;
   }
 
   protected async update(
