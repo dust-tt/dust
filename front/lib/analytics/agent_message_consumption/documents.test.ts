@@ -315,12 +315,19 @@ describe("buildAgentMessageConsumptionAnalyticsDocuments", () => {
         source: "consumption",
       }
     );
-    const documents = input
-      ? buildAgentMessageConsumptionAnalyticsDocuments(input)
-      : null;
-    const toolDocuments =
-      documents?.filter((document) => document.consumption_type === "tool") ??
-      [];
+    if (!input) {
+      throw new Error("Consumption analytics input was not loaded");
+    }
+    const documentsResult =
+      buildAgentMessageConsumptionAnalyticsDocuments(input);
+    if (documentsResult.isErr()) {
+      throw new Error(
+        `Consumption documents were not built: ${documentsResult.error.code}`
+      );
+    }
+    const toolDocuments = documentsResult.value.filter(
+      (document) => document.consumption_type === "tool"
+    );
 
     expect(toolDocuments).toHaveLength(1);
     expect(toolDocuments[0]).toMatchObject({

@@ -2,6 +2,7 @@ import { creditAmountMicroFromCostMicroUsd } from "@app/lib/api/assistant/agent_
 import { recordModelCallConsumption } from "@app/lib/api/assistant/consumption/model_call_writer";
 import { INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION } from "@app/lib/api/assistant/consumption/version";
 import { getLlmCredentials } from "@app/lib/api/provider_credentials";
+import { USAGE_TYPE_USER } from "@app/lib/metronome/constants";
 import { AgentMessageConsumptionEventResource } from "@app/lib/resources/agent_message_consumption_event_resource";
 import { AgentMessageConsumptionItemResource } from "@app/lib/resources/agent_message_consumption_item_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
@@ -13,6 +14,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { RunFactory } from "@app/tests/utils/RunFactory";
 import { Ok } from "@app/types/shared/result";
+import { GPT_5_MINI_MODEL_CONFIG } from "@app/types/assistant/models/openai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@app/lib/api/provider_credentials", () => ({
@@ -35,7 +37,7 @@ async function setupExecution() {
   });
   const agentConfiguration = await AgentConfigurationFactory.createTestAgent(
     auth,
-    { name: `Consumption ${generateRandomModelSId()}` }
+    { name: `Consumption ${generateRandomModelSId()}` },
   );
   const conversation = await ConversationFactory.create(auth, {
     agentConfigurationId: agentConfiguration.sId,
@@ -72,7 +74,7 @@ async function listConsumptionItems(
   auth: Parameters<
     typeof AgentMessageConsumptionItemResource.listByAgentMessageModelIds
   >[0],
-  agentMessageModelId: number
+  agentMessageModelId: number,
 ) {
   const items =
     await AgentMessageConsumptionItemResource.listByAgentMessageModelIds(auth, {
@@ -82,7 +84,7 @@ async function listConsumptionItems(
 
   return items.filter(
     (item) =>
-      item.attributionVersion === INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION
+      item.attributionVersion === INCREMENTAL_CONSUMPTION_ATTRIBUTION_VERSION,
   );
 }
 
@@ -90,7 +92,7 @@ describe("recordModelCallConsumption", () => {
   beforeEach(() => {
     vi.mocked(getLlmCredentials).mockResolvedValue({} as never);
     vi.mocked(tokenCountForTexts).mockImplementation(
-      async (texts) => new Ok(texts.map(() => TOKENS_PER_FOOTPRINT))
+      async (texts) => new Ok(texts.map(() => TOKENS_PER_FOOTPRINT)),
     );
   });
 
@@ -118,19 +120,19 @@ describe("recordModelCallConsumption", () => {
       runs: [run],
     });
     const exactCreditAmountMicro = creditAmountMicroFromCostMicroUsd(
-      usage.costMicroUsd
+      usage.costMicroUsd,
     );
     expect(
       items.reduce(
         (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
-        0
-      )
+        0,
+      ),
     ).toBe(exactCreditAmountMicro);
 
     await expect(
       AgentMessageConsumptionEventResource.fetchByEventKey(auth, {
         eventKey: `model-call:${runUsageModelId}`,
-      })
+      }),
     ).resolves.not.toBeNull();
   });
 
@@ -167,12 +169,52 @@ describe("recordModelCallConsumption", () => {
     expect(
       items.reduce(
         (total, item) => total + (item.reconciledCreditAmountMicro ?? 0),
-        0
-      )
+        0,
+      ),
     ).toBe(creditAmountMicroFromCostMicroUsd(usage.costMicroUsd));
     expect(
-      items.find((item) => item.itemType === "output")?.outputTokensCount
+      items.find((item) => item.itemType === "output")?.outputTokensCount,
     ).toBe(OUTPUT_TOKENS_COUNT - TOKENS_PER_FOOTPRINT);
+  });
+
+  it("attaches emitted tools to the primary usage of a multi-usage run", async () => {
+    const {
+      auth,
+      context,
+      conversation,
+      run,
+      runUsageModelId,
+      workspace,
+      agentMessageModelId,
+    } = await setupExecution();
+    await run.recordTokenUsage(
+      auth,
+      {
+        inputTokens: 10,
+        totalOutputTokens: 5,
+        totalTokens: 15,
+      },
+      GPT_5_MINI_MODEL_CONFIG.modelId,
+      { usageType: USAGE_TYPE_USER },
+    );
+    const { action } = await AgentMCPActionFactory.create(auth, {
+      workspace,
+      conversationModelId: conversation.id,
+      agentMessageModelId,
+      dustRunId: run.dustRunId,
+    });
+
+    const result = await recordModelCallConsumption(auth, {
+      context,
+      dustRunId: run.dustRunId,
+      emittedActions: [action],
+    });
+
+    expect(result.isOk()).toBe(true);
+    const items = await listConsumptionItems(auth, agentMessageModelId);
+    expect(
+      items.find((item) => item.itemType === "tool_call")?.runUsageId,
+    ).toBe(runUsageModelId);
   });
 
   it("records one model call once, however often the writer retries", async () => {
@@ -196,13 +238,13 @@ describe("recordModelCallConsumption", () => {
       {
         runKey: RUN_KEY,
         limit: 10,
-      }
+      },
     );
 
     expect(secondPass).toHaveLength(firstPass.length);
     expect(events).toHaveLength(1);
     expect(secondPass.map((item) => item.reconciledCreditAmountMicro)).toEqual(
-      firstPass.map((item) => item.reconciledCreditAmountMicro)
+      firstPass.map((item) => item.reconciledCreditAmountMicro),
     );
   });
 });

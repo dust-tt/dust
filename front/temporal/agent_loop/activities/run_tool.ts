@@ -3,6 +3,7 @@ import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import type { ToolContext } from "@app/lib/actions/types";
 import { isSandboxChildActionInfo } from "@app/lib/actions/types";
 import { isLightClientSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { getAgentMessageConsumptionRolloutMode } from "@app/lib/api/assistant/consumption/gate";
 import { recordToolCompletionConsumption } from "@app/lib/api/assistant/consumption/tool_completion_writer";
 import {
   buildAuditLogTarget,
@@ -10,7 +11,7 @@ import {
 } from "@app/lib/api/audit/workos_audit";
 import { runToolWithStreaming } from "@app/lib/api/mcp/run_tool";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import { notifyManualActionRequired } from "@app/lib/notifications/workflows/manual-action-required";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
@@ -19,9 +20,11 @@ import { getShutdownSignal } from "@app/lib/shutdown_signal";
 import { withPeriodicHeartbeat } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { getLegacyConsumptionExecutionContext } from "@app/temporal/agent_loop/activities/consumption";
 import { TOOL_SETUP_HEARTBEAT_INTERVAL_MS } from "@app/temporal/agent_loop/config";
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
+import type { AgentMessageConsumptionExecutionContext } from "@app/types/assistant/agent_message_consumption";
 import type {
   AgentLoopArgsWithTiming,
   AgentLoopExecutionData,
@@ -96,11 +99,15 @@ export async function runToolActivity(
   authType: AuthenticatorType,
   {
     actionId,
+    consumptionContext,
+    recordConsumptionInline = true,
     runAgentArgs,
     step,
     runIds,
   }: {
     actionId: ModelId;
+    consumptionContext?: AgentMessageConsumptionExecutionContext | null;
+    recordConsumptionInline?: boolean;
     runAgentArgs: AgentLoopArgsWithTiming;
     step: number;
     runIds?: string[];
@@ -239,11 +246,14 @@ export async function runToolActivity(
     { asType: "tool" }
   );
 
-  await recordToolCompletionConsumptionItem(auth, {
-    action,
-    agentMessage,
-    runAgentArgs,
-  });
+  if (recordConsumptionInline) {
+    await recordToolCompletionConsumptionItem(auth, {
+      action,
+      agentMessage,
+      consumptionContext,
+      runAgentArgs,
+    });
+  }
 
   return executionResult;
 }
@@ -253,43 +263,61 @@ async function recordToolCompletionConsumptionItem(
   {
     action,
     agentMessage,
+    consumptionContext,
     runAgentArgs,
   }: {
     action: AgentMCPActionResource;
     agentMessage: AgentMessageType;
+    consumptionContext?: AgentMessageConsumptionExecutionContext | null;
     runAgentArgs: AgentLoopArgsWithTiming;
   }
 ): Promise<void> {
-  const { rootAgentMessageId, runKey } = runAgentArgs;
-  if (
-    !isToolExecutionStatusFinal(action.status) ||
-    !runKey ||
-    !rootAgentMessageId
-  ) {
+  if (!isToolExecutionStatusFinal(action.status)) {
     return;
   }
 
-  const featureFlags = await getFeatureFlags(auth);
-  if (!featureFlags.includes("agent_message_consumption_writes")) {
+  if (consumptionContext === null) {
     return;
   }
-  const rootAgentMessage =
-    await ConversationResource.fetchAgentMessageCreditContext(auth, {
-      agentMessageId: rootAgentMessageId,
+  let rootAgentMessageId: ModelId | undefined;
+  let runKey: string;
+  if (consumptionContext) {
+    rootAgentMessageId = consumptionContext.rootAgentMessageId;
+    runKey = consumptionContext.runKey;
+  } else {
+    const legacyContext = getLegacyConsumptionExecutionContext(runAgentArgs);
+    if (!legacyContext) {
+      return;
+    }
+    const mode = await getAgentMessageConsumptionRolloutMode(auth, {
+      rootAgentMessageId: legacyContext.rootAgentMessageId,
     });
-  if (!rootAgentMessage) {
+    if (mode === null || mode === "off") {
+      return;
+    }
+    rootAgentMessageId = (
+      await ConversationResource.fetchAgentMessageCreditContext(auth, {
+        agentMessageId: legacyContext.rootAgentMessageId,
+      })
+    )?.agentMessageModelId;
+    runKey = legacyContext.runKey;
+  }
+  if (rootAgentMessageId === undefined) {
     return;
   }
 
-  await recordToolCompletionConsumption(auth, {
+  const result = await recordToolCompletionConsumption(auth, {
     action,
     context: {
       agentMessageId: agentMessage.sId,
       agentMessageModelId: agentMessage.agentMessageId,
-      rootAgentMessageId: rootAgentMessage.agentMessageModelId,
+      rootAgentMessageId,
       runKey,
     },
   });
+  if (result.isErr()) {
+    throw result.error;
+  }
 }
 
 async function executeToolStreaming(

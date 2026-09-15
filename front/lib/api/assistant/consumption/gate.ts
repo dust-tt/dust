@@ -44,13 +44,11 @@ export function resolveAgentMessageConsumptionMode(
   return mode;
 }
 
-export async function usesAgentMessageConsumption(
+export async function getAgentMessageConsumptionRolloutMode(
   auth: Authenticator,
   { rootAgentMessageId }: { rootAgentMessageId: string }
-): Promise<boolean> {
-  const mode = await ConversationResource.fetchAgentMessageConsumptionMode(
-    auth,
-    { agentMessageId: rootAgentMessageId }
-  );
-  return mode !== null && mode !== "off";
+): Promise<AgentMessageConsumptionMode | null> {
+  return ConversationResource.fetchAgentMessageConsumptionRolloutMode(auth, {
+    agentMessageId: rootAgentMessageId,
+  });
 }

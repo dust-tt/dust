@@ -30,18 +30,39 @@ export type FixedWindowBounds = { label: string; windowEndMs: number };
  *
  * KEYS:
  * - KEYS[1]: Fixed-window counter key.
+ * - KEYS[2]: Fixed-window idempotency hash key.
  *
  * ARGV:
  * - ARGV[1]: Positive integer increment in the counter's unit.
  * - ARGV[2]: Absolute expiry time in Unix milliseconds.
+ * - ARGV[3]: Idempotency hash field, or empty when deduplication is disabled.
+ *
+ * Returns the effective counter and the idempotency hash field count.
  */
 const ADD_FIXED_WINDOW_COUNT_SCRIPT = `
 local increment_by = tonumber(ARGV[1])
 local expire_at_ms = tonumber(ARGV[2])
+local idempotency_field = ARGV[3]
+local current_value = redis.call("GET", KEYS[1])
+if current_value and tonumber(current_value) == nil then
+  return redis.error_reply("fixed-window counter is not an integer")
+end
+
+if idempotency_field ~= "" then
+  local first_write = redis.call("HSETNX", KEYS[2], idempotency_field, "1")
+  redis.call("PEXPIREAT", KEYS[2], expire_at_ms)
+  if first_write == 0 then
+    return { tonumber(current_value or "0"), redis.call("HLEN", KEYS[2]) }
+  end
+end
 
 local total = redis.call("INCRBY", KEYS[1], increment_by)
 redis.call("PEXPIREAT", KEYS[1], expire_at_ms)
-return total
+local idempotency_size = 0
+if idempotency_field ~= "" then
+  idempotency_size = redis.call("HLEN", KEYS[2])
+end
+return { total, idempotency_size }
 `;
 
 /**
@@ -91,8 +112,8 @@ const makeRateLimiterKey = (key: string) => `${RATE_LIMITER_PREFIX}:${key}`;
 
 /**
  * @cc [owner:id13,label:backend] fixed-window-key-compatibility
- * The returned key MUST be `rate_limiter:<key>:<bounds.label>` so fixed-window operations remain
- * compatible with live spend-cap counters.
+ * Fixed-window counters MUST use `rate_limiter:<key>:<bounds.label>` and deduplication hashes MUST
+ * append `:idempotency` to that key.
  */
 const makeFixedWindowKey = (key: string, label: string) =>
   `${RATE_LIMITER_PREFIX}:${key}:${label}`;
@@ -234,11 +255,15 @@ export async function addFixedWindowCount({
   key,
   bounds,
   incrementBy,
+  idempotencyKey,
+  throwOnError = false,
   logger,
 }: {
   key: string;
   bounds: FixedWindowBounds;
   incrementBy: number;
+  idempotencyKey?: string;
+  throwOnError?: boolean;
   logger: LoggerInterface;
 }): Promise<void> {
   if (!Number.isInteger(incrementBy) || incrementBy <= 0) {
@@ -252,14 +277,28 @@ export async function addFixedWindowCount({
   }
 
   const redisKey = makeFixedWindowKey(key, bounds.label);
+  const idempotencyRedisKey = `${redisKey}:idempotency`;
   const expireAtMs = bounds.windowEndMs + FIXED_WINDOW_EXPIRE_GRACE_MS;
 
   try {
     const redis = await getRedisStreamClient({ origin: "rate_limiter" });
-    await redis.eval(ADD_FIXED_WINDOW_COUNT_SCRIPT, {
-      keys: [redisKey],
-      arguments: [incrementBy.toString(), expireAtMs.toString()],
+    const result = await redis.eval(ADD_FIXED_WINDOW_COUNT_SCRIPT, {
+      keys: [redisKey, idempotencyRedisKey],
+      arguments: [
+        incrementBy.toString(),
+        expireAtMs.toString(),
+        idempotencyKey ?? "",
+      ],
     });
+    if (Array.isArray(result)) {
+      const idempotencySize = Number(result[1]);
+      if (Number.isSafeInteger(idempotencySize) && idempotencySize > 0) {
+        statsDMetrics.distribution(
+          "ratelimiter.fixed_window_idempotency_fields",
+          idempotencySize
+        );
+      }
+    }
   } catch (error) {
     reportRedisCounterError({
       operation: "add_fixed_window",
@@ -267,6 +306,9 @@ export async function addFixedWindowCount({
       context: { key, label: bounds.label, incrementBy },
       logger,
     });
+    if (throwOnError) {
+      throw normalizeError(error);
+    }
   }
 }
 

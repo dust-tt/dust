@@ -121,11 +121,9 @@ type ConsumptionItemCreationAttributes =
   CreationAttributes<AgentMessageConsumptionItemModel>;
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentMessageConsumptionItemResource
-  extends ReadonlyAttributesType<AgentMessageConsumptionItemModel> {}
+export interface AgentMessageConsumptionItemResource extends ReadonlyAttributesType<AgentMessageConsumptionItemModel> {}
 
-export interface AgentMessageModelConsumptionItemResource
-  extends AgentMessageConsumptionItemResource {
+export interface AgentMessageModelConsumptionItemResource extends AgentMessageConsumptionItemResource {
   readonly itemType: Exclude<
     AgentMessageConsumptionItemType,
     AgentMessageConsumptionToolItemType | "rounding"
@@ -135,8 +133,7 @@ export interface AgentMessageModelConsumptionItemResource
   readonly completedAt: Date;
 }
 
-export interface AgentMessageToolConsumptionItemResource
-  extends AgentMessageConsumptionItemResource {
+export interface AgentMessageToolConsumptionItemResource extends AgentMessageConsumptionItemResource {
   readonly itemType: AgentMessageConsumptionToolItemType;
   readonly agentMCPActionId: ModelId;
 }
@@ -148,7 +145,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
 
   constructor(
     model: ModelStaticWorkspaceAware<AgentMessageConsumptionItemModel>,
-    blob: Attributes<AgentMessageConsumptionItemModel>
+    blob: Attributes<AgentMessageConsumptionItemModel>,
   ) {
     super(model, blob);
   }
@@ -163,7 +160,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           this.agentMCPActionId === null &&
             this.directCreditAmountMicro === null &&
             this.completedAt !== null,
-          "Model consumption item has invalid shape"
+          "Model consumption item has invalid shape",
         );
         return true;
 
@@ -187,7 +184,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
 
     assert(
       this.agentMCPActionId !== null,
-      "Tool consumption item is missing its action"
+      "Tool consumption item is missing its action",
     );
     return true;
   }
@@ -209,7 +206,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   }
 
   private static evidenceAttributes(
-    record: CompletedAgentMessageConsumptionItem
+    record: CompletedAgentMessageConsumptionItem,
   ): ConsumptionItemEvidenceAttributes {
     switch (record.itemType) {
       case "system":
@@ -247,13 +244,13 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   }
 
   private static assertUniqueItemKeys(
-    records: CompletedAgentMessageConsumptionItem[]
+    records: CompletedAgentMessageConsumptionItem[],
   ): void {
     const itemKeys = records.map((record) => this.itemKey(record));
     const uniqueItemKeys = new Set(itemKeys);
     assert(
       uniqueItemKeys.size === itemKeys.length,
-      "Consumption items contain duplicate identities"
+      "Consumption items contain duplicate identities",
     );
   }
 
@@ -271,7 +268,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       attributionVersion: number;
       record: CompletedAgentMessageConsumptionItem;
       now: Date;
-    }
+    },
   ): ConsumptionItemCreationAttributes {
     return {
       ...this.evidenceAttributes(record),
@@ -301,7 +298,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       attributionVersion: number;
       item: PendingToolConsumptionItem;
       now: Date;
-    }
+    },
   ): ConsumptionItemCreationAttributes {
     return {
       workspaceId: auth.getNonNullableWorkspace().id,
@@ -351,7 +348,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       records: CompletedToolConsumptionItem[];
       now: Date;
       transaction: Transaction;
-    }
+    },
   ): Promise<void> {
     const insertedRows = await this.model.bulkCreate(
       records.map((record) =>
@@ -361,7 +358,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           attributionVersion,
           record,
           now,
-        })
+        }),
       ),
       {
         ignoreDuplicates: true,
@@ -369,7 +366,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         transaction,
         // Sequelize disables validation by default for bulkCreate.
         validate: true,
-      }
+      },
     );
 
     // PostgreSQL returns an ID only for rows inserted by ON CONFLICT DO NOTHING. Most passes create
@@ -379,12 +376,13 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }
 
     const recordByActionModelId = new Map(
-      records.map((record) => [record.action.id, record])
+      records.map((record) => [record.action.id, record]),
     );
     const existingRows = await this.model.findAll({
       attributes: [
         "id",
         "agentMCPActionId",
+        "attributedSkillIds",
         "completedAt",
         "directCreditAmountMicro",
         "inputTokensCount",
@@ -400,42 +398,36 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       transaction,
     });
 
+    const updates: Array<{
+      id: ModelId;
+      attributedSkillIds: string[] | null;
+      completedAt: string;
+      directCreditAmountMicro: number | null;
+      grossAttributedCreditAmountMicro: number;
+      inputTokensCount: number | null;
+    }> = [];
     for (const existingRow of existingRows) {
       const actionModelId = existingRow.agentMCPActionId;
       assert(
         actionModelId !== null,
-        "An existing tool row must reference an action"
+        "An existing tool row must reference an action",
       );
       const record = recordByActionModelId.get(actionModelId);
       assert(
         record,
-        "An existing tool row must have matching completion evidence"
+        "An existing tool row must have matching completion evidence",
       );
 
       if (existingRow.completedAt === null) {
-        await this.model.update(
-          {
-            itemType: "tool",
-            agentMCPActionId: actionModelId,
-            attributedSkillIds: record.attributedSkillIds,
-            inputTokensCount: record.inputTokensCount,
-            grossAttributedCreditAmountMicro:
-              record.grossAttributedCreditAmountMicro,
-            directCreditAmountMicro: record.directCreditAmountMicro,
-            completedAt: now,
-          },
-          {
-            where: {
-              id: existingRow.id,
-              workspaceId: auth.getNonNullableWorkspace().id,
-              agentMessageId: agentMessageModelId,
-              attributionVersion,
-              itemType: "tool",
-              completedAt: { [Op.is]: null },
-            },
-            transaction,
-          }
-        );
+        updates.push({
+          id: existingRow.id,
+          attributedSkillIds: record.attributedSkillIds,
+          completedAt: now.toISOString(),
+          directCreditAmountMicro: record.directCreditAmountMicro,
+          grossAttributedCreditAmountMicro:
+            record.grossAttributedCreditAmountMicro,
+          inputTokensCount: record.inputTokensCount,
+        });
         continue;
       }
 
@@ -449,33 +441,76 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           existingRow.outputTokensCount === record.outputTokensCount &&
             existingRow.directCreditAmountMicro ===
               record.directCreditAmountMicro,
-          "Removing a tool result cannot change its call or direct-charge evidence"
+          "Removing a tool result cannot change its call or direct-charge evidence",
         );
-        await this.model.update(
-          {
-            itemType: "tool",
-            agentMCPActionId: actionModelId,
-            inputTokensCount: 0,
-            outputTokensCount: record.outputTokensCount,
-            grossAttributedCreditAmountMicro:
-              record.grossAttributedCreditAmountMicro,
-            directCreditAmountMicro: record.directCreditAmountMicro,
-          },
-          {
-            where: {
-              id: existingRow.id,
-              workspaceId: auth.getNonNullableWorkspace().id,
-              agentMessageId: agentMessageModelId,
-              attributionVersion,
-              itemType: "tool",
-              completedAt: { [Op.ne]: null },
-              inputTokensCount: { [Op.gt]: 0 },
-            },
-            transaction,
-          }
-        );
+        updates.push({
+          id: existingRow.id,
+          attributedSkillIds: existingRow.attributedSkillIds,
+          completedAt: existingRow.completedAt.toISOString(),
+          directCreditAmountMicro: record.directCreditAmountMicro,
+          grossAttributedCreditAmountMicro:
+            record.grossAttributedCreditAmountMicro,
+          inputTokensCount: 0,
+        });
       }
     }
+
+    if (updates.length === 0) {
+      return;
+    }
+    // biome-ignore lint/plugin/noRawSql: Sequelize cannot batch distinct updates.
+    await frontSequelize.query(
+      `
+        UPDATE agent_message_consumption_items AS item
+        SET
+          "attributedSkillIds" = desired.attributed_skill_ids,
+          "inputTokensCount" = desired.input_tokens_count,
+          "grossAttributedCreditAmountMicro" = desired.gross_credit_amount_micro,
+          "directCreditAmountMicro" = desired.direct_credit_amount_micro,
+          "completedAt" = desired.completed_at,
+          "updatedAt" = NOW()
+        FROM jsonb_to_recordset(CAST($updates AS jsonb)) AS desired(
+          id bigint,
+          attributed_skill_ids text[],
+          input_tokens_count integer,
+          gross_credit_amount_micro bigint,
+          direct_credit_amount_micro bigint,
+          completed_at timestamptz
+        )
+        WHERE item.id = desired.id
+          AND item."workspaceId" = $workspaceModelId
+          AND item."agentMessageId" = $agentMessageModelId
+          AND item."attributionVersion" = $attributionVersion
+          AND item."itemType" = 'tool'
+          AND (
+            item."completedAt" IS NULL
+            OR (
+              desired.input_tokens_count = 0
+              AND item."completedAt" IS NOT NULL
+              AND item."inputTokensCount" > 0
+            )
+          )
+      `,
+      {
+        bind: {
+          agentMessageModelId,
+          attributionVersion,
+          updates: JSON.stringify(
+            updates.map((update) => ({
+              id: update.id,
+              attributed_skill_ids: update.attributedSkillIds,
+              input_tokens_count: update.inputTokensCount,
+              gross_credit_amount_micro:
+                update.grossAttributedCreditAmountMicro,
+              direct_credit_amount_micro: update.directCreditAmountMicro,
+              completed_at: update.completedAt,
+            })),
+          ),
+          workspaceModelId: auth.getNonNullableWorkspace().id,
+        },
+        transaction,
+      },
+    );
   }
 
   /**
@@ -507,7 +542,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       records: CompletedAgentMessageConsumptionItem[];
       pendingToolItems: PendingToolConsumptionItem[];
       transaction?: Transaction;
-    }
+    },
   ): Promise<void> {
     if (records.length === 0 && pendingToolItems.length === 0) {
       return;
@@ -518,21 +553,21 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       records.every(
         (record) =>
           record.itemType !== "tool" ||
-          record.action.agentMessageId === agentMessageModelId
+          record.action.agentMessageId === agentMessageModelId,
       ),
-      "Tool consumption items must have the same agent message ID as the owning agent message"
+      "Tool consumption items must have the same agent message ID as the owning agent message",
     );
     assert(
       pendingToolItems.every(
-        (item) => item.action.agentMessageId === agentMessageModelId
+        (item) => item.action.agentMessageId === agentMessageModelId,
       ),
-      "Pending tool consumption items must have the same agent message ID as the owning agent message"
+      "Pending tool consumption items must have the same agent message ID as the owning agent message",
     );
 
     const now = new Date();
     const modelRecords = records.filter((record) => record.itemType !== "tool");
     const completedToolRecords = records.filter(
-      (record) => record.itemType === "tool"
+      (record) => record.itemType === "tool",
     );
 
     await withTransaction(async (t) => {
@@ -546,7 +581,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
               attributionVersion,
               record,
               now,
-            })
+            }),
           ),
           {
             ignoreDuplicates: true,
@@ -554,7 +589,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
             transaction: t,
             // Sequelize disables validation by default for bulkCreate.
             validate: true,
-          }
+          },
         );
       }
 
@@ -579,7 +614,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
               attributionVersion,
               item,
               now,
-            })
+            }),
           ),
           {
             ignoreDuplicates: true,
@@ -587,7 +622,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
             transaction: t,
             // Sequelize disables validation by default for bulkCreate.
             validate: true,
-          }
+          },
         );
       }
     }, transaction);
@@ -611,7 +646,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       toolCallRows: ConsumptionToolCallRow[];
       toolResultRows: ConsumptionToolResultRow[];
       transaction?: Transaction;
-    }
+    },
   ): Promise<InsertedConsumptionRow[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
     const now = new Date();
@@ -702,10 +737,10 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }: {
       creditAmountMicroDeltaByConsumptionItemId: ReadonlyMap<ModelId, number>;
       transaction?: Transaction;
-    }
+    },
   ): Promise<void> {
     const deltas = [...creditAmountMicroDeltaByConsumptionItemId].filter(
-      ([, creditAmountMicroDelta]) => creditAmountMicroDelta !== 0
+      ([, creditAmountMicroDelta]) => creditAmountMicroDelta !== 0,
     );
     if (deltas.length === 0) {
       return;
@@ -729,17 +764,17 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       {
         bind: {
           consumptionItemIds: deltas.map(
-            ([consumptionItemId]) => consumptionItemId
+            ([consumptionItemId]) => consumptionItemId,
           ),
           creditAmountsMicro: deltas.map(
-            ([, creditAmountMicroDelta]) => creditAmountMicroDelta
+            ([, creditAmountMicroDelta]) => creditAmountMicroDelta,
           ),
           updatedAt: new Date(),
           workspaceModelId: auth.getNonNullableWorkspace().id,
         },
         transaction,
         type: QueryTypes.UPDATE,
-      }
+      },
     );
   }
 
@@ -751,7 +786,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }: {
       agentMCPActionModelId: ModelId;
       transaction?: Transaction;
-    }
+    },
   ): Promise<AgentMessageToolConsumptionItemResource | null> {
     const row = await this.model.findOne({
       where: {
@@ -772,7 +807,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
 
   static async sumConsumptionCreditAmountMicroByRunKeyForAgentMessages(
     auth: Authenticator,
-    { agentMessageModelIds }: { agentMessageModelIds: ModelId[] }
+    { agentMessageModelIds }: { agentMessageModelIds: ModelId[] },
   ): Promise<Map<string, number>> {
     if (agentMessageModelIds.length === 0) {
       return new Map();
@@ -804,7 +839,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           workspaceModelId: auth.getNonNullableWorkspace().id,
         },
         type: QueryTypes.SELECT,
-      }
+      },
     );
 
     return new Map(
@@ -812,10 +847,10 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         const total = Number(row.total);
         assert(
           Number.isSafeInteger(total) && total >= 0,
-          "Consumption execution total is outside the supported integer range"
+          "Consumption execution total is outside the supported integer range",
         );
         return [row.runKey, total];
-      })
+      }),
     );
   }
 
@@ -827,7 +862,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }: {
       runKey: string;
       transaction?: Transaction;
-    }
+    },
   ): Promise<AgentMessageConsumptionItemResource[]> {
     const rows = await this.model.findAll({
       where: {
@@ -852,7 +887,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       agentMessageModelId: ModelId;
       lockForUpdate?: boolean;
       transaction?: Transaction;
-    }
+    },
   ): Promise<AgentMessageConsumptionItemResource[]> {
     const rows = await this.model.findAll({
       where: {
@@ -878,7 +913,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }: {
       agentMessageModelId: ModelId;
       transaction?: Transaction;
-    }
+    },
   ): Promise<number> {
     // biome-ignore lint/plugin/noRawSql: Sequelize cannot express a grouped HAVING over a filter.
     const rows = await frontSequelize.query<{ total: string | null }>(
@@ -903,10 +938,15 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         },
         transaction,
         type: QueryTypes.SELECT,
-      }
+      },
     );
 
-    return Number(rows[0]?.total ?? 0);
+    const total = Number(rows[0]?.total ?? 0);
+    assert(
+      Number.isSafeInteger(total),
+      "Consumption total exceeds safe integer range",
+    );
+    return total;
   }
 
   static async insertConsumptionToolDirectRow(
@@ -929,7 +969,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       runKey: string;
       runUsageModelId: ModelId;
       transaction?: Transaction;
-    }
+    },
   ): Promise<InsertedConsumptionRow | null> {
     const now = new Date();
     const [row] = await this.model.bulkCreate(
@@ -959,7 +999,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         returning: ["id", "itemKey"],
         transaction,
         validate: true,
-      }
+      },
     );
 
     return row?.id ? { consumptionItemId: row.id, itemKey: row.itemKey } : null;
@@ -980,10 +1020,10 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         runUsageModelId: ModelId;
       }[];
       transaction?: Transaction;
-    }
+    },
   ): Promise<InsertedConsumptionRow[]> {
     const nonZeroAdjustments = adjustments.filter(
-      (adjustment) => adjustment.amountMicro !== 0
+      (adjustment) => adjustment.amountMicro !== 0,
     );
     if (nonZeroAdjustments.length === 0) {
       return [];
@@ -1015,7 +1055,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         returning: ["id", "itemKey"],
         transaction,
         validate: true,
-      }
+      },
     );
 
     return rows
@@ -1031,7 +1071,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }: {
       agentMessageModelId: ModelId;
       transaction?: Transaction;
-    }
+    },
   ): Promise<AgentMessageToolConsumptionItemResource[]> {
     const rows = await this.model.findAll({
       where: {
@@ -1059,7 +1099,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }: {
       agentMCPActionModelId: ModelId;
       transaction?: Transaction;
-    }
+    },
   ): Promise<AgentMessageToolConsumptionItemResource | null> {
     const row = await this.model.findOne({
       where: {
@@ -1086,7 +1126,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }: {
       agentMessageModelId: ModelId;
       transaction: Transaction;
-    }
+    },
   ): Promise<AgentMessageToolConsumptionItemResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
@@ -1107,7 +1147,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }
 
     const actionModelIds = toolRows.flatMap((row) =>
-      row.agentMCPActionId === null ? [] : [row.agentMCPActionId]
+      row.agentMCPActionId === null ? [] : [row.agentMCPActionId],
     );
     const resultRows = await this.model.findAll({
       attributes: ["agentMCPActionId"],
@@ -1121,7 +1161,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       transaction,
     });
     const consumedActionModelIds = resultRows.flatMap((row) =>
-      row.agentMCPActionId === null ? [] : [row.agentMCPActionId]
+      row.agentMCPActionId === null ? [] : [row.agentMCPActionId],
     );
     const consumedActionModelIdSet = new Set(consumedActionModelIds);
 
@@ -1148,17 +1188,16 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         number
       >;
       transaction?: Transaction;
-    }
+    },
   ): Promise<void> {
     const changedAllocations = [...reconciledCreditAmountByItem].filter(
       ([item, reconciledCreditAmountMicro]) =>
-        item.reconciledCreditAmountMicro !== reconciledCreditAmountMicro
+        item.reconciledCreditAmountMicro !== reconciledCreditAmountMicro,
     );
     if (changedAllocations.length === 0) {
       return;
     }
 
-    // `unnest` pairs both arrays by position into rows of item ID and reconciled amount.
     // biome-ignore lint/plugin/noRawSql: Sequelize cannot bulk-update each row with a distinct value.
     await frontSequelize.query(
       `
@@ -1177,15 +1216,14 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         bind: {
           consumptionItemIds: changedAllocations.map(([item]) => item.id),
           reconciledCreditAmountsMicro: changedAllocations.map(
-            ([, reconciledCreditAmountMicro]) => reconciledCreditAmountMicro
+            ([, reconciledCreditAmountMicro]) => reconciledCreditAmountMicro,
           ),
-          // Raw SQL bypasses Sequelize timestamping, so set it explicitly.
           updatedAt: new Date(),
           workspaceModelId: auth.getNonNullableWorkspace().id,
         },
         transaction,
         type: QueryTypes.UPDATE,
-      }
+      },
     );
   }
 
@@ -1199,7 +1237,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       agentMessageModelIds: ModelId[];
       maxAttributionVersion: number;
       transaction?: Transaction;
-    }
+    },
   ): Promise<AgentMessageConsumptionItemResource[]> {
     if (agentMessageModelIds.length === 0) {
       return [];
@@ -1223,7 +1261,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
 
   static async sumConsumptionCreditAmountMicroByRunKey(
     auth: Authenticator,
-    { runKey }: { runKey: string }
+    { runKey }: { runKey: string },
   ): Promise<number> {
     // biome-ignore lint/plugin/noRawSql: Sequelize cannot express SUM(COALESCE(column, column)).
     const [row] = await frontSequelize.query<{ total: string }>(
@@ -1247,12 +1285,12 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           workspaceModelId: auth.getNonNullableWorkspace().id,
         },
         type: QueryTypes.SELECT,
-      }
+      },
     );
     const total = Number(row?.total ?? 0);
     assert(
       Number.isSafeInteger(total) && total >= 0,
-      "Consumption total is outside the supported integer range"
+      "Consumption total is outside the supported integer range",
     );
     return total;
   }
@@ -1271,7 +1309,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }: {
       conversation: ConversationResource;
       maxAttributionVersion: number;
-    }
+    },
   ): Promise<{
     messages: ConversationConsumptionMessageFacts[];
   }> {
@@ -1291,7 +1329,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           conversations,
           maxAttributionVersion,
           parentAgentIdsByConversationId,
-        }
+        },
       );
       messages.push(...directFacts.messages);
 
@@ -1315,14 +1353,14 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           childConversationIds.push(childConversationId);
           childParentAgentIdsByConversationId.set(
             childConversationId,
-            message.agentConfigurationId
+            message.agentConfigurationId,
           );
         }
       }
       conversations = await ConversationResource.fetchByIds(
         auth,
         childConversationIds,
-        { includeDeleted: true }
+        { includeDeleted: true },
       );
       parentAgentIdsByConversationId = childParentAgentIdsByConversationId;
     }
@@ -1340,21 +1378,21 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       conversations: ConversationResource[];
       maxAttributionVersion: number;
       parentAgentIdsByConversationId: ReadonlyMap<string, string>;
-    }
+    },
   ): Promise<{
     messages: ConversationConsumptionMessageFacts[];
   }> {
     const workspaceId = auth.getNonNullableWorkspace().id;
     const conversationIdsByModelId = new Map(
-      conversations.map((conversation) => [conversation.id, conversation.sId])
+      conversations.map((conversation) => [conversation.id, conversation.sId]),
     );
     const parentAgentIdsByConversationModelId = new Map(
       conversations.flatMap((conversation) => {
         const parentAgentId = parentAgentIdsByConversationId.get(
-          conversation.sId
+          conversation.sId,
         );
         return parentAgentId ? [[conversation.id, parentAgentId] as const] : [];
-      })
+      }),
     );
 
     // Agent messages own the authoritative bill and the execution metadata needed to explain it.
@@ -1376,7 +1414,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
 
     const messageFacts = agentMessages.map((agentMessage) => {
       const conversationId = conversationIdsByModelId.get(
-        agentMessage.conversationId
+        agentMessage.conversationId,
       );
       assert(conversationId, "Agent message conversation not found.");
 
@@ -1386,7 +1424,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
         agentConfigurationId: agentMessage.agentConfigurationId,
         parentAgentConfigurationId:
           parentAgentIdsByConversationModelId.get(
-            agentMessage.conversationId
+            agentMessage.conversationId,
           ) ?? null,
         billedCredits: agentMessage.costCredits,
         dustRunIds: agentMessage.runIds ?? [],
@@ -1395,7 +1433,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     });
 
     const fetchedAgentMessageModelIds = messageFacts.map(
-      (message) => message.agentMessageModelId
+      (message) => message.agentMessageModelId,
     );
 
     // Attribution rows and actions stay attached to their owning message across conversations.
@@ -1406,7 +1444,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       }),
       AgentMCPActionResource.listByAgentMessageIds(
         auth,
-        fetchedAgentMessageModelIds
+        fetchedAgentMessageModelIds,
       ),
     ]);
 
@@ -1441,7 +1479,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
           ...message,
           items: itemsByMessageModelId.get(agentMessageModelId) ?? [],
           actions: actionsByMessageModelId.get(agentMessageModelId) ?? [],
-        })
+        }),
       ),
     };
   }
@@ -1461,7 +1499,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
       conversation: ConversationResource;
       agentMessageId: string;
       maxAttributionVersion: number;
-    }
+    },
   ): Promise<{
     billedCredits: number | null;
     dustRunIds: string[];
@@ -1498,7 +1536,7 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
     }: {
       agentMessageModelIds: ModelId[];
       transaction?: Transaction;
-    }
+    },
   ): Promise<number> {
     if (agentMessageModelIds.length === 0) {
       return 0;
@@ -1516,8 +1554,8 @@ export class AgentMessageConsumptionItemResource extends BaseResource<AgentMessa
   async delete(): Promise<Result<undefined, Error>> {
     return new Err(
       new Error(
-        "Consumption items can only be deleted with their owning agent message"
-      )
+        "Consumption items can only be deleted with their owning agent message",
+      ),
     );
   }
 }

@@ -3,12 +3,19 @@ import type {
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types/assistant/models/types";
+import type { ModelId } from "@app/types/shared/model_id";
 
 export type AgentMessageConsumptionMode = "off" | "shadow" | "live";
 export type EnabledAgentMessageConsumptionMode = Exclude<
   AgentMessageConsumptionMode,
   "off"
 >;
+
+export type AgentMessageConsumptionExecutionContext = {
+  mode: EnabledAgentMessageConsumptionMode;
+  rootAgentMessageId: ModelId;
+  runKey: string;
+};
 
 export const AGENT_MESSAGE_CONSUMPTION_ITEM_TYPES = [
   "system",

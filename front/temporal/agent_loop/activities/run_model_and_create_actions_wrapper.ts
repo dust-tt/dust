@@ -1,5 +1,5 @@
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
-import { usesAgentMessageConsumption } from "@app/lib/api/assistant/consumption/gate";
+import { getAgentMessageConsumptionRolloutMode } from "@app/lib/api/assistant/consumption/gate";
 import { recordModelCallConsumption } from "@app/lib/api/assistant/consumption/model_call_writer";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
@@ -17,7 +17,10 @@ import {
   finalizeUnavailableAgentLoop,
   updateResourceAndPublishEvent,
 } from "@app/temporal/agent_loop/activities/common";
-import { recordExecutionStarted } from "@app/temporal/agent_loop/activities/consumption";
+import {
+  getLegacyConsumptionExecutionContext,
+  recordExecutionStarted,
+} from "@app/temporal/agent_loop/activities/consumption";
 import {
   AGENT_LOOP_COST_HARD_CAP_USD,
   AGENT_LOOP_SUBAGENT_HARD_CAP,
@@ -33,12 +36,12 @@ import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_t
 import { handlePromptCommand } from "@app/temporal/agent_loop/lib/prompt_commands";
 import { runModel } from "@app/temporal/agent_loop/lib/run_model";
 import { getMaxActionsPerStep } from "@app/types/assistant/agent";
+import type { AgentMessageConsumptionExecutionContext } from "@app/types/assistant/agent_message_consumption";
 import type {
   AgentLoopArgsWithTiming,
   AgentLoopRuntimeData,
 } from "@app/types/assistant/agent_run";
 import { isAgentLoopDataSoftDeleteError } from "@app/types/assistant/agent_run";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import type { ModelId } from "@app/types/shared/model_id";
 import { startActiveObservation } from "@langfuse/tracing";
 import { Context, heartbeat } from "@temporalio/activity";
@@ -77,6 +80,8 @@ function getActivityTimeoutDeadlineMs(): number {
 export async function runModelAndCreateActionsActivity({
   authType,
   checkForResume = true,
+  consumptionContext,
+  recordConsumptionInline = true,
   runAgentArgs,
   runIds,
   step,
@@ -84,6 +89,8 @@ export async function runModelAndCreateActionsActivity({
 }: {
   authType: AuthenticatorType;
   checkForResume?: boolean;
+  consumptionContext?: AgentMessageConsumptionExecutionContext | null;
+  recordConsumptionInline?: boolean;
   runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   step: number;
@@ -100,6 +107,8 @@ export async function runModelAndCreateActionsActivity({
         _runModelAndCreateActionsActivity({
           authType,
           checkForResume,
+          consumptionContext,
+          recordConsumptionInline,
           runAgentArgs,
           runIds,
           step,
@@ -116,6 +125,8 @@ export async function runModelAndCreateActionsActivity({
 async function _runModelAndCreateActionsActivity({
   authType,
   checkForResume,
+  consumptionContext,
+  recordConsumptionInline,
   runAgentArgs,
   runIds,
   step,
@@ -123,6 +134,8 @@ async function _runModelAndCreateActionsActivity({
 }: {
   authType: AuthenticatorType;
   checkForResume: boolean;
+  consumptionContext?: AgentMessageConsumptionExecutionContext | null;
+  recordConsumptionInline: boolean;
   runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   step: number;
@@ -161,16 +174,29 @@ async function _runModelAndCreateActionsActivity({
   const runAgentData = contextProvider.runtimeData;
   const isRootAgentMessage = !runAgentData.userMessage.agenticMessageData;
 
-  const executionUsesConsumption =
-    step === (runAgentArgs.startStep ?? 0)
-      ? await recordExecutionStarted(auth, runAgentArgs, {
-          startStep: runAgentArgs.startStep ?? 0,
-        })
-      : !!runAgentArgs.runKey &&
-        !!runAgentArgs.rootAgentMessageId &&
-        (await usesAgentMessageConsumption(auth, {
-          rootAgentMessageId: runAgentArgs.rootAgentMessageId,
-        }));
+  const legacyConsumptionContext =
+    consumptionContext === undefined
+      ? getLegacyConsumptionExecutionContext(runAgentArgs)
+      : null;
+  let executionUsesConsumption: boolean;
+  if (consumptionContext !== undefined) {
+    executionUsesConsumption = consumptionContext !== null;
+  } else if (step === (runAgentArgs.startStep ?? 0)) {
+    executionUsesConsumption = await recordExecutionStarted(
+      auth,
+      runAgentArgs,
+      {
+        startStep: runAgentArgs.startStep ?? 0,
+      }
+    );
+  } else if (legacyConsumptionContext !== null) {
+    const mode = await getAgentMessageConsumptionRolloutMode(auth, {
+      rootAgentMessageId: legacyConsumptionContext.rootAgentMessageId,
+    });
+    executionUsesConsumption = mode !== null && mode !== "off";
+  } else {
+    executionUsesConsumption = false;
+  }
 
   // Intentionally check at step start (not step end) to early exit if dollar amount too high.
   // This can miss thresholds crossed on the final step.
@@ -317,13 +343,16 @@ async function _runModelAndCreateActionsActivity({
   // Generation completed (text response, no tool calls) — runModel returns
   // { actions: [], runId } so we still capture the runId for tracking.
   if (actions.length === 0) {
-    await recordModelCallConsumptionItems(auth, {
-      featureFlags,
-      runAgentArgs,
-      runAgentData,
-      runId,
-      emittedActionModelIds: [],
-    });
+    if (recordConsumptionInline) {
+      await recordModelCallConsumptionItems(auth, {
+        runAgentArgs,
+        runAgentData,
+        runId,
+        consumptionContext,
+        emittedActionModelIds: [],
+        executionUsesConsumption,
+      });
+    }
 
     return { runId, actionBlobs: [], retryWithoutTools };
   }
@@ -349,15 +378,18 @@ async function _runModelAndCreateActionsActivity({
     })
   );
 
-  await recordModelCallConsumptionItems(auth, {
-    featureFlags,
-    runAgentArgs,
-    runAgentData,
-    runId,
-    emittedActionModelIds: createResult.actionBlobs.map(
-      (actionBlob) => actionBlob.actionId
-    ),
-  });
+  if (recordConsumptionInline) {
+    await recordModelCallConsumptionItems(auth, {
+      runAgentArgs,
+      runAgentData,
+      runId,
+      consumptionContext,
+      emittedActionModelIds: createResult.actionBlobs.map(
+        (actionBlob) => actionBlob.actionId
+      ),
+      executionUsesConsumption,
+    });
+  }
 
   const needsApproval = createResult.actionBlobs.some((a) => a.needsApproval);
   if (needsApproval) {
@@ -382,33 +414,45 @@ async function recordModelCallConsumptionItems(
   auth: Authenticator,
   {
     emittedActionModelIds,
-    featureFlags,
+    executionUsesConsumption,
     runAgentArgs,
     runAgentData,
     runId,
+    consumptionContext,
   }: {
     emittedActionModelIds: ModelId[];
-    featureFlags: WhitelistableFeature[];
+    executionUsesConsumption: boolean;
     runAgentArgs: AgentLoopArgsWithTiming;
     runAgentData: AgentLoopRuntimeData;
     runId: string | null;
+    consumptionContext?: AgentMessageConsumptionExecutionContext | null;
   }
 ): Promise<void> {
-  const { rootAgentMessageId, runKey } = runAgentArgs;
-  if (
-    !featureFlags.includes("agent_message_consumption_writes") ||
-    runId === null ||
-    !runKey ||
-    !rootAgentMessageId
-  ) {
+  if (runId === null || consumptionContext === null) {
     return;
   }
-  const rootAgentMessage =
-    await ConversationResource.fetchAgentMessageCreditContext(
-      auth,
-      { agentMessageId: rootAgentMessageId }
-    );
-  if (!rootAgentMessage) {
+  if (!executionUsesConsumption) {
+    return;
+  }
+
+  let rootAgentMessageId: ModelId | undefined;
+  let runKey: string;
+  if (consumptionContext) {
+    rootAgentMessageId = consumptionContext.rootAgentMessageId;
+    runKey = consumptionContext.runKey;
+  } else {
+    const legacyContext = getLegacyConsumptionExecutionContext(runAgentArgs);
+    if (!legacyContext) {
+      return;
+    }
+    rootAgentMessageId = (
+      await ConversationResource.fetchAgentMessageCreditContext(auth, {
+        agentMessageId: legacyContext.rootAgentMessageId,
+      })
+    )?.agentMessageModelId;
+    runKey = legacyContext.runKey;
+  }
+  if (rootAgentMessageId === undefined) {
     return;
   }
 
@@ -417,16 +461,19 @@ async function recordModelCallConsumptionItems(
     emittedActionModelIds
   );
 
-  await recordModelCallConsumption(auth, {
+  const result = await recordModelCallConsumption(auth, {
     context: {
       agentMessageModelId: runAgentData.agentMessage.agentMessageId,
       conversationModelId: runAgentData.conversation.id,
-      rootAgentMessageId: rootAgentMessage.agentMessageModelId,
+      rootAgentMessageId,
       runKey,
     },
     dustRunId: runId,
     emittedActions,
   });
+  if (result.isErr()) {
+    throw result.error;
+  }
 }
 
 async function publishAgentLoopGuardrailExceededError(

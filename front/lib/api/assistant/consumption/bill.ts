@@ -25,6 +25,7 @@ const MODEL_CREDIT_POSTING_ITEM_TYPES: ReadonlySet<AgentMessageConsumptionItemTy
   new Set(["input", "output", "reasoning", "tool_call", "tool_result"]);
 
 export type ExecutionBill = {
+  userMessageOrigin: UserMessageOrigin;
   eventCreditAmount: number;
   costCredits: number;
   runUsageModelIds: ModelId[];
@@ -100,6 +101,7 @@ export async function billExecution(
         agentMessageModelId,
         settledRows,
         transaction,
+        userMessageOrigin: triggeringUserMessageOrigin ?? "web",
       });
     }
 
@@ -228,6 +230,7 @@ export async function billExecution(
     assertWholeCredits(costCreditAmountMicro, "settled message");
 
     return {
+      userMessageOrigin: triggeringUserMessageOrigin ?? "web",
       eventCreditAmount,
       costCredits: costCreditAmountMicro / MICRO_CREDITS_PER_CREDIT,
       runUsageModelIds: modelRunUsageModelIdsOf(settledRows),
@@ -310,12 +313,14 @@ async function executionBillFromSettledRows(
     agentMessageModelId,
     settledRows,
     transaction,
+    userMessageOrigin,
   }: {
     agentMessageModelId: ModelId;
     settledRows: AgentMessageConsumptionItemResource[];
     transaction: Parameters<
       typeof AgentMessageConsumptionItemResource.listConsumptionRowsByRunKey
     >[1]["transaction"];
+    userMessageOrigin: UserMessageOrigin;
   }
 ): Promise<ExecutionBill> {
   const eventCreditAmountMicro = sumReconciled(settledRows);
@@ -328,6 +333,7 @@ async function executionBillFromSettledRows(
   assertWholeCredits(costCreditAmountMicro, "settled message");
 
   return {
+    userMessageOrigin,
     eventCreditAmount: eventCreditAmountMicro / MICRO_CREDITS_PER_CREDIT,
     costCredits: costCreditAmountMicro / MICRO_CREDITS_PER_CREDIT,
     runUsageModelIds: modelRunUsageModelIdsOf(settledRows),
