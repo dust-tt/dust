@@ -378,6 +378,14 @@ function CustomizationSection() {
     localAgentsSectionVisible !== isAgentsSectionVisible;
 
   const handleSave = () => {
+    if (localTheme !== currentTheme) {
+      trackEvent({
+        area: TRACKING_AREAS.SETTINGS,
+        object: "theme",
+        action: TRACKING_ACTIONS.SELECT,
+        extra: { theme: localTheme },
+      });
+    }
     setTheme(localTheme);
     if (typeof window !== "undefined") {
       localStorage.setItem("submitMessageKey", submitKey);
