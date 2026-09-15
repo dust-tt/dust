@@ -84,7 +84,7 @@ describe("DELETE /api/v1/w/[wId]/skills/[skillId]", () => {
     expect(response.status).toBe(403);
     expect(await response.json()).toEqual({
       error: {
-        type: "workspace_auth_error",
+        type: "app_auth_error",
         message: "Only admins and editors can archive this skill.",
       },
     });
