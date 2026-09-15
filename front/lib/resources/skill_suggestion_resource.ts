@@ -518,11 +518,22 @@ export class SkillSuggestionResource extends BaseResource<SkillSuggestionModel> 
     });
   }
 
+  /**
+   * @cc [owner:achilleburah,label:backend;api] edit-only-serialization
+   * `toJSON` MUST only be called on `edit` rows: `SkillSuggestionType` has no arm for other kinds
+   * yet, so it throws on them. Callers serializing rows of arbitrary kind (by sId or from an
+   * all-sources listing) MUST filter on `kind === "edit"` first.
+   */
   toJSON(): SkillSuggestionType {
     const suggestionData = parseSkillSuggestionData({
       kind: this.kind,
       suggestion: this.suggestion,
     });
+    if (suggestionData.kind !== "edit") {
+      throw new Error(
+        `Skill suggestions of kind "${suggestionData.kind}" have no public serialization yet.`
+      );
+    }
 
     return {
       sId: this.sId,

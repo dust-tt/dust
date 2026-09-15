@@ -1,5 +1,8 @@
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { SUGGEST_SKILL_UPDATE_TOOL_NAME } from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
+import {
+  SUGGEST_SKILL_EDITORS_TOOL_NAME,
+  SUGGEST_SKILL_UPDATE_TOOL_NAME,
+} from "@app/lib/api/actions/servers/building_agents_and_skills/metadata";
 import { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SkillSuggestionResource } from "@app/lib/resources/skill_suggestion_resource";
@@ -7,14 +10,16 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SkillSuggestionFactory } from "@app/tests/utils/SkillSuggestionFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { INSTRUCTIONS_ROOT_TARGET_BLOCK_ID } from "@app/types/suggestions/agent_suggestion";
+import type { WorkspaceType } from "@app/types/user";
 import { describe, expect, it } from "vitest";
 
 import { TOOLS } from "./index";
 
 const SKILL_SUGGESTION_DIRECTIVE_REGEX =
-  /^:skill_suggestion\[\]\{sId=(\S+) kind=edit\}$/;
+  /^:skill_suggestion\[\]\{sId=(\S+) kind=(edit|editors)\}$/;
 
 function getTool(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -57,12 +62,32 @@ async function seedSkill(
   return skill;
 }
 
-function extractSuggestionId(text: string): string {
+function extractSuggestionId(text: string, kind = "edit"): string {
   const match = SKILL_SUGGESTION_DIRECTIVE_REGEX.exec(text);
-  if (!match) {
+  if (!match || match[2] !== kind) {
     throw new Error(`Unexpected tool output: ${text}`);
   }
   return match[1];
+}
+
+async function addMember(
+  workspace: WorkspaceType,
+  role: "user" | "admin" = "user"
+) {
+  const user = await UserFactory.basic();
+  await MembershipFactory.associate(workspace, user, { role });
+  return user;
+}
+
+function expectMcpError(
+  result: Awaited<ReturnType<(typeof TOOLS)[number]["handler"]>>,
+  fragment: string
+) {
+  expect(result.isErr()).toBe(true);
+  if (result.isOk()) {
+    throw new Error("Expected an error.");
+  }
+  expect(result.error.message).toContain(fragment);
 }
 
 describe("building_agents_and_skills tools", () => {
@@ -317,6 +342,152 @@ describe("building_agents_and_skills tools", () => {
       );
 
       expect(result.isErr()).toBe(true);
+    });
+  });
+
+  describe(SUGGEST_SKILL_EDITORS_TOOL_NAME, () => {
+    it("creates a pending conversational editors suggestion without touching the editors", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(authenticator, { name: "Editors" });
+      const newEditor = await addMember(workspace);
+
+      const result = await getTool(SUGGEST_SKILL_EDITORS_TOOL_NAME).handler(
+        {
+          skillId: skill.sId,
+          addUserIds: [newEditor.sId],
+          analysis: "They maintain the runbook this skill follows.",
+          title: "Add runbook owner",
+        },
+        makeExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isErr()) {
+        throw result.error;
+      }
+      if (result.value[0]?.type !== "text") {
+        throw new Error("Expected text output.");
+      }
+      const suggestionId = extractSuggestionId(result.value[0].text, "editors");
+
+      const suggestion = await SkillSuggestionResource.fetchById(
+        authenticator,
+        suggestionId
+      );
+      expect(suggestion?.state).toBe("pending");
+      expect(suggestion?.source).toBe("conversational");
+      expect(suggestion?.kind).toBe("editors");
+      expect(suggestion?.title).toBe("Add runbook owner");
+      expect(suggestion?.suggestion).toEqual({
+        addUserIds: [newEditor.sId],
+        removeUserIds: [],
+      });
+
+      // The editor set is left untouched until the suggestion is approved.
+      const editors = (await skill.listEditors(authenticator)) ?? [];
+      expect(editors.map((u) => u.sId)).toEqual([
+        authenticator.getNonNullableUser().sId,
+      ]);
+    });
+
+    it("rejects a caller who is neither an editor nor an admin, creating no row", async () => {
+      const { authenticator: ownerAuth, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(ownerAuth, { name: "Not Mine" });
+      const outsider = await addMember(workspace);
+      const outsiderAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        outsider.sId,
+        workspace.sId
+      );
+
+      const result = await getTool(SUGGEST_SKILL_EDITORS_TOOL_NAME).handler(
+        { skillId: skill.sId, addUserIds: [outsider.sId] },
+        makeExtra(outsiderAuth)
+      );
+
+      expectMcpError(result, "editors of this skill or workspace admins");
+      const suggestions =
+        await SkillSuggestionResource.listBySkillConfigurationId(
+          ownerAuth,
+          skill.sId,
+          { sources: ["conversational"] }
+        );
+      expect(suggestions).toHaveLength(0);
+    });
+
+    it("rejects an archived skill", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      const skill = await seedSkill(authenticator, {
+        name: "Archived",
+        status: "archived",
+      });
+      const newEditor = await addMember(workspace);
+
+      const result = await getTool(SUGGEST_SKILL_EDITORS_TOOL_NAME).handler(
+        { skillId: skill.sId, addUserIds: [newEditor.sId] },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "archived");
+    });
+
+    it("rejects an unknown user sId", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Unknown User" });
+
+      const result = await getTool(SUGGEST_SKILL_EDITORS_TOOL_NAME).handler(
+        { skillId: skill.sId, addUserIds: ["usr_does_not_exist"] },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "not found");
+    });
+
+    it("rejects a change that would remove the last editor", async () => {
+      const { authenticator } = await createResourceTest({ role: "user" });
+      const skill = await seedSkill(authenticator, { name: "Last Editor" });
+
+      const result = await getTool(SUGGEST_SKILL_EDITORS_TOOL_NAME).handler(
+        {
+          skillId: skill.sId,
+          removeUserIds: [authenticator.getNonNullableUser().sId],
+        },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "without any editor");
+    });
+
+    it("rejects adding an editor without access to the skill's requested spaces", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+      // Restricted: no global group is associated with it.
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await restrictedSpace.addMembers(adminAuth, {
+        userIds: [authenticator.getNonNullableUser().sId],
+      });
+      await authenticator.refresh();
+      const skill = await seedSkill(authenticator, {
+        name: "Restricted",
+        requestedSpaceIds: [restrictedSpace.id],
+      });
+      const outsider = await addMember(workspace);
+
+      const result = await getTool(SUGGEST_SKILL_EDITORS_TOOL_NAME).handler(
+        { skillId: skill.sId, addUserIds: [outsider.sId] },
+        makeExtra(authenticator)
+      );
+
+      expectMcpError(result, "do not have access");
     });
   });
 });
