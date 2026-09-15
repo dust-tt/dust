@@ -3,7 +3,11 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { deleteWorkspaceSkillDocuments } from "@app/lib/skill_search";
+import {
+  deleteSkillDocument,
+  deleteWorkspaceSkillDocuments,
+  indexSkillDocument,
+} from "@app/lib/skill_search";
 import { deleteUserDocument, indexUserDocument } from "@app/lib/user_search";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -81,6 +85,11 @@ export async function indexUserSearchActivity({
   }
 }
 
+/**
+ * @cc [owner:aubin-tchoi,label:backend;security] searchable-skill-index-projection
+ * Index active or archived custom skills fetched through normal resource permissions;
+ * delete documents for missing, unreadable or suggested skills.
+ */
 export async function indexSkillSearchActivity({
   workspaceId,
   skillId,
@@ -89,7 +98,32 @@ export async function indexSkillSearchActivity({
   skillId: string;
 }): Promise<void> {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  await SkillResource.indexSearchDocument(auth, skillId);
+  const [skill] = await SkillResource.fetchByIds(auth, [skillId], {
+    withInstructions: false,
+    withTools: true,
+    withFileAttachments: false,
+  });
+  if (!skill || skill.status === "suggested") {
+    const result = await deleteSkillDocument({ workspaceId, skillId });
+    if (result.isErr()) {
+      throw result.error;
+    }
+    return;
+  }
+
+  const editors = await skill.listEditors(auth);
+  const [lastEditor] = await UserResource.fetchByModelIds(
+    skill.editedBy === null ? [] : [skill.editedBy]
+  );
+  const document = skill.toSearchDocument(auth.getNonNullableWorkspace(), {
+    editorIds: (editors ?? []).map((editor) => editor.sId),
+    lastEditedByUserId: lastEditor?.sId ?? null,
+    activeUsersCount: 0,
+  });
+  const result = await indexSkillDocument(document);
+  if (result.isErr()) {
+    throw result.error;
+  }
 }
 
 export async function deleteWorkspaceSkillSearchActivity({

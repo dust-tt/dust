@@ -43,7 +43,6 @@ const document: SkillSearchDocument = {
   mcp_server_view_ids: [],
   active_users_count: 0,
   favorite_count: 0,
-  is_default: false,
   created_at: "2026-08-01T00:00:00.000Z",
   updated_at: "2026-08-01T00:00:00.000Z",
 };
