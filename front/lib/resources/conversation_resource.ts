@@ -837,18 +837,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     };
   }
 
-  /**
-   * Loads the agent message's credit spend checkpoint status. Returns null when the message
-   * cannot be found (the caller must then not pause).
-   */
-  static async fetchAgentMessageCreditSpendCheckpointStatus(
+  static async fetchCreditSpendCheckpointStateForAgentMessage(
     auth: Authenticator,
     { agentMessageId }: { agentMessageId: string }
-  ): Promise<AgentMessageModel["creditSpendCheckpointStatus"] | null> {
-    const workspaceModelId = auth.getNonNullableWorkspace().id;
-
-    const agentMessageRow = await MessageModel.findOne({
-      where: { sId: agentMessageId, workspaceId: workspaceModelId },
+  ): Promise<{
+    status: AgentMessageModel["creditSpendCheckpointStatus"];
+  } | null> {
+    const messageRow = await MessageModel.findOne({
+      where: {
+        sId: agentMessageId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
       attributes: ["id"],
       include: [
         {
@@ -860,7 +859,30 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       ],
     });
 
-    return agentMessageRow?.agentMessage?.creditSpendCheckpointStatus ?? null;
+    const agentMessage = messageRow?.agentMessage;
+    if (!agentMessage) {
+      return null;
+    }
+
+    return {
+      status: agentMessage.creditSpendCheckpointStatus,
+    };
+  }
+
+  /**
+   * Loads the agent message's credit spend checkpoint status. Returns null when the message
+   * cannot be found (the caller must then not pause).
+   */
+  static async fetchAgentMessageCreditSpendCheckpointStatus(
+    auth: Authenticator,
+    { agentMessageId }: { agentMessageId: string }
+  ): Promise<AgentMessageModel["creditSpendCheckpointStatus"] | null> {
+    const state = await this.fetchCreditSpendCheckpointStateForAgentMessage(
+      auth,
+      { agentMessageId }
+    );
+
+    return state?.status ?? null;
   }
 
   static async markAgentMessageCreditSpendCheckpointPaused(
