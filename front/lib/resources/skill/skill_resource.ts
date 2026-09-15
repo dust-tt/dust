@@ -103,7 +103,12 @@ import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { removeNulls } from "@app/types/shared/utils/general";
+import {
+  isNumber,
+  isString,
+  removeNulls,
+} from "@app/types/shared/utils/general";
+import type { SkillSearchDocument } from "@app/types/skill_search/skill_search";
 import type { LightWorkspaceType } from "@app/types/user";
 import assert from "assert";
 import groupBy from "lodash/groupBy";
@@ -4464,6 +4469,56 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     ) {
       await this.update({ instructions, instructionsHtml }, transaction);
     }
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;security] skill-search-serialization
+   * Serialize an unredacted custom skill fetched with tools, using supplied editor,
+   * usage and default values; perform no I/O and never include private skill content.
+   */
+  toSearchDocument(
+    workspace: LightWorkspaceType,
+    {
+      editorIds,
+      editorGroupIds,
+      activeUsersCount,
+      isDefault,
+    }: {
+      editorIds: readonly ModelId[];
+      editorGroupIds: readonly ModelId[];
+      activeUsersCount: number;
+      isDefault: boolean;
+    }
+  ): SkillSearchDocument {
+    assert(
+      !this.globalSId &&
+        !this.redactedForCaller &&
+        this.workspaceId === workspace.id,
+      "Search documents require an unredacted custom skill in the workspace."
+    );
+    return {
+      workspace_id: workspace.sId,
+      skill_id: this.sId,
+      status: this.status,
+      availability: this.availability,
+      name: this.name,
+      description: this.userFacingDescription,
+      icon: this.icon,
+      last_edited_by_user_id: this.editedBy,
+      editor_ids: uniq(editorIds).sort((a, b) => a - b),
+      editor_group_ids: uniq(editorGroupIds).sort((a, b) => a - b),
+      requested_space_ids: this.requestedSpaceIds.map((id) =>
+        SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
+      ),
+      mcp_server_view_ids: uniq(
+        this.mcpServerViews.map((view) => view.sId)
+      ).sort(),
+      active_users_count: activeUsersCount,
+      favorite_count: this.favoriteCount,
+      is_default: isDefault,
+      created_at: this.createdAt.toISOString(),
+      updated_at: this.updatedAt.toISOString(),
+    };
   }
 
   toJSON(auth: Authenticator): SkillType {
