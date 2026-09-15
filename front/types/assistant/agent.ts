@@ -484,5 +484,4 @@ export type AgentCreditSpendCheckpointReachedEvent = {
   created: number;
   configurationId: string;
   messageId: string;
-  thresholdAwuCredits: number;
 };

@@ -715,16 +715,14 @@ export function useAgentMessageStream({
           );
           break;
 
-        case "agent_credit_spend_checkpoint_reached": {
-          const { thresholdAwuCredits } = eventPayload.data;
+        case "agent_credit_spend_checkpoint_reached":
           isPausedAtCreditSpendCheckpoint.current = true;
           methods.data.map((m) =>
             isAgentMessageWithStreaming(m) && m.sId === sId
-              ? { ...m, pausedAtCreditSpendCheckpoint: { thresholdAwuCredits } }
+              ? { ...m, pausedAtCreditSpendCheckpoint: true }
               : m
           );
           break;
-        }
 
         case "agent_generation_cancelled": {
           isStreamTerminated.current = true;
