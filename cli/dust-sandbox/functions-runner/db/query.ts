@@ -221,6 +221,9 @@ function execute(statement: Statement): Result<QueryOutcome, DbCommandError> {
 function collectRows(
   statement: Statement
 ): Result<QueryOutcome, DbCommandError> {
+  // Read before iterating: the statement is finalized below, and bun refuses to describe a
+  // finalized statement.
+  const columns = statement.columnNames;
   const rows: Record<string, unknown>[] = [];
   let payloadBytes = 0;
   let truncated = false;
@@ -247,7 +250,7 @@ function collectRows(
   }
 
   return new Ok({
-    columns: statement.columnNames,
+    columns,
     rows,
     truncated,
     changes: null,
