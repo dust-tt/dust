@@ -839,7 +839,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   /**
    * Loads what the credit spend checkpoint check needs to decide whether it applies: the agent
    * message's checkpoint status and whether its triggering user message is a root (non-agentic)
-   * message. Returns null when the agent message cannot be found.
+   * message. Returns null when either message cannot be found.
    */
   static async fetchCreditSpendCheckpointContextForAgentMessage(
     auth: Authenticator,
@@ -881,13 +881,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     ]);
 
     const agentMessage = agentMessageRow?.agentMessage;
-    if (!agentMessage) {
+    const userMessage = userMessageRow?.userMessage;
+    // Without both rows the sub-agent check cannot be made, so the caller must not pause.
+    if (!agentMessage || !userMessage) {
       return null;
     }
 
     return {
       status: agentMessage.creditSpendCheckpointStatus,
-      isRootAgentMessage: !userMessageRow?.userMessage?.agenticMessageType,
+      isRootAgentMessage: !userMessage.agenticMessageType,
     };
   }
 

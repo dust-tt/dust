@@ -86,8 +86,8 @@ export async function finalizeGracefullyStoppedAgentLoopActivity(
   await launchStoppedLoopSideEffects(authType, agentLoopArgs);
 }
 
-// Post-finalize side effects shared by the paths that stop the loop with the message still
-// resumable by the user.
+// Post-finalize side effects shared by the paths that stop the loop without reporting an error to
+// the user: graceful stop, interruption and the credit spend checkpoint pause.
 async function launchStoppedLoopSideEffects(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
@@ -120,20 +120,7 @@ export async function finalizeInterruptedAgentLoopActivity(
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   await finalizeInterruption(authType, agentLoopArgs);
-
-  const auth = await Authenticator.fromJsonWithRefrehedGroups(authType);
-
-  await Promise.all([
-    launchAgentMessageAnalytics(auth, agentLoopArgs),
-    launchAgentMessageConsumptionAttributionAfterPersistingInputs(
-      auth,
-      agentLoopArgs
-    ),
-    launchTrackProgrammaticUsage(auth, agentLoopArgs),
-    launchEmitMetronomeUsageEvents(auth, agentLoopArgs),
-    conversationUnreadNotification(auth, agentLoopArgs),
-    handleMentions(auth, agentLoopArgs),
-  ]);
+  await launchStoppedLoopSideEffects(authType, agentLoopArgs);
 }
 
 export async function finalizeCancelledAgentLoopActivity(

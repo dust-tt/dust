@@ -8,6 +8,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
+import { CLIENT_MESSAGE_ORIGINS } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 
 export type CreditCheckResult =
@@ -56,11 +57,16 @@ export async function checkPoolCreditGate(
   return DO_NOT_STOP;
 }
 
+// Origins whose author is in a Dust client UI, where the pause can be seen and resumed.
+const CREDIT_SPEND_CHECKPOINT_RESUMABLE_ORIGINS: ReadonlySet<UserMessageOrigin> =
+  new Set<UserMessageOrigin>(CLIENT_MESSAGE_ORIGINS);
+
 /**
  * @cc [owner:avervaet,label:product] checkpoint-exempts-unattended-usage
  * The check MUST return exempt when there is no user on the auth or when the message origin is
- * programmatic usage (same rule as the pool gate). Nobody is on the web app to answer the pause
- * in those cases, so pausing would only hang the caller.
+ * not one set by a Dust client UI (web app, extension, ...). Programmatic usage, email, Slack,
+ * triggers and every other unattended flow have nobody in the conversation to resume the pause,
+ * so pausing would only hang the caller. A missing origin is treated as unattended.
  */
 export function isCreditSpendCheckpointExempt(
   auth: Authenticator,
@@ -68,7 +74,8 @@ export function isCreditSpendCheckpointExempt(
 ): boolean {
   return (
     !auth.user() ||
-    (!!userMessageOrigin && isProgrammaticUsage(auth, { userMessageOrigin }))
+    !userMessageOrigin ||
+    !CREDIT_SPEND_CHECKPOINT_RESUMABLE_ORIGINS.has(userMessageOrigin)
   );
 }
 
