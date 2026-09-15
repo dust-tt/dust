@@ -271,15 +271,19 @@ export async function createAndTrackMembership({
   });
 
   if (prevRevokedAt) {
-    const restoredCount =
+    const restoredGroupModelIds =
       await GroupResource.dangerouslyRestoreGroupMembershipsRevokedWith({
         user,
         workspace: w,
         revokedAt: prevRevokedAt,
       });
-    if (restoredCount > 0) {
+    if (restoredGroupModelIds.length > 0) {
       logger.info(
-        { userId: user.sId, workspaceId: w.sId, restoredCount },
+        {
+          userId: user.sId,
+          workspaceId: w.sId,
+          restoredCount: restoredGroupModelIds.length,
+        },
         "[Membership] Restored group memberships for rejoining user"
       );
     }

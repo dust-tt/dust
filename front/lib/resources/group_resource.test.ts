@@ -408,6 +408,41 @@ describe("GroupResource", () => {
 
       expect(inJanuary).toEqual([]);
     });
+
+    it("can resolve active group rows after the workspace membership ended", async () => {
+      const member = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, member, { role: "user" });
+      const editorGroup = await GroupResource.makeNew({
+        name: "Skill editors",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      await editorGroup.dangerouslyAddMembers(authenticator, {
+        users: [member.toJSON()],
+      });
+      const revokeResult = await MembershipResource.revokeMembership({
+        user: member,
+        workspace,
+      });
+      expect(revokeResult.isOk()).toBe(true);
+
+      const gatedGroups =
+        await GroupResource.dangerouslyListAllUserGroupsInWorkspace({
+          auth: authenticator,
+          user: member,
+          groupKinds: ["regular_auto"],
+        });
+      const rawGroups =
+        await GroupResource.dangerouslyListAllUserGroupsInWorkspace({
+          auth: authenticator,
+          user: member,
+          groupKinds: ["regular_auto"],
+          dangerouslySkipMembershipCheck: true,
+        });
+
+      expect(gatedGroups).toEqual([]);
+      expect(rawGroups.map((group) => group.id)).toEqual([editorGroup.id]);
+    });
   });
 
   describe("dangerouslyListUserGroupsForAuth caching", () => {
@@ -740,6 +775,53 @@ describe("GroupResource", () => {
         },
       });
       expect(secondaryMembership).toBeNull();
+    });
+
+    it("refreshes potentially affected groups across identity-merge retries", async () => {
+      const secondaryUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, secondaryUser, {
+        role: "user",
+      });
+
+      const regularGroup = await GroupResource.makeNew({
+        name: "Historical Primary Migration Test",
+        workspaceId: workspace.id,
+        kind: "regular_auto",
+      });
+      await regularGroup.dangerouslyAddMembers(authenticator, {
+        users: [user.toJSON(), secondaryUser.toJSON()],
+      });
+      const removePrimaryResult = await regularGroup.dangerouslyRemoveMembers(
+        authenticator,
+        { users: [user.toJSON()] }
+      );
+      expect(removePrimaryResult.isOk()).toBe(true);
+
+      const launchIndexation = vi.spyOn(
+        GroupResource,
+        "launchSkillSearchIndexationForGroups"
+      );
+      await GroupResource.migrateUserMemberships(authenticator, {
+        primaryUser: user,
+        secondaryUser,
+      });
+
+      expect(launchIndexation).toHaveBeenLastCalledWith({
+        workspace,
+        groupModelIds: [regularGroup.id],
+      });
+      const activeMembers = await regularGroup.getActiveMembers(authenticator);
+      expect(activeMembers).toEqual([]);
+
+      await GroupResource.migrateUserMemberships(authenticator, {
+        primaryUser: user,
+        secondaryUser,
+      });
+      expect(launchIndexation).toHaveBeenCalledTimes(2);
+      expect(launchIndexation).toHaveBeenLastCalledWith({
+        workspace,
+        groupModelIds: [regularGroup.id],
+      });
     });
 
     it("invalidates cache for both users", async () => {

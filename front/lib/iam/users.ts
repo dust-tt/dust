@@ -295,7 +295,8 @@ export async function mergeUserIdentities({
     );
   }
 
-  const workspaceId = auth.getNonNullableWorkspace().id;
+  const workspace = auth.getNonNullableWorkspace();
+  const workspaceId = workspace.id;
 
   // Ensure that primary user has a membership in the workspace.
   const primaryMemberships = await MembershipResource.fetchByUserIds([
@@ -370,7 +371,7 @@ export async function mergeUserIdentities({
     userIdOptions
   );
 
-  // Migrate group memberships from secondary user to primary user
+  // Migrate group memberships from secondary user to primary user.
   const groupMembershipsCount = await GroupResource.migrateUserMemberships(
     auth,
     {

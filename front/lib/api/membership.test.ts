@@ -3,8 +3,13 @@ import { createAndTrackMembership } from "@app/lib/api/membership";
 import type { CachedContract } from "@app/lib/metronome/plan_type";
 import * as planType from "@app/lib/metronome/plan_type";
 import * as seatTypes from "@app/lib/metronome/seat_types";
+import { GroupResource } from "@app/lib/resources/group_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceSeatLimitResource } from "@app/lib/resources/workspace_seat_limit_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { launchIndexSkillSearchWorkflow } from "@app/temporal/es_indexation/client";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipSeatType } from "@app/types/memberships";
@@ -87,6 +92,52 @@ beforeEach(() => {
 });
 
 describe("createAndTrackMembership", () => {
+  it("reindexes editor grants restored for a returning member", async () => {
+    const {
+      workspace,
+      user,
+      authenticator: auth,
+    } = await createResourceTest({ role: "admin" });
+    const skill = await SkillFactory.create(auth);
+    const groups = await GroupResource.dangerouslyListAllUserGroupsInWorkspace({
+      auth,
+      user,
+      groupKinds: ["regular_auto"],
+    });
+    for (const group of groups) {
+      expect(
+        (
+          await group.dangerouslyRemoveMember(auth, { user: user.toJSON() })
+        ).isOk()
+      ).toBe(true);
+    }
+    expect(
+      (
+        await MembershipResource.revokeMembership({
+          user,
+          workspace,
+          allowLastAdminRevocation: true,
+        })
+      ).isOk()
+    ).toBe(true);
+    vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
+
+    await createAndTrackMembership({
+      user,
+      workspace,
+      role: "user",
+      origin: "invited",
+    });
+
+    expect((await skill.listEditors(auth))?.map((editor) => editor.id)).toEqual(
+      [user.id]
+    );
+    expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledExactlyOnceWith({
+      workspaceId: workspace.sId,
+      skillId: skill.sId,
+    });
+  });
+
   it("assigns free instead of a committed paid seat on a free plan", async () => {
     setupEntitledSeats(["free", "pro"]);
 

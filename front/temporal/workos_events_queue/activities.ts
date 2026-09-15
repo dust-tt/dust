@@ -31,7 +31,10 @@ import {
   WORKOS_METADATA_KEY_PREFIX,
 } from "@app/lib/iam/users";
 import { isSCIMEnabled } from "@app/lib/plans/scim";
-import { GroupResource } from "@app/lib/resources/group_resource";
+import {
+  GROUP_MEMBERSHIP_RESTORE_TOLERANCE_MS,
+  GroupResource,
+} from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -1002,12 +1005,13 @@ async function handleCreateOrUpdateWorkOSUser(
       );
     }
 
-    await revokeWorkOSUserMembership(
+    await revokeWorkOSUserMembership({
       workspace,
-      inactiveUser,
-      eventData.directoryId,
-      false
-    );
+      user: inactiveUser,
+      directoryId: eventData.directoryId,
+      eventCreatedAt: new Date(event.createdAt),
+      triggersDeleted: false,
+    });
     return;
   }
 
@@ -1059,6 +1063,21 @@ async function handleCreateOrUpdateWorkOSUser(
       workspace,
       newOrigin: "provisioned",
       author: createdOrUpdatedUser.toJSON(),
+    });
+    // A retry can arrive after createAndTrackMembership restored editor-group
+    // rows but before their indexation launch completed. Re-reading current
+    // grants makes that retry converge.
+    const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    const currentGrantGroups =
+      await GroupResource.dangerouslyListAllUserGroupsInWorkspace({
+        auth,
+        user: createdOrUpdatedUser,
+        groupKinds: ["regular_auto", "agent_editors"],
+        dangerouslySkipMembershipCheck: true,
+      });
+    await GroupResource.launchSkillSearchIndexationForGroups({
+      workspace,
+      groupModelIds: currentGrantGroups.map((group) => group.id),
     });
 
     void emitAuditLogEventDirect({
@@ -1145,20 +1164,62 @@ async function handleCreateOrUpdateWorkOSUser(
   });
 }
 
-async function revokeWorkOSUserMembership(
-  workspace: LightWorkspaceType,
-  user: UserResource,
-  directoryId: string | null | undefined,
-  triggersDeleted: boolean
-) {
+async function revokeWorkOSUserMembership({
+  workspace,
+  user,
+  directoryId,
+  eventCreatedAt,
+  triggersDeleted,
+}: {
+  workspace: LightWorkspaceType;
+  user: UserResource;
+  directoryId: string | null | undefined;
+  eventCreatedAt: Date;
+  triggersDeleted: boolean;
+}) {
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
-  const groups = await GroupResource.dangerouslyListAllUserGroupsInWorkspace({
-    auth,
-    user,
-    groupKinds: GROUP_KINDS.filter((k) => k !== "system" && k !== "global"),
-  });
+  const groupKinds = GROUP_KINDS.filter(
+    (kind) => kind !== "system" && kind !== "global"
+  );
+  const latestMembership =
+    await MembershipResource.getLatestMembershipOfUserInWorkspace({
+      user,
+      workspace,
+    });
+  const revokedAt = latestMembership?.isRevoked()
+    ? latestMembership.endAt
+    : null;
+  const activeGroups =
+    await GroupResource.dangerouslyListAllUserGroupsInWorkspace({
+      auth,
+      user,
+      groupKinds,
+      dangerouslySkipMembershipCheck: true,
+    });
+  const historicalLookupAt = revokedAt
+    ? new Date(revokedAt.getTime() - GROUP_MEMBERSHIP_RESTORE_TOLERANCE_MS)
+    : eventCreatedAt;
+  // Keep the event-time view as well as the current one. If an earlier attempt
+  // ended group rows before failing, a retry can still recover the affected
+  // editor grants and enqueue their skills.
+  const recentlyActiveGroups =
+    await GroupResource.dangerouslyListAllUserGroupsInWorkspace({
+      auth,
+      user,
+      groupKinds,
+      at: historicalLookupAt,
+      dangerouslySkipMembershipCheck: true,
+    });
+  const affectedGroups = [
+    ...new Map(
+      [...activeGroups, ...recentlyActiveGroups].map((group) => [
+        group.id,
+        group,
+      ])
+    ).values(),
+  ];
 
-  for (const group of groups) {
+  for (const group of activeGroups) {
     // No canWrite guard here — see handleUserRemovedFromGroup. `auth` is
     // internalAdminForWorkspace, and canWrite is false for agent_editors
     // groups, which would wrongly abort deprovisioning of editor users.
@@ -1187,15 +1248,23 @@ async function revokeWorkOSUserMembership(
     },
   });
 
-  if (membershipRevokeResult.isErr()) {
-    if (membershipRevokeResult.error.type === "already_revoked") {
-      logger.info(
-        { userId: user.sId, workspaceId: workspace.sId },
-        "User membership already revoked, skipping"
-      );
-      return;
-    }
+  if (
+    membershipRevokeResult.isErr() &&
+    membershipRevokeResult.error.type !== "already_revoked"
+  ) {
     throw membershipRevokeResult.error;
+  }
+
+  await GroupResource.launchSkillSearchIndexationForGroups({
+    workspace,
+    groupModelIds: affectedGroups.map((group) => group.id),
+  });
+  if (membershipRevokeResult.isErr()) {
+    logger.info(
+      { userId: user.sId, workspaceId: workspace.sId },
+      "User membership already revoked, skipping"
+    );
+    return;
   }
 
   // Emit SCIM-specific audit event in addition to the generic membership.revoked.
@@ -1257,12 +1326,13 @@ async function handleDeleteWorkOSUser(
   // Clear WorkOS custom attributes before revoking membership.
   await clearCustomAttributesFromUserMetadata(user, workspace);
 
-  await revokeWorkOSUserMembership(
+  await revokeWorkOSUserMembership({
     workspace,
     user,
-    eventData.directoryId,
-    true
-  );
+    directoryId: eventData.directoryId,
+    eventCreatedAt: new Date(event.createdAt),
+    triggersDeleted: true,
+  });
 }
 
 async function handleGroupDelete(

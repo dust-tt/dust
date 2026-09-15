@@ -21,18 +21,21 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { launchSkillSearchIndexationForGrants } from "@app/lib/skill_search/indexation";
 import {
   batchInvalidateCacheWithRedis,
   cacheWithRedis,
   invalidateCacheAfterCommit,
   invalidateCacheWithRedis,
 } from "@app/lib/utils/cache";
+import { invalidateGroupPermissionsCacheAfterCommit } from "@app/lib/utils/group_permissions_cache";
 import logger from "@app/logger/logger";
 import { launchMetronomeSeatCountSyncWorkflow } from "@app/temporal/usage_queue/client";
 import type {
   AgentConfigurationType,
   LightAgentConfigurationType,
 } from "@app/types/assistant/agent";
+import type { GrantSpec } from "@app/types/group_permissions";
 import type {
   GroupGrantableRole,
   GroupGrantableSeatType,
@@ -81,6 +84,7 @@ import { col, fn, Op, QueryTypes } from "sequelize";
 
 const LAST_GROUP_MEMBER_ERROR_MESSAGE =
   "A group must always keep at least one member. To remove everyone, delete the group instead.";
+export const GROUP_MEMBERSHIP_RESTORE_TOLERANCE_MS = 60_000;
 
 type CachedGroup = {
   id: ModelId;
@@ -316,6 +320,8 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * Migrates all group memberships from one user to another within a workspace.
    * Handles duplicate memberships by destroying them first.
+   * Returns the number of transferred memberships. Refreshes search for groups
+   * in both users' membership history so retries can repeat failed invalidation.
    */
   static async migrateUserMemberships(
     auth: Authenticator,
@@ -328,6 +334,25 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
   ): Promise<number> {
     const workspace = auth.getNonNullableWorkspace();
+    const potentiallyAffectedMemberships = await GroupMembershipModel.findAll({
+      attributes: ["groupId"],
+      where: {
+        userId: [primaryUser.id, secondaryUser.id],
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: GroupModel,
+          as: "group",
+          attributes: [],
+          required: true,
+          where: {
+            workspaceId: workspace.id,
+            kind: { [Op.notIn]: ["global", "system"] },
+          },
+        },
+      ],
+    });
     const primaryMemberships = await GroupMembershipModel.findAll({
       where: { userId: primaryUser.id, workspaceId: workspace.id },
       attributes: ["groupId"],
@@ -351,12 +376,21 @@ export class GroupResource extends BaseResource<GroupModel> {
       { where: { userId: secondaryUser.id, workspaceId: workspace.id } }
     );
 
+    const groupModelIds = [
+      ...new Set(
+        potentiallyAffectedMemberships.map((membership) => membership.groupId)
+      ),
+    ];
+
     // Always invalidate
     await GroupResource.batchInvalidateGroupIdsCacheForUsers([
       [{ user: { id: primaryUser.id }, workspace: { id: workspace.id } }],
       [{ user: { id: secondaryUser.id }, workspace: { id: workspace.id } }],
     ]);
-
+    await GroupResource.launchSkillSearchIndexationForGroups({
+      workspace,
+      groupModelIds,
+    });
     return transferredCount;
   }
 
@@ -1235,7 +1269,9 @@ export class GroupResource extends BaseResource<GroupModel> {
   /**
    * Same as `listUserGroupsInWorkspace`, but also accepts the internal kinds that are never
    * surfaced to users. Reserved for system flows that must act on a user's whole membership
-   * set, such as directory-sync deprovisioning.
+   * set, such as directory-sync deprovisioning. `dangerouslySkipMembershipCheck` also exposes
+   * active group rows for a user without an active workspace membership and is only for trusted
+   * repair or migration flows.
    */
   static async dangerouslyListAllUserGroupsInWorkspace({
     auth,
@@ -1243,12 +1279,14 @@ export class GroupResource extends BaseResource<GroupModel> {
     groupKinds,
     transaction,
     at,
+    dangerouslySkipMembershipCheck,
   }: {
     auth: Authenticator;
     user: UserResource;
     groupKinds: Exclude<GroupKind, "system">[];
     transaction?: Transaction;
     at?: Date;
+    dangerouslySkipMembershipCheck?: boolean;
   }): Promise<GroupResource[]> {
     const { groupModelIds } = await this.listUserGroupModelIdsInWorkspace({
       user,
@@ -1256,6 +1294,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       groupKinds,
       transaction,
       at,
+      dangerouslySkipMembershipCheck,
     });
 
     if (groupModelIds.length === 0) {
@@ -1796,6 +1835,10 @@ export class GroupResource extends BaseResource<GroupModel> {
         { transaction }
       );
     }
+    await GroupResource.launchSkillSearchIndexationForGroups(
+      { workspace: owner, groupModelIds: [this.id] },
+      { transaction }
+    );
 
     return new Ok(undefined);
   }
@@ -1974,6 +2017,10 @@ export class GroupResource extends BaseResource<GroupModel> {
         { transaction }
       );
     }
+    await GroupResource.launchSkillSearchIndexationForGroups(
+      { workspace: owner, groupModelIds: [this.id] },
+      { transaction }
+    );
 
     return new Ok(undefined);
   }
@@ -2081,7 +2128,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * (membership is implicit). Skips groups that no longer exist or where the
    * user already has an active membership.
    *
-   * Returns the number of group memberships restored.
+   * Returns the model IDs of the restored groups.
    *
    * Dangerous: deliberately skips the `canRead` check on the groups — it
    * restores regular_auto memberships together with provisioned and manual
@@ -2091,7 +2138,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     user,
     workspace,
     revokedAt,
-    toleranceMs = 60_000,
+    toleranceMs = GROUP_MEMBERSHIP_RESTORE_TOLERANCE_MS,
     transaction,
   }: {
     user: UserResource;
@@ -2099,7 +2146,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     revokedAt: Date;
     toleranceMs?: number;
     transaction?: Transaction;
-  }): Promise<number> {
+  }): Promise<ModelId[]> {
     const rangeStart = new Date(revokedAt.getTime() - toleranceMs);
     const rangeEnd = new Date(revokedAt.getTime() + toleranceMs);
 
@@ -2117,7 +2164,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     if (revokedMemberships.length === 0) {
-      return 0;
+      return [];
     }
 
     const groupIds = [...new Set(revokedMemberships.map((m) => m.groupId))];
@@ -2133,7 +2180,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
 
     if (groups.length === 0) {
-      return 0;
+      return [];
     }
 
     const validGroupIds = new Set(groups.map((g) => g.id));
@@ -2158,7 +2205,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     );
 
     if (groupIdsToRestore.length === 0) {
-      return 0;
+      return [];
     }
 
     await GroupMembershipModel.bulkCreate(
@@ -2182,7 +2229,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     });
 
-    return groupIdsToRestore.length;
+    await GroupResource.launchSkillSearchIndexationForGroups(
+      { workspace, groupModelIds: groupIdsToRestore },
+      { transaction }
+    );
+
+    return groupIdsToRestore;
   }
 
   /**
@@ -2245,6 +2297,12 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     }
 
+    if (affectedUserIds.length > 0) {
+      await GroupResource.launchSkillSearchIndexationForGroups(
+        { workspace: auth.getNonNullableWorkspace(), groupModelIds: [this.id] },
+        { transaction }
+      );
+    }
     return affectedUserIds;
   }
 
@@ -2569,6 +2627,55 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  static async launchSkillSearchIndexationForGroups(
+    {
+      workspace,
+      groupModelIds,
+    }: { workspace: LightWorkspaceType; groupModelIds: readonly ModelId[] },
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    const grants = await this.fetchSkillEditorGrants(
+      workspace,
+      groupModelIds,
+      transaction
+    );
+    await launchSkillSearchIndexationForGrants(
+      { workspace, grants },
+      { transaction }
+    );
+  }
+
+  /**
+   * @cc [owner:aubin-tchoi,label:backend;security] skill-editor-grants-scope
+   * Return only instance skill-editor grants owned by the workspace and the requested groups.
+   */
+  private static async fetchSkillEditorGrants(
+    workspace: LightWorkspaceType,
+    groupModelIds: readonly ModelId[],
+    transaction?: Transaction
+  ): Promise<GrantSpec[]> {
+    const groupIds = [...new Set(groupModelIds)];
+    if (groupIds.length === 0) {
+      return [];
+    }
+    const grants = await GroupPermissionModel.findAll({
+      attributes: ["grantType", "resourceType", "resourceId"],
+      where: {
+        workspaceId: workspace.id,
+        groupId: groupIds,
+        grantType: "editor",
+        resourceType: "skill",
+        resourceId: { [Op.gt]: 0 },
+      },
+      transaction,
+    });
+    return grants.map(({ grantType, resourceType, resourceId }) => ({
+      grantType,
+      resourceType,
+      resourceId,
+    }));
+  }
+
   // Deletion
 
   async delete(
@@ -2576,6 +2683,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     const owner = auth.getNonNullableWorkspace();
+    // Capture editor targets before deleting their grants.
+    const editorGrants = await GroupResource.fetchSkillEditorGrants(
+      owner,
+      [this.id],
+      transaction
+    );
     try {
       // Fetch active member user IDs before deletion for cache invalidation
       const activeMemberships = await GroupMembershipModel.findAll({
@@ -2651,11 +2764,19 @@ export class GroupResource extends BaseResource<GroupModel> {
       invalidateCacheAfterCommit(transaction, () =>
         GroupResource.invalidateWorkspaceGroupsFromSystemKeyCache(workspaceId)
       );
-
-      return new Ok(undefined);
     } catch (err) {
       return new Err(normalizeError(err));
     }
+    await invalidateGroupPermissionsCacheAfterCommit(
+      owner.id,
+      [this.id],
+      transaction
+    );
+    await launchSkillSearchIndexationForGrants(
+      { workspace: owner, grants: editorGrants },
+      { transaction }
+    );
+    return new Ok(undefined);
   }
 
   // Permissions
