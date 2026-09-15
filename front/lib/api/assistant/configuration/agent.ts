@@ -147,10 +147,13 @@ export async function createPendingAgentConfiguration(
       transaction: t,
       authorId: user.id,
     });
-    await AgentResource.fromAgentConfigurationModel(agent).grantEditors(auth, {
-      editors: [user.toJSON()],
-      transaction: t,
-    });
+    await AgentResource.fromAgentConfigurationModel(auth, agent).grantEditors(
+      auth,
+      {
+        editors: [user.toJSON()],
+        transaction: t,
+      }
+    );
     await auth.refresh({ transaction: t });
   });
 
@@ -993,6 +996,7 @@ export async function createAgentConfiguration(
         }
 
         const agentResource = AgentResource.fromAgentConfigurationModel(
+          auth,
           agentConfigurationInstance
         );
         await agentResource.grantEditors(auth, { editors, transaction: t });
