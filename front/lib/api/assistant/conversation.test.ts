@@ -15,12 +15,14 @@ import {
   getConversation,
   getLightConversation,
 } from "@app/lib/api/assistant/conversation/fetch";
+import { refreshDegradedModelIds } from "@app/lib/api/assistant/degraded_models";
 import { gracefullyStopAgentLoop } from "@app/lib/api/assistant/pubsub";
 import { publishAgentMessagesEvents } from "@app/lib/api/assistant/streaming/events";
 import * as attachmentsModule from "@app/lib/api/files/attachments";
 import { fetchLatestProjectContextFileContentFragment } from "@app/lib/api/projects/context";
 import { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
+import { OPENAI_RESPONSES_HOST } from "@app/lib/model_constructors/types/hosts";
 import { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import {
   AgentMessageModel,
@@ -94,6 +96,7 @@ import { runOnRedis } from "@app/lib/api/redis";
 import { ConversationForkResource } from "@app/lib/resources/conversation_fork_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { ModelDegradationResource } from "@app/lib/resources/model_degradation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids_server";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -344,6 +347,50 @@ describe("retryAgentMessage", () => {
       expect(result.value.modelResolutionMethod).toBe(
         resolvedMessage.modelResolutionMethod
       );
+    }
+  });
+
+  it("should skip a newly degraded stream candidate without a prior catalog refresh", async () => {
+    const degradation = {
+      modelId: GPT_5_6_LUNA_MODEL_ID,
+      providerId: "openai" as const,
+      host: OPENAI_RESPONSES_HOST,
+    };
+
+    await refreshDegradedModelIds();
+
+    try {
+      await ModelDegradationResource.updateDegradedEndpoints([
+        { ...degradation, degraded: true },
+      ]);
+
+      const resolvedMessage: AgentMessageType = {
+        ...agentMessage,
+        resolvedModel: {
+          providerId: "openai",
+          modelId: GPT_5_6_LUNA_MODEL_ID,
+          reasoningEffort: "high",
+        },
+        modelResolutionMethod: "auto",
+      };
+
+      const result = await retryAgentMessage(auth, {
+        conversationResource,
+        message: resolvedMessage,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.modelResolutionMethod).toBe("auto");
+        expect(result.value.resolvedModel?.modelId).not.toBe(
+          GPT_5_6_LUNA_MODEL_ID
+        );
+      }
+    } finally {
+      await ModelDegradationResource.updateDegradedEndpoints([
+        { ...degradation, degraded: false },
+      ]);
+      await refreshDegradedModelIds();
     }
   });
 

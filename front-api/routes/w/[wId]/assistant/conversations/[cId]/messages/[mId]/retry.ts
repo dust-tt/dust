@@ -9,6 +9,7 @@ import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
 import { z } from "zod";
+import { fromError } from "zod-validation-error";
 
 const ParamsSchema = z.object({
   cId: z.string(),
@@ -25,7 +26,32 @@ export const PostRetryRequestBodySchema = z.union([
 ]);
 
 const validateParams = validate("param", ParamsSchema);
-const validateBody = validate("json", PostRetryRequestBodySchema);
+
+// Existing clients POST with `Content-Type: application/json` and no body.
+// Hono's JSON validator parses before Zod and 400s on that empty payload, so
+// we normalize it here and still reject malformed nonempty JSON.
+async function parseRetryBody(raw: string) {
+  if (raw.trim() === "") {
+    return { success: true as const, data: undefined };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { success: false as const, message: "malformed JSON" };
+  }
+
+  const result = PostRetryRequestBodySchema.safeParse(parsed);
+  if (!result.success) {
+    return {
+      success: false as const,
+      message: fromError(result.error).toString(),
+    };
+  }
+
+  return { success: true as const, data: result.data };
+}
 
 // Mounted at /api/w/:wId/assistant/conversations/:cId/messages/:mId/retry.
 const app = workspaceApp();
@@ -91,10 +117,20 @@ const app = workspaceApp();
  *         description: Unauthorized
  */
 
-app.post("/", validateParams, validateBody, async (ctx) => {
+app.post("/", validateParams, async (ctx) => {
   const auth = ctx.get("auth");
   const { cId: conversationId, mId: messageId } = ctx.req.valid("param");
-  const body = ctx.req.valid("json");
+  const parsedBody = await parseRetryBody(await ctx.req.text());
+  if (!parsedBody.success) {
+    return apiError(ctx, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: `Invalid request body: ${parsedBody.message}`,
+      },
+    });
+  }
+  const body = parsedBody.data;
   const modelSelection =
     body !== null && typeof body === "object" ? body.modelSelection : undefined;
 
