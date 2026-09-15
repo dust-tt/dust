@@ -12,7 +12,8 @@ import {
 } from "react";
 
 /**
- * Font used for conversation message content (Settings > Customization).
+ * Font used for agent answers in conversations (Settings > Customization).
+ * User messages and thinking blocks keep the app font.
  * - `sans`: Geist, the app font (default).
  * - `serif`: Lora.
  * - `dyslexic`: OpenDyslexic.

@@ -26,8 +26,8 @@ interface ConversationFontSampleProps {
 
 /**
  * Mirrors what `ConversationFontProvider` does in front: the option is a
- * `data-conversation-font` attribute on an ancestor, and message content opts
- * in with the `font-conversation` utility. Here the attribute is scoped to the
+ * `data-conversation-font` attribute on an ancestor, and the agent answer
+ * opts in with the `font-conversation` utility. Here the attribute is scoped to the
  * sample instead of <html> so three variants can sit side by side.
  */
 function ConversationFontSample({ font }: ConversationFontSampleProps) {
@@ -56,7 +56,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: `The three conversation fonts a user can pick in Settings > Customization, rendered on the same Markdown sample. Only message content uses the \`font-conversation\` utility; the input bar and the rest of the app stay in Geist. \`font-size-adjust\` keeps the x-height constant across options so the perceived size does not jump.`,
+        component: `The three conversation fonts a user can pick in Settings > Customization, rendered on the same Markdown sample. Only the agent's answer uses the \`font-conversation\` utility; user messages, thinking, the input bar and the rest of the app stay in Geist. \`font-size-adjust\` keeps the x-height constant across options so the perceived size does not jump.`,
       },
     },
   },

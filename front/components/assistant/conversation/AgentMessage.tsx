@@ -1485,7 +1485,10 @@ function AgentMessageContent({
         {agentMessage.content !== null &&
           agentMessage.content !== "" &&
           agentMessage.streaming.agentState === "done" && (
-            <div>
+            // The agent's answer is the only surface that follows the user's
+            // conversation font (Settings > Customization); thinking, user
+            // messages and the input bar stay in the app font.
+            <div className="font-conversation">
               <AgentMessageMarkdown
                 content={sanitizeVisualizationContent(agentMessage.content)}
                 owner={owner}
