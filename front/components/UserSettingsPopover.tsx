@@ -120,7 +120,7 @@ function SectionContent({
     <div className="relative flex flex-1 flex-col overflow-hidden">
       <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-5 pb-8 pt-5 sm:px-6 sm:pt-8">
         <header className="flex flex-col gap-1">
-          <h2 className="heading-2xl text-foreground">{title}</h2>
+          <h2 className="heading-xl text-foreground">{title}</h2>
           {description && (
             <p className="copy-sm text-muted-foreground">{description}</p>
           )}
