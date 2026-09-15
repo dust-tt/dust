@@ -507,6 +507,99 @@ describe("PATCH /api/w/:wId/files/path/:canonicalPath", () => {
 
     expect(response.status).toBe(200);
   });
+
+  it("returns 409 when the destination file exists in storage", async () => {
+    const { workspace, conversation } = await setup();
+    setExistingFiles(["/files/old.txt", "/files/new.txt"]);
+    const bucket = getInspectablePrivateUploadBucket();
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/old.txt`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "rename", fileName: "new.txt" }),
+      }
+    );
+
+    expect(response.status).toBe(409);
+    expect((await response.json()).error.type).toBe("invalid_request_error");
+    expect(bucket.copyFile).not.toHaveBeenCalled();
+  });
+
+  it("returns 409 when renaming onto a path owned by another file record", async () => {
+    const { workspace, auth, conversation } = await setup();
+    setExistingFiles(["/files/old.txt"]);
+    const dest = `conversation-${conversation.sId}/new.txt`;
+    // A stale record owns the destination path although storage has no object there.
+    const occupant = await FileFactory.create(auth, auth.getNonNullableUser(), {
+      contentType: "text/plain",
+      fileName: "new.txt",
+      fileSize: 42,
+      status: "ready",
+      useCase: "tool_output",
+      useCaseMetadata: { conversationId: conversation.sId },
+      mountFilePath: `w/${workspace.sId}/conversations/${conversation.sId}/files/new.txt`,
+    });
+    // The factory copies the record into its mount path; only count calls made by the request.
+    vi.clearAllMocks();
+    const bucket = getInspectablePrivateUploadBucket();
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/old.txt`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "rename", fileName: "new.txt" }),
+      }
+    );
+
+    expect(response.status).toBe(409);
+    const body = await response.json();
+    expect(body.error.type).toBe("invalid_request_error");
+    expect(body.error.message).toContain(dest);
+    expect(bucket.copyFile).not.toHaveBeenCalled();
+    expect(bucket.delete).not.toHaveBeenCalled();
+    const [owner] = await FileResource.fetchByMountFilePaths(auth, [
+      `w/${workspace.sId}/conversations/${conversation.sId}/files/new.txt`,
+    ]);
+    expect(owner?.id).toBe(occupant.id);
+  });
+
+  it("returns 409 when moving onto a path owned by another file record", async () => {
+    const { workspace, auth, conversation } = await setup();
+    setExistingFiles(["/files/old.txt"]);
+    const dest = `conversation-${conversation.sId}/archive/old.txt`;
+    await FileFactory.create(auth, auth.getNonNullableUser(), {
+      contentType: "text/plain",
+      fileName: "old.txt",
+      fileSize: 42,
+      status: "ready",
+      useCase: "tool_output",
+      useCaseMetadata: { conversationId: conversation.sId },
+      mountFilePath: `w/${workspace.sId}/conversations/${conversation.sId}/files/archive/old.txt`,
+    });
+    vi.clearAllMocks();
+    const bucket = getInspectablePrivateUploadBucket();
+
+    const response = await request(
+      workspace,
+      `conversation-${conversation.sId}/old.txt`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "move", dest }),
+      }
+    );
+
+    expect(response.status).toBe(409);
+    const body = await response.json();
+    expect(body.error.type).toBe("invalid_request_error");
+    expect(body.error.message).toContain(dest);
+    expect(bucket.copyFile).not.toHaveBeenCalled();
+  });
 });
 
 describe("PUT /api/w/:wId/files/path/:canonicalPath", () => {

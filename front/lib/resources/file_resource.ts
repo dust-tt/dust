@@ -165,6 +165,13 @@ export type ShareFileResponseBody = {
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface FileResource extends ReadonlyAttributesType<FileModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class MountFilePathTakenError extends Error {
+  constructor(mountFilePath: string) {
+    super(`A file record already uses the mount path \`${mountFilePath}\`.`);
+    this.name = "MountFilePathTakenError";
+  }
+}
+
 export class FileResource extends BaseResource<FileModel> {
   static model: ModelStaticWorkspaceAware<FileModel> = FileModel;
   static shareableFileModel: ModelStaticWorkspaceAware<ShareableFileModel> =
@@ -1996,7 +2003,13 @@ export class FileResource extends BaseResource<FileModel> {
     });
   }
 
-  updateMount({
+  /**
+   * Points the record at a new mount path. Callers pre-check the destination, but that check is
+   * not atomic with this write: a path claimed in between surfaces as a unique violation on
+   * (workspaceId, mountFilePath) and is returned as `MountFilePathTakenError`. Catching here is
+   * allowed since Sequelize is an external library.
+   */
+  async updateMount({
     destFileName,
     destMountFilePath,
     destUseCase,
@@ -2006,13 +2019,21 @@ export class FileResource extends BaseResource<FileModel> {
     destMountFilePath: string;
     destUseCase: FileUseCase;
     destUseCaseMetadata?: FileUseCaseMetadata;
-  }) {
-    return this.update({
-      fileName: sanitizeFileSystemName(destFileName),
-      mountFilePath: destMountFilePath,
-      useCase: destUseCase,
-      useCaseMetadata: destUseCaseMetadata ?? null,
-    });
+  }): Promise<Result<undefined, MountFilePathTakenError | Error>> {
+    try {
+      await this.update({
+        fileName: sanitizeFileSystemName(destFileName),
+        mountFilePath: destMountFilePath,
+        useCase: destUseCase,
+        useCaseMetadata: destUseCaseMetadata ?? null,
+      });
+    } catch (err) {
+      if (err instanceof UniqueConstraintError) {
+        return new Err(new MountFilePathTakenError(destMountFilePath));
+      }
+      return new Err(normalizeError(err));
+    }
+    return new Ok(undefined);
   }
 
   // Sharing logic.

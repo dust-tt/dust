@@ -15,15 +15,16 @@ import {
 } from "@app/lib/api/frames/source_storage";
 import type { Authenticator } from "@app/lib/auth";
 import { isLockAcquisitionTimeoutError } from "@app/lib/lock";
-import { FileResource } from "@app/lib/resources/file_resource";
+import {
+  FileResource,
+  MountFilePathTakenError,
+} from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
 import type { ConversationWithoutContentType } from "@app/types/assistant/conversation";
 import type { DustFileSystemError } from "@app/types/file_system";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
-import { normalizeError } from "@app/types/shared/utils/error_utils";
-import { UniqueConstraintError } from "sequelize";
 
 const moveError = (code: FrameSourceMoveError["code"], message: string) =>
   new Err(new FrameSourceMoveError(code, message));
@@ -154,20 +155,19 @@ export async function moveFrameV2Source(
       return moveError(copied.error.code, copied.error.message);
     }
 
-    try {
-      await freshFrame.updateMount({
-        destFileName: FRAME_MANIFEST_FILE,
-        destMountFilePath: lockedDestinationMountPath,
-        destUseCase: freshFrame.useCase,
-        destUseCaseMetadata: freshFrame.useCaseMetadata ?? undefined,
-      });
-    } catch (error) {
-      const normalized = normalizeError(error);
+    const committed = await freshFrame.updateMount({
+      destFileName: FRAME_MANIFEST_FILE,
+      destMountFilePath: lockedDestinationMountPath,
+      destUseCase: freshFrame.useCase,
+      destUseCaseMetadata: freshFrame.useCaseMetadata ?? undefined,
+    });
+    if (committed.isErr()) {
+      const isConflict = committed.error instanceof MountFilePathTakenError;
       return moveError(
-        error instanceof UniqueConstraintError ? "conflict" : "commit_failed",
-        error instanceof UniqueConstraintError
+        isConflict ? "conflict" : "commit_failed",
+        isConflict
           ? "A registered file already uses the destination path."
-          : `Failed to commit the Frame source move; the source remains authoritative and destination objects may remain: ${normalized.message}`
+          : `Failed to commit the Frame source move; the source remains authoritative and destination objects may remain: ${committed.error.message}`
       );
     }
 
