@@ -72,11 +72,6 @@ export function localTimeOfDayToUtc(
 
 const CALENDAR_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/**
- * @cc [owner:avervaet,label:product] calendar-date-must-exist
- * A `yyyy-MM-dd` string that matches the shape but names a day that does not exist
- * (e.g. `2024-02-30`) is rejected as `null`; it never rolls over into the next month.
- */
 export function parseCalendarDate(
   isoDate: string
 ): { year: number; month: number; day: number } | null {
@@ -92,28 +87,6 @@ export function parseCalendarDate(
   return exists ? { year, month, day } : null;
 }
 
-/**
- * @cc [owner:avervaet,label:product] bare-date-is-already-local
- * `isoDate` is a bare `yyyy-MM-dd` calendar day read as a wall-clock day in `timezone`. It is
- * NOT parsed as a UTC instant and then re-observed in `timezone`, which for most timezones would
- * resolve to the wrong calendar day.
- */
-/**
- * @cc [owner:avervaet,label:product] calendar-day-offset-is-dst-safe
- * `offsetDays` shifts by whole calendar days, not by a fixed `86400000 * offsetDays`
- * milliseconds. A 23h or 25h local day (a DST transition day) still counts as exactly one day.
- */
-/**
- * @cc [owner:avervaet,label:backend] day-boundary-is-host-tz-independent
- * The wall clock is built from UTC components and handed to date-fns-tz as an offset-less
- * string, so the result never depends on the process timezone, even on a host whose own DST
- * transition falls at local midnight.
- */
-/**
- * @cc [owner:avervaet,label:error-handling] day-boundary-degrades-to-invalid-date
- * An unparseable `isoDate`, a non-existent calendar day, or an unknown `timezone` yields an
- * `Invalid Date` rather than throwing.
- */
 export function dayBoundaryInTimezone(
   isoDate: string,
   timezone: string,
@@ -136,12 +109,6 @@ export function dayBoundaryInTimezone(
   );
 }
 
-/**
- * Resolves an inclusive `[startDate, endDate]` calendar-day range in `timezone` to a
- * half-open `[startInstant, exclusiveEndInstant)` instant range, for the common case of
- * querying a store whose range filter treats the end bound as exclusive (e.g.
- * Elasticsearch's date_histogram-backed indices).
- */
 export function dayRangeInTimezone(
   startDate: string,
   endDate: string,
