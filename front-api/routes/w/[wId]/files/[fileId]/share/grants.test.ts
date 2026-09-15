@@ -176,7 +176,7 @@ describe("sharing grants endpoint", () => {
     mockEmitAuditLogEvent.mockClear();
 
     const response = await postGrants(workspace, file.sId, {
-      emails: ["alice@david.co", `${"a".repeat(256)}@david.co`],
+      emails: ["alice@example.com", `${"a".repeat(256)}@example.com`],
     });
 
     expect(response.status).toBe(400);

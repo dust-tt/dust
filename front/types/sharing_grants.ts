@@ -13,7 +13,7 @@ export const sharingDomainSchema = z
       .max(253)
       .regex(
         /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/,
-        "Enter a domain such as david.co"
+        "Enter a domain such as example.com"
       )
   );
 

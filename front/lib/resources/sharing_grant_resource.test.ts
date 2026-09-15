@@ -26,26 +26,30 @@ describe("SharingGrantResource", () => {
     const { authenticator, file } = await setup();
     const domain = await SharingGrantFactory.create(authenticator, file, {
       kind: "domain",
-      value: " @DAVID.CO ",
+      value: " @EXAMPLE.COM ",
     });
 
     expect(
-      (await SharingGrantResource.findForEmail(file, " ALICE@DAVID.CO "))?.sId
+      (await SharingGrantResource.findForEmail(file, " ALICE@EXAMPLE.COM "))
+        ?.sId
     ).toBe(domain.sId);
     expect(
-      (await SharingGrantResource.findForEmail(file, "bob@david.co"))?.sId
+      (await SharingGrantResource.findForEmail(file, "bob@example.com"))?.sId
     ).toBe(domain.sId);
     expect(
-      await SharingGrantResource.findForEmail(file, "alice@sub.david.co")
+      await SharingGrantResource.findForEmail(file, "alice@sub.example.com")
     ).toBeNull();
     expect(
-      await SharingGrantResource.findForEmail(file, "alice@evil-david.co")
+      await SharingGrantResource.findForEmail(file, "alice@evil-example.com")
     ).toBeNull();
     expect(
-      await SharingGrantResource.findForEmail(file, "alice@david.co.evil.com")
+      await SharingGrantResource.findForEmail(
+        file,
+        "alice@example.com.evil.com"
+      )
     ).toBeNull();
     expect(
-      await SharingGrantResource.findForEmail(file, "david.co")
+      await SharingGrantResource.findForEmail(file, "example.com")
     ).toBeNull();
     expect(await SharingGrantResource.listForFile(file)).toHaveLength(1);
   });
@@ -54,31 +58,31 @@ describe("SharingGrantResource", () => {
     const { authenticator, file } = await setup();
     const domain = await SharingGrantFactory.create(authenticator, file, {
       kind: "domain",
-      value: "david.co",
+      value: "example.com",
     });
     const email = await SharingGrantFactory.create(authenticator, file, {
       kind: "email",
-      value: "alice@david.co",
+      value: "alice@example.com",
     });
     await file.recordView({
-      verifiedEmail: "alice@david.co",
+      verifiedEmail: "alice@example.com",
       viewedAt: new Date("2026-09-14T10:00:00Z"),
     });
     const viewers = await file.getViewerSummaries();
     expect(viewers).toHaveLength(1);
     expect(
-      (await SharingGrantResource.findForEmail(file, "alice@david.co"))?.sId
+      (await SharingGrantResource.findForEmail(file, "alice@example.com"))?.sId
     ).toBe(email.sId);
 
     const revokedEmail = await email.revoke();
     assert(revokedEmail.isOk());
     expect(email.revokedAt).not.toBeNull();
     expect(
-      (await SharingGrantResource.findForEmail(file, "alice@david.co"))?.sId
+      (await SharingGrantResource.findForEmail(file, "alice@example.com"))?.sId
     ).toBe(domain.sId);
     expect((await domain.revoke()).isOk()).toBe(true);
     expect(
-      await SharingGrantResource.findForEmail(file, "alice@david.co")
+      await SharingGrantResource.findForEmail(file, "alice@example.com")
     ).toBeNull();
     expect(await SharingGrantResource.listForFile(file)).toHaveLength(0);
     expect(
@@ -88,20 +92,20 @@ describe("SharingGrantResource", () => {
 
     const replacement = await SharingGrantFactory.create(authenticator, file, {
       kind: "domain",
-      value: "david.co",
+      value: "example.com",
     });
     expect(replacement.sId).not.toBe(domain.sId);
     expect((await domain.revoke()).isErr()).toBe(true);
     expect(
-      (await SharingGrantResource.findForEmail(file, "bob@david.co"))?.sId
+      (await SharingGrantResource.findForEmail(file, "bob@example.com"))?.sId
     ).toBe(replacement.sId);
   });
 
   it("returns normalized Resources with consistent granting-user serialization", async () => {
     const { authenticator, user, file } = await setup();
     const result = await SharingGrantResource.add(authenticator, file, {
-      emails: [" ALICE@DAVID.CO ", "alice@david.co"],
-      domains: ["@DAVID.CO", "david.co"],
+      emails: [" ALICE@EXAMPLE.COM ", "alice@example.com"],
+      domains: ["@EXAMPLE.COM", "example.com"],
     });
     assert(result.isOk());
     const created = result.value;
@@ -110,12 +114,12 @@ describe("SharingGrantResource", () => {
       created.every((grant) => grant instanceof SharingGrantResource)
     ).toBe(true);
     expect(created.map((grant) => grant.target)).toEqual([
-      { kind: "email", value: "alice@david.co" },
-      { kind: "domain", value: "david.co" },
+      { kind: "email", value: "alice@example.com" },
+      { kind: "domain", value: "example.com" },
     ]);
     const duplicate = await SharingGrantResource.add(authenticator, file, {
-      emails: ["alice@david.co"],
-      domains: ["DAVID.CO"],
+      emails: ["alice@example.com"],
+      domains: ["EXAMPLE.COM"],
     });
     assert(duplicate.isOk());
     expect(duplicate.value).toEqual([]);
@@ -126,7 +130,7 @@ describe("SharingGrantResource", () => {
     const listed = await SharingGrantResource.listForFile(file);
     const found = await SharingGrantResource.findForEmail(
       file,
-      "alice@david.co"
+      "alice@example.com"
     );
     assert(found);
     const revoked = await found.revoke();
@@ -158,19 +162,19 @@ describe("SharingGrantResource", () => {
     const otherWorkspace = await setup();
     const grant = await SharingGrantFactory.create(authenticator, file, {
       kind: "domain",
-      value: "david.co",
+      value: "example.com",
     });
     expect(await SharingGrantResource.listForFile(otherFile)).toEqual([]);
     expect(await SharingGrantResource.listForFile(otherWorkspace.file)).toEqual(
       []
     );
     expect(
-      await SharingGrantResource.findForEmail(otherFile, "alice@david.co")
+      await SharingGrantResource.findForEmail(otherFile, "alice@example.com")
     ).toBeNull();
     expect(
       await SharingGrantResource.findForEmail(
         otherWorkspace.file,
-        "alice@david.co"
+        "alice@example.com"
       )
     ).toBeNull();
     expect(
@@ -198,7 +202,7 @@ describe("SharingGrantResource", () => {
     ).toBeNull();
     await grant.delete(otherWorkspace.authenticator);
     expect(
-      (await SharingGrantResource.findForEmail(file, "alice@david.co"))?.sId
+      (await SharingGrantResource.findForEmail(file, "alice@example.com"))?.sId
     ).toBe(grant.sId);
   });
 
@@ -206,10 +210,10 @@ describe("SharingGrantResource", () => {
     const { authenticator, file } = await setup();
     const [first, second] = await Promise.all([
       SharingGrantResource.add(authenticator, file, {
-        domains: ["david.co", "alpha.co"],
+        domains: ["example.com", "alpha.co"],
       }),
       SharingGrantResource.add(authenticator, file, {
-        domains: ["david.co", "beta.co"],
+        domains: ["example.com", "beta.co"],
       }),
     ]);
     assert(first.isOk());
@@ -220,7 +224,7 @@ describe("SharingGrantResource", () => {
     expect(created.map((grant) => grant.target.value).sort()).toEqual([
       "alpha.co",
       "beta.co",
-      "david.co",
+      "example.com",
     ]);
     const listed = await SharingGrantResource.listForFile(file);
     expect(
@@ -238,7 +242,7 @@ describe("SharingGrantResource", () => {
     const { authenticator, file } = await setup();
     const grant = await SharingGrantFactory.create(authenticator, file, {
       kind: "domain",
-      value: "david.co",
+      value: "example.com",
     });
     const otherInstance = await SharingGrantResource.fetchById(file, grant.sId);
     assert(otherInstance);
@@ -255,7 +259,7 @@ describe("SharingGrantResource", () => {
     assert(workspace);
     const domain = await SharingGrantFactory.create(authenticator, file, {
       kind: "domain",
-      value: "david.co",
+      value: "example.com",
     });
     expect(domain.toLegacyJSON()).toBeNull();
     expect(await file.listActiveSharingGrants()).toEqual([]);
@@ -265,13 +269,13 @@ describe("SharingGrantResource", () => {
     expect((await file.revokeSharingGrant({ grantId: -1 })).isErr()).toBe(true);
     expect(
       await FileResource.getActiveGrantForEmail(workspace, {
-        email: "alice@david.co",
+        email: "alice@example.com",
         shareableFileId: domain.shareableFileId,
       })
     ).toBeNull();
 
     const added = await file.addSharingGrants(authenticator, {
-      emails: ["alice@david.co"],
+      emails: ["alice@example.com"],
     });
     assert(added.isOk());
     const [email] = added.value;
@@ -288,11 +292,11 @@ describe("SharingGrantResource", () => {
       emailResource.lastViewedAt?.getTime()
     );
     await FileResource.recordGrantView(workspace, {
-      email: "ALICE@DAVID.CO",
+      email: "ALICE@EXAMPLE.COM",
       shareableFileId: domain.shareableFileId,
     });
     const viewed = await FileResource.getActiveGrantForEmail(workspace, {
-      email: "alice@david.co",
+      email: "alice@example.com",
       shareableFileId: domain.shareableFileId,
     });
     expect(viewed?.id).toBe(email.id);
@@ -313,7 +317,7 @@ describe("SharingGrantResource", () => {
     expect(await file.listActiveSharingGrants()).toEqual([]);
     expect(await file.listAllSharingGrants()).toHaveLength(1);
     expect(
-      (await SharingGrantResource.findForEmail(file, "alice@david.co"))?.sId
+      (await SharingGrantResource.findForEmail(file, "alice@example.com"))?.sId
     ).toBe(domain.sId);
   });
 
@@ -321,7 +325,7 @@ describe("SharingGrantResource", () => {
     const { authenticator, file } = await setup();
     const grant = await SharingGrantFactory.create(authenticator, file, {
       kind: "domain",
-      value: "david.co",
+      value: "example.com",
     });
     const result = await file.delete(authenticator);
     assert(result.isOk());
@@ -329,14 +333,14 @@ describe("SharingGrantResource", () => {
   });
 
   it.each([
-    "*.david.co",
-    "https://david.co",
-    "alice@david.co",
+    "*.example.com",
+    "https://example.com",
+    "alice@example.com",
     `${"a".repeat(64)}.co`,
   ])("returns an Err for invalid domain %s without writing grants", async (domain) => {
     const { authenticator, file } = await setup();
     const result = await SharingGrantResource.add(authenticator, file, {
-      emails: ["alice@david.co"],
+      emails: ["alice@example.com"],
       domains: ["valid.co", domain],
     });
     assert(result.isErr());
@@ -347,8 +351,8 @@ describe("SharingGrantResource", () => {
   it("returns an Err for an invalid email without writing grants", async () => {
     const { authenticator, file } = await setup();
     const result = await SharingGrantResource.add(authenticator, file, {
-      emails: ["alice@david.co", "invalid"],
-      domains: ["david.co"],
+      emails: ["alice@example.com", "invalid"],
+      domains: ["example.com"],
     });
     assert(result.isErr());
     expect(result.error.code).toBe("invalid_request_error");
