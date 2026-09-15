@@ -216,6 +216,7 @@ describe("POST /api/v1/w/[wId]/sandbox/frames", () => {
     const published = await response.json();
     expect(published.frameId).toBe(context.frame.sId);
     expect(published.publicationId).toBeTypeOf("string");
+    expect(published.warnings).toEqual([]);
 
     const frame = await FileResource.fetchById(context.auth, published.frameId);
     expect(frame?.useCaseMetadata?.activePublicationId).toBe(

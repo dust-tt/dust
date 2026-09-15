@@ -272,6 +272,40 @@ describe("buildAndPublishFramePublication", () => {
     expect(fileStorageMock.getObject(uiBundlePath)).toContain(
       'data-source="index.tsx:'
     );
+    expect(result.value.warnings).toEqual([]);
+  });
+
+  it("publishes and reports Tailwind warnings", async () => {
+    const { auth, conversation, frame } = await setup();
+
+    const result = await buildAndPublishFramePublication(auth, {
+      conversation,
+      frame,
+      manifest: uiOnlyManifest,
+      sourceFiles: [
+        {
+          ...sourceFiles[0],
+          content: Buffer.from(
+            'export default function App() { return <main className="h-[600px]">Tasks</main>; }'
+          ),
+        },
+      ],
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isErr()) {
+      return;
+    }
+    expect(result.value.warnings).toMatchObject([
+      {
+        type: "tailwind",
+        message: expect.stringContaining("index.tsx: Forbidden Tailwind"),
+      },
+    ]);
+    expect(
+      (await FileResource.fetchById(auth, frame.sId))?.useCaseMetadata
+        ?.activePublicationId
+    ).toBe(result.value.publicationId);
   });
 
   it("builds every declared function before publishing", async () => {

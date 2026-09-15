@@ -26,7 +26,7 @@ type FramePublishResponse = {
   frameId: string;
   manifestPath: string;
   publicationId?: string;
-  warnings?: ValidationWarning[];
+  warnings: ValidationWarning[];
 };
 
 // Mounted at /api/v1/w/:wId/sandbox/frames.
@@ -114,6 +114,7 @@ app.post(
             frameId: publication.value.frameId,
             manifestPath: publication.value.sourcePath,
             publicationId: publication.value.publicationId,
+            warnings: publication.value.warnings,
           },
           200
         );
