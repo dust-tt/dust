@@ -19,7 +19,10 @@ import type {
   MemberFairUseUsage,
   MemberUsageType,
 } from "@app/lib/api/credits/members_usage";
-import { computeSeatUsage } from "@app/lib/api/credits/seat_usage";
+import {
+  computePoolLimitAwuCredits,
+  computeSeatUsage,
+} from "@app/lib/api/credits/seat_usage";
 import { formatCredits, formatCreditValue } from "@app/lib/client/credits";
 import type { UserModelTierSelection } from "@app/lib/client/model_tier_options";
 import {
@@ -275,8 +278,8 @@ function spendLimitSourceLabel(
 interface PoolCreditUsageBarProps {
   consumedFromPool: number;
   memberUsageLimit: number | null;
-  // Same semantics as the seat + pool bar: `null` means no pool access,
-  // i.e. a zero pool limit.
+  // Resolved spend cap including the seat allowance; `null` means no pool
+  // access, i.e. a zero pool limit.
   effectiveLimit: number | null;
   isTotalAllowedUsagePending: boolean;
 }
@@ -289,8 +292,10 @@ function PoolCreditUsageBar({
   effectiveLimit,
   isTotalAllowedUsagePending: isPending,
 }: PoolCreditUsageBarProps) {
-  const allowance = memberUsageLimit ?? 0;
-  const poolLimit = Math.max(0, (effectiveLimit ?? allowance) - allowance);
+  const poolLimit = computePoolLimitAwuCredits({
+    memberUsageLimit,
+    effectiveLimit,
+  });
   const isOverPoolLimit = consumedFromPool > poolLimit;
   const isAtPoolLimit = poolLimit > 0 && consumedFromPool === poolLimit;
   const percentage =
@@ -368,7 +373,10 @@ export function AwuUsageBar({
     ? seatBalanceAwu!
     : Math.max(0, allowance - seatConsumed);
   const resolvedEffectiveLimit = effectiveLimit ?? allowance;
-  const poolLimit = Math.max(0, resolvedEffectiveLimit - allowance);
+  const poolLimit = computePoolLimitAwuCredits({
+    memberUsageLimit,
+    effectiveLimit,
+  });
   // Of the pool consumption, the part within the pool limit vs. the overage
   // beyond it.
   const poolConsumed = Math.min(consumedFromPool, poolLimit);
