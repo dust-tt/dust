@@ -1,4 +1,7 @@
+import type { SkillPermissionFilteringMode } from "@app/lib/resources/skill/skill_resource";
 import type {
+  SkillAvailability,
+  SkillListItemType,
   SkillType,
   SkillWithoutInstructionsAndToolsType,
   SkillWithoutInstructionsAndToolsWithRelationsType,
@@ -10,6 +13,48 @@ export type GetSkillsResponseBody = {
     isFavorite?: boolean;
   })[];
 };
+
+export type SkillSearchResult = Omit<
+  SkillListItemType,
+  "status" | "canRead"
+> & {
+  // Optional for clients talking to an older server that only searched active skills.
+  status?: SkillListItemType["status"];
+  // Fixed relevance score shared with code-defined skills. Older clients may ignore it.
+  score?: number;
+  // False for an unreadable result retained by admin-only redact_unreadable search.
+  canRead?: boolean;
+};
+
+export type SkillSearchPermissionFiltering = Exclude<
+  SkillPermissionFilteringMode,
+  "dangerously_skip"
+>;
+
+export const SEARCH_MODES = [
+  "autocomplete",
+  "management",
+  "discovery",
+] as const;
+export type SearchMode = (typeof SEARCH_MODES)[number];
+
+// OR within a dimension, AND across dimensions. Selection never replaces ACLs.
+export interface SkillSearchFilters {
+  // Omitted means active only. Suggested skills are never searchable.
+  status?: ("active" | "archived")[];
+  spaceIds?: string[];
+  toolIds?: string[];
+  editedByMe?: boolean;
+  availability?: SkillAvailability[];
+  isDefault?: boolean;
+}
+
+export interface SkillSearchOptions {
+  searchTerm: string;
+  mode?: SearchMode;
+  filters?: SkillSearchFilters;
+  permissionFiltering?: SkillSearchPermissionFiltering;
+}
 
 /**
  * @cc [owner:aubin-tchoi,label:api] skill-usage-compatibility
