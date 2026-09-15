@@ -3,7 +3,7 @@ import {
   MODEL_PRICING,
 } from "@app/lib/api/assistant/token_pricing";
 import { isModelReleased } from "@app/lib/assistant";
-import { awuFromMicroUsd } from "@app/lib/metronome/events";
+import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types/assistant/models/models";
 import {
   getModelMaker,

@@ -1,6 +1,6 @@
 import { computeAgentMessageCredits } from "@app/lib/api/assistant/credit_cost";
+import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import {
-  awuFromMicroUsd,
   intelligenceAwuFromRunUsages,
   intelligenceAwuFromRunUsagesGroupedByRunKey,
   toolAwuFromActions,

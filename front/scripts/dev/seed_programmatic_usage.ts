@@ -1,6 +1,6 @@
 import { ANALYTICS_ALIAS_NAME, withEs } from "@app/lib/api/elasticsearch";
 import { Authenticator } from "@app/lib/auth";
-import { awuFromMicroUsd } from "@app/lib/metronome/events";
+import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
