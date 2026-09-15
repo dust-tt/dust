@@ -3,7 +3,6 @@ import type {
   SkillAvailability,
   SkillStatus,
 } from "@app/types/assistant/skill_configuration";
-import type { ModelId } from "@app/types/shared/model_id";
 
 /**
  * @cc [owner:aubin-tchoi,label:backend] skill-search-field-names
@@ -17,7 +16,7 @@ export interface SkillSearchDocument extends ElasticsearchBaseDocument {
   description: string | null;
   icon: string | null;
   last_edited_by_user_id: number | null;
-  editor_ids: ModelId[];
+  editor_ids: string[];
   requested_space_ids: string[];
   mcp_server_view_ids: string[];
   active_users_count: number;
