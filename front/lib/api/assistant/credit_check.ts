@@ -68,19 +68,33 @@ const EXEMPT: CreditSpendCheckpointCheckResult = {
   exempt: true,
 };
 
-export async function checkCreditSpendCheckpointGate(
+/**
+ * @cc [owner:avervaet,label:product] checkpoint-exempts-unattended-usage
+ * The gate MUST return exempt when there is no user on the auth or when the message origin is
+ * programmatic usage (same rule as the pool gate). Nobody is on the web app to answer the pause
+ * in those cases, so pausing would only hang the caller.
+ */
+export function checkCreditSpendCheckpointGate(
   auth: Authenticator,
-  { consumedAwuCredits }: { consumedAwuCredits: number }
-): Promise<CreditSpendCheckpointCheckResult> {
-  const plan = auth.subscription()?.plan;
-
-  if (!plan || !auth.user()) {
+  {
+    consumedAwuCredits,
+    userMessageOrigin,
+  }: {
+    consumedAwuCredits: number;
+    userMessageOrigin: UserMessageOrigin | null;
+  }
+): CreditSpendCheckpointCheckResult {
+  if (
+    !auth.user() ||
+    (userMessageOrigin && isProgrammaticUsage(auth, { userMessageOrigin }))
+  ) {
     return EXEMPT;
   }
 
-  const thresholdAwuCredits = CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS;
-
-  return consumedAwuCredits >= thresholdAwuCredits
-    ? { crossed: true, thresholdAwuCredits }
+  return consumedAwuCredits >= CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS
+    ? {
+        crossed: true,
+        thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
+      }
     : NOT_CROSSED;
 }
