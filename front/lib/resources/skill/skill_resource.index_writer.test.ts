@@ -8,6 +8,22 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 describe("SkillResource search index writer", () => {
   afterEach(() => vi.restoreAllMocks());
 
+  it("fetches only skills belonging to the current workspace", async () => {
+    const { authenticator: auth } = await createResourceTest({ role: "admin" });
+    const { authenticator: otherAuth } = await createResourceTest({
+      role: "admin",
+    });
+    const skill = await SkillFactory.create(auth);
+    const otherSkill = await SkillFactory.create(otherAuth);
+
+    const documents = await SkillResource.fetchSearchDocuments(auth, [
+      otherSkill.sId,
+      skill.sId,
+    ]);
+
+    expect(documents.map((document) => document.skill_id)).toEqual([skill.sId]);
+  });
+
   it("upserts active and archived skills but deletes suggested and missing documents", async () => {
     const { authenticator: auth, workspace } = await createResourceTest({
       role: "admin",
