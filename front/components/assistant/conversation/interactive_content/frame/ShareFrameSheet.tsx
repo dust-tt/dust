@@ -16,6 +16,7 @@ import type { FileShareScope, SharingGrantType } from "@app/types/files";
 import { MAX_EMAILS_PER_INVITE } from "@app/types/files";
 import type { LightWorkspaceType } from "@app/types/user";
 import {
+  ActionFrame,
   Avatar,
   Button,
   Clipboard,
@@ -420,6 +421,7 @@ const VIEWER_FILE_SOURCE_ICONS: Record<
   ShareFrameViewerFileSourceKind,
   typeof Cube01
 > = {
+  frame: ActionFrame,
   pod: Cube01,
   conversation: MessageChatSquare,
   workspace: File02,
