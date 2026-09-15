@@ -48,6 +48,10 @@ vi.mock("@app/lib/api/frames/database_reconciliation", () => ({
   reconcileFramePublicationDatabases: vi.fn(),
 }));
 
+vi.mock("@app/lib/api/frames/og", () => ({
+  scheduleFrameOgImageGeneration: vi.fn(),
+}));
+
 async function setupFrame({
   ready = false,
 }: {

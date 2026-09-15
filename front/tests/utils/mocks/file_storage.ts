@@ -21,6 +21,7 @@ interface SignedUrlCall {
 interface MockFileMetadata {
   contentType: string;
   size: string;
+  generation?: string;
   contentEncoding?: string;
   contentDisposition?: string;
 }
@@ -307,6 +308,11 @@ class FileStorageMock {
       getMetadata: vi.fn(() => {
         const path = filePath ?? "";
         this._metadataCalls.push(path);
+        if (!this._existsPredicate(path)) {
+          return Promise.reject(
+            new MockGcsError(404, `No such object: ${path}`)
+          );
+        }
         return Promise.resolve([
           this._metadataForPath(path) ?? {
             contentType: "text/plain",

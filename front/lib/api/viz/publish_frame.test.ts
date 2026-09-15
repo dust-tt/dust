@@ -28,6 +28,10 @@ vi.mock("@app/lib/lock", async (importActual) => {
   };
 });
 
+vi.mock("@app/lib/api/frames/og", () => ({
+  scheduleFrameOgImageGeneration: vi.fn(),
+}));
+
 beforeEach(() => {
   vi.restoreAllMocks();
   fileStorageMock.reset();

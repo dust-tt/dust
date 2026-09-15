@@ -1,5 +1,6 @@
 import { lookupShareTokenInOtherCells } from "@app/lib/api/cells/lookup";
 import config from "@app/lib/api/config";
+import { getFrameOgImagePublicUrlIfExists } from "@app/lib/api/frames/og";
 import { getWorkspaceBrandingPublicUrls } from "@app/lib/api/workspace_branding";
 import { formatFilenameForDisplay } from "@app/lib/files";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -126,11 +127,24 @@ app.get(
       : false;
     const requiresEmailVerification = isEmailScope && hasActiveGrants;
 
-    const { faviconUrl, logoUrl, ogImageUrl } =
-      await getWorkspaceBrandingPublicUrls(workspace);
+    const [
+      { faviconUrl, logoUrl, ogImageUrl: brandingOgImageUrl },
+      frameOgImageUrl,
+    ] = await Promise.all([
+      getWorkspaceBrandingPublicUrls(workspace),
+      getFrameOgImagePublicUrlIfExists({
+        workspaceId: workspace.sId,
+        frameId: file.sId,
+        token,
+      }),
+    ]);
+
+    // Prefer the per-frame first-page preview when available. Branding still
+    // controls viral CTA / description copy for whitelabeled workspaces.
+    const ogImageUrl = frameOgImageUrl ?? brandingOgImageUrl;
 
     // For workspaces without custom branding, add viral copy to drive sign-ups.
-    const isBrandedWorkspace = ogImageUrl !== null;
+    const isBrandedWorkspace = brandingOgImageUrl !== null;
     const description = isBrandedWorkspace
       ? null
       : `Discover what ${workspace.name} built with AI. Explore now.`;
