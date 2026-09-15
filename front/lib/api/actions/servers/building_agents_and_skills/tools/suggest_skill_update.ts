@@ -44,15 +44,6 @@ export async function suggestSkillUpdate(
     );
   }
 
-  const hasInstructionEdits = (instructionEdits?.length ?? 0) > 0;
-  if (!hasInstructionEdits && agentFacingDescriptionEdit === undefined) {
-    return new Err(
-      new MCPError(
-        "Provide at least one of `instructionEdits` or `agentFacingDescriptionEdit`."
-      )
-    );
-  }
-
   const skill = await SkillResource.fetchById(auth, skillId);
   if (!skill) {
     return new Err(new MCPError("Skill not found."));
@@ -62,6 +53,15 @@ export async function suggestSkillUpdate(
     return new Err(
       new MCPError(
         "You need to be added as an editor of this skill before you can suggest changes."
+      )
+    );
+  }
+
+  const hasInstructionEdits = (instructionEdits?.length ?? 0) > 0;
+  if (!hasInstructionEdits && agentFacingDescriptionEdit === undefined) {
+    return new Err(
+      new MCPError(
+        "Provide at least one of `instructionEdits` or `agentFacingDescriptionEdit`."
       )
     );
   }
@@ -117,7 +117,7 @@ export async function suggestSkillUpdateHandler(
 ): Promise<ToolHandlerResult> {
   const result = await suggestSkillUpdate(auth, args);
   if (result.isErr()) {
-    return new Err(result.error);
+    return result;
   }
 
   const created = result.value;
