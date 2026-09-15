@@ -12,6 +12,26 @@ const MATCH_SCORES = {
 };
 
 /**
+ * @cc [owner:aubin-tchoi,label:product] skill-search-tokenization
+ * Code-defined names and aliases split case boundaries and punctuation before
+ * lowercasing. Their matching does not guarantee Elasticsearch ICU analysis parity.
+ */
+function tokenize(value: string): string[] {
+  // Lowercase each code point independently, like Lucene's lowercase filter.
+  // U+0130 is the only JS lowercase expansion; Lucene maps it to plain "i".
+  return value
+    .split(
+      /(?<=[\p{Ll}\p{N}])(?=\p{Lu})|(?<=\p{Lu})(?=\p{Lu}\p{Ll})|[^\p{L}\p{M}\p{N}]+/u
+    )
+    .filter(Boolean)
+    .map((token) =>
+      Array.from(token, (character) =>
+        character === "\u0130" ? "i" : character.toLowerCase()
+      ).join("")
+    );
+}
+
+/**
  * @cc [owner:aubin-tchoi,label:product] indexed-skill-name-matching
  * Exact matching folds the whole name; word-prefix matching uses autocomplete
  * fields. The raw keyword field remains the stable pagination sort key.
@@ -73,6 +93,87 @@ export function buildSkillMatchQuery(
   return { dis_max: { tie_breaker: 0, queries: matches } };
 }
 
+export function getSkillSearchScore({
+  searchTerm,
+  name,
+  description = "",
+  aliases = [],
+  mode = "autocomplete",
+}: {
+  searchTerm: string;
+  name: string;
+  description?: string;
+  aliases?: string[];
+  mode?: SearchMode;
+}): number {
+  // Keyword term/prefix case_insensitive folds ASCII only.
+  const normalize = (value: string) =>
+    value.replace(/[A-Z]/g, (character) => character.toLowerCase());
+  const query = normalize(searchTerm.trim());
+  if (!query) {
+    return 1;
+  }
+  const queryTokens = tokenize(searchTerm.trim());
+  const lastToken = queryTokens.at(-1);
+  const completeTokens = queryTokens.slice(0, -1);
+
+  let score = 0;
+  for (const value of [name, ...aliases]) {
+    const candidate = normalize(value);
+    const tokens = new Set(tokenize(value));
+    const candidateScore =
+      candidate === query
+        ? MATCH_SCORES.exact
+        : candidate.startsWith(query)
+          ? MATCH_SCORES.prefix
+          : lastToken &&
+              completeTokens.every((token) => tokens.has(token)) &&
+              [...tokens].some((token) => token.startsWith(lastToken))
+            ? MATCH_SCORES.name
+            : 0;
+    score = Math.max(score, candidateScore);
+  }
+  if (mode === "autocomplete" || queryTokens.length === 0) {
+    return score;
+  }
+  const descriptionTokens = new Set(tokenize(description));
+  return Math.max(
+    score,
+    queryTokens.every((token) => descriptionTokens.has(token))
+      ? MATCH_SCORES.description
+      : 0
+  );
+}
+
+/**
+ * @cc [owner:aubin-tchoi,label:product] skill-search-ranking
+ * Indexed and code-defined results use the same mode, signals and float32 score;
+ * autocomplete ignores description and usage, management sorts by usage then name.
+ */
+export function getSearchRankingScore({
+  matchScore,
+  mode,
+  activeUsers = 0,
+}: {
+  matchScore: number;
+  mode: SearchMode;
+  activeUsers?: number;
+}): number {
+  if (matchScore <= 0) {
+    return 0;
+  }
+  switch (mode) {
+    case "autocomplete":
+      return matchScore;
+    case "management":
+      return Math.fround(1 + activeUsers);
+    case "discovery":
+      return Math.fround(matchScore + Math.log1p(activeUsers));
+    default:
+      return assertNever(mode);
+  }
+}
+
 export function applySearchRanking(
   query: estypes.QueryDslQueryContainer,
   mode: SearchMode
@@ -103,4 +204,32 @@ export function applySearchRanking(
     default:
       return assertNever(mode);
   }
+}
+
+export interface RankedSkill {
+  score: number;
+  name: string;
+  sId: string;
+}
+
+const encoder = new TextEncoder();
+
+function compareUtf8Strings(a: string, b: string): number {
+  const left = encoder.encode(a);
+  const right = encoder.encode(b);
+  for (let i = 0; i < Math.min(left.length, right.length); i++) {
+    if (left[i] !== right[i]) {
+      return left[i] - right[i];
+    }
+  }
+  return left.length - right.length;
+}
+
+export function compareRankedSkills(a: RankedSkill, b: RankedSkill): number {
+  // Keyword fields sort by UTF-8 bytes, not locale collation or UTF-16 units.
+  return (
+    Math.fround(b.score) - Math.fround(a.score) ||
+    compareUtf8Strings(a.name, b.name) ||
+    compareUtf8Strings(a.sId, b.sId)
+  );
 }
