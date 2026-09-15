@@ -25,6 +25,7 @@ import {
   GPT_5_6_LUNA_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
 } from "@app/types/assistant/models/openai";
+import assert from "node:assert";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 afterEach(() => {
@@ -263,6 +264,25 @@ describe("LLMRunLifecycle", () => {
       { usageState: "unavailable" },
     ]);
   });
+
+  it.each([
+    { isByok: false, useWorkspaceCredentials: false },
+    { isByok: true, useWorkspaceCredentials: true },
+  ])(
+    "records useWorkspaceCredentials=$useWorkspaceCredentials for a byok=$isByok workspace",
+    async ({ isByok, useWorkspaceCredentials }) => {
+      const { authenticator: auth } = await createResourceTest({ isByok });
+      const parameters = makeLifecycleParameters();
+
+      await LLMRunLifecycle.start(auth, parameters);
+
+      const run = await RunResource.fetchByDustRunId(auth, {
+        dustRunId: parameters.dustRunId,
+      });
+      assert(run, "Expected the LLM run to exist");
+      expect(run.useWorkspaceCredentials).toBe(useWorkspaceCredentials);
+    }
+  );
 
   it("finalizes the pending attempt when the provider reports usage", async () => {
     const { authenticator: auth } = await createResourceTest({});

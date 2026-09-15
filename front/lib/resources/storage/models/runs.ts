@@ -15,6 +15,16 @@ export class RunModel extends WorkspaceAwareModel<RunModel> {
 
   declare dustRunId: string;
   declare runType: string;
+  /**
+   * @cc [owner:pmilliotte,label:product] run-records-credential-owner
+   * True when the run reached the provider on credentials the workspace provided -- a BYOK plan, or
+   * the legacy per-app provider keys selected by `use_workspace_credentials`. It must be set from
+   * the plan in force when the run is created and never recomputed afterwards, so a usage row keeps
+   * pointing at whoever actually paid for it.
+   *
+   * Runs created before 2026-09-15 hardcoded `false` on the LLM paths, so `false` only distinguishes
+   * Dust-owned credentials from that date on; earlier rows carry no information.
+   */
   declare useWorkspaceCredentials: boolean | null;
   // Identifies the agent-loop execution this run belongs to (sha256 of the
   // execution's sorted dustRunIds). Set at finalize so per-execution credit

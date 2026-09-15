@@ -33,6 +33,7 @@ import type {
   BatchStatus,
 } from "@app/lib/api/llm/types/batch";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
+import { usesWorkspaceProvidedCredentials } from "@app/lib/api/provider_credentials";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
   LLMClientMetadata,
@@ -706,7 +707,9 @@ export abstract class LLM<
         appId: null,
         dustRunId: traceId,
         runType: "deploy",
-        useWorkspaceCredentials: false,
+        useWorkspaceCredentials: usesWorkspaceProvidedCredentials(
+          this.authenticator
+        ),
         workspaceId: this.authenticator.getNonNullableWorkspace().id,
       });
 
