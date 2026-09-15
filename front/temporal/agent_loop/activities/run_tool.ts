@@ -67,7 +67,7 @@ function formatAccessedIdsSample(ids: string[]): string {
 }
 
 function extractDataSourceIds(
-  inputs: Record<string, unknown>
+  inputs: Record<string, unknown>,
 ): Record<string, string> {
   const result: Record<string, string> = {};
   const ds = inputs.dataSources;
@@ -111,7 +111,7 @@ export async function runToolActivity(
     runAgentArgs: AgentLoopArgsWithTiming;
     step: number;
     runIds?: string[];
-  }
+  },
 ): Promise<ToolExecutionResult> {
   // The setup phase below is DB-bound and can stall past the heartbeat timeout under
   // connection-pool contention. Tool activities are not retried, so a missed first heartbeat
@@ -139,7 +139,7 @@ export async function runToolActivity(
               },
             }),
             AgentMCPActionResource.fetchByModelIdWithAuth(auth, actionId),
-          ])
+          ]),
       );
 
       return { auth, runAgentDataRes, action };
@@ -156,10 +156,10 @@ export async function runToolActivity(
             step,
             workspaceId: authType.workspaceId,
           },
-          "MCP tool setup heartbeat"
+          "MCP tool setup heartbeat",
         );
       },
-    }
+    },
   );
   if (runAgentDataRes.isErr()) {
     if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
@@ -168,7 +168,7 @@ export async function runToolActivity(
           actionId,
           runIds,
         },
-        "Message or conversation was deleted, exiting"
+        "Message or conversation was deleted, exiting",
       );
       return { deferredEvents };
     }
@@ -193,7 +193,7 @@ export async function runToolActivity(
       toolName: action.toolConfiguration.name,
       mcpServerName: action.toolConfiguration.mcpServerName,
     },
-    "Tool activity starting execution"
+    "Tool activity starting execution",
   );
 
   const {
@@ -228,7 +228,7 @@ export async function runToolActivity(
             mcpServerName: action.toolConfiguration.mcpServerName,
           },
         },
-        { asType: "tool" }
+        { asType: "tool" },
       );
 
       return executeToolStreaming(auth, {
@@ -243,7 +243,7 @@ export async function runToolActivity(
         userMessage,
       });
     },
-    { asType: "tool" }
+    { asType: "tool" },
   );
 
   if (recordConsumptionInline) {
@@ -270,7 +270,7 @@ async function recordToolCompletionConsumptionItem(
     agentMessage: AgentMessageType;
     consumptionContext?: AgentMessageConsumptionExecutionContext | null;
     runAgentArgs: AgentLoopArgsWithTiming;
-  }
+  },
 ): Promise<void> {
   if (!isToolExecutionStatusFinal(action.status)) {
     return;
@@ -342,7 +342,7 @@ async function executeToolStreaming(
     runIds?: string[];
     step: number;
     userMessage: AgentLoopExecutionData["userMessage"];
-  }
+  },
 ): Promise<ToolExecutionResult> {
   const abortSignal = AbortSignal.any([
     Context.current().cancellationSignal,
@@ -352,7 +352,7 @@ async function executeToolStreaming(
   // Sandbox-child actions are observed by the CLI through polling; they must
   // not surface in the conversation timeline, so progress events are dropped.
   const isSandboxChildAction = isSandboxChildActionInfo(
-    action.stepContext.sandboxChildActionInfo
+    action.stepContext.sandboxChildActionInfo,
   );
 
   const handleNonDeferredEvents = !isSandboxChildAction
@@ -376,7 +376,7 @@ async function executeToolStreaming(
   const eventStream = runToolWithStreaming(
     auth,
     { toolContext },
-    { signal: abortSignal }
+    { signal: abortSignal },
   );
 
   for await (const event of eventStream) {
@@ -388,7 +388,7 @@ async function executeToolStreaming(
             level: "ERROR",
             statusMessage: event.error.message,
           },
-          { asType: "tool" }
+          { asType: "tool" },
         );
 
         // For tool errors, send immediately.
@@ -420,7 +420,7 @@ async function executeToolStreaming(
             level: event.isError ? "ERROR" : "WARNING",
             statusMessage: event.text ?? "Early exit",
           },
-          { asType: "tool" }
+          { asType: "tool" },
         );
 
         if (event.reason === "user_cancellation") {
@@ -518,7 +518,7 @@ async function executeToolStreaming(
         // function scoped events cannot surface here.
         assert(
           "conversationId" in event,
-          "Unexpected sandbox function tool event in the agent loop."
+          "Unexpected sandbox function tool event in the agent loop.",
         );
 
         updateActiveObservation(
@@ -526,7 +526,7 @@ async function executeToolStreaming(
             output: { status: event.type },
             level: "WARNING",
           },
-          { asType: "tool" }
+          { asType: "tool" },
         );
 
         // Batched for publishing after all parallel tools complete to avoid partial UI state.
@@ -560,7 +560,7 @@ async function executeToolStreaming(
           {
             output: { status: "success" },
           },
-          { asType: "tool" }
+          { asType: "tool" },
         );
 
         void emitAuditLogEventDirect({
@@ -584,7 +584,7 @@ async function executeToolStreaming(
           metadata: {
             tool_name: action.toolConfiguration.originalName,
             tool_type: isLightClientSideMCPToolConfiguration(
-              action.toolConfiguration
+              action.toolConfiguration,
             )
               ? "remote"
               : "internal",
@@ -627,7 +627,7 @@ async function executeToolStreaming(
         // sandbox function notification events cannot surface here.
         assert(
           isAgentLoopToolEvent(event),
-          "Unexpected sandbox function tool notification in the agent loop."
+          "Unexpected sandbox function tool notification in the agent loop.",
         );
         await handleNonDeferredEvents(auth, {
           event,

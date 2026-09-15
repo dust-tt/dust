@@ -146,9 +146,30 @@ const { initializeConsumptionExecutionActivity } = proxyActivities<
   typeof consumptionActivities
 >({
   startToCloseTimeout: "2 minutes",
+  retry: {
+    maximumAttempts: 3,
+  },
+});
+
+const {
+  recordModelCallConsumptionActivity,
+  recordToolCompletionConsumptionActivity,
+} = proxyActivities<typeof consumptionActivities>({
+  startToCloseTimeout: "5 minutes",
+  cancellationType: ActivityCancellationType.WAIT_CANCELLATION_COMPLETED,
+  retry: {
+    maximumAttempts: 5,
+  },
 });
 
 const { metrics } = proxySinks<AgentLoopInstrumentationSinks>();
+
+type ConsumptionWorkflowState =
+  | { kind: "legacy_history" }
+  | {
+      kind: "initialized";
+      context: AgentMessageConsumptionExecutionContext | null;
+    };
 
 const { ensureConversationTitleActivity } = proxyActivities<
   typeof ensureTitleActivities
@@ -281,24 +302,24 @@ export async function agentLoopWorkflow({
   let creditStopRequested = false;
 
   const runIds: string[] = [];
-  let consumptionContext:
-    | AgentMessageConsumptionExecutionContext
-    | null
-    | undefined;
+  let consumptionState: ConsumptionWorkflowState = { kind: "legacy_history" };
 
   try {
     const { agentMessageId, conversationId } = agentLoopArgs;
 
     if (runKey !== undefined && patched("agent-loop-consumption-context")) {
-      consumptionContext = await initializeConsumptionExecutionActivity(
-        authType,
-        {
+      consumptionState = {
+        kind: "initialized",
+        context: await initializeConsumptionExecutionActivity(authType, {
           agentMessageId,
           runKey,
           startStep,
-        }
-      );
+        }),
+      };
     }
+    const usesConsumptionPostingActivities =
+      patched("agent-loop-consumption-posting-activities") &&
+      consumptionState.kind === "initialized";
 
     await executionScope.run(async () => {
       const syncStartTime = Date.now();
@@ -314,7 +335,7 @@ export async function agentLoopWorkflow({
         authType.workspaceId,
         agentMessageId,
         conversationId,
-        startStep
+        startStep,
       );
 
       for (let i = startStep; i < MAX_STEPS_USE_PER_RUN_LIMIT + 1; i++) {
@@ -330,7 +351,8 @@ export async function agentLoopWorkflow({
               initialStartTime,
             },
             currentStep,
-            consumptionContext,
+            consumptionState,
+            usesConsumptionPostingActivities,
             runIds,
             startStep,
             forceDisableToolUse,
@@ -347,7 +369,7 @@ export async function agentLoopWorkflow({
           agentMessageId,
           conversationId,
           currentStep,
-          stepStartTime
+          stepStartTime,
         );
 
         // After the first step completes, launch title generation in the background. We wait until
@@ -360,12 +382,12 @@ export async function agentLoopWorkflow({
               {
                 workflowId: makeAgentLoopConversationTitleWorkflowId(
                   authType,
-                  agentLoopArgs
+                  agentLoopArgs,
                 ),
                 searchAttributes: parentSearchAttributes,
                 args: [{ authType, agentLoopArgs }],
                 memo,
-              }
+              },
             );
           } catch (err) {
             if (!(err instanceof WorkflowExecutionAlreadyStartedError)) {
@@ -398,7 +420,7 @@ export async function agentLoopWorkflow({
         conversationId,
         initialStartTime,
         stepsCompleted,
-        syncStartTime
+        syncStartTime,
       );
 
       // Attach this execution's runIds so tracking workflows process only
@@ -417,21 +439,21 @@ export async function agentLoopWorkflow({
             finalizeGracefullyStoppedAgentLoopActivity,
             authType,
             argsWithRunIds,
-            consumptionContext
+            consumptionState,
           );
         } else if (creditStopRequested) {
           await runFinalizeActivity(
             finalizeCreditStoppedAgentLoopActivity,
             authType,
             argsWithRunIds,
-            consumptionContext
+            consumptionState,
           );
         } else {
           await runFinalizeActivity(
             finalizeSuccessfulAgentLoopActivity,
             authType,
             argsWithRunIds,
-            consumptionContext
+            consumptionState,
           );
         }
       });
@@ -466,14 +488,14 @@ export async function agentLoopWorkflow({
             finalizeInterruptedAgentLoopActivity,
             authType,
             argsWithRunIds,
-            consumptionContext
+            consumptionState,
           );
         } else {
           await runFinalizeActivity(
             finalizeCancelledAgentLoopActivity,
             authType,
             argsWithRunIds,
-            consumptionContext
+            consumptionState,
           );
         }
       });
@@ -488,14 +510,14 @@ export async function agentLoopWorkflow({
         message: workflowError.message,
         name: workflowError.name,
       };
-      if (consumptionContext === undefined) {
+      if (consumptionState.kind === "legacy_history") {
         await finalizeErroredAgentLoopActivity(authType, argsWithRunIds, error);
       } else {
         await finalizeErroredAgentLoopActivity(
           authType,
           argsWithRunIds,
           error,
-          consumptionContext
+          consumptionState.context,
         );
       }
     });
@@ -512,16 +534,16 @@ async function runFinalizeActivity(
   activity: (
     authType: AuthenticatorType,
     agentLoopArgs: AgentLoopArgs,
-    consumptionContext?: AgentMessageConsumptionExecutionContext | null
+    consumptionContext?: AgentMessageConsumptionExecutionContext | null,
   ) => Promise<void>,
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs,
-  consumptionContext: AgentMessageConsumptionExecutionContext | null | undefined
+  consumptionState: ConsumptionWorkflowState,
 ): Promise<void> {
-  if (consumptionContext === undefined) {
+  if (consumptionState.kind === "legacy_history") {
     await activity(authType, agentLoopArgs);
   } else {
-    await activity(authType, agentLoopArgs, consumptionContext);
+    await activity(authType, agentLoopArgs, consumptionState.context);
   }
 }
 
@@ -529,7 +551,8 @@ async function executeStepIteration({
   authType,
   currentStep,
   agentLoopArgs,
-  consumptionContext,
+  consumptionState,
+  usesConsumptionPostingActivities,
   runIds,
   startStep,
   forceDisableToolUse,
@@ -537,10 +560,8 @@ async function executeStepIteration({
   authType: AuthenticatorType;
   currentStep: number;
   agentLoopArgs: AgentLoopArgsWithTiming;
-  consumptionContext:
-    | AgentMessageConsumptionExecutionContext
-    | null
-    | undefined;
+  consumptionState: ConsumptionWorkflowState;
+  usesConsumptionPostingActivities: boolean;
   runIds: string[];
   startStep: number;
   forceDisableToolUse: boolean;
@@ -559,13 +580,21 @@ async function executeStepIteration({
     step: currentStep,
     forceDisableToolUse,
   };
-  const result =
-    consumptionContext === undefined
-      ? await runModelAndCreateActionsActivity(modelActivityArgs)
-      : await runModelAndCreateActionsActivity({
-          ...modelActivityArgs,
-          consumptionContext,
-        });
+  let result;
+  if (consumptionState.kind === "legacy_history") {
+    result = await runModelAndCreateActionsActivity(modelActivityArgs);
+  } else if (usesConsumptionPostingActivities) {
+    result = await runModelAndCreateActionsActivity({
+      ...modelActivityArgs,
+      consumptionContext: consumptionState.context,
+      recordConsumptionInline: false,
+    });
+  } else {
+    result = await runModelAndCreateActionsActivity({
+      ...modelActivityArgs,
+      consumptionContext: consumptionState.context,
+    });
+  }
 
   if (!result) {
     // Error occurred — no runId to capture.
@@ -576,6 +605,24 @@ async function executeStepIteration({
   }
 
   const { runId, actionBlobs, retryWithoutTools = false } = result;
+  const consumptionContext =
+    consumptionState.kind === "initialized" ? consumptionState.context : null;
+
+  if (
+    usesConsumptionPostingActivities &&
+    consumptionContext !== null &&
+    runId !== null
+  ) {
+    await CancellationScope.nonCancellable(() =>
+      recordModelCallConsumptionActivity(authType, {
+        agentMessageId: agentLoopArgs.agentMessageId,
+        consumptionContext,
+        conversationId: agentLoopArgs.conversationId,
+        dustRunId: runId,
+        emittedActionModelIds: actionBlobs.map(({ actionId }) => actionId),
+      }),
+    );
+  }
 
   // Generation completed or the loop unpaused and no new tools were generated.
   if (actionBlobs.length === 0) {
@@ -602,27 +649,51 @@ async function executeStepIteration({
 
   // Execute tools and collect any deferred events.
   deprecatePatch("wait-for-all-tool-activities-before-finalization");
-  const toolActivityPromises = actionBlobs.map(({ actionId, retryPolicy }) => {
-    const activity =
-      retryPolicy === "no_retry"
-        ? runToolActivityWithExplicitCancellation
-        : runRetryableToolActivityWithExplicitCancellation;
-    const activityArgs = {
-      actionId,
-      runAgentArgs: agentLoopArgs,
-      step: currentStep,
-      runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
-    };
-    return consumptionContext === undefined
-      ? activity(authType, activityArgs)
-      : activity(authType, { ...activityArgs, consumptionContext });
-  });
+  const toolActivityPromises = actionBlobs.map(
+    async ({ actionId, retryPolicy }) => {
+      const activity =
+        retryPolicy === "no_retry"
+          ? runToolActivityWithExplicitCancellation
+          : runRetryableToolActivityWithExplicitCancellation;
+      const activityArgs = {
+        actionId,
+        runAgentArgs: agentLoopArgs,
+        step: currentStep,
+        runIds: [...(runIds ?? []), ...(runId ? [runId] : [])],
+      };
+      let result;
+      if (consumptionState.kind === "legacy_history") {
+        result = await activity(authType, activityArgs);
+      } else if (usesConsumptionPostingActivities) {
+        result = await activity(authType, {
+          ...activityArgs,
+          consumptionContext: consumptionState.context,
+          recordConsumptionInline: false,
+        });
+      } else {
+        result = await activity(authType, {
+          ...activityArgs,
+          consumptionContext: consumptionState.context,
+        });
+      }
+      if (usesConsumptionPostingActivities && consumptionContext !== null) {
+        await CancellationScope.nonCancellable(() =>
+          recordToolCompletionConsumptionActivity(authType, {
+            actionModelId: actionId,
+            agentMessageId: agentLoopArgs.agentMessageId,
+            consumptionContext,
+          }),
+        );
+      }
+      return result;
+    },
+  );
   const toolResults: ToolExecutionResult[] =
     await waitForAllPromises(toolActivityPromises);
 
   // Collect all deferred events from tool executions.
   const allDeferredEvents = toolResults.flatMap(
-    (result) => result.deferredEvents
+    (result) => result.deferredEvents,
   );
 
   // If there are deferred events, publish them after all tools have completed.
@@ -682,7 +753,7 @@ export async function runSandboxChildToolWorkflow({
       await CancellationScope.nonCancellable(() =>
         finalizeErroredSandboxChildToolActivity(authType, {
           actionModelId,
-        })
+        }),
       );
 
       // Preserve the recorded failed outcome when replaying histories created before terminal

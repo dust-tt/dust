@@ -25,6 +25,7 @@ const MODEL_CREDIT_POSTING_ITEM_TYPES: ReadonlySet<AgentMessageConsumptionItemTy
   new Set(["input", "output", "reasoning", "tool_call", "tool_result"]);
 
 export type ExecutionBill = {
+  billingMarkerItemId: ModelId;
   userMessageOrigin: UserMessageOrigin;
   eventCreditAmount: number;
   costCredits: number;
@@ -42,7 +43,7 @@ export async function billExecution(
     agentMessageId: string;
     rootAgentMessageId: ModelId;
     runKey: string;
-  }
+  },
 ): Promise<ExecutionBill | null> {
   const workspaceId = auth.getNonNullableWorkspace().sId;
 
@@ -53,7 +54,7 @@ export async function billExecution(
   if (!creditContext) {
     logger.warn(
       { workspaceId, agentMessageId, runKey },
-      "[Consumption] Agent message not found while billing an execution."
+      "[Consumption] Agent message not found while billing an execution.",
     );
     return null;
   }
@@ -67,7 +68,7 @@ export async function billExecution(
     const messageRows =
       await AgentMessageConsumptionItemResource.listConsumptionRowsByAgentMessage(
         auth,
-        { agentMessageModelId, lockForUpdate: true, transaction }
+        { agentMessageModelId, lockForUpdate: true, transaction },
       );
     const executionRows = messageRows.filter((row) => row.runKey === runKey);
     if (executionRows.length === 0) {
@@ -91,10 +92,10 @@ export async function billExecution(
         {
           runKey,
           transaction,
-        }
+        },
       );
     const existingRoundingRow = settledRows.find(
-      (row) => row.itemType === "rounding"
+      (row) => row.itemType === "rounding",
     );
     if (existingRoundingRow) {
       return executionBillFromSettledRows(auth, {
@@ -106,12 +107,12 @@ export async function billExecution(
     }
 
     const modelPostingRows = settledRows.filter((row) =>
-      MODEL_CREDIT_POSTING_ITEM_TYPES.has(row.itemType)
+      MODEL_CREDIT_POSTING_ITEM_TYPES.has(row.itemType),
     );
     if (modelPostingRows.length === 0 && !hasTrackableTool) {
       return null;
     }
-    const usages = await RunResource.listRunUsagesByModelIds(auth, {
+    const usages = await RunResource.listRunUsageGroupsByModelIds(auth, {
       runUsageModelIds: [
         ...new Set(modelPostingRows.map((row) => row.runUsageId)),
       ],
@@ -123,7 +124,7 @@ export async function billExecution(
           modelPostings: modelPostingRows.map((row) => {
             if (row.reconciledCreditAmountMicro === null) {
               throw new Error(
-                `Model consumption item ${row.id} has no reconciled amount`
+                `Model consumption item ${row.id} has no reconciled amount`,
               );
             }
             return {
@@ -149,10 +150,10 @@ export async function billExecution(
                 return [];
               }
               return amount === 0 ? [] : [[row.id, -amount] as const];
-            })
+            }),
           ),
           transaction,
-        }
+        },
       );
       settledRows =
         await AgentMessageConsumptionItemResource.listConsumptionRowsByRunKey(
@@ -160,12 +161,11 @@ export async function billExecution(
           {
             runKey,
             transaction,
-          }
+          },
         );
     }
 
     const toolCreditAmountMicro = sumCharges(settledRows);
-    assertWholeCredits(toolCreditAmountMicro, "tool charges");
     const eventCreditAmount =
       modelCreditAmount + toolCreditAmountMicro / MICRO_CREDITS_PER_CREDIT;
     const creditAmountMicro = sumReconciled(settledRows);
@@ -225,11 +225,11 @@ export async function billExecution(
         {
           agentMessageModelId,
           transaction,
-        }
+        },
       );
-    assertWholeCredits(costCreditAmountMicro, "settled message");
 
     return {
+      billingMarkerItemId: insertedRoundingRow.consumptionItemId,
       userMessageOrigin: triggeringUserMessageOrigin ?? "web",
       eventCreditAmount,
       costCredits: costCreditAmountMicro / MICRO_CREDITS_PER_CREDIT,
@@ -251,7 +251,7 @@ export async function billExecution(
       eventCreditAmount: bill.eventCreditAmount,
       costCredits: bill.costCredits,
     },
-    "[Consumption] Billed an execution."
+    "[Consumption] Billed an execution.",
   );
 
   return bill;
@@ -260,51 +260,45 @@ export async function billExecution(
 function sumReconciled(rows: AgentMessageConsumptionItemResource[]): number {
   return rows.reduce(
     (total, row) => total + (row.reconciledCreditAmountMicro ?? 0),
-    0
+    0,
   );
 }
 
 function sumCharges(rows: AgentMessageConsumptionItemResource[]): number {
   return rows.reduce(
     (total, row) => total + (row.directCreditAmountMicro ?? 0),
-    0
+    0,
   );
 }
 
 function lastRunUsageModelIdOf(
-  rows: AgentMessageConsumptionItemResource[]
+  rows: AgentMessageConsumptionItemResource[],
 ): ModelId | null {
   return rows.reduce<ModelId | null>(
     (last, row) =>
       last === null || row.runUsageId > last ? row.runUsageId : last,
-    null
+    null,
   );
 }
 
 function modelRunUsageModelIdsOf(
-  rows: AgentMessageConsumptionItemResource[]
+  rows: AgentMessageConsumptionItemResource[],
 ): ModelId[] {
   return [
     ...new Set(
-      rows.flatMap((row) => (row.itemType === "input" ? [row.runUsageId] : []))
+      rows.flatMap((row) => (row.itemType === "input" ? [row.runUsageId] : [])),
     ),
   ];
 }
 
 function toolActionModelIdsOf(
-  rows: AgentMessageConsumptionItemResource[]
+  rows: AgentMessageConsumptionItemResource[],
 ): ModelId[] {
   return [
     ...new Set(
-      rows.flatMap((row) => (row.isToolItem() ? [row.agentMCPActionId] : []))
+      rows.flatMap((row) => (row.isToolItem() ? [row.agentMCPActionId] : [])),
     ),
   ];
-}
-
-function assertWholeCredits(amountMicro: number, label: string): void {
-  if (amountMicro % MICRO_CREDITS_PER_CREDIT !== 0) {
-    throw new Error(`Consumption ${label} must be whole credits`);
-  }
 }
 
 async function executionBillFromSettledRows(
@@ -321,18 +315,21 @@ async function executionBillFromSettledRows(
       typeof AgentMessageConsumptionItemResource.listConsumptionRowsByRunKey
     >[1]["transaction"];
     userMessageOrigin: UserMessageOrigin;
-  }
+  },
 ): Promise<ExecutionBill> {
+  const billingMarker = settledRows.find((row) => row.itemType === "rounding");
+  if (!billingMarker) {
+    throw new Error("Settled execution has no billing marker");
+  }
   const eventCreditAmountMicro = sumReconciled(settledRows);
-  assertWholeCredits(eventCreditAmountMicro, "settled execution");
   const costCreditAmountMicro =
     await AgentMessageConsumptionItemResource.sumConsumptionBilledCreditAmountMicro(
       auth,
-      { agentMessageModelId, transaction }
+      { agentMessageModelId, transaction },
     );
-  assertWholeCredits(costCreditAmountMicro, "settled message");
 
   return {
+    billingMarkerItemId: billingMarker.id,
     userMessageOrigin,
     eventCreditAmount: eventCreditAmountMicro / MICRO_CREDITS_PER_CREDIT,
     costCredits: costCreditAmountMicro / MICRO_CREDITS_PER_CREDIT,
@@ -357,7 +354,7 @@ async function settleToolCharges(
     transaction: Parameters<
       typeof AgentMessageConsumptionItemResource.listConsumptionRowsByRunKey
     >[1]["transaction"];
-  }
+  },
 ): Promise<{ adjustmentItemIds: ModelId[]; hasTrackableTool: boolean }> {
   const directToolRowByActionModelId = new Map(
     messageRows.flatMap((row) =>
@@ -365,11 +362,11 @@ async function settleToolCharges(
       row.agentMCPActionId !== null &&
       row.directCreditAmountMicro !== null
         ? [[row.agentMCPActionId, row] as const]
-        : []
-    )
+        : [],
+    ),
   );
   const chargedActions = actions.filter((action) =>
-    directToolRowByActionModelId.has(action.id)
+    directToolRowByActionModelId.has(action.id),
   );
   if (chargedActions.length === 0) {
     return { adjustmentItemIds: [], hasTrackableTool: false };
@@ -398,7 +395,7 @@ async function settleToolCharges(
     }
     hasTrackableTool ||= line.billingDisposition !== "unbillable_status";
     const finalChargeAmountMicro = roundCreditsToMicroCredits(
-      line.billedCredits
+      line.billedCredits,
     );
     const provisionalChargeAmountMicro = row.directCreditAmountMicro ?? 0;
     adjustments.push({
@@ -417,7 +414,7 @@ async function settleToolCharges(
       {
         adjustments,
         transaction,
-      }
+      },
     );
   return {
     adjustmentItemIds: adjustmentRows.map((row) => row.consumptionItemId),
