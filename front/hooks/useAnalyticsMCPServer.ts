@@ -1,11 +1,12 @@
 import type { AnalyticsViewInput } from "@app/components/workspace/analytics/analyticsView";
-import { registerGetAnalyticsViewTool } from "@app/components/workspace/analytics/tools/getAnalyticsView";
+import {
+  ANALYTICS_PANEL_SERVER_NAME,
+  registerGetAnalyticsViewTool,
+} from "@app/components/workspace/analytics/tools/getAnalyticsView";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
 import logger from "@app/logger/logger";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-
-const SERVER_NAME = "analytics-panel-client";
 
 export interface AnalyticsMCPServerHandle {
   serverId: string | undefined;
@@ -50,22 +51,23 @@ export function useAnalyticsMCPServer({
     const closeServer = () => {
       if (server) {
         void server.close();
-        server = null;
       }
       if (transport) {
         void transport.close();
-        transport = null;
       }
     };
 
     const initializeMCPServer = async () => {
       try {
-        server = new McpServer({ name: SERVER_NAME, version: "1.0.0" });
+        server = new McpServer({
+          name: ANALYTICS_PANEL_SERVER_NAME,
+          version: "1.0.0",
+        });
         registerGetAnalyticsViewTool(server, () => viewRef.current);
 
         transport = new BrowserMCPTransport(
           workspaceId,
-          SERVER_NAME,
+          ANALYTICS_PANEL_SERVER_NAME,
           (newServerId) => {
             if (!cancelled) {
               setServerId(newServerId);

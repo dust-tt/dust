@@ -3,6 +3,7 @@ import { describeAnalyticsView } from "@app/components/workspace/analytics/analy
 import { usageFilterToIds } from "@app/components/workspace/analytics/usageFilter";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
+export const ANALYTICS_PANEL_SERVER_NAME = "analytics-panel-client";
 export const GET_ANALYTICS_VIEW_TOOL_NAME = "get_analytics_view";
 
 const DESCRIPTION = `Read the period and filters the user currently has applied on the workspace \
@@ -69,6 +70,7 @@ export function registerGetAnalyticsViewTool(
       content: [
         {
           type: "text" as const,
+          // TODO(achilleburah): move this to a markdown rather than JSON to remove unecessary tokens
           text: JSON.stringify(analyticsViewToolPayload(getView()), null, 2),
         },
       ],

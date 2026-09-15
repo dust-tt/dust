@@ -43,7 +43,7 @@ function AnalyticsConversationPanelHeader({
 interface AnalyticsConversationPanelBodyProps {
   owner: WorkspaceType;
   user: UserType;
-  clientSideMCPServerIds: string[];
+  analyticsClientSideMCPServerId: string | undefined;
   conversation: ConversationType | null;
   isMCPServerRegistering: boolean;
   isOpen: boolean;
@@ -56,7 +56,7 @@ interface AnalyticsConversationPanelBodyProps {
 function AnalyticsConversationPanelBody({
   owner,
   user,
-  clientSideMCPServerIds,
+  analyticsClientSideMCPServerId,
   conversation,
   isMCPServerRegistering,
   isOpen,
@@ -80,6 +80,11 @@ function AnalyticsConversationPanelBody({
       disableReactions: true,
     }),
     [resetConversation]
+  );
+  const clientSideMCPServerIds = useMemo(
+    () =>
+      analyticsClientSideMCPServerId ? [analyticsClientSideMCPServerId] : [],
+    [analyticsClientSideMCPServerId]
   );
 
   if (creationFailed) {
@@ -168,18 +173,14 @@ export function AnalyticsConversationPanel({
     startConversation,
     resetConversation,
   } = useAnalyticsConversation({ owner, user, view });
-  const [mcpServerEnabled, setMcpServerEnabled] = useState(false);
+  const [mcpServerEnabled, setMCPServerEnabled] = useState(false);
 
-  const { serverId: analyticsMCPServerId, status: mcpServerStatus } =
+  const { serverId: analyticsClientSideMCPServerId, status: mcpServerStatus } =
     useAnalyticsMCPServer({
       enabled: mcpServerEnabled,
       view,
       workspaceId: owner.sId,
     });
-  const clientSideMCPServerIds = useMemo(
-    () => (analyticsMCPServerId ? [analyticsMCPServerId] : []),
-    [analyticsMCPServerId]
-  );
   // `ResizableSidePanel` keeps this panel mounted while closed, so a mount effect would bootstrap
   // a conversation on every Analytics page load. Wait for filter resolution too: the opening
   // message names the filters and is never regenerated, so starting early would name raw ids.
@@ -188,7 +189,7 @@ export function AnalyticsConversationPanel({
       return;
     }
 
-    setMcpServerEnabled(true);
+    setMCPServerEnabled(true);
 
     if (!isFacetsLoading) {
       void startConversation();
@@ -220,7 +221,9 @@ export function AnalyticsConversationPanel({
                 <AnalyticsConversationPanelBody
                   owner={owner}
                   user={user}
-                  clientSideMCPServerIds={clientSideMCPServerIds}
+                  analyticsClientSideMCPServerId={
+                    analyticsClientSideMCPServerId
+                  }
                   conversation={conversation}
                   isMCPServerRegistering={mcpServerStatus === "registering"}
                   isOpen={isOpen}
