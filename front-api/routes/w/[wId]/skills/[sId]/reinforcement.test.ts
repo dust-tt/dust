@@ -250,7 +250,7 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
     });
 
     // First set a custom cap.
-    await skill.updateSelfImprovementCostsCap(10_000_000);
+    await skill.updateSelfImprovementCostsCap(requestUserAuth, 10_000_000);
 
     const response = await patch(workspace, skill.sId, {
       selfImprovementCostsCapMicroUsd: null,
@@ -283,7 +283,7 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
     });
 
     // First set a custom cap.
-    await skill.updateSelfImprovementCostsCapAwuCredits(1_000);
+    await skill.updateSelfImprovementCostsCapAwuCredits(requestUserAuth, 1_000);
 
     const response = await patch(workspace, skill.sId, {
       selfImprovementCostsCapAwuCredits: null,
@@ -360,13 +360,13 @@ describe("PATCH /api/w/:wId/skills/:sId/reinforcement", () => {
   });
 
   it("returns 403 when a non-admin tries to flip reinforcement on a locked skill", async () => {
-    const { workspace, skill } = await setupTest({
+    const { workspace, skill, requestUserAuth } = await setupTest({
       skillOwnerRole: "user",
       requestUserRole: "user",
     });
 
     // Lock the skill via direct resource update — admin-only via the API.
-    await skill.updateSelfImprovementLock(true);
+    await skill.updateSelfImprovementLock(requestUserAuth, true);
 
     const response = await patch(workspace, skill.sId, {
       reinforcement: "off",
