@@ -9,7 +9,12 @@
 
 import type { FrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { buildFrameBundle } from "@app/lib/api/viz/build_frame_bundle";
-import { describe, expect, it } from "vitest";
+import { mockFrameRuntimeTypes } from "@app/tests/utils/frame_runtime_types";
+import { beforeEach, describe, expect, it } from "vitest";
+
+beforeEach(() => {
+  mockFrameRuntimeTypes();
+});
 
 function inMemoryReader(files: Record<string, string>): FrameSourceReader {
   return {
@@ -53,6 +58,29 @@ async function build(files: Record<string, string>, entry = "dashboard.tsx") {
 }
 
 describe("buildFrameBundle", () => {
+  it("rejects fake React exports with their source location", async () => {
+    const result = await build({
+      "dashboard.tsx":
+        'import { fakeThing } from "react";\nexport default () => <div>{fakeThing()}</div>',
+    });
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.message).toContain(
+        "dashboard.tsx: Line 1, Column 10: error TS2305"
+      );
+      expect(result.error.message).toContain("fakeThing");
+    }
+  });
+
+  it("checks type-only dependencies and follows the bundler's extension precedence", async () => {
+    const result = await build({
+      "dashboard.tsx":
+        'import type { Value } from "./value"; const value: Value = "hello"; export default () => <div>{value}</div>',
+      "value.tsx": "export type Value = string",
+      "value.ts": "export type Value = number",
+    });
+    expect(result.isOk()).toBe(true);
+  });
   it("stamps source-location tags carrying each element's origin file", async () => {
     const result = await build(MULTI_FILE_FRAME);
     expect(result.isOk()).toBe(true);

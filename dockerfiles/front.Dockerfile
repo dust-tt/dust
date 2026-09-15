@@ -108,6 +108,10 @@ COPY --from=base-deps /app/front/dist/migrate.js ./dist/migrate.js
 # Copy front's package.json and local node_modules (non-hoisted deps)
 COPY --from=base-deps /app/front/package.json ./package.json
 COPY --from=base-deps /app/front/node_modules ./node_modules
+# The Frame checker runs in a Node worker from the deployed source, using native type stripping.
+COPY --from=base-deps /app/front/lib/api/viz/frame_type_checker.ts ./lib/api/viz/frame_type_checker.ts
+COPY --from=base-deps /app/front/lib/api/viz/frame_type_checker_types.ts ./lib/api/viz/frame_type_checker_types.ts
+COPY --from=base-deps /app/front/lib/api/viz/frame_type_checker_worker.ts ./lib/api/viz/frame_type_checker_worker.ts
 # Copy scripts directory
 COPY --from=base-deps /app/front/scripts ./scripts
 # Copy migration SQL files so the helm pre-deploy hook can run migration:check commands.

@@ -3,15 +3,9 @@
 import { EditableFrame } from "@viz/app/components/EditableFrame";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { VizContext } from "@viz/app/components/VizContext";
-import { SandboxFunctionCallError } from "@viz/app/lib/data-apis/sandbox-function-call-error";
-import type { FrameRuntimeImportName } from "@viz/app/lib/frame-runtime-imports";
+import { createFrameRuntimeImports } from "@viz/app/lib/frame-runtime-scope";
 import { extractFileRefs } from "@viz/app/lib/parseFileRefs";
-import {
-  PodFunctionHooksProvider,
-  usePodFunction,
-  usePodFunctionMutation,
-  useUserIdentity,
-} from "@viz/app/lib/pod-function-hooks";
+import { PodFunctionHooksProvider } from "@viz/app/lib/pod-function-hooks";
 import { transformEditableText } from "@viz/app/lib/transformEditableText";
 import type {
   VisualizationAPI,
@@ -36,8 +30,6 @@ import * as shadcnAll from "@viz/components/ui";
 import * as utilsAll from "@viz/lib/utils";
 import { toBlob, toSvg } from "html-to-image";
 import * as lucideAll from "lucide-react";
-import * as motionAll from "motion/react";
-import * as papaparseAll from "papaparse";
 import * as reactAll from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useResizeDetector } from "react-resize-detector";
@@ -469,34 +461,14 @@ export function VisualizationWrapper({
           ? transformEditableText(fetchedCode)
           : fetchedCode;
 
-        const baseImports = {
-          papaparse: papaparseAll,
-          react: reactAll,
-          recharts: rechartsAll,
-          shadcn: shadcnAll,
-          // Legacy support for utils from previous versions.
-          utils: utilsAll,
-          // New location for utils.
-          "@viz/lib/utils": utilsAll,
-          "lucide-react": lucideAll,
-          "motion/react": motionAll,
-          "@dust/slideshow/v1": dustSlideshowV1,
-          "@dust/slideshow/v2": dustSlideshowV2,
-          "@dust/react-hooks": {
-            SandboxFunctionCallError,
-            callFunction: (functionId: string, input?: unknown) =>
-              api.data.callFunction(functionId, input),
-            captureScreenshot: (...args: [string?]) =>
-              handleScreenshotDownloadRef.current(...args),
-            triggerUserFileDownload: (
-              ...args: Parameters<typeof memoizedDownloadFile>
-            ) => memoizedDownloadFileRef.current(...args),
-            useFile: (fileId: string) => useFile(fileId, api.data),
-            usePodFunction,
-            usePodFunctionMutation,
-            useUserIdentity,
-          },
-        } satisfies Record<FrameRuntimeImportName, unknown>;
+        const baseImports = createFrameRuntimeImports({
+          dataAPI: api.data,
+          captureScreenshot: (...args) =>
+            handleScreenshotDownloadRef.current(...args),
+          triggerUserFileDownload: (...args) =>
+            memoizedDownloadFileRef.current(...args),
+          useFile: (fileId) => useFile(fileId, api.data),
+        });
 
         const refs = extractFileRefs(codeToUse);
         const cache = new Map<string, Promise<unknown>>();

@@ -12,6 +12,9 @@ RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm ci
 
 WORKDIR /app/viz
 COPY /viz .
+# Shared checker code is bundled into the optional standalone validation command.
+COPY /front/lib/api/viz/frame_type_checker.ts /app/front/lib/api/viz/frame_type_checker.ts
+COPY /front/lib/api/viz/frame_type_checker_types.ts /app/front/lib/api/viz/frame_type_checker_types.ts
 
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG

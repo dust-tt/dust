@@ -52,3 +52,7 @@ thoughts/*
 # Sandbox provider build scratch dirs
 /front/lib/api/sandbox/providers/sandbox-build-*/
 
+
+# Generated from the viz runtime during each build.
+/viz/public/frame-validator.json
+/viz/public/frame-runtime-types.json

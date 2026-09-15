@@ -2,11 +2,16 @@
 // TextEncoder invariant.
 // @vitest-environment node
 
+import {
+  createClientExecutableFile,
+  editClientExecutableFile,
+} from "@app/lib/api/files/client_executable";
 import type { FrameSourceReader } from "@app/lib/api/viz/build_frame_bundle";
 import { publishFrame } from "@app/lib/api/viz/publish_frame";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { mockFrameRuntimeTypes } from "@app/tests/utils/frame_runtime_types";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
@@ -30,6 +35,7 @@ vi.mock("@app/lib/lock", async (importActual) => {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  mockFrameRuntimeTypes();
   fileStorageMock.reset();
 });
 
@@ -106,6 +112,41 @@ async function createFrameFile(
 }
 
 describe("publishFrame", () => {
+  it("returns the same React diagnostics for legacy create, edit and publish", async () => {
+    const { authenticator: auth } = await createResourceTest({});
+    const file = await createFrameFile(auth);
+    const source =
+      'import { fakeThing } from "react";\nexport default () => <div>{fakeThing()}</div>';
+    const created = await createClientExecutableFile(auth, {
+      content: source,
+      conversationId: "unused",
+      fileName: "Dashboard.tsx",
+      mimeType: frameContentType,
+    });
+    fileStorageMock.setFileContent(
+      () => "export default () => <div>Hello</div>"
+    );
+    const edited = await editClientExecutableFile(auth, {
+      fileId: file.sId,
+      oldString: "export default () => <div>Hello</div>",
+      newString: source,
+    });
+    const published = await publishFrame(auth, {
+      file,
+      entryRelPath: "Dashboard.tsx",
+      reader: inMemoryReader({ "Dashboard.tsx": source }),
+      rootScopedPath: ROOT,
+    });
+    for (const result of [created, edited, published]) {
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain(
+          "Dashboard.tsx: Line 1, Column 10: error TS2305"
+        );
+      }
+    }
+    expect(file.getRenderableVersion()).toBe("original");
+  });
   it("builds the source tree into the processed bundle and flips the rendered version", async () => {
     const { authenticator: auth } = await createResourceTest({});
     const file = await createFrameFile(auth);

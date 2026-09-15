@@ -10,6 +10,7 @@ import { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { FileFactory } from "@app/tests/utils/FileFactory";
+import { mockFrameRuntimeTypes } from "@app/tests/utils/frame_runtime_types";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
@@ -94,6 +95,7 @@ async function setup({
 }
 
 beforeEach(() => {
+  mockFrameRuntimeTypes();
   fileStorageMock.reset();
 });
 
