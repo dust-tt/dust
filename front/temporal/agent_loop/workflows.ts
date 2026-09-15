@@ -5,8 +5,6 @@ import {
 } from "@app/lib/actions/constants";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
-import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import type * as compactionActivities from "@app/temporal/agent_loop/activities/compaction";
 import type * as creditCheckActivities from "@app/temporal/agent_loop/activities/credit_check";
 import type * as ensureTitleActivities from "@app/temporal/agent_loop/activities/ensure_conversation_title";
@@ -296,7 +294,7 @@ export async function agentLoopWorkflow({
 
   // Credit spend checkpoint pause: this message's own spend reached the threshold at which we
   // ask the user whether to continue.
-  let creditSpendCheckpointPause: { thresholdAwuCredits: number } | null = null;
+  let creditSpendCheckpointPaused = false;
 
   // Cached per execution: once the check says to skip, nothing within this execution can bring
   // it back.
@@ -333,7 +331,7 @@ export async function agentLoopWorkflow({
           runId,
           shouldContinue,
           retryWithoutTools,
-          preStepTotalCostMicroUsd,
+          preStepReachedCreditSpendCheckpoint,
         } = await executeStepIteration({
           authType,
           agentLoopArgs: {
@@ -399,18 +397,13 @@ export async function agentLoopWorkflow({
           break;
         }
 
-        // Cheap pre-filter on the spend measured before this step ran. The step itself may
-        // have crossed the threshold, in which case the pause lands one step late: accepted to
-        // avoid scheduling the activity on every step of every message.
-        const wasBelowThresholdBeforeStep =
-          preStepTotalCostMicroUsd !== undefined &&
-          awuFromMicroUsd(preStepTotalCostMicroUsd) <
-            CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS;
-
+        // The threshold is decided on the spend measured before this step ran. The step itself
+        // may have crossed it, in which case the pause lands one step late: accepted to avoid
+        // scheduling the activity on every step of every message.
         if (
           patched("credit-spend-checkpoint-gate") &&
           !skipCreditSpendCheckpointChecks &&
-          !wasBelowThresholdBeforeStep
+          preStepReachedCreditSpendCheckpoint
         ) {
           try {
             const checkpointResult = await checkCreditSpendCheckpointActivity(
@@ -423,14 +416,11 @@ export async function agentLoopWorkflow({
               }
             );
             if (checkpointResult.crossed) {
-              creditSpendCheckpointPause = {
-                thresholdAwuCredits: checkpointResult.thresholdAwuCredits,
-              };
+              creditSpendCheckpointPaused = true;
               break;
             }
-            if (checkpointResult.skipRemainingChecks) {
-              skipCreditSpendCheckpointChecks = true;
-            }
+            // Not crossed once the threshold is reached means this message can never pause.
+            skipCreditSpendCheckpointChecks = true;
           } catch (err) {
             if (!(err instanceof ActivityFailure) || isCancellation(err)) {
               throw err;
@@ -475,11 +465,10 @@ export async function agentLoopWorkflow({
             authType,
             argsWithRunIds
           );
-        } else if (creditSpendCheckpointPause) {
+        } else if (creditSpendCheckpointPaused) {
           await finalizeCreditSpendCheckpointPausedAgentLoopActivity(
             authType,
-            argsWithRunIds,
-            creditSpendCheckpointPause
+            argsWithRunIds
           );
         } else {
           await finalizeSuccessfulAgentLoopActivity(authType, argsWithRunIds);
@@ -556,9 +545,8 @@ async function executeStepIteration({
   runId: string | null;
   shouldContinue: boolean;
   retryWithoutTools?: boolean;
-  // Passed through so the caller can cheaply decide whether the credit spend checkpoint activity
-  // is even worth scheduling.
-  preStepTotalCostMicroUsd?: number;
+  // Passed through so the caller schedules the credit spend checkpoint activity only when needed.
+  preStepReachedCreditSpendCheckpoint?: boolean;
 }> {
   deprecatePatch("wait-for-model-activity-before-finalization");
 
@@ -583,7 +571,7 @@ async function executeStepIteration({
     runId,
     actionBlobs,
     retryWithoutTools = false,
-    preStepTotalCostMicroUsd,
+    preStepReachedCreditSpendCheckpoint,
   } = result;
 
   // Generation completed or the loop unpaused and no new tools were generated.
@@ -596,7 +584,7 @@ async function executeStepIteration({
       // disabled to force a final answer.
       shouldContinue: runId === null || retryWithoutTools,
       retryWithoutTools,
-      preStepTotalCostMicroUsd,
+      preStepReachedCreditSpendCheckpoint,
     };
   }
 
@@ -607,7 +595,7 @@ async function executeStepIteration({
     return {
       runId,
       shouldContinue: false,
-      preStepTotalCostMicroUsd,
+      preStepReachedCreditSpendCheckpoint,
     };
   }
 
@@ -646,7 +634,7 @@ async function executeStepIteration({
       return {
         runId,
         shouldContinue: false,
-        preStepTotalCostMicroUsd,
+        preStepReachedCreditSpendCheckpoint,
       };
     }
   }
@@ -654,7 +642,7 @@ async function executeStepIteration({
   return {
     runId,
     shouldContinue: !toolResults.some((result) => result.shouldPauseAgentLoop),
-    preStepTotalCostMicroUsd,
+    preStepReachedCreditSpendCheckpoint,
   };
 }
 

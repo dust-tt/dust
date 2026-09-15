@@ -6,6 +6,7 @@ import {
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
+import { awuFromMicroUsd } from "@app/lib/metronome/constants";
 import type { UserMessageOrigin } from "@app/types/assistant/conversation";
 import { isCreditPricedPlan } from "@app/types/plan";
 
@@ -55,46 +56,33 @@ export async function checkPoolCreditGate(
   return DO_NOT_STOP;
 }
 
-export type CreditSpendCheckpointCheckResult =
-  | { crossed: false; exempt: boolean }
-  | { crossed: true; thresholdAwuCredits: number };
-
-const NOT_CROSSED: CreditSpendCheckpointCheckResult = {
-  crossed: false,
-  exempt: false,
-};
-const EXEMPT: CreditSpendCheckpointCheckResult = {
-  crossed: false,
-  exempt: true,
-};
-
 /**
  * @cc [owner:avervaet,label:product] checkpoint-exempts-unattended-usage
- * The gate MUST return exempt when there is no user on the auth or when the message origin is
+ * The check MUST return exempt when there is no user on the auth or when the message origin is
  * programmatic usage (same rule as the pool gate). Nobody is on the web app to answer the pause
  * in those cases, so pausing would only hang the caller.
  */
-export function checkCreditSpendCheckpointGate(
+export function isCreditSpendCheckpointExempt(
   auth: Authenticator,
-  {
-    consumedAwuCredits,
-    userMessageOrigin,
-  }: {
-    consumedAwuCredits: number;
-    userMessageOrigin: UserMessageOrigin | null;
-  }
-): CreditSpendCheckpointCheckResult {
-  if (
+  { userMessageOrigin }: { userMessageOrigin: UserMessageOrigin | null }
+): boolean {
+  return (
     !auth.user() ||
-    (userMessageOrigin && isProgrammaticUsage(auth, { userMessageOrigin }))
-  ) {
-    return EXEMPT;
-  }
+    (!!userMessageOrigin && isProgrammaticUsage(auth, { userMessageOrigin }))
+  );
+}
 
-  return consumedAwuCredits >= CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS
-    ? {
-        crossed: true,
-        thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
-      }
-    : NOT_CROSSED;
+/**
+ * Whether a message tree's cumulative spend has reached the checkpoint. Keeps the threshold and
+ * its AWU rounding in one place, outside deterministic workflow code.
+ */
+export function hasReachedCreditSpendCheckpoint({
+  totalCostMicroUsd,
+}: {
+  totalCostMicroUsd: number;
+}): boolean {
+  return (
+    awuFromMicroUsd(totalCostMicroUsd) >=
+    CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS
+  );
 }

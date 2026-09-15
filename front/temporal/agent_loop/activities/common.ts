@@ -7,6 +7,7 @@ import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types"
 import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
+import { CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS } from "@app/lib/constants/credits";
 import {
   AgentMessageContentParser,
   getDelimitersConfiguration,
@@ -951,8 +952,7 @@ export async function finalizeCreditStop(
  */
 export async function finalizeCreditSpendCheckpointPause(
   authType: AuthenticatorType,
-  agentLoopArgs: AgentLoopArgs,
-  { thresholdAwuCredits }: { thresholdAwuCredits: number }
+  agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
   const runAgentDataRes = await getAgentLoopRuntimeData(
     authType,
@@ -985,7 +985,7 @@ export async function finalizeCreditSpendCheckpointPause(
     {
       agentMessageId: agentMessage.sId,
       conversationId: conversation.sId,
-      thresholdAwuCredits,
+      thresholdAwuCredits: CREDIT_SPEND_CHECKPOINT_THRESHOLD_AWU_CREDITS,
     },
     "[CreditSpendCheckpoint] agent loop paused at credit spend checkpoint"
   );
