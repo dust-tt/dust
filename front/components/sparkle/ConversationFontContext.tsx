@@ -102,37 +102,40 @@ export function ConversationFontProvider({
   const [conversationFont, setConversationFontState] =
     useState<ConversationFont>(() => getStoredConversationFont());
 
-  // The server value wins over the local mirror once it has loaded, so a
-  // choice made on another device shows up here.
+  // The server value wins over the local mirror whenever it changes (initial
+  // load, or a choice made on another device). Adopting it during render with
+  // the previous-value pattern, rather than in an effect, means a local change
+  // never gets clobbered by a stale server value while its save is in flight.
   const { metadata, mutateMetadata } = useUserMetadata(
     CONVERSATION_FONT_METADATA_KEY
   );
   const serverFont = metadata?.value;
-
-  useEffect(() => {
-    if (!isConversationFont(serverFont) || serverFont === conversationFont) {
-      return;
+  // Starts undefined (not `serverFont`) so a value already present on the
+  // first render, e.g. from the SWR cache, is adopted as well.
+  const [prevServerFont, setPrevServerFont] = useState<string | undefined>(
+    undefined
+  );
+  if (serverFont !== prevServerFont) {
+    setPrevServerFont(serverFont);
+    if (isConversationFont(serverFont)) {
+      setConversationFontState(serverFont);
     }
-    setConversationFontState(serverFont);
+  }
+
+  // Sync the external systems (the <html> attribute and the localStorage
+  // mirror read by the pre-hydration script) from the current value.
+  useEffect(() => {
+    applyConversationFont(conversationFont);
     try {
-      localStorage.setItem(STORAGE_KEY, serverFont);
+      localStorage.setItem(STORAGE_KEY, conversationFont);
     } catch {
       // Storage may be unavailable (private mode); the attribute still applies.
     }
-  }, [serverFont, conversationFont]);
-
-  useEffect(() => {
-    applyConversationFont(conversationFont);
   }, [conversationFont]);
 
   const setConversationFont = useCallback(
     async (font: ConversationFont) => {
       setConversationFontState(font);
-      try {
-        localStorage.setItem(STORAGE_KEY, font);
-      } catch {
-        // See above.
-      }
 
       const response = await clientFetch(
         `/api/user/metadata/${CONVERSATION_FONT_METADATA_KEY}`,
