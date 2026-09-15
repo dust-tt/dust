@@ -126,7 +126,14 @@ import {
   TabsTrigger,
 } from "@dust-tt/sparkle";
 import type { PaginationState, SortingState } from "@tanstack/react-table";
-import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+} from "react";
 
 // Build a minimal member from an upgrade request to feed the reused seat / spend
 // limit modals.
@@ -428,23 +435,30 @@ export function UsagePage() {
     []
   );
 
-  const [pendingEditLimitRequest, setPendingEditLimitRequest] =
-    useState<MembershipUpgradeRequestType | null>(null);
+  const [pendingEditLimit, dispatchPendingEditLimit] = useReducer(
+    (
+      _state: MembershipUpgradeRequestType | null,
+      action:
+        | { type: "start"; request: MembershipUpgradeRequestType }
+        | { type: "settled" }
+    ) => (action.type === "start" ? action.request : null),
+    null
+  );
   const {
     membersUsage: pendingEditLimitMembersUsage,
     isMembersUsageLoading: isPendingEditLimitMemberLoading,
   } = useMembersUsage({
     workspaceId: owner.sId,
-    searchTerm: pendingEditLimitRequest?.requester.email ?? "",
+    searchTerm: pendingEditLimit?.requester.email ?? "",
     pageIndex: 0,
     pageSize: 1,
-    disabled: !pendingEditLimitRequest,
+    disabled: !pendingEditLimit,
   });
   useEffect(() => {
-    if (!pendingEditLimitRequest || isPendingEditLimitMemberLoading) {
+    if (!pendingEditLimit || isPendingEditLimitMemberLoading) {
       return;
     }
-    const request = pendingEditLimitRequest;
+    const request = pendingEditLimit;
     const fetchedMember = pendingEditLimitMembersUsage.find(
       (m) => m.sId === request.requester.sId
     );
@@ -453,9 +467,9 @@ export function UsagePage() {
       fetchedMember ?? memberFromUpgradeRequest(request)
     );
     setRequestResolving(request.sId, false);
-    setPendingEditLimitRequest(null);
+    dispatchPendingEditLimit({ type: "settled" });
   }, [
-    pendingEditLimitRequest,
+    pendingEditLimit,
     isPendingEditLimitMemberLoading,
     pendingEditLimitMembersUsage,
     setRequestResolving,
@@ -463,7 +477,7 @@ export function UsagePage() {
   const handleEditLimitRequest = useCallback(
     (request: MembershipUpgradeRequestType) => {
       setRequestResolving(request.sId, true);
-      setPendingEditLimitRequest(request);
+      dispatchPendingEditLimit({ type: "start", request });
     },
     [setRequestResolving]
   );
