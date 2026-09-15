@@ -100,7 +100,7 @@ async function createDocument(
     availability: "workspace_users",
     requestedSpaceIds: podModelId === undefined ? [] : [podModelId],
   });
-  const document = await SkillResource.fetchSearchDocument(auth, skill.sId);
+  const [document] = await SkillFactory.createSearchDocuments(auth, [skill]);
   assert(document);
   return document;
 }
@@ -192,10 +192,9 @@ describe("searchSkills pagination", () => {
       status: "archived",
       availability: "workspace_users",
     });
-    const archived = await SkillResource.fetchSearchDocument(
-      auth,
-      archivedSkill.sId
-    );
+    const [archived] = await SkillFactory.createSearchDocuments(auth, [
+      archivedSkill,
+    ]);
     assert(archived);
     // ES intentionally returns both statuses; the live guard must enforce the selection too.
     serveDocuments([active, archived]);
@@ -246,9 +245,9 @@ describe("searchSkills pagination", () => {
       name: "BBB archived",
       status: "archived",
     });
-    const documents = await SkillResource.fetchSearchDocuments(auth, [
-      first.sId,
-      second.sId,
+    const documents = await SkillFactory.createSearchDocuments(auth, [
+      first,
+      second,
     ]);
     serveDocuments(documents);
     const options = {
@@ -559,7 +558,7 @@ describe("searchSkills pagination", () => {
       }
     }
     const skillIds = skills.map((skill) => skill.sId);
-    const documents = await SkillResource.fetchSearchDocuments(auth, skillIds);
+    const documents = await SkillFactory.createSearchDocuments(auth, skills);
     serveDocuments(documents);
     const result = await searchSkills(auth, {
       searchTerm: "",
@@ -679,10 +678,9 @@ describe("searchSkills pagination", () => {
     const archivedSkill = await SkillFactory.create(auth, {
       name: "001 archived",
     });
-    const archived = await SkillResource.fetchSearchDocument(
-      auth,
-      archivedSkill.sId
-    );
+    const [archived] = await SkillFactory.createSearchDocuments(auth, [
+      archivedSkill,
+    ]);
     assert(archived);
     await archivedSkill.archive(auth);
     const other = await createPrivateApiMockRequest({ role: "admin" });
