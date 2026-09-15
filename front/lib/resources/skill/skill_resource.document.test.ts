@@ -45,7 +45,6 @@ describe("SkillResource.toSearchDocument", () => {
     const editorIds = [user.id, user.id];
     const document = skill.toSearchDocument(workspace, {
       editorIds,
-      editorGroupIds: [3, 2, 3],
       activeUsersCount: 12,
       isDefault: false,
     });
@@ -60,7 +59,6 @@ describe("SkillResource.toSearchDocument", () => {
       icon: skill.icon,
       last_edited_by_user_id: user.id,
       editor_ids: [user.id],
-      editor_group_ids: [2, 3],
       requested_space_ids: [globalSpace.sId, pod.sId],
       mcp_server_view_ids: [tool.sId],
       active_users_count: 12,
@@ -77,7 +75,6 @@ describe("SkillResource.toSearchDocument", () => {
     expect(
       skill.toSearchDocument(workspace, {
         editorIds: [],
-        editorGroupIds: [],
         activeUsersCount: 0,
         isDefault: true,
       }).is_default
@@ -92,7 +89,6 @@ describe("SkillResource.toSearchDocument", () => {
     expect(() =>
       skill.toSearchDocument(otherWorkspace, {
         editorIds: [],
-        editorGroupIds: [],
         activeUsersCount: 0,
         isDefault: false,
       })

@@ -4480,12 +4480,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     workspace: LightWorkspaceType,
     {
       editorIds,
-      editorGroupIds,
       activeUsersCount,
       isDefault,
     }: {
       editorIds: readonly ModelId[];
-      editorGroupIds: readonly ModelId[];
       activeUsersCount: number;
       isDefault: boolean;
     }
@@ -4504,7 +4502,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       icon: this.icon,
       last_edited_by_user_id: this.editedBy,
       editor_ids: uniq(editorIds).sort((a, b) => a - b),
-      editor_group_ids: uniq(editorGroupIds).sort((a, b) => a - b),
       requested_space_ids: this.requestedSpaceIds.map((id) =>
         SpaceResource.modelIdToSId({ id, workspaceId: workspace.id })
       ),

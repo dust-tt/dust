@@ -18,7 +18,6 @@ export interface SkillSearchDocument extends ElasticsearchBaseDocument {
   icon: string | null;
   last_edited_by_user_id: number | null;
   editor_ids: ModelId[];
-  editor_group_ids: ModelId[];
   requested_space_ids: string[];
   mcp_server_view_ids: string[];
   active_users_count: number;
