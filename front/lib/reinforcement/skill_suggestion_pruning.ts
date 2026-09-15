@@ -12,6 +12,7 @@ import type {
   SkillInstructionEditItemType,
   SkillSuggestionSource,
 } from "@app/types/suggestions/skill_suggestion";
+import { getSkillEditSuggestion } from "@app/types/suggestions/skill_suggestion";
 
 // Reviewable suggestions: pruning applies to every source a user may accept or reject, whether
 // it is surfaced in the builder (`reinforcement`) or inline in a conversation (`conversational`).
@@ -105,9 +106,13 @@ export async function pruneConflictingSkillEditSuggestions(
     return;
   }
 
-  const newInstructionEdits = newSuggestion.suggestion.instructionEdits ?? [];
+  const newEdit = getSkillEditSuggestion(newSuggestion);
+  if (!newEdit) {
+    return;
+  }
+  const newInstructionEdits = newEdit.instructionEdits ?? [];
   const newHasAgentFacingDescriptionEdit =
-    newSuggestion.suggestion.agentFacingDescriptionEdit !== undefined;
+    newEdit.agentFacingDescriptionEdit !== undefined;
 
   // Full rewrite — everything is outdated.
   if (
@@ -129,8 +134,11 @@ export async function pruneConflictingSkillEditSuggestions(
   for (const e of newInstructionEdits) {
     allInstructionTargetIds.add(e.targetBlockId);
   }
-  for (const p of existingPending) {
-    for (const e of p.suggestion.instructionEdits ?? []) {
+  const existingEdits = new Map(
+    existingPending.map((p) => [p.sId, getSkillEditSuggestion(p)])
+  );
+  for (const edit of existingEdits.values()) {
+    for (const e of edit?.instructionEdits ?? []) {
       allInstructionTargetIds.add(e.targetBlockId);
     }
   }
@@ -140,12 +148,13 @@ export async function pruneConflictingSkillEditSuggestions(
       : new Map<string, Set<string>>();
 
   const toMarkOutdated = existingPending.filter((existing) => {
+    const existingEdit = existingEdits.get(existing.sId);
     const existingHasAgentFacingDescriptionEdit =
-      existing.suggestion.agentFacingDescriptionEdit !== undefined;
+      existingEdit?.agentFacingDescriptionEdit !== undefined;
     return (
       instructionEditSetsConflict(
         newInstructionEdits,
-        existing.suggestion.instructionEdits ?? [],
+        existingEdit?.instructionEdits ?? [],
         skill.instructionsHtml,
         descendantMap
       ) ||
@@ -184,7 +193,7 @@ export async function pruneOutdatedSkillEditSuggestions(
     : new Set<string>();
 
   const outdated = pending.filter((p) => {
-    const { instructionEdits } = p.suggestion;
+    const instructionEdits = getSkillEditSuggestion(p)?.instructionEdits;
 
     // We do not do a diff check to determine if the content of a specific instruction block has changed.
     // Taking this simplification as it is a low impact edge case.
