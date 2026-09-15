@@ -118,6 +118,7 @@ describe("AgentMessageMarkdown - Integration Tests", () => {
         <ConversationSidePanelContext.Provider
           value={{
             currentPanel: undefined,
+            hasConversation: true,
             isPanelClosing: false,
             openPanel,
             togglePanel: vi.fn(),

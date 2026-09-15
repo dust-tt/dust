@@ -15,11 +15,15 @@ function Consumer() {
   return <span>{canPreview ? "can preview" : "cannot preview"}</span>;
 }
 
-function withSidePanel(children: ReactNode) {
+function withSidePanel(
+  children: ReactNode,
+  { hasConversation = true }: { hasConversation?: boolean } = {}
+) {
   return (
     <ConversationSidePanelContext.Provider
       value={{
         currentPanel: undefined,
+        hasConversation,
         isPanelClosing: false,
         openPanel: vi.fn(),
         togglePanel: vi.fn(),
@@ -61,5 +65,18 @@ describe("useFilePreviewContext", () => {
     );
 
     expect(screen.getByText("can preview")).toBeInTheDocument();
+  });
+
+  it("reports previews as unavailable without a conversation", () => {
+    render(
+      withSidePanel(
+        <FilePreviewProvider owner={mockOwner}>
+          <Consumer />
+        </FilePreviewProvider>,
+        { hasConversation: false }
+      )
+    );
+
+    expect(screen.getByText("cannot preview")).toBeInTheDocument();
   });
 });

@@ -48,7 +48,7 @@ export function FilePreviewProvider({
 }: FilePreviewProviderProps) {
   const sidePanel = useContext(ConversationSidePanelContext);
   const sendNotification = useSendNotification();
-  const canPreview = sidePanel != null;
+  const canPreview = sidePanel?.hasConversation ?? false;
 
   // The side panel context value changes on every panel navigation. Reading it
   // through a ref keeps the callbacks below stable, so citations do not all
@@ -62,7 +62,10 @@ export function FilePreviewProvider({
     (file: PreviewableFile) => {
       const panel = sidePanelRef.current;
 
-      if (isFilePreviewableContentType(file.contentType) && panel) {
+      if (
+        isFilePreviewableContentType(file.contentType) &&
+        panel?.hasConversation
+      ) {
         if (file.filePath) {
           panel.openPanel({ type: "file_preview", filePath: file.filePath });
           return;
