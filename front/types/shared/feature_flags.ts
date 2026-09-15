@@ -1,4 +1,9 @@
 export const WHITELISTABLE_FEATURES_CONFIG = {
+  frame_domain_sharing: {
+    description: "Allow sharing Frames with an email domain",
+    stage: "dust_only",
+    owner: "flvndvd",
+  },
   dust_lean_agent: {
     description:
       "Enable @dust-lean, a Dust agent that starts without tools, skills, or company knowledge",

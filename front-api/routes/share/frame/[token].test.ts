@@ -3,6 +3,7 @@ import type { UserResource } from "@app/lib/resources/user_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import type { FileShareScope } from "@app/types/files";
 import { frameContentType, frameV2ContentType } from "@app/types/files";
@@ -60,6 +61,25 @@ describe("GET /api/share/frame/:token - requiresEmailVerification", () => {
     const resources = await createResourceTest({ role: "admin" });
     auth = resources.authenticator;
     user = resources.user;
+  });
+
+  it("offers verification for a domain-only share until the grant is revoked", async () => {
+    const { file, token } = await createFrameWithScope(
+      auth,
+      user,
+      "emails_only"
+    );
+    const grant = await SharingGrantFactory.create(auth, file, {
+      kind: "domain",
+      value: "example.com",
+    });
+    expect(
+      (await (await getShareFrame(token)).json()).requiresEmailVerification
+    ).toBe(true);
+    expect((await grant.revoke()).isOk()).toBe(true);
+    expect(
+      (await (await getShareFrame(token)).json()).requiresEmailVerification
+    ).toBe(false);
   });
 
   it("returns false for workspace_and_emails with no grants", async () => {

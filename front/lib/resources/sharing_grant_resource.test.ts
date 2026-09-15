@@ -1,7 +1,5 @@
-import { FileResource } from "@app/lib/resources/file_resource";
 import { SharingGrantResource } from "@app/lib/resources/sharing_grant_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
-import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
@@ -253,10 +251,6 @@ describe("SharingGrantResource", () => {
 
   it("preserves the legacy email interface while domain grants exist", async () => {
     const { authenticator, file } = await setup();
-    const workspace = await WorkspaceResource.fetchById(
-      authenticator.getNonNullableWorkspace().sId
-    );
-    assert(workspace);
     const domain = await SharingGrantFactory.create(authenticator, file, {
       kind: "domain",
       value: "example.com",
@@ -267,12 +261,6 @@ describe("SharingGrantResource", () => {
       (await file.revokeSharingGrant({ grantId: domain.id })).isErr()
     ).toBe(true);
     expect((await file.revokeSharingGrant({ grantId: -1 })).isErr()).toBe(true);
-    expect(
-      await FileResource.getActiveGrantForEmail(workspace, {
-        email: "alice@example.com",
-        shareableFileId: domain.shareableFileId,
-      })
-    ).toBeNull();
 
     const added = await file.addSharingGrants(authenticator, {
       emails: ["alice@example.com"],
@@ -281,9 +269,9 @@ describe("SharingGrantResource", () => {
     const [email] = added.value;
     assert(email);
     expect(email.lastViewedAt).toBeNull();
-    const emailResource = await SharingGrantResource.findLegacyEmailGrant(
-      workspace,
-      { email: email.email, shareableFileId: domain.shareableFileId }
+    const emailResource = await SharingGrantResource.findForEmail(
+      file,
+      "ALICE@EXAMPLE.COM"
     );
     assert(emailResource);
     await emailResource.recordLegacyView();
@@ -291,14 +279,7 @@ describe("SharingGrantResource", () => {
     expect(emailResource.toLegacyJSON()?.lastViewedAt).toBe(
       emailResource.lastViewedAt?.getTime()
     );
-    await FileResource.recordGrantView(workspace, {
-      email: "ALICE@EXAMPLE.COM",
-      shareableFileId: domain.shareableFileId,
-    });
-    const viewed = await FileResource.getActiveGrantForEmail(workspace, {
-      email: "alice@example.com",
-      shareableFileId: domain.shareableFileId,
-    });
+    const viewed = (await file.listActiveSharingGrants())[0];
     expect(viewed?.id).toBe(email.id);
     expect(viewed?.lastViewedAt).toEqual(expect.any(Number));
     expect((await file.revokeSharingGrant({ grantId: email.id })).isOk()).toBe(

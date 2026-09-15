@@ -13,7 +13,6 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
-import type { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { SharingGrantType } from "@app/types/files";
 import type { ModelId } from "@app/types/shared/model_id";
 import type { Result } from "@app/types/shared/result";
@@ -336,28 +335,12 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
     });
   }
 
-  // Compatibility methods for the existing email-only readers and view writer.
-  static async findLegacyEmailGrant(
-    workspace: LightWorkspaceType | WorkspaceResource,
-    { email, shareableFileId }: { email: string; shareableFileId: ModelId }
-  ): Promise<SharingGrantResource | null> {
-    const grant = await this.model.findOne({
-      where: {
-        workspaceId: workspace.id,
-        shareableFileId,
-        email: email.toLowerCase(),
-        revokedAt: null,
-      },
-    });
-
-    const [resource] = await this.fromModels(grant ? [grant] : []);
-    return resource ?? null;
-  }
-
   async recordLegacyView({
     transaction,
+    viewedAt = new Date(),
   }: {
     transaction?: Transaction;
+    viewedAt?: Date;
   } = {}): Promise<void> {
     if (this.email === null) {
       return;
@@ -367,7 +350,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       workspaceId: this.workspaceId,
       revokedAt: null,
     };
-    await this.update({ lastViewedAt: new Date() }, transaction, where);
+    await this.update({ lastViewedAt: viewedAt }, transaction, where);
   }
 
   async delete(
@@ -381,7 +364,11 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
     return new Ok(undefined);
   }
 
-  toJSON(): FileSharingGrantType {
+  toJSON({
+    blockedByPolicy,
+  }: {
+    blockedByPolicy?: boolean;
+  } = {}): FileSharingGrantType {
     return {
       sId: this.sId,
       target: this.target,
@@ -389,6 +376,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       grantedBy: this.grantingUser?.toJSON() ?? null,
       expiresAt: this.expiresAt?.getTime() ?? null,
       revokedAt: this.revokedAt?.getTime() ?? null,
+      ...(blockedByPolicy !== undefined && { blockedByPolicy }),
     };
   }
 
@@ -397,7 +385,11 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
    * Legacy sharing responses MUST omit grants without an email and retain a string
    * email field for every serialized grant.
    */
-  toLegacyJSON(): SharingGrantType | null {
+  toLegacyJSON({
+    blockedByPolicy,
+  }: {
+    blockedByPolicy?: boolean;
+  } = {}): SharingGrantType | null {
     if (this.email === null) {
       return null;
     }
@@ -409,6 +401,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       expiresAt: this.expiresAt?.getTime() ?? null,
       revokedAt: this.revokedAt?.getTime() ?? null,
       lastViewedAt: this.lastViewedAt?.getTime() ?? null,
+      ...(blockedByPolicy !== undefined && { blockedByPolicy }),
     };
   }
 }

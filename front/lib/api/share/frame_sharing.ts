@@ -12,9 +12,11 @@ import type { FileShareScope } from "@app/types/files";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
 import type { WorkspaceSharingPolicy } from "@app/types/user";
 import crypto from "crypto";
 import { escape } from "html-escaper";
+import type { Transaction } from "sequelize";
 
 export function getDefaultFrameShareScope(
   sharingPolicy: WorkspaceSharingPolicy
@@ -99,19 +101,7 @@ export async function checkFrameEmailGrantPermission(
   }
 
   const emails = rawEmails.map((email) => email.toLowerCase());
-  const users = await UserResource.fetchByEmails(emails);
-  const userModelIdToEmail = new Map(
-    users.map((user) => [user.id, user.email.toLowerCase()])
-  );
-  const { memberships } = await MembershipResource.getActiveMemberships({
-    users,
-    workspace,
-  });
-  const memberEmails = new Set(
-    memberships
-      .map((membership) => userModelIdToEmail.get(membership.userId))
-      .filter((email): email is string => email !== undefined)
-  );
+  const memberEmails = await getFrameWorkspaceMemberEmails(auth, emails);
 
   const areAllEmailsMemberEmails = emails.every((email) =>
     memberEmails.has(email)
@@ -134,6 +124,26 @@ export async function checkFrameEmailGrantPermission(
     : "You do not have permission to invite people outside the workspace. Only workspace members can be invited.";
 
   return new Err(new DustError("unauthorized", errorMessage));
+}
+
+export async function getFrameWorkspaceMemberEmails(
+  auth: Authenticator,
+  emails: string[]
+): Promise<Set<string>> {
+  if (emails.length === 0) {
+    return new Set();
+  }
+  const users = await UserResource.fetchByEmails(emails);
+  const { memberships } = await MembershipResource.getActiveMemberships({
+    users,
+    workspace: auth.getNonNullableWorkspace(),
+  });
+  const memberIds = new Set(memberships.map((membership) => membership.userId));
+  return new Set(
+    users
+      .filter((user) => memberIds.has(user.id))
+      .map((user) => user.email.toLowerCase())
+  );
 }
 
 const OTP_TTL_SECONDS = 15 * 60; // 15 minutes.
@@ -238,6 +248,68 @@ export async function sendFrameSharedEmail({
     buttonLabel: "View frame",
     buttonUrl: frameUrl,
   });
+}
+
+/**
+ * @cc [owner:flvndvd,label:error-handling] sharing-notification-failures
+ * Failures fetching share links or sending invitations are logged without failing grant creation.
+ */
+export function notifyFrameSharingInvitations(
+  auth: Authenticator,
+  file: FileResource,
+  emails: string[],
+  { transaction }: { transaction?: Transaction } = {}
+): void {
+  if (emails.length === 0) {
+    return;
+  }
+  const user = auth.getNonNullableUser();
+
+  const sendNotifications = async () => {
+    const shareInfo = await file.getShareInfo();
+    if (!shareInfo) {
+      return;
+    }
+    const frameUrl = shareInfo.shareUrl;
+    const shareToken = frameUrl.split("/").at(-1) ?? "";
+
+    for (const email of emails) {
+      void sendFrameSharedEmail({
+        to: email,
+        sharedByName: user.fullName(),
+        frameUrl,
+        shareToken,
+      }).catch((error) => {
+        logger.info(
+          {
+            email,
+            error: normalizeError(error),
+            fileId: file.sId,
+            workspaceId: file.workspaceId,
+          },
+          "Failed to send sharing notification email"
+        );
+      });
+    }
+  };
+  const scheduleNotifications = () => {
+    void sendNotifications().catch((error) => {
+      logger.error(
+        {
+          error: normalizeError(error),
+          fileId: file.sId,
+          workspaceId: file.workspaceId,
+        },
+        "Failed to send Frame sharing notifications"
+      );
+    });
+  };
+
+  if (transaction) {
+    transaction.afterCommit(scheduleNotifications);
+  } else {
+    scheduleNotifications();
+  }
 }
 
 type ValidateOtpError =

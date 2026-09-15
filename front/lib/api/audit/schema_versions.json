@@ -32,6 +32,8 @@
   "file.moved": 1,
   "frame.authorized_files_updated": 1,
   "frame.deleted_admin": 1,
+  "frame.domain_grant_added": 1,
+  "frame.domain_grant_revoked": 1,
   "frame.email_grant_added": 2,
   "frame.email_grant_revoked": 3,
   "frame.publication_activated": 1,

@@ -17,6 +17,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import type { MockFileVersion } from "@app/tests/utils/mocks/file_storage";
 import { fileStorageMock } from "@app/tests/utils/mocks/file_storage";
+import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { FRAME_MANIFEST_FILE } from "@app/types/api/frame_manifest";
@@ -98,6 +99,39 @@ vi.mock("@app/lib/utils/files", () => ({
 describe("FileResource", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("allows a workspace member to use an invite-only Frame through a domain grant", async () => {
+    const {
+      authenticator: auth,
+      user,
+      workspace,
+    } = await createResourceTest({ role: "admin" });
+    const frame = await FileFactory.create(auth, user, {
+      contentType: frameV2ContentType,
+      fileName: "manifest.json",
+      fileSize: 100,
+      status: "ready",
+      useCase: "project_context",
+      useCaseMetadata: { activePublicationId: "publication-1" },
+    });
+    await frame.setShareScope(auth, "emails_only");
+    const member = await UserFactory.basic();
+    const domain = member.email.split("@")[1];
+    assert(domain);
+    await MembershipFactory.associate(workspace, member, { role: "user" });
+    const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      member.sId,
+      workspace.sId
+    );
+    expect(await frame.canCurrentUserUseFrame(memberAuth)).toBe(false);
+    const grant = await SharingGrantFactory.create(auth, frame, {
+      kind: "domain",
+      value: domain,
+    });
+    expect(await frame.canCurrentUserUseFrame(memberAuth)).toBe(true);
+    expect((await grant.revoke()).isOk()).toBe(true);
+    expect(await frame.canCurrentUserUseFrame(memberAuth)).toBe(false);
   });
 
   describe("fetchByShareTokenWithContent", () => {

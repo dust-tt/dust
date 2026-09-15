@@ -11,6 +11,7 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createTestFrameFunction } from "@app/tests/utils/FrameFunctionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SharingGrantFactory } from "@app/tests/utils/SharingGrantFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { FileShareScope } from "@app/types/files";
@@ -80,6 +81,55 @@ describe("GET /api/v1/public/frames/[token]", () => {
     }
     return honoApp.request(`/api/v1/public/frames/${token}`, { headers });
   };
+
+  it("records each verified domain viewer and stops access after revocation", async () => {
+    vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
+    const { file, token } = await createFrameWithScope("emails_only");
+    const grant = await SharingGrantFactory.create(auth, file, {
+      kind: "domain",
+      value: "example.com",
+    });
+    const requestAs = async (email: string) => {
+      const cookie = await createFrameSession(workspace, { email });
+      return honoApp.request(`/api/v1/public/frames/${token}`, {
+        headers: { cookie },
+      });
+    };
+    for (const email of [
+      "alice@example.com",
+      "bob@example.com",
+      "alice@example.com",
+    ]) {
+      expect((await requestAs(email)).status).toBe(200);
+    }
+    const viewers = await file.getViewerSummaries();
+    expect(viewers).toHaveLength(2);
+    expect(viewers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ email: "alice@example.com", viewedDays: 1 }),
+        expect.objectContaining({ email: "bob@example.com", viewedDays: 1 }),
+      ])
+    );
+    expect((await requestAs("alice@sub.example.com")).status).toBe(404);
+    expect((await requestAs("alice@notexample.com")).status).toBe(404);
+    expect((await grant.revoke()).isOk()).toBe(true);
+    expect((await requestAs("alice@example.com")).status).toBe(404);
+    expect(await file.getViewerSummaries()).toEqual(viewers);
+  });
+
+  it("records an email grant in both the daily history and legacy last-view field", async () => {
+    vi.mocked(resolveOptionalAuth).mockResolvedValue(null);
+    const { file, token } = await createFrameWithScope("emails_only");
+    const session = await createGrantAndSession(file, "alice@example.com");
+    expect(
+      (await requestFrame(token, { cookies: { dust_frame_session: session } }))
+        .status
+    ).toBe(200);
+    const [viewer] = await file.getViewerSummaries();
+    const [grant] = await file.listActiveSharingGrants();
+    expect(viewer.email).toBe("alice@example.com");
+    expect(grant.lastViewedAt).toBe(viewer.lastViewedAt.getTime());
+  });
 
   // A shared Frame that lives in an app folder must resolve its app's functions by bare name just
   // as it does when opened from the Pod, so the response has to tell it which app it belongs to.
