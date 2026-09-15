@@ -24,6 +24,7 @@ import { LLMTracePage } from "@dust-tt/front/components/poke/pages/LLMTracePage"
 import { MCPServerViewPage } from "@dust-tt/front/components/poke/pages/MCPServerViewPage";
 import { MembershipsPage } from "@dust-tt/front/components/poke/pages/MembershipsPage";
 import { NotionRequestsPage } from "@dust-tt/front/components/poke/pages/NotionRequestsPage";
+import { PlanDetailPage } from "@dust-tt/front/components/poke/pages/PlanDetailPage";
 import { PlansPage } from "@dust-tt/front/components/poke/pages/PlansPage";
 import { PluginsPage } from "@dust-tt/front/components/poke/pages/PluginsPage";
 import { PokefyPage } from "@dust-tt/front/components/poke/pages/PokefyPage";
@@ -78,6 +79,7 @@ export const routes: RouteObject[] = [
           { index: true, element: <DashboardPage /> },
           { path: "kill", element: <KillPage /> },
           { path: "plans", element: <PlansPage /> },
+          { path: "plans/:planCode", element: <PlanDetailPage /> },
           { path: "coupons", element: <CouponsPage /> },
           { path: "pokefy", element: <PokefyPage /> },
           { path: "feature-flags", element: <FeatureFlagsPage /> },

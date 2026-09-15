@@ -13,7 +13,14 @@ import { usePokePlans } from "@app/lib/swr/poke";
 import { usePokePageMetadata } from "@app/poke/swr/currentPage";
 import type { PlanTypeSchema } from "@app/types/api/poke/plans";
 import type { PlanType } from "@app/types/plan";
-import { Check, Edit04, IconButton, Spinner, XClose } from "@dust-tt/sparkle";
+import {
+  Check,
+  Edit04,
+  IconButton,
+  LinkWrapper,
+  Spinner,
+  XClose,
+} from "@dust-tt/sparkle";
 import React from "react";
 import { useSWRConfig } from "swr";
 import type { z } from "zod";
@@ -98,6 +105,10 @@ export function PlansPage() {
     resetEditingPlan();
   };
 
+  const workspaceCountByPlanCode = new Map(
+    plans.map((plan) => [plan.code, plan.workspaceCount])
+  );
+
   const plansToRender: EditingPlanType[] = (plans || []).map(fromPlanType);
   if (editingPlan?.isNewPlan) {
     plansToRender.push(editingPlan);
@@ -127,6 +138,7 @@ export function PlansPage() {
                   </th>
                 );
               })}
+              <th className="px-4 py-2">Workspaces</th>
               <th className="px-4 py-2">Edit</th>
             </tr>
           </thead>
@@ -151,6 +163,21 @@ export function PlansPage() {
                       />
                     </React.Fragment>
                   ))}
+                  <td className="w-24 min-w-24 flex-none border px-4 py-2">
+                    {plan.isNewPlan ? (
+                      <div className="text-center text-muted-foreground">—</div>
+                    ) : (
+                      <div className="flex flex-row justify-center">
+                        <LinkWrapper href={`/poke/plans/${plan.code}`}>
+                          <span className="text-highlight-600 hover:underline">
+                            {workspaceCountByPlanCode
+                              .get(plan.code)
+                              ?.toLocaleString() ?? 0}
+                          </span>
+                        </LinkWrapper>
+                      </div>
+                    )}
+                  </td>
                   <td className="w-12 min-w-16 flex-none border px-4 py-2">
                     {plan.code === editingPlan?.code || plan.isNewPlan ? (
                       <div className="flex flex-row justify-center">
