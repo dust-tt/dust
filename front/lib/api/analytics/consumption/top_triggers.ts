@@ -19,7 +19,6 @@ import { Ok } from "@app/types/shared/result";
  */
 
 export type ConsumptionTopTriggerRow = {
-  // The trigger sId, which is also what the `triggers` filter takes.
   triggerId: string;
   name: string;
   credits: number;
@@ -39,11 +38,6 @@ export type ConsumptionTopTriggers = {
 
 export type GetConsumptionTopTriggersResponse = ConsumptionTopTriggers;
 
-/**
- * @cc [owner:adrsimon,label:product] row-id-is-a-triggers-filter-value
- * `triggerId` MUST be a value the `triggers` scope filter accepts, so the
- * Triggers attribution row can funnel into a filter on itself.
- */
 export async function fetchConsumptionTopTriggers(
   auth: Authenticator,
   {
