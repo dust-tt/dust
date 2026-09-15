@@ -47,6 +47,15 @@ function withEapAnthropicKey(
   modelId: ModelIdType,
   credentials: LLMCredentialsType
 ): LLMCredentialsType {
+  // Reaching this with BYOK credentials means an EAP endpoint escaped
+  // `getWorkspaceFilter`; the EAP key is Dust's, so fail loudly instead of
+  // billing Dust's Anthropic org for a BYOK workspace.
+  if (credentials.DUST_BYOK === "true") {
+    throw new Error(
+      `Model ${modelId} requires the Dust-owned EAP Anthropic key and must not be reachable by a BYOK workspace.`
+    );
+  }
+
   const eapApiKey = config.getAnthropicEapApiKey();
   if (!eapApiKey) {
     throw new Error(
