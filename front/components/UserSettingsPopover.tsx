@@ -250,15 +250,15 @@ function PersonalInfoSection({ owner }: { owner: WorkspaceType }) {
                 : "Shown next to your messages"
             }
             action={
-              <div className="flex items-center gap-3">
+              <div className="group relative w-fit">
                 <Avatar size="md" visual={currentImageUrl} isRounded />
                 <Button
                   variant="outline"
                   size="sm"
                   icon={Edit04}
-                  label="Change"
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
+                  className="absolute left-1/2 top-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
                   disabled={isUploadingImage || isProvisioned}
                   isLoading={isUploadingImage}
                 />
