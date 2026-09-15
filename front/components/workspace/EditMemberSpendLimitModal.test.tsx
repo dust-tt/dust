@@ -2,7 +2,7 @@ import { LightWorkspaceFactory } from "@app/tests/utils/LightWorkspaceFactory";
 import { makeMemberUsage } from "@app/tests/utils/MemberUsageFactory";
 import type { GroupType } from "@app/types/groups";
 import type { MembershipSeatType } from "@app/types/memberships";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { EditMemberSpendLimitModal } from "./EditMemberSpendLimitModal";
@@ -13,8 +13,10 @@ vi.mock("@app/lib/swr/usage_settings", () => ({
   }),
 }));
 
+const doUpdateSpendLimit = vi.fn();
+
 vi.mock("@app/lib/swr/memberships", () => ({
-  useUpdateUserSpendLimit: () => ({ doUpdateSpendLimit: vi.fn() }),
+  useUpdateUserSpendLimit: () => ({ doUpdateSpendLimit }),
 }));
 
 vi.mock("@app/lib/swr/groups", () => ({
@@ -279,5 +281,61 @@ describe("EditMemberSpendLimitModal", () => {
     );
 
     expect(queryDefaultLimitInput()).toBeNull();
+  });
+
+  it("reports saving progress and calls onSaved once the personal limit is persisted", async () => {
+    doUpdateSpendLimit.mockResolvedValueOnce({ ok: true });
+    const onSaved = vi.fn();
+    const onSavingChange = vi.fn();
+    const onClose = vi.fn();
+    const member = makeMember("override");
+
+    render(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={onClose}
+        member={member}
+        owner={owner}
+        groups={groups}
+        readOnly={false}
+        defaultUserSpendLimit={{ status: "unavailable" }}
+        onSavingChange={onSavingChange}
+        onSaved={onSaved}
+      />
+    );
+    fireEvent.change(getPersonalLimitInput(), { target: { value: "500" } });
+    fireEvent.click(screen.getByRole("button", { name: "Validate" }));
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledOnce());
+
+    expect(onSavingChange).toHaveBeenNthCalledWith(1, member.sId, true);
+    expect(onSavingChange).toHaveBeenNthCalledWith(2, member.sId, false);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("does not call onSaved when the save fails", async () => {
+    doUpdateSpendLimit.mockResolvedValueOnce(null);
+    const onSaved = vi.fn();
+    const onClose = vi.fn();
+
+    render(
+      <EditMemberSpendLimitModal
+        isOpen
+        onClose={onClose}
+        member={makeMember("override")}
+        owner={owner}
+        groups={groups}
+        readOnly={false}
+        defaultUserSpendLimit={{ status: "unavailable" }}
+        onSaved={onSaved}
+      />
+    );
+    fireEvent.change(getPersonalLimitInput(), { target: { value: "500" } });
+    fireEvent.click(screen.getByRole("button", { name: "Validate" }));
+
+    await waitFor(() => expect(doUpdateSpendLimit).toHaveBeenCalledOnce());
+
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 });
