@@ -112,8 +112,7 @@ export function parseCalendarDate(
 /**
  * @cc [owner:avervaet,label:error-handling] day-boundary-degrades-to-invalid-date
  * An unparseable `isoDate`, a non-existent calendar day, or an unknown `timezone` yields an
- * `Invalid Date` rather than throwing; callers that serialize the result are responsible for
- * handling it.
+ * `Invalid Date` rather than throwing.
  */
 export function dayBoundaryInTimezone(
   isoDate: string,
