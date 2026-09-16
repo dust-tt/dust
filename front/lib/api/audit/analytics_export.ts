@@ -10,6 +10,8 @@ export type AnalyticsExportName =
   | "automations"
   | "consumption_lines"
   | "credit_usage"
+  | "personal_credit_usage"
+  | "poke_credit_usage"
   | "programmatic_cost"
   | "workspace_usage_legacy";
 
@@ -25,14 +27,15 @@ export type AnalyticsExportParams = {
 
 /**
  * @cc [label:audit-logging;security] analytics-export-audited-at-egress
- * Call sites that download a workspace analytics dataset via this helper's
- * `AnalyticsExportName` values (`analytics_table`, `automations`, `consumption_lines`,
- * `credit_usage`, `programmatic_cost`, `workspace_usage_legacy`) MUST invoke this after
- * the downloadable payload is produced and before the response returns. Interactive
- * in-app JSON chart/API responses (for example AWU/credit-usage `format=json` and
- * automations `format=json`) MUST NOT call it. Personal my-usage
- * (`front-api/routes/w/[wId]/credits/my-usage-analytics.ts`) and poke/admin analytics
- * export routes MUST NOT call it. Schedule/status-only handlers MUST NOT call it.
+ * Call sites that download an analytics dataset under this helper's `AnalyticsExportName`
+ * values (`analytics_table`, `automations`, `consumption_lines`, `credit_usage`,
+ * `personal_credit_usage`, `poke_credit_usage`, `programmatic_cost`,
+ * `workspace_usage_legacy`) MUST invoke this after the downloadable payload is produced and
+ * before the response returns. That includes workspace AWU/credit-usage CSV, personal
+ * my-usage CSV (`front-api/routes/w/[wId]/credits/my-usage-analytics.ts`), and poke
+ * credit-usage CSV (`front-api/routes/poke/workspaces/[wId]/analytics/awu-usage-analytics.ts`).
+ * Interactive in-app JSON chart/API responses (for example AWU/credit-usage `format=json` and
+ * automations `format=json`) MUST NOT call it. Schedule/status-only handlers MUST NOT call it.
  */
 export async function emitAnalyticsExportedEvent(
   auth: Authenticator,
