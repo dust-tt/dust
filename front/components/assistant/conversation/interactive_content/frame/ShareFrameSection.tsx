@@ -2,9 +2,7 @@ import type { ReactNode } from "react";
 
 interface SectionProps {
   label: ReactNode;
-  // Optional subtitle rendered under the label, tightly grouped with it.
   description?: ReactNode;
-  // Optional trailing element aligned to the right of the label row.
   action?: ReactNode;
   children: ReactNode;
 }
