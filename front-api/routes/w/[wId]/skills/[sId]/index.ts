@@ -137,7 +137,7 @@ app.get(
     const withRelations = ctx.req.query("withRelations");
 
     const isFavorite = await skill.isFavoriteForCurrentUser(auth);
-    const serializedSkill = skill.toJSON(auth);
+    const serializedSkill = { ...skill.toJSON(auth), isFavorite };
 
     if (withRelations === "true") {
       const usage = await skill.fetchUsage(auth);
@@ -149,7 +149,7 @@ app.get(
           skill.sId
         ) ?? [];
 
-      const skillWithRelations: SkillWithRelationsType = {
+      const skillWithRelations = {
         ...serializedSkill,
         relations: {
           usage: {
@@ -170,14 +170,14 @@ app.get(
             return childSkillWithoutInstructionsAndTools;
           }),
         },
-      };
+      } satisfies SkillWithRelationsType;
 
       return ctx.json({
-        skill: { ...skillWithRelations, isFavorite },
+        skill: skillWithRelations,
       } satisfies GetSkillWithRelationsResponseBody);
     }
     return ctx.json({
-      skill: { ...serializedSkill, isFavorite },
+      skill: serializedSkill,
     } satisfies GetSkillResponseBody);
   }
 );
