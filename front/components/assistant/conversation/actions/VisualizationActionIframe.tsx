@@ -1123,6 +1123,7 @@ export const VisualizationActionIframe = forwardRef<
                       !errorMessage && !isInDrawer && "min-h-96"
                     )}
                     src={vizUrl}
+                    allowFullScreen
                     sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
                   />
                 </div>
