@@ -1,3 +1,4 @@
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import * as skillIndex from "@app/lib/skill_search";
 import logger from "@app/logger/logger";
@@ -64,6 +65,55 @@ describe("resource-owned skill search indexation", () => {
         })
       );
     }
+  });
+
+  it.each([
+    "addEditors",
+    "removeEditors",
+  ] as const)("refreshes indexed editor IDs after a partial %s failure", async (method) => {
+    const {
+      authenticator: auth,
+      workspace,
+      user,
+    } = await createResourceTest({
+      role: "admin",
+    });
+    const skill = await SkillFactory.create(auth);
+    const editor = await UserFactory.basic();
+    const nonMember = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, editor, { role: "user" });
+
+    if (method === "removeEditors") {
+      await MembershipFactory.associate(workspace, nonMember, {
+        role: "user",
+      });
+      const addResult = await skill.addEditors(auth, [editor, nonMember]);
+      expect(addResult.isOk()).toBe(true);
+      const revokeResult = await MembershipResource.revokeMembership({
+        user: nonMember,
+        workspace,
+      });
+      expect(revokeResult.isOk()).toBe(true);
+    }
+
+    const indexDocument = vi
+      .spyOn(skillIndex, "indexSkillDocument")
+      .mockResolvedValue(new Ok(undefined));
+    const target = { workspaceId: workspace.sId, skillId: skill.sId };
+    vi.mocked(launchIndexSkillSearchWorkflow).mockClear();
+    const result = await skill[method](auth, [editor, nonMember]);
+
+    expect(result.isErr()).toBe(true);
+    expect(launchIndexSkillSearchWorkflow).toHaveBeenCalledExactlyOnceWith(
+      target
+    );
+    await indexSkillSearchActivity(target);
+    expect(indexDocument).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        editor_ids:
+          method === "addEditors" ? [user.sId, editor.sId].sort() : [user.sId],
+      })
+    );
   });
 
   it("refreshes an older archived skill renamed to avoid a name collision", async () => {
