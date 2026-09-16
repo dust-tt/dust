@@ -103,8 +103,14 @@ app.delete(
       const result = await grant.revoke(auth);
       if (result.isErr()) {
         return apiError(ctx, {
-          status_code: 404,
-          api_error: { type: "file_not_found", message: result.error.message },
+          status_code: result.error.code === "unauthorized" ? 403 : 404,
+          api_error: {
+            type:
+              result.error.code === "unauthorized"
+                ? "invalid_request_error"
+                : "file_not_found",
+            message: result.error.message,
+          },
         });
       }
       return ctx.body(null, 204);
@@ -114,9 +120,12 @@ app.delete(
 
     if (result.isErr()) {
       return apiError(ctx, {
-        status_code: 404,
+        status_code: result.error.code === "unauthorized" ? 403 : 404,
         api_error: {
-          type: "file_not_found",
+          type:
+            result.error.code === "unauthorized"
+              ? "invalid_request_error"
+              : "file_not_found",
           message: result.error.message,
         },
       });

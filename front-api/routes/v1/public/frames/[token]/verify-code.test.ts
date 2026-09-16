@@ -36,7 +36,7 @@ describe("POST /api/v1/public/frames/[token]/verify-code", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
 
-    const result = await createResourceTest({ role: "user" });
+    const result = await createResourceTest({ role: "admin" });
     workspace = result.workspace;
     auth = result.authenticator;
     user = result.user;
