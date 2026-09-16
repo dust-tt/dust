@@ -2,6 +2,7 @@ import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp"
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isContentNodeAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { getAskUserQuestionServer } from "@app/lib/api/assistant/jit/ask_user_question";
+import { getBuildingAgentsAndSkillsServer } from "@app/lib/api/assistant/jit/building_agents_and_skills";
 import { getCommonUtilitiesServer } from "@app/lib/api/assistant/jit/common_utilities";
 import {
   getConversationFilesServer,
@@ -109,6 +110,8 @@ async function getUnconditionalJITServers(
   );
   servers.push(askUserQuestionServer);
 
+  servers.push(getBuildingAgentsAndSkillsServer(autoInternalViews));
+
   return removeNulls(servers);
 }
 
@@ -199,6 +202,15 @@ export async function getJITServers(
     if (CONDITIONAL_MCP_SERVERS[name](conditionalContext)) {
       mcpServersToFetch.add(name);
     }
+  }
+
+  // Conversational building is feature-flagged per workspace; the server is hidden from the
+  // builder, so this is the only way agents get its tools.
+  const hasConversationalBuilding = await auth.hasFeatureFlag(
+    "conversational_building"
+  );
+  if (hasConversationalBuilding) {
+    mcpServersToFetch.add("building_agents_and_skills");
   }
 
   const autoInternalViews =

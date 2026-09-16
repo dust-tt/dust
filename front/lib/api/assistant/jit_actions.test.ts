@@ -156,6 +156,34 @@ describe("getJITServers", () => {
     });
   });
 
+  describe("conversational building", () => {
+    it("does not include building_agents_and_skills without the flag", async () => {
+      const jitServers = await getJITServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+        attachments: [],
+      });
+
+      expect(
+        jitServers.some((s) => s.name === "building_agents_and_skills")
+      ).toBe(false);
+    });
+
+    it("includes building_agents_and_skills with the conversational_building flag", async () => {
+      await FeatureFlagFactory.basic(auth, "conversational_building");
+
+      const jitServers = await getJITServers(auth, {
+        agentConfiguration: agentConfig,
+        conversation,
+        attachments: [],
+      });
+
+      expect(
+        jitServers.some((s) => s.name === "building_agents_and_skills")
+      ).toBe(true);
+    });
+  });
+
   describe("skills feature", () => {
     it("should include skill_management server when agent has skills", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
