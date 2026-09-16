@@ -2,6 +2,7 @@ import { getTemporalClientForFrontNamespace } from "@app/lib/temporal";
 import logger from "@app/logger/logger";
 import { QUEUE_NAME } from "@app/temporal/es_indexation/config";
 import {
+  makeDeleteWorkspaceSkillSearchWorkflowId,
   makeIndexSkillSearchWorkflowId,
   makeIndexUserSearchWorkflowId,
 } from "@app/temporal/es_indexation/helpers";
@@ -10,7 +11,11 @@ import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 import { indexSkillSearchSignal, indexUserSearchSignal } from "./signals";
-import { indexSkillSearchWorkflow, indexUserSearchWorkflow } from "./workflows";
+import {
+  deleteWorkspaceSkillSearchWorkflow,
+  indexSkillSearchWorkflow,
+  indexUserSearchWorkflow,
+} from "./workflows";
 
 export async function launchIndexUserSearchWorkflow({
   userId,
@@ -74,6 +79,32 @@ export async function launchIndexSkillSearchWorkflow({
     logger.error(
       { workflowId, workspaceId, skillId, error: e },
       "Failed starting index skill workflow"
+    );
+
+    return new Err(normalizeError(e));
+  }
+}
+
+export async function launchDeleteWorkspaceSkillSearchWorkflow({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<Result<undefined, Error>> {
+  const client = await getTemporalClientForFrontNamespace();
+  const workflowId = makeDeleteWorkspaceSkillSearchWorkflowId({ workspaceId });
+
+  try {
+    await client.workflow.start(deleteWorkspaceSkillSearchWorkflow, {
+      args: [{ workspaceId }],
+      taskQueue: QUEUE_NAME,
+      workflowId,
+      memo: { workspaceId },
+    });
+    return new Ok(undefined);
+  } catch (e) {
+    logger.error(
+      { workflowId, workspaceId, error: e },
+      "Failed starting workspace skill index deletion workflow"
     );
 
     return new Err(normalizeError(e));
