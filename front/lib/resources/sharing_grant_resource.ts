@@ -371,7 +371,7 @@ export class SharingGrantResource extends BaseResource<SharingGrantModel> {
       return new Err(
         new DustError(
           "unauthorized",
-          "You do not have permission to revoke sharing grants for this Frame."
+          "You do not have permission to revoke sharing grants for Frames."
         )
       );
     }
