@@ -69,10 +69,8 @@ describe("GET /api/w/:wId/frames/:frameId/source", () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      content: UI_SOURCE,
-      entryPath: expect.stringMatching(/\/Status\/app\/Status\.tsx$/),
-    });
+    expect(response.headers.get("Content-Type")).toContain("text/plain");
+    await expect(response.text()).resolves.toBe(UI_SOURCE);
   });
 
   it("falls back to the default entry point when the manifest omits one", async () => {
@@ -93,10 +91,7 @@ describe("GET /api/w/:wId/frames/:frameId/source", () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({
-      content: UI_SOURCE,
-      entryPath: expect.stringMatching(/\/Status\/index\.tsx$/),
-    });
+    await expect(response.text()).resolves.toBe(UI_SOURCE);
   });
 
   it("returns 404 when the entry file is missing from the source folder", async () => {

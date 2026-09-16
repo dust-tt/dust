@@ -7,14 +7,7 @@ import { parseFrameManifest } from "@app/types/api/frame_manifest";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export type FrameEntrySource = {
-  content: string;
-  entryPath: string;
-};
-
-export type FrameEntrySourceError = DustError<
-  "file_not_found" | "invalid_file"
->;
+type FrameEntrySourceError = DustError<"file_not_found" | "invalid_file">;
 
 /**
  * @cc [owner:davidebbo,label:product] frame-entry-source-reads-current-sources
@@ -26,7 +19,7 @@ export type FrameEntrySourceError = DustError<
 export async function readFrameV2EntrySource(
   auth: Authenticator,
   frame: FileResource
-): Promise<Result<FrameEntrySource, FrameEntrySourceError>> {
+): Promise<Result<string, FrameEntrySourceError>> {
   const manifestPath = frame.toScopedPath(auth);
   const sourceDirectory = frame.getFrameV2SourceDirectoryPath(auth);
   if (!manifestPath || !sourceDirectory) {
@@ -83,8 +76,5 @@ export async function readFrameV2EntrySource(
     );
   }
 
-  return new Ok({
-    content: entryBuffer.value.toString("utf-8"),
-    entryPath,
-  });
+  return new Ok(entryBuffer.value.toString("utf-8"));
 }

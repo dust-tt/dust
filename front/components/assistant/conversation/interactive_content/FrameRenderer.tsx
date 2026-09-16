@@ -17,14 +17,11 @@ import { useClientType } from "@app/lib/context/clientType";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   useFileContent,
+  useFileContentByUrl,
   useFileMetadata,
   useShareInteractiveContentFile,
 } from "@app/lib/swr/files";
-import {
-  useEditFrameText,
-  useFramePermissions,
-  useFrameSource,
-} from "@app/lib/swr/frames";
+import { useEditFrameText, useFramePermissions } from "@app/lib/swr/frames";
 import { usePodFiles } from "@app/lib/swr/pods";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
@@ -47,7 +44,7 @@ import {
   Tooltip,
   UploadCloud02,
 } from "@dust-tt/sparkle";
-import React, {
+import {
   useCallback,
   useContext,
   useEffect,
@@ -165,17 +162,23 @@ export function FrameRenderer({
     conversationId: conversation?.sId,
   });
 
-  const [showCode, setShowCode] = React.useState(false);
+  const [showCode, setShowCode] = useState(false);
 
   // A legacy Frame renders its own source, so `fileContent` is the code. A Frames v2 package
   // renders a built bundle, so its sources are fetched separately, and only once shown.
-  const { frameSource, isFrameSourceLoading, isFrameSourceError } =
-    useFrameSource({
-      owner,
-      frameId: fileId,
-      cacheKey: contentHash,
-      disabled: renderMode !== "v2" || !showCode,
-    });
+  const frameSourceBaseUrl = `/api/w/${owner.sId}/frames/${encodeURIComponent(fileId)}/source`;
+  const frameSourceUrl = contentHash
+    ? `${frameSourceBaseUrl}?v=${encodeURIComponent(contentHash)}`
+    : frameSourceBaseUrl;
+  const {
+    fileContent: frameSource,
+    isNotFound: isFrameSourceNotFound,
+    isFileContentLoading: isFrameSourceLoading,
+    fileContentError: frameSourceError,
+  } = useFileContentByUrl({
+    url: frameSourceUrl,
+    disabled: renderMode !== "v2" || !showCode,
+  });
 
   const { isFrameAuthor } = useFramePermissions({
     owner,
@@ -360,15 +363,6 @@ export function FrameRenderer({
     sendNotification,
   ]);
 
-  const codeToggleButton = (
-    <Button
-      icon={showCode ? Eye : Terminal}
-      onClick={() => setShowCode(!showCode)}
-      tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
-      variant="ghost"
-    />
-  );
-
   if (error) {
     return (
       <div className="flex h-panel flex-col">
@@ -385,92 +379,78 @@ export function FrameRenderer({
   return (
     <div className="flex h-panel flex-col">
       <ConversationSidePanelHeader onClose={onClosePanel}>
-        {renderMode === "legacy" && (
-          <div className="flex w-full items-center justify-between">
-            {codeToggleButton}
-            <div className="flex items-center">
-              <ExportContentDropdown
-                iframeRef={iframeRef}
-                owner={owner}
-                fileId={fileId}
-                fileContent={fileContent ?? null}
-                fileName={fileMetadata?.fileName}
-                contentType={fileMetadata?.contentType}
-              />
-              <ShareFramePopover
-                key={contentHash ?? fileId}
-                fileId={fileId}
-                owner={owner}
-                contentHash={contentHash}
-              />
-              <PinPodBannerButton
-                owner={owner}
-                spaceId={projectId ?? ""}
-                pinnedFramePath={projectInfo?.pinnedFramePath ?? null}
-                isEditor={projectInfo?.isEditor ?? false}
-                framePath={framePath}
-                fileName={fileMetadata?.fileName}
-                hidden={!isFrameInPod}
-              />
-              <PodFileTabButton
-                owner={owner}
-                spaceId={projectId ?? ""}
-                fileTabs={projectInfo?.frameTabs ?? []}
-                tabsOrder={projectInfo?.tabsOrder ?? []}
-                isEditor={projectInfo?.isEditor ?? false}
-                filePath={framePath}
-                fileName={fileMetadata?.fileName}
-                hidden={!isFrameInPod}
-              />
-              {projectSaveState === "saved" && (
-                <Button
-                  icon={CheckCircle}
-                  variant="ghost"
-                  disabled={true}
-                  label={isMobile ? undefined : "Saved"}
-                  tooltip={`Saved in "${projectInfo?.name ?? "unknown Pod"}"`}
+        <div className="flex w-full items-center justify-between">
+          <Button
+            icon={showCode ? Eye : Terminal}
+            onClick={() => setShowCode(!showCode)}
+            tooltip={showCode ? "Switch to Rendering" : "Switch to Code"}
+            variant="ghost"
+          />
+          <div className="flex items-center">
+            <ExportContentDropdown
+              iframeRef={iframeRef}
+              owner={owner}
+              fileId={fileId}
+              fileContent={fileContent ?? null}
+              fileName={fileMetadata?.fileName}
+              contentType={fileMetadata?.contentType}
+            />
+            <ShareFramePopover
+              key={contentHash ?? fileId}
+              fileId={fileId}
+              owner={owner}
+              contentHash={contentHash}
+            />
+            {renderMode === "legacy" && (
+              <>
+                <PinPodBannerButton
+                  owner={owner}
+                  spaceId={projectId ?? ""}
+                  pinnedFramePath={projectInfo?.pinnedFramePath ?? null}
+                  isEditor={projectInfo?.isEditor ?? false}
+                  framePath={framePath}
+                  fileName={fileMetadata?.fileName}
+                  hidden={!isFrameInPod}
                 />
-              )}
-              {projectSaveState === "supported" && (
-                <Button
-                  icon={UploadCloud02}
-                  variant="ghost"
-                  label={
-                    isMobile
-                      ? undefined
-                      : isSavingToProject
-                        ? "Saving…"
-                        : "Save"
-                  }
-                  isLoading={isSavingToProject}
-                  tooltip={`Save to "${projectInfo?.name ?? "unknown Pod"}"`}
-                  onClick={handleSaveToProject}
+                <PodFileTabButton
+                  owner={owner}
+                  spaceId={projectId ?? ""}
+                  fileTabs={projectInfo?.frameTabs ?? []}
+                  tabsOrder={projectInfo?.tabsOrder ?? []}
+                  isEditor={projectInfo?.isEditor ?? false}
+                  filePath={framePath}
+                  fileName={fileMetadata?.fileName}
+                  hidden={!isFrameInPod}
                 />
-              )}
-            </div>
+                {projectSaveState === "saved" && (
+                  <Button
+                    icon={CheckCircle}
+                    variant="ghost"
+                    disabled={true}
+                    label={isMobile ? undefined : "Saved"}
+                    tooltip={`Saved in "${projectInfo?.name ?? "unknown Pod"}"`}
+                  />
+                )}
+                {projectSaveState === "supported" && (
+                  <Button
+                    icon={UploadCloud02}
+                    variant="ghost"
+                    label={
+                      isMobile
+                        ? undefined
+                        : isSavingToProject
+                          ? "Saving…"
+                          : "Save"
+                    }
+                    isLoading={isSavingToProject}
+                    tooltip={`Save to "${projectInfo?.name ?? "unknown Pod"}"`}
+                    onClick={handleSaveToProject}
+                  />
+                )}
+              </>
+            )}
           </div>
-        )}
-        {renderMode === "v2" && (
-          <div className="flex w-full items-center justify-between">
-            {codeToggleButton}
-            <div className="flex items-center">
-              <ExportContentDropdown
-                iframeRef={iframeRef}
-                owner={owner}
-                fileId={fileId}
-                fileContent={fileContent ?? null}
-                fileName={fileMetadata?.fileName}
-                contentType={fileMetadata?.contentType}
-              />
-              <ShareFramePopover
-                key={contentHash ?? fileId}
-                fileId={fileId}
-                owner={owner}
-                contentHash={contentHash}
-              />
-            </div>
-          </div>
-        )}
+        </div>
       </ConversationSidePanelHeader>
 
       <div className="flex-1 overflow-hidden">
@@ -478,9 +458,14 @@ export function FrameRenderer({
           <Spinner />
         ) : showCode ? (
           <FrameCodeView
-            code={renderMode === "v2" ? frameSource?.content : fileContent}
+            code={
+              renderMode === "v2" ? (frameSource ?? undefined) : fileContent
+            }
             isLoading={renderMode === "v2" && isFrameSourceLoading}
-            hasError={renderMode === "v2" && Boolean(isFrameSourceError)}
+            hasError={
+              renderMode === "v2" &&
+              (isFrameSourceNotFound || Boolean(frameSourceError))
+            }
           />
         ) : (
           <div className="h-full">

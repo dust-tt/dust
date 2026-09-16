@@ -1,6 +1,5 @@
 import { readFrameV2EntrySource } from "@app/lib/api/frames/entry_source";
 import { FileResource } from "@app/lib/resources/file_resource";
-import type { GetFrameSourceResponseBody } from "@app/types/api/frame_source";
 import { workspaceApp } from "@front-api/middlewares/ctx";
 import { apiError } from "@front-api/middlewares/utils";
 import { validate } from "@front-api/middlewares/validator";
@@ -39,7 +38,7 @@ app.get("/", validate("param", ParamsSchema), async (ctx) => {
     });
   }
 
-  return ctx.json<GetFrameSourceResponseBody>(sourceResult.value);
+  return ctx.text(sourceResult.value);
 });
 
 export default app;
