@@ -2,6 +2,7 @@ import { buildDescendantMap } from "@app/lib/editor/instructions_block_conflict"
 import {
   hasSuggestionSelfConflict,
   instructionEditSetsConflict,
+  pruneConflictingSkillEditorsSuggestions,
   pruneConflictingSkillEditSuggestions,
   pruneOutdatedSkillEditSuggestions,
 } from "@app/lib/reinforcement/skill_suggestion_pruning";
@@ -459,5 +460,102 @@ describe("pruneConflictingSkillEditSuggestions — agentFacingDescriptionEdit", 
       descriptionOnly.sId
     );
     expect(refetched?.state).toBe("pending");
+  });
+});
+
+describe("pruneConflictingSkillEditorsSuggestions", () => {
+  let authenticator: Awaited<
+    ReturnType<typeof createResourceTest>
+  >["authenticator"];
+
+  beforeEach(async () => {
+    ({ authenticator } = await createResourceTest({ role: "admin" }));
+  });
+
+  const createEditors = (
+    skill: Awaited<ReturnType<typeof SkillFactory.create>>,
+    suggestion: { addUserIds?: string[]; removeUserIds?: string[] }
+  ) =>
+    SkillSuggestionFactory.create(authenticator, skill, {
+      kind: "editors",
+      suggestion: {
+        addUserIds: suggestion.addUserIds ?? [],
+        removeUserIds: suggestion.removeUserIds ?? [],
+      },
+      source: "conversational",
+    });
+
+  const stateOf = async (sId: string) =>
+    (await SkillSuggestionResource.fetchById(authenticator, sId))?.state;
+
+  it("outdates a pending suggestion adding the same user", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const older = await createEditors(skill, { addUserIds: ["usr_a"] });
+    const newer = await createEditors(skill, {
+      addUserIds: ["usr_a", "usr_b"],
+    });
+
+    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, newer);
+
+    expect(await stateOf(older.sId)).toBe("outdated");
+    expect(await stateOf(newer.sId)).toBe("pending");
+  });
+
+  it("outdates a pending suggestion removing the same user", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const older = await createEditors(skill, { removeUserIds: ["usr_a"] });
+    const newer = await createEditors(skill, { removeUserIds: ["usr_a"] });
+
+    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, newer);
+
+    expect(await stateOf(older.sId)).toBe("outdated");
+    expect(await stateOf(newer.sId)).toBe("pending");
+  });
+
+  it("keeps a suggestion that removes a user the new one adds", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const removal = await createEditors(skill, { removeUserIds: ["usr_a"] });
+    const addition = await createEditors(skill, { addUserIds: ["usr_a"] });
+
+    await pruneConflictingSkillEditorsSuggestions(
+      authenticator,
+      skill,
+      addition
+    );
+
+    expect(await stateOf(removal.sId)).toBe("pending");
+    expect(await stateOf(addition.sId)).toBe("pending");
+  });
+
+  it("keeps suggestions about other users and other skills", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const otherSkill = await SkillFactory.create(authenticator);
+    const otherUser = await createEditors(skill, { addUserIds: ["usr_b"] });
+    const sameUserOtherSkill = await createEditors(otherSkill, {
+      addUserIds: ["usr_a"],
+    });
+    const newer = await createEditors(skill, { addUserIds: ["usr_a"] });
+
+    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, newer);
+
+    expect(await stateOf(otherUser.sId)).toBe("pending");
+    expect(await stateOf(sameUserOtherSkill.sId)).toBe("pending");
+  });
+
+  it("leaves edit suggestions and non-pending editors suggestions alone", async () => {
+    const skill = await SkillFactory.create(authenticator);
+    const edit = await SkillSuggestionFactory.createEdit(authenticator, skill);
+    const approved = await createEditors(skill, { addUserIds: ["usr_a"] });
+    await SkillSuggestionResource.bulkUpdateState(
+      authenticator,
+      [approved],
+      "approved"
+    );
+    const newer = await createEditors(skill, { addUserIds: ["usr_a"] });
+
+    await pruneConflictingSkillEditorsSuggestions(authenticator, skill, newer);
+
+    expect(await stateOf(edit.sId)).toBe("pending");
+    expect(await stateOf(approved.sId)).toBe("approved");
   });
 });

@@ -203,6 +203,56 @@ export async function pruneConflictingSkillEditSuggestions(
 }
 
 /**
+ * @cc [owner:achilleburah,label:product] prune-conflicting-editors-suggestions
+ * Creating a pending `editors` suggestion MUST mark every other pending `editors` suggestion for
+ * the same skill `outdated` when both add the same user or both remove the same user. Adding a
+ * user in one and removing them in the other is not a conflict: both stay pending for review.
+ */
+export async function pruneConflictingSkillEditorsSuggestions(
+  auth: Authenticator,
+  skill: SkillResource,
+  newSuggestion: SkillSuggestionResource
+): Promise<void> {
+  const allPending = await SkillSuggestionResource.listBySkillConfigurationId(
+    auth,
+    skill.sId,
+    {
+      states: ["pending"],
+      kind: "editors",
+      sources: PRUNED_SOURCES,
+    }
+  );
+
+  const existingPending = allPending.filter((s) => s.sId !== newSuggestion.sId);
+  if (existingPending.length === 0) {
+    return;
+  }
+
+  if (!isSuggestionOfKind(newSuggestion, "editors")) {
+    return;
+  }
+  const newAddUserIds = new Set(newSuggestion.suggestion.addUserIds);
+  const newRemoveUserIds = new Set(newSuggestion.suggestion.removeUserIds);
+
+  const toMarkOutdated = existingPending.filter((row) => {
+    if (!isSuggestionOfKind(row, "editors")) {
+      return false;
+    }
+    const editors = row.suggestion;
+    return (
+      editors.addUserIds.some((id) => newAddUserIds.has(id)) ||
+      editors.removeUserIds.some((id) => newRemoveUserIds.has(id))
+    );
+  });
+
+  await SkillSuggestionResource.bulkUpdateState(
+    auth,
+    toMarkOutdated,
+    "outdated"
+  );
+}
+
+/**
  * @cc [owner:fabiencelier,label:product] outdate-all-reviewable-sources
  * After a skill edit, pending `edit` suggestions from every reviewable source (`reinforcement` and
  * `conversational`) whose target block no longer exists MUST be marked `outdated`.
