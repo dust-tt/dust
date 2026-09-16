@@ -12,9 +12,13 @@ import type {
   ConnectorPermission,
   ContentNode,
 } from "@app/types/connectors/connectors_api";
-import type { ContentNodesViewType } from "@app/types/connectors/content_nodes";
+import type {
+  ContentNodesViewType,
+  FetchChildResourcesError,
+} from "@app/types/connectors/content_nodes";
 import type { DataSourceType } from "@app/types/data_source";
 import type { APIError } from "@app/types/error";
+import { isAPIErrorResponse } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
@@ -53,6 +57,24 @@ function getConnectorPermissionsUrl({
     url += `&filterPermission=${filterPermission}`;
   }
   return url;
+}
+
+/**
+ * @cc [owner:frankaloia,label:error-handling;product] child-permission-auth-is-resource-scoped
+ * Authorization and missing-document errors from a child permissions request
+ * MUST be classified as `resource_inaccessible` so bulk selection can skip that
+ * branch. Other errors MUST remain fatal.
+ */
+function getFetchChildResourcesError(error: unknown): FetchChildResourcesError {
+  const isResourceInaccessible =
+    isAPIErrorResponse(error) &&
+    (error.error.type === "data_source_auth_error" ||
+      error.error.type === "data_source_document_not_found");
+
+  return {
+    error: normalizeError(error),
+    type: isResourceInaccessible ? "resource_inaccessible" : "fatal",
+  };
 }
 
 export function useConnectorPermissions<T extends ConnectorPermission | null>({
@@ -116,7 +138,9 @@ export function useFetchConnectorPermissions({
   owner: LightWorkspaceType;
   dataSource: DataSourceType;
   viewType?: ContentNodesViewType;
-}): (parentId: string) => Promise<Result<ContentNode[], Error>> {
+}): (
+  parentId: string
+) => Promise<Result<ContentNode[], FetchChildResourcesError>> {
   const { fetcher } = useFetcher();
   const { featureFlags } = useFeatureFlags();
   const { trigger } = useSWRMutation(
@@ -144,7 +168,7 @@ export function useFetchConnectorPermissions({
           )
         );
       } catch (error) {
-        return new Err(normalizeError(error));
+        return new Err(getFetchChildResourcesError(error));
       }
     }
   );
