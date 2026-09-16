@@ -9,6 +9,7 @@
 import { SkillSuggestionCard } from "@app/components/skill_builder/SkillSuggestionCard";
 import { useSkillSuggestions } from "@app/hooks/useSkillSuggestions";
 import { useSkill } from "@app/lib/swr/skill_configurations";
+import { assertNeverAndIgnore } from "@app/types/shared/utils/assert_never";
 import type { LightWorkspaceType } from "@app/types/user";
 import { LoadingBlock } from "@dust-tt/sparkle";
 import { useCallback } from "react";
@@ -115,16 +116,22 @@ function ConversationSkillSuggestion({
     return null;
   }
 
-  return (
-    <div className="my-2">
-      <SkillSuggestionCard
-        suggestion={suggestion}
-        getSkillInstructionsHtml={getSkillInstructionsHtml}
-        getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
-        workspaceId={owner.sId}
-      />
-    </div>
-  );
+  const { kind } = suggestion;
+  switch (kind) {
+    case "edit":
+      return (
+        <SkillSuggestionCard
+          suggestion={suggestion}
+          getSkillInstructionsHtml={getSkillInstructionsHtml}
+          getCurrentAgentFacingDescription={getCurrentAgentFacingDescription}
+          workspaceId={owner.sId}
+        />
+      );
+
+    default:
+      assertNeverAndIgnore(kind);
+      return null;
+  }
 }
 
 interface SkillSuggestionPluginProps {

@@ -1,6 +1,7 @@
 // Contract types and schemas for the skill suggestions endpoint
 // (`/api/w/:wId/assistant/skills/:sId/suggestions`). Used by the skill
 // suggestions route so validation has a single source of truth.
+import { isString } from "@app/types/shared/utils/general";
 import {
   REVIEWABLE_SKILL_SUGGESTION_SOURCES,
   SkillSuggestionSchema,
@@ -12,7 +13,7 @@ const SourceSchema = z.enum(REVIEWABLE_SKILL_SUGGESTION_SOURCES);
 
 // Next.js serializes single query param values as string, multiple as array.
 const stringOrArrayToArray = <T extends z.ZodTypeAny>(schema: T) =>
-  z.preprocess((v) => (typeof v === "string" ? [v] : v), z.array(schema));
+  z.preprocess((v) => (isString(v) ? [v] : v), z.array(schema));
 
 export const GetSkillSuggestionsQuerySchema = z.object({
   states: stringOrArrayToArray(StateSchema).optional(),
